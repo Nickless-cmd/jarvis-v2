@@ -18,6 +18,7 @@ def mc_agents(limit: int = 100) -> dict:
 
 @router.get("/agents/{agent_id}")
 def mc_agent_detail(agent_id: str) -> dict:
+    """Return full detail-surface for one agent; 404 hvis agenten ikke findes."""
     payload = build_agent_detail_surface(agent_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="agent-not-found")
@@ -26,6 +27,7 @@ def mc_agent_detail(agent_id: str) -> dict:
 
 @router.get("/agents/{agent_id}/messages")
 def mc_agent_messages(agent_id: str) -> dict:
+    """Return agentens beskeder og deres antal; 404 hvis agenten ikke findes."""
     payload = build_agent_detail_surface(agent_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="agent-not-found")
@@ -38,6 +40,7 @@ def mc_agent_messages(agent_id: str) -> dict:
 
 @router.get("/agents/{agent_id}/runs")
 def mc_agent_runs(agent_id: str) -> dict:
+    """Return agentens runs; 404 hvis agenten ikke findes."""
     payload = build_agent_detail_surface(agent_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="agent-not-found")
@@ -49,6 +52,7 @@ def mc_agent_runs(agent_id: str) -> dict:
 
 @router.get("/agents/{agent_id}/tool-calls")
 def mc_agent_tool_calls(agent_id: str) -> dict:
+    """Return agentens tool-calls og deres antal; 404 hvis agenten ikke findes."""
     payload = build_agent_detail_surface(agent_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="agent-not-found")
@@ -227,6 +231,7 @@ def mc_council(limit: int = 40) -> dict:
 
 @router.get("/council/{council_id}")
 def mc_council_detail(council_id: str) -> dict:
+    """Return full detail-surface for én council-session; 404 hvis den ikke findes."""
     payload = build_council_detail_surface(council_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="council-not-found")
@@ -235,6 +240,7 @@ def mc_council_detail(council_id: str) -> dict:
 
 @router.get("/council/{council_id}/messages")
 def mc_council_messages(council_id: str) -> dict:
+    """Return beskederne i én council-session; 404 hvis den ikke findes."""
     payload = build_council_detail_surface(council_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="council-not-found")
@@ -246,6 +252,7 @@ def mc_council_messages(council_id: str) -> dict:
 
 @router.post("/runtime/agents/spawn")
 def mc_spawn_agent(payload: dict) -> dict:
+    """Spawn en ny agent-task ud fra payload (role, goal, tools, budget, provider/model osv.)."""
     return spawn_agent_task(
         role=str(payload.get("role") or "researcher"),
         goal=str(payload.get("goal") or ""),
@@ -267,6 +274,7 @@ def mc_spawn_agent(payload: dict) -> dict:
 
 @router.post("/runtime/agents/{agent_id}/execute")
 def mc_execute_agent(agent_id: str, payload: dict | None = None) -> dict:
+    """Kør agentens task nu (valgfrit thread_id og execution_mode fra payload)."""
     payload = payload or {}
     return execute_agent_task(
         agent_id=agent_id,
@@ -277,6 +285,7 @@ def mc_execute_agent(agent_id: str, payload: dict | None = None) -> dict:
 
 @router.post("/runtime/agents/{agent_id}/message")
 def mc_message_agent(agent_id: str, payload: dict | None = None) -> dict:
+    """Send en besked til agenten (content/role/kind); auto-eksekverer som standard."""
     payload = payload or {}
     return send_message_to_agent(
         agent_id=agent_id,
@@ -290,6 +299,7 @@ def mc_message_agent(agent_id: str, payload: dict | None = None) -> dict:
 
 @router.post("/runtime/agents/{agent_id}/peer-message")
 def mc_peer_message_agent(agent_id: str, payload: dict | None = None) -> dict:
+    """Send en peer-besked fra denne agent til en anden agent (to_agent_id fra payload)."""
     payload = payload or {}
     return send_peer_message(
         from_agent_id=agent_id,
@@ -301,6 +311,7 @@ def mc_peer_message_agent(agent_id: str, payload: dict | None = None) -> dict:
 
 @router.post("/runtime/agents/{agent_id}/schedule")
 def mc_schedule_agent(agent_id: str, payload: dict | None = None) -> dict:
+    """Planlæg agentens task (schedule_kind, delay_seconds, schedule_expr, activate)."""
     payload = payload or {}
     return schedule_agent_task(
         agent_id=agent_id,
@@ -313,41 +324,48 @@ def mc_schedule_agent(agent_id: str, payload: dict | None = None) -> dict:
 
 @router.post("/runtime/agents/run-due")
 def mc_run_due_agents(payload: dict | None = None) -> dict:
+    """Kør de agent-schedules der er forfaldne nu (op til limit, default 10)."""
     payload = payload or {}
     return run_due_agent_schedules(limit=int(payload.get("limit") or 10))
 
 
 @router.post("/runtime/agents/{agent_id}/cancel")
 def mc_cancel_agent(agent_id: str, payload: dict | None = None) -> dict:
+    """Annullér agenten (valgfri note fra payload)."""
     payload = payload or {}
     return cancel_agent(agent_id, note=str(payload.get("note") or ""))
 
 
 @router.post("/runtime/agents/{agent_id}/suspend")
 def mc_suspend_agent(agent_id: str, payload: dict | None = None) -> dict:
+    """Suspendér agenten (valgfri note fra payload)."""
     payload = payload or {}
     return suspend_agent(agent_id, note=str(payload.get("note") or ""))
 
 
 @router.post("/runtime/agents/{agent_id}/resume")
 def mc_resume_agent(agent_id: str) -> dict:
+    """Genoptag en suspenderet agent."""
     return resume_agent(agent_id)
 
 
 @router.post("/runtime/agents/{agent_id}/expire")
 def mc_expire_agent(agent_id: str, payload: dict | None = None) -> dict:
+    """Lad agenten udløbe (valgfri reason fra payload)."""
     payload = payload or {}
     return expire_agent(agent_id, reason=str(payload.get("reason") or ""))
 
 
 @router.post("/runtime/agents/{agent_id}/promote")
 def mc_promote_agent_result(agent_id: str, payload: dict | None = None) -> dict:
+    """Promovér agentens resultat (valgfri note fra payload)."""
     payload = payload or {}
     return promote_agent_result(agent_id, note=str(payload.get("note") or ""))
 
 
 @router.post("/runtime/council/spawn")
 def mc_spawn_council(payload: dict) -> dict:
+    """Opret en ny council-session runtime (topic, roles, owner_agent_id, member_models)."""
     return create_council_session_runtime(
         topic=str(payload.get("topic") or ""),
         roles=list(payload.get("roles") or []),
@@ -358,6 +376,7 @@ def mc_spawn_council(payload: dict) -> dict:
 
 @router.post("/runtime/swarm/spawn")
 def mc_spawn_swarm(payload: dict) -> dict:
+    """Opret en ny swarm-session runtime (topic, roles, owner_agent_id, member_models)."""
     return create_swarm_session_runtime(
         topic=str(payload.get("topic") or ""),
         roles=list(payload.get("roles") or []),
@@ -368,6 +387,7 @@ def mc_spawn_swarm(payload: dict) -> dict:
 
 @router.post("/runtime/council/{council_id}/message")
 def mc_message_council(council_id: str, payload: dict | None = None) -> dict:
+    """Post en besked til en council-session (content/kind/role fra payload)."""
     payload = payload or {}
     return post_council_message(
         council_id=council_id,
@@ -379,11 +399,13 @@ def mc_message_council(council_id: str, payload: dict | None = None) -> dict:
 
 @router.post("/runtime/council/{council_id}/run-round")
 def mc_run_council_round(council_id: str) -> dict:
+    """Kør én runde i den angivne council-session."""
     return run_council_round(council_id)
 
 
 @router.post("/runtime/swarm/{council_id}/run-round")
 def mc_run_swarm_round(council_id: str) -> dict:
+    """Kør én runde i den angivne swarm-session."""
     return run_swarm_round(council_id)
 
 

@@ -29,6 +29,7 @@ _SKIP_DOC_PARTS = {"_archive", "superpowers", "design-history"}
 
 
 def find_docs(root: Path = DOCS) -> list[Path]:
+    """List all *.md files under `root`, excluding historical-record trees (_SKIP_DOC_PARTS)."""
     return sorted(p for p in root.rglob("*.md") if not (_SKIP_DOC_PARTS & set(p.parts)))
 
 
@@ -39,6 +40,8 @@ def _norm(text: str) -> str:
 
 # ---- HARD: broken markdown links ----
 def broken_links(docs_root: Path = DOCS) -> list[dict]:
+    """HARD check: scan markdown links in every doc and return {doc, kind, target} for each
+    local (non-http/mailto/anchor) link whose target file does not exist."""
     out: list[dict] = []
     for doc in find_docs(docs_root):
         text = doc.read_text(errors="ignore")
@@ -95,6 +98,10 @@ def _staged_under(source_dirs: list[str], staged: list[str]) -> bool:
 
 
 def stale_generated(only_dirs: list[str] | None = None, repo: Path = REPO) -> list[dict]:
+    """HARD check: re-run each generator in-memory and compare its expected output to the
+    on-disk file (date-normalized). Emits {kind: "stale"} per diverged file, or
+    {kind: "checker_error"} if a generator raises. `only_dirs` (staged paths) skips generators
+    whose source dirs weren't touched."""
     out: list[dict] = []
     for gen in _GENERATORS:
         if only_dirs is not None and not _staged_under(gen["source_dirs"], only_dirs):
@@ -114,6 +121,8 @@ def stale_generated(only_dirs: list[str] | None = None, repo: Path = REPO) -> li
 
 # ---- SOFT: bare code-path mentions in prose that don't resolve ----
 def prose_drift(docs_root: Path = DOCS, repo: Path = REPO) -> list[dict]:
+    """SOFT check: find bare code-path mentions (core/apps/scripts/...) in prose that don't
+    resolve to an existing file. Skips the generated api-reference tree."""
     out: list[dict] = []
     skip = repo / "docs" / "reference" / "api"
     for doc in find_docs(docs_root):
@@ -129,6 +138,9 @@ def prose_drift(docs_root: Path = DOCS, repo: Path = REPO) -> list[dict]:
 
 # ---- SOFT: requirements drift ----
 def requirements_drift(repo: Path = REPO) -> list[dict]:
+    """SOFT check: scan imported third-party modules (via requirements_gen) and return
+    {kind: "requirement_missing"} for each not listed in requirements.txt; {kind:
+    "checker_error"} if the scan fails."""
     try:
         g = _load_script("requirements_gen")
         third = set(g.third_party(g.scan(repo)))
@@ -147,6 +159,7 @@ def requirements_drift(repo: Path = REPO) -> list[dict]:
 
 # ---- assembly ----
 def staged_paths(repo: Path = REPO) -> list[str]:
+    """Return the list of staged file paths (git diff --cached --name-only); [] on any error."""
     try:
         r = subprocess.run(["git", "-C", str(repo), "diff", "--cached", "--name-only"],
                            capture_output=True, text=True, timeout=15)
@@ -156,11 +169,16 @@ def staged_paths(repo: Path = REPO) -> list[str]:
 
 
 def hard_drift(staged: list[str] | None = None, repo: Path = REPO) -> list[dict]:
+    """Collect only the gate-blocking (HARD) drift: broken links plus stale generated docs
+    (scoped to `staged` source dirs)."""
     gen = stale_generated(only_dirs=staged, repo=repo)
     return broken_links() + [x for x in gen if x.get("kind") == "stale"]
 
 
 def run_check(repo: Path = REPO, staged: list[str] | None = None) -> dict:
+    """Run all checks and return a report dict with generated_at, hard/soft drift lists and
+    counts. Hard = broken links + stale generated; soft = checker errors + prose drift +
+    requirements drift."""
     links = broken_links()
     gen = stale_generated(only_dirs=staged, repo=repo)
     hard = links + [x for x in gen if x.get("kind") == "stale"]
@@ -172,6 +190,8 @@ def run_check(repo: Path = REPO, staged: list[str] | None = None) -> dict:
 
 
 def main() -> int:
+    """CLI entry point. `--check` = gate mode: report hard drift and exit 1 if any, else 0.
+    Default: write the full report to docs/drift_report.json and exit 0."""
     ap = argparse.ArgumentParser(description="docs-drift checker")
     ap.add_argument("--check", action="store_true",
                     help="gate mode: hard families only, staleness scoped to staged files; exit 1 on hard drift")

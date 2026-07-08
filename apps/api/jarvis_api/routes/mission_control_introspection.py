@@ -299,6 +299,7 @@ def mc_absence_awareness() -> dict:
 
 @router.get("/flow-state")
 def mc_flow_state() -> dict:
+    """Return flow-state detection surface."""
     from core.services.flow_state_detection import (
         build_flow_state_surface,
     )
@@ -308,6 +309,7 @@ def mc_flow_state() -> dict:
 
 @router.get("/cross-signal-patterns")
 def mc_cross_signal_patterns() -> dict:
+    """Return cross-signal analysis surface (patterns across signals)."""
     from core.services.cross_signal_analysis import (
         build_cross_signal_analysis_surface,
     )
@@ -317,6 +319,7 @@ def mc_cross_signal_patterns() -> dict:
 
 @router.get("/self-surprises")
 def mc_self_surprises() -> dict:
+    """Return self-surprise detection surface."""
     from core.services.self_surprise_detection import (
         build_self_surprise_surface,
     )
@@ -326,6 +329,7 @@ def mc_self_surprises() -> dict:
 
 @router.get("/narrative-identity")
 def mc_narrative_identity() -> dict:
+    """Return narrative-identity surface."""
     from core.services.narrative_identity import (
         build_narrative_identity_surface,
     )
@@ -335,6 +339,7 @@ def mc_narrative_identity() -> dict:
 
 @router.get("/gratitude")
 def mc_gratitude() -> dict:
+    """Return gratitude-tracker surface."""
     from core.services.gratitude_tracker import build_gratitude_surface
 
     return build_gratitude_surface()
@@ -342,6 +347,7 @@ def mc_gratitude() -> dict:
 
 @router.get("/boundary-model")
 def mc_boundary_model() -> dict:
+    """Return boundary-awareness surface."""
     from core.services.boundary_awareness import (
         build_boundary_awareness_surface,
     )
@@ -351,6 +357,7 @@ def mc_boundary_model() -> dict:
 
 @router.get("/emergent-goals")
 def mc_emergent_goals() -> dict:
+    """Return emergent-goals surface."""
     from core.services.emergent_goals import build_emergent_goals_surface
 
     return build_emergent_goals_surface()
@@ -358,6 +365,7 @@ def mc_emergent_goals() -> dict:
 
 @router.get("/jarvis-agenda")
 def mc_jarvis_agenda() -> dict:
+    """Return Jarvis' agenda wrapped under an "agenda" key."""
     from core.services.emergent_goals import build_jarvis_agenda
 
     return {"agenda": build_jarvis_agenda()}
@@ -365,6 +373,7 @@ def mc_jarvis_agenda() -> dict:
 
 @router.get("/boredom")
 def mc_boredom() -> dict:
+    """Return boredom-engine surface."""
     from core.services.boredom_engine import build_boredom_surface
 
     return build_boredom_surface()
@@ -372,6 +381,7 @@ def mc_boredom() -> dict:
 
 @router.get("/formed-values")
 def mc_formed_values() -> dict:
+    """Return formed-values surface (value-formation)."""
     from core.services.value_formation import build_formed_values_surface
 
     return build_formed_values_surface()
@@ -379,6 +389,7 @@ def mc_formed_values() -> dict:
 
 @router.get("/user-mental-model")
 def mc_user_mental_model() -> dict:
+    """Return user theory-of-mind surface (Jarvis' mental model of the user)."""
     from core.services.user_theory_of_mind import (
         build_user_theory_of_mind_surface,
     )
@@ -388,6 +399,7 @@ def mc_user_mental_model() -> dict:
 
 @router.get("/self-compassion")
 def mc_self_compassion() -> dict:
+    """Return self-compassion surface."""
     from core.services.self_compassion import (
         build_self_compassion_surface,
     )
@@ -557,6 +569,7 @@ def mc_personal_project() -> dict:
 
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
+    """Return the generated learning curriculum."""
     from core.services.self_experiments import (
         generate_learning_curriculum,
     )
@@ -566,6 +579,7 @@ def mc_learning_curriculum() -> dict:
 
 @router.get("/cadence-producers")
 def mc_cadence_producers() -> dict:
+    """Return cadence-producers surface."""
     from core.services.cadence_producers import (
         build_cadence_producers_surface,
     )
@@ -575,6 +589,7 @@ def mc_cadence_producers() -> dict:
 
 @router.get("/idle-thinking")
 def mc_idle_thinking() -> dict:
+    """Return idle-thinking surface."""
     from core.services.idle_thinking import build_idle_thinking_surface
 
     return build_idle_thinking_surface()
@@ -618,12 +633,14 @@ def mc_experiment_toggle(experiment_id: str) -> dict:
 
 @router.get("/recurrence-state")
 def mc_recurrence_state() -> dict:
+    """Return recurrence-loop daemon surface."""
     from core.services.recurrence_loop_daemon import build_recurrence_surface
     return build_recurrence_surface()
 
 
 @router.get("/global-workspace")
 def mc_global_workspace() -> dict:
+    """Return global-workspace (broadcast daemon) surface."""
     from core.services.broadcast_daemon import build_workspace_surface
     return build_workspace_surface()
 
@@ -637,12 +654,14 @@ def mc_layer_tensions() -> dict:
 
 @router.get("/meta-cognition")
 def mc_meta_cognition() -> dict:
+    """Return meta-cognition daemon surface."""
     from core.services.meta_cognition_daemon import build_meta_cognition_surface
     return build_meta_cognition_surface()
 
 
 @router.get("/attention-profile")
 def mc_attention_profile() -> dict:
+    """Return attention-profile surface (attention-blink test)."""
     from core.services.attention_blink_test import build_attention_profile_surface
     return build_attention_profile_surface()
 

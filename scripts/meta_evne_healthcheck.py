@@ -64,6 +64,13 @@ def _hours_ago(iso: str | None) -> float | None:
 
 
 def probe_metacognition(conn) -> dict[str, Any]:
+    """Probe the metacognition_signals tracker.
+
+    Returns total signal count, count in the last 24h, hours since the last
+    signal, and 24h average scores for the contradiction_within_response and
+    claim_density dimensions. Status is MISSING (no table), STALE (no signals
+    in 24h) or OK.
+    """
     if not _table_exists(conn, "metacognition_signals"):
         return {"status": "MISSING", "note": "table not created — tracker never ran"}
     total = _count(conn, "SELECT COUNT(*) FROM metacognition_signals")
@@ -94,6 +101,13 @@ def probe_metacognition(conn) -> dict[str, Any]:
 
 
 def probe_theory_of_mind(conn) -> dict[str, Any]:
+    """Probe the partner_knowledge_facts ledger.
+
+    Returns total fact count, counts split by origin (told-by-jarvis /
+    stated-by-partner), hours since the last fact, and how many facts with
+    reference_count >= 3 were touched in the last hour. Status is MISSING,
+    EMPTY (no facts) or OK.
+    """
     if not _table_exists(conn, "partner_knowledge_facts"):
         return {"status": "MISSING"}
     total = _count(conn, "SELECT COUNT(*) FROM partner_knowledge_facts")
@@ -124,6 +138,12 @@ def probe_theory_of_mind(conn) -> dict[str, Any]:
 
 
 def probe_spatial_entity(conn) -> dict[str, Any]:
+    """Probe the room_entity_observations ledger.
+
+    Returns the number of distinct entities, the top 5 entities by
+    observation_count, and hours since the last observation. Status is
+    MISSING, EMPTY (no rows) or OK.
+    """
     if not _table_exists(conn, "room_entity_observations"):
         return {"status": "MISSING"}
     total = _count(conn, "SELECT COUNT(*) FROM room_entity_observations")
@@ -144,6 +164,11 @@ def probe_spatial_entity(conn) -> dict[str, Any]:
 
 
 def probe_session_inbox(conn) -> dict[str, Any]:
+    """Probe the session_inbox daemon gate.
+
+    Returns the number of currently queued items, total delivered and dropped
+    counts, and hours since the last delivery. Status is MISSING or OK.
+    """
     if not _table_exists(conn, "session_inbox"):
         return {"status": "MISSING"}
     queued = _count(conn, "SELECT COUNT(*) FROM session_inbox WHERE status='queued'")
@@ -163,6 +188,13 @@ def probe_session_inbox(conn) -> dict[str, Any]:
 
 
 def probe_inner_voice_shadow(conn) -> dict[str, Any]:
+    """Probe the inner_voice_shadow pilot.
+
+    Returns total shadow count, successful (llm_output present, no error) and
+    errored counts, the success rate, average LLM latency, average character
+    length of the template vs LLM output, and hours since the last shadow.
+    Status is MISSING, EMPTY (no rows) or OK.
+    """
     if not _table_exists(conn, "inner_voice_shadow"):
         return {"status": "MISSING"}
     total = _count(conn, "SELECT COUNT(*) FROM inner_voice_shadow")
@@ -232,6 +264,12 @@ def probe_visible_runs(conn) -> dict[str, Any]:
 
 
 def render_text(report: dict[str, Any]) -> str:
+    """Render the report dict as a human-readable text block.
+
+    Prints one section per tracker with a status marker, followed by an
+    overall verdict derived from the tracker statuses (all breathing,
+    missing tables, stale trackers, or OK with empty trackers).
+    """
     lines: list[str] = []
     lines.append("=" * 60)
     lines.append("META-EVNE HEALTHCHECK")
@@ -285,6 +323,12 @@ def render_text(report: dict[str, Any]) -> str:
 
 
 def main() -> int:
+    """CLI entry point: run all tracker probes and print the report.
+
+    Connects to the Jarvis DB, runs every probe into a report dict, and prints
+    it as JSON (with --json) or formatted text. Returns 0 on success, 1 if the
+    DB connection fails.
+    """
     parser = argparse.ArgumentParser(description="Meta-evne healthcheck")
     parser.add_argument("--json", action="store_true", help="Emit JSON instead of text")
     args = parser.parse_args()

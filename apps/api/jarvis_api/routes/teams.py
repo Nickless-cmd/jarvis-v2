@@ -36,6 +36,10 @@ def _team_view(t: dict) -> dict:
 
 @router.get("/teams")
 async def list_teams() -> dict:
+    """Returnér den auth'ede brugers teams (Jarvis-medlemmet filtreret fra).
+
+    Uden bruger-kontekst returneres en tom liste.
+    """
     uid = _current_user()
     if not uid:
         return {"teams": []}
@@ -44,6 +48,11 @@ async def list_teams() -> dict:
 
 @router.post("/teams")
 async def create_team(body: CreateTeamBody) -> dict:
+    """Opret et team med den auth'ede bruger som owner og returnér team-viewet.
+
+    Kræver bruger-kontekst (401) og et ikke-tomt navn (400). Auto-opretter best-
+    effort én default delt "Team-chat"-session så teamet straks kan åbnes.
+    """
     uid = _current_user()
     if not uid:
         raise HTTPException(status_code=401, detail="ingen bruger-kontekst")
@@ -64,6 +73,10 @@ async def create_team(body: CreateTeamBody) -> dict:
 
 @router.get("/teams/{team_id}/members")
 async def team_members(team_id: str) -> dict:
+    """Returnér teamets medlemmer (Jarvis-medlemmet filtreret fra).
+
+    Kræver at den auth'ede bruger selv er medlem af teamet (ellers 403).
+    """
     uid = _current_user()
     if not uid or not teams.is_member(team_id, uid):
         raise HTTPException(status_code=403, detail="ikke medlem af teamet")
@@ -73,6 +86,12 @@ async def team_members(team_id: str) -> dict:
 
 @router.post("/teams/{team_id}/invite")
 async def invite(team_id: str, body: InviteBody) -> dict:
+    """Inviter en bruger (via email eller user_id) til teamet.
+
+    Kræver bruger-kontekst (401) og admin-/owner-rolle på teamet (403). Delegerer
+    til team_tools.exec_invite_to_team og returnerer token + invited + delivered
+    (400 ved fejl fra tool-laget).
+    """
     uid = _current_user()
     if not uid:
         raise HTTPException(status_code=401, detail="ingen bruger-kontekst")
@@ -92,6 +111,10 @@ class TeamSessionBody(BaseModel):
 
 @router.get("/teams/{team_id}/sessions")
 async def team_sessions(team_id: str) -> dict:
+    """Returnér teamets delte chat-sessioner.
+
+    Kræver at den auth'ede bruger er medlem af teamet (ellers 403).
+    """
     uid = _current_user()
     if not uid or not teams.is_member(team_id, uid):
         raise HTTPException(status_code=403, detail="ikke medlem af teamet")
@@ -100,6 +123,10 @@ async def team_sessions(team_id: str) -> dict:
 
 @router.post("/teams/{team_id}/sessions")
 async def create_team_session(team_id: str, body: TeamSessionBody) -> dict:
+    """Opret en ny delt chat-session i teamet og returnér session_id + title.
+
+    Kræver at den auth'ede bruger er medlem af teamet (ellers 403).
+    """
     uid = _current_user()
     if not uid or not teams.is_member(team_id, uid):
         raise HTTPException(status_code=403, detail="ikke medlem af teamet")
@@ -121,6 +148,11 @@ async def my_pending_invites() -> dict:
 
 @router.post("/invites/{token}/accept")
 async def accept(token: str) -> dict:
+    """Accepter en invite-token og meld den auth'ede bruger ind i teamet.
+
+    Kræver bruger-kontekst (401). Returnerer team_id ved succes; ugyldig/udløbet
+    token giver 400.
+    """
     uid = _current_user()
     if not uid:
         raise HTTPException(status_code=401, detail="ingen bruger-kontekst")
@@ -133,6 +165,11 @@ async def accept(token: str) -> dict:
 
 @router.delete("/teams/{team_id}/members/{target_user_id}")
 async def kick(team_id: str, target_user_id: str) -> dict:
+    """Fjern et medlem fra teamet.
+
+    Kræver bruger-kontekst (401); rolle-tjek håndhæves i data-laget
+    (remove_member), som kaster PermissionError → 403.
+    """
     uid = _current_user()
     if not uid:
         raise HTTPException(status_code=401, detail="ingen bruger-kontekst")

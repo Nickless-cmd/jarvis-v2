@@ -31,6 +31,11 @@ from core.runtime.db import (
 
 
 def seed_personality_vector() -> None:
+    """Seed personality-vektoren (confidence/stil/præferencer/fejl/styrker/baseline).
+
+    Springer over hvis der allerede findes en vektor. Ellers upsert'er v1 med
+    hardcodede initialværdier og printer status.
+    """
     if get_latest_cognitive_personality_vector():
         print("  ✓ Personality vector already seeded")
         return
@@ -77,6 +82,10 @@ def seed_personality_vector() -> None:
 
 
 def seed_taste_profile() -> None:
+    """Seed taste-profilen (kode-/design-/kommunikations-smag + evidence_count).
+
+    Springer over hvis en profil allerede findes; ellers upsert'er v1.
+    """
     if get_latest_cognitive_taste_profile():
         print("  ✓ Taste profile already seeded")
         return
@@ -107,6 +116,11 @@ def seed_taste_profile() -> None:
 
 
 def seed_relationship_texture() -> None:
+    """Seed relations-teksturen (humor, inside-referencer, korrektions-mønstre,
+    tillids-kurve, produktive timer, samtale-rytme, uskrevne regler).
+
+    Springer over hvis der allerede findes en tekstur; ellers upsert'er v1.
+    """
     if get_latest_cognitive_relationship_texture():
         print("  ✓ Relationship texture already seeded")
         return
@@ -148,6 +162,10 @@ def seed_relationship_texture() -> None:
 
 
 def seed_compass() -> None:
+    """Seed kompas-tilstanden (bearing, rationale, open_loop_count).
+
+    Springer over hvis der allerede findes en kompas-tilstand; ellers upsert'er v1.
+    """
     if get_latest_cognitive_compass_state():
         print("  ✓ Compass already seeded")
         return
@@ -160,6 +178,11 @@ def seed_compass() -> None:
 
 
 def seed_rhythm() -> None:
+    """Seed rytme-tilstanden ud fra nuværende UTC-time.
+
+    Udleder phase/energy fra timen (warmup/deep_work/execution/social/recovery)
+    og upsert'er den. Springer over hvis der allerede findes en rytme-tilstand.
+    """
     if get_latest_cognitive_rhythm_state():
         print("  ✓ Rhythm already seeded")
         return
@@ -183,6 +206,10 @@ def seed_rhythm() -> None:
 
 
 def seed_chronicle() -> None:
+    """Seed en initial chronicle-post (2026-W14: narrativ, key_events, lessons).
+
+    Springer over hvis der allerede findes en chronicle-post; ellers indsætter v1.
+    """
     if get_latest_cognitive_chronicle_entry():
         print("  ✓ Chronicle already seeded")
         return
@@ -212,6 +239,11 @@ def seed_chronicle() -> None:
 
 
 def main() -> None:
+    """Kør alle seed-funktioner i rækkefølge og print samlet status.
+
+    Entry point for scriptet — idempotent, da hver seed-funktion selv springer
+    over allerede-seedet data.
+    """
     print("Seeding cognitive state tables...")
     print()
     seed_personality_vector()

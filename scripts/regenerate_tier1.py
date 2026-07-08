@@ -56,6 +56,11 @@ DB_PATH = Path.home() / ".jarvis-v2" / "state" / "jarvis.db"
 
 
 def load_usage() -> dict[str, int]:
+    """Count tool.invoked events per tool over the last WINDOW_DAYS from the runtime DB.
+
+    Reads the events table in ~/.jarvis-v2/state/jarvis.db and returns a
+    {tool_name: call_count} map. Exits the process if the DB file is missing.
+    """
     if not DB_PATH.exists():
         sys.exit(f"runtime DB not found at {DB_PATH}")
     conn = sqlite3.connect(str(DB_PATH))
@@ -72,6 +77,12 @@ def load_usage() -> dict[str, int]:
 
 
 def load_registered_tools() -> set[str]:
+    """Return the set of tool names from the live TOOL_DEFINITIONS catalog.
+
+    Imports core.tools.simple_tools and reads each entry's top-level or
+    function-level "name". Used to intersect against so we never list a tool
+    that is no longer registered.
+    """
     sys.path.insert(0, str(REPO_ROOT))
     from core.tools.simple_tools import TOOL_DEFINITIONS  # noqa: E402
     names: set[str] = set()
@@ -83,11 +94,17 @@ def load_registered_tools() -> set[str]:
 
 
 def compute_new_tier1(usage: dict[str, int], registered: set[str]) -> set[str]:
+    """Build the new Tier-1 set: tools used >= USAGE_THRESHOLD unioned with
+    SAFETY_FLOOR, then intersected with the registered catalog.
+    """
     data_driven = {n for n, c in usage.items() if c >= USAGE_THRESHOLD}
     return (data_driven | SAFETY_FLOOR) & registered
 
 
 def render_literal(names: set[str]) -> str:
+    """Render the tool names as the source text of a TIER_1_ALWAYS_ON frozenset
+    literal, sorted and wrapped four names per line.
+    """
     sorted_names = sorted(names)
     chunks = []
     for i in range(0, len(sorted_names), 4):
@@ -97,6 +114,12 @@ def render_literal(names: set[str]) -> str:
 
 
 def replace_literal_in_file(new_literal: str) -> bool:
+    """Rewrite the TIER_1_ALWAYS_ON literal in copilot_tool_pruning.py in place.
+
+    Locates the existing literal from its assignment prefix to the first "})"
+    and replaces it with new_literal. Returns False (without writing) if the
+    literal or its closing brace cannot be found.
+    """
     text = PRUNING_FILE.read_text(encoding="utf-8")
     start = text.find("TIER_1_ALWAYS_ON: frozenset[str] = frozenset({")
     if start < 0:
@@ -112,6 +135,12 @@ def replace_literal_in_file(new_literal: str) -> bool:
 
 
 def main() -> int:
+    """CLI entry point: compute the new Tier-1 set and print the diff vs current.
+
+    Loads usage, registered tools, and the current TIER_1_ALWAYS_ON, prints
+    demoted/promoted tools, then either writes the new literal (with --apply)
+    or shows a truncated preview. Returns a process exit code.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--apply", action="store_true",

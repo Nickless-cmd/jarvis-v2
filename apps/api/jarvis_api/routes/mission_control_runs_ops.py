@@ -23,6 +23,9 @@ def mc_liveness(table: str = "") -> dict:
 
 @router.get("/overview")
 def mc_overview() -> dict:
+    """Aggregeret Mission Control-overblik: event-antal, cost-summering
+    (tokens/USD), runtime-info (app/env/host/port/stier), synlig-eksekverings-
+    beredskab samt seneste event/cost og visible-run/capability-flader."""
     with connect() as conn:
         event_count = conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()["n"]
     costs = telemetry_summary()
@@ -57,6 +60,8 @@ def mc_overview() -> dict:
 
 @router.get("/events")
 def mc_events(limit: int = 50, family: str | None = None) -> dict:
+    """Seneste events fra event-bussen (op til `limit`), valgfrit filtreret
+    på `family`. Returnerer items plus meta (limit/family/returned)."""
     items = event_bus.recent(limit=max(limit, 1))
     if family:
         items = [item for item in items if item["family"] == family]
@@ -73,6 +78,7 @@ def mc_events(limit: int = 50, family: str | None = None) -> dict:
 
 @router.get("/costs")
 def mc_costs(limit: int = 50) -> dict:
+    """Cost-flade: telemetri-summering plus de seneste `limit` cost-rækker."""
     return {
         "summary": telemetry_summary(),
         "items": recent_costs(limit=limit),
@@ -81,6 +87,9 @@ def mc_costs(limit: int = 50) -> dict:
 
 @router.get("/runs")
 def mc_runs(limit: int = 20) -> dict:
+    """Runs-flade: aktiv run, sidste udfald/capability-brug, de seneste
+    `limit` persisterede runs (med udledt failed/cancelled-tælling), seneste
+    events samt seneste arbejds-enheder/-noter. Read-only projektion."""
     surface = _visible_run_surface()
     work = _visible_work_surface()
     recent_runs = list(surface.get("persisted_recent_runs") or [])[: max(limit, 1)]
@@ -107,6 +116,8 @@ def mc_runs(limit: int = 20) -> dict:
 
 @router.get("/approvals")
 def mc_approvals(limit: int = 20) -> dict:
+    """Approvals-flade: de seneste `limit` approval-requests (med udledt
+    pending/approved-tælling), seneste persisterede invokationer og events."""
     surface = _capability_invocation_surface()
     requests = list(surface.get("recent_approval_requests") or [])[: max(limit, 1)]
     pending = [item for item in requests if str(item.get("status") or "") == "pending"]
@@ -302,6 +313,7 @@ def mc_autonomy_proposals(limit: int = 30) -> dict:
 
 @router.post("/autonomy/proposals/{proposal_id}/approve")
 def mc_approve_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
+    """Godkend et Niveau 2-autonomi-forslag via id, med valgfri resolution-note."""
     from core.services.autonomy_proposal_queue import (
         approve_proposal,
     )
@@ -311,6 +323,7 @@ def mc_approve_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
 
 @router.post("/autonomy/proposals/{proposal_id}/reject")
 def mc_reject_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
+    """Afvis et Niveau 2-autonomi-forslag via id, med valgfri resolution-note."""
     from core.services.autonomy_proposal_queue import (
         reject_proposal,
     )
@@ -368,6 +381,9 @@ def mc_abandon_life_project(initiative_id: str, note: str = "") -> dict:
 
 @router.get("/operations")
 def mc_operations(limit: int = 20) -> dict:
+    """Samlet operations-flade (3s cached): runtime-config, tool-intent, runs,
+    approvals og chat-sessioner, plus en summary der udleder aktiv-run,
+    approval-tælling, session-antal og hele tool-intent-tilstanden."""
     cache_key = f"operations:{limit}"
     cached = _get_cached_mc_payload(cache_key, 3.0)
     if cached is not None:

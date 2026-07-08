@@ -103,35 +103,35 @@ _Mission Control routes: agenter, watcher/agent-lineage, council/swarm-config og
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `mc_agents` | `(limit=…)` | Return live and persistent agent runtime state for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L14) |
-| function | `mc_agent_detail` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L20) |
-| function | `mc_agent_messages` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L28) |
-| function | `mc_agent_runs` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L40) |
-| function | `mc_agent_tool_calls` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L51) |
-| function | `mc_watcher_lineage` | `()` | Return persistent watcher history — agents with kind=persistent-watcher. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L63) |
-| function | `mc_agent_lineage` | `()` | Return full agent spawn lineage — parent→child chains with outcomes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L97) |
-| function | `mc_get_council_model_config` | `()` | Return persisted per-role model overrides. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L157) |
-| function | `mc_set_council_model_config` | `(payload)` | Persist per-role model overrides. payload: {role_models: [{role, provider, model}]} | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L171) |
-| function | `mc_get_council_activation_config` | `()` | Return council activation sensitivity config. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L191) |
-| function | `mc_set_council_activation_config` | `(payload)` | Persist council activation sensitivity config. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L207) |
-| function | `mc_council` | `(limit=…)` | Return roster and council sessions for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L223) |
-| function | `mc_council_detail` | `(council_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L229) |
-| function | `mc_council_messages` | `(council_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L237) |
-| function | `mc_spawn_agent` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L248) |
-| function | `mc_execute_agent` | `(agent_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L269) |
-| function | `mc_message_agent` | `(agent_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L279) |
-| function | `mc_peer_message_agent` | `(agent_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L292) |
-| function | `mc_schedule_agent` | `(agent_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L303) |
-| function | `mc_run_due_agents` | `(payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L315) |
-| function | `mc_cancel_agent` | `(agent_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L321) |
-| function | `mc_suspend_agent` | `(agent_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L327) |
-| function | `mc_resume_agent` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L333) |
-| function | `mc_expire_agent` | `(agent_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L338) |
-| function | `mc_promote_agent_result` | `(agent_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L344) |
-| function | `mc_spawn_council` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L350) |
-| function | `mc_spawn_swarm` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L360) |
-| function | `mc_message_council` | `(council_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L370) |
-| function | `mc_run_council_round` | `(council_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L381) |
-| function | `mc_run_swarm_round` | `(council_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L386) |
+| function | `mc_agent_detail` | `(agent_id)` | Return full detail-surface for one agent; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L20) |
+| function | `mc_agent_messages` | `(agent_id)` | Return agentens beskeder og deres antal; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L29) |
+| function | `mc_agent_runs` | `(agent_id)` | Return agentens runs; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L42) |
+| function | `mc_agent_tool_calls` | `(agent_id)` | Return agentens tool-calls og deres antal; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L54) |
+| function | `mc_watcher_lineage` | `()` | Return persistent watcher history — agents with kind=persistent-watcher. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L67) |
+| function | `mc_agent_lineage` | `()` | Return full agent spawn lineage — parent→child chains with outcomes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L101) |
+| function | `mc_get_council_model_config` | `()` | Return persisted per-role model overrides. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L161) |
+| function | `mc_set_council_model_config` | `(payload)` | Persist per-role model overrides. payload: {role_models: [{role, provider, model}]} | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L175) |
+| function | `mc_get_council_activation_config` | `()` | Return council activation sensitivity config. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L195) |
+| function | `mc_set_council_activation_config` | `(payload)` | Persist council activation sensitivity config. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L211) |
+| function | `mc_council` | `(limit=…)` | Return roster and council sessions for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L227) |
+| function | `mc_council_detail` | `(council_id)` | Return full detail-surface for én council-session; 404 hvis den ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L233) |
+| function | `mc_council_messages` | `(council_id)` | Return beskederne i én council-session; 404 hvis den ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L242) |
+| function | `mc_spawn_agent` | `(payload)` | Spawn en ny agent-task ud fra payload (role, goal, tools, budget, provider/model osv.). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L254) |
+| function | `mc_execute_agent` | `(agent_id, payload=…)` | Kør agentens task nu (valgfrit thread_id og execution_mode fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L276) |
+| function | `mc_message_agent` | `(agent_id, payload=…)` | Send en besked til agenten (content/role/kind); auto-eksekverer som standard. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L287) |
+| function | `mc_peer_message_agent` | `(agent_id, payload=…)` | Send en peer-besked fra denne agent til en anden agent (to_agent_id fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L301) |
+| function | `mc_schedule_agent` | `(agent_id, payload=…)` | Planlæg agentens task (schedule_kind, delay_seconds, schedule_expr, activate). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L313) |
+| function | `mc_run_due_agents` | `(payload=…)` | Kør de agent-schedules der er forfaldne nu (op til limit, default 10). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L326) |
+| function | `mc_cancel_agent` | `(agent_id, payload=…)` | Annullér agenten (valgfri note fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L333) |
+| function | `mc_suspend_agent` | `(agent_id, payload=…)` | Suspendér agenten (valgfri note fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L340) |
+| function | `mc_resume_agent` | `(agent_id)` | Genoptag en suspenderet agent. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L347) |
+| function | `mc_expire_agent` | `(agent_id, payload=…)` | Lad agenten udløbe (valgfri reason fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L353) |
+| function | `mc_promote_agent_result` | `(agent_id, payload=…)` | Promovér agentens resultat (valgfri note fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L360) |
+| function | `mc_spawn_council` | `(payload)` | Opret en ny council-session runtime (topic, roles, owner_agent_id, member_models). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L367) |
+| function | `mc_spawn_swarm` | `(payload)` | Opret en ny swarm-session runtime (topic, roles, owner_agent_id, member_models). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L378) |
+| function | `mc_message_council` | `(council_id, payload=…)` | Post en besked til en council-session (content/kind/role fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L389) |
+| function | `mc_run_council_round` | `(council_id)` | Kør én runde i den angivne council-session. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L401) |
+| function | `mc_run_swarm_round` | `(council_id)` | Kør én runde i den angivne swarm-session. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L407) |
 
 ## `apps/api/jarvis_api/routes/mission_control_common.py`
 _Shared foundation for Mission Control routes._
@@ -261,51 +261,51 @@ _Mission Control routes: kognitiv/relationel introspektion (personality, chronic
 | function | `mc_experiential_memories` | `()` | Return experiential memories (lived experiences with emotion). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L268) |
 | function | `mc_living_heartbeat_cycle` | `()` | Return current life phase in heartbeat cycle. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L278) |
 | function | `mc_absence_awareness` | `()` | Return absence detection and return brief. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L288) |
-| function | `mc_flow_state` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L301) |
-| function | `mc_cross_signal_patterns` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L310) |
-| function | `mc_self_surprises` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L319) |
-| function | `mc_narrative_identity` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L328) |
-| function | `mc_gratitude` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L337) |
-| function | `mc_boundary_model` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L344) |
-| function | `mc_emergent_goals` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L353) |
-| function | `mc_jarvis_agenda` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L360) |
-| function | `mc_boredom` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L367) |
-| function | `mc_formed_values` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L374) |
-| function | `mc_user_mental_model` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L381) |
-| function | `mc_self_compassion` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L390) |
-| function | `mc_regret` | `()` | Return the regret engine state — open/resolved regrets with lessons. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L399) |
-| function | `mc_rupture_repair` | `()` | Return rupture & repair state — relational tension tracking. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L407) |
-| function | `mc_silence_patterns` | `()` | Return silence pattern detection — what the user is NOT saying. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L415) |
-| function | `mc_blind_spots` | `()` | Return self-model blind spots — patterns Jarvis hasn't seen yet. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L423) |
-| function | `mc_dream_hypotheses` | `()` | Return surprising dream-phase hypotheses linking disparate signals. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L431) |
-| function | `mc_decisions_journal` | `()` | Return decisions journal — moralsk beslutnings-log. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L439) |
-| function | `mc_epistemics` | `()` | Return epistemic layers — i_know / i_believe / i_suspect / i_dont_know / i_was_wrong. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L447) |
-| function | `mc_emotional_controls` | `()` | Return emotional state + whether it would gate kernel actions right now. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L455) |
-| function | `mc_mood_dialer` | `()` | Return mood-dialed params: initiative_multiplier, confidence_threshold, style_preset. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L463) |
-| function | `mc_self_review_unified` | `()` | Return unified self-review — periodic LLM-generated Jarvis self-audit. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L471) |
-| function | `mc_habits_pipeline` | `()` | Return habits + friction + automation-suggestions pipeline. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L479) |
-| function | `mc_paradoxes_capture` | `()` | Return captured paradoxes: Speed/Quality, Autonomy/Approval, Explore/Stabilize. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L487) |
-| function | `mc_shared_language_extended` | `()` | Return extended shorthand/shared-vocabulary developed with user. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L495) |
-| function | `mc_procedure_bank_pipeline` | `()` | Return procedure bank — learned, pinned, trigger-matched routines. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L503) |
-| function | `mc_negotiation_pipeline` | `()` | Return internal trade-off negotiation outcomes. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L511) |
-| function | `mc_reflection_to_plan` | `()` | Return reflective plans — reflections converted to executable steps. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L519) |
-| function | `mc_missions_pipeline` | `()` | Return multi-session missions: researcher/implementer/reviewer flow. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L527) |
-| function | `mc_deep_analyzer` | `()` | Return deep analyzer capability — scoped codebase introspection. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L535) |
-| function | `mc_session_continuity` | `()` | Return felt-continuity surface: morning thread + echo themes + session gap. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L543) |
-| function | `mc_personal_project` | `()` | Return Jarvis' current personal project (his thing that grows with him). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L551) |
-| function | `mc_learning_curriculum` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L559) |
-| function | `mc_cadence_producers` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L568) |
-| function | `mc_idle_thinking` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L577) |
-| function | `mc_experiments` | `()` | List all consciousness experiments with their enabled status. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L597) |
-| function | `mc_experiment_toggle` | `(experiment_id)` | Toggle a consciousness experiment on or off. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L608) |
-| function | `mc_recurrence_state` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L620) |
-| function | `mc_global_workspace` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L626) |
-| function | `mc_layer_tensions` | `()` | Return active inter-layer tensions — signals pulling in opposite directions. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L632) |
-| function | `mc_meta_cognition` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L639) |
-| function | `mc_attention_profile` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L645) |
-| function | `mc_cognitive_core_experiments` | `()` | Unified cognitive-core experiment surface for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L651) |
-| function | `mc_living_executive` | `()` | Living Executive impulse/choice/action trace for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L660) |
-| function | `mc_agency_map` | `()` | Connected/missing agency bridges for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L667) |
+| function | `mc_flow_state` | `()` | Return flow-state detection surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L301) |
+| function | `mc_cross_signal_patterns` | `()` | Return cross-signal analysis surface (patterns across signals). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L311) |
+| function | `mc_self_surprises` | `()` | Return self-surprise detection surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L321) |
+| function | `mc_narrative_identity` | `()` | Return narrative-identity surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L331) |
+| function | `mc_gratitude` | `()` | Return gratitude-tracker surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L341) |
+| function | `mc_boundary_model` | `()` | Return boundary-awareness surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L349) |
+| function | `mc_emergent_goals` | `()` | Return emergent-goals surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L359) |
+| function | `mc_jarvis_agenda` | `()` | Return Jarvis' agenda wrapped under an "agenda" key. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L367) |
+| function | `mc_boredom` | `()` | Return boredom-engine surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L375) |
+| function | `mc_formed_values` | `()` | Return formed-values surface (value-formation). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L383) |
+| function | `mc_user_mental_model` | `()` | Return user theory-of-mind surface (Jarvis' mental model of the user). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L391) |
+| function | `mc_self_compassion` | `()` | Return self-compassion surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L401) |
+| function | `mc_regret` | `()` | Return the regret engine state — open/resolved regrets with lessons. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L411) |
+| function | `mc_rupture_repair` | `()` | Return rupture & repair state — relational tension tracking. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L419) |
+| function | `mc_silence_patterns` | `()` | Return silence pattern detection — what the user is NOT saying. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L427) |
+| function | `mc_blind_spots` | `()` | Return self-model blind spots — patterns Jarvis hasn't seen yet. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L435) |
+| function | `mc_dream_hypotheses` | `()` | Return surprising dream-phase hypotheses linking disparate signals. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L443) |
+| function | `mc_decisions_journal` | `()` | Return decisions journal — moralsk beslutnings-log. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L451) |
+| function | `mc_epistemics` | `()` | Return epistemic layers — i_know / i_believe / i_suspect / i_dont_know / i_was_wrong. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L459) |
+| function | `mc_emotional_controls` | `()` | Return emotional state + whether it would gate kernel actions right now. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L467) |
+| function | `mc_mood_dialer` | `()` | Return mood-dialed params: initiative_multiplier, confidence_threshold, style_preset. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L475) |
+| function | `mc_self_review_unified` | `()` | Return unified self-review — periodic LLM-generated Jarvis self-audit. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L483) |
+| function | `mc_habits_pipeline` | `()` | Return habits + friction + automation-suggestions pipeline. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L491) |
+| function | `mc_paradoxes_capture` | `()` | Return captured paradoxes: Speed/Quality, Autonomy/Approval, Explore/Stabilize. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L499) |
+| function | `mc_shared_language_extended` | `()` | Return extended shorthand/shared-vocabulary developed with user. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L507) |
+| function | `mc_procedure_bank_pipeline` | `()` | Return procedure bank — learned, pinned, trigger-matched routines. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L515) |
+| function | `mc_negotiation_pipeline` | `()` | Return internal trade-off negotiation outcomes. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L523) |
+| function | `mc_reflection_to_plan` | `()` | Return reflective plans — reflections converted to executable steps. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L531) |
+| function | `mc_missions_pipeline` | `()` | Return multi-session missions: researcher/implementer/reviewer flow. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L539) |
+| function | `mc_deep_analyzer` | `()` | Return deep analyzer capability — scoped codebase introspection. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L547) |
+| function | `mc_session_continuity` | `()` | Return felt-continuity surface: morning thread + echo themes + session gap. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L555) |
+| function | `mc_personal_project` | `()` | Return Jarvis' current personal project (his thing that grows with him). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L563) |
+| function | `mc_learning_curriculum` | `()` | Return the generated learning curriculum. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L571) |
+| function | `mc_cadence_producers` | `()` | Return cadence-producers surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L581) |
+| function | `mc_idle_thinking` | `()` | Return idle-thinking surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L591) |
+| function | `mc_experiments` | `()` | List all consciousness experiments with their enabled status. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L612) |
+| function | `mc_experiment_toggle` | `(experiment_id)` | Toggle a consciousness experiment on or off. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L623) |
+| function | `mc_recurrence_state` | `()` | Return recurrence-loop daemon surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L635) |
+| function | `mc_global_workspace` | `()` | Return global-workspace (broadcast daemon) surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L642) |
+| function | `mc_layer_tensions` | `()` | Return active inter-layer tensions — signals pulling in opposite directions. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L649) |
+| function | `mc_meta_cognition` | `()` | Return meta-cognition daemon surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L656) |
+| function | `mc_attention_profile` | `()` | Return attention-profile surface (attention-blink test). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L663) |
+| function | `mc_cognitive_core_experiments` | `()` | Unified cognitive-core experiment surface for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L670) |
+| function | `mc_living_executive` | `()` | Living Executive impulse/choice/action trace for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L679) |
+| function | `mc_agency_map` | `()` | Connected/missing agency bridges for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L686) |
 
 ## `apps/api/jarvis_api/routes/mission_control_jarvis_state.py`
 _Mission Control routes: jarvis-introspektion (cognitive-frame, attention-budget, self-*, dream-*, embodied)_
@@ -381,21 +381,21 @@ _Mission Control routes: runs, overview, events, costs, approvals, memory-pipeli
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `mc_liveness` | `(table=…)` | Liveness-sandheds-flade (Stage 2, anti-konfabulation): klassificér en tabel | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L14) |
-| function | `mc_overview` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L25) |
-| function | `mc_events` | `(limit=…, family=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L59) |
-| function | `mc_costs` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L75) |
-| function | `mc_runs` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L83) |
-| function | `mc_approvals` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L109) |
-| function | `mc_memory_pipeline` | `(limit=…)` | Memory-pipeline status surface (added 2026-06-09). | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L131) |
-| function | `mc_autonomy_proposals` | `(limit=…)` | MC surface for Niveau 2 autonomy proposal queue. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L290) |
-| function | `mc_approve_autonomy_proposal` | `(proposal_id, note=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L304) |
-| function | `mc_reject_autonomy_proposal` | `(proposal_id, note=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L313) |
-| function | `mc_initiatives` | `(limit=…)` | MC surface for the persistent initiative queue — pending, acted, approved, rejected. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L322) |
-| function | `mc_approve_initiative` | `(initiative_id, note=…)` | Approve a pending initiative so the heartbeat may act on it. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L335) |
-| function | `mc_reject_initiative` | `(initiative_id, note=…)` | Reject and expire a pending initiative. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L345) |
-| function | `mc_life_projects` | `()` | Mission Control surface for Jarvis-owned long-term intentions. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L355) |
-| function | `mc_abandon_life_project` | `(initiative_id, note=…)` | Abandon a long-term intention without deleting its record. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L361) |
-| function | `mc_operations` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L370) |
+| function | `mc_overview` | `()` | Aggregeret Mission Control-overblik: event-antal, cost-summering | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L25) |
+| function | `mc_events` | `(limit=…, family=…)` | Seneste events fra event-bussen (op til `limit`), valgfrit filtreret | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L62) |
+| function | `mc_costs` | `(limit=…)` | Cost-flade: telemetri-summering plus de seneste `limit` cost-rækker. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L80) |
+| function | `mc_runs` | `(limit=…)` | Runs-flade: aktiv run, sidste udfald/capability-brug, de seneste | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L89) |
+| function | `mc_approvals` | `(limit=…)` | Approvals-flade: de seneste `limit` approval-requests (med udledt | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L118) |
+| function | `mc_memory_pipeline` | `(limit=…)` | Memory-pipeline status surface (added 2026-06-09). | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L142) |
+| function | `mc_autonomy_proposals` | `(limit=…)` | MC surface for Niveau 2 autonomy proposal queue. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L301) |
+| function | `mc_approve_autonomy_proposal` | `(proposal_id, note=…)` | Godkend et Niveau 2-autonomi-forslag via id, med valgfri resolution-note. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L315) |
+| function | `mc_reject_autonomy_proposal` | `(proposal_id, note=…)` | Afvis et Niveau 2-autonomi-forslag via id, med valgfri resolution-note. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L325) |
+| function | `mc_initiatives` | `(limit=…)` | MC surface for the persistent initiative queue — pending, acted, approved, rejected. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L335) |
+| function | `mc_approve_initiative` | `(initiative_id, note=…)` | Approve a pending initiative so the heartbeat may act on it. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L348) |
+| function | `mc_reject_initiative` | `(initiative_id, note=…)` | Reject and expire a pending initiative. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L358) |
+| function | `mc_life_projects` | `()` | Mission Control surface for Jarvis-owned long-term intentions. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L368) |
+| function | `mc_abandon_life_project` | `(initiative_id, note=…)` | Abandon a long-term intention without deleting its record. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L374) |
+| function | `mc_operations` | `(limit=…)` | Samlet operations-flade (3s cached): runtime-config, tool-intent, runs, | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L383) |
 
 ## `apps/api/jarvis_api/routes/mission_control_runtime_config.py`
 _Mission Control routes: adaptive/tool-intent, runtime-contract, heartbeat, visible-execution, capability-approval_
@@ -408,28 +408,28 @@ _Mission Control routes: adaptive/tool-intent, runtime-contract, heartbeat, visi
 | function | `mc_adaptive_learning` | `()` | Return the current bounded adaptive learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L40) |
 | function | `mc_self_system_code_awareness` | `()` | Return the current bounded self system / code awareness runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L50) |
 | function | `mc_tool_intent` | `()` | Return the current bounded approval-gated tool intent runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L56) |
-| function | `mc_approval_feedback` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L62) |
-| function | `mc_approve_tool_intent` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L67) |
-| function | `mc_deny_tool_intent` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L88) |
-| function | `mc_private_brain` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L109) |
-| function | `mc_runtime_contract` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L117) |
-| function | `mc_heartbeat` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L122) |
-| function | `mc_emotional_memory` | `(limit=…)` | Closes cartographer dark-edge (2026-05-13): emotional_memory_engine | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L127) |
-| function | `mc_heartbeat_tick` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L136) |
-| function | `mc_approve_runtime_contract_candidate` | `(candidate_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L147) |
-| function | `mc_reject_runtime_contract_candidate` | `(candidate_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L159) |
-| function | `mc_apply_runtime_contract_candidate` | `(candidate_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L171) |
-| function | `mc_runtime` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L183) |
-| function | `mc_visible_execution` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L188) |
-| function | `mc_main_agent_selection` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L194) |
-| function | `mc_ollama_models` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L199) |
-| function | `mc_provider_models` | `(provider=…, auth_profile=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L204) |
-| function | `mc_invoke_workspace_capability` | `(capability_id, approved=…, write_content=…, target_path=…, command_text=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L214) |
-| function | `mc_approve_capability_request` | `(request_id)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L235) |
-| function | `mc_execute_capability_request` | `(request_id, write_content=…, command_text=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L251) |
-| function | `mc_complete_development_focus` | `(focus_id)` | Manually mark a development focus as completed. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L350) |
-| function | `mc_update_visible_execution` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L382) |
-| function | `mc_update_main_agent_selection` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L431) |
+| function | `mc_approval_feedback` | `()` | Return the approval-feedback surface (learning signal from past approvals/denials). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L62) |
+| function | `mc_approve_tool_intent` | `()` | Approve the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L68) |
+| function | `mc_deny_tool_intent` | `()` | Deny the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L95) |
+| function | `mc_private_brain` | `()` | Return the private-brain overview plus recent session-distillation entries. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L122) |
+| function | `mc_runtime_contract` | `()` | Return the current runtime-contract state (active contract + candidates). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L131) |
+| function | `mc_heartbeat` | `()` | Return the heartbeat runtime surface (current heartbeat state and policy). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L137) |
+| function | `mc_emotional_memory` | `(limit=…)` | Closes cartographer dark-edge (2026-05-13): emotional_memory_engine | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L143) |
+| function | `mc_heartbeat_tick` | `()` | Manually trigger one heartbeat tick and return its resulting state/tick/policy. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L152) |
+| function | `mc_approve_runtime_contract_candidate` | `(candidate_id)` | Approve a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L164) |
+| function | `mc_reject_runtime_contract_candidate` | `(candidate_id)` | Reject a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L177) |
+| function | `mc_apply_runtime_contract_candidate` | `(candidate_id)` | Apply an approved runtime-contract candidate by id; returns the apply result. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L190) |
+| function | `mc_runtime` | `()` | Return the aggregate Mission Control runtime surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L203) |
+| function | `mc_visible_execution` | `()` | Return the visible-execution surface (current visible model/provider/auth) from live settings. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L209) |
+| function | `mc_main_agent_selection` | `()` | Return the current main-agent selection surface (selected provider/model/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L216) |
+| function | `mc_ollama_models` | `()` | Return the Ollama models available for use as the visible target. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L222) |
+| function | `mc_provider_models` | `(provider=…, auth_profile=…)` | Return the models available for the given provider (optionally scoped to an auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L228) |
+| function | `mc_invoke_workspace_capability` | `(capability_id, approved=…, write_content=…, target_path=…, command_text=…)` | Invoke a workspace capability by id, passing through the approval flag and optional | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L242) |
+| function | `mc_approve_capability_request` | `(request_id)` | Approve a capability-approval request by id (stamping approved_at now). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L265) |
+| function | `mc_execute_capability_request` | `(request_id, write_content=…, command_text=…)` | Execute a previously approved capability-approval request. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L285) |
+| function | `mc_complete_development_focus` | `(focus_id)` | Manually mark a development focus as completed. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L393) |
+| function | `mc_update_visible_execution` | `(payload)` | Update the visible-execution settings (visible model provider/name/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L425) |
+| function | `mc_update_main_agent_selection` | `(payload)` | Select the main-agent target (provider/model, optional auth_profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L480) |
 
 ## `apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py`
 _Mission Control routes: skills, memory, hardening, lab_
@@ -562,16 +562,16 @@ _Teams REST-API (Teams-feature, spec 2026-06-20 §6). Scoper til auth'et bruger.
 | class | `CreateTeamBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L22) |
 | class | `InviteBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L26) |
 | function | `_team_view` | `(t)` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L31) |
-| function | `list_teams` | `()` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L38) |
-| function | `create_team` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L46) |
-| function | `team_members` | `(team_id)` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L66) |
-| function | `invite` | `(team_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L75) |
-| class | `TeamSessionBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L89) |
-| function | `team_sessions` | `(team_id)` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L94) |
-| function | `create_team_session` | `(team_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L102) |
-| function | `my_pending_invites` | `()` | Pull-baseret invite-levering: brugerens egne pending invites så app'en kan | [src](../../../apps/api/jarvis_api/routes/teams.py#L112) |
-| function | `accept` | `(token)` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L123) |
-| function | `kick` | `(team_id, target_user_id)` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L135) |
+| function | `list_teams` | `()` | Returnér den auth'ede brugers teams (Jarvis-medlemmet filtreret fra). | [src](../../../apps/api/jarvis_api/routes/teams.py#L38) |
+| function | `create_team` | `(body)` | Opret et team med den auth'ede bruger som owner og returnér team-viewet. | [src](../../../apps/api/jarvis_api/routes/teams.py#L50) |
+| function | `team_members` | `(team_id)` | Returnér teamets medlemmer (Jarvis-medlemmet filtreret fra). | [src](../../../apps/api/jarvis_api/routes/teams.py#L75) |
+| function | `invite` | `(team_id, body)` | Inviter en bruger (via email eller user_id) til teamet. | [src](../../../apps/api/jarvis_api/routes/teams.py#L88) |
+| class | `TeamSessionBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L108) |
+| function | `team_sessions` | `(team_id)` | Returnér teamets delte chat-sessioner. | [src](../../../apps/api/jarvis_api/routes/teams.py#L113) |
+| function | `create_team_session` | `(team_id, body)` | Opret en ny delt chat-session i teamet og returnér session_id + title. | [src](../../../apps/api/jarvis_api/routes/teams.py#L125) |
+| function | `my_pending_invites` | `()` | Pull-baseret invite-levering: brugerens egne pending invites så app'en kan | [src](../../../apps/api/jarvis_api/routes/teams.py#L139) |
+| function | `accept` | `(token)` | Accepter en invite-token og meld den auth'ede bruger ind i teamet. | [src](../../../apps/api/jarvis_api/routes/teams.py#L150) |
+| function | `kick` | `(team_id, target_user_id)` | Fjern et medlem fra teamet. | [src](../../../apps/api/jarvis_api/routes/teams.py#L167) |
 
 ## `apps/api/jarvis_api/routes/tool_router.py`
 _MC observability for tool_router._

@@ -11,19 +11,19 @@ _Generate per-package codebase reference under docs/reference/api/ from AST (sta
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `iter_py` | `(root=…)` | — | [src](../../../scripts/api_docs_gen.py#L20) |
-| function | `_sig` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L28) |
-| function | `_summary` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L46) |
-| function | `module_entry` | `(text, relpath)` | — | [src](../../../scripts/api_docs_gen.py#L51) |
-| function | `package_of` | `(relpath)` | — | [src](../../../scripts/api_docs_gen.py#L72) |
-| function | `page_id` | `(pkg, module_name, sorted_names, chunk=…)` | — | [src](../../../scripts/api_docs_gen.py#L77) |
-| function | `_is_public` | `(name)` | — | [src](../../../scripts/api_docs_gen.py#L89) |
-| function | `coverage` | `(entries)` | — | [src](../../../scripts/api_docs_gen.py#L93) |
-| function | `render_package_md` | `(page, entries)` | — | [src](../../../scripts/api_docs_gen.py#L112) |
-| function | `render_index_md` | `(pages, cov)` | — | [src](../../../scripts/api_docs_gen.py#L134) |
-| function | `render_coverage_md` | `(cov)` | — | [src](../../../scripts/api_docs_gen.py#L156) |
-| function | `build` | `()` | — | [src](../../../scripts/api_docs_gen.py#L174) |
-| function | `main` | `()` | — | [src](../../../scripts/api_docs_gen.py#L189) |
+| function | `iter_py` | `(root=…)` | Yield every `.py` file under the SCAN_DIRS of `root`, sorted, skipping | [src](../../../scripts/api_docs_gen.py#L20) |
+| function | `_sig` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L30) |
+| function | `_summary` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L48) |
+| function | `module_entry` | `(text, relpath)` | Parse module source `text` into an entry dict for `relpath`: its module | [src](../../../scripts/api_docs_gen.py#L53) |
+| function | `package_of` | `(relpath)` | Return the dotted package name for a module `relpath` (its directory | [src](../../../scripts/api_docs_gen.py#L78) |
+| function | `page_id` | `(pkg, module_name, sorted_names, chunk=…)` | Return the page id for `module_name` within `pkg`. Packages with at most | [src](../../../scripts/api_docs_gen.py#L85) |
+| function | `_is_public` | `(name)` | — | [src](../../../scripts/api_docs_gen.py#L100) |
+| function | `coverage` | `(entries)` | Aggregate docstring coverage over module `entries`. Counts functions and | [src](../../../scripts/api_docs_gen.py#L104) |
+| function | `render_package_md` | `(page, entries)` | Render the Markdown reference page for `page`: a header plus, per module | [src](../../../scripts/api_docs_gen.py#L127) |
+| function | `render_index_md` | `(pages, cov)` | Render the API-reference index (README) Markdown: overall docstring | [src](../../../scripts/api_docs_gen.py#L152) |
+| function | `render_coverage_md` | `(cov)` | Render the docstring-coverage report Markdown from a `coverage()` dict: | [src](../../../scripts/api_docs_gen.py#L178) |
+| function | `build` | `()` | Scan all source modules and build the reference. Groups module entries by | [src](../../../scripts/api_docs_gen.py#L199) |
+| function | `main` | `()` | Build the reference and write it to disk: one Markdown page per page id, | [src](../../../scripts/api_docs_gen.py#L217) |
 
 ## `scripts/api_reference_gen.py`
 _Generate docs/reference/API_REFERENCE.md from the FastAPI app (ground truth)._
@@ -75,20 +75,20 @@ _Generate docs/reference/CAPABILITIES.md from the live tool registry. Regenerabl
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `ServiceSignals` | `` | — | [src](../../../scripts/capability_audit.py#L45) |
-| function | `module_name_from_path` | `(path, repo_root=…)` | — | [src](../../../scripts/capability_audit.py#L61) |
-| function | `find_python_files` | `(root)` | — | [src](../../../scripts/capability_audit.py#L71) |
-| function | `resolve_relative_import` | `(current_module, module, level)` | — | [src](../../../scripts/capability_audit.py#L84) |
-| function | `normalize_candidates` | `(candidates, known_modules)` | — | [src](../../../scripts/capability_audit.py#L101) |
-| function | `parse_imports` | `(path, *, current_module=…, known_modules=…)` | — | [src](../../../scripts/capability_audit.py#L121) |
-| function | `compute_reachability` | `(graph, entry_modules)` | — | [src](../../../scripts/capability_audit.py#L167) |
-| function | `score_service` | `(signals)` | — | [src](../../../scripts/capability_audit.py#L188) |
-| function | `git_last_touch` | `(path)` | — | [src](../../../scripts/capability_audit.py#L214) |
-| function | `entry_modules` | `()` | — | [src](../../../scripts/capability_audit.py#L246) |
-| function | `service_note` | `(signals, score)` | — | [src](../../../scripts/capability_audit.py#L254) |
-| function | `render_markdown` | `(signals_list)` | — | [src](../../../scripts/capability_audit.py#L267) |
-| function | `analyze_services` | `()` | — | [src](../../../scripts/capability_audit.py#L361) |
-| function | `print_summary` | `(signals_list)` | — | [src](../../../scripts/capability_audit.py#L416) |
-| function | `main` | `()` | — | [src](../../../scripts/capability_audit.py#L427) |
+| function | `module_name_from_path` | `(path, repo_root=…)` | Return the dotted module name for a file path relative to repo_root. | [src](../../../scripts/capability_audit.py#L61) |
+| function | `find_python_files` | `(root)` | Return sorted .py files under the SCAN_ROOTS subdirs of root, skipping __pycache__. | [src](../../../scripts/capability_audit.py#L75) |
+| function | `resolve_relative_import` | `(current_module, module, level)` | Resolve a relative ``from ... import`` into an absolute dotted module name. | [src](../../../scripts/capability_audit.py#L89) |
+| function | `normalize_candidates` | `(candidates, known_modules)` | Reduce raw import candidates to modules that actually exist in the repo. | [src](../../../scripts/capability_audit.py#L112) |
+| function | `parse_imports` | `(path, *, current_module=…, known_modules=…)` | Parse a file's AST and return the set of modules it imports. | [src](../../../scripts/capability_audit.py#L138) |
+| function | `compute_reachability` | `(graph, entry_modules)` | BFS the import graph from entry_modules. | [src](../../../scripts/capability_audit.py#L191) |
+| function | `score_service` | `(signals)` | Classify a service into a colored liveness label from its signals. | [src](../../../scripts/capability_audit.py#L217) |
+| function | `git_last_touch` | `(path)` | Return (age in days, short commit) of the most recent git change to path. | [src](../../../scripts/capability_audit.py#L248) |
+| function | `entry_modules` | `()` | Return the dotted module names of the reachability entry points (ENTRY_FILES + ENTRY_GLOBS). | [src](../../../scripts/capability_audit.py#L286) |
+| function | `service_note` | `(signals, score)` | Build a short human note explaining why a service scored low. | [src](../../../scripts/capability_audit.py#L295) |
+| function | `render_markdown` | `(signals_list)` | Render the full capability matrix report as a Markdown string. | [src](../../../scripts/capability_audit.py#L313) |
+| function | `analyze_services` | `()` | Scan the repo and build ServiceSignals for every module in core/services/. | [src](../../../scripts/capability_audit.py#L412) |
+| function | `print_summary` | `(signals_list)` | Print the total service count and per-score counts/shares to stdout. | [src](../../../scripts/capability_audit.py#L473) |
+| function | `main` | `()` | Run the audit, write the report to DOCS_OUTPUT, print the summary; return 0. | [src](../../../scripts/capability_audit.py#L485) |
 
 ## `scripts/central_connectivity_audit.py`
 _central_connectivity_audit.py — HOLDBART kort over hvad der er koblet til Centralen._
@@ -131,41 +131,41 @@ _SP1 docs auditor — classify docs/*.md against git+runtime truth. Regenerable,
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `find_docs` | `(root=…)` | — | [src](../../../scripts/docs_audit.py#L22) |
-| function | `extract_references` | `(text)` | — | [src](../../../scripts/docs_audit.py#L26) |
-| function | `liveness` | `(refs, repo_root=…)` | — | [src](../../../scripts/docs_audit.py#L32) |
-| function | `git_last_touch` | `(path, repo_root=…)` | — | [src](../../../scripts/docs_audit.py#L40) |
-| function | `title_and_headings` | `(text)` | — | [src](../../../scripts/docs_audit.py#L53) |
-| function | `detect_superseded` | `(docs)` | docs: [{path,title,headings,days}]. Older doc is superseded by a NEWER doc that shares the | [src](../../../scripts/docs_audit.py#L66) |
-| function | `feature_shipped` | `(refs, repo_root=…)` | A superpowers spec/plan 'shipped' if any referenced path exists, or a key symbol is in the tree. | [src](../../../scripts/docs_audit.py#L84) |
-| function | `classify_heuristic` | `(*, path, refs, live, days, superseded_by, is_superpowers, shipped)` | — | [src](../../../scripts/docs_audit.py#L99) |
-| function | `_yaml_val` | `(v)` | — | [src](../../../scripts/docs_audit.py#L123) |
-| function | `stamp_frontmatter` | `(text, fields)` | Idempotent, surgical YAML frontmatter merge: replaces only the given keys, preserves the rest | [src](../../../scripts/docs_audit.py#L128) |
-| function | `render_manifest_md` | `(entries)` | — | [src](../../../scripts/docs_audit.py#L142) |
-| function | `build_gap_list` | `(entries)` | Coarse subsystem coverage: which _SUBSYSTEMS have NO færdig doc referencing them. | [src](../../../scripts/docs_audit.py#L152) |
-| function | `audit` | `()` | — | [src](../../../scripts/docs_audit.py#L164) |
-| function | `main` | `()` | — | [src](../../../scripts/docs_audit.py#L191) |
+| function | `find_docs` | `(root=…)` | Return all *.md files under root (recursive, sorted), excluding any under an _archive dir. | [src](../../../scripts/docs_audit.py#L22) |
+| function | `extract_references` | `(text)` | Pull code references out of markdown text: repo paths (core/apps/scripts .py/.ts/.tsx/.md/.json) | [src](../../../scripts/docs_audit.py#L27) |
+| function | `liveness` | `(refs, repo_root=…)` | Check how many of refs["paths"] still exist on disk under repo_root. | [src](../../../scripts/docs_audit.py#L35) |
+| function | `git_last_touch` | `(path, repo_root=…)` | Return (days_since_last_commit, iso_commit_date) for path via `git log -1`. | [src](../../../scripts/docs_audit.py#L45) |
+| function | `title_and_headings` | `(text)` | Parse markdown headings from text. Returns (title, headings): title is the first `#` heading | [src](../../../scripts/docs_audit.py#L60) |
+| function | `detect_superseded` | `(docs)` | docs: [{path,title,headings,days}]. Older doc is superseded by a NEWER doc that shares the | [src](../../../scripts/docs_audit.py#L75) |
+| function | `feature_shipped` | `(refs, repo_root=…)` | A superpowers spec/plan 'shipped' if any referenced path exists, or a key symbol is in the tree. | [src](../../../scripts/docs_audit.py#L93) |
+| function | `classify_heuristic` | `(*, path, refs, live, days, superseded_by, is_superpowers, shipped)` | Classify a doc from its signals into a category. Returns (category, confidence, basis): | [src](../../../scripts/docs_audit.py#L108) |
+| function | `_yaml_val` | `(v)` | — | [src](../../../scripts/docs_audit.py#L135) |
+| function | `stamp_frontmatter` | `(text, fields)` | Idempotent, surgical YAML frontmatter merge: replaces only the given keys, preserves the rest | [src](../../../scripts/docs_audit.py#L140) |
+| function | `render_manifest_md` | `(entries)` | Render the audit entries as a DOCS_MANIFEST markdown document: a generated-header line with | [src](../../../scripts/docs_audit.py#L154) |
+| function | `build_gap_list` | `(entries)` | Coarse subsystem coverage: which _SUBSYSTEMS have NO færdig doc referencing them. | [src](../../../scripts/docs_audit.py#L166) |
+| function | `audit` | `()` | Run the full docs audit: scan every doc, extract refs/headings/git-age, detect supersession, | [src](../../../scripts/docs_audit.py#L178) |
+| function | `main` | `()` | CLI entry point: run audit(), write docs/docs_audit_raw.json, print a summary and gap list. | [src](../../../scripts/docs_audit.py#L207) |
 
 ## `scripts/docs_drift_check.py`
 _SP5 docs-drift checker — catch when docs/ diverges from git+runtime truth._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `find_docs` | `(root=…)` | — | [src](../../../scripts/docs_drift_check.py#L31) |
-| function | `_norm` | `(text)` | Neutralize volatile 'Generated <date>' stamps so regeneration diffs are content-only. | [src](../../../scripts/docs_drift_check.py#L35) |
-| function | `broken_links` | `(docs_root=…)` | — | [src](../../../scripts/docs_drift_check.py#L41) |
-| function | `_load_script` | `(name)` | — | [src](../../../scripts/docs_drift_check.py#L57) |
-| function | `_expected_api_docs` | `()` | — | [src](../../../scripts/docs_drift_check.py#L64) |
-| function | `_expected_api_reference` | `()` | — | [src](../../../scripts/docs_drift_check.py#L74) |
-| function | `_expected_capabilities` | `()` | — | [src](../../../scripts/docs_drift_check.py#L80) |
-| function | `_staged_under` | `(source_dirs, staged)` | — | [src](../../../scripts/docs_drift_check.py#L93) |
-| function | `stale_generated` | `(only_dirs=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L97) |
-| function | `prose_drift` | `(docs_root=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L116) |
-| function | `requirements_drift` | `(repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L131) |
-| function | `staged_paths` | `(repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L149) |
-| function | `hard_drift` | `(staged=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L158) |
-| function | `run_check` | `(repo=…, staged=…)` | — | [src](../../../scripts/docs_drift_check.py#L163) |
-| function | `main` | `()` | — | [src](../../../scripts/docs_drift_check.py#L174) |
+| function | `find_docs` | `(root=…)` | List all *.md files under `root`, excluding historical-record trees (_SKIP_DOC_PARTS). | [src](../../../scripts/docs_drift_check.py#L31) |
+| function | `_norm` | `(text)` | Neutralize volatile 'Generated <date>' stamps so regeneration diffs are content-only. | [src](../../../scripts/docs_drift_check.py#L36) |
+| function | `broken_links` | `(docs_root=…)` | HARD check: scan markdown links in every doc and return {doc, kind, target} for each | [src](../../../scripts/docs_drift_check.py#L42) |
+| function | `_load_script` | `(name)` | — | [src](../../../scripts/docs_drift_check.py#L60) |
+| function | `_expected_api_docs` | `()` | — | [src](../../../scripts/docs_drift_check.py#L67) |
+| function | `_expected_api_reference` | `()` | — | [src](../../../scripts/docs_drift_check.py#L77) |
+| function | `_expected_capabilities` | `()` | — | [src](../../../scripts/docs_drift_check.py#L83) |
+| function | `_staged_under` | `(source_dirs, staged)` | — | [src](../../../scripts/docs_drift_check.py#L96) |
+| function | `stale_generated` | `(only_dirs=…, repo=…)` | HARD check: re-run each generator in-memory and compare its expected output to the | [src](../../../scripts/docs_drift_check.py#L100) |
+| function | `prose_drift` | `(docs_root=…, repo=…)` | SOFT check: find bare code-path mentions (core/apps/scripts/...) in prose that don't | [src](../../../scripts/docs_drift_check.py#L123) |
+| function | `requirements_drift` | `(repo=…)` | SOFT check: scan imported third-party modules (via requirements_gen) and return | [src](../../../scripts/docs_drift_check.py#L140) |
+| function | `staged_paths` | `(repo=…)` | Return the list of staged file paths (git diff --cached --name-only); [] on any error. | [src](../../../scripts/docs_drift_check.py#L161) |
+| function | `hard_drift` | `(staged=…, repo=…)` | Collect only the gate-blocking (HARD) drift: broken links plus stale generated docs | [src](../../../scripts/docs_drift_check.py#L171) |
+| function | `run_check` | `(repo=…, staged=…)` | Run all checks and return a report dict with generated_at, hard/soft drift lists and | [src](../../../scripts/docs_drift_check.py#L178) |
+| function | `main` | `()` | CLI entry point. `--check` = gate mode: report hard drift and exit 1 if any, else 0. | [src](../../../scripts/docs_drift_check.py#L192) |
 
 ## `scripts/enforce_commit_hygiene.py`
 _Pre-commit hook: catch kitchen-sink commits._
@@ -228,16 +228,16 @@ _Phase 3 FINAL classifier — pre-registered method, full 7-day data._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `load_raw` | `()` | — | [src](../../../scripts/interlanguage_classifier_final.py#L110) |
-| function | `apply_gap_filter` | `(rows)` | Drop peer rows (NOT jarvis rows) inside gap #1's hardware-rotation | [src](../../../scripts/interlanguage_classifier_final.py#L123) |
-| function | `cleanup` | `(rows)` | — | [src](../../../scripts/interlanguage_classifier_final.py#L154) |
-| function | `featurize` | `(rows, embedder)` | — | [src](../../../scripts/interlanguage_classifier_final.py#L184) |
-| function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | — | [src](../../../scripts/interlanguage_classifier_final.py#L199) |
-| function | `per_row_interpretation` | `(report_dict, cohort_counts)` | Pre-registered note: overall accuracy is misleading under cohort | [src](../../../scripts/interlanguage_classifier_final.py#L215) |
-| function | `render_cohort_balance` | `(kept_per_peer)` | Surface cohort balance with FROZEN annotation per gap #2. | [src](../../../scripts/interlanguage_classifier_final.py#L241) |
-| function | `render_text_report` | `(report)` | Format the full report for human reading. | [src](../../../scripts/interlanguage_classifier_final.py#L270) |
-| function | `run` | `()` | — | [src](../../../scripts/interlanguage_classifier_final.py#L380) |
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_classifier_final.py#L481) |
+| function | `load_raw` | `()` | Load all interlanguage_practice rows from the sqlite DB, keeping only | [src](../../../scripts/interlanguage_classifier_final.py#L110) |
+| function | `apply_gap_filter` | `(rows)` | Drop peer rows (NOT jarvis rows) inside gap #1's hardware-rotation | [src](../../../scripts/interlanguage_classifier_final.py#L126) |
+| function | `cleanup` | `(rows)` | Apply pre-registered §1 cleanup: drop rows with no primitive glyph, | [src](../../../scripts/interlanguage_classifier_final.py#L157) |
+| function | `featurize` | `(rows, embedder)` | Build the 403-dim feature matrix: normalized sentence embeddings (384) | [src](../../../scripts/interlanguage_classifier_final.py#L191) |
+| function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | Permutation test for classifier accuracy: refit a LogisticRegression on | [src](../../../scripts/interlanguage_classifier_final.py#L209) |
+| function | `per_row_interpretation` | `(report_dict, cohort_counts)` | Pre-registered note: overall accuracy is misleading under cohort | [src](../../../scripts/interlanguage_classifier_final.py#L229) |
+| function | `render_cohort_balance` | `(kept_per_peer)` | Surface cohort balance with FROZEN annotation per gap #2. | [src](../../../scripts/interlanguage_classifier_final.py#L255) |
+| function | `render_text_report` | `(report)` | Format the full report for human reading. | [src](../../../scripts/interlanguage_classifier_final.py#L284) |
+| function | `run` | `()` | Execute the full pre-registered Phase 3 pipeline and return the report dict. | [src](../../../scripts/interlanguage_classifier_final.py#L394) |
+| function | `main` | `()` | CLI entry point. Parses --json/--allow-early, enforces the pre-registered | [src](../../../scripts/interlanguage_classifier_final.py#L500) |
 
 ## `scripts/interlanguage_classifier_interim.py`
 _Interim Phase 3 classifier — pre-registered method, partial data._
@@ -279,23 +279,23 @@ _Structural-feature classifier for interlanguage expressions._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `cmd_bootstrap` | `(_)` | — | [src](../../../scripts/jarvis.py#L98) |
-| function | `cmd_events` | `(args)` | — | [src](../../../scripts/jarvis.py#L106) |
-| function | `cmd_health` | `(_)` | — | [src](../../../scripts/jarvis.py#L111) |
-| function | `cmd_overview` | `(_)` | — | [src](../../../scripts/jarvis.py#L127) |
-| function | `cmd_config` | `(_)` | — | [src](../../../scripts/jarvis.py#L163) |
-| function | `cmd_coding_lane_status` | `(_)` | — | [src](../../../scripts/jarvis.py#L198) |
-| function | `cmd_local_lane_status` | `(_)` | — | [src](../../../scripts/jarvis.py#L210) |
-| function | `cmd_workspace` | `(args)` | — | [src](../../../scripts/jarvis.py#L222) |
-| function | `cmd_cancel_visible_run` | `(args)` | — | [src](../../../scripts/jarvis.py#L239) |
-| function | `cmd_discord_setup` | `(_)` | Interactive wizard to configure the Discord gateway. | [src](../../../scripts/jarvis.py#L317) |
-| function | `cmd_discord_status` | `(_)` | Show Discord gateway config and connection status. | [src](../../../scripts/jarvis.py#L398) |
-| function | `build_parser` | `()` | — | [src](../../../scripts/jarvis.py#L418) |
-| function | `_event_count` | `()` | — | [src](../../../scripts/jarvis.py#L662) |
-| function | `_visible_run_truth` | `()` | — | [src](../../../scripts/jarvis.py#L667) |
-| function | `_visible_execution_truth` | `()` | — | [src](../../../scripts/jarvis.py#L685) |
-| function | `_capability_invocation_truth` | `()` | — | [src](../../../scripts/jarvis.py#L734) |
-| function | `main` | `()` | — | [src](../../../scripts/jarvis.py#L749) |
+| function | `cmd_bootstrap` | `(_)` | Ensure runtime dirs, init the DB, create the default workspace, and print its path. | [src](../../../scripts/jarvis.py#L98) |
+| function | `cmd_events` | `(args)` | Print the most recent eventbus events as JSON, up to args.limit. | [src](../../../scripts/jarvis.py#L107) |
+| function | `cmd_health` | `(_)` | Print a health JSON with ok, app name and environment from loaded settings. | [src](../../../scripts/jarvis.py#L113) |
+| function | `cmd_overview` | `(_)` | Print a JSON overview: visible execution/run truth, event count, cost telemetry | [src](../../../scripts/jarvis.py#L130) |
+| function | `cmd_config` | `(_)` | Print the current config as JSON: visible execution truth, workspace capabilities, | [src](../../../scripts/jarvis.py#L168) |
+| function | `cmd_coding_lane_status` | `(_)` | Print the coding lane execution truth as JSON. | [src](../../../scripts/jarvis.py#L205) |
+| function | `cmd_local_lane_status` | `(_)` | Print the local lane execution truth as JSON. | [src](../../../scripts/jarvis.py#L218) |
+| function | `cmd_workspace` | `(args)` | Ensure the workspace named args.name exists and print its path, existence and file list as JSON. | [src](../../../scripts/jarvis.py#L231) |
+| function | `cmd_cancel_visible_run` | `(args)` | Cancel a visible run and print the result as JSON. | [src](../../../scripts/jarvis.py#L249) |
+| function | `cmd_discord_setup` | `(_)` | Interactive wizard to configure the Discord gateway. | [src](../../../scripts/jarvis.py#L333) |
+| function | `cmd_discord_status` | `(_)` | Show Discord gateway config and connection status. | [src](../../../scripts/jarvis.py#L414) |
+| function | `build_parser` | `()` | Build and return the argparse parser wiring every jarvis subcommand to its handler. | [src](../../../scripts/jarvis.py#L434) |
+| function | `_event_count` | `()` | — | [src](../../../scripts/jarvis.py#L679) |
+| function | `_visible_run_truth` | `()` | — | [src](../../../scripts/jarvis.py#L684) |
+| function | `_visible_execution_truth` | `()` | — | [src](../../../scripts/jarvis.py#L702) |
+| function | `_capability_invocation_truth` | `()` | — | [src](../../../scripts/jarvis.py#L751) |
+| function | `main` | `()` | CLI entry point: parse arguments and dispatch to the selected subcommand handler. | [src](../../../scripts/jarvis.py#L766) |
 
 ## `scripts/jarvis_bare_practice_runner.py`
 _jarvis_bare practice runner — stripped-bare interlanguage expression generator._
@@ -336,14 +336,14 @@ _Meta-evne healthcheck — read-only snapshot of all new tracker stacks._
 | function | `_count` | `(conn, sql, params=…)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L36) |
 | function | `_table_exists` | `(conn, name)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L44) |
 | function | `_hours_ago` | `(iso)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L51) |
-| function | `probe_metacognition` | `(conn)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L66) |
-| function | `probe_theory_of_mind` | `(conn)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L96) |
-| function | `probe_spatial_entity` | `(conn)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L126) |
-| function | `probe_session_inbox` | `(conn)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L146) |
-| function | `probe_inner_voice_shadow` | `(conn)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L165) |
-| function | `probe_visible_runs` | `(conn)` | Sanity check: is the runtime actually producing visible runs? | [src](../../../scripts/meta_evne_healthcheck.py#L204) |
-| function | `render_text` | `(report)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L234) |
-| function | `main` | `()` | — | [src](../../../scripts/meta_evne_healthcheck.py#L287) |
+| function | `probe_metacognition` | `(conn)` | Probe the metacognition_signals tracker. | [src](../../../scripts/meta_evne_healthcheck.py#L66) |
+| function | `probe_theory_of_mind` | `(conn)` | Probe the partner_knowledge_facts ledger. | [src](../../../scripts/meta_evne_healthcheck.py#L103) |
+| function | `probe_spatial_entity` | `(conn)` | Probe the room_entity_observations ledger. | [src](../../../scripts/meta_evne_healthcheck.py#L140) |
+| function | `probe_session_inbox` | `(conn)` | Probe the session_inbox daemon gate. | [src](../../../scripts/meta_evne_healthcheck.py#L166) |
+| function | `probe_inner_voice_shadow` | `(conn)` | Probe the inner_voice_shadow pilot. | [src](../../../scripts/meta_evne_healthcheck.py#L190) |
+| function | `probe_visible_runs` | `(conn)` | Sanity check: is the runtime actually producing visible runs? | [src](../../../scripts/meta_evne_healthcheck.py#L236) |
+| function | `render_text` | `(report)` | Render the report dict as a human-readable text block. | [src](../../../scripts/meta_evne_healthcheck.py#L266) |
+| function | `main` | `()` | CLI entry point: run all tracker probes and print the report. | [src](../../../scripts/meta_evne_healthcheck.py#L325) |
 
 ## `scripts/migrate_emotional_memory.py`
 _One-shot migration: copy memory_emotional_context rows into emotional_memory_anchors._
@@ -410,12 +410,12 @@ _Regenerate TIER_1_ALWAYS_ON in copilot_tool_pruning.py from 30-day usage data._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `load_usage` | `()` | — | [src](../../../scripts/regenerate_tier1.py#L58) |
-| function | `load_registered_tools` | `()` | — | [src](../../../scripts/regenerate_tier1.py#L74) |
-| function | `compute_new_tier1` | `(usage, registered)` | — | [src](../../../scripts/regenerate_tier1.py#L85) |
-| function | `render_literal` | `(names)` | — | [src](../../../scripts/regenerate_tier1.py#L90) |
-| function | `replace_literal_in_file` | `(new_literal)` | — | [src](../../../scripts/regenerate_tier1.py#L99) |
-| function | `main` | `()` | — | [src](../../../scripts/regenerate_tier1.py#L114) |
+| function | `load_usage` | `()` | Count tool.invoked events per tool over the last WINDOW_DAYS from the runtime DB. | [src](../../../scripts/regenerate_tier1.py#L58) |
+| function | `load_registered_tools` | `()` | Return the set of tool names from the live TOOL_DEFINITIONS catalog. | [src](../../../scripts/regenerate_tier1.py#L79) |
+| function | `compute_new_tier1` | `(usage, registered)` | Build the new Tier-1 set: tools used >= USAGE_THRESHOLD unioned with | [src](../../../scripts/regenerate_tier1.py#L96) |
+| function | `render_literal` | `(names)` | Render the tool names as the source text of a TIER_1_ALWAYS_ON frozenset | [src](../../../scripts/regenerate_tier1.py#L104) |
+| function | `replace_literal_in_file` | `(new_literal)` | Rewrite the TIER_1_ALWAYS_ON literal in copilot_tool_pruning.py in place. | [src](../../../scripts/regenerate_tier1.py#L116) |
+| function | `main` | `()` | CLI entry point: compute the new Tier-1 set and print the diff vs current. | [src](../../../scripts/regenerate_tier1.py#L137) |
 
 ## `scripts/repro_streaming_fault.py`
 _Manuel repro af de tre streaming-fejl-former (Fase 0-harness)._
@@ -455,11 +455,11 @@ _Seed cognitive state tables with initial values based on known context._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `seed_personality_vector` | `()` | — | [src](../../../scripts/seed_cognitive_state.py#L33) |
-| function | `seed_taste_profile` | `()` | — | [src](../../../scripts/seed_cognitive_state.py#L79) |
-| function | `seed_relationship_texture` | `()` | — | [src](../../../scripts/seed_cognitive_state.py#L109) |
-| function | `seed_compass` | `()` | — | [src](../../../scripts/seed_cognitive_state.py#L150) |
-| function | `seed_rhythm` | `()` | — | [src](../../../scripts/seed_cognitive_state.py#L162) |
-| function | `seed_chronicle` | `()` | — | [src](../../../scripts/seed_cognitive_state.py#L185) |
-| function | `main` | `()` | — | [src](../../../scripts/seed_cognitive_state.py#L214) |
+| function | `seed_personality_vector` | `()` | Seed personality-vektoren (confidence/stil/præferencer/fejl/styrker/baseline). | [src](../../../scripts/seed_cognitive_state.py#L33) |
+| function | `seed_taste_profile` | `()` | Seed taste-profilen (kode-/design-/kommunikations-smag + evidence_count). | [src](../../../scripts/seed_cognitive_state.py#L84) |
+| function | `seed_relationship_texture` | `()` | Seed relations-teksturen (humor, inside-referencer, korrektions-mønstre, | [src](../../../scripts/seed_cognitive_state.py#L118) |
+| function | `seed_compass` | `()` | Seed kompas-tilstanden (bearing, rationale, open_loop_count). | [src](../../../scripts/seed_cognitive_state.py#L164) |
+| function | `seed_rhythm` | `()` | Seed rytme-tilstanden ud fra nuværende UTC-time. | [src](../../../scripts/seed_cognitive_state.py#L180) |
+| function | `seed_chronicle` | `()` | Seed en initial chronicle-post (2026-W14: narrativ, key_events, lessons). | [src](../../../scripts/seed_cognitive_state.py#L208) |
+| function | `main` | `()` | Kør alle seed-funktioner i rækkefølge og print samlet status. | [src](../../../scripts/seed_cognitive_state.py#L241) |
 

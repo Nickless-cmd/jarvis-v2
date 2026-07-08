@@ -18,6 +18,8 @@ _SKIP = {"__pycache__", "tests", "node_modules"}
 
 
 def iter_py(root: Path = REPO):
+    """Yield every `.py` file under the SCAN_DIRS of `root`, sorted, skipping
+    _SKIP dirs (__pycache__, tests, node_modules) and dot-prefixed path parts."""
     for d in SCAN_DIRS:
         for p in sorted((root / d).rglob("*.py")):
             if any(part in _SKIP or (part.startswith(".") and part not in (".",)) for part in p.parts):
@@ -49,6 +51,10 @@ def _summary(node) -> str:
 
 
 def module_entry(text: str, relpath: str) -> dict:
+    """Parse module source `text` into an entry dict for `relpath`: its module
+    docstring summary plus a flat list of top-level functions, classes, and
+    methods (each with name, signature, doc summary, lineno). On parse error
+    returns an entry with `error: True` and empty members."""
     try:
         tree = ast.parse(text)
     except Exception:
@@ -70,11 +76,16 @@ def module_entry(text: str, relpath: str) -> dict:
 
 
 def package_of(relpath: str) -> str:
+    """Return the dotted package name for a module `relpath` (its directory
+    path joined by dots); for a top-level file, the bare stem."""
     parts = relpath.split("/")
     return ".".join(parts[:-1]) if len(parts) > 1 else parts[0][:-3] if parts[0].endswith(".py") else parts[0]
 
 
 def page_id(pkg: str, module_name: str, sorted_names: list, chunk: int = CHUNK) -> str:
+    """Return the page id for `module_name` within `pkg`. Packages with at most
+    `chunk` modules use `pkg` directly; larger ones are split into numbered
+    chunks (`pkg.NN`) so no single page grows unusable."""
     if len(sorted_names) <= chunk:
         return pkg
     for i in range(0, len(sorted_names), chunk):
@@ -91,6 +102,10 @@ def _is_public(name: str) -> bool:
 
 
 def coverage(entries: list) -> dict:
+    """Aggregate docstring coverage over module `entries`. Counts functions and
+    methods (not classes) per package, tracks how many have a doc summary, and
+    collects public (non-`_`) undocumented ones. Returns per-package counts,
+    the undocumented-public list, and totals."""
     packages: dict = {}
     undoc: list = []
     for e in entries:
@@ -110,6 +125,9 @@ def coverage(entries: list) -> dict:
 
 
 def render_package_md(page: str, entries: list) -> str:
+    """Render the Markdown reference page for `page`: a header plus, per module
+    (sorted), its docstring summary and a table of its members with kind, name,
+    signature, summary, and a source link."""
     lines = [f"# `{page}` — reference", "",
              f"> Generated {datetime.now(UTC).date().isoformat()} from source (AST). "
              f"Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.", ""]
@@ -132,6 +150,10 @@ def render_package_md(page: str, entries: list) -> str:
 
 
 def render_index_md(pages, cov: dict) -> str:
+    """Render the API-reference index (README) Markdown: overall docstring
+    percentage, the code-to-doc convention note, and a link per page. Accepts
+    either a dict of page_id -> entries (adds the module range for chunked
+    pages) or a bare list of page ids."""
     # pages: dict page_id -> entries (preferred, lets us show the module range for
     # numeric-chunked pages); a bare list of ids is still accepted.
     as_dict = pages if isinstance(pages, dict) else {p: [] for p in pages}
@@ -154,6 +176,9 @@ def render_index_md(pages, cov: dict) -> str:
 
 
 def render_coverage_md(cov: dict) -> str:
+    """Render the docstring-coverage report Markdown from a `coverage()` dict:
+    overall percentage, a per-package coverage table, and the list of
+    undocumented public functions (capped at 5000)."""
     pct = 100 * cov["total_documented"] // max(1, cov["total_functions"])
     lines = ["# Docstring coverage", "",
              f"Generated {datetime.now(UTC).date().isoformat()}. "
@@ -172,6 +197,9 @@ def render_coverage_md(cov: dict) -> str:
 
 
 def build() -> tuple:
+    """Scan all source modules and build the reference. Groups module entries by
+    package, assigns each to its (possibly chunked) page id, and returns a
+    tuple of `(pages, coverage)` where pages maps page id -> entries."""
     entries = [module_entry(p.read_text(errors="ignore"), str(p.relative_to(REPO))) for p in iter_py()]
     from collections import defaultdict
     by_pkg = defaultdict(list)
@@ -187,6 +215,9 @@ def build() -> tuple:
 
 
 def main() -> int:
+    """Build the reference and write it to disk: one Markdown page per page id,
+    the index README, and the coverage report. Prints a one-line summary and
+    returns exit code 0."""
     pages, cov = build()
     API_DIR.mkdir(parents=True, exist_ok=True)
     for pid, es in pages.items():

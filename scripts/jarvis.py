@@ -96,6 +96,7 @@ from core.tools.workspace_capabilities import (
 
 
 def cmd_bootstrap(_: argparse.Namespace) -> None:
+    """Ensure runtime dirs, init the DB, create the default workspace, and print its path."""
     ensure_runtime_dirs()
     init_db()
     workspace = ensure_default_workspace()
@@ -104,11 +105,13 @@ def cmd_bootstrap(_: argparse.Namespace) -> None:
 
 
 def cmd_events(args: argparse.Namespace) -> None:
+    """Print the most recent eventbus events as JSON, up to args.limit."""
     items = event_bus.recent(limit=args.limit)
     print(json.dumps(items, indent=2, ensure_ascii=False))
 
 
 def cmd_health(_: argparse.Namespace) -> None:
+    """Print a health JSON with ok, app name and environment from loaded settings."""
     ensure_runtime_dirs()
     settings = load_settings()
     print(
@@ -125,6 +128,8 @@ def cmd_health(_: argparse.Namespace) -> None:
 
 
 def cmd_overview(_: argparse.Namespace) -> None:
+    """Print a JSON overview: visible execution/run truth, event count, cost telemetry
+    (rows, tokens, total USD) and the latest event."""
     ensure_runtime_dirs()
     init_db()
     costs = telemetry_summary()
@@ -161,6 +166,8 @@ def cmd_overview(_: argparse.Namespace) -> None:
 
 
 def cmd_config(_: argparse.Namespace) -> None:
+    """Print the current config as JSON: visible execution truth, workspace capabilities,
+    capability invocation truth, provider router summary, settings file path and settings."""
     ensure_runtime_dirs()
     settings = load_settings()
     visible_execution, visible_execution_source, visible_execution_api_unavailable = (
@@ -196,6 +203,7 @@ def cmd_config(_: argparse.Namespace) -> None:
 
 
 def cmd_coding_lane_status(_: argparse.Namespace) -> None:
+    """Print the coding lane execution truth as JSON."""
     ensure_runtime_dirs()
     init_db()
     print(
@@ -208,6 +216,7 @@ def cmd_coding_lane_status(_: argparse.Namespace) -> None:
 
 
 def cmd_local_lane_status(_: argparse.Namespace) -> None:
+    """Print the local lane execution truth as JSON."""
     ensure_runtime_dirs()
     init_db()
     print(
@@ -220,6 +229,7 @@ def cmd_local_lane_status(_: argparse.Namespace) -> None:
 
 
 def cmd_workspace(args: argparse.Namespace) -> None:
+    """Ensure the workspace named args.name exists and print its path, existence and file list as JSON."""
     ensure_runtime_dirs()
     workspace = ensure_default_workspace(name=args.name)
     files = sorted(path.name for path in workspace.iterdir() if path.is_file())
@@ -237,6 +247,12 @@ def cmd_workspace(args: argparse.Namespace) -> None:
 
 
 def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
+    """Cancel a visible run and print the result as JSON.
+
+    Uses args.run_id if given, otherwise resolves the active run. Tries cancelling
+    via the API first, then falls back to local cancellation. Reports source and
+    any API-unavailable error.
+    """
     ensure_runtime_dirs()
     init_db()
     requested_run_id = (args.run_id or "").strip()
@@ -416,6 +432,7 @@ def cmd_discord_status(_: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build and return the argparse parser wiring every jarvis subcommand to its handler."""
     parser = argparse.ArgumentParser(prog="jarvis")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -747,6 +764,7 @@ def _capability_invocation_truth() -> tuple[dict, str, str | None]:
 
 
 def main() -> None:
+    """CLI entry point: parse arguments and dispatch to the selected subcommand handler."""
     parser = build_parser()
     args = parser.parse_args()
     args.func(args)

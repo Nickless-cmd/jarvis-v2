@@ -44,6 +44,7 @@ class MessageStart:
     session_id: str | None = None
 
     def to_sse_line(self) -> str:
+        """Returnér message_start SSE-blokken med run-metadata og nul-usage."""
         return _sse_format("message_start", {
             "type": "message_start",
             "message": {
@@ -71,6 +72,7 @@ class ContentBlockStart:
     tool_name: str | None = None  # kun for tool_use
 
     def to_sse_line(self) -> str:
+        """Returnér content_block_start SSE-blokken; content_block afhænger af block_type."""
         content_block: dict[str, Any]
         if self.block_type == "tool_use":
             content_block = {
@@ -104,6 +106,7 @@ class ContentBlockDelta:
     content: str
 
     def to_sse_line(self) -> str:
+        """Returnér content_block_delta SSE-blokken; delta-feltet afhænger af delta_type."""
         delta: dict[str, Any] = {"type": self.delta_type}
         if self.delta_type == "text_delta":
             delta["text"] = self.content
@@ -128,6 +131,7 @@ class ContentBlockStop:
     index: int
 
     def to_sse_line(self) -> str:
+        """Returnér content_block_stop SSE-blokken for den angivne block-index."""
         return _sse_format("content_block_stop", {
             "type": "content_block_stop",
             "index": self.index,
@@ -148,6 +152,7 @@ class MessageDelta:
     cache_miss_tokens: int = 0
 
     def to_sse_line(self) -> str:
+        """Returnér message_delta SSE-blokken med stop_reason og final usage-tal."""
         return _sse_format("message_delta", {
             "type": "message_delta",
             "delta": {"stop_reason": self.stop_reason},
@@ -165,6 +170,7 @@ class MessageStop:
     """Sidste event — assistant-svaret er færdigt."""
 
     def to_sse_line(self) -> str:
+        """Returnér den afsluttende message_stop SSE-blok."""
         return _sse_format("message_stop", {"type": "message_stop"})
 
 
@@ -177,6 +183,7 @@ class Ping:
     """
 
     def to_sse_line(self) -> str:
+        """Returnér ping keepalive SSE-blokken."""
         return _sse_format("ping", {"type": "ping"})
 
 
@@ -196,6 +203,7 @@ class SystemEvent:
     payload: dict[str, Any] = field(default_factory=dict)
 
     def to_sse_line(self) -> str:
+        """Returnér system_event SSE-blokken med kind og payload."""
         return _sse_format("system_event", {
             "type": "system_event",
             "kind": self.kind,

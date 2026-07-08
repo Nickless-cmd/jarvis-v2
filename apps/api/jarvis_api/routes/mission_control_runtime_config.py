@@ -60,11 +60,18 @@ def mc_tool_intent() -> dict:
 
 @router.get("/approval-feedback")
 def mc_approval_feedback() -> dict:
+    """Return the approval-feedback surface (learning signal from past approvals/denials)."""
     return build_approval_feedback_surface()
 
 
 @router.post("/tool-intent/approve")
 def mc_approve_tool_intent() -> dict:
+    """Approve the current pending tool intent from Mission Control.
+
+    Resolves the active tool intent as approved (source "mc") and returns the
+    resolved request plus the refreshed tool-intent surface. Raises 409 if the
+    intent cannot be resolved.
+    """
     tool_intent = _mc_facade("build_tool_intent_runtime_surface")()
     try:
         request = resolve_tool_intent_approval(
@@ -86,6 +93,12 @@ def mc_approve_tool_intent() -> dict:
 
 @router.post("/tool-intent/deny")
 def mc_deny_tool_intent() -> dict:
+    """Deny the current pending tool intent from Mission Control.
+
+    Resolves the active tool intent as denied (source "mc") and returns the
+    resolved request plus the refreshed tool-intent surface. Raises 409 if the
+    intent cannot be resolved.
+    """
     tool_intent = _mc_facade("build_tool_intent_runtime_surface")()
     try:
         request = resolve_tool_intent_approval(
@@ -107,6 +120,7 @@ def mc_deny_tool_intent() -> dict:
 
 @router.get("/private-brain")
 def mc_private_brain() -> dict:
+    """Return the private-brain overview plus recent session-distillation entries."""
     return {
         "private_brain": _mc_facade("build_private_brain_surface")(limit=30),
         "session_distillation": _mc_facade("build_session_distillation_surface")(limit=10),
@@ -115,11 +129,13 @@ def mc_private_brain() -> dict:
 
 @router.get("/runtime-contract")
 def mc_runtime_contract() -> dict:
+    """Return the current runtime-contract state (active contract + candidates)."""
     return build_runtime_contract_state()
 
 
 @router.get("/heartbeat")
 def mc_heartbeat() -> dict:
+    """Return the heartbeat runtime surface (current heartbeat state and policy)."""
     return heartbeat_runtime_surface()
 
 
@@ -134,6 +150,7 @@ def mc_emotional_memory(limit: int = 20) -> dict:
 
 @router.post("/heartbeat/tick")
 def mc_heartbeat_tick() -> dict:
+    """Manually trigger one heartbeat tick and return its resulting state/tick/policy."""
     result = run_heartbeat_tick(trigger="manual")
     return {
         "ok": True,
@@ -145,6 +162,7 @@ def mc_heartbeat_tick() -> dict:
 
 @router.post("/runtime-contract/candidates/{candidate_id}/approve")
 def mc_approve_runtime_contract_candidate(candidate_id: str) -> dict:
+    """Approve a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id."""
     try:
         candidate = approve_runtime_contract_candidate(candidate_id)
     except ValueError as exc:
@@ -157,6 +175,7 @@ def mc_approve_runtime_contract_candidate(candidate_id: str) -> dict:
 
 @router.post("/runtime-contract/candidates/{candidate_id}/reject")
 def mc_reject_runtime_contract_candidate(candidate_id: str) -> dict:
+    """Reject a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id."""
     try:
         candidate = reject_runtime_contract_candidate(candidate_id)
     except ValueError as exc:
@@ -169,6 +188,7 @@ def mc_reject_runtime_contract_candidate(candidate_id: str) -> dict:
 
 @router.post("/runtime-contract/candidates/{candidate_id}/apply")
 def mc_apply_runtime_contract_candidate(candidate_id: str) -> dict:
+    """Apply an approved runtime-contract candidate by id; returns the apply result. Raises 400 on invalid id."""
     try:
         result = apply_runtime_contract_candidate(candidate_id)
     except ValueError as exc:
@@ -181,27 +201,35 @@ def mc_apply_runtime_contract_candidate(candidate_id: str) -> dict:
 
 @router.get("/runtime")
 def mc_runtime() -> dict:
+    """Return the aggregate Mission Control runtime surface."""
     return _mc_runtime()
 
 
 @router.get("/visible-execution")
 def mc_visible_execution() -> dict:
+    """Return the visible-execution surface (current visible model/provider/auth) from live settings."""
     settings = load_settings()
     return _visible_execution_surface(settings)
 
 
 @router.get("/main-agent-selection")
 def mc_main_agent_selection() -> dict:
+    """Return the current main-agent selection surface (selected provider/model/auth profile)."""
     return _main_agent_selection_surface()
 
 
 @router.get("/ollama-models")
 def mc_ollama_models() -> dict:
+    """Return the Ollama models available for use as the visible target."""
     return available_ollama_models_for_visible_target()
 
 
 @router.get("/provider-models")
 def mc_provider_models(provider: str = "", auth_profile: str = "") -> dict:
+    """Return the models available for the given provider (optionally scoped to an auth profile).
+
+    Raises 400 if provider is empty.
+    """
     if not str(provider).strip():
         raise HTTPException(status_code=400, detail="provider must be a non-empty string")
     return _mc_facade("available_provider_models")(
@@ -218,6 +246,8 @@ def mc_invoke_workspace_capability(
     target_path: str | None = None,
     command_text: str | None = None,
 ) -> dict:
+    """Invoke a workspace capability by id, passing through the approval flag and optional
+    write/target/command payload. Returns the invocation result with ok=True when executed."""
     result = invoke_workspace_capability(
         capability_id,
         approved=approved,
@@ -233,6 +263,10 @@ def mc_invoke_workspace_capability(
 
 @router.post("/capability-approval-requests/{request_id}/approve")
 def mc_approve_capability_request(request_id: str) -> dict:
+    """Approve a capability-approval request by id (stamping approved_at now).
+
+    Returns the projected request; raises 404 if the request does not exist.
+    """
     request = approve_capability_approval_request(
         request_id,
         approved_at=datetime.now(UTC).isoformat(),
@@ -253,6 +287,15 @@ def mc_execute_capability_request(
     write_content: str | None = None,
     command_text: str | None = None,
 ) -> dict:
+    """Execute a previously approved capability-approval request.
+
+    Requires the request to be approved (a pending sudo-exec proposal may be
+    auto-approved if it falls within a reusable sudo approval window). Falls back
+    to the stored proposal content when no write/command is supplied, verifies the
+    supplied content against the approved proposal fingerprint, then invokes the
+    capability and records the execution. Returns error dicts (not exceptions) for
+    not-found / not-approved / fingerprint-mismatch cases.
+    """
     request = get_capability_approval_request(request_id)
     if request is None:
         return {
@@ -380,6 +423,12 @@ def mc_complete_development_focus(focus_id: str) -> dict:
 
 @router.put("/visible-execution")
 def mc_update_visible_execution(payload: dict) -> dict:
+    """Update the visible-execution settings (visible model provider/name/auth profile).
+
+    Rejects unknown fields, non-string or empty values, unsupported providers, and
+    auth-profile names containing path separators (all raise 400). Returns the
+    refreshed visible-execution surface.
+    """
     allowed_fields = {
         "visible_model_provider",
         "visible_model_name",
@@ -429,6 +478,12 @@ def mc_update_visible_execution(payload: dict) -> dict:
 
 @router.put("/main-agent-selection")
 def mc_update_main_agent_selection(payload: dict) -> dict:
+    """Select the main-agent target (provider/model, optional auth_profile).
+
+    Rejects unknown fields and missing/empty provider or model (400). If selection
+    fails, attempts to configure the target live and retries once. Returns the
+    refreshed main-agent selection surface.
+    """
     allowed_fields = {"provider", "model", "auth_profile"}
     unknown_fields = sorted(set(payload) - allowed_fields)
     if unknown_fields:

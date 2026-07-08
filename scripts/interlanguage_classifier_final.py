@@ -108,6 +108,9 @@ Empirical basis logged in gap-note:
 
 
 def load_raw() -> list[dict]:
+    """Load all interlanguage_practice rows from the sqlite DB, keeping only
+    non-empty expressions of length >= 3, ordered by peer_id then created_at.
+    Returns a list of dicts (expression_id, expression_text, peer_id, created_at)."""
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     rows = con.execute(
@@ -152,6 +155,10 @@ def apply_gap_filter(rows: list[dict]) -> tuple[list[dict], dict]:
 
 
 def cleanup(rows: list[dict]) -> tuple[list[dict], dict]:
+    """Apply pre-registered §1 cleanup: drop rows with no primitive glyph,
+    rows over 200 chars, and per-peer duplicates of the same text within 1h.
+    Returns (kept_rows, stats) where stats records raw/kept counts per peer
+    and per-peer drop reasons."""
     raw_per_peer: Counter = Counter(r["peer_id"] for r in rows)
     stats_out: dict = {"raw_per_peer": dict(raw_per_peer), "dropped": defaultdict(Counter)}
     out: list[dict] = []
@@ -182,6 +189,9 @@ def cleanup(rows: list[dict]) -> tuple[list[dict], dict]:
 
 
 def featurize(rows: list[dict], embedder: SentenceTransformer) -> np.ndarray:
+    """Build the 403-dim feature matrix: normalized sentence embeddings (384)
+    hstacked with per-token primitive-glyph counts (5) and per-token core-vocab
+    counts (14). Returns the combined ndarray, one row per expression."""
     texts = [r["expression_text"] for r in rows]
     emb = embedder.encode(texts, show_progress_bar=False, normalize_embeddings=True)
     prim = np.zeros((len(rows), len(PRIMITIVES)), dtype=np.float32)
@@ -197,6 +207,10 @@ def featurize(rows: list[dict], embedder: SentenceTransformer) -> np.ndarray:
 
 
 def permutation_p(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=1000):
+    """Permutation test for classifier accuracy: refit a LogisticRegression on
+    n shuffled label sets and score each on the test set. Returns the p-value
+    (fraction of shuffled accuracies >= observed_acc) and the array of shuffled
+    accuracies."""
     rng = np.random.default_rng(SEED)
     shuffled_accs = []
     for i in range(n):
@@ -378,6 +392,11 @@ def render_text_report(report: dict[str, Any]) -> str:
 
 
 def run() -> dict[str, Any]:
+    """Execute the full pre-registered Phase 3 pipeline and return the report dict.
+    Loads and gap-filters rows, cleans them, featurizes, fits an 80/20 stratified
+    LogisticRegression, then computes accuracy, jarvis recall, permutation p-value,
+    JP-seed centroid t-tests, per-peer centroid distances, and critical pairwise
+    confusion rates."""
     raw = load_raw()
     after_gap, gap_info = apply_gap_filter(raw)
     clean, cstats = cleanup(after_gap)
@@ -479,6 +498,9 @@ def run() -> dict[str, Any]:
 
 
 def main() -> int:
+    """CLI entry point. Parses --json/--allow-early, enforces the pre-registered
+    2026-05-28 22:16 UTC cutoff gate (returns 2 if before it without --allow-early),
+    runs the pipeline, and prints either JSON or the text report. Returns exit code."""
     parser = argparse.ArgumentParser(
         description="Phase 3 FINAL classifier (run on/after 2026-05-28 22:16 UTC)",
     )

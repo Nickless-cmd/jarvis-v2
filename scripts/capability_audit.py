@@ -59,6 +59,10 @@ class ServiceSignals:
 
 
 def module_name_from_path(path: Path, repo_root: Path = REPO_ROOT) -> str:
+    """Return the dotted module name for a file path relative to repo_root.
+
+    Strips a trailing ``__init__.py`` and drops the ``.py`` suffix.
+    """
     rel = path.relative_to(repo_root)
     parts = list(rel.parts)
     if parts[-1] == "__init__.py":
@@ -69,6 +73,7 @@ def module_name_from_path(path: Path, repo_root: Path = REPO_ROOT) -> str:
 
 
 def find_python_files(root: Path) -> list[Path]:
+    """Return sorted .py files under the SCAN_ROOTS subdirs of root, skipping __pycache__."""
     files: list[Path] = []
     for scan_root in SCAN_ROOTS:
         base = root / scan_root
@@ -82,6 +87,12 @@ def find_python_files(root: Path) -> list[Path]:
 
 
 def resolve_relative_import(current_module: str | None, module: str | None, level: int) -> str | None:
+    """Resolve a relative ``from ... import`` into an absolute dotted module name.
+
+    ``level`` is the number of leading dots. For ``level == 0`` returns ``module``
+    unchanged; otherwise walks up from ``current_module``'s package and appends
+    ``module``. Returns None when nothing resolves.
+    """
     if level == 0:
         return module
     if not current_module:
@@ -99,6 +110,12 @@ def resolve_relative_import(current_module: str | None, module: str | None, leve
 
 
 def normalize_candidates(candidates: Iterable[str], known_modules: set[str] | None) -> set[str]:
+    """Reduce raw import candidates to modules that actually exist in the repo.
+
+    When ``known_modules`` is None, returns all non-empty candidates. Otherwise
+    keeps each candidate if known, else trims dotted suffixes until a known
+    ancestor module is found (mapping e.g. ``pkg.mod.symbol`` to ``pkg.mod``).
+    """
     if known_modules is None:
         return {candidate for candidate in candidates if candidate}
 
@@ -124,6 +141,13 @@ def parse_imports(
     current_module: str | None = None,
     known_modules: set[str] | None = None,
 ) -> set[str]:
+    """Parse a file's AST and return the set of modules it imports.
+
+    Covers ``import``/``from`` statements (resolving relative imports),
+    ``importlib.import_module``/``__import__`` calls, and string literals
+    referencing ``core.services.``, route, or pipeline module prefixes. The
+    result is filtered through ``normalize_candidates`` against ``known_modules``.
+    """
     source = path.read_text(encoding="utf-8")
     tree = ast.parse(source)
     module_name = current_module or path.stem
@@ -168,6 +192,11 @@ def compute_reachability(
     graph: Mapping[str, set[str]],
     entry_modules: Iterable[str],
 ) -> tuple[set[str], dict[str, set[str]]]:
+    """BFS the import graph from entry_modules.
+
+    Returns the set of reachable modules and a mapping of each module to the
+    parents through which it was reached.
+    """
     reachable: set[str] = set()
     parents: dict[str, set[str]] = defaultdict(set)
     queue = deque(entry_modules)
@@ -186,6 +215,11 @@ def compute_reachability(
 
 
 def score_service(signals: Mapping[str, object] | ServiceSignals) -> str:
+    """Classify a service into a colored liveness label from its signals.
+
+    Returns one of LIVE, STALE, PARTIAL, SUSPICIOUS or ORPHAN based on
+    reachability, recency, event/daemon/test signals and importer count.
+    """
     data = asdict(signals) if isinstance(signals, ServiceSignals) else dict(signals)
     reachable = bool(data["reachable_from_entry"])
     last_modified_days = data["last_modified_days"]
@@ -212,6 +246,12 @@ def score_service(signals: Mapping[str, object] | ServiceSignals) -> str:
 
 
 def git_last_touch(path: Path) -> tuple[int | None, str]:
+    """Return (age in days, short commit) of the most recent git change to path.
+
+    Uses ``git log --follow``. Skips the bulk services-move commit in favor of
+    the next real change when it is the latest touch on a ``core/services/`` file.
+    Returns ``(None, "n/a")`` when there is no history.
+    """
     rel = path.relative_to(REPO_ROOT)
     log_proc = subprocess.run(
         ["git", "log", "--follow", "--format=%at%x1f%h %s", "--", str(rel)],
@@ -244,6 +284,7 @@ def git_last_touch(path: Path) -> tuple[int | None, str]:
 
 
 def entry_modules() -> list[str]:
+    """Return the dotted module names of the reachability entry points (ENTRY_FILES + ENTRY_GLOBS)."""
     modules = [module_name_from_path(REPO_ROOT / entry) for entry in ENTRY_FILES]
     for pattern in ENTRY_GLOBS:
         for path in sorted(REPO_ROOT.glob(pattern)):
@@ -252,6 +293,11 @@ def entry_modules() -> list[str]:
 
 
 def service_note(signals: ServiceSignals, score: str) -> str:
+    """Build a short human note explaining why a service scored low.
+
+    Joins reasons (unreachable, no importers, cold file, no test imports) into
+    a single string, falling back to ``"review manually"``.
+    """
     parts: list[str] = []
     if score == "🔴 SUSPICIOUS":
         parts.append("not reachable from configured entry points")
@@ -265,6 +311,11 @@ def service_note(signals: ServiceSignals, score: str) -> str:
 
 
 def render_markdown(signals_list: list[ServiceSignals]) -> str:
+    """Render the full capability matrix report as a Markdown string.
+
+    Produces the summary table, Boy Scout candidates (>1000 lines),
+    consolidation/removal candidates, and the full per-service matrix.
+    """
     now = datetime.now(UTC).replace(microsecond=0).isoformat()
     total = len(signals_list)
     scores = Counter(score_service(item) for item in signals_list)
@@ -359,6 +410,12 @@ def render_markdown(signals_list: list[ServiceSignals]) -> str:
 
 
 def analyze_services() -> list[ServiceSignals]:
+    """Scan the repo and build ServiceSignals for every module in core/services/.
+
+    Builds the import graph and its reverse, computes reachability from the
+    entry modules, and gathers per-service size, git recency, test importers
+    and event/daemon flags. Returns the signals sorted by service path.
+    """
     python_files = find_python_files(REPO_ROOT)
     module_map = {module_name_from_path(path): path for path in python_files}
     known_modules = set(module_map)
@@ -414,6 +471,7 @@ def analyze_services() -> list[ServiceSignals]:
 
 
 def print_summary(signals_list: list[ServiceSignals]) -> None:
+    """Print the total service count and per-score counts/shares to stdout."""
     total = len(signals_list)
     scores = Counter(score_service(item) for item in signals_list)
     print("Capability Matrix Summary")
@@ -425,6 +483,7 @@ def print_summary(signals_list: list[ServiceSignals]) -> None:
 
 
 def main() -> int:
+    """Run the audit, write the report to DOCS_OUTPUT, print the summary; return 0."""
     signals_list = analyze_services()
     report = render_markdown(signals_list)
     DOCS_OUTPUT.write_text(report, encoding="utf-8")

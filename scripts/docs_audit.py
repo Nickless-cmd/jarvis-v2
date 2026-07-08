@@ -20,16 +20,21 @@ _SUBSYSTEMS = ["core/services", "core/runtime", "core/tools", "core/context",
 
 
 def find_docs(root: Path = DOCS_ROOT) -> list[Path]:
+    """Return all *.md files under root (recursive, sorted), excluding any under an _archive dir."""
     return sorted(p for p in root.rglob("*.md") if "_archive" not in p.parts)
 
 
 def extract_references(text: str) -> dict:
+    """Pull code references out of markdown text: repo paths (core/apps/scripts .py/.ts/.tsx/.md/.json)
+    and backtick-quoted symbols. Returns {"paths": [...], "symbols": [...]} (deduped, sorted)."""
     paths = sorted(set(_PATH_RE.findall(text)))
     symbols = sorted(set(_SYMBOL_RE.findall(text)))
     return {"paths": paths, "symbols": symbols}
 
 
 def liveness(refs: dict, repo_root: Path = REPO_ROOT) -> dict:
+    """Check how many of refs["paths"] still exist on disk under repo_root.
+    Returns {"resolved", "total", "ratio"}; ratio is None when there are no paths."""
     paths = refs.get("paths") or []
     if not paths:
         return {"resolved": 0, "total": 0, "ratio": None}
@@ -38,6 +43,8 @@ def liveness(refs: dict, repo_root: Path = REPO_ROOT) -> dict:
 
 
 def git_last_touch(path: Path, repo_root: Path = REPO_ROOT) -> tuple[int | None, str]:
+    """Return (days_since_last_commit, iso_commit_date) for path via `git log -1`.
+    Returns (None, "") when the file has no git history or git fails."""
     try:
         out = subprocess.run(["git", "log", "-1", "--format=%cI", "--", str(path)],
                              capture_output=True, text=True, cwd=repo_root, timeout=10)
@@ -51,6 +58,8 @@ def git_last_touch(path: Path, repo_root: Path = REPO_ROOT) -> tuple[int | None,
 
 
 def title_and_headings(text: str) -> tuple[str, set]:
+    """Parse markdown headings from text. Returns (title, headings): title is the first `#` heading
+    (lowercased), headings is the set of all lowercased heading texts."""
     title, headings = "", set()
     for ln in text.splitlines():
         s = ln.strip()
@@ -99,6 +108,9 @@ def feature_shipped(refs: dict, repo_root: Path = REPO_ROOT) -> bool:
 def classify_heuristic(*, path: str, refs: dict, live: dict, days: int | None,
                        superseded_by: str | None, is_superpowers: bool,
                        shipped: bool) -> tuple[str, float, str]:
+    """Classify a doc from its signals into a category. Returns (category, confidence, basis):
+    "droppet" if superseded; superpowers artifacts → "færdig"/"droppet"/"needs_review" by shipped/age;
+    otherwise "forældet" (all refs dead + stale), "færdig" (>=90% refs alive + fresh), else "needs_review"."""
     ratio = live.get("ratio")
     old = days is not None and days > _STALE_DAYS
     if superseded_by:
@@ -140,6 +152,8 @@ def stamp_frontmatter(text: str, fields: dict) -> str:
 
 
 def render_manifest_md(entries: list[dict]) -> str:
+    """Render the audit entries as a DOCS_MANIFEST markdown document: a generated-header line with
+    per-category counts plus a table of path/category/basis/superseded-by, sorted by category then path."""
     by_cat = Counter(e["category"] for e in entries)
     lines = ["# DOCS_MANIFEST", "",
              f"Generated {datetime.now(UTC).date().isoformat()} · {len(entries)} docs · {dict(by_cat)}",
@@ -162,6 +176,8 @@ def build_gap_list(entries: list[dict]) -> list[dict]:
 
 
 def audit() -> dict:
+    """Run the full docs audit: scan every doc, extract refs/headings/git-age, detect supersession,
+    classify each, and return {generated, count, by_category, gap_list, docs:[entry,...]}."""
     metas = []
     for p in find_docs():
         text = p.read_text(errors="ignore")
@@ -189,6 +205,8 @@ def audit() -> dict:
 
 
 def main() -> int:
+    """CLI entry point: run audit(), write docs/docs_audit_raw.json, print a summary and gap list.
+    Returns 0."""
     result = audit()
     out = DOCS_ROOT / "docs_audit_raw.json"
     out.write_text(json.dumps(result, indent=2, ensure_ascii=False))

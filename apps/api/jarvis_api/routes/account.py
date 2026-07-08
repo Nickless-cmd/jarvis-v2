@@ -69,6 +69,10 @@ def _identity_role(user_id: str) -> str | None:
 
 @router.get("/me")
 async def account_me() -> dict[str, Any]:
+    """Self-scope profil-projektion for den aktuelle bruger (owner → uid='').
+
+    Slår context-user'en op via build_account_profile med user_db/quota_store/
+    identitets-rolle som kilder. Returnerer profil-dict."""
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
     return await asyncio.to_thread(
@@ -161,6 +165,8 @@ def build_workspace_overview(
 
 @router.get("/workspace")
 async def account_workspace() -> dict[str, Any]:
+    """Self-scope workspace-overblik for den aktuelle bruger: fil-antal, disk-
+    forbrug, kryptering og trust via build_workspace_overview."""
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
     from core.runtime.workspace_paths import workspace_dir
@@ -196,6 +202,8 @@ def build_memory_overview(
 
 @router.get("/memory")
 async def account_memory() -> dict[str, Any]:
+    """Self-scope memory-overblik for den aktuelle bruger: MEMORY.md + USER.md
+    (afkortet), seneste sansninger og brain-antal via build_memory_overview."""
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
 
@@ -217,6 +225,8 @@ async def account_memory() -> dict[str, Any]:
 
 @router.get("/memory/search")
 async def account_memory_search(q: str = "") -> dict[str, Any]:
+    """Søg i sanse-hukommelsen efter query-strengen `q` (max 20 hits). Tom query
+    → tom resultatliste. Returnerer {"results": [...]}."""
     query = (q or "").strip()
     if not query:
         return {"results": []}
@@ -258,6 +268,8 @@ def build_permissions_overview(
 
 @router.get("/permissions")
 async def account_permissions() -> dict[str, Any]:
+    """Tool-adgangs-matrix pr. mode for den aktuelle brugers rolle, plus
+    computer_use_enabled-flaget. Bygget via build_permissions_overview."""
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
     role = _current_role(user_id)
@@ -270,6 +282,8 @@ async def account_permissions() -> dict[str, Any]:
 
 @router.patch("/computer-use")
 async def account_set_computer_use(payload: dict = Body(default={})) -> dict[str, Any]:
+    """Slå computer-use til/fra for den aktuelle bruger. Body: {enabled: bool}.
+    Delegerer til set_computer_use og returnerer dens resultat."""
     enabled = bool((payload or {}).get("enabled"))
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
@@ -294,6 +308,8 @@ def build_jarvis_overview(*, lane_targets: Callable[[], dict[str, Any]]) -> dict
 
 @router.get("/jarvis")
 async def account_jarvis() -> dict[str, Any]:
+    """Owner-only: model pr. lane + visible-lane-valgmuligheder (§4.2). Ikke-owner
+    → 403. Read-only projektion af provider-router-targets."""
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
     if _current_role(user_id) != "owner":
@@ -316,6 +332,9 @@ async def account_jarvis() -> dict[str, Any]:
 
 @router.post("/jarvis/visible-model")
 async def account_set_visible_model(payload: dict = Body(default={})) -> dict[str, Any]:
+    """Owner-only: vælg provider/model for visible-lane. Body: {provider, model}.
+    Ikke-owner → 403; ukendt/ugyldig provider+model → error. Validerer mod
+    router-targets før select_main_agent_target kaldes."""
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
     if _current_role(user_id) != "owner":
@@ -361,6 +380,8 @@ def build_apps_overview(
 
 @router.get("/apps")
 async def account_apps() -> dict[str, Any]:
+    """Connectede apps (§4.5): plugin-registry filtreret til kind='connector'
+    med status pr. app via build_apps_overview."""
     from core.plugins.base_plugin import available_plugins, get_status
 
     def _assemble() -> dict[str, Any]:
@@ -371,6 +392,7 @@ async def account_apps() -> dict[str, Any]:
 
 @router.get("/mcp")
 async def account_mcp() -> dict[str, Any]:
+    """List registrerede MCP-servere. Returnerer {"servers": [...]}."""
     from core.services.mcp_registry import list_mcp_servers
     servers = await asyncio.to_thread(list_mcp_servers)
     return {"servers": servers}
@@ -378,6 +400,8 @@ async def account_mcp() -> dict[str, Any]:
 
 @router.post("/mcp")
 async def account_mcp_add(payload: dict = Body(default={})) -> dict[str, Any]:
+    """Owner-only: tilføj en MCP-server. Body: {name, url}. Ikke-owner → 403.
+    Delegerer til add_mcp_server."""
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
     if _current_role(user_id) != "owner":
@@ -390,6 +414,8 @@ async def account_mcp_add(payload: dict = Body(default={})) -> dict[str, Any]:
 
 @router.delete("/mcp/{server_id}")
 async def account_mcp_remove(server_id: str) -> dict[str, Any]:
+    """Owner-only: fjern MCP-serveren med `server_id`. Ikke-owner → 403.
+    Delegerer til remove_mcp_server."""
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
     if _current_role(user_id) != "owner":
@@ -400,6 +426,8 @@ async def account_mcp_remove(server_id: str) -> dict[str, Any]:
 
 @router.get("/quota")
 async def account_quota() -> dict[str, Any]:
+    """Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type
+    via build_quota_overview."""
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
     return await asyncio.to_thread(build_quota_overview, user_id, check_quota=quota_store.check_quota)

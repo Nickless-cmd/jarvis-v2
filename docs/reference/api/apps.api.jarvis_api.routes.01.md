@@ -13,31 +13,31 @@ _Self-profile-route for cowork command center (spec §4.1 Account)._
 |---|---|---|---|---|
 | function | `build_account_profile` | `(user_id, *, get_user, get_tier, is_google_linked=…, get_identity_role=…)` | Ren projektion — testbar uden HTTP. Owner (uid='') har ingen række. | [src](../../../apps/api/jarvis_api/routes/account.py#L21) |
 | function | `_identity_role` | `(user_id)` | Rolle fra users.json (samme opslag som whoami) — None hvis ukendt. | [src](../../../apps/api/jarvis_api/routes/account.py#L60) |
-| function | `account_me` | `()` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L71) |
-| function | `build_quota_overview` | `(user_id, *, check_quota)` | Self-scope kvote-overblik: tier + forbrug pr. type. Ren — testbar uden HTTP. | [src](../../../apps/api/jarvis_api/routes/account.py#L87) |
-| function | `account_set_language` | `(payload=…)` | Self-scope sprogvalg. Owner (uid='') har ingen bruger-række → ingen DB-skrivning | [src](../../../apps/api/jarvis_api/routes/account.py#L112) |
-| function | `_summarize_dir` | `(path)` | (antal filer, samlede bytes) under path. Manglende mappe → (0, 0). | [src](../../../apps/api/jarvis_api/routes/account.py#L125) |
-| function | `build_workspace_overview` | `(user_id, *, ws_dir, should_encrypt, is_trusted)` | Self-scope workspace-overblik: fil-antal, disk-forbrug, kryptering, trust. | [src](../../../apps/api/jarvis_api/routes/account.py#L143) |
-| function | `account_workspace` | `()` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L163) |
-| function | `build_memory_overview` | `(user_id, *, ws_dir, read_text, recent_sensory, brain_count)` | Self-scope memory-overblik: MEMORY.md + USER.md (afkortet) + seneste | [src](../../../apps/api/jarvis_api/routes/account.py#L178) |
-| function | `account_memory` | `()` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L198) |
-| function | `account_memory_search` | `(q=…)` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L219) |
-| function | `_current_role` | `(user_id)` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L228) |
-| function | `build_permissions_overview` | `(role, *, allowed_tools)` | Tool-adgangs-matrix pr. mode for en rolle. Owner → 'all' (sentinel er ikke | [src](../../../apps/api/jarvis_api/routes/account.py#L239) |
-| function | `account_permissions` | `()` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L260) |
-| function | `account_set_computer_use` | `(payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L272) |
-| function | `build_jarvis_overview` | `(*, lane_targets)` | Model pr. lane (§4.2). Read-only projektion af provider-router-targets. | [src](../../../apps/api/jarvis_api/routes/account.py#L280) |
-| function | `account_jarvis` | `()` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L296) |
-| function | `account_set_visible_model` | `(payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L318) |
-| function | `build_apps_overview` | `(*, available, get_status)` | Connectede apps (§4.5) = plugin-registry filtreret til kind='connector'. | [src](../../../apps/api/jarvis_api/routes/account.py#L340) |
-| function | `account_apps` | `()` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L363) |
-| function | `account_mcp` | `()` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L373) |
-| function | `account_mcp_add` | `(payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L380) |
-| function | `account_mcp_remove` | `(server_id)` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L392) |
-| function | `account_quota` | `()` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L402) |
-| function | `build_data_export` | `(user_id, *, get_user, get_tier)` | GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt. | [src](../../../apps/api/jarvis_api/routes/account.py#L408) |
-| function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L448) |
-| function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L461) |
+| function | `account_me` | `()` | Self-scope profil-projektion for den aktuelle bruger (owner → uid=''). | [src](../../../apps/api/jarvis_api/routes/account.py#L71) |
+| function | `build_quota_overview` | `(user_id, *, check_quota)` | Self-scope kvote-overblik: tier + forbrug pr. type. Ren — testbar uden HTTP. | [src](../../../apps/api/jarvis_api/routes/account.py#L91) |
+| function | `account_set_language` | `(payload=…)` | Self-scope sprogvalg. Owner (uid='') har ingen bruger-række → ingen DB-skrivning | [src](../../../apps/api/jarvis_api/routes/account.py#L116) |
+| function | `_summarize_dir` | `(path)` | (antal filer, samlede bytes) under path. Manglende mappe → (0, 0). | [src](../../../apps/api/jarvis_api/routes/account.py#L129) |
+| function | `build_workspace_overview` | `(user_id, *, ws_dir, should_encrypt, is_trusted)` | Self-scope workspace-overblik: fil-antal, disk-forbrug, kryptering, trust. | [src](../../../apps/api/jarvis_api/routes/account.py#L147) |
+| function | `account_workspace` | `()` | Self-scope workspace-overblik for den aktuelle bruger: fil-antal, disk- | [src](../../../apps/api/jarvis_api/routes/account.py#L167) |
+| function | `build_memory_overview` | `(user_id, *, ws_dir, read_text, recent_sensory, brain_count)` | Self-scope memory-overblik: MEMORY.md + USER.md (afkortet) + seneste | [src](../../../apps/api/jarvis_api/routes/account.py#L184) |
+| function | `account_memory` | `()` | Self-scope memory-overblik for den aktuelle bruger: MEMORY.md + USER.md | [src](../../../apps/api/jarvis_api/routes/account.py#L204) |
+| function | `account_memory_search` | `(q=…)` | Søg i sanse-hukommelsen efter query-strengen `q` (max 20 hits). Tom query | [src](../../../apps/api/jarvis_api/routes/account.py#L227) |
+| function | `_current_role` | `(user_id)` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L238) |
+| function | `build_permissions_overview` | `(role, *, allowed_tools)` | Tool-adgangs-matrix pr. mode for en rolle. Owner → 'all' (sentinel er ikke | [src](../../../apps/api/jarvis_api/routes/account.py#L249) |
+| function | `account_permissions` | `()` | Tool-adgangs-matrix pr. mode for den aktuelle brugers rolle, plus | [src](../../../apps/api/jarvis_api/routes/account.py#L270) |
+| function | `account_set_computer_use` | `(payload=…)` | Slå computer-use til/fra for den aktuelle bruger. Body: {enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/account.py#L284) |
+| function | `build_jarvis_overview` | `(*, lane_targets)` | Model pr. lane (§4.2). Read-only projektion af provider-router-targets. | [src](../../../apps/api/jarvis_api/routes/account.py#L294) |
+| function | `account_jarvis` | `()` | Owner-only: model pr. lane + visible-lane-valgmuligheder (§4.2). Ikke-owner | [src](../../../apps/api/jarvis_api/routes/account.py#L310) |
+| function | `account_set_visible_model` | `(payload=…)` | Owner-only: vælg provider/model for visible-lane. Body: {provider, model}. | [src](../../../apps/api/jarvis_api/routes/account.py#L334) |
+| function | `build_apps_overview` | `(*, available, get_status)` | Connectede apps (§4.5) = plugin-registry filtreret til kind='connector'. | [src](../../../apps/api/jarvis_api/routes/account.py#L359) |
+| function | `account_apps` | `()` | Connectede apps (§4.5): plugin-registry filtreret til kind='connector' | [src](../../../apps/api/jarvis_api/routes/account.py#L382) |
+| function | `account_mcp` | `()` | List registrerede MCP-servere. Returnerer {"servers": [...]}. | [src](../../../apps/api/jarvis_api/routes/account.py#L394) |
+| function | `account_mcp_add` | `(payload=…)` | Owner-only: tilføj en MCP-server. Body: {name, url}. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L402) |
+| function | `account_mcp_remove` | `(server_id)` | Owner-only: fjern MCP-serveren med `server_id`. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L416) |
+| function | `account_quota` | `()` | Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type | [src](../../../apps/api/jarvis_api/routes/account.py#L428) |
+| function | `build_data_export` | `(user_id, *, get_user, get_tier)` | GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt. | [src](../../../apps/api/jarvis_api/routes/account.py#L436) |
+| function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L476) |
+| function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L489) |
 
 ## `apps/api/jarvis_api/routes/agentic_guards.py`
 _MC endpoint for agentic-loop guard observability._
@@ -383,15 +383,15 @@ _Central 'users' route — hvornår var hver bruger sidst aktiv, og hvordan (own
 | function | `chat_context_usage` | `(session_id=…, provider=…, model=…)` | ÆGTE kontekst-fyld for en session — backend-autoritativt. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1075) |
 | function | `chat_session_milestones` | `(session_id=…)` | Milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter. Segmenterer | [src](../../../apps/api/jarvis_api/routes/chat.py#L1137) |
 | function | `chat_model_context` | `(provider=…, model=…)` | Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1154) |
-| function | `chat_create_session` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1168) |
-| function | `chat_session` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1177) |
-| function | `chat_rename_session` | `(session_id, request)` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1185) |
-| function | `chat_delete_session` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1193) |
-| function | `chat_stream` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1200) |
-| function | `chat_approve_tool` | `(approval_id)` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1353) |
-| function | `chat_deny_tool` | `(approval_id)` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1370) |
-| function | `chat_cancel_run` | `(run_id)` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1382) |
-| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1393) |
+| function | `chat_create_session` | `(request)` | Opret en ny chat-session (valgfrit bundet til et code-mode workspace). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1168) |
+| function | `chat_session` | `(session_id)` | Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1179) |
+| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1188) |
+| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1198) |
+| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1206) |
+| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1364) |
+| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1383) |
+| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1397) |
+| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1410) |
 
 ## `apps/api/jarvis_api/routes/chat_stream_v2.py`
 _POST /chat/stream/v2 — Anthropic-style SSE protokol._
@@ -431,23 +431,23 @@ _Cowork-dashboard routes. Tynde — al opsamling sker i core.services.cowork_fee
 |---|---|---|---|---|
 | function | `_role_owner` | `()` | (is_owner, user_id) for den indloggede bruger. Owner afgøres af bruger- | [src](../../../apps/api/jarvis_api/routes/cowork.py#L15) |
 | function | `_resolve_item` | `(item_id, decision)` | Router en godkendelses-beslutning til den rette eksisterende resolver. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L31) |
-| function | `cowork_queue` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L62) |
-| function | `cowork_plans` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L69) |
-| function | `cowork_todos` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L76) |
-| function | `cowork_create_todo` | `(payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L86) |
-| function | `cowork_set_todo_status` | `(todo_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L98) |
-| function | `cowork_delete_todo` | `(todo_id)` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L110) |
-| function | `cowork_set_todo_expiry` | `(todo_id, payload=…)` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L119) |
-| function | `cowork_channels` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L130) |
-| function | `cowork_agents` | `()` | Aktive dispatch-agenter (§19.5 command center). Owner-only. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L139) |
-| function | `cowork_approve` | `(item_id)` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L149) |
-| function | `cowork_reject` | `(item_id)` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L154) |
-| function | `cowork_share_guard` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L162) |
-| function | `cowork_share_guard_resolve` | `(decision_id, shared)` | Afgør en share-beslutning. shared=true → okay at dele; false → hold privat. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L172) |
-| function | `cowork_ui_panel_pending` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L188) |
-| function | `cowork_ui_panel_ack` | `(request_id)` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L195) |
-| function | `cowork_app_dispatch_pending` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L206) |
-| function | `cowork_app_dispatch_ack` | `(dispatch_id)` | — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L213) |
+| function | `cowork_queue` | `()` | Godkendelses-kø for den indloggede bruger (owner ser alt). Bygges via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L62) |
+| function | `cowork_plans` | `()` | Planer for den indloggede bruger (owner ser alt) via cowork_feed.list_plans | [src](../../../apps/api/jarvis_api/routes/cowork.py#L71) |
+| function | `cowork_todos` | `()` | Todo-feed for den indloggede bruger (owner ser alt) via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L80) |
+| function | `cowork_create_todo` | `(payload=…)` | Opret en cowork-todo fra payload["content"]. Owner-only (403 ellers); | [src](../../../apps/api/jarvis_api/routes/cowork.py#L92) |
+| function | `cowork_set_todo_status` | `(todo_id, payload=…)` | Sæt status på en todo. Owner-only (403 ellers); status skal være en af | [src](../../../apps/api/jarvis_api/routes/cowork.py#L106) |
+| function | `cowork_delete_todo` | `(todo_id)` | Slet en todo. Owner-only (403 ellers). Kalder remove_todo_anywhere i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L120) |
+| function | `cowork_set_todo_expiry` | `(todo_id, payload=…)` | Sæt (eller ryd) udløbstidspunkt på en todo fra payload["expires_at"] — tom | [src](../../../apps/api/jarvis_api/routes/cowork.py#L130) |
+| function | `cowork_channels` | `()` | Kanal-status via cowork_feed.channel_status i to_thread. Owner-only (403 | [src](../../../apps/api/jarvis_api/routes/cowork.py#L143) |
+| function | `cowork_agents` | `()` | Aktive dispatch-agenter (§19.5 command center). Owner-only. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L154) |
+| function | `cowork_approve` | `(item_id)` | Godkend et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L164) |
+| function | `cowork_reject` | `(item_id)` | Afvis et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L170) |
+| function | `cowork_share_guard` | `()` | Ventende "privat eller del?"-beslutninger via share_guard_store.list_pending | [src](../../../apps/api/jarvis_api/routes/cowork.py#L179) |
+| function | `cowork_share_guard_resolve` | `(decision_id, shared)` | Afgør en share-beslutning. shared=true → okay at dele; false → hold privat. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L191) |
+| function | `cowork_ui_panel_pending` | `()` | Ventende UI-panel-åbnings-kald via ui_panel_store.list_pending i to_thread; | [src](../../../apps/api/jarvis_api/routes/cowork.py#L207) |
+| function | `cowork_ui_panel_ack` | `(request_id)` | Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L216) |
+| function | `cowork_app_dispatch_pending` | `()` | Ventende runtime→app-instruktioner via app_dispatch_store.list_pending i | [src](../../../apps/api/jarvis_api/routes/cowork.py#L229) |
+| function | `cowork_app_dispatch_ack` | `(dispatch_id)` | Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L238) |
 
 ## `apps/api/jarvis_api/routes/files.py`
 _File download route — serves files Jarvis has published to ~/.jarvis-v2/files/._

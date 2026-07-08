@@ -60,6 +60,8 @@ def _resolve_item(item_id: str, decision: str) -> dict:
 
 @router.get("/queue")
 async def cowork_queue() -> dict:
+    """Godkendelses-kø for den indloggede bruger (owner ser alt). Bygges via
+    cowork_feed.build_queue i to_thread. Returnerer {"items": [...]}."""
     is_owner, uid = _role_owner()
     items = await asyncio.to_thread(cowork_feed.build_queue, user_id=uid, is_owner=is_owner)
     return {"items": items}
@@ -67,6 +69,8 @@ async def cowork_queue() -> dict:
 
 @router.get("/plans")
 async def cowork_plans() -> dict:
+    """Planer for den indloggede bruger (owner ser alt) via cowork_feed.list_plans
+    i to_thread. Returnerer {"plans": [...]}."""
     is_owner, uid = _role_owner()
     plans = await asyncio.to_thread(cowork_feed.list_plans, user_id=uid, is_owner=is_owner)
     return {"plans": plans}
@@ -74,6 +78,8 @@ async def cowork_plans() -> dict:
 
 @router.get("/todos")
 async def cowork_todos() -> dict:
+    """Todo-feed for den indloggede bruger (owner ser alt) via
+    cowork_feed.list_todos_feed i to_thread. Returnerer {"todos": [...]}."""
     is_owner, uid = _role_owner()
     todos = await asyncio.to_thread(cowork_feed.list_todos_feed, user_id=uid, is_owner=is_owner)
     return {"todos": todos}
@@ -84,6 +90,8 @@ _VALID_TODO_STATUSES = ("pending", "in_progress", "completed", "paused")
 
 @router.post("/todos")
 async def cowork_create_todo(payload: dict = Body(default={})) -> dict:
+    """Opret en cowork-todo fra payload["content"]. Owner-only (403 ellers);
+    tom content → error. Kalder add_cowork_todo i to_thread."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="todos er kun for owner")
@@ -96,6 +104,8 @@ async def cowork_create_todo(payload: dict = Body(default={})) -> dict:
 
 @router.post("/todos/{todo_id}/status")
 async def cowork_set_todo_status(todo_id: str, payload: dict = Body(default={})) -> dict:
+    """Sæt status på en todo. Owner-only (403 ellers); status skal være en af
+    _VALID_TODO_STATUSES ellers error. Kalder update_todo_status_anywhere i to_thread."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="todos er kun for owner")
@@ -108,6 +118,7 @@ async def cowork_set_todo_status(todo_id: str, payload: dict = Body(default={}))
 
 @router.delete("/todos/{todo_id}")
 async def cowork_delete_todo(todo_id: str) -> dict:
+    """Slet en todo. Owner-only (403 ellers). Kalder remove_todo_anywhere i to_thread."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="todos er kun for owner")
@@ -117,6 +128,8 @@ async def cowork_delete_todo(todo_id: str) -> dict:
 
 @router.post("/todos/{todo_id}/expiry")
 async def cowork_set_todo_expiry(todo_id: str, payload: dict = Body(default={})) -> dict:
+    """Sæt (eller ryd) udløbstidspunkt på en todo fra payload["expires_at"] — tom
+    værdi rydder. Owner-only (403 ellers). Kalder set_todo_expiry_anywhere i to_thread."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="todos er kun for owner")
@@ -128,6 +141,8 @@ async def cowork_set_todo_expiry(todo_id: str, payload: dict = Body(default={}))
 
 @router.get("/channels")
 async def cowork_channels() -> dict:
+    """Kanal-status via cowork_feed.channel_status i to_thread. Owner-only (403
+    ellers). Returnerer {"channels": [...]}."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="kanaler er kun for owner")
@@ -147,11 +162,13 @@ async def cowork_agents() -> dict:
 
 @router.post("/queue/{item_id}/approve")
 async def cowork_approve(item_id: str) -> dict:
+    """Godkend et kø-item (proposal/initiative/capability) via _resolve_item i to_thread."""
     return await asyncio.to_thread(_resolve_item, item_id, "approve")
 
 
 @router.post("/queue/{item_id}/reject")
 async def cowork_reject(item_id: str) -> dict:
+    """Afvis et kø-item (proposal/initiative/capability) via _resolve_item i to_thread."""
     return await asyncio.to_thread(_resolve_item, item_id, "reject")
 
 
@@ -160,6 +177,8 @@ async def cowork_reject(item_id: str) -> dict:
 
 @router.get("/share-guard")
 async def cowork_share_guard() -> dict:
+    """Ventende "privat eller del?"-beslutninger via share_guard_store.list_pending
+    i to_thread. Owner-only (403 ellers, privatlivs-følsomt). Returnerer {"pending": [...]}."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="share-guard er kun for owner")
@@ -186,6 +205,8 @@ async def cowork_share_guard_resolve(decision_id: str, shared: bool) -> dict:
 
 @router.get("/ui-panel/pending")
 async def cowork_ui_panel_pending() -> dict:
+    """Ventende UI-panel-åbnings-kald via ui_panel_store.list_pending i to_thread;
+    desk poller her. Returnerer {"pending": [...]}."""
     from core.services.ui_panel_store import list_pending
     items = await asyncio.to_thread(list_pending)
     return {"pending": items}
@@ -193,6 +214,8 @@ async def cowork_ui_panel_pending() -> dict:
 
 @router.post("/ui-panel/{request_id}/ack")
 async def cowork_ui_panel_ack(request_id: str) -> dict:
+    """Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack i to_thread.
+    Returnerer {"status": "ok"|"unknown", "request_id": ...}."""
     from core.services.ui_panel_store import ack
     ok = await asyncio.to_thread(ack, request_id)
     return {"status": "ok" if ok else "unknown", "request_id": request_id}
@@ -204,6 +227,8 @@ async def cowork_ui_panel_ack(request_id: str) -> dict:
 
 @router.get("/app-dispatch/pending")
 async def cowork_app_dispatch_pending() -> dict:
+    """Ventende runtime→app-instruktioner via app_dispatch_store.list_pending i
+    to_thread; desk poller her og udfører lokalt. Returnerer {"pending": [...]}."""
     from core.services.app_dispatch_store import list_pending
     items = await asyncio.to_thread(list_pending)
     return {"pending": items}
@@ -211,6 +236,8 @@ async def cowork_app_dispatch_pending() -> dict:
 
 @router.post("/app-dispatch/{dispatch_id}/ack")
 async def cowork_app_dispatch_ack(dispatch_id: str) -> dict:
+    """Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread.
+    Returnerer {"status": "ok"|"unknown", "dispatch_id": ...}."""
     from core.services.app_dispatch_store import ack
     ok = await asyncio.to_thread(ack, dispatch_id)
     return {"status": "ok" if ok else "unknown", "dispatch_id": dispatch_id}

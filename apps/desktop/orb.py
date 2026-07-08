@@ -17,6 +17,7 @@ _last_phase = "idle"
 
 
 def read_phase() -> str:
+    """Læs voice-fasen fra PHASE_FILE; returnér 'idle' hvis filen mangler eller er ugyldig."""
     try:
         data = json.loads(PHASE_FILE.read_text())
         return data.get("phase", "idle")
@@ -42,14 +43,17 @@ class DragHandle(QLabel):
         self.setCursor(QCursor(Qt.SizeAllCursor))
 
     def mousePressEvent(self, event):
+        """Gem musens offset ift. vinduets top-venstre hjørne ved venstreklik (start på træk)."""
         if event.button() == Qt.LeftButton:
             self._drag_pos = event.globalPos() - self._win.frameGeometry().topLeft()
 
     def mouseMoveEvent(self, event):
+        """Flyt vinduet så det følger musen under et venstre-knap-træk."""
         if event.buttons() == Qt.LeftButton and self._drag_pos is not None:
             self._win.move(event.globalPos() - self._drag_pos)
 
     def mouseReleaseEvent(self, event):
+        """Nulstil træk-tilstanden når museknappen slippes."""
         self._drag_pos = None
 
 
@@ -81,6 +85,7 @@ win.show()
 
 
 def poll_phase():
+    """Læs den aktuelle fase; hvis den er ændret, opdatér orb'en via JavaScript set(phase)."""
     global _last_phase
     phase = read_phase()
     if phase != _last_phase:
@@ -89,6 +94,7 @@ def poll_phase():
 
 
 def on_load_finished(ok):
+    """Ved vellykket sideindlæsning: stop demo-cyklus, sæt 'idle' og start 800ms fase-polling-timer."""
     if ok:
         view.page().runJavaScript(
             "if(window._demoCycle) clearInterval(window._demoCycle); set('idle');"

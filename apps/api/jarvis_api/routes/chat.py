@@ -1166,6 +1166,8 @@ async def chat_model_context(provider: str = "", model: str = "") -> dict:
 
 @router.post("/sessions")
 async def chat_create_session(request: ChatSessionCreateRequest) -> dict:
+    """Opret en ny chat-session (valgfrit bundet til et code-mode workspace).
+    Returnerer {session: ...}."""
     return {"session": create_chat_session(
         title=request.title,
         workspace_kind=request.workspace_kind or None,
@@ -1175,6 +1177,7 @@ async def chat_create_session(request: ChatSessionCreateRequest) -> dict:
 
 @router.get("/sessions/{session_id}")
 async def chat_session(session_id: str) -> dict:
+    """Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}."""
     session = get_chat_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
@@ -1183,6 +1186,8 @@ async def chat_session(session_id: str) -> dict:
 
 @router.put("/sessions/{session_id}/rename")
 async def chat_rename_session(session_id: str, request: ChatSessionRenameRequest) -> dict:
+    """Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes;
+    ellers {session: ...}."""
     session = rename_chat_session(session_id, title=request.title)
     if session is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
@@ -1191,6 +1196,7 @@ async def chat_rename_session(session_id: str, request: ChatSessionRenameRequest
 
 @router.delete("/sessions/{session_id}")
 async def chat_delete_session(session_id: str) -> dict:
+    """Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}."""
     if not delete_chat_session(session_id):
         raise HTTPException(status_code=404, detail="Chat session not found")
     return {"ok": True, "session_id": session_id}
@@ -1198,6 +1204,11 @@ async def chat_delete_session(session_id: str) -> dict:
 
 @router.post("/stream")
 async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
+    """Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement-
+    hint ved dirty state, validerer + persisterer bruger-beskeden (stamplet med
+    workspace-user_id), håndterer attachment-kontekst, `!override`-kommandoer og
+    identity-guard som legacy-SSE-kortslutninger, og starter ellers et
+    visible-run streamet som text/event-stream."""
     # ── commit-enforcement-context-inject (Phase C-lite) ────────────────
     # Hvis session har dirty state med 3+ edits siden sidste commit, prepend
     # en hård system-besked til chat-konteksten. Jarvis ser den hver tur
@@ -1351,6 +1362,8 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
 
 @router.post("/approvals/{approval_id}/approve")
 async def chat_approve_tool(approval_id: str) -> dict:
+    """Approve a pending tool approval and run it. Resolves in a thread (deadlock-
+    avoidance, see comment). 404 if the approval id is unknown; else the tool result."""
     # CRITICAL: must run in a thread, not on the event loop directly.
     # resolve_pending_approval → execute_tool_force → _run_operator_async
     # uses asyncio.run_coroutine_threadsafe(coro, main_loop) + cf_fut.result()
@@ -1368,6 +1381,8 @@ async def chat_approve_tool(approval_id: str) -> dict:
 
 @router.post("/approvals/{approval_id}/deny")
 async def chat_deny_tool(approval_id: str) -> dict:
+    """Deny a pending tool approval (does not run the tool). Resolves in a thread.
+    404 if the approval id is unknown; else the resolution result."""
     # Same deadlock-avoidance as /approve: see comment there. Deny doesn't
     # actually run the tool, but resolve_pending_approval is sync either way
     # and consistency keeps the codepath simple.
@@ -1380,6 +1395,8 @@ async def chat_deny_tool(approval_id: str) -> dict:
 
 @router.post("/runs/{run_id}/cancel")
 async def chat_cancel_run(run_id: str) -> dict:
+    """Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt;
+    ellers {ok: True, run_id, status: "cancelled"}."""
     if not cancel_visible_run(run_id):
         raise HTTPException(status_code=404, detail="Visible run not active")
     return {

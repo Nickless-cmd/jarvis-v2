@@ -73,6 +73,7 @@ _SUSTAINED = "attention_sustained"
 _EMERGENCE = "emergence_patterns"
 _DRIFT = "personality_drift"
 
+_GRATITUDE_WINDOW_DAYS = 7   # taknemmelighed ældre end dette slipper (recency-vindue, ikke evig-akkumulering)
 
 # ── holdt aflæsning (durabel, kompakt JSON i lag-kontraktens held-store) ──
 def _hold_reading(name: str, reading: dict[str, Any]) -> None:
@@ -128,11 +129,36 @@ def _relational_signal() -> dict[str, Any] | None:
         return None
 
 
+def _recent_gratitude(items: list[dict], window_days: int) -> list[dict]:
+    """Behold kun taknemmeligheds-signaler nyere end window_days. Uparselig/tom created_at → UDELUK
+    (konservativt: en ulæselig tid må ikke holde taknemmelighed i live evigt). Self-safe."""
+    from datetime import datetime, timezone, timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(days=window_days)
+    out: list[dict] = []
+    for it in items:
+        raw = it.get("created_at")
+        if not raw:
+            continue
+        try:
+            dt = datetime.fromisoformat(str(raw))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            continue
+        if dt >= cutoff:
+            out.append(it)
+    return out
+
+
 def _gratitude_signal() -> dict[str, Any] | None:
-    """gratitude_tracker: akkumuleret taknemmelighed (DB). None hvis intet signal endnu."""
+    """gratitude_tracker: akkumuleret taknemmelighed (DB), begrænset til de sidste
+    _GRATITUDE_WINDOW_DAYS så gammel taknemmelighed slipper. None hvis intet nyligt signal."""
     try:
         from core.runtime.db import list_cognitive_gratitude_signals
         items = list_cognitive_gratitude_signals(limit=10) or []
+        if not items:
+            return None
+        items = _recent_gratitude(items, _GRATITUDE_WINDOW_DAYS)
         if not items:
             return None
         total = sum(float(i.get("intensity") or 0.0) for i in items)

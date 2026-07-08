@@ -7,6 +7,8 @@ lag-tilstandene monkeypatches; hold-store kører på isolated_runtime's in-memor
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone, timedelta
+
 import pytest
 
 from core.services import central_soul_feel as sf
@@ -46,7 +48,8 @@ def test_relational_signal_none_when_empty(monkeypatch, isolated_runtime):
 
 def test_gratitude_signal_reads_and_holds(monkeypatch, isolated_runtime):
     monkeypatch.setattr("core.runtime.db.list_cognitive_gratitude_signals",
-                        lambda limit=10: [{"intensity": 0.7}, {"intensity": 0.5}])
+                        lambda limit=10: [{"intensity": 0.7, "created_at": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()},
+                                          {"intensity": 0.5, "created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()}])
     sig = sf._gratitude_signal()
     assert sig is not None and sig["value"] == 1.2 and sig["meta"]["count"] == 2
     assert sf.get_gratitude_reading()["count"] == 2
@@ -283,3 +286,41 @@ def test_build_surface_shows_all_aspects(isolated_runtime):
     assert surface["warmth"]["relational"]["warmth"] == "høj"
     assert surface["attention"]["sustained"]["active"] == 2
     assert any("holder fast i 2" in p for p in surface["spoken"])
+
+
+# ── GRATITUDE RECENCY WINDOW (2026-07-08) ──
+def _sig(days_ago, intensity=1.0):
+    dt = datetime.now(timezone.utc) - timedelta(days=days_ago)
+    return {"intensity": intensity, "created_at": dt.isoformat()}
+
+
+def test_gratitude_all_recent_fires(monkeypatch):
+    monkeypatch.setattr("core.runtime.db.list_cognitive_gratitude_signals",
+                        lambda limit=10: [_sig(1), _sig(2)])
+    r = sf._gratitude_signal()
+    assert r is not None and r["meta"]["count"] == 2
+
+
+def test_gratitude_all_old_returns_none(monkeypatch):
+    monkeypatch.setattr("core.runtime.db.list_cognitive_gratitude_signals",
+                        lambda limit=10: [_sig(30), _sig(45)])
+    assert sf._gratitude_signal() is None
+
+
+def test_gratitude_mixed_counts_only_recent(monkeypatch):
+    monkeypatch.setattr("core.runtime.db.list_cognitive_gratitude_signals",
+                        lambda limit=10: [_sig(1), _sig(30), _sig(2)])
+    r = sf._gratitude_signal()
+    assert r is not None and r["meta"]["count"] == 2
+
+
+def test_gratitude_unparseable_created_at_excluded(monkeypatch):
+    monkeypatch.setattr("core.runtime.db.list_cognitive_gratitude_signals",
+                        lambda limit=10: [{"intensity": 1.0, "created_at": "not-a-date"}])
+    assert sf._gratitude_signal() is None
+
+
+def test_gratitude_empty_returns_none(monkeypatch):
+    monkeypatch.setattr("core.runtime.db.list_cognitive_gratitude_signals",
+                        lambda limit=10: [])
+    assert sf._gratitude_signal() is None

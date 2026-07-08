@@ -3145,7 +3145,7 @@ def supersede_runtime_proactive_question_gates_for_kind(
             (
                 status_reason,
                 updated_at,
-                f"proactive-question-gate:%",
+                "proactive-question-gate:%",
                 exclude_gate_id,
             ),
         )

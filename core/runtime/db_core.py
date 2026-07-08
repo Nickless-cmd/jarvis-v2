@@ -24,9 +24,8 @@ import json as _json
 import logging as _logging
 import sqlite3
 import sys as _sys
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
 
 from core.runtime.config import STATE_DIR
 

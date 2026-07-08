@@ -215,12 +215,26 @@ def get_trajectory() -> dict[str, Any]:
     return dict(_last_summary)
 
 
+def current_instant() -> float:
+    """Freshest instantaneous valence — the latest window sample (reactive, present-moment),
+    NOT the hour-averaged trajectory ``score``. Grounds "how I feel right now" in the current
+    moment instead of a lagging 24h average. Bypasses the trajectory cache. Self-safe → 0.0
+    when there are no samples yet."""
+    try:
+        if _samples:
+            return round(float(_samples[-1][1]), 3)
+        return 0.0
+    except Exception:
+        return 0.0
+
+
 def build_valence_trajectory_surface() -> dict[str, Any]:
     """Mission Control surface for valence trajectory."""
     traj = get_trajectory()
     return {
         "active": len(_samples) >= 3,
         "score": traj.get("score"),
+        "instant": current_instant(),
         "delta": traj.get("delta"),
         "trend": traj.get("trend"),
         "window_size": traj.get("window_size"),

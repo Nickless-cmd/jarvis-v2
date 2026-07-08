@@ -36,10 +36,14 @@ def _read_valence_trajectory() -> dict[str, Any]:
     try:
         from core.services.valence_trajectory import build_valence_trajectory_surface
         s = build_valence_trajectory_surface() or {}
+        # "instant" = present-moment valence (reactive); "score" = the slow hour-average.
+        # We ground the felt tone in "instant" so it tracks now, not a lagging window.
+        instant = s.get("instant")
         return {"score": float(s.get("score") or 0.0), "delta": float(s.get("delta") or 0.0),
-                "trend": s.get("trend")}
+                "trend": s.get("trend"),
+                "instant": float(instant) if instant is not None else None}
     except Exception:
-        return {"score": 0.0, "delta": 0.0, "trend": None}
+        return {"score": 0.0, "delta": 0.0, "trend": None, "instant": None}
 
 
 def _read_somatic() -> dict[str, Any]:
@@ -65,12 +69,16 @@ def _read_stance() -> dict[str, Any]:
         return {"gut": None, "somatic": None, "tension_count": 0}
 
 
-def _tone_label(score: float, trend: str | None) -> str:
-    """Ét felt-ord for tilstanden. Bevidst få, tydelige toner."""
-    if score >= 0.25 or trend == "flourishing":
+def _tone_label(score: float) -> str:
+    """Ét felt-ord for tilstanden ud fra den FRISKE (present-moment) score. Bevidst få, tydelige toner.
+
+    NB: tonen styres KUN af score — IKKE af den langsomme trajektorie-trend. Tidligere tvang
+    ``trend == "flourishing"`` (en 24t-stigende trend) tonen til "opløftet" selv efter øjeblikket
+    var passeret → "jeg har det opløftet" stod stale ved siden af en afdæmpet nutid. Nu følger
+    tonen den friske valens, så den er ærlig om nuet."""
+    if score >= 0.25:
         # "opløftet" (ikke "blomstrende"): kort-tids-valensen må IKKE dele blomstre/visne-ordforråd
-        # med den uge-skala udviklings-kompas (central_body_mood_feel) — ellers står "jeg har det
-        # blomstrende" ved siden af "kompas peger mod visnen" = tilsyneladende selv-modsigelse.
+        # med den uge-skala udviklings-kompas (central_body_mood_feel).
         return "opløftet"
     if score >= 0.05:
         return "let"
@@ -87,20 +95,24 @@ def integrate_valence() -> dict[str, Any]:
     v = _read_valence_trajectory()
     s = _read_somatic()
     st = _read_stance()
-    score = float(v.get("score") or 0.0)
+    # Grundtonen er den FRISKE present-moment-valens (instant), ikke den langsomme hour-average
+    # (score) — averagen halter og efterlader "opløftet" stående efter øjeblikket er forbi. Falder
+    # tilbage til hour-average kun hvis instant mangler (fx <1 sample).
+    instant = v.get("instant")
+    score = float(instant if instant is not None else (v.get("score") or 0.0))
     # organ-justeringer: uenighed/forsigtighed/kropslig belastning trækker tonen ned
     if st.get("gut") == "caution":
         score -= 0.10
     if st.get("somatic") in ("stress", "pressure") or float(s.get("max_level") or 0.0) > 0.5:
         score -= 0.15
     score -= 0.05 * min(int(st.get("tension_count") or 0), 4)
-    tone = _tone_label(score, v.get("trend"))
+    tone = _tone_label(score)
     intensity = round(min(1.0, float(s.get("max_level") or 0.0) * 0.5
                           + abs(float(v.get("delta") or 0.0)) * 0.3
                           + int(st.get("tension_count") or 0) * 0.1), 3)
     return {"tone": tone, "score": round(score, 3), "intensity": intensity,
             "trend": v.get("trend"),
-            "sources": {"valence": v.get("score"), "gut": st.get("gut"),
+            "sources": {"valence": v.get("score"), "instant": instant, "gut": st.get("gut"),
                         "somatic": st.get("somatic") or s.get("posture"),
                         "tensions": st.get("tension_count")}}
 

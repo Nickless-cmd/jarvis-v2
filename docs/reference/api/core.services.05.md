@@ -518,14 +518,14 @@ _core/services/central_valence.py_
 | function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_valence.py#L18) |
 | function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_valence.py#L27) |
 | function | `_read_valence_trajectory` | `()` | — | [src](../../../core/services/central_valence.py#L35) |
-| function | `_read_somatic` | `()` | — | [src](../../../core/services/central_valence.py#L45) |
-| function | `_read_stance` | `()` | — | [src](../../../core/services/central_valence.py#L56) |
-| function | `_tone_label` | `(score, trend)` | Ét felt-ord for tilstanden. Bevidst få, tydelige toner. | [src](../../../core/services/central_valence.py#L68) |
-| function | `integrate_valence` | `()` | Integrér de fire organer til ÉN følt tilstand {tone, score, intensitet}. Valens-trajektorien er | [src](../../../core/services/central_valence.py#L84) |
-| function | `get_valence_state` | `()` | Centralens durable følte tilstand (senest integrerede). Self-safe. | [src](../../../core/services/central_valence.py#L108) |
-| function | `run_valence_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: integrér følelses-organerne → gem durabelt + egress-fri observe (kun skalarer/tone-label, | [src](../../../core/services/central_valence.py#L114) |
-| function | `register_valence_producer` | `()` | Registrér følt-tilstands-integrationen som cadence-producer (~hvert 15 min). Egress-frit. | [src](../../../core/services/central_valence.py#L130) |
-| function | `build_valence_surface` | `()` | Mission Control — read-only: Centralens ene følte tilstand. | [src](../../../core/services/central_valence.py#L142) |
+| function | `_read_somatic` | `()` | — | [src](../../../core/services/central_valence.py#L49) |
+| function | `_read_stance` | `()` | — | [src](../../../core/services/central_valence.py#L60) |
+| function | `_tone_label` | `(score)` | Ét felt-ord for tilstanden ud fra den FRISKE (present-moment) score. Bevidst få, tydelige toner. | [src](../../../core/services/central_valence.py#L72) |
+| function | `integrate_valence` | `()` | Integrér de fire organer til ÉN følt tilstand {tone, score, intensitet}. Valens-trajektorien er | [src](../../../core/services/central_valence.py#L92) |
+| function | `get_valence_state` | `()` | Centralens durable følte tilstand (senest integrerede). Self-safe. | [src](../../../core/services/central_valence.py#L120) |
+| function | `run_valence_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: integrér følelses-organerne → gem durabelt + egress-fri observe (kun skalarer/tone-label, | [src](../../../core/services/central_valence.py#L126) |
+| function | `register_valence_producer` | `()` | Registrér følt-tilstands-integrationen som cadence-producer (~hvert 15 min). Egress-frit. | [src](../../../core/services/central_valence.py#L142) |
+| function | `build_valence_surface` | `()` | Mission Control — read-only: Centralens ene følte tilstand. | [src](../../../core/services/central_valence.py#L154) |
 
 ## `core/services/central_watch.py`
 _core/services/central_watch.py_

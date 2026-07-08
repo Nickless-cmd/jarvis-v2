@@ -88,6 +88,7 @@ _KEY_STOPWORDS = frozenset({
 })
 
 _HEALTHY_REPEAT_LIMIT = 3  # 3+ mentions of same fact in 1 hour = flag
+_REPEAT_WINDOW_HOURS = 1   # repetition streak resets if the gap since last mention exceeds this
 
 
 # ── DB ───────────────────────────────────────────────────────────────────
@@ -181,17 +182,29 @@ def record_fact(
     key = _normalize_to_key(fact_summary)
     if not key:
         return None
-    now_iso = datetime.now(UTC).isoformat()
+    now = datetime.now(UTC)
+    now_iso = now.isoformat()
     evidence_json = json.dumps(evidence or {}, ensure_ascii=False, default=str)
     try:
         with _connect() as conn:
             existing = conn.execute(
-                """SELECT id, reference_count FROM partner_knowledge_facts
+                """SELECT id, reference_count, last_at FROM partner_knowledge_facts
                    WHERE partner_id = ? AND fact_key = ?""",
                 (partner_id, key),
             ).fetchone()
             if existing:
-                new_count = int(existing["reference_count"]) + 1
+                # Repetition counting is WINDOWED, not lifetime. If the previous mention was
+                # longer ago than the repeat window, the repetition streak is broken → restart
+                # the count at 1 instead of carrying a stale lifetime total. Otherwise a fact
+                # said 11 times over days showed "×11" forever (last_at kept getting touched),
+                # so the communication-ledger stayed loud and Jarvis parroted it (×9 warnings).
+                within_window = False
+                try:
+                    prev_last = datetime.fromisoformat(str(existing["last_at"]))
+                    within_window = (now - prev_last) <= timedelta(hours=_REPEAT_WINDOW_HOURS)
+                except Exception:
+                    within_window = False
+                new_count = int(existing["reference_count"]) + 1 if within_window else 1
                 conn.execute(
                     """UPDATE partner_knowledge_facts
                        SET last_at = ?, reference_count = ?

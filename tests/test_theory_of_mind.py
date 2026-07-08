@@ -105,6 +105,25 @@ def test_record_fact_increments_on_duplicate(tmp_db):
     assert out["reference_count"] == 2
 
 
+def test_record_fact_resets_streak_after_window(tmp_db):
+    """Windowed repetition: if the previous mention is older than the repeat window, the
+    count restarts at 1 instead of carrying a stale lifetime total (the ×N-forever bug that
+    kept the communication-ledger loud and made Jarvis parrot it)."""
+    from datetime import UTC, datetime, timedelta
+    from core.services import theory_of_mind as tom
+    fact = "Rod-årsag ramt fire gange"
+    tom.record_fact(partner_id=tom.DEFAULT_PARTNER_ID,
+                    origin=tom.ORIGIN_TOLD_BY_JARVIS, fact_summary=fact)
+    # Backdate the last mention beyond the window.
+    stale = (datetime.now(UTC) - timedelta(hours=tom._REPEAT_WINDOW_HOURS + 1)).isoformat()
+    with tom._connect() as conn:
+        conn.execute("UPDATE partner_knowledge_facts SET last_at = ?", (stale,))
+        conn.commit()
+    out = tom.record_fact(partner_id=tom.DEFAULT_PARTNER_ID,
+                          origin=tom.ORIGIN_TOLD_BY_JARVIS, fact_summary=fact)
+    assert out["reference_count"] == 1   # streak reset, NOT 2
+
+
 def test_record_fact_returns_none_for_empty(tmp_db):
     from core.services.theory_of_mind import (
         record_fact, ORIGIN_TOLD_BY_JARVIS,

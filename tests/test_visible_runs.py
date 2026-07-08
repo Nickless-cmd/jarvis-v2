@@ -297,6 +297,13 @@ class TestCommitClusterMigration:
         from core.services import visible_runs as vr
         return inspect.getsource(vr)
 
+    def _executor_source(self):
+        # _execute_simple_tool_calls (incl. the soft-warn surfacing) was extracted
+        # to simple_tool_executor (Boy Scout, 2026-07-08) — inspect it there.
+        import inspect
+        from core.services import simple_tool_executor as ste
+        return inspect.getsource(ste)
+
     def test_decision_gate_routed_through_central_decide(self):
         # Arbitragen (nu i commit_gate_arbiter) ruter decision_gate gennem central().decide.
         src = self._arbiter_source()
@@ -311,8 +318,10 @@ class TestCommitClusterMigration:
         arb = self._arbiter_source()
         assert "Decision.RED" in arb and "_decision_blocked = True" in arb  # hård
         assert "Decision.YELLOW" in arb and "_decision_soft_warn" in arb     # blød
-        # kald-stedet i visible_runs surfacer den bløde advarsel i tool-resultatet (tool KØRER)
-        assert "if _decision_soft_warn:" in self._vr_source()
+        # kald-stedet (nu i simple_tool_executor efter Boy Scout-udtrækning) surfacer den
+        # bløde advarsel i tool-resultatet (tool KØRER, warn prefixes med ⚠).
+        exe = self._executor_source()
+        assert "if soft_warn:" in exe and "⚠" in exe
 
 
 class TestTrackerCascadeFix:

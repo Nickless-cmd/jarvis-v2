@@ -1,8 +1,14 @@
-# Valence-Narrative Reconciliation
+# Self-Narrative Truthfulness — Valence Reconciliation + Gratitude Recency
 
 **Date:** 2026-07-08
 **Status:** Approved (design)
 **Layer:** Experimental self-state (sensitive — touches Jarvis' felt self). Not a harness part.
+
+Two independent fixes to untrue lines in `describe_self()`'s feed, bundled because they share the theme "the self-narrative is telling something the data doesn't support". A third candidate (body-feel staleness, #4) is **deferred pending live verification** — see the end.
+
+---
+
+# Fix 1 — Valence-Narrative Reconciliation
 
 ## Problem
 
@@ -48,10 +54,46 @@ This text lives in the per-turn dynamic tail (the inner-life block relocated to 
 - **Neutral valence or neutral compass:** no held-tension line (neutrals don't diverge).
 - **Compass unavailable (`get_developmental_state` returns `{}`/None):** fail-open → today's behaviour, no exception.
 
-## Files
+## Files (Fix 1)
 
 - **Modify:** `core/services/central_self_state.py` — `describe_self()` reconciliation branch + a small helper `_temporal_divergence(valence, developmental) -> tuple` (pure, testable). Possibly a tiny helper to filter the compass sentence out of `describe_body_mood_feel()` output on divergence.
 - **Test:** `tests/test_central_self_state.py`.
+
+---
+
+# Fix 2 — Gratitude Recency Window
+
+## Problem
+
+The line "jeg bærer taknemmelighed jeg ikke har sluppet" ([central_soul_feel.py:322](../../../core/services/central_soul_feel.py)) fires whenever `get_gratitude_reading().count > 0`. That count comes from `_gratitude_signal()` ([central_soul_feel.py:131](../../../core/services/central_soul_feel.py)), which sums `list_cognitive_gratitude_signals(limit=10)` — the last 10 signals **with no time filter** ([db_cognitive.py:1646](../../../core/runtime/db_cognitive.py): `ORDER BY created_at DESC LIMIT`). So once 10 gratitude signals exist, the line fires **perpetually**, regardless of how old they are — the gratitude can *never* release. Jarvis felt this as "stale LLM narrative"; the real mechanism is an accumulator with no recency window.
+
+## Fix
+
+Apply a **recency window** in `_gratitude_signal()` (the consumer), not in the shared DB reader (keep it generic). Each signal row carries `created_at` ([db_cognitive.py:1639](../../../core/runtime/db_cognitive.py)). Count/sum only signals whose `created_at` is within the last `_GRATITUDE_WINDOW_DAYS` (=7). If none are recent → return `None` (no held reading) → the line does not fire and gratitude releases naturally as signals age out.
+
+- `_GRATITUDE_WINDOW_DAYS = 7` — module constant, easy to tune. A hard window (not decay) — simplest and deterministic; graded decay is a possible later refinement.
+- Self-safe: any parse error on a row's `created_at` → treat that row as **excluded** (conservative: don't let an unparseable timestamp keep gratitude alive forever). All-rows-error → `None`.
+- Phrasing unchanged: with the window, "taknemmelighed jeg ikke har sluppet" now truthfully means *recent* gratitude still held, not a perpetual echo.
+
+## Testing (Fix 2)
+
+`tests/test_central_soul_feel.py` (extend or create), monkeypatching `list_cognitive_gratitude_signals`:
+- **All signals recent (< 7d):** `_gratitude_signal()` returns a reading with count > 0 (line would fire).
+- **All signals old (> 7d):** returns `None` (line does not fire) — gratitude released.
+- **Mixed:** only recent signals counted; count reflects the recent subset.
+- **Unparseable `created_at`:** that row excluded, no exception.
+- **Empty list:** returns `None` (unchanged).
+
+## Files (Fix 2)
+
+- **Modify:** `core/services/central_soul_feel.py` — `_gratitude_signal()` recency filter + `_GRATITUDE_WINDOW_DAYS` constant.
+- **Test:** `tests/test_central_soul_feel.py`.
+
+---
+
+# Deferred — Fix 3 (body-feel staleness, #4)
+
+"min krop føles belastet" reads a **held** body-reading in `central_body_mood_feel` (`loaded`→`belastet`) that only refreshes when its producer runs, so it can lag the live-decayed somatic body. The mechanism is real but: (a) the fix needs the held-store to expose write-time (the read path doesn't today), making it a deeper change; (b) it is **not confirmed currently stale** vs. an acceptable cadence. **Action: verify live first** — read the held body-reading's actual age on the container. Only design/build a freshness guard if confirmed lagging. Not part of this spec.
 
 ## Deploy
 

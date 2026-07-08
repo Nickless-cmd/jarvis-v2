@@ -95,6 +95,27 @@ def build_reasoning_interceptor_surface() -> dict[str, object]:
         return {"active": True, "recent": 0, "green": 0, "yellow": 0, "red": 0, "shadow_only": True}
 
 
+async def intercept_round_async(*, run_id: str, round_num: int, reasoning_text: str,
+                                tool_calls_this_run: list[dict], ctx: dict | None = None,
+                                budget_ms: int = 800) -> InterceptOutcome:
+    """Async wrapper (invariant 4 — async/keepalive): runs the sync intercept in a thread with a
+    HARD timeout. Timeout/error → GREEN no-op, so a slow/hung detector can never block the agentic
+    loop (a silent-SSE cutoff). The caller emits keepalive around this await."""
+    import asyncio
+    try:
+        if not (reasoning_text or "").strip():
+            return InterceptOutcome(grade=Decision.GREEN, shadow=True)
+        loop = asyncio.get_running_loop()
+        fut = loop.run_in_executor(None, lambda: intercept_round(
+            run_id=run_id, round_num=round_num, reasoning_text=reasoning_text,
+            tool_calls_this_run=tool_calls_this_run, ctx=ctx))
+        return await asyncio.wait_for(fut, timeout=max(0.05, budget_ms / 1000.0))
+    except Exception:
+        # includes asyncio.TimeoutError — the executor thread finishes on its own (intercept_round
+        # is self-safe and, in shadow, mutates no run state); we ignore its late result.
+        return InterceptOutcome(grade=Decision.GREEN, shadow=True)
+
+
 def intercept_round(*, run_id: str, round_num: int, reasoning_text: str,
                     tool_calls_this_run: list[dict], ctx: dict | None = None) -> InterceptOutcome:
     t0 = time.monotonic()

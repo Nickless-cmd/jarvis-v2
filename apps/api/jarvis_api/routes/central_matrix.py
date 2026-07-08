@@ -85,6 +85,19 @@ async def get_continuity() -> dict:
     return _stamp(surf)
 
 
+@router.get("/model-trust")
+async def get_model_trust() -> dict:
+    """Harness Part 1: per-model EARNED trust (weak→strong via clean-streak, pin, last degeneration).
+    Owner-only. Starts every model weak until it earns strong over the clean-run threshold."""
+    _require_owner()
+    try:
+        from core.services.model_trust import build_model_trust_surface
+        surf = build_model_trust_surface()
+    except Exception:
+        surf = {}
+    return _stamp(surf)
+
+
 @router.get("/glitch")
 async def get_glitch() -> dict:
     """Glitches i selvbilledet: altid-shadow policies + frosne nerver + anbefalet handling. Owner-only."""

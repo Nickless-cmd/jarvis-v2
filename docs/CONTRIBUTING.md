@@ -17,11 +17,12 @@ conda run -n ai python -m pytest -q -p no:cacheprovider --timeout=45 --timeout-m
 ```
 A handful of tests are order-sensitive isolation flakes (they pass when run alone) — re-run a failure in isolation before assuming a regression.
 
-## Pre-commit gates (all four must pass)
+## Pre-commit gates (all five must pass)
 1. **detect-secrets** — blocks new hardcoded secrets. False positive → `detect-secrets scan --baseline .secrets.baseline` (see [`SECURITY.md`](SECURITY.md)).
 2. **Enforce test coverage** — every new `core/…` file needs a matching `tests/test_<stem>.py` (exact stem). Write the test first.
 3. **Block kitchen-sink commits** — keep commits focused.
 4. **Block jvs-\* API keys** — no Jarvis-issued keys in the tree.
+5. **Docs drift** — blocks a commit whose staged source changes leave a generated doc un-regenerated, or whose docs contain a broken markdown link. Fix by running the relevant generator (see below) or repairing the link. Advisory (non-blocking) drift lands in [`drift_report.json`](drift_report.json) and the `jc docs-drift` nerve. (Historical trees — `superpowers/`, `design-history/`, `_archive/` — are exempt per the freshness policy.)
 
 ## Code rules (from `CLAUDE.md`)
 - No file over **1500 lines** without explicit exception; split at 1200. No core runtime file over **2000** lines.
@@ -53,6 +54,7 @@ python scripts/capabilities_gen.py     # reference/CAPABILITIES.md
 python scripts/capability_audit.py     # capability_matrix.md
 python scripts/docs_audit.py           # doc classification (DOCS_MANIFEST source)
 python scripts/requirements_gen.py     # candidate imports for requirements.txt
+python scripts/docs_drift_check.py     # docs/drift_report.json (drift audit; --check gates commits)
 ```
 
 ## Code ↔ docs convention

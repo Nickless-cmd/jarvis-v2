@@ -59,6 +59,19 @@ repos:
         pass_filenames: true
         stages: [pre-commit]
 
+      # Pre-commit: docs drift-sikring (SP5). Blocks a commit whose staged
+      # source changes leave a generated doc un-regenerated, or whose docs
+      # contain a broken markdown link. Staleness is scoped to the staged
+      # source trees so the hook stays fast. Advisory (non-blocking) drift
+      # lands in docs/drift_report.json + the jc docs-drift nerve.
+      - id: docs-drift-check
+        name: Docs drift (broken links + un-regenerated generated docs)
+        entry: /opt/conda/envs/ai/bin/python scripts/docs_drift_check.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       - id: jarvis-runtime-startup-smoke
         name: Jarvis runtime startup smoke test
         entry: /opt/conda/envs/ai/bin/python scripts/smoke_test_startup.py

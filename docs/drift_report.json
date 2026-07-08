@@ -1,0 +1,168 @@
+{
+  "generated_at": "2026-07-08T18:20:02.507115+00:00",
+  "hard": [],
+  "soft": [
+    {
+      "doc": "docs/specs/2026-06-30-wire-eventbus-and-cache-to-central.md",
+      "kind": "prose_path",
+      "target": "core/config/runtime.json"
+    },
+    {
+      "doc": "docs/specs/compaction-ground-truth-grounding.md",
+      "kind": "prose_path",
+      "target": "core/tools/compact_validator.py"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "CoreFoundation"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "PIL"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "PyQt5"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "Quartz"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "TestMac"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "badge"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "binance"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "biplist"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "bs4"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "central_cli"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "colors"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "cv2"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "dateutil"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "discord"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "ds_store"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "edge_tts"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "faster_whisper"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "google"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "google_auth_oauthlib"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "googleapiclient"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "gyp"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "icalendar"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "interlanguage_structural_classifier"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "jarvis_full_pipeline"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "jwt"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "mac_alias"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "parse_tfm"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "pkg_resources"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "pretty_vcproj"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "rarfile"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "readability"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "sentence_transformers"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "sklearn"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "ulid"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "urlparse"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "watchdog"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "yaml"
+    }
+  ],
+  "counts": {
+    "hard": 0,
+    "soft": 39
+  }
+}

@@ -146,6 +146,27 @@ _SP1 docs auditor — classify docs/*.md against git+runtime truth. Regenerable,
 | function | `audit` | `()` | — | [src](../../../scripts/docs_audit.py#L164) |
 | function | `main` | `()` | — | [src](../../../scripts/docs_audit.py#L191) |
 
+## `scripts/docs_drift_check.py`
+_SP5 docs-drift checker — catch when docs/ diverges from git+runtime truth._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `find_docs` | `(root=…)` | — | [src](../../../scripts/docs_drift_check.py#L29) |
+| function | `_norm` | `(text)` | Neutralize volatile 'Generated <date>' stamps so regeneration diffs are content-only. | [src](../../../scripts/docs_drift_check.py#L33) |
+| function | `broken_links` | `(docs_root=…)` | — | [src](../../../scripts/docs_drift_check.py#L39) |
+| function | `_load_script` | `(name)` | — | [src](../../../scripts/docs_drift_check.py#L76) |
+| function | `_expected_api_docs` | `()` | — | [src](../../../scripts/docs_drift_check.py#L83) |
+| function | `_expected_api_reference` | `()` | — | [src](../../../scripts/docs_drift_check.py#L93) |
+| function | `_expected_capabilities` | `()` | — | [src](../../../scripts/docs_drift_check.py#L99) |
+| function | `_staged_under` | `(source_dirs, staged)` | — | [src](../../../scripts/docs_drift_check.py#L112) |
+| function | `stale_generated` | `(only_dirs=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L116) |
+| function | `prose_drift` | `(docs_root=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L135) |
+| function | `requirements_drift` | `(repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L150) |
+| function | `staged_paths` | `(repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L168) |
+| function | `hard_drift` | `(staged=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L177) |
+| function | `run_check` | `(repo=…, staged=…)` | — | [src](../../../scripts/docs_drift_check.py#L182) |
+| function | `main` | `()` | — | [src](../../../scripts/docs_drift_check.py#L193) |
+
 ## `scripts/enforce_commit_hygiene.py`
 _Pre-commit hook: catch kitchen-sink commits._
 
@@ -441,11 +462,4 @@ _Seed cognitive state tables with initial values based on known context._
 | function | `seed_rhythm` | `()` | — | [src](../../../scripts/seed_cognitive_state.py#L162) |
 | function | `seed_chronicle` | `()` | — | [src](../../../scripts/seed_cognitive_state.py#L185) |
 | function | `main` | `()` | — | [src](../../../scripts/seed_cognitive_state.py#L214) |
-
-## `scripts/setup_google_calendar.py`
-_One-time OAuth setup for Google Calendar._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/setup_google_calendar.py#L17) |
 

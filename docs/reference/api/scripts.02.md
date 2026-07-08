@@ -2,6 +2,13 @@
 
 > Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/setup_google_calendar.py`
+_One-time OAuth setup for Google Calendar._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/setup_google_calendar.py#L17) |
+
 ## `scripts/signal_noise_cleanup.py`
 
 | Kind | Name | Signature | Summary | Source |

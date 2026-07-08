@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated 2026-07-08. 5129/12016 functions/methods documented (42%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated 2026-07-08. 5130/12031 functions/methods documented (42%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,10 +35,10 @@ Generated 2026-07-08. 5129/12016 functions/methods documented (42%). The list be
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 75 | 223 | 33% |
+| `scripts` | 76 | 238 | 31% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2375)
+## Undocumented public functions (2384)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L140)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2339,6 +2339,15 @@ Generated 2026-07-08. 5129/12016 functions/methods documented (42%). The list be
 - `scripts/docs_audit.py` :: `main` (L191)
 - `scripts/docs_audit.py` :: `render_manifest_md` (L142)
 - `scripts/docs_audit.py` :: `title_and_headings` (L53)
+- `scripts/docs_drift_check.py` :: `broken_links` (L39)
+- `scripts/docs_drift_check.py` :: `find_docs` (L29)
+- `scripts/docs_drift_check.py` :: `hard_drift` (L177)
+- `scripts/docs_drift_check.py` :: `main` (L193)
+- `scripts/docs_drift_check.py` :: `prose_drift` (L135)
+- `scripts/docs_drift_check.py` :: `requirements_drift` (L150)
+- `scripts/docs_drift_check.py` :: `run_check` (L182)
+- `scripts/docs_drift_check.py` :: `staged_paths` (L168)
+- `scripts/docs_drift_check.py` :: `stale_generated` (L116)
 - `scripts/enforce_commit_hygiene.py` :: `main` (L68)
 - `scripts/god_file_map.py` :: `blast` (L24)
 - `scripts/god_file_map.py` :: `own_py_files` (L14)

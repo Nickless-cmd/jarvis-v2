@@ -68,7 +68,10 @@ def _read_stance() -> dict[str, Any]:
 def _tone_label(score: float, trend: str | None) -> str:
     """Ét felt-ord for tilstanden. Bevidst få, tydelige toner."""
     if score >= 0.25 or trend == "flourishing":
-        return "blomstrende"
+        # "opløftet" (ikke "blomstrende"): kort-tids-valensen må IKKE dele blomstre/visne-ordforråd
+        # med den uge-skala udviklings-kompas (central_body_mood_feel) — ellers står "jeg har det
+        # blomstrende" ved siden af "kompas peger mod visnen" = tilsyneladende selv-modsigelse.
+        return "opløftet"
     if score >= 0.05:
         return "let"
     if score <= -0.2:

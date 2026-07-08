@@ -18,6 +18,26 @@ _P_HIGH = 2       # knækket run / config-drift
 _P_MEDIUM = 3     # fejlende daemon / dark edge
 _P_CLEANUP = 5    # døde tools/endpoints/tabeller (oprydning)
 
+# En severe incident der har stået uløst i mere end dette er ikke længere "frisk arbejde
+# Jarvis bevæger sig mod" — den ville ellers fastlåse agendaens next_intention (fx en 2-dage-
+# gammel rolle-deny på operator_bash). Gamle severe forbliver SYNLIGE i diagnostik/incidents;
+# de bliver bare ikke elekteret som Jarvis' selv-rettede intention.
+_INCIDENT_TODO_MAX_AGE_H = 24
+
+
+def _incident_is_fresh(inc: dict[str, Any], *, max_age_h: int = _INCIDENT_TODO_MAX_AGE_H) -> bool:
+    """True hvis incidentens ts er inden for max_age_h. Ukendt/uparsbar ts → True (fail-open:
+    hellere vise end tabe). Self-safe."""
+    from datetime import UTC, datetime
+    ts = str(inc.get("ts") or "").strip()
+    if not ts:
+        return True
+    try:
+        age_s = datetime.now(UTC).timestamp() - datetime.fromisoformat(ts).timestamp()
+        return age_s <= max_age_h * 3600
+    except Exception:
+        return True
+
 
 def _item(priority: int, source: str, what: str, **extra: Any) -> dict[str, Any]:
     return {"priority": priority, "source": source, "what": what, **extra}
@@ -31,6 +51,8 @@ def build_todo(*, max_items: int = 60) -> list[dict[str, Any]]:
     try:
         from core.runtime.db_central_incidents import list_central_incidents
         for inc in list_central_incidents(limit=30, min_severity="severe", unresolved_only=True):
+            if not _incident_is_fresh(inc):
+                continue  # for gammel til at være en agenda-todo (stadig synlig som incident)
             items.append(_item(_P_CRITICAL, "incident",
                                f"{inc.get('cluster')}/{inc.get('nerve')}: {inc.get('message')}",
                                cluster=inc.get("cluster"), incident_id=inc.get("id")))

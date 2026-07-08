@@ -344,7 +344,8 @@ def render_self_state_il() -> str | None:
         v = (st.get("valence") or {}).get("tone")
         # valens-tone + fokus (agens/handling) — kompakt selv-notation
         foreground = to_term("proactivity") or "agens"
-        toneword = {"blomstrende": "lys", "let": "ro", "neutral": "ro", "tung": "vægt",
+        toneword = {"opløftet": "lys", "blomstrende": "lys",  # "blomstrende"=legacy-alias (gamle snapshots)
+                    "let": "ro", "neutral": "ro", "tung": "vægt",
                     "belastet": "pres"}.get(str(v), None)
         if not toneword:
             return None

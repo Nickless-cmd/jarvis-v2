@@ -63,3 +63,38 @@ def test_no_config_drift_no_item(monkeypatch, mocked_sources):
     monkeypatch.setattr("core.services.config_drift.check_port_drift", lambda: {"drift": False})
     todo = ct.build_todo()
     assert not any(it["source"] == "config_drift" for it in todo)
+
+
+def test_incident_is_fresh_helper():
+    from datetime import UTC, datetime, timedelta
+    now = datetime.now(UTC)
+    assert ct._incident_is_fresh({"ts": now.isoformat()}) is True
+    old = (now - timedelta(hours=ct._INCIDENT_TODO_MAX_AGE_H + 5)).isoformat()
+    assert ct._incident_is_fresh({"ts": old}) is False
+    assert ct._incident_is_fresh({}) is True            # ingen ts → fail-open (vis)
+    assert ct._incident_is_fresh({"ts": "ikke-en-dato"}) is True  # uparsbar → fail-open
+
+
+def test_stale_severe_incident_not_elected_as_todo(monkeypatch):
+    """En severe incident ældre end tærsklen bliver IKKE en agenda-todo (fastlåser ikke
+    next_intention) — men en frisk gør. Andre kilder stubbes fejlende (self-safe)."""
+    from datetime import UTC, datetime, timedelta
+    now = datetime.now(UTC)
+    old_ts = (now - timedelta(hours=ct._INCIDENT_TODO_MAX_AGE_H + 5)).isoformat()
+    monkeypatch.setattr(
+        "core.runtime.db_central_incidents.list_central_incidents",
+        lambda limit=30, min_severity=None, **kwargs: [
+            {"id": 1, "cluster": "connections", "nerve": "unauthorized",
+             "message": "gammel rolle-deny operator_bash", "ts": old_ts},
+            {"id": 2, "cluster": "truth", "nerve": "fact_gate",
+             "message": "frisk incident", "ts": now.isoformat()}])
+    for path in ("core.services.central_correlate.recent_broken_runs",
+                 "core.services.config_drift.check_port_drift",
+                 "core.services.daemon_health.daemon_health_summary",
+                 "core.services.db_sentinel.dead_table_candidates",
+                 "core.services.endpoint_usage_store.dead_endpoints",
+                 "core.services.central_learning.propose_adjustments"):
+        monkeypatch.setattr(path, lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
+    incident_msgs = [i["what"] for i in ct.build_todo() if i.get("source") == "incident"]
+    assert any("frisk" in m for m in incident_msgs)
+    assert not any("gammel" in m for m in incident_msgs)

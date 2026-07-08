@@ -23,7 +23,7 @@ def test_flourishing_reads_positive_tone(monkeypatch, isolated_runtime):
            somatic={"posture": "steady", "max_level": 0.0},
            stance={"gut": "proceed", "somatic": "calm", "tension_count": 0})
     felt = cv.integrate_valence()
-    assert felt["tone"] == "blomstrende"
+    assert felt["tone"] == "opløftet"
     assert felt["intensity"] >= 0.0
 
 
@@ -50,8 +50,8 @@ def test_tick_persists_durably(monkeypatch, isolated_runtime):
            somatic={"posture": "steady", "max_level": 0.0},
            stance={"gut": "proceed", "somatic": "calm", "tension_count": 0})
     res = cv.run_valence_tick()
-    assert res["status"] == "ok" and res["tone"] == "blomstrende"
-    assert cv.get_valence_state()["tone"] == "blomstrende"     # durabelt (overlever genstart)
+    assert res["status"] == "ok" and res["tone"] == "opløftet"
+    assert cv.get_valence_state()["tone"] == "opløftet"     # durabelt (overlever genstart)
 
 
 def test_egress_free(monkeypatch, isolated_runtime):

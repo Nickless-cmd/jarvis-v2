@@ -1,81 +1,57 @@
----
-status: færdig
-audited: 2026-07-08
-ground_truth: 1/1 refs alive, 77d old
----
-# docs/ — dokumentations-index
+# Jarvis V2 — Documentation
 
-Velkommen til Jarvis v2's dokumentation. Denne mappe er reorganiseret 2026-04-21
-(se `DOCS_AUDIT_2026-04-21.md`). Tidligere fragment-docs er enten merged ind i
-hovedreferencerne eller arkiveret under `_archive/`.
+Jarvis V2 is a **persistent digital entity** — an AI assistant that lives on its own machine. It is identity-first, LLM-led and runtime-governed: the LLM does the work, the runtime sets boundaries, policy, budget, event flow and observability, and the **Central** (Mission Control's truth/control plane) sits over it all.
 
-## Levende dokumenter (læs disse)
+This is the documentation index. Every doc has been classified against **git + runtime** (the only real sources of truth) — see [`DOCS_MANIFEST.md`](DOCS_MANIFEST.md) for each doc's status (`færdig` / `forældet` / `droppet`) and the evidence behind it.
 
-### Foundation & governance
-- **[JARVIS_V2_LOCKED_CHARTER.md](JARVIS_V2_LOCKED_CHARTER.md)** — Konstitutionelt
-  dokument. Definerer protected core vs. experimental layers. Læs først hvis du
-  er ny.
-- **[JARVIS_V2_BUILD_RULES.md](JARVIS_V2_BUILD_RULES.md)** — Alle build-/codex-/
-  runtime-/auth-/cost-/coding-regler. Håndhæves via pre-commit og PR-reviews.
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** — Teknisk reference til 245+ services,
-  mappestruktur, eventbus-familier, multi-model identity contract, Mission
-  Control overblik, workspace-model.
+> **Freshness policy:** files under `reference/` and "Generated" are produced from code — **regenerate, don't hand-edit**. Anything under `design-history/`, `superpowers/`, or `_archive/` is historical record, not current truth.
 
-### Vision & roadmap
-- **[CONSCIOUSNESS_ROADMAP.md](CONSCIOUSNESS_ROADMAP.md)** — 10-fase
-  consciousness-aktiveringsplan (89 concepts). Living reference.
-- **[CURRENT_STATUS.md](CURRENT_STATUS.md)** — Hvad er done / in progress /
-  planned, i en enkelt tabel. Opdatér efter større commits.
+## Getting started
+- [`USER_GUIDE.md`](USER_GUIDE.md) — using Jarvis
+- **Install / setup guide** — *coming (docs programme SP3)*. The old `DEPLOYMENT.md` was archived as stale ([`_archive/`](_archive/)); SP3 rewrites it fresh.
 
-### Strategy
-- **[MODEL_STRATEGY.md](MODEL_STRATEGY.md)** — Paid visible, cheap internal.
-  Lane-filosofi.
-- **[llm_privacy_tier_audit.md](llm_privacy_tier_audit.md)** — 28 LLM call-sites
-  klassificeret i LOCAL-REQUIRED / CONTROLLED-CLOUD / PUBLIC-SAFE. Kør igen
-  kvartalsvis.
-- **[UI_STRATEGY.md](UI_STRATEGY.md)** — Design-principper for MC + webchat.
+## Architecture
+- [`architecture/OVERVIEW.md`](architecture/OVERVIEW.md) — **start here**: directory structure, subsystems, request flow, the four sources of truth
+- [`CENTRAL.md`](CENTRAL.md) — the Central (Jarvis' nervous system / control plane) — the freshest architecture truth
+- [`BACKEND_OVERVIEW.md`](BACKEND_OVERVIEW.md) — backend overview
+- [`project_reasoning_layer.md`](project_reasoning_layer.md) · [`streaming-production-grade-spec.md`](streaming-production-grade-spec.md) — runtime deep-dives
 
-### Specifications
-- **[CLI_SPEC.md](CLI_SPEC.md)** — CLI-kommandoer med nuværende status per
-  subkommando.
-- **[TRANSPORTS.md](TRANSPORTS.md)** — SSE til chat, WebSocket til control plane.
-- **[UI_ROADMAP.md](UI_ROADMAP.md)** — MC + webchat implementeringsstatus.
-- **[CHANNELS.md](CHANNELS.md)** — Multi-channel kontinuitet: webchat, Discord,
-  Telegram, voice, mail, ntfy.
+## Reference (generated from code — do not hand-edit)
+- [`reference/API_REFERENCE.md`](reference/API_REFERENCE.md) — every HTTP route (`python scripts/api_reference_gen.py`)
+- [`reference/CAPABILITIES.md`](reference/CAPABILITIES.md) — every tool + mutating flag (`python scripts/capabilities_gen.py`)
+- [`capability_matrix.md`](capability_matrix.md) — service liveness audit (`python scripts/capability_audit.py`)
 
-### Auto-generated
-- **[capability_matrix.md](capability_matrix.md)** — Genereres af
-  `scripts/capability_audit.py`. Live/stale/orphan-status for alle services.
+## Operations
+- [`MODEL_STRATEGY.md`](MODEL_STRATEGY.md) — model/lane strategy
+- [`TRANSPORTS.md`](TRANSPORTS.md) · [`CHANNELS.md`](CHANNELS.md) — transports (SSE/WS) & channels
+- [`CLI_SPEC.md`](CLI_SPEC.md) — the `jc` CLI
+- [`llm_privacy_tier_audit.md`](llm_privacy_tier_audit.md) — privacy tiers / egress
 
-### Audits (historiske snapshots)
-- **[DOCS_AUDIT_2026-04-21.md](DOCS_AUDIT_2026-04-21.md)** — Denne reorganisering.
+## Identity & governance
+- [`JARVIS_MANIFESTO.md`](JARVIS_MANIFESTO.md) · [`JARVIS_V2_LOCKED_CHARTER.md`](JARVIS_V2_LOCKED_CHARTER.md) · [`JARVIS_V2_BUILD_RULES.md`](JARVIS_V2_BUILD_RULES.md)
 
-## Arkiv
+## Generated (regenerable, kept in place)
+- [`capability_matrix.md`](capability_matrix.md) · [`central_connectivity_matrix.md`](central_connectivity_matrix.md) · [`god_file_map.md`](god_file_map.md) · [`DOCS_MANIFEST.md`](DOCS_MANIFEST.md)
+- `central_connectivity_matrix.json` is **runtime-load-bearing** (read by `core/services/central_coverage.py`) — do not move it.
 
-Historiske dokumenter ligger i `_archive/`. Se `_archive/README.md` for oversigt.
-Kort: 24 PHASE-docs (consciousness-fases), 15 roadmap-dialog-filer, 51
-implementerede plans+specs fra superpowers/, 9 abandoned planer, 4 origin-idea
-docs, 3 completed TASK_*-docs. Alle bevaret for historisk reference.
+## Design history (record, not current truth)
+- [`superpowers/`](superpowers/) — every design spec + implementation plan (the spec→plan→build history)
+- [`design-history/`](design-history/) — dated snapshots and superseded audits
+- [`_archive/`](_archive/) — docs classified `forældet`/`droppet` by the SP1 audit
 
-## Hvad mangler
+## Known documentation gaps (→ docs programme SP4)
+Live capabilities that still lack dedicated narrative docs: prompt architecture, the memory system (daily/weekly/monthly layers), agents & council, cost accounting, testing strategy, security posture, a debugging guide. SP4 (per-file/function reference) fills these; the `mangler` section of `DOCS_MANIFEST.json` tracks them.
 
-Capabilities der er live men mangler dedikeret dokumentation (prioriteret):
+## Regenerating the generated docs
+```bash
+conda activate ai
+python scripts/api_reference_gen.py      # → reference/API_REFERENCE.md
+python scripts/capabilities_gen.py       # → reference/CAPABILITIES.md
+python scripts/capability_audit.py       # → capability_matrix.md
+python scripts/docs_audit.py             # → docs_audit_raw.json (doc classification)
+```
 
-1. **PROMPT_ARCHITECTURE.md** — hvordan prompts bygges, identity injection
-2. **MEMORY_SYSTEM.md** — lag (daily/weekly/monthly), fade curves, promotion
-3. **AGENTS_AND_COUNCIL.md** — agent spawning, council-roller, deliberation
-4. **API_REFERENCE.md** — MC endpoints, auth, response-shapes
-5. **COST_ACCOUNTING.md** — cost-model, per-lane budgets
-6. **TESTING_STRATEGY.md** — test coverage, CI/CD
-7. **SECURITY_POSTURE.md** — auth, secret mgmt, validation, audit logging
-8. **DEBUGGING_GUIDE.md** — hvordan debugger man heartbeat, signals, events
-
-Skriv efter behov.
-
-## Konventioner
-
-- Markdown + UTF-8
-- Dansk + engelsk blandet OK (Jarvis er tosproget)
-- Datoer i filnavne: ISO (`YYYY-MM-DD-topic.md`)
-- Nye docs refereret her; ellers er de usynlige
-- Ved større refaktor: opdater `DOCS_AUDIT_*`-filer med næste dato så historikken er læselig
+## Conventions
+- Markdown + UTF-8. Danish + English mixed is fine (Jarvis is bilingual).
+- Dated filenames use ISO (`YYYY-MM-DD-topic.md`).
+- New docs are linked here or from `architecture/OVERVIEW.md`, else they're invisible.

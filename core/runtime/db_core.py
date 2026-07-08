@@ -126,6 +126,163 @@ def _merge_text_fragments(current: str, proposed: str, *, limit: int = 3) -> str
     return " | ".join(parts)
 
 
+def _upsert_signal(
+    *,
+    conn: sqlite3.Connection,
+    table: str,
+    id_col: str,
+    type_col: str,
+    id_val: str,
+    type_val: str,
+    canonical_key: str,
+    lookup_statuses: tuple[str, ...],
+    overwrite_cols: list[tuple[str, object]],
+    rank_cols: list[tuple[str, object, dict[str, int]]],
+    merge_text_cols: list[tuple[str, object, int]],
+    accumulate_cols: list[tuple[str, int]],
+    created_at: str,
+    updated_at: str,
+) -> tuple[str, dict[str, object]]:
+    """Generic merge-forward upsert for the runtime_*_signal families.
+
+    Behaviour-identical extraction of the near-identical ``upsert_runtime_*``
+    bodies. Only the COLUMN SET / table / key columns differ per family; the
+    merge semantics are fixed:
+
+    - ``overwrite_cols``  → set verbatim from the incoming payload (status,
+      title, summary, rationale, run_id, session_id, ...). Compared verbatim
+      in the same-payload short-circuit.
+    - ``rank_cols``       → ``_stronger_ranked_value`` against the existing row
+      (source_kind, confidence, evidence_class, ...).
+    - ``merge_text_cols`` → ``_merge_text_fragments`` against the existing row
+      (evidence_summary, support_summary, status_reason, ...).
+    - ``accumulate_cols`` → ``max(existing, max(incoming, 1))`` (support_count,
+      session_count, ...); on INSERT stored as ``max(incoming, 1)``.
+    - ``merge_count``     → 0 on insert, ``COALESCE(merge_count,0)+1`` on update.
+    - ``created_at``      → immutable on existing (only written on insert).
+    - ``updated_at``      → written on both insert and update.
+
+    Caller keeps its own ``with connect() as conn:`` block and calls its
+    ``_ensure_*_table(conn)`` before invoking this, exactly as the hand-written
+    bodies did. Returns ``(resolved_id, meta)`` where meta is the
+    ``was_created``/``was_updated``/``merge_state`` dict; the caller performs
+    the final ``get_*(resolved_id)`` read AFTER its own ``with`` block closes,
+    exactly as the hand-written bodies did.
+    """
+    # SELECT columns for the existing-row lookup: id + the merge-relevant
+    # payload columns + support/session accumulators + merge_count + timestamps.
+    select_cols = (
+        [id_col]
+        + [c for c, _ in overwrite_cols]
+        + [c for c, _, _ in rank_cols]
+        + [c for c, _, _ in merge_text_cols]
+        + [c for c, _ in accumulate_cols]
+        + ["merge_count", "created_at", "updated_at"]
+    )
+    existing = None
+    if canonical_key:
+        placeholders = ", ".join("'" + s.replace("'", "''") + "'" for s in lookup_statuses)
+        existing = conn.execute(
+            f"""
+            SELECT {", ".join(select_cols)}
+            FROM {table}
+            WHERE canonical_key = ?
+              AND status IN ({placeholders})
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (canonical_key,),
+        ).fetchone()
+
+    if existing is None:
+        insert_cols = (
+            [id_col, type_col, "canonical_key"]
+            + [c for c, _ in overwrite_cols]
+            + [c for c, _, _ in rank_cols]
+            + [c for c, _, _ in merge_text_cols]
+            + [c for c, _ in accumulate_cols]
+            + ["merge_count", "created_at", "updated_at"]
+        )
+        insert_vals: list[object] = (
+            [id_val, type_val, canonical_key]
+            + [v for _, v in overwrite_cols]
+            + [v for _, v, _ in rank_cols]
+            + [v for _, v, _ in merge_text_cols]
+            + [max(int(v or 0), 1) for _, v in accumulate_cols]
+            + [0, created_at, updated_at]
+        )
+        conn.execute(
+            f"""
+            INSERT INTO {table} ({", ".join(insert_cols)})
+            VALUES ({", ".join("?" for _ in insert_cols)})
+            """,
+            tuple(insert_vals),
+        )
+        conn.commit()
+        resolved_id = id_val
+        meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
+    else:
+        resolved_id = str(existing[id_col])
+        merged_rank = {
+            col: _stronger_ranked_value(str(existing[col] or ""), val, ranks)
+            for col, val, ranks in rank_cols
+        }
+        merged_text = {
+            col: _merge_text_fragments(str(existing[col] or ""), val, limit=limit)
+            for col, val, limit in merge_text_cols
+        }
+        merged_accum = {
+            col: max(int(existing[col] or 0), max(int(val or 0), 1))
+            for col, val in accumulate_cols
+        }
+
+        same_payload = (
+            all(val == str(existing[col] or "") for col, val in overwrite_cols)
+            and all(merged_rank[col] == str(existing[col] or "") for col, _, _ in rank_cols)
+            and all(merged_text[col] == str(existing[col] or "") for col, _, _ in merge_text_cols)
+            and all(merged_accum[col] == int(existing[col] or 0) for col, _ in accumulate_cols)
+        )
+        if same_payload:
+            meta = {
+                "was_created": False,
+                "was_updated": False,
+                "merge_state": "unchanged",
+            }
+        else:
+            set_cols = (
+                [c for c, _ in overwrite_cols]
+                + [c for c, _, _ in rank_cols]
+                + [c for c, _, _ in merge_text_cols]
+                + [c for c, _ in accumulate_cols]
+            )
+            set_vals: list[object] = (
+                [v for _, v in overwrite_cols]
+                + [merged_rank[c] for c, _, _ in rank_cols]
+                + [merged_text[c] for c, _, _ in merge_text_cols]
+                + [merged_accum[c] for c, _ in accumulate_cols]
+            )
+            set_clause = ", ".join(f"{c} = ?" for c in set_cols)
+            conn.execute(
+                f"""
+                UPDATE {table}
+                SET
+                    {set_clause},
+                    merge_count = COALESCE(merge_count, 0) + 1,
+                    updated_at = ?
+                WHERE {id_col} = ?
+                """,
+                (*set_vals, updated_at, resolved_id),
+            )
+            conn.commit()
+            meta = {
+                "was_created": False,
+                "was_updated": True,
+                "merge_state": "merged",
+            }
+
+    return resolved_id, meta
+
+
 def set_runtime_state_value(key: str, value: object, *, updated_at: str = "") -> None:
     normalized_key = str(key or "").strip()
     if not normalized_key:

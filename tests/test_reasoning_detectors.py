@@ -86,3 +86,39 @@ def test_standing_orders_detector_self_safe(monkeypatch):
     monkeypatch.setattr("core.services.standing_orders_registry.list_active_standing_orders",
                         lambda: (_ for _ in ()).throw(RuntimeError("db")))
     assert rd.standing_orders_on_reasoning("x", ctx={"risk_classes": ["fact_gate"]}) is None
+
+
+def test_drift_detector_fires_only_when_independent_signal_elevated(monkeypatch):
+    calls = {"llm": 0}
+    monkeypatch.setattr("core.services.daemon_llm.daemon_llm_call",
+                        lambda *a, **k: (calls.__setitem__("llm", calls["llm"] + 1) or "Slow down; verify."))
+    monkeypatch.setattr(rd, "_drift_signal", lambda ctx: 0.0)      # not elevated
+    assert rd.drift_on_reasoning("I'm sure this is right.", ctx={}) is None and calls["llm"] == 0
+    monkeypatch.setattr(rd, "_drift_signal", lambda ctx: 0.9)      # elevated
+    v = rd.drift_on_reasoning("I'm sure this is right.", ctx={})
+    assert v is not None and v.decision is Decision.YELLOW and v.gate == "drift" and calls["llm"] == 1
+
+
+def test_drift_signal_self_safe(monkeypatch):
+    monkeypatch.setattr("core.services.central_valence.get_valence_state",
+                        lambda: (_ for _ in ()).throw(RuntimeError("x")))
+    assert rd._drift_signal({}) == 0.0
+
+
+def test_tone_detector_abstains_when_not_anchored(monkeypatch):
+    calls = {"llm": 0}
+    monkeypatch.setattr("core.services.daemon_llm.daemon_llm_call",
+                        lambda *a, **k: (calls.__setitem__("llm", calls["llm"] + 1) or "JA"))
+    # no anchor_fired → must abstain AND not call the LLM
+    assert rd.tone_on_reasoning("guess stated as fact", ctx={}) is None and calls["llm"] == 0
+
+
+def test_tone_detector_flags_guess_as_fact_when_anchored(monkeypatch):
+    monkeypatch.setattr("core.services.daemon_llm.daemon_llm_call", lambda *a, **k: "JA")
+    v = rd.tone_on_reasoning("the db definitely has 4231 rows", ctx={"anchor_fired": True})
+    assert v is not None and v.decision is Decision.YELLOW and v.gate == "tone"
+
+
+def test_tone_detector_abstains_on_nej(monkeypatch):
+    monkeypatch.setattr("core.services.daemon_llm.daemon_llm_call", lambda *a, **k: "NEJ")
+    assert rd.tone_on_reasoning("checked with a tool", ctx={"anchor_fired": True}) is None

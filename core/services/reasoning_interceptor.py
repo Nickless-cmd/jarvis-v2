@@ -50,6 +50,17 @@ def _run_detectors(ctx: dict[str, Any]) -> Verdict:
     so = det.standing_orders_on_reasoning(text, ctx)  # always — the registry decides relevance
     if so is not None:
         verdicts.append(so)
+    # drift — always attempted; self-gates on the independent affect signal (<0.7 → None)
+    dr = det.drift_on_reasoning(text, ctx)
+    if dr is not None:
+        verdicts.append(dr)
+    # tone — ANCHORED: only runs if a truth/drift concern already fired (never judges tone alone)
+    if any(v.gate in ("fact_gate", "drift") for v in verdicts):
+        _ctx_anchor = dict(ctx)
+        _ctx_anchor["anchor_fired"] = True
+        tn = det.tone_on_reasoning(text, _ctx_anchor)
+        if tn is not None:
+            verdicts.append(tn)
     if not verdicts:
         return Verdict("reasoning_interceptor", Decision.GREEN)
     worst_dec = worst(verdicts)

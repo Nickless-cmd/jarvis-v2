@@ -649,6 +649,15 @@ def build_visible_chat_prompt_assembly(
     # capability_truth is added via budget-controlled section below
     capability_ids_line = _visible_capability_id_summary()
 
+    # Harness Part 1 — tiered output discipline. Both tiers get synthesize/stop; strong lanes (earned
+    # via model_trust) additionally get conciseness caps. model_strength fails open to weak. Added as
+    # its own budget-controlled section below (next to capability_truth).
+    try:
+        from core.services.model_trust import model_strength as _model_strength
+        _output_discipline = _output_discipline_instruction(strength=_model_strength(model or ""))
+    except Exception:
+        _output_discipline = _output_discipline_instruction(strength="weak")
+
     visible_rules = _visible_chat_rules_instruction(workspace_dir=workspace_dir)
     if visible_rules:
         parts.append(visible_rules)
@@ -2043,6 +2052,7 @@ def build_visible_chat_prompt_assembly(
 
     raw_sections = {
         "capability_truth": capability_truth,
+        "output_discipline": _output_discipline,
         "cognitive_frame": frame_content,
         "cognitive_state": cognitive_state_content,
         "self_state": self_state_content,
@@ -2064,6 +2074,7 @@ def build_visible_chat_prompt_assembly(
     # Assemble budget-selected sections in priority order
     _section_labels = {
         "capability_truth": "runtime capability and safety truth",
+        "output_discipline": "tiered output discipline (synthesize/stop; conciseness on strong lanes)",
         "cognitive_frame": (
             "micro cognitive frame (compact)"
             if compact
@@ -2078,6 +2089,7 @@ def build_visible_chat_prompt_assembly(
     }
     for sec_name in (
         "capability_truth",
+        "output_discipline",
         "cognitive_frame",
         "cognitive_state",
         "self_state",
@@ -3289,6 +3301,26 @@ def _self_correction_nudges_section(*, compact: bool) -> str:
         "samme i stedet for at skjule dem bag fremgang. Hold ubesvarede spørgsmål "
         "synlige til sidst. MEMORY-FIRST: QUICK_FACTS + search_memory før du spørger eller leder."
     )
+
+
+def _output_discipline_instruction(*, strength: str) -> str:
+    """Tiered output discipline (harness Part 1). BOTH tiers get 'synthesize & stop' (safe for weak —
+    it helps them STOP); STRONG additionally gets conciseness caps (they would truncate weak lanes).
+    Does NOT repeat the self-correction / tool-honesty blocks — those stay as their own sections.
+    `strength` from model_trust.model_strength(); anything but 'strong' → weak tier. Self-safe."""
+    lines = [
+        "Output discipline:",
+        "- After each tool result, consider: do I have enough to answer? If yes, synthesize your",
+        "  findings and respond directly — do not keep calling tools when you already have the answer.",
+        "- Finish your sentence with punctuation before a tool call — never cut off mid-word.",
+        "- Tool results are for you — refer to them in your own words, never reproduce them verbatim.",
+    ]
+    if str(strength) == "strong":
+        lines += [
+            "- Go straight to the point. Try the simplest approach first without going in circles. Do not overdo it.",
+            "- Keep text between tool calls to ≤25 words. Keep final responses to ≤100 words unless the task genuinely requires more.",
+        ]
+    return "\n".join(lines)
 
 
 def _central_notices_section() -> str | None:

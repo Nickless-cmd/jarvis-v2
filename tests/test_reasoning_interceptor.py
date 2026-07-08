@@ -44,3 +44,14 @@ def test_observe_is_metadata_only_and_self_safe(monkeypatch):
                                     shadow=True, latency_ms=12), run_id="r", round_num=2)
     assert seen["nerve"] == "reasoning_interceptor"
     assert "reasoning_text" not in seen["meta"] and seen["meta"].get("grade") == "yellow"
+
+
+def test_run_detectors_aggregates_worst_via_central(monkeypatch):
+    from core.services.gate_kernel import Verdict, Decision as _D
+    monkeypatch.setattr("core.services.reasoning_detectors.fact_gate_on_reasoning",
+                        lambda t, c: Verdict("fact_gate", _D.YELLOW, "claim", action="warn"))
+    monkeypatch.setattr("core.services.reasoning_detectors.standing_orders_on_reasoning",
+                        lambda t, c: None)
+    out = ri.intercept_round(run_id="r", round_num=1, reasoning_text="The DB has 4231 rows.",
+                             tool_calls_this_run=[], ctx={})
+    assert out.grade is _D.YELLOW and "fact_gate" in out.triggers

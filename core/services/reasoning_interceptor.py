@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from core.services.gate_kernel import Decision
+from core.services.gate_kernel import Decision, Verdict
 
 
 @dataclass
@@ -25,9 +25,35 @@ def _is_active(grade: Decision) -> bool:
     return False
 
 
-def _run_detectors(ctx: dict[str, Any]):
-    """Phase 0 stub — no detectors yet. Returns None (GREEN)."""
-    return None
+def _run_detectors(ctx: dict[str, Any]) -> Verdict:
+    """Run the tripped cluster-gate adapters + standing-orders; return the WORST Verdict (GREEN if
+    none fired). Passed to central().decide so trace/breaker/ledger apply. Self-safe: a detector
+    that raises has already returned None (each adapter is self-safe); this fn never raises."""
+    from core.services import reasoning_detectors as det
+    from core.services.gate_kernel import worst
+    classes = set(ctx.get("risk_classes") or [])
+    text = ctx.get("reasoning_text") or ""
+    dispatch = {
+        "fact_gate": det.fact_gate_on_reasoning,
+        "decision_gate": det.decision_gate_on_reasoning,
+        "veto": det.veto_on_reasoning,
+        "verification": det.verification_on_reasoning,
+        "cross_user_share": det.cross_user_share_on_reasoning,
+    }
+    verdicts: list[Verdict] = []
+    for cls in classes:
+        fn = dispatch.get(cls)
+        if fn is not None:
+            v = fn(text, ctx)
+            if v is not None:
+                verdicts.append(v)
+    so = det.standing_orders_on_reasoning(text, ctx)  # always — the registry decides relevance
+    if so is not None:
+        verdicts.append(so)
+    if not verdicts:
+        return Verdict("reasoning_interceptor", Decision.GREEN)
+    worst_dec = worst(verdicts)
+    return next(v for v in verdicts if v.decision is worst_dec)
 
 
 def _observe(outcome: "InterceptOutcome", *, run_id: str, round_num: int) -> None:
@@ -84,12 +110,21 @@ def intercept_round(*, run_id: str, round_num: int, reasoning_text: str,
         _ctx.update({"reasoning_text": reasoning_text, "risk_classes": sorted(classes),
                      "tool_calls_this_run": tool_calls_this_run, "run_id": run_id,
                      "round_num": round_num})
-        verdict = _run_detectors(_ctx)
-        grade = verdict.decision if verdict is not None else Decision.GREEN
-        triggers = [verdict.gate] if (verdict is not None and verdict.decision is not Decision.GREEN) else []
+        # Route through central().decide → trace + circuit-breaker + verdict-ledger for free
+        # (no catalog entry needed). A cognitive failure/disable → SKIP, which we treat as GREEN
+        # (fail-open: the interceptor is a safety layer, never a blocker on its own failure).
+        from core.services.central_core import central
+        from core.services.gate_kernel import GateClass
+        verdict = central().decide("reasoning_interceptor", _ctx, _run_detectors,
+                                   cluster="metacognition", klass=GateClass.COGNITIVE)
+        grade = verdict.decision
+        if grade is Decision.SKIP:
+            grade = Decision.GREEN
+        triggers = ([verdict.gate] if grade is not Decision.GREEN
+                    and verdict.gate != "reasoning_interceptor" else [])
         active = _is_active(grade) and grade is not Decision.GREEN
         correction = None
-        if active and verdict is not None:
+        if active:
             correction = f"[interceptor:{verdict.gate}] {verdict.reason}"[:400]
         _out = InterceptOutcome(
             grade=grade, correction=correction, triggers=triggers,

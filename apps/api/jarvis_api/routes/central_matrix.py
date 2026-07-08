@@ -408,3 +408,10 @@ async def get_identity_canon() -> dict:
     """Kanon-tråde + anerkendte konfabulationer + seneste drift-fangster (sonnet-spøgelset). Owner-only."""
     from core.services.identity_canon import build_identity_canon_surface
     return _safe(build_identity_canon_surface)
+
+
+@router.get("/reasoning-interceptor")
+async def get_reasoning_interceptor() -> dict:
+    """Reasoning interceptor: recent verdicts (grade-histogram + latency). Metadata-only, shadow-only. Owner-only."""
+    from core.services.reasoning_interceptor import build_reasoning_interceptor_surface
+    return _safe(build_reasoning_interceptor_surface)

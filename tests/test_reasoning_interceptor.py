@@ -33,3 +33,14 @@ def test_fail_open_on_detector_exception(monkeypatch):
                              reasoning_text="The table has 4231 rows.",
                              tool_calls_this_run=[], ctx={})
     assert out.grade is Decision.GREEN  # never breaks the run
+
+
+def test_observe_is_metadata_only_and_self_safe(monkeypatch):
+    seen = {}
+    def _fake_record_private(cluster, nerve, *, value=0.0, meta=None):
+        seen.update({"cluster": cluster, "nerve": nerve, "meta": meta or {}})
+    monkeypatch.setattr("core.services.central_private_observe.record_private", _fake_record_private)
+    ri._observe(ri.InterceptOutcome(grade=ri.Decision.YELLOW, triggers=["fact_gate"],
+                                    shadow=True, latency_ms=12), run_id="r", round_num=2)
+    assert seen["nerve"] == "reasoning_interceptor"
+    assert "reasoning_text" not in seen["meta"] and seen["meta"].get("grade") == "yellow"

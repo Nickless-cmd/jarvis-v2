@@ -30,6 +30,45 @@ def _run_detectors(ctx: dict[str, Any]):
     return None
 
 
+def _observe(outcome: "InterceptOutcome", *, run_id: str, round_num: int) -> None:
+    """Egress-free metadata-only pulse to the Central (never the reasoning text). Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        record_private("metacognition", "reasoning_interceptor",
+                       value=float({"green": 0, "yellow": 1, "red": 2}.get(outcome.grade.value, 0)),
+                       meta={"grade": outcome.grade.value, "triggers": outcome.triggers,
+                             "shadow": outcome.shadow, "latency_ms": outcome.latency_ms,
+                             "round": round_num})
+    except Exception:
+        pass
+
+
+def build_reasoning_interceptor_surface() -> dict[str, object]:
+    """Central-CLI view: recent interceptor verdicts. Self-safe, read-only. Returns static shape
+    when timeseries reader is unavailable."""
+    try:
+        from core.services.central_timeseries import recent
+        samples = recent("metacognition", "reasoning_interceptor", limit=100)
+        grade_counts = {"green": 0, "yellow": 0, "red": 0}
+        for sample in samples:
+            value = sample.value
+            if value == 0:
+                grade_counts["green"] += 1
+            elif value == 1:
+                grade_counts["yellow"] += 1
+            elif value == 2:
+                grade_counts["red"] += 1
+        return {
+            "active": True, "recent": len(samples),
+            "green": grade_counts["green"],
+            "yellow": grade_counts["yellow"],
+            "red": grade_counts["red"],
+            "shadow_only": True
+        }
+    except Exception:
+        return {"active": True, "recent": 0, "green": 0, "yellow": 0, "red": 0, "shadow_only": True}
+
+
 def intercept_round(*, run_id: str, round_num: int, reasoning_text: str,
                     tool_calls_this_run: list[dict], ctx: dict | None = None) -> InterceptOutcome:
     t0 = time.monotonic()
@@ -52,10 +91,12 @@ def intercept_round(*, run_id: str, round_num: int, reasoning_text: str,
         correction = None
         if active and verdict is not None:
             correction = f"[interceptor:{verdict.gate}] {verdict.reason}"[:400]
-        return InterceptOutcome(
+        _out = InterceptOutcome(
             grade=grade, correction=correction, triggers=triggers,
             shadow=not active, latency_ms=int((time.monotonic() - t0) * 1000),
         )
+        _observe(_out, run_id=run_id, round_num=round_num)
+        return _out
     except Exception:
         return InterceptOutcome(grade=Decision.GREEN, shadow=True,
                                 latency_ms=int((time.monotonic() - t0) * 1000))

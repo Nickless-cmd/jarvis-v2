@@ -214,63 +214,6 @@ def test_compact_session_history_compresses_only_old_messages(monkeypatch):
     assert len(captured_input["msgs"]) == 5
 
 
-# ── Task 6: run_compact ───────────────────────────────────────────────────
-
-def test_run_compact_returns_same_if_too_few_pairs():
-    from core.context.run_compact import compact_run_messages
-    summarise_fn = Mock(return_value="Compressed")
-    messages = [
-        {"role": "user", "content": "do stuff"},
-        {"role": "assistant", "content": "ok"},
-        {"role": "user", "content": "Tool results: done"},
-    ]
-    result = compact_run_messages(
-        messages, keep_base=1, keep_recent_pairs=4, summarise_fn=summarise_fn
-    )
-    assert result == messages
-    assert not summarise_fn.called
-
-
-def test_run_compact_compresses_middle_messages():
-    from core.context.run_compact import compact_run_messages
-    summarise_fn = Mock(return_value="Ran 3 tools: read, write, bash")
-
-    base = [{"role": "user", "content": "start task"}]
-    pairs = []
-    for i in range(6):
-        pairs.append({"role": "assistant", "content": f"Calling tool {i}"})
-        pairs.append({"role": "user", "content": f"Tool results: result {i}"})
-    messages = base + pairs  # 13 messages total
-
-    result = compact_run_messages(
-        messages, keep_base=1, keep_recent_pairs=2, summarise_fn=summarise_fn
-    )
-    assert len(result) < len(messages)
-    assert any("[KOMPRIMERET KONTEKST:" in m.get("content", "") for m in result)
-    assert summarise_fn.called
-
-
-def test_run_compact_always_keeps_base_messages():
-    from core.context.run_compact import compact_run_messages
-    summarise_fn = Mock(return_value="Summary")
-
-    base = [
-        {"role": "system", "content": "You are Jarvis"},
-        {"role": "user", "content": "Do the task"},
-    ]
-    pairs = []
-    for i in range(6):
-        pairs.append({"role": "assistant", "content": f"Calling tool {i}"})
-        pairs.append({"role": "user", "content": f"Tool results: result {i}"})
-    messages = base + pairs
-
-    result = compact_run_messages(
-        messages, keep_base=2, keep_recent_pairs=2, summarise_fn=summarise_fn
-    )
-    assert result[0] == base[0]
-    assert result[1] == base[1]
-
-
 # ── Task 7: session compact wiring ────────────────────────────────────────
 
 def test_build_transcript_prepends_compact_marker_when_present(monkeypatch):
@@ -330,49 +273,6 @@ def test_build_transcript_no_marker_no_prepend(monkeypatch):
         "session-x", limit=60, include=True
     )
     assert result[0]["content"] == "hello"
-
-
-# ── Task 8: run compact wiring ────────────────────────────────────────────
-
-def test_maybe_compact_agentic_messages_no_compact_below_threshold():
-    from core.services import visible_runs
-    from core.runtime.settings import RuntimeSettings
-
-    settings = RuntimeSettings()
-    settings.context_run_compact_threshold_tokens = 60_000
-
-    messages = [{"role": "user", "content": "short"}]
-    result = visible_runs._maybe_compact_agentic_messages(
-        messages, base_count=1, settings=settings
-    )
-    assert result is messages
-
-
-def test_maybe_compact_agentic_messages_compacts_above_threshold(monkeypatch):
-    from core.services import visible_runs
-    from core.runtime.settings import RuntimeSettings
-
-    settings = RuntimeSettings()
-    settings.context_run_compact_threshold_tokens = 10  # very low
-
-    monkeypatch.setattr(
-        visible_runs,
-        "_compact_llm_for_run",
-        lambda prompt: "Compressed tool history",
-    )
-
-    base = [{"role": "user", "content": "start"}]
-    pairs = []
-    for i in range(8):
-        pairs.append({"role": "assistant", "content": f"calling tool {i}" * 20})
-        pairs.append({"role": "user", "content": f"tool result {i}" * 20})
-    messages = base + pairs
-
-    result = visible_runs._maybe_compact_agentic_messages(
-        messages, base_count=1, settings=settings
-    )
-    assert len(result) < len(messages)
-    assert any("[KOMPRIMERET KONTEKST:" in m.get("content", "") for m in result)
 
 
 # ── Task 9: compact_context tool ──────────────────────────────────────────

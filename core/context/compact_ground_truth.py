@@ -48,7 +48,6 @@ KEY_FILES: list[str] = [
     "core/context/auto_compact.py",
     "core/context/session_compact.py",
     "core/context/compact_llm.py",
-    "core/context/run_compact.py",
     "core/tools/wake_word_tool.py",
     "core/tools/speak_tool.py",
     "core/tools/smart_compact_tools.py",

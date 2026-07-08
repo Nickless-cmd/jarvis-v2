@@ -901,31 +901,6 @@ def _compact_llm_for_run(prompt: str) -> str:
     return call_compact_llm(prompt, max_tokens=400)
 
 
-def _maybe_compact_agentic_messages(
-    messages: list[dict],
-    *,
-    base_count: int,
-    settings,
-) -> list[dict]:
-    """Compact _agentic_messages if they exceed the run threshold.
-
-    Returns a new (shorter) list, or the original list unchanged if below threshold.
-    """
-    from core.context.token_estimate import estimate_messages_tokens
-    if estimate_messages_tokens(messages) < settings.context_run_compact_threshold_tokens:
-        return messages
-    from core.context.run_compact import compact_run_messages
-    return compact_run_messages(
-        messages,
-        keep_base=base_count,
-        keep_recent_pairs=settings.context_keep_recent_pairs,
-        summarise_fn=lambda msgs: _compact_llm_for_run(
-            "Komprimér disse tool-operationer til max 300 ord. Bevar resultater, fejl og vigtige fund:\n\n"
-            + "\n".join(f"{m.get('role', '')}: {m.get('content', '')[:300]}" for m in msgs)
-        ),
-    )
-
-
 def _handle_compact_command(run: "VisibleRun") -> str:
     """Run session compact and return a message for Jarvis to respond to."""
     try:
@@ -1173,11 +1148,25 @@ async def _stream_visible_run(
     # Auto-compact chat history if approaching context limit
     try:
         from core.context.auto_compact import maybe_auto_compact_session
-        maybe_auto_compact_session(run.session_id,
-                                   provider=getattr(run, "provider", "") or "",
-                                   model=getattr(run, "model", "") or "")
+        _did_compact = maybe_auto_compact_session(
+            run.session_id,
+            provider=getattr(run, "provider", "") or "",
+            model=getattr(run, "model", "") or "",
+        )
     except Exception:
-        pass
+        _did_compact = False
+    # ── Transparent compaction (harness Part B, Mechanism C) ──
+    # The compaction already fired (session-level, stores a dedicated DB marker).
+    # Make it client-visible + record cadence. No model-facing change.
+    if _did_compact:
+        yield _sse("compaction", {"type": "compaction", "run_id": run.run_id,
+                                  "session_id": run.session_id})
+        try:
+            from core.services import central_timeseries as _cts_cmp
+            _cts_cmp.record("context", "run_compaction", 1.0,
+                            meta={"run_id": run.run_id, "session_id": run.session_id})
+        except Exception:
+            pass
 
     _step_counter = 0
     result = None

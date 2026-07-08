@@ -91,3 +91,24 @@ def test_self_safe_signal_raises(_mem):
                       signal_fn=lambda: (_ for _ in ()).throw(RuntimeError("x")))
     r = lc._run_contract_tick(c)   # må ikke kaste
     assert r["observed"] is False
+
+
+import time as _time_hg
+from core.services import central_layer_contract as _clc_hg
+
+
+def test_get_held_age_recent(monkeypatch):
+    monkeypatch.setattr(_clc_hg, "_held_get", lambda n, k: {"value": "x", "ts": _time_hg.time()})
+    age = _clc_hg.get_held_age("foo")
+    assert age is not None and age < 5
+
+
+def test_get_held_age_absent(monkeypatch):
+    monkeypatch.setattr(_clc_hg, "_held_get", lambda n, k: {})
+    assert _clc_hg.get_held_age("foo") is None
+
+
+def test_get_held_age_old(monkeypatch):
+    monkeypatch.setattr(_clc_hg, "_held_get", lambda n, k: {"value": "x", "ts": _time_hg.time() - 4000})
+    age = _clc_hg.get_held_age("foo")
+    assert age is not None and age > 3000

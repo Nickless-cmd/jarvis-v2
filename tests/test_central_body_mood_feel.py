@@ -212,3 +212,39 @@ def test_build_surface_shows_both_tracks(isolated_runtime):
     assert surface["body"]["embodied"]["state"] == "loaded"
     assert surface["mood"]["oscillator"]["description"] == "Neutral"
     assert any("belastet" in p for p in surface["spoken"])
+
+
+from core.services import central_body_mood_feel as _bmf_fresh
+
+
+def test_body_tone_fresh_speaks(monkeypatch):
+    monkeypatch.setattr(_bmf_fresh, "get_held_age", lambda n, k: 60.0)  # 1 min → fresh
+    monkeypatch.setattr(_bmf_fresh, "_read_held",
+                        lambda n: {"state": "loaded"} if n == _bmf_fresh._EMBODIED else {})
+    parts = _bmf_fresh.describe_body_mood_feel()
+    assert any("min krop føles belastet" in p for p in parts)
+
+
+def test_body_tone_stale_silent(monkeypatch):
+    monkeypatch.setattr(_bmf_fresh, "get_held_age", lambda n, k: 4000.0)  # >30 min → stale
+    monkeypatch.setattr(_bmf_fresh, "_read_held",
+                        lambda n: {"state": "loaded"} if n == _bmf_fresh._EMBODIED else {})
+    parts = _bmf_fresh.describe_body_mood_feel()
+    assert not any("belastet" in p for p in parts)
+
+
+def test_developmental_ungated_even_if_old(monkeypatch):
+    # den uge-skala udviklings-kompas er bevidst LANGSOM → må IKKE freshness-gates
+    monkeypatch.setattr(_bmf_fresh, "get_held_age", lambda n, k: 999999.0)  # meget gammel
+    monkeypatch.setattr(_bmf_fresh, "_read_held",
+                        lambda n: {"trajectory": "wilting"} if n == _bmf_fresh._DEVELOPMENTAL else {})
+    parts = _bmf_fresh.describe_body_mood_feel()
+    assert any("udviklings-kompas peger mod visnen" in p for p in parts)
+
+
+def test_body_tone_unknown_age_fail_open(monkeypatch):
+    monkeypatch.setattr(_bmf_fresh, "get_held_age", lambda n, k: None)  # ukendt → tal
+    monkeypatch.setattr(_bmf_fresh, "_read_held",
+                        lambda n: {"state": "loaded"} if n == _bmf_fresh._EMBODIED else {})
+    parts = _bmf_fresh.describe_body_mood_feel()
+    assert any("belastet" in p for p in parts)

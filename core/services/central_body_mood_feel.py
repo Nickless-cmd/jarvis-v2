@@ -37,12 +37,14 @@ from core.services.central_layer_contract import (
     Egress,
     LayerContract,
     get_held,
+    get_held_age,
     note_held,
     register_layer,
 )
 
 _CLUSTER = "cognition"
 _HELD_KEY = "body_mood_feel"        # fælles held_key på tværs af lagene (hver sit contract-navn)
+_BODY_FRESH_MAX_AGE_S = 1800.0      # 30 min: en KROP-tilstand ældre end dette er forældet → ties (#3)
 
 # KROP-spor
 _PROPRIOCEPTION = "body_proprioception"
@@ -74,6 +76,18 @@ def _read_held(name: str) -> dict[str, Any]:
         return d if isinstance(d, dict) else {}
     except Exception:
         return {}
+
+
+def _read_held_fresh(name: str, max_age_s: float) -> dict[str, Any]:
+    """Som _read_held, men TIER en aflæsning ældre end max_age_s (en forældet KROP-tilstand skal ikke
+    tales som 'nu'). Fail-open: ukendt alder → tal (guarden fanger kun KENDT-forældet). Self-safe."""
+    try:
+        age = get_held_age(name, _HELD_KEY)
+        if age is not None and age > max_age_s:
+            return {}
+        return _read_held(name)
+    except Exception:
+        return _read_held(name)
 
 
 # ── OP: KROP-signal-læsere ──
@@ -226,16 +240,17 @@ def describe_body_mood_feel() -> list[str]:
     Kun meningsfulde aflæsninger tales (guarded pr. lag). Rækkefølge = krop → stemning.
     Returnerer en liste af parts (kan være tom). Self-safe: kaster ALDRIG. Ingen melodrama."""
     parts: list[str] = []
-    # ── KROP ──
+    # ── KROP ── (freshness-gated: en KROP-tilstand ældre end _BODY_FRESH_MAX_AGE_S ties — den beskriver
+    # ikke længere hvordan kroppen føles NU. Stemning/udviklings-kompas er bevidst LANGSOMME → ugated.)
     try:
-        prop = get_proprioception_reading()
+        prop = _read_held_fresh(_PROPRIOCEPTION, _BODY_FRESH_MAX_AGE_S)
         feel = str(prop.get("feel") or "").strip()
         if feel:
             parts.append(f"proprioceptivt mærker jeg mig {feel}")
     except Exception:
         pass
     try:
-        emb = get_embodied_reading()
+        emb = _read_held_fresh(_EMBODIED, _BODY_FRESH_MAX_AGE_S)
         state = str(emb.get("state") or "").strip()
         # Tal kun krop-tilstand når den er MÆRKBAR — steady er default og tie-værdig.
         _body_word = {"loaded": "belastet", "recovering": "under bedring",

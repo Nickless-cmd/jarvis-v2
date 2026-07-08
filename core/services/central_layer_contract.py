@@ -148,6 +148,18 @@ def get_held(name: str, held_key: str = "default") -> Any:
     return _held_get(name, held_key).get("value")
 
 
+def get_held_age(name: str, held_key: str = "default") -> float | None:
+    """Alder (sekunder) siden den holdte aflæsning blev skrevet, eller None hvis fraværende/ukendt.
+    Lader forbrugere freshness-gate en aflæsning (fx tie en forældet krop-tilstand). Ren + self-safe."""
+    try:
+        ts = _held_get(name, held_key).get("ts")
+        if ts is None:
+            return None
+        return max(0.0, time.time() - float(ts))
+    except Exception:
+        return None
+
+
 def decide(name: str, *, key: str, held_key: str = "default") -> dict[str, Any]:
     """Centralen BESTEMMER: genudled via LLM, eller genbrug holdt selv? off/shadow/on. Self-safe.
     reuse=True KUN i 'on' når selvet ikke er bevæget (samme nøgle + inden TTL) og der er et holdt selv."""

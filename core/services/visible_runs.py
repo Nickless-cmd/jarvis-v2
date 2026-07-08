@@ -1737,6 +1737,23 @@ async def _stream_visible_run(
                 visible_input_pre = await _bvi_task
                 base_messages = serialize_ollama_chat_messages(visible_input_pre)
 
+                # ── Cache-boundary drift observer (harness Part B, Mechanism A) ──
+                # Zero prompt mutation: hash the STATIC system message (base_messages[0])
+                # and flag same-shape byte drift that would silently bust prefix-caching.
+                try:
+                    if base_messages:
+                        import hashlib as _hl_cb
+                        _sys_content = str(base_messages[0].get("content") or "")
+                        from core.services.cache_boundary_observer import observe_static_prefix
+                        observe_static_prefix(
+                            provider=getattr(run, "provider", "") or "",
+                            model=getattr(run, "model", "") or "",
+                            section_shape=(_sys_content.count("\n\n"),),
+                            static_prefix_sha=_hl_cb.sha256(_sys_content.encode("utf-8")).hexdigest(),
+                        )
+                except Exception:
+                    pass
+
                 # Send tool results as SSE events.
                 # For approval_needed, block the run until the user approves/denies.
                 # DB appends happen AFTER this loop so base_messages stays clean.

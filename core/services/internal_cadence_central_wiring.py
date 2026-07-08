@@ -209,6 +209,15 @@ def register_central_wiring_producers() -> None:
     except Exception:
         pass
 
+    # #4 (8. jul): RIG selv-model-distiller — genopliver den fjernede validerings-ROLLE. Distillerer
+    # en rig, stabil identitet fra chronicle + nuværende model på DAGLIG cadence (guard 2), skriver
+    # kun hvis ikke tyndere end nuværende (guard 1, anti-flatten). Retter frossen May-15-selv-model.
+    try:
+        from core.services.self_model_distiller import register_self_model_distiller_producer
+        register_self_model_distiller_producer()
+    except Exception:
+        pass
+
     # Spec D / D1 (FØRSTE ÆGTE AUTORITET): Centralen EJER Jarvis' dagsorden — konvergerer goals/plans/
     # todos/initiativer fra ~15 moduler til én selv-ejet retning + vælger næste-intention. SHADOW
     # medmindre central_agenda_authoritative_enabled=True (så driver den autonome runs' retning).

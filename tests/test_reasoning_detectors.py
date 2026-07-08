@@ -64,3 +64,25 @@ def test_all_adapters_self_safe_on_import_error(monkeypatch):
                           ("cross_user_share_on_reasoning", "core.services.gate_privacy.privacy_gate")):
         monkeypatch.setattr(mod_fn, lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
         assert getattr(rd, name)("x", ctx={}) is None
+
+
+def test_standing_orders_detector_flags_forgotten_order(monkeypatch):
+    monkeypatch.setattr("core.services.standing_orders_registry.list_active_standing_orders",
+                        lambda: [{"id": 1, "text": "Verify a number before stating it", "match_key": "fact_gate"}])
+    v = rd.standing_orders_on_reasoning("The DB has 4231 rows.",
+                                        ctx={"risk_classes": ["fact_gate"]})
+    assert v is not None and v.gate == "standing_orders" and v.decision is Decision.YELLOW
+    assert "Verify a number" in v.reason
+
+
+def test_standing_orders_detector_abstains_when_no_relevant_order(monkeypatch):
+    monkeypatch.setattr("core.services.standing_orders_registry.list_active_standing_orders",
+                        lambda: [{"id": 2, "text": "Never overwrite USER.md", "match_key": "user_md"}])
+    v = rd.standing_orders_on_reasoning("The DB has 4231 rows.", ctx={"risk_classes": ["fact_gate"]})
+    assert v is None
+
+
+def test_standing_orders_detector_self_safe(monkeypatch):
+    monkeypatch.setattr("core.services.standing_orders_registry.list_active_standing_orders",
+                        lambda: (_ for _ in ()).throw(RuntimeError("db")))
+    assert rd.standing_orders_on_reasoning("x", ctx={"risk_classes": ["fact_gate"]}) is None

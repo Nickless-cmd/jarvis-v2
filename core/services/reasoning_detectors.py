@@ -87,3 +87,21 @@ def cross_user_share_on_reasoning(reasoning_text: str, ctx: dict[str, Any]) -> V
                        action=v.action or "warn", klass=GateClass.SECURITY, evidence=v.evidence)
     except Exception:
         return None
+
+
+def standing_orders_on_reasoning(reasoning_text: str, ctx: dict[str, Any]) -> Verdict | None:
+    """Flag when the reasoning enters a risk class an active standing order governs. Grounding =
+    the registry (independent of the reasoning). Matches order.match_key against the pre-filter's
+    risk classes (deterministic, no LLM). Self-safe → None on any failure."""
+    try:
+        from core.services.standing_orders_registry import list_active_standing_orders
+        classes = set(ctx.get("risk_classes") or [])
+        for order in list_active_standing_orders():
+            mk = str(order.get("match_key") or "")
+            if mk and mk in classes:
+                return Verdict("standing_orders", Decision.YELLOW,
+                               f"standing order: {order.get('text')}"[:200],
+                               action="warn", klass=GateClass.COGNITIVE)
+        return None
+    except Exception:
+        return None

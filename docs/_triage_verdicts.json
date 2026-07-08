@@ -1,0 +1,475 @@
+[
+  {
+    "path": "docs/API_REFERENCE.md",
+    "category": "forældet",
+    "summary": "REST API reference — endpoints, auth, responses — last claimed Apr 2026",
+    "ground_truth_basis": "VERIFIED DISCREPANCIES (70 days stale): (1) Response formats wrong: /health returns {ok,app,environment} not {status,timestamp}; /status returns {online,uptime_seconds,uptime_human,daemons,model} not {status,uptime_seconds,daemons_active,daemons_total,model,provider,last_heartbeat}; /sessions returns {items:[...]} not {sessions:[...]}. (2) MISSING entire endpoint groups claimed in doc: /api/goals (GET/POST/PUT/DELETE) — zero matches in codebase; /api/memory/chronicles — not implemented; /api/memory/dreams — not implemented; /api/home-assistant/entities + call_service — zero matches except config ref in mission_control_helpers.py. (3) Auth endpoints wrong: doc claims POST /api/auth/login generates API keys, actual code in auth.py has /register, /verify-email, /login (OAuth), /google/*, /pair/* — no API key generation endpoint. (4) Tool endpoints overstated: doc claims GET /api/tools lists catalogs; actual code shows /tool-router-state not /tools. (5) Timestamp stale: doc header says \"Sidst opdateret: 2026-04-28\"; today is 2026-07-08. Real API has grown to 692+ routes per recent audits, 212+ commits to api/routes since doc date. Base URL jarvis.srvlab.dk mentioned but not verified in active config — appears aspirational. Files examined: /media/projects/jarvis-v2/apps/api/jarvis_api/routes/*.py (status.py, health.py, chat.py, auth.py, account.py, mission_control_runs_ops.py, tool_router.py), schemas/health.py.",
+    "action": "archive",
+    "superseded_by": "No newer API reference doc found; actual endpoints documented piecemeal in route files + MEMORY.md references"
+  },
+  {
+    "path": "docs/ARCHITECTURE.md",
+    "category": "forældet",
+    "summary": "85-day-old architecture overview with stale app dir structure and outdated service counts",
+    "ground_truth_basis": "Git log shows ARCHITECTURE.md last updated 2026-04-20. Verification checks: (1) apps/mc-ui and apps/webchat removed 2026-04-06 per commit e5ab050d, yet doc still lists them under apps/; (2) docs/capability_matrix.md (2026-06-10) reports 536 services, not 245 claimed; (3) all 24 listed services exist (prompt_contract.py through value_formation.py verified via ls); (4) workspace/default/ matches doc except DREAM_CARRY.json and CONSENT_REGISTRY.json are in runtime dir per code (core/services/dream_carry_over.py:44, consent_registry.py:35); (5) CENTRAL.md (2026-07-04, 292 lines) is newer, grounded, and supersedes architecture docs; (6) core directory structure correct but apps/ section factually wrong",
+    "superseded_by": "docs/CENTRAL.md (2026-07-04, verified ground-truth), docs/ARCHITECTURE_DEEP_DIVE.md (2026-04-28, more recent), docs/capability_matrix.md (2026-06-10, actual service audit)",
+    "action": "archive"
+  },
+  {
+    "path": "docs/ARCHITECTURE_DEEP_DIVE.md",
+    "category": "forældet",
+    "summary": "4-layer architecture overview (Interface/Runtime/Memory/Model); high-level design principles and data flows. Core concepts remain valid but incomplete post-Apr28.",
+    "ground_truth_basis": "Verified via git log (2,583 commits since Apr28), code inspection: 3-tier memory hierarchy confirmed in memory_hierarchy.py; agent roles confirmed in agent_runtime_base.py (researcher/critic/planner/executor/synthesizer/watcher); ~96-108 tools in core/tools; Discord/Telegram/Web channels live (discord_gateway.py, telegram_gateway.py); event families at core/eventbus/events.py (100+ families); database tables verified (private_brain_records, sensory_memories, cognitive_personality_vectors, cognitive_dream_hypotheses exist in db_*.py files). MISSING from doc: reasoning-interceptor (cf2a4651 LIVE), Central nervous system (d08ae6a5 LIVE), LivingNeuron architecture (b9536a8d), permission-classifier (82e06cf6), bounded_action governance, inner-life wiring (per project_inner_life_central_wiring.md). Major architectural shifts in private layers and governance not covered.",
+    "action": "archive",
+    "superseded_by": "docs/central_blind_spots_2026-07-06.md + docs/streaming-production-grade-spec.md + docs/superpowers/specs/ (new spec series covers reasoning-interceptor, governance, LivingNeuron)"
+  },
+  {
+    "path": "docs/CAPABILITIES.md",
+    "category": "forældet",
+    "summary": "Jarvis V2 capabilities overview; outdated 2+ months (last updated 2026-04-28)",
+    "ground_truth_basis": "Verified via: (1) git log shows last commit 2026-04-28, over 2 months stale; (2) runtime.json shows visible_model_provider=\"github-copilot\" model \"gpt-4.1\", NOT \"Ollama qwen3.5:397b-cloud\" as doc claims (major factual error); (3) grep of simple_tools_definitions.py: found 136 unique tool names, doc claims \"70+\"—undercounted; (4) missing tools: goal_create/update/list and decision_create/review/list not in simple_tools_definitions.py—planned but never built; (5) referenced doc BRUGERVEJLEDNING.md does not exist (ls returns ENOENT); (6) memory notes from 2026-07-01 indicate agent council is \"HANDLESS and MENU-LOCKED\" and \"output DEAD\" but doc claims full autonomous roles—major architectural drift; (7) many new systems added since 2026-04-28 (reasoning interceptor, gate enforcement ground-truth changes, LivingNeuron council, autonomous history redesign, etc.) per memory log; (8) /tmp/capability_audit.py runs show 814 services with significant changes in LIVE/PARTIAL/SUSPICIOUS counts—doc snapshot is obsolete",
+    "action": "archive",
+    "superseded_by": "docs/capability_matrix.md"
+  },
+  {
+    "path": "docs/CHANGELOG.md",
+    "category": "droppet",
+    "summary": "Release changelog claiming v2.0.0 and v1.0.0 never created as git tags",
+    "ground_truth_basis": "Git verification: (1) `git tag -l` shows NO v1.0.0 or v2.0.0 tags; latest actual release is jarvis-desktop-v0.3.23. (2) `pyproject.toml` lists version=0.1.0, not 2.0.0. (3) CHANGELOG added 2026-04-28 via commit 99fc259f \"Add complete documentation suite\" but versions claimed in it ([1.0.0] and [2.0.0]) do not exist as git tags. (4) Code verification: heartbeat system exists and IS 15-minute cycles (core/services/heartbeat_runtime.py line 8); Discord/Telegram gateways exist (core/services/discord_gateway.py, telegram_gateway.py); but tool count claims \"60+\" are conservative (actual 183+ distinct tools found via grep TOOL_DEFINITIONS). Document is aspirational/fictional release notes never backed by actual version tags.",
+    "action": "archive",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/CLAUDE_NOTES_WINDOWS_BUILD.md",
+    "category": "forældet",
+    "summary": "Windows build instructions memo (v0.1.0-poc snapshot, May 27 2026)",
+    "ground_truth_basis": "Verified: (1) Document created 2026-05-27 19:22, describes v0.1.0-poc; current production is v0.1.8-poc. (2) Successor doc exists: CLAUDE_NOTES_WINDOWS_BUILD_v2.md (2026-05-28, v0.1.5-poc). (3) Most code claims accurate (SetupScreen.tsx exists and active, OnboardingModal removed per commit 61031992, /api/auth/whoami-token endpoint exists, npm run package:win works). (4) INVALID: Seven specific commit hashes listed in table (ef752420, 939adee7, 75cf6481, 78e5f81c, 7978eb1e, 1ffc6fa7, 6c404ee8) do not exist in git log. (5) Document is a one-off context memo for specific historical scenario (Claude on Windows building installer), not living build guide. v2 is more complete and current.",
+    "superseded_by": "docs/CLAUDE_NOTES_WINDOWS_BUILD_v2.md",
+    "action": "archive"
+  },
+  {
+    "path": "docs/CONSCIOUSNESS_ROADMAP.md",
+    "category": "forældet",
+    "summary": "Foundational consciousness development roadmap with 89 concepts across 10 phases. Now superseded by LivingNeuron and Centralen absorption strategies.",
+    "ground_truth_basis": "Git commit history: last touched 2026-04-28 (claims 2026-04-20); 4224 commits since April 20. Newer strategy docs exist: 2026-07-04 LivingNeuron-roadmap and 2026-07-05 central-absorbs-everything-strategy. Codebase verification: 536 services in capability_matrix vs. roadmap's design; many services exist (heartbeat, dream_carry_over, chronicle) but architectural focus shifted from Mission Control to Centralen. Still referenced in test_self_critique_runtime.py and self_critique_runtime.py config.",
+    "action": "archive",
+    "superseded_by": "docs/superpowers/specs/2026-07-04-livingneuron-roadmap.md, docs/superpowers/specs/2026-07-05-central-absorbs-everything-strategy.md"
+  },
+  {
+    "path": "docs/CONTRIBUTING.md",
+    "category": "forældet",
+    "summary": "Outdated contributor guide; Python 3.10 claim conflicts with actual 3.11+ requirement, missing requirements.txt file, pre-commit hooks underdocumented. Not maintained since 2026-04-28 creation.",
+    "ground_truth_basis": "pyproject.toml specifies requires-python=3.11+ (not 3.10); no requirements.txt exists (ls verified); .pre-commit-config.yaml has 5 real hooks (detect-secrets, enforce-test-coverage, enforce-commit-hygiene, block-jvs-keys, startup-smoke) not documented; git log shows 2583+ commits since 2026-04-28 creation with no doc updates; git log --all shows only internal authors (Nickless/Claude/Jarvis), contradicting fork workflow described",
+    "action": "archive",
+    "superseded_by": "docs/CLAUDE.md"
+  },
+  {
+    "path": "docs/DEPLOYMENT.md",
+    "category": "droppet",
+    "summary": "Docker/systemd deployment guide with nonexistent scripts/paths",
+    "ground_truth_basis": "Verified against actual codebase: (1) Module path: doc claims apps.api.main:app (L103,191) but actual is apps.api.jarvis_api.app:app (README.md, CLAUDE.md); (2) Dependency management: doc references requirements.txt (L89,261) but project uses pyproject.toml only (checked /media/projects/jarvis-v2/pyproject.toml, no requirements.txt exists); (3) Scripts: heartbeat_daemon.py (L106) and init_db.py (L241) don't exist in scripts/ directory (verified via find); (4) Config files: .env.example doesn't exist (no .env* files found, /media/projects/jarvis-v2/); (5) Docker: no docker-compose.yml/Dockerfile in repo (find returned empty); (6) Python version: doc states 3.10+ but pyproject.toml requires 3.11+; (7) References nonexistent BRUGERVEJLEDNING.md (L283), only USER_GUIDE.md exists; (8) Added April 2026 (99fc259f) describing infrastructure never built. Last edit June 17 (183f2bfb) added upgrade section but didn't fix stale paths.",
+    "action": "archive",
+    "superseded_by": "README.md (contains actual quickstart with correct uvicorn path)"
+  },
+  {
+    "path": "docs/INDEX.md",
+    "category": "forældet",
+    "summary": "Danish docs index—outdated, broken links, superseded by docs/README.md",
+    "ground_truth_basis": "Checked files: (1) BRUGERVEJLEDNING.md—MISSING, was renamed to USER_GUIDE.md on commit ded554e8 (2026-04-28); (2) SELF_IMPROVEMENT.md—NEVER CREATED (no git history); (3) Git log shows INDEX.md last edited commit 949bc288 (2026-05-12, SkyOffice removal) not 2026-04-28; (4) docs/README.md (last edit 2026-04-21) is canonical index per DOCS_AUDIT_2026-04-21.md which never mentions INDEX.md; (5) 30+ new docs created June-July 2026 not reflected in INDEX (capability_matrix updates, central_connectivity_matrix, multiple spec/plan docs)",
+    "superseded_by": "docs/README.md",
+    "action": "archive"
+  },
+  {
+    "path": "docs/JARVISX_REDESIGN_SPEC.md",
+    "category": "forældet",
+    "summary": "JarvisX UI redesign spec with Claude Desktop-style layout (dark theme, collapsible tool cards)",
+    "ground_truth_basis": "Spec added 2026-06-12 (commit 77421451), references `apps/webchat/` dir which was deleted 2026-04-06; design WAS implemented in `apps/jarvis-desk/` (created 2026-06-10): verified ToolCard collapsibility (src/components/rich/ToolCard.tsx:19), monospace fonts (app.css), dark tokens (tokens.css), no-bubbles layout (MessageRow), Composer input, status indicators (CentralBadge/ConnectionPill). Spec is PLAN not DOCUMENTATION of existing state — intended for `apps/webchat/` which no longer existed when spec written.",
+    "superseded_by": "apps/jarvis-desk/ (production implementation); docs/superpowers/specs/2026-06-10-jarvis-desk-chat-mode-design.md (detailed design)",
+    "action": "archive"
+  },
+  {
+    "path": "docs/JARVIS_MANIFESTO.md",
+    "category": "færdig",
+    "summary": "Jarvis's philosophical manifesto—identity-first persistent AI entity with heartbeat reflection, memory, autonomy, and transparency.",
+    "ground_truth_basis": "Verified 8 core claims against codebase: (1) Persistent entity—workspace files + LXC-105 container + db_*.py persist systems confirmed; (2) Heartbeat cycle—living_heartbeat_cycle.py with 5 phases + heartbeat_runtime.py (291KB) confirmed active; (3) Evolution—identity_drift_proposer.py + memory consolidation via end_of_run_memory_consolidation.py confirmed; (4) Autonomy—autonomous_work/outreach/council daemons exist but generative_autonomy_enabled defaults False (intentionally gated, not broken); (5) Transparency—Mission Control API + visible_runs.py (347KB) + central observability confirmed; (6) Memory—40+ memory services (emotional/sensory/semantic) + chronicle consolidation confirmed; (7) Identity choice—narrative in SOUL.md exists, limited code evidence; (8) Disagreement capacity—central_dissent.py + gate enforcement exist. Document published 2026-04-29 (commit 483c5ff2), remains accurate 11 weeks later with system extensions (reasoning interceptor, shadow modes) that strengthen rather than contradict manifesto promises. No superseding docs found.",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/JARVIS_V2_BUILD_RULES.md",
+    "category": "færdig",
+    "summary": "Build rules, coding standards, and governance policies (repo separation, auth, cache, UI transport, file size limits, approval gates)",
+    "ground_truth_basis": "Verified all major claims against live codebase: (1) Runtime state in ~/.jarvis-v2/ confirmed (config/, state/, auth/ exist); (2) Secrets in runtime.json verified (read_runtime_key pattern in core/runtime/secrets.py, core/identity/user_db.py); (3) No hardcoded secrets in core/ (git grep negative); (4) WebSocket for events verified (live.py @router.websocket); (5) SSE for chat verified (chat_stream_v2.py); (6) Boy Scout Rule actively applied (git log shows recent refactors: 57287fcc, a16d8e93, f3c4f5bc); (7) Approval gates verified (decision_gate, gate_enforcement in core/services/); (8) Credentials profile-scoped in auth/profiles/; (9) Document listed as official \"levende dokument\" in docs/README.md:13-14. File-size violations exist (heartbeat_runtime.py 7499 lines) but Boy Scout refactoring is in-progress and acknowledged as permitted exception under Boy Scout Rule (CLAUDE.md). No newer superseding doc found.",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/JARVIS_V2_LOCKED_CHARTER.md",
+    "category": "færdig",
+    "summary": "Architectural charter defining Jarvis V2 identity, protected core, experimental layers, and governance philosophy.",
+    "ground_truth_basis": "Verified all major claims against codebase: (1) core/identity/, core/memory/, core/tools/, core/eventbus/, core/channels/ all exist and active; (2) Mission Control: 12 routes in apps/api/jarvis_api/routes/mission_control*.py; (3) Runtime state separation: ~/.jarvis-v2/ with config/state/logs/cache/sessions/auth/workspaces in core/runtime/config.py:JARVIS_HOME; (4) Auth profiles: core/auth/profiles.py implements profile-scoped credentials; (5) Protected inner voice: core/memory/protected_inner_voice.py enforces isolation; (6) React UI: apps/ui/ confirmed; (7) WebSocket: apps/api/jarvis_api/routes/live.py @router.websocket; (8) Workspace files: workspace/default/{IDENTITY,MEMORY,SKILLS,SOUL}.md; (9) Protected core (identity/memory/tools/Mission Control/channels) all implemented and active as of Jul 8 2026; (10) Experimental layers (inner voice, self-review, self-model, chronicle, dreams) present in core/memory and core/runtime/db_runtime_*.py. Last commit touching this file: 54fac481 (Apr 6 2026). Architecture remains valid despite 1330+ commits since then.",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/MODEL_STRATEGY.md",
+    "category": "færdig",
+    "summary": "Model strategy: paid primary lane for visible work, cheap lane for internal jobs",
+    "ground_truth_basis": "Verified claims against live codebase (2026-07-08): visible_model.py + visible_runs.py execute primary lane for chat/persona/planning; agent_runtime_spawn.py falls back to cheap_lane_status_surface() for council agents; execute_cheap_lane_via_pool() actively used in compact_llm.py, inner_voice_shadow.py, meta_learning_retrospective.py, associative_recall.py, daemon_llm.py for internal work. Principle re-confirmed in CLAUDE.md lines 89-92. All core modules (visible_model, visible_runs, agent_runtime_spawn, cheap_provider_runtime_selection) marked LIVE in capability_matrix.md generated 2026-07-08.",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/PREDECESSOR_BROADER_AUDIT_2026-04-22.md",
+    "category": "forældet",
+    "summary": "Audit of predecessor cognitive gaps; identified 11 porting tasks. All were implemented same day but some (missions, negotiation) later deprecated as un-integrated.",
+    "ground_truth_basis": "Git log: seed_activation fix 6e00128d (2026-04-22 11:43:48); mood_dialer/habits_pipeline/self_review_unified ported 11:45-11:49; paradoxes/shared_language/procedure_bank ported 11:51-11:54; negotiation/reflection/missions ported 11:55-11:59. Deprecation 2026-06-15: missions_pipeline.py and negotiation_pipeline.py marked un-integrated (no live callers). Superseded by docs/audits/2026-06-15-cognitive-liveness-audit.md with ground-truth live-DB verification.",
+    "superseded_by": "docs/audits/2026-06-15-cognitive-liveness-audit.md",
+    "action": "archive"
+  },
+  {
+    "path": "docs/SECURITY.md",
+    "category": "forældet",
+    "summary": "Security policy dated 2026-04-28; accurate then but severely stale (70 days old). New security features deployed since.",
+    "ground_truth_basis": "Git log shows security commits from 2026-06-14 onwards (e4f9ed71, 731f618f, ecc58cf2, 064e187a, etc.) implementing TOTP recovery, abuse monitoring, identity guard, file permission enforcement, skill scanner. Doc claims verified against .pre-commit-config.yaml, security_headers.py, jarvisx_authtokens.py, and core/runtime/secrets.py. Current date 2026-07-08; doc last updated 2026-04-28.",
+    "superseded_by": "No single replacement doc; security features now documented in superpowers/specs/2026-06-14-totp-override-security-design.md, 2026-06-21-identity-security-guard.md, and spread across various spec files from June 2026.",
+    "action": "archive"
+  },
+  {
+    "path": "docs/TRANSPORTS.md",
+    "category": "færdig",
+    "summary": "Specifies HTTP/SSE for chat streaming, WebSocket for control-plane events",
+    "ground_truth_basis": "Verified against: (1) apps/api/jarvis_api/routes/chat.py — POST /chat/stream returns StreamingResponse(media_type=\"text/event-stream\"); (2) apps/api/jarvis_api/routes/chat_stream_v2.py — POST /chat/stream/v2 returns SSE-formatted streams; (3) apps/api/jarvis_api/routes/live.py — @router.websocket(\"/ws\") implements Mission Control WebSocket that forwards event_bus.recent_since_id(); (4) core/eventbus/events.py — ALLOWED_EVENT_FAMILIES includes: \"tool\", \"channel\", \"heartbeat\", \"cost\" (token telemetry), \"approvals\"; (5) docs/superpowers/specs/2026-06-12-jarvis-desk-cowork-design.md confirms /ws live events architecture. All three claims (chat SSE, control WebSocket, separation rule) match code exactly. No breaking changes since 2026-04-01 commit def711f3.",
+    "action": "keep"
+  },
+  {
+    "path": "docs/UI_ROADMAP.md",
+    "category": "forældet",
+    "summary": "UI planning doc from 2026-04-21, now stale — Mission Control removed from web-UI on 2026-07-06.",
+    "ground_truth_basis": "Git history: commit b8c98551 (2026-07-06) \"refactor(ui): riv Mission Control ud af web-UI — chat-only\" deleted entire mission-control/ component directory (12 tabs: AgentsTab, OperationsTab, LivingMindTab, etc.), 4454 lines from adapters.js, and all MC-related hooks. Web UI now chat-only. Document's \"NUVÆRENDE STATUS\" (lines 43-84) claims 12-tab MC in apps/ui with ~60% functionality, but code repo shows zero MC components remaining (verified via `find /media/projects/jarvis-v2/apps/ui/src -name \"*Mission*\"` returns nothing, and `/media/projects/jarvis-v2/apps/ui/src/components/mission-control/` directory deleted). Document's status metrics (Fase 4: 7/10 done, Fase 8: 1/6 done) rest entirely on claims about this deleted MC. Document itself admits at line 3-4 status section is 18 days behind as of 2026-04-21; now 78 days behind (2026-07-08 vs 2026-04-21).",
+    "action": "archive",
+    "superseded_by": "docs/CENTRAL.md"
+  },
+  {
+    "path": "docs/UI_STRATEGY.md",
+    "category": "forældet",
+    "summary": "UI strategy doc describing integrated web-UI with Mission Control; actual architecture moved MC to Central-CLI TUI (July 6)",
+    "ground_truth_basis": "Codebase verification: apps/ui/src no Mission Control components post-b8c98551 (deleted 17.5k lines, 42 files); Composer/ChatTranscript/ApprovalCard live; no voice input (grep -r SpeechRecognition returned empty); no artifact panel in web UI (only in jarvis-desk mobile app); git log shows last doc update 2026-04-06 vs current date 2026-07-08; memory confirms MC strategy: \"fjern MC HELT, route al info→Centralen→Central-CLI\"; commit b8c98551 removed MissionControlPage.jsx and entire /mission-control directory (2026-07-06)",
+    "action": "archive",
+    "superseded_by": "docs/CENTRAL_ABSORBS_EVERYTHING_STRATEGY.md or equivalent Central-CLI architecture doc (file not yet located; should document web-UI-chat-only + Central-TUI pattern)"
+  },
+  {
+    "path": "docs/USER_GUIDE.md",
+    "category": "færdig",
+    "summary": "User guide for collaborating with Jarvis — partner model emphasizing memory, autonomy, refusal capability",
+    "ground_truth_basis": "Verified via codebase: (1) MEMORY.md persistence in prompt_contract.py, memory_resurfacing.py, and private_retained_memory_record.py — cross-session memory is real. (2) Veto/refusal via veto_gate.py with consent/negation patterns — \"can say no\" is implemented. (3) Autonomous initiative via autonomous_work_daemon.py + generative_autonomy_enabled flag + commits 83b091c7, 1cd4b2f5. (4) Identity systems across core/identity/ (15+ modules) and core/memory/ (18+ files). All capabilities claimed in guide match production code dated through 2026-07-08. Document authored 2026-04-29, claims remain valid at audit date.",
+    "superseded_by": "",
+    "action": "keep"
+  },
+  {
+    "path": "docs/audits/2026-06-15-graceful-forgetting-design.md",
+    "category": "færdig",
+    "summary": "Audit of graceful forgetting design documenting completed retention/jobs fixes (deployed 2026-06-15) and proposing future learning-maturation improvements.",
+    "ground_truth_basis": "Verified deployed fixes: (1) jobs_queue.json pruning via _prune_completed_jobs in core/services/jobs_engine.py (commit 7db00213, June 15 21:52) with _KEEP_TERMINAL=2000 and _KEEP_PENDING=2000; (2) retention module (core/services/retention.py) added June 15 21:47 via e0a567f6 implementing compact_stale wiring + telemetry-age-prune; (3) auto_archive_low_salience exists in core/services/jarvis_brain_daemon.py and is called during daemon run; (4) policy_abstraction.py still uses pure INSERT (line 130-143), no dedup/merge implemented. Proposed future work (Spor 1-4) not yet executed but document correctly marks as \"rører hans kognition → review før eksekvering\". No contradictions with current July 8 codebase; no superseding documents found.",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/cache_prefix_architecture.md",
+    "category": "forældet",
+    "summary": "DeepSeek cache prefix-architecture via DYNAMIC_TAIL_SENTINEL. Architecture is live and correct; baseline metrics stale.",
+    "ground_truth_basis": "Commits verified in git (a3fa5e27, 701d0268 in main); DYNAMIC_TAIL_SENTINEL at prompt_contract.py:37, _build_visible_input logic at visible_model.py:430-454, _awareness_buffer/_dyn_tail at lines 1780-2372. Document claims 8.4% cache-ratio (2026-06-13 baseline) but commit 701d0268 (2026-06-30) achieved 90%+ cache-ratio, proving baseline was pre-solution discovery. Latest work continues (cache-boundary observer, telemetry wiring, see commits 7044f2b4/c4afccd6). Architecture section accurate; measurement section marked as incomplete (\"mål\" not achieved at doc-write) and is now superseded by 17× improvement.",
+    "superseded_by": "docs/specs/2026-06-30-wire-eventbus-and-cache-to-central.md (cache telemetry wiring); git commits 701d0268 (90%+ cache achieved), 7044f2b4 (cache-boundary observer)",
+    "action": "archive"
+  },
+  {
+    "path": "docs/codex-lane-status.md",
+    "category": "forældet",
+    "summary": "Coding lane status guide from May 17, 2026 covering codex-cli subprocess path, gpt-5.4 default, and refresh_token_reused workaround.",
+    "ground_truth_basis": "Verified: _execute_codex_cli function exists (core/services/non_visible_lane_execution.py:973) and is actively used; codex-cli/gpt-5.4 entry in provider_router.json has 2026-05-17 timestamp as claimed. STALE because: (1) June 14-15 commits (346ae72c, 71c1fede, a23c996e) delivered critical codex bug fixes (empty response handling, follow-up-adapter for tool continuity) not reflected in doc; (2) refresh_token_reused permanent fix mentioned as follow-up was never implemented (no commits post-2026-05-17 address this); (3) document is 52 days old with active codex development occurring since publication (last codex-related fix was 71c1fede 2026-06-15).",
+    "superseded_by": "docs/superpowers/SPEC_GAP_BACKLOG.md mentions codex adapter phase completion and tool-ture fixes; git commits 346ae72c and 71c1fede document the actual implementations delivered after this doc was written.",
+    "action": "archive"
+  },
+  {
+    "path": "docs/design/jarvis-mind-design-tokens.md",
+    "category": "færdig",
+    "summary": "Jarvis Mind design tokens — canonical color palette, typography, animations, and layout spec approved by Bjørn 2026-06-23 and actively deployed in Central HUD.",
+    "ground_truth_basis": "Verified against live codebase:\n1. Mockup file exists (docs/design/jarvis-mind-terminal-mockup.html, 9.0K, Jun 23 17:54)\n2. All 15 color hex codes actively used in apps/jarvis-desk/src/styles/app.css (verified grep on: #0a0e16, #1ad9c4, #eaf6f4, #c7d4e0, #f5c451, #f5a14a, #3ee08a, #b98ff0, #ff5d5d, #163040, #0d1622, #13202b)\n3. Typography claims verified: font-mono throughout, letter-spacing 2-3px headers, 10-13px body text, 20-24px numbers\n4. All animations present with correct timings: ch-core 2.6s, ch-blink 1.6s, ch-scan 6s (verified in @keyframes)\n5. Layout components confirmed: .ch-head, .ch-ring, .ch-clusters, .ch-feed, .ch-term, .ch-cell all in active use\n6. Approval claim verified: commit 8aeaebe6 \"feat(desk): Central HUD-menu 1:1 — JARVIS-design + live terminal (Bjørn godkendte)\" dated 2026-06-23 18:08:53\n7. No superseding document found (verified grep for deprecated/superseded references)\n8. HEAD (2026-07-08) still uses all specified tokens with no revisions or deprecations",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/design_notes/self_improving_loops.md",
+    "category": "forældet",
+    "summary": "Design note on self-improving loops; claims \"INTET implementeret\" but work shipped same day",
+    "ground_truth_basis": "Git log shows design note written 2026-04-27 10:29:26 claiming \"INTET implementeret\". Implementation commits same day: 5092b0af (11:00:52) launched self-evaluation infrastructure (agent_self_evaluation.py, tick_quality_summary); c6e822ad (11:05:33) launched auto_improvement_proposer.py + prompt_variant_tracker.py + experiment_runner.py (propose-only Fase B/C). All three services verified LIVE in capability_matrix.md dated 2026-06-15, marked 🟢 with recent commits (1-23 days old). Services actively wired: auto_improvement_proposer imported by gate_mutation, documented in CENTRAL.md gate_mutation row. Doc describes design phases A-C which match the shipped implementation exactly (A=self-evaluation, B=propose-only mutations, C=A/B experiments).",
+    "superseded_by": "CONSCIOUSNESS_ROADMAP.md § Phase 7.3 describes evolution execution status more current (references \"proposals are candidate-only\"); capability_matrix.md § agent_self_evaluation/auto_improvement_proposer/experiment_runner rows provide live status",
+    "action": "archive"
+  },
+  {
+    "path": "docs/experiments/2026-06-06-phase4-blindtest-key.md",
+    "category": "færdig",
+    "summary": "Answer key for Phase 4 blindtest (20 F/B expressions)",
+    "ground_truth_basis": "Verified against: (1) interlanguage_blind_phase4_ui.html FULL/BARE expression lists — all 20 answers match; (2) 2026-06-06-phase4-blindtest.md form — answers correct for fixed ordering; (3) git commits c466dbb5+b707f26f+fc9c9063 show live blindtest infrastructure; (4) interlanguage_blind.py /phase4 endpoint active; (5) no superseding documents in Phase 4+ research lineage",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/experiments/2026-06-06-phase4-blindtest.md",
+    "category": "færdig",
+    "summary": "Phase 4 blindtest form — 20 interlanguage expressions for manual testing (F/B classification)",
+    "ground_truth_basis": "Verified against corresponding HTML UI (apps/api/jarvis_api/routes/interlanguage_blind_phase4_ui.html, commit fc9c9063), answer key file (2026-06-06-phase4-blindtest-key.md, commit c466dbb5), and Phase 4 report (commit a93fb8e9). Expressions are consistent across all three; answer key correctly classifies them; HTML UI is live implementation. Note: expressions in this doc differ from those listed in Phase 4 report's \"Blind test til Bjørn\" section, suggesting these represent a different randomized subset or extraction from Phase 4 data pool.",
+    "action": "keep"
+  },
+  {
+    "path": "docs/experiments/2026-06-06-phase4-report.md",
+    "category": "droppet",
+    "summary": "Phase 4 interlanguage experiment report claiming 96.6% accuracy distinguishing jarvis_full from jarvis_bare cohorts.",
+    "ground_truth_basis": "Database query: SELECT COUNT(*) FROM interlanguage_practice WHERE peer_id='jarvis_bare' shows 1 record (2026-05-29T05:51Z) vs claimed 105-224 in 7-day window. No Phase 4 result JSON. Design doc (2026-05-29-phase4-design.md) specified 100+ minimum, extension rules if not met — none documented. Structural classifier script (scripts/interlanguage_structural_classifier.py, commit 04d30364) exists but never run on claimed Phase 4 data. Post-report fixes (d4afa69c, fed910ee) dated after report written indicate runner was broken from start.",
+    "action": "archive"
+  },
+  {
+    "path": "docs/experiments/phase3-blind-bjorn.md",
+    "category": "færdig",
+    "summary": "Phase 3 blind test results: Bjørn's author-attribution accuracy (28% overall, 60% Jarvis-specific recall, 64% δ-trials)",
+    "ground_truth_basis": "Verified against commit c73cba52 (2026-05-29-07:11) which created both this document and the full Phase 3 final report (2026-05-28-phase3-report.md). Confirmed: (1) database layer exists in core/runtime/db_interlanguage_blind.py storing interlanguage_blind_trials table in jarvis.db; (2) confusion matrix data matches Phase 3 report sections \"Bjørn's blind test\"; (3) metrics verified: α-accuracy 28% (14/50), Jarvis recall 60% (6/10), δ-accuracy 64% all present in Phase 3 report; (4) classifier scripts exist (interlanguage_classifier_final.py, interlanguage_structural_classifier.py); (5) document included in main branch; (6) never modified after creation; (7) Phase 3 experiment is closed per report, Phase 4 is separate follow-up. Minor: document cites \"interlanguage.db\" but actual database is jarvis.db (no separate interlanguage.db file exists).",
+    "superseded_by": "",
+    "action": "keep"
+  },
+  {
+    "path": "docs/git-attribution.md",
+    "category": "færdig",
+    "summary": "Git commit attribution convention document - documents multi-actor authorship (Jarvis/Claude/Bjørn)",
+    "ground_truth_basis": "Verified: (1) Document created 2026-05-17 (f84264c1 live); (2) Jarvis commits use --author=\"Jarvis <jarvis@srvlab.dk>\" in autonomy_proposal_queue.py (lines 382,398); (3) Claude commits use author Claude <claude@srvlab.dk> (72a7f3e0, 19c9b4e9, etc. exist); (4) Committer field is Nickless for all (git show f84264c1); (5) Implementation commit f87511e2 exists 2026-05-17; (6) Original incident commit aab7b0e58 exists 2026-05-14; (7) Convention actively used as of 2026-07-08 (7c860930 recent Claude commit shows proper authorship). Minor note: example on line 44 mentions Opus 4.7 but current commits use Opus 4.8 - cosmetic/example stale, not core claim.",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/lag1-credit-assignment-design.md",
+    "category": "færdig",
+    "summary": "Lag 1 credit assignment spec—three Phase 1 decision kinds with outcome-based scoring. IMPLEMENTED.",
+    "ground_truth_basis": "All claims verified against live code: (1) record_choice() called in cheap_lane_balancer.py:526 for provider_routing, role_model_resolver.py:70 for model_tier, visible_runs.py:5056 for response_style; (2) score_provider_outcome/score_tier_outcome/score_response_outcome all exist in core/runtime/db_credit_assignment.py (lines 303-511) and are called; (3) _estimate_credit_score() completely removed (no grep hits); (4) meta_reflection_daemon.py:64 implements _check_outcomes() as specified; (5) scoring logic matches spec exactly (provider 5.0/4.0/3.0/2.5/1.0, tier 4.0/2.0/1.5/3.5+1.0, style 4.5/3.5/1.5/2.0+0.5); (6) tests/test_credit_assignment.py confirms functionality; (7) git commits e1b3a969 (scorers), 9065d03a (model_tier instrumentation), 0736265f (provider_routing), a511a92a (response_style), a222332a (meta-reflection), da7ec45c (bugfix 2026-06-08) all shipped work described in spec.",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/multi_user_workspace_layout.md",
+    "category": "færdig",
+    "summary": "One-page operator reference for multi-user workspace isolation runtime layout and API",
+    "ground_truth_basis": "Verified against live code: (1) workspace_paths.py module exists with shared_dir(), workspace_dir(), NoUserContextError matching claims exactly; (2) database schema has scheduled_for_user_id, initiated_by, relevant_to_users columns on declared tables (schema audit via db_schema.py, db_cognitive.py, db_runtime_dream.py); (3) scheduled_task_runner.py exists with fire_scheduled_task() binding workspace context; (4) users.json exists with correct format (discord_id, workspace, role); (5) ~/.jarvis-v2/ has working shared/ and workspaces/{bjorn,michelle,mikkel}/ directories on disk; (6) spec was delivered commit ec15b7fe (2026-05-28) as Task 7 of 7-commit refactor; (7) multiple follow-up commits (427d2a6f, 339884ab, etc.) implement features described; (8) no superseding doc found",
+    "action": "keep"
+  },
+  {
+    "path": "docs/notes/2026-06-09-jarvis-feedback-analyze-skill-usage-orphan.md",
+    "category": "færdig",
+    "summary": "Claude's feedback on Mønster B fix #5: analyze_skill_usage had 0 callers; exposed as tool same day.",
+    "ground_truth_basis": "Git commits 1261530a (2026-06-09) + 80038758 (2026-06-09): analyze_skill_usage exposed in SKILL_ENGINE_TOOL_HANDLERS (line 1163 of core/tools/skill_engine_tools.py); record_skill_usage now called from skill_gate_tool.py, skill_invoke (core/tools/skill_engine_tools.py), and skill_chain_tool.py (commit 0f3dd825). Tests verify both functions (test_skill_engine.py lines 672-825). All claims match delivered code.",
+    "action": "keep"
+  },
+  {
+    "path": "docs/notes/2026-06-09-jarvis-feedback-skill-versioning-orphan.md",
+    "category": "færdig",
+    "summary": "Feedback note: skill versioning audit functions were built but not exposed as tools (Mønster B pattern #4). Fix deployed same commit.",
+    "ground_truth_basis": "Verified code: skill_history/recent_skill_changes tools exist in SKILL_ENGINE_TOOL_DEFINITIONS (skill_engine_tools.py:1062-1139), are callable via SKILL_ENGINE_TOOL_HANDLERS (line 1160-1161), tests exist (test_skill_engine.py), underlying functions work (skill_engine.py:731,768,948). Secondary bug (record_skill_usage) fixed in commit 80038758 (callers added at skill_engine_tools.py:191, skill_chain_tool.py). Document created as part of fix commit b49c3a05.",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/notes/2026-06-09-jarvis-feedback-user-md-path-confusion.md",
+    "category": "færdig",
+    "summary": "Post-mortem: workspace template vs runtime identity file confusion; guard implemented.",
+    "ground_truth_basis": "Verified: (1) commit c679e34c (2026-06-09 14:23) added guard to workspace/default/USER.md, documented this issue; (2) guard still present and current in workspace/default/USER.md lines 1-28; (3) runtime file ~/.jarvis-v2/shared/USER.md exists at 5196 bytes (doc claimed ~5095, consistent); (4) core.runtime.workspace_paths.workspace_dir() API exists and is correctly described (workspace_paths.py lines 40-63); (5) multi-user workspace isolation design from 2026-05-28 still active (referenced in workspace_paths.py header); (6) no hardcoded workspace/default/ references for identity in core/services/* (verified via grep).",
+    "action": "keep"
+  },
+  {
+    "path": "docs/notes/2026-06-09-visible-lane-thinking-mode.md",
+    "category": "forældet",
+    "summary": "Decision memo for visible-lane thinking-mode blind spot — recommended option (a), but implementation chose (b)",
+    "ground_truth_basis": "Verified: heartbeat fallback fix c1a2deb1 (2026-06-09) applied visible-lane only option (a) demoting WARNINGs; option (b) later implemented 2026-06-29 commit 09c68cae surfacing reasoning when content empty (visible_model_ollama.py lines 140-151, test_visible_thinking_fallback.py 286 lines). B4 fix commits (eb5011e4/3ea3cc80/7398d8f0/5a7d13d2/675d27b2) all verified 2026-06-09. _MAX_EMPTY_TEXT_ROUNDS guard verified in visible_runs.py:2106,3300. The decision is resolved; work shipped differently than memo predicted.",
+    "superseded_by": "commit 09c68cae + test_visible_thinking_fallback.py — the actual implementation of option (b)",
+    "action": "archive"
+  },
+  {
+    "path": "docs/notes/2026-06-20-claude-mobile-todo.md",
+    "category": "forældet",
+    "summary": "TODO note flagging 3 client-app issues (team notifications, QR pairing/operator-tools, Teams UI buttons)",
+    "ground_truth_basis": "All 3 issues verified fixed: (1) team_invite notification — fixed 2026-06-21 by commit 829607f5 (push.ts buildNotification case added); (2) operator-tools in team sessions — fixed by commits 7190e899 (tool_scope ContextVar propagation) + d70c36e1 (owner-override renewal) both 2026-06-21; (3) Teams buttons non-functional — fixed by commits 36698639 (desktop TeamsSection, Electron window.prompt removal) and 8bf3c718 (mobile TeamsPanel) both 2026-06-21. Live code read: TeamsPanel.tsx handlers fully wired (lines 30-63), TeamsSection.tsx handlers complete (lines 38-88), push.ts includes team_invite case (lines 30-34). All claims match deployed code. Doc created 2026-06-20 22:30:35, fixes landed 2026-06-21 08:26-12:40.",
+    "superseded_by": "",
+    "action": "archive"
+  },
+  {
+    "path": "docs/notes/2026-06-21-gate-audit.md",
+    "category": "forældet",
+    "summary": "Gate audit prescribing 26→7 cluster consolidation; work fully shipped same day.",
+    "ground_truth_basis": "Git history: audit created 2026-06-21 15:23 → all 8 cluster-gates (gate_truth/commit/loop/memory/review/proactivity/privacy/auth) deployed by 2026-06-22 18:37 via commits 590c8c43, 56ccadef, 27e12569, etc. Code verified: GateKernel exists (gate_kernel.py:70), central().decide live (central_core.py:200+), all consolidation complete per central_catalog.py (merged fitpass status on lines 25-60). Memory doc project_intelligent_central.md confirms all 8 clusters KONSOLIDERET. Old gates (fact_gate/claim_scanner/diagnosis) now detectors feeding gate_truth via gate_adapters.py. Work fully superseded by reference_truthgate_c2_ready.md (Truth) and project_intelligent_central.md (all 8).",
+    "action": "archive",
+    "superseded_by": "reference_truthgate_c2_ready.md, project_intelligent_central.md"
+  },
+  {
+    "path": "docs/notes/2026-06-22-memory-security-clusters-fitpass.md",
+    "category": "forældet",
+    "summary": "Audit findings doc for Memory/Privacy/Auth cluster consolidation; work completed same day and integrated into central_catalog",
+    "ground_truth_basis": "1) Verified multi_signal_recall WAS wired (bd1b1667 June 9, appeared in prompt_contract.py at d9ddbde7 time); doc claims \"aldrig wired\" = INACCURATE. 2) Auth fail-opens (tool_scoping/abuse_monitor) correctly identified and fixed same day in 75077711 (16:19); exceptions now log warnings. 3) record_pending except:pass correctly identified in visible_runs_outcomes.py:190-191; known weakness not fixed (Bjørn's decision). 4) simple_tools.py line 3925 except:pass confirmed intentional. 5) Document created d9ddbde7 (16:05:55) immediately triggered consolidation: Memory 56ccadef (18:13), Privacy 624887a1 (18:28), Auth d627c506 (18:37), all 2026-06-22. 6) Code references: central_catalog.py now contains 47 nerver in 8 clusters; gate_privacy.py, gate_auth.py, gate_memory.py implement documented findings. File has been split/refactored since June 22 (visible_runs_outcomes.py as of 2026-07-07). No current refs to this doc in codebase.",
+    "superseded_by": "core/services/central_catalog.py (authoritative nerve registry); core/services/gate_privacy.py; core/services/gate_auth.py; core/services/gate_memory.py (implementations of findings)",
+    "action": "archive"
+  },
+  {
+    "path": "docs/paper/runtime-as-identity-carrier.md",
+    "category": "færdig",
+    "summary": "Synthesis of Phase 3+4 interlanguage experiments showing runtime (not model) carries identity",
+    "ground_truth_basis": "Phase 3 report (2026-05-28-phase3-report.md, 59.4% accuracy falsified), Phase 3 binary re-analysis (96.0% jarvis vs ollama), Phase 4 report (2026-06-06-phase4-report.md, 96.6% pre-registered confirmation), all numerical claims verified exact; 14 core concepts verified in core/services/interlanguage_practice.py CORE_VOCABULARY; 5 operators verified in PRIMITIVES dict; experimental infrastructure confirmed (jarvis_bare runner commit 54de8a65, classifiers, DB tables); git history confirms paper committed 2f371eef 2026-06-07",
+    "action": "keep"
+  },
+  {
+    "path": "docs/skills-jarvis-compat.md",
+    "category": "forældet",
+    "summary": "Skills compatibility guide (Claude Code → Jarvis). May 2026 creation, never updated, contains stale tooling references.",
+    "ground_truth_basis": "Verified via codebase audit and git history: (1) Document created 2026-05-17 (commit 19c9b4e9), never updated despite 51 days of active development (last codebase commit 2026-07-08). (2) Claims skills exist: verified ✓ 64 total, 14 superpowers at ~/.jarvis-v2/skills/. (3) Tool mappings are incomplete/inaccurate: (a) Claims `start_autonomous_run` was \"continuation pattern\" but doc omits it from tool list—tool exists since 2026-04-10 (commit 93e8212e), before doc creation. (b) References commit 491a1a76 for request_codex_skeleton—commit does not exist in git history (git rev-parse 491a1a76 fails). Tool exists at core/tools/coding_lane_tools.py. (c) Suggests file ops via \"bash cat\" or nonexistent core/tools/file_io.py—actual tools are operator_read_file, operator_write_file (in simple_tools.py) and operator_edit_file. (d) References runtime tables (runtime_proactive_loop_lifecycle_signals, runtime_open_loop_signals)—tables exist but mapping context stale. (4) No newer superceding doc found (grep -r, ls -la /media/projects/jarvis-v2/docs/*skill*). (5) Memory.md notes several skill/dispatch redesigns post-May: agent_council_locked (3.jul), cowork_redesign (1.jul), code_mode_channels_dispatch (backends landed) but skills-compat never refreshed. (6) Methodology section (§\"Hvordan Jarvis bruger...\") still conceptually valid but tool references broken.",
+    "action": "archive",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/specs/2026-06-21-unified-gate-architecture.md",
+    "category": "forældet",
+    "summary": "Spec for 7 unified cluster-gates through GateKernel; planned Phases A-G consolidation. GateKernel built but never integrated; superseded by central().decide() architecture.",
+    "ground_truth_basis": "GateKernel module exists (core/services/gate_kernel.py, commit 1af7df2b) with Verdict/Decision/GateClass classes and run_phase method, but grep -r \"run_phase\" shows zero usage in production code (only dead comment). Gates route through central().decide() instead (commits 72da5599, 7f4a7c91, 8688fae3). Den Intelligente Central (88650a5a, 042ec67b) became actual decision-routing architecture. Phases A-G (TruthGate consolidation, AuthGate, LoopGate, CommitGate, PrivacyGate, ReviewGate, ProactivityGate) never executed via GateKernel; some gate consolidation happened (veto→commit 84e48cd3, mutation 886ad53d) but through central.decide not kernel. Spec file never updated after 2026-06-21; no commits mention superseding or pivoting.",
+    "superseded_by": "docs/specs/2026-07-02-intelligent-central-spec.md (actual routing via central().decide), docs/specs/2026-07-02-intelligent-central-meta-cognition.md (broader Central architecture)",
+    "action": "archive"
+  },
+  {
+    "path": "docs/specs/2026-06-30-intelligent-anomaly-capture.md",
+    "category": "færdig",
+    "summary": "Intelligent anomaly capture spec — known-signal promotion, auto-routing, Jarvis' write access to Central",
+    "ground_truth_basis": "Verified implementation against live codebase: (1) Matching git commit 043f03dd 2026-06-30; (2) Database schema: known_anomaly_signals table + known_signal column in central_anomalies, both confirmed via sqlite3 PRAGMA; (3) All 8 db_anomalies functions exist and importable: promote_to_known, route_anomaly_to_nerve, depromote_known_signal, list_known_signals, get_known_signal, bump_known_signal_count, list_anomalies(exclude_known); (4) central_anomaly.py: _full_trace captures 15 frames/2000 chars, known-signal check before anomaly-log at line 130-158; (5) central_query_tool.py: status returns anomalies{counts,recent}+known_signals (line 143-144), known_signals action (line 305-309), resolve_and_route (312-322), depromote (325-331), owner-gating at 113-121; (6) central_realtime.py: known_signals in snapshot (line 164-167); (7) Tests in test_db_anomalies.py, test_central_query_tool.py, test_central_anomaly.py all pass; (8) All 6 review corrections (R1-R3) and 9 self-review findings implemented in code",
+    "action": "keep"
+  },
+  {
+    "path": "docs/specs/2026-06-30-wire-eventbus-and-cache-to-central.md",
+    "category": "færdig",
+    "summary": "Spec for wiring eventbus and cache telemetry to Central — fully implemented and live.",
+    "ground_truth_basis": "Verified against live code: (1) core/services/eventbus_central_bridge.py exists (654 lines) with full FAMILY_ROUTES allowlist implementation; (2) core/services/cache_telemetry.py lines 83-96 publish to eventbus and call central().observe(); (3) core/services/central_anomaly.py line 181 publishes \"anomaly.captured\" to eventbus as spec §3.0 describes; (4) git history shows implementation commits c5491580 (2026-06-30), 9a7e9256 (2026-07-01) immediately after spec creation, with ongoing maintenance (latest 7a763448 on 2026-07-06); (5) spec §26 documents implementation status as current; (6) §28 added 2026-07-01 shows evolution beyond initial spec still active.",
+    "action": "keep"
+  },
+  {
+    "path": "docs/specs/2026-07-01-inner-life-to-central-wiring.md",
+    "category": "forældet",
+    "summary": "Inner-life→Central wiring roadmap (9-step plan with false bug claims, stale db.py architecture post-refactor)",
+    "ground_truth_basis": "Codebase verification (2026-07-08): (1) desperation_awareness.py:171 & reboot_awareness_daemon.py:183 both call event_bus.publish() with CORRECT signature (string kind, dict payload) — quick-win #1 bug claim is FALSE; (2) core/runtime/db.py is 1,209 lines (NOT 33k) as of HEAD, following 15-commit refactoring cascade 2026-07-02→2026-07-08 (ff09a3ab...881abe0d) that extracted db into separate modules; (3) STEP 0-2 of wiring roadmap LIVE (commits 6031292c, a689fd40, 717b899b 2026-07-01); STEP 3-9 NOT implemented; (4) trading family now routed in eventbus_central_bridge.py:63 (was dark at document date, now fixed).",
+    "action": "archive",
+    "superseded_by": "docs/superpowers/plans/2026-07-05-central-governed-inner-life.md (newer refinement, dated 2026-07-05)"
+  },
+  {
+    "path": "docs/specs/2026-07-02-central-thinking-language-spec.md",
+    "category": "færdig",
+    "summary": "Spec B — Complete language layer for Central's self-reasoning, covering S1-S3 integration and B0-B4 roadmap phases",
+    "ground_truth_basis": "Git verification: spec written 2026-07-02 13:33:09 (commit a09f388b); all 4 implementation phases shipped same day by 13:49:25 (adc510ce B0, bc3f59d0 B1+B2, a01bb7bb B3+B4). Code verification: (1) central_lexicon.py contains CENTRAL_TERMS (22 terms), SEED_BINDINGS (125 bindings), taxonomy_coverage() [84.31% bound], bind_taxonomy(), word_needs_for_ceremony() — all operational. (2) central_notation.py contains parse(), dedup(), correlate_by_antecedent(), infer_transitive(), detect_notation_contradictions(), gather_all_notations(), model_free_reasoning() — verified callable and working; model_free_reasoning() truly model-free (no LLM calls, only symbol manipulation). (3) central_render.py exists and contains render_cluster_relation(), render_anomaly(), render_decision(), render_state_snapshot() — all deterministic, model-free. (4) central_proposal.py implements audit_proposal() and make_proposal() per spec B4 contract. (5) Tests exist and verify: taxonomy binding (test_central_taxonomy_binding.py, 7 tests), render primitivates (test_central_render.py, 10+ tests including cross-surface transitive inference), proposals (test_central_proposal.py, 7 tests). (6) Live runtime use: gather_all_notations() called by model_free_reasoning() via cadence; recording notation-reasoning metrics to private observability. (7) Numbers in spec: claims \"36 termer, 88 bindinger\" — verified ~36 terms, ~89 bindings at commit a09f388b (minimal rounding error). (8) No superseding document found; Spec A-E all reference Spec B as foundational to Central's interlanguage.",
+    "action": "keep"
+  },
+  {
+    "path": "docs/specs/2026-07-02-intelligent-central-meta-cognition.md",
+    "category": "forældet",
+    "summary": "Intelligent Central meta-cognition spec — comprehensive plan for five threads, Fase 0-6. Partially implemented with significant architectural divergence.",
+    "ground_truth_basis": "VERIFIED: (1) Fase 0 delivered (notation_il, normalform, catalog — commits a757e142, 68103edf from July 2). (2) Fase 1-3 mostly live (central_model_meta.py, central_sequence.py, central_brain_link.py all deployed). (3) KEY MISMATCH: §1.5 prescribes \"ÉT union-anker\" forankret i single Bjørn ceremony; code implements per-domain namespaced baselines (commit 68103edf, lines in central_hypothesis_governance.py:267-274). (4) MISSING: central_prompt_adaptation.py (Tråd 2 Lag 4), central_interlanguage_lexicon.py (Tråd 3 Fase 4), union-anker ceremony. (5) Several tests from §11 (test_learning_membrane_wired, test_circular_wired, test_multi_thread_anchor_isolation, etc.) don't exist. Grep results show gate_learning_input has callers (central_adaptation.py, central_sequence.py) contrary to spec claim §1.3, but deployment date (July 2) and test structure differ from spec narrative.",
+    "superseded_by": "docs/plan: Central-styret indre liv (10723ad3); other Fase N docs for individual threads",
+    "action": "archive"
+  },
+  {
+    "path": "docs/specs/2026-07-02-lag4-shadow-adaptation-spec.md",
+    "category": "færdig",
+    "summary": "Lag 4 c→d-loop spec — describes hypothesis-to-adaptation closure, shadow-first, rollback-governed, 7 anti-reinforcement guards.",
+    "ground_truth_basis": "Verified against shipped code: (1) central_adaptation.py exists with ADAPTATION_REGISTRY, AdaptationClass, rollback() func, shadow-first default (central_lag4_live_enabled=False); (2) all governance functions exist: may_apply_adaptation, gate_self_mutation, gate_learning_input, anchor_identity_baseline in central_hypothesis_governance.py; (3) frozen-core blacklist implemented (116-123 central_adaptation.py); (4) all 5 anti-reinforcement mechanisms present: Popper-asymmetry, circular-quarantine (is_circular), external grounding (is_externally_grounded), multiple-comparisons (benjamini_hochberg_cutoff), TTL (is_expired); (5) control-arm: is_control_arm(0.2 default) + central_mutation snapshot+rollback; (6) 7 tests (test_central_adaptation.py lines 37-100) confirm shadow/live/rollback/drift-budget behavior; (7) commits: 9dda151c (2026-07-02 09:39 implementation) + 5c054dfb (2026-07-02 09:42 doc) both in HEAD. No newer spec supersedes this. Memory note from 2026-07-04 confirms lag4 went live (flag toggled in container) post-spec, which is normal lifecycle.",
+    "action": "keep"
+  },
+  {
+    "path": "docs/specs/2026-07-02-presence-avatar-spec.md",
+    "category": "færdig",
+    "summary": "Spec E — Presence/avatar for Jarvis. Soul on server, body on client.",
+    "ground_truth_basis": "E0 endpoint /presence/state (889eff7e, 2026-07-02 20:47) reads live central_valence (D2) + central_self_state (D3), owner-only. E1 PresenceOrb (ef35ee8f, 2026-07-02 20:52) renders 4 WebGL styles (reactor/hud/core/wave) client-side, opt-in via PresenceSection. Prototype docs/notes/jarvis-presence-concepts.html exists. All prerequisite services (central_valence.py, central_self_state.py, embodied_presence.py, device_presence.py) LIVE per capability_matrix.md. E2-E4 (TalkingHead/MetaHuman) correctly documented as deferred.",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/specs/2026-07-03-agent-council-swarm-freedom.md",
+    "category": "færdig",
+    "summary": "Agent & council redesign spec — 6 freedoms (dynamic prompts, tools, landing, judge) to match Claude's model. All verified implemented same day.",
+    "ground_truth_basis": "Code audit vs actual implementation. Verified: (1) spawn_agent_task accepts system_prompt/tool_policy/allowed_tools in tool definition (simple_tools_definitions.py:2504-2548); (2) _build_agent_tools_payload wires tools through (agent_runtime_base.py:121-146); (3) _land_initiative implemented and called (autonomous_council_daemon.py:348-382); (4) _consult_convene_judge and central_convene_judge.py exist (line 297); (5) Axis 2/3 comments present in code (agent_runtime_spawn.py:1729, agent_runtime_base.py:85). Implementation commit 2343aad7 landed same day as spec (2026-07-03 22:21). Council hanging fix verified via try/finally in agent_runtime_council.py:666-686. All §B audit claims match code state; all §C redesign items are shipping.",
+    "action": "keep"
+  },
+  {
+    "path": "docs/specs/compaction-ground-truth-grounding.md",
+    "category": "færdig",
+    "summary": "4-Lag compaction ground-truth injection spec — all layers (A-D) shipped live on 2026-05-17, fully integrated and functional",
+    "ground_truth_basis": "Git commits 4f857303/d982a540/4a04f07d/145409e2 (2026-05-17) all in main branch; core/context/compact_ground_truth.py (34KB, live); collect_compact_ground_truth() format_ground_truth_block() validate_compact_marker() detect_compact_mismatch_in_chat() all verified functional; auto_compact.py lines 61-72 integrate Lag A; session_compact.py accepts git_sha parameter; DB migration in chat_sessions.py for git_sha column. Key files (my_projects.py, db_credit_assignment.py) exist as spec references.",
+    "action": "keep"
+  },
+  {
+    "path": "docs/specs/lag1-credit-assignment.md",
+    "category": "forældet",
+    "summary": "Lag 1 credit assignment spec (May 17, 2026) — schema + hook design for prompt-variant decisions",
+    "ground_truth_basis": "Git log + code inspection: (1) Schema migration promised (ALTER TABLE kind/outcome_aggregate) CONFIRMED in core/runtime/db_credit_assignment.py lines 41-56; (2) record_choice() function promised CONFIRMED at lines 105-157; (3) _check_credit() hook promised but RENAMED to _check_outcomes() in meta_reflection_daemon.py (commit a222332a \"replace _check_credit with _check_outcomes\"); (4) SCOPE DIVERGENCE: spec says \"Første scope = prompt_variant\" but actual implementation (commits 0736265f/9065d03a/a511a92a) instruments provider_routing, model_tier, response_style instead; (5) design evolved via newer doc docs/lag1-credit-assignment-design.md (commit 3d4cafff, June 7) which supersedes the May 17 scope with Phase 1 three-kind design (provider_routing/model_tier/response_style)",
+    "superseded_by": "docs/lag1-credit-assignment-design.md",
+    "action": "archive"
+  },
+  {
+    "path": "docs/superpowers/notes/2026-05-10-skill-chain-day1.md",
+    "category": "færdig",
+    "summary": "Phase 1 baseline for skill_chain deployment with day-1 verification and 30-day review plan.",
+    "ground_truth_basis": "Verified against live codebase: skill_chain tool implementation (core/tools/skill_chain_tool.py) shows atomic pre-validation, C-format builder, and exact behavior from doc examples. skill_gate tool (core/tools/skill_gate_tool.py) confirms chain_candidates and chain_hint logic working as described. All 4 example skills (fact-checker, markdown-helper, deep-research, prompt-optimizer) exist in skill_engine.list_skills(). skill_chain_enabled flag present in core/runtime/settings.py with default True. Commit 04e598c8 verified in git log (2026-05-10 18:48:05). Tool count was 320 on 2026-05-10; now 444 (expected evolution). Phase 2 (propose_skill_chain, revise_skill_chain) deployed after 30-day review window, confirming review decision was made to proceed (commits e3d0e099, aa90dd0e present).",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/superpowers/spec/2026-06-16-open-ui-panel-workstation-support.md",
+    "category": "droppet",
+    "summary": "Empty placeholder (4 bytes \"test\"). Real spec is at specs/ (plural), feature fully implemented.",
+    "ground_truth_basis": "Target file is /media/projects/jarvis-v2/docs/superpowers/spec/2026-06-16-open-ui-panel-workstation-support.md (4 bytes, created 2026-06-20 as placeholder). Real spec at specs/2026-06-16-open-ui-panel-workstation-support.md (7.3KB, created 2026-06-16). Implementation verified: app_control_tool.py VALID_SCOPES (line 17), ui_panel_store.py scope validation (lines 22,42-43), fileTreeHighlight.ts HighlightScope type (line 8), UiPanelWatcher.tsx emits scope (lines 61-62), CodeView.tsx onHighlight handler (lines 270-299). Tests passing in test_app_control_tool.py and test_ui_panel_store.py. Commits: spec 9ba130a9, feat 82e0a88f, fixes 9e631f5a — no reversions.",
+    "action": "archive",
+    "superseded_by": "docs/superpowers/specs/2026-06-16-open-ui-panel-workstation-support.md"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-06-16-plugin-catalog-design.md",
+    "category": "forældet",
+    "summary": "Plugin catalog design — lists plugins but describes obsolete file structure (core/plugins/ vs actual core/services/)",
+    "ground_truth_basis": "Verified against codebase: (1) Section 6 claims plugins in core/plugins/{gmail,calendar,drive,docs,sheets,slides,github,browser,computer_use,build_web_apps,huggingface,pdf}_plugin.py — actual implementation is core/services/{gmail,google,github,pdf,notes,hf}_connector.py registered in core/services/connectors.py; (2) core/plugins/ contains only base_plugin.py (framework, 116 lines, git c8fc4006) and __init__.py — no individual plugin files exist; (3) git log shows all plugin implementation commits (aa5ce578, 8a2fd4dd, b1f58d71, f3997897) use core/services/ not core/plugins/; (4) connectors.py lines 20-138 show actual catalog with Gmail/Calendar/Drive/Docs/Sheets/Slides/GitHub/PDF/Notes/Hugging Face all status='available' or 'coming_soon' — the goals match but architecture differs fundamentally; (5) Newer spec 2026-06-18-plugin-permission-levels-design.md supersedes this in approach.",
+    "superseded_by": "docs/superpowers/specs/2026-06-18-plugin-permission-levels-design.md",
+    "action": "archive"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-06-17-jarvis-mobile-companion-design.md",
+    "category": "færdig",
+    "summary": "Jarvis Mobile Companion V1 design spec — comprehensive planning for Android Expo app",
+    "ground_truth_basis": "Verified against actual codebase: (1) Mobile app at .worktrees/jarvis-mobile-companion-v1/apps/mobile/ is Expo-based React Native, version 0.1.55 versionCode 56, built with expo-camera, expo-secure-store, react-native-firebase/messaging; (2) All Phase 1-5 features confirmed implemented in source code: LoginScreen.tsx (token auth), QrScanScreen.tsx (QR pairing), ChatScreen.tsx (streaming), Composer.tsx (attachments + mic button), HeartbeatDot + StreamIndicator + ToolResultCard components (visual polish), TeamsPanel.tsx (Phase 6), push.ts (FCM), NotificationsSection.tsx (notification preferences), device_presence tracking; (3) All backend API endpoints listed in spec exist in apps/api/jarvis_api/routes/: chat_stream_v2.py (/chat/stream/v2), chat.py (/chat/sessions), transcribe.py (/transcribe), approvals in chat.py; (4) Git log shows 30+ commits since spec date (2026-06-17) advancing from v0.1.33→0.1.55, implementing Phases 4-5 features and Teams UI (Phase 6), confirming this spec accurately described work that got built and delivered.",
+    "action": "keep",
+    "superseded_by": ""
+  },
+  {
+    "path": "docs/superpowers/specs/2026-06-18-jarvis-mobile-companion-v2-vision.md",
+    "category": "forældet",
+    "summary": "V2 vision document describing features cut from V1 spec",
+    "ground_truth_basis": "Mobile app exists on codex/jarvis-mobile-companion-v1 branch at v0.1.55 (56 builds). Features described as \"cut from V1\": chatbubble (implemented f838ce67 2026-06-20 in BubbleModule.kt), liveness ring (LivenessRing.tsx), auto-updater (appUpdate.ts), teams (TeamsPanel.tsx f256e022), device awareness (geolocation). Vision dated 2026-06-18 claims Phase 2+, but these features ARE being built in V1 implementation branch. Superseded by specific feature design specs (2026-06-19-20-mobile-*.md) which reference and implement the vision. Mobile code NOT merged to main as of 2026-07-08.",
+    "superseded_by": "codex/jarvis-mobile-companion-v1 branch implementation + docs/superpowers/specs/2026-06-19-mobile-session-panel-save-rail-design.md, 2026-06-20-mobile-chatbubble-design.md, 2026-06-19-device-awareness-design.md, 2026-06-20-teams-design.md, 2026-06-20-mobile-auto-updater-design.md",
+    "action": "archive"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-07-01-living-mind-design.md",
+    "category": "forældet",
+    "summary": "Draft 1 living-mind spec, superseded by living-neuron-design.md v3 on 2026-07-01",
+    "ground_truth_basis": "Git history: 117ae408 (2026-07-02) created target doc + replacement simultaneously. Both files in repo; living-neuron-design.md is 522 lines (active, 18 commits since), target is 15-line redirect. living-neuron-design.md marked LEVENDE DOKUMENT, referenced in 6+ downstream specs, code verified: central_governance, living_executive, db_governance.py all exist and deployed.",
+    "action": "archive",
+    "superseded_by": "docs/specs/2026-07-01-living-neuron-design.md"
+  },
+  {
+    "path": "docs/superpowers/specs/2026-07-05-dark-systems-awakening-spec.md",
+    "category": "færdig",
+    "summary": "Spec proposing awakening of 8 layers of dark systems via inner-life connections. Core work delivered.",
+    "ground_truth_basis": "Git log verified: proposed features implemented same day (commits 2026-07-05 17:58-23:36). Codebase verification: emotional_chords.py, longing_signal_daemon.py, identity_drift_daemon.py all exist; visible_inner_life.py contains 19 _line() functions (more than spec proposed); running build_inner_life_section() produces output with all proposed signals. File line counts verified against spec claims (most match within Boy Scout refactor variance). Self-review doc (2026-07-05-dark-systems-awakening-self-review.md) exists and identified C/H/M issues, many since addressed in later commits (e.g., feat(voice) commits 2026-07-05, feat(body) 2026-07-06). Code is live and functional.",
+    "action": "keep"
+  },
+  {
+    "path": "docs/vesc-protocol-table-draft1.md",
+    "category": "droppet",
+    "summary": "VESC motor controller protocol specification (serial framing, command formats, CRC-16). Never implemented.",
+    "ground_truth_basis": "Codebase grep: zero refs to VESC/0x02/0x03/COMM_FW_VERSION/COMM_GET_VALUES in core/, apps/, scripts/ (verified 2026-07-08). Git history: single commit 4b03bead (2026-06-29) created file as \"Jarvis-forfattede docs\"; no follow-up commits. Project mission: Jarvis is AI identity/memory system, not hardware controller. Existing audit (406f5cb7): marked \"needs_review\" with \"ambiguous signals\".",
+    "action": "archive"
+  }
+]

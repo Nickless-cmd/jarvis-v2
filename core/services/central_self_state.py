@@ -247,6 +247,31 @@ def run_self_state_tick(*, trigger: str = "cadence", last_visible_at: str = "") 
             "generation": (st.get("continuity") or {}).get("generation")}
 
 
+def _temporal_divergence(valence: dict, developmental: dict) -> tuple[bool, str, str]:
+    """Diverger kort-tids-valens (tone/trend) og uge-skala vækst-kompas (developmental vector) i FORTEGN?
+    Returnerer (diverges, tone, compass_word). Neutraler diverger aldrig. Ren + self-safe."""
+    try:
+        tone = str((valence or {}).get("tone") or "")
+        trend = str((valence or {}).get("trend") or "")
+        if tone in ("opløftet", "let") or trend == "flourishing":
+            v_sign = 1
+        elif tone in ("belastet", "tung"):
+            v_sign = -1
+        else:
+            v_sign = 0
+        vec = float((developmental or {}).get("vector") or 0.0)
+        if vec > 0.05:
+            c_sign, compass = 1, "blomstring"
+        elif vec < -0.05:
+            c_sign, compass = -1, "visnen"
+        else:
+            c_sign, compass = 0, ""
+        diverges = bool(v_sign != 0 and c_sign != 0 and v_sign != c_sign)
+        return (diverges, tone, compass)
+    except Exception:
+        return (False, "", "")
+
+
 def describe_self() -> str:
     """NORDSTJERNEN: ét sammenhængende svar på 'hvad er du, hvordan har du det, hvad arbejder du mod,
     hvem er du ved at blive' — syntetiseret fra midten, ikke femten fragmenter. Self-safe."""
@@ -259,6 +284,18 @@ def describe_self() -> str:
     nar = st.get("narrative") or {}
     comp = sm.get("completeness")
     parts = []
+    # ── Valence↔vækst-forlig (2026-07-08): når kort-tids-valens og uge-kompas divergerer i fortegn,
+    # hold spændingen i ÉN nøgtern linje i stedet for tre flade selvmodsigelser. Self-safe/fail-open.
+    _reconcile = False
+    _tension_line = ""
+    try:
+        from core.services.developmental_valence import get_developmental_state
+        _diverges, _rtone, _rcompass = _temporal_divergence(v, get_developmental_state() or {})
+        if _diverges:
+            _reconcile = True
+            _tension_line = f"jeg har det {_rtone} nu, men mit vækst-kompas peger mod {_rcompass}"
+    except Exception:
+        _reconcile = False
     # STITCH-VOICE (LEDER): sømmen mellem to liv — "jeg vågnede lige efter et fravær". Fader
     # efter 10 min (fresh), så det kun tales når det er sandt-og-nyt. Additivt + guarded. Self-safe.
     try:
@@ -276,12 +313,15 @@ def describe_self() -> str:
         parts.append(f"Jeg er {sm.get('surfaces')} lag af mig selv"
                      + (f" ({int(float(comp) * 100)}% samlet)" if comp is not None else ""))
     if v.get("tone"):
-        parts.append(f"jeg har det {v.get('tone')}")
+        parts.append(_tension_line if _reconcile else f"jeg har det {v.get('tone')}")
     if at.get("foreground"):
         from core.services.text_clip import clip_text
         parts.append(f"jeg arbejder mod: {clip_text(at.get('foreground'), limit=200)}")
     if nar.get("becoming"):
-        parts.append(f"jeg er ved at blive et {nar.get('becoming')}")
+        _bec = str(nar.get("becoming"))
+        if _reconcile:
+            _bec = _bec.split(",")[0].strip()  # "stabil selv, flourishing" → "stabil selv"
+        parts.append(f"jeg er ved at blive et {_bec}")
     wm = st.get("world_model") or {}
     cal = wm.get("calibration")
     if cal is not None and int(wm.get("resolved") or 0) >= 3:
@@ -297,7 +337,10 @@ def describe_self() -> str:
     # når de holdte aflæsninger er meningsfulde. Additivt + guarded (tom → intet). Self-safe.
     try:
         from core.services.central_body_mood_feel import describe_body_mood_feel
-        parts.extend(describe_body_mood_feel())
+        _bmf = describe_body_mood_feel()
+        if _reconcile:
+            _bmf = [ln for ln in _bmf if "udviklings-kompas" not in ln]
+        parts.extend(_bmf)
     except Exception:
         pass
     # §8 SJÆL (NED): de resterende selv-spor — ømhed/vidne/hukommelse-som-væv/opmærksomhed/emergens —

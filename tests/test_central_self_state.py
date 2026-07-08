@@ -284,3 +284,74 @@ def test_describe_self_all_three_extensions_coexist(monkeypatch, isolated_runtim
     assert "tiden føles som en stille strækning" in desc
     assert "stemningen er tilfreds" in desc
     assert "varmen mod den jeg taler med er høj" in desc
+
+
+from core.services import central_self_state as css
+
+
+def test_temporal_divergence_positive_valence_vs_wilting():
+    diverges, tone, compass = css._temporal_divergence(
+        {"tone": "opløftet", "trend": "flourishing"}, {"vector": -0.3})
+    assert diverges is True and tone == "opløftet" and compass == "visnen"
+
+
+def test_temporal_divergence_agreement_both_positive():
+    diverges, _t, _c = css._temporal_divergence(
+        {"tone": "opløftet", "trend": "flourishing"}, {"vector": 0.3})
+    assert diverges is False
+
+
+def test_temporal_divergence_agreement_both_negative():
+    diverges, _t, _c = css._temporal_divergence(
+        {"tone": "belastet", "trend": "wilting"}, {"vector": -0.3})
+    assert diverges is False
+
+
+def test_temporal_divergence_neutral_compass_never_diverges():
+    diverges, _t, _c = css._temporal_divergence(
+        {"tone": "opløftet"}, {"vector": 0.0})
+    assert diverges is False
+
+
+def test_temporal_divergence_neutral_valence_never_diverges():
+    diverges, _t, _c = css._temporal_divergence(
+        {"tone": "neutral"}, {"vector": -0.3})
+    assert diverges is False
+
+
+def test_temporal_divergence_missing_developmental_no_diverge():
+    diverges, _t, _c = css._temporal_divergence({"tone": "opløftet"}, {})
+    assert diverges is False
+
+
+def _base_state():
+    return {
+        "valence": {"tone": "opløftet", "trend": "flourishing"},
+        "self_model": {}, "attention": {}, "world_model": {},
+        "narrative": {"becoming": "stabil selv, flourishing"},
+    }
+
+
+def test_describe_self_divergent_holds_tension(monkeypatch):
+    monkeypatch.setattr(css, "get_self_state", _base_state)
+    monkeypatch.setattr("core.services.developmental_valence.get_developmental_state",
+                        lambda: {"vector": -0.3})
+    monkeypatch.setattr("core.services.central_body_mood_feel.describe_body_mood_feel",
+                        lambda: ["mit udviklings-kompas peger mod visnen", "stemningen er tilfreds"])
+    out = css.describe_self()
+    assert "jeg har det opløftet nu, men mit vækst-kompas peger mod visnen" in out
+    assert "flourishing" not in out                        # trend word dropped from becoming
+    assert "udviklings-kompas" not in out                  # standalone compass line filtered (held in tension line)
+    assert out.count("kompas peger mod visnen") == 1       # compass concept stated exactly once
+    assert "stemningen er tilfreds" in out                 # unrelated body-mood line kept
+
+
+def test_describe_self_agreement_unchanged(monkeypatch):
+    monkeypatch.setattr(css, "get_self_state", _base_state)
+    monkeypatch.setattr("core.services.developmental_valence.get_developmental_state",
+                        lambda: {"vector": 0.3})
+    monkeypatch.setattr("core.services.central_body_mood_feel.describe_body_mood_feel",
+                        lambda: ["mit udviklings-kompas peger mod blomstring"])
+    out = css.describe_self()
+    assert "jeg har det opløftet" in out
+    assert "men mit vækst-kompas" not in out               # no tension line on agreement

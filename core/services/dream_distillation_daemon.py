@@ -106,6 +106,14 @@ def run_dream_distillation_daemon(
             "bias_pipeline": bias_result,
         }
 
+    # Anti-drift (Spec H §2.3, SHADOW): scan drømme-residue for konfabulerede identitets-påstande FØR
+    # den lagres. I shadow returneres teksten UÆNDRET — kun en observe når drift fanges. Self-safe.
+    try:
+        from core.services.identity_drift_guard import identity_drift_guard
+        residue, _ = identity_drift_guard(residue, source="dream")
+    except Exception:
+        pass
+
     created_at = now.isoformat()
     expires_at = (now + timedelta(hours=_RESIDUE_TTL_HOURS)).isoformat()
     payload = {

@@ -282,6 +282,13 @@ def get_chronicle_context_for_prompt(n: int = 3, max_chars: int = 1500) -> str:
         text = "\n\n".join([header, *kept]).strip()
     if len(text) > max_chars:
         text = clip_text(text, limit=max_chars)
+    # Anti-drift (Spec H §2.3, SHADOW): fang konfabulerede identitets-påstande i chronicle-kontekst
+    # FØR den når prompten. I shadow returneres teksten UÆNDRET — kun en observe når drift fanges. Self-safe.
+    try:
+        from core.services.identity_drift_guard import identity_drift_guard
+        text, _ = identity_drift_guard(text, source="chronicle")
+    except Exception:
+        pass
     return text
 
 

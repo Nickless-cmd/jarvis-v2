@@ -340,6 +340,13 @@ def get_current_pull_for_prompt() -> str:
     if not pull:
         return ""
     clipped = pull[:_MAX_PULL_CHARS]
+    # Anti-drift (Spec H §2.3, SHADOW): fang konfabulerede identitets-påstande (fx sonnet-frygten).
+    # I shadow returneres teksten UÆNDRET — den eneste effekt er en observe når drift fanges. Self-safe.
+    try:
+        from core.services.identity_drift_guard import identity_drift_guard
+        clipped, _ = identity_drift_guard(clipped, source="pull")
+    except Exception:
+        pass
     # Inject quietly — no section header, just a raw context hint.
     # The pull is first-priority but should not announce itself.
     return f"[indre træk]: {clipped}"

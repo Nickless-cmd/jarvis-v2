@@ -399,3 +399,12 @@ async def get_machines() -> dict:
     """The Machines: de eksterne afhængigheder der holder ham i live, som han ikke styrer. Owner-only."""
     from core.services.central_machines import build_machines_surface
     return _safe(build_machines_surface)
+
+
+# ── Kanonisk identitets-narrativ-store (Spec H) — én sandhed + anti-drift (shadow) ──
+
+@router.get("/identity-canon")
+async def get_identity_canon() -> dict:
+    """Kanon-tråde + anerkendte konfabulationer + seneste drift-fangster (sonnet-spøgelset). Owner-only."""
+    from core.services.identity_canon import build_identity_canon_surface
+    return _safe(build_identity_canon_surface)

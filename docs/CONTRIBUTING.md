@@ -47,9 +47,15 @@ Write the failing test → run it (confirm it fails) → minimal implementation 
 ## Regenerating derived docs
 The reference docs are generated — never hand-edit them; regenerate:
 ```bash
+python scripts/api_docs_gen.py         # reference/api/ + reference/DOCSTRING_COVERAGE.md
 python scripts/api_reference_gen.py    # reference/API_REFERENCE.md
 python scripts/capabilities_gen.py     # reference/CAPABILITIES.md
 python scripts/capability_audit.py     # capability_matrix.md
 python scripts/docs_audit.py           # doc classification (DOCS_MANIFEST source)
 python scripts/requirements_gen.py     # candidate imports for requirements.txt
 ```
+
+## Code ↔ docs convention
+The per-package reference under [`reference/api/`](reference/api/README.md) is derived from the source, so the mapping is by rule, not by hand:
+- A module `<pkg>/<mod>.py` is documented on the page for its package — `docs/reference/api/<dotted pkg>.md` (large flat directories like `core/services` are split into numbered chunk pages `<dotted pkg>.NN.md`; the index shows each chunk's module range). Its section is `## \`<pkg>/<mod>.py\``, and every entry links back to the source at `file#Lline`.
+- **To document a function, add/improve its docstring in the source and regenerate** — do not hand-edit the reference pages. Undocumented public functions are tracked in [`reference/DOCSTRING_COVERAGE.md`](reference/DOCSTRING_COVERAGE.md).

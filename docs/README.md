@@ -24,6 +24,8 @@ This is the documentation index. Every doc has been classified against **git + r
 - [`project_reasoning_layer.md`](project_reasoning_layer.md) · [`streaming-production-grade-spec.md`](streaming-production-grade-spec.md) — runtime deep-dives
 
 ## Reference (generated from code — do not hand-edit)
+- [`reference/api/`](reference/api/README.md) — **per-package code reference**: every module's classes/functions with signatures, docstrings, and source links (`python scripts/api_docs_gen.py`)
+- [`reference/DOCSTRING_COVERAGE.md`](reference/DOCSTRING_COVERAGE.md) — docstring coverage + the undocumented public functions (the function-level `mangler`)
 - [`reference/API_REFERENCE.md`](reference/API_REFERENCE.md) — every HTTP route (`python scripts/api_reference_gen.py`)
 - [`reference/CAPABILITIES.md`](reference/CAPABILITIES.md) — every tool + mutating flag (`python scripts/capabilities_gen.py`)
 - [`capability_matrix.md`](capability_matrix.md) — service liveness audit (`python scripts/capability_audit.py`)

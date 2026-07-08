@@ -8,20 +8,38 @@ from __future__ import annotations
 
 import logging
 
+from core.services.model_context import model_context_window
+
 logger = logging.getLogger(__name__)
 
-_AUTO_COMPACT_PCT = 0.80  # trigger at 80% of configured threshold
+_AUTO_COMPACT_PCT = 0.80          # flat fallback: 80% of configured threshold
+_AUTO_COMPACT_WINDOW_PCT = 0.70   # model-window-aware: compact at 70% of the model's OWN window
 
 
-def maybe_auto_compact_session(session_id: str) -> bool:
-    """Check session token count and compact if above threshold. Returns True if compacted."""
+def _compaction_threshold(*, provider: str, model: str, flat_fallback: int) -> int:
+    """Model-window-aware compaction threshold: window × 0.70. So a 1M-window lane compacts at ~700k
+    and a 128k lane at ~90k — each proportional to its own window, not one flat number. Falls back to
+    flat_fallback when the window is unknown/zero. Self-safe."""
+    try:
+        window = int(model_context_window(provider, model) or 0)
+        if window > 0:
+            return int(window * _AUTO_COMPACT_WINDOW_PCT)
+    except Exception:
+        pass
+    return int(flat_fallback)
+
+
+def maybe_auto_compact_session(session_id: str, *, provider: str = "", model: str = "") -> bool:
+    """Check session token count and compact if above threshold. Returns True if compacted.
+    Threshold is model-window-aware when provider/model are given, else the flat fallback."""
     try:
         from core.runtime.settings import load_settings
         from core.context.token_estimate import estimate_tokens
         from core.services.chat_sessions import recent_chat_session_messages
 
         settings = load_settings()
-        threshold = int(settings.context_run_compact_threshold_tokens * _AUTO_COMPACT_PCT)
+        flat = int(settings.context_run_compact_threshold_tokens * _AUTO_COMPACT_PCT)
+        threshold = _compaction_threshold(provider=provider, model=model, flat_fallback=flat)
 
         messages = recent_chat_session_messages(session_id, limit=300)
         if not messages:

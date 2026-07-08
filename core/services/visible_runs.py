@@ -1173,7 +1173,9 @@ async def _stream_visible_run(
     # Auto-compact chat history if approaching context limit
     try:
         from core.context.auto_compact import maybe_auto_compact_session
-        maybe_auto_compact_session(run.session_id)
+        maybe_auto_compact_session(run.session_id,
+                                   provider=getattr(run, "provider", "") or "",
+                                   model=getattr(run, "model", "") or "")
     except Exception:
         pass
 

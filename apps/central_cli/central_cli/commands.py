@@ -26,6 +26,7 @@ _GET_ENDPOINTS = {
     "approvals": "/mc/approvals",
     "autonomous": "/central/autonomous",
     "connections": "/central/connections",
+    "docs-drift": "/central/docs-drift",
     "users": "/central/users",
     "excess": "/central/excess",
     "decentral": "/central/decentralization",

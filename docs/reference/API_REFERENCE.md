@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-07-08 from app.routes (live) — 502 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-07-08 from app.routes (live) — 503 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -130,6 +130,7 @@
 | GET | `/central/dejavu` | dict | central_matrix |
 | GET | `/central/diagnostics` | dict | central |
 | GET | `/central/dissent` | dict | central_matrix |
+| GET | `/central/docs-drift` | dict | central_docs_drift |
 | GET | `/central/dream-action` | dict | central_matrix |
 | GET | `/central/echo-breaker` | dict | central_matrix |
 | GET | `/central/events` | dict | central_absorb_routes |

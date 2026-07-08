@@ -196,6 +196,14 @@ _Central 'decentralization' route — chokepoint-skat + sikre decentraliserings-
 | function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_decentralization.py#L6) |
 | function | `get_decentralization` | `()` | Hvor meget af Centralen er unødvendig flaskehals + hvad kunne resolve lokalt. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_decentralization.py#L10) |
 
+## `apps/api/jarvis_api/routes/central_docs_drift.py`
+_Central 'docs-drift' route — docs-drift watchdog surface (owner-view, read-only, self-safe)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_docs_drift.py#L14) |
+| function | `get_docs_drift` | `()` | Docs-drift surface: hard/soft counts, report freshness, top drift items. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_docs_drift.py#L20) |
+
 ## `apps/api/jarvis_api/routes/central_excess.py`
 _Central 'excess' route — Centralens gartner-sans (owner-view)._
 
@@ -561,14 +569,4 @@ _Shared constants + guards for the JarvisX route modules._
 | function | `_resolve_workspace` | `(name)` | Resolve a workspace name to its directory, with traversal guard. | [src](../../../apps/api/jarvis_api/routes/jarvisx_common.py#L46) |
 | function | `_safe_subpath` | `(workspace_dir, relative)` | Resolve a relative path under workspace_dir with traversal guard. | [src](../../../apps/api/jarvis_api/routes/jarvisx_common.py#L65) |
 | function | `_require_owner` | `()` | Raise 403 if the current request isn't from the owner. | [src](../../../apps/api/jarvis_api/routes/jarvisx_common.py#L78) |
-
-## `apps/api/jarvis_api/routes/jarvisx_dispatches.py`
-_JarvisX Claude-Code dispatch dashboard route group._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `list_dispatches` | `(limit=…)` | Recent dispatches, running first then by started_at desc. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L29) |
-| function | `dispatch_budget` | `()` | Current hour's dispatch budget — count + tokens vs caps. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L93) |
-| function | `get_dispatch` | `(task_id)` | Full audit row + parsed spec for a single dispatch. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L119) |
-| function | `get_dispatch_diff` | `(task_id)` | Live diff of a dispatch's worktree against main. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L136) |
 

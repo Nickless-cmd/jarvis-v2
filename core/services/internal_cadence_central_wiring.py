@@ -61,6 +61,13 @@ def register_central_wiring_producers() -> None:
     except Exception:
         pass
 
+    # SP5: docs-drift watchdog → docs:drift nerve (reads docs/drift_report.json, self-safe).
+    try:
+        from core.services.docs_drift_watchdog import register_docs_drift_producer
+        register_docs_drift_producer()
+    except Exception:
+        pass
+
     # Fase 1d: causal-grafens tier-fordeling + precision (broen signal→hypotese) → tidsserie.
     try:
         from core.services.central_causal_quality import register_causal_quality_producer

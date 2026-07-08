@@ -2,6 +2,16 @@
 
 > Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/jarvisx_dispatches.py`
+_JarvisX Claude-Code dispatch dashboard route group._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `list_dispatches` | `(limit=…)` | Recent dispatches, running first then by started_at desc. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L29) |
+| function | `dispatch_budget` | `()` | Current hour's dispatch budget — count + tokens vs caps. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L93) |
+| function | `get_dispatch` | `(task_id)` | Full audit row + parsed spec for a single dispatch. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L119) |
+| function | `get_dispatch_diff` | `(task_id)` | Live diff of a dispatch's worktree against main. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L136) |
+
 ## `apps/api/jarvis_api/routes/jarvisx_processes.py`
 _JarvisX process-supervisor + trading + operator-wakeup route group._
 

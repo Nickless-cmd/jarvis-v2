@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated 2026-07-08. 5130/12031 functions/methods documented (42%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated 2026-07-08. 5134/12038 functions/methods documented (42%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated 2026-07-08. 5130/12031 functions/methods documented (42%). The list be
 | `core.memory` | 31 | 105 | 29% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 175 | 1012 | 17% |
-| `core.services` | 3689 | 8302 | 44% |
+| `core.services` | 3693 | 8309 | 44% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -38,7 +38,7 @@ Generated 2026-07-08. 5130/12031 functions/methods documented (42%). The list be
 | `scripts` | 76 | 238 | 31% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2384)
+## Undocumented public functions (2386)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L140)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1362,6 +1362,8 @@ Generated 2026-07-08. 5130/12031 functions/methods documented (42%). The list be
 - `core/services/diary_synthesis_signal_tracking.py` :: `build_diary_synthesis_signal_surface` (L87)
 - `core/services/diary_synthesis_signal_tracking.py` :: `refresh_diary_synthesis_signal_statuses` (L54)
 - `core/services/diary_synthesis_signal_tracking.py` :: `track_diary_synthesis_signals_for_visible_turn` (L22)
+- `core/services/docs_drift_watchdog.py` :: `check_docs_drift` (L45)
+- `core/services/docs_drift_watchdog.py` :: `read_report` (L17)
 - `core/services/dream_adoption_candidate_tracking.py` :: `build_runtime_dream_adoption_candidate_surface` (L85)
 - `core/services/dream_adoption_candidate_tracking.py` :: `refresh_runtime_dream_adoption_candidate_statuses` (L54)
 - `core/services/dream_adoption_candidate_tracking.py` :: `track_runtime_dream_adoption_candidates_for_visible_turn` (L32)

@@ -81,6 +81,15 @@ _KILL_SCOPE, _KILL_NAME = "autonomy", "proactivity_bridge"   # central_switches 
 
 
 def _owner_uid() -> str:
+    """Kanonisk owner-uid = owner-resolver'ens discord-id (samme som den virkende outreach-daemon
+    bruger). settings.extra.owner_user_id er tom i praksis → brug owner_resolver."""
+    try:
+        from core.identity.owner_resolver import get_owner_discord_id
+        uid = (get_owner_discord_id() or "").strip()
+        if uid:
+            return uid
+    except Exception:
+        pass
     try:
         from core.runtime.settings import load_settings
         return str(load_settings().extra.get("owner_user_id") or "").strip()

@@ -235,9 +235,10 @@ _Central 'feel' route — surfaces Jarvis' somatic/inner-life snapshot to the OW
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_governance.py#L9) |
-| class | `SetFlagBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/central_governance.py#L14) |
-| function | `get_governance` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_governance.py#L21) |
-| function | `set_governance` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/central_governance.py#L28) |
+| function | `_require_owner_strict` | `()` | Fail-closed gate for privilege-eskalering (flag-flip kan slå enforcement fra). | [src](../../../apps/api/jarvis_api/routes/central_governance.py#L14) |
+| class | `SetFlagBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/central_governance.py#L20) |
+| function | `get_governance` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_governance.py#L27) |
+| function | `set_governance` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/central_governance.py#L34) |
 
 ## `apps/api/jarvis_api/routes/central_healers.py`
 

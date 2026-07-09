@@ -11,6 +11,12 @@ def _require_owner() -> None:
     require_central_owner()
 
 
+def _require_owner_strict() -> None:
+    """Fail-closed gate for privilege-eskalering (flag-flip kan slå enforcement fra)."""
+    from apps.api.jarvis_api.routes.central_auth import require_central_owner_strict
+    require_central_owner_strict()
+
+
 class SetFlagBody(BaseModel):
     key: str
     value: object
@@ -27,7 +33,6 @@ async def get_governance() -> dict:
 @router.post("/governance/set")
 async def set_governance(body: SetFlagBody) -> dict:
     # Privilege-eskalering: at flippe et governance-flag kan slå enforcement fra → fail-closed gate.
-    from apps.api.jarvis_api.routes.central_auth import require_central_owner_strict
-    require_central_owner_strict()
+    _require_owner_strict()
     from core.services.central_governance import set_flag
     return set_flag(body.key, body.value, body.confirm)

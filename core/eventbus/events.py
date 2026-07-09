@@ -30,6 +30,10 @@ ALLOWED_EVENT_FAMILIES = {
     # ── Blinde vinkler lukket 6. jul (multi-agent audit) — var latent afvist ──
     "compaction",        # compact_ground_truth.validation_failed — fabrikeret-hukommelse-detektion (metadata-only)
     "process_watcher",   # process_watcher.match — publish RAISEDE FØR (familie ikke registreret) → watches aldrig set
+    # ── Rådets fund #4 (9. jul): PROTECTED CORE tamper/capability — publish RAISEDE stille (uregistreret)
+    #    så file_awareness.change/composite.* nåede ALDRIG frem; nu routed OG allowed (invariant kræver begge). ──
+    "file_awareness",    # file_awareness.change — ekstern ændring af Jarvis' egen kode (tamper-signal)
+    "composite",         # composite.{invoked,revoked,deleted} — capability-overflade-mutation
     # ── Døde routes lukket 6. jul: disse 15 stod i FAMILY_ROUTES (egress-OK) men manglede HER →
     # enhver publish RAISEDE stille. Flere HAVDE publishers (anomaly/telegram/decision_gate/veto_gate/
     # diagnosis/tick_quality) → ægte tabt signal. INVARIANT: FAMILY_ROUTES ⊆ ALLOWED (test-håndhævet). ──

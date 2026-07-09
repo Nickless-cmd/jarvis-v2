@@ -6,6 +6,7 @@ import apps.api.jarvis_api.routes.central_governance as route
 
 def _client(monkeypatch):
     monkeypatch.setattr(route, "_require_owner", lambda: None)  # bypass auth i test
+    monkeypatch.setattr(route, "_require_owner_strict", lambda: None)  # bypass strict gate i test
     monkeypatch.setattr("core.services.central_governance.list_flags",
                         lambda: [{"key": "self_prompt", "label": "x", "kind": "bool",
                                   "dangerous": False, "value": True, "options": None}])

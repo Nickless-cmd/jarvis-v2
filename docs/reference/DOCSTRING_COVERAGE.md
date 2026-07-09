@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 5750/12083 functions/methods documented (47%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 5751/12084 functions/methods documented (47%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 5750/12083 functions/methods documented (47%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 532 | 710 | 74% |
+| `apps.api.jarvis_api.routes` | 533 | 711 | 74% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 55 | 152 | 36% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -54,8 +54,8 @@ Generated from source. 5750/12083 functions/methods documented (47%). The list b
 - `apps/api/jarvis_api/routes/auth.py` :: `register` (L34)
 - `apps/api/jarvis_api/routes/auth.py` :: `verify_email` (L46)
 - `apps/api/jarvis_api/routes/central_breakers.py` :: `reset_breaker` (L25)
-- `apps/api/jarvis_api/routes/central_governance.py` :: `get_governance` (L21)
-- `apps/api/jarvis_api/routes/central_governance.py` :: `set_governance` (L28)
+- `apps/api/jarvis_api/routes/central_governance.py` :: `get_governance` (L27)
+- `apps/api/jarvis_api/routes/central_governance.py` :: `set_governance` (L34)
 - `apps/api/jarvis_api/routes/central_healers.py` :: `get_healers` (L23)
 - `apps/api/jarvis_api/routes/central_healers.py` :: `set_healer` (L30)
 - `apps/api/jarvis_api/routes/connectors.py` :: `delete_connector` (L46)
@@ -228,10 +228,10 @@ Generated from source. 5750/12083 functions/methods documented (47%). The list b
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L189)
 - `core/eventbus/bus.py` :: `EventBus.subscribe` (L211)
 - `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L217)
-- `core/eventbus/events.py` :: `Event.create` (L199)
-- `core/eventbus/events.py` :: `Event.family` (L195)
-- `core/eventbus/events.py` :: `Event.from_record` (L205)
-- `core/eventbus/events.py` :: `Event.validate` (L216)
+- `core/eventbus/events.py` :: `Event.create` (L203)
+- `core/eventbus/events.py` :: `Event.family` (L199)
+- `core/eventbus/events.py` :: `Event.from_record` (L209)
+- `core/eventbus/events.py` :: `Event.validate` (L220)
 - `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L309)
 - `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L110)
 - `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L42)

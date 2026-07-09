@@ -20,6 +20,17 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
       out.push({ type: 'text', text: String(b.text ?? '') })
     } else if (b.type === 'thinking') {
       out.push({ type: 'thinking', thinking: String(b.thinking ?? '') })
+    } else if (b.type === 'progress') {
+      // Fladt progress-element (spec 2026-07-09) — bevares urørt så forløbs-
+      // sporet kan rendres. parent_tool_use_id er null i v1.
+      const st = b.status === 'error' ? 'error' : b.status === 'running' ? 'running' : 'done'
+      out.push({
+        type: 'progress',
+        tool_use_id: String(b.tool_use_id ?? ''),
+        parent_tool_use_id: b.parent_tool_use_id != null ? String(b.parent_tool_use_id) : null,
+        message: String(b.message ?? ''),
+        status: st,
+      })
     }
   }
   return out

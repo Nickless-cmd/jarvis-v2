@@ -22,4 +22,25 @@ describe('foldToolResults', () => {
     const blocks = [{ type: 'tool_result', tool_use_id: 'ukendt', status: 'done', content: 'y' }]
     expect(foldToolResults(blocks as any)).toEqual([])
   })
+  it('bevarer progress-blokke (droppes ikke) med normaliseret status', () => {
+    const blocks = [
+      { type: 'text', text: 'svar' },
+      { type: 'tool_use', id: 'toolu_1', name: 'bash', input: {} },
+      { type: 'tool_result', tool_use_id: 'toolu_1', status: 'done', content: 'a' },
+      { type: 'progress', tool_use_id: 'toolu_1', parent_tool_use_id: null, message: 'Kørte kommando', status: 'done' },
+    ]
+    const out = foldToolResults(blocks as any)
+    const prog = out.find((b: any) => b.type === 'progress') as any
+    expect(prog).toBeDefined()
+    expect(prog.message).toBe('Kørte kommando')
+    expect(prog.parent_tool_use_id).toBeNull()
+    expect(prog.status).toBe('done')
+  })
+  it('normaliserer error-status på progress', () => {
+    const blocks = [
+      { type: 'progress', tool_use_id: 't1', parent_tool_use_id: null, message: 'Fejlede', status: 'error' },
+    ]
+    const out = foldToolResults(blocks as any)
+    expect((out[0] as any).status).toBe('error')
+  })
 })

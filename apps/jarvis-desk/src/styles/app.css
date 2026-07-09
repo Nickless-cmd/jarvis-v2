@@ -1035,6 +1035,23 @@
 .toolgroup-label { color: var(--fg-1); flex: 1 1 auto; min-width: 0; }
 .toolgroup-chevron { flex: 0 0 auto; color: var(--fg-3); }
 .toolgroup-body { padding: 4px 8px; background: var(--bg-1); }
+/* Progress-spor ("Forløb") — persisteret working-step-narration (spec 2026-07-09) */
+.progress-trail { border: 1px solid var(--line); border-radius: var(--radius-sm); margin: 6px 0; overflow: hidden; }
+.progress-trail-head {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: var(--bg-2); border: none; color: var(--fg-2);
+  padding: 5px 10px; cursor: pointer; font-size: 12.5px; text-align: left;
+}
+.progress-trail-icon { flex: 0 0 auto; color: var(--fg-3); }
+.progress-trail-label { color: var(--fg-1); flex: 1 1 auto; min-width: 0; }
+.progress-trail-chevron { flex: 0 0 auto; color: var(--fg-3); }
+.progress-trail-body { padding: 4px 10px; background: var(--bg-1); margin: 0; list-style: none; }
+.progress-step { display: flex; align-items: flex-start; gap: 6px; padding: 2px 0; font-size: 12px; color: var(--fg-2); }
+.progress-step-ico { flex: 0 0 auto; margin-top: 1px; }
+.progress-step-ico.ok { color: var(--ok, #3fb950); }
+.progress-step-ico.err { color: var(--err, #f85149); }
+.progress-step-ico.run { color: var(--fg-3); }
+.progress-step-msg { min-width: 0; word-break: break-word; }
 /* Diff-stat (+N −M) i tool-chip-hovedet, som Claude Code */
 .toolcard-diffstat { margin-left: auto; font-family: ui-monospace, monospace; font-size: 11px; flex: 0 0 auto; }
 .toolcard-diffstat .git-add { color: #6ee7a8; }

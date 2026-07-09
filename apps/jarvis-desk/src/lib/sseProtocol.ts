@@ -94,6 +94,16 @@ export type ContentBlock =
       result?: string
     }
   | { type: 'image'; src: string; alt?: string }
+  | {
+      // Fladt persisteret progress-element (spec 2026-07-09 §5). Bærer den
+      // narration live-working_step viste ("Analyserede billede…") så forløbet
+      // overlever reload. parent_tool_use_id er altid null i v1 (fladt).
+      type: 'progress'
+      tool_use_id: string
+      parent_tool_use_id: string | null
+      message: string
+      status: 'running' | 'done' | 'error'
+    }
 
 /** Lightweight type-guard: et objekt med en string `type` er et StreamEvent. */
 export function isStreamEvent(value: unknown): value is StreamEvent {

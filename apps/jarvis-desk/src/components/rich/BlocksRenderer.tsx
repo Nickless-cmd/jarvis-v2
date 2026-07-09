@@ -4,7 +4,35 @@ import { MarkdownRenderer } from './MarkdownRenderer'
 import { ToolCard } from './ToolCard'
 import { ToolGroupCard } from './ToolGroupCard'
 import { ImageBlock } from './ImageBlock'
+import { ProgressTrail } from './ProgressTrail'
 import { LiveVerb } from '../shell/LiveVerb'
+
+type ProgressBlock = Extract<ContentBlock, { type: 'progress' }>
+
+/** Saml sammenhængende progress-blokke til ét ProgressTrail-element; alt andet
+ *  passeres uændret. Ren transform (view-lokal) — persist/wire urørt. */
+type ProgressTrailBlock = { type: 'progress_trail'; items: ProgressBlock[] }
+
+function coalesceProgress(blocks: RenderBlock[]): (RenderBlock | ProgressTrailBlock)[] {
+  const out: (RenderBlock | ProgressTrailBlock)[] = []
+  let run: ProgressBlock[] = []
+  const flush = () => {
+    if (run.length > 0) {
+      out.push({ type: 'progress_trail', items: run })
+      run = []
+    }
+  }
+  for (const b of blocks) {
+    if (b.type === 'progress') {
+      run.push(b as ProgressBlock)
+    } else {
+      flush()
+      out.push(b)
+    }
+  }
+  flush()
+  return out
+}
 
 /** Dispatcher content-blocks til de rette rich-komponenter. Density-aware:
  *  videregives til ToolCard (compact|full).
@@ -21,7 +49,7 @@ export function BlocksRenderer({
   density: 'compact' | 'full'
   streaming: boolean
 }) {
-  const rendered = groupReadSearch(blocks)
+  const rendered = coalesceProgress(groupReadSearch(blocks))
   const lastIdx = rendered.length - 1
   return (
     <>
@@ -38,12 +66,17 @@ function BlockView({
   streaming,
   isLast,
 }: {
-  block: RenderBlock
+  block: RenderBlock | ProgressTrailBlock
   density: 'compact' | 'full'
   streaming: boolean
   isLast: boolean
 }) {
   switch (block.type) {
+    case 'progress_trail':
+      return <ProgressTrail items={block.items} />
+    case 'progress':
+      // Enkelt progress-blok (skulle være coalesced, men vær robust).
+      return <ProgressTrail items={[block]} />
     case 'text':
       return <MarkdownRenderer text={block.text} streaming={streaming} />
     case 'tool_group':

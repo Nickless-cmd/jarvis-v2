@@ -8,6 +8,9 @@ import { useDictation } from '../../hooks/useDictation'
 import { ContextRing } from './ContextRing'
 import { uploadAttachment, type ApiConfig } from '../../lib/api'
 import { PROV_KEY, MODEL_KEY } from '../../lib/composerPrefs'
+import {
+  pasteLineCount, pasteStoreEnabled, savePaste, shouldExternalizePaste,
+} from '../../lib/pasteStore'
 import { usePermission } from '../../hooks/usePermission'
 
 export interface SentAttachment { id: string; src?: string; name: string; isImage: boolean }
@@ -44,12 +47,13 @@ const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
  *  Bjørn 2026-06-13). memo + stabile (useCallback) handlers gør at stream-tickets
  *  IKKE re-renderer inputtet når teksten er uændret → cursoren bliver stående. */
 const ComposerTextArea = memo(function ComposerTextArea({
-  value, placeholder, onChange, onKeyDown, inputRef,
+  value, placeholder, onChange, onKeyDown, onPaste, inputRef,
 }: {
   value: string
   placeholder: string
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
+  onPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void
   inputRef: React.RefObject<HTMLTextAreaElement | null>
 }) {
   return (
@@ -61,6 +65,7 @@ const ComposerTextArea = memo(function ComposerTextArea({
       placeholder={placeholder}
       onChange={onChange}
       onKeyDown={onKeyDown}
+      onPaste={onPaste}
     />
   )
 })
@@ -110,6 +115,10 @@ export function Composer({
   const { permission, setPermission } = usePermission()
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const [dragOver, setDragOver] = useState(false)
+  // Paste-store (spec 2026-07-09): store pastes eksternaliseres — holdes lokalt her
+  // og vises som fjernelig reference-chip i stedet for en tekst-væg. GUARDRAIL: hele
+  // hooken gates bag `pasteStoreEnabled()` (default OFF) indtil verificeret.
+  const [pendingPastes, setPendingPastes] = useState<Array<{ localId: string; text: string; lineCount: number }>>([])
   // Rolle-bevidst model/provider-valg. Owner: provChoice + konkret model.
   // Member: kun tier ('standard'|'pro') → backend mapper til ollama flash/pro.
   const [provChoice, setProvChoice] = useState<string>(() => {
@@ -268,21 +277,47 @@ export function Composer({
   const doSend = useCallback(() => {
     const t = emojify(text.trim())  // :) ;) :P → 🙂 😉 😛 (vises som emoji i boblen)
     const ready = attachments.filter((a) => a.id && !a.error)
-    if (!t && ready.length === 0) return
+    if (!t && ready.length === 0 && pendingPastes.length === 0) return
     // Rolle-bevidst routing: owner sender provider + konkret model; member sender
     // kun tier (backend tvinger ollama + flash/pro). Tom = backend-default.
     const sendModel = isOwner ? selModel : memberTier
     const sendProvider = isOwner ? provChoice : ''
-    onSend(t, {
-      planMode,
-      permission,
-      attachments: ready.map((a) => ({ id: a.id as string, src: a.src, name: a.name, isImage: a.isImage })),
-      model: sendModel,
-      providerChoice: sendProvider,
+    const readyAttachments = ready.map((a) => ({ id: a.id as string, src: a.src, name: a.name, isImage: a.isImage }))
+    const pastes = pendingPastes
+
+    const emit = (finalText: string) => {
+      onSend(finalText, {
+        planMode,
+        permission,
+        attachments: readyAttachments,
+        model: sendModel,
+        providerChoice: sendProvider,
+      })
+      setText('')
+      setAttachments([])
+      setPendingPastes([])
+    }
+
+    if (pastes.length === 0 || !config) {
+      // Ingen eksternaliserede pastes (eller ingen config): send som før.
+      emit(t)
+      return
+    }
+
+    // Gem hver pending paste → få reference; føj referencerne til beskeden.
+    // Fejler et POST → fald tilbage til den fulde tekst (mist aldrig indhold).
+    Promise.all(
+      pastes.map((p) =>
+        savePaste(config, p.text)
+          .then((r) => r.reference)
+          .catch(() => p.text), // POST fejlede → fald tilbage til fuld tekst (mist aldrig indhold)
+      ),
+    ).then((refs) => {
+      const suffix = refs.join('\n')
+      const finalText = t ? `${t}\n\n${suffix}` : suffix
+      emit(finalText)
     })
-    setText('')
-    setAttachments([])
-  }, [text, attachments, isOwner, selModel, memberTier, provChoice, planMode, permission, onSend])
+  }, [text, attachments, pendingPastes, config, isOwner, selModel, memberTier, provChoice, planMode, permission, onSend])
 
   // Pause under compaction (som Claude Code): mens sessionen komprimeres holdes en send i kø
   // og afsendes AUTOMATISK når compaction er overstået. Teksten bevares imens.
@@ -306,6 +341,25 @@ export function Composer({
   const onInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }, [send])
+
+  // onPaste: store paste (>tærskel) → hold teksten lokalt, vis reference-chip i stedet
+  // for at spilde tekst-væggen ind i inputtet. Under tærskel → default (inline).
+  // Gated bag pasteStoreEnabled() (default OFF).
+  const onInputPaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!pasteStoreEnabled()) return
+    const pasted = e.clipboardData?.getData('text') ?? ''
+    if (!shouldExternalizePaste(pasted)) return  // små pastes: inline uændret
+    e.preventDefault()
+    setPendingPastes((p) => [
+      ...p,
+      { localId: `paste-${performance.now()}-${Math.random().toString(36).slice(2)}`, text: pasted, lineCount: pasteLineCount(pasted) },
+    ])
+  }, [])
+
+  const removePendingPaste = useCallback(
+    (localId: string) => setPendingPastes((p) => p.filter((x) => x.localId !== localId)),
+    [],
+  )
 
   const stop = (e: React.MouseEvent) => e.stopPropagation()
   const permLabel = PERMISSIONS.find((p) => p.key === permission)?.label ?? 'Spørg'
@@ -334,12 +388,26 @@ export function Composer({
           ))}
         </div>
       )}
+      {pendingPastes.length > 0 && (
+        <div className="composer-attachments">
+          {pendingPastes.map((p) => (
+            <div key={p.localId} className="attach-chip">
+              <FileText size={14} />
+              <span className="attach-name">Indsat tekst +{p.lineCount} linjer</span>
+              <button type="button" className="attach-remove" aria-label="Fjern" onClick={() => removePendingPaste(p.localId)}>
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <ComposerTextArea
         inputRef={ref}
         value={text}
         placeholder={compacting ? 'Komprimerer kontekst — din besked sendes når den er færdig…' : streaming ? 'Skriv en follow-up (sendes når J.A.R.V.I.S. er færdig)…' : 'Spørg J.A.R.V.I.S. om et eller andet?'}
         onChange={onInputChange}
         onKeyDown={onInputKeyDown}
+        onPaste={onInputPaste}
       />
       <div className="composer-bar">
         <div className="composer-left">

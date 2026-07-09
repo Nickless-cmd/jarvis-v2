@@ -5,6 +5,7 @@ import { MessageActions } from './MessageActions'
 import { ArtifactAffordance } from './ArtifactAffordance'
 import { detectArtifacts } from '../../lib/artifacts'
 import { blocksToPlainText } from '../../lib/formatTime'
+import { InlineErrorBoundary } from '../ErrorBoundary'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
  *  (avatar + tekst, ingen boble). Density videregives til rich-blocks.
@@ -55,10 +56,15 @@ function MessageRowImpl({
     <div className="msg-jarvis-wrap">
       <article className="msg-jarvis">
         <div className="jarvis-body">
-          <BlocksRenderer blocks={blocks} density={density} streaming={streaming} />
-          {!streaming && detectArtifacts(blocks).map((a, i) => (
-            <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
-          ))}
+          {/* Per-besked-hegn: en render-throw i ÉN besked (fx en degenereret
+              tool-blok under streaming) isoleres i stedet for at nuke hele appen
+              til sort skærm. Fejlen logges (localStorage jarvis-desk:lastCrash). */}
+          <InlineErrorBoundary label="assistant-blocks">
+            <BlocksRenderer blocks={blocks} density={density} streaming={streaming} />
+            {!streaming && detectArtifacts(blocks).map((a, i) => (
+              <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
+            ))}
+          </InlineErrorBoundary>
         </div>
       </article>
       {!streaming && <MessageActions text={blocksToPlainText(blocks)} createdAt={createdAt} />}

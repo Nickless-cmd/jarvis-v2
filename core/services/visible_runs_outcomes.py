@@ -80,6 +80,7 @@ def _persist_session_assistant_message(
     text: str,
     *,
     reasoning_content: str = "",
+    blocks: list[dict] | None = None,
 ) -> None:
     if not run.session_id:
         return
@@ -204,11 +205,25 @@ def _persist_session_assistant_message(
         except Exception:
             pass
 
+    # Struktureret content_json (spec 2026-07-09): persistér den kanoniske blok-
+    # array når kill-switchen er ON, så tool-kort overlever reload uden reconcile.
+    # Flag OFF eller ingen blokke → content_json=None → uændret tekst-kun adfærd.
+    content_json = None
+    if blocks:
+        try:
+            from core.services.structured_content_flag import structured_content_v2_enabled
+            if structured_content_v2_enabled():
+                import json as _json
+                content_json = _json.dumps(blocks, ensure_ascii=False)
+        except Exception:
+            content_json = None
+
     message = _append_chat_message_with_retry(
         session_id=run.session_id,
         role="assistant",
         content=normalized,
         reasoning_content=str(reasoning_content or ""),
+        content_json=content_json,
     )
     try:
         from core.eventbus.bus import event_bus
@@ -227,6 +242,7 @@ def _append_chat_message_with_retry(
     role: str,
     content: str,
     reasoning_content: str = "",
+    content_json: str | None = None,
     _backoffs: tuple[float, ...] = (0.2, 0.5),
 ) -> dict[str, object]:
     """H5 persist-retry (spec §11.2 P5): persistering må ALDRIG tabes tavst pga.
@@ -251,6 +267,7 @@ def _append_chat_message_with_retry(
                 role=role,
                 content=content,
                 reasoning_content=reasoning_content,
+                content_json=content_json,
             )
         except sqlite3.OperationalError as exc:
             text = str(exc).lower()

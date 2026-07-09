@@ -265,6 +265,42 @@ from core.services.visible_runs_sections.run_control_state import (  # noqa: E40
 )
 
 
+def _build_turn_blocks(
+    *, text: str, tool_calls: list[dict], tool_results: list[dict]
+) -> list[dict]:
+    """Byg den kanoniske content-blok-array for en assistant-tur (spec §4).
+
+    Rækkefølge: tekst-prosa, derefter tool_use/tool_result-par i kald-rækkefølge
+    (deterministisk fallback jf. spec §5). tool_result matches til tool_use via id.
+    Ren funktion — ingen side-effekter, sikker at teste isoleret."""
+    blocks: list[dict] = []
+    clean = str(text or "").strip()
+    if clean:
+        blocks.append({"type": "text", "text": clean})
+    results_by_id: dict[str, dict] = {}
+    for r in (tool_results or []):
+        results_by_id[str(r.get("tool_use_id") or "")] = r
+    for tc in (tool_calls or []):
+        tid = str(tc.get("id") or "")
+        blocks.append({
+            "type": "tool_use",
+            "id": tid,
+            "name": str(tc.get("name") or ""),
+            "input": tc.get("input") or {},
+        })
+        r = results_by_id.get(tid)
+        if r is not None:
+            status = str(r.get("status") or "done")
+            blocks.append({
+                "type": "tool_result",
+                "tool_use_id": tid,
+                "status": "error" if (r.get("is_error") or status == "error") else "done",
+                "content": str(r.get("content") or ""),
+                "is_error": bool(r.get("is_error")),
+            })
+    return blocks
+
+
 @dataclass(slots=True)
 class VisibleRun:
     run_id: str

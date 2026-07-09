@@ -900,6 +900,7 @@ def init_db() -> None:
         _ensure_tool_router_tables(conn)
         _ensure_decision_trigger_column(conn)
         _ensure_chat_messages_reasoning_column(conn)
+        _ensure_chat_messages_content_json_column(conn)
         _ensure_counterfactuals_table(conn)
         _ensure_absence_traces_table(conn)
         _ensure_reasoning_conclusions_table(conn)
@@ -987,6 +988,19 @@ def _ensure_chat_messages_reasoning_column(conn: sqlite3.Connection) -> None:
         except sqlite3.OperationalError as exc:
             if "duplicate column" not in str(exc).lower():
                 raise
+
+
+def _ensure_chat_messages_content_json_column(conn: sqlite3.Connection) -> None:
+    """Add chat_messages.content_json column. Idempotent.
+
+    Kanonisk struktureret content-array (text/tool_use/tool_result) pr. besked;
+    NULL = gammel besked (serve-on-read rekonstruerer). Nullable → ingen backfill.
+    """
+    cols = [
+        r[1] for r in conn.execute("PRAGMA table_info(chat_messages)").fetchall()
+    ]
+    if "content_json" not in cols:
+        conn.execute("ALTER TABLE chat_messages ADD COLUMN content_json TEXT")
 
 
 def _ensure_causal_edges_table(conn: sqlite3.Connection) -> None:

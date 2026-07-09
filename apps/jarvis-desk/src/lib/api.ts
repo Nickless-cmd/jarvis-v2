@@ -9,7 +9,7 @@
  */
 import { StreamError } from './streamClient'
 import type { ContentBlock } from './sseProtocol'
-import { stringToBlocks } from './normalizeMessage'
+import { messageToBlocks } from './normalizeMessage'
 
 export interface ChatSession {
   id: string
@@ -190,7 +190,7 @@ export async function getSession(
   // så streamede og loadede beskeder deler samme rendering-pipeline.
   const raw = await apiFetch<{
     session: ChatSession & {
-      messages?: Array<{ id: string; role: ChatMessage['role']; content: string; created_at: string; parent_id?: string | null }>
+      messages?: Array<{ id: string; role: ChatMessage['role']; content: string; content_json?: unknown; created_at: string; parent_id?: string | null }>
     }
   }>(config, `/chat/sessions/${encodeURIComponent(sessionId)}`)
   const session = raw.session
@@ -199,7 +199,7 @@ export async function getSession(
     role: m.role,
     created_at: m.created_at,
     parent_id: m.parent_id ?? null,
-    content: stringToBlocks(m.content),
+    content: messageToBlocks(m),
   }))
   return { session, messages }
 }

@@ -49,6 +49,15 @@ def upsert_runtime_private_inner_note_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert (insert-or-merge) et private inner-note-signal via _upsert_signal.
+
+    Deduplikerer på canonical_key blandt active/stale rækker: overskriver
+    status/title/summary/rationale/run/session, tager rank-max af
+    source_kind/confidence, fletter evidence/support/status_reason og
+    akkumulerer support_count/session_count. Returnerer den persisterede
+    signal-dict (fra get_...) opdateret med upsert-metaen. Rejser RuntimeError
+    hvis rækken ikke kunne læses tilbage.
+    """
     with connect() as conn:
         _ensure_runtime_private_inner_note_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -97,6 +106,11 @@ def list_runtime_private_inner_note_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List private inner-note-signaler, nyeste først (ORDER BY id DESC).
+
+    Filtrerer valgfrit på status og begrænser med limit (min. 1). Returnerer
+    en liste af signal-dicts (tom liste hvis ingen rækker).
+    """
     with connect() as conn:
         _ensure_runtime_private_inner_note_signal_table(conn)
         clauses: list[str] = []
@@ -138,6 +152,7 @@ def list_runtime_private_inner_note_signals(
 
 
 def get_runtime_private_inner_note_signal(signal_id: str) -> dict[str, object] | None:
+    """Hent ét private inner-note-signal på signal_id, eller None hvis ukendt."""
     with connect() as conn:
         _ensure_runtime_private_inner_note_signal_table(conn)
         row = conn.execute(
@@ -180,6 +195,11 @@ def update_runtime_private_inner_note_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Opdatér status/status_reason/updated_at på ét inner-note-signal.
+
+    No-op der returnerer None hvis signal_id ikke findes; ellers commit'er
+    ændringen og returnerer den opdaterede signal-dict.
+    """
     with connect() as conn:
         _ensure_runtime_private_inner_note_signal_table(conn)
         row = conn.execute(
@@ -212,6 +232,12 @@ def supersede_runtime_private_inner_note_signals_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Markér øvrige active/stale inner-note-signaler for et fokus som superseded.
+
+    Matcher canonical_key LIKE 'private-inner-note:%:<focus_key>' undtagen
+    exclude_signal_id, sætter status='superseded' + status_reason/updated_at.
+    Returnerer antal opdaterede rækker.
+    """
     with connect() as conn:
         _ensure_runtime_private_inner_note_signal_table(conn)
         cursor = conn.execute(
@@ -256,6 +282,13 @@ def upsert_runtime_private_initiative_tension_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert (insert-or-merge) et private initiative-tension-signal via _upsert_signal.
+
+    Samme dedup/merge-adfærd som de øvrige upserts (canonical_key blandt
+    active/stale, overwrite/rank-max/text-merge/accumulate). Returnerer den
+    persisterede signal-dict opdateret med upsert-metaen; rejser RuntimeError
+    hvis rækken ikke kunne læses tilbage.
+    """
     with connect() as conn:
         _ensure_runtime_private_initiative_tension_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -306,6 +339,11 @@ def list_runtime_private_initiative_tension_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List private initiative-tension-signaler, nyeste først (ORDER BY id DESC).
+
+    Filtrerer valgfrit på status og begrænser med limit (min. 1). Returnerer
+    en liste af signal-dicts (tom liste hvis ingen rækker).
+    """
     with connect() as conn:
         _ensure_runtime_private_initiative_tension_signal_table(conn)
         clauses: list[str] = []
@@ -349,6 +387,7 @@ def list_runtime_private_initiative_tension_signals(
 def get_runtime_private_initiative_tension_signal(
     signal_id: str,
 ) -> dict[str, object] | None:
+    """Hent ét private initiative-tension-signal på signal_id, eller None hvis ukendt."""
     with connect() as conn:
         _ensure_runtime_private_initiative_tension_signal_table(conn)
         row = conn.execute(
@@ -391,6 +430,11 @@ def update_runtime_private_initiative_tension_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Opdatér status/status_reason/updated_at på ét initiative-tension-signal.
+
+    No-op der returnerer None hvis signal_id ikke findes; ellers commit'er
+    ændringen og returnerer den opdaterede signal-dict.
+    """
     with connect() as conn:
         _ensure_runtime_private_initiative_tension_signal_table(conn)
         row = conn.execute(
@@ -423,6 +467,11 @@ def supersede_runtime_private_initiative_tension_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Markér øvrige active/stale initiative-tension-signaler for et domæne som superseded.
+
+    Matcher canonical_key LIKE 'private-initiative-tension:%:<domain_key>'
+    undtagen exclude_signal_id. Returnerer antal opdaterede rækker.
+    """
     with connect() as conn:
         _ensure_runtime_private_initiative_tension_signal_table(conn)
         cursor = conn.execute(
@@ -467,6 +516,13 @@ def upsert_runtime_private_inner_interplay_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert (insert-or-merge) et private inner-interplay-signal via _upsert_signal.
+
+    Samme dedup/merge-adfærd som de øvrige upserts (canonical_key blandt
+    active/stale, overwrite/rank-max/text-merge/accumulate). Returnerer den
+    persisterede signal-dict opdateret med upsert-metaen; rejser RuntimeError
+    hvis rækken ikke kunne læses tilbage.
+    """
     with connect() as conn:
         _ensure_runtime_private_inner_interplay_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -515,6 +571,11 @@ def list_runtime_private_inner_interplay_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List private inner-interplay-signaler, nyeste først (ORDER BY id DESC).
+
+    Filtrerer valgfrit på status og begrænser med limit (min. 1). Returnerer
+    en liste af signal-dicts (tom liste hvis ingen rækker).
+    """
     with connect() as conn:
         _ensure_runtime_private_inner_interplay_signal_table(conn)
         clauses: list[str] = []
@@ -558,6 +619,7 @@ def list_runtime_private_inner_interplay_signals(
 def get_runtime_private_inner_interplay_signal(
     signal_id: str,
 ) -> dict[str, object] | None:
+    """Hent ét private inner-interplay-signal på signal_id, eller None hvis ukendt."""
     with connect() as conn:
         _ensure_runtime_private_inner_interplay_signal_table(conn)
         row = conn.execute(
@@ -600,6 +662,11 @@ def update_runtime_private_inner_interplay_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Opdatér status/status_reason/updated_at på ét inner-interplay-signal.
+
+    No-op der returnerer None hvis signal_id ikke findes; ellers commit'er
+    ændringen og returnerer den opdaterede signal-dict.
+    """
     with connect() as conn:
         _ensure_runtime_private_inner_interplay_signal_table(conn)
         row = conn.execute(
@@ -632,6 +699,11 @@ def supersede_runtime_private_inner_interplay_signals_for_relation(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Markér øvrige active/stale inner-interplay-signaler for en relation som superseded.
+
+    Matcher canonical_key LIKE 'private-inner-interplay:%:<relation_key>'
+    undtagen exclude_signal_id. Returnerer antal opdaterede rækker.
+    """
     with connect() as conn:
         _ensure_runtime_private_inner_interplay_signal_table(conn)
         cursor = conn.execute(
@@ -676,6 +748,13 @@ def upsert_runtime_private_state_snapshot(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert (insert-or-merge) et private state-snapshot via _upsert_signal.
+
+    Dedup på canonical_key blandt active/stale (id/type-kolonner er her
+    snapshot_id/snapshot_type). Samme overwrite/rank-max/text-merge/accumulate
+    som de øvrige upserts. Returnerer den persisterede snapshot-dict opdateret
+    med upsert-metaen; rejser RuntimeError hvis rækken ikke kunne læses tilbage.
+    """
     with connect() as conn:
         _ensure_runtime_private_state_snapshot_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -724,6 +803,11 @@ def list_runtime_private_state_snapshots(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List private state-snapshots, nyeste først (ORDER BY id DESC).
+
+    Filtrerer valgfrit på status og begrænser med limit (min. 1). Returnerer
+    en liste af snapshot-dicts (tom liste hvis ingen rækker).
+    """
     with connect() as conn:
         _ensure_runtime_private_state_snapshot_table(conn)
         clauses: list[str] = []
@@ -765,6 +849,7 @@ def list_runtime_private_state_snapshots(
 
 
 def get_runtime_private_state_snapshot(snapshot_id: str) -> dict[str, object] | None:
+    """Hent ét private state-snapshot på snapshot_id, eller None hvis ukendt."""
     with connect() as conn:
         _ensure_runtime_private_state_snapshot_table(conn)
         row = conn.execute(
@@ -807,6 +892,11 @@ def update_runtime_private_state_snapshot_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Opdatér status/status_reason/updated_at på ét state-snapshot.
+
+    No-op der returnerer None hvis snapshot_id ikke findes; ellers commit'er
+    ændringen og returnerer den opdaterede snapshot-dict.
+    """
     with connect() as conn:
         _ensure_runtime_private_state_snapshot_table(conn)
         row = conn.execute(
@@ -839,6 +929,11 @@ def supersede_runtime_private_state_snapshots_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Markér øvrige active/stale state-snapshots for et fokus som superseded.
+
+    Matcher canonical_key LIKE 'private-state-snapshot:%:<focus_key>' undtagen
+    exclude_snapshot_id. Returnerer antal opdaterede rækker.
+    """
     with connect() as conn:
         _ensure_runtime_private_state_snapshot_table(conn)
         cursor = conn.execute(
@@ -883,6 +978,13 @@ def upsert_runtime_private_temporal_curiosity_state(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert (insert-or-merge) et private temporal-curiosity-state via _upsert_signal.
+
+    Dedup på canonical_key blandt active/stale (id/type-kolonner er her
+    state_id/state_type). Samme overwrite/rank-max/text-merge/accumulate som de
+    øvrige upserts. Returnerer den persisterede state-dict opdateret med
+    upsert-metaen; rejser RuntimeError hvis rækken ikke kunne læses tilbage.
+    """
     with connect() as conn:
         _ensure_runtime_private_temporal_curiosity_state_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -931,6 +1033,11 @@ def list_runtime_private_temporal_curiosity_states(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List private temporal-curiosity-states, nyeste først (ORDER BY id DESC).
+
+    Filtrerer valgfrit på status og begrænser med limit (min. 1). Returnerer
+    en liste af state-dicts (tom liste hvis ingen rækker).
+    """
     with connect() as conn:
         _ensure_runtime_private_temporal_curiosity_state_table(conn)
         clauses: list[str] = []
@@ -974,6 +1081,7 @@ def list_runtime_private_temporal_curiosity_states(
 def get_runtime_private_temporal_curiosity_state(
     state_id: str,
 ) -> dict[str, object] | None:
+    """Hent ét private temporal-curiosity-state på state_id, eller None hvis ukendt."""
     with connect() as conn:
         _ensure_runtime_private_temporal_curiosity_state_table(conn)
         row = conn.execute(
@@ -1016,6 +1124,11 @@ def update_runtime_private_temporal_curiosity_state_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Opdatér status/status_reason/updated_at på ét temporal-curiosity-state.
+
+    No-op der returnerer None hvis state_id ikke findes; ellers commit'er
+    ændringen og returnerer den opdaterede state-dict.
+    """
     with connect() as conn:
         _ensure_runtime_private_temporal_curiosity_state_table(conn)
         row = conn.execute(
@@ -1048,6 +1161,11 @@ def supersede_runtime_private_temporal_curiosity_states_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Markér øvrige active/stale temporal-curiosity-states for et fokus som superseded.
+
+    Matcher canonical_key LIKE 'private-temporal-curiosity:%:<focus_key>'
+    undtagen exclude_state_id. Returnerer antal opdaterede rækker.
+    """
     with connect() as conn:
         _ensure_runtime_private_temporal_curiosity_state_table(conn)
         cursor = conn.execute(
@@ -1092,6 +1210,13 @@ def upsert_runtime_private_temporal_promotion_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert (insert-or-merge) et private temporal-promotion-signal via _upsert_signal.
+
+    Samme dedup/merge-adfærd som de øvrige upserts (canonical_key blandt
+    active/stale, overwrite/rank-max/text-merge/accumulate). Returnerer den
+    persisterede signal-dict opdateret med upsert-metaen; rejser RuntimeError
+    hvis rækken ikke kunne læses tilbage.
+    """
     with connect() as conn:
         _ensure_runtime_private_temporal_promotion_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1142,6 +1267,11 @@ def list_runtime_private_temporal_promotion_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List private temporal-promotion-signaler, nyeste først (ORDER BY id DESC).
+
+    Filtrerer valgfrit på status og begrænser med limit (min. 1). Returnerer
+    en liste af signal-dicts (tom liste hvis ingen rækker).
+    """
     with connect() as conn:
         _ensure_runtime_private_temporal_promotion_signal_table(conn)
         clauses: list[str] = []
@@ -1185,6 +1315,7 @@ def list_runtime_private_temporal_promotion_signals(
 def get_runtime_private_temporal_promotion_signal(
     signal_id: str,
 ) -> dict[str, object] | None:
+    """Hent ét private temporal-promotion-signal på signal_id, eller None hvis ukendt."""
     with connect() as conn:
         _ensure_runtime_private_temporal_promotion_signal_table(conn)
         row = conn.execute(
@@ -1227,6 +1358,11 @@ def update_runtime_private_temporal_promotion_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Opdatér status/status_reason/updated_at på ét temporal-promotion-signal.
+
+    No-op der returnerer None hvis signal_id ikke findes; ellers commit'er
+    ændringen og returnerer den opdaterede signal-dict.
+    """
     with connect() as conn:
         _ensure_runtime_private_temporal_promotion_signal_table(conn)
         row = conn.execute(
@@ -1259,6 +1395,11 @@ def supersede_runtime_private_temporal_promotion_signals_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Markér øvrige active/stale temporal-promotion-signaler for et fokus som superseded.
+
+    Matcher canonical_key LIKE 'private-temporal-promotion:%:<focus_key>'
+    undtagen exclude_signal_id. Returnerer antal opdaterede rækker.
+    """
     with connect() as conn:
         _ensure_runtime_private_temporal_promotion_signal_table(conn)
         cursor = conn.execute(

@@ -50,6 +50,14 @@ def upsert_runtime_self_model_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime self-model signal into runtime_self_model_signals.
+
+    Looks up an existing active/uncertain/stale row by canonical_key; when found,
+    merges status/source_kind/confidence (strongest-wins), text summaries, and
+    accumulates support/session counts, otherwise inserts a new row. Commits.
+    Returns the stored signal row dict with was_created/was_updated/merge_state
+    meta added. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_self_model_signal_table(conn)
         existing = None
@@ -249,6 +257,10 @@ def list_runtime_self_model_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime self-model signals as row dicts, newest first.
+
+    Optionally filters by status; capped at `limit` rows. Returns [] when empty.
+    """
     with connect() as conn:
         _ensure_runtime_self_model_signal_table(conn)
         clauses: list[str] = []
@@ -290,6 +302,7 @@ def list_runtime_self_model_signals(
 
 
 def get_runtime_self_model_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the runtime self-model signal for `signal_id` as a row dict, or None."""
     with connect() as conn:
         _ensure_runtime_self_model_signal_table(conn)
         row = conn.execute(
@@ -332,6 +345,10 @@ def update_runtime_self_model_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one self-model signal.
+
+    Returns the refreshed row dict, or None if `signal_id` does not exist. Commits.
+    """
     with connect() as conn:
         _ensure_runtime_self_model_signal_table(conn)
         row = conn.execute(
@@ -364,6 +381,11 @@ def supersede_runtime_self_model_signals(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all active/uncertain/stale self-model signals of `signal_type` as superseded.
+
+    Excludes `exclude_signal_id`. Sets status_reason/updated_at, commits, and
+    returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_self_model_signal_table(conn)
         cursor = conn.execute(
@@ -408,6 +430,13 @@ def upsert_runtime_self_authored_prompt_proposal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a self-authored prompt proposal via the shared _upsert_signal.
+
+    Merges into an existing fresh/active/fading/stale row by canonical_key
+    (overwrite core fields, strongest-wins ranks, merged text, accumulated counts)
+    or inserts a new one. Commits. Returns the stored proposal row dict with merge
+    meta added. Raises RuntimeError if it cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_self_authored_prompt_proposal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -456,6 +485,10 @@ def list_runtime_self_authored_prompt_proposals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return self-authored prompt proposals as row dicts, newest first.
+
+    Optionally filters by status; capped at `limit` rows. Returns [] when empty.
+    """
     with connect() as conn:
         _ensure_runtime_self_authored_prompt_proposal_table(conn)
         clauses: list[str] = []
@@ -499,6 +532,7 @@ def list_runtime_self_authored_prompt_proposals(
 def get_runtime_self_authored_prompt_proposal(
     proposal_id: str,
 ) -> dict[str, object] | None:
+    """Return the self-authored prompt proposal for `proposal_id` as a row dict, or None."""
     with connect() as conn:
         _ensure_runtime_self_authored_prompt_proposal_table(conn)
         row = conn.execute(
@@ -541,6 +575,10 @@ def update_runtime_self_authored_prompt_proposal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one self-authored prompt proposal.
+
+    Returns the refreshed row dict, or None if `proposal_id` does not exist. Commits.
+    """
     with connect() as conn:
         _ensure_runtime_self_authored_prompt_proposal_table(conn)
         row = conn.execute(
@@ -573,6 +611,12 @@ def supersede_runtime_self_authored_prompt_proposals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all live self-authored prompt proposals for a domain as superseded.
+
+    Matches canonical_key LIKE 'self-authored-prompt-proposal:%:{domain_key}' with
+    status in fresh/active/fading/stale, excluding `exclude_proposal_id`. Commits
+    and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_self_authored_prompt_proposal_table(conn)
         cursor = conn.execute(
@@ -617,6 +661,13 @@ def upsert_runtime_self_narrative_continuity_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a self-narrative-continuity signal via the shared _upsert_signal.
+
+    Merges into an existing active/softening/stale row by canonical_key (overwrite
+    core fields, strongest-wins ranks, merged text, accumulated counts) or inserts a
+    new one. Commits. Returns the stored signal row dict with merge meta added.
+    Raises RuntimeError if it cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_self_narrative_continuity_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -665,6 +716,10 @@ def list_runtime_self_narrative_continuity_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return self-narrative-continuity signals as row dicts, newest first.
+
+    Optionally filters by status; capped at `limit` rows. Returns [] when empty.
+    """
     with connect() as conn:
         _ensure_runtime_self_narrative_continuity_signal_table(conn)
         clauses: list[str] = []
@@ -708,6 +763,7 @@ def list_runtime_self_narrative_continuity_signals(
 def get_runtime_self_narrative_continuity_signal(
     signal_id: str,
 ) -> dict[str, object] | None:
+    """Return the self-narrative-continuity signal for `signal_id` as a row dict, or None."""
     with connect() as conn:
         _ensure_runtime_self_narrative_continuity_signal_table(conn)
         row = conn.execute(
@@ -750,6 +806,10 @@ def update_runtime_self_narrative_continuity_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one self-narrative-continuity signal.
+
+    Returns the refreshed row dict, or None if `signal_id` does not exist. Commits.
+    """
     with connect() as conn:
         _ensure_runtime_self_narrative_continuity_signal_table(conn)
         row = conn.execute(
@@ -782,6 +842,12 @@ def supersede_runtime_self_narrative_continuity_signals_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all live self-narrative-continuity signals for a focus as superseded.
+
+    Matches canonical_key LIKE 'self-narrative-continuity:%:{focus_key}' with status
+    in active/softening/stale, excluding `exclude_signal_id`. Commits and returns
+    the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_self_narrative_continuity_signal_table(conn)
         cursor = conn.execute(
@@ -826,6 +892,13 @@ def upsert_runtime_selfhood_proposal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime selfhood proposal via the shared _upsert_signal.
+
+    Merges into an existing fresh/active/fading/stale row by canonical_key (overwrite
+    core fields, strongest-wins ranks, merged text, accumulated counts) or inserts a
+    new one. Commits. Returns the stored proposal row dict with merge meta added.
+    Raises RuntimeError if it cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_selfhood_proposal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -874,6 +947,10 @@ def list_runtime_selfhood_proposals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime selfhood proposals as row dicts, newest first.
+
+    Optionally filters by status; capped at `limit` rows. Returns [] when empty.
+    """
     with connect() as conn:
         _ensure_runtime_selfhood_proposal_table(conn)
         clauses: list[str] = []
@@ -915,6 +992,7 @@ def list_runtime_selfhood_proposals(
 
 
 def get_runtime_selfhood_proposal(proposal_id: str) -> dict[str, object] | None:
+    """Return the runtime selfhood proposal for `proposal_id` as a row dict, or None."""
     with connect() as conn:
         _ensure_runtime_selfhood_proposal_table(conn)
         row = conn.execute(
@@ -957,6 +1035,10 @@ def update_runtime_selfhood_proposal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one runtime selfhood proposal.
+
+    Returns the refreshed row dict, or None if `proposal_id` does not exist. Commits.
+    """
     with connect() as conn:
         _ensure_runtime_selfhood_proposal_table(conn)
         row = conn.execute(
@@ -989,6 +1071,12 @@ def supersede_runtime_selfhood_proposals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all live runtime selfhood proposals for a domain as superseded.
+
+    Matches canonical_key LIKE 'selfhood-proposal:%:{domain_key}' with status in
+    fresh/active/fading/stale, excluding `exclude_proposal_id`. Commits and returns
+    the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_selfhood_proposal_table(conn)
         cursor = conn.execute(

@@ -315,6 +315,14 @@ def upsert_runtime_consolidation_target_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a consolidation-target signal keyed on ``signal_id``.
+
+    Ensures the table, then upserts via ``_upsert_signal`` (overwriting core
+    text/status, rank-picking source_kind/confidence, merging the summary
+    columns and accumulating the counts). Returns the persisted row dict
+    updated with the upsert meta; raises RuntimeError if the row cannot be
+    read back.
+    """
     with connect() as conn:
         _ensure_runtime_consolidation_target_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -363,6 +371,11 @@ def list_runtime_consolidation_target_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return consolidation-target signals newest-first as row dicts.
+
+    Optionally filters by ``status`` and caps the result at ``limit`` (min 1).
+    Returns an empty list when no rows match.
+    """
     with connect() as conn:
         _ensure_runtime_consolidation_target_signal_table(conn)
         clauses: list[str] = []
@@ -404,6 +417,7 @@ def list_runtime_consolidation_target_signals(
 
 
 def get_runtime_consolidation_target_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the consolidation-target signal row dict for ``signal_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_consolidation_target_signal_table(conn)
         row = conn.execute(
@@ -446,6 +460,10 @@ def update_runtime_consolidation_target_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on a consolidation-target signal.
+
+    Returns the refreshed row dict, or None if no signal matches ``signal_id``.
+    """
     with connect() as conn:
         _ensure_runtime_consolidation_target_signal_table(conn)
         row = conn.execute(
@@ -478,6 +496,12 @@ def supersede_runtime_consolidation_target_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all live consolidation-target signals in a domain as 'superseded'.
+
+    Updates rows whose ``canonical_key`` matches ``consolidation-target:%:{domain_key}``
+    and status is active/softening/stale, excluding ``exclude_signal_id``.
+    Returns the number of rows superseded.
+    """
     with connect() as conn:
         _ensure_runtime_consolidation_target_signal_table(conn)
         cursor = conn.execute(
@@ -522,6 +546,13 @@ def upsert_runtime_chronicle_consolidation_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a chronicle-consolidation signal keyed on ``signal_id``.
+
+    Ensures the table, then upserts via ``_upsert_signal`` (overwriting core
+    text/status, rank-picking source_kind/confidence, merging summaries and
+    accumulating counts). Returns the persisted row dict updated with the
+    upsert meta; raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -570,6 +601,11 @@ def list_runtime_chronicle_consolidation_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return chronicle-consolidation signals newest-first as row dicts.
+
+    Optionally filters by ``status`` and caps at ``limit`` (min 1). Returns an
+    empty list when no rows match.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_signal_table(conn)
         clauses: list[str] = []
@@ -613,6 +649,7 @@ def list_runtime_chronicle_consolidation_signals(
 def get_runtime_chronicle_consolidation_signal(
     signal_id: str,
 ) -> dict[str, object] | None:
+    """Return the chronicle-consolidation signal row dict for ``signal_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_signal_table(conn)
         row = conn.execute(
@@ -655,6 +692,10 @@ def update_runtime_chronicle_consolidation_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on a chronicle-consolidation signal.
+
+    Returns the refreshed row dict, or None if no signal matches ``signal_id``.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_signal_table(conn)
         row = conn.execute(
@@ -687,6 +728,12 @@ def supersede_runtime_chronicle_consolidation_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all live chronicle-consolidation signals in a domain as 'superseded'.
+
+    Updates rows whose ``canonical_key`` matches ``chronicle-consolidation:%:{domain_key}``
+    and status is active/softening/stale, excluding ``exclude_signal_id``.
+    Returns the number of rows superseded.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_signal_table(conn)
         cursor = conn.execute(
@@ -731,6 +778,13 @@ def upsert_runtime_chronicle_consolidation_brief(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a chronicle-consolidation brief keyed on ``brief_id``.
+
+    Ensures the table, then upserts via ``_upsert_signal`` (overwriting core
+    text/status, rank-picking source_kind/confidence, merging summaries and
+    accumulating counts). Returns the persisted row dict updated with the
+    upsert meta; raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_brief_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -779,6 +833,11 @@ def list_runtime_chronicle_consolidation_briefs(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return chronicle-consolidation briefs newest-first as row dicts.
+
+    Optionally filters by ``status`` and caps at ``limit`` (min 1). Returns an
+    empty list when no rows match.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_brief_table(conn)
         clauses: list[str] = []
@@ -822,6 +881,7 @@ def list_runtime_chronicle_consolidation_briefs(
 def get_runtime_chronicle_consolidation_brief(
     brief_id: str,
 ) -> dict[str, object] | None:
+    """Return the chronicle-consolidation brief row dict for ``brief_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_brief_table(conn)
         row = conn.execute(
@@ -864,6 +924,10 @@ def update_runtime_chronicle_consolidation_brief_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on a chronicle-consolidation brief.
+
+    Returns the refreshed row dict, or None if no brief matches ``brief_id``.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_brief_table(conn)
         row = conn.execute(
@@ -896,6 +960,12 @@ def supersede_runtime_chronicle_consolidation_briefs_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all live chronicle-consolidation briefs in a domain as 'superseded'.
+
+    Updates rows whose ``canonical_key`` matches ``chronicle-consolidation-brief:%:{domain_key}``
+    and status is active/softening/stale, excluding ``exclude_brief_id``.
+    Returns the number of rows superseded.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_brief_table(conn)
         cursor = conn.execute(
@@ -940,6 +1010,13 @@ def upsert_runtime_chronicle_consolidation_proposal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a chronicle-consolidation proposal keyed on ``proposal_id``.
+
+    Ensures the table, then upserts via ``_upsert_signal`` (overwriting core
+    text/status, rank-picking source_kind/confidence, merging summaries and
+    accumulating counts). Returns the persisted row dict updated with the
+    upsert meta; raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_proposal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -988,6 +1065,11 @@ def list_runtime_chronicle_consolidation_proposals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return chronicle-consolidation proposals newest-first as row dicts.
+
+    Optionally filters by ``status`` and caps at ``limit`` (min 1). Returns an
+    empty list when no rows match.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_proposal_table(conn)
         clauses: list[str] = []
@@ -1031,6 +1113,7 @@ def list_runtime_chronicle_consolidation_proposals(
 def get_runtime_chronicle_consolidation_proposal(
     proposal_id: str,
 ) -> dict[str, object] | None:
+    """Return the chronicle-consolidation proposal row dict for ``proposal_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_proposal_table(conn)
         row = conn.execute(
@@ -1073,6 +1156,10 @@ def update_runtime_chronicle_consolidation_proposal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on a chronicle-consolidation proposal.
+
+    Returns the refreshed row dict, or None if no proposal matches ``proposal_id``.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_proposal_table(conn)
         row = conn.execute(
@@ -1105,6 +1192,12 @@ def supersede_runtime_chronicle_consolidation_proposals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all live chronicle-consolidation proposals in a domain as 'superseded'.
+
+    Updates rows whose ``canonical_key`` matches ``chronicle-consolidation-proposal:%:{domain_key}``
+    and status is active/softening/stale, excluding ``exclude_proposal_id``.
+    Returns the number of rows superseded.
+    """
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_proposal_table(conn)
         cursor = conn.execute(

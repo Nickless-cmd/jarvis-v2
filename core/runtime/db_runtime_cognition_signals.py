@@ -49,6 +49,14 @@ def upsert_runtime_reflective_critic(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime reflective-critic row keyed by ``canonical_key``.
+
+    If an active/stale row with the same canonical_key exists, its ranked
+    fields (source_kind/confidence) and text fields are merged and support/
+    session counts accumulated; otherwise a new row is inserted. Commits and
+    returns the resulting critic dict augmented with was_created/was_updated/
+    merge_state metadata. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_reflective_critic_table(conn)
         existing = None
@@ -249,6 +257,10 @@ def list_runtime_reflective_critics(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return reflective-critic rows (dicts), newest first, optionally filtered by status.
+
+    Returns an empty list when no rows match. ``limit`` is clamped to >= 1.
+    """
     with connect() as conn:
         _ensure_runtime_reflective_critic_table(conn)
         clauses: list[str] = []
@@ -291,6 +303,7 @@ def list_runtime_reflective_critics(
 
 
 def get_runtime_reflective_critic(critic_id: str) -> dict[str, object] | None:
+    """Return the reflective-critic row for ``critic_id`` as a dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_reflective_critic_table(conn)
         row = conn.execute(
@@ -334,6 +347,11 @@ def update_runtime_reflective_critic_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one reflective critic.
+
+    Commits and returns the refreshed critic dict, or None if ``critic_id``
+    does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_reflective_critic_table(conn)
         row = conn.execute(
@@ -367,6 +385,10 @@ def supersede_runtime_reflective_critics(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all active/stale critics of ``critic_type`` (except ``exclude_critic_id``) superseded.
+
+    Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_reflective_critic_table(conn)
         cursor = conn.execute(
@@ -412,6 +434,14 @@ def upsert_runtime_awareness_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime awareness-signal row keyed by ``canonical_key``.
+
+    If a row with the same canonical_key exists it is merged (ranked
+    source_kind/confidence, merged text fields, accumulated support/session
+    counts); otherwise a new row is inserted. Commits and returns the signal
+    dict with was_created/was_updated/merge_state metadata. Raises RuntimeError
+    if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_awareness_signal_table(conn)
         existing = None
@@ -606,6 +636,10 @@ def list_runtime_awareness_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return awareness-signal rows (dicts), newest first, optionally filtered by status.
+
+    Returns an empty list when no rows match. ``limit`` is clamped to >= 1.
+    """
     with connect() as conn:
         _ensure_runtime_awareness_signal_table(conn)
         clauses: list[str] = []
@@ -648,6 +682,7 @@ def list_runtime_awareness_signals(
 
 
 def get_runtime_awareness_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the awareness-signal row for ``signal_id`` as a dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_awareness_signal_table(conn)
         row = conn.execute(
@@ -691,6 +726,11 @@ def update_runtime_awareness_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one awareness signal.
+
+    Commits and returns the refreshed signal dict, or None if ``signal_id``
+    does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_awareness_signal_table(conn)
         row = conn.execute(
@@ -724,6 +764,11 @@ def supersede_runtime_awareness_signals(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all live awareness signals of ``signal_type`` (except ``exclude_signal_id``) superseded.
+
+    Live statuses are active/constrained/recovered/stale. Commits and returns
+    the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_awareness_signal_table(conn)
         cursor = conn.execute(
@@ -769,6 +814,13 @@ def upsert_runtime_reflection_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime reflection-signal row via the shared _upsert_signal helper.
+
+    Rows sharing ``canonical_key`` in an active/integrating/settled/stale state
+    are merged (ranked source_kind/confidence, merged text fields, accumulated
+    counts); otherwise a new row is inserted. Commits and returns the signal
+    dict with merge metadata. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_reflection_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -818,6 +870,10 @@ def list_runtime_reflection_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return reflection-signal rows (dicts), newest first, optionally filtered by status.
+
+    Returns an empty list when no rows match. ``limit`` is clamped to >= 1.
+    """
     with connect() as conn:
         _ensure_runtime_reflection_signal_table(conn)
         clauses: list[str] = []
@@ -860,6 +916,7 @@ def list_runtime_reflection_signals(
 
 
 def get_runtime_reflection_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the reflection-signal row for ``signal_id`` as a dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_reflection_signal_table(conn)
         row = conn.execute(
@@ -903,6 +960,11 @@ def update_runtime_reflection_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one reflection signal.
+
+    Commits and returns the refreshed signal dict, or None if ``signal_id``
+    does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_reflection_signal_table(conn)
         row = conn.execute(
@@ -936,6 +998,12 @@ def supersede_runtime_reflection_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark active reflection signals for a domain (except one) superseded.
+
+    Matches canonical_key ``reflection-signal:%:{domain_key}`` in an active/
+    integrating/settled/stale state, excluding ``exclude_signal_id``. Commits
+    and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_reflection_signal_table(conn)
         cursor = conn.execute(
@@ -981,6 +1049,12 @@ def upsert_runtime_witness_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime witness-signal row via the shared _upsert_signal helper.
+
+    Rows sharing ``canonical_key`` in a fresh/carried/fading state are merged;
+    otherwise a new row is inserted. Commits and returns the signal dict with
+    merge metadata. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_witness_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1030,6 +1104,10 @@ def list_runtime_witness_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return witness-signal rows (dicts), newest first, optionally filtered by status.
+
+    Returns an empty list when no rows match. ``limit`` is clamped to >= 1.
+    """
     with connect() as conn:
         _ensure_runtime_witness_signal_table(conn)
         clauses: list[str] = []
@@ -1072,6 +1150,7 @@ def list_runtime_witness_signals(
 
 
 def get_runtime_witness_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the witness-signal row for ``signal_id`` as a dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_witness_signal_table(conn)
         row = conn.execute(
@@ -1115,6 +1194,11 @@ def update_runtime_witness_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one witness signal.
+
+    Commits and returns the refreshed signal dict, or None if ``signal_id``
+    does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_witness_signal_table(conn)
         row = conn.execute(
@@ -1148,6 +1232,11 @@ def supersede_runtime_witness_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark fresh/carried/fading witness signals for a domain (except one) superseded.
+
+    Matches canonical_key ``witness-signal:%:{domain_key}``, excluding
+    ``exclude_signal_id``. Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_witness_signal_table(conn)
         cursor = conn.execute(
@@ -1193,6 +1282,12 @@ def upsert_runtime_internal_opposition_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime internal-opposition-signal row via _upsert_signal.
+
+    Rows sharing ``canonical_key`` in an active/softening/stale state are
+    merged; otherwise a new row is inserted. Commits and returns the signal
+    dict with merge metadata. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_internal_opposition_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1242,6 +1337,10 @@ def list_runtime_internal_opposition_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return internal-opposition-signal rows (dicts), newest first, optionally by status.
+
+    Returns an empty list when no rows match. ``limit`` is clamped to >= 1.
+    """
     with connect() as conn:
         _ensure_runtime_internal_opposition_signal_table(conn)
         clauses: list[str] = []
@@ -1284,6 +1383,7 @@ def list_runtime_internal_opposition_signals(
 
 
 def get_runtime_internal_opposition_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the internal-opposition-signal row for ``signal_id`` as a dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_internal_opposition_signal_table(conn)
         row = conn.execute(
@@ -1327,6 +1427,11 @@ def update_runtime_internal_opposition_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one internal-opposition signal.
+
+    Commits and returns the refreshed signal dict, or None if ``signal_id``
+    does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_internal_opposition_signal_table(conn)
         row = conn.execute(
@@ -1360,6 +1465,11 @@ def supersede_runtime_internal_opposition_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark active/softening/stale internal-opposition signals for a domain (except one) superseded.
+
+    Matches canonical_key ``internal-opposition:%:{domain_key}``, excluding
+    ``exclude_signal_id``. Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_internal_opposition_signal_table(conn)
         cursor = conn.execute(
@@ -1405,6 +1515,12 @@ def upsert_runtime_meaning_significance_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a runtime meaning-significance-signal row via _upsert_signal.
+
+    Rows sharing ``canonical_key`` in an active/softening/stale state are
+    merged; otherwise a new row is inserted. Commits and returns the signal
+    dict with merge metadata. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_meaning_significance_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1454,6 +1570,10 @@ def list_runtime_meaning_significance_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return meaning-significance-signal rows (dicts), newest first, optionally by status.
+
+    Returns an empty list when no rows match. ``limit`` is clamped to >= 1.
+    """
     with connect() as conn:
         _ensure_runtime_meaning_significance_signal_table(conn)
         clauses: list[str] = []
@@ -1496,6 +1616,7 @@ def list_runtime_meaning_significance_signals(
 
 
 def get_runtime_meaning_significance_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the meaning-significance-signal row for ``signal_id`` as a dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_meaning_significance_signal_table(conn)
         row = conn.execute(
@@ -1539,6 +1660,11 @@ def update_runtime_meaning_significance_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one meaning-significance signal.
+
+    Commits and returns the refreshed signal dict, or None if ``signal_id``
+    does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_meaning_significance_signal_table(conn)
         row = conn.execute(
@@ -1572,6 +1698,11 @@ def supersede_runtime_meaning_significance_signals_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark active/softening/stale meaning-significance signals for a focus (except one) superseded.
+
+    Matches canonical_key ``meaning-significance:%:{focus_key}``, excluding
+    ``exclude_signal_id``. Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_meaning_significance_signal_table(conn)
         cursor = conn.execute(
@@ -1617,6 +1748,12 @@ def upsert_runtime_metabolism_state_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a runtime metabolism-state-signal row via _upsert_signal.
+
+    Rows sharing ``canonical_key`` in an active/softening/stale state are
+    merged; otherwise a new row is inserted. Commits and returns the signal
+    dict with merge metadata. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_metabolism_state_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1666,6 +1803,10 @@ def list_runtime_metabolism_state_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return metabolism-state-signal rows (dicts), newest first, optionally by status.
+
+    Returns an empty list when no rows match. ``limit`` is clamped to >= 1.
+    """
     with connect() as conn:
         _ensure_runtime_metabolism_state_signal_table(conn)
         clauses: list[str] = []
@@ -1708,6 +1849,7 @@ def list_runtime_metabolism_state_signals(
 
 
 def get_runtime_metabolism_state_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the metabolism-state-signal row for ``signal_id`` as a dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_metabolism_state_signal_table(conn)
         row = conn.execute(
@@ -1751,6 +1893,11 @@ def update_runtime_metabolism_state_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one metabolism-state signal.
+
+    Commits and returns the refreshed signal dict, or None if ``signal_id``
+    does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_metabolism_state_signal_table(conn)
         row = conn.execute(
@@ -1784,6 +1931,11 @@ def supersede_runtime_metabolism_state_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark active/softening/stale metabolism-state signals for a domain (except one) superseded.
+
+    Matches canonical_key ``metabolism-state:%:{domain_key}``, excluding
+    ``exclude_signal_id``. Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_metabolism_state_signal_table(conn)
         cursor = conn.execute(
@@ -1829,6 +1981,12 @@ def upsert_runtime_executive_contradiction_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a runtime executive-contradiction-signal row via _upsert_signal.
+
+    Rows sharing ``canonical_key`` in an active/softening/stale state are
+    merged; otherwise a new row is inserted. Commits and returns the signal
+    dict with merge metadata. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_executive_contradiction_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1878,6 +2036,10 @@ def list_runtime_executive_contradiction_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return executive-contradiction-signal rows (dicts), newest first, optionally by status.
+
+    Returns an empty list when no rows match. ``limit`` is clamped to >= 1.
+    """
     with connect() as conn:
         _ensure_runtime_executive_contradiction_signal_table(conn)
         clauses: list[str] = []
@@ -1922,6 +2084,7 @@ def list_runtime_executive_contradiction_signals(
 def get_runtime_executive_contradiction_signal(
     signal_id: str,
 ) -> dict[str, object] | None:
+    """Return the executive-contradiction-signal row for ``signal_id`` as a dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_executive_contradiction_signal_table(conn)
         row = conn.execute(
@@ -1965,6 +2128,11 @@ def update_runtime_executive_contradiction_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one executive-contradiction signal.
+
+    Commits and returns the refreshed signal dict, or None if ``signal_id``
+    does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_executive_contradiction_signal_table(conn)
         row = conn.execute(
@@ -1998,6 +2166,11 @@ def supersede_runtime_executive_contradiction_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark active/softening/stale executive-contradiction signals for a domain (except one) superseded.
+
+    Matches canonical_key ``executive-contradiction:%:{domain_key}``, excluding
+    ``exclude_signal_id``. Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_executive_contradiction_signal_table(conn)
         cursor = conn.execute(

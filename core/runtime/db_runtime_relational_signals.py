@@ -50,6 +50,14 @@ def upsert_runtime_user_md_update_proposal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Upsert a runtime user-MD update proposal into runtime_user_md_update_proposals.
+
+    Merges into an existing row when one matches on canonical_key with an open
+    status (fresh/active/fading/stale): overwrites core fields, keeps the highest
+    source_kind/confidence rank, merges the evidence/support/status_reason text and
+    accumulates support/session counts. Returns the persisted proposal row dict
+    (with upsert meta merged in). Raises RuntimeError if it cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_user_md_update_proposal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -99,6 +107,10 @@ def list_runtime_user_md_update_proposals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List runtime user-MD update proposals, newest first (ORDER BY id DESC).
+
+    Optionally filters by status. Returns a list of row dicts (empty on no rows).
+    """
     with connect() as conn:
         _ensure_runtime_user_md_update_proposal_table(conn)
         clauses: list[str] = []
@@ -141,6 +153,7 @@ def list_runtime_user_md_update_proposals(
 
 
 def get_runtime_user_md_update_proposal(proposal_id: str) -> dict[str, object] | None:
+    """Fetch a single user-MD update proposal by proposal_id, or None if not found."""
     with connect() as conn:
         _ensure_runtime_user_md_update_proposal_table(conn)
         row = conn.execute(
@@ -184,6 +197,10 @@ def update_runtime_user_md_update_proposal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one proposal by proposal_id.
+
+    Returns the refreshed proposal row dict, or None if the proposal does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_user_md_update_proposal_table(conn)
         row = conn.execute(
@@ -217,6 +234,12 @@ def supersede_runtime_user_md_update_proposals_for_dimension(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all open proposals for a dimension as 'superseded' except one.
+
+    Updates rows whose canonical_key matches user-md-update-proposal:%:{dimension_key}
+    and are still open (fresh/active/fading/stale), excluding exclude_proposal_id.
+    Returns the number of rows affected.
+    """
     with connect() as conn:
         _ensure_runtime_user_md_update_proposal_table(conn)
         cursor = conn.execute(
@@ -262,6 +285,13 @@ def upsert_runtime_user_understanding_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Upsert a runtime user-understanding signal into runtime_user_understanding_signals.
+
+    Merges into an existing open row (active/softening/stale) matched on canonical_key:
+    overwrites core fields, keeps highest source_kind/confidence, merges text summaries
+    and accumulates support/session counts. Returns the persisted signal row dict (with
+    upsert meta merged). Raises RuntimeError if it cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_user_understanding_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -311,6 +341,10 @@ def list_runtime_user_understanding_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List runtime user-understanding signals, newest first, optionally filtered by status.
+
+    Returns a list of row dicts (empty on no rows).
+    """
     with connect() as conn:
         _ensure_runtime_user_understanding_signal_table(conn)
         clauses: list[str] = []
@@ -353,6 +387,7 @@ def list_runtime_user_understanding_signals(
 
 
 def get_runtime_user_understanding_signal(signal_id: str) -> dict[str, object] | None:
+    """Fetch a single user-understanding signal by signal_id, or None if not found."""
     with connect() as conn:
         _ensure_runtime_user_understanding_signal_table(conn)
         row = conn.execute(
@@ -396,6 +431,10 @@ def update_runtime_user_understanding_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one user-understanding signal by signal_id.
+
+    Returns the refreshed signal row dict, or None if the signal does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_user_understanding_signal_table(conn)
         row = conn.execute(
@@ -429,6 +468,11 @@ def supersede_runtime_user_understanding_signals_for_dimension(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all open user-understanding signals for a dimension as 'superseded' except one.
+
+    Updates rows whose canonical_key matches user-understanding:%:{dimension_key} and are
+    still open (active/softening/stale), excluding exclude_signal_id. Returns rows affected.
+    """
     with connect() as conn:
         _ensure_runtime_user_understanding_signal_table(conn)
         cursor = conn.execute(
@@ -474,6 +518,13 @@ def upsert_runtime_inner_visible_support_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert an inner-visible-support signal into runtime_inner_visible_support_signals.
+
+    Merges into an existing open row (active/stale) matched on canonical_key: overwrites
+    core fields, keeps highest source_kind/confidence, merges text summaries and accumulates
+    support/session counts. Returns the persisted signal row dict (with upsert meta merged).
+    Raises RuntimeError if it cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_inner_visible_support_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -523,6 +574,10 @@ def list_runtime_inner_visible_support_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List inner-visible-support signals, newest first, optionally filtered by status.
+
+    Returns a list of row dicts (empty on no rows).
+    """
     with connect() as conn:
         _ensure_runtime_inner_visible_support_signal_table(conn)
         clauses: list[str] = []
@@ -567,6 +622,7 @@ def list_runtime_inner_visible_support_signals(
 def get_runtime_inner_visible_support_signal(
     signal_id: str,
 ) -> dict[str, object] | None:
+    """Fetch a single inner-visible-support signal by signal_id, or None if not found."""
     with connect() as conn:
         _ensure_runtime_inner_visible_support_signal_table(conn)
         row = conn.execute(
@@ -610,6 +666,10 @@ def update_runtime_inner_visible_support_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one inner-visible-support signal by signal_id.
+
+    Returns the refreshed signal row dict, or None if the signal does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_inner_visible_support_signal_table(conn)
         row = conn.execute(
@@ -643,6 +703,11 @@ def supersede_runtime_inner_visible_support_signals_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all open inner-visible-support signals for a focus as 'superseded' except one.
+
+    Updates rows whose canonical_key matches inner-visible-support:%:{focus_key} and are
+    still open (active/stale), excluding exclude_signal_id. Returns rows affected.
+    """
     with connect() as conn:
         _ensure_runtime_inner_visible_support_signal_table(conn)
         cursor = conn.execute(
@@ -688,6 +753,13 @@ def upsert_runtime_relation_state_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert a relation-state signal into runtime_relation_state_signals.
+
+    Merges into an existing open row (active/stale) matched on canonical_key: overwrites
+    core fields, keeps highest source_kind/confidence, merges text summaries and accumulates
+    support/session counts. Returns the persisted signal row dict (with upsert meta merged).
+    Raises RuntimeError if it cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_relation_state_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -737,6 +809,10 @@ def list_runtime_relation_state_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List relation-state signals, newest first, optionally filtered by status.
+
+    Returns a list of row dicts (empty on no rows).
+    """
     with connect() as conn:
         _ensure_runtime_relation_state_signal_table(conn)
         clauses: list[str] = []
@@ -779,6 +855,7 @@ def list_runtime_relation_state_signals(
 
 
 def get_runtime_relation_state_signal(signal_id: str) -> dict[str, object] | None:
+    """Fetch a single relation-state signal by signal_id, or None if not found."""
     with connect() as conn:
         _ensure_runtime_relation_state_signal_table(conn)
         row = conn.execute(
@@ -822,6 +899,10 @@ def update_runtime_relation_state_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one relation-state signal by signal_id.
+
+    Returns the refreshed signal row dict, or None if the signal does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_relation_state_signal_table(conn)
         row = conn.execute(
@@ -855,6 +936,11 @@ def supersede_runtime_relation_state_signals_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all open relation-state signals for a focus as 'superseded' except one.
+
+    Updates rows whose canonical_key matches relation-state:%:{focus_key} and are still
+    open (active/stale), excluding exclude_signal_id. Returns rows affected.
+    """
     with connect() as conn:
         _ensure_runtime_relation_state_signal_table(conn)
         cursor = conn.execute(
@@ -900,6 +986,13 @@ def upsert_runtime_relation_continuity_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert a relation-continuity signal into runtime_relation_continuity_signals.
+
+    Merges into an existing open row (active/softening/stale) matched on canonical_key:
+    overwrites core fields, keeps highest source_kind/confidence, merges text summaries and
+    accumulates support/session counts. Returns the persisted signal row dict (with upsert
+    meta merged). Raises RuntimeError if it cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_relation_continuity_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -949,6 +1042,10 @@ def list_runtime_relation_continuity_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List relation-continuity signals, newest first, optionally filtered by status.
+
+    Returns a list of row dicts (empty on no rows).
+    """
     with connect() as conn:
         _ensure_runtime_relation_continuity_signal_table(conn)
         clauses: list[str] = []
@@ -991,6 +1088,7 @@ def list_runtime_relation_continuity_signals(
 
 
 def get_runtime_relation_continuity_signal(signal_id: str) -> dict[str, object] | None:
+    """Fetch a single relation-continuity signal by signal_id, or None if not found."""
     with connect() as conn:
         _ensure_runtime_relation_continuity_signal_table(conn)
         row = conn.execute(
@@ -1034,6 +1132,10 @@ def update_runtime_relation_continuity_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one relation-continuity signal by signal_id.
+
+    Returns the refreshed signal row dict, or None if the signal does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_relation_continuity_signal_table(conn)
         row = conn.execute(
@@ -1067,6 +1169,11 @@ def supersede_runtime_relation_continuity_signals_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all open relation-continuity signals for a focus as 'superseded' except one.
+
+    Updates rows whose canonical_key matches relation-continuity:%:{focus_key} and are still
+    open (active/softening/stale), excluding exclude_signal_id. Returns rows affected.
+    """
     with connect() as conn:
         _ensure_runtime_relation_continuity_signal_table(conn)
         cursor = conn.execute(
@@ -1112,6 +1219,13 @@ def upsert_runtime_attachment_topology_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert an attachment-topology signal into runtime_attachment_topology_signals.
+
+    Merges into an existing open row (active/softening/stale) matched on canonical_key:
+    overwrites core fields, keeps highest source_kind/confidence, merges text summaries and
+    accumulates support/session counts. Returns the persisted signal row dict (with upsert
+    meta merged). Raises RuntimeError if it cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_attachment_topology_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1177,6 +1291,13 @@ def upsert_runtime_loyalty_gradient_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Upsert a loyalty-gradient signal into runtime_loyalty_gradient_signals.
+
+    Merges into an existing open row (active/softening/stale) matched on canonical_key:
+    overwrites core fields, keeps highest source_kind/confidence, merges text summaries and
+    accumulates support/session counts. Returns the persisted signal row dict (with upsert
+    meta merged). Raises RuntimeError if it cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_loyalty_gradient_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1226,6 +1347,10 @@ def list_runtime_attachment_topology_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List attachment-topology signals, newest first, optionally filtered by status.
+
+    Returns a list of row dicts (empty on no rows).
+    """
     with connect() as conn:
         _ensure_runtime_attachment_topology_signal_table(conn)
         clauses: list[str] = []
@@ -1272,6 +1397,10 @@ def list_runtime_loyalty_gradient_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """List loyalty-gradient signals, newest first, optionally filtered by status.
+
+    Returns a list of row dicts (empty on no rows).
+    """
     with connect() as conn:
         _ensure_runtime_loyalty_gradient_signal_table(conn)
         clauses: list[str] = []
@@ -1314,6 +1443,7 @@ def list_runtime_loyalty_gradient_signals(
 
 
 def get_runtime_attachment_topology_signal(signal_id: str) -> dict[str, object] | None:
+    """Fetch a single attachment-topology signal by signal_id, or None if not found."""
     with connect() as conn:
         _ensure_runtime_attachment_topology_signal_table(conn)
         row = conn.execute(
@@ -1351,6 +1481,7 @@ def get_runtime_attachment_topology_signal(signal_id: str) -> dict[str, object] 
 
 
 def get_runtime_loyalty_gradient_signal(signal_id: str) -> dict[str, object] | None:
+    """Fetch a single loyalty-gradient signal by signal_id, or None if not found."""
     with connect() as conn:
         _ensure_runtime_loyalty_gradient_signal_table(conn)
         row = conn.execute(
@@ -1394,6 +1525,10 @@ def update_runtime_attachment_topology_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one attachment-topology signal by signal_id.
+
+    Returns the refreshed signal row dict, or None if the signal does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_attachment_topology_signal_table(conn)
         row = conn.execute(
@@ -1427,6 +1562,10 @@ def update_runtime_loyalty_gradient_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one loyalty-gradient signal by signal_id.
+
+    Returns the refreshed signal row dict, or None if the signal does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_loyalty_gradient_signal_table(conn)
         row = conn.execute(
@@ -1460,6 +1599,11 @@ def supersede_runtime_attachment_topology_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all open attachment-topology signals for a domain as 'superseded' except one.
+
+    Updates rows whose canonical_key matches attachment-topology:%:{domain_key} and are still
+    open (active/softening/stale), excluding exclude_signal_id. Returns rows affected.
+    """
     with connect() as conn:
         _ensure_runtime_attachment_topology_signal_table(conn)
         cursor = conn.execute(
@@ -1491,6 +1635,11 @@ def supersede_runtime_loyalty_gradient_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all open loyalty-gradient signals for a domain as 'superseded' except one.
+
+    Updates rows whose canonical_key matches loyalty-gradient:%:{domain_key} and are still
+    open (active/softening/stale), excluding exclude_signal_id. Returns rows affected.
+    """
     with connect() as conn:
         _ensure_runtime_loyalty_gradient_signal_table(conn)
         cursor = conn.execute(

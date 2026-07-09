@@ -62,6 +62,11 @@ def insert_session_distillation_record(
     detail: str,
     created_at: str,
 ) -> dict[str, object]:
+    """Insert a session-distillation record (INSERT OR IGNORE on distillation_id).
+
+    Returns the stored row dict (via get_session_distillation_record), or {} if
+    the lookup fails. No-op if a record with the same distillation_id exists.
+    """
     with connect() as conn:
         _ensure_session_distillation_records_table(conn)
         conn.execute(
@@ -83,6 +88,11 @@ def insert_session_distillation_record(
 
 
 def get_session_distillation_record(distillation_id: str) -> dict[str, object] | None:
+    """Return the session-distillation record for the given id, or None if absent.
+
+    Maps the row via db.py's _session_distillation_record_from_row (lazy-imported
+    to avoid a circular import).
+    """
     with connect() as conn:
         _ensure_session_distillation_records_table(conn)
         row = conn.execute(
@@ -127,6 +137,12 @@ def upsert_cognitive_personality_vector(
     current_bearing: str = "",
     emotional_baseline: str = "{}",
 ) -> dict[str, object]:
+    """Insert a new personality-vector version (auto-incremented from the latest).
+
+    Writes a fresh versioned row and invalidates the cognitive-state cache so the
+    change surfaces in the next prompt assembly. Returns {vector_id, version,
+    updated_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_personality_vector_table(conn)
@@ -160,6 +176,7 @@ def upsert_cognitive_personality_vector(
 
 
 def get_latest_cognitive_personality_vector() -> dict[str, object] | None:
+    """Return the highest-version personality-vector row as a dict, or None if none exist."""
     with connect() as conn:
         _ensure_cognitive_personality_vector_table(conn)
         row = conn.execute(
@@ -182,6 +199,7 @@ def get_latest_cognitive_personality_vector() -> dict[str, object] | None:
 
 
 def list_cognitive_personality_vectors(*, limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` personality-vector rows (newest version first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_personality_vector_table(conn)
         rows = conn.execute(
@@ -226,6 +244,10 @@ def upsert_cognitive_taste_profile(
     communication_taste: str = "{}",
     evidence_count: int = 0,
 ) -> dict[str, object]:
+    """Insert a new taste-profile version (auto-incremented from the latest).
+
+    Returns {profile_id, version, updated_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_taste_profile_table(conn)
@@ -246,6 +268,7 @@ def upsert_cognitive_taste_profile(
 
 
 def get_latest_cognitive_taste_profile() -> dict[str, object] | None:
+    """Return the highest-version taste-profile row as a dict, or None if none exist."""
     with connect() as conn:
         _ensure_cognitive_taste_profile_table(conn)
         row = conn.execute(
@@ -292,6 +315,10 @@ def insert_cognitive_chronicle_entry(
     lessons: str = "[]",
     affective_signature: str = "",
 ) -> dict[str, object]:
+    """Insert or replace a chronicle entry keyed by entry_id (INSERT OR REPLACE).
+
+    Returns {entry_id, period, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_chronicle_entries_table(conn)
@@ -305,6 +332,7 @@ def insert_cognitive_chronicle_entry(
 
 
 def get_latest_cognitive_chronicle_entry() -> dict[str, object] | None:
+    """Return the most recently created chronicle entry as a dict, or None if none exist."""
     with connect() as conn:
         _ensure_cognitive_chronicle_entries_table(conn)
         row = conn.execute(
@@ -325,6 +353,12 @@ def get_latest_cognitive_chronicle_entry() -> dict[str, object] | None:
 
 
 def list_cognitive_chronicle_entries(*, limit: int = 10) -> list[dict[str, object]]:
+    """Return up to `limit` chronicle entries (newest first) as dicts.
+
+    Privacy-scoped to the current user: rows with NULL relevant_to_users (general
+    Jarvis state) plus rows that mention the current user id. Falls back to all
+    rows when no user context is set.
+    """
     # PRIVATLIVS-GUARD (multi-user northstar): scope til den aktuelle bruger som
     # dream/initiative-læserne — NULL relevant_to_users = generel Jarvis-tilstand
     # (synlig for alle), ellers kun entries der nævner brugeren. Stopper read_chronicles
@@ -409,6 +443,11 @@ def insert_cognitive_episode(
     perception_json: str = "{}",
     policy_json: str = "{}",
 ) -> dict[str, object]:
+    """Insert or replace a cognitive episode keyed by episode_id (INSERT OR REPLACE).
+
+    Text fields are truncated (trigger/outcome_status/summary) before storage.
+    Returns {episode_id, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_episodes_table(conn)
@@ -438,6 +477,7 @@ def insert_cognitive_episode(
 
 
 def list_cognitive_episodes(*, limit: int = 10) -> list[dict[str, object]]:
+    """Return up to `limit` cognitive episodes (newest first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_episodes_table(conn)
         rows = conn.execute(
@@ -448,6 +488,7 @@ def list_cognitive_episodes(*, limit: int = 10) -> list[dict[str, object]]:
 
 
 def get_latest_cognitive_episode() -> dict[str, object] | None:
+    """Return the most recent cognitive episode as a dict, or None if none exist."""
     episodes = list_cognitive_episodes(limit=1)
     return episodes[0] if episodes else None
 
@@ -500,6 +541,10 @@ def upsert_cognitive_relationship_texture(
     conversation_rhythm: str = "{}",
     unspoken_rules: str = "[]",
 ) -> dict[str, object]:
+    """Insert a new relationship-texture version (auto-incremented from the latest).
+
+    Returns {texture_id, version, updated_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_relationship_texture_table(conn)
@@ -522,6 +567,7 @@ def upsert_cognitive_relationship_texture(
 
 
 def get_latest_cognitive_relationship_texture() -> dict[str, object] | None:
+    """Return the highest-version relationship-texture row as a dict, or None if none exist."""
     with connect() as conn:
         _ensure_cognitive_relationship_texture_table(conn)
         row = conn.execute(
@@ -564,6 +610,10 @@ def upsert_cognitive_compass_state(
     rationale: str = "",
     open_loop_count: int = 0,
 ) -> dict[str, object]:
+    """Upsert the singleton compass state ('compass-current', INSERT OR REPLACE).
+
+    Returns {compass_id, bearing, updated_at}.
+    """
     now = _now_iso()
     compass_id = "compass-current"
     with connect() as conn:
@@ -578,6 +628,7 @@ def upsert_cognitive_compass_state(
 
 
 def get_latest_cognitive_compass_state() -> dict[str, object] | None:
+    """Return the most recently updated compass-state row as a dict, or None if none exist."""
     with connect() as conn:
         _ensure_cognitive_compass_state_table(conn)
         row = conn.execute(
@@ -623,6 +674,11 @@ def upsert_cognitive_rhythm_state(
     initiative_multiplier: float = 1.0,
     confidence_threshold_delta: float = 0.0,
 ) -> dict[str, object]:
+    """Upsert the singleton rhythm state ('rhythm-current', INSERT OR REPLACE).
+
+    Booleans (recovery_needed, focus_protection) are stored as ints. Returns
+    {rhythm_id, phase, energy, updated_at}.
+    """
     now = _now_iso()
     rhythm_id = "rhythm-current"
     with connect() as conn:
@@ -640,6 +696,7 @@ def upsert_cognitive_rhythm_state(
 
 
 def get_latest_cognitive_rhythm_state() -> dict[str, object] | None:
+    """Return the most recently updated rhythm-state row as a dict, or None if none exist."""
     with connect() as conn:
         _ensure_cognitive_rhythm_state_table(conn)
         row = conn.execute(
@@ -696,6 +753,12 @@ def upsert_cognitive_habit_pattern(
     pattern_key: str,
     description: str = "",
 ) -> dict[str, object]:
+    """Upsert a habit pattern by pattern_key.
+
+    On an existing key, bumps recurrence_count and recomputes confidence
+    (min(1.0, 0.2 + count/20)); otherwise inserts a new row at count 1 / conf 0.2.
+    Returns {pattern_key, recurrence_count, confidence}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_habit_patterns_table(conn)
@@ -730,6 +793,12 @@ def upsert_cognitive_friction_signal(
     inefficiency_score: float = 0.0,
     description: str = "",
 ) -> dict[str, object]:
+    """Upsert a friction signal by task_signature.
+
+    On an existing signature, bumps repetition_count and keeps the max
+    inefficiency_score; otherwise inserts a new row at count 1. Returns
+    {task_signature, repetition_count}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_habit_patterns_table(conn)
@@ -760,6 +829,7 @@ def upsert_cognitive_friction_signal(
 
 
 def list_cognitive_habit_patterns(*, limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` habit patterns (most recurrent first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_habit_patterns_table(conn)
         rows = conn.execute(
@@ -780,6 +850,7 @@ def list_cognitive_habit_patterns(*, limit: int = 20) -> list[dict[str, object]]
 
 
 def list_cognitive_friction_signals(*, limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` friction signals (most repeated first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_habit_patterns_table(conn)
         rows = conn.execute(
@@ -829,6 +900,10 @@ def insert_cognitive_decision(
     regrets: str = "[]",
     refs: str = "[]",
 ) -> dict[str, object]:
+    """Insert or replace a decision record keyed by decision_id (INSERT OR REPLACE).
+
+    Returns {decision_id, title, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_decisions_table(conn)
@@ -842,6 +917,7 @@ def insert_cognitive_decision(
 
 
 def list_cognitive_decisions(*, limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` decision records (newest first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_decisions_table(conn)
         rows = conn.execute(
@@ -889,6 +965,10 @@ def insert_cognitive_counterfactual(
     source: str = "runtime",
     confidence: float = 0.5,
 ) -> dict[str, object]:
+    """Insert or replace a counterfactual keyed by cf_id (INSERT OR REPLACE).
+
+    Returns {cf_id, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_counterfactuals_table(conn)
@@ -902,6 +982,7 @@ def insert_cognitive_counterfactual(
 
 
 def list_cognitive_counterfactuals(*, limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` counterfactuals (newest first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_counterfactuals_table(conn)
         rows = conn.execute(
@@ -946,6 +1027,12 @@ def upsert_cognitive_shared_language_term(
     anchors: str = "[]",
     confidence: float = 0.5,
 ) -> dict[str, object]:
+    """Upsert a shared-language term by phrase.
+
+    On an existing phrase, nudges confidence up by 0.05 (capped at 1.0) and
+    refreshes last_used_at; otherwise inserts a new hash-derived term_id. Returns
+    {phrase, confidence}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_shared_language_table(conn)
@@ -975,6 +1062,7 @@ def upsert_cognitive_shared_language_term(
 
 
 def list_cognitive_shared_language(*, limit: int = 30) -> list[dict[str, object]]:
+    """Return up to `limit` shared-language terms (highest confidence first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_shared_language_table(conn)
         rows = conn.execute(
@@ -1026,6 +1114,10 @@ def insert_cognitive_seed(
     relevance_score: float = 0.5,
     linked_goal: str = "",
 ) -> dict[str, object]:
+    """Insert or replace a seed keyed by seed_id, status forced to 'planted'.
+
+    Returns {seed_id, title, status, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_seeds_table(conn)
@@ -1042,6 +1134,7 @@ def insert_cognitive_seed(
 
 
 def update_cognitive_seed_status(*, seed_id: str, status: str) -> None:
+    """Update the status (and updated_at) of the seed with the given seed_id. Returns None."""
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_seeds_table(conn)
@@ -1052,6 +1145,7 @@ def update_cognitive_seed_status(*, seed_id: str, status: str) -> None:
 
 
 def list_cognitive_seeds(*, status: str = "", limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` seeds (newest first) as dicts, optionally filtered by status."""
     with connect() as conn:
         _ensure_cognitive_seeds_table(conn)
         if status:
@@ -1098,6 +1192,12 @@ def update_cognitive_gut_state(
     prediction_correct: bool,
     last_hunch: str = "",
 ) -> dict[str, object]:
+    """Update the singleton gut state ('gut-current') with one prediction outcome.
+
+    Increments total_predictions, adds to calibrated_hits when prediction_correct,
+    and recomputes calibration_score = hits/total. Creates the row on first call.
+    Returns {updated_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_gut_state_table(conn)
@@ -1128,6 +1228,7 @@ def update_cognitive_gut_state(
 
 
 def get_cognitive_gut_state() -> dict[str, object] | None:
+    """Return the singleton gut-state row ('gut-current') as a dict, or None if unset."""
     with connect() as conn:
         _ensure_cognitive_gut_state_table(conn)
         row = conn.execute(
@@ -1173,6 +1274,10 @@ def upsert_cognitive_experiment(
     status: str = "running",
     result: str = "{}",
 ) -> dict[str, object]:
+    """Insert or replace an experiment keyed by experiment_id (INSERT OR REPLACE).
+
+    Returns {experiment_id, status, updated_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_experiments_table(conn)
@@ -1187,6 +1292,7 @@ def upsert_cognitive_experiment(
 
 
 def list_cognitive_experiments(*, status: str = "", limit: int = 10) -> list[dict[str, object]]:
+    """Return up to `limit` experiments (most recently updated first) as dicts, optionally filtered by status."""
     with connect() as conn:
         _ensure_cognitive_experiments_table(conn)
         if status:
@@ -1239,6 +1345,12 @@ def upsert_cognitive_conversation_signature(
     context: str = "",
     duration_min: float = 0.0,
 ) -> dict[str, object]:
+    """Upsert a conversation signature by signature_type.
+
+    On an existing type, increments count and folds success/duration_min into the
+    running success_rate and avg_duration_min; otherwise inserts a new row.
+    Returns {signature_type, count[, success_rate]}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_conversation_signatures_table(conn)
@@ -1273,6 +1385,7 @@ def upsert_cognitive_conversation_signature(
 
 
 def list_cognitive_conversation_signatures(*, limit: int = 10) -> list[dict[str, object]]:
+    """Return up to `limit` conversation signatures (most frequent first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_conversation_signatures_table(conn)
         rows = conn.execute(
@@ -1320,6 +1433,11 @@ def insert_cognitive_user_emotional_state(
     response_adjustment: str = "",
     run_id: str = "",
 ) -> dict[str, object]:
+    """Insert or replace a user-emotional-state row keyed by state_id (INSERT OR REPLACE).
+
+    user_message_preview is truncated to 200 chars. Returns {state_id,
+    detected_mood, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_user_emotional_states_table(conn)
@@ -1335,6 +1453,7 @@ def insert_cognitive_user_emotional_state(
 
 
 def get_latest_cognitive_user_emotional_state() -> dict[str, object] | None:
+    """Return the most recently created user-emotional-state row as a dict, or None if none exist."""
     with connect() as conn:
         _ensure_cognitive_user_emotional_states_table(conn)
         row = conn.execute(
@@ -1355,6 +1474,7 @@ def get_latest_cognitive_user_emotional_state() -> dict[str, object] | None:
 
 
 def list_cognitive_user_emotional_states(*, limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` user-emotional-state rows (newest first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_user_emotional_states_table(conn)
         rows = conn.execute(
@@ -1411,6 +1531,11 @@ def insert_cognitive_experiential_memory(
     topic: str = "",
     importance: float = 0.5,
 ) -> dict[str, object]:
+    """Insert or replace an experiential memory keyed by memory_id (INSERT OR REPLACE).
+
+    decay_score and reinforcement_count are initialised to 0; narrative/key_lesson/
+    topic are truncated. Returns {memory_id, topic, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_experiential_memories_table(conn)
@@ -1427,6 +1552,7 @@ def insert_cognitive_experiential_memory(
 
 
 def reinforce_experiential_memory(memory_id: str) -> None:
+    """Bump reinforcement_count by 1 and reset decay_score to 0 for the given memory. Returns None."""
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_experiential_memories_table(conn)
@@ -1440,6 +1566,7 @@ def reinforce_experiential_memory(memory_id: str) -> None:
 
 
 def list_cognitive_experiential_memories(*, limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` experiential memories (newest first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_experiential_memories_table(conn)
         rows = conn.execute(
@@ -1521,6 +1648,10 @@ def insert_cognitive_self_surprise(
     expected_confidence: float = 0.5, actual_outcome: str = "",
     domain: str = "", run_id: str = "",
 ) -> dict[str, object]:
+    """Insert or replace a self-surprise keyed by surprise_id (INSERT OR REPLACE).
+
+    narrative is truncated to 300 chars. Returns {surprise_id, surprise_type, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_self_surprises_table(conn)
@@ -1536,6 +1667,7 @@ def insert_cognitive_self_surprise(
 
 
 def list_cognitive_self_surprises(*, limit: int = 15) -> list[dict[str, object]]:
+    """Return up to `limit` self-surprises (newest first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_self_surprises_table(conn)
         rows = conn.execute(
@@ -1572,6 +1704,10 @@ def insert_cognitive_narrative_identity(
     *, identity_id: str, narrative: str, key_changes: str = "[]",
     personality_version: int = 0,
 ) -> dict[str, object]:
+    """Insert or replace a narrative-identity keyed by identity_id (INSERT OR REPLACE).
+
+    narrative is truncated to 600 chars. Returns {identity_id, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_narrative_identities_table(conn)
@@ -1585,6 +1721,7 @@ def insert_cognitive_narrative_identity(
 
 
 def get_latest_cognitive_narrative_identity() -> dict[str, object] | None:
+    """Return the most recently created narrative-identity row as a dict, or None if none exist."""
     with connect() as conn:
         _ensure_cognitive_narrative_identities_table(conn)
         row = conn.execute(
@@ -1601,6 +1738,7 @@ def get_latest_cognitive_narrative_identity() -> dict[str, object] | None:
 
 
 def list_cognitive_narrative_identities(*, limit: int = 10) -> list[dict[str, object]]:
+    """Return up to `limit` narrative-identity rows (newest first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_narrative_identities_table(conn)
         rows = conn.execute(
@@ -1631,6 +1769,10 @@ def insert_cognitive_gratitude_signal(
     *, gratitude_id: str, trigger_event: str, detail: str = "",
     intensity: float = 0.5,
 ) -> dict[str, object]:
+    """Insert or replace a gratitude signal keyed by gratitude_id (INSERT OR REPLACE).
+
+    detail is truncated to 300 chars. Returns {gratitude_id, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_gratitude_signals_table(conn)
@@ -1644,6 +1786,7 @@ def insert_cognitive_gratitude_signal(
 
 
 def list_cognitive_gratitude_signals(*, limit: int = 15) -> list[dict[str, object]]:
+    """Return up to `limit` gratitude signals (newest first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_gratitude_signals_table(conn)
         rows = conn.execute(
@@ -1676,6 +1819,10 @@ def upsert_cognitive_emergent_goal(
     *, goal_id: str, desire: str, source: str = "", intensity: float = 0.5,
     status: str = "active",
 ) -> dict[str, object]:
+    """Insert or replace an emergent goal keyed by goal_id (INSERT OR REPLACE).
+
+    desire is truncated to 300 chars. Returns {goal_id, desire, status, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_emergent_goals_table(conn)
@@ -1689,6 +1836,7 @@ def upsert_cognitive_emergent_goal(
 
 
 def list_cognitive_emergent_goals(*, status: str = "", limit: int = 15) -> list[dict[str, object]]:
+    """Return up to `limit` emergent goals (highest intensity first) as dicts, optionally filtered by status."""
     with connect() as conn:
         _ensure_cognitive_emergent_goals_table(conn)
         if status:
@@ -1727,6 +1875,12 @@ def upsert_cognitive_formed_value(
     *, value_id: str, value_statement: str, source_experience: str = "",
     conviction: float = 0.5,
 ) -> dict[str, object]:
+    """Upsert a formed value by value_id.
+
+    On an existing id, bumps evidence_count and nudges conviction up by 0.05
+    (capped at 1.0); otherwise inserts a new row at evidence_count 1. Returns
+    {value_id, conviction[, evidence_count | created_at]}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_formed_values_table(conn)
@@ -1753,6 +1907,7 @@ def upsert_cognitive_formed_value(
 
 
 def list_cognitive_formed_values(*, limit: int = 15) -> list[dict[str, object]]:
+    """Return up to `limit` formed values (highest conviction first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_formed_values_table(conn)
         rows = conn.execute(
@@ -1785,6 +1940,10 @@ def insert_cognitive_conflict_memory(
     *, conflict_id: str, topic: str, jarvis_position: str = "",
     user_position: str = "", resolution: str = "", lesson: str = "",
 ) -> dict[str, object]:
+    """Insert or replace a conflict memory keyed by conflict_id (INSERT OR REPLACE).
+
+    All text fields are truncated to 200 chars. Returns {conflict_id, topic, created_at}.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_conflict_memories_table(conn)
@@ -1800,6 +1959,7 @@ def insert_cognitive_conflict_memory(
 
 
 def list_cognitive_conflict_memories(*, limit: int = 15) -> list[dict[str, object]]:
+    """Return up to `limit` conflict memories (newest first) as dicts."""
     with connect() as conn:
         _ensure_cognitive_conflict_memories_table(conn)
         rows = conn.execute(
@@ -1843,6 +2003,11 @@ def upsert_cognitive_emotion_concept_signal(
     influences: str = "[]",
     expires_at: str,
 ) -> None:
+    """Upsert a time-bounded emotion-concept signal by signal_id.
+
+    Updates the row's intensity/direction/trigger/source/influences/expires_at if
+    the signal_id exists, else inserts a new row. Returns None.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_emotion_concept_signal_table(conn)
@@ -1875,6 +2040,11 @@ def list_active_cognitive_emotion_concept_signals(
     min_intensity: float = 0.05,
     limit: int = 10,
 ) -> list[dict[str, object]]:
+    """Return active emotion-concept signals as dicts (highest intensity first).
+
+    Filters to rows with expires_at >= now_iso and intensity >= min_intensity,
+    capped at `limit`.
+    """
     with connect() as conn:
         _ensure_cognitive_emotion_concept_signal_table(conn)
         rows = conn.execute(

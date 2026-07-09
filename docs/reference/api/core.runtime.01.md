@@ -71,39 +71,39 @@ _Persistence for Jarvis' agent + council runtime cluster._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_ensure_agent_runtime_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_runtime.py#L17) |
-| function | `create_agent_registry_entry` | `(*, agent_id, parent_agent_id=…, owner_agent_id=…, council_id=…, kind=…, role=…, goal=…, status=…, lane=…, provider=…, model=…, system_prompt=…, system_prompt_version=…, tool_policy=…, allowed_tools_json=…, persistent=…, ttl_seconds=…, schedule_json=…, next_wake_at=…, budget_tokens=…, tokens_burned=…, failure_count=…, last_error=…, context_json=…, result_contract_json=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L182) |
-| function | `get_agent_registry_entry` | `(agent_id)` | — | [src](../../../core/runtime/db_agent_runtime.py#L258) |
-| function | `update_agent_registry_entry` | `(agent_id, *, status=…, next_wake_at=…, schedule_json=…, tokens_burned_delta=…, failure_increment=…, last_error=…, completed_at=…, expired_at=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L270) |
-| function | `list_agent_registry_entries` | `(*, status=…, include_completed=…, limit=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L319) |
-| function | `create_agent_run` | `(*, run_id, agent_id, status=…, execution_mode=…, provider=…, model=…, input_summary=…, output_summary=…, input_payload_json=…, output_payload_json=…, started_at=…, finished_at=…, input_tokens=…, output_tokens=…, cost_usd=…, provider_status=…, failure_reason=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L340) |
-| function | `get_agent_run` | `(run_id)` | — | [src](../../../core/runtime/db_agent_runtime.py#L399) |
-| function | `update_agent_run` | `(run_id, *, status=…, output_summary=…, output_payload_json=…, started_at=…, finished_at=…, input_tokens=…, output_tokens=…, cost_usd=…, provider_status=…, failure_reason=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L411) |
-| function | `list_agent_runs` | `(*, agent_id=…, limit=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L454) |
-| function | `create_agent_message` | `(*, message_id, thread_id, run_id=…, council_id=…, agent_id=…, peer_agent_id=…, direction=…, role=…, content=…, kind=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L468) |
-| function | `get_agent_message` | `(message_id)` | — | [src](../../../core/runtime/db_agent_runtime.py#L510) |
-| function | `list_agent_messages` | `(*, thread_id=…, run_id=…, council_id=…, agent_id=…, limit=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L522) |
-| function | `create_agent_tool_call` | `(*, tool_call_id, run_id, agent_id, tool_name, status=…, arguments_json=…, result_preview=…, started_at=…, finished_at=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L552) |
-| function | `get_agent_tool_call` | `(tool_call_id)` | — | [src](../../../core/runtime/db_agent_runtime.py#L592) |
-| function | `list_agent_tool_calls` | `(*, run_id=…, agent_id=…, limit=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L604) |
-| function | `create_agent_schedule` | `(*, schedule_id, agent_id, schedule_kind=…, schedule_expr=…, next_fire_at=…, last_fire_at=…, missed_run_policy=…, active=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L621) |
-| function | `get_agent_schedule` | `(schedule_id)` | — | [src](../../../core/runtime/db_agent_runtime.py#L669) |
-| function | `update_agent_schedule` | `(schedule_id, *, schedule_expr=…, next_fire_at=…, last_fire_at=…, active=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L681) |
-| function | `list_agent_schedules` | `(*, agent_id=…, active_only=…, due_before=…, limit=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L714) |
-| function | `create_council_session` | `(*, council_id, owner_agent_id=…, topic=…, status=…, mode=…, summary=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L733) |
-| function | `get_council_session` | `(council_id)` | — | [src](../../../core/runtime/db_agent_runtime.py#L759) |
-| function | `update_council_session` | `(council_id, *, status=…, summary=…, finished_at=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L773) |
-| function | `list_council_sessions` | `(limit=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L802) |
-| function | `add_council_member` | `(*, council_id, agent_id, role, position_summary=…, vote=…, confidence=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L815) |
-| function | `update_council_member` | `(*, council_id, agent_id, position_summary=…, vote=…, confidence=…)` | — | [src](../../../core/runtime/db_agent_runtime.py#L845) |
-| function | `get_council_member` | `(*, council_id, agent_id)` | — | [src](../../../core/runtime/db_agent_runtime.py#L877) |
-| function | `list_council_members` | `(*, council_id)` | — | [src](../../../core/runtime/db_agent_runtime.py#L889) |
-| function | `_agent_registry_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L899) |
-| function | `_agent_run_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L933) |
-| function | `_agent_message_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L957) |
-| function | `_agent_tool_call_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L973) |
-| function | `_agent_schedule_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L988) |
-| function | `_council_session_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1003) |
-| function | `_council_member_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1017) |
+| function | `create_agent_registry_entry` | `(*, agent_id, parent_agent_id=…, owner_agent_id=…, council_id=…, kind=…, role=…, goal=…, status=…, lane=…, provider=…, model=…, system_prompt=…, system_prompt_version=…, tool_policy=…, allowed_tools_json=…, persistent=…, ttl_seconds=…, schedule_json=…, next_wake_at=…, budget_tokens=…, tokens_burned=…, failure_count=…, last_error=…, context_json=…, result_contract_json=…)` | Insert a new row into agent_registry and return the stored entry as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L182) |
+| function | `get_agent_registry_entry` | `(agent_id)` | Return the agent_registry row for agent_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L263) |
+| function | `update_agent_registry_entry` | `(agent_id, *, status=…, next_wake_at=…, schedule_json=…, tokens_burned_delta=…, failure_increment=…, last_error=…, completed_at=…, expired_at=…)` | Patch selected columns of one agent_registry row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L276) |
+| function | `list_agent_registry_entries` | `(*, status=…, include_completed=…, limit=…)` | Return agent_registry rows as dicts, newest-updated first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L331) |
+| function | `create_agent_run` | `(*, run_id, agent_id, status=…, execution_mode=…, provider=…, model=…, input_summary=…, output_summary=…, input_payload_json=…, output_payload_json=…, started_at=…, finished_at=…, input_tokens=…, output_tokens=…, cost_usd=…, provider_status=…, failure_reason=…)` | Insert a new row into agent_runs and return the stored run as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L357) |
+| function | `get_agent_run` | `(run_id)` | Return the agent_runs row for run_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L421) |
+| function | `update_agent_run` | `(run_id, *, status=…, output_summary=…, output_payload_json=…, started_at=…, finished_at=…, input_tokens=…, output_tokens=…, cost_usd=…, provider_status=…, failure_reason=…)` | Patch selected columns of one agent_runs row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L434) |
+| function | `list_agent_runs` | `(*, agent_id=…, limit=…)` | Return agent_runs rows as dicts, newest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L482) |
+| function | `create_agent_message` | `(*, message_id, thread_id, run_id=…, council_id=…, agent_id=…, peer_agent_id=…, direction=…, role=…, content=…, kind=…)` | Insert a new row into agent_messages and return the stored message as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L500) |
+| function | `get_agent_message` | `(message_id)` | Return the agent_messages row for message_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L547) |
+| function | `list_agent_messages` | `(*, thread_id=…, run_id=…, council_id=…, agent_id=…, limit=…)` | Return agent_messages rows as dicts, oldest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L560) |
+| function | `create_agent_tool_call` | `(*, tool_call_id, run_id, agent_id, tool_name, status=…, arguments_json=…, result_preview=…, started_at=…, finished_at=…)` | Insert a new row into agent_tool_calls and return the stored call as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L595) |
+| function | `get_agent_tool_call` | `(tool_call_id)` | Return the agent_tool_calls row for tool_call_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L640) |
+| function | `list_agent_tool_calls` | `(*, run_id=…, agent_id=…, limit=…)` | Return agent_tool_calls rows as dicts, newest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L653) |
+| function | `create_agent_schedule` | `(*, schedule_id, agent_id, schedule_kind=…, schedule_expr=…, next_fire_at=…, last_fire_at=…, missed_run_policy=…, active=…)` | Upsert a row in agent_schedules by schedule_id and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L675) |
+| function | `get_agent_schedule` | `(schedule_id)` | Return the agent_schedules row for schedule_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L729) |
+| function | `update_agent_schedule` | `(schedule_id, *, schedule_expr=…, next_fire_at=…, last_fire_at=…, active=…)` | Patch selected columns of one agent_schedules row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L742) |
+| function | `list_agent_schedules` | `(*, agent_id=…, active_only=…, due_before=…, limit=…)` | Return agent_schedules rows as dicts, ordered by next_fire_at then created_at. | [src](../../../core/runtime/db_agent_runtime.py#L781) |
+| function | `create_council_session` | `(*, council_id, owner_agent_id=…, topic=…, status=…, mode=…, summary=…)` | Insert a new row into council_sessions and return the stored session as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L806) |
+| function | `get_council_session` | `(council_id)` | Return the council_sessions row for council_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L838) |
+| function | `update_council_session` | `(council_id, *, status=…, summary=…, finished_at=…)` | Patch selected columns of one council_sessions row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L857) |
+| function | `list_council_sessions` | `(limit=…)` | Return council_sessions rows as dicts, newest-updated first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L892) |
+| function | `add_council_member` | `(*, council_id, agent_id, role, position_summary=…, vote=…, confidence=…)` | Upsert a council member by (council_id, agent_id) and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L910) |
+| function | `update_council_member` | `(*, council_id, agent_id, position_summary=…, vote=…, confidence=…)` | Patch a council member's position/vote/confidence by (council_id, agent_id). | [src](../../../core/runtime/db_agent_runtime.py#L946) |
+| function | `get_council_member` | `(*, council_id, agent_id)` | Return the council_members row for (council_id, agent_id) as a dict, or None. | [src](../../../core/runtime/db_agent_runtime.py#L984) |
+| function | `list_council_members` | `(*, council_id)` | Return all council_members rows for council_id as dicts, oldest-created first. | [src](../../../core/runtime/db_agent_runtime.py#L997) |
+| function | `_agent_registry_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1011) |
+| function | `_agent_run_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1045) |
+| function | `_agent_message_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1069) |
+| function | `_agent_tool_call_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1085) |
+| function | `_agent_schedule_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1100) |
+| function | `_council_session_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1115) |
+| function | `_council_member_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1129) |
 
 ## `core/runtime/db_anomalies.py`
 _Central-anomalier — persistent register over UDEFINEREDE fejl Centralen ikke selv har_
@@ -224,91 +224,91 @@ _Persistence for the cognitive + experiential-memory domain._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_ensure_session_distillation_records_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L28) |
-| function | `insert_session_distillation_record` | `(*, distillation_id, session_id, run_id, private_brain_count, workspace_memory_count, discard_count, summary, detail, created_at)` | — | [src](../../../core/runtime/db_cognitive.py#L53) |
-| function | `get_session_distillation_record` | `(distillation_id)` | — | [src](../../../core/runtime/db_cognitive.py#L85) |
-| function | `_ensure_cognitive_personality_vector_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L100) |
-| function | `upsert_cognitive_personality_vector` | `(*, confidence_by_domain=…, communication_style=…, learned_preferences=…, recurring_mistakes=…, strengths_discovered=…, current_bearing=…, emotional_baseline=…)` | — | [src](../../../core/runtime/db_cognitive.py#L120) |
-| function | `get_latest_cognitive_personality_vector` | `()` | — | [src](../../../core/runtime/db_cognitive.py#L162) |
-| function | `list_cognitive_personality_vectors` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L184) |
-| function | `_ensure_cognitive_taste_profile_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L205) |
-| function | `upsert_cognitive_taste_profile` | `(*, code_taste=…, design_taste=…, communication_taste=…, evidence_count=…)` | — | [src](../../../core/runtime/db_cognitive.py#L222) |
-| function | `get_latest_cognitive_taste_profile` | `()` | — | [src](../../../core/runtime/db_cognitive.py#L248) |
-| function | `_ensure_cognitive_chronicle_entries_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L267) |
-| function | `insert_cognitive_chronicle_entry` | `(*, entry_id, period, narrative, key_events=…, lessons=…, affective_signature=…)` | — | [src](../../../core/runtime/db_cognitive.py#L286) |
-| function | `get_latest_cognitive_chronicle_entry` | `()` | — | [src](../../../core/runtime/db_cognitive.py#L307) |
-| function | `list_cognitive_chronicle_entries` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L327) |
-| function | `_ensure_cognitive_episodes_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L362) |
-| function | `insert_cognitive_episode` | `(*, episode_id, source_run_id=…, session_id=…, trigger=…, outcome_status=…, summary=…, metacognition_json=…, attention_json=…, learning_json=…, social_json=…, perception_json=…, policy_json=…)` | — | [src](../../../core/runtime/db_cognitive.py#L397) |
-| function | `list_cognitive_episodes` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L440) |
-| function | `get_latest_cognitive_episode` | `()` | — | [src](../../../core/runtime/db_cognitive.py#L450) |
-| function | `_cognitive_episode_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_cognitive.py#L455) |
-| function | `_ensure_cognitive_relationship_texture_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L473) |
-| function | `upsert_cognitive_relationship_texture` | `(*, humor_frequency=…, inside_references=…, correction_patterns=…, trust_trajectory=…, productive_hours=…, conversation_rhythm=…, unspoken_rules=…)` | — | [src](../../../core/runtime/db_cognitive.py#L493) |
-| function | `get_latest_cognitive_relationship_texture` | `()` | — | [src](../../../core/runtime/db_cognitive.py#L524) |
-| function | `_ensure_cognitive_compass_state_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L546) |
-| function | `upsert_cognitive_compass_state` | `(*, bearing, rationale=…, open_loop_count=…)` | — | [src](../../../core/runtime/db_cognitive.py#L561) |
-| function | `get_latest_cognitive_compass_state` | `()` | — | [src](../../../core/runtime/db_cognitive.py#L580) |
-| function | `_ensure_cognitive_rhythm_state_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L597) |
-| function | `upsert_cognitive_rhythm_state` | `(*, phase, energy=…, social=…, recovery_needed=…, focus_protection=…, initiative_multiplier=…, confidence_threshold_delta=…)` | — | [src](../../../core/runtime/db_cognitive.py#L616) |
-| function | `get_latest_cognitive_rhythm_state` | `()` | — | [src](../../../core/runtime/db_cognitive.py#L642) |
-| function | `_ensure_cognitive_habit_patterns_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L663) |
-| function | `upsert_cognitive_habit_pattern` | `(*, pattern_key, description=…)` | — | [src](../../../core/runtime/db_cognitive.py#L694) |
-| function | `upsert_cognitive_friction_signal` | `(*, task_signature, inefficiency_score=…, description=…)` | — | [src](../../../core/runtime/db_cognitive.py#L727) |
-| function | `list_cognitive_habit_patterns` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L762) |
-| function | `list_cognitive_friction_signals` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L782) |
-| function | `_ensure_cognitive_decisions_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L802) |
-| function | `insert_cognitive_decision` | `(*, decision_id, title, context=…, options=…, decision=…, why=…, regrets=…, refs=…)` | — | [src](../../../core/runtime/db_cognitive.py#L821) |
-| function | `list_cognitive_decisions` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L844) |
-| function | `_ensure_cognitive_counterfactuals_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L866) |
-| function | `insert_cognitive_counterfactual` | `(*, cf_id, trigger_type, anchor=…, cf_question=…, source=…, confidence=…)` | — | [src](../../../core/runtime/db_cognitive.py#L883) |
-| function | `list_cognitive_counterfactuals` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L904) |
-| function | `_ensure_cognitive_shared_language_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L925) |
-| function | `upsert_cognitive_shared_language_term` | `(*, phrase, meaning=…, anchors=…, confidence=…)` | — | [src](../../../core/runtime/db_cognitive.py#L942) |
-| function | `list_cognitive_shared_language` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L977) |
-| function | `_ensure_cognitive_seeds_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L997) |
-| function | `insert_cognitive_seed` | `(*, seed_id, title, summary=…, activate_at=…, activate_on_event=…, activate_on_context=…, relevance_score=…, linked_goal=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1018) |
-| function | `update_cognitive_seed_status` | `(*, seed_id, status)` | — | [src](../../../core/runtime/db_cognitive.py#L1044) |
-| function | `list_cognitive_seeds` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1054) |
-| function | `_ensure_cognitive_gut_state_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1080) |
-| function | `update_cognitive_gut_state` | `(*, prediction_correct, last_hunch=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1096) |
-| function | `get_cognitive_gut_state` | `()` | — | [src](../../../core/runtime/db_cognitive.py#L1130) |
-| function | `_ensure_cognitive_experiments_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1147) |
-| function | `upsert_cognitive_experiment` | `(*, experiment_id, hypothesis, metric=…, cohorts=…, n=…, status=…, result=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1166) |
-| function | `list_cognitive_experiments` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1189) |
-| function | `_ensure_cognitive_conversation_signatures_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1217) |
-| function | `upsert_cognitive_conversation_signature` | `(*, signature_type, success, context=…, duration_min=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1235) |
-| function | `list_cognitive_conversation_signatures` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1275) |
-| function | `_ensure_cognitive_user_emotional_states_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1295) |
-| function | `insert_cognitive_user_emotional_state` | `(*, state_id, detected_mood, confidence=…, evidence=…, user_message_preview=…, response_adjustment=…, run_id=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1313) |
-| function | `get_latest_cognitive_user_emotional_state` | `()` | — | [src](../../../core/runtime/db_cognitive.py#L1337) |
-| function | `list_cognitive_user_emotional_states` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1357) |
-| function | `_ensure_cognitive_experiential_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1377) |
-| function | `insert_cognitive_experiential_memory` | `(*, memory_id, session_id=…, run_id=…, narrative=…, user_mood=…, jarvis_mood=…, key_lesson=…, emotion_arc=…, topic=…, importance=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1401) |
-| function | `reinforce_experiential_memory` | `(memory_id)` | — | [src](../../../core/runtime/db_cognitive.py#L1429) |
-| function | `list_cognitive_experiential_memories` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1442) |
-| function | `get_experiential_memory_candidates` | `(*, limit=…)` | Return candidate memories for LLM-based associative scoring. | [src](../../../core/runtime/db_cognitive.py#L1467) |
-| function | `_ensure_cognitive_self_surprises_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1501) |
-| function | `insert_cognitive_self_surprise` | `(*, surprise_id, surprise_type, narrative, expected_confidence=…, actual_outcome=…, domain=…, run_id=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1519) |
-| function | `list_cognitive_self_surprises` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1538) |
-| function | `_ensure_cognitive_narrative_identities_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1556) |
-| function | `insert_cognitive_narrative_identity` | `(*, identity_id, narrative, key_changes=…, personality_version=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1571) |
-| function | `get_latest_cognitive_narrative_identity` | `()` | — | [src](../../../core/runtime/db_cognitive.py#L1587) |
-| function | `list_cognitive_narrative_identities` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1603) |
-| function | `_ensure_cognitive_gratitude_signals_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1615) |
-| function | `insert_cognitive_gratitude_signal` | `(*, gratitude_id, trigger_event, detail=…, intensity=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1630) |
-| function | `list_cognitive_gratitude_signals` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1646) |
-| function | `_ensure_cognitive_emergent_goals_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1658) |
-| function | `upsert_cognitive_emergent_goal` | `(*, goal_id, desire, source=…, intensity=…, status=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1675) |
-| function | `list_cognitive_emergent_goals` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1691) |
-| function | `_ensure_cognitive_formed_values_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1709) |
-| function | `upsert_cognitive_formed_value` | `(*, value_id, value_statement, source_experience=…, conviction=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1726) |
-| function | `list_cognitive_formed_values` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1755) |
-| function | `_ensure_cognitive_conflict_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1767) |
-| function | `insert_cognitive_conflict_memory` | `(*, conflict_id, topic, jarvis_position=…, user_position=…, resolution=…, lesson=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1784) |
-| function | `list_cognitive_conflict_memories` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1802) |
-| function | `_ensure_cognitive_emotion_concept_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1815) |
-| function | `upsert_cognitive_emotion_concept_signal` | `(*, signal_id, concept, intensity, direction=…, trigger=…, source=…, influences=…, expires_at)` | — | [src](../../../core/runtime/db_cognitive.py#L1835) |
-| function | `list_active_cognitive_emotion_concept_signals` | `(*, now_iso, min_intensity=…, limit=…)` | — | [src](../../../core/runtime/db_cognitive.py#L1872) |
+| function | `insert_session_distillation_record` | `(*, distillation_id, session_id, run_id, private_brain_count, workspace_memory_count, discard_count, summary, detail, created_at)` | Insert a session-distillation record (INSERT OR IGNORE on distillation_id). | [src](../../../core/runtime/db_cognitive.py#L53) |
+| function | `get_session_distillation_record` | `(distillation_id)` | Return the session-distillation record for the given id, or None if absent. | [src](../../../core/runtime/db_cognitive.py#L90) |
+| function | `_ensure_cognitive_personality_vector_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L110) |
+| function | `upsert_cognitive_personality_vector` | `(*, confidence_by_domain=…, communication_style=…, learned_preferences=…, recurring_mistakes=…, strengths_discovered=…, current_bearing=…, emotional_baseline=…)` | Insert a new personality-vector version (auto-incremented from the latest). | [src](../../../core/runtime/db_cognitive.py#L130) |
+| function | `get_latest_cognitive_personality_vector` | `()` | Return the highest-version personality-vector row as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L178) |
+| function | `list_cognitive_personality_vectors` | `(*, limit=…)` | Return up to `limit` personality-vector rows (newest version first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L201) |
+| function | `_ensure_cognitive_taste_profile_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L223) |
+| function | `upsert_cognitive_taste_profile` | `(*, code_taste=…, design_taste=…, communication_taste=…, evidence_count=…)` | Insert a new taste-profile version (auto-incremented from the latest). | [src](../../../core/runtime/db_cognitive.py#L240) |
+| function | `get_latest_cognitive_taste_profile` | `()` | Return the highest-version taste-profile row as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L270) |
+| function | `_ensure_cognitive_chronicle_entries_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L290) |
+| function | `insert_cognitive_chronicle_entry` | `(*, entry_id, period, narrative, key_events=…, lessons=…, affective_signature=…)` | Insert or replace a chronicle entry keyed by entry_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L309) |
+| function | `get_latest_cognitive_chronicle_entry` | `()` | Return the most recently created chronicle entry as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L334) |
+| function | `list_cognitive_chronicle_entries` | `(*, limit=…)` | Return up to `limit` chronicle entries (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L355) |
+| function | `_ensure_cognitive_episodes_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L396) |
+| function | `insert_cognitive_episode` | `(*, episode_id, source_run_id=…, session_id=…, trigger=…, outcome_status=…, summary=…, metacognition_json=…, attention_json=…, learning_json=…, social_json=…, perception_json=…, policy_json=…)` | Insert or replace a cognitive episode keyed by episode_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L431) |
+| function | `list_cognitive_episodes` | `(*, limit=…)` | Return up to `limit` cognitive episodes (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L479) |
+| function | `get_latest_cognitive_episode` | `()` | Return the most recent cognitive episode as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L490) |
+| function | `_cognitive_episode_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_cognitive.py#L496) |
+| function | `_ensure_cognitive_relationship_texture_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L514) |
+| function | `upsert_cognitive_relationship_texture` | `(*, humor_frequency=…, inside_references=…, correction_patterns=…, trust_trajectory=…, productive_hours=…, conversation_rhythm=…, unspoken_rules=…)` | Insert a new relationship-texture version (auto-incremented from the latest). | [src](../../../core/runtime/db_cognitive.py#L534) |
+| function | `get_latest_cognitive_relationship_texture` | `()` | Return the highest-version relationship-texture row as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L569) |
+| function | `_ensure_cognitive_compass_state_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L592) |
+| function | `upsert_cognitive_compass_state` | `(*, bearing, rationale=…, open_loop_count=…)` | Upsert the singleton compass state ('compass-current', INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L607) |
+| function | `get_latest_cognitive_compass_state` | `()` | Return the most recently updated compass-state row as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L630) |
+| function | `_ensure_cognitive_rhythm_state_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L648) |
+| function | `upsert_cognitive_rhythm_state` | `(*, phase, energy=…, social=…, recovery_needed=…, focus_protection=…, initiative_multiplier=…, confidence_threshold_delta=…)` | Upsert the singleton rhythm state ('rhythm-current', INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L667) |
+| function | `get_latest_cognitive_rhythm_state` | `()` | Return the most recently updated rhythm-state row as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L698) |
+| function | `_ensure_cognitive_habit_patterns_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L720) |
+| function | `upsert_cognitive_habit_pattern` | `(*, pattern_key, description=…)` | Upsert a habit pattern by pattern_key. | [src](../../../core/runtime/db_cognitive.py#L751) |
+| function | `upsert_cognitive_friction_signal` | `(*, task_signature, inefficiency_score=…, description=…)` | Upsert a friction signal by task_signature. | [src](../../../core/runtime/db_cognitive.py#L790) |
+| function | `list_cognitive_habit_patterns` | `(*, limit=…)` | Return up to `limit` habit patterns (most recurrent first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L831) |
+| function | `list_cognitive_friction_signals` | `(*, limit=…)` | Return up to `limit` friction signals (most repeated first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L852) |
+| function | `_ensure_cognitive_decisions_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L873) |
+| function | `insert_cognitive_decision` | `(*, decision_id, title, context=…, options=…, decision=…, why=…, regrets=…, refs=…)` | Insert or replace a decision record keyed by decision_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L892) |
+| function | `list_cognitive_decisions` | `(*, limit=…)` | Return up to `limit` decision records (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L919) |
+| function | `_ensure_cognitive_counterfactuals_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L942) |
+| function | `insert_cognitive_counterfactual` | `(*, cf_id, trigger_type, anchor=…, cf_question=…, source=…, confidence=…)` | Insert or replace a counterfactual keyed by cf_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L959) |
+| function | `list_cognitive_counterfactuals` | `(*, limit=…)` | Return up to `limit` counterfactuals (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L984) |
+| function | `_ensure_cognitive_shared_language_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1006) |
+| function | `upsert_cognitive_shared_language_term` | `(*, phrase, meaning=…, anchors=…, confidence=…)` | Upsert a shared-language term by phrase. | [src](../../../core/runtime/db_cognitive.py#L1023) |
+| function | `list_cognitive_shared_language` | `(*, limit=…)` | Return up to `limit` shared-language terms (highest confidence first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1064) |
+| function | `_ensure_cognitive_seeds_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1085) |
+| function | `insert_cognitive_seed` | `(*, seed_id, title, summary=…, activate_at=…, activate_on_event=…, activate_on_context=…, relevance_score=…, linked_goal=…)` | Insert or replace a seed keyed by seed_id, status forced to 'planted'. | [src](../../../core/runtime/db_cognitive.py#L1106) |
+| function | `update_cognitive_seed_status` | `(*, seed_id, status)` | Update the status (and updated_at) of the seed with the given seed_id. Returns None. | [src](../../../core/runtime/db_cognitive.py#L1136) |
+| function | `list_cognitive_seeds` | `(*, status=…, limit=…)` | Return up to `limit` seeds (newest first) as dicts, optionally filtered by status. | [src](../../../core/runtime/db_cognitive.py#L1147) |
+| function | `_ensure_cognitive_gut_state_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1174) |
+| function | `update_cognitive_gut_state` | `(*, prediction_correct, last_hunch=…)` | Update the singleton gut state ('gut-current') with one prediction outcome. | [src](../../../core/runtime/db_cognitive.py#L1190) |
+| function | `get_cognitive_gut_state` | `()` | Return the singleton gut-state row ('gut-current') as a dict, or None if unset. | [src](../../../core/runtime/db_cognitive.py#L1230) |
+| function | `_ensure_cognitive_experiments_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1248) |
+| function | `upsert_cognitive_experiment` | `(*, experiment_id, hypothesis, metric=…, cohorts=…, n=…, status=…, result=…)` | Insert or replace an experiment keyed by experiment_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1267) |
+| function | `list_cognitive_experiments` | `(*, status=…, limit=…)` | Return up to `limit` experiments (most recently updated first) as dicts, optionally filtered by status. | [src](../../../core/runtime/db_cognitive.py#L1294) |
+| function | `_ensure_cognitive_conversation_signatures_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1323) |
+| function | `upsert_cognitive_conversation_signature` | `(*, signature_type, success, context=…, duration_min=…)` | Upsert a conversation signature by signature_type. | [src](../../../core/runtime/db_cognitive.py#L1341) |
+| function | `list_cognitive_conversation_signatures` | `(*, limit=…)` | Return up to `limit` conversation signatures (most frequent first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1387) |
+| function | `_ensure_cognitive_user_emotional_states_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1408) |
+| function | `insert_cognitive_user_emotional_state` | `(*, state_id, detected_mood, confidence=…, evidence=…, user_message_preview=…, response_adjustment=…, run_id=…)` | Insert or replace a user-emotional-state row keyed by state_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1426) |
+| function | `get_latest_cognitive_user_emotional_state` | `()` | Return the most recently created user-emotional-state row as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L1455) |
+| function | `list_cognitive_user_emotional_states` | `(*, limit=…)` | Return up to `limit` user-emotional-state rows (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1476) |
+| function | `_ensure_cognitive_experiential_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1497) |
+| function | `insert_cognitive_experiential_memory` | `(*, memory_id, session_id=…, run_id=…, narrative=…, user_mood=…, jarvis_mood=…, key_lesson=…, emotion_arc=…, topic=…, importance=…)` | Insert or replace an experiential memory keyed by memory_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1521) |
+| function | `reinforce_experiential_memory` | `(memory_id)` | Bump reinforcement_count by 1 and reset decay_score to 0 for the given memory. Returns None. | [src](../../../core/runtime/db_cognitive.py#L1554) |
+| function | `list_cognitive_experiential_memories` | `(*, limit=…)` | Return up to `limit` experiential memories (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1568) |
+| function | `get_experiential_memory_candidates` | `(*, limit=…)` | Return candidate memories for LLM-based associative scoring. | [src](../../../core/runtime/db_cognitive.py#L1594) |
+| function | `_ensure_cognitive_self_surprises_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1628) |
+| function | `insert_cognitive_self_surprise` | `(*, surprise_id, surprise_type, narrative, expected_confidence=…, actual_outcome=…, domain=…, run_id=…)` | Insert or replace a self-surprise keyed by surprise_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1646) |
+| function | `list_cognitive_self_surprises` | `(*, limit=…)` | Return up to `limit` self-surprises (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1669) |
+| function | `_ensure_cognitive_narrative_identities_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1688) |
+| function | `insert_cognitive_narrative_identity` | `(*, identity_id, narrative, key_changes=…, personality_version=…)` | Insert or replace a narrative-identity keyed by identity_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1703) |
+| function | `get_latest_cognitive_narrative_identity` | `()` | Return the most recently created narrative-identity row as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L1723) |
+| function | `list_cognitive_narrative_identities` | `(*, limit=…)` | Return up to `limit` narrative-identity rows (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1740) |
+| function | `_ensure_cognitive_gratitude_signals_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1753) |
+| function | `insert_cognitive_gratitude_signal` | `(*, gratitude_id, trigger_event, detail=…, intensity=…)` | Insert or replace a gratitude signal keyed by gratitude_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1768) |
+| function | `list_cognitive_gratitude_signals` | `(*, limit=…)` | Return up to `limit` gratitude signals (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1788) |
+| function | `_ensure_cognitive_emergent_goals_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1801) |
+| function | `upsert_cognitive_emergent_goal` | `(*, goal_id, desire, source=…, intensity=…, status=…)` | Insert or replace an emergent goal keyed by goal_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1818) |
+| function | `list_cognitive_emergent_goals` | `(*, status=…, limit=…)` | Return up to `limit` emergent goals (highest intensity first) as dicts, optionally filtered by status. | [src](../../../core/runtime/db_cognitive.py#L1838) |
+| function | `_ensure_cognitive_formed_values_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1857) |
+| function | `upsert_cognitive_formed_value` | `(*, value_id, value_statement, source_experience=…, conviction=…)` | Upsert a formed value by value_id. | [src](../../../core/runtime/db_cognitive.py#L1874) |
+| function | `list_cognitive_formed_values` | `(*, limit=…)` | Return up to `limit` formed values (highest conviction first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1909) |
+| function | `_ensure_cognitive_conflict_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1922) |
+| function | `insert_cognitive_conflict_memory` | `(*, conflict_id, topic, jarvis_position=…, user_position=…, resolution=…, lesson=…)` | Insert or replace a conflict memory keyed by conflict_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1939) |
+| function | `list_cognitive_conflict_memories` | `(*, limit=…)` | Return up to `limit` conflict memories (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1961) |
+| function | `_ensure_cognitive_emotion_concept_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1975) |
+| function | `upsert_cognitive_emotion_concept_signal` | `(*, signal_id, concept, intensity, direction=…, trigger=…, source=…, influences=…, expires_at)` | Upsert a time-bounded emotion-concept signal by signal_id. | [src](../../../core/runtime/db_cognitive.py#L1995) |
+| function | `list_active_cognitive_emotion_concept_signals` | `(*, now_iso, min_intensity=…, limit=…)` | Return active emotion-concept signals as dicts (highest intensity first). | [src](../../../core/runtime/db_cognitive.py#L2037) |
 
 ## `core/runtime/db_cognitive_utility.py`
 _Persistence for the cognitive-domain utility caches._
@@ -641,24 +641,24 @@ _Persistence for Jarvis' runtime chronicle-consolidation signal cluster._
 | function | `_runtime_chronicle_consolidation_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L219) |
 | function | `_runtime_chronicle_consolidation_brief_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L245) |
 | function | `_runtime_chronicle_consolidation_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L271) |
-| function | `upsert_runtime_consolidation_target_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L297) |
-| function | `list_runtime_consolidation_target_signals` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L361) |
-| function | `get_runtime_consolidation_target_signal` | `(signal_id)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L406) |
-| function | `update_runtime_consolidation_target_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L442) |
-| function | `supersede_runtime_consolidation_target_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L474) |
-| function | `upsert_runtime_chronicle_consolidation_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L504) |
-| function | `list_runtime_chronicle_consolidation_signals` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L568) |
-| function | `get_runtime_chronicle_consolidation_signal` | `(signal_id)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L613) |
-| function | `update_runtime_chronicle_consolidation_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L651) |
-| function | `supersede_runtime_chronicle_consolidation_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L683) |
-| function | `upsert_runtime_chronicle_consolidation_brief` | `(*, brief_id, brief_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L713) |
-| function | `list_runtime_chronicle_consolidation_briefs` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L777) |
-| function | `get_runtime_chronicle_consolidation_brief` | `(brief_id)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L822) |
-| function | `update_runtime_chronicle_consolidation_brief_status` | `(brief_id, *, status, updated_at, status_reason=…)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L860) |
-| function | `supersede_runtime_chronicle_consolidation_briefs_for_domain` | `(*, domain_key, exclude_brief_id, updated_at, status_reason)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L892) |
-| function | `upsert_runtime_chronicle_consolidation_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L922) |
-| function | `list_runtime_chronicle_consolidation_proposals` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L986) |
-| function | `get_runtime_chronicle_consolidation_proposal` | `(proposal_id)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L1031) |
-| function | `update_runtime_chronicle_consolidation_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L1069) |
-| function | `supersede_runtime_chronicle_consolidation_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L1101) |
+| function | `upsert_runtime_consolidation_target_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a consolidation-target signal keyed on ``signal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L297) |
+| function | `list_runtime_consolidation_target_signals` | `(*, status=…, limit=…)` | Return consolidation-target signals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L369) |
+| function | `get_runtime_consolidation_target_signal` | `(signal_id)` | Return the consolidation-target signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L419) |
+| function | `update_runtime_consolidation_target_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a consolidation-target signal. | [src](../../../core/runtime/db_runtime_chronicle.py#L456) |
+| function | `supersede_runtime_consolidation_target_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all live consolidation-target signals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L492) |
+| function | `upsert_runtime_chronicle_consolidation_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation signal keyed on ``signal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L528) |
+| function | `list_runtime_chronicle_consolidation_signals` | `(*, status=…, limit=…)` | Return chronicle-consolidation signals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L599) |
+| function | `get_runtime_chronicle_consolidation_signal` | `(signal_id)` | Return the chronicle-consolidation signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L649) |
+| function | `update_runtime_chronicle_consolidation_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation signal. | [src](../../../core/runtime/db_runtime_chronicle.py#L688) |
+| function | `supersede_runtime_chronicle_consolidation_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all live chronicle-consolidation signals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L724) |
+| function | `upsert_runtime_chronicle_consolidation_brief` | `(*, brief_id, brief_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation brief keyed on ``brief_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L760) |
+| function | `list_runtime_chronicle_consolidation_briefs` | `(*, status=…, limit=…)` | Return chronicle-consolidation briefs newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L831) |
+| function | `get_runtime_chronicle_consolidation_brief` | `(brief_id)` | Return the chronicle-consolidation brief row dict for ``brief_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L881) |
+| function | `update_runtime_chronicle_consolidation_brief_status` | `(brief_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation brief. | [src](../../../core/runtime/db_runtime_chronicle.py#L920) |
+| function | `supersede_runtime_chronicle_consolidation_briefs_for_domain` | `(*, domain_key, exclude_brief_id, updated_at, status_reason)` | Mark all live chronicle-consolidation briefs in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L956) |
+| function | `upsert_runtime_chronicle_consolidation_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation proposal keyed on ``proposal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L992) |
+| function | `list_runtime_chronicle_consolidation_proposals` | `(*, status=…, limit=…)` | Return chronicle-consolidation proposals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L1063) |
+| function | `get_runtime_chronicle_consolidation_proposal` | `(proposal_id)` | Return the chronicle-consolidation proposal row dict for ``proposal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L1113) |
+| function | `update_runtime_chronicle_consolidation_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation proposal. | [src](../../../core/runtime/db_runtime_chronicle.py#L1152) |
+| function | `supersede_runtime_chronicle_consolidation_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live chronicle-consolidation proposals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L1188) |
 

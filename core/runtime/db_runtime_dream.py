@@ -238,6 +238,13 @@ def upsert_runtime_dream_hypothesis_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a dream hypothesis signal into runtime_dream_hypothesis_signals.
+
+    Ensures the table exists, then upserts via the shared `_upsert_signal` helper
+    (keyed on signal_id / canonical_key, merging into an existing active/integrating/
+    fading/stale row when present). Re-reads and returns the persisted row dict with
+    the upsert metadata merged in. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_dream_hypothesis_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -286,6 +293,12 @@ def list_runtime_dream_hypothesis_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return dream hypothesis signals as row dicts, newest first.
+
+    Optionally filters by status and always scopes to the current user
+    (rows with NULL relevant_to_users or matching the current user id). Bounded
+    by `limit`. Returns an empty list when nothing matches.
+    """
     from core.identity.workspace_context import current_user_id as _uid
     _current_uid = _uid()
     with connect() as conn:
@@ -334,6 +347,7 @@ def list_runtime_dream_hypothesis_signals(
 
 
 def get_runtime_dream_hypothesis_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the dream hypothesis signal with this signal_id as a row dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_dream_hypothesis_signal_table(conn)
         row = conn.execute(
@@ -376,6 +390,11 @@ def update_runtime_dream_hypothesis_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at of one dream hypothesis signal.
+
+    No-op returning None if no row has this signal_id; otherwise writes the new
+    status and returns the refreshed row dict.
+    """
     with connect() as conn:
         _ensure_runtime_dream_hypothesis_signal_table(conn)
         row = conn.execute(
@@ -408,6 +427,12 @@ def supersede_runtime_dream_hypothesis_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live dream hypothesis signals for a domain as 'superseded'.
+
+    Sets status='superseded' (with the given status_reason/updated_at) on every
+    active/integrating/fading/stale row whose canonical_key matches the domain,
+    except the excluded signal_id. Returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_dream_hypothesis_signal_table(conn)
         cursor = conn.execute(
@@ -452,6 +477,13 @@ def upsert_runtime_dream_adoption_candidate(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a dream adoption candidate into runtime_dream_adoption_candidates.
+
+    Ensures the table exists, then upserts via the shared `_upsert_signal` helper
+    (keyed on candidate_id / canonical_key, merging into an existing fresh/active/
+    fading/stale row when present). Re-reads and returns the persisted row dict with
+    the upsert metadata merged in. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_dream_adoption_candidate_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -500,6 +532,12 @@ def list_runtime_dream_adoption_candidates(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return dream adoption candidates as row dicts, newest first.
+
+    Optionally filters by status and always scopes to the current user
+    (rows with NULL relevant_to_users or matching the current user id). Bounded
+    by `limit`. Returns an empty list when nothing matches.
+    """
     from core.identity.workspace_context import current_user_id as _uid
     _current_uid = _uid()
     with connect() as conn:
@@ -548,6 +586,7 @@ def list_runtime_dream_adoption_candidates(
 
 
 def get_runtime_dream_adoption_candidate(candidate_id: str) -> dict[str, object] | None:
+    """Return the dream adoption candidate with this candidate_id as a row dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_dream_adoption_candidate_table(conn)
         row = conn.execute(
@@ -590,6 +629,11 @@ def update_runtime_dream_adoption_candidate_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at of one dream adoption candidate.
+
+    No-op returning None if no row has this candidate_id; otherwise writes the new
+    status and returns the refreshed row dict.
+    """
     with connect() as conn:
         _ensure_runtime_dream_adoption_candidate_table(conn)
         row = conn.execute(
@@ -622,6 +666,12 @@ def supersede_runtime_dream_adoption_candidates_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live dream adoption candidates for a domain as 'superseded'.
+
+    Sets status='superseded' (with the given status_reason/updated_at) on every
+    fresh/active/fading/stale row whose canonical_key matches the domain, except the
+    excluded candidate_id. Returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_dream_adoption_candidate_table(conn)
         cursor = conn.execute(
@@ -666,6 +716,13 @@ def upsert_runtime_dream_influence_proposal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a dream influence proposal into runtime_dream_influence_proposals.
+
+    Ensures the table exists, then upserts via the shared `_upsert_signal` helper
+    (keyed on proposal_id / canonical_key, merging into an existing fresh/active/
+    fading/stale row when present). Re-reads and returns the persisted row dict with
+    the upsert metadata merged in. Raises RuntimeError if the row cannot be read back.
+    """
     with connect() as conn:
         _ensure_runtime_dream_influence_proposal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -714,6 +771,12 @@ def list_runtime_dream_influence_proposals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return dream influence proposals as row dicts, newest first.
+
+    Optionally filters by status and always scopes to the current user
+    (rows with NULL relevant_to_users or matching the current user id). Bounded
+    by `limit`. Returns an empty list when nothing matches.
+    """
     from core.identity.workspace_context import current_user_id as _uid
     _current_uid = _uid()
     with connect() as conn:
@@ -762,6 +825,7 @@ def list_runtime_dream_influence_proposals(
 
 
 def get_runtime_dream_influence_proposal(proposal_id: str) -> dict[str, object] | None:
+    """Return the dream influence proposal with this proposal_id as a row dict, or None if absent."""
     with connect() as conn:
         _ensure_runtime_dream_influence_proposal_table(conn)
         row = conn.execute(
@@ -804,6 +868,11 @@ def update_runtime_dream_influence_proposal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at of one dream influence proposal.
+
+    No-op returning None if no row has this proposal_id; otherwise writes the new
+    status and returns the refreshed row dict.
+    """
     with connect() as conn:
         _ensure_runtime_dream_influence_proposal_table(conn)
         row = conn.execute(
@@ -836,6 +905,12 @@ def supersede_runtime_dream_influence_proposals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live dream influence proposals for a domain as 'superseded'.
+
+    Sets status='superseded' (with the given status_reason/updated_at) on every
+    fresh/active/fading/stale row whose canonical_key matches the domain, except the
+    excluded proposal_id. Returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_dream_influence_proposal_table(conn)
         cursor = conn.execute(

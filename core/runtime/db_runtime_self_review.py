@@ -365,6 +365,13 @@ def upsert_runtime_self_review_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime self-review signal into runtime_self_review_signals.
+
+    Delegates to `_upsert_signal` with canonical-key dedup over the active/softening/stale
+    statuses (overwriting text/status, rank-merging source_kind/confidence, accumulating
+    support/session counts). Returns the persisted signal row dict (with merge meta merged
+    in); raises RuntimeError if the row could not be read back.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -413,6 +420,10 @@ def list_runtime_self_review_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return up to `limit` runtime self-review signals, newest first (ORDER BY id DESC).
+
+    Filters on `status` when given; returns a list of signal row dicts (empty if none).
+    """
     with connect() as conn:
         _ensure_runtime_self_review_signal_table(conn)
         clauses: list[str] = []
@@ -454,6 +465,7 @@ def list_runtime_self_review_signals(
 
 
 def get_runtime_self_review_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the runtime self-review signal row dict for `signal_id`, or None if absent."""
     with connect() as conn:
         _ensure_runtime_self_review_signal_table(conn)
         row = conn.execute(
@@ -496,6 +508,11 @@ def update_runtime_self_review_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the signal `signal_id`.
+
+    No-op returning None if the signal does not exist; otherwise commits and returns the
+    refreshed signal row dict.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_signal_table(conn)
         row = conn.execute(
@@ -528,6 +545,11 @@ def supersede_runtime_self_review_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live signals in `domain_key` as 'superseded' except `exclude_signal_id`.
+
+    Matches canonical_key LIKE 'self-review:%:{domain_key}' with status in
+    active/softening/stale. Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_signal_table(conn)
         cursor = conn.execute(
@@ -572,6 +594,12 @@ def upsert_runtime_self_review_record(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime self-review record into runtime_self_review_records.
+
+    Delegates to `_upsert_signal` with canonical-key dedup over the fresh/active/fading/stale
+    statuses. Returns the persisted record row dict (with merge meta merged in); raises
+    RuntimeError if the row could not be read back.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_record_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -620,6 +648,10 @@ def list_runtime_self_review_records(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return up to `limit` runtime self-review records, newest first (ORDER BY id DESC).
+
+    Filters on `status` when given; returns a list of record row dicts (empty if none).
+    """
     with connect() as conn:
         _ensure_runtime_self_review_record_table(conn)
         clauses: list[str] = []
@@ -661,6 +693,7 @@ def list_runtime_self_review_records(
 
 
 def get_runtime_self_review_record(record_id: str) -> dict[str, object] | None:
+    """Return the runtime self-review record row dict for `record_id`, or None if absent."""
     with connect() as conn:
         _ensure_runtime_self_review_record_table(conn)
         row = conn.execute(
@@ -703,6 +736,11 @@ def update_runtime_self_review_record_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the record `record_id`.
+
+    No-op returning None if the record does not exist; otherwise commits and returns the
+    refreshed record row dict.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_record_table(conn)
         row = conn.execute(
@@ -735,6 +773,11 @@ def supersede_runtime_self_review_records_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live records in `domain_key` as 'superseded' except `exclude_record_id`.
+
+    Matches canonical_key LIKE 'self-review-record:%:{domain_key}' with status in
+    fresh/active/fading/stale. Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_record_table(conn)
         cursor = conn.execute(
@@ -779,6 +822,12 @@ def upsert_runtime_self_review_run(
     record_run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime self-review run into runtime_self_review_runs.
+
+    Delegates to `_upsert_signal` with canonical-key dedup over the fresh/active/fading/stale
+    statuses. Returns the persisted run row dict (with merge meta merged in); raises
+    RuntimeError if the row could not be read back.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_run_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -827,6 +876,10 @@ def list_runtime_self_review_runs(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return up to `limit` runtime self-review runs, newest first (ORDER BY id DESC).
+
+    Filters on `status` when given; returns a list of run row dicts (empty if none).
+    """
     with connect() as conn:
         _ensure_runtime_self_review_run_table(conn)
         clauses: list[str] = []
@@ -868,6 +921,7 @@ def list_runtime_self_review_runs(
 
 
 def get_runtime_self_review_run(run_id: str) -> dict[str, object] | None:
+    """Return the runtime self-review run row dict for `run_id`, or None if absent."""
     with connect() as conn:
         _ensure_runtime_self_review_run_table(conn)
         row = conn.execute(
@@ -910,6 +964,11 @@ def update_runtime_self_review_run_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the run `run_id`.
+
+    No-op returning None if the run does not exist; otherwise commits and returns the
+    refreshed run row dict.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_run_table(conn)
         row = conn.execute(
@@ -942,6 +1001,11 @@ def supersede_runtime_self_review_runs_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live runs in `domain_key` as 'superseded' except `exclude_run_id`.
+
+    Matches canonical_key LIKE 'self-review-run:%:{domain_key}' with status in
+    fresh/active/fading/stale. Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_run_table(conn)
         cursor = conn.execute(
@@ -986,6 +1050,12 @@ def upsert_runtime_self_review_outcome(
     review_run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime self-review outcome into runtime_self_review_outcomes.
+
+    Delegates to `_upsert_signal` with canonical-key dedup over the fresh/active/fading/stale
+    statuses. Returns the persisted outcome row dict (with merge meta merged in); raises
+    RuntimeError if the row could not be read back.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_outcome_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1034,6 +1104,10 @@ def list_runtime_self_review_outcomes(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return up to `limit` runtime self-review outcomes, newest first (ORDER BY id DESC).
+
+    Filters on `status` when given; returns a list of outcome row dicts (empty if none).
+    """
     with connect() as conn:
         _ensure_runtime_self_review_outcome_table(conn)
         clauses: list[str] = []
@@ -1075,6 +1149,7 @@ def list_runtime_self_review_outcomes(
 
 
 def get_runtime_self_review_outcome(outcome_id: str) -> dict[str, object] | None:
+    """Return the runtime self-review outcome row dict for `outcome_id`, or None if absent."""
     with connect() as conn:
         _ensure_runtime_self_review_outcome_table(conn)
         row = conn.execute(
@@ -1117,6 +1192,11 @@ def update_runtime_self_review_outcome_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the outcome `outcome_id`.
+
+    No-op returning None if the outcome does not exist; otherwise commits and returns the
+    refreshed outcome row dict.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_outcome_table(conn)
         row = conn.execute(
@@ -1149,6 +1229,11 @@ def supersede_runtime_self_review_outcomes_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live outcomes in `domain_key` as 'superseded' except `exclude_outcome_id`.
+
+    Matches canonical_key LIKE 'self-review-outcome:%:{domain_key}' with status in
+    fresh/active/fading/stale. Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_outcome_table(conn)
         cursor = conn.execute(
@@ -1193,6 +1278,12 @@ def upsert_runtime_self_review_cadence_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a cadence signal into runtime_self_review_cadence_signals.
+
+    Delegates to `_upsert_signal` with canonical-key dedup over the active/softening/stale
+    statuses. Returns the persisted cadence-signal row dict (with merge meta merged in);
+    raises RuntimeError if the row could not be read back.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_cadence_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1241,6 +1332,10 @@ def list_runtime_self_review_cadence_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return up to `limit` cadence signals, newest first (ORDER BY id DESC).
+
+    Filters on `status` when given; returns a list of cadence-signal row dicts (empty if none).
+    """
     with connect() as conn:
         _ensure_runtime_self_review_cadence_signal_table(conn)
         clauses: list[str] = []
@@ -1282,6 +1377,7 @@ def list_runtime_self_review_cadence_signals(
 
 
 def get_runtime_self_review_cadence_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the cadence-signal row dict for `signal_id`, or None if absent."""
     with connect() as conn:
         _ensure_runtime_self_review_cadence_signal_table(conn)
         row = conn.execute(
@@ -1324,6 +1420,11 @@ def update_runtime_self_review_cadence_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the cadence signal `signal_id`.
+
+    No-op returning None if the cadence signal does not exist; otherwise commits and returns
+    the refreshed cadence-signal row dict.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_cadence_signal_table(conn)
         row = conn.execute(
@@ -1356,6 +1457,11 @@ def supersede_runtime_self_review_cadence_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live cadence signals in `domain_key` as 'superseded' except `exclude_signal_id`.
+
+    Matches canonical_key LIKE 'self-review-cadence:%:{domain_key}' with status in
+    active/softening/stale. Commits and returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_self_review_cadence_signal_table(conn)
         cursor = conn.execute(

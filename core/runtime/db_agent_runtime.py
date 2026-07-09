@@ -207,6 +207,11 @@ def create_agent_registry_entry(
     context_json: str = "{}",
     result_contract_json: str = "{}",
 ) -> dict[str, object]:
+    """Insert a new row into agent_registry and return the stored entry as a dict.
+
+    Ensures the cluster tables exist, writes one registry row (created_at/updated_at
+    set to now), and re-reads it. Returns the row dict, or {} if the re-read fails.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
@@ -256,6 +261,7 @@ def create_agent_registry_entry(
 
 
 def get_agent_registry_entry(agent_id: str) -> dict[str, object] | None:
+    """Return the agent_registry row for agent_id as a dict, or None if not found."""
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         row = conn.execute(
@@ -279,6 +285,12 @@ def update_agent_registry_entry(
     completed_at: str | None = None,
     expired_at: str | None = None,
 ) -> dict[str, object] | None:
+    """Patch selected columns of one agent_registry row and return the updated dict.
+
+    Only the non-None keyword args are written (updated_at is always bumped).
+    tokens_burned_delta and failure_increment are applied as relative increments.
+    Returns the re-read row dict, or None if agent_id does not exist.
+    """
     fields: list[str] = ["updated_at = ?"]
     values: list[object] = [_now_iso()]
     if status is not None:
@@ -322,6 +334,11 @@ def list_agent_registry_entries(
     include_completed: bool = True,
     limit: int = 100,
 ) -> list[dict[str, object]]:
+    """Return agent_registry rows as dicts, newest-updated first, capped at limit.
+
+    Optionally filters by exact status; when include_completed is False, rows in
+    status completed/cancelled/expired are excluded. Returns [] when none match.
+    """
     query = ["SELECT * FROM agent_registry WHERE 1=1"]
     params: list[object] = []
     if status:
@@ -357,6 +374,11 @@ def create_agent_run(
     provider_status: str = "",
     failure_reason: str = "",
 ) -> dict[str, object]:
+    """Insert a new row into agent_runs and return the stored run as a dict.
+
+    Ensures cluster tables exist, writes one run row (created_at/updated_at = now),
+    and re-reads it. Returns the row dict, or {} if the re-read fails.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
@@ -397,6 +419,7 @@ def create_agent_run(
 
 
 def get_agent_run(run_id: str) -> dict[str, object] | None:
+    """Return the agent_runs row for run_id as a dict, or None if not found."""
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         row = conn.execute(
@@ -422,6 +445,11 @@ def update_agent_run(
     provider_status: str | None = None,
     failure_reason: str | None = None,
 ) -> dict[str, object] | None:
+    """Patch selected columns of one agent_runs row and return the updated dict.
+
+    Only the non-None keyword args are written (updated_at is always bumped).
+    Returns the re-read row dict, or None if run_id does not exist.
+    """
     fields = ["updated_at = ?"]
     values: list[object] = [_now_iso()]
     for name, value in (
@@ -452,6 +480,10 @@ def update_agent_run(
 
 
 def list_agent_runs(*, agent_id: str = "", limit: int = 50) -> list[dict[str, object]]:
+    """Return agent_runs rows as dicts, newest-created first, capped at limit.
+
+    Optionally filters to a single agent_id. Returns [] when none match.
+    """
     query = ["SELECT * FROM agent_runs WHERE 1=1"]
     params: list[object] = []
     if agent_id:
@@ -478,6 +510,11 @@ def create_agent_message(
     content: str = "",
     kind: str = "message",
 ) -> dict[str, object]:
+    """Insert a new row into agent_messages and return the stored message as a dict.
+
+    Ensures cluster tables exist, writes one message row (created_at = now), and
+    re-reads it. Returns the row dict, or {} if the re-read fails.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
@@ -508,6 +545,7 @@ def create_agent_message(
 
 
 def get_agent_message(message_id: str) -> dict[str, object] | None:
+    """Return the agent_messages row for message_id as a dict, or None if not found."""
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         row = conn.execute(
@@ -527,6 +565,11 @@ def list_agent_messages(
     agent_id: str = "",
     limit: int = 200,
 ) -> list[dict[str, object]]:
+    """Return agent_messages rows as dicts, oldest-created first, capped at limit.
+
+    Optionally filters by any combination of thread_id, run_id, council_id and
+    agent_id (each applied only when non-empty). Returns [] when none match.
+    """
     query = ["SELECT * FROM agent_messages WHERE 1=1"]
     params: list[object] = []
     if thread_id:
@@ -561,6 +604,11 @@ def create_agent_tool_call(
     started_at: str = "",
     finished_at: str = "",
 ) -> dict[str, object]:
+    """Insert a new row into agent_tool_calls and return the stored call as a dict.
+
+    Ensures cluster tables exist, writes one tool-call row (created_at = now), and
+    re-reads it. Returns the row dict, or {} if the re-read fails.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
@@ -590,6 +638,7 @@ def create_agent_tool_call(
 
 
 def get_agent_tool_call(tool_call_id: str) -> dict[str, object] | None:
+    """Return the agent_tool_calls row for tool_call_id as a dict, or None if not found."""
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         row = conn.execute(
@@ -602,6 +651,11 @@ def get_agent_tool_call(tool_call_id: str) -> dict[str, object] | None:
 
 
 def list_agent_tool_calls(*, run_id: str = "", agent_id: str = "", limit: int = 100) -> list[dict[str, object]]:
+    """Return agent_tool_calls rows as dicts, newest-created first, capped at limit.
+
+    Optionally filters by run_id and/or agent_id (each applied only when non-empty).
+    Returns [] when none match.
+    """
     query = ["SELECT * FROM agent_tool_calls WHERE 1=1"]
     params: list[object] = []
     if run_id:
@@ -629,6 +683,12 @@ def create_agent_schedule(
     missed_run_policy: str = "fire-once",
     active: bool = True,
 ) -> dict[str, object]:
+    """Upsert a row in agent_schedules by schedule_id and return the stored dict.
+
+    On schedule_id conflict, updates the existing row's schedule fields and
+    updated_at (an upsert, not a duplicate insert). Returns the stored row dict,
+    or {} if the re-read fails.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
@@ -667,6 +727,7 @@ def create_agent_schedule(
 
 
 def get_agent_schedule(schedule_id: str) -> dict[str, object] | None:
+    """Return the agent_schedules row for schedule_id as a dict, or None if not found."""
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         row = conn.execute(
@@ -686,6 +747,12 @@ def update_agent_schedule(
     last_fire_at: str | None = None,
     active: bool | None = None,
 ) -> dict[str, object] | None:
+    """Patch selected columns of one agent_schedules row and return the updated dict.
+
+    Only the non-None keyword args are written (updated_at is always bumped; the
+    active bool is stored as 0/1). Returns the re-read row dict, or None if the
+    schedule_id does not exist.
+    """
     fields = ["updated_at = ?"]
     values: list[object] = [_now_iso()]
     for name, value in (
@@ -712,6 +779,12 @@ def update_agent_schedule(
 
 
 def list_agent_schedules(*, agent_id: str = "", active_only: bool = False, due_before: str = "", limit: int = 100) -> list[dict[str, object]]:
+    """Return agent_schedules rows as dicts, ordered by next_fire_at then created_at.
+
+    Optionally filters by agent_id, to active schedules only, and to those whose
+    next_fire_at is set and at or before due_before. Capped at limit; returns []
+    when none match.
+    """
     query = ["SELECT * FROM agent_schedules WHERE 1=1"]
     params: list[object] = []
     if agent_id:
@@ -739,6 +812,12 @@ def create_council_session(
     mode: str = "council",
     summary: str = "",
 ) -> dict[str, object]:
+    """Insert a new row into council_sessions and return the stored session as a dict.
+
+    Ensures cluster tables exist, writes one session row (created_at/updated_at =
+    now), and re-reads it (via get_council_session, so the result includes an empty
+    members list). Returns the row dict, or {} if the re-read fails.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
@@ -757,6 +836,11 @@ def create_council_session(
 
 
 def get_council_session(council_id: str) -> dict[str, object] | None:
+    """Return the council_sessions row for council_id as a dict, or None if not found.
+
+    The returned dict carries an extra "members" key holding the council's member
+    rows (from list_council_members).
+    """
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         row = conn.execute(
@@ -777,6 +861,12 @@ def update_council_session(
     summary: str | None = None,
     finished_at: str | None = None,
 ) -> dict[str, object] | None:
+    """Patch selected columns of one council_sessions row and return the updated dict.
+
+    Only the non-None keyword args (status/summary/finished_at) are written;
+    updated_at is always bumped. Returns the re-read session dict (with members),
+    or None if council_id does not exist.
+    """
     fields = ["updated_at = ?"]
     values: list[object] = [_now_iso()]
     if status is not None:
@@ -800,6 +890,11 @@ def update_council_session(
 
 
 def list_council_sessions(limit: int = 50) -> list[dict[str, object]]:
+    """Return council_sessions rows as dicts, newest-updated first, capped at limit.
+
+    Each session dict is augmented with a "members" list of its member rows.
+    Returns [] when there are no sessions.
+    """
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         rows = conn.execute(
@@ -821,6 +916,12 @@ def add_council_member(
     vote: str = "",
     confidence: str = "",
 ) -> dict[str, object]:
+    """Upsert a council member by (council_id, agent_id) and return the stored dict.
+
+    On conflict of the composite key, updates the member's role/position/vote/
+    confidence rather than inserting a duplicate. Returns the stored member row
+    dict, or {} if the re-read fails.
+    """
     now = _now_iso()
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
@@ -850,6 +951,12 @@ def update_council_member(
     vote: str | None = None,
     confidence: str | None = None,
 ) -> dict[str, object] | None:
+    """Patch a council member's position/vote/confidence by (council_id, agent_id).
+
+    Only the non-None keyword args are written; with nothing to update it just
+    re-reads and returns the current member. Returns the member dict, or None if
+    the (council_id, agent_id) pair does not exist.
+    """
     fields = []
     values: list[object] = []
     for name, value in (
@@ -875,6 +982,7 @@ def update_council_member(
 
 
 def get_council_member(*, council_id: str, agent_id: str) -> dict[str, object] | None:
+    """Return the council_members row for (council_id, agent_id) as a dict, or None."""
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         row = conn.execute(
@@ -887,6 +995,10 @@ def get_council_member(*, council_id: str, agent_id: str) -> dict[str, object] |
 
 
 def list_council_members(*, council_id: str) -> list[dict[str, object]]:
+    """Return all council_members rows for council_id as dicts, oldest-created first.
+
+    Returns [] when the council has no members.
+    """
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         rows = conn.execute(

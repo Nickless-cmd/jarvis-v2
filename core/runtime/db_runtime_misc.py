@@ -85,6 +85,11 @@ def get_relevant_experiential_memories(
 def list_session_distillation_records(
     *, limit: int = 10, session_id: str | None = None,
 ) -> list[dict[str, object]]:
+    """Return session-distillation records as dicts, newest first.
+
+    Reads the `session_distillation_records` table (optionally filtered by
+    `session_id`), capped at `limit`. Returns [] when none exist.
+    """
     from core.runtime.db import _session_distillation_record_from_row
     from core.runtime.db_cognitive import _ensure_session_distillation_records_table
     with connect() as conn:
@@ -121,6 +126,7 @@ def _ensure_cached_affective_state_table(conn: sqlite3.Connection) -> None:
 
 
 def save_cached_affective_state(rendered_text: str, signals_json: str) -> None:
+    """Insert a cached affective-state row (rendered text + signals JSON, timestamped now)."""
     now = datetime.now(UTC).isoformat()
     with connect() as conn:
         _ensure_cached_affective_state_table(conn)
@@ -132,6 +138,7 @@ def save_cached_affective_state(rendered_text: str, signals_json: str) -> None:
 
 
 def get_cached_affective_state(max_age_seconds: int = 300) -> str | None:
+    """Return the most recent cached affective-state text, or None if none is newer than max_age_seconds."""
     from datetime import timedelta
     cutoff = (datetime.now(UTC) - timedelta(seconds=max_age_seconds)).isoformat()
     with connect() as conn:
@@ -211,6 +218,7 @@ def insert_recurrence_iteration(
     stability_score: float,
     iteration_number: int,
 ) -> None:
+    """Upsert one recurrence-loop iteration (content truncated to 500 chars) keyed by iteration_id."""
     now = _now_iso()
     with connect() as conn:
         _ensure_recurrence_iterations_table(conn)
@@ -223,6 +231,7 @@ def insert_recurrence_iteration(
 
 
 def get_latest_recurrence_iteration() -> dict[str, object] | None:
+    """Return the most recent recurrence iteration as a dict, or None if the table is empty."""
     with connect() as conn:
         _ensure_recurrence_iterations_table(conn)
         row = conn.execute(
@@ -242,6 +251,7 @@ def get_latest_recurrence_iteration() -> dict[str, object] | None:
 
 
 def list_recurrence_iterations(limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` recurrence iterations as dicts, newest first ([] if none)."""
     with connect() as conn:
         _ensure_recurrence_iterations_table(conn)
         rows = conn.execute(
@@ -287,6 +297,7 @@ def insert_broadcast_event(
     source_count: int,
     payload_summary: str,
 ) -> None:
+    """Upsert one global-workspace broadcast event (payload_summary truncated to 300 chars) keyed by event_id."""
     now = _now_iso()
     with connect() as conn:
         _ensure_broadcast_events_table(conn)
@@ -299,6 +310,7 @@ def insert_broadcast_event(
 
 
 def list_broadcast_events(limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` broadcast events as dicts, newest first ([] if none)."""
     with connect() as conn:
         _ensure_broadcast_events_table(conn)
         rows = conn.execute(
@@ -344,6 +356,7 @@ def insert_meta_cognition_record(
     meta_depth: int,
     input_state_summary: str,
 ) -> None:
+    """Upsert one meta-cognition record (observation/meta-observation/input summary truncated) keyed by record_id."""
     now = _now_iso()
     with connect() as conn:
         _ensure_meta_cognition_table(conn)
@@ -356,6 +369,7 @@ def insert_meta_cognition_record(
 
 
 def list_meta_cognition_records(limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` meta-cognition records as dicts, newest first ([] if none)."""
     with connect() as conn:
         _ensure_meta_cognition_table(conn)
         rows = conn.execute(
@@ -403,6 +417,7 @@ def insert_attention_blink_result(
     blink_ratio: float,
     interpretation: str,
 ) -> None:
+    """Upsert one attention-blink test result (T1/T2 responses, blink ratio, interpretation) keyed by test_id."""
     now = _now_iso()
     with connect() as conn:
         _ensure_attention_blink_table(conn)
@@ -415,6 +430,7 @@ def insert_attention_blink_result(
 
 
 def list_attention_blink_results(limit: int = 20) -> list[dict[str, object]]:
+    """Return up to `limit` attention-blink results as dicts, newest first ([] if none)."""
     with connect() as conn:
         _ensure_attention_blink_table(conn)
         rows = conn.execute(
@@ -471,6 +487,7 @@ def session_summary_insert(
     key_topics: str = "",
     decisions_made: str = "",
 ) -> None:
+    """Insert one session summary row (summary/topics/decisions truncated, timestamped now)."""
     with connect() as conn:
         _ensure_session_summaries_table(conn)
         conn.execute(
@@ -681,6 +698,7 @@ def aesthetic_motif_log_insert(
     motif: str,
     confidence: float,
 ) -> None:
+    """Insert one aesthetic-motif observation (source, motif, confidence) timestamped now."""
     with connect() as conn:
         _ensure_aesthetic_motif_log_table(conn)
         conn.execute(
@@ -694,6 +712,7 @@ def aesthetic_motif_log_insert(
 
 
 def aesthetic_motif_log_unique_motifs() -> list[str]:
+    """Return the distinct motif strings from the aesthetic-motif log, sorted alphabetically ([] if none)."""
     with connect() as conn:
         _ensure_aesthetic_motif_log_table(conn)
         rows = conn.execute(
@@ -703,6 +722,7 @@ def aesthetic_motif_log_unique_motifs() -> list[str]:
 
 
 def aesthetic_motif_log_summary() -> list[dict]:
+    """Return per-motif aggregates (motif, count, avg_confidence) ordered by count desc ([] if none)."""
     with connect() as conn:
         _ensure_aesthetic_motif_log_table(conn)
         rows = conn.execute(
@@ -758,6 +778,11 @@ def store_channel_attachment(
     local_path: str,
     source_url: str,
 ) -> None:
+    """Insert a channel-attachment metadata row on the given connection (no-op if attachment_id already exists).
+
+    Uses the caller-supplied `conn` (does not open its own) and INSERT OR IGNORE
+    on the unique attachment_id.
+    """
     _ensure_channel_attachments_table(conn)
     now = datetime.now(UTC).isoformat()
     conn.execute(
@@ -775,6 +800,7 @@ def store_channel_attachment(
 def get_channel_attachment(
     *, conn: sqlite3.Connection, attachment_id: str
 ) -> dict | None:
+    """Return the channel attachment matching attachment_id as a dict, or None if absent (uses caller's conn)."""
     _ensure_channel_attachments_table(conn)
     row = conn.execute(
         """
@@ -792,6 +818,7 @@ def get_channel_attachment(
 def list_channel_attachments(
     *, conn: sqlite3.Connection, session_id: str, limit: int = 20
 ) -> list[dict]:
+    """Return up to `limit` attachments for `session_id` as dicts, newest first ([] if none; uses caller's conn)."""
     _ensure_channel_attachments_table(conn)
     rows = conn.execute(
         """

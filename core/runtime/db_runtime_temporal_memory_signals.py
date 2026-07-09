@@ -53,6 +53,13 @@ def upsert_runtime_temporal_recurrence_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert-or-merge a temporal-recurrence signal into
+    runtime_temporal_recurrence_signals (dedup on canonical_key across
+    active/softening/stale via _upsert_signal). Overwrites status/title/
+    summary/rationale/run_id/session_id, rank-merges source_kind/confidence,
+    text-merges evidence/support/status_reason and accumulates support/session
+    counts. Returns the persisted row dict merged with upsert meta; raises
+    RuntimeError if it did not persist."""
     with connect() as conn:
         _ensure_runtime_temporal_recurrence_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -101,6 +108,8 @@ def list_runtime_temporal_recurrence_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return temporal-recurrence signals as row dicts, newest first, optionally
+    filtered by status and capped at limit. Empty list when none match."""
     with connect() as conn:
         _ensure_runtime_temporal_recurrence_signal_table(conn)
         clauses: list[str] = []
@@ -142,6 +151,8 @@ def list_runtime_temporal_recurrence_signals(
 
 
 def get_runtime_temporal_recurrence_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the temporal-recurrence signal with this signal_id as a row dict,
+    or None if it does not exist."""
     with connect() as conn:
         _ensure_runtime_temporal_recurrence_signal_table(conn)
         row = conn.execute(
@@ -184,6 +195,9 @@ def update_runtime_temporal_recurrence_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the temporal-recurrence signal
+    with this signal_id and return the refreshed row dict, or None if no such
+    signal exists."""
     with connect() as conn:
         _ensure_runtime_temporal_recurrence_signal_table(conn)
         row = conn.execute(
@@ -216,6 +230,10 @@ def supersede_runtime_temporal_recurrence_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live (active/softening/stale) temporal-recurrence signals
+    whose canonical_key matches the given domain_key as 'superseded' (except
+    exclude_signal_id), stamping status_reason/updated_at. Returns the number of
+    rows updated."""
     with connect() as conn:
         _ensure_runtime_temporal_recurrence_signal_table(conn)
         cursor = conn.execute(
@@ -325,6 +343,13 @@ def upsert_runtime_remembered_fact_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert-or-merge a remembered-fact signal into
+    runtime_remembered_fact_signals (dedup on canonical_key across
+    active/softening/stale). Overwrites status/title/summary/rationale/run_id/
+    session_id, rank-merges source_kind/confidence, text-merges evidence/
+    support/status_reason and accumulates support/session counts. Returns the
+    persisted row dict merged with upsert meta; raises RuntimeError if it did
+    not persist."""
     with connect() as conn:
         _ensure_runtime_remembered_fact_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -373,6 +398,8 @@ def list_runtime_remembered_fact_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return remembered-fact signals as row dicts, newest first, optionally
+    filtered by status and capped at limit. Empty list when none match."""
     with connect() as conn:
         _ensure_runtime_remembered_fact_signal_table(conn)
         clauses: list[str] = []
@@ -414,6 +441,8 @@ def list_runtime_remembered_fact_signals(
 
 
 def get_runtime_remembered_fact_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the remembered-fact signal with this signal_id as a row dict, or
+    None if it does not exist."""
     with connect() as conn:
         _ensure_runtime_remembered_fact_signal_table(conn)
         row = conn.execute(
@@ -456,6 +485,9 @@ def update_runtime_remembered_fact_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the remembered-fact signal with
+    this signal_id and return the refreshed row dict, or None if no such signal
+    exists."""
     with connect() as conn:
         _ensure_runtime_remembered_fact_signal_table(conn)
         row = conn.execute(
@@ -488,6 +520,10 @@ def supersede_runtime_remembered_fact_signals_for_dimension(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live (active/softening/stale) remembered-fact signals
+    whose canonical_key matches the given dimension_key as 'superseded' (except
+    exclude_signal_id), stamping status_reason/updated_at. Returns the number of
+    rows updated."""
     with connect() as conn:
         _ensure_runtime_remembered_fact_signal_table(conn)
         cursor = conn.execute(
@@ -597,6 +633,13 @@ def upsert_runtime_memory_md_update_proposal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert-or-merge a MEMORY.md-update proposal into
+    runtime_memory_md_update_proposals (dedup on canonical_key across
+    fresh/active/fading/stale). Overwrites status/title/summary/rationale/
+    run_id/session_id, rank-merges source_kind/confidence, text-merges evidence/
+    support/status_reason and accumulates support/session counts. Returns the
+    persisted proposal row dict merged with upsert meta; raises RuntimeError if
+    it did not persist."""
     with connect() as conn:
         _ensure_runtime_memory_md_update_proposal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -645,6 +688,8 @@ def list_runtime_memory_md_update_proposals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return MEMORY.md-update proposals as row dicts, newest first, optionally
+    filtered by status and capped at limit. Empty list when none match."""
     with connect() as conn:
         _ensure_runtime_memory_md_update_proposal_table(conn)
         clauses: list[str] = []
@@ -686,6 +731,8 @@ def list_runtime_memory_md_update_proposals(
 
 
 def get_runtime_memory_md_update_proposal(proposal_id: str) -> dict[str, object] | None:
+    """Return the MEMORY.md-update proposal with this proposal_id as a row dict,
+    or None if it does not exist."""
     with connect() as conn:
         _ensure_runtime_memory_md_update_proposal_table(conn)
         row = conn.execute(
@@ -728,6 +775,9 @@ def update_runtime_memory_md_update_proposal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the MEMORY.md-update proposal with
+    this proposal_id and return the refreshed row dict, or None if no such
+    proposal exists."""
     with connect() as conn:
         _ensure_runtime_memory_md_update_proposal_table(conn)
         row = conn.execute(
@@ -760,6 +810,10 @@ def supersede_runtime_memory_md_update_proposals_for_dimension(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live (fresh/active/fading/stale) MEMORY.md-update
+    proposals whose canonical_key matches the given dimension_key as
+    'superseded' (except exclude_proposal_id), stamping status_reason/
+    updated_at. Returns the number of rows updated."""
     with connect() as conn:
         _ensure_runtime_memory_md_update_proposal_table(conn)
         cursor = conn.execute(
@@ -869,6 +923,13 @@ def upsert_runtime_release_marker_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert-or-merge a release-marker signal into
+    runtime_release_marker_signals (dedup on canonical_key across
+    active/softening/stale). Overwrites status/title/summary/rationale/run_id/
+    session_id, rank-merges source_kind/confidence, text-merges evidence/
+    support/status_reason and accumulates support/session counts. Returns the
+    persisted row dict merged with upsert meta; raises RuntimeError if it did
+    not persist."""
     with connect() as conn:
         _ensure_runtime_release_marker_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -917,6 +978,8 @@ def list_runtime_release_marker_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return release-marker signals as row dicts, newest first, optionally
+    filtered by status and capped at limit. Empty list when none match."""
     with connect() as conn:
         _ensure_runtime_release_marker_signal_table(conn)
         clauses: list[str] = []
@@ -958,6 +1021,8 @@ def list_runtime_release_marker_signals(
 
 
 def get_runtime_release_marker_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the release-marker signal with this signal_id as a row dict, or
+    None if it does not exist."""
     with connect() as conn:
         _ensure_runtime_release_marker_signal_table(conn)
         row = conn.execute(
@@ -1000,6 +1065,9 @@ def update_runtime_release_marker_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the release-marker signal with
+    this signal_id and return the refreshed row dict, or None if no such signal
+    exists."""
     with connect() as conn:
         _ensure_runtime_release_marker_signal_table(conn)
         row = conn.execute(
@@ -1032,6 +1100,10 @@ def supersede_runtime_release_marker_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live (active/softening/stale) release-marker signals whose
+    canonical_key matches the given domain_key as 'superseded' (except
+    exclude_signal_id), stamping status_reason/updated_at. Returns the number of
+    rows updated."""
     with connect() as conn:
         _ensure_runtime_release_marker_signal_table(conn)
         cursor = conn.execute(
@@ -1141,6 +1213,13 @@ def upsert_runtime_selective_forgetting_candidate(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert-or-merge a selective-forgetting candidate into
+    runtime_selective_forgetting_candidates (dedup on canonical_key across
+    active/softening/stale). Overwrites status/title/summary/rationale/run_id/
+    session_id, rank-merges source_kind/confidence, text-merges evidence/
+    support/status_reason and accumulates support/session counts. Returns the
+    persisted row dict merged with upsert meta; raises RuntimeError if it did
+    not persist."""
     with connect() as conn:
         _ensure_runtime_selective_forgetting_candidate_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1189,6 +1268,9 @@ def list_runtime_selective_forgetting_candidates(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return selective-forgetting candidates as row dicts, newest first,
+    optionally filtered by status and capped at limit. Empty list when none
+    match."""
     with connect() as conn:
         _ensure_runtime_selective_forgetting_candidate_table(conn)
         clauses: list[str] = []
@@ -1232,6 +1314,8 @@ def list_runtime_selective_forgetting_candidates(
 def get_runtime_selective_forgetting_candidate(
     signal_id: str,
 ) -> dict[str, object] | None:
+    """Return the selective-forgetting candidate with this signal_id as a row
+    dict, or None if it does not exist."""
     with connect() as conn:
         _ensure_runtime_selective_forgetting_candidate_table(conn)
         row = conn.execute(
@@ -1274,6 +1358,9 @@ def update_runtime_selective_forgetting_candidate_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the selective-forgetting candidate
+    with this signal_id and return the refreshed row dict, or None if no such
+    candidate exists."""
     with connect() as conn:
         _ensure_runtime_selective_forgetting_candidate_table(conn)
         row = conn.execute(
@@ -1306,6 +1393,10 @@ def supersede_runtime_selective_forgetting_candidates_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live (active/softening/stale) selective-forgetting
+    candidates whose canonical_key matches the given domain_key as 'superseded'
+    (except exclude_signal_id), stamping status_reason/updated_at. Returns the
+    number of rows updated."""
     with connect() as conn:
         _ensure_runtime_selective_forgetting_candidate_table(conn)
         cursor = conn.execute(
@@ -1419,6 +1510,13 @@ def upsert_runtime_regulation_homeostasis_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert-or-merge a regulation/homeostasis signal into
+    runtime_regulation_homeostasis_signals (dedup on canonical_key across
+    active/stale). Overwrites status/title/summary/rationale/run_id/session_id,
+    rank-merges source_kind/confidence, text-merges evidence/support/
+    status_reason and accumulates support/session counts. Returns the persisted
+    row dict merged with upsert meta; raises RuntimeError if it did not
+    persist."""
     with connect() as conn:
         _ensure_runtime_regulation_homeostasis_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1467,6 +1565,9 @@ def list_runtime_regulation_homeostasis_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return regulation/homeostasis signals as row dicts, newest first,
+    optionally filtered by status and capped at limit. Empty list when none
+    match."""
     with connect() as conn:
         _ensure_runtime_regulation_homeostasis_signal_table(conn)
         clauses: list[str] = []
@@ -1510,6 +1611,8 @@ def list_runtime_regulation_homeostasis_signals(
 def get_runtime_regulation_homeostasis_signal(
     signal_id: str,
 ) -> dict[str, object] | None:
+    """Return the regulation/homeostasis signal with this signal_id as a row
+    dict, or None if it does not exist."""
     with connect() as conn:
         _ensure_runtime_regulation_homeostasis_signal_table(conn)
         row = conn.execute(
@@ -1552,6 +1655,9 @@ def update_runtime_regulation_homeostasis_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the regulation/homeostasis signal
+    with this signal_id and return the refreshed row dict, or None if no such
+    signal exists."""
     with connect() as conn:
         _ensure_runtime_regulation_homeostasis_signal_table(conn)
         row = conn.execute(
@@ -1584,6 +1690,10 @@ def supersede_runtime_regulation_homeostasis_signals_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live (active/stale) regulation/homeostasis signals whose
+    canonical_key matches the given focus_key as 'superseded' (except
+    exclude_signal_id), stamping status_reason/updated_at. Returns the number of
+    rows updated."""
     with connect() as conn:
         _ensure_runtime_regulation_homeostasis_signal_table(conn)
         cursor = conn.execute(
@@ -1697,6 +1807,13 @@ def upsert_runtime_temperament_tendency_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert-or-merge a temperament-tendency signal into
+    runtime_temperament_tendency_signals (dedup on canonical_key across
+    active/softening/stale). Overwrites status/title/summary/rationale/run_id/
+    session_id, rank-merges source_kind/confidence, text-merges evidence/
+    support/status_reason and accumulates support/session counts. Returns the
+    persisted row dict merged with upsert meta; raises RuntimeError if it did
+    not persist."""
     with connect() as conn:
         _ensure_runtime_temperament_tendency_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1745,6 +1862,9 @@ def list_runtime_temperament_tendency_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return temperament-tendency signals as row dicts, newest first,
+    optionally filtered by status and capped at limit. Empty list when none
+    match."""
     with connect() as conn:
         _ensure_runtime_temperament_tendency_signal_table(conn)
         clauses: list[str] = []
@@ -1786,6 +1906,8 @@ def list_runtime_temperament_tendency_signals(
 
 
 def get_runtime_temperament_tendency_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the temperament-tendency signal with this signal_id as a row dict,
+    or None if it does not exist."""
     with connect() as conn:
         _ensure_runtime_temperament_tendency_signal_table(conn)
         row = conn.execute(
@@ -1828,6 +1950,9 @@ def update_runtime_temperament_tendency_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Set status/status_reason/updated_at on the temperament-tendency signal
+    with this signal_id and return the refreshed row dict, or None if no such
+    signal exists."""
     with connect() as conn:
         _ensure_runtime_temperament_tendency_signal_table(conn)
         row = conn.execute(
@@ -1860,6 +1985,10 @@ def supersede_runtime_temperament_tendency_signals_for_focus(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all still-live (active/softening/stale) temperament-tendency signals
+    whose canonical_key matches the given focus_key as 'superseded' (except
+    exclude_signal_id), stamping status_reason/updated_at. Returns the number of
+    rows updated."""
     with connect() as conn:
         _ensure_runtime_temperament_tendency_signal_table(conn)
         cursor = conn.execute(

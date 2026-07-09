@@ -57,6 +57,14 @@ def upsert_runtime_goal_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime goal signal, keyed on ``canonical_key``.
+
+    Looks up an existing active/blocked/stale row with the same canonical_key;
+    if none, inserts a new row, otherwise merges (stronger source_kind/confidence,
+    concatenated summaries, max support/session counts, bumped merge_count).
+    Returns the persisted goal row dict enriched with ``was_created`` /
+    ``was_updated`` / ``merge_state`` meta. Raises if the row cannot be re-read.
+    """
     with connect() as conn:
         _ensure_runtime_goal_signal_table(conn)
         existing = None
@@ -256,6 +264,10 @@ def list_runtime_goal_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime goal signals ordered newest-first, optionally filtered by status.
+
+    Returns a list of row dicts (empty list when none match).
+    """
     with connect() as conn:
         _ensure_runtime_goal_signal_table(conn)
         clauses: list[str] = []
@@ -297,6 +309,7 @@ def list_runtime_goal_signals(
 
 
 def get_runtime_goal_signal(goal_id: str) -> dict[str, object] | None:
+    """Return the goal-signal row dict for ``goal_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_goal_signal_table(conn)
         row = conn.execute(
@@ -339,6 +352,10 @@ def update_runtime_goal_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one goal signal.
+
+    Returns the refreshed row dict, or None if ``goal_id`` does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_goal_signal_table(conn)
         row = conn.execute(
@@ -371,6 +388,9 @@ def supersede_runtime_goal_signals(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all active/blocked/stale goal signals of ``goal_type`` as superseded,
+    except ``exclude_goal_id``. Returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_goal_signal_table(conn)
         cursor = conn.execute(
@@ -480,6 +500,14 @@ def upsert_runtime_world_model_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime world-model signal, keyed on ``canonical_key``.
+
+    Looks up an existing active/uncertain/stale row with the same canonical_key;
+    inserts when none exists, otherwise merges (stronger source_kind/confidence,
+    concatenated summaries, max support/session counts, bumped merge_count).
+    Returns the persisted row dict with ``was_created``/``was_updated``/
+    ``merge_state`` meta. Raises if the row cannot be re-read.
+    """
     with connect() as conn:
         _ensure_runtime_world_model_signal_table(conn)
         existing = None
@@ -679,6 +707,10 @@ def list_runtime_world_model_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime world-model signals newest-first, optionally filtered by status.
+
+    Returns a list of row dicts (empty list when none match).
+    """
     with connect() as conn:
         _ensure_runtime_world_model_signal_table(conn)
         clauses: list[str] = []
@@ -720,6 +752,7 @@ def list_runtime_world_model_signals(
 
 
 def get_runtime_world_model_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the world-model signal row dict for ``signal_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_world_model_signal_table(conn)
         row = conn.execute(
@@ -762,6 +795,10 @@ def update_runtime_world_model_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one world-model signal.
+
+    Returns the refreshed row dict, or None if ``signal_id`` does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_world_model_signal_table(conn)
         row = conn.execute(
@@ -794,6 +831,9 @@ def supersede_runtime_world_model_signals(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all active/uncertain/stale world-model signals of ``signal_type`` as
+    superseded, except ``exclude_signal_id``. Returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_world_model_signal_table(conn)
         cursor = conn.execute(
@@ -903,6 +943,14 @@ def upsert_runtime_development_focus(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime development-focus row, keyed on ``canonical_key``.
+
+    Looks up an existing active/stale row with the same canonical_key; inserts
+    when none exists, otherwise merges (stronger source_kind/confidence,
+    concatenated summaries, max support/session counts, bumped merge_count).
+    Returns the persisted row dict with ``was_created``/``was_updated``/
+    ``merge_state`` meta. Raises if the row cannot be re-read.
+    """
     with connect() as conn:
         _ensure_runtime_development_focus_table(conn)
         existing = None
@@ -1104,6 +1152,10 @@ def list_runtime_development_focuses(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime development focuses newest-first, optionally filtered by status.
+
+    Returns a list of row dicts (empty list when none match).
+    """
     with connect() as conn:
         _ensure_runtime_development_focus_table(conn)
         clauses: list[str] = []
@@ -1145,6 +1197,7 @@ def list_runtime_development_focuses(
 
 
 def get_runtime_development_focus(focus_id: str) -> dict[str, object] | None:
+    """Return the development-focus row dict for ``focus_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_development_focus_table(conn)
         row = conn.execute(
@@ -1187,6 +1240,10 @@ def update_runtime_development_focus_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one development focus.
+
+    Returns the refreshed row dict, or None if ``focus_id`` does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_development_focus_table(conn)
         row = conn.execute(
@@ -1219,6 +1276,9 @@ def supersede_runtime_development_focuses(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all active/stale development focuses of ``focus_type`` as superseded,
+    except ``exclude_focus_id``. Returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_development_focus_table(conn)
         cursor = conn.execute(
@@ -1328,6 +1388,13 @@ def upsert_runtime_autonomy_pressure_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a runtime autonomy-pressure signal via the shared
+    ``_upsert_signal`` helper (lookup statuses: active/softening/stale).
+
+    Returns the persisted row dict enriched with the upsert meta
+    (``was_created``/``was_updated``/``merge_state``). Raises if the row cannot
+    be re-read.
+    """
     with connect() as conn:
         _ensure_runtime_autonomy_pressure_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1376,6 +1443,9 @@ def list_runtime_autonomy_pressure_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime autonomy-pressure signals newest-first, optionally filtered
+    by status. Returns a list of row dicts (empty list when none match).
+    """
     with connect() as conn:
         _ensure_runtime_autonomy_pressure_signal_table(conn)
         clauses: list[str] = []
@@ -1417,6 +1487,7 @@ def list_runtime_autonomy_pressure_signals(
 
 
 def get_runtime_autonomy_pressure_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the autonomy-pressure signal row dict for ``signal_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_autonomy_pressure_signal_table(conn)
         row = conn.execute(
@@ -1459,6 +1530,10 @@ def update_runtime_autonomy_pressure_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one autonomy-pressure signal.
+
+    Returns the refreshed row dict, or None if ``signal_id`` does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_autonomy_pressure_signal_table(conn)
         row = conn.execute(
@@ -1491,6 +1566,10 @@ def supersede_runtime_autonomy_pressure_signals_for_type(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all active/softening/stale autonomy-pressure signals whose
+    canonical_key is ``autonomy-pressure:{pressure_type}`` as superseded, except
+    ``exclude_signal_id``. Returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_autonomy_pressure_signal_table(conn)
         cursor = conn.execute(
@@ -1600,6 +1679,13 @@ def upsert_runtime_open_loop_signal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime open-loop signal via the shared ``_upsert_signal``
+    helper (lookup statuses: open/softening/closed/stale).
+
+    Returns the persisted row dict enriched with the upsert meta
+    (``was_created``/``was_updated``/``merge_state``). Raises if the row cannot
+    be re-read.
+    """
     with connect() as conn:
         _ensure_runtime_open_loop_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1648,6 +1734,10 @@ def list_runtime_open_loop_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime open-loop signals newest-first, optionally filtered by status.
+
+    Returns a list of row dicts (empty list when none match).
+    """
     with connect() as conn:
         _ensure_runtime_open_loop_signal_table(conn)
         clauses: list[str] = []
@@ -1689,6 +1779,7 @@ def list_runtime_open_loop_signals(
 
 
 def get_runtime_open_loop_signal(signal_id: str) -> dict[str, object] | None:
+    """Return the open-loop signal row dict for ``signal_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_open_loop_signal_table(conn)
         row = conn.execute(
@@ -1731,6 +1822,10 @@ def update_runtime_open_loop_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one open-loop signal.
+
+    Returns the refreshed row dict, or None if ``signal_id`` does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_open_loop_signal_table(conn)
         row = conn.execute(
@@ -1763,6 +1858,10 @@ def supersede_runtime_open_loop_signals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all open/softening/closed/stale open-loop signals whose canonical_key
+    matches ``open-loop:%:{domain_key}`` as superseded, except
+    ``exclude_signal_id``. Returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_open_loop_signal_table(conn)
         cursor = conn.execute(
@@ -1872,6 +1971,13 @@ def upsert_runtime_open_loop_closure_proposal(
     run_id: str = "",
     session_id: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime open-loop closure proposal via the shared
+    ``_upsert_signal`` helper (lookup statuses: fresh/active/fading/stale).
+
+    Returns the persisted row dict enriched with the upsert meta
+    (``was_created``/``was_updated``/``merge_state``). Raises if the row cannot
+    be re-read.
+    """
     with connect() as conn:
         _ensure_runtime_open_loop_closure_proposal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -1920,6 +2026,9 @@ def list_runtime_open_loop_closure_proposals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime open-loop closure proposals newest-first, optionally filtered
+    by status. Returns a list of row dicts (empty list when none match).
+    """
     with connect() as conn:
         _ensure_runtime_open_loop_closure_proposal_table(conn)
         clauses: list[str] = []
@@ -1963,6 +2072,7 @@ def list_runtime_open_loop_closure_proposals(
 def get_runtime_open_loop_closure_proposal(
     proposal_id: str,
 ) -> dict[str, object] | None:
+    """Return the closure-proposal row dict for ``proposal_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_open_loop_closure_proposal_table(conn)
         row = conn.execute(
@@ -2005,6 +2115,10 @@ def update_runtime_open_loop_closure_proposal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one open-loop closure proposal.
+
+    Returns the refreshed row dict, or None if ``proposal_id`` does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_open_loop_closure_proposal_table(conn)
         row = conn.execute(
@@ -2037,6 +2151,10 @@ def supersede_runtime_open_loop_closure_proposals_for_domain(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all fresh/active/fading/stale closure proposals whose canonical_key
+    matches ``open-loop-closure-proposal:%:{domain_key}`` as superseded, except
+    ``exclude_proposal_id``. Returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_open_loop_closure_proposal_table(conn)
         cursor = conn.execute(
@@ -2151,6 +2269,17 @@ def upsert_runtime_contract_candidate(
     proposed_value: str = "",
     write_section: str = "",
 ) -> dict[str, object]:
+    """Insert or merge a runtime contract candidate, keyed on
+    (candidate_type, target_file, canonical_key).
+
+    Looks up an existing proposed/approved row for that key; inserts when none
+    exists, otherwise merges (stronger source_kind/confidence/evidence_class,
+    concatenated summaries, max support/session counts, bumped merge_count; a
+    lower-ranked evidence_class keeps the existing summary/reason, and an already
+    ``approved`` status is preserved). Returns the persisted row dict with
+    ``was_created``/``was_updated``/``merge_state`` meta. Raises if the row cannot
+    be re-read.
+    """
     with connect() as conn:
         _ensure_runtime_contract_candidate_table(conn)
         existing = None
@@ -2397,6 +2526,10 @@ def list_runtime_contract_candidates(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime contract candidates newest-first, optionally filtered by
+    candidate_type, target_file, and/or status. Returns a list of row dicts
+    (empty list when none match).
+    """
     with connect() as conn:
         _ensure_runtime_contract_candidate_table(conn)
         clauses: list[str] = []
@@ -2449,6 +2582,7 @@ def list_runtime_contract_candidates(
 
 
 def get_runtime_contract_candidate(candidate_id: str) -> dict[str, object] | None:
+    """Return the contract-candidate row dict for ``candidate_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_contract_candidate_table(conn)
         row = conn.execute(
@@ -2490,6 +2624,10 @@ def get_runtime_contract_candidate(candidate_id: str) -> dict[str, object] | Non
 
 
 def runtime_contract_candidate_counts() -> dict[str, int]:
+    """Return per-(candidate_type, status) row counts keyed as ``"{type}:{status}"``.
+
+    Returns an empty dict when the table has no rows.
+    """
     with connect() as conn:
         _ensure_runtime_contract_candidate_table(conn)
         rows = conn.execute(
@@ -2513,6 +2651,10 @@ def update_runtime_contract_candidate_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one contract candidate.
+
+    Returns the refreshed row dict, or None if ``candidate_id`` does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_contract_candidate_table(conn)
         row = conn.execute(
@@ -2547,6 +2689,11 @@ def supersede_runtime_contract_candidates(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all proposed/approved contract candidates matching
+    (candidate_type, target_file, canonical_key) as superseded, except
+    ``exclude_candidate_id``. No-ops (returns 0) when ``canonical_key`` is empty;
+    otherwise returns the number of rows updated.
+    """
     if not canonical_key:
         return 0
     with connect() as conn:
@@ -2689,6 +2836,13 @@ def upsert_runtime_proactive_loop_lifecycle_signal(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a runtime proactive-loop lifecycle signal via the shared
+    ``_upsert_signal`` helper (lookup statuses: active/softening/stale).
+
+    Returns the persisted row dict enriched with the upsert meta
+    (``was_created``/``was_updated``/``merge_state``). Raises if the row cannot
+    be re-read.
+    """
     with connect() as conn:
         _ensure_runtime_proactive_loop_lifecycle_signal_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -2737,6 +2891,9 @@ def list_runtime_proactive_loop_lifecycle_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime proactive-loop lifecycle signals newest-first, optionally
+    filtered by status. Returns a list of row dicts (empty list when none match).
+    """
     with connect() as conn:
         _ensure_runtime_proactive_loop_lifecycle_signal_table(conn)
         params: list[object] = []
@@ -2780,6 +2937,7 @@ def list_runtime_proactive_loop_lifecycle_signals(
 def get_runtime_proactive_loop_lifecycle_signal(
     signal_id: str,
 ) -> dict[str, object] | None:
+    """Return the proactive-loop lifecycle signal row dict for ``signal_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_proactive_loop_lifecycle_signal_table(conn)
         row = conn.execute(
@@ -2822,6 +2980,10 @@ def update_runtime_proactive_loop_lifecycle_signal_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one proactive-loop lifecycle signal.
+
+    Returns the refreshed row dict, or None if ``signal_id`` does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_proactive_loop_lifecycle_signal_table(conn)
         row = conn.execute(
@@ -2854,6 +3016,10 @@ def supersede_runtime_proactive_loop_lifecycle_signals_for_kind(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all active/softening/stale proactive-loop lifecycle signals whose
+    canonical_key matches ``proactive-loop-lifecycle:{loop_kind}:%`` as
+    superseded, except ``exclude_signal_id``. Returns the number of rows updated.
+    """
     with connect() as conn:
         _ensure_runtime_proactive_loop_lifecycle_signal_table(conn)
         cursor = conn.execute(
@@ -2967,6 +3133,13 @@ def upsert_runtime_proactive_question_gate(
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
+    """Insert or merge a runtime proactive-question gate via the shared
+    ``_upsert_signal`` helper (lookup statuses: active/softening/stale).
+
+    Returns the persisted row dict enriched with the upsert meta
+    (``was_created``/``was_updated``/``merge_state``). Raises if the row cannot
+    be re-read.
+    """
     with connect() as conn:
         _ensure_runtime_proactive_question_gate_table(conn)
         resolved_id, meta = _upsert_signal(
@@ -3015,6 +3188,9 @@ def list_runtime_proactive_question_gates(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    """Return runtime proactive-question gates newest-first, optionally filtered by
+    status. Returns a list of row dicts (empty list when none match).
+    """
     with connect() as conn:
         _ensure_runtime_proactive_question_gate_table(conn)
         params: list[object] = []
@@ -3056,6 +3232,7 @@ def list_runtime_proactive_question_gates(
 
 
 def get_runtime_proactive_question_gate(gate_id: str) -> dict[str, object] | None:
+    """Return the proactive-question gate row dict for ``gate_id``, or None if absent."""
     with connect() as conn:
         _ensure_runtime_proactive_question_gate_table(conn)
         row = conn.execute(
@@ -3098,6 +3275,10 @@ def update_runtime_proactive_question_gate_status(
     updated_at: str,
     status_reason: str = "",
 ) -> dict[str, object] | None:
+    """Update status/status_reason/updated_at for one proactive-question gate.
+
+    Returns the refreshed row dict, or None if ``gate_id`` does not exist.
+    """
     with connect() as conn:
         _ensure_runtime_proactive_question_gate_table(conn)
         row = conn.execute(
@@ -3130,6 +3311,11 @@ def supersede_runtime_proactive_question_gates_for_kind(
     updated_at: str,
     status_reason: str,
 ) -> int:
+    """Mark all active/softening/stale proactive-question gates whose canonical_key
+    matches ``proactive-question-gate:%`` as superseded, except ``exclude_gate_id``.
+    Returns the number of rows updated. (``gate_type`` is accepted for call-site
+    symmetry but not used in the WHERE clause.)
+    """
     with connect() as conn:
         _ensure_runtime_proactive_question_gate_table(conn)
         cursor = conn.execute(

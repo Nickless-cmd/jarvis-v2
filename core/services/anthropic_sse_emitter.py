@@ -113,6 +113,27 @@ class AnthropicSSEEmitter:
             "delta": {"type": "input_json_delta", "partial_json": partial_json},
         })
 
+    def tool_result_block(
+        self, *, tool_use_id: str, status: str, content: str, is_error: bool = False
+    ) -> Iterator[str]:
+        """Emit et første-klasses tool_result som content-blok (kanonisk wire-form).
+        Lukker enhver åben blok først, åbner+lukker en tool_result-blok på nyt index."""
+        yield from self._close_open_block()
+        idx = self._next_index
+        self._next_index += 1
+        yield self._format("content_block_start", {
+            "type": "content_block_start",
+            "index": idx,
+            "content_block": {
+                "type": "tool_result",
+                "tool_use_id": tool_use_id,
+                "status": status,
+                "content": content,
+                "is_error": bool(is_error),
+            },
+        })
+        yield self._format("content_block_stop", {"type": "content_block_stop", "index": idx})
+
     def end_message(self, *, stop_reason: str, output_tokens: int = 0) -> Iterator[str]:
         if self._message_ended:
             return

@@ -31,7 +31,9 @@ from apps.api.jarvis_api.sse_v2_events import (
     MessageStop,
     Ping,
     SystemEvent,
+    _sse_format,
 )
+from core.services.structured_content_flag import structured_content_v2_enabled
 
 # SSE-format regex til at parse legacy events:
 #   event: <name>
@@ -351,12 +353,41 @@ async def translate_to_v2(
                 content=json.dumps(tool_input, ensure_ascii=False),
             ).to_sse_line())
         await queue.put(ContentBlockStop(index=idx).to_sse_line())
+        _result_text = str(payload.get("result_text") or "")
         # Status/udfald som system_event bundet til tool_use_id.
+        # BEHOLDES ALTID (dual-read på klienten tolererer den) — også når
+        # structured_content_v2 er ON. Folding på klienten er idempotent.
         await queue.put(SystemEvent(
             kind="tool_result",
             payload={"tool_use_id": tool_id, "tool": name, "status": status, "type": ptype,
-                     "result": str(payload.get("result_text") or "")},
+                     "result": _result_text},
         ).to_sse_line())
+        # Flag ON → ALSO emit et første-klasses tool_result content-block på nyt
+        # index (kanonisk wire-form, jf. AnthropicSSEEmitter.tool_result_block).
+        # Klientens reducer folder content_block_start m. content_block.type ==
+        # "tool_result" på det matchende tool_use (idempotent). Fejl → intet
+        # ekstra event, system_event bærer stadig udfaldet (aldrig break stream).
+        try:
+            if structured_content_v2_enabled():
+                _is_error = str(status).strip().lower() in {"error", "failed", "denied"}
+                _tr_idx = _alloc_index()
+                await queue.put(_sse_format("content_block_start", {
+                    "type": "content_block_start",
+                    "index": _tr_idx,
+                    "content_block": {
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "status": status,
+                        "content": _result_text,
+                        "is_error": _is_error,
+                    },
+                }))
+                await queue.put(_sse_format("content_block_stop", {
+                    "type": "content_block_stop",
+                    "index": _tr_idx,
+                }))
+        except Exception:
+            pass
 
     async def _ping_loop() -> None:
         try:

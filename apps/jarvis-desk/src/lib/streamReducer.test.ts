@@ -178,3 +178,22 @@ describe('streamReducer — usage.input fra message_delta (context-ring #9)', ()
     const s2 = streamReducer(s, { type: 'message_start', message: { id: 'run-b', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } } as any)
     expect(s2.blocks.length).toBe(0)
   })
+
+describe('streamReducer tool_result content-blok', () => {
+  it('folder tool_result-content-blok ind på matchende tool_use', () => {
+    let s = initialStreamState()
+    s = streamReducer(s, { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'toolu_1', name: 'bash', input: {} } } as any)
+    s = streamReducer(s, { type: 'content_block_start', index: 1, content_block: { type: 'tool_result', tool_use_id: 'toolu_1', status: 'done', content: 'ok' } } as any)
+    const tu = s.blocks.find((b) => b && b.type === 'tool_use') as any
+    expect(tu.status).toBe('done')
+    expect(tu.result).toBe('ok')
+    expect(s.blocks.filter(Boolean).some((b: any) => b.type === 'tool_result')).toBe(false)
+  })
+  it('bevarer den gamle system_event tool_result-sti (dual-read)', () => {
+    let s = initialStreamState()
+    s = streamReducer(s, { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'toolu_9', name: 'bash', input: {} } } as any)
+    s = streamReducer(s, { type: 'system_event', kind: 'tool_result', payload: { tool_use_id: 'toolu_9', status: 'ok', result: 'via-legacy' } } as any)
+    const tu = s.blocks.find((b) => b && b.type === 'tool_use') as any
+    expect(tu.result).toBe('via-legacy')
+  })
+})

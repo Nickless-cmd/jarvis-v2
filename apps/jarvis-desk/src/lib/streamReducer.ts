@@ -75,6 +75,16 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       if (cb.type === 'text') blocks[event.index] = { type: 'text', text: cb.text ?? '' }
       else if (cb.type === 'thinking') blocks[event.index] = { type: 'thinking', thinking: cb.thinking ?? '' }
       else if (cb.type === 'tool_use') blocks[event.index] = { type: 'tool_use', id: cb.id, name: cb.name, input: cb.input ?? {}, partialJson: '', status: 'running' }
+      else if (cb.type === 'tool_result') {
+        const idx = blocks.findIndex((b) => b && b.type === 'tool_use' && b.id === cb.tool_use_id)
+        if (idx >= 0) {
+          const b = blocks[idx]
+          if (b && b.type === 'tool_use') {
+            blocks[idx] = { ...b, status: cb.is_error || cb.status === 'error' ? 'error' : 'done', result: cb.content ?? b.result }
+          }
+        }
+        return { ...state, blocks }
+      }
       return { ...state, blocks }
     }
 

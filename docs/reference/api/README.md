@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12042 functions/methods, 47% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12047 functions/methods, 47% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -39,14 +39,14 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12042 functions/
 - [`core.services.11`](core.services.11.md) — `habits_pipeline` … `internal_cadence_matrix`
 - [`core.services.12`](core.services.12.md) — `internal_opposition_signal_tracking` … `memory_resurfacing`
 - [`core.services.13`](core.services.13.md) — `memory_search` … `open_loop_closure_proposal_tracking`
-- [`core.services.14`](core.services.14.md) — `open_loop_signal_tracking` … `process_supervisor`
-- [`core.services.15`](core.services.15.md) — `process_watcher` … `relation_continuity_signal_tracking`
-- [`core.services.16`](core.services.16.md) — `relation_dynamics` … `runtime_tasks`
-- [`core.services.17`](core.services.17.md) — `rupture_repair` … `session_inbox`
-- [`core.services.18`](core.services.18.md) — `session_milestones` … `sustained_attention`
-- [`core.services.19`](core.services.19.md) — `system_cartographer` … `tool_tagger`
-- [`core.services.20`](core.services.20.md) — `tool_usage_store` … `visible_runs_cognitive`
-- [`core.services.21`](core.services.21.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `open_loop_signal_tracking` … `procedure_bank_pipeline`
+- [`core.services.15`](core.services.15.md) — `process_supervisor` … `regulation_homeostasis_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `relation_continuity_signal_tracking` … `runtime_surface_cache`
+- [`core.services.17`](core.services.17.md) — `runtime_tasks` … `session_distillation`
+- [`core.services.18`](core.services.18.md) — `session_inbox` … `surprise_detector`
+- [`core.services.19`](core.services.19.md) — `sustained_attention` … `tool_router_runtime`
+- [`core.services.20`](core.services.20.md) — `tool_tagger` … `visible_runs_capabilities`
+- [`core.services.21`](core.services.21.md) — `visible_runs_cognitive` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

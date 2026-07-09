@@ -1,6 +1,6 @@
 # `core.runtime.02` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/runtime/db_runtime_cognition_signals.py`
 _Persistence for Jarvis' runtime cognition-* signal cluster._

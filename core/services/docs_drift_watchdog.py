@@ -7,11 +7,13 @@ Self-safe: every function returns sensible defaults and never throws."""
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[2]
 REPORT = REPO / "docs" / "drift_report.json"
+_REPORT_STALE_AFTER_DAYS = 7  # the drift audit is "stale" if it hasn't been re-run in this long
 
 
 def read_report(report_path: Path = REPORT) -> dict[str, Any]:
@@ -25,19 +27,21 @@ def read_report(report_path: Path = REPORT) -> dict[str, Any]:
 
 
 def _report_stale(report_path: Path = REPORT, repo: Path = REPO) -> bool:
-    """Cheap proxy: True if any generated doc under docs/reference is newer than the report
-    (i.e. regenerated but the report wasn't re-run). Stats only the small reference tree."""
+    """True if the drift audit itself is old — the report is missing, or its own
+    ``generated_at`` timestamp is more than ``_REPORT_STALE_AFTER_DAYS`` ago (nobody has
+    re-run ``docs_drift_check.py`` recently). Uses the report's embedded timestamp, NOT
+    filesystem mtimes, so a ``git pull`` that rewrites file mtimes on deploy does not
+    falsely flag the audit as stale."""
     try:
-        rp = Path(report_path)
-        if not rp.exists():
+        rep = read_report(report_path)
+        gen = rep.get("generated_at")
+        if not gen:
             return True
-        rt = rp.stat().st_mtime
-        ref = repo / "docs" / "reference"
-        if ref.exists():
-            for p in ref.rglob("*.md"):
-                if p.stat().st_mtime > rt:
-                    return True
-        return False
+        ts = datetime.fromisoformat(str(gen))
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        age_days = (datetime.now(timezone.utc) - ts).total_seconds() / 86400.0
+        return age_days > _REPORT_STALE_AFTER_DAYS
     except Exception:
         return False
 

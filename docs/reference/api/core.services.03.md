@@ -1,6 +1,6 @@
 # `core.services.03` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/services/cache_boundary_observer.py`
 _Cache-boundary drift observer (harness Part B, Mechanism A)._

@@ -1,6 +1,6 @@
 # `scripts.02` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `scripts/setup_google_calendar.py`
 _One-time OAuth setup for Google Calendar._

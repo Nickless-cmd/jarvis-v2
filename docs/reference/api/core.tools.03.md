@@ -1,6 +1,6 @@
 # `core.tools.03` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/tools/wake_word_tool.py`
 _Wake-word tool — Jarvis listens for 'Hey Jarvis' in the background._

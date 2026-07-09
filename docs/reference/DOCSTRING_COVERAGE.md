@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated 2026-07-08. 5342/12041 functions/methods documented (44%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 5342/12041 functions/methods documented (44%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -1235,8 +1235,8 @@ Generated 2026-07-08. 5342/12041 functions/methods documented (44%). The list be
 - `core/services/diary_synthesis_signal_tracking.py` :: `build_diary_synthesis_signal_surface` (L87)
 - `core/services/diary_synthesis_signal_tracking.py` :: `refresh_diary_synthesis_signal_statuses` (L54)
 - `core/services/diary_synthesis_signal_tracking.py` :: `track_diary_synthesis_signals_for_visible_turn` (L22)
-- `core/services/docs_drift_watchdog.py` :: `check_docs_drift` (L45)
-- `core/services/docs_drift_watchdog.py` :: `read_report` (L17)
+- `core/services/docs_drift_watchdog.py` :: `check_docs_drift` (L49)
+- `core/services/docs_drift_watchdog.py` :: `read_report` (L19)
 - `core/services/dream_adoption_candidate_tracking.py` :: `build_runtime_dream_adoption_candidate_surface` (L85)
 - `core/services/dream_adoption_candidate_tracking.py` :: `refresh_runtime_dream_adoption_candidate_statuses` (L54)
 - `core/services/dream_adoption_candidate_tracking.py` :: `track_runtime_dream_adoption_candidates_for_visible_turn` (L32)

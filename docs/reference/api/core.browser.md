@@ -1,6 +1,6 @@
 # `core.browser` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/browser/__init__.py`
 

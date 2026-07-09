@@ -1,6 +1,6 @@
 # `core.services.20` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/services/tool_usage_store.py`
 _Tools-cluster Phase 2 — persistent forbrugs-statistik (DB-backed, cross-proces)._

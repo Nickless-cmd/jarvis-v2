@@ -1,6 +1,6 @@
 # `core.coding_lane` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/coding_lane/auto_reviewer.py`
 _Coding lane auto-reviewer — subscriber til coding_lane.commit_landed events._

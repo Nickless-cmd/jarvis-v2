@@ -1,6 +1,6 @@
 # `core.services.decision_triggers` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/services/decision_triggers/__init__.py`
 _Decision triggers — importing this package registers all triggers._

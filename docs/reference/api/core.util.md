@@ -1,6 +1,6 @@
 # `core.util` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/util/timezone.py`
 _Central Copenhagen timezone utilities — én sandhedskilde for dansk tid._

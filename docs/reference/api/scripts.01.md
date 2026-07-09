@@ -1,6 +1,6 @@
 # `scripts.01` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `scripts/__init__.py`
 
@@ -11,19 +11,19 @@ _Generate per-package codebase reference under docs/reference/api/ from AST (sta
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `iter_py` | `(root=…)` | Yield every `.py` file under the SCAN_DIRS of `root`, sorted, skipping | [src](../../../scripts/api_docs_gen.py#L20) |
-| function | `_sig` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L30) |
-| function | `_summary` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L48) |
-| function | `module_entry` | `(text, relpath)` | Parse module source `text` into an entry dict for `relpath`: its module | [src](../../../scripts/api_docs_gen.py#L53) |
-| function | `package_of` | `(relpath)` | Return the dotted package name for a module `relpath` (its directory | [src](../../../scripts/api_docs_gen.py#L78) |
-| function | `page_id` | `(pkg, module_name, sorted_names, chunk=…)` | Return the page id for `module_name` within `pkg`. Packages with at most | [src](../../../scripts/api_docs_gen.py#L85) |
-| function | `_is_public` | `(name)` | — | [src](../../../scripts/api_docs_gen.py#L100) |
-| function | `coverage` | `(entries)` | Aggregate docstring coverage over module `entries`. Counts functions and | [src](../../../scripts/api_docs_gen.py#L104) |
-| function | `render_package_md` | `(page, entries)` | Render the Markdown reference page for `page`: a header plus, per module | [src](../../../scripts/api_docs_gen.py#L127) |
-| function | `render_index_md` | `(pages, cov)` | Render the API-reference index (README) Markdown: overall docstring | [src](../../../scripts/api_docs_gen.py#L152) |
-| function | `render_coverage_md` | `(cov)` | Render the docstring-coverage report Markdown from a `coverage()` dict: | [src](../../../scripts/api_docs_gen.py#L178) |
-| function | `build` | `()` | Scan all source modules and build the reference. Groups module entries by | [src](../../../scripts/api_docs_gen.py#L199) |
-| function | `main` | `()` | Build the reference and write it to disk: one Markdown page per page id, | [src](../../../scripts/api_docs_gen.py#L217) |
+| function | `iter_py` | `(root=…)` | Yield every `.py` file under the SCAN_DIRS of `root`, sorted, skipping | [src](../../../scripts/api_docs_gen.py#L19) |
+| function | `_sig` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L29) |
+| function | `_summary` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L47) |
+| function | `module_entry` | `(text, relpath)` | Parse module source `text` into an entry dict for `relpath`: its module | [src](../../../scripts/api_docs_gen.py#L52) |
+| function | `package_of` | `(relpath)` | Return the dotted package name for a module `relpath` (its directory | [src](../../../scripts/api_docs_gen.py#L77) |
+| function | `page_id` | `(pkg, module_name, sorted_names, chunk=…)` | Return the page id for `module_name` within `pkg`. Packages with at most | [src](../../../scripts/api_docs_gen.py#L84) |
+| function | `_is_public` | `(name)` | — | [src](../../../scripts/api_docs_gen.py#L99) |
+| function | `coverage` | `(entries)` | Aggregate docstring coverage over module `entries`. Counts functions and | [src](../../../scripts/api_docs_gen.py#L103) |
+| function | `render_package_md` | `(page, entries)` | Render the Markdown reference page for `page`: a header plus, per module | [src](../../../scripts/api_docs_gen.py#L126) |
+| function | `render_index_md` | `(pages, cov)` | Render the API-reference index (README) Markdown: overall docstring | [src](../../../scripts/api_docs_gen.py#L151) |
+| function | `render_coverage_md` | `(cov)` | Render the docstring-coverage report Markdown from a `coverage()` dict: | [src](../../../scripts/api_docs_gen.py#L177) |
+| function | `build` | `()` | Scan all source modules and build the reference. Groups module entries by | [src](../../../scripts/api_docs_gen.py#L198) |
+| function | `main` | `()` | Build the reference and write it to disk: one Markdown page per page id, | [src](../../../scripts/api_docs_gen.py#L216) |
 
 ## `scripts/api_reference_gen.py`
 _Generate docs/reference/API_REFERENCE.md from the FastAPI app (ground truth)._

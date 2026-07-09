@@ -1,6 +1,6 @@
 # `core.services.15` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/services/process_watcher.py`
 _Process watcher — push-notification primitive for Jarvis._

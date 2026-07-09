@@ -1,6 +1,6 @@
 # `core.services.08` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/services/decision_log.py`
 _Decision Log — records high-stakes decisions with context, options, and rationale._
@@ -404,13 +404,13 @@ _SP5 docs-drift watchdog — surface docs/drift_report.json to the Central as a 
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `read_report` | `(report_path=…)` | — | [src](../../../core/services/docs_drift_watchdog.py#L17) |
-| function | `_report_stale` | `(report_path=…, repo=…)` | Cheap proxy: True if any generated doc under docs/reference is newer than the report | [src](../../../core/services/docs_drift_watchdog.py#L27) |
-| function | `check_docs_drift` | `(report_path=…, repo=…)` | — | [src](../../../core/services/docs_drift_watchdog.py#L45) |
-| function | `observe_docs_drift` | `()` | Emit the docs:drift signal to Central (timeseries + observe trace). Self-safe. | [src](../../../core/services/docs_drift_watchdog.py#L65) |
-| function | `build_docs_drift_surface` | `()` | Read-only surface for /central/docs-drift. Never throws. | [src](../../../core/services/docs_drift_watchdog.py#L83) |
-| function | `_run_producer_tick` | `(**_)` | — | [src](../../../core/services/docs_drift_watchdog.py#L97) |
-| function | `register_docs_drift_producer` | `()` | Register the docs-drift observation as a ~5-min cadence producer. | [src](../../../core/services/docs_drift_watchdog.py#L102) |
+| function | `read_report` | `(report_path=…)` | — | [src](../../../core/services/docs_drift_watchdog.py#L19) |
+| function | `_report_stale` | `(report_path=…, repo=…)` | True if the drift audit itself is old — the report is missing, or its own | [src](../../../core/services/docs_drift_watchdog.py#L29) |
+| function | `check_docs_drift` | `(report_path=…, repo=…)` | — | [src](../../../core/services/docs_drift_watchdog.py#L49) |
+| function | `observe_docs_drift` | `()` | Emit the docs:drift signal to Central (timeseries + observe trace). Self-safe. | [src](../../../core/services/docs_drift_watchdog.py#L69) |
+| function | `build_docs_drift_surface` | `()` | Read-only surface for /central/docs-drift. Never throws. | [src](../../../core/services/docs_drift_watchdog.py#L87) |
+| function | `_run_producer_tick` | `(**_)` | — | [src](../../../core/services/docs_drift_watchdog.py#L101) |
+| function | `register_docs_drift_producer` | `()` | Register the docs-drift observation as a ~5-min cadence producer. | [src](../../../core/services/docs_drift_watchdog.py#L106) |
 
 ## `core/services/dream_adoption_candidate_tracking.py`
 

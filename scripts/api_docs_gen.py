@@ -6,7 +6,6 @@ page is unusable. Also emits a docstring-coverage report. Regenerable — cannot
 from __future__ import annotations
 
 import ast
-from datetime import UTC, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -129,7 +128,7 @@ def render_package_md(page: str, entries: list) -> str:
     (sorted), its docstring summary and a table of its members with kind, name,
     signature, summary, and a source link."""
     lines = [f"# `{page}` — reference", "",
-             f"> Generated {datetime.now(UTC).date().isoformat()} from source (AST). "
+             f"> Generated from source (AST). "
              f"Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.", ""]
     for e in sorted(entries, key=lambda x: x["module"]):
         rel = "../../../" + e["module"]
@@ -181,7 +180,7 @@ def render_coverage_md(cov: dict) -> str:
     undocumented public functions (capped at 5000)."""
     pct = 100 * cov["total_documented"] // max(1, cov["total_functions"])
     lines = ["# Docstring coverage", "",
-             f"Generated {datetime.now(UTC).date().isoformat()}. "
+             f"Generated from source. "
              f"{cov['total_documented']}/{cov['total_functions']} functions/methods documented ({pct}%). "
              f"The list below is the **mangler** for functions — public (non-`_`) undocumented functions, "
              f"the target of a future docstring gap-fill.", "",

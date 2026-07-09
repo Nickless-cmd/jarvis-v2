@@ -1,6 +1,6 @@
 # `core.services.05` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/services/central_private_reducer.py`
 _Privat-reducer for Centralens owner-surfacing (§24.4 private-layer invariant)._

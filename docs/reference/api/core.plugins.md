@@ -1,6 +1,6 @@
 # `core.plugins` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/plugins/__init__.py`
 _Plugin-arkitektur (spec §5). Connector- + kanal-plugins, lokalt forankret._

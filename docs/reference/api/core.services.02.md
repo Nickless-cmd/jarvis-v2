@@ -1,6 +1,6 @@
 # `core.services.02` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/services/anthropic_sse_emitter.py`
 _Anthropic Messages API SSE state machine._

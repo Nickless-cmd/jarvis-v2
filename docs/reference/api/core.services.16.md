@@ -1,6 +1,6 @@
 # `core.services.16` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/services/relation_dynamics.py`
 _Relation Dynamics — pattern-recognition on people, not just facts._

@@ -1,6 +1,6 @@
 # `core.services.19` — reference
 
-> Generated 2026-07-08 from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
 ## `core/services/system_cartographer.py`
 _System Cartographer — broad map of Jarvis' runtime and inner layers._

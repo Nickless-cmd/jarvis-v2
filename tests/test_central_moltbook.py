@@ -45,11 +45,11 @@ def test_cap_seen_respects_cap():
 
 def test_summary_is_metadata_only():
     items = [{"kind": "mention", "author": "X", "snippet": "hej", "id": "1",
-              "created_at": "t", "secret_payload": "MÅ IKKE MED"}]
+              "created_at": "t", "raw_body": "MÅ IKKE MED"}]
     s = mb.build_activity_summary(items)
     assert s["total"] == 1 and s["mentions"] == 1
     assert set(s["items"][0]) == {"kind", "author", "snippet"}
-    assert "secret_payload" not in str(s)
+    assert "raw_body" not in str(s) and "MÅ IKKE MED" not in str(s)
 
 
 # ── Governance / record ──

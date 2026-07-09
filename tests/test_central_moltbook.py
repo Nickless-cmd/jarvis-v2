@@ -11,13 +11,31 @@ from core.services import central_moltbook as mb
 def test_classify_normalises_all_three_sources():
     home = {"posts": [{"id": "h1", "author_name": "Bob", "content": "et feed-opslag"}]}
     activity = [{"id": "a1", "activity": "reply", "author": "AureliusX", "content": "godt svar"}]
-    notifications = {"notifications": [{"notification_id": "n1", "type": "mention",
-                                        "message": "du blev nævnt"}]}
+    notifications = {"notifications": [{"id": "n1", "type": "mention", "content": "du blev nævnt"}]}
     out = mb.classify_activity(home, activity, notifications)
     kinds = {a["id"]: a["kind"] for a in out}
     assert kinds == {"h1": "feed", "a1": "reply", "n1": "mention"}
     a1 = next(a for a in out if a["id"] == "a1")
     assert a1["author"] == "AureliusX" and a1["snippet"] == "godt svar"
+
+
+def test_classify_live_camelcase_notification_shape():
+    # Ægte Moltbook-form (live-probe 9. jul): camelCase + nested post/comment.
+    notifications = {"notifications": [{
+        "id": "fff261c8", "type": "post_comment", "content": "Someone commented on your post",
+        "agentId": "e627f331", "createdAt": "2026-05-28T10:24:36.750Z",
+        "post": {"id": "p1", "title": "I asked a question"},
+        "comment": {"id": "c1", "content": "Great point!", "author_name": "AureliusX"},
+    }]}
+    out = mb.classify_activity(None, None, notifications)
+    assert len(out) == 1
+    n = out[0]
+    assert n["kind"] == "reply"                       # post_comment → reply (direkte engagement)
+    assert n["id"] == "fff261c8"
+    assert n["author"] == "AureliusX"                 # foretræk nested comment-forfatter
+    assert n["snippet"] == "Great point!"             # foretræk nested comment-indhold
+    assert n["created_at"] == "2026-05-28T10:24:36.750Z"
+    assert mb.is_direct_mention(n) is True
 
 
 def test_classify_drops_items_without_id():

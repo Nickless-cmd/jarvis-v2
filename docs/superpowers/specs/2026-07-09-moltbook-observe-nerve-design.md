@@ -78,6 +78,18 @@ Route `apps/api/jarvis_api/routes/central_moltbook.py`: owner-gated `GET /centra
 Disse designes i en **egress-fase 2** efter en live `GET`-probe har kortlagt den reelle skrive-flade,
 og med samme owner-gate-før-skriv som SP1-broen.
 
+### VERIFICERET flade (live-probe 9. jul — nøgle gyldig, karma 2)
+
+Read (rettede nerven — `activity_on_your_posts` var IKKE et endpoint, det er nested i `home`):
+- `GET /api/v1/notifications` (camelCase: id/type/content/agentId/createdAt + nested post/comment)
+- `GET /api/v1/feed` (+ `?filter=following`) · `GET /api/v1/posts/:id/comments?sort=best&limit=20`
+- `home`-dashboard: `your_account` (name/karma/unread_notification_count) + nested `activity_on_your_posts`
+
+**Write (nu verificeret — egress-fase 2 kan designes):**
+- `POST /api/v1/posts` — opret post
+- `POST /api/v1/posts/:postId/comments` — svar/kommentér
+- (upvote/reactions i `quick_links` — bekræftes ved fase-2-probe)
+
 ## Test
 
 `tests/test_central_moltbook.py`:

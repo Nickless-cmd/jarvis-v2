@@ -70,15 +70,21 @@ def classify_activity(home: Any, activity: Any, notifications: Any) -> list[dict
             "created_at": str(it.get("created_at") or ""),
         })
     for it in _items(notifications):
+        # Live-probe 9. jul: Moltbook-notifikationer er camelCase — id/type/content/agentId/createdAt +
+        # nested post{title}/comment{content}. type fx "post_comment"/"comment_reply"/"mention"/"follow".
         ntype = str(it.get("type") or "").lower()
         kind = ("mention" if "mention" in ntype else
                 "reply" if ("repl" in ntype or "comment" in ntype) else "notification")
+        nested = it.get("comment") if isinstance(it.get("comment"), dict) else {}
+        nested_post = it.get("post") if isinstance(it.get("post"), dict) else {}
         out.append({
             "kind": kind,
-            "id": str(it.get("notification_id") or it.get("id") or ""),
-            "author": str(it.get("author_name") or it.get("author") or ""),
-            "snippet": _snippet(it.get("notification") or it.get("message")),
-            "created_at": str(it.get("created_at") or ""),
+            "id": str(it.get("id") or it.get("notification_id") or ""),
+            "author": str(nested.get("author_name") or nested.get("author")
+                          or it.get("agentId") or it.get("author") or ""),
+            "snippet": _snippet(nested.get("content") or nested_post.get("title")
+                                or it.get("content") or it.get("notification") or it.get("message")),
+            "created_at": str(it.get("createdAt") or it.get("created_at") or ""),
         })
     for it in _items(home):
         out.append({
@@ -192,11 +198,13 @@ def assess() -> dict[str, Any]:
     home = _call_moltbook_api("home", key)
     if home == "unauthorized":
         return {"status": "unauthorized", "summary": build_activity_summary([]), "new": []}
-    activity = _call_moltbook_api("activity_on_your_posts", key)
     notifications = _call_moltbook_api("notifications", key)
-    if activity == "unauthorized" or notifications == "unauthorized":
+    if notifications == "unauthorized":
         return {"status": "unauthorized", "summary": build_activity_summary([]), "new": []}
-    classified = classify_activity(home, activity, notifications)
+    # Live-probe 9. jul: 'activity_on_your_posts' er IKKE et endpoint (404) — det er en NESTED liste i
+    # home-dashboardet. Notifikationer er den primære signal-kilde (mentions/replies TIL Jarvis).
+    activity = home.get("activity_on_your_posts") if isinstance(home, dict) else None
+    classified = classify_activity(None, activity, notifications)
     seen = set(_get_state().get("seen_ids") or [])
     fresh = new_since_seen(classified, seen)
     return {"status": "ok", "summary": build_activity_summary(fresh), "new": fresh,

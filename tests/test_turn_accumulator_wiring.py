@@ -10,7 +10,7 @@ akkumulatoren håndterer (OpenAI-style `function.{name,arguments}` og flad
 
 Hvis akkumulatorens normalisering ændres, skal denne kontrakt opdateres bevidst.
 """
-from core.services.visible_runs import _build_turn_blocks
+from core.services.visible_runs import _build_progress_blocks, _build_turn_blocks
 
 
 class _FakeToolResult:
@@ -94,3 +94,54 @@ def test_empty_turn_yields_falsy_blocks_for_or_none_guard():
     blocks = _build_turn_blocks(text="", tool_calls=[], tool_results=[])
     assert blocks == []
     assert (blocks or None) is None
+
+
+# ── FLAT progress-spor (spec 2026-07-09, FLAT v1) ───────────────────────────
+
+
+def test_build_progress_blocks_one_per_tool_in_call_order():
+    calls = [
+        _normalize_call({"id": "c1", "name": "read_file", "input": {"path": "/a/foo.py"}}),
+        _normalize_call({"id": "c2", "name": "bash", "input": {"command": "ls -la"}}),
+    ]
+    results = [
+        _normalize_result(_FakeToolResult("c1", "contents")),
+        _normalize_result(_FakeToolResult("c2", "listing")),
+    ]
+    prog = _build_progress_blocks(calls, results)
+
+    assert [p["tool_use_id"] for p in prog] == ["c1", "c2"]  # kald-rækkefølge
+    assert all(p["type"] == "progress" for p in prog)
+    assert all(p["parent_tool_use_id"] is None for p in prog)  # FLAT v1
+    assert all(p["status"] == "done" for p in prog)
+    # message = _tool_label(name, input) — bærer narrationen live-working_step viste
+    assert "foo.py" in prog[0]["message"]
+    assert prog[0]["message"]  # ikke-tom
+    assert prog[1]["message"]
+
+
+def test_build_progress_blocks_error_status_from_error_result():
+    calls = [_normalize_call({"id": "c1", "name": "bash", "input": {"command": "boom"}})]
+    results = [{"tool_use_id": "c1", "status": "error", "content": "fejl", "is_error": True}]
+    prog = _build_progress_blocks(calls, results)
+    assert prog[0]["status"] == "error"
+
+
+def test_build_progress_blocks_empty_when_no_tools():
+    assert _build_progress_blocks([], []) == []
+
+
+def test_build_turn_blocks_appends_progress_after_tool_pairs():
+    calls = [_normalize_call({"id": "c1", "name": "read_file", "input": {"path": "x.py"}})]
+    results = [_normalize_result(_FakeToolResult("c1", "contents"))]
+    blocks = _build_turn_blocks(text="hej", tool_calls=calls, tool_results=results)
+
+    types = [b["type"] for b in blocks]
+    # tekst → tool_use → tool_result → progress (progress sidst)
+    assert types == ["text", "tool_use", "tool_result", "progress"]
+    assert blocks[-1]["tool_use_id"] == "c1"
+
+
+def test_build_turn_blocks_no_progress_when_no_tools():
+    blocks = _build_turn_blocks(text="bare tekst", tool_calls=[], tool_results=[])
+    assert [b["type"] for b in blocks] == ["text"]

@@ -28,6 +28,16 @@ def test_empty_blocks_gives_empty_string():
     assert content_blocks_to_text([]) == ""
 
 
+def test_progress_block_omitted_from_text_projection():
+    """progress-blokke er ikke prosa → udelades af tekst-projektionen (som tool_use/tool_result)."""
+    blocks = [
+        {"type": "text", "text": "svar"},
+        {"type": "progress", "tool_use_id": "toolu_1", "parent_tool_use_id": None,
+         "message": "Analyserede billede: foto.png", "status": "done"},
+    ]
+    assert content_blocks_to_text(blocks) == "svar"
+
+
 def test_reconstruct_plain_text_message_is_single_text_block():
     blocks = reconstruct_blocks_from_legacy("assistant", "bare tekst", load_result=lambda ref: None)
     assert blocks == [{"type": "text", "text": "bare tekst"}]

@@ -28,7 +28,9 @@ def test_build_blocks_text_only_no_tools():
 def test_build_blocks_tool_without_result_still_emits_tool_use():
     blocks = _build_turn_blocks(
         text="", tool_calls=[{"id": "toolu_9", "name": "read", "input": {}}], tool_results=[])
-    assert [b["type"] for b in blocks] == ["tool_use"]
+    # tool_use emittes selv uden result; progress-sporet (spec 2026-07-09 §5)
+    # tilføjer ét settlet element pr. tool-kald bagefter.
+    assert [b["type"] for b in blocks] == ["tool_use", "progress"]
 
 
 def test_build_blocks_error_result_maps_status():

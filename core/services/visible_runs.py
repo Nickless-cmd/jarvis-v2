@@ -298,7 +298,61 @@ def _build_turn_blocks(
                 "content": str(r.get("content") or ""),
                 "is_error": bool(r.get("is_error")),
             })
+    # Fladt progress-spor (spec 2026-07-09 §5, FLAT v1): ét settlet element pr.
+    # tool-kald i kald-rækkefølge, med den narration live-working_step viste
+    # (_tool_label) + settlet status. parent_tool_use_id=null (træet er OPFØLGNING).
+    # Fail-open: en fejl her må aldrig vælte blok-bygningen for et live run.
+    try:
+        blocks.extend(_build_progress_blocks(tool_calls, tool_results))
+    except Exception:
+        pass
     return blocks
+
+
+def _build_progress_blocks(
+    tool_calls: list[dict], tool_results: list[dict]
+) -> list[dict]:
+    """Byg det FLADE progress-spor for en tur (spec §5).
+
+    Ét ``progress``-element pr. tool-kald i kald-rækkefølge. ``message`` er
+    ``_tool_label(name, input)`` — nøjagtig den narration den live
+    ``working_step`` viste før exec (deterministisk fra name+args). ``status``
+    settles fra tool_result (error hvis fejlet, ellers done). ``parent_tool_use_id``
+    er altid ``None`` (fladt — træet kræver spawn-plumbing der ikke findes endnu).
+    Ren funktion; sikker at teste isoleret."""
+    results_by_id: dict[str, dict] = {}
+    for r in (tool_results or []):
+        results_by_id[str(r.get("tool_use_id") or "")] = r
+    out: list[dict] = []
+    for tc in (tool_calls or []):
+        tid = str(tc.get("id") or "")
+        name = str(tc.get("name") or "tool")
+        raw_input = tc.get("input") or {}
+        if isinstance(raw_input, str):
+            try:
+                import json as _json
+                raw_input = _json.loads(raw_input)
+            except Exception:
+                raw_input = {}
+        args = raw_input if isinstance(raw_input, dict) else {}
+        try:
+            message = _tool_label(name, args)
+        except Exception:
+            message = name
+        r = results_by_id.get(tid)
+        status = "done"
+        if r is not None and (
+            r.get("is_error") or str(r.get("status") or "") == "error"
+        ):
+            status = "error"
+        out.append({
+            "type": "progress",
+            "tool_use_id": tid,
+            "parent_tool_use_id": None,
+            "message": str(message or name),
+            "status": status,
+        })
+    return out
 
 
 @dataclass(slots=True)

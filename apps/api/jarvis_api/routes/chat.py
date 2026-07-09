@@ -1279,6 +1279,16 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
         content=effective_message,
         user_id=_uid,
     )
+
+    # Paste-store (spec 2026-07-09): persistér den kompakte reference, men send den
+    # FULDE paste-tekst til modellen (flag `paste_inline_to_model`, default ON).
+    # Ukendt id → behold referencen (degradér). Se chat_stream_v2 for detaljer.
+    try:
+        from core.services.paste_store import project_paste_for_model
+        model_message = project_paste_for_model(effective_message)
+    except Exception:
+        model_message = effective_message
+
     from core.services.notification_bridge import pin_session
     pin_session(session_id)
 
@@ -1340,7 +1350,7 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
 
     return StreamingResponse(
         start_visible_run(
-            message=effective_message,
+            message=model_message,
             session_id=session_id,
             approval_mode=request.approval_mode,
             thinking_mode=request.thinking_mode,

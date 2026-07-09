@@ -142,6 +142,37 @@ def expand_paste_references(content: str) -> str:
     return PASTE_REFERENCE_RE.sub(_sub, raw)
 
 
+def paste_inline_to_model_enabled() -> bool:
+    """Flag: skal modellen se den FULDE paste-tekst (default ON) eller referencen (OFF)?
+
+    Default ON = nuværende adfærd (fuld tekst i beskeden). OFF ville sende referencen
+    (fremtidig token-besparelse). Læses live fra runtime-state så den kan flippes uden
+    genstart; fail-safe → default ON hvis state ikke kan læses.
+    """
+    try:
+        from core.runtime.db import get_runtime_state_value
+
+        value = get_runtime_state_value("paste_inline_to_model", True)
+    except Exception:
+        return True
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() not in {"0", "false", "off", "no"}
+    return bool(value)
+
+
+def project_paste_for_model(content: str) -> str:
+    """Projicér en bruger-besked til modellen: ekspandér paste-referencer når flag ON.
+
+    Flag ON (default) → fuld paste-tekst inline. Flag OFF → behold referencen.
+    Ukendt id → behold referencen uanset (degradér, crash aldrig).
+    """
+    if not paste_inline_to_model_enabled():
+        return str(content or "")
+    return expand_paste_references(content)
+
+
 def cleanup_old_pastes(max_age_days: int = 30) -> int:
     """Slet pastes ældre end `max_age_days`. Returnér antal slettede (best-effort)."""
     directory = _paste_dir()

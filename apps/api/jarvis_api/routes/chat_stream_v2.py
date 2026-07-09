@@ -120,6 +120,17 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         user_id=_uid,
     )
 
+    # Paste-store (spec 2026-07-09): den PERSISTEREDE besked beholder den kompakte
+    # `[paste:<id> +N linjer]`-reference (kompakt historik), men modellen ser som
+    # default den FULDE paste-tekst. Ekspandér referencer FØR runnet. Flag
+    # `paste_inline_to_model` (default ON) styrer det; ukendt id → behold referencen
+    # (degradér, crash aldrig). Ingen reference → identitet (no-op).
+    try:
+        from core.services.paste_store import project_paste_for_model
+        model_message = project_paste_for_model(effective_message)
+    except Exception:
+        model_message = effective_message
+
     # Load model/provider/lane settings så vi kan inkludere dem i
     # message_start metadata (klienten skal bruge dem til at display'e
     # "kører på X-model" + til debugging).
@@ -238,7 +249,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         # spawn ikke et samtidigt run (det klobber via active-run-singletonen →
         # begge fejler). Helper'en attacher + nudger i stedet. Se helper-docstring.
         run_id, _attached = start_or_attach_user_run(
-            message=effective_message,
+            message=model_message,
             session_id=session_id,
             nudge_enabled=bool(getattr(settings, "nudge_system_enabled", True)),
             approval_mode=request.approval_mode,
@@ -337,7 +348,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
 
     # FLAG OFF → nuværende stabile A1-tee (uændret).
     legacy_iter = start_visible_run(
-        message=effective_message,
+        message=model_message,
         session_id=session_id,
         approval_mode=request.approval_mode,
         thinking_mode=request.thinking_mode,

@@ -11,6 +11,7 @@ from core.services.paste_store import (
     expand_paste_references,
     get_paste,
     parse_paste_reference,
+    project_paste_for_model,
     save_paste,
 )
 
@@ -96,6 +97,38 @@ def test_expand_unknown_id_keeps_reference(isolated_runtime) -> None:
 def test_expand_no_reference_is_identity(isolated_runtime) -> None:
     message = "helt normal besked uden paste"
     assert expand_paste_references(message) == message
+
+
+def test_project_for_model_default_on_expands(isolated_runtime) -> None:
+    text = "big paste\n" * 30
+    paste_id = save_paste(text)
+    ref = build_paste_reference(paste_id, line_count=30)
+    message = f"review dette:\n{ref}"
+
+    # Default (flag unset) = ON → fuld tekst til modellen.
+    projected = project_paste_for_model(message)
+    assert text in projected
+    assert ref not in projected
+
+
+def test_project_for_model_off_keeps_reference(isolated_runtime) -> None:
+    from core.runtime.db import set_runtime_state_value
+
+    text = "big paste\n" * 30
+    paste_id = save_paste(text)
+    ref = build_paste_reference(paste_id, line_count=30)
+    message = f"review dette:\n{ref}"
+
+    set_runtime_state_value("paste_inline_to_model", False)
+    projected = project_paste_for_model(message)
+    assert projected == message  # reference bevaret, ikke ekspanderet
+
+
+def test_project_for_model_unknown_id_keeps_reference(isolated_runtime) -> None:
+    ref = "[paste:unknownid00000 +7 linjer]"
+    message = f"se her: {ref}"
+    # Flag ON default, men uopslåeligt id → behold referencen (degradér).
+    assert project_paste_for_model(message) == message
 
 
 def test_cleanup_old_pastes_removes_stale(isolated_runtime) -> None:

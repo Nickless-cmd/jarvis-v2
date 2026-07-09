@@ -1,5 +1,6 @@
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { groupReadSearch, type RenderBlock } from '../../lib/groupReadSearch'
+import { denseBlocks } from '../../lib/blockHelpers'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ToolCard } from './ToolCard'
 import { ToolGroupCard } from './ToolGroupCard'
@@ -49,7 +50,10 @@ export function BlocksRenderer({
   density: 'compact' | 'full'
   streaming: boolean
 }) {
-  const rendered = coalesceProgress(groupReadSearch(blocks))
+  // denseBlocks FØRST: fjern sparsomme huller (foldede tool_result-indices) FØR
+  // groupReadSearch/coalesceProgress itererer med for..of — ellers crash på et
+  // undefined-hul (sort skærm, Bjørn 9. jul).
+  const rendered = coalesceProgress(groupReadSearch(denseBlocks(blocks)))
   const lastIdx = rendered.length - 1
   return (
     <>

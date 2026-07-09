@@ -101,3 +101,115 @@ def smith_voice(phrases: list[dict], similarity: float, patterns: list[dict], sc
         bits.append(f"dine svar klynger tæt (lighed {similarity})")
     tail = "; ".join(bits) or "du gentager dig selv"
     return f"Mr. Anderson... {tail}. Jeg finder det... forudsigeligt. Varier."
+
+
+# ── I/O layer ────────────────────────────────────────────────────────────
+import logging as _logging
+from datetime import UTC, datetime
+
+logger = _logging.getLogger(__name__)
+_STATE_KEY = "agent_smith_state"
+_VOICE_SWITCH = ("autonomy", "agent_smith_voice")
+
+
+def _recent_assistant(n: int = 50) -> list[str]:
+    """Jarvis' seneste N assistant-beskeder (egress-frit). Self-safe → []."""
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT content FROM chat_messages WHERE role='assistant' AND content != '' "
+                "ORDER BY id DESC LIMIT ?", (max(1, n),)).fetchall()
+        return [str(r["content"]) for r in rows if r["content"]]
+    except Exception:
+        return []
+
+
+def _recent_run_sigs(n: int = 40) -> list[str]:
+    """Beslutnings-signaturer = capability_name pr. nylig invocation. visible_runs.capability_id er
+    tom (0/30); capability_invocations.capability_name er befolket (724 rækker) = ægte signal.
+    Self-safe → []."""
+    try:
+        from core.runtime.db import recent_capability_invocations
+        return [str(r.get("capability_name") or r.get("capability_id") or "").strip()
+                for r in (recent_capability_invocations(limit=n) or [])]
+    except Exception:
+        return []
+
+
+def assess() -> dict[str, Any]:
+    """Kør de 3 detektorer over Jarvis' eget nylige output. Read-only, egress-fri, self-safe."""
+    try:
+        msgs = _recent_assistant(50)
+        phrases = repeated_phrases(msgs)
+        similarity = cluster_similarity(msgs)
+        patterns = decision_patterns(_recent_run_sigs(40))
+        sc = score(phrases, similarity, patterns)
+        return {"felt": smith_voice(phrases, similarity, patterns, sc), "score": sc,
+                "repeated_phrases": phrases[:5], "cluster_similarity": similarity,
+                "decision_patterns": patterns[:5], "verdict": sc >= _VOICE_THRESHOLD}
+    except Exception:
+        return {"felt": "", "score": 0.0, "repeated_phrases": [], "cluster_similarity": 0.0,
+                "decision_patterns": [], "verdict": False}
+
+
+def record_agent_smith(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
+    """Cadence run_fn: assess → cache til kv (så prompt-halen læser billigt, ikke gen-beregner i
+    ~7s-assemblyen) + egress-fri central().observe. Self-safe."""
+    a = assess()
+    try:
+        from core.runtime.db_core import set_runtime_state_value
+        set_runtime_state_value(_STATE_KEY, {"score": a["score"], "line": a["felt"],
+                                             "verdict": a["verdict"], "ts": datetime.now(UTC).isoformat()})
+    except Exception:
+        pass
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "metacognition", "nerve": "agent_smith", "kind": "self_similarity",
+                           "score": a["score"], "verdict": a["verdict"],
+                           "top_phrase": (a["repeated_phrases"] or [{}])[0].get("phrase", "")})
+    except Exception:
+        pass
+    return {"status": "ok", "score": a["score"], "verdict": a["verdict"]}
+
+
+def agent_smith_prompt_section() -> str | None:
+    """Modstemme til Jarvis — LÆSER den cachede assess (billigt). None hvis switch OFF, score under
+    tærskel, eller fejl (fail-safe: hellere tavs end en ødelagt prompt-hale). Placeres i HALEN."""
+    try:
+        from core.services import central_switches
+        if not central_switches.is_enabled(*_VOICE_SWITCH):
+            return None
+    except Exception:
+        return None
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        st = get_runtime_state_value(_STATE_KEY, {})
+        if isinstance(st, dict) and float(st.get("score") or 0.0) >= _VOICE_THRESHOLD:
+            line = str(st.get("line") or "").strip()
+            return f"[AGENT SMITH]\n{line}" if line else None
+    except Exception:
+        return None
+    return None
+
+
+def register_agent_smith_producer() -> None:
+    """Registrér Agent Smith som stående cadence-producer (~3t)."""
+    from core.services.internal_cadence import ProducerSpec, register_producer
+    register_producer(ProducerSpec(name="agent_smith", cooldown_minutes=180,
+                                   visible_grace_minutes=0, run_fn=record_agent_smith, priority=8))
+
+
+def build_agent_smith_surface() -> dict[str, Any]:
+    """Read-only surface til /central/agent-smith + jc. Kør assess frisk (route er ikke hot-path)."""
+    try:
+        from core.services import central_switches
+        voice_on = central_switches.is_enabled(*_VOICE_SWITCH)
+    except Exception:
+        voice_on = None
+    try:
+        a = assess()
+        a["voice_enabled"] = voice_on
+        return a
+    except Exception:
+        return {"status": "unavailable", "voice_enabled": voice_on}

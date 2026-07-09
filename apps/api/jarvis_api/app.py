@@ -195,6 +195,19 @@ def create_app() -> FastAPI:
             logger.info("endpoint_usage: %d registrerede ruter snapshottet", len(_routes))
         except Exception as _exc:
             logger.warning("endpoint_usage route snapshot failed: %s", _exc)
+        # Session-persistence boot-reconciler (§5.2): flip crash-zombie 'running'
+        # runs -> 'interrupted' så den eksisterende interruption_prompt_section
+        # genoptager sessionen næste tur. UDENFOR runtime-gaten: api- OG runtime-
+        # processen deler dette entrypoint (kun JARVIS_ENABLE_RUNTIME_SERVICES
+        # adskiller dem), og reconcileren er idempotent, så begge må køre den.
+        # Kill-switch session_persistence default OFF (shadow) -> observe-only.
+        # Fail-open: en fejl her må ALDRIG stoppe opstart.
+        try:
+            from core.services.session_boot_reconciler import reconcile_on_boot
+            _rec = reconcile_on_boot()
+            logger.info("session_boot_reconciler: %s", _rec)
+        except Exception as _exc:
+            logger.warning("session_boot_reconciler failed at boot: %s", _exc)
         if runtime_services_enabled:
             start_runtime_hook_runtime()
             start_approval_feedback_subscriber()

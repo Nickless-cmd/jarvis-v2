@@ -53,11 +53,11 @@ export function groupReadSearch(blocks: RenderBlock[]): RenderBlock[] {
   let i = 0
   const n = blocks.length
   while (i < n) {
-    const b = blocks[i]
+    const b = blocks[i] as RenderBlock
     if (isFoldable(b)) {
       // Saml maksimal run af sammenhængende foldbare blokke.
       let j = i
-      while (j < n && isFoldable(blocks[j])) j++
+      while (j < n && isFoldable(blocks[j] as RenderBlock)) j++
       const run = blocks.slice(i, j) as Array<Extract<ContentBlock, { type: 'tool_use' }>>
       if (run.length >= 3) {
         out.push({ type: 'tool_group', kind: 'read_search', count: run.length, tools: run })

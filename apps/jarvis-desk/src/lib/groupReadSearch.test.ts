@@ -20,7 +20,7 @@ describe('groupReadSearch', () => {
   it('folds 3+ consecutive reads into one tool_group with count', () => {
     const out = groupReadSearch([read('a'), read('b'), read('c')])
     expect(out).toHaveLength(1)
-    const g = out[0]
+    const g = out[0]!
     expect(isGroup(g)).toBe(true)
     if (isGroup(g)) {
       expect(g.kind).toBe('read_search')
@@ -61,8 +61,8 @@ describe('groupReadSearch', () => {
     ])
     const groups = out.filter(isGroup)
     expect(groups).toHaveLength(2)
-    expect(groups[0].count).toBe(3)
-    expect(groups[1].count).toBe(3)
+    expect(groups[0]!.count).toBe(3)
+    expect(groups[1]!.count).toBe(3)
     expect(out.find((b) => b.type === 'tool_use' && b.id === 'x')).toBeTruthy()
   })
 
@@ -74,7 +74,7 @@ describe('groupReadSearch', () => {
       tool('w', 'web_search'),
     ])
     expect(out).toHaveLength(1)
-    const g = out[0]
+    const g = out[0]!
     expect(isGroup(g)).toBe(true)
     if (isGroup(g)) expect(g.count).toBe(4)
   })
@@ -105,6 +105,6 @@ describe('groupReadSearch', () => {
   it('folds a running read/search run (status running is not error)', () => {
     const out = groupReadSearch([read('a', 'running'), read('b', 'running'), read('c', 'running')])
     expect(out).toHaveLength(1)
-    expect(isGroup(out[0])).toBe(true)
+    expect(isGroup(out[0]!)).toBe(true)
   })
 })

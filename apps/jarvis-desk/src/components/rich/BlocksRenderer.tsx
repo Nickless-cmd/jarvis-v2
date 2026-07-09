@@ -1,11 +1,17 @@
 import type { ContentBlock } from '../../lib/sseProtocol'
+import { groupReadSearch, type RenderBlock } from '../../lib/groupReadSearch'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ToolCard } from './ToolCard'
+import { ToolGroupCard } from './ToolGroupCard'
 import { ImageBlock } from './ImageBlock'
 import { LiveVerb } from '../shell/LiveVerb'
 
 /** Dispatcher content-blocks til de rette rich-komponenter. Density-aware:
- *  videregives til ToolCard (compact|full). */
+ *  videregives til ToolCard (compact|full).
+ *
+ *  Ren render-lags-transform: groupReadSearch folder ≥3 sammenhængende read/søge-
+ *  tool_use-blokke til ét foldbart tool_group-kort. Ingen wire/persist-ændring —
+ *  transformen kører her, efter fold, lige før dispatch. */
 export function BlocksRenderer({
   blocks,
   density,
@@ -15,10 +21,11 @@ export function BlocksRenderer({
   density: 'compact' | 'full'
   streaming: boolean
 }) {
-  const lastIdx = blocks.length - 1
+  const rendered = groupReadSearch(blocks)
+  const lastIdx = rendered.length - 1
   return (
     <>
-      {blocks.map((b, i) => (
+      {rendered.map((b, i) => (
         <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} />
       ))}
     </>
@@ -31,7 +38,7 @@ function BlockView({
   streaming,
   isLast,
 }: {
-  block: ContentBlock
+  block: RenderBlock
   density: 'compact' | 'full'
   streaming: boolean
   isLast: boolean
@@ -39,6 +46,8 @@ function BlockView({
   switch (block.type) {
     case 'text':
       return <MarkdownRenderer text={block.text} streaming={streaming} />
+    case 'tool_group':
+      return <ToolGroupCard block={block} density={density} />
     case 'tool_use':
       return <ToolCard block={block} density={density} />
     case 'image':

@@ -68,6 +68,14 @@ def register_central_wiring_producers() -> None:
     except Exception:
         pass
 
+    # Proaktivitets-broen: overflad Jarvis' indre spørgsmål/initiativer til Bjørn (governed,
+    # presence-gated, kill-switch default ON). Self-safe.
+    try:
+        from core.services.proactivity_bridge import register_proactivity_bridge_producer
+        register_proactivity_bridge_producer()
+    except Exception:
+        pass
+
     # Fase 1d: causal-grafens tier-fordeling + precision (broen signal→hypotese) → tidsserie.
     try:
         from core.services.central_causal_quality import register_causal_quality_producer

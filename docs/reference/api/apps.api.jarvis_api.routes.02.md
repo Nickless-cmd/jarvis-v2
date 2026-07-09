@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/jarvisx_common.py`
+_Shared constants + guards for the JarvisX route modules._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_resolve_workspace` | `(name)` | Resolve a workspace name to its directory, with traversal guard. | [src](../../../apps/api/jarvis_api/routes/jarvisx_common.py#L46) |
+| function | `_safe_subpath` | `(workspace_dir, relative)` | Resolve a relative path under workspace_dir with traversal guard. | [src](../../../apps/api/jarvis_api/routes/jarvisx_common.py#L65) |
+| function | `_require_owner` | `()` | Raise 403 if the current request isn't from the owner. | [src](../../../apps/api/jarvis_api/routes/jarvisx_common.py#L78) |
+
 ## `apps/api/jarvis_api/routes/jarvisx_dispatches.py`
 _JarvisX Claude-Code dispatch dashboard route group._
 

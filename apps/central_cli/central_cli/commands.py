@@ -27,6 +27,7 @@ _GET_ENDPOINTS = {
     "autonomous": "/central/autonomous",
     "connections": "/central/connections",
     "docs-drift": "/central/docs-drift",
+    "proactivity": "/central/proactivity",
     "users": "/central/users",
     "excess": "/central/excess",
     "decentral": "/central/decentralization",

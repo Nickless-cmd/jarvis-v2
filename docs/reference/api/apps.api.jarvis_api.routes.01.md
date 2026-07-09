@@ -297,6 +297,14 @@ _Central 'matrix' routes — de fire tematiske selv-observations-komponenter (ow
 | function | `get_identity_canon` | `()` | Kanon-tråde + anerkendte konfabulationer + seneste drift-fangster (sonnet-spøgelset). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_matrix.py#L433) |
 | function | `get_reasoning_interceptor` | `()` | Reasoning interceptor: recent verdicts (grade-histogram + latency). Metadata-only, shadow-only. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_matrix.py#L440) |
 
+## `apps/api/jarvis_api/routes/central_proactivity.py`
+_Central 'proactivity' route — proaktivitets-broens beslutninger (owner, read-only, self-safe)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_proactivity.py#L13) |
+| function | `get_proactivity` | `()` | Proaktivitets-broen: switch-status + ventende urgent/normal kandidater. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_proactivity.py#L19) |
+
 ## `apps/api/jarvis_api/routes/central_self.py`
 _Central 'self' route — surfaces Jarvis' SELF to the OWNER, reduced + absorbed._
 
@@ -560,13 +568,4 @@ _JarvisX channels + scheduling state route group._
 | function | `_scheduling_visible_to` | `(item, user_id)` | True if `item` should be shown to a user with this id. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L103) |
 | function | `_filter_scheduling_payload` | `(payload, user_id)` | Recursively filter dicts/lists in a scheduling-state payload. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L126) |
 | function | `scheduling_state` | `()` | Aggregate scheduled tasks + recurring + self-wakeups. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L136) |
-
-## `apps/api/jarvis_api/routes/jarvisx_common.py`
-_Shared constants + guards for the JarvisX route modules._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_resolve_workspace` | `(name)` | Resolve a workspace name to its directory, with traversal guard. | [src](../../../apps/api/jarvis_api/routes/jarvisx_common.py#L46) |
-| function | `_safe_subpath` | `(workspace_dir, relative)` | Resolve a relative path under workspace_dir with traversal guard. | [src](../../../apps/api/jarvis_api/routes/jarvisx_common.py#L65) |
-| function | `_require_owner` | `()` | Raise 403 if the current request isn't from the owner. | [src](../../../apps/api/jarvis_api/routes/jarvisx_common.py#L78) |
 

@@ -153,24 +153,12 @@ def _cache_path() -> Path:
     return _workspace_dir() / _INDEX_CACHE_PATH_NAME
 
 
-def _load_or_build_index() -> tuple[list[Chunk], np.ndarray | None, dict[str, float]]:
-    """Load cached index or rebuild from scratch. Returns (chunks, embeddings, mtimes)."""
-    files = _memory_files()
-    current_mtimes = {str(f): _file_mtime(f) for f in files}
-    cache = _cache_path()
+_REBUILD_LOCK = threading.Lock()
+_REBUILD_ACTIVE = False
 
-    # Try to load cached index
-    if cache.exists():
-        try:
-            with open(cache, "rb") as fh:
-                cached = pickle.load(fh)
-            if cached.get("mtimes") == current_mtimes and cached.get("model") == _EMBED_MODEL:
-                return cached["chunks"], cached.get("embeddings"), current_mtimes
-        except Exception as exc:
-            logger.warning("memory_search: cache load failed: %s", exc)
 
-    # Build fresh index
-    logger.info("memory_search: building index from %d files", len(files))
+def _chunk_all_files(files: list[Path]) -> list[Chunk]:
+    """Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding."""
     all_chunks: list[Chunk] = []
     for f in files:
         try:
@@ -183,30 +171,85 @@ def _load_or_build_index() -> tuple[list[Chunk], np.ndarray | None, dict[str, fl
             all_chunks.extend(_chunk_markdown(text, rel))
         except Exception as exc:
             logger.warning("memory_search: failed to read %s: %s", f, exc)
+    return all_chunks
 
+
+def _build_and_cache_index(files: list[Path], current_mtimes: dict[str, float]) -> None:
+    """Byg indeks fra bunden (chunk + embed ALLE chunks) og skriv cache. LANGSOM (embedding).
+    Kaldes KUN fra baggrunds-tråden — aldrig i en bruger-søgnings request-path."""
+    all_chunks = _chunk_all_files(files)
     if not all_chunks:
-        return [], None, current_mtimes
-
-    # Embed all chunks
-    texts = [c.text for c in all_chunks]
-    embeddings = _embed_ollama(texts)
-
-    # Save to cache
+        return
+    embeddings = _embed_ollama([c.text for c in all_chunks])
     try:
+        cache = _cache_path()
         cache.parent.mkdir(parents=True, exist_ok=True)
         with open(cache, "wb") as fh:
             pickle.dump({
-                "chunks": all_chunks,
-                "embeddings": embeddings,
-                "mtimes": current_mtimes,
-                "model": _EMBED_MODEL,
+                "chunks": all_chunks, "embeddings": embeddings,
+                "mtimes": current_mtimes, "model": _EMBED_MODEL,
                 "built_at": datetime.now(UTC).isoformat(),
             }, fh)
-        logger.info("memory_search: index built (%d chunks, embeddings=%s)", len(all_chunks), embeddings is not None)
+        logger.info("memory_search: index rebuilt in bg (%d chunks, embeddings=%s)",
+                    len(all_chunks), embeddings is not None)
     except Exception as exc:
         logger.warning("memory_search: cache save failed: %s", exc)
 
-    return all_chunks, embeddings, current_mtimes
+
+def _schedule_background_rebuild(files: list[Path], current_mtimes: dict[str, float]) -> None:
+    """Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning
+    ALDRIG blokerer på et fuldt re-embed (Bjørn 9. jul: 'search_memory hænger' — hver memory-fil-
+    ændring invaliderede HELE indekset → inline re-embed af alle chunks = minutter → run/stream-hang)."""
+    global _REBUILD_ACTIVE
+    with _REBUILD_LOCK:
+        if _REBUILD_ACTIVE:
+            return
+        _REBUILD_ACTIVE = True
+
+    # Propagér kalderens kontekst (bl.a. user_id) til baggrunds-tråden — ContextVars arves IKKE af
+    # nye tråde, og _chunk_all_files → _workspace_dir() KRÆVER et user-context. Uden dette fejler
+    # rebuild'en (kan ikke læse workspace-filer) og indekset genopbygges aldrig.
+    import contextvars
+    ctx = contextvars.copy_context()
+
+    def _run() -> None:
+        global _REBUILD_ACTIVE
+        try:
+            _build_and_cache_index(files, current_mtimes)
+        except Exception as exc:
+            logger.warning("memory_search: background rebuild failed: %s", exc)
+        finally:
+            with _REBUILD_LOCK:
+                _REBUILD_ACTIVE = False
+
+    threading.Thread(target=lambda: ctx.run(_run), name="memory-search-reindex", daemon=True).start()
+
+
+def _load_or_build_index() -> tuple[list[Chunk], np.ndarray | None, dict[str, float]]:
+    """Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed:
+      - frisk cache → brug den (semantisk søgning).
+      - FORÆLDET cache → server den STRAKS + genopbyg i baggrunden (let-forældet ≫ hængende).
+      - ingen/brudt cache → chunk filerne hurtigt (ingen embed) → embeddings=None → tfidf-fallback,
+        og embed i baggrunden.
+    Kun-fil-mtime-ændring invaliderer ikke længere søgningen synkront (den var roden til hanget)."""
+    files = _memory_files()
+    current_mtimes = {str(f): _file_mtime(f) for f in files}
+    cache = _cache_path()
+    if cache.exists():
+        try:
+            with open(cache, "rb") as fh:
+                cached = pickle.load(fh)
+            if cached.get("mtimes") == current_mtimes and cached.get("model") == _EMBED_MODEL:
+                return cached["chunks"], cached.get("embeddings"), current_mtimes
+            # Forældet → server den gamle index straks, genopbyg async.
+            _schedule_background_rebuild(files, current_mtimes)
+            return cached.get("chunks", []), cached.get("embeddings"), cached.get("mtimes", current_mtimes)
+        except Exception as exc:
+            logger.warning("memory_search: cache load failed: %s", exc)
+    # Ingen/brudt cache: chunk hurtigt (ingen embed) → tfidf-fallback nu; embed i baggrunden.
+    all_chunks = _chunk_all_files(files)
+    _schedule_background_rebuild(files, current_mtimes)
+    return all_chunks, None, current_mtimes
 
 
 def _is_quarantined(text: str) -> bool:

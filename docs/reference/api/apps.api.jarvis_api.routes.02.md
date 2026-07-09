@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/jarvisx_channels.py`
+_JarvisX channels + scheduling state route group._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `channels_state` | `()` | Aggregate gateway status for the Channels view. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L20) |
+| function | `_scheduling_visible_to` | `(item, user_id)` | True if `item` should be shown to a user with this id. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L103) |
+| function | `_filter_scheduling_payload` | `(payload, user_id)` | Recursively filter dicts/lists in a scheduling-state payload. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L126) |
+| function | `scheduling_state` | `()` | Aggregate scheduled tasks + recurring + self-wakeups. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L136) |
+
 ## `apps/api/jarvis_api/routes/jarvisx_common.py`
 _Shared constants + guards for the JarvisX route modules._
 

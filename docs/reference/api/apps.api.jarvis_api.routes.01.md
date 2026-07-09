@@ -156,6 +156,14 @@ _Central 'affect' route — surfaces nervesystemets affektive fordeling til OWNE
 | function | `get_affect` | `()` | Nervesystemets affektive fordeling lige nu (owner-only, read-only, self-safe). | [src](../../../apps/api/jarvis_api/routes/central_affect.py#L25) |
 | function | `get_body` | `()` | Jarvis' live hardware-krop (CPU/temp/disk/RAM/GPU). Proxyer til runtime hvor | [src](../../../apps/api/jarvis_api/routes/central_affect.py#L44) |
 
+## `apps/api/jarvis_api/routes/central_agent_smith.py`
+_Central 'agent-smith' route — selv-lighed-kritikerens dom (owner, read-only, self-safe)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_agent_smith.py#L14) |
+| function | `get_agent_smith` | `()` | Agent Smith: selv-lighed-score + top-gentagne fraser/mønstre + modstemme-status. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_agent_smith.py#L20) |
+
 ## `apps/api/jarvis_api/routes/central_auth.py`
 _Shared owner-gate for /central/* routes._
 
@@ -558,14 +566,4 @@ _WebSocket endpoint for JarvisX tool-bridge._
 |---|---|---|---|---|
 | function | `internal_dispatch` | `(request)` | Intern cross-process dispatch (runtime-proces → api-proces). | [src](../../../apps/api/jarvis_api/routes/jarvisx_bridge.py#L35) |
 | function | `jarvisx_bridge_ws` | `(ws)` | Accept WS from JarvisX-app, route messages between bridge and runtime. | [src](../../../apps/api/jarvis_api/routes/jarvisx_bridge.py#L111) |
-
-## `apps/api/jarvis_api/routes/jarvisx_channels.py`
-_JarvisX channels + scheduling state route group._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `channels_state` | `()` | Aggregate gateway status for the Channels view. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L20) |
-| function | `_scheduling_visible_to` | `(item, user_id)` | True if `item` should be shown to a user with this id. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L103) |
-| function | `_filter_scheduling_payload` | `(payload, user_id)` | Recursively filter dicts/lists in a scheduling-state payload. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L126) |
-| function | `scheduling_state` | `()` | Aggregate scheduled tasks + recurring + self-wakeups. | [src](../../../apps/api/jarvis_api/routes/jarvisx_channels.py#L136) |
 

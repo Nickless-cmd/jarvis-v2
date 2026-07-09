@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-07-09 from app.routes (live) — 504 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-07-09 from app.routes (live) — 505 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -110,6 +110,7 @@
 | GET | `/billing/status` | dict | billing |
 | POST | `/billing/webhook` | dict | billing |
 | GET | `/central/affect` | dict | central_affect |
+| GET | `/central/agent-smith` | dict | central_agent_smith |
 | GET | `/central/agents` | dict | central_absorb_routes |
 | GET | `/central/analyst` | dict | central_matrix |
 | GET | `/central/architect` | dict | central_matrix |

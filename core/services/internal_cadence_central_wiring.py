@@ -76,6 +76,13 @@ def register_central_wiring_producers() -> None:
     except Exception:
         pass
 
+    # Agent Smith: stående selv-lighed-kritiker → metacognition/agent_smith (observe + governed modstemme).
+    try:
+        from core.services.central_agent_smith import register_agent_smith_producer
+        register_agent_smith_producer()
+    except Exception:
+        pass
+
     # Fase 1d: causal-grafens tier-fordeling + precision (broen signal→hypotese) → tidsserie.
     try:
         from core.services.central_causal_quality import register_causal_quality_producer

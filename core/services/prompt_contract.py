@@ -2366,6 +2366,16 @@ def build_visible_chat_prompt_assembly(
     derived_inputs.append("epistemic abstention anchor (user-msg tail)")
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
+    # Agent Smith modstemme (governed, cache-læst) — KUN i den dynamiske hale, aldrig i det stabile
+    # prefix (cache-invariant, jf. visible_continuity/cognitive_state defer-to-tail). Self-safe.
+    try:
+        from core.services.central_agent_smith import agent_smith_prompt_section as _smith_fn
+        _smith = _smith_fn()
+        if _smith:
+            _dyn_tail.append(_smith)
+            derived_inputs.append("agent smith modstemme (tail)")
+    except Exception:
+        pass
     if _dyn_tail:
         parts.append(DYNAMIC_TAIL_SENTINEL)
         parts.extend(_dyn_tail)

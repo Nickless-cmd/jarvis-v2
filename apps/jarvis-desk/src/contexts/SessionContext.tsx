@@ -9,7 +9,6 @@ type ClientStatus =
 
 export interface LocalMessage extends ChatMessage {
   clientStatus?: ClientStatus
-  toolsMerged?: boolean   // sat når en dropped bros tool-blokke er flettet ind (undgå dobbelt-flet)
 }
 
 export interface SessionContextValue {
@@ -181,7 +180,29 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
   const serverUserTexts = new Set(
     server.filter((m) => m.role === 'user').map(userText).filter(Boolean),
   )
-  const result: LocalMessage[] = server.map((m) => ({ ...m, clientStatus: 'server_confirmed' as ClientStatus }))
+  // TOOL-KORT-BEVARING (Bjørn 9. jul): serveren gemmer KUN tekst (aldrig tool_use/tool_result).
+  // Byg et kort normaliseret-assistant-tekst → tool-blokke fra LOKAL state — fra broen ELLER en
+  // TIDLIGERE flettet server-besked. Så re-injiceres tool-kortene på HVER merge (code mode poller
+  // sessions.refresh gentagne gange; uden dette wipede den 2. merge de kort, den 1. lige flettede).
+  const localToolsByNorm = new Map<string, Array<{ type?: string }>>()
+  for (const lm of local) {
+    if (lm.role !== 'assistant') continue
+    const tb = (Array.isArray(lm.content) ? lm.content : [] as Array<{ type?: string }>).filter(
+      (b) => !!b && typeof b === 'object' && ((b as { type?: string }).type === 'tool_use' || (b as { type?: string }).type === 'tool_result'),
+    ) as Array<{ type?: string }>
+    const norm = assistantNorm(lm)
+    if (tb.length > 0 && norm !== '' && !localToolsByNorm.has(norm)) localToolsByNorm.set(norm, tb)
+  }
+  const result: LocalMessage[] = server.map((m) => {
+    const base = { ...m, clientStatus: 'server_confirmed' as ClientStatus }
+    if (m.role === 'assistant') {
+      const tb = localToolsByNorm.get(assistantNorm(m))
+      const content = Array.isArray(base.content) ? (base.content as Array<{ type?: string }>) : []
+      const hasTools = content.some((b) => (b as { type?: string })?.type === 'tool_use' || (b as { type?: string })?.type === 'tool_result')
+      if (tb && !hasTools) base.content = [...tb, ...content] as typeof base.content // tool-kort FØR svar
+    }
+    return base
+  })
   // Har serveren indhentet løbet? = er turen FULDT færdig server-side?
   //
   // KRITISK (Bjørn 2026-06-23, "svar lander → forsvinder i samme sekund"): vi
@@ -220,48 +241,13 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
     } else if (lm.clientStatus === 'server_missing_keep_stream') {
       // Drop broen hvis serveren allerede har persisteret SAMME svar (run-dedup
       // på indhold) ELLER turen er fuldt færdig (serverCaughtUp). Ellers behold.
+      // (Broens tool-blokke er allerede re-injiceret i serverens kopi via localToolsByNorm ovenfor.)
       const persisted = serverCaughtUp || serverAsstTexts.has(assistantNorm(lm))
-      if (!persisted) {
-        result.push(lm) // bro indtil serveren persisterer svaret
-        continue
-      }
-      // BEVAR TOOL-KORTENE (Bjørn 9. jul, "tool result forsvinder når svaret lander"):
-      // serveren persisterer KUN tekst (content → stringToBlocks), aldrig tool_use/tool_result-
-      // blokke. Når broen (der holdt de streamede tool-blokke) droppes til fordel for serverens
-      // rensede tekst-kopi, forsvandt tool-kortene. Flyt broens tool-blokke ind i serverens
-      // matchende besked, så de overlever run-afdubleringen.
-      injectToolBlocks(result, lm, serverCaughtUp)
+      if (!persisted) result.push(lm) // bro indtil serveren persisterer svaret
     }
-    // persisteret → drop placeholder; serverens rensede besked (nu m. tool-blokke) vises
+    // persisteret → drop placeholder; serverens rensede besked (nu m. re-injicerede tool-blokke) vises
   }
   return result
-}
-
-/** Flyt en dropped bros tool_use/tool_result-blokke ind i serverens matchende assistant-besked.
- *  Serveren gemmer kun tekst, så uden dette forsvinder tool-kortene når serverens kopi overtager. */
-function injectToolBlocks(result: LocalMessage[], bridge: LocalMessage, serverCaughtUp: boolean): void {
-  // content-typen (ContentBlock[]) dækker formelt ikke tool_use — men reconcile castede
-  // stream.blokke (m. tool_use/tool_result) ind som content. Filtrér løst og cast tilbage.
-  const bridgeContent = (Array.isArray(bridge.content) ? bridge.content : []) as Array<{ type?: string }>
-  const toolBlocks = bridgeContent.filter(
-    (b) => !!b && typeof b === 'object' && (b.type === 'tool_use' || b.type === 'tool_result'),
-  )
-  if (toolBlocks.length === 0) return
-  const norm = assistantNorm(bridge)
-  // Foretræk tekst-match; ellers (serverCaughtUp uden match) sidste server-assistant.
-  let target = result.find(
-    (rm) => rm.role === 'assistant' && !rm.toolsMerged && norm !== '' && assistantNorm(rm) === norm,
-  )
-  if (!target && serverCaughtUp) {
-    for (let i = result.length - 1; i >= 0; i--) {
-      const cand = result[i]
-      if (cand && cand.role === 'assistant' && !cand.toolsMerged) { target = cand; break }
-    }
-  }
-  if (!target) return
-  const existing = (Array.isArray(target.content) ? target.content : []) as Array<{ type?: string }>
-  target.content = [...toolBlocks, ...existing] as typeof target.content   // tool-kort FØR svarteksten
-  target.toolsMerged = true
 }
 
 export { mergeServer, userText }

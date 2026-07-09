@@ -72,6 +72,29 @@ describe('mergeServer afdublering', () => {
     expect(types.indexOf('tool_use')).toBeLessThan(types.indexOf('text')) // tool FØR svar
   })
 
+  it('tool-kortene overlever GENTAGNE merges (code mode poller refresh) — Bjørn 9. jul', () => {
+    // Roden til at code mode STADIG tabte dem: CodeView poller sessions.refresh gentagne gange.
+    // 1. merge injicerede tool-blokke i serverens besked; men 2. merge genopbyggede result fra
+    // det friske (tekst-only) server-fetch → wipe. Nu re-injiceres via localToolsByNorm på HVER merge.
+    const bridge = {
+      id: 'a-final', role: 'assistant' as const, created_at: 'now', parent_id: null,
+      clientStatus: 'server_missing_keep_stream' as const,
+      content: [
+        { type: 'tool_use', id: 'tu-1', name: 'bash', input: {}, status: 'done', result: 'ok' },
+        { type: 'text', text: 'svaret' },
+      ] as unknown as { type: 'text'; text: string }[],
+    }
+    const server = [userMsg('srv-u', 'spm'), asstMsg('srv-a', 'svaret')] // KUN tekst
+    const first = mergeServer([bridge], server)
+    // 2. merge: lokal = første merges resultat (m. injicerede tools); friskt server-fetch = tekst-only
+    const second = mergeServer(first, server)
+    const srv = second.find((m) => m.id === 'srv-a')!
+    const types = (srv.content as Array<{ type: string }>).map((b) => b.type)
+    expect(types).toContain('tool_use') // overlever ANDEN merge (var buggen i code mode)
+    // ingen dublering: præcis én tool_use
+    expect(types.filter((t) => t === 'tool_use').length).toBe(1)
+  })
+
   // REGRESSION (Bjørn 2026-06-29, "3 svar lander samtidig"): bro-kopi + serverens
   // persisterede kopi af SAMME run skal kollapse til ÉT svar — også når serverens
   // transcript transient slutter på en tool (næste runde startede) så serverCaughtUp

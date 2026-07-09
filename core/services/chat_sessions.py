@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -193,52 +194,65 @@ def search_chat_sessions(
     lim = max(1, min(int(limit or 30), 50))
     uid = (user_id or "").strip()
 
-    base_select = """
-        SELECT s.session_id, s.title, s.updated_at,
-            (SELECT m.content FROM chat_messages m
-             WHERE m.session_id = s.session_id
-               AND m.content LIKE ?
-               AND m.role IN ('user','assistant')
-             ORDER BY m.id DESC LIMIT 1) AS match_snippet
-        FROM chat_sessions s
-        WHERE (
-            s.title LIKE ?
-            OR EXISTS (
-                SELECT 1 FROM chat_messages m2
-                WHERE m2.session_id = s.session_id
-                  AND m2.content LIKE ?
-                  AND m2.role IN ('user','assistant')
-            )
-        )
-    """
-    with connect() as conn:
-        if uid:
-            rows = conn.execute(
-                base_select
-                + """ AND EXISTS (
-                        SELECT 1 FROM chat_messages mu
-                        WHERE mu.session_id = s.session_id AND mu.user_id = ?
-                      )
-                      ORDER BY s.updated_at DESC, s.id DESC LIMIT ?""",
-                (like, like, like, uid, lim),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                base_select + " ORDER BY s.updated_at DESC, s.id DESC LIMIT ?",
-                (like, like, like, lim),
-            ).fetchall()
+    # BUNDET SØGNING (Bjørn 9. jul, "search_sessions hænger"): den gamle query brugte en KORRELERET
+    # EXISTS-subquery PR. session (`content LIKE '%q%'` er ikke-indekserbar → fuld scan af
+    # chat_messages × N sessioner = O(sessioner×beskeder) → minutter på en stor tabel → run/stream
+    # hang, samme klasse som find_files. Nu: ÉT scan af chat_messages (nyeste-først, tidlig LIMIT så
+    # SQLite kan stoppe) + separat titel-match. Plus en progress-handler-vagt der ABORTERER en løbsk
+    # scan efter et fast budget, så søgningen ALDRIG kan hænge (fail-safe → delvise/tomme resultater).
+    def _install_abort_budget(conn: sqlite3.Connection, max_ops: int = 8_000_000) -> None:
+        state = {"n": 0}
+        def _cb() -> int:
+            state["n"] += 1
+            return 1 if state["n"] > max_ops else 0   # !=0 → aborter query (OperationalError)
+        try:
+            conn.set_progress_handler(_cb, 20000)
+        except Exception:
+            pass
 
-    out: list[dict[str, object]] = []
+    by_session: dict[str, dict[str, object]] = {}
+    with connect() as conn:
+        _install_abort_budget(conn)
+        # (1) besked-indholds-match — ÉT scan, nyeste-først, tidlig LIMIT.
+        content_sql = (
+            "SELECT m.session_id, s.title, s.updated_at, m.content AS snippet "
+            "FROM chat_messages m JOIN chat_sessions s ON s.session_id = m.session_id "
+            "WHERE m.content LIKE ? AND m.role IN ('user','assistant')"
+        )
+        params: list[object] = [like]
+        if uid:
+            content_sql += " AND m.user_id = ?"
+            params.append(uid)
+        content_sql += " ORDER BY m.id DESC LIMIT ?"
+        params.append(lim * 4)   # lidt hovedrum til dedup pr. session
+        # (2) titel-match — lille tabel; ved uid kræv mindst én besked fra brugeren.
+        title_sql = "SELECT s.session_id, s.title, s.updated_at, NULL AS snippet FROM chat_sessions s WHERE s.title LIKE ?"
+        title_params: list[object] = [like]
+        if uid:
+            title_sql += " AND EXISTS (SELECT 1 FROM chat_messages mu WHERE mu.session_id = s.session_id AND mu.user_id = ?)"
+            title_params.append(uid)
+        title_sql += " ORDER BY s.updated_at DESC, s.id DESC LIMIT ?"
+        title_params.append(lim)
+        try:
+            rows = list(conn.execute(content_sql, tuple(params)).fetchall())
+            rows += list(conn.execute(title_sql, tuple(title_params)).fetchall())
+        except sqlite3.OperationalError:
+            rows = []   # abort-budget ramt → fail-safe (hellere tomt end hængende)
+
     for row in rows:
         d = dict(row)
-        snippet_src = str(d.get("match_snippet") or d.get("title") or "")
-        out.append({
-            "session_id": d.get("session_id"),
+        sid = str(d.get("session_id") or "")
+        if not sid or sid in by_session:
+            continue   # nyeste vundet (content-match kommer før titel; begge er nyeste-først)
+        snippet_src = str(d.get("snippet") or d.get("title") or "")
+        by_session[sid] = {
+            "session_id": sid,
             "title": d.get("title") or "Samtale",
             "snippet": _make_snippet(snippet_src, q),
             "updated_at": d.get("updated_at"),
-        })
-    return out
+        }
+    out = sorted(by_session.values(), key=lambda r: str(r.get("updated_at") or ""), reverse=True)
+    return out[:lim]
 
 
 def get_chat_session(session_id: str) -> dict[str, object] | None:

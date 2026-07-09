@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-07-09 from app.routes (live) — 505 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-07-09 from app.routes (live) — 506 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -159,6 +159,7 @@
 | POST | `/central/merovingian/{hyp_id}/explain` | dict | central_matrix |
 | GET | `/central/mind` | dict | central |
 | GET | `/central/model-trust` | dict | central_matrix |
+| GET | `/central/moltbook` | dict | central_moltbook |
 | GET | `/central/mourning` | dict | central_matrix |
 | GET | `/central/nerve/{nerve}` | dict | central |
 | POST | `/central/nerve/{nerve}/toggle` | dict | central |

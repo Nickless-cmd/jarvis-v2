@@ -515,6 +515,7 @@ export function ChatView({
             streaming={false}
             createdAt={m.created_at}
             onResend={m.role === 'user' ? resend : undefined}
+            config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
           />
           </div>
         ))}

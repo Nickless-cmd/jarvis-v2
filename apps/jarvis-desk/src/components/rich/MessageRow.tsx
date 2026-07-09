@@ -5,6 +5,9 @@ import { MessageActions } from './MessageActions'
 import { ArtifactAffordance } from './ArtifactAffordance'
 import { detectArtifacts } from '../../lib/artifacts'
 import { blocksToPlainText } from '../../lib/formatTime'
+import { hasPasteReference, splitPasteSegments } from '../../lib/pasteSegments'
+import { PasteReferenceChip } from './PasteReferenceChip'
+import type { ApiConfig } from '../../lib/api'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
  *  (avatar + tekst, ingen boble). Density videregives til rich-blocks.
@@ -19,6 +22,7 @@ function MessageRowImpl({
   streaming,
   createdAt,
   onResend,
+  config,
 }: {
   role: 'user' | 'assistant'
   blocks: ContentBlock[]
@@ -27,6 +31,8 @@ function MessageRowImpl({
   createdAt?: string
   /** Kun bruger-beskeder: send samme tekst igen (sparer copy-paste). */
   onResend?: (text: string) => void
+  /** Til lazy paste-reference-udfoldning (GET /paste/{id}). Uden config vises chip kompakt. */
+  config?: ApiConfig
 }) {
   if (role === 'user') {
     const text = blocks.map((b) => (b.type === 'text' ? b.text : '')).join('')
@@ -40,7 +46,19 @@ function MessageRowImpl({
             {images.map((img, i) => <img key={i} src={img.src} alt={img.alt ?? ''} />)}
           </div>
         )}
-        {text && <div className="bubble">{text}</div>}
+        {text && (
+          hasPasteReference(text)
+            ? (
+              <div className="bubble">
+                {splitPasteSegments(text).map((seg, i) =>
+                  seg.kind === 'text'
+                    ? <span key={i}>{seg.text}</span>
+                    : <PasteReferenceChip key={i} pasteId={seg.pasteId} lineCount={seg.lineCount} config={config} />,
+                )}
+              </div>
+            )
+            : <div className="bubble">{text}</div>
+        )}
         {!streaming && (
           <MessageActions
             text={text}

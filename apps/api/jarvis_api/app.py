@@ -561,6 +561,8 @@ def create_app() -> FastAPI:
     app.add_middleware(ApiConnectionNerveMiddleware)
 
     app.include_router(attachments_router)
+    from apps.api.jarvis_api.routes.paste import router as paste_router
+    app.include_router(paste_router)
     app.include_router(files_router)
     app.include_router(chat_router)
     app.include_router(chat_stream_v2_router)

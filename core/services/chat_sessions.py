@@ -1,15 +1,51 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from core.services.content_blocks import reconstruct_blocks_from_legacy
 from core.services.tool_result_store import (
     build_tool_result_reference,
+    get_tool_result,
     parse_tool_result_reference,
     save_tool_result,
 )
 from core.runtime.db import connect
+
+
+def _load_tool_result_for_reconstruct(result_id: str) -> dict | None:
+    """Serve-on-read loader: slå et gammelt tool-resultat op fra tool_result_store.
+    Mapper store-formatet (nøgle ``result``) til rekonstruktionens ``content``.
+    Best-effort — aldrig kast."""
+    if not result_id:
+        return None
+    try:
+        data = get_tool_result(result_id)
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return {
+        "tool_name": str(data.get("tool_name") or ""),
+        "content": str(data.get("result") or ""),
+    }
+
+
+def _content_json_for_row(role: str, content: str, raw_json: object) -> list[dict]:
+    """Adapter: gemt content_json parses; ellers rekonstruér fra tekst (best-effort,
+    serve-on-read for gamle beskeder uden content_json)."""
+    if raw_json:
+        try:
+            parsed = json.loads(str(raw_json))
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            pass
+    return reconstruct_blocks_from_legacy(
+        role, content, load_result=_load_tool_result_for_reconstruct
+    )
 
 
 def create_chat_session(
@@ -273,7 +309,7 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
             return None
         messages = conn.execute(
             """
-            SELECT message_id, role, content, created_at
+            SELECT message_id, role, content, content_json, created_at
             FROM chat_messages
             WHERE session_id = ?
             ORDER BY id ASC
@@ -285,6 +321,8 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
             "id": str(row["message_id"]),
             "role": str(row["role"]),
             "content": str(row["content"]),
+            "content_json": _content_json_for_row(
+                str(row["role"]), str(row["content"]), row["content_json"]),
             "ts": _time_label(str(row["created_at"])),
             "created_at": str(row["created_at"]),
         }

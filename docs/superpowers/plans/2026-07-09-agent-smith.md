@@ -226,11 +226,14 @@ def _recent_assistant(n: int = 50) -> list[str]:
         return []
 
 
-def _recent_run_sigs(n: int = 30) -> list[str]:
-    """Beslutnings-signaturer = capability_id pr. nyligt run. Self-safe → []."""
+def _recent_run_sigs(n: int = 40) -> list[str]:
+    """Beslutnings-signaturer = capability_name pr. nylig invocation. Task-1-fund: visible_runs.
+    capability_id er tom (0/30), men capability_invocations.capability_name er befolket (724 rækker,
+    fx 'run non-destructive command' ×18) = ægte signal. Self-safe → []."""
     try:
-        from core.runtime.db_visible import recent_visible_runs
-        return [str(r.get("capability_id") or "").strip() for r in (recent_visible_runs(limit=n) or [])]
+        from core.runtime.db import recent_capability_invocations
+        return [str(r.get("capability_name") or r.get("capability_id") or "").strip()
+                for r in (recent_capability_invocations(limit=n) or [])]
     except Exception:
         return []
 

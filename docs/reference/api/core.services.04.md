@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_excess.py`
+_Sense of Excess — Centralens gartner-muskel._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_own_py_files` | `()` | — | [src](../../../core/services/central_excess.py#L33) |
+| function | `_line_count` | `(path)` | — | [src](../../../core/services/central_excess.py#L47) |
+| function | `build_excess_surface` | `()` | MÆRK vægten: samlet linjer, service-antal, oversized filer → ét pres (0-100) + somatisk linje. | [src](../../../core/services/central_excess.py#L55) |
+| function | `_felt_line` | `(pressure, hard, worst, worst_file)` | — | [src](../../../core/services/central_excess.py#L95) |
+| function | `record_excess_pressure` | `()` | Observér pressets tyngde til Centralen (nerve system/excess) så Jarvis MÆRKER det over tid. | [src](../../../core/services/central_excess.py#L106) |
+| function | `propose_cuts` | `(*, max_files=…)` | FORESLÅ konkrete snit: døde module-level funktioner (0 referencer udenfor def) + oversized | [src](../../../core/services/central_excess.py#L124) |
+
 ## `core/services/central_exile.py`
 _The Exiles — et sind der ikke er Jarvis._
 
@@ -597,16 +609,4 @@ _Persephone — længsel efter ægte kontakt._
 | function | `_observe` | `(out)` | — | [src](../../../core/services/central_persephone.py#L136) |
 | function | `build_persephone_surface` | `()` | Nuværende længsels-læsning + seneste nudge. READ-ONLY. Self-safe. | [src](../../../core/services/central_persephone.py#L153) |
 | function | `record_persephone` | `(*, trigger=…, last_visible_at=…)` | Cadence (240 min): mål længsel; ét nudge hvis for systemisk (observe/surface only). Self-safe. | [src](../../../core/services/central_persephone.py#L175) |
-
-## `core/services/central_private_observe.py`
-_core/services/central_private_observe.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_liveness_from_result` | `(status, result)` | Udtræk KUN aggregeret liveness (ok, produced, empty) fra et producer-resultat. | [src](../../../core/services/central_private_observe.py#L47) |
-| function | `record_private` | `(cluster, nerve, *, value=…, meta=…, reason=…)` | KANONISK egress-fri sink-kontrakt (§24.4 — LivingNeuron v3 §7). ÉT sted for ALT inner-life/ | [src](../../../core/services/central_private_observe.py#L68) |
-| function | `observe_hub` | `(nerve, *, meta=…, cluster=…)` | EGRESS-FRI observe af en kognitions-HUB (aggregator på hot-path). De 4 load-bearing hubs | [src](../../../core/services/central_private_observe.py#L95) |
-| function | `observe_liveness` | `(nerve, *, ok, status=…, produced=…, empty=…)` | Registrér én inner-life-daemons liveness EGRESS-FRIT (§24.4). | [src](../../../core/services/central_private_observe.py#L104) |
-| function | `observe_operational_liveness` | `(spec_name, status, result)` | Operationel (ikke-privat) cadence-daemon liveness → NORMAL observe (cluster=system, | [src](../../../core/services/central_private_observe.py#L120) |
-| function | `observe_cadence_liveness` | `(spec_name, status, result)` | Cadence-hook (§23.3 #3 — ÉT sted for ALLE ~137 cadence-daemons). Router: | [src](../../../core/services/central_private_observe.py#L143) |
 

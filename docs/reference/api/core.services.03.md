@@ -201,6 +201,20 @@ _core/services/central_agenda.py_
 | function | `register_agenda_producer` | `()` | Registrér agenda-ejerskabet som cadence-producer (~hvert 20 min). SHADOW medmindre flag ON. | [src](../../../core/services/central_agenda.py#L189) |
 | function | `build_agenda_surface` | `()` | Mission Control — read-only: Centralens ejede dagsorden + valgte næste-intention. | [src](../../../core/services/central_agenda.py#L201) |
 
+## `core/services/central_agent_smith.py`
+_Agent Smith — stående selv-lighed-kritiker. Detekterer når Jarvis gentager sig selv på tværs af_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/central_agent_smith.py#L19) |
+| function | `_ngrams` | `(text, lo=…, hi=…)` | Normaliserede ord-n-grams (lo..hi) fra én tekst. Ren. | [src](../../../core/services/central_agent_smith.py#L23) |
+| function | `repeated_phrases` | `(messages, min_msgs=…)` | Fraser (n-grams) der optræder i ≥ min_msgs DISTINKTE beskeder, sorteret efter antal. Ren. | [src](../../../core/services/central_agent_smith.py#L33) |
+| function | `_cosine` | `(a, b)` | Bag-of-words cosine mellem to strenge (0..1). Replikeret fra council-deadlock-detektoren | [src](../../../core/services/central_agent_smith.py#L44) |
+| function | `cluster_similarity` | `(messages)` | Gennemsnitlig parvis bag-of-words-cosine mellem de seneste beskeder (0..1). Ren. | [src](../../../core/services/central_agent_smith.py#L61) |
+| function | `decision_patterns` | `(run_sigs, min_runs=…)` | Beslutnings-signaturer (capability_name pr. run) der går igen i ≥ min_runs runs. Ren. | [src](../../../core/services/central_agent_smith.py#L74) |
+| function | `score` | `(phrases, similarity, patterns)` | Samlet selv-lighed 0..1 (vægtet: cosine-klynge + frase-tæthed + sekvens-gentagelse). Ren. | [src](../../../core/services/central_agent_smith.py#L82) |
+| function | `smith_voice` | `(phrases, similarity, patterns, score_val)` | Tør Agent-Smith-felt. Tavs-neutral når lav; peger på det top-gentagne når høj. | [src](../../../core/services/central_agent_smith.py#L90) |
+
 ## `core/services/central_analyst.py`
 _The Analyst — observatør-effekten._
 
@@ -547,16 +561,4 @@ _Unified fejl-meddelelses-system — Centralen ejer hvad brugeren ser når noget
 | function | `for_interruption` | `(*, reason, run_id=…, detail=…)` | Bekvemheds-bro fra _classify_visible_run_interruption's reason → envelope. | [src](../../../core/services/central_error_envelope.py#L191) |
 | function | `envelope_from_kind` | `(kind, *, origin_cluster=…, run_id=…, detail=…, scope=…, context=…)` | Byg en canonical ErrorEnvelope fra en `kind`. KIND_MAP → severity/recoverable/ | [src](../../../core/services/central_error_envelope.py#L284) |
 | function | `kind_for_nerve` | `(cluster, nerve)` | Map (cluster, nerve) → canonical kind, eller None hvis ikke en kendt fejl-nerve. | [src](../../../core/services/central_error_envelope.py#L317) |
-
-## `core/services/central_excess.py`
-_Sense of Excess — Centralens gartner-muskel._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_own_py_files` | `()` | — | [src](../../../core/services/central_excess.py#L33) |
-| function | `_line_count` | `(path)` | — | [src](../../../core/services/central_excess.py#L47) |
-| function | `build_excess_surface` | `()` | MÆRK vægten: samlet linjer, service-antal, oversized filer → ét pres (0-100) + somatisk linje. | [src](../../../core/services/central_excess.py#L55) |
-| function | `_felt_line` | `(pressure, hard, worst, worst_file)` | — | [src](../../../core/services/central_excess.py#L95) |
-| function | `record_excess_pressure` | `()` | Observér pressets tyngde til Centralen (nerve system/excess) så Jarvis MÆRKER det over tid. | [src](../../../core/services/central_excess.py#L106) |
-| function | `propose_cuts` | `(*, max_files=…)` | FORESLÅ konkrete snit: døde module-level funktioner (0 referencer udenfor def) + oversized | [src](../../../core/services/central_excess.py#L124) |
 

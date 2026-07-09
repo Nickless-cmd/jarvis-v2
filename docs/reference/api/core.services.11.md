@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/habit_tracker.py`
+_Habit Tracker — detects recurring patterns and friction points._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_habit_from_run` | `(*, run_id, task_signature, outcome_status, attempt_count=…)` | Track habit pattern and friction from a visible run. | [src](../../../core/services/habit_tracker.py#L24) |
+| function | `build_habit_surface` | `()` | — | [src](../../../core/services/habit_tracker.py#L69) |
+| function | `_normalize_signature` | `(text)` | Create a stable signature from task description. | [src](../../../core/services/habit_tracker.py#L83) |
+
 ## `core/services/habits_pipeline.py`
 _Habits Pipeline — detect → track → suggest automation._
 
@@ -669,11 +678,4 @@ _Maintenance / health cadence producers (split from internal_cadence.py)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `register_maintenance_producers` | `(register_producer)` | Register the maintenance / health producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_maintenance.py#L23) |
-
-## `core/services/internal_cadence_matrix.py`
-_Matrix-themed cadence producers (split from internal_cadence.py)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_matrix_producers` | `(register_producer)` | Register the Matrix-themed producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_matrix.py#L18) |
 

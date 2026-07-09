@@ -2,6 +2,45 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_lane_balancer.py`
+_Cheap Lane Balancer — weighted-random load balancing for daemon LLM calls._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `BalancerSlot` | `` | Immutable identity of a (provider, model) lane. | [src](../../../core/services/cheap_lane_balancer.py#L19) |
+| method | `BalancerSlot.slot_id` | `(self)` | — | [src](../../../core/services/cheap_lane_balancer.py#L30) |
+| class | `SlotState` | `` | Per-slot mutable runtime state. Persisted to JSON (timestamps deque is in-memory only). | [src](../../../core/services/cheap_lane_balancer.py#L35) |
+| function | `_provider_router_path` | `()` | — | [src](../../../core/services/cheap_lane_balancer.py#L67) |
+| function | `_router_enabled_models` | `()` | Return list of dicts {provider, model, enabled, auth_profile, lane} | [src](../../../core/services/cheap_lane_balancer.py#L74) |
+| function | `_credentials_ready` | `(provider, auth_profile)` | Check if provider has working credentials. Wraps existing helper. | [src](../../../core/services/cheap_lane_balancer.py#L104) |
+| function | `_provider_metadata` | `(provider)` | Lookup provider's static config (rpm_limit, daily_limit, base_url, etc.). | [src](../../../core/services/cheap_lane_balancer.py#L113) |
+| function | `_state_path` | `()` | — | [src](../../../core/services/cheap_lane_balancer.py#L130) |
+| function | `_state_to_dict` | `(state)` | Serialize SlotState to JSON-safe dict (skips deque). | [src](../../../core/services/cheap_lane_balancer.py#L137) |
+| function | `_state_from_dict` | `(d)` | — | [src](../../../core/services/cheap_lane_balancer.py#L155) |
+| function | `_load_state` | `()` | Load all slot-states from disk. Returns empty dict on missing/corrupt file. | [src](../../../core/services/cheap_lane_balancer.py#L172) |
+| function | `_save_state` | `(states)` | Atomic write to state file. | [src](../../../core/services/cheap_lane_balancer.py#L190) |
+| function | `_save_state_debounced` | `(states)` | — | [src](../../../core/services/cheap_lane_balancer.py#L209) |
+| function | `_ensure_state` | `(states, slot_id)` | Get-or-create slot state. Mutates `states` in place. | [src](../../../core/services/cheap_lane_balancer.py#L219) |
+| function | `_today_iso` | `(now=…)` | Returns UTC date string. Override hookable via module-level _datetime_for_today. | [src](../../../core/services/cheap_lane_balancer.py#L238) |
+| function | `_count_recent_calls` | `(timestamps, now, window_seconds)` | Count timestamps falling within [now - window, now]. | [src](../../../core/services/cheap_lane_balancer.py#L244) |
+| function | `_compute_weight` | `(slot, state, now)` | Returns non-negative weight; 0 means slot is ineligible right now. | [src](../../../core/services/cheap_lane_balancer.py#L250) |
+| function | `_register_failure` | `(state, error_kind, *, retry_after_s=…, now)` | Update state after a failed call. | [src](../../../core/services/cheap_lane_balancer.py#L289) |
+| function | `_register_success` | `(state, now)` | Update state after a successful call. | [src](../../../core/services/cheap_lane_balancer.py#L321) |
+| function | `_is_dns_or_connection_error` | `(error_kind, exc=…)` | True if error indicates network-level (provider-wide) issue, not slot-specific. | [src](../../../core/services/cheap_lane_balancer.py#L338) |
+| function | `_register_provider_wide_failure` | `(states, pool, provider, now, *, reason, cooldown_s=…)` | Apply cooldown to ALL slots from `provider`. Returns number of slots affected. | [src](../../../core/services/cheap_lane_balancer.py#L356) |
+| function | `_select_slot` | `(states, pool, now)` | Pick a slot via weighted-random; returns None if all blocked. | [src](../../../core/services/cheap_lane_balancer.py#L399) |
+| function | `_call_provider_chat` | `(*, provider, model, auth_profile, base_url, message)` | Wrapper around cheap_provider_runtime._execute_provider_chat. | [src](../../../core/services/cheap_lane_balancer.py#L437) |
+| function | `_append_recent_call` | `(slot_id, daemon, status, latency_ms, *, error=…)` | — | [src](../../../core/services/cheap_lane_balancer.py#L462) |
+| function | `recent_calls` | `()` | Returns ring-buffer of last 75 calls (newest first). | [src](../../../core/services/cheap_lane_balancer.py#L480) |
+| function | `call_balanced` | `(*, prompt, daemon_name=…, max_retries=…)` | Pick a slot via weighted-random; execute; on failure retry next slot. | [src](../../../core/services/cheap_lane_balancer.py#L485) |
+| function | `build_slot_pool` | `()` | Build daemon-eligible slot pool from provider_router × CHEAP_PROVIDER_DEFAULTS. | [src](../../../core/services/cheap_lane_balancer.py#L673) |
+| function | `reset_slot` | `(slot_id)` | Clear breaker, cooldown, and consecutive-failure streak for a slot. | [src](../../../core/services/cheap_lane_balancer.py#L718) |
+| function | `disable_slot` | `(slot_id)` | Force a slot's weight to 0 until enable_slot is called. | [src](../../../core/services/cheap_lane_balancer.py#L730) |
+| function | `enable_slot` | `(slot_id)` | Re-enable a manually-disabled slot. | [src](../../../core/services/cheap_lane_balancer.py#L739) |
+| function | `refresh_pool` | `()` | Re-build the slot pool from provider_router.json. Returns current size. | [src](../../../core/services/cheap_lane_balancer.py#L748) |
+| function | `_is_enabled` | `()` | Check RuntimeSettings.daemon_balancer_enabled. Default True. | [src](../../../core/services/cheap_lane_balancer.py#L759) |
+| function | `balancer_snapshot` | `()` | Return full state surface for Mission Control telemetry. | [src](../../../core/services/cheap_lane_balancer.py#L768) |
+
 ## `core/services/cheap_provider_runtime.py`
 
 _(no top-level classes or functions)_
@@ -655,20 +694,4 @@ _Contract Evolution — Jarvis proposes changes to his own identity._
 | function | `reject_proposal` | `(proposal_id)` | Mark a proposal as rejected (MC action). | [src](../../../core/services/contract_evolution.py#L70) |
 | function | `maybe_propose_identity_evolution` | `()` | Analyze personality vector trends and propose IDENTITY.md changes. | [src](../../../core/services/contract_evolution.py#L83) |
 | function | `build_contract_evolution_surface` | `()` | — | [src](../../../core/services/contract_evolution.py#L148) |
-
-## `core/services/contradiction_engine.py`
-_Contradiction engine — detect semantic conflicts between commitments and reviews._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/contradiction_engine.py#L44) |
-| function | `_tokens` | `(text)` | — | [src](../../../core/services/contradiction_engine.py#L48) |
-| function | `_has_negation` | `(text)` | — | [src](../../../core/services/contradiction_engine.py#L52) |
-| function | `_fetch_active_decisions` | `(*, limit=…)` | Return active behavioral_decisions with their directive text. | [src](../../../core/services/contradiction_engine.py#L56) |
-| function | `_fetch_recent_self_reviews` | `(*, hours=…, limit=…)` | Return cognitive_self_reviews from the last `hours` hours. | [src](../../../core/services/contradiction_engine.py#L76) |
-| function | `_timedelta` | `(*, hours)` | — | [src](../../../core/services/contradiction_engine.py#L97) |
-| function | `_critique_texts_from_review` | `(review)` | Extract per-lesson + next_focus strings as candidate critique texts. | [src](../../../core/services/contradiction_engine.py#L102) |
-| function | `detect_contradictions` | `(*, max_findings=…)` | Find semantic contradictions between active decisions and recent reviews. | [src](../../../core/services/contradiction_engine.py#L121) |
-| function | `run_contradiction_tick` | `()` | One detection cycle. Publishes contradiction.detected events. | [src](../../../core/services/contradiction_engine.py#L178) |
-| function | `build_contradiction_engine_surface` | `(*, limit=…)` | Mission-control/read-surface for semantic contradiction detection. | [src](../../../core/services/contradiction_engine.py#L212) |
 

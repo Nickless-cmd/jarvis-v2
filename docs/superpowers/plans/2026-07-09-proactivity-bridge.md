@@ -218,28 +218,30 @@ def _owner_uid() -> str:
 
 
 def _owner_presence(uid: str) -> tuple[bool, float]:
-    """(present, away_seconds) fra ÆGTE owner-synlig aktivitet — ikke autonome runs.
-    present = app-enhed live ELLER sidste synlige aktivitet < _PRESENT_WINDOW_S siden."""
+    """(present, away_seconds) fra ÆGTE owner-signaler — IKKE runs (som inkluderer autonome →
+    den gamle outreach-bug). present = owner's app-enhed pinger aktivt. away = tid siden owner's
+    SIDSTE user-turn-besked (role='user' i chat_messages — ikke assistant/tool/autonom)."""
     now = datetime.now(UTC)
-    last_seen = None
     try:
         from core.services.notification_router import _app_device_live
         if uid and _app_device_live(uid):
             return (True, 0.0)
     except Exception:
         pass
+    last_seen = None
     try:
-        # PIN(real-presence): fra Task 1 — funktion der giver owner's sidste SYNLIGE (ikke-autonome)
-        # aktivitet som ISO-ts eller datetime. Fald tilbage til "længe væk" ved manglende signal.
-        from core.runtime.db_visible import recent_visible_runs  # PIN: bekræft/erstat i Task 1
-        rows = recent_visible_runs(limit=1) or []
-        ts = rows[0].get("finished_at") if rows else None
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute("SELECT MAX(created_at) AS t FROM chat_messages WHERE role='user'").fetchone()
+        ts = row["t"] if row else None
         if ts:
             last_seen = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+            if last_seen.tzinfo is None:
+                last_seen = last_seen.replace(tzinfo=UTC)
     except Exception:
         last_seen = None
     if last_seen is None:
-        return (False, float(_AWAY_MIN_S * 2))       # ukendt → antag væk (fail-open for digest)
+        return (False, float(_AWAY_MIN_S * 2))       # ukendt → antag væk (cooldown+cap værner mod spam)
     away = max(0.0, (now - last_seen).total_seconds())
     return (away < _PRESENT_WINDOW_S, away)
 

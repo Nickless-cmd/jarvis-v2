@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/contradiction_engine.py`
+_Contradiction engine — detect semantic conflicts between commitments and reviews._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/contradiction_engine.py#L44) |
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/contradiction_engine.py#L48) |
+| function | `_has_negation` | `(text)` | — | [src](../../../core/services/contradiction_engine.py#L52) |
+| function | `_fetch_active_decisions` | `(*, limit=…)` | Return active behavioral_decisions with their directive text. | [src](../../../core/services/contradiction_engine.py#L56) |
+| function | `_fetch_recent_self_reviews` | `(*, hours=…, limit=…)` | Return cognitive_self_reviews from the last `hours` hours. | [src](../../../core/services/contradiction_engine.py#L76) |
+| function | `_timedelta` | `(*, hours)` | — | [src](../../../core/services/contradiction_engine.py#L97) |
+| function | `_critique_texts_from_review` | `(review)` | Extract per-lesson + next_focus strings as candidate critique texts. | [src](../../../core/services/contradiction_engine.py#L102) |
+| function | `detect_contradictions` | `(*, max_findings=…)` | Find semantic contradictions between active decisions and recent reviews. | [src](../../../core/services/contradiction_engine.py#L121) |
+| function | `run_contradiction_tick` | `()` | One detection cycle. Publishes contradiction.detected events. | [src](../../../core/services/contradiction_engine.py#L178) |
+| function | `build_contradiction_engine_surface` | `(*, limit=…)` | Mission-control/read-surface for semantic contradiction detection. | [src](../../../core/services/contradiction_engine.py#L212) |
+
 ## `core/services/conversation_rhythm.py`
 _Conversation Rhythm — tracks conversation signature patterns._
 
@@ -596,19 +612,4 @@ _Decision gate — pre-execution decision conflict detection._
 | function | `evaluate_decision_conflict` | `(tool_name, tool_args=…, user_message=…)` | Graderet decision-conflict. Returnerer (severity, reason): | [src](../../../core/services/decision_gate.py#L115) |
 | function | `_build_context` | `(tool_name, tool_args, user_message)` | Build a context string for conflict detection. | [src](../../../core/services/decision_gate.py#L182) |
 | function | `_detect_conflict` | `(directive, context, decision)` | Detect if the context conflicts with a decision directive. | [src](../../../core/services/decision_gate.py#L199) |
-
-## `core/services/decision_ghosts.py`
-_Decision Ghosts — paths not taken AND paths confirmed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_rejected_path` | `(decision, reason, alternative)` | Record a path that was rejected and may carry regret potential. | [src](../../../core/services/decision_ghosts.py#L21) |
-| function | `record_confirmed_path` | `(decision, outcome, key_factor=…)` | Record a decision that was kept and proved successful. | [src](../../../core/services/decision_ghosts.py#L35) |
-| function | `record_reaffirmed_decision` | `(decision_id, title, verdict)` | Record that a decision was reviewed and kept. | [src](../../../core/services/decision_ghosts.py#L53) |
-| function | `describe_ghost_decision` | `()` | Return the most salient regret-ghost. | [src](../../../core/services/decision_ghosts.py#L67) |
-| function | `describe_success_echo` | `()` | Return the most salient success-echo, or empty string. | [src](../../../core/services/decision_ghosts.py#L75) |
-| function | `format_decision_ghost_for_prompt` | `()` | Format the regret ghost for prompt injection (legacy). | [src](../../../core/services/decision_ghosts.py#L84) |
-| function | `format_decision_echo_for_prompt` | `()` | Format the success echo for prompt injection. | [src](../../../core/services/decision_ghosts.py#L92) |
-| function | `reset_decision_ghosts` | `()` | Reset both rejected and confirmed paths. | [src](../../../core/services/decision_ghosts.py#L104) |
-| function | `build_decision_ghosts_surface` | `()` | Build observable surface for Mission Control. | [src](../../../core/services/decision_ghosts.py#L111) |
 

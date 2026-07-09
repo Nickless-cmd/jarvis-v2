@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decision_ghosts.py`
+_Decision Ghosts — paths not taken AND paths confirmed._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_rejected_path` | `(decision, reason, alternative)` | Record a path that was rejected and may carry regret potential. | [src](../../../core/services/decision_ghosts.py#L21) |
+| function | `record_confirmed_path` | `(decision, outcome, key_factor=…)` | Record a decision that was kept and proved successful. | [src](../../../core/services/decision_ghosts.py#L35) |
+| function | `record_reaffirmed_decision` | `(decision_id, title, verdict)` | Record that a decision was reviewed and kept. | [src](../../../core/services/decision_ghosts.py#L53) |
+| function | `describe_ghost_decision` | `()` | Return the most salient regret-ghost. | [src](../../../core/services/decision_ghosts.py#L67) |
+| function | `describe_success_echo` | `()` | Return the most salient success-echo, or empty string. | [src](../../../core/services/decision_ghosts.py#L75) |
+| function | `format_decision_ghost_for_prompt` | `()` | Format the regret ghost for prompt injection (legacy). | [src](../../../core/services/decision_ghosts.py#L84) |
+| function | `format_decision_echo_for_prompt` | `()` | Format the success echo for prompt injection. | [src](../../../core/services/decision_ghosts.py#L92) |
+| function | `reset_decision_ghosts` | `()` | Reset both rejected and confirmed paths. | [src](../../../core/services/decision_ghosts.py#L104) |
+| function | `build_decision_ghosts_surface` | `()` | Build observable surface for Mission Control. | [src](../../../core/services/decision_ghosts.py#L111) |
+
 ## `core/services/decision_log.py`
 _Decision Log — records high-stakes decisions with context, options, and rationale._
 
@@ -646,27 +661,4 @@ _Dream Hypothesis Generator — overraskende forbindelser._
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L482) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L491) |
 | function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L501) |
-
-## `core/services/dream_influence_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_dream_influence_runtime_surface` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L10) |
-| function | `_build_dream_influence_runtime_surface_uncached` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L18) |
-| function | `build_dream_influence_runtime_from_sources` | `(*, dream_articulation, guided_learning, adaptive_learning, adaptive_reasoning, affective_meta_state, epistemic_runtime_state, prompt_evolution)` | — | [src](../../../core/services/dream_influence_runtime.py#L30) |
-| function | `build_dream_influence_prompt_section` | `(surface=…)` | — | [src](../../../core/services/dream_influence_runtime.py#L139) |
-| function | `_derive_influence_state` | `(*, dream_summary, guided_learning, adaptive_learning, epistemic)` | — | [src](../../../core/services/dream_influence_runtime.py#L165) |
-| function | `_derive_influence_target` | `(*, influence_state, dream_summary, guided_learning, adaptive_learning, prompt_summary, affective)` | — | [src](../../../core/services/dream_influence_runtime.py#L186) |
-| function | `_derive_influence_mode` | `(*, influence_target, dream_summary, guided_learning, adaptive_learning, reasoning, affective, epistemic)` | — | [src](../../../core/services/dream_influence_runtime.py#L212) |
-| function | `_derive_influence_strength` | `(*, influence_state, dream_summary, adaptive_learning, prompt_summary, epistemic)` | — | [src](../../../core/services/dream_influence_runtime.py#L239) |
-| function | `_derive_influence_hint` | `(*, influence_state, influence_target, influence_mode, guided_learning, adaptive_learning, prompt_summary, dream_artifact)` | — | [src](../../../core/services/dream_influence_runtime.py#L259) |
-| function | `_derive_confidence` | `(*, influence_state, influence_strength, epistemic, prompt_summary)` | — | [src](../../../core/services/dream_influence_runtime.py#L289) |
-| function | `_source_contributors` | `(*, dream_summary, dream_artifact, guided_learning, adaptive_learning, reasoning, affective, epistemic, prompt_summary)` | — | [src](../../../core/services/dream_influence_runtime.py#L305) |
-| function | `_safe_dream_articulation` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L378) |
-| function | `_safe_guided_learning` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L388) |
-| function | `_safe_adaptive_learning` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L398) |
-| function | `_safe_adaptive_reasoning` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L408) |
-| function | `_safe_affective_meta_state` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L418) |
-| function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L428) |
-| function | `_safe_prompt_evolution` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L438) |
 

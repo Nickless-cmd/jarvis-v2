@@ -75,7 +75,16 @@ def _enforce_verdict(nerve: str, cluster: str, klass: GateClass, verdict) -> Non
         from core.services.gate_kernel import Decision
         if verdict is None or verdict.decision in (Decision.GREEN, Decision.SKIP):
             return
-        sev = "severe" if (klass is GateClass.SECURITY and verdict.decision is Decision.RED) else "error"
+        # Severitet efter GRAD, ikke bare "ikke-grøn". En YELLOW er en blød fodnote-markering =
+        # NORMAL governance (gaten gør sit arbejde), ikke system-uhelbred — den må IKKE farve
+        # Centralen gul (ellers står den evigt gul for at fungere korrekt). Kun en RED hård blok
+        # er fejl-niveau; en SECURITY-RED er severe.
+        if klass is GateClass.SECURITY and verdict.decision is Decision.RED:
+            sev = "severe"
+        elif verdict.decision is Decision.RED:
+            sev = "error"
+        else:  # YELLOW — synlig i feed'et, men info-niveau (degraderer ikke helbred)
+            sev = "info"
         from core.runtime.db_central_incidents import record_central_incident
         record_central_incident(
             cluster=cluster, nerve=nerve, kind="gate_enforce", severity=sev,

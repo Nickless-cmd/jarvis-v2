@@ -136,6 +136,31 @@ def test_enforced_gate_records_incident_on_nongreen():
     assert "decision_gate" in nerves and "verification" in nerves and "self_review" in nerves
     # loop_control er shadow-only → ALDRIG et enforce-incident
     assert "loop_control" not in nerves
+    # YELLOW blød-surface → severity info (degraderer IKKE Central-helbred)
+    assert all(r["severity"] == "info" for r in recorded if r["nerve"] == "decision_gate")
+
+
+def test_enforce_severity_by_grade():
+    """Severitet efter GRAD: YELLOW blød-surface → info (normal governance, ingen unhealth);
+    RED hård blok → error; SECURITY-RED → severe; GREEN → intet incident."""
+    from core.services.gate_kernel import Decision, GateClass, Verdict
+    import core.services.gate_shadow as gs
+    rec: list = []
+    with mock.patch("core.runtime.db_central_incidents.record_central_incident",
+                    side_effect=lambda **k: rec.append(k)):
+        gs._enforce_verdict("verification", "proactivity", GateClass.COGNITIVE,
+                            Verdict("verification", Decision.YELLOW, "blød"))
+        gs._enforce_verdict("decision_gate", "commit", GateClass.COGNITIVE,
+                            Verdict("decision_gate", Decision.RED, "hård"))
+        gs._enforce_verdict("cross_user_share", "privacy", GateClass.SECURITY,
+                            Verdict("cross_user_share", Decision.RED, "sec"))
+        gs._enforce_verdict("x", "y", GateClass.COGNITIVE,
+                            Verdict("x", Decision.GREEN, "ok"))
+    by_nerve = {r["nerve"]: r["severity"] for r in rec}
+    assert by_nerve["verification"] == "info"
+    assert by_nerve["decision_gate"] == "error"
+    assert by_nerve["cross_user_share"] == "severe"
+    assert "x" not in by_nerve
 
 
 def test_enforced_set_excludes_loop_control():

@@ -98,3 +98,25 @@ def test_expire_due_reverts_flag(tmpdb):
     assert ("decentralize", "veto", False) in flips
     row = [k for k in km.list_keys(include_expired=True) if k["id"] == key_id][0]
     assert row["status"] == "expired"
+
+
+def test_is_decentralized_requires_valid_approved_key(tmpdb):
+    """Konsum-check: kun en ÆGTE approved+ikke-udløbet nøgle tæller — ikke pending, ikke udløbet,
+    ikke fravær. (Modellen bygger på at is_enabled-default IKKE bruges som konsum-gate.)"""
+    fake = {"veto": {"cluster": "commit", "total": 124, "green": 124}}
+    assert km.is_decentralized("veto") is False          # ingen nøgle → False
+    with mock.patch("core.services.gate_verdict_ledger.summary", return_value=fake), \
+            mock.patch("core.services.central_keymaker._observe"), \
+            mock.patch("core.services.central_switches.set_enabled"):
+        km.evaluate_keys()
+        assert km.is_decentralized("veto") is False      # pending → False
+        key_id = km.list_keys()[0]["id"]
+        km.approve_key(key_id)
+        assert km.is_decentralized("veto") is True        # approved + fremtidig TTL → True
+        conn = km.connect()
+        conn.execute("UPDATE central_keys SET expires_at='2000-01-01T00:00:00+00:00' WHERE id=?",
+                     (key_id,))
+        conn.commit()
+        conn.close()
+        assert km.is_decentralized("veto") is False       # udløbet → False
+    assert km.is_decentralized("decision_gate") is False   # anden nerve → aldrig

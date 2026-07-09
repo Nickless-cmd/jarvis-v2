@@ -43,12 +43,28 @@ def evaluate_commit_gates(*, name: str, arguments: dict[str, Any], user_message:
     try:
         from core.services.central_core import central as _central_veto
         from core.services.gate_commit import veto_gate as _veto_gate_fn
-        _vv = _central_veto().decide(
-            "veto",
-            {"tool_name": name, "user_message": user_message,
-             "session_id": session_id, "run_id": run_id},
-            _veto_gate_fn, cluster="commit", klass=GateClass.COGNITIVE,
-        )
+        _veto_ctx = {"tool_name": name, "user_message": user_message,
+                     "session_id": session_id, "run_id": run_id}
+        # Decentralisering (Keymaker): en bevist altid-grøn veto-gate MED en gyldig optjent+godkendt
+        # nøgle resolver LOKALT — spring Centralens chokepoint-round-trip over (central_decentralization-
+        # doktrinen: altid-grønne højvolumen-gates er ren overhead). Gatens dømmekraft KØRER altid
+        # (selv-tilbageholdenhed bevaret); kun overhead fjernes. Eskalér ved ikke-grøn ELLER lokal fejl
+        # til fuld central-arbitrage (recording + enforcement). is_decentralized tjekker en ÆGTE
+        # approved+ikke-udløbet nøgle — ALDRIG is_enabled (som defaulter ON).
+        _vv = None
+        try:
+            from core.services import central_keymaker as _km
+            if _km.is_decentralized("veto"):
+                _local = _veto_gate_fn(_veto_ctx)
+                if _local is not None and _local.decision is Decision.GREEN:
+                    _vv = _local  # lokalt grønt → tillad uden central-skat
+        except Exception:
+            _vv = None  # enhver decentral-fejl → fald tilbage til fuld central (fail-safe)
+        if _vv is None:  # ikke decentraliseret, eller lokalt ikke-grønt/fejl → fuld arbitrage
+            _vv = _central_veto().decide(
+                "veto", _veto_ctx,
+                _veto_gate_fn, cluster="commit", klass=GateClass.COGNITIVE,
+            )
         if _vv.decision is Decision.RED:
             _reason = (_vv.evidence or {}).get("reason") or _vv.reason
             if gate_enforcement.is_enforced("veto", GateClass.COGNITIVE):

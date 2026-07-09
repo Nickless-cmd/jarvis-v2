@@ -117,6 +117,28 @@ def list_keys(*, include_expired: bool = False) -> list[dict[str, Any]]:
         return []
 
 
+def is_decentralized(nerve: str) -> bool:
+    """True hvis <nerve> har en GYLDIG optjent decentraliserings-nøgle: status='approved' OG endnu
+    ikke udløbet (expires_at i fremtiden). Dette er den ENESTE korrekte konsum-check.
+
+    KRITISK: brug ALDRIG ``central_switches.is_enabled("decentralize", nerve)`` som konsum-gate —
+    den defaulter til ON, så en unset nerve ville fremstå decentraliseret UDEN en optjent nøgle og
+    underminere hele optjenings-modellen (jf. design-noten). Denne funktion læser den faktiske
+    ledger-række. Self-safe → False ved enhver fejl (fail-closed: ingen nøgle = ingen autonomi)."""
+    try:
+        now = _now().isoformat()
+        with connect() as conn:
+            _ensure_table(conn)
+            row = conn.execute(
+                """SELECT 1 FROM central_keys
+                   WHERE unlock_name=? AND status='approved'
+                     AND expires_at != '' AND expires_at > ? LIMIT 1""",
+                (nerve, now)).fetchone()
+            return row is not None
+    except Exception:
+        return False
+
+
 def approve_key(key_id: int) -> dict[str, Any]:
     """OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL. Auto-reverterer ved udløb.
     Self-safe."""

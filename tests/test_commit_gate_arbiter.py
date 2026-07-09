@@ -111,3 +111,50 @@ def test_gate_error_fails_open(monkeypatch) -> None:
     monkeypatch.setattr(central_core, "central", lambda: _Boom())
     out = _evaluate()
     assert out.blocked is False
+
+
+class _RecordingCentral:
+    """Fake der noterer HVILKE nerver der routes gennem central().decide."""
+
+    def __init__(self, verdicts: dict, called: list) -> None:
+        self._v = verdicts
+        self._called = called
+
+    def decide(self, nerve, ctx, fn, **kw):  # noqa: ANN001
+        self._called.append(nerve)
+        return self._v.get(nerve, Verdict(nerve, Decision.GREEN))
+
+    def observe(self, *a, **k):  # noqa: ANN002, ANN003
+        return None
+
+
+def test_decentralized_veto_resolves_locally_skipping_central(monkeypatch) -> None:
+    """En gyldig decentralize:veto-nøgle + lokalt GRØNT → veto resolves LOKALT (springer Centralens
+    round-trip over); decision_gate routes stadig gennem Centralen."""
+    from core.services import gate_commit
+    monkeypatch.setattr("core.services.central_keymaker.is_decentralized", lambda n: n == "veto")
+    monkeypatch.setattr(gate_commit, "veto_gate",
+                        lambda ctx: Verdict("veto", Decision.GREEN, "tilladt"))
+    called: list = []
+    monkeypatch.setattr(central_core, "central",
+                        lambda: _RecordingCentral({}, called))
+    out = _evaluate()
+    assert out.blocked is False
+    assert "veto" not in called          # veto løst lokalt — central-skat sprunget over
+    assert "decision_gate" in called     # decision_gate stadig gennem Centralen
+
+
+def test_decentralized_veto_escalates_on_nongreen(monkeypatch) -> None:
+    """Decentraliseret, men lokalt IKKE-grønt (RED) → eskalér til fuld central-arbitrage; RED +
+    enforce → blokér (selv-tilbageholdenhed bevaret trods decentralisering)."""
+    from core.services import gate_commit
+    central_switches.set_enabled("gate_enforce", "veto", True)
+    monkeypatch.setattr("core.services.central_keymaker.is_decentralized", lambda n: n == "veto")
+    monkeypatch.setattr(gate_commit, "veto_gate",
+                        lambda ctx: Verdict("veto", Decision.RED, "nej", evidence={"reason": "nej"}))
+    called: list = []
+    monkeypatch.setattr(central_core, "central", lambda: _RecordingCentral(
+        {"veto": Verdict("veto", Decision.RED, "nej", evidence={"reason": "nej"})}, called))
+    out = _evaluate()
+    assert "veto" in called               # eskaleret til Centralen fordi lokalt var ikke-grønt
+    assert out.blocked is True            # central RED + enforce → blokeret

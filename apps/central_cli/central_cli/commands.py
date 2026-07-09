@@ -29,6 +29,7 @@ _GET_ENDPOINTS = {
     "docs-drift": "/central/docs-drift",
     "proactivity": "/central/proactivity",
     "agent-smith": "/central/agent-smith",
+    "moltbook": "/central/moltbook",
     "users": "/central/users",
     "excess": "/central/excess",
     "decentral": "/central/decentralization",

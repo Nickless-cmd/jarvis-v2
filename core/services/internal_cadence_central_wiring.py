@@ -83,6 +83,13 @@ def register_central_wiring_producers() -> None:
     except Exception:
         pass
 
+    # Moltbook: observe-only social-tilstedeværelse (~6t cadence) → channel/moltbook; mentions via SP1-broen.
+    try:
+        from core.services.central_moltbook import register_moltbook_producer
+        register_moltbook_producer()
+    except Exception:
+        pass
+
     # Fase 1d: causal-grafens tier-fordeling + precision (broen signal→hypotese) → tidsserie.
     try:
         from core.services.central_causal_quality import register_causal_quality_producer

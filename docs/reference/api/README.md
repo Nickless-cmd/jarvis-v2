@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12084 functions/methods, 47% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12102 functions/methods, 47% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -8,8 +8,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12084 functions/
 
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
-- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `jarvisx_bridge`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `jarvisx_channels` … `users`
+- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `jarvisx_authtokens`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `jarvisx_bridge` … `users`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
 - [`apps.desktop`](apps.desktop.md)
@@ -29,24 +29,24 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12084 functions/
 - [`core.services.01`](core.services.01.md) — `__init__` … `anthropic_identity`
 - [`core.services.02`](core.services.02.md) — `anthropic_sse_emitter` … `broadcast_daemon`
 - [`core.services.03`](core.services.03.md) — `cache_boundary_observer` … `central_error_envelope`
-- [`core.services.04`](core.services.04.md) — `central_excess` … `central_persephone`
-- [`core.services.05`](core.services.05.md) — `central_private_observe` … `chat_sessions`
-- [`core.services.06`](core.services.06.md) — `cheap_lane_balancer` … `contract_evolution`
-- [`core.services.07`](core.services.07.md) — `contradiction_engine` … `decision_gate`
-- [`core.services.08`](core.services.08.md) — `decision_ghosts` … `dream_influence_proposal_tracking`
-- [`core.services.09`](core.services.09.md) — `dream_influence_runtime` … `file_awareness_daemon`
-- [`core.services.10`](core.services.10.md) — `file_watch_daemon` … `gut_engine`
-- [`core.services.11`](core.services.11.md) — `habit_tracker` … `internal_cadence_maintenance`
-- [`core.services.12`](core.services.12.md) — `internal_cadence_matrix` … `memory_recall_telemetry`
-- [`core.services.13`](core.services.13.md) — `memory_resurfacing` … `ollama_visible_prompt`
-- [`core.services.14`](core.services.14.md) — `open_loop_closure_proposal_tracking` … `procedure_bank`
-- [`core.services.15`](core.services.15.md) — `procedure_bank_pipeline` … `regret_engine`
-- [`core.services.16`](core.services.16.md) — `regulation_homeostasis_signal_tracking` … `runtime_self_model_surfaces`
-- [`core.services.17`](core.services.17.md) — `runtime_surface_cache` … `session_continuity`
-- [`core.services.18`](core.services.18.md) — `session_distillation` … `surprise_daemon`
-- [`core.services.19`](core.services.19.md) — `surprise_detector` … `tool_router`
-- [`core.services.20`](core.services.20.md) — `tool_router_runtime` … `visible_runs_approvals`
-- [`core.services.21`](core.services.21.md) — `visible_runs_capabilities` … `world_model_signal_tracking`
+- [`core.services.04`](core.services.04.md) — `central_excess` … `central_output_conservation`
+- [`core.services.05`](core.services.05.md) — `central_persephone` … `channel_inbound`
+- [`core.services.06`](core.services.06.md) — `chat_sessions` … `continuity_kernel`
+- [`core.services.07`](core.services.07.md) — `contract_evolution` … `decision_enforcement`
+- [`core.services.08`](core.services.08.md) — `decision_gate` … `dream_hypothesis_signal_tracking`
+- [`core.services.09`](core.services.09.md) — `dream_influence_proposal_tracking` … `fcm_gateway`
+- [`core.services.10`](core.services.10.md) — `file_awareness_daemon` … `gut_calibration`
+- [`core.services.11`](core.services.11.md) — `gut_engine` … `internal_cadence_inner_life`
+- [`core.services.12`](core.services.12.md) — `internal_cadence_maintenance` … `memory_recall_engine`
+- [`core.services.13`](core.services.13.md) — `memory_recall_telemetry` … `offline_recomposition_engine`
+- [`core.services.14`](core.services.14.md) — `ollama_visible_prompt` … `proactivity_bridge`
+- [`core.services.15`](core.services.15.md) — `procedure_bank` … `reflective_critic_tracking`
+- [`core.services.16`](core.services.16.md) — `regret_engine` … `runtime_self_model_state`
+- [`core.services.17`](core.services.17.md) — `runtime_self_model_surfaces` … `sensory_perception_bridge`
+- [`core.services.18`](core.services.18.md) — `session_continuity` … `subjective_time`
+- [`core.services.19`](core.services.19.md) — `surprise_daemon` … `tool_result_store`
+- [`core.services.20`](core.services.20.md) — `tool_router` … `visible_runs`
+- [`core.services.21`](core.services.21.md) — `visible_runs_approvals` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

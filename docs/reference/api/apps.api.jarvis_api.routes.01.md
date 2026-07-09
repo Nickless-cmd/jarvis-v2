@@ -309,6 +309,14 @@ _Central 'matrix' routes — de fire tematiske selv-observations-komponenter (ow
 | function | `get_identity_canon` | `()` | Kanon-tråde + anerkendte konfabulationer + seneste drift-fangster (sonnet-spøgelset). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_matrix.py#L433) |
 | function | `get_reasoning_interceptor` | `()` | Reasoning interceptor: recent verdicts (grade-histogram + latency). Metadata-only, shadow-only. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_matrix.py#L440) |
 
+## `apps/api/jarvis_api/routes/central_moltbook.py`
+_Central 'moltbook' route — Jarvis' Moltbook-tilstedeværelse (owner, read-only, self-safe)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_moltbook.py#L13) |
+| function | `get_moltbook` | `()` | Moltbook observe-nerve: sidste scan + ny aktivitet + seneste tråde + status. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_moltbook.py#L19) |
+
 ## `apps/api/jarvis_api/routes/central_proactivity.py`
 _Central 'proactivity' route — proaktivitets-broens beslutninger (owner, read-only, self-safe)._
 
@@ -562,12 +570,4 @@ _JarvisX bearer-token issuance + verification route group._
 | function | `refresh_auth_token` | `(payload)` | Veksl en refresh-token til et nyt access+refresh-par (§22.6). PUBLIC — | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L39) |
 | function | `issue_auth_token` | `(payload)` | Mint a signed bearer token for a user. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L51) |
 | function | `whoami_token` | `(authorization=…)` | Inspect the bearer token attached to this request. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L72) |
-
-## `apps/api/jarvis_api/routes/jarvisx_bridge.py`
-_WebSocket endpoint for JarvisX tool-bridge._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `internal_dispatch` | `(request)` | Intern cross-process dispatch (runtime-proces → api-proces). | [src](../../../apps/api/jarvis_api/routes/jarvisx_bridge.py#L35) |
-| function | `jarvisx_bridge_ws` | `(ws)` | Accept WS from JarvisX-app, route messages between bridge and runtime. | [src](../../../apps/api/jarvis_api/routes/jarvisx_bridge.py#L111) |
 

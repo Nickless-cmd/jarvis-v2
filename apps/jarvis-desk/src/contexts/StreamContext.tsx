@@ -3,6 +3,7 @@ import { startStream, type StreamControl, type StreamError } from '../lib/stream
 import { cancelRun, approveTool, denyTool, followRun } from '../lib/api'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
 import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
+import { lastTextBlock } from '../lib/blockHelpers'
 import { useCanonicalError } from '../hooks/useCanonicalError'
 import type { CanonicalError } from '../lib/canonicalError'
 
@@ -393,8 +394,7 @@ export function StreamProvider({
   const prevStatusRef = useRef<StreamStatus>('idle')
   useEffect(() => {
     if (prevStatusRef.current === 'working' && status === 'done') {
-      const lastText = [...state.blocks].reverse().find((b) => b.type === 'text') as
-        | { type: 'text'; text: string } | undefined
+      const lastText = lastTextBlock(state.blocks)
       const body = (lastText?.text || '').trim().slice(0, 140) || 'Opgaven er færdig.'
       deskRunBridge()?.notifyTaskDone?.('Jarvis er færdig', body)
     }

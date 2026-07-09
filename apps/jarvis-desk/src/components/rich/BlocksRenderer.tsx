@@ -1,4 +1,5 @@
 import type { ContentBlock } from '../../lib/sseProtocol'
+import { denseBlocks } from '../../lib/blockHelpers'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ToolCard } from './ToolCard'
 import { ImageBlock } from './ImageBlock'
@@ -15,10 +16,13 @@ export function BlocksRenderer({
   density: 'compact' | 'full'
   streaming: boolean
 }) {
-  const lastIdx = blocks.length - 1
+  // denseBlocks: fjern sparsomme huller (foldede tool_result-indices) FØR render —
+  // ellers crasher enhver iteration der tilgår b.type på et undefined-hul (sort skærm).
+  const dense = denseBlocks(blocks)
+  const lastIdx = dense.length - 1
   return (
     <>
-      {blocks.map((b, i) => (
+      {dense.map((b, i) => (
         <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} />
       ))}
     </>

@@ -107,7 +107,7 @@ export function isStreamEvent(value: unknown): value is StreamEvent {
  *  først i message_delta ved svar-slut. */
 export function approxOutputTokens(blocks: ContentBlock[]): number {
   const chars = blocks.reduce(
-    (n, b) => n + (b.type === 'text' ? b.text.length : b.type === 'thinking' ? b.thinking.length : 0),
+    (n, b) => n + (!b ? 0 : b.type === 'text' ? b.text.length : b.type === 'thinking' ? b.thinking.length : 0),
     0,
   )
   return Math.round(chars / 4)

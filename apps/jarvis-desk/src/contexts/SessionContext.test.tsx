@@ -127,6 +127,23 @@ describe('mergeServer afdublering', () => {
     const merged = mergeServer(local, server)
     expect(merged.some((m) => m.id === 'a-ws')).toBe(false) // whitespace-normaliseret match → droppet
   })
+
+  it('serverens content_json-baserede tool-kort overlever merge uden lokal re-injektion — Bjørn 9. jul', () => {
+    // Server leverer nu FULDE blokke (via messageToBlocks i getSession) →
+    // mergeServer skal bevare dem, ikke wipe dem til tekst.
+    const server = [
+      userMsg('srv-u', 'spm'),
+      { id: 'srv-a', role: 'assistant' as const, created_at: 'now', parent_id: null,
+        content: [
+          { type: 'tool_use', id: 'toolu_1', name: 'bash', input: {}, status: 'done', result: 'ok' },
+          { type: 'text', text: 'svaret' },
+        ] as unknown as { type: 'text'; text: string }[] },
+    ]
+    const merged = mergeServer([], server)
+    const srv = merged.find((m) => m.id === 'srv-a')!
+    const types = (srv.content as Array<{ type: string }>).map((b) => b.type)
+    expect(types).toContain('tool_use')
+  })
 })
 
 vi.mock('../lib/api', () => ({

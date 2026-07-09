@@ -43,6 +43,42 @@ def test_security_gate_never_earns_key(tmpdb):
     assert out["earned"] == [] and out["issued"] == []
 
 
+def test_catalog_security_nerve_outside_denylist_never_earns(tmpdb):
+    """§11.3-hullet Rådet fandt: outbound_scrub er katalog-SECURITY men IKKE i _NEVER-frozensettet.
+    Klasse-baseret _is_never() skal blokere den alligevel — ellers kan et altid-grønt sikkerheds-
+    instrument optjene en decentraliserings-nøgle."""
+    assert "outbound_scrub" not in km._NEVER          # bekræft at fallback-listen IKKE dækker den
+    fake = {"outbound_scrub": {"cluster": "privacy", "total": 5000, "green": 5000}}
+    with mock.patch("core.services.gate_verdict_ledger.summary", return_value=fake), \
+            mock.patch("core.services.central_keymaker._observe"):
+        out = km.evaluate_keys()
+    assert out["earned"] == [] and out["issued"] == []
+
+
+def test_approve_rejects_security_key_defense_in_depth(tmpdb):
+    """Selv hvis en SECURITY-nøgle bliver INSERTet direkte (race/drift), må approve_key ALDRIG
+    flippe flaget — den skal afvise + markere 'rejected'."""
+    flips = []
+    with mock.patch("core.services.central_keymaker._observe"), \
+            mock.patch("core.services.central_switches.set_enabled",
+                       side_effect=lambda s, n, e: flips.append((s, n, e))):
+        conn = km.connect()
+        km._ensure_table(conn)
+        conn.execute(
+            """INSERT INTO central_keys (domain, unlock_scope, unlock_name, track_value,
+               issued_at, status, reason) VALUES (?,?,?,?,?,'pending',?)""",
+            ("decentralize:abuse_monitor", "decentralize", "abuse_monitor", 9999,
+             km._now().isoformat(), "manuelt indsat"))
+        conn.commit()
+        key_id = conn.execute("SELECT id FROM central_keys").fetchone()[0]
+        conn.close()
+        res = km.approve_key(key_id)
+    assert res["ok"] is False
+    assert flips == []                                # flaget blev ALDRIG flippet
+    row = [k for k in km.list_keys(include_expired=True) if k["id"] == key_id][0]
+    assert row["status"] == "rejected"
+
+
 def test_no_duplicate_pending_key(tmpdb):
     fake = {"veto": {"cluster": "commit", "total": 124, "green": 124}}
     with mock.patch("core.services.gate_verdict_ledger.summary", return_value=fake), \

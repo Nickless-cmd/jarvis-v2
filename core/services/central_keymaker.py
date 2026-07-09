@@ -30,8 +30,24 @@ from core.runtime.db_core import connect
 _EARN_MIN_VOLUME = 100
 _KEY_TTL_HOURS = 24
 # Gates der ALDRIG optjener decentraliserings-nøgle (SECURITY/execution — frossen kerne).
+# Fallback-denylist for nerver der IKKE er i central_catalog (execution/probe uden NerveSpec).
+# KATALOG-klassificerede SECURITY-nerver blokeres nu klasse-baseret via _is_never() — så nye
+# security-gates ikke kan optjene en nøgle blot fordi nogen glemte at tilføje dem her (§11.3).
 _NEVER = frozenset({"cross_user_share", "exec_command", "exec_file", "exec_workspace_trust",
                     "auth", "tool_access", "central_self_probe"})
+
+
+def _is_never(nerve: str) -> bool:
+    """True hvis <nerve> ALDRIG må optjene/godkende en decentraliserings-nøgle: enten katalog-
+    klassificeret SECURITY (§11.3, autoritativ) ELLER i fallback-denylisten. Self-safe → ved
+    enhver opslags-fejl fail-closed på fallback-listen (aldrig lækker en ukendt nerve som sikker)."""
+    try:
+        from core.services.central_catalog import is_security_nerve
+        if is_security_nerve(nerve):
+            return True
+    except Exception:
+        pass
+    return nerve in _NEVER
 
 
 def _ensure_table(conn: sqlite3.Connection) -> None:
@@ -81,7 +97,7 @@ def evaluate_keys() -> dict[str, Any]:
             existing = {r["domain"] for r in conn.execute(
                 "SELECT domain FROM central_keys WHERE status IN ('pending','approved')").fetchall()}
             for nerve, agg in rows.items():
-                if nerve in _NEVER:
+                if _is_never(nerve):
                     continue
                 total = int(agg.get("total") or 0)
                 non_green = total - int(agg.get("green") or 0)
@@ -149,6 +165,14 @@ def approve_key(key_id: int) -> dict[str, Any]:
                                (key_id,)).fetchone()
             if not row:
                 return {"ok": False, "error": "ingen pending nøgle med det id"}
+            # Defense-in-depth (§11.3): re-validér klassen ved GODKENDELSE, ikke kun ved udstedelse.
+            # Selv hvis en SECURITY-nøgle på nogen måde blev udstedt (race, katalog-drift, manuel
+            # INSERT), må den ALDRIG flippe et sikkerheds-flag ON. Afvis + markér 'rejected'.
+            if _is_never(row["unlock_name"]):
+                conn.execute("UPDATE central_keys SET status='rejected' WHERE id=?", (key_id,))
+                conn.commit()
+                _observe("rejected", {"domain": row["domain"], "reason": "security-klasse (§11.3)"})
+                return {"ok": False, "error": "sikkerheds-nerve kan ALDRIG decentraliseres (§11.3)"}
             expires = (_now() + timedelta(hours=_KEY_TTL_HOURS)).isoformat()
             conn.execute("UPDATE central_keys SET status='approved', expires_at=? WHERE id=?",
                         (expires, key_id))

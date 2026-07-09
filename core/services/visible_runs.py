@@ -4703,6 +4703,28 @@ async def _stream_visible_run(
                     _observe_streamed_text_recovered(
                         run, chars=len(_fp_deg_accum), source="first_pass_stream",
                     )
+            # ── Rådets fund #5 (9. jul): output-conservation-instrument ("spøgelset") ──
+            # Mål streamede first-pass-bytes (hvad brugeren SÅ, markup-strippet som persisten)
+            # vs det der faktisk persisteres (visible_output_text). Et gap = bytes tabt mellem
+            # stream og persist = præcis cutoff-klassen. Nu STÅENDE data pr. provider/model i
+            # stedet for flygtigt gætværk. Egress-fri (kun længder), self-safe (må aldrig vælte run).
+            try:
+                from core.services.central_output_conservation import observe_conservation
+                _streamed_measure = _visible_text_without_capability_markup(
+                    _fp_deg_accum, had_markup=bool(capability_plan["had_markup"]),
+                )
+                observe_conservation(
+                    layer="run_persist_first_pass",
+                    produced_chars=len(_streamed_measure.strip()),
+                    emitted_chars=len(visible_output_text.strip()),
+                    provider=getattr(run, "provider", "") or "",
+                    model=getattr(run, "model", "") or "",
+                    run_id=getattr(run, "run_id", "") or "",
+                    path="first_pass",
+                    tolerance=8,   # tolerér lille whitespace/markup-normaliserings-støj
+                )
+            except Exception:
+                pass
             # Deltas already streamed live — no need to re-send the full text.
             # 2026-05-22 (Claude): Claim-scanner first-pass global coverage.
             # Previously the scanner only ran in the capability-followup paths

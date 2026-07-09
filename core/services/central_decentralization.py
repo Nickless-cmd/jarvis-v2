@@ -15,7 +15,9 @@ from __future__ import annotations
 
 from typing import Any
 
-# Nerver der ALDRIG er decentraliserings-kandidater (uanset grøn-rate):
+# Nerver der ALDRIG er decentraliserings-kandidater (uanset grøn-rate). Fallback-denylist for
+# execution-nerver uden NerveSpec; KATALOG-klassificerede SECURITY-nerver fanges klasse-baseret
+# via _never_decentralize() så listen ikke driver ud af sync med katalogets ~25 SECURITY-nerver.
 _NEVER_DECENTRALIZE = frozenset({
     "cross_user_share", "exec_command", "exec_file", "exec_workspace_trust",  # SECURITY/execution
     "auth", "tool_access",
@@ -23,6 +25,18 @@ _NEVER_DECENTRALIZE = frozenset({
 # Ikke governance — en helbreds-puls; tælles som overhead men er ikke en kandidat.
 _HEALTH_PROBES = frozenset({"central_self_probe"})
 _MIN_VOLUME = 10  # kræv nok observationer før vi tør kalde noget "altid-grøn"
+
+
+def _never_decentralize(nerve: str) -> bool:
+    """True hvis <nerve> ALDRIG må foreslås som decentraliserings-kandidat: katalog-SECURITY
+    (§11.3, autoritativ) ELLER fallback-denylisten. Self-safe → fail-closed på fallback."""
+    try:
+        from core.services.central_catalog import is_security_nerve
+        if is_security_nerve(nerve):
+            return True
+    except Exception:
+        pass
+    return nerve in _NEVER_DECENTRALIZE
 
 
 def analyze_chokepoint() -> dict[str, Any]:
@@ -51,7 +65,7 @@ def analyze_chokepoint() -> dict[str, Any]:
         else:
             overhead += t
             # kandidat = altid-grøn + nok volumen + ikke security/execution/probe
-            if (t >= _MIN_VOLUME and nerve not in _NEVER_DECENTRALIZE
+            if (t >= _MIN_VOLUME and not _never_decentralize(nerve)
                     and nerve not in _HEALTH_PROBES):
                 out["candidates"].append({
                     "nerve": nerve, "cluster": agg.get("cluster", ""), "total": t,

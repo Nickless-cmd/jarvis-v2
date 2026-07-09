@@ -24,7 +24,8 @@ from typing import Any
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
-import re  # noqa: F401  (bevaret: brugt af udskilte executors)
+import re
+from time import monotonic as _monotonic
 
 from core.runtime.config import PROJECT_ROOT
 from core.runtime.workspace_paths import shared_dir as _shared_dir
@@ -40,6 +41,36 @@ MAX_FIND_RESULTS = 100
 MAX_BASH_OUTPUT_CHARS = 16000
 MAX_BASH_SECONDS = 15
 MAX_WEB_FETCH_CHARS = 24000
+
+# Mapper der ALDRIG traverseres af find_files' **-glob (matcher find-subprocess-grenens
+# udelukkelser + almindelige tunge build/VCS-mapper). Uden pruning gik glob'en i node_modules
+# i minutter (Rådet/streaming-undersøgelse 9. jul).
+_FIND_PRUNE_DIRS = frozenset({
+    ".git", "node_modules", "__pycache__", ".claude", ".venv", "venv", "env",
+    ".mypy_cache", ".pytest_cache", ".ruff_cache", ".tox", ".idea", ".vscode",
+    "dist", "build", ".next", ".cache", ".gradle", "target", ".terraform",
+})
+
+
+def _glob_to_regex(pattern: str) -> "re.Pattern[str]":
+    """Oversæt et glob-mønster (POSIX-relativt) til en regex med KORREKT sti-semantik:
+    ``**`` krydser mappe-grænser, ``*``/``?`` gør ikke. Bruges af find_files' bundne os.walk
+    så vi bevarer glob-adfærd uden pathlib.glob's ubundne traversal."""
+    i, n = 0, len(pattern)
+    out = ["(?s)^"]
+    while i < n:
+        if pattern[i:i + 3] == "**/":
+            out.append("(?:[^/]*/)*"); i += 3
+        elif pattern[i:i + 2] == "**":
+            out.append(".*"); i += 2
+        elif pattern[i] == "*":
+            out.append("[^/]*"); i += 1
+        elif pattern[i] == "?":
+            out.append("[^/]"); i += 1
+        else:
+            out.append(re.escape(pattern[i])); i += 1
+    out.append("$")
+    return re.compile("".join(out))
 
 
 def _st():
@@ -117,28 +148,48 @@ def _exec_find_files(args: dict[str, Any]) -> dict[str, Any]:
     if not pattern:
         return {"error": "pattern is required", "status": "error"}
 
-    # Use Python's pathlib.glob for proper recursive ** support and to sort
-    # results by modification time (newest first — matches Claude Code's
-    # Glob tool behavior). Falls back to find for non-recursive plain
-    # patterns to keep behavior predictable for old call sites.
+    # Recursive **-glob: bounded os.walk (NOT naive pathlib.glob).
+    # ROD (Rådet/streaming-undersøgelse 9. jul): den gamle `base.glob(pattern)` havde HVERKEN
+    # timeout HELLER dir-pruning — et `**/*x`-mønster på repo-roden gik i node_modules/.git i
+    # MINUTTER (målt: 884s live) → run'et så "hængt/cutoff" ud og blev afbrudt. Find-subprocess-
+    # grenen nedenfor prunede allerede; denne gren gjorde ikke. Nu: os.walk med in-place pruning
+    # af tunge mapper + wall-clock deadline + korrekt **-semantik, så traversal ALTID er bundet.
     if "**" in pattern or "/" in pattern:
         try:
             base = Path(search_path).expanduser().resolve()
+            rx = _glob_to_regex(pattern)
+            deadline = _monotonic() + MAX_BASH_SECONDS
+            found: list[Path] = []
+            timed_out = False
+            for root, dirs, files in os.walk(base):
+                if _monotonic() > deadline:
+                    timed_out = True
+                    break
+                # Prune tunge/irrelevante mapper i traversal (mutér dirs in-place).
+                dirs[:] = [d for d in dirs if d not in _FIND_PRUNE_DIRS]
+                for fn in files:
+                    full = Path(root) / fn
+                    rel = os.path.relpath(str(full), str(base)).replace(os.sep, "/")
+                    if rx.match(rel):
+                        found.append(full)
+                if len(found) >= MAX_FIND_RESULTS * 10:
+                    break   # rigeligt at sortere fra; undgå at samle ubundet
             matches = sorted(
-                (p for p in base.glob(pattern) if p.is_file()),
-                key=lambda p: p.stat().st_mtime,
+                found,
+                key=lambda p: (p.stat().st_mtime if p.exists() else 0.0),
                 reverse=True,
             )
-            paths = [str(p) for p in matches[:MAX_FIND_RESULTS]]
             entries: list[str] = []
-            for fp in paths:
+            for p in matches[:MAX_FIND_RESULTS]:
                 try:
-                    size = os.path.getsize(fp)
-                    entries.append(f"{fp} ({size}B)")
+                    entries.append(f"{p} ({os.path.getsize(p)}B)")
                 except OSError:
-                    entries.append(fp)
+                    entries.append(str(p))
             text = "\n".join(entries) if entries else "[no matches]"
-            return {"text": text, "match_count": len(entries), "status": "ok"}
+            if timed_out:
+                text += f"\n[søgning stoppet efter {MAX_BASH_SECONDS}s — indsnævr pattern/path]"
+            return {"text": text, "match_count": len(entries),
+                    "timed_out": timed_out, "status": "ok"}
         except Exception as exc:
             return {"error": f"glob failed: {exc}", "status": "error"}
 

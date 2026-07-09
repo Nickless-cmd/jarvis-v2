@@ -23,6 +23,12 @@ def _require_owner() -> None:
     require_central_owner()
 
 
+def _require_owner_strict() -> None:
+    """Fail-closed gate for privilege-eskalering (nøgle-godkendelse giver Jarvis mere autonomi)."""
+    from apps.api.jarvis_api.routes.central_auth import require_central_owner_strict
+    require_central_owner_strict()
+
+
 @router.get("/keys")
 async def get_keys(include_expired: int = 0) -> dict:
     """Nøgle-oversigt: afventende (dit ja mangler) + åbne + optjente dimensioner. Owner-only."""
@@ -41,7 +47,7 @@ async def get_keys(include_expired: int = 0) -> dict:
 @router.post("/keys/{key_id}/approve")
 async def approve(key_id: int) -> dict:
     """OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL (auto-reverterer)."""
-    _require_owner()
+    _require_owner_strict()   # privilege-eskalering → fail-closed (kræver bekræftet owner-token)
     try:
         from core.services.central_keymaker import approve_key
         return approve_key(key_id)

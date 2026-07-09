@@ -24,3 +24,15 @@ def test_security_clusters_marked_security():
     for spec in cat.CATALOG:
         if spec.cluster in ("auth", "privacy"):
             assert spec.klass is GateClass.SECURITY
+
+
+def test_nerve_klass_and_is_security_helpers():
+    # Katalog-SECURITY-nerver → is_security_nerve True (autoritativ §11.3-kilde)
+    assert cat.is_security_nerve("outbound_scrub") is True
+    assert cat.is_security_nerve("abuse_monitor") is True
+    assert cat.nerve_klass("cross_user_share") is GateClass.SECURITY
+    # Kognitiv nerve → ikke security
+    assert cat.is_security_nerve("loop_control") is False
+    # Ukendt nerve → None/False (fail til lagets egen fallback-denylist)
+    assert cat.nerve_klass("ikke_en_nerve") is None
+    assert cat.is_security_nerve("ikke_en_nerve") is False

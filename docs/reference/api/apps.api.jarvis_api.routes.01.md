@@ -170,6 +170,8 @@ _Shared owner-gate for /central/* routes._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `require_central_owner` | `()` | Raise 403 unless the caller is the owner. Self-safe on each probe. | [src](../../../apps/api/jarvis_api/routes/central_auth.py#L18) |
+| function | `_unbound_owner_allowed` | `()` | Må en token-løs (unbound) kontekst behandles som owner på privilege-eskalerende ruter? | [src](../../../apps/api/jarvis_api/routes/central_auth.py#L45) |
+| function | `require_central_owner_strict` | `()` | Fail-closed owner-gate for privilege-ESKALERENDE ruter (autonomi-nøgle-godkendelse, | [src](../../../apps/api/jarvis_api/routes/central_auth.py#L64) |
 
 ## `apps/api/jarvis_api/routes/central_autonomous.py`
 _Central 'autonomous' route — Jarvis' autonome historie synlig for OWNER._
@@ -252,8 +254,9 @@ _Central 'keys' route — The Keymaker (optjent/udløbende/godkendt autonomi, ow
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L21) |
-| function | `get_keys` | `(include_expired=…)` | Nøgle-oversigt: afventende (dit ja mangler) + åbne + optjente dimensioner. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L27) |
-| function | `approve` | `(key_id)` | OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL (auto-reverterer). | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L42) |
+| function | `_require_owner_strict` | `()` | Fail-closed gate for privilege-eskalering (nøgle-godkendelse giver Jarvis mere autonomi). | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L26) |
+| function | `get_keys` | `(include_expired=…)` | Nøgle-oversigt: afventende (dit ja mangler) + åbne + optjente dimensioner. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L33) |
+| function | `approve` | `(key_id)` | OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL (auto-reverterer). | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L48) |
 
 ## `apps/api/jarvis_api/routes/central_matrix.py`
 _Central 'matrix' routes — de fire tematiske selv-observations-komponenter (owner-view)._

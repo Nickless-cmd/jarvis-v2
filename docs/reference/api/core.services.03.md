@@ -360,14 +360,16 @@ _Fit-pass-katalog (§13.2): det maskinlæsbare resultat af kortlægningen af hve
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `NerveSpec` | `` | — | [src](../../../core/services/central_catalog.py#L16) |
-| function | `nerve_location` | `(name)` | Fil:linje for en nerve (til cross-cluster korrelation: hvilke filer relaterer til et run). | [src](../../../core/services/central_catalog.py#L474) |
-| function | `nerve_cluster` | `(name)` | — | [src](../../../core/services/central_catalog.py#L479) |
-| function | `cluster_rank` | `(cluster)` | Lavere = højere prioritet. Ukendt cluster → bagest (lavest prioritet). | [src](../../../core/services/central_catalog.py#L483) |
-| function | `clusters` | `()` | — | [src](../../../core/services/central_catalog.py#L491) |
-| function | `is_security_cluster` | `(cluster)` | True hvis clusteret har mindst én SECURITY-nerve (→ kan ikke slås fra). | [src](../../../core/services/central_catalog.py#L501) |
-| function | `security_clusters` | `()` | — | [src](../../../core/services/central_catalog.py#L506) |
-| function | `by_cluster` | `(cluster)` | — | [src](../../../core/services/central_catalog.py#L510) |
-| function | `validate` | `()` | Returnér liste af problemer (tom = grøn). | [src](../../../core/services/central_catalog.py#L514) |
+| function | `nerve_location` | `(name)` | Fil:linje for en nerve (til cross-cluster korrelation: hvilke filer relaterer til et run). | [src](../../../core/services/central_catalog.py#L475) |
+| function | `nerve_cluster` | `(name)` | — | [src](../../../core/services/central_catalog.py#L480) |
+| function | `nerve_klass` | `(name)` | Katalog-klasse for en nerve, eller None hvis nerven ikke er kortlagt. | [src](../../../core/services/central_catalog.py#L484) |
+| function | `is_security_nerve` | `(name)` | True hvis nerven er katalog-klassificeret SECURITY (§11.3: må ALDRIG decentraliseres). | [src](../../../core/services/central_catalog.py#L493) |
+| function | `cluster_rank` | `(cluster)` | Lavere = højere prioritet. Ukendt cluster → bagest (lavest prioritet). | [src](../../../core/services/central_catalog.py#L501) |
+| function | `clusters` | `()` | — | [src](../../../core/services/central_catalog.py#L509) |
+| function | `is_security_cluster` | `(cluster)` | True hvis clusteret har mindst én SECURITY-nerve (→ kan ikke slås fra). | [src](../../../core/services/central_catalog.py#L519) |
+| function | `security_clusters` | `()` | — | [src](../../../core/services/central_catalog.py#L524) |
+| function | `by_cluster` | `(cluster)` | — | [src](../../../core/services/central_catalog.py#L528) |
+| function | `validate` | `()` | Returnér liste af problemer (tom = grøn). | [src](../../../core/services/central_catalog.py#L532) |
 
 ## `core/services/central_causal_quality.py`
 _core/services/central_causal_quality.py_
@@ -497,9 +499,10 @@ _Decentral agency (shadow-skridt 1) — mål Centralens chokepoint-skat + find s
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `analyze_chokepoint` | `()` | Mål hvor meget af Centralens decide-load der er ren overhead, + sikre decentraliserings- | [src](../../../core/services/central_decentralization.py#L28) |
-| function | `_felt` | `(tax_pct, n_candidates)` | — | [src](../../../core/services/central_decentralization.py#L71) |
-| function | `record_chokepoint` | `()` | Observér chokepoint-skatten til Centralen (nerve system/decentralization) — den mærker | [src](../../../core/services/central_decentralization.py#L82) |
+| function | `_never_decentralize` | `(nerve)` | True hvis <nerve> ALDRIG må foreslås som decentraliserings-kandidat: katalog-SECURITY | [src](../../../core/services/central_decentralization.py#L30) |
+| function | `analyze_chokepoint` | `()` | Mål hvor meget af Centralens decide-load der er ren overhead, + sikre decentraliserings- | [src](../../../core/services/central_decentralization.py#L42) |
+| function | `_felt` | `(tax_pct, n_candidates)` | — | [src](../../../core/services/central_decentralization.py#L85) |
+| function | `record_chokepoint` | `()` | Observér chokepoint-skatten til Centralen (nerve system/decentralization) — den mærker | [src](../../../core/services/central_decentralization.py#L96) |
 
 ## `core/services/central_dejavu.py`
 _Déjà Vu — ufrivillig erindring._

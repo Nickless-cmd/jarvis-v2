@@ -26,6 +26,8 @@ async def get_governance() -> dict:
 
 @router.post("/governance/set")
 async def set_governance(body: SetFlagBody) -> dict:
-    _require_owner()
+    # Privilege-eskalering: at flippe et governance-flag kan slå enforcement fra → fail-closed gate.
+    from apps.api.jarvis_api.routes.central_auth import require_central_owner_strict
+    require_central_owner_strict()
     from core.services.central_governance import set_flag
     return set_flag(body.key, body.value, body.confirm)

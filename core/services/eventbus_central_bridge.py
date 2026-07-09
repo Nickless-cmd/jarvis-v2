@@ -90,6 +90,14 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     # #2: process_watcher.match — bruger/Jarvis-erklærede runtime-watches der tripper. Metadata-
     # only (watch_id/label/reason/fire_count). Var usynlig fordi familien ikke var routed.
     "process_watcher": ("system", "watch_match"),
+    # ── Rådets fund #4 (9. jul): PROTECTED CORE tamper/capability-signal var usynligt ──
+    # file_awareness.change — ekstern (external=True) ændring af Jarvis' EGEN kode/filer. "Code/
+    # runtime awareness" er protected core (CLAUDE.md); dette er tamper/drift-signalet. Metadata-
+    # only via _observe_one (kun event_kind, ALDRIG sti/indhold). Analog til process_watcher.
+    "file_awareness": ("system", "file_change"),
+    # composite.{invoked,revoked,deleted} — mutationer af Jarvis' capability-overflade (nye/fjernede
+    # composite-tools). Capability-mutation er protected core; var usynlig. Metadata-only (kind).
+    "composite": ("tools", "composite"),
 }
 
 # ── PRIVATE_NO_EGRESS (§24.4 keystone, 2026-07-01): privat inner-life observeres EGRESS-FRIT ──
@@ -558,6 +566,31 @@ def _observe_failure_summary(count: int) -> None:
         pass
 
 
+def _observe_skipped_families(skipped_families: dict[str, int]) -> None:
+    """Rådets fund #3: gør UROUTEDE event-families selv-opdagende i stedet for at tælle dem i én
+    bulk-int. Enhver family uden en FAMILY_ROUTES/PRIVATE-rute er et tabt nerve-signal (de 50 DARK
+    + enhver NY nerve). Ved at observe HVILKE families der droppes bliver blindspottet pollbart:
+    en ny nerve der emitterer uden rute dukker op i Centralen frem for at forsvinde tavst.
+    Metadata-only (family-navn + count), self-safe (§24.3 — må aldrig vælte tick'et)."""
+    if not skipped_families:
+        return
+    try:
+        top = sorted(skipped_families.items(), key=lambda kv: -kv[1])[:20]
+        central().observe({
+            "cluster": "system",
+            "nerve": "bridge_unrouted_families",
+            "kind": "unrouted",
+            "distinct": len(skipped_families),
+            "total": sum(skipped_families.values()),
+            "families": [{"family": f, "count": c} for f, c in top],
+        })
+        for fam, cnt in top:
+            central_timeseries.record("system", "bridge_unrouted_families", value=float(cnt),
+                                      meta={"kind": fam})
+    except Exception:
+        pass
+
+
 def run_bridge_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
     """Ét poll-tick: læs nye events siden last_seen_id, router hvidlistede → observe.
 
@@ -585,6 +618,7 @@ def run_bridge_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> d
     failures = 0
     batches = 0
     max_id = last_seen
+    skipped_families: dict[str, int] = {}   # #3: HVILKE uroutede families (ikke bare et bulk-tal)
 
     while batches < _MAX_BATCHES_PER_TICK:
         try:
@@ -624,17 +658,22 @@ def run_bridge_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> d
                     failures += 1
                 continue
             skipped += 1  # allowlist: alt ikke-hvidlistet skippes
+            if family:    # #3: registrér HVILKEN family (ikke 'central' — det er rekursions-guarden)
+                skipped_families[family] = skipped_families.get(family, 0) + 1
         if len(rows) < _BATCH_LIMIT:
             break
 
     _set_last_seen(max_id)
     if failures:
         _observe_failure_summary(failures)
+    if skipped_families:
+        _observe_skipped_families(skipped_families)
 
     return {
         "status": "ok",
         "observed": observed,
         "skipped": skipped,
+        "unrouted_families": len(skipped_families),
         "failures": failures,
         "batches": batches,
         "last_seen_id": max_id,

@@ -40,3 +40,37 @@ def test_member_token_and_non_owner_db_is_rejected(monkeypatch):
     with pytest.raises(HTTPException) as ei:
         ca.require_central_owner()
     assert ei.value.status_code == 403
+
+
+# ── require_central_owner_strict: fail-closed for privilege-eskalering (Rådets fund #2) ──
+
+def test_strict_owner_token_passes(monkeypatch):
+    _patch(monkeypatch, role="owner", uid="someid", db_role=None)
+    ca.require_central_owner_strict()  # bekræftet owner-rolle → OK
+
+
+def test_strict_db_owner_passes(monkeypatch):
+    _patch(monkeypatch, role="", uid="x", db_role="owner")
+    ca.require_central_owner_strict()  # positiv uid → DB owner → OK
+
+
+def test_strict_unbound_is_rejected_by_default(monkeypatch):
+    # THE HOLE: token-løs (uid None) må IKKE auto-autoriseres på privilege-ruter.
+    _patch(monkeypatch, role="", uid=None)
+    monkeypatch.setattr(ca, "_unbound_owner_allowed", lambda: False)
+    with pytest.raises(HTTPException) as ei:
+        ca.require_central_owner_strict()
+    assert ei.value.status_code == 403
+
+
+def test_strict_unbound_allowed_only_with_dev_flag(monkeypatch):
+    _patch(monkeypatch, role="", uid=None)
+    monkeypatch.setattr(ca, "_unbound_owner_allowed", lambda: True)
+    ca.require_central_owner_strict()  # eksplicit dev-flag → OK
+
+
+def test_strict_non_owner_db_is_rejected(monkeypatch):
+    _patch(monkeypatch, role="member", uid="x", db_role="member")
+    with pytest.raises(HTTPException) as ei:
+        ca.require_central_owner_strict()
+    assert ei.value.status_code == 403

@@ -143,11 +143,50 @@ def test_routes_only_whitelisted(wired):
     assert res["observed"] == 3   # cognitive_state tælles med, men egress-frit
     assert res["skipped"] == 2    # central-guard + dreams
     assert res["last_seen_id"] == 5
-    # KRITISK egress-invariant: den private cognitive_state-event nåede ALDRIG central().observe
-    kinds = {o["event_kind"] for o in central.observed}
+    # KRITISK egress-invariant: den private cognitive_state-event nåede ALDRIG central().observe.
+    # (per-event observes bærer 'event_kind'; #3-summary-observen gør ikke → filtrér på den.)
+    events = [o for o in central.observed if "event_kind" in o]
+    kinds = {o["event_kind"] for o in events}
     assert kinds == {"tool.called", "runtime.run_ended"}, "privat event må ALDRIG egress'e via central().observe"
-    clusters = {(o["cluster"], o["nerve"]) for o in central.observed}
+    clusters = {(o["cluster"], o["nerve"]) for o in events}
     assert clusters == {("tools", "event"), ("loop", "lifecycle")}
+
+
+def test_council4_protected_core_families_routed():
+    """Rådets fund #4: PROTECTED CORE tamper/capability-signal skal nu være routet."""
+    assert br.FAMILY_ROUTES.get("file_awareness") == ("system", "file_change")
+    assert br.FAMILY_ROUTES.get("composite") == ("tools", "composite")
+
+
+def test_council3_unrouted_families_are_surfaced(wired):
+    """Rådets fund #3: uroutede families må ikke forsvinde i en bulk-int — de skal observeres
+    ved navn så nye/mørke nerver bliver selv-opdagende."""
+    central, cache, bind_bus, _ = wired
+    cache.store[br._LAST_SEEN_KEY] = {"id": 0}
+    bind_bus([
+        _ev(1, "dreams.woven"),          # unrouted
+        _ev(2, "dreams.faded"),          # unrouted (samme family, count=2)
+        _ev(3, "boredom.spike"),         # unrouted (anden family)
+        _ev(4, "central.observed"),      # rekursions-guard: må IKKE tælles som unrouted
+        _ev(5, "tool.called"),           # routed → ikke unrouted
+    ])
+    res = br.run_bridge_tick()
+    assert res["unrouted_families"] == 2            # dreams + boredom (IKKE central)
+    summ = [o for o in central.observed if o.get("nerve") == "bridge_unrouted_families"]
+    assert len(summ) == 1
+    fams = {f["family"]: f["count"] for f in summ[0]["families"]}
+    assert fams == {"dreams": 2, "boredom": 1}
+    assert "central" not in fams                    # guard-skip er ikke et blindspot
+
+
+def test_council3_no_summary_when_all_routed(wired):
+    """Ingen unrouted-families-observe når intet blev skippet (ingen støj)."""
+    central, cache, bind_bus, _ = wired
+    cache.store[br._LAST_SEEN_KEY] = {"id": 0}
+    bind_bus([_ev(1, "tool.called"), _ev(2, "runtime.run_ended")])
+    res = br.run_bridge_tick()
+    assert res["unrouted_families"] == 0
+    assert [o for o in central.observed if o.get("nerve") == "bridge_unrouted_families"] == []
 
 
 def test_metadata_only_no_payload_forwarded(wired):

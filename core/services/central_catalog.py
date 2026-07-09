@@ -469,6 +469,7 @@ CLUSTER_PRIORITY: tuple[str, ...] = (
 
 _NERVE_LOCATION: dict[str, str] = {n.name: n.location for n in CATALOG}
 _NERVE_CLUSTER: dict[str, str] = {n.name: n.cluster for n in CATALOG}
+_NERVE_KLASS: dict[str, GateClass] = {n.name: n.klass for n in CATALOG}
 
 
 def nerve_location(name: str) -> str:
@@ -478,6 +479,23 @@ def nerve_location(name: str) -> str:
 
 def nerve_cluster(name: str) -> str:
     return _NERVE_CLUSTER.get(str(name or ""), "")
+
+
+def nerve_klass(name: str) -> GateClass | None:
+    """Katalog-klasse for en nerve, eller None hvis nerven ikke er kortlagt.
+
+    Autoritativ kilde (§13.2) for om en nerve er SECURITY. Bruges af governance-lag der ALDRIG
+    må decentralisere/optjene autonomi for sikkerheds-nerver (Keymaker, decentralization) i stedet
+    for håndholdte denylister der driver ud af sync med katalogets ~25 SECURITY-nerver."""
+    return _NERVE_KLASS.get(str(name or ""))
+
+
+def is_security_nerve(name: str) -> bool:
+    """True hvis nerven er katalog-klassificeret SECURITY (§11.3: må ALDRIG decentraliseres).
+
+    Klasse-baseret afløser for de håndholdte _NEVER-frozensets. Ukendte nerver (ikke i kataloget)
+    → False her; de sikres stadig af det enkelte lags eksplicitte fallback-denylist."""
+    return nerve_klass(name) is GateClass.SECURITY
 
 
 def cluster_rank(cluster: str) -> int:

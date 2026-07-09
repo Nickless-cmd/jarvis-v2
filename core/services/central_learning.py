@@ -64,6 +64,13 @@ def degrading(*, recent_hours: float = 6, baseline_hours: float = 48,
     recent: Counter = Counter()
     base: Counter = Counter()
     for r in inc:
+        # Degradering = ONGOING trend mod nedbrud. En RESOLVED incident er håndteret (ikke
+        # degradering); INFO-niveau er rutine-governance / ekstern-scan-støj / auto-healed
+        # (ikke nedbrud). Kun ULØSTE error/severe tæller → normal drift farver IKKE Centralen gul.
+        if r.get("resolved"):
+            continue
+        if str(r.get("severity")) not in ("error", "severe"):
+            continue
         key = f"{r.get('cluster')}/{r.get('nerve')}"
         if _within(r.get("ts"), recent_hours, now):
             recent[key] += 1

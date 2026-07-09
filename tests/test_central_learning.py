@@ -32,6 +32,14 @@ def test_no_degrading_when_below_min():
     assert cl.degrading(incidents=inc) == []
 
 
+def test_degrading_ignores_resolved_and_info():
+    """Degradering = ongoing trend mod nedbrud: RESOLVED (håndteret) og INFO (rutine-governance/
+    ekstern-støj/auto-healed) må IKKE tælle — ellers står Centralen gul for normal drift."""
+    resolved = [{**_inc("system", "provider_health", age_hours=0.2), "resolved": 1} for _ in range(5)]
+    info = [_inc("truth", "fact_gate", severity="info", age_hours=0.2) for _ in range(5)]
+    assert cl.degrading(recent_hours=6, baseline_hours=48, incidents=resolved + info) == []
+
+
 def test_degrading_excludes_own_learning_meta_nerve():
     # system/learning er Centralens EGEN meta-observation → må ALDRIG flagge sig selv
     # (ellers selv-forstærkende loop). Selv en spike skal ignoreres.

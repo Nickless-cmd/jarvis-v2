@@ -674,7 +674,7 @@ Generated from source. 5713/12042 functions/methods documented (47%). The list b
 - `core/services/central_injection_units.py` :: `register_default_units` (L44)
 - `core/services/central_instrument.py` :: `Finding.signature` (L66)
 - `core/services/central_keymaker.py` :: `list_keys` (L109)
-- `core/services/central_learning.py` :: `learning_summary` (L224)
+- `core/services/central_learning.py` :: `learning_summary` (L231)
 - `core/services/central_lexicon.py` :: `active_terms` (L185)
 - `core/services/central_lexicon.py` :: `operators` (L189)
 - `core/services/central_machines.py` :: `build_machines_surface` (L73)

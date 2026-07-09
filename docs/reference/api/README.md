@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12102 functions/methods, 47% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12107 functions/methods, 47% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -31,22 +31,22 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12102 functions/
 - [`core.services.03`](core.services.03.md) — `cache_boundary_observer` … `central_error_envelope`
 - [`core.services.04`](core.services.04.md) — `central_excess` … `central_output_conservation`
 - [`core.services.05`](core.services.05.md) — `central_persephone` … `channel_inbound`
-- [`core.services.06`](core.services.06.md) — `chat_sessions` … `continuity_kernel`
-- [`core.services.07`](core.services.07.md) — `contract_evolution` … `decision_enforcement`
-- [`core.services.08`](core.services.08.md) — `decision_gate` … `dream_hypothesis_signal_tracking`
-- [`core.services.09`](core.services.09.md) — `dream_influence_proposal_tracking` … `fcm_gateway`
-- [`core.services.10`](core.services.10.md) — `file_awareness_daemon` … `gut_calibration`
-- [`core.services.11`](core.services.11.md) — `gut_engine` … `internal_cadence_inner_life`
-- [`core.services.12`](core.services.12.md) — `internal_cadence_maintenance` … `memory_recall_engine`
-- [`core.services.13`](core.services.13.md) — `memory_recall_telemetry` … `offline_recomposition_engine`
-- [`core.services.14`](core.services.14.md) — `ollama_visible_prompt` … `proactivity_bridge`
-- [`core.services.15`](core.services.15.md) — `procedure_bank` … `reflective_critic_tracking`
-- [`core.services.16`](core.services.16.md) — `regret_engine` … `runtime_self_model_state`
-- [`core.services.17`](core.services.17.md) — `runtime_self_model_surfaces` … `sensory_perception_bridge`
-- [`core.services.18`](core.services.18.md) — `session_continuity` … `subjective_time`
-- [`core.services.19`](core.services.19.md) — `surprise_daemon` … `tool_result_store`
-- [`core.services.20`](core.services.20.md) — `tool_router` … `visible_runs`
-- [`core.services.21`](core.services.21.md) — `visible_runs_approvals` … `world_model_signal_tracking`
+- [`core.services.06`](core.services.06.md) — `chat_sessions` … `continuity`
+- [`core.services.07`](core.services.07.md) — `continuity_kernel` … `decision_adherence_gate`
+- [`core.services.08`](core.services.08.md) — `decision_enforcement` … `dream_hypothesis_generator`
+- [`core.services.09`](core.services.09.md) — `dream_hypothesis_signal_tracking` … `fact_gate`
+- [`core.services.10`](core.services.10.md) — `fcm_gateway` … `guided_learning_runtime`
+- [`core.services.11`](core.services.11.md) — `gut_calibration` … `internal_cadence_core`
+- [`core.services.12`](core.services.12.md) — `internal_cadence_inner_life` … `memory_pruning_daemon`
+- [`core.services.13`](core.services.13.md) — `memory_recall_engine` … `oauth_store`
+- [`core.services.14`](core.services.14.md) — `offline_recomposition_engine` … `proactive_question_gate_tracking`
+- [`core.services.15`](core.services.15.md) — `proactivity_bridge` … `reflection_to_plan`
+- [`core.services.16`](core.services.16.md) — `reflective_critic_tracking` … `runtime_self_model_identity`
+- [`core.services.17`](core.services.17.md) — `runtime_self_model_state` … `sensory_archive`
+- [`core.services.18`](core.services.18.md) — `sensory_perception_bridge` … `subagent_ecology`
+- [`core.services.19`](core.services.19.md) — `subjective_time` … `tool_result_aging`
+- [`core.services.20`](core.services.20.md) — `tool_result_store` … `visible_model_types`
+- [`core.services.21`](core.services.21.md) — `visible_runs` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

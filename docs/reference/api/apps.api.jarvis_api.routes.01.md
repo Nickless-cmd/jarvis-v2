@@ -473,7 +473,7 @@ _Cowork-dashboard routes. Tynde — al opsamling sker i core.services.cowork_fee
 | function | `cowork_share_guard` | `()` | Ventende "privat eller del?"-beslutninger via share_guard_store.list_pending | [src](../../../apps/api/jarvis_api/routes/cowork.py#L179) |
 | function | `cowork_share_guard_resolve` | `(decision_id, shared)` | Afgør en share-beslutning. shared=true → okay at dele; false → hold privat. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L191) |
 | function | `cowork_ui_panel_pending` | `()` | Ventende UI-panel-åbnings-kald via ui_panel_store.list_pending i to_thread; | [src](../../../apps/api/jarvis_api/routes/cowork.py#L207) |
-| function | `cowork_ui_panel_ack` | `(request_id)` | Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L216) |
+| function | `cowork_ui_panel_ack` | `(request_id)` | Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack_panel i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L216) |
 | function | `cowork_app_dispatch_pending` | `()` | Ventende runtime→app-instruktioner via app_dispatch_store.list_pending i | [src](../../../apps/api/jarvis_api/routes/cowork.py#L229) |
 | function | `cowork_app_dispatch_ack` | `(dispatch_id)` | Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L238) |
 

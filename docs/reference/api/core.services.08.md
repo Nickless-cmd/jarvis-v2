@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decision_enforcement.py`
+_Decision enforcement — close the loop between commitment and behavior._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `enforcement_section` | `()` | High-priority awareness: lists active decisions as obligations + asks | [src](../../../core/services/decision_enforcement.py#L38) |
+| function | `_build_breach_prompt` | `(assistant_text, decisions)` | — | [src](../../../core/services/decision_enforcement.py#L106) |
+| function | `_parse_breaches` | `(text)` | — | [src](../../../core/services/decision_enforcement.py#L125) |
+| function | `detect_breach_in_output` | `(assistant_text)` | Return list of detected breaches. Empty if none. LLM-led. | [src](../../../core/services/decision_enforcement.py#L145) |
+| function | `_poll_loop` | `()` | — | [src](../../../core/services/decision_enforcement.py#L226) |
+| function | `subscribe` | `()` | — | [src](../../../core/services/decision_enforcement.py#L266) |
+
 ## `core/services/decision_gate.py`
 _Decision gate — pre-execution decision conflict detection._
 
@@ -611,32 +623,4 @@ _Dream Hypothesis Generator — overraskende forbindelser._
 | function | `mark_hypothesis_presented` | `(*, hypothesis_id)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L400) |
 | function | `build_dream_hypothesis_surface` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L411) |
 | function | `build_dream_hypothesis_prompt_section` | `()` | Surface the single highest-confidence unpresented dream hypothesis. | [src](../../../core/services/dream_hypothesis_generator.py#L428) |
-
-## `core/services/dream_hypothesis_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_dream_hypothesis_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L36) |
-| function | `refresh_runtime_dream_hypothesis_signal_statuses` | `()` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L58) |
-| function | `build_runtime_dream_hypothesis_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L97) |
-| function | `_extract_dream_hypothesis_candidates` | `()` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L125) |
-| function | `_persist_dream_hypothesis_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L195) |
-| function | `_build_dream_snapshots` | `()` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L264) |
-| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L298) |
-| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L307) |
-| function | `_build_hypothesis_type` | `(*, item, snapshot)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L318) |
-| function | `_build_signal_status` | `(*, hypothesis_type, recurrence_status, cadence_state)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L333) |
-| function | `_build_hypothesis_note` | `(*, hypothesis_type, recurrence_type, domain_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L341) |
-| function | `_build_hypothesis_anchor` | `(*, snapshot)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L360) |
-| function | `_build_status_reason` | `(*, hypothesis_type)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L376) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L384) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L393) |
-| function | `_recurrence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L398) |
-| function | `_witness_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L403) |
-| function | `_review_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L408) |
-| function | `_review_cadence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L413) |
-| function | `_signal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L418) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L423) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L428) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L438) |
 

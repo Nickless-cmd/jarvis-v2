@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/memory_recall_engine.py`
+_Unified memory recall — bridge across all memory sources with mood-weighting._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_current_mood` | `()` | — | [src](../../../core/services/memory_recall_engine.py#L75) |
+| function | `_mood_keywords_for_boost` | `(mood, threshold=…)` | For each mood dimension above threshold, collect keywords to boost. | [src](../../../core/services/memory_recall_engine.py#L87) |
+| function | `_apply_mood_boost` | `(text, base_score, boost_keywords, boost_factor=…)` | — | [src](../../../core/services/memory_recall_engine.py#L97) |
+| function | `compute_recall_score` | `(*, query_embedding, record_embedding, created_at, importance=…, recall_freq=…, now=…, config=…)` | Composite quality score for cold-tier memory filtering. | [src](../../../core/services/memory_recall_engine.py#L110) |
+| function | `_gather_private_brain_quality` | `(query, limit, quality_threshold=…)` | Embedding-based private brain search with quality scoring. | [src](../../../core/services/memory_recall_engine.py#L188) |
+| function | `_gather_failed` | `(source, exc)` | Memory-cluster trace (2026-06-22): en recall-kilde fejlede. FØR sluttede | [src](../../../core/services/memory_recall_engine.py#L297) |
+| function | `_gather_workspace` | `(query, limit)` | — | [src](../../../core/services/memory_recall_engine.py#L313) |
+| function | `_gather_private_brain` | `(query, limit)` | — | [src](../../../core/services/memory_recall_engine.py#L332) |
+| function | `_gather_chronicle` | `(query, limit)` | — | [src](../../../core/services/memory_recall_engine.py#L375) |
+| function | `cold_tier_recall` | `(*, query, max_results=…, with_mood=…, quality_threshold=…, include_private_brain=…)` | Cold-tier recall across curated sources + quality-scored private brain. | [src](../../../core/services/memory_recall_engine.py#L409) |
+| function | `unified_recall` | `(*, query, sources=…, limit_per_source=…, total_limit=…, with_mood=…)` | Search across all configured memory sources, mood-weighted. | [src](../../../core/services/memory_recall_engine.py#L514) |
+| function | `unified_recall_section` | `(query, *, max_results=…)` | Format unified recall as a prompt-awareness section. Optional callsite. | [src](../../../core/services/memory_recall_engine.py#L583) |
+| function | `_compute_multi_signal_scores` | `(query, records, recency_fn=…)` | Re-score gathered records with BM25 + entity fusion + embedding. | [src](../../../core/services/memory_recall_engine.py#L602) |
+| function | `_observe_recall_quality` | `(top, sources)` | Fase 3 (§23.3 #4): meld recall-KVALITET til Centralen — kun scalar-metadata, aldrig | [src](../../../core/services/memory_recall_engine.py#L667) |
+| function | `multi_signal_recall` | `(*, query, sources=…, limit_per_source=…, total_limit=…, with_mood=…, min_score=…)` | Multi-signal recall: BM25 + entity fusion + embedding + recency. | [src](../../../core/services/memory_recall_engine.py#L695) |
+| function | `multi_signal_recall_section` | `(query, *, max_results=…)` | Format multi-signal recall as a prompt-awareness section. | [src](../../../core/services/memory_recall_engine.py#L864) |
+| function | `_exec_unified_recall` | `(args)` | — | [src](../../../core/services/memory_recall_engine.py#L913) |
+
 ## `core/services/memory_recall_telemetry.py`
 _Memory recall telemetry — Phase 2 data collection for Lag 11 forgetting._
 
@@ -43,11 +66,14 @@ _Semantic memory search — embeddings-based search over Jarvis's workspace memo
 | function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L113) |
 | function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L121) |
 | function | `_cache_path` | `()` | — | [src](../../../core/services/memory_search.py#L152) |
-| function | `_load_or_build_index` | `()` | Load cached index or rebuild from scratch. Returns (chunks, embeddings, mtimes). | [src](../../../core/services/memory_search.py#L156) |
-| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L212) |
-| function | `search_memory` | `(query, *, limit=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L231) |
-| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L289) |
-| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L298) |
+| function | `_chunk_all_files` | `(files)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L160) |
+| function | `_build_and_cache_index` | `(files, current_mtimes)` | Byg indeks fra bunden (chunk + embed ALLE chunks) og skriv cache. LANGSOM (embedding). | [src](../../../core/services/memory_search.py#L177) |
+| function | `_schedule_background_rebuild` | `(files, current_mtimes)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L199) |
+| function | `_load_or_build_index` | `()` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L228) |
+| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L255) |
+| function | `search_memory` | `(query, *, limit=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L274) |
+| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L332) |
+| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L341) |
 
 ## `core/services/memory_tattoos.py`
 _Memory Tattoos — emotional marks._
@@ -602,18 +628,4 @@ _Per-bruger krypteret OAuth-token-hvælv — plugin-fundamentets privatlivs-spin
 | function | `revoke_token` | `(user_id, provider)` | Fjern token for (bruger, provider). True hvis udført (eller intet at fjerne). | [src](../../../core/services/oauth_store.py#L74) |
 | function | `get_fresh_token` | `(user_id, provider, *, now=…)` | Som get_token, men auto-fornyer hvis udløbet (≤60s buffer) og refresh_token findes. | [src](../../../core/services/oauth_store.py#L91) |
 | function | `list_providers` | `(user_id)` | Providere brugeren har forbundet (har en gemt token for). | [src](../../../core/services/oauth_store.py#L117) |
-
-## `core/services/offline_recomposition_engine.py`
-_Offline recomposition: recombine recent cognitive material into candidates._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run_offline_recomposition` | `()` | — | [src](../../../core/services/offline_recomposition_engine.py#L15) |
-| function | `build_offline_recomposition_surface` | `(*, limit=…)` | — | [src](../../../core/services/offline_recomposition_engine.py#L42) |
-| function | `build_offline_recomposition_prompt_section` | `()` | — | [src](../../../core/services/offline_recomposition_engine.py#L55) |
-| function | `_candidate_pieces` | `(*, episodes, drive, curiosity, counterfactuals)` | — | [src](../../../core/services/offline_recomposition_engine.py#L67) |
-| function | `_candidate_policy` | `(pieces)` | — | [src](../../../core/services/offline_recomposition_engine.py#L88) |
-| function | `_feed_learning` | `(item)` | — | [src](../../../core/services/offline_recomposition_engine.py#L99) |
-| function | `_runtime_state` | `(key)` | — | [src](../../../core/services/offline_recomposition_engine.py#L113) |
-| function | `_load` | `()` | — | [src](../../../core/services/offline_recomposition_engine.py#L118) |
 

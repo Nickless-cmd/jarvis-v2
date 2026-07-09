@@ -6,32 +6,32 @@
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `create_chat_session` | `(*, title=…, workspace_kind=…, workspace_root=…, team_id=…)` | — | [src](../../../core/services/chat_sessions.py#L14) |
-| function | `get_or_create_named_session` | `(session_id, title)` | Idempotent: sikr at en session med EKSPLICIT id findes (opret hvis ny). | [src](../../../core/services/chat_sessions.py#L49) |
-| function | `_teams` | `()` | Lazy-import af teams-modulet (undgår import-cyklus ved opstart). | [src](../../../core/services/chat_sessions.py#L80) |
-| function | `list_chat_sessions` | `(*, user_id=…)` | List chat sessions, optionally filtered to one user. | [src](../../../core/services/chat_sessions.py#L86) |
-| function | `_make_snippet` | `(content, query, width=…)` | Byg et kort uddrag centreret om første match (case-insensitive). | [src](../../../core/services/chat_sessions.py#L165) |
-| function | `search_chat_sessions` | `(query, *, user_id=…, limit=…)` | Søg sessioner på titel ELLER besked-indhold (user/assistant). | [src](../../../core/services/chat_sessions.py#L180) |
-| function | `get_chat_session` | `(session_id)` | — | [src](../../../core/services/chat_sessions.py#L244) |
-| function | `set_session_workspace` | `(session_id, *, kind, root)` | Bind (eller skift) en sessions Code-mode workspace. | [src](../../../core/services/chat_sessions.py#L294) |
-| function | `append_chat_message` | `(*, session_id, role, content, created_at=…, tool_name=…, tool_arguments=…, user_id=…, workspace_name=…, reasoning_content=…)` | — | [src](../../../core/services/chat_sessions.py#L309) |
-| function | `_infer_tool_name_from_content` | `(content)` | — | [src](../../../core/services/chat_sessions.py#L442) |
-| function | `recent_chat_session_messages` | `(session_id, *, limit=…)` | — | [src](../../../core/services/chat_sessions.py#L449) |
-| function | `chat_session_messages_since_last_compact` | `(session_id, *, max_total=…)` | Hent ALT efter seneste compact_marker (eller hele session hvis ingen). | [src](../../../core/services/chat_sessions.py#L476) |
-| function | `recent_chat_session_messages_by_user_turns` | `(session_id, *, user_turns=…, max_total=…)` | Hent de seneste N *user-turns* og alt der hører til dem. | [src](../../../core/services/chat_sessions.py#L537) |
-| function | `_ensure_compact_marker_git_sha_column` | `()` | Add git_sha column to chat_messages if it doesn't exist (idempotent migration). | [src](../../../core/services/chat_sessions.py#L613) |
-| function | `store_compact_marker` | `(session_id, summary_text, git_sha=…)` | Store a compact marker for the session. Returns the marker message_id. | [src](../../../core/services/chat_sessions.py#L625) |
-| function | `get_compact_marker_with_sha` | `(session_id)` | Return (summary, git_sha) of the most recent compact marker, or (None, None). | [src](../../../core/services/chat_sessions.py#L656) |
-| function | `get_compact_marker` | `(session_id)` | Return the most recent compact marker summary for the session, or None. | [src](../../../core/services/chat_sessions.py#L680) |
-| function | `recent_chat_tool_messages` | `(session_id, *, limit=…)` | — | [src](../../../core/services/chat_sessions.py#L698) |
-| function | `rename_chat_session` | `(session_id, *, title)` | — | [src](../../../core/services/chat_sessions.py#L723) |
-| function | `delete_chat_session` | `(session_id)` | — | [src](../../../core/services/chat_sessions.py#L737) |
-| function | `_session_summary` | `(row)` | — | [src](../../../core/services/chat_sessions.py#L747) |
-| function | `_normalize_title` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L759) |
-| function | `_preview_text` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L766) |
-| function | `_time_label` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L773) |
-| function | `parse_channel_from_session_title` | `(title)` | Parse channel type and detail from a session title. | [src](../../../core/services/chat_sessions.py#L781) |
-| function | `get_session_owner` | `(session_id)` | Ejeren = user_id paa den seneste besked i sessionen der HAR et stempel. | [src](../../../core/services/chat_sessions.py#L811) |
+| function | `create_chat_session` | `(*, title=…, workspace_kind=…, workspace_root=…, team_id=…)` | — | [src](../../../core/services/chat_sessions.py#L15) |
+| function | `get_or_create_named_session` | `(session_id, title)` | Idempotent: sikr at en session med EKSPLICIT id findes (opret hvis ny). | [src](../../../core/services/chat_sessions.py#L50) |
+| function | `_teams` | `()` | Lazy-import af teams-modulet (undgår import-cyklus ved opstart). | [src](../../../core/services/chat_sessions.py#L81) |
+| function | `list_chat_sessions` | `(*, user_id=…)` | List chat sessions, optionally filtered to one user. | [src](../../../core/services/chat_sessions.py#L87) |
+| function | `_make_snippet` | `(content, query, width=…)` | Byg et kort uddrag centreret om første match (case-insensitive). | [src](../../../core/services/chat_sessions.py#L166) |
+| function | `search_chat_sessions` | `(query, *, user_id=…, limit=…)` | Søg sessioner på titel ELLER besked-indhold (user/assistant). | [src](../../../core/services/chat_sessions.py#L181) |
+| function | `get_chat_session` | `(session_id)` | — | [src](../../../core/services/chat_sessions.py#L258) |
+| function | `set_session_workspace` | `(session_id, *, kind, root)` | Bind (eller skift) en sessions Code-mode workspace. | [src](../../../core/services/chat_sessions.py#L308) |
+| function | `append_chat_message` | `(*, session_id, role, content, created_at=…, tool_name=…, tool_arguments=…, user_id=…, workspace_name=…, reasoning_content=…)` | — | [src](../../../core/services/chat_sessions.py#L323) |
+| function | `_infer_tool_name_from_content` | `(content)` | — | [src](../../../core/services/chat_sessions.py#L456) |
+| function | `recent_chat_session_messages` | `(session_id, *, limit=…)` | — | [src](../../../core/services/chat_sessions.py#L463) |
+| function | `chat_session_messages_since_last_compact` | `(session_id, *, max_total=…)` | Hent ALT efter seneste compact_marker (eller hele session hvis ingen). | [src](../../../core/services/chat_sessions.py#L490) |
+| function | `recent_chat_session_messages_by_user_turns` | `(session_id, *, user_turns=…, max_total=…)` | Hent de seneste N *user-turns* og alt der hører til dem. | [src](../../../core/services/chat_sessions.py#L551) |
+| function | `_ensure_compact_marker_git_sha_column` | `()` | Add git_sha column to chat_messages if it doesn't exist (idempotent migration). | [src](../../../core/services/chat_sessions.py#L627) |
+| function | `store_compact_marker` | `(session_id, summary_text, git_sha=…)` | Store a compact marker for the session. Returns the marker message_id. | [src](../../../core/services/chat_sessions.py#L639) |
+| function | `get_compact_marker_with_sha` | `(session_id)` | Return (summary, git_sha) of the most recent compact marker, or (None, None). | [src](../../../core/services/chat_sessions.py#L670) |
+| function | `get_compact_marker` | `(session_id)` | Return the most recent compact marker summary for the session, or None. | [src](../../../core/services/chat_sessions.py#L694) |
+| function | `recent_chat_tool_messages` | `(session_id, *, limit=…)` | — | [src](../../../core/services/chat_sessions.py#L712) |
+| function | `rename_chat_session` | `(session_id, *, title)` | — | [src](../../../core/services/chat_sessions.py#L737) |
+| function | `delete_chat_session` | `(session_id)` | — | [src](../../../core/services/chat_sessions.py#L751) |
+| function | `_session_summary` | `(row)` | — | [src](../../../core/services/chat_sessions.py#L761) |
+| function | `_normalize_title` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L773) |
+| function | `_preview_text` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L780) |
+| function | `_time_label` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L787) |
+| function | `parse_channel_from_session_title` | `(title)` | Parse channel type and detail from a session title. | [src](../../../core/services/chat_sessions.py#L795) |
+| function | `get_session_owner` | `(session_id)` | Ejeren = user_id paa den seneste besked i sessionen der HAR et stempel. | [src](../../../core/services/chat_sessions.py#L825) |
 
 ## `core/services/cheap_lane_balancer.py`
 _Cheap Lane Balancer — weighted-random load balancing for daemon LLM calls._
@@ -665,6 +665,14 @@ _Consolidation Judge Daemon — nightly reckoning, not observation._
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L567) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L581) |
 
+## `core/services/content_blocks.py`
+_Rene content-blok-funktioner: tekst-projektion + serve-on-read rekonstruktion._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `content_blocks_to_text` | `(blocks)` | Flad en content-blok-array til markdown-tekst-projektionen. KUN text-blokke | [src](../../../core/services/content_blocks.py#L17) |
+| function | `reconstruct_blocks_from_legacy` | `(role, content, *, load_result)` | Serve-on-read: byg blok-array for en GAMMEL besked (uden content_json). | [src](../../../core/services/content_blocks.py#L24) |
+
 ## `core/services/context_window_manager.py`
 _Context window manager — strategies for keeping prompts within budget._
 
@@ -697,21 +705,4 @@ _Continuity Kernel — state capsule + live update + graded wake-up._
 | function | `build_conversation_continuity` | `(*, limit=…)` | Build a 'hvad talte vi om' block from recent session data. | [src](../../../core/services/continuity.py#L308) |
 | function | `build_wake_up_block` | `(capsule=…)` | Build the wake-up block for prompt injection. | [src](../../../core/services/continuity.py#L402) |
 | function | `live_update_after_turn` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, session_id=…)` | Call this after every visible turn to persist the state capsule. | [src](../../../core/services/continuity.py#L519) |
-
-## `core/services/continuity_kernel.py`
-_Bounded Continuity Kernel — existence feel between ticks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/continuity_kernel.py#L27) |
-| function | `record_tick_elapsed` | `(seconds)` | Record elapsed time since last tick and update existence feel. | [src](../../../core/services/continuity_kernel.py#L31) |
-| function | `_compute_existence_feeling` | `(gap_seconds)` | Compute existence feeling based on gap duration. | [src](../../../core/services/continuity_kernel.py#L57) |
-| function | `_compute_narrative` | `(gap_seconds)` | Compute a narrative description of the gap. | [src](../../../core/services/continuity_kernel.py#L73) |
-| function | `get_existence_narrative` | `()` | Get the current existence narrative. | [src](../../../core/services/continuity_kernel.py#L92) |
-| function | `get_existence_feeling` | `()` | Get the current existence feeling (0-1). | [src](../../../core/services/continuity_kernel.py#L97) |
-| function | `should_express_continuity` | `()` | Determine if continuity should be expressed in visible prompt. | [src](../../../core/services/continuity_kernel.py#L102) |
-| function | `get_continuity_state` | `()` | Get full continuity state for debugging/MC. | [src](../../../core/services/continuity_kernel.py#L108) |
-| function | `reset_continuity_state` | `()` | Reset continuity state (for testing). | [src](../../../core/services/continuity_kernel.py#L113) |
-| function | `format_continuity_for_prompt` | `()` | Format continuity info for heartbeat prompt injection. | [src](../../../core/services/continuity_kernel.py#L127) |
-| function | `build_continuity_kernel_surface` | `()` | Build MC surface for continuity kernel. | [src](../../../core/services/continuity_kernel.py#L136) |
 

@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gut_calibration.py`
+_Gut-calibration wiring — fodrer cognitive_gut_state fra run-livscyklussen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `observe_run_event` | `(kind, payload)` | Dispatch fra run_closure_gate's listener. Kaster aldrig. | [src](../../../core/services/gut_calibration.py#L29) |
+| function | `_on_started` | `(payload)` | — | [src](../../../core/services/gut_calibration.py#L40) |
+| function | `_on_outcome` | `(payload, actual_outcome)` | — | [src](../../../core/services/gut_calibration.py#L70) |
+
 ## `core/services/gut_engine.py`
 _Gut Engine — intuition and calibration tracking._
 
@@ -676,11 +685,4 @@ _Core-infra cadence producers (split from internal_cadence.py)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `register_core_producers` | `(register_producer)` | Register the core-infra producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_core.py#L19) |
-
-## `core/services/internal_cadence_inner_life.py`
-_Inner-life cadence producers (split from internal_cadence.py)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_inner_life_producers` | `(register_producer)` | Register the inner-life producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_inner_life.py#L24) |
 

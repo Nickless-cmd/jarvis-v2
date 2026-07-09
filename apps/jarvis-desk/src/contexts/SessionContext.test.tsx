@@ -50,6 +50,28 @@ describe('mergeServer afdublering', () => {
     expect(merged.filter((m) => m.role === 'assistant').length).toBe(1)
   })
 
+  it('BEVARER tool-kortene når broen droppes (serveren gemmer KUN tekst) — Bjørn 9. jul', () => {
+    // Roden til "tool result forsvinder når svaret lander": serveren persisterer kun tekst
+    // (content → stringToBlocks), aldrig tool_use/tool_result. Når broen (m. de streamede tool-
+    // blokke) droppes til serverens tekst-kopi, forsvandt tool-kortene. Nu flettes de ind.
+    const bridge = {
+      id: 'a-final', role: 'assistant' as const, created_at: 'now', parent_id: null,
+      clientStatus: 'server_missing_keep_stream' as const,
+      content: [
+        { type: 'tool_use', id: 'tu-1', name: 'bash', input: {}, status: 'done', result: 'ok' },
+        { type: 'text', text: 'svaret' },
+      ] as unknown as { type: 'text'; text: string }[],
+    }
+    const server = [userMsg('srv-u', 'spm'), asstMsg('srv-a', 'svaret')] // server = KUN tekst
+    const merged = mergeServer([bridge], server)
+    expect(merged.some((m) => m.id === 'a-final')).toBe(false)   // broen droppet
+    const srv = merged.find((m) => m.id === 'srv-a')!
+    const types = (srv.content as Array<{ type: string }>).map((b) => b.type)
+    expect(types).toContain('tool_use')  // tool-kortet overlevede i serverens besked
+    expect(types).toContain('text')
+    expect(types.indexOf('tool_use')).toBeLessThan(types.indexOf('text')) // tool FØR svar
+  })
+
   // REGRESSION (Bjørn 2026-06-29, "3 svar lander samtidig"): bro-kopi + serverens
   // persisterede kopi af SAMME run skal kollapse til ÉT svar — også når serverens
   // transcript transient slutter på en tool (næste runde startede) så serverCaughtUp

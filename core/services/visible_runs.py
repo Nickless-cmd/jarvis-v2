@@ -266,38 +266,81 @@ from core.services.visible_runs_sections.run_control_state import (  # noqa: E40
 
 
 def _build_turn_blocks(
-    *, text: str, tool_calls: list[dict], tool_results: list[dict]
+    *, text: str, tool_calls: list[dict], tool_results: list[dict],
+    interleave: list[str] | None = None,
 ) -> list[dict]:
     """Byg den kanoniske content-blok-array for en assistant-tur (spec §4).
 
-    Rækkefølge: tekst-prosa, derefter tool_use/tool_result-par i kald-rækkefølge
-    (deterministisk fallback jf. spec §5). tool_result matches til tool_use via id.
-    Ren funktion — ingen side-effekter, sikker at teste isoleret."""
+    Når *interleave* er givet (liste af 'text'/'tool'), følges den rækkefølge —
+    tekst- og tool-blokke placeres i den orden de kom under streamen.
+    Uden interleave: degraderet fallback (tekst først, så tool-par jf. spec §5).
+    """
     blocks: list[dict] = []
     clean = str(text or "").strip()
-    if clean:
-        blocks.append({"type": "text", "text": clean})
-    results_by_id: dict[str, dict] = {}
-    for r in (tool_results or []):
-        results_by_id[str(r.get("tool_use_id") or "")] = r
-    for tc in (tool_calls or []):
-        tid = str(tc.get("id") or "")
-        blocks.append({
-            "type": "tool_use",
-            "id": tid,
-            "name": str(tc.get("name") or ""),
-            "input": tc.get("input") or {},
-        })
-        r = results_by_id.get(tid)
-        if r is not None:
-            status = str(r.get("status") or "done")
+    if interleave:
+        # Dedupliér consecutive entries: ["text","text","tool"] → ["text","tool"]
+        deduped: list[str] = []
+        for e in interleave:
+            if not deduped or deduped[-1] != e:
+                deduped.append(e)
+
+        results_by_id: dict[str, dict] = {}
+        for r in (tool_results or []):
+            results_by_id[str(r.get("tool_use_id") or "")] = r
+        text_placed = False
+        tool_pairs = list(zip(tool_calls or [], tool_results or []))
+        pi = 0
+        for kind in deduped:
+            if kind == "text":
+                if not text_placed and clean:
+                    blocks.append({"type": "text", "text": clean})
+                    text_placed = True
+            elif kind == "tool":
+                if pi < len(tool_pairs):
+                    tc, tr = tool_pairs[pi]
+                    tid = str(tc.get("id") or "")
+                    blocks.append({
+                        "type": "tool_use",
+                        "id": tid,
+                        "name": str(tc.get("name") or ""),
+                        "input": tc.get("input") or {},
+                    })
+                    r = results_by_id.get(tid)
+                    if r is not None:
+                        status = str(r.get("status") or "done")
+                        blocks.append({
+                            "type": "tool_result",
+                            "tool_use_id": tid,
+                            "status": "error" if (r.get("is_error") or status == "error") else "done",
+                            "content": str(r.get("content") or ""),
+                            "is_error": bool(r.get("is_error")),
+                        })
+                    pi += 1
+    else:
+        # Degraderet fallback: tekst først, så tool-par i kald-rækkefølge
+        if clean:
+            blocks.append({"type": "text", "text": clean})
+        results_by_id = {}
+        for r in (tool_results or []):
+            results_by_id[str(r.get("tool_use_id") or "")] = r
+        for tc in (tool_calls or []):
+            tid = str(tc.get("id") or "")
             blocks.append({
-                "type": "tool_result",
-                "tool_use_id": tid,
-                "status": "error" if (r.get("is_error") or status == "error") else "done",
-                "content": str(r.get("content") or ""),
-                "is_error": bool(r.get("is_error")),
+                "type": "tool_use",
+                "id": tid,
+                "name": str(tc.get("name") or ""),
+                "input": tc.get("input") or {},
             })
+            r = results_by_id.get(tid)
+            if r is not None:
+                status = str(r.get("status") or "done")
+                blocks.append({
+                    "type": "tool_result",
+                    "tool_use_id": tid,
+                    "status": "error" if (r.get("is_error") or status == "error") else "done",
+                    "content": str(r.get("content") or ""),
+                    "is_error": bool(r.get("is_error")),
+                })
     return blocks
 
 
@@ -1230,6 +1273,10 @@ async def _stream_visible_run(
     # ALDRIG bryde et live run (append-helper er try/except-indkapslet).
     _turn_tool_calls: list[dict] = []
     _turn_tool_results: list[dict] = []
+    # Interleave-log: trackér om model producerede text→tool i hvilken rækkefølge
+    # under streamen, så _build_turn_blocks kan persistere blokke i den rækkefølge
+    # de kom — frem for degraderet "tekst først, så tools"-rækkefølge.
+    _interleave_log: list[str] = []
 
     def _accumulate_turn_blocks(tool_calls: list, results: list) -> None:
         try:
@@ -1363,6 +1410,7 @@ async def _stream_visible_run(
                             break
                     safe_text = markup_buffer.feed(item.delta)
                     if safe_text:
+                        _interleave_log.append("text")
                         _set_orb_phase("speak")
                         yield _sse(
                             "delta",
@@ -1375,6 +1423,7 @@ async def _stream_visible_run(
                     continue
                 if isinstance(item, VisibleModelToolCalls):
                     _collected_native_tool_calls = item.tool_calls
+                    _interleave_log.append("tool")
                     continue
                 if isinstance(item, VisibleModelStreamDone):
                     result = item.result
@@ -4355,6 +4404,7 @@ async def _stream_visible_run(
                             text=followup_text,
                             tool_calls=_turn_tool_calls,
                             tool_results=_turn_tool_results,
+                            interleave=_interleave_log,
                         ) or None,
                     )
                 except Exception as _persist_exc:
@@ -5018,6 +5068,7 @@ async def _stream_visible_run(
                         text=visible_output_text,
                         tool_calls=_turn_tool_calls,
                         tool_results=_turn_tool_results,
+                        interleave=_interleave_log,
                     ) or None,
                 )
             except Exception as _persist_exc2:

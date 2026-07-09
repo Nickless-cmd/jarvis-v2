@@ -55,13 +55,26 @@ def _save(records: dict[str, dict[str, Any]]) -> None:
     save_json(_STATE_KEY, records)
 
 
-def mark_started(*, run_id: str, session_id: str | None, user_message: str) -> None:
-    """Record that a visible run is in flight. Keyed by run_id (unique).
+def mark_started(
+    *,
+    run_id: str,
+    session_id: str | None,
+    user_message: str,
+    kind: str = "visible",
+    provider: str = "",
+    model: str = "",
+) -> None:
+    """Record that a run is in flight. Keyed by run_id (unique).
 
     Side effect: clears any prior in_flight records for the same session.
     A new turn implies the previous turn finished (or won't finish) — keep
     only the most recent so the digest never sees zombies left behind by
     crashes, killed runs, or finally-blocks that didn't complete.
+
+    ``kind`` (visible|autonomous|heartbeat, default visible), ``provider`` and
+    ``model`` are additive, backward-compatible metadata: existing callers that
+    omit them get the visible/empty defaults. The boot-reconciler uses them to
+    describe which kinds of run were orphaned by a crash.
     """
     if not run_id:
         return
@@ -80,6 +93,9 @@ def mark_started(*, run_id: str, session_id: str | None, user_message: str) -> N
         "run_id": str(run_id),
         "session_id": sid,
         "status": "running",
+        "kind": str(kind or "visible"),
+        "provider": str(provider or ""),
+        "model": str(model or ""),
         "excerpt": (user_message or "")[:_EXCERPT_LIMIT],
         "started_at": datetime.now(UTC).isoformat(),
         "last_tool": "",
@@ -145,6 +161,32 @@ def interrupted_for_session(session_id: str | None) -> dict[str, Any] | None:
         return None
     candidates.sort(key=lambda r: str(r.get("started_at", "")), reverse=True)
     return candidates[0]
+
+
+def list_running_orphans(stale_after_s: float) -> list[dict[str, Any]]:
+    """Return records still marked ``running`` whose ``started_at`` is older than
+    ``stale_after_s`` seconds — i.e. crash-zombies whose ``finally`` never ran.
+
+    Pure read (no writes). Fresh ``running`` records (probably still streaming
+    on another worker) and ``interrupted`` records are excluded. Records with an
+    unparseable ``started_at`` are conservatively NOT reported as orphans — we
+    only surface a run we can confirm is genuinely stale, never on a bad clock.
+    """
+    now = datetime.now(UTC)
+    out: list[dict[str, Any]] = []
+    for rec in _load().values():
+        if str(rec.get("status") or "running") != "running":
+            continue
+        started_iso = str(rec.get("started_at") or "")
+        if not started_iso:
+            continue
+        try:
+            started_dt = datetime.fromisoformat(started_iso)
+        except Exception:
+            continue
+        if (now - started_dt).total_seconds() >= float(stale_after_s):
+            out.append(rec)
+    return out
 
 
 def clear_session(session_id: str | None) -> int:

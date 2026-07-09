@@ -1223,6 +1223,42 @@ async def _stream_visible_run(
     _run_stage = "init"
     markup_buffer = _CapabilityMarkupBuffer()
     _collected_native_tool_calls: list[dict] = []
+    # Tur-niveau blok-akkumulatorer (spec: content_json). _a_tool_calls/_a_parts
+    # nulstilles pr. runde → holder kun SIDSTE runde. Disse samler HELE turens
+    # ordnede tool-aktivitet (first-pass + alle agentiske runder) til én blok-array
+    # der persisteres ved run-slut. Rent additivt/side-effekt-frit; en fejl her må
+    # ALDRIG bryde et live run (append-helper er try/except-indkapslet).
+    _turn_tool_calls: list[dict] = []
+    _turn_tool_results: list[dict] = []
+
+    def _accumulate_turn_blocks(tool_calls: list, results: list) -> None:
+        try:
+            for _tc in (tool_calls or []):
+                _fn = (_tc.get("function") or {}) if isinstance(_tc, dict) else {}
+                _turn_tool_calls.append({
+                    "id": str((_tc.get("id") if isinstance(_tc, dict) else "") or ""),
+                    "name": str(
+                        _fn.get("name")
+                        or (_tc.get("name") if isinstance(_tc, dict) else None)
+                        or "tool"
+                    ),
+                    "input": (
+                        _fn.get("arguments")
+                        or (_tc.get("input") if isinstance(_tc, dict) else None)
+                        or {}
+                    ),
+                })
+            for _r in (results or []):
+                _turn_tool_results.append({
+                    "tool_use_id": str(getattr(_r, "tool_call_id", "") or ""),
+                    "status": "done",
+                    "content": str(getattr(_r, "content", "") or ""),
+                    "is_error": False,
+                })
+        except Exception:
+            # Blok-capture-fejl må aldrig forplante sig ind i streamet.
+            pass
+
     _fp_deg_accum = ""              # akkumuleret first-pass-tekst (degenerations-guard)
     _fp_deg_since = 0               # tegn siden sidste degenerations-tjek
     _degenerated_reason: str | None = None
@@ -2079,15 +2115,19 @@ async def _stream_visible_run(
                         )
                     return out
 
+                _fp_followup_results = _to_followup_results(
+                    _collected_native_tool_calls,
+                    simple_results,
+                    _resolved_result_texts,
+                )
+                # Tur-akkumulering (first-pass native tools) — genbruger SAMME
+                # tool_calls + results som ToolExchange'en; side-effekt-frit.
+                _accumulate_turn_blocks(_collected_native_tool_calls, _fp_followup_results)
                 _followup_exchanges: list[_vf.ToolExchange] = [
                     _vf.ToolExchange(
                         text="",
                         tool_calls=list(_collected_native_tool_calls),
-                        results=_to_followup_results(
-                            _collected_native_tool_calls,
-                            simple_results,
-                            _resolved_result_texts,
-                        ),
+                        results=_fp_followup_results,
                         # Thinking-mode replay (Deepseek v4-pro/reasoner):
                         # the API rejects followups if reasoning_content from
                         # the prior assistant turn isn't sent back verbatim.
@@ -3921,16 +3961,20 @@ async def _stream_visible_run(
                                 tool_arguments=dict(_a_sr.get("arguments") or {}),
                             )
 
+                    _a_followup_results = _to_followup_results(
+                        _a_tool_calls,
+                        _a_results,
+                        _a_resolved,
+                    )
+                    # Tur-akkumulering (agentisk runde) — samme calls + results
+                    # som ToolExchange'en; side-effekt-frit.
+                    _accumulate_turn_blocks(_a_tool_calls, _a_followup_results)
                     _followup_exchanges.append(
                         _vf.ToolExchange(
                             text=_exchange_text(),
                             tool_calls=list(_a_tool_calls),
                             reasoning_content=_a_round_reasoning,
-                            results=_to_followup_results(
-                                _a_tool_calls,
-                                _a_results,
-                                _a_resolved,
-                            ),
+                            results=_a_followup_results,
                         )
                     )
                     try:
@@ -4307,6 +4351,11 @@ async def _stream_visible_run(
                     _persist_session_assistant_message(
                         run, followup_text,
                         reasoning_content=_persist_reasoning,
+                        blocks=_build_turn_blocks(
+                            text=followup_text,
+                            tool_calls=_turn_tool_calls,
+                            tool_results=_turn_tool_results,
+                        ) or None,
                     )
                 except Exception as _persist_exc:
                     # H5: svaret er vist live, men gemmes ikke → væk ved reload.
@@ -4965,6 +5014,11 @@ async def _stream_visible_run(
                 _persist_session_assistant_message(
                     run, visible_output_text,
                     reasoning_content=str(locals().get("_persist_reasoning", "") or ""),
+                    blocks=_build_turn_blocks(
+                        text=visible_output_text,
+                        tool_calls=_turn_tool_calls,
+                        tool_results=_turn_tool_results,
+                    ) or None,
                 )
             except Exception as _persist_exc2:
                 # H5: svaret er vist live, men gemmes ikke → væk ved reload.

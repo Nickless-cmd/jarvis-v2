@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12108 functions/methods, 47% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12112 functions/methods, 47% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -43,10 +43,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12108 functions/
 - [`core.services.15`](core.services.15.md) — `proactivity_bridge` … `reflection_to_plan`
 - [`core.services.16`](core.services.16.md) — `reflective_critic_tracking` … `runtime_self_model_identity`
 - [`core.services.17`](core.services.17.md) — `runtime_self_model_state` … `sensory_archive`
-- [`core.services.18`](core.services.18.md) — `sensory_perception_bridge` … `subagent_ecology`
-- [`core.services.19`](core.services.19.md) — `subjective_time` … `tool_result_aging`
-- [`core.services.20`](core.services.20.md) — `tool_result_store` … `visible_model_types`
-- [`core.services.21`](core.services.21.md) — `visible_runs` … `world_model_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `sensory_perception_bridge` … `subagent_digest`
+- [`core.services.19`](core.services.19.md) — `subagent_ecology` … `tool_pattern_miner`
+- [`core.services.20`](core.services.20.md) — `tool_result_aging` … `visible_model_sse`
+- [`core.services.21`](core.services.21.md) — `visible_model_types` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

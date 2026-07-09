@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 5773/12112 functions/methods documented (47%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 5775/12114 functions/methods documented (47%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 5773/12112 functions/methods documented (47%). The list b
 | `core.memory` | 31 | 105 | 29% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 546 | 1013 | 53% |
-| `core.services` | 3746 | 8369 | 44% |
+| `core.services` | 3748 | 8371 | 44% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -562,8 +562,8 @@ Generated from source. 5773/12112 functions/methods documented (47%). The list b
 - `core/services/ambient_sound_daemon.py` :: `build_ambient_sound_surface` (L318)
 - `core/services/anthropic_identity.py` :: `invalidate_cache` (L62)
 - `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.begin_message` (L38)
-- `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.end_message` (L116)
-- `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.ping` (L128)
+- `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.end_message` (L137)
+- `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.ping` (L149)
 - `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.text_delta` (L78)
 - `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.tool_use_input_delta` (L107)
 - `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.tool_use_start` (L90)
@@ -1698,27 +1698,27 @@ Generated from source. 5773/12112 functions/methods documented (47%). The list b
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
 - `core/services/visible_model_prompt.py` :: `visible_session_continuity_summary` (L346)
-- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L298)
-- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L304)
-- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L301)
-- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L311)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L5903)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L5928)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6128)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6137)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6124)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L5899)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6037)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6089)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6006)
-- `core/services/visible_runs.py` :: `get_visible_work` (L5947)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L5979)
-- `core/services/visible_runs.py` :: `register_visible_run` (L5869)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6147)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L5914)
-- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L316)
-- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L98)
-- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L147)
+- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L334)
+- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L340)
+- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L337)
+- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L347)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L5993)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6018)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6218)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6227)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6214)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L5989)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6127)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6179)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6096)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6037)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6069)
+- `core/services/visible_runs.py` :: `register_visible_run` (L5959)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6237)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6004)
+- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L333)
+- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
+- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)

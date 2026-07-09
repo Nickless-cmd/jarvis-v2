@@ -16,9 +16,10 @@ _Anthropic Messages API SSE state machine._
 | method | `AnthropicSSEEmitter.text_delta` | `(self, text)` | — | [src](../../../core/services/anthropic_sse_emitter.py#L78) |
 | method | `AnthropicSSEEmitter.tool_use_start` | `(self, tool_call_id, name)` | — | [src](../../../core/services/anthropic_sse_emitter.py#L90) |
 | method | `AnthropicSSEEmitter.tool_use_input_delta` | `(self, partial_json)` | — | [src](../../../core/services/anthropic_sse_emitter.py#L107) |
-| method | `AnthropicSSEEmitter.end_message` | `(self, *, stop_reason, output_tokens=…)` | — | [src](../../../core/services/anthropic_sse_emitter.py#L116) |
-| method | `AnthropicSSEEmitter.ping` | `(self)` | — | [src](../../../core/services/anthropic_sse_emitter.py#L128) |
-| method | `AnthropicSSEEmitter.error` | `(self, message)` | Emit a graceful error: close any open block, emit error stop. | [src](../../../core/services/anthropic_sse_emitter.py#L131) |
+| method | `AnthropicSSEEmitter.tool_result_block` | `(self, *, tool_use_id, status, content, is_error=…)` | Emit et første-klasses tool_result som content-blok (kanonisk wire-form). | [src](../../../core/services/anthropic_sse_emitter.py#L116) |
+| method | `AnthropicSSEEmitter.end_message` | `(self, *, stop_reason, output_tokens=…)` | — | [src](../../../core/services/anthropic_sse_emitter.py#L137) |
+| method | `AnthropicSSEEmitter.ping` | `(self)` | — | [src](../../../core/services/anthropic_sse_emitter.py#L149) |
+| method | `AnthropicSSEEmitter.error` | `(self, message)` | Emit a graceful error: close any open block, emit error stop. | [src](../../../core/services/anthropic_sse_emitter.py#L152) |
 
 ## `core/services/anthropic_translator.py`
 _Translate between Anthropic Messages API format and Ollama /api/chat format._

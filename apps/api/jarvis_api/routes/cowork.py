@@ -214,10 +214,10 @@ async def cowork_ui_panel_pending() -> dict:
 
 @router.post("/ui-panel/{request_id}/ack")
 async def cowork_ui_panel_ack(request_id: str) -> dict:
-    """Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack i to_thread.
+    """Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack_panel i to_thread.
     Returnerer {"status": "ok"|"unknown", "request_id": ...}."""
-    from core.services.ui_panel_store import ack
-    ok = await asyncio.to_thread(ack, request_id)
+    from core.services.ui_panel_store import ack_panel
+    ok = await asyncio.to_thread(ack_panel, request_id)
     return {"status": "ok" if ok else "unknown", "request_id": request_id}
 
 

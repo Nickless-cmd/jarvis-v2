@@ -1231,6 +1231,21 @@ async def _stream_visible_run(
     _turn_tool_calls: list[dict] = []
     _turn_tool_results: list[dict] = []
 
+    def _coerce_tool_input(raw: object) -> dict:
+        """Normalisér tool-input til et DICT. OpenAI-stil tool_calls bærer
+        ``function.arguments`` som en JSON-STRENG — den skal parses, ellers
+        gemmer content_json en rå streng som klienten renderer garbled (og som
+        er en dobbelt-sandhed mod resten der er dicts). Aldrig kast."""
+        if isinstance(raw, dict):
+            return raw
+        if isinstance(raw, str) and raw.strip():
+            try:
+                parsed = json.loads(raw)
+                return parsed if isinstance(parsed, dict) else {}
+            except Exception:
+                return {}
+        return {}
+
     def _accumulate_turn_blocks(tool_calls: list, results: list) -> None:
         try:
             for _tc in (tool_calls or []):
@@ -1242,10 +1257,10 @@ async def _stream_visible_run(
                         or (_tc.get("name") if isinstance(_tc, dict) else None)
                         or "tool"
                     ),
-                    "input": (
+                    "input": _coerce_tool_input(
                         _fn.get("arguments")
-                        or (_tc.get("input") if isinstance(_tc, dict) else None)
-                        or {}
+                        if _fn.get("arguments") is not None
+                        else (_tc.get("input") if isinstance(_tc, dict) else None)
                     ),
                 })
             for _r in (results or []):

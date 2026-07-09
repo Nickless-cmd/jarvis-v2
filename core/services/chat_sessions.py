@@ -331,6 +331,7 @@ def append_chat_message(
     user_id: str | None = None,
     workspace_name: str | None = None,
     reasoning_content: str = "",
+    content_json: str | None = None,
 ) -> dict[str, object]:
     normalized_session = (session_id or "").strip()
     if not normalized_session:
@@ -423,11 +424,12 @@ def append_chat_message(
             """
             INSERT INTO chat_messages (message_id, session_id, role, content,
                                         user_id, workspace_name,
-                                        reasoning_content, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                        reasoning_content, content_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (message_id, normalized_session, normalized_role, normalized_content,
-             _user_id, _workspace_name, str(reasoning_content or ""), timestamp),
+             _user_id, _workspace_name, str(reasoning_content or ""),
+             content_json, timestamp),
         )
 
         next_title = str(exists["title"])
@@ -448,6 +450,7 @@ def append_chat_message(
         "role": normalized_role,
         "content": normalized_content,
         "reasoning_content": str(reasoning_content or ""),
+        "content_json": content_json,
         "ts": _time_label(timestamp),
         "created_at": timestamp,
     }

@@ -49,7 +49,10 @@ content_json ─► foldToolResults(blocks) ─► groupReadSearch(blocks) ─�
 - Rent deterministisk, fuldt enhedstestbar.
 
 ### 5.2 `READ_SEARCH_TOOLS`-sæt
-Konstant liste (kategorisering). Konservativ default (§4). Ukendt tool-navn → behandles som IKKE-foldbart (fail-safe: vis hellere enkeltvis end skjul noget forkert).
+Konstant allowlist (kategorisering **udelukkende via tool-navn** — INGEN per-argument-inspektion,
+fx ikke "er dette bash-kald muterende?"). Konservativ default (§4). `bash` og andre ikke-listede
+navne → automatisk IKKE-foldbare (fail-safe: vis hellere enkeltvis end skjul noget forkert). Den
+tidligere "bash-mutationer aldrig foldbare"-note er dermed redundant — bash er slet ikke på listen.
 
 ### 5.3 `ToolGroupCard`-komponent
 `apps/jarvis-desk/src/components/.../ToolGroupCard.tsx`:

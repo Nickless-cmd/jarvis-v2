@@ -1,127 +1,122 @@
 # Session-persistence: runs + sessioner overlever container-genstart
 
-**Dato:** 2026-07-09
-**Status:** Godkendt design → (spec 1 af 4 fra leaked-Claude-Code-læringer)
+**Dato:** 2026-07-09 (revideret efter self-review: bygger på eksisterende `in_flight_runs`, ikke ny tabel)
+**Status:** Godkendt design (spec 1 af 4 fra leaked-Claude-Code-læringer)
 **Ejer:** Bjørn / Claude
 **Kilde:** Jarvis' analyse af leaked Claude Code (server-session-index, detached→stopped-livscyklus)
 
 ---
 
-## 1. Problem
+## 0. Self-review-rettelse (VIGTIG)
 
-Chat-sessioner + beskeder persisteres allerede i DB og overlever genstart. Men fire ting går tabt når containeren (jarvis-api / jarvis-runtime) genstarter:
+Første udkast foreslog en ny `run_registry`-tabel. Self-review afslørede at
+`core/services/in_flight_runs.py` **allerede** er en disk-backed, restart-overlevende
+run-tracker (keyet på run_id, `running`/`interrupted`-states, `mark_started`/`mark_tool`/
+`mark_completed`/`mark_interrupted`/`interrupted_for_session`), og at
+`interruption_prompt_section` **allerede genoptager sessionen** via prompt'en ("Du blev
+afbrudt midt i: …" + checkpoint fra `agentic_checkpoints` + working-conclusion + resume-intent).
+Denne spec bygger derfor **oven på in_flight_runs** — ingen ny parallel sandhed (CLAUDE.md
+"no dual truth").
 
-1. **In-flight runs** — et run der streamer NÅR containeren genstarter dør midt i. Brugeren ser en halv besked; svaret tabes.
-2. **Aktiv-session + live kontekst** — hvilken session var aktiv, cognitive/arousal-state, "den igangværende samtale-kontekst" nulstilles.
-3. **Autonom kontinuitet** — heartbeat/autonome runs (drøm/arbejde/råd) taber deres tråd; Jarvis starter forfra i stedet for at samle op.
-4. **Run-registry / kilde-af-sandhed** — der findes intet in-memory-overlevende register over "hvad kørte da vi gik ned" (Claude Codes `server-sessions.json` med `starting→running→detached→stopping→stopped`).
+## 1. Problem (revideret)
 
-**Referencemodel (Claude Code):** en persisteret session-index med livscyklus-states; ved genstart genoptages SESSIONEN (kontekst), ikke selve token-strømmen.
+Chat-historik persisteres i DB. `in_flight_runs` genoptager allerede en afbrudt session NÅR
+et run bliver markeret `interrupted`. Men fire huller står tilbage:
 
-## 2. Besluttede valg (brainstorm)
+1. **Hård crash efterlader `running`-zombie.** Ved container-genstart kører run'ets `finally`
+   (som kalder `mark_interrupted`/`mark_completed`) ALDRIG → record'en står `status=running`.
+   `interrupted_for_session` returnerer kun `interrupted`-records (in_flight_runs.py:142), så
+   zombien surfacer ALDRIG — og næste turs `mark_started` **dropper** den (in_flight_runs.py:76-78).
+   Nettoresultat: crash-afbrudte runs forsvinder tavst i stedet for at blive genoptaget.
+2. **Autonome runs trackes ikke.** `mark_started` kaldes for visible runs; autonome/heartbeat-runs
+   (drøm/arbejde/råd) registreres ikke → deres tråd tabes helt ved genstart.
+3. **Aktiv-session + live kontekst** (hvilken session var aktiv, cognitive-state) har ingen
+   restore. `central_continuity_healer` bærer *selv-dimensions*-fidelity, IKKE en aktiv-session-pointer.
+4. **Ingen observabilitet** over reconcile-hændelser (hvor mange zombier ryddet, resume-rate).
 
-- **Fuld bredde:** alle fire tab adresseres.
-- **Fundament:** et persisteret run/session-registry er kilde-af-sandhed; de tre andre læser fra det.
-- **In-flight resume-semantik:** **pæn afslutning + genoptag SESSIONEN** — ikke ægte token-resume, ikke auto-genkør-forfra. Det døde run markeres `interrupted`, det streamede-indtil-nu persisteres ærligt (hvis et checkpoint findes), og sessionen er genoptagelig fordi konteksten ligger i DB.
-- **Partiel-recovery:** byg på eksisterende `agentic_checkpoints` hvor den findes; hvor den ikke gør, accepter "kun `interrupted`-markør" (ingen partiel tekst) frem for et nyt tungt checkpoint-lag.
+## 2. Besluttede valg (brainstorm + self-review)
+
+- **Byg på `in_flight_runs`** — udvid det, byg ikke en ny tabel.
+- **In-flight resume-semantik:** pæn afslutning + genoptag SESSIONEN (ikke token-resume). Allerede
+  implementeret via `interruption_prompt_section`; vi sikrer bare at crash-zombier faktisk NÅR
+  `interrupted`-tilstanden så mekanismen udløses.
+- **Partiel-recovery:** genbrug `agentic_checkpoints` (allerede integreret i `interruption_prompt_section`).
 - **Governance:** shadow-først, kill-switch, default OFF indtil verificeret.
 
 ## 3. Ikke-mål (YAGNI)
 
-- Ægte token-for-token generering-resume (provider-afhængigt, reasoning-modeller bryder).
-- Auto-genkør-hele-run'et-forfra (spild + dublet-tool-effekter + loop-risiko).
-- Et nyt parallelt checkpoint-system (genbrug `agentic_checkpoints`).
-- Migration af eksisterende data (registry er additivt; tomt indtil runs registrerer).
+- Ingen ny `run_registry`-tabel/-modul (undgå dobbelt-sandhed med `in_flight_runs`).
+- Ingen ægte token-resume; ingen auto-genkør-forfra.
+- Ingen nyt checkpoint-system (genbrug `agentic_checkpoints`).
 
 ## 4. Arkitektur
 
 ```
-run start ─► run_registry (running) ─► heartbeat_at opdateres ─► stopped (ren afslutning)
+run start ─► in_flight_runs.mark_started (running) ─► mark_tool ─► mark_completed (ryddet)
                      │
-   container-genstart ▼ (efterlader running/starting forældreløse)
-             boot-reconciler ─► for hver forældreløs:
-                 · markér interrupted
-                 · persistér partiel tekst (fra agentic_checkpoints hvis den findes)
-                 · fyr central-nerve session_persistence
-                 · session forbliver genoptagelig (kontekst i DB)
-             + restore aktiv-session-pointer + autonom-tråd re-kø
+   container-crash    ▼ (finally kører ALDRIG → record står 'running' = zombie)
+   næste opstart ─► boot_reconciler:
+        for hver 'running'-record ældre end stale_after_s:
+            · in_flight_runs.mark_interrupted(reason="container-genstart")
+            · nerve session_persistence
+        → interruption_prompt_section surfacer den næste tur (eksisterende sti)
+   + autonome runs kalder også mark_started/mark_completed
+   + aktiv-session-pointer persisteres + restores
 ```
 
 ## 5. Komponenter
 
-### 5.1 `run_registry`-tabel
-Ny tabel (idempotent ALTER-mønster som `_ensure_chat_messages_*`):
-```sql
-CREATE TABLE IF NOT EXISTS run_registry (
-    run_id TEXT PRIMARY KEY,
-    session_id TEXT,
-    kind TEXT NOT NULL,          -- visible | autonomous | heartbeat
-    state TEXT NOT NULL,         -- starting|running|detached|stopping|stopped|interrupted
-    origin TEXT NOT NULL DEFAULT '',
-    provider TEXT NOT NULL DEFAULT '',
-    model TEXT NOT NULL DEFAULT '',
-    started_at TEXT NOT NULL,
-    heartbeat_at TEXT NOT NULL,
-    streamed_chars INTEGER NOT NULL DEFAULT 0
-)
-```
-Modul `core/services/run_registry.py`: `register_run(...)`, `mark_state(run_id, state)`, `touch(run_id, streamed_chars)`, `list_orphaned(stale_after_s)`, `stop(run_id)`. Ren DB, ét-ansvar, enhedstestbar.
+### 5.1 Udvid `in_flight_runs` (minimal)
+- Tilføj valgfri felter i `mark_started`: `kind` (visible|autonomous|heartbeat, default visible),
+  `provider`, `model` — additivt, bagudkompatibelt.
+- Tilføj `list_running_orphans(stale_after_s)` → records med `status=='running'` OG `started_at`
+  ældre end tærsklen. (Zombie-detektion; distinkt fra `interrupted_for_session`.)
+- Bevar al eksisterende adfærd uændret.
 
-### 5.2 Registrering + liveness i `visible_runs`
-- Ved run-start: `register_run(run_id, session_id, kind, ...)` (state=`running`).
-- Undervejs: `touch(run_id, streamed_chars)` billigt (throttlet, fx hvert 2s / hvert checkpoint) — dette er ogsÅ liveness-signalet.
-- Ved ren afslutning/cancel/fejl: `mark_state(run_id, 'stopped')`.
-- Alt fail-open: en registry-fejl må ALDRIG bryde et run (try/except-indkapslet, som blok-akkumulatoren).
+### 5.2 Boot-reconciler
+`core/services/session_boot_reconciler.py::reconcile_on_boot()` kaldt ved api- OG runtime-opstart
+(efter state-store er klar, før trafik):
+1. `list_running_orphans(stale_after_s)`.
+2. For hver: `in_flight_runs.mark_interrupted(run_id, reason="afbrudt af container-genstart")` →
+   record'en surfacer nu via den EKSISTERENDE `interruption_prompt_section` næste tur.
+3. Fyr central-nerve `session_persistence` (cluster runtime): antal zombier reconcileret, kind.
+4. Kill-switch OFF → observe-only (tæl hvad DER VILLE ske, skriv ikke). ON → udfør `mark_interrupted`.
+5. Idempotent: kun `running → interrupted`; kørt dobbelt (api+runtime) → anden kørsel finder intet nyt.
 
-### 5.3 Boot-reconciler
-`core/services/session_boot_reconciler.py::reconcile_on_boot()` kaldt ved api- OG runtime-opstart (efter DB-ensure, før trafik). Skridt:
-1. `list_orphaned(stale_after_s)` — runs i `running`/`starting` hvis `heartbeat_at` er ældre end tærsklen (dvs. ikke ryddet ordentligt = crash/genstart).
-2. For hver: hent partiel tekst fra `agentic_checkpoints` (hvis den findes) → persistér som assistant-besked med ærlig "⚠ Jeg blev afbrudt af en genstart her" (eller bare markér uden tekst). Genbrug `_persist_session_assistant_message`-stien.
-3. `mark_state(run_id, 'interrupted')`.
-4. Fyr central-nerve `session_persistence` (cluster runtime) med årsag + kind.
-5. Kill-switch OFF → observe-only (registrér hvad DER VILLE ske, ingen skrivning). ON → udfør.
+### 5.3 Autonom tracking
+- Autonome/heartbeat-run-entry-points kalder `in_flight_runs.mark_started(kind='autonomous', ...)`
+  + `mark_completed` i deres finally. Så reconcileren fanger også afbrudte autonome tråde.
+- Verificér i plan-fasen hvor autonome runs starter (heartbeat_runtime / autonomous run-starter).
 
-### 5.4 Aktiv-session + kontekst-restore
-- Persistér "sidste aktive session"-pointer + cognitive/live-kontekst-snapshot ved session-skift (genbrug eksisterende cognitive-state-persistering hvis den findes; ellers en lille runtime-state-nøgle).
-- Ved boot: restore pointer så Jarvis' "hvor var jeg"-selv er intakt. Byg på eksisterende continuity_healer ([[project_jarvis_wishlist]] #1) hvis den allerede bærer dette — undgå dobbelt-sandhed.
+### 5.4 Aktiv-session + kontekst-restore (NY pointer — findes ikke i dag)
+- Persistér "sidste aktive session"-pointer + et let cognitive/live-kontekst-snapshot ved
+  session-skift (ny lille `state_store`-nøgle `active_session`; continuity_healer bærer det IKKE).
+- Ved boot: restore pointer så Jarvis' "hvor var jeg"-selv er intakt. Hold det som ren state-store
+  (ikke ny DB-tabel).
 
-### 5.5 Autonom kontinuitet
-- Autonome runs registreres med `kind='autonomous'` + `origin`.
-- Reconcileren: forældreløse autonome runs → re-kø den autonome tråd (via eksisterende initiative/heartbeat-kø) i stedet for at tabe den. Idempotent (ingen dobbelt-spawn).
+### 5.5 Observabilitet + governance
+- Central-nerve `session_persistence` (zombier reconcileret, resume-rate). `/central/session-persistence` + `jc`.
+- Kill-switch `session_persistence_enabled` (runtime-state, default OFF → shadow). Flip ON efter verifikation.
 
-### 5.6 Observabilitet + governance
-- Central-nerve `session_persistence`: reconcileret-antal, resume-events, forældreløs-alder. `/central/session-persistence` + `jc`.
-- Kill-switch `session_persistence_enabled` (runtime-state, default OFF → shadow). Flip ON efter shadow-verifikation.
+## 6. Faser (til plan)
 
-## 6. Blast-radius & afbødning
-
-| Risiko | Afbødning |
-|--------|-----------|
-| Registry-skrivning i run-hot-path | Throttlet upsert, try/except fail-open, aldrig bryd run |
-| Reconciler kører dobbelt (api+runtime) | Idempotent: `interrupted`-transition kun fra `running/starting`; row-lås/CAS |
-| Falsk-forældreløs (langt legitimt run) | `stale_after_s` > længste realistiske run + heartbeat holder live runs friske |
-| Partiel tekst findes ikke | Degradér til ren `interrupted`-markør; session stadig genoptagelig |
-| Dobbelt-sandhed vs continuity_healer/cognitive-state | Genbrug eksisterende; registry ejer KUN run-livscyklus |
+- **Plan A (kerne):** §5.1 udvidelse + §5.2 boot-reconciler + §5.5 nerve/kill-switch. Leverer det
+  største hul (crash-zombier genoptages). Lav risiko (bygger på testet modul).
+- **Plan B (opfølgning):** §5.3 autonom tracking + §5.4 aktiv-session-pointer. Rører separate
+  subsystemer; egen plan hvis Plan A skal ud hurtigt.
 
 ## 7. Test
 
-- `run_registry` (unit): register→touch→mark→stop; `list_orphaned` respekterer `stale_after_s`.
-- Reconciler (unit): forældreløs `running` → `interrupted` + nerve; frisk run urørt; OFF=observe-only.
-- Idempotens: reconcile ×2 → én transition, ingen dublet-besked/-respawn.
-- Hot-path: registry-fejl bryder ikke run (fail-open test).
-- Egress: uændret (ren intern DB-state).
+- `list_running_orphans` (unit): returnerer kun `running` ældre end tærskel; ignorerer `interrupted`/friske.
+- Reconciler (unit): zombie `running` → `interrupted` + nerve; frisk `running` urørt; OFF=observe-only; idempotent ×2.
+- Ingen regression i eksisterende `in_flight_runs`-tests (mark_started/interrupted/interrupted_for_session).
+- Aktiv-session-pointer round-trip (unit).
+- Egress: uændret.
 
-## 8. Faser
-
-1. `run_registry`-modul + tabel (isoleret, testbar).
-2. Registrering + liveness i visible_runs (hot-path, Claude inline).
-3. Boot-reconciler + nerve + kill-switch (shadow).
-4. Aktiv-session/kontekst-restore (byg på continuity_healer).
-5. Autonom kontinuitet re-kø.
-6. Shadow-verifikation → flip ON.
-
-## 9. Åbne detaljer til plan-fasen
-- Præcis `agentic_checkpoints`-API for partiel-tekst-hentning (verificér i Task 1).
-- Om continuity_healer allerede bærer aktiv-session/kontekst (undgå dobbelt).
-- Boot-hook-punktet i api+runtime-opstart (hvor DB-ensure allerede kaldes).
-- `stale_after_s`-værdi (start konservativt, fx 2× længste observerede run).
+## 8. Grounding-forbehold til plan-fasen
+- `agentic_checkpoints` partiel-tekst-getter er `latest_for_session(session_id)` (per-SESSION),
+  ikke per-run — reconcileren behøver den ikke direkte (den kalder bare `mark_interrupted`; prompt-
+  stien henter checkpoint per session). Bekræft.
+- Hvor autonome runs starter (til §5.3 mark_started-wiring).
+- Boot-hook-punktet i api+runtime-opstart.
+- `stale_after_s` konservativ (fx > `_MIN_AGE_TO_SURFACE_SECONDS`=90s og > længste realistiske run).

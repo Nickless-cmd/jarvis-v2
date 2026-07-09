@@ -16,11 +16,22 @@
 
 Persistér tool/sub-agent-progress som et **træ** i `content_json`, så det overlever reload — inkl. nested sub-agent-forløb via `parent_tool_use_id`.
 
-## 3. Besluttede valg (brainstorm)
+## 3. Besluttede valg (brainstorm + self-review-rettelse)
 
-- **Fuldt træ m. sub-agenter** (`parent_tool_use_id`), ikke bare seneste working-step.
-- **Settlet snapshot, ikke deltas:** persistér ét progress-element pr. tool/sub-agent (hvad kørte, nested under hvad, slut-status + sidste meningsfulde besked). Live-delta-narration forbliver efemer → content_json vokser pr. tool/agent, ikke pr. token.
-- **Genbrug:** samme flag (`structured_content_v2`), samme persist-sti (content_json), samme render-pipeline (fold→group). Ingen ny wire-kanal, ingen ny tabel.
+**VIGTIG self-review-rettelse:** `parent_tool_use_id` findes INTET sted i koden i dag (0 hits),
+og `working_step`-SSE-payload bærer INGEN tool-id (kun `action`/`detail`/`step`/`status`/`run_id`).
+Det eneste eksisterende parent-link er `note_agent_spawn(..., parent=agent_id)` — men `parent`
+er et **agent_id**, ikke et `tool_use_id`, og det ryger til central_trace, ikke ind i turen. Derfor:
+
+- **v1 ship FLADT** progress pr. tool (ingen tree) — det er den byggbare, værdifulde kerne:
+  progress overlever reload. `tool_use_id` hentes fra den EKSISTERENDE `tool_result`-sti (som bærer
+  det), IKKE fra working_step.
+- **Træet (parent_tool_use_id) er eksplicit OPFØLGNING** — kræver ny plumbing der linker en
+  spawnet sub-agent tilbage til det spawnende `tool_use`. Den plumbing findes ikke; bygges separat.
+- **Settlet snapshot, ikke deltas:** ét progress-element pr. tool (slut-status + sidste besked).
+  content_json vokser pr. tool, ikke pr. token.
+- **Genbrug:** samme flag (`structured_content_v2`), samme persist-sti (content_json), samme
+  render-pipeline. Ingen ny wire-kanal, ingen ny tabel.
 
 ## 4. Ikke-mål (YAGNI)
 
@@ -32,20 +43,30 @@ Persistér tool/sub-agent-progress som et **træ** i `content_json`, så det ove
 
 Ny blok-type i content_json (render + persist):
 ```jsonc
-{"type": "progress", "tool_use_id": "toolu_..", "parent_tool_use_id": "toolu_..|null",
+{"type": "progress", "tool_use_id": "toolu_..", "parent_tool_use_id": null,
  "message": "Analyserede billede", "status": "running|done|error"}
 ```
-- `parent_tool_use_id` linker en sub-agents progress til det `tool_use` der spawnede den → træ.
+- **v1:** `parent_tool_use_id` er altid `null` (fladt) — feltet er med i skemaet så træet kan
+  tilføjes uden format-brud senere.
 - `content_blocks_to_text` udelader progress-blokke (samme regel som tool_use/tool_result).
 
 ## 6. Komponenter
 
-### 6.1 Server — capture i tur-akkumulatoren
+### 6.1 Server — capture i tur-akkumulatoren (FLADT)
 Udvid tur-akkumulatoren ([project_structured_content_blocks], `_build_turn_blocks` + `_accumulate_turn_blocks`) til også at fange progress:
-- Kilde: eksisterende `working_step`-system_events (bærer `tool_id`/`detail`) + sub-agent-spawn-events (bærer parent-relation).
-- Ved run-slut: byg ét settlet progress-element pr. tool/sub-agent med slut-status + sidste besked + `parent_tool_use_id`.
+- **Kilde:** `tool_use_id` + status + sidste working-besked hentes fra den EKSISTERENDE
+  tool_result-sti (som allerede bærer `tool_use_id` + status), suppleret med seneste
+  `working_step.detail` som besked-tekst (working_step bærer `run_id`/`action`/`detail`/`step`/
+  `status`, IKKE tool-id — så det kan kun give besked-teksten, ikke id-linket).
+- Ved run-slut: byg ét settlet progress-element pr. tool med slut-status + sidste besked;
+  `parent_tool_use_id=null` (v1 fladt).
 - Emit som progress-content-blok (flag-gated via `structured_content_v2`).
 - Fail-open (try/except, aldrig bryd run — samme mønster som blok-akkumulatoren).
+
+> **Bemærk overlap:** en `tool_use`-blok bærer allerede navn+status+result. En flad progress-blok
+> tilføjer primært den mellemliggende working-besked ("Analyserede billede…"). Plan-fasen skal
+> vurdere om v1-værdien retfærdiggør en separat blok, eller om working-beskeden hellere bør hænges
+> på selve tool_use-blokken (et felt `progress_note`) — sidstnævnte er måske enklere. Afgøres i plan.
 
 ### 6.2 Persist
 Progress-blokke indgår i `content_json`-array'et ved run-slut (allerede mekanismen — ingen ny persist-kode).

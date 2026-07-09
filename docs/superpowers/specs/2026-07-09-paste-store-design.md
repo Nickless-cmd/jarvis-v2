@@ -42,6 +42,10 @@ def parse_paste_reference(content: str) -> dict | None     # {paste_id, line_cou
 ```
 Fil-baseret i `PASTE_STORE_DIR` (som `TOOL_RESULTS_DIR`), atomisk write, best-effort read. `save_paste` hasher teksten → deterministisk id → idempotent (samme paste = samme id, ingen dublet).
 
+> **Bevidst afvigelse fra mønstret:** `tool_result_store.save_tool_result` bruger `uuid4().hex`
+> (ikke-deterministisk). `save_paste` skal **IKKE** kopiere det — den skal hashe teksten
+> (fx sha256[:16]) for idempotens/skipSet-ækvivalent. Kopier fil-I/O-mønstret, men id-genereringen divergerer.
+
 ### 5.2 Desk-composer paste-hook
 - `apps/jarvis-desk/src/.../Composer`: `onPaste` — hvis pasted tekst > tærskel, hold teksten lokalt, indsæt en **reference-chip** i input-feltet i stedet for råteksten (viser "📋 Indsat tekst +N linjer", fjernelig).
 - Ved send: POST pasten til `/paste` (server `save_paste`) → få `paste_id` → send beskeden med `[paste:<id> +N linjer]`-referencen indlejret.

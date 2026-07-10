@@ -62,3 +62,11 @@
 
 ## Anbefaling
 Af C er **#1 state-flag-systemet** mest værd (Jarvis' egen konklusion, konkret, lavthængende). **#5 (hærd operator-broen med CHICAGO-guards)** er den bedste "lær-af-CHICAGO"-gevinst uden at prøve at portere macOS-computer-use til en headless container.
+
+---
+
+## Tillæg (eftermiddag) — korrektioner + tool-fidelity
+
+**CHICAGO / CDCC er ÆGTE (jeg tog fejl om konfabulation).** Verificeret i den lækkede kode: `CHICAGO_MCP`-flag = Computer Use som in-process MCP-server (`computer-use`, tools `mcp__computer-use__*`, native Swift `@ant/computer-use-mcp`). Guards: macOS-only · interaktiv · ant/GrowthBook (`tengu_malort_pedway`) · frontmost-gate (`__CFBundleIdentifier`) · app-allowlist · SCContentFilter-screenshots · `request_access` pr. session. `ccdn`/`cdcc` findes IKKE i v2.1.88-snapshot (nyere build); **CDCC = C**hicago **D**esktop **C**ompute-use **C**ontrol (Bjørns udfoldning). macOS-desktop-only → ikke portérbar til Jarvis' headless container; operator-broen er hans analog.
+
+**TOOL-FIDELITY = den vigtigste leak-lære.** Claude Codes styrke: *strikse resultat-kontrakter* — et tool-resultat ER beviset for at handlingen skete (in-process, synkront, intet gab). Jarvis' outward-tools var tit *fire-and-forget* (optimistisk "ok/dispatched" over async SSE/poll/bro uden kvittering) → "skyder i blinde". Audit (439 tools): hans MEST-brugte effekt-tools (bash 4782/operator_bash 5166/write_file/edit_file/remember/verify) returnerer ALLEREDE ægte bekræftede resultater (live-bevist: bash=ægte exit_code, write_file=bytes+fil-eksisterer, operator_bash=ærlig `bridge_not_connected`). De blinde er en LILLE perifer gruppe. FIKSET: open_ui_panel (venter på desk-ack, `get_request_status`→'opened'), request_app_action/codemode (ærlig `pending` ikke falsk `ok`). REST (frisk pass): record_sensory_memory, send_push_notification (returnerer `True` ubetinget), comfyui_workflow (poll /history), dispatch_to_app (app_dispatch_store.ack findes ubrugt), queue_followup. LÆRE: scriptet heuristik upålidelig (enforcement-wrappere skjuler ægte impl → falsk UNCLEAR); læs den ægte handler. Prioritér efter FAKTISK brug (Central tool-usage), ikke alfabetisk.

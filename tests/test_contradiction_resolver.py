@@ -38,3 +38,43 @@ def test_classify_tier_high_priority_escalates():
 def test_classify_tier_low_confidence_escalates():
     # Svag overlap → for usikkert til auto → escalate (konservativt).
     assert classify_tier(_finding(overlap_tokens=["svar"])) == "escalate"
+
+from core.runtime.db import connect
+from core.services import contradiction_resolver as cr
+
+def _seed_active_decision(decision_id="d1", directive="Svar altid kort", priority=3):
+    # behavioral_decisions oprettes lazily af db_decisions (ikke af init_db) → ensure den her.
+    from core.runtime.db_decisions import _ensure_tables
+    with connect() as c:
+        _ensure_tables(c)
+        c.execute(
+            "INSERT INTO behavioral_decisions (decision_id, directive, trigger_cue, priority, status, created_at, updated_at)"
+            " VALUES (?, ?, ?, ?, 'active', ?, ?)",
+            (decision_id, directive, "cue", priority, "2026-07-01T00:00:00+00:00", "2026-07-01T00:00:00+00:00"),
+        )
+        c.commit()
+
+def _decision_status(decision_id):
+    with connect() as c:
+        row = c.execute("SELECT status FROM behavioral_decisions WHERE decision_id=?", (decision_id,)).fetchone()
+    return row["status"] if row else None
+
+def test_apply_supersede_flips_status_and_is_reversible(isolated_runtime):
+    _seed_active_decision("d1")
+    assert cr._apply_supersede("d1", review_id=7, rule="r") is True
+    assert _decision_status("d1") == "superseded"
+    # Reversibel — aldrig slettet.
+    assert cr.revert_supersede("d1") is True
+    assert _decision_status("d1") == "active"
+
+def test_apply_supersede_missing_decision_is_false(isolated_runtime):
+    assert cr._apply_supersede("nope", review_id=1, rule="r") is False
+
+def test_escalate_is_deduped(isolated_runtime, monkeypatch):
+    published = []
+    monkeypatch.setattr(cr.event_bus, "publish", lambda topic, payload: published.append((topic, payload)))
+    f = {"decision_id": "d9", "review_id": 3, "decision_directive": "x", "review_text": "y"}
+    assert cr._write_escalation_proposal(f, rule="r", seen=set()) is True
+    seen = {("d9", 3)}
+    assert cr._write_escalation_proposal(f, rule="r", seen=seen) is False  # allerede foreslaaet
+    assert len([p for p in published if p[0] == "contradiction.resolution_proposed"]) == 1

@@ -8,6 +8,9 @@ from __future__ import annotations
 from typing import Any
 import logging
 
+from core.runtime.db import connect
+from core.eventbus.bus import event_bus  # publish(kind, payload)
+
 logger = logging.getLogger(__name__)
 
 # Noegleord der markerer at en beslutning roerer identitet/self-model/vaerdier →
@@ -55,3 +58,70 @@ def classify_tier(finding: dict[str, Any]) -> str:
     if any(marker in directive for marker in _IDENTITY_MARKERS):
         return "escalate"
     return "auto"
+
+
+def _apply_supersede(decision_id: str, *, review_id: int, rule: str) -> bool:
+    """Marker den tabende decision superseded (status-flip, reversibel, aldrig slettet).
+    Returnerer True hvis en aktiv raekke blev flippet."""
+    did = str(decision_id or "")
+    if not did:
+        return False
+    try:
+        with connect() as c:
+            cur = c.execute(
+                "UPDATE behavioral_decisions SET status='superseded'"
+                " WHERE decision_id=? AND status='active'",
+                (did,),
+            )
+            c.commit()
+            changed = cur.rowcount > 0
+    except Exception as exc:
+        logger.debug("contradiction_resolver: supersede failed: %s", exc)
+        return False
+    if changed:
+        try:
+            event_bus.publish("contradiction.resolved", {
+                "decision_id": did, "review_id": int(review_id or 0),
+                "action": "superseded", "rule": rule,
+            })
+        except Exception:
+            pass
+    return changed
+
+
+def revert_supersede(decision_id: str) -> bool:
+    """Owner-reversal (Central-CLI): superseded → active igen."""
+    did = str(decision_id or "")
+    if not did:
+        return False
+    try:
+        with connect() as c:
+            cur = c.execute(
+                "UPDATE behavioral_decisions SET status='active'"
+                " WHERE decision_id=? AND status='superseded'",
+                (did,),
+            )
+            c.commit()
+            return cur.rowcount > 0
+    except Exception as exc:
+        logger.debug("contradiction_resolver: revert failed: %s", exc)
+        return False
+
+
+def _write_escalation_proposal(finding: dict[str, Any], *, rule: str, seen: set) -> bool:
+    """Escalate-tier: publicer et resolution-FORSLAG (muterer intet). Deduppet pr.
+    (decision_id, review_id) via ``seen`` (bygget fra nylige proposed-events denne tur)."""
+    key = (str(finding.get("decision_id") or ""), int(finding.get("review_id") or 0))
+    if key in seen:
+        return False
+    seen.add(key)
+    try:
+        event_bus.publish("contradiction.resolution_proposed", {
+            "decision_id": key[0], "review_id": key[1],
+            "decision_directive": str(finding.get("decision_directive") or "")[:200],
+            "review_text": str(finding.get("review_text") or "")[:200],
+            "rule": rule,
+        })
+    except Exception:
+        pass
+    return True

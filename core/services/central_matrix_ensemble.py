@@ -99,13 +99,19 @@ def _most_active_character() -> dict[str, Any] | None:
     Twins (gentagelser) > Persephone (systemisk) > Merovingian (challenges) >
     Trainman (drømme). Returnerer None hvis ingen er aktive.
     """
-    # Tjek Smith først — han er altid aktiv hvis score ≥ tærskel
+    # Tjek Smith først — sign-off'en er hans ENESTE prompt-hale-hjem nu (samlet ét sted).
+    # Respektér hans kill-switch (autonomy/agent_smith_voice), og surfacer eskalering
+    # (rung_line: bind/confront/resolved) UANSET score — den er allerede en governance-hændelse.
     try:
-        from core.runtime.db_core import get_runtime_state_value as _grv
-        st = _grv("agent_smith_state", {})
-        if isinstance(st, dict) and float(st.get("score") or 0.0) >= 0.5:
-            line = st.get("line") or "Mr. Anderson... forudsigeligt."
-            return {"label": "[🕴️ Smith]", "line": line}
+        from core.services import central_switches as _cs
+        if _cs.is_enabled("autonomy", "agent_smith_voice"):
+            from core.runtime.db_core import get_runtime_state_value as _grv
+            st = _grv("agent_smith_state", {})
+            if isinstance(st, dict):
+                rung_line = str(st.get("rung_line") or "").strip()
+                if rung_line or float(st.get("score") or 0.0) >= 0.5:
+                    line = rung_line or st.get("line") or "Mr. Anderson... forudsigeligt."
+                    return {"label": "[🕴️ Smith]", "line": line}
     except Exception:
         pass
 

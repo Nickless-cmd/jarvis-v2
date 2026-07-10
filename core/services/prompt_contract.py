@@ -2416,18 +2416,9 @@ def build_visible_chat_prompt_assembly(
     derived_inputs.append("epistemic abstention anchor (user-msg tail)")
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
-    # Agent Smith modstemme (governed, cache-læst) — KUN i den dynamiske hale, aldrig i det stabile
-    # prefix (cache-invariant, jf. visible_continuity/cognitive_state defer-to-tail). Self-safe.
-    try:
-        from core.services.central_agent_smith import agent_smith_prompt_section as _smith_fn
-        _smith = _smith_fn()
-        if _smith:
-            _dyn_tail.append(_smith)
-            derived_inputs.append("agent smith modstemme (tail)")
-    except Exception:
-        pass
-    # Matrix Ensemble — aktive karakter-labels i prompt-halen.
-    # Kører EFTER Agent Smith så karaktererne ikke skygger for governance-modstemmen.
+    # Matrix Ensemble — aktive karakter-labels i prompt-halen. Smith er IKKE her og ikke
+    # et separat blok længere: han er samlet ÉT sted — Matrix Sign-Off nedenfor, som vælger
+    # ham først (via _most_active_character) og bærer hans eskalerings-linje + kill-switch.
     # Fail-safe: ingen import-fejl kan vælte prompt-bygningen.
     try:
         from core.services.central_matrix_ensemble import build_matrix_ensemble_prompt_section as _matrix_fn

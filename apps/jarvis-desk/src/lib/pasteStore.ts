@@ -13,13 +13,13 @@ export const PASTE_LINE_THRESHOLD = 20
 export const PASTE_CHAR_THRESHOLD = 2000
 
 /** Feature-flag: composer-eksternalisering (GUARDRAIL — default OFF indtil verificeret).
- *  Kan tændes via localStorage `jarvis-desk:pasteStoreEnabled` = '1'. */
+ *  Default ON (Bjørn 10. jul). Slå fra via localStorage `jarvis-desk:pasteStoreEnabled` = '0'. */
 export const PASTE_STORE_ENABLED_KEY = 'jarvis-desk:pasteStoreEnabled'
 export function pasteStoreEnabled(): boolean {
   try {
-    return localStorage.getItem(PASTE_STORE_ENABLED_KEY) === '1'
+    return localStorage.getItem(PASTE_STORE_ENABLED_KEY) !== '0'
   } catch {
-    return false
+    return true
   }
 }
 

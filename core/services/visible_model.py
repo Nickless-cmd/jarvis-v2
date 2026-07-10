@@ -412,6 +412,16 @@ def _build_visible_input(
             role = tmsg.get("role", "user")
             content = tmsg.get("content", "")
             if content:
+                # Historik-ekspansion (paste-store): en HISTORISK besked kan bære en
+                # [paste:<id>]-reference (composer-eksternalisering) — ekspandér den til
+                # fuld tekst så modellen ser hvad brugeren pastede (default ON, degradér
+                # ved ukendt id, aldrig kast). Kun bruger-beskeder bærer paste-refs.
+                if role == "user" and "[paste:" in content:
+                    try:
+                        from core.services.paste_store import project_paste_for_model
+                        content = project_paste_for_model(content)
+                    except Exception:
+                        pass
                 items.append({
                     "role": role,
                     "content": [{"type": "input_text", "text": content}],

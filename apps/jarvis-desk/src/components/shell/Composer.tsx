@@ -41,6 +41,28 @@ const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
 // Permission-valget overlever genstart via PermissionContext (Bjørn: "fuld
 // adgang" skal huskes). Provider/model-nøgler kommer fra composerPrefs.
 
+// Besked-historik (pil op/ned genkalder tidligere sendte beskeder, shell-stil).
+// localStorage-persisteret så den overlever reload/genstart. Ældst-først; nyest sidst.
+export const COMPOSER_HISTORY_KEY = 'jarvis-desk:composerHistory'
+const COMPOSER_HISTORY_MAX = 200
+export function loadComposerHistory(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(COMPOSER_HISTORY_KEY) || '[]')
+    return Array.isArray(v) ? (v as string[]) : []
+  } catch { return [] }
+}
+export function pushComposerHistory(text: string): void {
+  const t = (text || '').trim()
+  if (!t) return
+  try {
+    const h = loadComposerHistory()
+    if (h[h.length - 1] === t) return  // ingen dublet lige efter hinanden
+    h.push(t)
+    while (h.length > COMPOSER_HISTORY_MAX) h.shift()
+    localStorage.setItem(COMPOSER_HISTORY_KEY, JSON.stringify(h))
+  } catch { /* noop */ }
+}
+
 /** Memo'd input — isoleret fra forælderens re-renders. ChatView re-renderer på
  *  HVERT stream-token (contextTokens/blocks/elapsed), hvilket før nulstillede
  *  cursoren i en controlled <textarea> midt i indtastning ("som om to skriver",
@@ -119,6 +141,11 @@ export function Composer({
   // og vises som fjernelig reference-chip i stedet for en tekst-væg. GUARDRAIL: hele
   // hooken gates bag `pasteStoreEnabled()` (default OFF) indtil verificeret.
   const [pendingPastes, setPendingPastes] = useState<Array<{ localId: string; text: string; lineCount: number }>>([])
+  // Besked-historik: pil op/ned genkalder tidligere sendte beskeder (shell / Claude
+  // Code-stil). histIdx=-1 → redigerer draft; 0..N-1 → indeks i historikken (localStorage-
+  // persisteret så den overlever reload). histDraft gemmer draften mens man navigerer.
+  const [histIdx, setHistIdx] = useState(-1)
+  const histDraftRef = useRef('')
   // Rolle-bevidst model/provider-valg. Owner: provChoice + konkret model.
   // Member: kun tier ('standard'|'pro') → backend mapper til ollama flash/pro.
   const [provChoice, setProvChoice] = useState<string>(() => {
@@ -278,6 +305,8 @@ export function Composer({
     const t = emojify(text.trim())  // :) ;) :P → 🙂 😉 😛 (vises som emoji i boblen)
     const ready = attachments.filter((a) => a.id && !a.error)
     if (!t && ready.length === 0 && pendingPastes.length === 0) return
+    pushComposerHistory(t)  // gem den typede besked → pil op genkalder den
+    setHistIdx(-1)
     // Rolle-bevidst routing: owner sender provider + konkret model; member sender
     // kun tier (backend tvinger ollama + flash/pro). Tom = backend-default.
     const sendModel = isOwner ? selModel : memberTier
@@ -337,10 +366,44 @@ export function Composer({
   }, [compacting, queuedDuringCompact, doSend])
 
   // Stabile handlers til den memo'd textarea (ellers re-renderer den hvert tick).
-  const onInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value), [])
+  // Bruger-input nulstiller historik-navigationen (man redigerer draften igen).
+  const onInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value); setHistIdx(-1)
+  }, [])
   const onInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
-  }, [send])
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); return }
+    const ta = e.currentTarget
+    const caretToEnd = (v: string) => requestAnimationFrame(() => {
+      try { ta.selectionStart = ta.selectionEnd = v.length } catch { /* noop */ }
+    })
+    if (e.key === 'ArrowUp') {
+      // Kun genkald historik når caret er på FØRSTE linje (ellers normal caret-flyt).
+      if (ta.value.slice(0, ta.selectionStart ?? 0).includes('\n')) return
+      const h = loadComposerHistory()
+      if (h.length === 0) return
+      e.preventDefault()
+      let idx = histIdx
+      if (idx === -1) { histDraftRef.current = ta.value; idx = h.length - 1 } else { idx = Math.max(0, idx - 1) }
+      const entry = h[idx] ?? ''
+      setHistIdx(idx); setText(entry); caretToEnd(entry)
+      return
+    }
+    if (e.key === 'ArrowDown') {
+      if (histIdx === -1) return  // redigerer draft → normal caret-flyt
+      // Kun når caret er på SIDSTE linje.
+      if (ta.value.slice(ta.selectionStart ?? 0).includes('\n')) return
+      e.preventDefault()
+      const h = loadComposerHistory()
+      const idx = histIdx + 1
+      if (idx >= h.length) {
+        setHistIdx(-1); setText(histDraftRef.current); caretToEnd(histDraftRef.current)
+      } else {
+        const entry = h[idx] ?? ''
+        setHistIdx(idx); setText(entry); caretToEnd(entry)
+      }
+      return
+    }
+  }, [send, histIdx])
 
   // onPaste: store paste (>tærskel) → hold teksten lokalt, vis reference-chip i stedet
   // for at spilde tekst-væggen ind i inputtet. Under tærskel → default (inline).

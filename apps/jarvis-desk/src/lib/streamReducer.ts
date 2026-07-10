@@ -115,7 +115,10 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       if (event.kind === 'tool_result') {
         const tr = event.payload as { tool_use_id?: string; status?: string; result?: string }
         if (!tr.tool_use_id) return state
-        const idx = state.blocks.findIndex((b) => b.type === 'tool_use' && b.id === tr.tool_use_id)
+        // b && : state.blocks kan være SPARSOMT (foldede tool_result-content-blok-
+        // indices efterlader undefined-huller) → `b.type` på et hul crashede hele
+        // reduceren → sort skærm (Bjørn 10. jul, dual-emit content-blok+system_event).
+        const idx = state.blocks.findIndex((b) => b && b.type === 'tool_use' && b.id === tr.tool_use_id)
         if (idx < 0) return state
         const mapped =
           tr.status === 'ok' || tr.status === 'executed' || tr.status === 'completed'
@@ -133,7 +136,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // Surface seneste progress-tekst (også steps uden tool_id, fx "thinking").
       const step = p.detail ?? p.action ?? state.workingStep
       if (!p.tool_id) return { ...state, workingStep: step }
-      const idx = state.blocks.findIndex((b) => b.type === 'tool_use' && b.id === p.tool_id)
+      // b && : sparsomt-hul-guard (samme rod som tool_result ovenfor).
+      const idx = state.blocks.findIndex((b) => b && b.type === 'tool_use' && b.id === p.tool_id)
       if (idx < 0) return { ...state, workingStep: step }
       const blocks = state.blocks.slice()
       const b = blocks[idx]

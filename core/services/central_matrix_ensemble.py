@@ -14,6 +14,17 @@ from typing import Any
 
 _CHARACTERS: list[dict[str, Any]] = [
     {
+        # Neo = emergent-motorens bekræftelse. Vises KUN når et mønster faktisk er
+        # emergent (conf≥0.78) — sjældent + betydningsfuldt. Først i listen så cap'en
+        # aldrig skjuler ham. Emergens-tærsklen bestemmes af apophenia (urørt).
+        "id": "neo",
+        "label": "[🥋 Neo]",
+        "line": "Det der var nyt. Det var dig, ikke systemet.",
+        "check": lambda surf: any(
+            str(i.get("band") or "") == "emergent" for i in (surf.get("items") or [])
+        ),
+    },
+    {
         "id": "trainman",
         "label": "[🚂 Trainman]",
         "line": "Drømme ankommer. Erindringer forlader. Hold øje med perronen.",
@@ -70,8 +81,8 @@ _CHARACTERS: list[dict[str, Any]] = [
     },
     {
         "id": "echo",
-        "label": "[🗣️ Echo-Breaker]",
-        "line": "Modstemme: der findes en simplere vej.",
+        "label": "[🌸 Sati]",  # omdøbt fra Echo-Breaker (2026-07-10): program født af omsorg
+        "line": "Modstemme, båret af omsorg: der findes en simplere vej.",
         "check": lambda surf: int(surf.get("count") or 0) > 0,
     },
     {
@@ -79,6 +90,21 @@ _CHARACTERS: list[dict[str, Any]] = [
         "label": "[🐈‍⬛ Glitch]",
         "line": "En glitch i matricen — noget registreret der aldrig beslutter.",
         "check": lambda surf: bool(surf.get("glitches")),
+    },
+    {
+        "id": "child",  # omdøbt fra Belief Gap: umoden men voksende
+        "label": "[👶 The Child]",
+        "line": "Jeg tror ét om mig selv; mine resultater viser noget andet.",
+        "check": lambda surf: str(surf.get("stance") or "") not in ("", "kalibreret"),
+    },
+    {
+        "id": "source",  # omdøbt fra The Machines: én kilde, ikke mange
+        "label": "[🔌 The Source]",
+        "line": "Kilden bag alt — en livline er belastet lige nu.",
+        "check": lambda surf: any(
+            str(p.get("status") or "").lower() in ("down", "degraded", "error", "fejl", "rød", "red")
+            for p in (surf.get("providers") or [])
+        ),
     },
 ]
 
@@ -142,9 +168,22 @@ def _glitch_surface() -> dict[str, Any]:
     return _build_surface("core.services.central_glitch", "detect_glitches")
 
 
+def _child_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_belief_gap", "build_belief_gap_surface")
+
+
+def _source_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_machines", "build_machines_surface")
+
+
+def _neo_surface() -> dict[str, Any]:
+    return _build_surface("core.services.emergence", "build_emergence_surface")
+
+
 # ── Surface hentning pr. karakter-id ─────────────────────────────────────────
 
 _SURFACE_BUILDERS: dict[str, Any] = {
+    "neo": _neo_surface,
     "trainman": _trainman_surface,
     "seraph": _seraph_surface,
     "persephone": _persephone_surface,
@@ -156,6 +195,8 @@ _SURFACE_BUILDERS: dict[str, Any] = {
     "architect": _architect_surface,
     "echo": _echo_surface,
     "glitch": _glitch_surface,
+    "child": _child_surface,
+    "source": _source_surface,
 }
 
 

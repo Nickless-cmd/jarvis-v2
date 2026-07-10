@@ -205,8 +205,18 @@ class BridgeConnection:
         # §17.6.1: medsend nuværende mode så broen kun eksekverer operator tools
         # lokalt i code mode. Tom scope → broen behandler det som legacy (tillader).
         try:
-            from core.tools.tool_scoping import current_tool_scope
+            from core.tools.tool_scoping import (
+                current_tool_scope, LOCAL_EXECUTION_TOOLS, _owner_has_live_bridge,
+            )
             mode = current_tool_scope() or ""
+            # Bjørn 2026-07-10 (chat-mode operator-fix, Option B): tool_scoping:212 har ALLEREDE
+            # scoping-godkendt dette lokalt-eksekverende tool for owner MED live bro. Broens
+            # klient-gate (bridge.ts _LOCAL_EXECUTION_MODES) stoler kun på "code". Løft mode
+            # chat→"code" for et sådant tool NÅR bro fortsat er live — så broens grænse bevares
+            # uændret, og serveren asserter den allerede-verificerede autorisation. Falder bro'en
+            # væk mellem scoping og dispatch → mode='chat' → broen afviser (sikker fejl).
+            if mode == "chat" and tool in LOCAL_EXECUTION_TOOLS and _owner_has_live_bridge():
+                mode = "code"
         except Exception:
             mode = ""
         await self.send_raw({

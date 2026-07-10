@@ -202,6 +202,10 @@ from core.tools.ui_panel_tools import (
     UI_PANEL_TOOL_DEFINITIONS,
     UI_PANEL_TOOL_HANDLERS,
 )
+from core.tools.state_flag_tools import (
+    STATE_FLAG_TOOL_DEFINITIONS,
+    STATE_FLAG_TOOL_HANDLERS,
+)
 from core.tools.app_control_tool import (
     APP_CONTROL_TOOL_DEFINITIONS,
     APP_CONTROL_TOOL_HANDLERS,
@@ -1613,6 +1617,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **WORKTREE_TOOL_HANDLERS,
     **IDENTITY_PIN_TOOL_HANDLERS,
     **UI_PANEL_TOOL_HANDLERS,
+    **STATE_FLAG_TOOL_HANDLERS,
     **APP_CONTROL_TOOL_HANDLERS,
     "todo_list": _exec_todo_list,
     "todo_set": _exec_todo_set,

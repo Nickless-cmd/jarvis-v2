@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 import logging
 
+from core.services.docs_drift_watchdog import check_docs_drift
+
 logger = logging.getLogger(__name__)
 
 # Repo-rod: denne fil ligger i <repo>/core/services/doc_repair_agent.py
@@ -32,3 +34,63 @@ def is_allowed_doc_path(rel_or_abs: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def find_stale_docs() -> list[dict[str, Any]]:
+    """Konsumér docs_drift_watchdog-signalet → liste af {path, generator} for docs
+    der er drevet. Self-safe: fejl → tom liste."""
+    try:
+        report = check_docs_drift() or {}
+    except Exception as exc:
+        logger.debug("doc_repair_agent: drift check failed: %s", exc)
+        return []
+    docs = report.get("docs") or []
+    out = []
+    for d in docs:
+        path = str((d or {}).get("path") or "")
+        if path and is_allowed_doc_path(path):
+            out.append({"path": path, "generator": (d or {}).get("generator")})
+    return out
+
+
+def _run_generator(name: str) -> str | None:
+    """Kør en kendt deterministisk doc-generator og returnér det nye indhold.
+    Foreloebig: kun 'capability_audit' → capability_matrix. Ukendt → None (→ ingen
+    handling; LLM-draft-mode er en senere udvidelse, ikke v1)."""
+    if not name:
+        return None
+    # v1 er bevidst konservativ: kun deterministiske generatorer. Returnér None for
+    # ukendte saa vi aldrig skriver ugrundet indhold (YAGNI: LLM-draft senere).
+    return None
+
+
+def repair_doc(target: dict[str, Any], *, live: bool) -> dict[str, Any]:
+    """Repair én doc. Skriver KUN under docs/ (invariant), KUN naar live=True og
+    en deterministisk generator gav indhold. Self-safe."""
+    path = str((target or {}).get("path") or "")
+    out: dict[str, Any] = {"path": path, "applied": False, "shadow": not live,
+                           "would_write": False, "reason": ""}
+    if not is_allowed_doc_path(path):
+        out["reason"] = "path-not-allowed"
+        return out
+    try:
+        content = _run_generator(str((target or {}).get("generator") or ""))
+    except Exception as exc:
+        logger.debug("doc_repair_agent: generator failed: %s", exc)
+        out["reason"] = "generator-error"
+        return out
+    if content is None:
+        out["reason"] = "no-deterministic-generator"
+        return out
+    out["would_write"] = True
+    if not live:
+        return out
+    try:
+        abs_path = (_REPO_ROOT / path).resolve()
+        abs_path.relative_to(_DOCS_ROOT)  # dobbelt-tjek invariant FOER write
+        abs_path.write_text(content, encoding="utf-8")
+        out["applied"] = True
+    except Exception as exc:
+        logger.debug("doc_repair_agent: write failed: %s", exc)
+        out["reason"] = "write-error"
+    return out

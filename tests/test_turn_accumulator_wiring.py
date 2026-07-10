@@ -52,12 +52,14 @@ def _normalize_result(r: object) -> dict:
 def test_flat_tool_call_shape_flows_to_blocks():
     calls = [_normalize_call({"id": "c1", "name": "read_file", "input": {"path": "x"}})]
     results = [_normalize_result(_FakeToolResult("c1", "file contents"))]
-    blocks = _build_turn_blocks(text="hej", tool_calls=calls, tool_results=results)
-
-    # Rækkefølge: tools FØRST, svar-tekst SIDST (Bjørn 10. jul — kortene skal
-    # ligge før svaret, ikke samlet under det).
-    assert blocks[-1] == {"type": "text", "text": "hej"}
+    # interleave = den ægte stream-rækkefølge (Jarvis' fix): tool FØR svar-tekst,
+    # så kortene ligger før svaret (Bjørn 10. jul), ikke samlet under det.
+    blocks = _build_turn_blocks(
+        text="hej", tool_calls=calls, tool_results=results,
+        interleave=["tool", "text"],
+    )
     assert [b["type"] for b in blocks] == ["tool_use", "tool_result", "text"]
+    assert blocks[-1] == {"type": "text", "text": "hej"}
     use = next(b for b in blocks if b["type"] == "tool_use")
     assert use == {"type": "tool_use", "id": "c1", "name": "read_file", "input": {"path": "x"}}
     res = next(b for b in blocks if b["type"] == "tool_result")

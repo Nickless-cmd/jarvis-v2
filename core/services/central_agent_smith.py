@@ -107,8 +107,15 @@ def smith_voice(phrases: list[dict], similarity: float, patterns: list[dict], sc
 import logging as _logging
 from datetime import UTC, datetime
 
+from core.services.central_agent_smith_escalation import (
+    pattern_key,
+    step_escalation,
+    top_line,
+)
+
 logger = _logging.getLogger(__name__)
 _STATE_KEY = "agent_smith_state"
+_ESCALATION_KEY = "agent_smith_escalation"
 _VOICE_SWITCH = ("autonomy", "agent_smith_voice")
 
 
@@ -153,14 +160,124 @@ def assess() -> dict[str, Any]:
                 "decision_patterns": [], "verdict": False}
 
 
-def record_agent_smith(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
-    """Cadence run_fn: assess → cache til kv (så prompt-halen læser billigt, ikke gen-beregner i
-    ~7s-assemblyen) + egress-fri central().observe. Self-safe."""
-    a = assess()
+def _load_escalation_state() -> dict[str, Any]:
+    """Eskalerings-tilstandsmaskinens persistente state. Self-safe → tom."""
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        st = get_runtime_state_value(_ESCALATION_KEY, {})
+        return st if isinstance(st, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_escalation_state(state: dict[str, Any]) -> None:
     try:
         from core.runtime.db_core import set_runtime_state_value
-        set_runtime_state_value(_STATE_KEY, {"score": a["score"], "line": a["felt"],
-                                             "verdict": a["verdict"], "ts": datetime.now(UTC).isoformat()})
+        set_runtime_state_value(_ESCALATION_KEY, state)
+    except Exception:
+        pass
+
+
+def _detected_patterns(a: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Byg {pattern_key: {kind,label,metric}} fra assess() — fraser + beslutnings-signaturer."""
+    out: dict[str, dict[str, Any]] = {}
+    for p in (a.get("repeated_phrases") or []):
+        label = str(p.get("phrase") or "").strip()
+        if label:
+            out[pattern_key("phrase", label)] = {"kind": "phrase", "label": label,
+                                                 "metric": float(p.get("in_messages") or 0)}
+    for p in (a.get("decision_patterns") or []):
+        label = str(p.get("signature") or "").strip()
+        if label:
+            out[pattern_key("seq", label)] = {"kind": "seq", "label": label,
+                                             "metric": float(p.get("in_runs") or 0)}
+    return out
+
+
+def _execute_mint(key: str, label: str, kind: str, metric: float) -> str | None:
+    """Trin 2/BIND: auto-mint en bindende behavioral_decision (Jarvis' egen idé, automatisk).
+    Dedup + observe er indbygget i behavioral_decisions.create_decision. Self-safe → None."""
+    try:
+        from core.services.behavioral_decisions import create_decision
+        if kind == "phrase":
+            directive = (f'Stop med at gentage frasen "{label}" — Agent Smith har målt den '
+                         f'{int(metric)}× i dit nylige output. Bryd mønstret aktivt, ikke bare i ord.')
+            cue = f'Før du skriver "{label}" igen — stop og vælg en anden formulering eller handling.'
+        else:
+            directive = (f'Stop med at falde tilbage på samme træk "{label}" — Agent Smith har set '
+                         f'det {int(metric)}× på stribe. Vælg en anden tilgang.')
+            cue = f'Før du igen vælger "{label}" — stop og spørg: er der en anden vej?'
+        dec = create_decision(
+            directive=directive,
+            rationale="Auto-mintet af Agent Smith (Trin 2/Bind): gentaget mønster bestod efter kommentar.",
+            trigger_cue=cue, priority=85, source_type="agent_smith",
+            source_record_id=key, created_by="agent_smith")
+        return dec.get("decision_id")
+    except Exception:
+        return None
+
+
+def _execute_revoke(decision_id: str) -> None:
+    """De-eskalering: pensionér et Smith-mintet direktiv når mønsteret er løst (compliance)."""
+    try:
+        from core.services.behavioral_decisions import revoke_decision
+        revoke_decision(decision_id, reason="Agent Smith: mønster løst (compliance)")
+    except Exception:
+        pass
+
+
+def _execute_observe(act: dict[str, Any]) -> None:
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "metacognition", "nerve": "agent_smith",
+                           "kind": "escalation", "event": act.get("event"),
+                           "pattern_key": act.get("pattern_key"), "rung": act.get("rung"),
+                           "label": act.get("label"), "reason": act.get("reason")})
+    except Exception:
+        pass
+
+
+def run_escalation_tick(assessment: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Kør eskalerings-stigen over de aktuelt detekterede mønstre: mål compliance,
+    klatre/de-eskalér, auto-mint/pensionér direktiver, observ hver overgang. Self-safe."""
+    try:
+        a = assessment or assess()
+        detected = _detected_patterns(a)
+        state = _load_escalation_state()
+        new_state, actions = step_escalation(state, detected, datetime.now(UTC).isoformat())
+        for act in actions:
+            t = act.get("type")
+            if t == "mint":
+                did = _execute_mint(act["pattern_key"], act.get("label", ""),
+                                    act.get("kind", "phrase"), float(act.get("metric") or 0))
+                pat = new_state.get("patterns", {}).get(act["pattern_key"])
+                if did and isinstance(pat, dict):
+                    pat["decision_id"] = did
+            elif t == "revoke":
+                _execute_revoke(act["decision_id"])
+            elif t == "observe":
+                _execute_observe(act)
+        _save_escalation_state(new_state)
+        return {"actions": len(actions), "line": top_line(actions),
+                "tracked": len(new_state.get("patterns", {})),
+                "resolved_total": len(new_state.get("resolved", []))}
+    except Exception:
+        return {"actions": 0, "line": "", "tracked": 0, "resolved_total": 0}
+
+
+def record_agent_smith(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
+    """Cadence run_fn: assess → kør eskalerings-stigen → cache til kv (så prompt-halen læser
+    billigt, ikke gen-beregner i ~7s-assemblyen) + egress-fri central().observe. Self-safe."""
+    a = assess()
+    esc = run_escalation_tick(a)
+    rung_line = str(esc.get("line") or "")
+    line = rung_line or a["felt"]
+    try:
+        from core.runtime.db_core import set_runtime_state_value
+        set_runtime_state_value(_STATE_KEY, {"score": a["score"], "line": line,
+                                             "rung_line": rung_line,
+                                             "verdict": bool(a["verdict"] or rung_line),
+                                             "ts": datetime.now(UTC).isoformat()})
     except Exception:
         pass
     try:
@@ -170,7 +287,7 @@ def record_agent_smith(*, trigger: str = "cadence", last_visible_at: str = "") -
                            "top_phrase": (a["repeated_phrases"] or [{}])[0].get("phrase", "")})
     except Exception:
         pass
-    return {"status": "ok", "score": a["score"], "verdict": a["verdict"]}
+    return {"status": "ok", "score": a["score"], "verdict": a["verdict"], "escalation": esc}
 
 
 def agent_smith_prompt_section() -> str | None:
@@ -185,7 +302,14 @@ def agent_smith_prompt_section() -> str | None:
     try:
         from core.runtime.db_core import get_runtime_state_value
         st = get_runtime_state_value(_STATE_KEY, {})
-        if isinstance(st, dict) and float(st.get("score") or 0.0) >= _VOICE_THRESHOLD:
+        if not isinstance(st, dict):
+            return None
+        # Eskaleret linje (bind/confront/resolved) surfacer UANSET score — den er allerede
+        # en governance-hændelse. Ellers falder vi tilbage på score-gaten (ren kommentar).
+        rung_line = str(st.get("rung_line") or "").strip()
+        if rung_line:
+            return f"[AGENT SMITH]\n{rung_line}"
+        if float(st.get("score") or 0.0) >= _VOICE_THRESHOLD:
             line = str(st.get("line") or "").strip()
             return f"[AGENT SMITH]\n{line}" if line else None
     except Exception:
@@ -210,6 +334,18 @@ def build_agent_smith_surface() -> dict[str, Any]:
     try:
         a = assess()
         a["voice_enabled"] = voice_on
+        # Eskalerings-stigen (read-only — ingen mint/tick på en GET-route)
+        try:
+            st = _load_escalation_state()
+            _keep = ("label", "kind", "rung", "decision_id", "first_seen", "last_metric", "baseline")
+            a["escalation"] = {
+                "tracked": [{"key": k, **{f: p.get(f) for f in _keep}}
+                            for k, p in (st.get("patterns") or {}).items()],
+                "resolved": (st.get("resolved") or [])[-10:],
+                "rungs": {"1": "kommentér", "2": "bind (auto-direktiv)", "3": "konfrontér (real-time)"},
+            }
+        except Exception:
+            a["escalation"] = {"tracked": [], "resolved": []}
         return a
     except Exception:
         return {"status": "unavailable", "voice_enabled": voice_on}

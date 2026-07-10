@@ -38,3 +38,20 @@ def test_find_stale_docs_reads_watchdog(isolated_runtime, monkeypatch):
                                                               "generator": "capability_audit"}]})
     targets = dra.find_stale_docs()
     assert targets and targets[0]["path"] == "docs/capability_matrix.md"
+
+def test_run_tick_shadow_by_default(isolated_runtime, monkeypatch):
+    monkeypatch.setattr(dra, "find_stale_docs", lambda: [{"path": "docs/x.md", "generator": "g"}])
+    monkeypatch.setattr(dra, "_run_generator", lambda n: "NEW")
+    # gate not enforced → shadow
+    monkeypatch.setattr(dra, "is_enforced", lambda nerve, klass: False)
+    summary = dra.run_doc_repair_tick()
+    assert summary["shadow"] is True
+    assert summary["would_write"] == 1
+    assert summary["applied"] == 0
+
+def test_surface_shape(isolated_runtime, monkeypatch):
+    monkeypatch.setattr(dra, "find_stale_docs", lambda: [{"path": "docs/x.md", "generator": "g"}])
+    s = dra.build_doc_repair_surface()
+    assert s["mode"] == "doc-repair"
+    assert "enforced" in s
+    assert s["summary"]["stale_count"] == 1

@@ -10,6 +10,8 @@ from typing import Any
 import logging
 
 from core.services.docs_drift_watchdog import check_docs_drift
+from core.services.gate_enforcement import is_enforced
+from core.services.central_capture import GateClass
 
 logger = logging.getLogger(__name__)
 
@@ -94,3 +96,57 @@ def repair_doc(target: dict[str, Any], *, live: bool) -> dict[str, Any]:
         logger.debug("doc_repair_agent: write failed: %s", exc)
         out["reason"] = "write-error"
     return out
+
+
+_MAX_DOCS_PER_TICK = 3
+
+
+def run_doc_repair_tick() -> dict[str, Any]:
+    """Cadence-indgang, kørt gennem central().decide (Centralen er aktoeren).
+    gate_enforcement afgoer live vs shadow (default not-enforced = shadow-rampe).
+    Returnerer summary'en (testbar) og router den STADIG gennem Centralen for
+    governance/trace."""
+    from core.services.central_core import central
+    try:
+        live = bool(is_enforced("doc_repair", GateClass.COGNITIVE))
+    except Exception:
+        live = False
+
+    summary: dict[str, Any] = {"shadow": not live, "applied": 0,
+                               "would_write": 0, "skipped": 0, "error": False}
+    try:
+        for target in (find_stale_docs() or [])[:_MAX_DOCS_PER_TICK]:
+            out = repair_doc(target, live=live)
+            if out.get("applied"):
+                summary["applied"] += 1
+            elif out.get("would_write"):
+                summary["would_write"] += 1
+            else:
+                summary["skipped"] += 1
+    except Exception as exc:
+        logger.debug("doc_repair_agent: repair loop failed: %s", exc)
+        summary["error"] = True
+
+    try:
+        central().decide("doc_repair", {"live": live}, lambda _c: summary,
+                         cluster="maintenance", klass=GateClass.COGNITIVE)
+    except Exception:
+        pass  # governance-trace maa aldrig aendre resultatet
+    return summary
+
+
+def build_doc_repair_surface() -> dict[str, Any]:
+    """Read-surface til jc raw /central/doc-repair. Side-effect-fri."""
+    try:
+        enforced = bool(is_enforced("doc_repair", GateClass.COGNITIVE))
+    except Exception:
+        enforced = False
+    stale = find_stale_docs() or []
+    return {
+        "active": bool(stale),
+        "mode": "doc-repair",
+        "enforced": enforced,
+        "summary": {"stale_count": len(stale),
+                    "state": "live" if enforced else "shadow-ramp"},
+        "items": stale,
+    }

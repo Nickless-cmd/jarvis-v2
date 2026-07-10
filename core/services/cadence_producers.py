@@ -814,6 +814,14 @@ def tick_frozen_detectors(tick_count: int) -> dict[str, int]:
             _observe_frozen("boredom", {"restlessness": st.get("restlessness"), "has_desire": bool(st.get("desire"))})
         except Exception:
             logger.debug("tick_frozen_detectors: boredom failed", exc_info=True)
+    if tick_count % 60 == 0:
+        # doc_repair: watch→repair (spec 2026-07-10 Del 2). Docs aendrer sig langsomt →
+        # lav frekvens. Self-safe; live vs shadow afgoeres inde i run_doc_repair_tick.
+        try:
+            from core.services.doc_repair_agent import run_doc_repair_tick
+            run_doc_repair_tick()
+        except Exception:
+            logger.debug("tick_frozen_detectors: doc repair failed", exc_info=True)
     return out
 
 

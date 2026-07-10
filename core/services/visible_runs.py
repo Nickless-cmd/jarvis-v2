@@ -270,13 +270,12 @@ def _build_turn_blocks(
 ) -> list[dict]:
     """Byg den kanoniske content-blok-array for en assistant-tur (spec §4).
 
-    Rækkefølge: tekst-prosa, derefter tool_use/tool_result-par i kald-rækkefølge
-    (deterministisk fallback jf. spec §5). tool_result matches til tool_use via id.
-    Ren funktion — ingen side-effekter, sikker at teste isoleret."""
+    Rækkefølge: tool_use/tool_result-par i kald-rækkefølge FØRST, derefter det
+    endelige svar-tekst SIDST — så renderingen matcher forløbet (Jarvis kalder
+    værktøjer og svarer bagefter). ``text`` er kun det ENDELIGE svar (mellem-
+    rundens "lad mig tjekke" er ikke med), så tools-før-svar er korrekt.
+    tool_result matches til tool_use via id. Ren funktion — sikker at teste isoleret."""
     blocks: list[dict] = []
-    clean = str(text or "").strip()
-    if clean:
-        blocks.append({"type": "text", "text": clean})
     results_by_id: dict[str, dict] = {}
     for r in (tool_results or []):
         results_by_id[str(r.get("tool_use_id") or "")] = r
@@ -298,6 +297,10 @@ def _build_turn_blocks(
                 "content": str(r.get("content") or ""),
                 "is_error": bool(r.get("is_error")),
             })
+    # Svar-teksten SIDST (efter tool-kortene).
+    clean = str(text or "").strip()
+    if clean:
+        blocks.append({"type": "text", "text": clean})
     return blocks
 
 

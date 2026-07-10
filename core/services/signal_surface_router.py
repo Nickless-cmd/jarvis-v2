@@ -111,6 +111,8 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
     from core.tools.security_predicates import build_security_predicates_surface
     from core.services.operator_allowlist import build_operator_allowlist_surface
     from core.services.source_confidence_gate import build_source_confidence_surface
+    from core.services.central_morpheus import build_morpheus_surface
+    from core.services.central_trinity import build_trinity_surface
     from core.services.user_contradiction_tracker import build_user_contradiction_surface
     from core.services.interlanguage_practice import build_interlanguage_practice_surface
     from core.services.emergence import build_emergence_surface
@@ -210,6 +212,8 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
         "security-predicates": build_security_predicates_surface,
         "operator-allowlist": build_operator_allowlist_surface,
         "source-confidence": build_source_confidence_surface,
+        "morpheus": build_morpheus_surface,
+        "trinity": build_trinity_surface,
         "user_contradiction": build_user_contradiction_surface,
         "interlanguage_practice": build_interlanguage_practice_surface,
         "emergence": build_emergence_surface,

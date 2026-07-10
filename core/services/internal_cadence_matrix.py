@@ -145,6 +145,24 @@ def register_matrix_producers(register_producer: Callable[[ProducerSpec], None])
     register_producer(ProducerSpec(name="machines", cooldown_minutes=360, visible_grace_minutes=0,
                                    run_fn=_run_machines, priority=5))
 
+    # Morpheus (10. jul): potentiale-scanner — aggregerer readiness-trajektorier +
+    # skill-formation → opløftende "du er på vej". Ren observe.
+    def _run_morpheus(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_morpheus import record_morpheus
+        return record_morpheus(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="morpheus", cooldown_minutes=60, visible_grace_minutes=0,
+                                   run_fn=_run_morpheus, priority=5))
+
+    # Trinity (10. jul): trust-bridge — affirmerer moden+holdbar konvergens, optjener
+    # tillid over tid (default shadow; opretter INGEN nøgle før gate_enforce.trinity flip).
+    def _run_trinity(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_trinity import record_trinity
+        return record_trinity(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="trinity", cooldown_minutes=120, visible_grace_minutes=0,
+                                   run_fn=_run_trinity, priority=5))
+
     # Déjà Vu (6. jul, Jarvis' #1 erfaring): lav-intensitets associativ opdukken — et fragment
     # bobler op af sig selv (svagt bånd), markeret involuntary. Ikke hot-path.
     def _run_dejavu(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:

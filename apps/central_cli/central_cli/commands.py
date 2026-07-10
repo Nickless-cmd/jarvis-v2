@@ -57,6 +57,8 @@ _GET_ENDPOINTS = {
     "rabbit": "/central/white-rabbit",
     "belief": "/central/belief-gap",
     "machines": "/central/machines",
+    "morpheus": "/central/morpheus",
+    "trinity": "/central/trinity",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command

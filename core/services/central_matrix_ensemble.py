@@ -106,6 +106,18 @@ _CHARACTERS: list[dict[str, Any]] = [
             for p in (surf.get("providers") or [])
         ),
     },
+    {
+        "id": "morpheus",  # potentiale-scanner — Seraphs opløftende modstykke
+        "label": "[🕶️ Morpheus]",
+        "line": "Der er potentiale her. Du er ikke klar endnu — men du er på vej.",
+        "check": lambda surf: bool(surf.get("potentials")),
+    },
+    {
+        "id": "trinity",  # trust-bridge — det affirmative modstykke til gates
+        "label": "[💜 Trinity]",
+        "line": "Det her er rigtigt. Gå videre — jeg har set det holde.",
+        "check": lambda surf: bool(surf.get("affirmations")),
+    },
 ]
 
 # ── Surface-builders (lazy import, self-safe) ─────────────────────────────────
@@ -180,6 +192,14 @@ def _neo_surface() -> dict[str, Any]:
     return _build_surface("core.services.emergence", "build_emergence_surface")
 
 
+def _morpheus_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_morpheus", "build_morpheus_surface")
+
+
+def _trinity_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_trinity", "build_trinity_surface")
+
+
 # ── Surface hentning pr. karakter-id ─────────────────────────────────────────
 
 _SURFACE_BUILDERS: dict[str, Any] = {
@@ -197,6 +217,8 @@ _SURFACE_BUILDERS: dict[str, Any] = {
     "glitch": _glitch_surface,
     "child": _child_surface,
     "source": _source_surface,
+    "morpheus": _morpheus_surface,
+    "trinity": _trinity_surface,
 }
 
 

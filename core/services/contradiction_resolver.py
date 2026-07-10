@@ -24,8 +24,36 @@ _IDENTITY_MARKERS = (
 _HIGH_PRIORITY = 8  # >= dette → for vigtig til auto-resolve
 
 
+# Lav-signal tokens der IKKE må tælle som meningsfuld overlap. contradiction_engine
+# fyrer på ≥2 fælles tokens + modsat polaritet — men rene tal + stopord giver falske
+# positiver (shadow 10. jul: en decision om skill_suggest "modsagde" en review om
+# regrets, alene fordi de delte "5" og "eller"). Junk-only overlap → lav konfidens →
+# escalate (aldrig auto-supersede).
+_STOPWORDS = frozenset({
+    # dansk
+    "og", "eller", "i", "på", "at", "en", "et", "den", "det", "de", "der", "som",
+    "til", "for", "med", "af", "er", "var", "han", "hun", "jeg", "du", "vi", "ikke",
+    "men", "så", "har", "kan", "vil", "skal", "fra", "om", "ved", "nu", "mere", "end",
+    "hvis", "være", "blive", "dette", "disse",
+    # engelsk
+    "the", "a", "an", "and", "or", "of", "to", "in", "is", "for", "on", "with", "as",
+    "at", "be", "are", "was", "this", "that", "it", "not", "but", "so", "if", "then",
+})
+
+
+def _meaningful_overlap(finding: dict[str, Any]) -> list[str]:
+    """Overlap-tokens uden stopord og rene tal — kun disse tæller som ægte signal."""
+    out: list[str] = []
+    for t in (finding.get("overlap_tokens") or []):
+        s = str(t or "").strip().lower()
+        if not s or s in _STOPWORDS or s.isdigit():
+            continue
+        out.append(s)
+    return out
+
+
 def _confidence(finding: dict[str, Any]) -> str:
-    n = len(finding.get("overlap_tokens") or [])
+    n = len(_meaningful_overlap(finding))
     if n >= 3:
         return "high"
     if n == 2:

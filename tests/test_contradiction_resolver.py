@@ -29,6 +29,19 @@ def test_pick_survivor_confidence_low_one_token():
 def test_classify_tier_operational_is_auto():
     assert classify_tier(_finding()) == "auto"
 
+def test_junk_token_overlap_is_low_confidence_and_escalates():
+    # Regression (shadow 10. jul): overlap kun af tal + stopord ("5","eller") er en
+    # falsk positiv → lav konfidens → escalate, ALDRIG auto-supersede (selv lav prio).
+    from core.services.contradiction_resolver import _confidence
+    junk = _finding(decision_priority=1, overlap_tokens=["5", "eller"])
+    assert _confidence(junk) == "low"
+    assert classify_tier(junk) == "escalate"
+
+def test_meaningful_tokens_still_count():
+    from core.services.contradiction_resolver import _confidence
+    real = _finding(decision_priority=1, overlap_tokens=["research", "faktatjek"])
+    assert _confidence(real) == "medium"
+
 def test_classify_tier_identity_keyword_escalates():
     assert classify_tier(_finding(decision_directive="Jeg er nysgerrig af natur")) == "escalate"
 

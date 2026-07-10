@@ -140,6 +140,44 @@ def _merovingian_blocks(pattern_key: str) -> bool:
         return False
 
 
+def _earn_pending_key(pattern_key: str, title: str, streak: int) -> bool:
+    """Fase 2: opret en PENDING trust-nøgle i central_keys (samme tabel Keymaker bruger,
+    så owner-godkendelse + 24t TTL-flow virker uændret). Værn: §11.3-sikkerhed aldrig +
+    dedup (ingen dobbelt-pending). Bjørn godkender ALTID — dette låser aldrig selv op.
+    Self-safe → False."""
+    domain = f"trinity:{pattern_key}"
+    try:
+        from core.services.central_keymaker import _is_never
+        if _is_never(pattern_key):  # §11.3 — aldrig decentralisér en sikkerheds-nerve
+            return False
+    except Exception:
+        pass
+    try:
+        from core.runtime.db import connect
+        from datetime import datetime as _dt
+        with connect() as conn:
+            exists = conn.execute(
+                "SELECT 1 FROM central_keys WHERE domain=? AND status IN ('pending','approved')",
+                (domain,)).fetchone()
+            if exists:
+                return False  # dedup — allerede pending/approved
+            conn.execute(
+                "INSERT INTO central_keys (domain, unlock_scope, unlock_name, track_value, "
+                "issued_at, status, reason) VALUES (?, 'trinity_trust', ?, ?, ?, 'pending', ?)",
+                (domain, str(title)[:80], int(streak), _dt.now(UTC).isoformat(),
+                 f"Trinity: {streak} affirmationer, 0 modsigelser → fortjent tillid (venter dit ja)"))
+            conn.commit()
+        try:
+            from core.services.central_core import central
+            central().observe({"cluster": "metacognition", "nerve": "trinity",
+                               "kind": "key_earned", "domain": domain, "streak": streak})
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
+
+
 def record_trinity(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
     """Cadence run_fn: assess → opdatér streaks → (KUN hvis enforced) optjen pending nøgle.
     Fase 1 shadow: registrerer 'ville-optjene' men opretter INGEN nøgle. Self-safe."""
@@ -153,12 +191,10 @@ def record_trinity(*, trigger: str = "cadence", last_visible_at: str = "") -> di
             streak = _bump(a["pattern_key"], a["title"], now)
             if streak >= _KEY_THRESHOLD:
                 would_earn += 1
-                # Værn: kun i enforce, ikke security, ikke Merovingian-vetoet
+                # Værn: kun i enforce, ikke Merovingian-vetoet (§11.3 tjekkes i _earn_pending_key)
                 if enforced and not _merovingian_blocks(a["pattern_key"]):
-                    # Fase 2: opret pending nøgle via Keymaker (owner godkender).
-                    # Her holdes det bevidst konservativt — observe 'earned', faktisk
-                    # key-insert wires i Fase 2 efter shadow-eval.
-                    earned += 1
+                    if _earn_pending_key(a["pattern_key"], a["title"], streak):
+                        earned += 1
         try:
             from core.services.central_core import central
             central().observe({"cluster": "metacognition", "nerve": "trinity",

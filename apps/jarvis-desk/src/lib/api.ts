@@ -261,6 +261,25 @@ export async function transcribeAudio(
   return res.json() as Promise<{ status: string; text: string; language?: string; error?: string }>
 }
 
+/** Send tekst til /api/tts/synthesize → MP3-Blob (ElevenLabs primær, edge-tts fallback). */
+export async function synthesizeTts(
+  config: ApiConfig,
+  text: string,
+  opts?: { provider?: 'auto' | 'elevenlabs' | 'edge' },
+): Promise<{ blob: Blob; provider: string }> {
+  const url = new URL('/api/tts/synthesize', config.apiBaseUrl).toString()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ text, provider: opts?.provider ?? 'auto' }),
+  })
+  if (!res.ok) throw new StreamError('unknown', `TTS fejlede: HTTP ${res.status}`, { retryable: false })
+  const provider = res.headers.get('X-TTS-Provider') || 'unknown'
+  return { blob: await res.blob(), provider }
+}
+
 export interface ImageAttachment {
   attachment_id: string
   session_id: string

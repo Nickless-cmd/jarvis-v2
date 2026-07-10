@@ -78,3 +78,41 @@ def test_escalate_is_deduped(isolated_runtime, monkeypatch):
     seen = {("d9", 3)}
     assert cr._write_escalation_proposal(f, rule="r", seen=seen) is False  # allerede foreslaaet
     assert len([p for p in published if p[0] == "contradiction.resolution_proposed"]) == 1
+
+def test_resolve_shadow_records_but_does_not_mutate(isolated_runtime, monkeypatch):
+    _seed_active_decision("d1", directive="Svar altid kort", priority=3)
+    monkeypatch.setattr(cr, "detect_contradictions", lambda **k: [{
+        "decision_id": "d1", "decision_directive": "Svar altid kort", "decision_priority": 3,
+        "review_id": 7, "review_text": "svarer ikke kort nok", "overlap_tokens": ["svar","kort","nok"],
+        "detected_at": "2026-07-10T10:00:00+00:00"}])
+    summary = cr.resolve_contradictions(live=False)
+    assert summary["shadow"] is True
+    assert summary["would_supersede"] == 1
+    assert _decision_status("d1") == "active"      # IKKE muteret i shadow
+
+def test_resolve_live_supersedes(isolated_runtime, monkeypatch):
+    _seed_active_decision("d1", directive="Svar altid kort", priority=3)
+    monkeypatch.setattr(cr, "detect_contradictions", lambda **k: [{
+        "decision_id": "d1", "decision_directive": "Svar altid kort", "decision_priority": 3,
+        "review_id": 7, "review_text": "svarer ikke kort nok", "overlap_tokens": ["svar","kort","nok"],
+        "detected_at": "2026-07-10T10:00:00+00:00"}])
+    summary = cr.resolve_contradictions(live=True)
+    assert summary["superseded"] == 1
+    assert _decision_status("d1") == "superseded"
+
+def test_resolve_escalate_tier_does_not_mutate(isolated_runtime, monkeypatch):
+    _seed_active_decision("d1", directive="Jeg er nysgerrig", priority=3)
+    monkeypatch.setattr(cr, "detect_contradictions", lambda **k: [{
+        "decision_id": "d1", "decision_directive": "Jeg er nysgerrig", "decision_priority": 3,
+        "review_id": 7, "review_text": "nysgerrig passer ikke", "overlap_tokens": ["jeg","er","nysgerrig"],
+        "detected_at": "2026-07-10T10:00:00+00:00"}])
+    summary = cr.resolve_contradictions(live=True)
+    assert summary["escalated"] == 1
+    assert summary["superseded"] == 0
+    assert _decision_status("d1") == "active"      # identitet → forslag, ingen mutation
+
+def test_resolve_fail_open_on_detection_error(isolated_runtime, monkeypatch):
+    def boom(**k): raise RuntimeError("db down")
+    monkeypatch.setattr(cr, "detect_contradictions", boom)
+    summary = cr.resolve_contradictions(live=True)   # maa ALDRIG kaste
+    assert summary["error"] is True

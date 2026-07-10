@@ -10,6 +10,7 @@ import logging
 
 from core.runtime.db import connect
 from core.eventbus.bus import event_bus  # publish(kind, payload)
+from core.services.contradiction_engine import detect_contradictions
 
 logger = logging.getLogger(__name__)
 
@@ -125,3 +126,70 @@ def _write_escalation_proposal(finding: dict[str, Any], *, rule: str, seen: set)
     except Exception:
         pass
     return True
+
+
+_MAX_PER_TICK = 3  # runaway-vaern: cap resolutions pr. tur
+
+
+def resolve_contradictions(*, live: bool) -> dict[str, Any]:
+    """Resolve modsigelser. ``live=True`` muterer (supersede); ``live=False`` er
+    shadow-rampe (registrerer det den VILLE goere, muterer intet). Fail-open:
+    enhver fejl → {'error': True}, vaelter aldrig cadence-tick'en."""
+    summary: dict[str, Any] = {
+        "shadow": not live, "superseded": 0, "escalated": 0,
+        "would_supersede": 0, "error": False,
+    }
+    try:
+        findings = detect_contradictions(max_findings=_MAX_PER_TICK) or []
+    except Exception as exc:
+        logger.debug("contradiction_resolver: detect failed: %s", exc)
+        summary["error"] = True
+        return summary
+
+    seen: set = set()
+    for f in findings:
+        try:
+            tier = classify_tier(f)
+            survivor = pick_survivor(f)
+            if tier == "escalate":
+                if _write_escalation_proposal(f, rule=survivor["rule"], seen=seen):
+                    summary["escalated"] += 1
+                continue
+            # auto-tier
+            if not live:
+                summary["would_supersede"] += 1
+                continue
+            if _apply_supersede(str(f.get("decision_id") or ""),
+                                review_id=int(f.get("review_id") or 0),
+                                rule=survivor["rule"]):
+                summary["superseded"] += 1
+        except Exception as exc:
+            logger.debug("contradiction_resolver: resolve one failed: %s", exc)
+            continue
+    return summary
+
+
+def run_resolver_tick() -> dict[str, Any]:
+    """Cadence-indgang. Kaldes gennem central().decide saa Centralen ER aktoeren; gate_enforcement
+    afgoer live vs shadow (default not-enforced = shadow-rampe indtil owner flipper)."""
+    from core.services.central_core import central
+    from core.services.gate_enforcement import is_enforced
+    from core.services.central_capture import GateClass  # samme klasse som decide() bruger
+
+    live = False
+    try:
+        live = bool(is_enforced("contradiction_resolution", GateClass.COGNITIVE))
+    except Exception:
+        live = False
+
+    def _act(_ctx: dict) -> dict[str, Any]:
+        return resolve_contradictions(live=live)
+
+    try:
+        v = central().decide("contradiction_resolution", {"live": live}, _act,
+                             cluster="cognition", klass=GateClass.COGNITIVE)
+        # Verdict baerer resultatet via central_capture; returnér summary robust.
+        return {"outcome": "completed", "live": live}
+    except Exception as exc:
+        logger.debug("contradiction_resolver: tick failed: %s", exc)
+        return {"outcome": "error"}

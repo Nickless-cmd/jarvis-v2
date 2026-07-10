@@ -785,7 +785,16 @@ def build_cognitive_state_for_prompt(*, compact: bool = False, force: bool = Fal
                         pass
             brief = build_return_brief(idle_hours=idle_h)
             if brief:
-                parts.append(f"return_brief: {brief[:120]}")
+                # Spec D-forfining (2026-07-10): fuld brief (ikke trunkeret til 120)
+                # + gør den BRUGER-VENDT ved længere fravær — Jarvis åbner kort med
+                # "mens du var væk"-orienteringen FØR han svarer (LLM-led, ikke rapport).
+                parts.append(f"return_brief: {brief[:400]}")
+                if idle_h >= 2.0:
+                    parts.append(
+                        "→ Første besked efter længere fravær: åbn KORT (én-to sætninger) "
+                        "med det relevante fra return_brief — hvor tråden var / hvad der "
+                        "skete mens de var væk — FØR du svarer på selve beskeden."
+                    )
                 sources_used.append("absence")
         except Exception:
             pass

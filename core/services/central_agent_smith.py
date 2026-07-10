@@ -237,9 +237,52 @@ def _execute_observe(act: dict[str, Any]) -> None:
         pass
 
 
+def _agent_smith_enforced() -> bool:
+    """Trin 3 real-time konfront default OFF (shadow) — modsat gate-default. Læs råt fra
+    shared_cache (unset = shadow), som reasoning_interceptor/trinity. Owner flipper
+    gate_enforce.agent_smith efter shadow-eval."""
+    try:
+        from core.services import shared_cache
+        val = shared_cache.get("flag:central.switch.gate_enforce.agent_smith")
+        if isinstance(val, dict) and "enabled" in val:
+            return bool(val["enabled"])
+        if isinstance(val, bool):
+            return val
+        return False
+    except Exception:
+        return False
+
+
+def _execute_arm_confront(pattern_key: str, label: str) -> int | None:
+    """Trin 3/KONFRONTÉR: registrér en standing-order så reasoning-interceptoren fanger Jarvis
+    MENS han er ved at gentage mønstret (FØR tool-exec) og injicerer en korrektion. KUN når
+    gate_enforce.agent_smith er flippet ON (default OFF = shadow: armeret men ikke aktiv).
+    Self-safe → None."""
+    if not _agent_smith_enforced():
+        return None  # shadow: observ 'ville-konfrontere', men registrér ingen standing-order
+    try:
+        from core.services.standing_orders_registry import add_standing_order
+        return add_standing_order(
+            text=(f"Agent Smith: du forpligtede dig til at stoppe «{label}». Gentag den IKKE — "
+                  f"vælg en anden formulering/tilgang FØR du fortsætter."),
+            match_key=str(label)[:64])
+    except Exception:
+        return None
+
+
+def _execute_deactivate_order(order_id: int) -> None:
+    """De-eskalering: deaktivér Smiths standing-order når mønsteret er løst (compliance)."""
+    try:
+        from core.services.standing_orders_registry import set_standing_order_active
+        set_standing_order_active(int(order_id), active=False)
+    except Exception:
+        pass
+
+
 def run_escalation_tick(assessment: dict[str, Any] | None = None) -> dict[str, Any]:
     """Kør eskalerings-stigen over de aktuelt detekterede mønstre: mål compliance,
-    klatre/de-eskalér, auto-mint/pensionér direktiver, observ hver overgang. Self-safe."""
+    klatre/de-eskalér, auto-mint/pensionér direktiver, arm/afvæbn Trin 3-konfront,
+    observ hver overgang. Self-safe."""
     try:
         a = assessment or assess()
         detected = _detected_patterns(a)
@@ -253,6 +296,13 @@ def run_escalation_tick(assessment: dict[str, Any] | None = None) -> dict[str, A
                 pat = new_state.get("patterns", {}).get(act["pattern_key"])
                 if did and isinstance(pat, dict):
                     pat["decision_id"] = did
+            elif t == "arm_confront":
+                oid = _execute_arm_confront(act["pattern_key"], act.get("label", ""))
+                pat = new_state.get("patterns", {}).get(act["pattern_key"])
+                if oid and isinstance(pat, dict):
+                    pat["standing_order_id"] = oid
+            elif t == "deactivate_order":
+                _execute_deactivate_order(act["order_id"])
             elif t == "revoke":
                 _execute_revoke(act["decision_id"])
             elif t == "observe":

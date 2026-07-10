@@ -212,6 +212,21 @@ def is_live_enabled(cls: AdaptationClass | None = None) -> bool:
     return bool(_kv_get(c.live_flag, False)) and not bool(_kv_get(c.pause_flag, False))
 
 
+def effective_dream_trust_factor() -> float:
+    """Forbruger til dream_trust-musklen (LivingNeuron §3, 2026-07-10): oversæt tiltro-biasen
+    til en vægt-faktor for dream_bias-intensitet. 1.0 når live_flag OFF (shadow — uændret).
+    Når ON: clamp(1 + dream_trust_bias) i [0.5, 1.5] → bevist-troværdige drømme vægtes OP
+    (mere prominente), modsagte drømme vægtes NED (fader hurtigere under prompt-gulvet).
+    Self-safe → 1.0 (neutral). Arver §8-membranen (musklen selv er clamped/paused/rollback)."""
+    try:
+        cls = _DREAM_TRUST_CLASS
+        if not is_live_enabled(cls):
+            return 1.0
+        return max(0.5, min(1.5, 1.0 + float(get_bias(cls))))
+    except Exception:
+        return 1.0
+
+
 def is_paused(cls: AdaptationClass | None = None) -> bool:
     c = cls or _default_class()
     return bool(_kv_get(c.pause_flag, False))

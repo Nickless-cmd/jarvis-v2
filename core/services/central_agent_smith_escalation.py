@@ -85,6 +85,9 @@ def _resolve_actions(state: dict[str, Any], key: str, pat: dict[str, Any],
     if pat.get("decision_id"):
         acts.append({"type": "revoke", "decision_id": pat["decision_id"],
                      "pattern_key": key, "reason": reason})
+    if pat.get("standing_order_id"):  # Trin 3 var armeret → afvæbn standing-order ved compliance
+        acts.append({"type": "deactivate_order", "order_id": pat["standing_order_id"],
+                     "pattern_key": key})
     acts.append({"type": "voice", "rung": "resolved", "label": pat.get("label", ""),
                  "line": _voice("resolved", pat.get("label", ""))})
     acts.append({"type": "observe", "event": "resolved", "pattern_key": key,

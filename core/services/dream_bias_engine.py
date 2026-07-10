@@ -151,7 +151,20 @@ def get_active_dream_bias(*, workspace_id: str = "default") -> dict[str, Any] | 
     except Exception:
         # Settings unavailable — fail open and return raw bias
         pass
-    return get_active_bias_raw(workspace_id=workspace_id)
+    bias = get_active_bias_raw(workspace_id=workspace_id)
+    # dream_trust-forbruger (LivingNeuron §3, 2026-07-10): vægt intensiteten med drømmenes
+    # track-record. Faktor=1.0 når musklen er shadow (live_flag OFF) → uændret. Self-safe.
+    if bias and bias.get("intensity") is not None:
+        try:
+            from core.services.central_adaptation import effective_dream_trust_factor
+            factor = effective_dream_trust_factor()
+            if factor != 1.0:
+                bias = dict(bias)
+                bias["intensity"] = round(float(bias["intensity"]) * factor, 4)
+                bias["dream_trust_factor"] = factor
+        except Exception:
+            pass
+    return bias
 
 
 # ── Heartbeat formatter ───────────────────────────────────────────────

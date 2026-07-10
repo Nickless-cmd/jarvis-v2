@@ -21,3 +21,23 @@ def test_curated_path_rejects_traversal(isolated_runtime):
     assert curated_path_for("../../etc/passwd", name="default") is None or \
            curated_path_for("../../etc/passwd", name="default").parent.name == "curated"
     assert curated_path_for("..", name="default") is None
+
+
+from core.memory import memory_topic_store as mts
+
+def test_write_confirmed_then_read(isolated_runtime):
+    out = mts.write_topic_confirmed("alpha", title="Alpha", hook="om alpha",
+                                    body="# Alpha\n\nfuld krop", name="default")
+    assert out["confirmed"] is True
+    assert mts.read_topic("alpha", name="default") == "# Alpha\n\nfuld krop"
+
+def test_read_missing_returns_none(isolated_runtime):
+    assert mts.read_topic("does-not-exist", name="default") is None
+
+def test_read_rejects_bad_slug(isolated_runtime):
+    assert mts.read_topic("..", name="default") is None
+
+def test_write_bad_slug_not_confirmed(isolated_runtime):
+    out = mts.write_topic_confirmed("!!!", title="x", hook="y", body="z", name="default")
+    assert out["confirmed"] is False
+    assert out["reason"] == "bad-slug"

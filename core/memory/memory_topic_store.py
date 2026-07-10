@@ -40,3 +40,39 @@ def curated_path_for(slug: str, *, name: str = "default") -> Path | None:
     except Exception as exc:
         logger.debug("memory_topic_store: path resolve failed: %s", exc)
         return None
+
+
+def read_topic(slug: str, *, name: str = "default") -> str | None:
+    """Læs en kurateret topic-krop for den aktuelle bruger. None hvis ugyldigt/mangler."""
+    path = curated_path_for(slug, name=name)
+    if path is None or not path.exists():
+        return None
+    try:
+        return path.read_text(encoding="utf-8")
+    except Exception as exc:
+        logger.debug("memory_topic_store: read failed: %s", exc)
+        return None
+
+
+def write_topic_confirmed(slug: str, *, title: str, hook: str, body: str,
+                          name: str = "default") -> dict[str, Any]:
+    """Skriv en topic-krop og BEKRAEFT den (fil eksisterer + indhold matcher).
+    Index-linjen tilfoejes KUN ved bekraeftet krops-skriv (Task 3 wirer det).
+    Returnerer {'confirmed': bool, 'reason': str, 'slug': str}."""
+    safe = sanitize_slug(slug)
+    if not safe:
+        return {"confirmed": False, "reason": "bad-slug", "slug": ""}
+    path = curated_path_for(safe, name=name)
+    if path is None:
+        return {"confirmed": False, "reason": "bad-slug", "slug": safe}
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(str(body or ""), encoding="utf-8")
+        # BEKRAEFT: læs tilbage + sammenlign (strict write discipline).
+        if not path.exists() or path.read_text(encoding="utf-8") != str(body or ""):
+            return {"confirmed": False, "reason": "body-write-failed", "slug": safe}
+    except Exception as exc:
+        logger.debug("memory_topic_store: write failed: %s", exc)
+        return {"confirmed": False, "reason": "body-write-failed", "slug": safe}
+    # Index-upsert wires i Task 3 — indtil da regnes krops-skriv som confirmed.
+    return {"confirmed": True, "reason": "ok", "slug": safe}

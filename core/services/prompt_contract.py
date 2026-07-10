@@ -365,10 +365,37 @@ def _honesty_rules_section(*, compact: bool) -> str:
     )
 
 
+def _curated_memory_index_section(name: str = "default") -> str:
+    """Kurateret memory-INDEX (spec 2026-07-10 Spec B): altid-loadet én-linjers for
+    den resolvede bruger. Kroppe læses on-demand via read_memory_topic.
+
+    Samlet i ÉN helper så build_visible_stable_prefix (warmer-cron) og
+    build_visible_chat_prompt_assembly (live-run) er BYTE-IDENTISKE her — ellers
+    ville index-blokken forkorte det delte cache-prefix. Fail-safe: en index-load-
+    fejl maa ALDRIG vaelte prompt-bygningen (returnér tom streng). Sidder bag samme
+    cache-grænse som identity-filerne (et memory-write ER en workspace-edit →
+    korrekt invalidering)."""
+    try:
+        from core.identity.workspace_bootstrap import workspace_memory_paths as _wmp
+        idx_path = _wmp(name=name)["curated_memory"]
+        if not idx_path.exists():
+            return ""
+        idx = idx_path.read_text(encoding="utf-8").strip()
+        if not idx:
+            return ""
+        return (
+            "## Curated memory index\n"
+            "(One line per topic. Read a topic on demand with "
+            "read_memory_topic(slug).)\n\n" + idx
+        )
+    except Exception:
+        return ""  # index-load maa ALDRIG vaelte prompt-bygningen
+
+
 def build_visible_stable_prefix(
     *,
-    provider: str,
-    model: str,
+    provider: str = "",
+    model: str = "",
     name: str = "default",
     compact: bool = False,
 ) -> str:
@@ -453,6 +480,11 @@ def build_visible_stable_prefix(
         )
         if section:
             parts.append(section)
+
+    # Kurateret memory-index — samme helper som live-stien (byte-identisk, fail-safe).
+    _mem_index = _curated_memory_index_section(name)
+    if _mem_index:
+        parts.append(_mem_index)
 
     return "\n\n".join(part for part in parts if part).strip()
 
@@ -722,6 +754,14 @@ def build_visible_chat_prompt_assembly(
         if section:
             parts.append(section)
             included_files.append(filename)
+
+    # Kurateret memory-index (spec 2026-07-10 Spec B) — samme helper/position som
+    # build_visible_stable_prefix (warmer) → byte-identisk, forlænger cache-prefixet
+    # forbi identitets-filerne. Fail-safe. Kroppe pulles on-demand via read_memory_topic.
+    _mem_index = _curated_memory_index_section(name)
+    if _mem_index:
+        parts.append(_mem_index)
+        derived_inputs.append("curated memory index")
 
     # Continuity wake-up block — inject after identity block so Jarvis
     # wakes up with felt state from the previous session instead of cold.

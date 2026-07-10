@@ -379,10 +379,57 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _html_to_text(raw: str) -> str:
+    """Grov HTML→tekst der BEVARER afsnits-struktur (blok-tags → linjeskift).
+
+    Den gamle version kollapsede AL whitespace til ét mellemrum → én lang mur uden
+    linjeskift, ulæselig og umulig at linje-snappe. Her bliver blok-grænser (p/div/
+    li/h1-6/br/tr/section/article) til linjeskift, så afsnit overlever og et vindue
+    er læsbart. Self-safe.
+    """
+    try:
+        t = re.sub(r"<script[^>]*>.*?</script>", " ", raw, flags=re.DOTALL | re.IGNORECASE)
+        t = re.sub(r"<style[^>]*>.*?</style>", " ", t, flags=re.DOTALL | re.IGNORECASE)
+        t = re.sub(r"<!--.*?-->", " ", t, flags=re.DOTALL)
+        # blok-grænser → linjeskift (bevar afsnit)
+        t = re.sub(r"(?i)<(?:br|/p|/div|/li|/h[1-6]|/tr|/section|/article|/header|/footer|/blockquote)\s*/?>", "\n", t)
+        t = re.sub(r"(?i)<(?:p|div|li|h[1-6]|tr|section|article|blockquote)\b[^>]*>", "\n", t)
+        t = re.sub(r"<[^>]+>", " ", t)              # resterende tags væk
+        t = html.unescape(t)
+        # normalisér: kollaps kun INTRA-linje-whitespace; bevar linjeskift; max ét blankt linje
+        out: list[str] = []
+        blank = False
+        for ln in t.split("\n"):
+            ln = re.sub(r"[ \t\f\v\r]+", " ", ln).strip()
+            if ln:
+                out.append(ln)
+                blank = False
+            elif not blank:
+                out.append("")
+                blank = True
+        return "\n".join(out).strip()
+    except Exception:
+        # fald tilbage til den gamle grove strip så vi aldrig kaster
+        try:
+            t = re.sub(r"<[^>]+>", " ", str(raw or ""))
+            return re.sub(r"\s+", " ", html.unescape(t)).strip()
+        except Exception:
+            return ""
+
+
 def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
     url = str(args.get("url") or "").strip()
     if not url:
         return {"error": "url is required", "status": "error"}
+
+    # Paginering: head-først vindue fra `offset`. Web-prosa har indholdet i MIDTEN —
+    # den gamle clip_head_tail (bygget til bash-output hvor HALEN betyder mest) smed
+    # brødteksten væk og gav intro+footer. Nu returneres et sammenhængende vindue og
+    # metadata (has_more/next_offset) så modellen kan side-blade til resten.
+    try:
+        offset = max(int(args.get("offset") or 0), 0)
+    except (TypeError, ValueError):
+        offset = 0
 
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
@@ -397,17 +444,38 @@ def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
     except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
         return {"error": f"Fetch failed: {exc}", "status": "error"}
 
-    # Strip HTML tags for a rough text extraction
-    text = re.sub(r"<script[^>]*>.*?</script>", "", raw, flags=re.DOTALL)
-    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL)
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = html.unescape(text)
-    text = re.sub(r"\s+", " ", text).strip()
+    text = _html_to_text(raw)
+    total = len(text)
 
-    if len(text) > MAX_WEB_FETCH_CHARS:
-        text = _clip_head_tail(text, limit=MAX_WEB_FETCH_CHARS)
+    if offset >= total and total > 0:
+        return {"text": f"[offset {offset} er forbi sidens slut (total {total} tegn)]",
+                "url": url, "offset": offset, "returned": 0, "total_chars": total,
+                "has_more": False, "next_offset": None, "chars": 0, "status": "ok"}
 
-    return {"text": text, "url": url, "chars": len(text), "status": "ok"}
+    window = text[offset: offset + MAX_WEB_FETCH_CHARS]
+    returned = len(window)
+    end = offset + returned
+    has_more = end < total
+    next_offset = end if has_more else None
+
+    body = window
+    if offset > 0:
+        body = f"[fortsat fra tegn {offset} af {total}]\n\n{body}"
+    if has_more:
+        body = (f"{body}\n\n… [{total - end} tegn tilbage — kald web_fetch igen med "
+                f"offset={next_offset} for næste vindue ({offset}-{end} af {total})] …")
+
+    return {
+        "text": body or "[tom side]",
+        "url": url,
+        "offset": offset,
+        "returned": returned,
+        "total_chars": total,
+        "has_more": has_more,
+        "next_offset": next_offset,
+        "chars": returned,  # bagudkompat med tidligere felt
+        "status": "ok",
+    }
 
 
 def _exec_web_scrape(args: dict[str, Any]) -> dict[str, Any]:

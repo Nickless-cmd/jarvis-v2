@@ -1400,13 +1400,27 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "web_fetch",
-            "description": "Fetch and read the text content of a web page.",
+            "description": (
+                "Fetch and read the text content of a web page. Long pages are "
+                "paginated: you get a contiguous window from `offset` plus "
+                "`total_chars`, `has_more` and `next_offset`. When `has_more` is "
+                "true, call web_fetch again with the returned `next_offset` to read "
+                "the rest — nothing in the middle is dropped."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "url": {
                         "type": "string",
                         "description": "URL to fetch",
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "description": (
+                            "Character offset to start the window at (default 0). "
+                            "Use the `next_offset` from a previous call to page "
+                            "forward through a long page."
+                        ),
                     },
                 },
                 "required": ["url"],

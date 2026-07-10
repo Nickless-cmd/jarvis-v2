@@ -185,9 +185,50 @@ def test_build_turn_blocks_appends_progress_after_tool_pairs():
     blocks = _build_turn_blocks(text="hej", tool_calls=calls, tool_results=results)
 
     types = [b["type"] for b in blocks]
-    # tekst → tool_use → tool_result → progress (progress sidst)
-    assert types == ["text", "tool_use", "tool_result", "progress"]
+    # Ingen interleave (fallback, fx native batch-tool-exec): tool_use →
+    # tool_result → tekst (svaret opsummerer værktøjerne) → progress sidst.
+    # Bjørn 10. jul: 6 native tool-kald må IKKE rendre med teksten på index 0.
+    assert types == ["tool_use", "tool_result", "text", "progress"]
     assert blocks[-1]["tool_use_id"] == "c1"
+
+
+def test_fallback_native_batch_places_all_tools_before_answer_text():
+    """Regression (Bjørn 10. jul): native batch-tool-exec fører IKKE _interleave_log
+    → fallback-stien. 6 tool-kald + afsluttende svar må rendre tools FØRST, tekst
+    til sidst — ikke tekst på index 0 så kortene falder i bunden."""
+    calls = [
+        _normalize_call({"id": f"c{i}", "name": n, "input": {}})
+        for i, n in enumerate(
+            ["get_weather", "heartbeat_status", "daemon_status",
+             "read_visual_memory", "list_self_wakeups", "git_status"]
+        )
+    ]
+    results = [_normalize_result(_FakeToolResult(f"c{i}", "ok")) for i in range(6)]
+    blocks = _build_turn_blocks(
+        text="Der skete en del på 6 kald — kort status: ...",
+        tool_calls=calls, tool_results=results,  # ingen interleave
+    )
+    non_prog = [b["type"] for b in blocks if b["type"] != "progress"]
+    assert non_prog == ["tool_use", "tool_result"] * 6 + ["text"]
+    # Teksten er sidst blandt ikke-progress → kortene ligger over svaret.
+    assert non_prog[-1] == "text"
+
+
+def test_interleave_undercounts_tools_falls_back_to_tools_first():
+    """Regression (Bjørn 10. jul): native batch-exec kan efterlade interleave
+    med KUN en 'text'-markør (fra en streamet svar-delta) men 6 faktiske tools.
+    interleave['text'] undertæller tools → må IKKE stoles på; fallback lægger
+    tools først, tekst sidst i stedet for tekst på index 0 + tools hængt på."""
+    calls = [_normalize_call({"id": f"c{i}", "name": "bash", "input": {}}) for i in range(6)]
+    results = [_normalize_result(_FakeToolResult(f"c{i}", "ok")) for i in range(6)]
+    blocks = _build_turn_blocks(
+        text="Kort status fra 6 kald.",
+        tool_calls=calls, tool_results=results,
+        interleave=["text"],  # undertæller: 0 tool-markører < 6 tools
+    )
+    non_prog = [b["type"] for b in blocks if b["type"] != "progress"]
+    assert non_prog == ["tool_use", "tool_result"] * 6 + ["text"]
+    assert non_prog[-1] == "text"
 
 
 def test_build_turn_blocks_no_progress_when_no_tools():

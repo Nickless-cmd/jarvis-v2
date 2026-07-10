@@ -277,7 +277,15 @@ def _build_turn_blocks(
     """
     blocks: list[dict] = []
     clean = str(text or "").strip()
-    if interleave:
+    # Stol KUN på interleave-rækkefølgen når dens 'tool'-markører gør rede for
+    # ALLE tool-kald. Native batch-tool-exec fører ikke _interleave_log (kun evt.
+    # en enkelt 'text'-markør fra en streamet svar-delta) → interleave undertæller
+    # tools → de resterende ville blive hængt PÅ efter teksten så kortene falder i
+    # bunden (Bjørn 10. jul, 6 native kald). I det tilfælde: brug fallback der
+    # lægger tools først og svaret til sidst.
+    _tool_markers = sum(1 for k in (interleave or []) if k == "tool")
+    _trust_interleave = bool(interleave) and _tool_markers >= len(tool_calls or [])
+    if _trust_interleave:
         # Dedupliér KUN consecutive 'text' (så én tekst-blob ikke splittes i to
         # blokke). 'tool'-entries BEVARES ALLE — ellers kollapser flere tool-kald
         # i træk til ét (Bjørn 10. jul: kun sidste tool overlevede + svar forsvandt).
@@ -351,9 +359,13 @@ def _build_turn_blocks(
         if clean and not text_placed:
             blocks.append({"type": "text", "text": clean})
     else:
-        # Degraderet fallback: tekst først, så tool-par i kald-rækkefølge
-        if clean:
-            blocks.append({"type": "text", "text": clean})
+        # Degraderet fallback (ingen interleave — fx native batch-tool-exec-stien
+        # der ikke fører _interleave_log): tool-par FØRST i kald-rækkefølge, så
+        # svar-teksten TIL SIDST. Uden rækkefølge-info er teksten næsten altid det
+        # afsluttende svar der opsummerer værktøjerne → skal ligge efter kortene,
+        # ikke foran så de falder til bunden (Bjørn 10. jul: 6 native tool-kald
+        # rendrede med tekst på index 0 → kort i bunden). Ren tekst-tur (ingen
+        # tools) giver bare ét tekst-blok.
         results_by_id = {}
         for r in (tool_results or []):
             results_by_id[str(r.get("tool_use_id") or "")] = r
@@ -375,6 +387,8 @@ def _build_turn_blocks(
                     "content": str(r.get("content") or ""),
                     "is_error": bool(r.get("is_error")),
                 })
+        if clean:
+            blocks.append({"type": "text", "text": clean})
     # Fladt progress-spor (feature 4, spec 2026-07-09 §5) — gælder BEGGE stier
     # (interleave + fallback): ét settlet element pr. tool-kald + narration.
     # Fail-open: en fejl her må aldrig vælte blok-bygningen for et live run.

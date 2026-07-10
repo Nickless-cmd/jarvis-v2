@@ -1167,8 +1167,18 @@ def build_visible_chat_prompt_assembly(
             _dream = build_dream_hypothesis_prompt_section()
             if _dream:
                 _dream_text, _dream_id = _dream
-                _awareness_add(40, "dream hypothesis (unpresented)", _dream_text)
-                mark_hypothesis_presented(hypothesis_id=_dream_id)
+                # Seraph-teeth (2026-07-10): portvagt for dream-hypotese-synlighed. Default OFF
+                # (shadow → altid True, uændret). Enforced → kun modne (confidence≥gulv) vises;
+                # umodne holdes tilbage (ikke markeret presented → prøver igen når de modnes).
+                _seraph_ok = True
+                try:
+                    from core.services.central_seraph import may_surface_dream_hypothesis
+                    _seraph_ok = may_surface_dream_hypothesis(_dream_id)
+                except Exception:
+                    _seraph_ok = True
+                if _seraph_ok:
+                    _awareness_add(40, "dream hypothesis (unpresented)", _dream_text)
+                    mark_hypothesis_presented(hypothesis_id=_dream_id)
         except Exception as _e:
             _sec_err("dream hypothesis (unpresented)", _e)
 

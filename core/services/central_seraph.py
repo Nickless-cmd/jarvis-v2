@@ -176,3 +176,51 @@ def record_seraph(*, trigger: str = "cadence", last_visible_at: str = "") -> dic
     g = guard()
     return {"status": "ok", "seen": int(g.get("seen") or 0),
             "green": int(g.get("green") or 0), "red": int(g.get("red") or 0)}
+
+
+# ── TEETH (2026-07-10): Seraph gater dream-hypotese-SYNLIGHED ──────────────────
+# Fra recommend-only → faktisk portvagt: en dream-hypotese må kun præsenteres for Bjørn
+# hvis den er moden nok (confidence ≥ gulv). Default OFF (shadow — alt passerer, uændret).
+# Fail-open: ukendt/fejl → tillad (Seraph blokerer ALDRIG i tvivl). §11-sikkerhed uberørt.
+_MIN_SURFACE_CONFIDENCE = 0.5
+
+
+def _seraph_enforced() -> bool:
+    """gate_enforce.seraph default OFF (shadow) — læs råt fra shared_cache, unset = shadow.
+    Owner flipper efter beslutning (som reasoning_interceptor/trinity/agent_smith)."""
+    try:
+        from core.services import shared_cache
+        val = shared_cache.get("flag:central.switch.gate_enforce.seraph")
+        if isinstance(val, dict) and "enabled" in val:
+            return bool(val["enabled"])
+        if isinstance(val, bool):
+            return val
+        return False
+    except Exception:
+        return False
+
+
+def may_surface_dream_hypothesis(hyp_id: object) -> bool:
+    """Seraphs dør: må denne dream-hypotese præsenteres for Bjørn nu? True i shadow (uændret).
+    Når enforced: kun hvis den er moden nok (confidence ≥ gulv). Fail-open → True ved tvivl."""
+    if not _seraph_enforced():
+        return True
+    try:
+        from core.runtime.db import connect
+        with connect() as c:
+            row = c.execute(
+                "SELECT confidence FROM cognitive_dream_hypotheses WHERE id=?",
+                (hyp_id,)).fetchone()
+        if row is None:
+            return True  # ukendt id → tillad (blokér aldrig i tvivl)
+        ok = float(row["confidence"] or 0.0) >= _MIN_SURFACE_CONFIDENCE
+        if not ok:
+            try:
+                from core.services.central_core import central
+                central().observe({"cluster": "cognition", "nerve": "seraph",
+                                   "kind": "surface_deferred", "hyp_id": str(hyp_id)[:40]})
+            except Exception:
+                pass
+        return ok
+    except Exception:
+        return True  # fail-open

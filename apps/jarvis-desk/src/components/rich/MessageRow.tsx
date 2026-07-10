@@ -6,6 +6,7 @@ import { ArtifactAffordance } from './ArtifactAffordance'
 import { detectArtifacts } from '../../lib/artifacts'
 import { blocksToPlainText } from '../../lib/formatTime'
 import { InlineErrorBoundary } from '../ErrorBoundary'
+import { denseBlocks } from '../../lib/blockHelpers'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
  *  (avatar + tekst, ingen boble). Density videregives til rich-blocks.
@@ -15,7 +16,7 @@ import { InlineErrorBoundary } from '../ErrorBoundary'
  *  samtaler tunge — uden memo highlighter hver CodeBlock forfra 2×/sekund. */
 function MessageRowImpl({
   role,
-  blocks,
+  blocks: rawBlocks,
   density,
   streaming,
   createdAt,
@@ -29,6 +30,12 @@ function MessageRowImpl({
   /** Kun bruger-beskeder: send samme tekst igen (sparer copy-paste). */
   onResend?: (text: string) => void
 }) {
+  // denseBlocks ÉN gang ved indgangen: state.blocks/content kan være SPARSOMT
+  // (foldede tool_result-content-blok-indices → undefined-huller). ALLE nedstrøms-
+  // iteratorer (user-map, images, BlocksRenderer, detectArtifacts, blocksToPlainText)
+  // tilgår b.type → et hul crashede render ved svar-slut, uden om per-besked-hegnet
+  // (Bjørn 10. jul, 2. crash). Densificér her → alle downstream er hul-frie.
+  const blocks = denseBlocks(rawBlocks)
   if (role === 'user') {
     const text = blocks.map((b) => (b.type === 'text' ? b.text : '')).join('')
     const images = blocks.filter((b): b is Extract<ContentBlock, { type: 'image' }> => b.type === 'image')

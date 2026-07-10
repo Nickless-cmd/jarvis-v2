@@ -7,11 +7,17 @@ HANDLERS (samme mønster som de øvrige tool-moduler).
 """
 from __future__ import annotations
 
+import time
 from typing import Any
 
-from core.services.ui_panel_store import request_panel
+from core.services.ui_panel_store import request_panel, get_request_status
 
 _PANELS = ("preview", "right", "files", "file_tree", "settings")
+
+# Request→ACK-kontrakt (2026-07-10): open_ui_panel VENTER på at desk-appen faktisk
+# åbner + kvitterer, så Jarvis får bekræftelse i stedet for at skyde i blinde.
+_ACK_TIMEOUT_S = 6.0
+_ACK_POLL_S = 0.25
 
 
 def _exec_open_ui_panel(args: dict[str, Any]) -> dict[str, Any]:
@@ -34,8 +40,21 @@ def _exec_open_ui_panel(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "ok", "panel": panel, "action": "close",
                 "note": "Desk-appen lukker panelet. (Kun synligt i jarvis-desk.)"}
     rec = request_panel(panel, detail=detail, session_id=session_id)
-    return {"status": "ok", "panel": panel, "action": "open", "request_id": rec["id"],
-            "note": "Desk-appen åbner panelet. (Kun synligt i jarvis-desk.)"}
+    rid = rec["id"]
+    # VENT på desk-ack (status → 'opened'). Cross-proces via DB-backed store, så
+    # ack'en fra api-procesen ses her uanset om vi kører i runtime- eller api-proces.
+    deadline = time.monotonic() + _ACK_TIMEOUT_S
+    while time.monotonic() < deadline:
+        if get_request_status(rid) == "opened":
+            return {"status": "ok", "confirmed": True, "panel": panel, "action": "open",
+                    "request_id": rid, "note": "Desk-appen åbnede panelet (bekræftet)."}
+        time.sleep(_ACK_POLL_S)
+    # Ingen kvittering → ÆRLIG fejl i stedet for blind "ok".
+    return {"status": "unconfirmed", "confirmed": False, "panel": panel, "action": "open",
+            "request_id": rid,
+            "note": (f"Ingen desk-bekræftelse inden for {_ACK_TIMEOUT_S:.0f}s — panelet blev "
+                     "IKKE bekræftet åbnet. Desk-appen er måske lukket, ikke i fokus, eller "
+                     "dette er ikke en owner-desk-session (fx Discord/web).")}
 
 
 UI_PANEL_TOOL_DEFINITIONS: list[dict[str, Any]] = [

@@ -42,14 +42,15 @@ def test_ack_unknown_false(isolated_runtime) -> None:
     assert ack_panel("nope") is False
 
 
-def test_tool_registered_and_callable(isolated_runtime) -> None:
+def test_tool_registered_and_callable(isolated_runtime, monkeypatch) -> None:
     # open_ui_panel skal være i tool-registry + handleren virke.
     from core.services.tool_catalog import get_tool_definitions
     names = {d["function"]["name"] for d in get_tool_definitions() if "function" in d}
     assert "open_ui_panel" in names
 
-    from core.tools.ui_panel_tools import _exec_open_ui_panel
-    res = _exec_open_ui_panel({"panel": "preview", "detail": "x"})
+    from core.tools import ui_panel_tools as u
+    monkeypatch.setattr(u, "get_request_status", lambda rid: "opened")
+    res = u._exec_open_ui_panel({"panel": "preview", "detail": "x"})
     assert res["status"] == "ok" and res["panel"] == "preview"
 
 

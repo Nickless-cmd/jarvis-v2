@@ -79,6 +79,15 @@ def ack_panel(request_id: str) -> bool:
     return False
 
 
+def get_request_status(request_id: str) -> str | None:
+    """Nuværende status ('pending'/'opened') for en request, eller None hvis ukendt.
+    Bruges af request→ACK-kontrakten (open_ui_panel venter på 'opened')."""
+    for r in _load():
+        if r.get("id") == request_id:
+            return str(r.get("status") or "")
+    return None
+
+
 def _load() -> list[dict[str, Any]]:
     try:
         raw = get_runtime_state_value(_KEY) or "{}"

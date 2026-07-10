@@ -403,18 +403,62 @@ def _decode_json_list(value: object) -> list[str]:
     return [str(item) for item in loaded if str(item).strip()]
 
 
+# Bånd: under BREWING_LO = for svagt til at nævne · BREWING_LO..EMERGENT_HI = "brygger"
+# (Neos arbejde i gang, synligt FØR bridgen) · >= EMERGENT_HI = emergent (bridge fyrer).
+_BREWING_LO = 0.5
+_EMERGENT_HI = 0.78
+
+
+def _band(confidence: float) -> str:
+    c = float(confidence or 0.0)
+    if c >= _EMERGENT_HI:
+        return "emergent"
+    if c >= _BREWING_LO:
+        return "brewing"
+    return "weak"
+
+
+def brewing_patterns(*, limit: int = 8) -> list[dict[str, Any]]:
+    """Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent.
+
+    Dette er kernen i at 'vække Neo' UDEN at sænke emergens-tærsklen: motoren detekterer
+    korrekt-skeptisk, men dens arbejde-i-gang var usynligt (bridge fyrer kun ≥0.78). Nu er
+    det synligt. Trajectory fra evaluation_count (re-set = styrkes). Read-only, self-safe.
+    """
+    out: list[dict[str, Any]] = []
+    for p in list_patterns(limit=max(1, int(limit or 8))):
+        conf = float(p.get("confidence") or 0.0)
+        if _BREWING_LO <= conf < _EMERGENT_HI:
+            evals = int(p.get("evaluation_count") or 1)
+            out.append({
+                "pattern_key": str(p.get("pattern_key") or ""),
+                "title": str(p.get("title") or ""),
+                "confidence": round(conf, 3),
+                "evidence_count": int(p.get("evidence_count") or 0),
+                "evaluation_count": evals,
+                "trajectory": "strengthening" if evals >= 2 else "new",
+                "gap_to_emergent": round(_EMERGENT_HI - conf, 3),
+                "last_updated_at": str(p.get("last_updated_at") or ""),
+            })
+    out.sort(key=lambda d: d["confidence"], reverse=True)
+    return out
+
+
 def build_emergence_surface(*, limit: int = 8) -> dict[str, Any]:
     """Surface persisted emergence candidates without running detection."""
     patterns = list_patterns(limit=max(1, int(limit or 8)))
     items: list[dict[str, Any]] = []
     for pattern in patterns:
+        conf = float(pattern.get("confidence") or 0.0)
         items.append({
             "pattern_key": str(pattern.get("pattern_key") or ""),
             "title": str(pattern.get("title") or ""),
             "summary": str(pattern.get("summary") or ""),
             "status": str(pattern.get("status") or ""),
-            "confidence": float(pattern.get("confidence") or 0.0),
+            "confidence": conf,
+            "band": _band(conf),
             "evidence_count": int(pattern.get("evidence_count") or 0),
+            "evaluation_count": int(pattern.get("evaluation_count") or 1),
             "competing_explanations": _decode_json_list(
                 pattern.get("competing_explanations_json")
             ),
@@ -422,16 +466,27 @@ def build_emergence_surface(*, limit: int = 8) -> dict[str, Any]:
             "last_updated_at": str(pattern.get("last_updated_at") or ""),
         })
     summary = summarize_patterns()
-    active = bool(summary.get("candidate") or summary.get("upgraded"))
+    brewing = brewing_patterns(limit=max(1, int(limit or 8)))
+    # 'active' nu også når noget brygger — motorens arbejde er synligt før emergens.
+    active = bool(summary.get("candidate") or summary.get("upgraded") or brewing)
+    if brewing:
+        b = brewing[0]
+        felt = (f"Neo mærker '{b['title']}' brygge — conf {b['confidence']}, evidens "
+                f"{b['evidence_count']} ({b['trajectory']}); {b['gap_to_emergent']} fra emergent.")
+    else:
+        felt = "Intet brygger lige nu — roligt vand under overfladen."
     return {
         "active": active,
         "mode": "evidence-based-emergence-patterns",
         "summary": {
             **summary,
+            "brewing_count": len(brewing),
+            "felt": felt,
             "current_pattern": (
                 items[0]["title"] if items else "No persisted emergence pattern"
             ),
         },
+        "brewing": brewing,
         "items": items,
         "allowed_effects": [
             "prompt_attention",

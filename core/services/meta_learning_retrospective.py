@@ -224,6 +224,13 @@ def _persist_memo(
             ),
         )
         conn.commit()
+    try:  # egress-fri central-binding (kun tal, ingen narrative-tekst)
+        from core.services.central_core import central
+        central().observe({"cluster": "learning", "nerve": "meta_learning",
+                           "kind": "memo_persisted", "memo_id": str(memo_id)[:40],
+                           "hypothesis_count": len(hypothesis_candidates or [])})
+    except Exception:
+        pass
     return memo_id
 
 

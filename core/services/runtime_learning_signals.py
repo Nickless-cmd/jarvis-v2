@@ -280,6 +280,13 @@ def generate_learning_digest(summary: dict[str, Any]) -> str:
     if signal_count < 3:
         return ""
 
+    try:  # egress-fri central-binding (PUBLIC-SAFE: kun antal, ingen digest-tekst)
+        from core.services.central_core import central
+        central().observe({"cluster": "learning", "nerve": "runtime_learning",
+                           "kind": "learning_digest", "signal_count": signal_count})
+    except Exception:
+        pass
+
     signal_stats: dict[str, Any] = summary.get("signal_stats") or {}
     family_stats: dict[str, Any] = summary.get("family_signal_stats") or {}
 

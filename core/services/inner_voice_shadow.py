@@ -331,6 +331,14 @@ def record_shadow(
             llm_latency_ms=result_holder.get("latency_ms"),
             llm_error=result_holder.get("error"),
         )
+        try:  # egress-fri central-binding (PRIVAT: kun metadata, ALDRIG voice-indhold)
+            from core.services.central_core import central
+            central().observe({"cluster": "inner_voice", "nerve": "inner_voice_shadow",
+                               "kind": "shadow_appraisal", "function": str(function_name)[:40],
+                               "has_output": bool(result_holder.get("output")),
+                               "error": bool(result_holder.get("error"))})
+        except Exception:
+            pass
 
     threading.Thread(target=_worker, daemon=True, name="inner-voice-shadow").start()
 

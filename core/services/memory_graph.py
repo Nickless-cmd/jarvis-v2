@@ -259,6 +259,14 @@ def ingest_text(text: str, *, evidence_label: str = "text") -> int:
     for a, rel, b in triples:
         if record_triple(a, rel, b, evidence=evidence_label[:200]):
             added += 1
+    if added:
+        try:  # egress-fri central-binding (kun antal + kilde-label, ingen tekst-indhold)
+            from core.services.central_core import central
+            central().observe({"cluster": "memory", "nerve": "memory_graph",
+                               "kind": "triples_ingested", "edges_added": added,
+                               "evidence": str(evidence_label)[:40]})
+        except Exception:
+            pass
     return added
 
 

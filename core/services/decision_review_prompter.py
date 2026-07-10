@@ -142,6 +142,13 @@ def review_pending_decisions() -> dict[str, Any]:
         except Exception as exc:
             logger.debug("decision_review: write fail %s: %s", decision_id, exc)
             failed += 1
+    try:  # egress-fri central-binding (kun tal, ingen review-tekst)
+        from core.services.central_core import central
+        central().observe({"cluster": "review", "nerve": "decision_review",
+                           "kind": "review_run", "considered": len(active),
+                           "reviewed": reviewed, "failed": failed})
+    except Exception:
+        pass
     return {
         "status": "ok",
         "considered": len(active),

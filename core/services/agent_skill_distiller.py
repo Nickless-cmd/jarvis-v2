@@ -147,6 +147,13 @@ def distill_all_known_roles(*, days: int = 7) -> dict[str, Any]:
             total_appended += int(r.get("appended", 0) or 0)
         except Exception as exc:
             results.append({"role": role, "status": "error", "error": str(exc)})
+    try:  # egress-fri central-binding (kun tal, ingen distilleret tekst)
+        from core.services.central_core import central
+        central().observe({"cluster": "learning", "nerve": "skill_distiller",
+                           "kind": "distill_run", "roles_processed": len(roles),
+                           "total_appended": total_appended})
+    except Exception:
+        pass
     return {"status": "ok", "roles_processed": len(roles),
             "total_appended": total_appended, "details": results}
 

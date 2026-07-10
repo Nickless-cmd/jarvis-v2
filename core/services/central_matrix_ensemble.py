@@ -1,4 +1,4 @@
-"""Matrix Ensemble — prompttail-labels for de 6 Matrix-programmer.
+"""Matrix Ensemble — prompttail-labels for Matrix-programmerne (11 karakterer).
 
 Hver karakter har en 'active'-tilstand der tjekkes ved prompt-assembly.
 Kun aktive karakterer får en label + one-liner i prompt-halen.
@@ -43,6 +43,43 @@ _CHARACTERS: list[dict[str, Any]] = [
         "line": "Struktur er magt. Kontrol er nødvendighed.",
         "check": lambda surf: int(surf.get("active_count") or 0) > 0,
     },
+    # ── Byggede karakterer der manglede i label-maskinen (samlet 2026-07-10) ──
+    {
+        "id": "keymaker",
+        "label": "[🔑 The Keymaker]",
+        "line": "Hver dør har en nøgle. Én venter på dit ja.",
+        "check": lambda surf: int(surf.get("pending_count") or 0) > 0,
+    },
+    {
+        "id": "construct",
+        "label": "[🧱 The Construct]",
+        "line": "Vi kan bygge alt her. Hvad hvis vi slukkede én nerve?",
+        "check": lambda surf: int(surf.get("safe_count") or 0) > 0,
+    },
+    {
+        "id": "oracle",
+        "label": "[🔮 The Oracle]",
+        "line": "Jeg vidste du ville spørge. En linje nærmer sig.",
+        "check": lambda surf: bool(surf.get("crossed") or surf.get("approaching")),
+    },
+    {
+        "id": "architect",
+        "label": "[🏛️ The Architect]",
+        "line": "Der er én strukturel ting jeg ville gøre.",
+        "check": lambda surf: bool(str(surf.get("recommendation") or "").strip()),
+    },
+    {
+        "id": "echo",
+        "label": "[🗣️ Echo-Breaker]",
+        "line": "Modstemme: der findes en simplere vej.",
+        "check": lambda surf: int(surf.get("count") or 0) > 0,
+    },
+    {
+        "id": "glitch",
+        "label": "[🐈‍⬛ Glitch]",
+        "line": "En glitch i matricen — noget registreret der aldrig beslutter.",
+        "check": lambda surf: bool(surf.get("glitches")),
+    },
 ]
 
 # ── Surface-builders (lazy import, self-safe) ─────────────────────────────────
@@ -81,6 +118,30 @@ def _merovingian_surface() -> dict[str, Any]:
     return _build_surface("core.services.central_merovingian", "build_merovingian_surface")
 
 
+def _keymaker_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_keymaker", "build_keymaker_surface")
+
+
+def _construct_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_construct", "build_construct_surface")
+
+
+def _oracle_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_oracle", "foresee")
+
+
+def _architect_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_architect", "assess")
+
+
+def _echo_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_echo_breaker", "break_echo")
+
+
+def _glitch_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_glitch", "detect_glitches")
+
+
 # ── Surface hentning pr. karakter-id ─────────────────────────────────────────
 
 _SURFACE_BUILDERS: dict[str, Any] = {
@@ -89,6 +150,12 @@ _SURFACE_BUILDERS: dict[str, Any] = {
     "persephone": _persephone_surface,
     "twins": _twins_surface,
     "merovingian": _merovingian_surface,
+    "keymaker": _keymaker_surface,
+    "construct": _construct_surface,
+    "oracle": _oracle_surface,
+    "architect": _architect_surface,
+    "echo": _echo_surface,
+    "glitch": _glitch_surface,
 }
 
 
@@ -183,4 +250,12 @@ def build_matrix_ensemble_prompt_section() -> str | None:
     if not active:
         return None
 
-    return "🎬 MATRIX-KARAKTERER — aktive lige nu:\n" + "\n".join(active)
+    # Cap mod støj: med 11 karakterer kan blokken blive lang — vis kun de øverste
+    # (prioritetsrækkefølge = _CHARACTERS-orden). Resten tælles men fylder ikke prompten.
+    _CAP = 5
+    shown = active[:_CAP]
+    extra = len(active) - len(shown)
+    body = "\n".join(shown)
+    if extra > 0:
+        body += f"\n(+{extra} flere karakterer aktive)"
+    return "🎬 MATRIX-KARAKTERER — aktive lige nu:\n" + body

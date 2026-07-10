@@ -107,6 +107,7 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
     from core.services.contradiction_engine import build_contradiction_engine_surface
     from core.services.contradiction_resolver import build_contradiction_resolver_surface
     from core.services.doc_repair_agent import build_doc_repair_surface
+    from core.memory.memory_size_guard import build_memory_size_surface
     from core.services.user_contradiction_tracker import build_user_contradiction_surface
     from core.services.interlanguage_practice import build_interlanguage_practice_surface
     from core.services.emergence import build_emergence_surface
@@ -202,6 +203,7 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
         "contradiction_engine": build_contradiction_engine_surface,
         "contradictions": build_contradiction_resolver_surface,
         "doc-repair": build_doc_repair_surface,
+        "memory-size": build_memory_size_surface,
         "user_contradiction": build_user_contradiction_surface,
         "interlanguage_practice": build_interlanguage_practice_surface,
         "emergence": build_emergence_surface,

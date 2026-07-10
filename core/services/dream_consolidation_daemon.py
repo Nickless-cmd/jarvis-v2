@@ -35,6 +35,50 @@ _TRIGGER_IDLE_MINUTES = 30
 _MIN_COOLDOWN_HOURS = 4  # don't re-dream more than once every 4h
 _LOOKBACK_HOURS = 24
 _MIN_CLUSTER_SIZE = 2
+# Spec C (2026-07-10): dreams kræver BÅDE tid (cooldown) OG nok nyt materiale.
+_MIN_SESSIONS_SINCE = 5  # mindst N nye chat-sessioner siden sidste dream
+# Consolidation-lock: forhindr to ticks (fx api+runtime cross-proces) i at dreame
+# samtidigt. Best-effort via shared_cache (SQLite, cross-proces). Self-safe.
+_LOCK_KEY = "dream:consolidation:lock"
+_LOCK_TTL_S = 900.0
+
+
+def _sessions_since(last_iso: str | None) -> int:
+    """Antal distinkte chat-sessioner med aktivitet siden ``last_iso``. Fail-OPEN:
+    ved fejl returneres tærsklen (blokerer ikke eksisterende adfærd)."""
+    if not last_iso:
+        return _MIN_SESSIONS_SINCE  # aldrig dreamt → lad tid/idle afgøre
+    try:
+        from core.runtime.db import connect
+        with connect() as c:
+            row = c.execute(
+                "SELECT COUNT(DISTINCT session_id) FROM chat_messages WHERE created_at > ?",
+                (str(last_iso),),
+            ).fetchone()
+        return int(row[0]) if row and row[0] is not None else _MIN_SESSIONS_SINCE
+    except Exception as exc:
+        logger.debug("dream_consolidation: session count failed: %s", exc)
+        return _MIN_SESSIONS_SINCE
+
+
+def _acquire_consolidation_lock() -> bool:
+    """True hvis vi fik lockken (ingen anden dream kører). Best-effort, self-safe."""
+    try:
+        from core.services import shared_cache
+        if shared_cache.get(_LOCK_KEY):
+            return False
+        shared_cache.set(_LOCK_KEY, {"held": True}, ttl_seconds=_LOCK_TTL_S)
+        return True
+    except Exception:
+        return True  # fail-open: cache-fejl må ikke blokere consolidation
+
+
+def _release_consolidation_lock() -> None:
+    try:
+        from core.services import shared_cache
+        shared_cache.set(_LOCK_KEY, {"held": False}, ttl_seconds=1.0)
+    except Exception:
+        pass
 
 _STOPWORDS = {
     "jeg", "du", "er", "at", "det", "den", "en", "et", "og", "i", "på",
@@ -589,7 +633,17 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
     idle_ok, idle_minutes = _is_idle_enough()
     if not idle_ok:
         return {"skipped": True, "reason": f"not-idle-{idle_minutes}m"}
-    result = consolidate_now()
+    # Session-gate (Spec C): kræv nok nyt materiale siden sidste dream.
+    n_sessions = _sessions_since(last)
+    if n_sessions < _MIN_SESSIONS_SINCE:
+        return {"skipped": True, "reason": f"too-few-sessions-{n_sessions}"}
+    # Consolidation-lock: undgå samtidige dreams (cross-proces).
+    if not _acquire_consolidation_lock():
+        return {"skipped": True, "reason": "already-dreaming"}
+    try:
+        result = consolidate_now()
+    finally:
+        _release_consolidation_lock()
     return result or {}
 
 

@@ -8,6 +8,8 @@ import { blocksToPlainText } from '../../lib/formatTime'
 import { hasPasteReference, splitPasteSegments } from '../../lib/pasteSegments'
 import { PasteReferenceChip } from './PasteReferenceChip'
 import type { ApiConfig } from '../../lib/api'
+import { InlineErrorBoundary } from '../ErrorBoundary'
+import { denseBlocks } from '../../lib/blockHelpers'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
  *  (avatar + tekst, ingen boble). Density videregives til rich-blocks.
@@ -17,7 +19,7 @@ import type { ApiConfig } from '../../lib/api'
  *  samtaler tunge — uden memo highlighter hver CodeBlock forfra 2×/sekund. */
 function MessageRowImpl({
   role,
-  blocks,
+  blocks: rawBlocks,
   density,
   streaming,
   createdAt,
@@ -34,6 +36,12 @@ function MessageRowImpl({
   /** Til lazy paste-reference-udfoldning (GET /paste/{id}). Uden config vises chip kompakt. */
   config?: ApiConfig
 }) {
+  // denseBlocks ÉN gang ved indgangen: state.blocks/content kan være SPARSOMT
+  // (foldede tool_result-content-blok-indices → undefined-huller). ALLE nedstrøms-
+  // iteratorer (user-map, images, BlocksRenderer, detectArtifacts, blocksToPlainText)
+  // tilgår b.type → et hul crashede render ved svar-slut, uden om per-besked-hegnet
+  // (Bjørn 10. jul, 2. crash). Densificér her → alle downstream er hul-frie.
+  const blocks = denseBlocks(rawBlocks)
   if (role === 'user') {
     const text = blocks.map((b) => (b.type === 'text' ? b.text : '')).join('')
     const images = blocks.filter((b): b is Extract<ContentBlock, { type: 'image' }> => b.type === 'image')
@@ -73,10 +81,15 @@ function MessageRowImpl({
     <div className="msg-jarvis-wrap">
       <article className="msg-jarvis">
         <div className="jarvis-body">
-          <BlocksRenderer blocks={blocks} density={density} streaming={streaming} />
-          {!streaming && detectArtifacts(blocks).map((a, i) => (
-            <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
-          ))}
+          {/* Per-besked-hegn: en render-throw i ÉN besked (fx en degenereret
+              tool-blok under streaming) isoleres i stedet for at nuke hele appen
+              til sort skærm. Fejlen logges (localStorage jarvis-desk:lastCrash). */}
+          <InlineErrorBoundary label="assistant-blocks">
+            <BlocksRenderer blocks={blocks} density={density} streaming={streaming} />
+            {!streaming && detectArtifacts(blocks).map((a, i) => (
+              <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
+            ))}
+          </InlineErrorBoundary>
         </div>
       </article>
       {!streaming && <MessageActions text={blocksToPlainText(blocks)} createdAt={createdAt} />}

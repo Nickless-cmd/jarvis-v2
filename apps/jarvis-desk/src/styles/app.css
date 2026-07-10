@@ -863,6 +863,13 @@
 .central-badge.tone-red .cb-dot { background: #ff5d5d; box-shadow: 0 0 6px rgba(255,93,93,0.5); }
 .central-badge.tone-unknown .cb-dot { background: var(--fg-3); opacity: 0.6; }
 .central-badge .cb-label { color: var(--fg-2); }
+/* Tone-farvet baggrund + hvid tekst (Bjørn 10. jul: grøn m. hvid tekst i header). */
+.central-badge.tone-green { background: rgba(62,224,138,0.14); border-color: rgba(62,224,138,0.34); }
+.central-badge.tone-green .cb-label { color: #fff; font-weight: 600; }
+.central-badge.tone-yellow { background: rgba(245,196,81,0.13); border-color: rgba(245,196,81,0.32); }
+.central-badge.tone-yellow .cb-label { color: #fff; }
+.central-badge.tone-red { background: rgba(255,93,93,0.14); border-color: rgba(255,93,93,0.34); }
+.central-badge.tone-red .cb-label { color: #fff; }
 .central-badge .cb-count {
   min-width: 15px; text-align: center; padding: 0 5px; border-radius: 999px;
   font-size: 10.5px; font-weight: 600; color: #fff; background: #ff5d5d;

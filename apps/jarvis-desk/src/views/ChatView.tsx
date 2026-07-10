@@ -15,6 +15,7 @@ import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { SystemHealth } from '../components/shell/SystemHealth'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
@@ -444,6 +445,7 @@ export function ChatView({
         <PresenceDot status={bgActive && stream.status !== 'working' ? 'working' : stream.status} /> <span className="chat-title">{chatTitle}</span>
       </div>
       <div className="chatview-head-right">
+        <SystemHealth errors={stream.canonicalErrors} />
         {settings && (
           <CentralBadge config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} isOwner={auth?.role === 'owner'} />
         )}

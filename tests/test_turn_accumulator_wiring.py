@@ -52,9 +52,17 @@ def _normalize_result(r: object) -> dict:
 def test_flat_tool_call_shape_flows_to_blocks():
     calls = [_normalize_call({"id": "c1", "name": "read_file", "input": {"path": "x"}})]
     results = [_normalize_result(_FakeToolResult("c1", "file contents"))]
-    blocks = _build_turn_blocks(text="hej", tool_calls=calls, tool_results=results)
-
-    assert blocks[0] == {"type": "text", "text": "hej"}
+    # interleave = den ægte stream-rækkefølge (Jarvis' fix): tool FØR svar-tekst,
+    # så kortene ligger før svaret (Bjørn 10. jul), ikke samlet under det.
+    blocks = _build_turn_blocks(
+        text="hej", tool_calls=calls, tool_results=results,
+        interleave=["tool", "text"],
+    )
+    # Filtrér progress (feature 4 appender ét progress-spor til sidst) — her
+    # tester vi tool/tekst-rækkefølgen.
+    non_prog = [b["type"] for b in blocks if b["type"] != "progress"]
+    assert non_prog == ["tool_use", "tool_result", "text"]
+    assert {"type": "text", "text": "hej"} in blocks
     use = next(b for b in blocks if b["type"] == "tool_use")
     assert use == {"type": "tool_use", "id": "c1", "name": "read_file", "input": {"path": "x"}}
     res = next(b for b in blocks if b["type"] == "tool_result")
@@ -145,3 +153,36 @@ def test_build_turn_blocks_appends_progress_after_tool_pairs():
 def test_build_turn_blocks_no_progress_when_no_tools():
     blocks = _build_turn_blocks(text="bare tekst", tool_calls=[], tool_results=[])
     assert [b["type"] for b in blocks] == ["text"]
+def test_multiple_consecutive_tools_not_collapsed():
+    """Bjørn 10. jul: 3 tool-kald i træk → interleave ['tool','tool','tool','text']
+    må IKKE dedupe'es til ét tool. Alle 3 tools + svar-tekst skal med."""
+    calls = [
+        {"id": "c1", "name": "get_weather", "input": {}},
+        {"id": "c2", "name": "bash", "input": {}},
+        {"id": "c3", "name": "calculate", "input": {}},
+    ]
+    results = [
+        {"tool_use_id": "c1", "status": "done", "content": "sol", "is_error": False},
+        {"tool_use_id": "c2", "status": "done", "content": "ok", "is_error": False},
+        {"tool_use_id": "c3", "status": "done", "content": "42", "is_error": False},
+    ]
+    blocks = _build_turn_blocks(
+        text="Her er svaret.", tool_calls=calls, tool_results=results,
+        interleave=["tool", "tool", "tool", "text"],
+    )
+    ids = [b["id"] for b in blocks if b["type"] == "tool_use"]
+    assert ids == ["c1", "c2", "c3"]  # ALLE 3, ikke kun sidste
+    assert sum(1 for b in blocks if b["type"] == "tool_result") == 3
+    assert {"type": "text", "text": "Her er svaret."} in blocks  # progress kan følge efter
+
+
+def test_answer_text_never_dropped_when_interleave_lacks_text():
+    """Hvis interleave mangler afsluttende 'text' men svar findes → tekst bevares."""
+    calls = [{"id": "c1", "name": "bash", "input": {}}]
+    results = [{"tool_use_id": "c1", "status": "done", "content": "ok", "is_error": False}]
+    blocks = _build_turn_blocks(
+        text="Svar uden interleave-text.", tool_calls=calls, tool_results=results,
+        interleave=["tool"],  # ingen 'text'
+    )
+    assert any(b["type"] == "text" and b["text"] == "Svar uden interleave-text." for b in blocks)
+    assert sum(1 for b in blocks if b["type"] == "tool_use") == 1

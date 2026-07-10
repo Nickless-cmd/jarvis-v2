@@ -47,6 +47,7 @@ export function useVoiceConversation(config: ApiConfig | undefined, deps: VoiceS
   const streamRef = useRef<MediaStream | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const awaitingRef = useRef(false)
+  const sawWorkingRef = useRef(false)
   const activeRef = useRef(active)
   const modeRef = useRef(mode)
   const vadRafRef = useRef<number | null>(null)
@@ -112,10 +113,13 @@ export function useVoiceConversation(config: ApiConfig | undefined, deps: VoiceS
   // ── Completion-watch: når et run vi startede falder fra 'working' → tal svaret ─
   useEffect(() => {
     if (!awaitingRef.current) return
-    if (deps.status !== 'working') {
+    // Kræv at vi HAR set 'working' før vi behandler idle/done som fuldførelse —
+    // ellers ville den korte idle-periode LIGE efter send tale det gamle svar.
+    if (deps.status === 'working') { sawWorkingRef.current = true; return }
+    if (sawWorkingRef.current && (deps.status === 'done' || deps.status === 'idle')) {
       awaitingRef.current = false
-      const text = _extractText(deps.blocks)
-      void _speak(text)
+      sawWorkingRef.current = false
+      void _speak(_extractText(deps.blocks))
     }
   }, [deps.status, deps.blocks, _speak])
 

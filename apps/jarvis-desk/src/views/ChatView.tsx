@@ -7,6 +7,8 @@ import { useSettings } from '../hooks/useSettings'
 import { usePanel } from '../hooks/usePanel'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
+import { useVoiceConversation } from '../hooks/useVoiceConversation'
+import { VoiceConversation } from '../components/chat/VoiceConversation'
 import { usePermission } from '../hooks/usePermission'
 import { useOnline } from '../hooks/useOnline'
 import { readModelPrefs } from '../lib/composerPrefs'
@@ -419,22 +421,43 @@ export function ChatView({
     return created.id
   }
 
+  // Samtale-mode (Trin 2): hook + overlay. sendMessage = resend (sender med composer-prefs).
+  const voiceConfig = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  const voice = useVoiceConversation(voiceConfig, {
+    status: stream.status,
+    blocks: stream.blocks,
+    sendMessage: resend,
+  })
+
   const composer = (
-    <Composer
-      streaming={streaming}
-      onSend={handleSend}
-      onStop={() => void stream.abort()}
-      model="deepseek-flash"
-      thinking="think"
-      config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
-      getSessionId={ensureSessionId}
-      showPermissions={false}
-      contextTokens={contextTokens}
-      compactAt={compactAt}
-      compacting={compacting}
-      isOwner={auth?.role === 'owner'}
-      onOpenPrivacy={onOpenPrivacy}
-    />
+    <>
+      <Composer
+        streaming={streaming}
+        onSend={handleSend}
+        onStop={() => void stream.abort()}
+        model="deepseek-flash"
+        thinking="think"
+        config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
+        getSessionId={ensureSessionId}
+        showPermissions={false}
+        contextTokens={contextTokens}
+        compactAt={compactAt}
+        compacting={compacting}
+        isOwner={auth?.role === 'owner'}
+        onOpenPrivacy={onOpenPrivacy}
+      />
+      <VoiceConversation
+        active={voice.active}
+        state={voice.state}
+        mode={voice.mode}
+        supported={voice.supported}
+        lastProvider={voice.lastProvider}
+        setMode={voice.setMode}
+        startListening={voice.startListening}
+        stopListening={voice.stopListening}
+        exit={voice.exit}
+      />
+    </>
   )
 
   const activeSession = sessions.sessions.find((s) => s.id === sessionId)
@@ -451,6 +474,17 @@ export function ChatView({
         )}
         {settings && (
           <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
+        )}
+        {voice.supported && (
+          <button
+            type="button"
+            className="panel-toggle"
+            aria-label="Samtale-mode"
+            title="Samtale med Jarvis (stemme)"
+            onClick={voice.enter}
+          >
+            🎙️
+          </button>
         )}
         <button
           type="button"

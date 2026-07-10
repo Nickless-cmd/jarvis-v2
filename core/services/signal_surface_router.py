@@ -109,6 +109,7 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
     from core.services.doc_repair_agent import build_doc_repair_surface
     from core.memory.memory_size_guard import build_memory_size_surface
     from core.tools.security_predicates import build_security_predicates_surface
+    from core.services.operator_allowlist import build_operator_allowlist_surface
     from core.services.user_contradiction_tracker import build_user_contradiction_surface
     from core.services.interlanguage_practice import build_interlanguage_practice_surface
     from core.services.emergence import build_emergence_surface
@@ -206,6 +207,7 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
         "doc-repair": build_doc_repair_surface,
         "memory-size": build_memory_size_surface,
         "security-predicates": build_security_predicates_surface,
+        "operator-allowlist": build_operator_allowlist_surface,
         "user_contradiction": build_user_contradiction_surface,
         "interlanguage_practice": build_interlanguage_practice_surface,
         "emergence": build_emergence_surface,

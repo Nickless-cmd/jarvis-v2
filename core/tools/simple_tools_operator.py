@@ -556,6 +556,12 @@ def _exec_operator_launch_app(args: dict[str, Any]) -> dict[str, Any]:
     path = str(args.get("path") or args.get("app") or "").strip()
     if not path:
         return {"error": "path is required", "status": "error"}
+    # CHICAGO-guard (#5): app-allowlist. Observe-by-default (logger, blokerer ikke);
+    # kun ved enforce=ON afvises ikke-allowlistede apps ærligt.
+    from core.services.operator_allowlist import check_app
+    _al = check_app(path)
+    if not _al.get("allowed"):
+        return {"status": "error", "error": _al.get("reason"), "app_allowlist_denied": True}
     user_id = _operator_user_id(args)
     cli_args = args.get("args") or []
     if not isinstance(cli_args, list):
@@ -723,6 +729,13 @@ def _exec_operator_focus_window(args: dict[str, Any]) -> dict[str, Any]:
     handle = args.get("handle")
     if title_substring is None and handle is None:
         return {"error": "title_substring or handle is required", "status": "error"}
+    # CHICAGO-guard (#5): allowlist-tjek på vindues-titel (app-target). Observe-by-
+    # default; kun enforce=ON afviser. Handle-baseret fokus (numerisk) springes over.
+    if title_substring is not None:
+        from core.services.operator_allowlist import check_app
+        _al = check_app(str(title_substring))
+        if not _al.get("allowed"):
+            return {"status": "error", "error": _al.get("reason"), "app_allowlist_denied": True}
     from core.tools.operator_tools import operator_focus_window_async
     return _run_operator_async(
         lambda: operator_focus_window_async(

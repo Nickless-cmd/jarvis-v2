@@ -708,3 +708,32 @@ def test_open_loop_closure_maturation_candidates(
         existing_domain_keys=set(),
     )
     assert isinstance(candidates, list)
+
+
+def test_extract_open_loop_candidates_ready_readiness_does_not_raise(
+    isolated_runtime, monkeypatch
+) -> None:
+    """Regression: line 520 built ``{snapshots.keys()}`` (a set wrapping an
+    unhashable ``dict_keys``) instead of ``set(snapshots.keys())``. The existing
+    materialization tests call ``_materialize_from_creation_readiness`` directly
+    with a real set, so they never hit the call site. Drive it through
+    ``_extract_open_loop_candidates`` with a ready readiness to guard the fix."""
+    from core.services import open_loop_signal_tracking as mod
+
+    monkeypatch.setattr(
+        mod,
+        "get_open_loop_creation_readiness",
+        lambda: {
+            "readiness": "ready",
+            "aligned_signals": [
+                "initiative-tension",
+                "autonomy-pressure",
+                "proactive-loop",
+            ],
+            "alignment_count": 3,
+        },
+    )
+
+    # Must not raise TypeError: unhashable type: 'dict_keys'.
+    candidates = mod._extract_open_loop_candidates()
+    assert isinstance(candidates, list)

@@ -517,7 +517,7 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
     if readiness.get("readiness") == "ready":
         readiness_candidate = _materialize_from_creation_readiness(
             readiness=readiness,
-            existing_domain_keys={snapshots.keys()},
+            existing_domain_keys=set(snapshots.keys()),
         )
         if readiness_candidate:
             candidates.append(readiness_candidate)

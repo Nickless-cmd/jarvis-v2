@@ -14,9 +14,10 @@ from core.tools.app_control_tool import (
 
 def test_valid_action_returns_marker() -> None:
     r = _exec_request_app_action({"action": "switch_to_code_mode", "reason": "kræver filer"})
-    assert r["status"] == "ok"
+    # Ærlig kvittering: PENDING (afventer klik), ikke falsk "ok"/success.
+    assert r["status"] == "pending" and r["confirmed"] is False and r["awaiting_approval"] is True
     assert r["app_action"] == {"action": "switch_to_code_mode", "reason": "kræver filer"}
-    assert r["text"]
+    assert r["text"] and r["dispatched"] is True
 
 
 def test_invalid_action_returns_error() -> None:

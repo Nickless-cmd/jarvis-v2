@@ -30,16 +30,21 @@ def _exec_request_app_action(args: dict[str, Any]) -> dict[str, Any]:
             "error": f"ukendt action '{action}' (gyldige: {', '.join(VALID_APP_ACTIONS)})",
         }
     reason = str(args.get("reason") or "").strip()
+    # ÆRLIG kvittering (2026-07-10): status var "ok" → læste som at skiftet SKETE.
+    # Men det kræver brugerens KLIK (approval-flow). Udfaldet ses på NÆSTE besked
+    # (desk sender mode='code' hvis godkendt). Returnér eksplicit PENDING, ikke
+    # falsk success — så Jarvis ikke skyder i blinde og antager det virkede.
     return {
-        "status": "ok",
+        "status": "pending",
+        "confirmed": False,
+        "awaiting_approval": True,
         "text": _ACTION_NOTE[action],
-        "app_action": {"action": action, "reason": reason},
-        # Sikkerhed til Jarvis: når dette resultat returneres, emitterer run-loopet
-        # GARANTERET et app_action_request-event til desk (både i first-pass OG
-        # agentiske runder, rod-fix 2026-06-30) → kortet vises. Du behøver ikke
-        # gætte: request er afsendt. Afslut turen med en kort note + afvent klik.
-        "dispatched": True,
-        "note": "Anmodning afsendt til desk-appen → godkendelseskort vises hos brugeren.",
+        "app_action": {"action": action, "reason": reason},  # BEHOLD — trigger for kortet
+        "dispatched": True,  # kortet ER afsendt til desk
+        "note": ("Godkendelseskort vist hos brugeren. Handlingen er IKKE udført endnu — "
+                 "den kræver brugerens klik. Antag IKKE at skiftet skete. Du ved det på "
+                 "brugerens næste besked: kommer den i mode='code' er det godkendt, ellers "
+                 "ikke (endnu)."),
     }
 
 

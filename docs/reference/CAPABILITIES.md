@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-07-08 — 435 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-07-10 — 441 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -44,6 +44,7 @@
 | `check_good_enough` | native | no |
 | `check_surprises` | native | no |
 | `classify_clarification` | native | no |
+| `clear_flag` | native | no |
 | `comfyui_history` | native | no |
 | `comfyui_objects` | native | no |
 | `comfyui_status` | native | no |
@@ -118,6 +119,7 @@
 | `get_agent_observation` | native | no |
 | `get_agent_skills` | native | no |
 | `get_exchange_rate` | native | no |
+| `get_flag` | native | no |
 | `get_news` | native | no |
 | `get_notification_preferences` | native | no |
 | `get_weather` | native | no |
@@ -164,6 +166,7 @@
 | `list_counterfactuals` | native | no |
 | `list_crisis_markers` | native | no |
 | `list_events` | native | no |
+| `list_flags` | native | no |
 | `list_identity_mutations` | native | no |
 | `list_identity_pins` | native | no |
 | `list_initiatives` | native | no |
@@ -255,6 +258,7 @@
 | `read_file` | native | no |
 | `read_learning_memo` | native | no |
 | `read_mail` | native | no |
+| `read_memory_topic` | native | no |
 | `read_model_config` | native | no |
 | `read_mood` | native | no |
 | `read_project_notes` | native | no |
@@ -312,6 +316,7 @@
 | `send_telegram_message` | native | no |
 | `send_webchat_message` | native | no |
 | `service_status` | native | no |
+| `set_flag` | native | no |
 | `set_notification_preferences` | native | no |
 | `set_process_watch_enabled` | native | no |
 | `set_recurring_channel` | native | no |
@@ -383,6 +388,7 @@
 | `worktree_list` | native | no |
 | `worktree_merge` | native | no |
 | `write_file` | native | yes |
+| `write_memory_topic` | native | no |
 | `operator_bash` | operator | yes |
 | `operator_bash_session_close` | operator | no |
 | `operator_bash_session_list` | operator | no |

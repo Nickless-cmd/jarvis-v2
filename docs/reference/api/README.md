@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12114 functions/methods, 47% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12218 functions/methods, 47% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -29,33 +29,33 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12114 functions/
 - [`core.services.01`](core.services.01.md) — `__init__` … `anthropic_identity`
 - [`core.services.02`](core.services.02.md) — `anthropic_sse_emitter` … `broadcast_daemon`
 - [`core.services.03`](core.services.03.md) — `cache_boundary_observer` … `central_error_envelope`
-- [`core.services.04`](core.services.04.md) — `central_excess` … `central_output_conservation`
-- [`core.services.05`](core.services.05.md) — `central_persephone` … `channel_inbound`
-- [`core.services.06`](core.services.06.md) — `chat_sessions` … `continuity`
-- [`core.services.07`](core.services.07.md) — `continuity_kernel` … `decision_adherence_gate`
-- [`core.services.08`](core.services.08.md) — `decision_enforcement` … `dream_hypothesis_generator`
-- [`core.services.09`](core.services.09.md) — `dream_hypothesis_signal_tracking` … `fact_gate`
-- [`core.services.10`](core.services.10.md) — `fcm_gateway` … `guided_learning_runtime`
-- [`core.services.11`](core.services.11.md) — `gut_calibration` … `internal_cadence_core`
-- [`core.services.12`](core.services.12.md) — `internal_cadence_inner_life` … `memory_pruning_daemon`
-- [`core.services.13`](core.services.13.md) — `memory_recall_engine` … `oauth_store`
-- [`core.services.14`](core.services.14.md) — `offline_recomposition_engine` … `proactive_question_gate_tracking`
-- [`core.services.15`](core.services.15.md) — `proactivity_bridge` … `reflection_to_plan`
-- [`core.services.16`](core.services.16.md) — `reflective_critic_tracking` … `runtime_self_model_identity`
-- [`core.services.17`](core.services.17.md) — `runtime_self_model_state` … `sensory_archive`
-- [`core.services.18`](core.services.18.md) — `sensory_perception_bridge` … `subagent_digest`
-- [`core.services.19`](core.services.19.md) — `subagent_ecology` … `tool_pattern_miner`
-- [`core.services.20`](core.services.20.md) — `tool_result_aging` … `visible_model_sse`
-- [`core.services.21`](core.services.21.md) — `visible_model_types` … `world_model_signal_tracking`
+- [`core.services.04`](core.services.04.md) — `central_excess` … `central_oracle`
+- [`core.services.05`](core.services.05.md) — `central_output_conservation` … `central_xproc`
+- [`core.services.06`](core.services.06.md) — `channel_inbound` … `context_window_manager`
+- [`core.services.07`](core.services.07.md) — `continuity` … `day_shape_memory`
+- [`core.services.08`](core.services.08.md) — `db_sentinel` … `dream_continuum`
+- [`core.services.09`](core.services.09.md) — `dream_distillation_daemon` … `experiential_memory`
+- [`core.services.10`](core.services.10.md) — `experiential_runtime_context` … `governance_bootstrap`
+- [`core.services.11`](core.services.11.md) — `gratitude_tracker` … `interlanguage_practice`
+- [`core.services.12`](core.services.12.md) — `internal_cadence` … `memory_hierarchy`
+- [`core.services.13`](core.services.13.md) — `memory_maintenance_daemon` … `ntfy_gateway`
+- [`core.services.14`](core.services.14.md) — `nudge_broend` … `private_temporal_curiosity_state_tracking`
+- [`core.services.15`](core.services.15.md) — `private_temporal_promotion_signal_tracking` … `reboot_awareness_daemon`
+- [`core.services.16`](core.services.16.md) — `recurrence_loop_daemon` … `runtime_self_knowledge`
+- [`core.services.17`](core.services.17.md) — `runtime_self_model` … `self_system_code_awareness`
+- [`core.services.18`](core.services.18.md) — `self_wakeup` … `spaced_repetition`
+- [`core.services.19`](core.services.19.md) — `spatial_entity_ledger` … `tiny_webchat_execution_pilot`
+- [`core.services.20`](core.services.20.md) — `tool_catalog` … `visible_followup_adapters`
+- [`core.services.21`](core.services.21.md) — `visible_followup_events` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `operator_tools`
-- [`core.tools.02`](core.tools.02.md) — `pause_and_ask_tools` … `voice_journal_tool`
-- [`core.tools.03`](core.tools.03.md) — `wake_word_tool` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `operator_bash_session`
+- [`core.tools.02`](core.tools.02.md) — `operator_tools` … `ui_panel_tools`
+- [`core.tools.03`](core.tools.03.md) — `verify_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.util`](core.util.md)

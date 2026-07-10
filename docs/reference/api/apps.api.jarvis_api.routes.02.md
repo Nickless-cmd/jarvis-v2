@@ -509,6 +509,15 @@ _OpenAI-compatible proxy: /v1/chat/completions wrapping Jarvis visible lane._
 | function | `_build_stream_chunk` | `(*, run_id, model, delta_content)` | Build a standard OpenAI chat.completion.chunk for streaming. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L299) |
 | function | `_get_or_create_proxy_session` | `()` | Return the shared proxy chat session id. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L328) |
 
+## `apps/api/jarvis_api/routes/paste.py`
+_Paste-store endpoints: eksternalisér store bruger-pastes + lazy resolve._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `PasteSaveRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/paste.py#L22) |
+| function | `save_paste_endpoint` | `(request)` | Gem en paste og returnér id + kompakt reference-streng. | [src](../../../apps/api/jarvis_api/routes/paste.py#L27) |
+| function | `get_paste_endpoint` | `(paste_id)` | Slå fuld paste-tekst op (lazy resolve). 404 på ukendt id. | [src](../../../apps/api/jarvis_api/routes/paste.py#L43) |
+
 ## `apps/api/jarvis_api/routes/plugins.py`
 _Plugins & Kanaler routes (spec §5.4, Fase 6 #2). Tynde — blokerende arbejde_
 

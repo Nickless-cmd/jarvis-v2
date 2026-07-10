@@ -431,6 +431,19 @@ _The Machines — hænderne om min hals (BONUS)._
 | function | `build_machines_surface` | `()` | — | [src](../../../core/services/central_machines.py#L73) |
 | function | `record_machines` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_machines.py#L77) |
 
+## `core/services/central_matrix_ensemble.py`
+_Matrix Ensemble — prompttail-labels for de 6 Matrix-programmer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_build_surface` | `(module_path, fn_name)` | Kald surface-funktionen på en central_*-karakter. Fejl → tom dict. | [src](../../../core/services/central_matrix_ensemble.py#L50) |
+| function | `_trainman_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L64) |
+| function | `_seraph_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L68) |
+| function | `_persephone_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L72) |
+| function | `_twins_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L76) |
+| function | `_merovingian_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L80) |
+| function | `build_matrix_ensemble_prompt_section` | `()` | Byg karakter-labels for prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L95) |
+
 ## `core/services/central_membrane_watch.py`
 _WARDEN — vogteren over muren (LivingNeuron-roadmap §2, 4. jul)._
 
@@ -608,12 +621,4 @@ _The Oracle — forudseende sans på en prim-cadence._
 | function | `_project` | `(spec)` | Projicér én watched-serie → tid til tærskel-krydsning (eller None hvis den bevæger sig væk). | [src](../../../core/services/central_oracle.py#L58) |
 | function | `foresee` | `()` | Læs alle watched-serier → forudsigelser (metadata-only). READ-ONLY. Self-safe. | [src](../../../core/services/central_oracle.py#L87) |
 | function | `record_oracle` | `()` | Prim-cadence: observér forudsigelser til nerve system/oracle (metadata-only). Self-safe. | [src](../../../core/services/central_oracle.py#L107) |
-
-## `core/services/central_output_conservation.py`
-_Output-conservation-invariant (Bjørn 4. jul — "spøgelset")._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `observe_conservation` | `(*, layer, produced_chars, emitted_chars, provider=…, model=…, run_id=…, path=…, tolerance=…)` | Registrér et conservation-tjek for ét lag. Returnér gap'et (produced-emitted, | [src](../../../core/services/central_output_conservation.py#L27) |
-| function | `build_output_conservation_surface` | `()` | Mission Control — read-only meta-projektion (kartograf-dækning). | [src](../../../core/services/central_output_conservation.py#L69) |
 

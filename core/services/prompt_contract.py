@@ -2426,6 +2426,17 @@ def build_visible_chat_prompt_assembly(
             derived_inputs.append("agent smith modstemme (tail)")
     except Exception:
         pass
+    # Matrix Ensemble — aktive karakter-labels i prompt-halen.
+    # Kører EFTER Agent Smith så karaktererne ikke skygger for governance-modstemmen.
+    # Fail-safe: ingen import-fejl kan vælte prompt-bygningen.
+    try:
+        from core.services.central_matrix_ensemble import build_matrix_ensemble_prompt_section as _matrix_fn
+        _matrix = _matrix_fn()
+        if _matrix:
+            _dyn_tail.append(_matrix)
+            derived_inputs.append("matrix ensemble character labels (tail)")
+    except Exception:
+        pass
     if _dyn_tail:
         parts.append(DYNAMIC_TAIL_SENTINEL)
         parts.extend(_dyn_tail)

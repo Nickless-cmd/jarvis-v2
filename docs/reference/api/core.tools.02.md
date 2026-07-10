@@ -2,6 +2,66 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/operator_tools.py`
+_Operator-side tools — execute on operator's desktop via JarvisX bridge._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_bridge_call` | `(*, tool, args, user_id, timeout_s=…)` | Common dispatch helper. Raises RuntimeError on bridge failure. | [src](../../../core/tools/operator_tools.py#L23) |
+| function | `operator_read_file_async` | `(*, path, user_id, timeout_s=…)` | Read a file from the operator's desktop. | [src](../../../core/tools/operator_tools.py#L45) |
+| function | `operator_read_file` | `(*, path, user_id, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L58) |
+| function | `operator_write_file_async` | `(*, path, content, user_id, timeout_s=…)` | Write content to a file on the operator's desktop. Creates parents | [src](../../../core/tools/operator_tools.py#L65) |
+| function | `operator_edit_file_async` | `(*, path, old_string, new_string, replace_all=…, user_id, timeout_s=…)` | Find/replace in a file on the operator's desktop. Returns | [src](../../../core/tools/operator_tools.py#L87) |
+| function | `operator_glob_async` | `(*, pattern, cwd=…, max_results=…, user_id, timeout_s=…)` | Find files matching a glob pattern on the operator's desktop. | [src](../../../core/tools/operator_tools.py#L117) |
+| function | `operator_grep_async` | `(*, pattern, path=…, glob=…, case_insensitive=…, max_results=…, user_id, timeout_s=…)` | Search for regex pattern in files on the operator's desktop. | [src](../../../core/tools/operator_tools.py#L144) |
+| function | `operator_list_dir_async` | `(*, path, user_id, timeout_s=…)` | List directory contents on the operator's desktop. | [src](../../../core/tools/operator_tools.py#L175) |
+| function | `operator_webfetch_async` | `(*, url, method=…, headers=…, body=…, timeout_s=…, user_id)` | Fetch a URL from the operator's local network via the bridge. | [src](../../../core/tools/operator_tools.py#L196) |
+| function | `operator_bash_async` | `(*, command, cwd=…, timeout_s=…, user_id, skip_approval=…)` | Run a shell command on the operator's desktop. | [src](../../../core/tools/operator_tools.py#L232) |
+| function | `operator_screenshot_async` | `(*, user_id, display_id=…, save_path=…, format=…, jpeg_quality=…, timeout_s=…)` | Capture a screenshot of the operator's desktop. | [src](../../../core/tools/operator_tools.py#L272) |
+| function | `operator_open_url_async` | `(*, url, user_id, skip_approval=…, timeout_s=…)` | Open a URL in the operator s default browser. Returns {approved, opened, url}. | [src](../../../core/tools/operator_tools.py#L332) |
+| function | `operator_launch_app_async` | `(*, path, user_id, args=…, cwd=…, skip_approval=…, timeout_s=…)` | Launch an installed app on the operator s machine. | [src](../../../core/tools/operator_tools.py#L352) |
+| function | `operator_mouse_move_async` | `(*, x, y, user_id, smooth=…, timeout_s=…)` | Move the operator s mouse cursor to (x, y) screen coordinates. | [src](../../../core/tools/operator_tools.py#L389) |
+| function | `operator_mouse_click_async` | `(*, user_id, button=…, double=…, x=…, y=…, timeout_s=…)` | Click the mouse on the operator s desktop, optionally moving first. | [src](../../../core/tools/operator_tools.py#L410) |
+| function | `operator_mouse_position_async` | `(*, user_id, timeout_s=…)` | Get the current mouse cursor position on the operator s desktop. | [src](../../../core/tools/operator_tools.py#L437) |
+| function | `operator_keyboard_type_async` | `(*, text, user_id, delay_ms=…, timeout_s=…)` | Type a string into the operator s currently focused window. | [src](../../../core/tools/operator_tools.py#L455) |
+| function | `operator_keyboard_press_async` | `(*, keys, user_id, timeout_s=…)` | Press a single key or a hotkey combination on the operator s keyboard. | [src](../../../core/tools/operator_tools.py#L478) |
+| function | `operator_screen_size_async` | `(*, user_id, timeout_s=…)` | Get the operator s primary display size in pixels. | [src](../../../core/tools/operator_tools.py#L504) |
+| function | `operator_browser_open_async` | `(*, url, user_id, wait_until=…, timeout_ms=…, timeout_s=…)` | Navigate the browser session to URL. First call opens browser. | [src](../../../core/tools/operator_tools.py#L522) |
+| function | `operator_browser_get_text_async` | `(*, user_id, selector=…, max_chars=…, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L536) |
+| function | `operator_browser_get_links_async` | `(*, user_id, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L549) |
+| function | `operator_browser_click_async` | `(*, selector, user_id, wait_navigation=…, wait_for_selector=…, timeout_ms=…, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L558) |
+| function | `operator_browser_type_async` | `(*, selector, text, user_id, clear_first=…, delay_ms=…, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L576) |
+| function | `operator_browser_screenshot_async` | `(*, user_id, full_page=…, format=…, jpeg_quality=…, timeout_s=…)` | Screenshot the active browser page. Decoded to a Jarvis-side temp file. | [src](../../../core/tools/operator_tools.py#L594) |
+| function | `operator_browser_evaluate_async` | `(*, script, user_id, skip_approval=…, timeout_s=…)` | Run JS in the page context. Requires approval unless skip_approval. | [src](../../../core/tools/operator_tools.py#L626) |
+| function | `operator_browser_status_async` | `(*, user_id, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L640) |
+| function | `operator_browser_close_async` | `(*, user_id, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L649) |
+| function | `operator_clipboard_read_async` | `(*, user_id, timeout_s=…)` | Return current clipboard text from the operator's desktop. | [src](../../../core/tools/operator_tools.py#L661) |
+| function | `operator_clipboard_write_async` | `(*, text, user_id, timeout_s=…)` | Replace the operator's clipboard with the given text. | [src](../../../core/tools/operator_tools.py#L679) |
+| function | `operator_list_windows_async` | `(*, user_id, timeout_s=…)` | List open windows on the operator's desktop. Returns {windows: [{title, id}]}. | [src](../../../core/tools/operator_tools.py#L698) |
+| function | `operator_focus_window_async` | `(*, user_id, title_substring=…, handle=…, timeout_s=…)` | Bring a window to the foreground by title substring or handle/id. | [src](../../../core/tools/operator_tools.py#L716) |
+| function | `operator_mouse_scroll_async` | `(*, direction, user_id, amount=…, timeout_s=…)` | Scroll the mouse wheel in the given direction. | [src](../../../core/tools/operator_tools.py#L741) |
+| function | `operator_mouse_drag_async` | `(*, from_x, from_y, to_x, to_y, user_id, button=…, timeout_s=…)` | Drag the mouse from (from_x, from_y) to (to_x, to_y). | [src](../../../core/tools/operator_tools.py#L761) |
+| function | `operator_list_processes_async` | `(*, user_id, filter=…, timeout_s=…)` | List running processes on the operator's machine. Returns {processes: [{pid, name, cpu, memMB}]}. | [src](../../../core/tools/operator_tools.py#L790) |
+| function | `operator_kill_process_async` | `(*, pid, user_id, skip_approval=…, timeout_s=…)` | Kill a process by PID. Requires operator approval unless skip_approval=True. | [src](../../../core/tools/operator_tools.py#L812) |
+| function | `operator_speak_async` | `(*, text, user_id, voice=…, rate=…, timeout_s=…)` | Say text aloud on the operator's machine via TTS (espeak-ng / SAPI). | [src](../../../core/tools/operator_tools.py#L832) |
+| function | `operator_screenshot_window_async` | `(*, user_id, title_substring=…, handle=…, save_path=…, timeout_s=…)` | Capture a specific window on the operator's desktop. Returns base64 PNG or saves to path. | [src](../../../core/tools/operator_tools.py#L856) |
+| function | `operator_find_image_async` | `(*, template_path, user_id, confidence=…, timeout_s=…)` | Template-match a small image inside the current screen. Returns {found, x, y, confidence}. | [src](../../../core/tools/operator_tools.py#L884) |
+| function | `operator_ocr_region_async` | `(*, x, y, width, height, user_id, lang=…, timeout_s=…)` | Extract text from a screen region using Tesseract OCR. | [src](../../../core/tools/operator_tools.py#L904) |
+| function | `operator_notify_async` | `(*, title, body, user_id, icon=…, timeout_s=…)` | Show an OS notification toast on the operator's machine via Electron Notification. | [src](../../../core/tools/operator_tools.py#L933) |
+| function | `operator_watch_folder_async` | `(*, path, user_id, recursive=…, debounce_ms=…, timeout_s=…)` | Start watching a folder for changes on the operator's machine. Returns {watcher_id}. | [src](../../../core/tools/operator_tools.py#L957) |
+| function | `operator_unwatch_folder_async` | `(*, watcher_id, user_id, timeout_s=…)` | Stop a folder watcher by watcher_id. Returns {stopped: true}. | [src](../../../core/tools/operator_tools.py#L975) |
+| function | `operator_watch_events_async` | `(*, watcher_id, user_id, max=…, timeout_s=…)` | Poll buffered filesystem events for a watcher. Returns {events: [...]} and clears buffer. | [src](../../../core/tools/operator_tools.py#L991) |
+| function | `operator_record_audio_async` | `(*, duration_s, user_id, output_path=…, device=…, skip_approval=…, timeout_s=…)` | Record N seconds of microphone audio on the operator's machine. Requires approval. | [src](../../../core/tools/operator_tools.py#L1011) |
+| function | `operator_reminder_async` | `(*, when, message, title=…, user_id, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L1042) |
+| function | `operator_wakeup_async` | `(*, when, message=…, title=…, user_id, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L1055) |
+| function | `operator_scheduled_list_async` | `(*, user_id, kind=…, include_fired=…, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L1070) |
+| function | `operator_scheduled_cancel_async` | `(*, id, user_id, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L1083) |
+| function | `operator_process_spawn_async` | `(*, cmd, user_id, cwd=…, label=…, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L1096) |
+| function | `operator_process_status_async` | `(*, id, user_id, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L1111) |
+| function | `operator_process_output_async` | `(*, id, user_id, since_offset=…, max_bytes=…, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L1121) |
+| function | `operator_process_kill_async` | `(*, id, user_id, signal=…, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L1133) |
+| function | `operator_process_list_async` | `(*, user_id, include_finished=…, timeout_s=…)` | — | [src](../../../core/tools/operator_tools.py#L1143) |
+
 ## `core/tools/pause_and_ask_tools.py`
 _pause_and_ask — structured clarification prompts mid-run._
 
@@ -124,6 +184,18 @@ _Screen control tool — Jarvis can turn monitors on/off/standby._
 | function | `_xset_dpms_status` | `()` | Query DPMS status and return structured result. | [src](../../../core/tools/screen_tool.py#L82) |
 | function | `_exec_screen_control` | `(args)` | Execute the screen control tool. | [src](../../../core/tools/screen_tool.py#L119) |
 
+## `core/tools/security_predicates.py`
+_Nummererede security-predikater (spec E, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SecurityPredicate` | `` | — | [src](../../../core/tools/security_predicates.py#L14) |
+| function | `evaluate_command` | `(command)` | Første matchende bash-predikat (blocked før destructive) på den normaliserede | [src](../../../core/tools/security_predicates.py#L57) |
+| function | `evaluate_write` | `(resolved_path)` | Første matchende write-predikat (substring) på stien, ellers None. | [src](../../../core/tools/security_predicates.py#L75) |
+| function | `all_predicates` | `()` | — | [src](../../../core/tools/security_predicates.py#L86) |
+| function | `build_security_predicates_surface` | `()` | Central-CLI read-surface: jc raw /central/security-predicates. | [src](../../../core/tools/security_predicates.py#L90) |
+| function | `render_predicates_md` | `()` | Genererer docs/security_predicates.md fra registry'en (kilde = koden). | [src](../../../core/tools/security_predicates.py#L104) |
+
 ## `core/tools/semantic_search_tools.py`
 _Semantic code search — natural language queries over the Jarvis codebase._
 
@@ -163,25 +235,26 @@ _Simple, general-purpose tools for Jarvis visible lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L636) |
-| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L732) |
-| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L820) |
-| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L840) |
-| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L913) |
-| function | `execute_tool_force` | `(name, arguments)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1053) |
-| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1134) |
-| function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1778) |
-| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1799) |
-| function | `_force_bash` | `(args)` | Run bash command bypassing approval (blocked still blocked). | [src](../../../core/tools/simple_tools.py#L1826) |
-| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1858) |
-| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1863) |
-| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1868) |
-| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1873) |
-| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1878) |
-| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1883) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L1944) |
-| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/simple_tools.py#L1982) |
-| function | `format_tool_result_for_model` | `(name, result)` | Format a tool result as text for the model's context. | [src](../../../core/tools/simple_tools.py#L2031) |
+| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L644) |
+| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L740) |
+| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L754) |
+| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L843) |
+| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L865) |
+| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L938) |
+| function | `execute_tool_force` | `(name, arguments)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1078) |
+| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1159) |
+| function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1807) |
+| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1828) |
+| function | `_force_bash` | `(args)` | Run bash command bypassing approval (blocked still blocked). | [src](../../../core/tools/simple_tools.py#L1855) |
+| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1887) |
+| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1892) |
+| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1897) |
+| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1902) |
+| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1907) |
+| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1912) |
+| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L1973) |
+| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/simple_tools.py#L2011) |
+| function | `format_tool_result_for_model` | `(name, result)` | Format a tool result as text for the model's context. | [src](../../../core/tools/simple_tools.py#L2060) |
 
 ## `core/tools/simple_tools_definitions.py`
 _Tool definitions catalog for Jarvis' visible-lane tools._
@@ -315,47 +388,47 @@ _Operator-bridge tool executors for Jarvis (desktop operator lane)._
 | function | `_exec_operator_screenshot` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L503) |
 | function | `_exec_operator_open_url` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L524) |
 | function | `_exec_operator_launch_app` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L555) |
-| function | `_exec_operator_mouse_move` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L594) |
-| function | `_exec_operator_mouse_click` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L610) |
-| function | `_exec_operator_mouse_position` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L631) |
-| function | `_exec_operator_keyboard_type` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L641) |
-| function | `_exec_operator_keyboard_press` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L660) |
-| function | `_exec_operator_screen_size` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L677) |
-| function | `_exec_operator_clipboard_read` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L687) |
-| function | `_exec_operator_clipboard_write` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L697) |
-| function | `_exec_operator_list_windows` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L710) |
-| function | `_exec_operator_focus_window` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L720) |
-| function | `_exec_operator_mouse_scroll` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L739) |
-| function | `_exec_operator_mouse_drag` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L755) |
-| function | `_exec_operator_list_processes` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L776) |
-| function | `_exec_operator_kill_process` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L791) |
-| function | `_exec_operator_speak` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L826) |
-| function | `_exec_operator_screenshot_window` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L846) |
-| function | `_exec_operator_find_image` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L867) |
-| function | `_exec_operator_ocr_region` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L885) |
-| function | `_exec_operator_reminder` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L911) |
-| function | `_exec_operator_wakeup` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L931) |
-| function | `_exec_operator_scheduled_list` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L949) |
-| function | `_exec_operator_scheduled_cancel` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L964) |
-| function | `_exec_operator_process_spawn` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L977) |
-| function | `_exec_operator_process_status` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L995) |
-| function | `_exec_operator_process_output` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1008) |
-| function | `_exec_operator_process_kill` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1026) |
-| function | `_exec_operator_process_list` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1043) |
-| function | `_exec_operator_notify` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1057) |
-| function | `_exec_operator_watch_folder` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1078) |
-| function | `_exec_operator_unwatch_folder` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1097) |
-| function | `_exec_operator_watch_events` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1112) |
-| function | `_exec_operator_record_audio` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1129) |
-| function | `_exec_operator_browser_open` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1170) |
-| function | `_exec_operator_browser_get_text` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1188) |
-| function | `_exec_operator_browser_get_links` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1205) |
-| function | `_exec_operator_browser_click` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1215) |
-| function | `_exec_operator_browser_type` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1234) |
-| function | `_exec_operator_browser_screenshot` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1255) |
-| function | `_exec_operator_browser_evaluate` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1271) |
-| function | `_exec_operator_browser_status` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1301) |
-| function | `_exec_operator_browser_close` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1311) |
+| function | `_exec_operator_mouse_move` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L600) |
+| function | `_exec_operator_mouse_click` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L616) |
+| function | `_exec_operator_mouse_position` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L637) |
+| function | `_exec_operator_keyboard_type` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L647) |
+| function | `_exec_operator_keyboard_press` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L666) |
+| function | `_exec_operator_screen_size` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L683) |
+| function | `_exec_operator_clipboard_read` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L693) |
+| function | `_exec_operator_clipboard_write` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L703) |
+| function | `_exec_operator_list_windows` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L716) |
+| function | `_exec_operator_focus_window` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L726) |
+| function | `_exec_operator_mouse_scroll` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L752) |
+| function | `_exec_operator_mouse_drag` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L768) |
+| function | `_exec_operator_list_processes` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L789) |
+| function | `_exec_operator_kill_process` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L804) |
+| function | `_exec_operator_speak` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L839) |
+| function | `_exec_operator_screenshot_window` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L859) |
+| function | `_exec_operator_find_image` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L880) |
+| function | `_exec_operator_ocr_region` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L898) |
+| function | `_exec_operator_reminder` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L924) |
+| function | `_exec_operator_wakeup` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L944) |
+| function | `_exec_operator_scheduled_list` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L962) |
+| function | `_exec_operator_scheduled_cancel` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L977) |
+| function | `_exec_operator_process_spawn` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L990) |
+| function | `_exec_operator_process_status` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1008) |
+| function | `_exec_operator_process_output` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1021) |
+| function | `_exec_operator_process_kill` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1039) |
+| function | `_exec_operator_process_list` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1056) |
+| function | `_exec_operator_notify` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1070) |
+| function | `_exec_operator_watch_folder` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1091) |
+| function | `_exec_operator_unwatch_folder` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1110) |
+| function | `_exec_operator_watch_events` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1125) |
+| function | `_exec_operator_record_audio` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1142) |
+| function | `_exec_operator_browser_open` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1183) |
+| function | `_exec_operator_browser_get_text` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1201) |
+| function | `_exec_operator_browser_get_links` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1218) |
+| function | `_exec_operator_browser_click` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1228) |
+| function | `_exec_operator_browser_type` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1247) |
+| function | `_exec_operator_browser_screenshot` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1268) |
+| function | `_exec_operator_browser_evaluate` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1284) |
+| function | `_exec_operator_browser_status` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1314) |
+| function | `_exec_operator_browser_close` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1324) |
 
 ## `core/tools/simple_tools_web.py`
 _Web/search/system-info tool executors for Jarvis' native lane._
@@ -370,19 +443,20 @@ _Web/search/system-info tool executors for Jarvis' native lane._
 | function | `_get_or_open_default_bash_session` | `()` | — | [src](../../../core/tools/simple_tools_web.py#L239) |
 | function | `_reset_default_bash_session` | `()` | — | [src](../../../core/tools/simple_tools_web.py#L263) |
 | function | `_exec_bash` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L269) |
-| function | `_exec_web_fetch` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L382) |
-| function | `_exec_web_scrape` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L413) |
-| function | `_read_api_key` | `(key)` | Read an API key directly from runtime.json. | [src](../../../core/tools/simple_tools_web.py#L424) |
-| function | `_fetch_tavily` | `(query, max_results)` | Raw Tavily API call — no caching. | [src](../../../core/tools/simple_tools_web.py#L434) |
-| function | `_cached_web_search_fn_impl` | `(*, query, max_results, fetch_fn)` | Wrapper so tests can monkeypatch the cache layer (real impl). | [src](../../../core/tools/simple_tools_web.py#L469) |
-| function | `_exec_web_search` | `(args)` | Web search via Tavily API with result caching. | [src](../../../core/tools/simple_tools_web.py#L476) |
-| function | `_read_user_location` | `()` | Read Location from the live workspace USER.md. | [src](../../../core/tools/simple_tools_web.py#L486) |
-| function | `_exec_get_weather` | `(args)` | Current weather via OpenWeatherMap. | [src](../../../core/tools/simple_tools_web.py#L498) |
-| function | `_exec_get_exchange_rate` | `(args)` | Currency exchange rates via exchangerate.host. | [src](../../../core/tools/simple_tools_web.py#L532) |
-| function | `_exec_get_news` | `(args)` | Recent news via NewsAPI. | [src](../../../core/tools/simple_tools_web.py#L559) |
-| function | `_exec_analyze_image` | `(args)` | Analyze an image using a vision-capable model via Ollama. | [src](../../../core/tools/simple_tools_web.py#L595) |
-| function | `_exec_read_archive` | `(args)` | List or extract a zip / tar / rar archive. | [src](../../../core/tools/simple_tools_web.py#L694) |
-| function | `_exec_wolfram_query` | `(args)` | Precise answers via Wolfram Alpha Short Answers API. | [src](../../../core/tools/simple_tools_web.py#L764) |
+| function | `_html_to_text` | `(raw)` | Grov HTML→tekst der BEVARER afsnits-struktur (blok-tags → linjeskift). | [src](../../../core/tools/simple_tools_web.py#L382) |
+| function | `_exec_web_fetch` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L420) |
+| function | `_exec_web_scrape` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L481) |
+| function | `_read_api_key` | `(key)` | Read an API key directly from runtime.json. | [src](../../../core/tools/simple_tools_web.py#L492) |
+| function | `_fetch_tavily` | `(query, max_results)` | Raw Tavily API call — no caching. | [src](../../../core/tools/simple_tools_web.py#L502) |
+| function | `_cached_web_search_fn_impl` | `(*, query, max_results, fetch_fn)` | Wrapper so tests can monkeypatch the cache layer (real impl). | [src](../../../core/tools/simple_tools_web.py#L537) |
+| function | `_exec_web_search` | `(args)` | Web search via Tavily API with result caching. | [src](../../../core/tools/simple_tools_web.py#L544) |
+| function | `_read_user_location` | `()` | Read Location from the live workspace USER.md. | [src](../../../core/tools/simple_tools_web.py#L554) |
+| function | `_exec_get_weather` | `(args)` | Current weather via OpenWeatherMap. | [src](../../../core/tools/simple_tools_web.py#L566) |
+| function | `_exec_get_exchange_rate` | `(args)` | Currency exchange rates via exchangerate.host. | [src](../../../core/tools/simple_tools_web.py#L600) |
+| function | `_exec_get_news` | `(args)` | Recent news via NewsAPI. | [src](../../../core/tools/simple_tools_web.py#L627) |
+| function | `_exec_analyze_image` | `(args)` | Analyze an image using a vision-capable model via Ollama. | [src](../../../core/tools/simple_tools_web.py#L663) |
+| function | `_exec_read_archive` | `(args)` | List or extract a zip / tar / rar archive. | [src](../../../core/tools/simple_tools_web.py#L762) |
+| function | `_exec_wolfram_query` | `(args)` | Precise answers via Wolfram Alpha Short Answers API. | [src](../../../core/tools/simple_tools_web.py#L832) |
 
 ## `core/tools/skill_chain_propose_tool.py`
 _propose_skill_chain tool — Skill Chain Phase 2 (AGI track #10)._
@@ -488,6 +562,17 @@ _Tool registry entries for staged edits._
 | function | `_exec_commit_staged_edits` | `(args)` | — | [src](../../../core/tools/staged_edits_tools.py#L82) |
 | function | `_exec_discard_staged_edits` | `(args)` | — | [src](../../../core/tools/staged_edits_tools.py#L90) |
 
+## `core/tools/state_flag_tools.py`
+_State-flag tools (leak-kandidat #1, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_uid` | `()` | — | [src](../../../core/tools/state_flag_tools.py#L16) |
+| function | `_exec_set_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L24) |
+| function | `_exec_get_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L41) |
+| function | `_exec_clear_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L52) |
+| function | `_exec_list_flags` | `(_args)` | — | [src](../../../core/tools/state_flag_tools.py#L63) |
+
 ## `core/tools/stripe_tools.py`
 _Stripe integration tools — balance, transactions, and Issuing virtual cards._
 
@@ -565,28 +650,5 @@ _open_ui_panel-tool (spec §8.2, Fase 6 #3)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_exec_open_ui_panel` | `(args)` | — | [src](../../../core/tools/ui_panel_tools.py#L17) |
-
-## `core/tools/verify_tools.py`
-_Verification tools — wrap "do then check" into one call._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_verify_file_contains` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L32) |
-| function | `_exec_verify_service_active` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L72) |
-| function | `_exec_verify_endpoint_responds` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L95) |
-
-## `core/tools/visual_memory_tool.py`
-_Visual memory tool — Jarvis kan læse sine egne visuelle minder._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_read_visual_memory` | `(args)` | Read recent visual memories (webcam room descriptions). | [src](../../../core/tools/visual_memory_tool.py#L23) |
-
-## `core/tools/voice_journal_tool.py`
-_Voice Journal tool — dedicated longer recording → density note._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_voice_journal` | `(args)` | — | [src](../../../core/tools/voice_journal_tool.py#L26) |
+| function | `_exec_open_ui_panel` | `(args)` | — | [src](../../../core/tools/ui_panel_tools.py#L23) |
 

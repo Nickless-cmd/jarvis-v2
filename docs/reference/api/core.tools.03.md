@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/verify_tools.py`
+_Verification tools — wrap "do then check" into one call._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_verify_file_contains` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L32) |
+| function | `_exec_verify_service_active` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L72) |
+| function | `_exec_verify_endpoint_responds` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L95) |
+
+## `core/tools/visual_memory_tool.py`
+_Visual memory tool — Jarvis kan læse sine egne visuelle minder._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_read_visual_memory` | `(args)` | Read recent visual memories (webcam room descriptions). | [src](../../../core/tools/visual_memory_tool.py#L23) |
+
+## `core/tools/voice_journal_tool.py`
+_Voice Journal tool — dedicated longer recording → density note._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_voice_journal` | `(args)` | — | [src](../../../core/tools/voice_journal_tool.py#L26) |
+
 ## `core/tools/wake_word_tool.py`
 _Wake-word tool — Jarvis listens for 'Hey Jarvis' in the background._
 

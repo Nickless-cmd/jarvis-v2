@@ -31,6 +31,41 @@ _Async LLM enrichment for private memory pipeline layers._
 | function | `_enrich_worker` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Sequentially enrich 3 layers via cheap LLM, updating DB in-place. | [src](../../../core/memory/inner_llm_enrichment.py#L564) |
 | function | `enrich_private_layers_async` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Fire-and-forget: spawn daemon thread to enrich private layer payloads via LLM. | [src](../../../core/memory/inner_llm_enrichment.py#L683) |
 
+## `core/memory/memory_size_guard.py`
+_MEMORY.md størrelses-værn (spec C, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_identity` | `(title)` | — | [src](../../../core/memory/memory_size_guard.py#L26) |
+| function | `check_memory_sizes` | `()` | Alle workspaces hvis MEMORY.md > cap. Self-safe → [] ved fejl. | [src](../../../core/memory/memory_size_guard.py#L31) |
+| function | `build_memory_size_surface` | `()` | Central-CLI read-surface: jc raw /central/memory-size. Side-effect-fri. | [src](../../../core/memory/memory_size_guard.py#L55) |
+| function | `prune_memory_section` | `(name, section_title)` | Owner-invokeret: flyt EN navngiven ikke-identitets-sektion fra <name>/MEMORY.md | [src](../../../core/memory/memory_size_guard.py#L67) |
+
+## `core/memory/memory_topic_migration.py`
+_Selektiv memory-migration (spec 2026-07-10 Spec B, selektiv variant)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_keep` | `(title)` | — | [src](../../../core/memory/memory_topic_migration.py#L41) |
+| function | `_hook_from` | `(body_lines)` | — | [src](../../../core/memory/memory_topic_migration.py#L46) |
+| function | `_find_memory_md` | `(name)` | — | [src](../../../core/memory/memory_topic_migration.py#L54) |
+| function | `_parse_sections` | `(text)` | → [(header_level, title, body_lines)] i original rækkefølge. | [src](../../../core/memory/memory_topic_migration.py#L61) |
+| function | `migrate_workspace_memory` | `(name=…)` | Selektiv split af brugerens MEMORY.md. No-op hvis allerede migreret. | [src](../../../core/memory/memory_topic_migration.py#L82) |
+
+## `core/memory/memory_topic_store.py`
+_Topic-memory store (spec 2026-07-10 Spec B, selektiv split-variant)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `sanitize_slug` | `(raw)` | Kun [a-z0-9_-]. Alt andet → '-'. Tom/kun-symboler → None. | [src](../../../core/memory/memory_topic_store.py#L23) |
+| function | `curated_path_for` | `(slug, *, name=…)` | Absolut sti til <user>/memory/curated/<slug>.md for den RESOLVEDE bruger. | [src](../../../core/memory/memory_topic_store.py#L29) |
+| function | `topic_index_path_for` | `(name=…)` | Sti til topic-index'et: <user>/memory/INDEX.md (adskilt fra MEMORY.md-kernen). | [src](../../../core/memory/memory_topic_store.py#L47) |
+| function | `read_topic_index` | `(name=…)` | Læs topic-index'ets tekst (én-linjers). Tom streng hvis det ikke findes. | [src](../../../core/memory/memory_topic_store.py#L52) |
+| function | `read_topic` | `(slug, *, name=…)` | Læs en kurateret topic-krop for den aktuelle bruger. None hvis ugyldigt/mangler. | [src](../../../core/memory/memory_topic_store.py#L61) |
+| function | `write_topic_confirmed` | `(slug, *, title, hook, body, name=…)` | Skriv en topic-krop og BEKRAEFT den (fil eksisterer + indhold matcher). | [src](../../../core/memory/memory_topic_store.py#L73) |
+| function | `_index_line` | `(title, slug, hook)` | — | [src](../../../core/memory/memory_topic_store.py#L101) |
+| function | `upsert_index_line` | `(*, title, slug, hook, name=…)` | Tilfoej/opdatér én index-linje i <user>/memory/INDEX.md. Idempotent pr. slug. | [src](../../../core/memory/memory_topic_store.py#L107) |
+
 ## `core/memory/private_development_state.py`
 
 | Kind | Name | Signature | Summary | Source |

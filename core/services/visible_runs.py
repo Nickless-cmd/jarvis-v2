@@ -295,9 +295,20 @@ def _build_turn_blocks(
         # er kortere → tabt tool. Result hentes robust via results_by_id[tid].
         tool_pairs = list(tool_calls or [])
         pi = 0
-        for kind in deduped:
+        # Placér den (enkelt-akkumulerede) tekst ved SIDSTE 'text'-markør, ikke
+        # den første. Reasoning-modeller streamer ofte en kort præ-tekst FØR de
+        # kalder værktøjer og skriver så det egentlige svar EFTER resultaterne
+        # (round 1: kort tekst + tool_calls; round 2: analysen). Vi har kun ÉN
+        # samlet tekst-blob — lægges den ved første markør, hopper HELE svaret op
+        # foran tool-kortene så de lander i bunden (Bjørn 10. jul). Sidste markør
+        # = svaret lander efter de værktøjer det brugte. Kun-før-tool-tekst
+        # (last==first) er uændret.
+        last_text_idx = max(
+            (i for i, k in enumerate(deduped) if k == "text"), default=-1
+        )
+        for idx, kind in enumerate(deduped):
             if kind == "text":
-                if not text_placed and clean:
+                if not text_placed and clean and idx == last_text_idx:
                     blocks.append({"type": "text", "text": clean})
                     text_placed = True
             elif kind == "tool":

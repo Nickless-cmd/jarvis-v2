@@ -72,6 +72,46 @@ def test_flat_tool_call_shape_flows_to_blocks():
     assert res["is_error"] is False
 
 
+def test_pretext_then_tools_then_answer_places_text_after_tools():
+    """Regression (Bjørn 10. jul): reasoning-modeller streamer en kort præ-tekst
+    FØR de kalder værktøjer og skriver det egentlige svar EFTER resultaterne, så
+    interleave = ['text','tool','tool','text']. Vi har kun én samlet tekst-blob;
+    lægges den ved FØRSTE markør hopper hele svaret op foran tool-kortene, som så
+    lander i bunden. Den skal placeres ved SIDSTE 'text'-markør → tools før prosa."""
+    calls = [
+        _normalize_call({"id": "c1", "name": "bash", "input": {"command": "ps"}}),
+        _normalize_call({"id": "c2", "name": "bash", "input": {"command": "top"}}),
+    ]
+    results = [
+        _normalize_result(_FakeToolResult("c1", "ps output")),
+        _normalize_result(_FakeToolResult("c2", "top output")),
+    ]
+    blocks = _build_turn_blocks(
+        text="Godt set — billedet er anderledes: CPU 98% idle.",
+        tool_calls=calls, tool_results=results,
+        interleave=["text", "tool", "tool", "text"],
+    )
+    non_prog = [b["type"] for b in blocks if b["type"] != "progress"]
+    assert non_prog == ["tool_use", "tool_result", "tool_use", "tool_result", "text"]
+    # Præcis ét tekst-blok, og det er sidst blandt ikke-progress-blokke.
+    text_blocks = [b for b in blocks if b["type"] == "text"]
+    assert len(text_blocks) == 1
+    assert text_blocks[0]["text"].startswith("Godt set")
+
+
+def test_text_only_before_tool_stays_before_tool():
+    """Kun-før-tool-tekst (ingen efterfølgende svar-tekst) skal BEVARE
+    tekst-før-tool: last_text_idx == first → uændret ('Jeg kører X nu' → tool)."""
+    calls = [_normalize_call({"id": "c1", "name": "bash", "input": {"command": "ls"}})]
+    results = [_normalize_result(_FakeToolResult("c1", "ok"))]
+    blocks = _build_turn_blocks(
+        text="Jeg kører den nu.", tool_calls=calls, tool_results=results,
+        interleave=["text", "tool"],
+    )
+    non_prog = [b["type"] for b in blocks if b["type"] != "progress"]
+    assert non_prog == ["text", "tool_use", "tool_result"]
+
+
 def test_openai_function_shape_flows_to_blocks():
     # arguments kan være en JSON-string — akkumulatoren lader den passere som-is.
     calls = [_normalize_call({

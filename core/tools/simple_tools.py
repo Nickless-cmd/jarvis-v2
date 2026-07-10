@@ -733,17 +733,32 @@ _READ_ONLY_GIT_SUBCOMMANDS = {
 }
 
 
+def _emit_security_check(hit: dict, *, target: str) -> None:
+    """Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede
+    check-id (spec E) — 'check #14: dd-disk-write' i stedet for bare 'blocked'."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("tool.security_check", {
+            "check_id": hit.get("id"), "check_name": hit.get("name"),
+            "decision": hit.get("decision"), "why": hit.get("why"),
+            "target": str(target or "")[:200],
+        })
+    except Exception:
+        pass
+
+
 def classify_command(command: str) -> str:
-    """Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'."""
+    """Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'.
+
+    Block/destructive-beslutningen kommer fra den nummererede security-predikat-
+    registry (spec E) — DRY: samme mønstre, men nu navngivne+sporbare."""
+    from core.tools.security_predicates import evaluate_command
     normalized = command.strip().lower()
 
-    for pattern in _BLOCKED_COMMANDS:
-        if re.search(pattern, normalized):
-            return "blocked"
-
-    for pattern in _DESTRUCTIVE_PATTERNS:
-        if re.search(pattern, normalized):
-            return "destructive"
+    _sec = evaluate_command(normalized)
+    if _sec is not None:
+        _emit_security_check(_sec, target=command)
+        return _sec["decision"]
 
     for prefix in _READ_ONLY_COMMAND_PREFIXES:
         if normalized.startswith(prefix) or normalized == prefix.strip():
@@ -825,9 +840,11 @@ def classify_file_write(path: str) -> str:
     """Classify a file write: 'auto', 'approval', or 'blocked'."""
     resolved = str(Path(path).resolve())
 
-    for blocked in _BLOCKED_WRITE_PATTERNS:
-        if blocked in resolved:
-            return "blocked"
+    from core.tools.security_predicates import evaluate_write
+    _sec = evaluate_write(resolved)
+    if _sec is not None:
+        _emit_security_check(_sec, target=resolved)
+        return _sec["decision"]
 
     if resolved in _AUTO_APPROVE_WRITE_PATHS:
         return "auto"

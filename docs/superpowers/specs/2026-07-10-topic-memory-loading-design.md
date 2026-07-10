@@ -106,6 +106,14 @@ write_memory_topic → bekræftet krops-skriv (curated/<slug>.md)
 - Migration: idempotent (anden kørsel er no-op), `.bak` skabt, slugs saniteret, index-linjer matcher topic-filer.
 - Per-user: `read_memory_topic` under bruger `bjorn` rammer `workspace/bjorn/memory/curated/`, ikke `default`.
 
+## Implementeret tilføjelse — vækst-værn (10. jul, efter migration)
+
+**Problem opdaget efter live-migration:** runtime'ens candidate-workflow AUTO-promoverer "stable-context"-noter til `MEMORY.md` (`runtime.contract_file_updated`, `candidate_type=memory_promotion`). Uden værn ville identitets-kernen re-vokse ukontrolleret (og re-skabe den `## Curated Memory`-sektion migrationen netop flyttede ud).
+
+**Fix (live, commit 1a08ab49):** `core/identity/candidate_workflow.py::_append_workspace_contract_line` router nu ALLE `MEMORY.md`-linje-appends → `curated/curated-memory.md`-topic'en (samme slug migrationen skabte) + sikrer index-linjen, via ny `_append_curated_topic_line`. Den originale funktion er omdøbt `_append_workspace_contract_line_raw` og bruges uændret til `USER.md`/`SOUL.md`/`IDENTITY.md`. Kun `memory_promotion`-kandidater rammer `MEMORY.md` (jf. `runtime_candidates`), så alle auto-writes fanges. Per-user via `memory_topic_store` → **`MEMORY.md` er bounded for ALLE workspaces** (også de små/umigrede — de behøver ikke historisk split; værnet dækker dem gratis). Dedup (eksakt + fuzzy 0.85) bevaret. Netto: identitets-kernen er stabil/hånd-kurateret, alt episodisk (historisk + fremtidigt) lever i on-demand topics.
+
+**Åbent valg (ikke besluttet):** grab-bag `curated-memory`-topic vs. per-canonical-key slugs (retrieval-kvalitet). v1 = én rullende topic.
+
 ## Uden for scope (bevidst)
 - **B — load-time reconciliation** (drop index-linjer hvis backing topic-fil mangler): noteret follow-up, ikke v1.
 - Relevans-gætte-motor / auto-push af topic-filer: bevidst fravalgt (pull er LLM-led).

@@ -133,3 +133,35 @@ def test_duplicate_proposed_candidate_blocks_eligibility(monkeypatch) -> None:
     )
 
     assert _memory_candidate_eligible_for_auto_apply(candidate) is False
+
+
+def test_memory_md_promotion_routes_to_curated_topic(isolated_runtime):
+    """Vækst-værn (2026-07-10): MEMORY.md-linje-appends routes til curated-memory-
+    topic'en, IKKE MEMORY.md — så identitets-kernen ikke vokser ukontrolleret."""
+    from core.identity.candidate_workflow import _append_workspace_contract_line
+    from core.memory.memory_topic_store import curated_path_for, read_topic_index
+    from core.identity.workspace_bootstrap import workspace_memory_paths
+
+    r = _append_workspace_contract_line(
+        target_file="MEMORY.md", section_heading="## Curated Memory",
+        content_line="En runtime-promoveret note.",
+    )
+    assert r["write_status"] == "written"
+    assert r["path"].endswith("curated/curated-memory.md")
+    # MEMORY.md selv er urørt
+    mem = workspace_memory_paths()["curated_memory"]
+    assert not (mem.exists() and "En runtime-promoveret note." in mem.read_text())
+    # topic + index har den
+    assert "En runtime-promoveret note." in curated_path_for("curated-memory").read_text()
+    assert "curated/curated-memory.md" in read_topic_index()
+
+
+def test_user_md_still_writes_directly(isolated_runtime):
+    """Identitets-/præference-filer (USER.md) routes IKKE — kun MEMORY.md."""
+    from core.identity.candidate_workflow import _append_workspace_contract_line
+    r = _append_workspace_contract_line(
+        target_file="USER.md", section_heading="## Durable Preferences",
+        content_line="Foretrækker korte svar.",
+    )
+    assert r["path"].endswith("USER.md")
+    assert r["write_status"] == "written"

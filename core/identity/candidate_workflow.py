@@ -671,7 +671,62 @@ def _fuzzy_line_match(line: str, existing_text: str, threshold: float = 0.85) ->
     return False
 
 
+def _append_curated_topic_line(content_line: str) -> dict[str, str]:
+    """Route en MEMORY.md-promovering til curated-memory-TOPIC'en i stedet for at
+    appende til MEMORY.md (spec 2026-07-10, vækst-værn). Holder identitets-kernen
+    (MEMORY.md) bounded — nye episodiske promoveringer lander i den on-demand topic
+    hvor det historiske 'Curated Memory' allerede blev flyttet hen. Per-user via
+    memory_topic_store. Dedup (eksakt + fuzzy) bevaret. Gælder ALLE workspaces →
+    ingen af dem vokser ukontrolleret."""
+    from core.memory.memory_topic_store import curated_path_for, upsert_index_line
+    normalized_line = " ".join(str(content_line or "").split()).strip()
+    if not normalized_line:
+        raise ValueError("Candidate has no writeable content line")
+    path = curated_path_for("curated-memory")
+    if path is None:
+        # Fald tilbage til gammel adfærd hvis topic-stien ikke kan resolves.
+        return _append_workspace_contract_line_raw(
+            target_file="MEMORY.md",
+            section_heading="## Curated Memory",
+            content_line=normalized_line,
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    existing = path.read_text(encoding="utf-8") if path.exists() else ""
+    if normalized_line in existing:
+        return {"write_status": "already-present", "path": str(path), "content_line": normalized_line}
+    if _fuzzy_line_match(normalized_line, existing, threshold=0.85):
+        return {"write_status": "already-present-fuzzy", "path": str(path), "content_line": normalized_line}
+    base = existing.rstrip() if existing.strip() else "# Curated Memory"
+    path.write_text(f"{base}\n\n{normalized_line}\n", encoding="utf-8")
+    # Sørg for at topic'en har en index-linje så Jarvis ved den er der (LLM-led pull).
+    try:
+        upsert_index_line(title="Curated Memory", slug="curated-memory",
+                          hook="Runtime-promoverede stable-context noter (on-demand)")
+    except Exception:
+        pass
+    return {"write_status": "written", "path": str(path), "content_line": normalized_line}
+
+
 def _append_workspace_contract_line(
+    *,
+    target_file: str,
+    section_heading: str,
+    content_line: str,
+) -> dict[str, str]:
+    # VÆKST-VÆRN (2026-07-10): MEMORY.md må ikke vokse ukontrolleret via auto-
+    # promoveringer. Alle MEMORY.md-linje-appends (kun memory_promotion rammer
+    # MEMORY.md, jf. runtime_candidates) routes til curated-memory-topic'en.
+    # Identitets-filer (USER/SOUL/IDENTITY) er uændrede.
+    if str(target_file or "") == "MEMORY.md":
+        return _append_curated_topic_line(content_line)
+    return _append_workspace_contract_line_raw(
+        target_file=target_file,
+        section_heading=section_heading,
+        content_line=content_line,
+    )
+
+
+def _append_workspace_contract_line_raw(
     *,
     target_file: str,
     section_heading: str,

@@ -124,3 +124,16 @@ def test_cadence_calls_resolver_after_detection(isolated_runtime, monkeypatch):
                         lambda: called.__setitem__("n", called["n"] + 1) or {"outcome": "completed"})
     cp.tick_frozen_detectors(tick_count=20)   # 20 % 20 == 0 → contradiction branch fires
     assert called["n"] == 1
+
+def test_surface_shape(isolated_runtime, monkeypatch):
+    monkeypatch.setattr(cr, "detect_contradictions", lambda **k: [{
+        "decision_id": "d1", "decision_directive": "Svar altid kort", "decision_priority": 3,
+        "review_id": 7, "review_text": "svarer ikke kort nok", "overlap_tokens": ["svar","kort","nok"],
+        "detected_at": "2026-07-10T10:00:00+00:00"}])
+    s = cr.build_contradiction_resolver_surface(limit=5)
+    assert s["mode"] == "contradiction-resolution"
+    assert "items" in s and len(s["items"]) == 1
+    item = s["items"][0]
+    assert item["tier"] == "auto"
+    assert item["survivor_rule"]
+    assert "enforced" in s          # shadow vs live synligt

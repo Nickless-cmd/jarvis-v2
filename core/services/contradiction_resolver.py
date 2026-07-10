@@ -193,3 +193,37 @@ def run_resolver_tick() -> dict[str, Any]:
     except Exception as exc:
         logger.debug("contradiction_resolver: tick failed: %s", exc)
         return {"outcome": "error"}
+
+
+def build_contradiction_resolver_surface(*, limit: int = 5) -> dict[str, Any]:
+    """Side-effect-fri read-surface til Central-CLI (jc raw /central/contradictions).
+    Viser hvad resolveren VILLE/HAR gjort pr. finding + om den er live (enforced)."""
+    from core.services.gate_enforcement import is_enforced
+    from core.services.central_capture import GateClass
+    try:
+        enforced = bool(is_enforced("contradiction_resolution", GateClass.COGNITIVE))
+    except Exception:
+        enforced = False
+    try:
+        findings = detect_contradictions(max_findings=max(1, int(limit or 5))) or []
+    except Exception:
+        findings = []
+    items = []
+    for f in findings:
+        survivor = pick_survivor(f)
+        items.append({
+            "decision_id": str(f.get("decision_id") or ""),
+            "review_id": int(f.get("review_id") or 0),
+            "tier": classify_tier(f),
+            "survivor_rule": survivor["rule"],
+            "confidence": survivor["confidence"],
+            "decision_directive": str(f.get("decision_directive") or "")[:120],
+        })
+    return {
+        "active": bool(items),
+        "mode": "contradiction-resolution",
+        "enforced": enforced,
+        "summary": {"finding_count": len(items),
+                    "state": "live" if enforced else "shadow-ramp"},
+        "items": items,
+    }

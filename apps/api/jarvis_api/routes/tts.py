@@ -23,6 +23,9 @@ logger = logging.getLogger("uvicorn.error")
 _DEFAULT_VOICE = "da-DK-JeppeNeural"
 _MAX_TEXT_CHARS = 5000  # sanity cap; long Jarvis monologues should be summarized first
 
+# Jarvis' ElevenLabs voice-id (Mathias, dansk) — spejlet fra voice-skillen, env-overstyrbar.
+ELEVENLABS_VOICE_ID = __import__("os").environ.get("JARVIS_TTS_VOICE_ID", "ygiXC2Oa1BiHksD3WkJZ")
+
 
 class TTSRequest(BaseModel):
     text: str = Field(..., min_length=1, description="Text to synthesize.")
@@ -41,6 +44,39 @@ class TTSRequest(BaseModel):
         default=None,
         description="Pitch adjustment, e.g. '+0Hz', '+20Hz'. Default 0.",
     )
+    provider: str | None = Field(
+        default=None,
+        description="TTS-provider: 'auto' (default: ElevenLabs → edge fallback), "
+                    "'elevenlabs' (Jarvis' egen stemme), 'edge' (Microsoft neural).",
+    )
+
+
+def _elevenlabs_preferred() -> bool:
+    """Runtime-flag så credits kan spares uden kode-ændring. Default True (ElevenLabs primær)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        raw = get_runtime_state_value("tts_prefer_elevenlabs", True)
+        if isinstance(raw, str):
+            return raw.strip().lower() not in ("0", "false", "no", "off")
+        return bool(raw)
+    except Exception:
+        return True
+
+
+def _synthesize_elevenlabs_bytes(text: str) -> bytes:
+    """Jarvis' egen ElevenLabs-stemme → MP3-bytes. Genbruger nøgle+voice_id fra voice-skillen
+    (ingen dobbelt nøgle-læsning). Kaster ved manglende nøgle / credits-out / fejl → caller falder
+    tilbage til edge-tts."""
+    from elevenlabs.client import ElevenLabs
+    from core.skills.voice.tts import _get_elevenlabs_key, ELEVENLABS_VOICE_ID
+    key = _get_elevenlabs_key()
+    if not key:
+        raise RuntimeError("no elevenlabs api key")
+    client = ElevenLabs(api_key=key)
+    audio = client.text_to_speech.convert(
+        voice_id=ELEVENLABS_VOICE_ID, text=text,
+        model_id="eleven_flash_v2_5", output_format="mp3_44100_128")
+    return b"".join(chunk for chunk in audio if chunk)
 
 
 @router.post("/synthesize")
@@ -62,23 +98,42 @@ async def synthesize(req: TTSRequest) -> Response:
     voice = (req.voice or _DEFAULT_VOICE).strip() or _DEFAULT_VOICE
     rate = (req.rate or "+0%").strip() or "+0%"
     pitch = (req.pitch or "+0Hz").strip() or "+0Hz"
+    provider = (req.provider or "auto").strip().lower() or "auto"
 
-    try:
-        import edge_tts
-    except ImportError as exc:
-        raise HTTPException(status_code=500, detail=f"edge-tts not installed: {exc}")
+    audio = b""
+    used = ""
 
-    buf = io.BytesIO()
-    try:
-        communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate, pitch=pitch)
-        async for chunk in communicate.stream():
-            if chunk.get("type") == "audio":
-                buf.write(chunk.get("data") or b"")
-    except Exception as exc:
-        logger.warning("edge-tts synth failed voice=%s len=%d: %s", voice, len(text), exc)
-        raise HTTPException(status_code=502, detail=f"tts synthesis failed: {exc!s}"[:200])
+    # 1) ElevenLabs primær (Jarvis' egen stemme) — medmindre eksplicit 'edge' valgt, eller
+    #    runtime-flag'et sparer credits. Fejl (ingen nøgle / credits-out) → falder til edge.
+    if provider in ("auto", "elevenlabs") and (provider == "elevenlabs" or _elevenlabs_preferred()):
+        try:
+            audio = await asyncio.to_thread(_synthesize_elevenlabs_bytes, text)
+            if audio:
+                used = "elevenlabs"
+        except Exception as exc:
+            logger.info("tts: elevenlabs failed (len=%d), falling back to edge: %s", len(text), exc)
+            audio = b""
+            if provider == "elevenlabs":  # eksplicit ElevenLabs → ærlig fejl hvis også edge fejler nedenfor
+                pass
 
-    audio = buf.getvalue()
+    # 2) edge-tts fallback (eller når 'edge' er eksplicit valgt)
+    if not audio:
+        try:
+            import edge_tts
+        except ImportError as exc:
+            raise HTTPException(status_code=500, detail=f"edge-tts not installed: {exc}")
+        buf = io.BytesIO()
+        try:
+            communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate, pitch=pitch)
+            async for chunk in communicate.stream():
+                if chunk.get("type") == "audio":
+                    buf.write(chunk.get("data") or b"")
+        except Exception as exc:
+            logger.warning("edge-tts synth failed voice=%s len=%d: %s", voice, len(text), exc)
+            raise HTTPException(status_code=502, detail=f"tts synthesis failed: {exc!s}"[:200])
+        audio = buf.getvalue()
+        used = "edge"
+
     if not audio:
         raise HTTPException(status_code=502, detail="tts returned empty audio")
 
@@ -87,7 +142,8 @@ async def synthesize(req: TTSRequest) -> Response:
         media_type="audio/mpeg",
         headers={
             "Content-Disposition": "inline; filename=tts.mp3",
-            "X-TTS-Voice": voice,
+            "X-TTS-Provider": used,
+            "X-TTS-Voice": (ELEVENLABS_VOICE_ID if used == "elevenlabs" else voice),
             "X-TTS-Bytes": str(len(audio)),
         },
     )

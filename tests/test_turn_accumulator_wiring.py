@@ -99,3 +99,38 @@ def test_empty_turn_yields_falsy_blocks_for_or_none_guard():
     blocks = _build_turn_blocks(text="", tool_calls=[], tool_results=[])
     assert blocks == []
     assert (blocks or None) is None
+
+
+def test_multiple_consecutive_tools_not_collapsed():
+    """Bjørn 10. jul: 3 tool-kald i træk → interleave ['tool','tool','tool','text']
+    må IKKE dedupe'es til ét tool. Alle 3 tools + svar-tekst skal med."""
+    calls = [
+        {"id": "c1", "name": "get_weather", "input": {}},
+        {"id": "c2", "name": "bash", "input": {}},
+        {"id": "c3", "name": "calculate", "input": {}},
+    ]
+    results = [
+        {"tool_use_id": "c1", "status": "done", "content": "sol", "is_error": False},
+        {"tool_use_id": "c2", "status": "done", "content": "ok", "is_error": False},
+        {"tool_use_id": "c3", "status": "done", "content": "42", "is_error": False},
+    ]
+    blocks = _build_turn_blocks(
+        text="Her er svaret.", tool_calls=calls, tool_results=results,
+        interleave=["tool", "tool", "tool", "text"],
+    )
+    ids = [b["id"] for b in blocks if b["type"] == "tool_use"]
+    assert ids == ["c1", "c2", "c3"]  # ALLE 3, ikke kun sidste
+    assert sum(1 for b in blocks if b["type"] == "tool_result") == 3
+    assert blocks[-1] == {"type": "text", "text": "Her er svaret."}
+
+
+def test_answer_text_never_dropped_when_interleave_lacks_text():
+    """Hvis interleave mangler afsluttende 'text' men svar findes → tekst bevares."""
+    calls = [{"id": "c1", "name": "bash", "input": {}}]
+    results = [{"tool_use_id": "c1", "status": "done", "content": "ok", "is_error": False}]
+    blocks = _build_turn_blocks(
+        text="Svar uden interleave-text.", tool_calls=calls, tool_results=results,
+        interleave=["tool"],  # ingen 'text'
+    )
+    assert any(b["type"] == "text" and b["text"] == "Svar uden interleave-text." for b in blocks)
+    assert sum(1 for b in blocks if b["type"] == "tool_use") == 1

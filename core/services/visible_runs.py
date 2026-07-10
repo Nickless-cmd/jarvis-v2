@@ -278,17 +278,22 @@ def _build_turn_blocks(
     blocks: list[dict] = []
     clean = str(text or "").strip()
     if interleave:
-        # Dedupliér consecutive entries: ["text","text","tool"] → ["text","tool"]
+        # Dedupliér KUN consecutive 'text' (så én tekst-blob ikke splittes i to
+        # blokke). 'tool'-entries BEVARES ALLE — ellers kollapser flere tool-kald
+        # i træk til ét (Bjørn 10. jul: kun sidste tool overlevede + svar forsvandt).
         deduped: list[str] = []
         for e in interleave:
-            if not deduped or deduped[-1] != e:
-                deduped.append(e)
+            if e == "text" and deduped and deduped[-1] == "text":
+                continue
+            deduped.append(e)
 
         results_by_id: dict[str, dict] = {}
         for r in (tool_results or []):
             results_by_id[str(r.get("tool_use_id") or "")] = r
         text_placed = False
-        tool_pairs = list(zip(tool_calls or [], tool_results or []))
+        # Basér på tool_calls (IKKE zip m. results) — zip truncerer hvis results
+        # er kortere → tabt tool. Result hentes robust via results_by_id[tid].
+        tool_pairs = list(tool_calls or [])
         pi = 0
         for kind in deduped:
             if kind == "text":
@@ -297,7 +302,7 @@ def _build_turn_blocks(
                     text_placed = True
             elif kind == "tool":
                 if pi < len(tool_pairs):
-                    tc, tr = tool_pairs[pi]
+                    tc = tool_pairs[pi]
                     tid = str(tc.get("id") or "")
                     blocks.append({
                         "type": "tool_use",
@@ -316,6 +321,24 @@ def _build_turn_blocks(
                             "is_error": bool(r.get("is_error")),
                         })
                     pi += 1
+        # Robusthed: tools/svar må ALDRIG droppes selv om interleave undercounter.
+        # Placer resterende tools + svar-teksten hvis den ikke blev placeret.
+        while pi < len(tool_pairs):
+            tc = tool_pairs[pi]
+            tid = str(tc.get("id") or "")
+            blocks.append({"type": "tool_use", "id": tid,
+                           "name": str(tc.get("name") or ""), "input": tc.get("input") or {}})
+            r = results_by_id.get(tid)
+            if r is not None:
+                status = str(r.get("status") or "done")
+                blocks.append({
+                    "type": "tool_result", "tool_use_id": tid,
+                    "status": "error" if (r.get("is_error") or status == "error") else "done",
+                    "content": str(r.get("content") or ""), "is_error": bool(r.get("is_error")),
+                })
+            pi += 1
+        if clean and not text_placed:
+            blocks.append({"type": "text", "text": clean})
     else:
         # Degraderet fallback: tekst først, så tool-par i kald-rækkefølge
         if clean:

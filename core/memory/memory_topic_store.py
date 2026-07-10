@@ -1,7 +1,9 @@
-"""Topic-memory store (spec 2026-07-10 Spec B).
+"""Topic-memory store (spec 2026-07-10 Spec B, selektiv split-variant).
 
-Tre-lags kurateret memory pr. bruger-workspace: altid-loadet index (MEMORY.md) +
-on-demand topic-filer (memory/curated/<slug>.md). Denne fil ejer slug-sanitering,
+Tre-lags kurateret memory pr. bruger-workspace. Topic-index'et ligger i sin EGEN
+fil ``memory/INDEX.md`` (IKKE MEMORY.md) — så MEMORY.md forbliver den altid-loadede
+identitets-kerne (uændret load-sti), mens flyttede/nye topics har et separat index
++ on-demand kroppe i ``memory/curated/<slug>.md``. Denne fil ejer slug-sanitering,
 per-user path-scoping (sikkerheds-invariant), bekraeftet skrivning og index-upsert.
 Al sti-resolution gaar gennem workspace_memory_paths — aldrig hardkodet default.
 """
@@ -40,6 +42,20 @@ def curated_path_for(slug: str, *, name: str = "default") -> Path | None:
     except Exception as exc:
         logger.debug("memory_topic_store: path resolve failed: %s", exc)
         return None
+
+
+def topic_index_path_for(name: str = "default") -> Path:
+    """Sti til topic-index'et: <user>/memory/INDEX.md (adskilt fra MEMORY.md-kernen)."""
+    return Path(workspace_memory_paths(name=name)["memory_dir"]) / "INDEX.md"
+
+
+def read_topic_index(name: str = "default") -> str:
+    """Læs topic-index'ets tekst (én-linjers). Tom streng hvis det ikke findes."""
+    p = topic_index_path_for(name=name)
+    try:
+        return p.read_text(encoding="utf-8") if p.exists() else ""
+    except Exception:
+        return ""
 
 
 def read_topic(slug: str, *, name: str = "default") -> str | None:
@@ -89,13 +105,13 @@ def _index_line(title: str, slug: str, hook: str) -> str:
 
 
 def upsert_index_line(*, title: str, slug: str, hook: str, name: str = "default") -> bool:
-    """Tilfoej/opdatér én index-linje i <user>/MEMORY.md. Idempotent pr. slug.
+    """Tilfoej/opdatér én index-linje i <user>/memory/INDEX.md. Idempotent pr. slug.
     Bekraefter ved at gen-læse. True hvis linjen er til stede efter skriv."""
     safe = sanitize_slug(slug)
     if not safe:
         return False
     try:
-        idx_path = Path(workspace_memory_paths(name=name)["curated_memory"])
+        idx_path = topic_index_path_for(name=name)
         idx_path.parent.mkdir(parents=True, exist_ok=True)
         existing = idx_path.read_text(encoding="utf-8") if idx_path.exists() else ""
         marker = f"(curated/{safe}.md)"

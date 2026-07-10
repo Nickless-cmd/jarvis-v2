@@ -46,7 +46,8 @@ def test_write_bad_slug_not_confirmed(isolated_runtime):
 from core.identity.workspace_bootstrap import workspace_memory_paths
 
 def _index_text(name="default"):
-    p = workspace_memory_paths(name=name)["curated_memory"]
+    from core.memory.memory_topic_store import topic_index_path_for
+    p = topic_index_path_for(name=name)
     return p.read_text(encoding="utf-8") if p.exists() else ""
 
 def test_write_confirmed_upserts_index_line(isolated_runtime):

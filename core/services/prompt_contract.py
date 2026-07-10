@@ -377,24 +377,20 @@ def _curated_memory_index_section(name: str = "default") -> str:
     korrekt invalidering)."""
     try:
         from core.identity.workspace_bootstrap import workspace_memory_paths as _wmp
+        from core.memory.memory_topic_store import read_topic_index
         paths = _wmp(name=name)
-        idx_path = paths["curated_memory"]
         curated_dir = paths["curated_dir"]
-        if not idx_path.exists():
-            return ""
-        # MIGRATION-GUARD: vis kun index'et EFTER migration har splittet monolitten
-        # (dvs. curated/ indeholder topic-filer). FØR migration er MEMORY.md stadig
-        # den fulde monolit — at loade den her ville duplikere det eksisterende
-        # memory-recall og bloate hver prompt. Ingen topic-filer → no-op (uændret
-        # adfærd). Dette gør Spec B's deploy til en no-op på live-prompten indtil
-        # owner bevidst kører migrate_workspace_memory.
+        # MIGRATION-GUARD: vis kun index'et EFTER migration har flyttet sektioner
+        # (dvs. curated/ indeholder topic-filer). Uden topics → no-op (uændret
+        # adfærd). Index'et er memory/INDEX.md — ADSKILT fra MEMORY.md-kernen, så
+        # identitets-kernen (loadet ad sin egen sti) ikke duplikeres her.
         try:
             has_topics = any(curated_dir.glob("*.md"))
         except Exception:
             has_topics = False
         if not has_topics:
             return ""
-        idx = idx_path.read_text(encoding="utf-8").strip()
+        idx = read_topic_index(name=name).strip()
         if not idx:
             return ""
         return (

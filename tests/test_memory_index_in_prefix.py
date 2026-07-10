@@ -1,15 +1,15 @@
 from __future__ import annotations
 from pathlib import Path
 from core.identity.workspace_bootstrap import workspace_memory_paths
+from core.memory.memory_topic_store import topic_index_path_for
 
 
 def test_index_appears_in_stable_prefix_after_migration(isolated_runtime):
-    # Post-migration state: index MEMORY.md + mindst én curated topic-fil.
+    # Post-migration state: topic-index memory/INDEX.md + mindst én curated topic-fil.
     paths = workspace_memory_paths(name="default")
-    idx = Path(paths["curated_memory"])
+    idx = topic_index_path_for(name="default")
     idx.parent.mkdir(parents=True, exist_ok=True)
     idx.write_text("- [Alpha](curated/alpha.md) — om alpha\n", encoding="utf-8")
-    # Migration-guard kræver at curated/ indeholder topic-filer.
     curated = Path(paths["curated_dir"])
     curated.mkdir(parents=True, exist_ok=True)
     (curated / "alpha.md").write_text("# Alpha\n\nkrop", encoding="utf-8")
@@ -22,14 +22,12 @@ def test_index_appears_in_stable_prefix_after_migration(isolated_runtime):
 
 
 def test_index_is_noop_before_migration(isolated_runtime):
-    # FØR migration: MEMORY.md findes (monolit) men curated/ har ingen topic-filer
-    # → migration-guarden skal returnere no-op (index'et vises IKKE), så deploy
-    # ikke bloater/duplikerer prompten før owner kører migration.
-    paths = workspace_memory_paths(name="default")
-    idx = Path(paths["curated_memory"])
+    # FØR migration: ingen topic-filer i curated/ → migration-guarden returnerer
+    # no-op (index'et vises IKKE), så identitets-kernen (MEMORY.md) ikke røres.
+    idx = topic_index_path_for(name="default")
     idx.parent.mkdir(parents=True, exist_ok=True)
-    idx.write_text("en hel monolit-tekstvæg her\n", encoding="utf-8")
-    # curated_dir eksisterer (bootstrap) men er tom → ingen topic-filer.
+    idx.write_text("- [Alpha](curated/alpha.md) — om alpha\n", encoding="utf-8")
+    # curated_dir har INGEN topic-filer → guard = no-op.
 
     from core.services.prompt_contract import _curated_memory_index_section
     assert _curated_memory_index_section(name="default") == ""

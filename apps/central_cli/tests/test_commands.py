@@ -20,6 +20,15 @@ def test_nerve_toggle_is_write_post():
     assert spec.body == {"enabled": False}
 
 
+def test_signoff_on_off_and_status():
+    on = resolve_command("signoff", ["on"])
+    assert on == CommandSpec("POST", "/central/nerve/matrix_signoff/toggle", {"enabled": True}, True)
+    off = resolve_command("signoff", ["disable"])
+    assert off.body == {"enabled": False} and off.write is True
+    status = resolve_command("signoff", [])
+    assert status == CommandSpec("GET", "/central/nerve/matrix_signoff", None, False)
+
+
 def test_central_command_backed_verb():
     spec = resolve_command("incidents", ["--filter", "network"])
     assert spec.method == "POST"

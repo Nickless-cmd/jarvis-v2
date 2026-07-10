@@ -80,6 +80,16 @@ def resolve_command(verb: str, args: list[str]) -> CommandSpec:
         enabled = not (len(args) >= 2 and args[1].lower() in ("off", "false", "0"))
         return CommandSpec("POST", f"/central/nerve/{nerve}/toggle", {"enabled": enabled}, True)
 
+    # Matrix Sign-Off til/fra (den teatralske karakter-signatur i bunden af svar).
+    # `central signoff on|enable` · `central signoff off|disable` · `central signoff` = status.
+    if verb == "signoff":
+        arg = args[0].lower() if args else ""
+        if arg in ("on", "enable", "enabled", "true", "1"):
+            return CommandSpec("POST", "/central/nerve/matrix_signoff/toggle", {"enabled": True}, True)
+        if arg in ("off", "disable", "disabled", "false", "0"):
+            return CommandSpec("POST", "/central/nerve/matrix_signoff/toggle", {"enabled": False}, True)
+        return CommandSpec("GET", "/central/nerve/matrix_signoff", None, False)
+
     if verb == "approve" and len(args) >= 2:
         kind, ident = args[0], args[1]
         path = {

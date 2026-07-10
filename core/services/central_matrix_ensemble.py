@@ -131,13 +131,25 @@ def _most_active_character() -> dict[str, Any] | None:
     return None
 
 
+def signoff_enabled() -> bool:
+    """Owner-switch: nerve/matrix_signoff (default ON). Slås fra/til via jc: `central signoff off`.
+    Self-safe → default ON (fail-open, så en cache-fejl ikke tavser en tilsigtet-aktiv feature)."""
+    try:
+        from core.services import central_switches as _cs
+        return _cs.is_enabled("nerve", "matrix_signoff")
+    except Exception:
+        return True
+
+
 def build_matrix_signoff_section() -> str | None:
     """Byg en sign-off instruktion til prompt-halen.
 
     Returnerer en linje som:
         MATRIX SIGN-OFF: Afslut dit svar med [🕴️ Smith] Mr. Anderson... forudsigeligt.
-    None hvis ingen karakter er aktiv.
+    None hvis switchen er slået fra, eller ingen karakter er aktiv.
     """
+    if not signoff_enabled():
+        return None
     ch = _most_active_character()
     if ch is None:
         return None

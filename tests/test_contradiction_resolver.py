@@ -116,3 +116,11 @@ def test_resolve_fail_open_on_detection_error(isolated_runtime, monkeypatch):
     monkeypatch.setattr(cr, "detect_contradictions", boom)
     summary = cr.resolve_contradictions(live=True)   # maa ALDRIG kaste
     assert summary["error"] is True
+
+def test_cadence_calls_resolver_after_detection(isolated_runtime, monkeypatch):
+    import core.services.cadence_producers as cp
+    called = {"n": 0}
+    monkeypatch.setattr("core.services.contradiction_resolver.run_resolver_tick",
+                        lambda: called.__setitem__("n", called["n"] + 1) or {"outcome": "completed"})
+    cp.tick_frozen_detectors(tick_count=20)   # 20 % 20 == 0 → contradiction branch fires
+    assert called["n"] == 1

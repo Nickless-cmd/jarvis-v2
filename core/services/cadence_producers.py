@@ -793,6 +793,13 @@ def tick_frozen_detectors(tick_count: int) -> dict[str, int]:
             res = run_contradiction_tick()
             out["contradiction"] = int((res or {}).get("contradictions", 0)) if isinstance(res, dict) else 0
             _observe_frozen("contradiction", {"found": out["contradiction"]})
+            # Resolver: detektion → handling (spec 2026-07-10). Self-safe; live vs
+            # shadow afgoeres inde i run_resolver_tick via gate_enforcement.
+            try:
+                from core.services.contradiction_resolver import run_resolver_tick
+                run_resolver_tick()
+            except Exception:
+                logger.debug("tick_frozen_detectors: contradiction resolver failed", exc_info=True)
         except Exception:
             logger.debug("tick_frozen_detectors: contradiction failed", exc_info=True)
     if tick_count % 15 == 0:

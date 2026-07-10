@@ -41,3 +41,32 @@ def test_write_bad_slug_not_confirmed(isolated_runtime):
     out = mts.write_topic_confirmed("!!!", title="x", hook="y", body="z", name="default")
     assert out["confirmed"] is False
     assert out["reason"] == "bad-slug"
+
+
+from core.identity.workspace_bootstrap import workspace_memory_paths
+
+def _index_text(name="default"):
+    p = workspace_memory_paths(name=name)["curated_memory"]
+    return p.read_text(encoding="utf-8") if p.exists() else ""
+
+def test_write_confirmed_upserts_index_line(isolated_runtime):
+    mts.write_topic_confirmed("alpha", title="Alpha", hook="om alpha",
+                              body="krop", name="default")
+    idx = _index_text()
+    assert "(curated/alpha.md)" in idx
+    assert "Alpha" in idx and "om alpha" in idx
+
+def test_index_upsert_is_idempotent(isolated_runtime):
+    mts.write_topic_confirmed("alpha", title="Alpha", hook="h1", body="b1", name="default")
+    mts.write_topic_confirmed("alpha", title="Alpha", hook="h2", body="b2", name="default")
+    idx = _index_text()
+    assert idx.count("(curated/alpha.md)") == 1     # opdateret, ikke dubleret
+    assert "h2" in idx and "h1" not in idx          # nyeste hook vinder
+
+def test_index_untouched_when_body_write_fails(isolated_runtime, monkeypatch):
+    # Simulér krops-skriv-fejl → index maa ALDRIG opdateres.
+    def _boom(*a, **k): raise OSError("disk full")
+    monkeypatch.setattr("pathlib.Path.write_text", _boom)
+    out = mts.write_topic_confirmed("beta", title="Beta", hook="h", body="b", name="default")
+    assert out["confirmed"] is False
+    assert "(curated/beta.md)" not in _index_text()

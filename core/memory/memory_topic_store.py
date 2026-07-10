@@ -74,5 +74,43 @@ def write_topic_confirmed(slug: str, *, title: str, hook: str, body: str,
     except Exception as exc:
         logger.debug("memory_topic_store: write failed: %s", exc)
         return {"confirmed": False, "reason": "body-write-failed", "slug": safe}
-    # Index-upsert wires i Task 3 — indtil da regnes krops-skriv som confirmed.
+    ok = upsert_index_line(title=title, slug=safe, hook=hook, name=name)
+    if not ok:
+        # Krop skrevet, men index fejlede → topic er en orphan (ikke en loegn i
+        # index'et). Rapportér ærligt; Jarvis maa ikke sige "gemt".
+        return {"confirmed": False, "reason": "index-update-failed", "slug": safe}
     return {"confirmed": True, "reason": "ok", "slug": safe}
+
+
+def _index_line(title: str, slug: str, hook: str) -> str:
+    t = str(title or slug).strip()
+    h = str(hook or "").strip()
+    return f"- [{t}](curated/{slug}.md) — {h}" if h else f"- [{t}](curated/{slug}.md)"
+
+
+def upsert_index_line(*, title: str, slug: str, hook: str, name: str = "default") -> bool:
+    """Tilfoej/opdatér én index-linje i <user>/MEMORY.md. Idempotent pr. slug.
+    Bekraefter ved at gen-læse. True hvis linjen er til stede efter skriv."""
+    safe = sanitize_slug(slug)
+    if not safe:
+        return False
+    try:
+        idx_path = Path(workspace_memory_paths(name=name)["curated_memory"])
+        idx_path.parent.mkdir(parents=True, exist_ok=True)
+        existing = idx_path.read_text(encoding="utf-8") if idx_path.exists() else ""
+        marker = f"(curated/{safe}.md)"
+        new_line = _index_line(title, safe, hook)
+        lines = existing.splitlines()
+        replaced = False
+        for i, ln in enumerate(lines):
+            if marker in ln:
+                lines[i] = new_line
+                replaced = True
+                break
+        if not replaced:
+            lines.append(new_line)
+        idx_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return marker in idx_path.read_text(encoding="utf-8")
+    except Exception as exc:
+        logger.debug("memory_topic_store: index upsert failed: %s", exc)
+        return False

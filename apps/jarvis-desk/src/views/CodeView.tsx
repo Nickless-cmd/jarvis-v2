@@ -19,6 +19,7 @@ import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { SystemHealth } from '../components/shell/SystemHealth'
 import { OperatorPanel } from '../components/code/OperatorPanel'
 import { MessageRail, railLabel } from '../components/chat/MessageRail'
 import { GreetingHero } from '../components/chat/GreetingHero'
@@ -593,6 +594,7 @@ export function CodeView({
   const headerRight = (
     <div className="chatview-head-right">
       {config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
+      <SystemHealth errors={stream.canonicalErrors} />
       <CentralBadge config={config} isOwner={isOwner} />
       {config && <ConnectionPill config={config} />}
       <button

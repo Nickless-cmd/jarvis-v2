@@ -461,6 +461,10 @@ from core.tools.notification_tools import (
     exec_get_notification_preferences,
     exec_set_notification_preferences,
 )
+from core.tools.memory_topic_tools import (
+    _exec_read_memory_topic,
+    _exec_write_memory_topic,
+)
 from core.tools.webhook_tools import (
     WEBHOOK_TOOL_DEFINITIONS,
     _exec_webhook_register,
@@ -1711,6 +1715,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "set_recurring_channel": _exec_set_recurring_channel,
     "get_notification_preferences": exec_get_notification_preferences,
     "set_notification_preferences": exec_set_notification_preferences,
+    # Kurateret memory-topics (spec 2026-07-10 Spec B)
+    "read_memory_topic": _exec_read_memory_topic,
+    "write_memory_topic": _exec_write_memory_topic,
     # Webhook tools
     "webhook_register": _exec_webhook_register,
     "webhook_send": _exec_webhook_send,

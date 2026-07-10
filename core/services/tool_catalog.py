@@ -35,7 +35,10 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
         "bash", "run_pytest", "db_query", "git_status",
     ]),
     ("Web", ["web_search", "web_fetch"]),
-    ("Hukommelse", ["search_memory", "recall_memories", "remember_this"]),
+    ("Hukommelse", [
+        "search_memory", "recall_memories", "remember_this",
+        "read_memory_topic", "write_memory_topic",
+    ]),
     ("Selv-styring", [
         "restart_self", "read_self_state", "read_self_docs",
         "schedule_self_wakeup", "list_self_wakeups", "cancel_self_wakeup",

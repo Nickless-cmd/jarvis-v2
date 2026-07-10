@@ -98,6 +98,7 @@ from core.services.identity_drift_proposer import (IDENTITY_DRIFT_TOOL_DEFINITIO
 from core.services.long_arc_synthesizer import (LONG_ARC_TOOL_DEFINITIONS)
 from core.tools.recurring_scheduler_tools import (RECURRING_TOOL_DEFINITIONS)
 from core.tools.notification_tools import (NOTIFICATION_TOOL_DEFINITIONS)
+from core.tools.memory_topic_tools import (MEMORY_TOPIC_TOOL_DEFINITIONS)
 from core.tools.webhook_tools import (WEBHOOK_TOOL_DEFINITIONS)
 from core.tools.health_monitor_tools import (HEALTH_MONITOR_TOOL_DEFINITIONS)
 from core.tools.sensory_tools import (SENSORY_TOOL_DEFINITIONS)
@@ -3161,6 +3162,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *LONG_ARC_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *NOTIFICATION_TOOL_DEFINITIONS,
+    *MEMORY_TOPIC_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
     *SENSORY_TOOL_DEFINITIONS,

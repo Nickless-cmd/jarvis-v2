@@ -92,6 +92,52 @@ _SURFACE_BUILDERS: dict[str, Any] = {
 }
 
 
+def _most_active_character() -> dict[str, Any] | None:
+    """Return den ene karakter der er mest aktiv lige nu.
+
+    Prioriteringsrækkefølge: Smith (via assess) > Seraph (hypoteser) >
+    Twins (gentagelser) > Persephone (systemisk) > Merovingian (challenges) >
+    Trainman (drømme). Returnerer None hvis ingen er aktive.
+    """
+    # Tjek Smith først — han er altid aktiv hvis score ≥ tærskel
+    try:
+        from core.runtime.db_core import get_runtime_state_value as _grv
+        st = _grv("agent_smith_state", {})
+        if isinstance(st, dict) and float(st.get("score") or 0.0) >= 0.5:
+            line = st.get("line") or "Mr. Anderson... forudsigeligt."
+            return {"label": "[🕴️ Smith]", "line": line}
+    except Exception:
+        pass
+
+    # Tjek de andre i prioritetsrækkefølge
+    for ch in _CHARACTERS:
+        cid = ch["id"]
+        try:
+            builder = _SURFACE_BUILDERS.get(cid)
+            if builder is None:
+                continue
+            surf = builder()
+            if ch["check"](surf):
+                return {"label": ch["label"], "line": ch["line"]}
+        except Exception:
+            continue
+
+    return None
+
+
+def build_matrix_signoff_section() -> str | None:
+    """Byg en sign-off instruktion til prompt-halen.
+
+    Returnerer en linje som:
+        MATRIX SIGN-OFF: Afslut dit svar med [🕴️ Smith] Mr. Anderson... forudsigeligt.
+    None hvis ingen karakter er aktiv.
+    """
+    ch = _most_active_character()
+    if ch is None:
+        return None
+    return f"MATRIX SIGN-OFF: Afslut dit svar med {ch['label']} {ch['line']}"
+
+
 def build_matrix_ensemble_prompt_section() -> str | None:
     """Byg karakter-labels for prompt-halen.
 

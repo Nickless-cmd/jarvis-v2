@@ -2437,6 +2437,16 @@ def build_visible_chat_prompt_assembly(
             derived_inputs.append("matrix ensemble character labels (tail)")
     except Exception:
         pass
+    # Matrix Sign-Off — automatisk karakter-signatur i bunden af svar.
+    # Kører EFTER labels-sektionen så sign-off'en har karakterernes kontekst.
+    try:
+        from core.services.central_matrix_ensemble import build_matrix_signoff_section as _signoff_fn
+        _signoff = _signoff_fn()
+        if _signoff:
+            _dyn_tail.append(_signoff)
+            derived_inputs.append("matrix sign-off instruction (tail)")
+    except Exception:
+        pass
     if _dyn_tail:
         parts.append(DYNAMIC_TAIL_SENTINEL)
         parts.extend(_dyn_tail)

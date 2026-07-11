@@ -67,7 +67,8 @@ _TABS: list[tuple[str, str, bool]] = [
 # (its populate/detail logic is unchanged) and folds into the incidents tab as a
 # sub-view — so no anomaly functionality is lost.
 _TABLE_TABS = {"nerves", "clusters", "incidents", "anomalies", "governance",
-               "agents", "runs", "approvals"}
+               "agents", "runs", "approvals",
+               "connections", "users", "excess", "decentral"}
 # Panel-backed tabs (single full-width panel). "runs"/"approvals" are now wired
 # as real table-tabs (scheduled/autonomy), so they no longer live here.
 # "mind" renders Jarvis' self as a panel. "healing" stays reachable as a panel
@@ -358,10 +359,6 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                 pass
 
     def _populate_active_tab(self) -> None:
-        _TABLE_TABS = frozenset({
-            "nerves", "clusters", "incidents", "anomalies", "governance", "agents",
-            "connections", "users", "excess", "decentral", "runs", "approvals",
-        })
         try:
             name = self.active_tab
             # Cursor-stabilitet: alle tabel-faner deler #nerve-table og genopbygges

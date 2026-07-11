@@ -2095,7 +2095,10 @@ def build_visible_chat_prompt_assembly(
     # --- Cognitive State (accumulated personality, bearing, taste, rhythm) ---
     # Submitted as a future at function entry; resolve here.
     _mark("before_heavy_resolves")
-    if _cog_live:
+    if _skip_cog_build:
+        # Adaptiv assembly: simpel/kode-tur → hverken build ELLER injection-read.
+        cognitive_state_content = None
+    elif _cog_live:
         cognitive_state_content = read_injection("cognitive_state") or None
     else:
         cognitive_state_content = _timed_result(future_cognitive_state, "cognitive_state")

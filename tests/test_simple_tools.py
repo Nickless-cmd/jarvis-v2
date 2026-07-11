@@ -166,3 +166,38 @@ def test_spawn_agent_task_handler_backward_compatible(monkeypatch):
     assert captured["system_prompt"] == ""
     assert captured["tool_policy"] == ""
     assert captured["allowed_tools"] is None
+
+
+def test_format_tool_result_survives_bytes_values():
+    """A tool result containing raw bytes (e.g. db_query over a BLOB column)
+    must NOT crash format_tool_result_for_model with
+    'Object of type bytes is not JSON serializable' — it should degrade
+    gracefully to a string. Regression for the visible-run crash on
+    2026-07-10 (db_query over api_connection_presence)."""
+    from core.tools.simple_tools import format_tool_result_for_model
+    result = {
+        "status": "ok",
+        "columns": ["id", "blob"],
+        "rows": [{"id": 1, "blob": b"\x89PNG\r\n\x1a\n\x00binary"}],
+        "row_count": 1,
+    }
+    out = format_tool_result_for_model("db_query", result)
+    assert isinstance(out, str)
+    assert out  # non-empty
+    assert "not JSON serializable" not in out
+
+
+def test_db_query_bytes_coerced_to_json_safe():
+    """_exec_db_query must coerce BLOB/bytes cell values to JSON-safe types
+    so the row dict can be serialized downstream without crashing."""
+    import json
+    from core.tools.simple_tools_native import _json_safe_cell
+    # utf-8-decodable bytes → str
+    assert _json_safe_cell(b"hello") == "hello"
+    # binary bytes → safe placeholder, JSON-serializable
+    v = _json_safe_cell(b"\x89PNG\r\n\x00\xff")
+    json.dumps(v)  # must not raise
+    assert isinstance(v, str)
+    # non-bytes pass through untouched
+    assert _json_safe_cell(42) == 42
+    assert _json_safe_cell(None) is None

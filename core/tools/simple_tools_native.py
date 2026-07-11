@@ -2253,6 +2253,25 @@ def _exec_central_query(args: dict[str, Any]) -> dict[str, Any]:
                 "meta": {"latency_ms": 0, "source": "central_query", "truncated": False}}
 
 
+def _json_safe_cell(v: Any) -> Any:
+    """Coerce a raw SQLite cell value to a JSON-safe type. BLOB/bytes → utf-8
+    text if decodable, else a short base64 placeholder. str/int/float/None are
+    already JSON-safe and pass through untouched. Uden dette forgifter en
+    BLOB-kolonne downstream json.dumps → 'Object of type bytes is not JSON
+    serializable' → hele det synlige run crasher (set 2026-07-10)."""
+    if isinstance(v, (bytes, bytearray)):
+        b = bytes(v)
+        try:
+            return b.decode("utf-8")
+        except (UnicodeDecodeError, ValueError):
+            import base64
+            preview = base64.b64encode(b).decode("ascii")
+            if len(preview) > 88:
+                preview = preview[:88] + "…"
+            return f"<{len(b)} bytes base64:{preview}>"
+    return v
+
+
 def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
     """Run a read-only SELECT query against Jarvis' database."""
     sql = str(args.get("sql") or "").strip()
@@ -2294,7 +2313,9 @@ def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
             cur = conn.execute(sql, params)
             cols = [d[0] for d in cur.description] if cur.description else []
             rows = cur.fetchmany(200)  # cap at 200 rows
-            result_rows = [dict(zip(cols, row)) for row in rows]
+            result_rows = [
+                {k: _json_safe_cell(v) for k, v in zip(cols, row)} for row in rows
+            ]
         return {
             "columns": cols,
             "rows": result_rows,

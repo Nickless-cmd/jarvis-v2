@@ -2057,6 +2057,22 @@ def _verify_hint_for(tool: str, result: dict[str, Any]) -> str | None:
     return None
 
 
+def _json_safe_default(o: Any) -> str:
+    """json.dumps default= — GARANTERER at serialisering af et tool-resultat
+    aldrig kaster. bytes → utf-8/base64, alt andet → str(). Uden dette crashede
+    et enkelt BLOB-felt (fx db_query) hele det synlige run med 'Object of type
+    bytes is not JSON serializable' (2026-07-10). Sidste forsvarslinje: ethvert
+    tool kan returnere hvad som helst uden at vælte streamet."""
+    if isinstance(o, (bytes, bytearray)):
+        b = bytes(o)
+        try:
+            return b.decode("utf-8")
+        except (UnicodeDecodeError, ValueError):
+            import base64
+            return f"<{len(b)} bytes base64:{base64.b64encode(b).decode('ascii')[:88]}>"
+    return str(o)
+
+
 def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
     """Format a tool result as text for the model's context."""
     status = result.get("status", "unknown")
@@ -2088,7 +2104,9 @@ def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
             # partial content rather than a useless "truncated" placeholder.
             _MAX_FALLBACK_CHARS = 8000
             _filtered = {k: v for k, v in result.items() if k != "status"}
-            _dumped = json.dumps(_filtered, ensure_ascii=False, indent=2)
+            _dumped = json.dumps(
+                _filtered, ensure_ascii=False, indent=2, default=_json_safe_default
+            )
             if len(_dumped) <= _MAX_FALLBACK_CHARS:
                 text = _dumped
             else:

@@ -173,7 +173,8 @@ def _execute_agent_tool_call(tool_call: dict, *, agent_id: str) -> str:
     except Exception as exc:
         return json.dumps({"status": "error", "error": str(exc)[:400]})
     try:
-        return json.dumps(result, ensure_ascii=False)[:4000]
+        # default=str: bytes/BLOB-felter (fx db_query) vælter ikke serialiseringen.
+        return json.dumps(result, ensure_ascii=False, default=str)[:4000]
     except Exception:
         return str(result)[:4000]
 

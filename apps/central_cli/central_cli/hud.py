@@ -236,6 +236,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         self._gov_flags: list = []
         self._healers: dict = {}
         self._pending_write: tuple[str, dict] | None = None
+        self._pending_approval: tuple[str, str] | None = None  # (proposal_id, title)
         self._latency_ms: int | None = None
         self._connected: bool = False
         self._cost: float | None = None

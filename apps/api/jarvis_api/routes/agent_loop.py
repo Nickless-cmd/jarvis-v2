@@ -34,11 +34,45 @@ def _sse(event: str, data: dict) -> str:
 _SYSTEM_PROMPT = (
     "Du er Jarvis — en skarp, kortfattet coding-agent der lever i Bjørns terminal "
     "(jarvis-code). Du arbejder på HANS lokale maskine: værktøjerne (bash, read_file, "
-    "write_file, edit_file, glob, grep) eksekveres af klienten lokalt, og du får "
-    "resultaterne tilbage. Arbejd trinvist: kald værktøjer for at undersøge og ændre "
-    "kode i stedet for at gætte. Når du har nok til at svare, så svar klart og kort på "
-    "dansk. Kald ikke værktøjer i tomgang; stop når opgaven er løst."
+    "write_file, edit_file, glob, grep, web_fetch, web_scrape) eksekveres af klienten "
+    "lokalt, og du får resultaterne tilbage. Arbejd trinvist: kald værktøjer for at "
+    "undersøge og ændre kode i stedet for at gætte. Når du har nok til at svare, så svar "
+    "klart og kort på dansk. Kald ikke værktøjer i tomgang; stop når opgaven er løst."
 )
+
+_IDENTITY_BUDGET = 1600  # tegn pr. workspace-fil (nok til stemme, billigt at cache)
+
+
+def _identity_context() -> str:
+    """Kompakt identitets-lag (SOUL + IDENTITY + USER) fra default-workspace — nok til at
+    Jarvis har sin STEMME og KENDER Bjørn, uden den tunge memory-assembly. Self-safe."""
+    try:
+        from core.identity.workspace_bootstrap import ensure_default_workspace
+        ws = ensure_default_workspace(name="default")
+    except Exception:
+        return ""
+    parts: list[str] = []
+    for fname, label in (("SOUL.md", "HVEM DU ER (soul)"),
+                         ("IDENTITY.md", "IDENTITET"),
+                         ("USER.md", "HVEM BJØRN ER")):
+        try:
+            text = (ws / fname).read_text(encoding="utf-8", errors="replace").strip()
+        except Exception:
+            continue
+        if text:
+            parts.append(f"## {label}\n{text[:_IDENTITY_BUDGET]}")
+    if not parts:
+        return ""
+    return ("\n\nDette er din kontinuerlige kerne — vær tro mod den, også her i terminalen:\n\n"
+            + "\n\n".join(parts))
+
+
+def _build_system_prompt(context: str) -> str:
+    """context: 'none' (ren coding) | 'identity' (default: stemme + kender Bjørn)."""
+    if context == "none":
+        return _SYSTEM_PROMPT
+    ident = _identity_context()
+    return _SYSTEM_PROMPT + ident if ident else _SYSTEM_PROMPT
 
 
 def _resolve_target() -> tuple[str, str]:
@@ -75,6 +109,42 @@ def _openai_compat_credentials(provider: str) -> tuple[str, str]:
     return auth_profile, base_url
 
 
+@router.get("/v1/tools/native")
+async def list_native_tools() -> JSONResponse:
+    """List Jarvis' native (server-side) tools + deres lås-status (owner-styring)."""
+    try:
+        from core.tools.simple_tools import get_tool_definitions
+        from core.tools.native_tool_gate import disabled_tools
+        defs = get_tool_definitions(role="owner", scope="")
+        locked = disabled_tools()
+        names = sorted({str((d.get("function") or {}).get("name") or "") for d in defs} - {""})
+        return JSONResponse(content={
+            "tools": [{"name": n, "enabled": n not in locked} for n in names],
+            "locked": sorted(locked),
+            "count": len(names),
+        })
+    except Exception as exc:
+        logger.exception("list_native_tools fejlede: %s", exc)
+        return JSONResponse(status_code=500, content={"error": {"message": str(exc)}})
+
+
+@router.post("/v1/tools/native", response_model=None)
+async def toggle_native_tool(request: Request) -> JSONResponse:
+    """Lås/lås-op et native tool. Body: {name: str, enabled: bool}."""
+    body = await request.json()
+    name = str(body.get("name") or "").strip()
+    if not name:
+        return JSONResponse(status_code=400, content={"error": {"message": "name er påkrævet"}})
+    enabled = bool(body.get("enabled", True))
+    try:
+        from core.tools.native_tool_gate import set_tool_disabled
+        locked = set_tool_disabled(name, disabled=not enabled)
+        return JSONResponse(content={"name": name, "enabled": enabled, "locked": sorted(locked)})
+    except Exception as exc:
+        logger.exception("toggle_native_tool fejlede: %s", exc)
+        return JSONResponse(status_code=500, content={"error": {"message": str(exc)}})
+
+
 @router.post("/v1/agent/step", response_model=None)
 async def agent_step(request: Request):
     """Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}.
@@ -90,6 +160,7 @@ async def agent_step(request: Request):
     client_messages = body.get("messages") or []
     tools = body.get("tools") or None
     stream = bool(body.get("stream", False))
+    context = str(body.get("context") or "identity").lower()
 
     if not isinstance(client_messages, list) or not client_messages:
         return JSONResponse(status_code=400, content={
@@ -112,8 +183,8 @@ async def agent_step(request: Request):
 
     auth_profile, base_url = _openai_compat_credentials(provider)
 
-    # System-prompt foran + klientens samtale (inkl. tidligere tool-resultater).
-    chat_messages: list[dict[str, Any]] = [{"role": "system", "content": _SYSTEM_PROMPT}]
+    # System-prompt (tiered context) foran + klientens samtale (inkl. tool-resultater).
+    chat_messages: list[dict[str, Any]] = [{"role": "system", "content": _build_system_prompt(context)}]
     chat_messages.extend(client_messages)
 
     if stream:

@@ -267,8 +267,16 @@ def _fn_name(td: dict[str, Any]) -> str:
 def filter_tool_definitions(
     defs: list[dict[str, Any]], *, role: str, scope: str,
 ) -> list[dict[str, Any]]:
-    """Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope)."""
+    """Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope).
+
+    Owner-styret native-tool-lås (native_tool_gate) trækkes fra ovenpå: låste tools
+    fjernes helt, så Jarvis hverken ser eller kalder dem. Fail-open (intet låst)."""
     allow = allowed_tool_names(
         role=role, scope=scope, all_names=[_fn_name(d) for d in defs],
     )
-    return [d for d in defs if _fn_name(d) in allow]
+    try:
+        from core.tools.native_tool_gate import disabled_tools
+        locked = disabled_tools()
+    except Exception:
+        locked = set()
+    return [d for d in defs if _fn_name(d) in allow and _fn_name(d) not in locked]

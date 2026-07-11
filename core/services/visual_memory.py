@@ -259,13 +259,20 @@ def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
     existing_records = _load_records()
     previous = existing_records[-1] if existing_records else None
     prompt_to_use = prompt_override.strip() or None
-    description = _describe_image(
-        image_b64,
-        model=model,
-        provider=provider,
-        prompt=prompt_to_use,
-        previous=previous if prompt_to_use is None else None,
-    )
+    try:
+        description = _describe_image(
+            image_b64,
+            model=model,
+            provider=provider,
+            prompt=prompt_to_use,
+            previous=previous if prompt_to_use is None else None,
+        )
+    except Exception as exc:
+        # Vision-modellen fejlede (fx cloud-model 403 uden ollama-nøgle, timeout,
+        # provider nede). Kameraet virkede — degradér pænt i stedet for en rå
+        # traceback op gennem look_around-tool'et. Samme høflighed som daemon-stien.
+        logger.warning("look_around: vision model call failed: %s", exc)
+        return {"status": "vision_failed", "error": str(exc), "model": model, "provider": provider}
     if not description:
         return {"status": "empty_description"}
 

@@ -290,7 +290,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         self._sync_header()
         self._sync_tabs()
         self._apply_tab_visibility()
-        self._populate_active_tab()
+        self._populate_active_tab(force=True)
         self._render_feed()
         if self._live:
             self.set_interval(3.0, self.refresh_data)
@@ -345,7 +345,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         self.active_tab = name
         self._sync_tabs()
         self._apply_tab_visibility()
-        self._populate_active_tab()
+        self._populate_active_tab(force=True)
 
     def _apply_tab_visibility(self) -> None:
         table_visible = self.active_tab in _TABLE_TABS
@@ -359,9 +359,18 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
             except Exception:
                 pass
 
-    def _populate_active_tab(self) -> None:
+    def _populate_active_tab(self, force: bool = False) -> None:
         try:
             name = self.active_tab
+            # Throttle tunge panel-renders på PERIODISK refresh (ikke ved fane-skift):
+            # Mind laver 6 sekventielle fetches — hvert 3. sekund frøs det UI'et.
+            # Panel-data ændrer sig langsomt → gen-render kun hvert N sekund.
+            import time as _time
+            _HEAVY = {"mind": 12.0, "diagnostics": 8.0}
+            if not force and name in _HEAVY:
+                _last = getattr(self, "_panel_last", {}).get(name, 0.0)
+                if (_time.monotonic() - _last) < _HEAVY[name]:
+                    return
             # Cursor-stabilitet: alle tabel-faner deler #nerve-table og genopbygges
             # ved hvert refresh. Uden dette hopper markøren til top hvert 3. sekund.
             # Vi fanger markørens position FØR repopulate og gendanner den EFTER —
@@ -416,6 +425,8 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                 self._populate_approvals()
             else:
                 self._render_placeholder_panel(name)
+            if name in _HEAVY:
+                self.__dict__.setdefault("_panel_last", {})[name] = _time.monotonic()
             # Gendan markøren efter repopulate (kun samme-fane refresh).
             if name in _TABLE_TABS:
                 self._last_table_tab = name

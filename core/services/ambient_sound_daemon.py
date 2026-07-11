@@ -135,7 +135,8 @@ def _capture_sample() -> tuple[str | None, float, float, str | None]:
         amplitude = np.abs(samples.flatten())
         mean = float(amplitude.mean())
         std = float(amplitude.std())
-        category = _classify(mean, std)
+        peak = float(amplitude.max())
+        category = _classify(mean, std, peak)
         wav_path = _save_wav(samples)
         return category, mean, std, wav_path
     except ImportError:
@@ -189,17 +190,29 @@ def _ambient_transcribe_enabled() -> bool:
         return True
 
 
-def _classify(mean: float, std: float) -> str:
-    """Classify amplitude stats into acoustic category. No content analysis."""
+def _classify(mean: float, std: float, peak: float = 0.0) -> str:
+    """Classify amplitude stats into acoustic category. No content analysis.
+
+    Peak-aware (rekalibreret 11. jul til USB-mic'en): tale er BURSTET — mest stilhed
+    mellem lydene — så gennemsnittet kan ikke skelne stilhed (mean 0.008) fra tale
+    (mean 0.010). PEAK adskiller rent: stille rum ~0.05 (op til ~0.17 ved klik), tale
+    ~0.30. Falder tilbage til den gamle mean-baserede logik hvis peak ikke gives (0)."""
+    if peak > 0.0:
+        if peak < 0.15:
+            return "silence"
+        # Høj peak: skeln tale (variabel + energi) fra vedvarende tone / enkelt klik.
+        if std >= 0.012 and mean >= 0.004:
+            return "talk"
+        if std < 0.006 and mean >= 0.02:
+            return "music"
+        return "noise"
+    # Legacy mean-baseret (bevaret for bagud-kompatibilitet / andre kilder)
     if mean < 0.005:
         return "silence"
     if mean < 0.02:
         return "silence" if std < 0.01 else "noise"
-    # Moderate amplitude
     if std / (mean + 1e-9) < 0.5:
-        # Low variation relative to mean → sustained sound (music or hum)
         return "music"
-    # High variation → speech or noise
     if mean > 0.05:
         return "talk"
     return "mixed"

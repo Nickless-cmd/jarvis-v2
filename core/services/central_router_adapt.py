@@ -31,6 +31,17 @@ _MIN_SUPPORT = 3                 # ≥ så mange supporterede kontraster før en
 _STRENGTH_BUDGET = 1.0           # §8: præference-styrke ∈ [0,1]; drift mod anker 0
 _NEVER_TIERS = frozenset({"reasoning", "deep", "thinking", "think", "reason"})  # tier-TOKENS (ikke substrings)
 
+# ── Recent-health-gate (kvote/nedbrud-værn) ─────────────────────────
+# Læreren rangerer på ALL-TIME model_meta-sejre og er BLIND for AKTUEL tilgængelighed.
+# 2026-07-11: den lærte kimi-k2.7-code:cloud (all-time-vinder) mens den var kvote-ramt
+# (recent success-rate 0.40) → alle visible-runs (inkl. jarvis-code) routede til en død model,
+# selvom deepseek-base kørte 0.84. Gaten: honorér ALDRIG en lært præference hvis modellens
+# FRISKE success-rate er under gulvet (med nok samples). Fail-open: kan ikke måle → antag sund.
+_HEALTH_FLOOR = 0.5              # recent success-rate under dette = degraderet (fx kvote)
+_HEALTH_MIN_SAMPLES = 5         # kræv nok friske samples før vi dømmer en model usund
+_HEALTH_TTL = 60.0             # hot-path: cache aggregatet i 60s (kaldes pr. visible-run)
+_health_cache: dict[str, Any] = {"at": -1e9, "rates": {}}
+
 
 def _kv_get(key: str, default: Any) -> Any:
     try:
@@ -71,6 +82,37 @@ def _is_never_tier(model_key: str) -> bool:
     return bool(tokens & _NEVER_TIERS)
 
 
+def _recent_success_rate(model_key: str) -> tuple[float, int]:
+    """(recent success-rate, samples) for en model i det friske model_meta-vindue. Cachet i
+    _HEALTH_TTL sek (kaldes på hot-path pr. visible-run). Fail-open → (1.0, 0). Self-safe."""
+    import time as _t
+    now = _t.monotonic()
+    if now - float(_health_cache["at"]) > _HEALTH_TTL or not _health_cache["rates"]:
+        try:
+            from core.services.central_model_meta import aggregate_model_outcomes
+            _health_cache["rates"] = {
+                k: (float(d.get("success_rate") or 0.0), int(d.get("samples") or 0))
+                for k, d in aggregate_model_outcomes().items()
+            }
+            _health_cache["at"] = now
+        except Exception:
+            return (1.0, 0)
+    return _health_cache["rates"].get(str(model_key), (1.0, 0))
+
+
+def _is_currently_healthy(model_key: str) -> bool:
+    """False KUN når vi har ≥_HEALTH_MIN_SAMPLES friske samples OG recent success-rate < gulvet
+    (degraderet/kvote-ramt). Manglende/utilstrækkelige data → sund (fail-open, ingen falsk
+    blokering). Self-safe."""
+    try:
+        rate, n = _recent_success_rate(model_key)
+        if n >= _HEALTH_MIN_SAMPLES and rate < _HEALTH_FLOOR:
+            return False
+    except Exception:
+        pass
+    return True
+
+
 def _configured_models() -> set[str]:
     """Modeller der FAKTISK er konfigureret (aldrig peg på noget der ikke findes). Self-safe."""
     out: set[str] = set()
@@ -106,9 +148,9 @@ def compute_preference() -> dict[str, Any]:
     except Exception:
         return {"enough": False, "preferred": None, "support": 0}
     configured = _configured_models()
-    # kun konfigurerede, ikke-deep-tier vindere
+    # kun konfigurerede, ikke-deep-tier, AKTUELT SUNDE vindere (spring kvote-ramte over)
     ranked = sorted(((m, n) for m, n in wins.items()
-                     if m in configured and not _is_never_tier(m)),
+                     if m in configured and not _is_never_tier(m) and _is_currently_healthy(m)),
                     key=lambda kv: kv[1], reverse=True)
     if not ranked or ranked[0][1] < _MIN_SUPPORT:
         return {"enough": False, "preferred": ranked[0][0] if ranked else None,
@@ -176,10 +218,28 @@ def get_live_preference(lane: str = "visible") -> dict[str, Any] | None:
         pref = _kv_get(_PREF_KEY, {}) or {}
         p = pref.get(str(lane)) if isinstance(pref, dict) else None
         if isinstance(p, dict) and p.get("model") and not _is_never_tier(p["model"]):
+            # Recent-health-gate: en tidligere-lært præference kan være blevet kvote-ramt/degraderet
+            # SIDEN den blev skrevet (læreren kører kun hver 45 min). Honorér den ALDRIG hvis den er
+            # usund nu → return None → konsumenten falder tilbage til base default (fx deepseek).
+            if not _is_currently_healthy(p["model"]):
+                _note_health_suppressed(p["model"])
+                return None
             return p
     except Exception:
         pass
     return None
+
+
+def _note_health_suppressed(model_key: str) -> None:
+    """Best-effort: gør det synligt når en lært præference undertrykkes pga. dårlig recent-health.
+    Self-safe (må aldrig påvirke routing)."""
+    try:
+        from core.services.central_private_observe import record_private
+        rate, n = _recent_success_rate(model_key)
+        record_private("cognition", "router_health_suppressed", value=float(rate),
+                       meta={"model": model_key, "samples": n, "floor": _HEALTH_FLOOR})
+    except Exception:
+        pass
 
 
 def resolve_visible_model(*, provider_override: str = "", model_override: str = "",
@@ -228,7 +288,17 @@ def register_router_adapt_producer() -> None:
 
 def build_router_adapt_surface() -> dict[str, object]:
     """Mission Control — read-only: foreslået (shadow) + live præference + status."""
+    live = _kv_get(_PREF_KEY, {}) or {}
+    pref_model = ""
+    if isinstance(live, dict) and isinstance(live.get("visible"), dict):
+        pref_model = str(live["visible"].get("model") or "")
+    health = {}
+    if pref_model:
+        rate, n = _recent_success_rate(pref_model)
+        health = {"model": pref_model, "recent_success_rate": rate, "samples": n,
+                  "floor": _HEALTH_FLOOR, "healthy_now": _is_currently_healthy(pref_model)}
     return {"active": True, "live_enabled": is_live_enabled(),
             "proposed": _kv_get(_SHADOW_KEY, {}) or {},
-            "live_preference": _kv_get(_PREF_KEY, {}) or {},
+            "live_preference": live,
+            "preference_health": health,
             "never_tiers": list(_NEVER_TIERS)}

@@ -45,7 +45,12 @@ export function useVoiceConversation(config: ApiConfig | undefined, deps: VoiceS
   const recRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  // Web Audio-afspilning: Electrons HTMLMediaElement (`new Audio()`) er DØD i denne
+  // build — den afviser ALLE formater (også ren WAV) med NotSupportedError. Men
+  // AudioContext.decodeAudioData dekoder MP3'en fint og router til output. Så vi
+  // afspiller via en genbrugt AudioContext + AudioBufferSourceNode i stedet.
+  const playAcRef = useRef<AudioContext | null>(null)
+  const srcRef = useRef<AudioBufferSourceNode | null>(null)
   const awaitingRef = useRef(false)
   const sawWorkingRef = useRef(false)
   const activeRef = useRef(active)
@@ -70,7 +75,14 @@ export function useVoiceConversation(config: ApiConfig | undefined, deps: VoiceS
     streamRef.current = null
   }, [])
 
-  // ── TTS-afspilning (ElevenLabs → device-native fallback) ──────────────────
+  // Stop igangværende Web Audio-afspilning (self-safe).
+  const _stopPlayback = useCallback(() => {
+    try { srcRef.current?.stop() } catch { /* noop */ }
+    try { srcRef.current?.disconnect() } catch { /* noop */ }
+    srcRef.current = null
+  }, [])
+
+  // ── TTS-afspilning (ElevenLabs MP3 via Web Audio → device-native fallback) ──
   const _speak = useCallback(async (text: string) => {
     if (!text) { setState('idle'); return }
     setState('speaking')
@@ -85,16 +97,26 @@ export function useVoiceConversation(config: ApiConfig | undefined, deps: VoiceS
       if (!config) throw new Error('no config')
       const { blob, provider } = await synthesizeTts(config, text)
       setLastProvider(provider)
-      const url = URL.createObjectURL(blob)
-      const audio = new Audio(url)
-      audioRef.current = audio
-      audio.onended = () => { URL.revokeObjectURL(url); onDone() }
-      audio.onerror = () => { URL.revokeObjectURL(url); _speakNative(text, onDone) }
-      await audio.play()
+      // Genbrug én AudioContext på tværs af ytringer (browseren har et hårdt loft
+      // på antal contexts). decodeAudioData i Electron dekoder MP3 selvom
+      // <audio>-elementet ikke kan afspille den.
+      let ac = playAcRef.current
+      const ACtor = window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (!ac || ac.state === 'closed') { ac = new ACtor(); playAcRef.current = ac }
+      if (ac.state === 'suspended') { try { await ac.resume() } catch { /* noop */ } }
+      const audioBuf = await ac.decodeAudioData(await blob.arrayBuffer())
+      _stopPlayback()
+      const src = ac.createBufferSource()
+      src.buffer = audioBuf
+      src.connect(ac.destination)
+      src.onended = () => { if (srcRef.current === src) srcRef.current = null; onDone() }
+      srcRef.current = src
+      src.start()
     } catch {
       _speakNative(text, onDone)
     }
-  }, [config])
+  }, [config, _stopPlayback])
 
   const _speakNative = (text: string, onDone: () => void) => {
     try {
@@ -174,7 +196,7 @@ export function useVoiceConversation(config: ApiConfig | undefined, deps: VoiceS
   const startListening = useCallback(async () => {
     if (!supported || !config || state === 'listening') return
     // afbryd evt. igangværende tale
-    try { audioRef.current?.pause() } catch { /* noop */ }
+    _stopPlayback()
     try { window.speechSynthesis?.cancel() } catch { /* noop */ }
     try {
       const ms = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -191,7 +213,7 @@ export function useVoiceConversation(config: ApiConfig | undefined, deps: VoiceS
       _cleanupMic()
       setState('idle')
     }
-  }, [supported, config, state, _onRecordingStop, _startVad, _cleanupMic])
+  }, [supported, config, state, _onRecordingStop, _startVad, _cleanupMic, _stopPlayback])
 
   const stopListening = useCallback(() => {
     if (recRef.current && recRef.current.state !== 'inactive') recRef.current.stop()
@@ -205,14 +227,19 @@ export function useVoiceConversation(config: ApiConfig | undefined, deps: VoiceS
   const exit = useCallback(() => {
     setActive(false)
     awaitingRef.current = false
-    try { audioRef.current?.pause() } catch { /* noop */ }
+    _stopPlayback()
     try { window.speechSynthesis?.cancel() } catch { /* noop */ }
     stopListening()
     _cleanupMic()
     setState('idle')
-  }, [stopListening, _cleanupMic])
+  }, [stopListening, _cleanupMic, _stopPlayback])
 
-  useEffect(() => () => { _cleanupMic() }, [_cleanupMic])
+  useEffect(() => () => {
+    _cleanupMic()
+    _stopPlayback()
+    try { void playAcRef.current?.close() } catch { /* noop */ }
+    playAcRef.current = null
+  }, [_cleanupMic, _stopPlayback])
 
   return {
     supported, active, state, mode, lastProvider,

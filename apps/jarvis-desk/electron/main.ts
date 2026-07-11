@@ -56,6 +56,12 @@ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 // halter. disable-backgrounding-occluded-windows alene rører ikke selve
 // occlusion-DETEKTIONEN. Slå den fra helt.
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+// KRITISK for samtale-mode (Bjørn 2026-07-11): Chromium's default autoplay-policy
+// (document-user-activation-required) blokerer programmatisk audio.play() når det
+// sker EFTER en lang async-kæde (STT→LLM-svar), fordi mic-tryk-aktiveringen er udløbet.
+// → Jarvis' TTS-svar afspilles aldrig (grøn "taler", men total stilhed uanset output-
+// enhed). Tillad autoplay uden gestus, så hans stemme faktisk når brugeren.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
 // Suppress dev-only CSP warnings i renderer. Vi VED at vi har 'unsafe-eval'
 // i dev — det er for at Vite kan HMR'e. Prod-CSP er stram.
@@ -345,6 +351,9 @@ function createMainWindow(): void {
       // CSP er stadig aktiv og begrænser hvad der kan eksekveres.
       // Prod: webSecurity tilbage på true.
       webSecurity: !isDev,
+      // Samtale-mode: tillad TTS-afspilning uden frisk brugergestus (se autoplay-
+      // policy-switchen ovenfor). Sammen sikrer de at audio.play() ikke afvises.
+      autoplayPolicy: 'no-user-gesture-required',
     },
   })
 

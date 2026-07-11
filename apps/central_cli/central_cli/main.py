@@ -12,6 +12,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--script", action="store_true", help="Ingen TUI — kør én kommando + exit")
     p.add_argument("--json", action="store_true", help="Rå JSON-output")
     p.add_argument("--no-boot", action="store_true", help="Skip boot-animation")
+    p.add_argument("--v2", action="store_true", help="Nyt cockpit (async ramme)")
     p.add_argument("command", nargs="?", default=None, help="Kommando (kun i --script)")
     p.add_argument("args", nargs="*", help="Kommando-argumenter")
     return p

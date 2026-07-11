@@ -495,8 +495,15 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
 
 
 def run_hud(ns) -> int:
+    import os
     from central_cli.client import CentralClient
     from central_cli.config import resolve_base_url, resolve_token
 
     client = CentralClient(base_url=resolve_base_url(remote=ns.remote), token=resolve_token())
+    use_v2 = getattr(ns, "v2", False) or os.environ.get("CENTRAL_COCKPIT_V2") == "1"
+    if use_v2:
+        from central_cli.frame.app import CockpitApp
+        CockpitApp(client=client).run()
+        return 0
     CentralHud(client=client, live=True).run()
+    return 0

@@ -1,12 +1,11 @@
 """OpenAI-compatible proxy: /v1/chat/completions wrapping Jarvis visible lane."""
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import time
 from datetime import UTC, datetime
-from typing import Iterator
+from typing import AsyncIterator
 from uuid import uuid4
 
 from fastapi import APIRouter, Request
@@ -110,7 +109,7 @@ async def chat_completions(request: Request) -> JSONResponse | StreamingResponse
     # Mirrors _stream_response so tool calls actually run; calling
     # execute_visible_model directly here would silently drop tool_calls
     # (same class of bug we fixed for the streaming path).
-    full_text = _drain_visible_run_text(message=user_message, session_id=session_id)
+    full_text = await _drain_visible_run_text(message=user_message, session_id=session_id)
     return JSONResponse(
         content=_build_completion_response(
             run_id=run_id,
@@ -122,14 +121,14 @@ async def chat_completions(request: Request) -> JSONResponse | StreamingResponse
     )
 
 
-def _stream_response(
+async def _stream_response(
     *,
     run_id: str,
     message: str,
     provider: str,
     model: str,
     session_id: str,
-) -> Iterator[str]:
+) -> AsyncIterator[str]:
     """Yield OpenAI-format SSE chunks from Jarvis' visible run.
 
     Delegates to ``start_visible_run`` so the full agentic loop runs (tool
@@ -140,19 +139,19 @@ def _stream_response(
     ``approval_mode="trust"`` because no approval UI exists in the proxy
     transport. The visible run persists the assistant message itself, so
     we do not re-append here.
+
+    Async: driver den async-generator DIREKTE på den kørende event-loop
+    (``async for``). Den tidligere ``asyncio.new_event_loop()`` +
+    ``run_until_complete`` kolliderede med den kørende loop (den synlige
+    pipeline binder til main-loopet via ``run_coroutine_threadsafe``) →
+    "Cannot run the event loop while another loop is running".
     """
-    loop = asyncio.new_event_loop()
     try:
-        agen = start_visible_run(
+        async for frame in start_visible_run(
             message=message,
             session_id=session_id,
             approval_mode="trust",
-        ).__aiter__()
-        while True:
-            try:
-                frame = loop.run_until_complete(agen.__anext__())
-            except StopAsyncIteration:
-                break
+        ):
             event_type, data = _parse_sse_frame(frame)
             if event_type == "delta":
                 delta = str(data.get("delta") or data.get("text") or "")
@@ -165,8 +164,7 @@ def _stream_response(
                 # visible run finished its final round; stop translating
                 break
             # Internal webchat frames (working_step, capability,
-            # approval_request, trace, run) are intentionally suppressed —
-            # opencode has no UI for them.
+            # approval_request, trace, run) are intentionally suppressed.
     except Exception as exc:
         logger.exception("openai_compat proxy stream failed: %s", exc)
         err_chunk = _build_stream_chunk(
@@ -175,29 +173,22 @@ def _stream_response(
             delta_content=f"\n[jarvis-proxy-error: {exc}]",
         )
         yield f"data: {json.dumps(err_chunk, ensure_ascii=False)}\n\n"
-    finally:
-        loop.close()
     yield "data: [DONE]\n\n"
 
 
-def _drain_visible_run_text(*, message: str, session_id: str) -> str:
+async def _drain_visible_run_text(*, message: str, session_id: str) -> str:
     """Run the visible pipeline to completion and return the assembled prose.
 
     Used by the non-streaming /v1/chat/completions branch. Same translation
     rules as ``_stream_response`` — internal frames suppressed, only delta
-    text accumulated, terminal ``done`` event ends the loop.
+    text accumulated, terminal ``done`` event ends the loop. Async: kører på
+    den kørende loop (``async for``), ikke en ny (se _stream_response).
     """
     full_text = ""
-    loop = asyncio.new_event_loop()
     try:
-        agen = start_visible_run(
+        async for frame in start_visible_run(
             message=message, session_id=session_id, approval_mode="trust"
-        ).__aiter__()
-        while True:
-            try:
-                frame = loop.run_until_complete(agen.__anext__())
-            except StopAsyncIteration:
-                break
+        ):
             event_type, data = _parse_sse_frame(frame)
             if event_type == "delta":
                 full_text += str(data.get("delta") or data.get("text") or "")
@@ -206,8 +197,6 @@ def _drain_visible_run_text(*, message: str, session_id: str) -> str:
     except Exception as exc:
         logger.exception("openai_compat non-stream drain failed: %s", exc)
         full_text = full_text or f"[jarvis-proxy-error: {exc}]"
-    finally:
-        loop.close()
     return full_text
 
 

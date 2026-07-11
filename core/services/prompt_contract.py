@@ -2254,6 +2254,30 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Sentinel-gated FULD timing-dump (diagnostik, inert uden sentinel-fil).
+    # `touch /tmp/jarvis-assembly-timing` → næste assembly skriver HELE listen
+    # (hver sektion + fase + landmark m. ms) til .../latest.json. Ryd sentinel bagefter.
+    try:
+        import os as _os_dump
+        if _os_dump.path.exists("/tmp/jarvis-assembly-timing"):
+            import json as _json_dump
+            _dump = {
+                "total_ms": _total_ms,
+                "phase_timings_ms": dict(_phase_timings),
+                "sync_landmarks_ms": dict(_sync_landmarks),
+                "awareness_section_count": len(_awareness_call_times),
+                "awareness_total_ms": sum(_m for _m, _ in _awareness_call_times),
+                "awareness_sections_ms": sorted(
+                    [{"label": _lbl, "ms": _m} for _m, _lbl in _awareness_call_times],
+                    key=lambda _x: -_x["ms"]),
+            }
+            _dd = "/tmp/jarvis-assembly-timing-dumps"
+            _os_dump.makedirs(_dd, exist_ok=True)
+            with open(_dd + "/latest.json", "w", encoding="utf-8") as _fh:
+                _json_dump.dump(_dump, _fh, ensure_ascii=False, indent=1)
+    except Exception:
+        pass
+
     # P1 instrumentation: measure system-prompt size before returning. Pure
     # observation — no behavior change. Emits an eventbus event so MC and
     # the wakeup digest can both surface bloat. Per-part chars logged so

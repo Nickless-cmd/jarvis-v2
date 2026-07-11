@@ -225,29 +225,143 @@ def _calculate_importance(user_mood: str, outcome_status: str) -> float:
     return min(1.0, base)
 
 
+def _memory_scoring_mode() -> str:
+    """'llm' (nuværende cloud-LLM-scoring) | 'shadow' (kør begge, log enighed, brug LLM) |
+    'embedding' (brug embedding-cosine, spring LLM over → −13s). Default 'shadow' = mål
+    kvalitet nu. Owner flipper til 'embedding' når enigheden holder. Self-safe."""
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        v = str(get_runtime_state_value("memory_scoring_mode", "shadow") or "shadow").lower()
+        return v if v in ("llm", "shadow", "embedding") else "shadow"
+    except Exception:
+        return "shadow"
+
+
+def _candidate_text(c: dict[str, object]) -> str:
+    """Tekst-repr af et kandidat-minde til embedding (samme felter LLM'en fik)."""
+    return " · ".join(
+        str(c.get(k) or "") for k in ("topic", "narrative", "key_lesson", "emotion_arc")
+    ).strip()
+
+
+def _score_memories_by_embedding(
+    candidates: list[dict[str, object]], context_text: str
+) -> dict[str, float]:
+    """Rangér kandidater med embedding-cosine i stedet for et LLM-kald. Embed beskeden +
+    kandidat-narrativerne (nomic-embed-text, GPU) → cosine → {memory_id: 0-1}. Self-safe → {}."""
+    try:
+        from core.services import memory_search as ms
+        q = ms._embed_single(context_text or "")
+        if q is None:
+            return {}
+        mat = ms._embed_ollama([_candidate_text(c) for c in candidates])
+        if mat is None or len(mat) != len(candidates):
+            return {}
+        sims = ms._cosine_sim(q, mat)  # (N,)
+        return {
+            str(candidates[i]["memory_id"]): float(max(0.0, min(1.0, float(sims[i]))))
+            for i in range(len(candidates))
+        }
+    except Exception:
+        logger.debug("experiential_memory: embedding scoring failed", exc_info=True)
+        return {}
+
+
+def _observe_scoring_shadow(
+    llm_scores: dict[str, float], emb_scores: dict[str, float],
+    llm_ms: int, emb_ms: int, n: int,
+) -> None:
+    """Shadow: sammenlign top-2-udvalget fra LLM vs embedding, akkumulér enighed +
+    tid i shared_cache, observer i Centralen. Best-effort, rører ikke live-adfærd."""
+    try:
+        def _top2(d: dict[str, float]) -> list[str]:
+            return [k for k, _ in sorted(d.items(), key=lambda x: -x[1])[:2]]
+        llm_top, emb_top = _top2(llm_scores), _top2(emb_scores)
+        overlap = len(set(llm_top) & set(emb_top))
+        full_agree = bool(llm_top) and set(llm_top) == set(emb_top)
+        from core.services import shared_cache as _sc
+        st = _sc.get("memory_scoring_shadow_stats") or {}
+        st["n"] = int(st.get("n", 0)) + 1
+        st["top2_overlap_sum"] = int(st.get("top2_overlap_sum", 0)) + overlap
+        st["full_agree"] = int(st.get("full_agree", 0)) + (1 if full_agree else 0)
+        st["llm_ms_sum"] = int(st.get("llm_ms_sum", 0)) + int(llm_ms)
+        st["emb_ms_sum"] = int(st.get("emb_ms_sum", 0)) + int(emb_ms)
+        _sc.set("memory_scoring_shadow_stats", st, ttl_seconds=30 * 86400)
+        try:
+            from core.services.central_private_observe import record_private
+            record_private("cognition", "memory_scoring_shadow", value=float(overlap),
+                           meta={"llm_top2": llm_top, "emb_top2": emb_top, "overlap": overlap,
+                                 "full_agree": full_agree, "llm_ms": llm_ms, "emb_ms": emb_ms,
+                                 "candidates": n})
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
+def memory_scoring_shadow_stats() -> dict[str, object]:
+    """Akkumuleret shadow-sammenligning: hvor ofte vælger embedding samme top-2 som LLM'en,
+    + gennemsnitlig tid begge veje. Til at afgøre om vi kan flippe til 'embedding'."""
+    try:
+        from core.services import shared_cache as _sc
+        st = _sc.get("memory_scoring_shadow_stats") or {}
+        n = int(st.get("n", 0)) or 1
+        return {
+            "mode": _memory_scoring_mode(),
+            "comparisons": int(st.get("n", 0)),
+            "avg_top2_overlap": round(int(st.get("top2_overlap_sum", 0)) / n, 2),
+            "full_agree_pct": round(100 * int(st.get("full_agree", 0)) / n, 1),
+            "avg_llm_ms": round(int(st.get("llm_ms_sum", 0)) / n),
+            "avg_emb_ms": round(int(st.get("emb_ms_sum", 0)) / n),
+        }
+    except Exception:
+        return {}
+
+
 def score_memories_by_relevance(
     *,
     candidates: list[dict[str, object]],
     context_text: str,
     emotional_state: dict[str, object],
 ) -> dict[str, float]:
-    """Score candidate memories for relevance using local LLM.
+    """Score candidate memories for relevance. Returns {memory_id: score} 0.0–1.0.
 
-    Returns {memory_id: score} dict with scores 0.0–1.0.
-    Returns empty dict if no candidates, LLM unavailable, or LLM call fails.
+    Mode (runtime-state ``memory_scoring_mode``):
+      - 'llm'       — cloud-LLM-scoring (nuværende, ~13s kold)
+      - 'shadow'    — kør LLM (live) + embedding (skygge), log enighed, returnér LLM (default)
+      - 'embedding' — embedding-cosine, spring LLM over (−13s), fald tilbage til LLM hvis tom
     """
     if not candidates:
         return {}
+    mode = _memory_scoring_mode()
+
+    emb_scores: dict[str, float] | None = None
+    emb_ms = 0
+    if mode in ("shadow", "embedding"):
+        import time as _t
+        _s = _t.monotonic()
+        emb_scores = _score_memories_by_embedding(candidates, context_text)
+        emb_ms = int((_t.monotonic() - _s) * 1000)
+        if mode == "embedding" and emb_scores:
+            return emb_scores  # LIVE: embedding erstatter LLM-kaldet
+
     target = _resolve_scoring_llm_target()
     if not target:
-        return {}
+        return emb_scores or {}
     prompt = _build_scoring_prompt(candidates, context_text, emotional_state)
+    import time as _t
+    _s = _t.monotonic()
     try:
         response = _call_scoring_llm(target, prompt)
-        return _parse_scoring_response(response, candidates)
+        llm_scores = _parse_scoring_response(response, candidates)
     except Exception:
         logger.debug("experiential_memory: LLM scoring failed", exc_info=True)
-        return {}
+        llm_scores = {}
+    llm_ms = int((_t.monotonic() - _s) * 1000)
+
+    if mode == "shadow" and emb_scores is not None and llm_scores:
+        _observe_scoring_shadow(llm_scores, emb_scores, llm_ms, emb_ms, len(candidates))
+    return llm_scores
 
 
 def _resolve_scoring_llm_target() -> dict[str, object] | None:

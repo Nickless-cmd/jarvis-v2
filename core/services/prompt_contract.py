@@ -588,7 +588,12 @@ def build_visible_chat_prompt_assembly(
         API'en → cut-off. Cap derfor HVER future: hænger den >deadline, brug `default`
         (sektionen springes over — berigelse, ikke load-bearing) og fortsæt turen.
         Synlig i Centralen via prompt/phase_timeout. Ægte exceptions propagerer som før.
+
+        _future=None (adaptiv assembly: builden blev sprunget over for denne tur-type)
+        → returnér default med det samme; ingen build, ingen ventetid.
         """
+        if _future is None:
+            return default
         import concurrent.futures as _cf
         # Globalt budget: cap mod RESTEN af _ASSEMBLY_BUDGET_S, ikke 10s pr. future.
         # Flere sekventielle faser lagde sig før sammen til 16-26s selvom hver var
@@ -622,7 +627,19 @@ def build_visible_chat_prompt_assembly(
     )
     from core.services.central_injection_registry import injection_live, read_injection
     _cog_live = injection_live("cognitive_state")
-    future_cognitive_state = None if _cog_live else _measured_submit(
+    # ADAPTIV ASSEMBLY (Tråd 2, 12. jul): på simple/kode-ture springer vi den TUNGE
+    # cognitive_state-BUILD helt over (~6s) — ikke bare indholdet — når Centralens
+    # composer-vægt siger sektionen er lav-relevant for tur-typen. Fail-open: byg ved
+    # ENHVER tvivl (klassifikator misser → samtale → beholder alt). Frosne kerne urørt.
+    _skip_cog_build = False
+    try:
+        from core.services import central_prompt_composer as _cpc_build
+        _tt_build = _cpc_build.classify_turn_type(user_message)
+        if not _cpc_build.should_include(_tt_build, "cognitive state"):
+            _skip_cog_build = True
+    except Exception:
+        _skip_cog_build = False
+    future_cognitive_state = None if (_cog_live or _skip_cog_build) else _measured_submit(
         "cognitive_state",
         _safe_build_cognitive_state_for_prompt, compact=compact,
     )

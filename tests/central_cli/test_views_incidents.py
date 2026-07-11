@@ -4,7 +4,7 @@ from central_cli.views.incidents import build_incident_rows, incident_detail_tex
 
 def test_build_incident_rows_maps_fields_and_key():
     s = HudState()
-    s.set_ok("realtime", {"incidents": [
+    s.set_ok("diagnostics", {"incidents": [
         {"id": 42, "cluster": "tools", "nerve": "outcome",
          "severity": "error", "message": "Tool-fejlrate 60%"},
     ]})

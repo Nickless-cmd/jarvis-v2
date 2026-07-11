@@ -14,7 +14,7 @@ _SEV_COLOR = {"error": RED, "warning": AMBER, "info": DIM}
 def build_incident_rows(state: HudState) -> list[dict]:
     """Rækker til CursorStableTable. Hver dict har 'id' (key) + kolonne-labels.
     'besked' vises trunkeret i tabellen (drill for fuld tekst)."""
-    data = state.get("realtime").data
+    data = state.get("diagnostics").data
     incidents = (data or {}).get("incidents", []) if isinstance(data, dict) else []
     rows: list[dict] = []
     for i, inc in enumerate(incidents):

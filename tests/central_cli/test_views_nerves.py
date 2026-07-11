@@ -4,9 +4,7 @@ from central_cli.views.nerves import build_nerve_rows, nerve_detail_text, nerve_
 
 def test_build_nerve_rows_uses_name_as_key():
     s = HudState()
-    s.set_ok("realtime", {"nerves": [
-        {"nerve": "council", "cluster": "agents", "state": "aktiv"},
-    ]})
+    s.set_ok("timeseries", {"series": {"agents:council": {"api": {"count": 5}}}})
     rows = build_nerve_rows(s)
     assert rows[0]["nerve"] == "council"
     assert rows[0]["cluster"] == "agents"

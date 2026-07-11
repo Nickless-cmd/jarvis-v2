@@ -10,6 +10,7 @@ SURFACE_PATHS: dict[str, tuple[str, dict | None]] = {
     "realtime": ("/central/realtime", None),
     "costs_daily": ("/central/costs-daily", None),
     "diagnostics": ("/central/diagnostics", None),
+    "timeseries": ("/central/timeseries", None),
 }
 
 # Surface-navn → kadence i sekunder (hvor ofte worker gen-henter).
@@ -17,6 +18,7 @@ SURFACE_CADENCE: dict[str, float] = {
     "realtime": 2.0,
     "costs_daily": 30.0,
     "diagnostics": 5.0,
+    "timeseries": 4.0,
 }
 
 

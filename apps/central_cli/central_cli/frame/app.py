@@ -136,7 +136,6 @@ class CockpitApp(App):
                 exclusive=True, group="nerve-detail")
             screen = v_nrv.NerveDetailScreen(key, self._state)
             self.push_screen(screen)
-            self.set_interval(0.5, screen.refresh_body)
 
     def action_palette(self) -> None:
         def _run(line):

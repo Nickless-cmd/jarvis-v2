@@ -10,15 +10,24 @@ NERVE_COLUMNS = (("cluster", 16), ("nerve", 24), ("state", 14))
 
 
 def build_nerve_rows(state: HudState) -> list[dict]:
-    data = state.get("realtime").data
-    nerves = (data or {}).get("nerves", []) if isinstance(data, dict) else []
+    data = state.get("timeseries").data
+    series = (data or {}).get("series", {}) if isinstance(data, dict) else {}
     rows: list[dict] = []
-    for n in nerves:
+    seen: set[str] = set()
+    for key in sorted(series):
+        cluster, _, nerve = key.partition(":")
+        if not nerve:
+            cluster, nerve = "", key
+        if nerve in seen:               # row-key skal være unik i DataTable
+            continue
+        seen.add(nerve)
+        val = series[key] if isinstance(series[key], dict) else {}
+        total = sum(int(p.get("count", 0) or 0) for p in val.values() if isinstance(p, dict))
         rows.append({
-            "nerve": str(n.get("nerve", "")),          # key_field
-            "cluster": str(n.get("cluster", "")),
-            "state": str(n.get("state", "")),
-            "_raw": n,
+            "nerve": nerve,             # key_field
+            "cluster": cluster,
+            "state": "aktiv" if total > 0 else "idle",
+            "_raw": val,
         })
     return rows
 
@@ -63,6 +72,9 @@ class NerveDetailScreen(DetailScreen):
         super().__init__()
         self._nerve = nerve
         self._state = state
+
+    def on_mount(self) -> None:
+        self.set_interval(0.5, self.refresh_body)   # screen-scoped → ryddes automatisk ved pop
 
     def title_crumb(self) -> str:
         return f"Central ▸ Nerves ▸ {self._nerve}"

@@ -119,6 +119,7 @@ from apps.api.jarvis_api.routes.agentic_guards import router as agentic_guards_r
 from apps.api.jarvis_api.routes.tool_router import router as tool_router_router
 from apps.api.jarvis_api.routes.anthropic_compat import router as anthropic_compat_router
 from apps.api.jarvis_api.routes.openai_compat import router as openai_compat_router
+from apps.api.jarvis_api.routes.agent_loop import router as agent_loop_router
 from apps.api.jarvis_api.routes.openai_auth import router as openai_auth_router
 from apps.api.jarvis_api.routes.system_health import router as system_health_router
 from apps.api.jarvis_api.routes.internal_discord import router as internal_discord_router
@@ -655,6 +656,7 @@ def create_app() -> FastAPI:
     app.include_router(tts_router, prefix="/api/tts", tags=["tts"])
     app.include_router(system_health_router, prefix="/mc")
     app.include_router(openai_compat_router)
+    app.include_router(agent_loop_router)
     app.include_router(openai_auth_router)
     from apps.api.jarvis_api.routes.auth import router as user_auth_router
     app.include_router(user_auth_router)

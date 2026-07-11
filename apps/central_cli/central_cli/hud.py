@@ -351,8 +351,24 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                 pass
 
     def _populate_active_tab(self) -> None:
+        _TABLE_TABS = frozenset({
+            "nerves", "clusters", "incidents", "anomalies", "governance", "agents",
+            "connections", "users", "excess", "decentral", "runs", "approvals",
+        })
         try:
             name = self.active_tab
+            # Cursor-stabilitet: alle tabel-faner deler #nerve-table og genopbygges
+            # ved hvert refresh. Uden dette hopper markøren til top hvert 3. sekund.
+            # Vi fanger markørens position FØR repopulate og gendanner den EFTER —
+            # men kun ved en SAMME-fane refresh (ved fane-skift skal den nulstilles).
+            _prev_tab = getattr(self, "_last_table_tab", None)
+            _prev_row = 0
+            if name in _TABLE_TABS:
+                try:
+                    _t = self.query_one("#nerve-table")
+                    _prev_row = _t.cursor_coordinate.row if _t.row_count else 0
+                except Exception:
+                    _prev_row = 0
             if name == "nerves":
                 self._populate_nerves()
                 self._refresh_detail_for_current()
@@ -395,6 +411,20 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                 self._populate_approvals()
             else:
                 self._render_placeholder_panel(name)
+            # Gendan markøren efter repopulate (kun samme-fane refresh).
+            if name in _TABLE_TABS:
+                self._last_table_tab = name
+                if _prev_tab == name:
+                    try:
+                        _t = self.query_one("#nerve-table")
+                        if _t.row_count:
+                            _t.move_cursor(row=min(_prev_row, _t.row_count - 1))
+                    except Exception:
+                        pass
+                    # detaljen skal følge den gendannede markør (ikke row 0 fra populate)
+                    if name in ("nerves", "clusters", "incidents", "anomalies",
+                                "governance", "agents", "runs"):
+                        self._refresh_detail_for_current()
         except Exception:
             return
 

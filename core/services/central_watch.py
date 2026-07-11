@@ -20,10 +20,17 @@ GRÆNSER (aktiv ÆNDRING kommer til sidst — Bjørn):
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from core.services import central_noise_filter, central_timeseries
 from core.services.central_core import central
+
+# Vindues-alder for tælle-baserede detektorer. Jarvis kalder FÅ værktøjer autonomt,
+# så et rent "seneste N events"-vindue kan spænde over DØGN → en gammel byge (fx
+# test-seed-data eller én udforsknings-session) bliver aldrig ældet ud og gen-fyrer
+# identiske flag i det uendelige. Kombinér altid antal-vindue MED en alders-grænse.
+_EVENT_MAX_AGE_MIN = 180  # kun events nyere end dette tæller med i sundheds-flag
 
 # Tærskler (bevidst konservative — støjfangeren kræver desuden persistens oveni).
 _LATENCY_DRIFT_MS = 250.0     # decide-latency-drift der tæller som ægte regression
@@ -313,13 +320,29 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
     return {"status": "ok", "flags": flags, "flag_count": len(flags)}
 
 
+def _event_is_recent(r: dict, *, max_age_min: int = _EVENT_MAX_AGE_MIN) -> bool:
+    """True hvis event-record er nyere end max_age_min. Fail-open ved ukendt/uparsbar
+    tid (skjul aldrig et muligt live-signal pga. manglende tidsstempel)."""
+    raw = r.get("created_at") or r.get("ts") or r.get("time") or ""
+    if not raw:
+        return True
+    try:
+        t = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - t) <= timedelta(minutes=max_age_min)
+    except Exception:
+        return True
+
+
 def _council_forced_count(*, limit: int = 40) -> int:
-    """Antal council.deadlock_forced_conclusion på eventbussen nyligt. Cross-proces."""
+    """Antal council.deadlock_forced_conclusion på eventbussen NYLIGT. Cross-proces.
+    Alders-bundet: en gammel deadlock-byge ældes ud i stedet for at gen-fyre evigt."""
     n = 0
     try:
         from core.eventbus.bus import event_bus
         for r in event_bus.recent_by_family("council", limit=limit):
-            if r.get("kind") == "council.deadlock_forced_conclusion":
+            if r.get("kind") == "council.deadlock_forced_conclusion" and _event_is_recent(r):
                 n += 1
     except Exception:
         pass
@@ -351,12 +374,14 @@ def _cheap_lane_stats(*, limit: int = 40) -> tuple[int, int]:
 
 
 def _tool_outcome_counts(*, limit: int = 40) -> tuple[int, int]:
-    """(total, errors) fra seneste tool.completed-events på eventbussen. Cross-proces."""
+    """(total, errors) fra NYLIGE tool.completed-events på eventbussen. Cross-proces.
+    Alders-bundet: gamle enkelt-sessioner (fx en udforsknings-byge) ældes ud i stedet
+    for at holde fejlraten kunstigt oppe når der ikke er kaldt værktøjer længe."""
     total = errors = 0
     try:
         from core.eventbus.bus import event_bus
         for r in event_bus.recent_by_family("tool", limit=limit):
-            if r.get("kind") != "tool.completed":
+            if r.get("kind") != "tool.completed" or not _event_is_recent(r):
                 continue
             total += 1
             if str((r.get("payload") or {}).get("status")) == "error":

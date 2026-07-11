@@ -28,7 +28,7 @@ from rich.table import Table
 from rich.text import Text
 
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.binding import Binding
 from textual.widgets import DataTable, Input, RichLog, Static
 
@@ -161,11 +161,17 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         overflow-y: auto;
     }}
 
-    #hud-panel {{
+    #hud-panelbox {{
         width: 1fr;
         background: {BG};
-        padding: 1 2;
         overflow-y: auto;
+        scrollbar-size-vertical: 1;
+    }}
+    #hud-panel {{
+        width: 1fr;
+        height: auto;
+        background: {BG};
+        padding: 1 2;
     }}
 
     #hud-cmdbar {{
@@ -266,7 +272,8 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                 with Vertical(id="hud-side"):
                     yield Static("", id="side-paneh")
                     yield Static("", id="hud-detail", markup=True)
-                yield Static("", id="hud-panel", markup=True)
+                with VerticalScroll(id="hud-panelbox"):
+                    yield Static("", id="hud-panel", markup=True)
             with Horizontal(id="hud-cmdbar"):
                 yield Static(Text.from_markup(f"[{CYAN} b]central>[/]"), id="hud-prompt")
                 yield Input(
@@ -343,7 +350,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         for wid, vis in (
             ("#hud-main", table_visible),
             ("#hud-side", table_visible),
-            ("#hud-panel", not table_visible),
+            ("#hud-panelbox", not table_visible),
         ):
             try:
                 self.query_one(wid).display = vis

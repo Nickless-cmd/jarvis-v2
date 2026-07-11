@@ -61,25 +61,54 @@ class _ActionMixin:
         except Exception:
             pass
 
+    def _active_panel(self):
+        """Det synlige panel (#hud-panel) hvis en panel-fane (overview/mind/
+        diagnostics/…) er aktiv — ellers None. Bruges så pil/side-taster scroller
+        panelet i stedet for at være døde på ikke-tabel-faner (Mind kunne ikke
+        køres ned)."""
+        try:
+            p = self.query_one("#hud-panelbox")
+            if getattr(p, "display", False):
+                return p
+        except Exception:
+            pass
+        return None
+
     def action_nav_up(self) -> None:
+        p = self._active_panel()
+        if p is not None:
+            p.scroll_up(animate=False)
+            return
         t = self._table()
         if t is not None:
             t.action_cursor_up()
             self._after_cursor_move(t)
 
     def action_nav_down(self) -> None:
+        p = self._active_panel()
+        if p is not None:
+            p.scroll_down(animate=False)
+            return
         t = self._table()
         if t is not None:
             t.action_cursor_down()
             self._after_cursor_move(t)
 
     def action_nav_pageup(self) -> None:
+        p = self._active_panel()
+        if p is not None:
+            p.scroll_page_up(animate=False)
+            return
         t = self._table()
         if t is not None:
             t.action_page_up()
             self._after_cursor_move(t)
 
     def action_nav_pagedown(self) -> None:
+        p = self._active_panel()
+        if p is not None:
+            p.scroll_page_down(animate=False)
+            return
         t = self._table()
         if t is not None:
             t.action_page_down()
@@ -186,7 +215,7 @@ class _ActionMixin:
                 out.append("")
             panel.update(Text.from_markup("\n".join(out)))
         try:
-            self.query_one("#hud-panel", Static).display = False
+            self.query_one("#hud-panelbox").display = False
             self.query_one("#hud-side").display = True
         except Exception:
             pass
@@ -207,7 +236,7 @@ class _ActionMixin:
         panel.update(Text.from_markup(f"[{FG}]{body}[/]"))
         # ensure the detail panel is the visible one
         try:
-            self.query_one("#hud-panel", Static).display = False
+            self.query_one("#hud-panelbox").display = False
             self.query_one("#hud-side").display = True
         except Exception:
             pass

@@ -68,6 +68,12 @@ _TERMINAL_VERBS = {
     "learning", "drift", "breakers", "autonomy", "clusters", "resolve",
 }
 
+# Verber som dispatchen kender eksplicit (dvs. IKKE catch-all til /central/command
+# med et helt ukendt verbum). Palette bruger dette til at afvise vrøvl-input.
+KNOWN_VERBS = frozenset(_GET_ENDPOINTS) | _TERMINAL_VERBS | {
+    "nerve", "toggle", "signoff", "approve", "deny", "unlock",
+}
+
 
 def resolve_command(verb: str, args: list[str]) -> CommandSpec:
     """Map (verb, args) → CommandSpec. Writes markeres write=True (til confirm-guard)."""

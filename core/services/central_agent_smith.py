@@ -196,7 +196,15 @@ def _detected_patterns(a: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 def _execute_mint(key: str, label: str, kind: str, metric: float) -> str | None:
     """Trin 2/BIND: auto-mint en bindende behavioral_decision (Jarvis' egen idé, automatisk).
-    Dedup + observe er indbygget i behavioral_decisions.create_decision. Self-safe → None."""
+    Dedup + observe er indbygget i behavioral_decisions.create_decision. Self-safe → None.
+
+    SHADOW-GATE (Bjørn+Claude 11. jul): mint KUN når gate_enforce.agent_smith er flippet ON.
+    I shadow OBSERVERER Smith kun (Trin 1) — han binder ikke Jarvis. Rod: detektoren måler
+    HYPPIGHED af normale træk/fraser (fx "run non-destructive command" 18×, "det giver mening")
+    og forvekslede det med ulydighed → mintede falsk-positive "stop normalt arbejde"-direktiver.
+    Indtil detektoren skelner gode/dårlige mønstre (harm-signal), må shadow ikke binde."""
+    if not _agent_smith_enforced():
+        return None
     try:
         from core.services.behavioral_decisions import create_decision
         if kind == "phrase":

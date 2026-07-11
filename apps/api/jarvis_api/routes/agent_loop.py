@@ -16,14 +16,19 @@ her for hastighed pr. step (klient-loops kalder ofte).
 """
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter()
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
 _SYSTEM_PROMPT = (
@@ -71,14 +76,20 @@ def _openai_compat_credentials(provider: str) -> tuple[str, str]:
 
 
 @router.post("/v1/agent/step", response_model=None)
-async def agent_step(request: Request) -> JSONResponse:
-    """Ét client-owned model-tur. Body: {messages:[...], tools:[...], model?, session_id?}.
+async def agent_step(request: Request):
+    """Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}.
 
-    Returnerer {content, tool_calls, usage, provider, model, done}. Eksekverer ALDRIG
-    værktøjer — det gør klienten. Ikke-streamende (cutoff-sikkert)."""
+    stream=false → JSON {content, tool_calls, done, usage, provider, model}.
+    stream=true  → SSE: event:delta {text} · event:tool_calls {tool_calls} · event:done
+                   {content, usage, done} · event:error {error}.
+
+    Eksekverer ALDRIG værktøjer — det gør klienten LOKALT. Hvert kald er ÉT kort tur
+    (bounded), så selv den streamende variant er cutoff-robust: klienten ejer loopet og
+    kan re-anmode et enkelt step non-stream hvis strømmen tabes."""
     body = await request.json()
     client_messages = body.get("messages") or []
     tools = body.get("tools") or None
+    stream = bool(body.get("stream", False))
 
     if not isinstance(client_messages, list) or not client_messages:
         return JSONResponse(status_code=400, content={
@@ -105,14 +116,17 @@ async def agent_step(request: Request) -> JSONResponse:
     chat_messages: list[dict[str, Any]] = [{"role": "system", "content": _SYSTEM_PROMPT}]
     chat_messages.extend(client_messages)
 
+    if stream:
+        return StreamingResponse(
+            _stream_step(provider=provider, model=model, auth_profile=auth_profile,
+                         base_url=base_url, chat_messages=chat_messages, tools=tools),
+            media_type="text/event-stream",
+        )
+
     try:
         raw = _execute_openai_compatible_chat(
-            provider=provider,
-            model=model,
-            auth_profile=auth_profile,
-            base_url=base_url,
-            messages=chat_messages,
-            tools=tools,
+            provider=provider, model=model, auth_profile=auth_profile,
+            base_url=base_url, messages=chat_messages, tools=tools,
         )
     except Exception as exc:
         logger.exception("agent/step model-kald fejlede: %s", exc)
@@ -133,3 +147,55 @@ async def agent_step(request: Request) -> JSONResponse:
             "cost_usd": float(raw.get("cost_usd") or 0.0),
         },
     })
+
+
+def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
+                 chat_messages: list[dict], tools: list[dict] | None):
+    """Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau
+    openai-compat SSE-iterator (rå messages+tools ind, delta/tool_call/done ud)."""
+    from core.services.cheap_provider_runtime_streaming import (
+        _iter_openai_compatible_chat_events,
+    )
+    collected: list[dict] = []
+    full = ""
+    try:
+        for ev in _iter_openai_compatible_chat_events(
+            provider=provider, model=model, auth_profile=auth_profile,
+            base_url=base_url, messages=chat_messages, tools=tools or None,
+        ):
+            kind = ev.get("kind")
+            if kind == "delta":
+                text = str(ev.get("text") or "")
+                if text:
+                    full += text
+                    yield _sse("delta", {"text": text})
+            elif kind == "tool_call":
+                collected.append({
+                    "id": str(ev.get("id") or f"call_{len(collected)}"),
+                    "type": "function",
+                    "function": {
+                        "name": str(ev.get("name") or ""),
+                        "arguments": ev.get("arguments") if isinstance(ev.get("arguments"), str)
+                        else json.dumps(ev.get("arguments") or {}, ensure_ascii=False),
+                    },
+                })
+            elif kind == "done":
+                if collected:
+                    yield _sse("tool_calls", {"tool_calls": collected})
+                yield _sse("done", {
+                    "content": str(ev.get("full_text") or full),
+                    "done": not collected,
+                    "usage": {
+                        "prompt_tokens": int(ev.get("input_tokens") or 0),
+                        "completion_tokens": int(ev.get("output_tokens") or 0),
+                    },
+                })
+                return
+    except Exception as exc:
+        logger.exception("agent/step stream fejlede: %s", exc)
+        yield _sse("error", {"error": str(exc)})
+        return
+    # Strømmen sluttede uden eksplicit done → afslut alligevel (klient kan re-anmode).
+    if collected:
+        yield _sse("tool_calls", {"tool_calls": collected})
+    yield _sse("done", {"content": full, "done": not collected, "usage": {}})

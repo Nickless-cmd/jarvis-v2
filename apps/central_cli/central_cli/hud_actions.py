@@ -61,25 +61,54 @@ class _ActionMixin:
         except Exception:
             pass
 
+    def _active_panel(self):
+        """Det synlige panel (#hud-panel) hvis en panel-fane (overview/mind/
+        diagnostics/…) er aktiv — ellers None. Bruges så pil/side-taster scroller
+        panelet i stedet for at være døde på ikke-tabel-faner (Mind kunne ikke
+        køres ned)."""
+        try:
+            p = self.query_one("#hud-panelbox")
+            if getattr(p, "display", False):
+                return p
+        except Exception:
+            pass
+        return None
+
     def action_nav_up(self) -> None:
+        p = self._active_panel()
+        if p is not None:
+            p.scroll_up(animate=False)
+            return
         t = self._table()
         if t is not None:
             t.action_cursor_up()
             self._after_cursor_move(t)
 
     def action_nav_down(self) -> None:
+        p = self._active_panel()
+        if p is not None:
+            p.scroll_down(animate=False)
+            return
         t = self._table()
         if t is not None:
             t.action_cursor_down()
             self._after_cursor_move(t)
 
     def action_nav_pageup(self) -> None:
+        p = self._active_panel()
+        if p is not None:
+            p.scroll_page_up(animate=False)
+            return
         t = self._table()
         if t is not None:
             t.action_page_up()
             self._after_cursor_move(t)
 
     def action_nav_pagedown(self) -> None:
+        p = self._active_panel()
+        if p is not None:
+            p.scroll_page_down(animate=False)
+            return
         t = self._table()
         if t is not None:
             t.action_page_down()
@@ -109,6 +138,10 @@ class _ActionMixin:
         if inp is not None and inp.value:
             inp.value = ""
             return
+        if self._pending_approval is not None:
+            self._pending_approval = None
+            self._flash(f"[{DIM}]— annulleret —[/]")
+            return
         if self._pending_write is not None:
             self.action_confirm_no()
 
@@ -126,6 +159,15 @@ class _ActionMixin:
                 self.action_confirm_yes()
             elif low in ("n", "no", "nej"):
                 self.action_confirm_no()
+            self._keep_focus()
+            return
+        # A pending approval (approvals-fanen): ↵/ja = godkend, nej = afvis.
+        if self._pending_approval is not None:
+            low = val.lower()
+            if val == "" or low in ("y", "yes", "j", "ja", "godkend"):
+                self._resolve_approval(True)
+            elif low in ("n", "no", "nej", "afvis"):
+                self._resolve_approval(False)
             self._keep_focus()
             return
         if val == "":
@@ -186,7 +228,7 @@ class _ActionMixin:
                 out.append("")
             panel.update(Text.from_markup("\n".join(out)))
         try:
-            self.query_one("#hud-panel", Static).display = False
+            self.query_one("#hud-panelbox").display = False
             self.query_one("#hud-side").display = True
         except Exception:
             pass
@@ -207,7 +249,7 @@ class _ActionMixin:
         panel.update(Text.from_markup(f"[{FG}]{body}[/]"))
         # ensure the detail panel is the visible one
         try:
-            self.query_one("#hud-panel", Static).display = False
+            self.query_one("#hud-panelbox").display = False
             self.query_one("#hud-side").display = True
         except Exception:
             pass
@@ -231,11 +273,55 @@ class _ActionMixin:
         self._drill_row(index)
 
     def _drill_row(self, index: int) -> None:
-        """Enter/select on a row: governance toggles, others (re)show detail."""
+        """Enter/select on a row: governance toggles, approvals arms godkend/afvis,
+        others (re)show detail."""
         if self.active_tab == "governance":
             self._toggle_governance_row(index)
+        elif self.active_tab == "approvals":
+            self._begin_approval(index)
         else:
             self._render_row_detail(index)
+
+    # -- Approvals: godkend/afvis direkte i Centralen ----------------------
+    def _begin_approval(self, index: int) -> None:
+        """Enter på et forslag: armér en godkend/afvis-bekræftelse. Bekræftes via
+        kommando-linjen (ja/nej) som de øvrige writes — ingen tast-konflikt."""
+        proposals = (getattr(self, "_autonomy", None) or {}).get("proposals") or []
+        if index < 0 or index >= len(proposals):
+            return
+        p = proposals[index]
+        pid = p.get("proposal_id") or p.get("id")
+        if pid is None:
+            self._flash(f"[{DIM}]— forslag mangler id —[/]")
+            return
+        title = str(p.get("title") or p.get("summary") or p.get("kind") or pid)
+        self._pending_approval = (str(pid), title)
+        self._flash(
+            f"[{AMBER} b]⚠ forslag '{_esc(title[:60])}': "
+            f"[j]a/↵ = godkend · n = afvis · esc = annullér[/]"
+        )
+
+    def _resolve_approval(self, approve: bool) -> None:
+        if self._pending_approval is None:
+            return
+        pid, title = self._pending_approval
+        self._pending_approval = None
+        path = (f"/mc/autonomy/proposals/{pid}/approve" if approve
+                else f"/mc/autonomy/proposals/{pid}/reject")
+        try:
+            resp = self._client.post_json(path, {})
+        except Exception as exc:
+            self._flash(f"[{RED}]✖ {_esc(str(exc))}[/]")
+            return
+        ok = isinstance(resp, dict) and (resp.get("ok") or resp.get("status") == "ok"
+                                         or resp.get("resolved"))
+        verb = "godkendt" if approve else "afvist"
+        if ok:
+            self._flash(f"[{GREEN}]✓ forslag {verb}: {_esc(title[:50])}[/]")
+        else:
+            err = (resp or {}).get("error") if isinstance(resp, dict) else resp
+            self._flash(f"[{RED}]✖ {verb} fejlede: {_esc(str(err))[:80]}[/]")
+        self.refresh_data()
 
     # -- Governance writes -------------------------------------------------
     def _next_value(self, flag: dict) -> Any:

@@ -841,6 +841,7 @@ class _PopulateMixin:
         self._set_paneh(
             f"[{CYAN}]AUTONOMI[/] [{FGDIM}]— [/]"
             f"[{pend_color}]{pending} afventer[/]"
+            f"  [{FGDIM}]· ↵ på et forslag → godkend/afvis[/]"
         )
         if not proposals:
             table.add_row(

@@ -28,7 +28,7 @@ from rich.table import Table
 from rich.text import Text
 
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.binding import Binding
 from textual.widgets import DataTable, Input, RichLog, Static
 
@@ -67,7 +67,8 @@ _TABS: list[tuple[str, str, bool]] = [
 # (its populate/detail logic is unchanged) and folds into the incidents tab as a
 # sub-view — so no anomaly functionality is lost.
 _TABLE_TABS = {"nerves", "clusters", "incidents", "anomalies", "governance",
-               "agents", "runs", "approvals"}
+               "agents", "runs", "approvals",
+               "connections", "users", "excess", "decentral"}
 # Panel-backed tabs (single full-width panel). "runs"/"approvals" are now wired
 # as real table-tabs (scheduled/autonomy), so they no longer live here.
 # "mind" renders Jarvis' self as a panel. "healing" stays reachable as a panel
@@ -161,11 +162,17 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         overflow-y: auto;
     }}
 
-    #hud-panel {{
+    #hud-panelbox {{
         width: 1fr;
         background: {BG};
-        padding: 1 2;
         overflow-y: auto;
+        scrollbar-size-vertical: 1;
+    }}
+    #hud-panel {{
+        width: 1fr;
+        height: auto;
+        background: {BG};
+        padding: 1 2;
     }}
 
     #hud-cmdbar {{
@@ -229,6 +236,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         self._gov_flags: list = []
         self._healers: dict = {}
         self._pending_write: tuple[str, dict] | None = None
+        self._pending_approval: tuple[str, str] | None = None  # (proposal_id, title)
         self._latency_ms: int | None = None
         self._connected: bool = False
         self._cost: float | None = None
@@ -266,7 +274,8 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                 with Vertical(id="hud-side"):
                     yield Static("", id="side-paneh")
                     yield Static("", id="hud-detail", markup=True)
-                yield Static("", id="hud-panel", markup=True)
+                with VerticalScroll(id="hud-panelbox"):
+                    yield Static("", id="hud-panel", markup=True)
             with Horizontal(id="hud-cmdbar"):
                 yield Static(Text.from_markup(f"[{CYAN} b]central>[/]"), id="hud-prompt")
                 yield Input(
@@ -281,7 +290,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         self._sync_header()
         self._sync_tabs()
         self._apply_tab_visibility()
-        self._populate_active_tab()
+        self._populate_active_tab(force=True)
         self._render_feed()
         if self._live:
             self.set_interval(3.0, self.refresh_data)
@@ -336,23 +345,44 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         self.active_tab = name
         self._sync_tabs()
         self._apply_tab_visibility()
-        self._populate_active_tab()
+        self._populate_active_tab(force=True)
 
     def _apply_tab_visibility(self) -> None:
         table_visible = self.active_tab in _TABLE_TABS
         for wid, vis in (
             ("#hud-main", table_visible),
             ("#hud-side", table_visible),
-            ("#hud-panel", not table_visible),
+            ("#hud-panelbox", not table_visible),
         ):
             try:
                 self.query_one(wid).display = vis
             except Exception:
                 pass
 
-    def _populate_active_tab(self) -> None:
+    def _populate_active_tab(self, force: bool = False) -> None:
         try:
             name = self.active_tab
+            # Throttle tunge panel-renders på PERIODISK refresh (ikke ved fane-skift):
+            # Mind laver 6 sekventielle fetches — hvert 3. sekund frøs det UI'et.
+            # Panel-data ændrer sig langsomt → gen-render kun hvert N sekund.
+            import time as _time
+            _HEAVY = {"mind": 12.0, "diagnostics": 8.0}
+            if not force and name in _HEAVY:
+                _last = getattr(self, "_panel_last", {}).get(name, 0.0)
+                if (_time.monotonic() - _last) < _HEAVY[name]:
+                    return
+            # Cursor-stabilitet: alle tabel-faner deler #nerve-table og genopbygges
+            # ved hvert refresh. Uden dette hopper markøren til top hvert 3. sekund.
+            # Vi fanger markørens position FØR repopulate og gendanner den EFTER —
+            # men kun ved en SAMME-fane refresh (ved fane-skift skal den nulstilles).
+            _prev_tab = getattr(self, "_last_table_tab", None)
+            _prev_row = 0
+            if name in _TABLE_TABS:
+                try:
+                    _t = self.query_one("#nerve-table")
+                    _prev_row = _t.cursor_coordinate.row if _t.row_count else 0
+                except Exception:
+                    _prev_row = 0
             if name == "nerves":
                 self._populate_nerves()
                 self._refresh_detail_for_current()
@@ -395,6 +425,22 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                 self._populate_approvals()
             else:
                 self._render_placeholder_panel(name)
+            if name in _HEAVY:
+                self.__dict__.setdefault("_panel_last", {})[name] = _time.monotonic()
+            # Gendan markøren efter repopulate (kun samme-fane refresh).
+            if name in _TABLE_TABS:
+                self._last_table_tab = name
+                if _prev_tab == name:
+                    try:
+                        _t = self.query_one("#nerve-table")
+                        if _t.row_count:
+                            _t.move_cursor(row=min(_prev_row, _t.row_count - 1))
+                    except Exception:
+                        pass
+                    # detaljen skal følge den gendannede markør (ikke row 0 fra populate)
+                    if name in ("nerves", "clusters", "incidents", "anomalies",
+                                "governance", "agents", "runs"):
+                        self._refresh_detail_for_current()
         except Exception:
             return
 
@@ -500,3 +546,4 @@ def run_hud(ns) -> int:
 
     client = CentralClient(base_url=resolve_base_url(remote=ns.remote), token=resolve_token())
     CentralHud(client=client, live=True).run()
+    return 0

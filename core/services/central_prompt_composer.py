@@ -54,6 +54,29 @@ def classify_turn_type(user_message: str) -> str:
     return "samtale"
 
 
+_ADAPTIVE_THINKING_FLAG = "adaptive_thinking_enabled"   # default ON; owner kill-switch
+# Tur-typer der ræsonnerer (tænker); resten svarer intuitivt (fast). kode/opgave matches
+# FØR spørgsmål i _TURN_PATTERNS, så "hvorfor fejler min deploy?" lander i kode → think.
+_THINKING_TURN_TYPES = frozenset({"kode", "opgave"})
+
+
+def resolve_thinking_mode(user_message: str, requested: str = "think") -> str:
+    """Adaptiv tænknings-effekt (12. jul): deepseek tænker ~9s FØR svar ved 'think' — også
+    på simpel snak. Løsning: kun kode/opgave-ture ræsonnerer; samtale/spørgsmål/hukommelse
+    svarer intuitivt ('fast', −9s TTFT). Eksplicit 'fast'/'deep' fra klienten respekteres
+    ALTID (power-user override). Kill-switch: adaptive_thinking_enabled=False. Self-safe."""
+    req = str(requested or "think").strip().lower()
+    if req in ("fast", "deep"):
+        return req                                   # eksplicit valg — rør ikke
+    try:
+        if not bool(_kv_get(_ADAPTIVE_THINKING_FLAG, True)):
+            return "think"                           # kill-switch → gammel adfærd
+        tt = classify_turn_type(user_message)
+        return "think" if tt in _THINKING_TURN_TYPES else "fast"
+    except Exception:
+        return "think"                               # fail-safe: tænk ved tvivl
+
+
 def _kv_get(key: str, default: Any) -> Any:
     try:
         from core.runtime.db_core import get_runtime_state_value

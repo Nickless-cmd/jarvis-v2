@@ -845,6 +845,15 @@ def start_visible_run(
     _vis_provider, _vis_model = _resolve_vm(
         provider_override=provider_override, model_override=model_override,
         default_provider=settings.visible_model_provider, default_model=settings.visible_model_name)
+    # Adaptiv tænkning (12. jul): 'think' fik deepseek til at ræsonnere ~9s FØR svar på
+    # HVER tur — også simpel snak. resolve_thinking_mode skruer kode/opgave→think, resten→
+    # fast (−9s TTFT); eksplicit fast/deep fra klienten respekteres. Kill-switch:
+    # adaptive_thinking_enabled=False. Self-safe → falder tilbage til requested.
+    try:
+        from core.services.central_prompt_composer import resolve_thinking_mode
+        _resolved_thinking = resolve_thinking_mode(message or "", thinking_mode)
+    except Exception:
+        _resolved_thinking = (thinking_mode or "think").strip().lower()
     run = VisibleRun(
         run_id=f"visible-{uuid4().hex}",
         lane=settings.primary_model_lane,
@@ -853,7 +862,7 @@ def start_visible_run(
         user_message=(message or "").strip() or "Tom synlig forespoergsel",
         session_id=normalized_session_id,
         trust_all=(approval_mode == "trust"),
-        thinking_mode=(thinking_mode or "think").strip().lower(),
+        thinking_mode=_resolved_thinking,
     )
     return _stream_visible_run(run, force_user_id=force_user_id, tool_scope=tool_scope)
 

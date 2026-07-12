@@ -1,7 +1,8 @@
 # jarvis-code Tool-Presentation & Namespace Design
 
 **Dato:** 2026-07-12
-**Status:** Godkendt design (afventer spec-review → plan)
+**Status:** Godkendt + self-reviewed. Beslutninger låst: (1) HARD gate for brain-skriv,
+(2) `runtime_`-præfiks, (3) project_notes i det faste sæt. Klar til writing-plans.
 **Kontekst:** jarvis-code (jc) er en client-owned-loop CLI. Klienten eksekverer tools
 LOKALT på Bjørns maskine (hurtig, bevist vej). Runtime/native tools eksekverer i
 containeren (Jarvis' maskine). Problemet: navne-overlap mellem de to domæner (`bash`,
@@ -95,13 +96,13 @@ skrive (`remember_this`), soft-arkivere/slippe (`archive_brain_entry`) noget han
 bruger. Ikke bruger-kommanderet — hans agentur. **Owner (Bjørn) er undtagelsen: fuld,
 direkte adgang.**
 
-**BESLUTNING (soft vs hard gate):** "For ikke-owner er det Jarvis' valg" kan enten være
-(a) **soft** — prompt-instruktion, tool findes i modellens sæt men prompten siger "ikke på
-bruger-kommando", eller (b) **hard** — en gate-check i selve brain-skrive-stien der afviser
-et skrive-kald hvis initieret på en ikke-owners direkte kommando (Jarvis' egen autonome sti
-går uden om gaten). **Anbefaling: hard for skrivning** (`remember_this`/`archive_brain_entry`),
-fordi "bruger skriver i Jarvis' sind" er en identitets-/sikkerhedsgrænse der ikke bør hvile
-på at modellen adlyder en prompt. Soft er ikke robust nok her. Afklares før plan.
+**BESLUTNING (LÅST): HARD gate for brain-skrivning.** En gate-check i selve brain-skrive-
+stien (`remember_this`/`archive_brain_entry`) afviser et skrive-kald hvis det er initieret
+på en ikke-owners direkte kommando. Jarvis' EGEN autonome sti (hans agentur) går uden om
+gaten — han kan stadig selv vælge at skrive/arkivere. Owner (Bjørn) har fuld direkte adgang.
+Begrundelse: "en bruger skriver i Jarvis' sind" er en identitets-/sikkerhedsgrænse der ikke
+må hvile på at modellen adlyder en prompt. Implementeres som en owner/agentur-check, ikke
+kun prompt-tekst.
 
 **Hard-forget holdes UDE af default:** `release_memory` er IRREVOKABEL ("ingen vej
 tilbage") → owner-only / dyb overvejelse, aldrig i det hurtige sæt.

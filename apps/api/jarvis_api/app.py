@@ -399,6 +399,17 @@ def create_app() -> FastAPI:
         except Exception as _exc:
             logger.warning("prompt-cache prewarm dispatch failed: %s", _exc)
 
+        # PERIODISK pre-warm (12. jul): boot-pre-warmen ovenfor overlever ikke en
+        # nats tomgang, så "Godmorgen" rammer stadig kold assembly (~10,5s vs varm
+        # ~3,6s). Denne loop bygger en throwaway-assembly på en kadence i DENNE
+        # proces (chat-latensen bor her) og holder caches varme. Kun aktiv når
+        # runtime-state assembly_prewarm_enabled=True (kan tændes uden restart).
+        try:
+            from core.services.assembly_prewarm import start_prewarm_loop
+            start_prewarm_loop()
+        except Exception as _exc:
+            logger.warning("assembly prewarm loop dispatch failed: %s", _exc)
+
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):
             yield

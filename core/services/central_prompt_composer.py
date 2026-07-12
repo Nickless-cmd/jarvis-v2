@@ -142,6 +142,14 @@ def observe_composition(turn_type: str, *, sections_total: int, sections_include
     """Egress-frit substrat: hvad blev komponeret denne tur. Opdaterer (a) egress-fri tidsserie (kun
     skalarer) + (b) per-(tur-type, sektion) HYPPIGHEDS-map (til relevans-kandidat-identifikation).
     Aldrig prompt-INDHOLD. Ét kv-op pr. tur (batchet). Self-safe."""
+    # Pre-warm-builds er syntetiske ture (throwaway-assembly for at holde caches varme) —
+    # de må IKKE forurene composition-telemetri/hyppigheds-mappet. Spring helt over.
+    try:
+        from core.services.assembly_prewarm import is_prewarm_active
+        if is_prewarm_active():
+            return
+    except Exception:
+        pass
     try:
         from core.services.central_private_observe import record_private
         record_private("cognition", f"prompt_compose:{turn_type}",

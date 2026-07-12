@@ -2018,6 +2018,16 @@ def _exec_internal_api(args: dict[str, Any]) -> dict[str, Any]:
     body_bytes: bytes | None = None
     headers: dict[str, str] = {}
 
+    # Auto-inject system bearer token for internal API calls
+    try:
+        from core.runtime.settings import load_settings
+        _settings = load_settings()
+        _token = str(_settings.extra.get("system_api_token") or "")
+        if _token:
+            headers["Authorization"] = f"Bearer {_token}"
+    except Exception:
+        pass  # non-fatal — kald uden token kan stadig virke på localhost
+
     if method == "POST":
         body_bytes = body_raw.encode("utf-8") if body_raw else b"{}"
         headers["Content-Type"] = "application/json"

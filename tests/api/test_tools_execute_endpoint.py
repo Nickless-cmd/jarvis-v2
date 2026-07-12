@@ -139,3 +139,39 @@ def test_execute_runs_inside_workspace_context(monkeypatch):
     assert r.status_code == 200
     # Owner default (empty user_id) resolves to Bjørn's default workspace.
     assert seen["workspace"] == "bjorn"
+
+
+def test_execute_injects_session_and_turn_id_for_brain_tools(monkeypatch):
+    captured = {}
+    def _fake_execute_tool(name, arguments):
+        captured["args"] = dict(arguments)
+        return {"status": "ok", "written": True}
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.routes.agent_loop.execute_tool", _fake_execute_tool
+    )
+    # owner by default -> brain gate allows
+    r = client.post("/v1/tools/execute",
+                    json={"name": "remember_this",
+                          "arguments": {"kind": "insight", "title": "t", "content": "c",
+                                        "visibility": "personal", "domain": "general"},
+                          "session_id": "sess-1", "turn_id": "turn-9"})
+    assert r.status_code == 200
+    a = captured["args"]
+    assert a.get("_runtime_session_id") == "sess-1"
+    assert a.get("_runtime_turn_id") == "turn-9"
+
+
+def test_execute_synthesizes_turn_id_when_absent(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.routes.agent_loop.execute_tool",
+        lambda name, arguments: captured.setdefault("args", dict(arguments)) or {"ok": True},
+    )
+    r = client.post("/v1/tools/execute",
+                    json={"name": "remember_this",
+                          "arguments": {"kind": "insight", "title": "t", "content": "c",
+                                        "visibility": "personal", "domain": "general"},
+                          "session_id": "sess-2"})  # no turn_id
+    assert r.status_code == 200
+    tid = captured["args"].get("_runtime_turn_id")
+    assert tid and len(tid) > 0   # synthesized, non-empty

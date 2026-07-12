@@ -164,6 +164,7 @@ class _ExecBody(BaseModel):
     name: str
     arguments: dict = {}
     session_id: str | None = None
+    turn_id: str | None = None
     user_id: str | None = None
 
 
@@ -196,12 +197,20 @@ async def tools_execute(body: _ExecBody):
 
     # remember_this reads session/turn id from ARGUMENTS (not a ContextVar):
     # core.tools.jarvis_brain_tools._exec_remember_this looks at
-    # args["_runtime_session_id"|"session_id"] / ["_runtime_turn_id"|"turn_id"].
-    # Forward body.session_id through the arguments dict so rate-limit keying works.
+    # args["_runtime_session_id"|"session_id"] / ["_runtime_turn_id"|"turn_id"] and
+    # returns {"error": "context_missing"} unless BOTH are present. Forward
+    # body.session_id / body.turn_id through the arguments dict so the write persists
+    # and the 5/turn rate-limit keys on a real per-turn id. Synthesize a non-empty
+    # turn_id when the client did not thread one, so forwarded writes never fail on a
+    # missing turn context. setdefault semantics: never clobber an id the caller already
+    # placed in the arguments.
+    import uuid
     arguments = dict(body.arguments or {})
-    if body.session_id and not arguments.get("_runtime_session_id") \
-            and not arguments.get("session_id"):
-        arguments["_runtime_session_id"] = body.session_id
+    if not arguments.get("_runtime_session_id") and not arguments.get("session_id"):
+        if body.session_id:
+            arguments["_runtime_session_id"] = body.session_id
+    if not arguments.get("_runtime_turn_id") and not arguments.get("turn_id"):
+        arguments["_runtime_turn_id"] = body.turn_id or f"jc-{uuid.uuid4().hex[:16]}"
 
     # Scoping choice: user_context() is a SYNC contextmanager backed by a ContextVar.
     # run_in_threadpool runs execute_tool in a WORKER thread, so the ContextVar must be

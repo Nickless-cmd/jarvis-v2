@@ -17,14 +17,14 @@
       "name": "absence_daemon",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "absence"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "abuse_monitor",
@@ -170,27 +170,23 @@
       "name": "affective_state_renderer",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "affective_state_renderer"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "affirmation_anchor",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "affirmation_anchor"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "agency_cartographer",
@@ -231,14 +227,14 @@
       "name": "agent_observation_compressor",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "agent_observation"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "agent_outcomes_log",
@@ -268,17 +264,62 @@
       "name": "agent_runtime",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": true,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET+LLM"
+    },
+    {
+      "name": "agent_runtime_base",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": true,
+      "routed_families": [],
+      "dark_families": [
+        "agent"
+      ],
+      "quadrant": "FRAKOBLET+LLM"
+    },
+    {
+      "name": "agent_runtime_council",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "agent_runtime_spawn",
+      "area": "services",
+      "direct": false,
+      "indirect": true,
+      "central_own": false,
+      "llm": false,
       "routed_families": [
         "runtime"
       ],
       "dark_families": [
-        "agent",
         "watcher"
       ],
       "quadrant": "KOBLET"
+    },
+    {
+      "name": "agent_runtime_surfaces",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "agent_self_evaluation",
@@ -301,9 +342,7 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "agent_skill_distiller"
-      ],
+      "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
     },
     {
@@ -327,23 +366,19 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "agent_todos"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "agentic_checkpoints",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "agentic_checkpoints"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "agentic_tool_cache",
@@ -353,23 +388,19 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "agentic_tool_cache"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "agentic_working_conclusions",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "agentic_working_conclusions"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "agents",
@@ -386,14 +417,12 @@
       "name": "agreement_streak",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "agreement_streak"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "ambient_presence",
@@ -405,23 +434,21 @@
       "routed_families": [
         "runtime"
       ],
-      "dark_families": [
-        "ambient_presence"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
       "name": "ambient_sound_daemon",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "ambient_sound"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "anthropic_identity",
@@ -442,10 +469,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "anthropic_sse_emitter"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "anthropic_translator",
@@ -455,10 +480,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "anthropic_translator"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "anticipatory_action_daemon",
@@ -481,6 +504,17 @@
       "routed_families": [
         "cognitive_anticipation"
       ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "api_connection_nerve",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
       "dark_families": [],
       "quadrant": "KOBLET"
     },
@@ -521,14 +555,14 @@
       "name": "arc_rule_extractor",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "arc_rules"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "associative_recall",
@@ -540,9 +574,7 @@
       "routed_families": [
         "memory"
       ],
-      "dark_families": [
-        "associative_recall"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -553,9 +585,7 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "attachment_service"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -589,14 +619,12 @@
       "name": "attention_budget",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "attention_budget"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "attention_contour",
@@ -612,13 +640,13 @@
     {
       "name": "auto_code_review",
       "area": "services",
-      "direct": false,
+      "direct": true,
       "indirect": false,
       "central_own": false,
       "llm": false,
       "routed_families": [],
       "dark_families": [],
-      "quadrant": "FRAKOBLET-STILLE"
+      "quadrant": "KOBLET"
     },
     {
       "name": "auto_improvement_proposer",
@@ -636,13 +664,13 @@
     {
       "name": "auto_remember_subscriber",
       "area": "services",
-      "direct": false,
+      "direct": true,
       "indirect": false,
       "central_own": false,
       "llm": false,
       "routed_families": [],
       "dark_families": [],
-      "quadrant": "FRAKOBLET-STILLE"
+      "quadrant": "KOBLET"
     },
     {
       "name": "automation_dsl",
@@ -685,6 +713,17 @@
     },
     {
       "name": "autonomous_outreach_daemon",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "autonomous_sessions",
       "area": "services",
       "direct": false,
       "indirect": false,
@@ -746,14 +785,12 @@
       "name": "avoidance_detector",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "avoidance_detector"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "behavioral_decisions",
@@ -833,10 +870,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "bounded_mutation_intent_runtime"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "bounded_repo_tools_runtime",
@@ -846,10 +881,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "bounded_repo_tools_runtime"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "bounded_workspace_write_runtime",
@@ -896,6 +929,17 @@
       "routed_families": [
         "workspace"
       ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "cache_boundary_observer",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
       "dark_families": [],
       "quadrant": "KOBLET"
     },
@@ -968,14 +1012,12 @@
       "name": "causal_graph",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "causal_graph"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "causal_inference_daemon",
@@ -991,6 +1033,19 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_absorb",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [
+        "central"
+      ],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_adaptation",
       "area": "services",
       "direct": true,
@@ -1002,7 +1057,51 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_affect",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_agenda",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_agent_smith",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_agent_smith_escalation",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_analyst",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1037,6 +1136,39 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_architect",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_belief_gap",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_body_map_pulse",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_body_mood_feel",
       "area": "services",
       "direct": false,
@@ -1049,6 +1181,17 @@
     },
     {
       "name": "central_brain_link",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_cadence_conductor",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1082,6 +1225,28 @@
     },
     {
       "name": "central_causal_quality",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_construct",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_continuity_healer",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1147,6 +1312,61 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_dark_products_digest",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_decentralization",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_dejavu",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_dissent",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_dream_action",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_drift",
       "area": "services",
       "direct": false,
@@ -1158,7 +1378,40 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_echo_breaker",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_error_envelope",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_excess",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_exile",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1188,6 +1441,52 @@
       "llm": false,
       "routed_families": [],
       "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_gardener",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_ghost",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_glitch",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_governance",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [
+        "central"
+      ],
       "quadrant": "KOBLET"
     },
     {
@@ -1257,6 +1556,61 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_initiative_ladder",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_injection_registry",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_injection_units",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_inner_life_ablation",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_inner_life_digest",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_inner_salience",
       "area": "services",
       "direct": true,
@@ -1269,6 +1623,17 @@
     },
     {
       "name": "central_instrument",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_keymaker",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1312,7 +1677,108 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_llm_egress",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_loop_lag",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_machines",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_matrix_ensemble",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_membrane_watch",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_merovingian",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_model_meta",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_moltbook",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_mood_regulator",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [
+        "mood"
+      ],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_mourning",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1345,9 +1811,75 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_oneiric_loop",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_oneiric_sampler",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_oracle",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_output_conservation",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_persephone",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_private_observe",
       "area": "services",
       "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_private_reducer",
+      "area": "services",
+      "direct": false,
       "indirect": false,
       "central_own": true,
       "llm": false,
@@ -1389,7 +1921,51 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_rca",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_realtime",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_red_dress",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_redpill",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_relational",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1433,6 +2009,17 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_runtime_proxy",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_self_model",
       "area": "services",
       "direct": true,
@@ -1466,7 +2053,29 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_sentinel",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_sequence",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_seraph",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1499,6 +2108,17 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_soul_digest",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_soul_feel",
       "area": "services",
       "direct": false,
@@ -1511,6 +2131,17 @@
     },
     {
       "name": "central_stance",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_surgery",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1565,7 +2196,40 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "central_tone",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "central_trace",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_trainman",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_twins",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1588,6 +2252,17 @@
     },
     {
       "name": "central_watch",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": true,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "central_white_rabbit",
       "area": "services",
       "direct": true,
       "indirect": false,
@@ -1627,10 +2302,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "chat_sessions"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "cheap_lane_balancer",
@@ -1647,12 +2320,45 @@
       "name": "cheap_provider_runtime",
       "area": "services",
       "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": true,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET+LLM"
+    },
+    {
+      "name": "cheap_provider_runtime_adapters",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": true,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET+LLM"
+    },
+    {
+      "name": "cheap_provider_runtime_selection",
+      "area": "services",
+      "direct": false,
       "indirect": true,
       "central_own": false,
       "llm": true,
       "routed_families": [
         "runtime"
       ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "cheap_provider_runtime_streaming",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": true,
+      "routed_families": [],
       "dark_families": [],
       "quadrant": "KOBLET"
     },
@@ -1699,14 +2405,14 @@
       "name": "chronicle_engine",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "cognitive_chronicle"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "claim_scanner",
@@ -1799,9 +2505,7 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "cognitive_state_assembly"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -1825,6 +2529,17 @@
       "routed_families": [],
       "dark_families": [],
       "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "commit_gate_arbiter",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "communication_guard",
@@ -1880,14 +2595,14 @@
       "name": "composite_tools",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": false,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "composite"
       ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "computer_use_policy",
@@ -1928,27 +2643,25 @@
       "name": "conflict_daemon",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "conflict"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "conflict_prompt_service",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "conflict_prompt_service"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "conflict_resolution",
@@ -2027,6 +2740,17 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "content_blocks",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
       "name": "context_window_manager",
       "area": "services",
       "direct": false,
@@ -2034,10 +2758,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "context_window_manager"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "continuity",
@@ -2078,6 +2800,19 @@
       "name": "contradiction_engine",
       "area": "services",
       "direct": false,
+      "indirect": true,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [
+        "contradiction"
+      ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "contradiction_resolver",
+      "area": "services",
+      "direct": true,
       "indirect": true,
       "central_own": false,
       "llm": false,
@@ -2141,14 +2876,12 @@
       "name": "council_memory_service",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "council_memory"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "council_runtime",
@@ -2178,14 +2911,12 @@
       "name": "counterfactual_engine_runtime",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "counterfactual_engine_runtime"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "counterfactual_predictions",
@@ -2217,14 +2948,12 @@
       "name": "counterfactual_triggers",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "counterfactual_triggers"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "cowork_dispatch",
@@ -2326,14 +3055,12 @@
       "name": "cross_agent_memory",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "cross_agent_memory"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "cross_session_threads",
@@ -2452,9 +3179,7 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "daemon_llm"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -2465,10 +3190,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "daemon_manager"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "daemon_memory_safeguard",
@@ -2509,14 +3232,12 @@
       "name": "day_shape_memory",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "day_shape_memory"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "db_sentinel",
@@ -2543,7 +3264,7 @@
     {
       "name": "decision_enforcement",
       "area": "services",
-      "direct": false,
+      "direct": true,
       "indirect": true,
       "central_own": false,
       "llm": true,
@@ -2609,10 +3330,19 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "decision_review_prompter"
-      ],
+      "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
+    },
+    {
+      "name": "decision_signal_staging",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "decision_signal_telemetry",
@@ -2690,14 +3420,12 @@
       "name": "delegation_advisor",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "delegation_advisor"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "delete_policy",
@@ -2764,27 +3492,25 @@
       "name": "development_narrative_daemon",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "development_narrative"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "development_sense",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "development_sense"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "developmental_valence",
@@ -2894,6 +3620,28 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "doc_repair_agent",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "docs_drift_watchdog",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "dream_adoption_candidate_tracking",
       "area": "services",
       "direct": false,
@@ -2923,14 +3671,14 @@
       "name": "dream_bias_engine",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "cognitive_dream_bias"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "dream_carry_over",
@@ -2984,14 +3732,12 @@
       "name": "dream_hypothesis_forced",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "dream_hypothesis_forced"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "dream_hypothesis_generator",
@@ -3191,14 +3937,12 @@
       "name": "emotion_concepts_positive_triggers",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "emotion_concepts_positive_triggers"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "emotion_repair_bridge_daemon",
@@ -3230,14 +3974,12 @@
       "name": "emotional_chords",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "emotional_chords"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "emotional_controls",
@@ -3302,14 +4044,12 @@
       "name": "epistemic_pragmatic",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "epistemic_pragmatic"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "epistemic_runtime_state",
@@ -3332,6 +4072,17 @@
       "routed_families": [
         "cognitive_epistemic"
       ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "error_healers",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
       "dark_families": [],
       "quadrant": "KOBLET"
     },
@@ -3387,40 +4138,34 @@
       "name": "experience_correction_listener",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "experience_correction_listener"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "experience_episodes",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "experience_episodes"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "experience_substrate",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "experience_substrate"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "experienced_time_daemon",
@@ -3430,23 +4175,21 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "experienced_time_daemon"
-      ],
+      "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
     },
     {
       "name": "experiential_memory",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "cognitive_experiential"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "experiential_runtime_context",
@@ -3467,10 +4210,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "experiment_runner"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "fact_gate",
@@ -3493,6 +4234,19 @@
       "routed_families": [],
       "dark_families": [],
       "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "file_awareness_daemon",
+      "area": "services",
+      "direct": false,
+      "indirect": true,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [
+        "file_awareness"
+      ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "file_watch_daemon",
@@ -3571,15 +4325,13 @@
     {
       "name": "forgetting_runtime",
       "area": "services",
-      "direct": false,
+      "direct": true,
       "indirect": false,
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "forgetting_runtime"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "gate_adapters",
@@ -3613,6 +4365,17 @@
       "routed_families": [],
       "dark_families": [],
       "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "gate_enforcement",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "gate_eval",
@@ -3714,6 +4477,17 @@
       "quadrant": "FRAKOBLET-STILLE"
     },
     {
+      "name": "gate_shadow",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "gate_skill",
       "area": "services",
       "direct": true,
@@ -3726,6 +4500,17 @@
     },
     {
       "name": "gate_truth",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "gate_verdict_ledger",
       "area": "services",
       "direct": false,
       "indirect": false,
@@ -3772,14 +4557,12 @@
       "name": "global_workspace",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "global_workspace"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "gmail_connector",
@@ -3822,14 +4605,12 @@
       "name": "good_enough_gate",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "good_enough_gate"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "google_connector",
@@ -3963,7 +4744,7 @@
     {
       "name": "hardware_body",
       "area": "services",
-      "direct": false,
+      "direct": true,
       "indirect": true,
       "central_own": false,
       "llm": false,
@@ -4013,6 +4794,39 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "heartbeat_runtime_helpers",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "heartbeat_runtime_influence",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "heartbeat_runtime_providers",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
       "name": "hf_connector",
       "area": "services",
       "direct": false,
@@ -4022,6 +4836,28 @@
       "routed_families": [],
       "dark_families": [],
       "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "hollow_promise_guard",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "identity_canon",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "identity_composer",
@@ -4040,14 +4876,25 @@
       "name": "identity_drift_daemon",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "identity"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "identity_drift_guard",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "identity_drift_proposer",
@@ -4059,9 +4906,7 @@
       "routed_families": [
         "identity_drift"
       ],
-      "dark_families": [
-        "identity_drift_proposer"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -4146,10 +4991,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "in_flight_runs"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "infra_sense",
@@ -4177,14 +5020,12 @@
       "name": "inheritance_seed",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "inheritance_seed"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "initiative_accumulator",
@@ -4300,6 +5141,61 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "internal_cadence_central_wiring",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "internal_cadence_core",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "internal_cadence_inner_life",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "internal_cadence_maintenance",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "internal_cadence_matrix",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
       "name": "internal_opposition_signal_tracking",
       "area": "services",
       "direct": false,
@@ -4316,14 +5212,14 @@
       "name": "irony_daemon",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "irony"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "jarvis_brain",
@@ -4341,13 +5237,13 @@
     {
       "name": "jarvis_brain_daemon",
       "area": "services",
-      "direct": false,
+      "direct": true,
       "indirect": false,
       "central_own": false,
       "llm": true,
       "routed_families": [],
       "dark_families": [],
-      "quadrant": "FRAKOBLET+LLM"
+      "quadrant": "KOBLET"
     },
     {
       "name": "jarvis_brain_reflection",
@@ -4510,14 +5406,14 @@
       "name": "long_arc_synthesizer",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "long_arc"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "long_horizon_goals",
@@ -4540,9 +5436,7 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "longing_signal_daemon"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -4573,14 +5467,14 @@
       "name": "mail_checker_daemon",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "mail_checker"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "malware_scan",
@@ -4643,14 +5537,12 @@
       "name": "memory_consolidation_nudge",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "memory_consolidation_nudge"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "memory_decay_daemon",
@@ -4680,14 +5572,12 @@
       "name": "memory_emotional_context",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "memory_emotional_context"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "memory_graph",
@@ -4697,9 +5587,7 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "memory_graph"
-      ],
+      "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
     },
     {
@@ -4784,14 +5672,12 @@
       "name": "memory_resurfacing",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "memory_resurfacing"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "memory_search",
@@ -4858,27 +5744,23 @@
       "name": "meta_learning_aggregator",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "meta_learning_aggregator"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "meta_learning_hypotheses",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "meta_learning_hypotheses"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "meta_learning_retrospective",
@@ -4895,14 +5777,14 @@
       "name": "meta_reflection_daemon",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "meta_reflection"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "metabolism_state_signal_tracking",
@@ -4981,6 +5863,17 @@
       "quadrant": "FRAKOBLET-STILLE"
     },
     {
+      "name": "model_trust",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
       "name": "modulator_witness",
       "area": "services",
       "direct": false,
@@ -5017,6 +5910,17 @@
     },
     {
       "name": "mood_oscillator",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "mood_regulator_subscriber",
       "area": "services",
       "direct": false,
       "indirect": false,
@@ -5132,9 +6036,7 @@
       "routed_families": [
         "runtime"
       ],
-      "dark_families": [
-        "non_visible_lane_execution"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -5187,14 +6089,12 @@
       "name": "nudge_broend",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "nudge_broend"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "oauth_flow",
@@ -5267,6 +6167,19 @@
       ],
       "dark_families": [],
       "quadrant": "KOBLET"
+    },
+    {
+      "name": "operator_allowlist",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [
+        "operator"
+      ],
+      "quadrant": "FRAKOBLET+DARK"
     },
     {
       "name": "orb_phase",
@@ -5378,6 +6291,17 @@
       "quadrant": "FRAKOBLET-STILLE"
     },
     {
+      "name": "paste_store",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
       "name": "pattern_counterfactual_daemon",
       "area": "services",
       "direct": false,
@@ -5426,6 +6350,17 @@
       "quadrant": "FRAKOBLET-STILLE"
     },
     {
+      "name": "permission_classifier",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": true,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET+LLM"
+    },
+    {
       "name": "permission_engine",
       "area": "services",
       "direct": false,
@@ -5453,14 +6388,12 @@
       "name": "personality_drift",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "personality_drift"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "personality_vector",
@@ -5564,14 +6497,12 @@
       "name": "priors_feedback",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "priors_feedback"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "private_initiative_tension_signal_tracking",
@@ -5681,14 +6612,12 @@
       "name": "proactive_outbound_substrate",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "proactive_outbound_substrate"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "proactive_question_gate_tracking",
@@ -5700,6 +6629,17 @@
       "routed_families": [
         "proactive_question_gate"
       ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "proactivity_bridge",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
       "dark_families": [],
       "quadrant": "KOBLET"
     },
@@ -5744,14 +6684,14 @@
       "name": "process_watcher",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": false,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "process_watcher"
       ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "producer_novelty",
@@ -5855,49 +6795,41 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "prompt_relevance_backend"
-      ],
+      "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
     },
     {
       "name": "prompt_support_signals",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "prompt_support_signals"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "prompt_variant_tracker",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "prompt_variant_tracker"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "proposal_classifier",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "proposal_classifier"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "proprioception_metrics",
@@ -5968,9 +6900,7 @@
       "routed_families": [
         "runtime"
       ],
-      "dark_families": [
-        "provider_retry_policy"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -6016,7 +6946,6 @@
       "central_own": false,
       "llm": false,
       "routed_families": [
-        "r2_5_blocking_gate",
         "r2_5_gate"
       ],
       "dark_families": [],
@@ -6049,6 +6978,17 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "reasoning_detectors",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": true,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET+LLM"
+    },
+    {
       "name": "reasoning_escalation",
       "area": "services",
       "direct": false,
@@ -6060,6 +7000,28 @@
       ],
       "dark_families": [],
       "quadrant": "KOBLET"
+    },
+    {
+      "name": "reasoning_interceptor",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "reasoning_prefilter",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "reasoning_store",
@@ -6103,28 +7065,26 @@
     {
       "name": "recurring_tasks",
       "area": "services",
-      "direct": false,
+      "direct": true,
       "indirect": false,
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "recurring_tasks"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "reflection_cycle_daemon",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "reflection"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "reflection_signal_tracking",
@@ -6347,10 +7307,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "role_registry"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "rule_definitions",
@@ -6360,10 +7318,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "rule_definitions"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "rule_engine",
@@ -6454,14 +7410,14 @@
       "name": "runtime_awareness_signal_tracking",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "runtime_awareness_signal"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "runtime_browser_body",
@@ -6489,14 +7445,12 @@
       "name": "runtime_decision_engine",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "runtime_decision_engine"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "runtime_flows",
@@ -6506,10 +7460,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "runtime_flows"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "runtime_hook_runtime",
@@ -6519,10 +7471,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "runtime_hook_runtime"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "runtime_hooks",
@@ -6532,10 +7482,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "runtime_hooks"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "runtime_learning_signals",
@@ -6545,9 +7493,7 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "runtime_learning_signals"
-      ],
+      "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
     },
     {
@@ -6558,10 +7504,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "runtime_operational_memory"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "runtime_resource_signal",
@@ -6582,23 +7526,85 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "runtime_self_knowledge"
-      ],
+      "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
     },
     {
       "name": "runtime_self_model",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "runtime_self_model_affect",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "runtime_self_model_boundary",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "runtime_self_model_builder",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "runtime_self_model_identity",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "runtime_self_model_state",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "runtime_self_model_surfaces",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
       "central_own": false,
       "llm": true,
-      "routed_families": [
-        "runtime_self_model"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET+LLM"
     },
     {
       "name": "runtime_surface_cache",
@@ -6665,9 +7671,7 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "scheduled_tasks"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -6776,14 +7780,12 @@
       "name": "self_deception_guard",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "self_deception_guard"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "self_experiments",
@@ -6812,17 +7814,26 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "self_model_distiller",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": true,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "self_model_predictive",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "self_model_predictive"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "self_model_signal_tracking",
@@ -6841,14 +7852,12 @@
       "name": "self_monitor",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "self_monitor"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "self_mutation_lineage",
@@ -6880,14 +7889,12 @@
       "name": "self_narrative_self_model_review_bridge",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "self_narrative_self_model_review_bridge"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "self_repair_engine",
@@ -7035,15 +8042,13 @@
     {
       "name": "semantic_indexer",
       "area": "services",
-      "direct": false,
+      "direct": true,
       "indirect": false,
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "semantic_indexer"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "semantic_memory",
@@ -7053,10 +8058,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "semantic_memory"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "sensory_archive",
@@ -7083,6 +8086,17 @@
       "quadrant": "FRAKOBLET-STILLE"
     },
     {
+      "name": "session_boot_reconciler",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
       "name": "session_continuity",
       "area": "services",
       "direct": false,
@@ -7099,16 +8113,17 @@
       "name": "session_distillation",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
-        "private_brain",
+      "routed_families": [
         "session",
         "session_distillation"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [
+        "private_brain"
+      ],
+      "quadrant": "KOBLET"
     },
     {
       "name": "session_inbox",
@@ -7125,6 +8140,17 @@
     },
     {
       "name": "session_milestones",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "session_persistence_flag",
       "area": "services",
       "direct": false,
       "indirect": false,
@@ -7153,10 +8179,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "session_wakeup"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "shadow_scan_daemon",
@@ -7240,10 +8264,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "side_tasks"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "signal_decay_daemon",
@@ -7275,14 +8297,12 @@
       "name": "signal_noise_guard",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "signal_noise_guard"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "signal_pressure_accumulator",
@@ -7305,10 +8325,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "signal_surface_gc"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "signal_surface_router",
@@ -7318,9 +8336,7 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "signal_surface_router"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -7357,6 +8373,17 @@
       "routed_families": [
         "cognitive_silence"
       ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "simple_tool_executor",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
       "dark_families": [],
       "quadrant": "KOBLET"
     },
@@ -7400,13 +8427,13 @@
     {
       "name": "skill_security_scanner",
       "area": "services",
-      "direct": false,
+      "direct": true,
       "indirect": false,
       "central_own": false,
       "llm": false,
       "routed_families": [],
       "dark_families": [],
-      "quadrant": "FRAKOBLET-STILLE"
+      "quadrant": "KOBLET"
     },
     {
       "name": "social_labilizer",
@@ -7416,8 +8443,7 @@
       "central_own": false,
       "llm": false,
       "routed_families": [
-        "pressure",
-        "social_labilizer"
+        "pressure"
       ],
       "dark_families": [],
       "quadrant": "KOBLET"
@@ -7449,6 +8475,17 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "source_confidence_gate",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
       "name": "spaced_repetition",
       "area": "services",
       "direct": false,
@@ -7478,10 +8515,30 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "staged_edits"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "standing_orders_registry",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "state_flag_store",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "stream_degeneration",
@@ -7517,17 +8574,26 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "structured_content_flag",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
       "name": "subagent_digest",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "subagent_digest"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "subagent_ecology",
@@ -7607,10 +8673,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "task_worker"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "taste_profile",
@@ -7701,14 +8765,12 @@
       "name": "temporal_depth",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "temporal_depth"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "temporal_narrative",
@@ -7794,13 +8856,13 @@
     {
       "name": "theory_of_mind",
       "area": "services",
-      "direct": false,
+      "direct": true,
       "indirect": false,
       "central_own": false,
       "llm": false,
       "routed_families": [],
       "dark_families": [],
-      "quadrant": "FRAKOBLET-STILLE"
+      "quadrant": "KOBLET"
     },
     {
       "name": "theory_of_mind_engine",
@@ -7873,9 +8935,7 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "tiktok_content_daemon"
-      ],
+      "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
     },
     {
@@ -7886,9 +8946,7 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "tiktok_research_daemon"
-      ],
+      "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
     },
     {
@@ -7929,6 +8987,17 @@
       "quadrant": "FRAKOBLET-STILLE"
     },
     {
+      "name": "tool_concurrency",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
       "name": "tool_embeddings",
       "area": "services",
       "direct": false,
@@ -7936,10 +9005,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "tool_embeddings"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "tool_intent_approval_runtime",
@@ -7980,27 +9047,34 @@
       "name": "tool_outcome_memory",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "tool_outcome_memory"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "tool_pattern_miner",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "tool_pattern_miner"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "tool_result_aging",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "tool_result_store",
@@ -8010,10 +9084,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "tool_result_store"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "tool_router",
@@ -8049,9 +9121,7 @@
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "tool_tagger"
-      ],
+      "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
     },
     {
@@ -8143,6 +9213,28 @@
       "quadrant": "FRAKOBLET-STILLE"
     },
     {
+      "name": "unified_recall",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "user_activity",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
       "name": "user_contradiction_tracker",
       "area": "services",
       "direct": false,
@@ -8185,14 +9277,14 @@
       "name": "user_model_daemon",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "user_model"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "user_scope",
@@ -8209,27 +9301,25 @@
       "name": "user_temperature_engine",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "cognitive_temperature"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "user_temperature_runtime",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "user_temperature_runtime"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "user_theory_of_mind",
@@ -8291,9 +9381,7 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "verification_gate"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -8323,15 +9411,46 @@
     {
       "name": "visible_followup",
       "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": true,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET+LLM"
+    },
+    {
+      "name": "visible_followup_adapters",
+      "area": "services",
       "direct": true,
       "indirect": false,
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "visible_followup"
-      ],
+      "dark_families": [],
       "quadrant": "KOBLET"
+    },
+    {
+      "name": "visible_followup_events",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "visible_followup_lean",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "visible_inner_life",
@@ -8347,14 +9466,78 @@
     {
       "name": "visible_model",
       "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": true,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET+LLM"
+    },
+    {
+      "name": "visible_model_adapters",
+      "area": "services",
       "direct": true,
       "indirect": false,
       "central_own": false,
       "llm": true,
       "routed_families": [],
-      "dark_families": [
-        "visible_model"
-      ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "visible_model_observe",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "visible_model_ollama",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": true,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET+LLM"
+    },
+    {
+      "name": "visible_model_prompt",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "visible_model_sse",
+      "area": "services",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "visible_model_types",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -8365,15 +9548,47 @@
       "central_own": false,
       "llm": true,
       "routed_families": [
-        "channel",
         "cost",
-        "memory",
-        "runtime",
+        "runtime"
+      ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "visible_runs_approvals",
+      "area": "services",
+      "direct": false,
+      "indirect": true,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [
         "tool"
       ],
-      "dark_families": [
-        "cross_user_share"
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "visible_runs_capabilities",
+      "area": "services",
+      "direct": false,
+      "indirect": true,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [
+        "runtime"
       ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "visible_runs_cognitive",
+      "area": "services",
+      "direct": true,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
       "quadrant": "KOBLET"
     },
     {
@@ -8386,6 +9601,35 @@
       "routed_families": [],
       "dark_families": [],
       "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "visible_runs_memory",
+      "area": "services",
+      "direct": false,
+      "indirect": true,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [
+        "memory",
+        "runtime"
+      ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "visible_runs_outcomes",
+      "area": "services",
+      "direct": true,
+      "indirect": true,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [
+        "channel"
+      ],
+      "dark_families": [
+        "cross_user_share"
+      ],
+      "quadrant": "KOBLET"
     },
     {
       "name": "visible_runs_sse_v2",
@@ -8402,14 +9646,12 @@
       "name": "visible_self_state_summary",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "visible_self_state_summary"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "visual_memory",
@@ -8439,14 +9681,12 @@
       "name": "voice_curator",
       "area": "services",
       "direct": false,
-      "indirect": true,
+      "indirect": false,
       "central_own": false,
       "llm": false,
-      "routed_families": [
-        "voice_curator"
-      ],
+      "routed_families": [],
       "dark_families": [],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "voice_daemon",
@@ -8456,10 +9696,8 @@
       "central_own": false,
       "llm": false,
       "routed_families": [],
-      "dark_families": [
-        "voice_daemon"
-      ],
-      "quadrant": "FRAKOBLET+DARK"
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "wakeup_dispatcher",
@@ -8478,14 +9716,14 @@
       "name": "weekly_manifest",
       "area": "services",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "weekly_manifest"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "witness_signal_tracking",
@@ -8640,14 +9878,14 @@
       "name": "coding_lane_tools",
       "area": "tools",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": true,
-      "routed_families": [],
-      "dark_families": [
+      "routed_families": [
         "coding_lane"
       ],
-      "quadrant": "FRAKOBLET+LLM"
+      "dark_families": [],
+      "quadrant": "KOBLET"
     },
     {
       "name": "comfyui_tools",
@@ -8871,6 +10109,17 @@
     },
     {
       "name": "memory_tools",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "memory_topic_tools",
       "area": "tools",
       "direct": false,
       "indirect": false,
@@ -9114,6 +10363,17 @@
       "quadrant": "KOBLET"
     },
     {
+      "name": "security_predicates",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
       "name": "semantic_search_tools",
       "area": "tools",
       "direct": false,
@@ -9156,11 +10416,67 @@
       "routed_families": [
         "emotional",
         "incident",
-        "tool",
+        "tool"
+      ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "simple_tools_definitions",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "simple_tools_enforcement",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "simple_tools_native",
+      "area": "tools",
+      "direct": true,
+      "indirect": true,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [
         "tool_router"
       ],
       "dark_families": [],
       "quadrant": "KOBLET"
+    },
+    {
+      "name": "simple_tools_operator",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "simple_tools_web",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "skill_chain_propose_tool",
@@ -9260,6 +10576,17 @@
     },
     {
       "name": "staged_edits_tools",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "state_flag_tools",
       "area": "tools",
       "direct": false,
       "indirect": false,
@@ -9433,10 +10760,98 @@
       "routed_families": [
         "runtime"
       ],
+      "dark_families": [],
+      "quadrant": "KOBLET"
+    },
+    {
+      "name": "workspace_capabilities_const",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "workspace_capabilities_documents",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "workspace_capabilities_exec",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "workspace_capabilities_execute",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "workspace_capabilities_memory",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
       "dark_families": [
         "workspace_memory"
       ],
-      "quadrant": "KOBLET"
+      "quadrant": "FRAKOBLET+DARK"
+    },
+    {
+      "name": "workspace_capabilities_results",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "workspace_capabilities_verdict",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "workspace_capabilities_wsio",
+      "area": "tools",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "workspace_capability_decl",
@@ -9481,6 +10896,39 @@
       "routed_families": [],
       "dark_families": [],
       "quadrant": "KOBLET"
+    },
+    {
+      "name": "memory_size_guard",
+      "area": "memory",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "memory_topic_migration",
+      "area": "memory",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
+    },
+    {
+      "name": "memory_topic_store",
+      "area": "memory",
+      "direct": false,
+      "indirect": false,
+      "central_own": false,
+      "llm": false,
+      "routed_families": [],
+      "dark_families": [],
+      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "private_development_state",
@@ -9830,12 +11278,14 @@
       "name": "compact_ground_truth",
       "area": "context",
       "direct": false,
-      "indirect": false,
+      "indirect": true,
       "central_own": false,
       "llm": false,
-      "routed_families": [],
+      "routed_families": [
+        "compaction"
+      ],
       "dark_families": [],
-      "quadrant": "FRAKOBLET-STILLE"
+      "quadrant": "KOBLET"
     },
     {
       "name": "compact_llm",
@@ -9847,17 +11297,6 @@
       "routed_families": [],
       "dark_families": [],
       "quadrant": "FRAKOBLET+LLM"
-    },
-    {
-      "name": "run_compact",
-      "area": "context",
-      "direct": false,
-      "indirect": false,
-      "central_own": false,
-      "llm": false,
-      "routed_families": [],
-      "dark_families": [],
-      "quadrant": "FRAKOBLET-STILLE"
     },
     {
       "name": "session_compact",
@@ -9883,36 +11322,37 @@
     }
   ],
   "counts": {
-    "KOBLET": 451,
-    "FRAKOBLET+LLM": 41,
-    "FRAKOBLET-STILLE": 277,
-    "FRAKOBLET+DARK": 50
+    "KOBLET": 516,
+    "FRAKOBLET-STILLE": 401,
+    "FRAKOBLET+DARK": 21,
+    "FRAKOBLET+LLM": 29
   },
   "by_area": {
     "services": {
-      "KOBLET": 416,
-      "FRAKOBLET+LLM": 39,
-      "FRAKOBLET-STILLE": 195,
-      "FRAKOBLET+DARK": 50
+      "KOBLET": 478,
+      "FRAKOBLET-STILLE": 304,
+      "FRAKOBLET+DARK": 20,
+      "FRAKOBLET+LLM": 28
     },
     "tools": {
-      "FRAKOBLET-STILLE": 66,
-      "KOBLET": 15,
-      "FRAKOBLET+LLM": 1
+      "FRAKOBLET-STILLE": 80,
+      "KOBLET": 17,
+      "FRAKOBLET+DARK": 1
     },
     "memory": {
       "KOBLET": 16,
-      "FRAKOBLET-STILLE": 2
+      "FRAKOBLET-STILLE": 5
     },
     "identity": {
       "KOBLET": 4,
       "FRAKOBLET-STILLE": 9
     },
     "context": {
-      "FRAKOBLET-STILLE": 5,
+      "FRAKOBLET-STILLE": 3,
+      "KOBLET": 1,
       "FRAKOBLET+LLM": 1
     }
   },
-  "route_family_count": 236,
-  "total": 819
+  "route_family_count": 272,
+  "total": 967
 }

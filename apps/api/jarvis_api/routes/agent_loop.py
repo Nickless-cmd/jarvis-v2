@@ -20,11 +20,27 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
+
+# Module-level names (test monkeypatches these):
+from core.tools.simple_tools import execute_tool
+from core.tools.jc_tool_catalog import unalias
+from core.tools.brain_write_gate import check_brain_write_allowed
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter()
+
+
+def _resolve_role() -> str:
+    """Caller role. Mirror /v1/tools/native (owner default). Owner token -> 'owner'."""
+    try:
+        from core.identity.workspace_context import effective_role
+        return effective_role() or "owner"
+    except Exception:
+        return "owner"
 
 
 def _sse(event: str, data: dict) -> str:
@@ -142,6 +158,64 @@ async def tools_catalog(unlocked: bool = False) -> JSONResponse:
     except Exception as exc:
         logger.exception("tools_catalog fejlede: %s", exc)
         return JSONResponse(status_code=500, content={"error": {"message": str(exc)}})
+
+
+class _ExecBody(BaseModel):
+    name: str
+    arguments: dict = {}
+    session_id: str | None = None
+    user_id: str | None = None
+
+
+@router.post("/v1/tools/execute")
+async def tools_execute(body: _ExecBody):
+    """Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call
+    here for CONTAINER-side execution.
+
+    Security path (HARD, not prompt-governed):
+      1. resolve caller role
+      2. UNALIAS runtime_bash -> bash (so the gate/dispatch see the real name)
+      3. apply the HARD brain-write gate on the UNALIASED name (deny -> HTTP 403)
+      4. run execute_tool(name, arguments) inside the caller's user/workspace context
+         so memory tools scope to the right workspace
+      5. return {"result": ..., "name": <unaliased>}
+
+    Jarvis' own autonomous path does NOT use this endpoint, so the gate only ever
+    constrains user-initiated calls — his agency is untouched.
+    """
+    role = _resolve_role()
+    real = unalias(body.name)
+    if not check_brain_write_allowed(real, role=role):
+        raise HTTPException(status_code=403,
+                            detail="brain-write not permitted for this user")
+
+    # remember_this reads session/turn id from ARGUMENTS (not a ContextVar):
+    # core.tools.jarvis_brain_tools._exec_remember_this looks at
+    # args["_runtime_session_id"|"session_id"] / ["_runtime_turn_id"|"turn_id"].
+    # Forward body.session_id through the arguments dict so rate-limit keying works.
+    arguments = dict(body.arguments or {})
+    if body.session_id and not arguments.get("_runtime_session_id") \
+            and not arguments.get("session_id"):
+        arguments["_runtime_session_id"] = body.session_id
+
+    # Scoping choice: user_context() is a SYNC contextmanager backed by a ContextVar.
+    # run_in_threadpool runs execute_tool in a WORKER thread, so the ContextVar must be
+    # entered INSIDE that worker thread — otherwise memory tools would see the default
+    # ("bjorn") context of the event-loop thread, not the caller's. We therefore enter
+    # user_context() inside the sync helper that the threadpool runs, guaranteeing the
+    # ContextVar is visible to execute_tool on the SAME thread that executes it.
+    # For the owner (empty user_id) this yields Bjørn's default "bjorn" workspace — the
+    # same behaviour as today's owner path (do not break owner).
+    def _run() -> Any:
+        from core.identity.workspace_context import user_context
+        ctx_kwargs: dict[str, str] = {}
+        if body.user_id:
+            ctx_kwargs["discord_id"] = str(body.user_id)
+        with user_context(**ctx_kwargs):
+            return execute_tool(real, arguments)
+
+    result = await run_in_threadpool(_run)
+    return {"result": result, "name": real}
 
 
 @router.post("/v1/tools/native", response_model=None)

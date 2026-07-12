@@ -282,6 +282,31 @@ def _upsert_signal(
     return resolved_id, meta
 
 
+# ── runtime_state read-cache (2026-07-12, connection-churn-fix, del 2) ──
+# Profilering: ÉN prompt-assembly åbnede 1.091 sqlite-forbindelser — de fleste fra
+# gentagne get_runtime_state_value/_kv_get-opslag af SAMME flag/vægt (composer læste
+# vægte 85×). Kort TTL-cache kollapser dem: samme nøgle læses fra DB max hver _RS_TTL sek.
+# Write-through på set → egen-proces ser ændringer straks; kryds-proces ≤ TTL lag (fint for
+# flags/config/state). Del 1 (thread-local connection pooling) er den systemiske fortsættelse.
+import time as _time_rs
+import threading as _threading_rs
+_RS_CACHE: dict[str, tuple[object, float]] = {}
+_RS_TTL = 2.0
+_RS_LOCK = _threading_rs.Lock()
+_RS_MISS = object()
+
+
+def _rs_cache_put(key: str, value: object) -> None:
+    with _RS_LOCK:
+        _RS_CACHE[key] = (value, _time_rs.monotonic() + _RS_TTL)
+
+
+def clear_runtime_state_cache() -> None:
+    """Ryd hele read-cachen (til tests / tvungen frisk læsning). Self-safe."""
+    with _RS_LOCK:
+        _RS_CACHE.clear()
+
+
 def set_runtime_state_value(key: str, value: object, *, updated_at: str = "") -> None:
     normalized_key = str(key or "").strip()
     if not normalized_key:
@@ -299,23 +324,34 @@ def set_runtime_state_value(key: str, value: object, *, updated_at: str = "") ->
             """,
             (normalized_key, payload, timestamp),
         )
+    _rs_cache_put(normalized_key, value)  # write-through: egen-proces ser det straks
 
 
 def get_runtime_state_value(key: str, default: object = None) -> object:
     normalized_key = str(key or "").strip()
     if not normalized_key:
         return default
+    # Read-cache (se set_runtime_state_value): frisk hit → ingen sqlite-forbindelse.
+    _now = _time_rs.monotonic()
+    with _RS_LOCK:
+        _hit = _RS_CACHE.get(normalized_key)
+        if _hit is not None and _hit[1] > _now:
+            return default if _hit[0] is _RS_MISS else _hit[0]
     with connect() as conn:
         row = conn.execute(
             "SELECT value_json FROM runtime_state_kv WHERE key = ?",
             (normalized_key,),
         ).fetchone()
     if row is None:
+        _rs_cache_put(normalized_key, _RS_MISS)
         return default
     try:
-        return _json.loads(str(row["value_json"]))
+        _val = _json.loads(str(row["value_json"]))
     except Exception:
+        _rs_cache_put(normalized_key, _RS_MISS)
         return default
+    _rs_cache_put(normalized_key, _val)
+    return _val
 
 
 

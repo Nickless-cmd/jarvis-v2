@@ -128,6 +128,22 @@ async def list_native_tools() -> JSONResponse:
         return JSONResponse(status_code=500, content={"error": {"message": str(exc)}})
 
 
+@router.get("/v1/tools/catalog")
+async def tools_catalog(unlocked: bool = False) -> JSONResponse:
+    """Kurateret jc tool-katalog. Låst: companions + load_more. Åbnet: + runtime_-aliaser.
+
+    Rolle hardcodes til "owner" — samme mønster som GET /v1/tools/native ovenfor
+    (ingen auth-dependency; owner-token er den etablerede default for disse routes).
+    """
+    try:
+        from core.tools.jc_tool_catalog import build_jc_catalog
+        tools = build_jc_catalog(role="owner", unlocked=bool(unlocked))
+        return JSONResponse(content={"tools": tools, "unlocked": bool(unlocked)})
+    except Exception as exc:
+        logger.exception("tools_catalog fejlede: %s", exc)
+        return JSONResponse(status_code=500, content={"error": {"message": str(exc)}})
+
+
 @router.post("/v1/tools/native", response_model=None)
 async def toggle_native_tool(request: Request) -> JSONResponse:
     """Lås/lås-op et native tool. Body: {name: str, enabled: bool}."""

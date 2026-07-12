@@ -350,7 +350,17 @@ def build_cognitive_state_for_prompt(*, compact: bool = False, force: bool = Fal
     )
     _early_user_mood = _safe_call(get_latest_cognitive_user_emotional_state)
     future_recall_for_message = None
-    if not compact and _early_user_mood:
+    # Baggrunds-recall (12. jul): når slået til kører recall_for_message i
+    # post-tur-processeringen (recall_scheduler), kædet på den RIGTIGE besked, så
+    # vi IKKE længere skal starte + vente på scoringen inline her. build_recall_
+    # prompt_section læser blot de allerede-aktive minder (samme ét-turs-kadence,
+    # −TTFT). Kun når kill-switchen er OFF falder vi tilbage til inline-scoringen.
+    try:
+        from core.services.recall_scheduler import background_recall_enabled
+        _bg_recall = background_recall_enabled()
+    except Exception:
+        _bg_recall = False
+    if not compact and _early_user_mood and not _bg_recall:
         _recall_message_text = str(_early_user_mood.get("user_message_preview") or "")
         _recall_emotional_state: dict[str, object] = {}
         try:

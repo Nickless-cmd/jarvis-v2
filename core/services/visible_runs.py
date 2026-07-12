@@ -6546,6 +6546,17 @@ def _update_cognitive_systems_async(
         except Exception:
             pass
 
+        # --- Baggrunds-recall (12. jul): kør den tunge relevans-scoring HER, på
+        # turens faktiske besked, i stedet for inline i næste turs prompt-assembly.
+        # Bevarer samme ét-turs-kadence (minder for denne besked er klar til næste
+        # tur), samme LLM-dommer — men fjerner ~2-4,6s fra TTFT og undgår at recall
+        # scorer imod en autonom runs tekst. Kill-switch: background_recall_enabled.
+        try:
+            from core.services.recall_scheduler import trigger_background_recall
+            trigger_background_recall(user_message)
+        except Exception:
+            pass
+
         # --- Experiential memory ---
         try:
             from core.services.experiential_memory import (

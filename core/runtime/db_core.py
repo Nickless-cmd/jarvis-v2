@@ -66,37 +66,85 @@ class ClosingConnection(sqlite3.Connection):
             self.close()
 
 
-def connect() -> sqlite3.Connection:
-    global _DB_WAL_INITIALIZED
+class PooledConnection(sqlite3.Connection):
+    """Som ClosingConnection men LUKKER IKKE ved __exit__/close() — poolen ejer
+    livscyklussen (thread-local genbrug). __exit__ committer/rollbacker som normalt."""
+    def __exit__(self, exc_type, exc_value, traceback):
+        # commit på succes / rollback på fejl (super), MEN behold forbindelsen åben.
+        return super().__exit__(exc_type, exc_value, traceback)
+
+    def close(self):  # no-op — brug _hard_close_pooled() for rigtig lukning
+        pass
+
+
+import os as _os_pool
+import threading as _threading_pool
+_conn_pool = _threading_pool.local()
+# Kill-switch: JARVIS_DB_NOPOOL=1 → gammel adfærd (frisk forbindelse pr. connect()).
+_POOL_DISABLED = bool(_os_pool.environ.get("JARVIS_DB_NOPOOL"))
+
+
+def _make_connection(_factory) -> sqlite3.Connection:
+    """Åbn ÉN ny sqlite-forbindelse + sæt PRAGMAs (busy_timeout, WAL-once, synchronous)."""
+    global _DB_WAL_INITIALIZED, _DB_CONNECT_LOGGED
     if not _DB_WAL_INITIALIZED:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, factory=ClosingConnection)
+    conn = sqlite3.connect(DB_PATH, factory=_factory)
     conn.row_factory = sqlite3.Row
-    # Vent på DB-lås i stedet for at fejle ØJEBLIKKELIGT (OperationalError: database is locked).
-    # Rygraden (eventbus-writer-tråd) + mange samtidige læsere/skrivere på tværs af to processer
-    # → uden dette fejler skriv ved kortvarig kontention. 5s rider enhver normal lås af. (1. jul)
     try:
-        conn.execute("PRAGMA busy_timeout = 5000")   # per-forbindelse — altid
+        conn.execute("PRAGMA busy_timeout = 5000")   # rider korte låse af (§1. jul)
         if not _DB_WAL_INITIALIZED:
-            # WAL (Bjørn 4. jul — survival-branden): default rollback-journal EKSKLUSIV-låser HELE
-            # DB-filen (1,16 GB) ved enhver writer → under producer-write-load (soul-lag + 117 bridge-
-            # families på tværs af 2 processer) blokerede visible-lanens persist/trace op til 5s →
-            # event-loop-sultning i api (--workers 1) → tomme svar → survival-fallback. WAL lader
-            # LÆSERE + én writer køre SAMTIDIGT → ingen fil-lås-blokering. Reversibelt:
-            # PRAGMA journal_mode=DELETE. Kræver samme filsystem (opfyldt — lokal disk i containeren).
-            # PERSISTENT i DB-headeren → kun sat ÉN gang pr. proces (6. jul CPU-fix), IKKE pr. query.
-            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA journal_mode = WAL")  # læsere + 1 writer samtidigt (§4. jul)
             _DB_WAL_INITIALIZED = True
-        # synchronous=NORMAL er per-forbindelse (nulstilles pr. connect) → skal sættes hver gang.
-        # Crash-sikkert under WAL (kun risiko: tab af sidste commit ved strømsvigt). Billig (ingen I/O).
         conn.execute("PRAGMA synchronous = NORMAL")
     except Exception:
         pass
-    global _DB_CONNECT_LOGGED
     if not _DB_CONNECT_LOGGED:
-        rows = conn.execute("PRAGMA database_list").fetchall()
-        _core_logger.info("DB_CONNECT_FIRST: path=%s | db_list=%s", DB_PATH, rows)
+        try:
+            rows = conn.execute("PRAGMA database_list").fetchall()
+            _core_logger.info("DB_CONNECT_FIRST: path=%s | db_list=%s", DB_PATH, rows)
+        except Exception:
+            pass
         _DB_CONNECT_LOGGED = True
+    return conn
+
+
+def close_pooled_connection() -> None:
+    """Luk DENNE tråds pooled forbindelse rigtigt (shutdown/tests). Self-safe."""
+    conn = getattr(_conn_pool, "conn", None)
+    if conn is not None:
+        try:
+            sqlite3.Connection.close(conn)
+        except Exception:
+            pass
+        _conn_pool.conn = None
+
+
+def connect() -> sqlite3.Connection:
+    """DEL 1 — connection pooling (2026-07-12): genbrug ÉN thread-local forbindelse i
+    stedet for at åbne en frisk (open + PRAGMA×2 + close) ved HVERT opslag. Profilering
+    viste 1.091 sqlite-connects pr. prompt-assembly → direkte overhead + WAL-lås-kontention
+    (samme familie som survival-branden). Nu: ~1 pr. tråd. busy_timeout/synchronous/WAL er
+    persistente for forbindelsens levetid → sikkert at sætte én gang. `with connect() as c:`
+    committer stadig (PooledConnection.__exit__), men lukker ikke. Kill-switch:
+    JARVIS_DB_NOPOOL=1 → frisk forbindelse pr. kald (gammel adfærd)."""
+    if _POOL_DISABLED:
+        return _make_connection(ClosingConnection)
+    conn = getattr(_conn_pool, "conn", None)
+    if conn is not None:
+        try:
+            if conn.in_transaction:
+                conn.rollback()          # defensivt: ryd evt. efterladt transaktion
+            conn.execute("SELECT 1")     # liveness — billigt ift. fuld connect
+            return conn
+        except Exception:
+            try:
+                sqlite3.Connection.close(conn)
+            except Exception:
+                pass
+            _conn_pool.conn = None
+    conn = _make_connection(PooledConnection)
+    _conn_pool.conn = conn
     return conn
 
 

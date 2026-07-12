@@ -34,23 +34,31 @@ de på navn. Det er ikke bare UX-støj: **klient/container-grænsen er en sikker
 
 ## 3. Arkitektur
 
-### 3.1 Navnerum (kun de kolliderende primitiver)
+### 3.1 Navnerum (kun de faktisk kolliderende primitiver)
 
-Kun fil/shell-primitiverne kolliderer. De præfikses i jc-præsentationen når begge domæner
-er i scope:
+**Verificeret kollisions-sæt (2026-07-12, mod core/tools):** kun disse fire native tools
+deler navn med klientens lokale tools:
 
-| lokal (klient) | runtime (container) |
+| lokal (klient) | runtime (container) — alias i jc |
 |---|---|
 | `bash` | `runtime_bash` |
-| `read_file` | `runtime_read` |
-| `write_file` | `runtime_write` |
-| `edit_file` | `runtime_edit` |
-| `glob` / `grep` | `runtime_glob` / `runtime_grep` |
-| `ls` (hvis eksponeret) | `runtime_ls` |
+| `read_file` | `runtime_read_file` |
+| `write_file` | `runtime_write_file` |
+| `edit_file` | `runtime_edit_file` |
 
-Memory/mood/identity-tools kolliderer IKKE (unikke navne) → **intet præfiks**. De
-præsenteres rent, men eksekveres i containeren (runtime-forwarded), fordi de virker på
-Jarvis' hukommelse/tilstand.
+Aliaset præfikser det RIGTIGE navn (`runtime_` + `read_file`), så jc trivielt kan strippe
+præfikset og forwarde til containerens rigtige tool-navn.
+
+**Kolliderer IKKE (skal ikke aliases):**
+- Klientens `glob`/`grep`/`web_fetch`/`web_scrape` har ingen plain-native modstykker
+  (runtime har kun `operator_glob`/`operator_grep`) → forbliver plain, lokal-eksekveret.
+- Memory/mood/identity-tools har unikke navne → intet præfiks. Præsenteres rent, men
+  runtime-forwarded (de virker på Jarvis' hukommelse/tilstand i containeren).
+
+**Tredje domæne — `operator_*` (~55 tools):** styrer Bjørns DESKTOP via desk-broen (mus,
+tastatur, browser, screenshot, bash-på-desktop). Allerede navngivet (`operator_`-præfiks) →
+ingen kollision. Ligger i load_more (owner). Vigtigt: routeren er derfor **3-vejs**, ikke
+2-vejs (se §4).
 
 ### 3.2 Fast default-sæt (jc, owner)
 
@@ -85,11 +93,22 @@ Brugeren må drive det direkte. Tools: `search_memory`, `read/write_memory_topic
 **Domæne 2 — Jarvis' brain (ét sind, cross-user).** Jarvis bestemmer **selv** om han vil
 skrive (`remember_this`), soft-arkivere/slippe (`archive_brain_entry`) noget han har om en
 bruger. Ikke bruger-kommanderet — hans agentur. **Owner (Bjørn) er undtagelsen: fuld,
-direkte adgang.** For ikke-owner forstår prompten disse som *hans* redskaber, ikke en
-kommando over hans sind.
+direkte adgang.**
+
+**BESLUTNING (soft vs hard gate):** "For ikke-owner er det Jarvis' valg" kan enten være
+(a) **soft** — prompt-instruktion, tool findes i modellens sæt men prompten siger "ikke på
+bruger-kommando", eller (b) **hard** — en gate-check i selve brain-skrive-stien der afviser
+et skrive-kald hvis initieret på en ikke-owners direkte kommando (Jarvis' egen autonome sti
+går uden om gaten). **Anbefaling: hard for skrivning** (`remember_this`/`archive_brain_entry`),
+fordi "bruger skriver i Jarvis' sind" er en identitets-/sikkerhedsgrænse der ikke bør hvile
+på at modellen adlyder en prompt. Soft er ikke robust nok her. Afklares før plan.
 
 **Hard-forget holdes UDE af default:** `release_memory` er IRREVOKABEL ("ingen vej
 tilbage") → owner-only / dyb overvejelse, aldrig i det hurtige sæt.
+
+**Net-nyt der skal bygges:** `load_more_tools` er ikke et eksisterende tool — det skal
+skabes (owner-gated meta-tool der afslører runtime-boksen). Resten (companions, operator,
+brain-tools) findes allerede.
 
 ### 3.4 load_more_tools (progressiv afsløring)
 
@@ -111,14 +130,22 @@ Default-sættet er selv tier-bevidst og slotter ind i den eksisterende jd-gating
   `archive_brain_entry`) er Jarvis' valg (ikke bruger-drevet); `load_more_tools`/runtime-shell
   ikke tilgængelig. Præcis matrix afgøres af eksisterende tier-tabel ved plan-tid.
 
-## 4. Eksekverings-flow
+## 4. Eksekverings-flow (3-vejs router)
 
 1. Model kalder et tool.
-2. jc's executor kigger på navnet:
-   - kendt lokalt tool (intet `runtime_`-præfiks, i LOCAL_TOOLS) → eksekvér lokalt.
-   - `runtime_`-præfiks ELLER kendt native companion → forward til container via agent-step;
-     containeren scoper til sessionens bruger/workspace.
+2. jc's executor router på navnet — TRE mål:
+   - **Lokal (klient):** navn i `LOCAL_TOOLS` uden `runtime_`-præfiks (`bash`, `read_file`,
+     `glob`, `web_fetch`, …) → eksekvér lokalt på Bjørns maskine.
+   - **Container (runtime):** `runtime_`-præfiks → STRIP præfikset (`runtime_bash` → `bash`)
+     og forward til container via agent-step. Kendte native companions (unikke navne som
+     `remember_this`, `read_mood`) forwardes også hertil (intet strip nødvendigt).
+     Containeren scoper til sessionens `user_id`/`workspace_name`.
+   - **Operator (desktop):** `operator_`-præfiks → forward til desk/operator-broen (kun owner,
+     kun når broen er live). Uden for kerne-fixet, men routeren skal kende domænet.
 3. Resultat streames tilbage i samme content-blok-model som i dag.
+
+**Invariant:** præfikset (eller LOCAL_TOOLS-medlemskab) afgør ENTYDIGT målet. Ingen inferens,
+intet gæt. Et ukendt/ambiguøst navn afvises frem for at gætte maskine.
 
 ## 5. Non-goals
 

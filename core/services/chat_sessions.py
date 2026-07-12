@@ -383,6 +383,26 @@ def append_chat_message(
 
     timestamp = created_at or datetime.now(UTC).isoformat()
 
+    # Cross-client dedup (2026-07-12): sessioner holdes af serveren og DELES på tværs
+    # af live-klienter (desk chat/code, mobil-companion, jarvis-code) der mirror/stream
+    # til hinanden. Den SAMME brugerbesked kan derfor lande her to gange (mirror/retry)
+    # → modellen ser beskeden dobbelt ("jeg fik din besked to gange"). Verificeret i
+    # prod: 249 på-hinanden-følgende identiske bruger-dubletter, nogle 3× i træk.
+    # Dedup ved konvergens-punktet: hvis den SENESTE besked i sessionen er en IDENTISK
+    # brugerbesked inden for vinduet (= intet assistent-svar imellem), er det en dublet
+    # → returnér den eksisterende række uden at indsætte igen (og uden at dobbelt-fyre
+    # feel-layer-signalerne nedenfor). Fanger IKKE ægte gentagelser: de har et
+    # assistent-svar imellem, så seneste besked er 'assistant', ikke 'user'.
+    if normalized_role == "user":
+        try:
+            _dup = _recent_duplicate_user_message(normalized_session, normalized_content, timestamp)
+        except Exception:
+            _dup = None
+        if _dup is not None:
+            print(f"[chat] dedup: droppede dublet-brugerbesked session={normalized_session[:20]} "
+                  f"len={len(normalized_content)}", flush=True)
+            return _dup
+
     # Feel-layer: let incoming user text produce a micro-resonance signal
     # BEFORE meaning-making. Fire-and-forget — never break chat persistence.
     if normalized_role == "user":
@@ -491,6 +511,44 @@ def append_chat_message(
         "content_json": content_json,
         "ts": _time_label(timestamp),
         "created_at": timestamp,
+    }
+
+
+_DEDUP_WINDOW_SECONDS = 900  # 15 min: fanger mirror/retry + perceived-failure-resends
+
+
+def _recent_duplicate_user_message(
+    session_id: str, content: str, now_ts: str
+) -> dict[str, object] | None:
+    """Returnér den seneste besked-række HVIS den er en identisk brugerbesked inden
+    for dedup-vinduet (intet assistent-svar imellem), ellers None. Self-safe."""
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT message_id, role, content, reasoning_content, content_json, created_at
+            FROM chat_messages
+            WHERE session_id = ? AND role != 'compact_marker'
+            ORDER BY id DESC LIMIT 1
+            """,
+            (session_id,),
+        ).fetchone()
+    if row is None or str(row["role"]) != "user" or str(row["content"]) != content:
+        return None
+    try:
+        prev = datetime.fromisoformat(str(row["created_at"]).replace("Z", "+00:00"))
+        now = datetime.fromisoformat(str(now_ts).replace("Z", "+00:00"))
+        if (now - prev).total_seconds() > _DEDUP_WINDOW_SECONDS:
+            return None  # for gammel → behandl som ny (sikkerheds-ventil)
+    except Exception:
+        pass  # kan ikke parse tid → seneste er identisk user, dedup konservativt
+    return {
+        "id": str(row["message_id"]),
+        "role": "user",
+        "content": content,
+        "reasoning_content": str(row["reasoning_content"] or ""),
+        "content_json": row["content_json"],
+        "ts": _time_label(str(row["created_at"])),
+        "created_at": str(row["created_at"]),
     }
 
 

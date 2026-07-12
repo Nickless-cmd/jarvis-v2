@@ -20,11 +20,27 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
+
+# Module-level names (test monkeypatches these):
+from core.tools.simple_tools import execute_tool
+from core.tools.jc_tool_catalog import unalias
+from core.tools.brain_write_gate import check_brain_write_allowed
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter()
+
+
+def _resolve_role() -> str:
+    """Caller role. Mirror /v1/tools/native (owner default). Owner token -> 'owner'."""
+    try:
+        from core.identity.workspace_context import effective_role
+        return effective_role() or "owner"
+    except Exception:
+        return "owner"
 
 
 def _sse(event: str, data: dict) -> str:
@@ -126,6 +142,115 @@ async def list_native_tools() -> JSONResponse:
     except Exception as exc:
         logger.exception("list_native_tools fejlede: %s", exc)
         return JSONResponse(status_code=500, content={"error": {"message": str(exc)}})
+
+
+@router.get("/v1/tools/catalog")
+async def tools_catalog(unlocked: bool = False) -> JSONResponse:
+    """Kurateret jc tool-katalog. Låst: companions + load_more. Åbnet: + runtime_-aliaser.
+
+    Rolle hardcodes til "owner" — samme mønster som GET /v1/tools/native ovenfor
+    (ingen auth-dependency; owner-token er den etablerede default for disse routes).
+    """
+    try:
+        from core.tools.jc_tool_catalog import build_jc_catalog
+        tools = build_jc_catalog(role="owner", unlocked=bool(unlocked))
+        return JSONResponse(content={"tools": tools, "unlocked": bool(unlocked)})
+    except Exception as exc:
+        logger.exception("tools_catalog fejlede: %s", exc)
+        return JSONResponse(status_code=500, content={"error": {"message": str(exc)}})
+
+
+class _ExecBody(BaseModel):
+    name: str
+    arguments: dict = {}
+    session_id: str | None = None
+    turn_id: str | None = None
+    user_id: str | None = None
+
+
+@router.post("/v1/tools/execute")
+async def tools_execute(body: _ExecBody):
+    """Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call
+    here for CONTAINER-side execution.
+
+    Security path (HARD, not prompt-governed):
+      1. resolve caller role
+      2. UNALIAS runtime_bash -> bash (so the gate/dispatch see the real name)
+      3. apply the HARD brain-write gate on the UNALIASED name (deny -> HTTP 403)
+      4. run execute_tool(name, arguments) inside the caller's user/workspace context
+         so memory tools scope to the right workspace
+      5. return {"result": ..., "name": <unaliased>}
+
+    Jarvis' own autonomous path does NOT use this endpoint, so the gate only ever
+    constrains user-initiated calls — his agency is untouched.
+    """
+    role = _resolve_role()
+    # Finding A: normalize ONCE, then use the SAME `real` for the gate AND dispatch so
+    # they can never diverge on casing/whitespace/alias. Strip+lower BEFORE unalias so a
+    # messy alias ("  RUNTIME_BASH  ") is recognised and resolved to its canonical name.
+    # All native tool names are lowercase snake_case → .lower() is safe and the
+    # gate/dispatcher stay in lockstep.
+    real = unalias(body.name.strip().lower())
+    if not check_brain_write_allowed(real, role=role):
+        raise HTTPException(status_code=403,
+                            detail="brain-write not permitted for this user")
+
+    # remember_this reads session/turn id from ARGUMENTS (not a ContextVar):
+    # core.tools.jarvis_brain_tools._exec_remember_this looks at
+    # args["_runtime_session_id"|"session_id"] / ["_runtime_turn_id"|"turn_id"] and
+    # returns {"error": "context_missing"} unless BOTH are present. Forward
+    # body.session_id / body.turn_id through the arguments dict so the write persists
+    # and the 5/turn rate-limit keys on a real per-turn id. Synthesize a non-empty
+    # turn_id when the client did not thread one, so forwarded writes never fail on a
+    # missing turn context. setdefault semantics: never clobber an id the caller already
+    # placed in the arguments.
+    import uuid
+    arguments = dict(body.arguments or {})
+    if not arguments.get("_runtime_session_id") and not arguments.get("session_id"):
+        if body.session_id:
+            arguments["_runtime_session_id"] = body.session_id
+    if not arguments.get("_runtime_turn_id") and not arguments.get("turn_id"):
+        arguments["_runtime_turn_id"] = body.turn_id or f"jc-{uuid.uuid4().hex[:16]}"
+
+    # Scoping choice: user_context() is a SYNC contextmanager backed by a ContextVar.
+    # run_in_threadpool runs execute_tool in a WORKER thread, so the ContextVar must be
+    # entered INSIDE that worker thread — otherwise memory tools would see the default
+    # ("bjorn") context of the event-loop thread, not the caller's. We therefore enter
+    # user_context() inside the sync helper that the threadpool runs, guaranteeing the
+    # ContextVar is visible to execute_tool on the SAME thread that executes it.
+    # For the owner (empty user_id) this yields Bjørn's default "bjorn" workspace — the
+    # same behaviour as today's owner path (do not break owner).
+    #
+    # Finding B (privilege escalation): user_context() does NOT carry a role — it calls
+    # set_context() without one, so the ContextVar's role resets to "" (owner-equivalent
+    # at the inner gate `_role not in ("", "owner")`). A non-owner caller would then run
+    # every forwarded tool unscoped-by-role. Fix: re-set the resolved caller role on the
+    # workspace state user_context() established, on the SAME worker thread, BEFORE
+    # calling execute_tool — so the inner server-side auth gate enforces the real role.
+    def _run() -> Any:
+        from core.identity.workspace_context import (
+            user_context, set_context, reset_context, _current_state,
+        )
+        ctx_kwargs: dict[str, str] = {}
+        if body.user_id:
+            ctx_kwargs["discord_id"] = str(body.user_id)
+        with user_context(**ctx_kwargs):
+            base = _current_state.get()
+            role_token = set_context(
+                workspace_name=base.workspace_name,
+                user_id=base.user_id,
+                user_display_name=base.user_display_name,
+                role=role,
+                channel=base.channel,
+                session_id=base.session_id,
+            )
+            try:
+                return execute_tool(real, arguments)
+            finally:
+                reset_context(role_token)
+
+    result = await run_in_threadpool(_run)
+    return {"result": result, "name": real}
 
 
 @router.post("/v1/tools/native", response_model=None)

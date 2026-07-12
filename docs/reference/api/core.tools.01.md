@@ -63,6 +63,13 @@ _Persistent bash sessions — Jarvis' one-shot bash forced him to restart his_
 | function | `_exec_bash_session_close` | `(args)` | — | [src](../../../core/tools/bash_session.py#L504) |
 | function | `_exec_bash_session_list` | `(_args)` | — | [src](../../../core/tools/bash_session.py#L511) |
 
+## `core/tools/brain_write_gate.py`
+_HARD gate for user-initiated writes to Jarvis' brain._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `check_brain_write_allowed` | `(name, *, role)` | True if a user-initiated call to `name` is permitted for `role`. | [src](../../../core/tools/brain_write_gate.py#L13) |
+
 ## `core/tools/browser_tools.py`
 _Browser control tools for Jarvis — Playwright-backed._
 
@@ -372,6 +379,18 @@ _Visible Jarvis' værktøjer til hjernen._
 | function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L420) |
 | function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L496) |
 
+## `core/tools/jc_tool_catalog.py`
+_Single source of truth for what jarvis-code (jc) presents as tools._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `alias_for` | `(name)` | runtime_ alias for a colliding tool name. | [src](../../../core/tools/jc_tool_catalog.py#L28) |
+| function | `unalias` | `(name)` | Strip the runtime_ prefix iff it maps to a colliding tool; else unchanged. | [src](../../../core/tools/jc_tool_catalog.py#L33) |
+| function | `is_runtime_alias` | `(name)` | True only for runtime_<one-of-the-four-colliding-tools>. | [src](../../../core/tools/jc_tool_catalog.py#L40) |
+| function | `_def_name` | `(d)` | — | [src](../../../core/tools/jc_tool_catalog.py#L61) |
+| function | `_all_native_defs` | `(role)` | Full native tool defs for a role. Wrapped as a module function for test injection. | [src](../../../core/tools/jc_tool_catalog.py#L65) |
+| function | `build_jc_catalog` | `(*, role, unlocked)` | Native-side tool defs jc should present (WITHOUT the 8 local client tools — | [src](../../../core/tools/jc_tool_catalog.py#L71) |
+
 ## `core/tools/mail_tools.py`
 _Mail tools for Jarvis — jarvis@srvlab.dk_
 
@@ -488,22 +507,4 @@ _Unified outgoing notification pipeline — ntfy, Discord, Slack, generic webhoo
 | function | `_exec_notify_channel_add` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L133) |
 | function | `_exec_notify_channel_list` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L157) |
 | function | `_exec_notify_channel_delete` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L168) |
-
-## `core/tools/nudge_broend_tools.py`
-_Nudge-brønd tools — Jarvis inspicerer, sender og afviser nudges._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_nudge_inspect` | `(args)` | Vis pending nudges. | [src](../../../core/tools/nudge_broend_tools.py#L12) |
-| function | `_exec_nudge_send` | `(args)` | Send en nudge via notify_user (webchat/Discord). | [src](../../../core/tools/nudge_broend_tools.py#L31) |
-| function | `_exec_nudge_dismiss` | `(args)` | Afvis ét eller alle nudges. | [src](../../../core/tools/nudge_broend_tools.py#L79) |
-
-## `core/tools/nudge_tools.py`
-_Tools Jarvis uses to surface or dismiss pending nudges._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_list_pending_nudges` | `(args)` | — | [src](../../../core/tools/nudge_tools.py#L22) |
-| function | `_exec_surface_nudge` | `(args)` | — | [src](../../../core/tools/nudge_tools.py#L31) |
-| function | `_exec_dismiss_nudge` | `(args)` | — | [src](../../../core/tools/nudge_tools.py#L43) |
 

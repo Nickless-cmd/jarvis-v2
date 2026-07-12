@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/nudge_broend_tools.py`
+_Nudge-brønd tools — Jarvis inspicerer, sender og afviser nudges._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_nudge_inspect` | `(args)` | Vis pending nudges. | [src](../../../core/tools/nudge_broend_tools.py#L12) |
+| function | `_exec_nudge_send` | `(args)` | Send en nudge via notify_user (webchat/Discord). | [src](../../../core/tools/nudge_broend_tools.py#L31) |
+| function | `_exec_nudge_dismiss` | `(args)` | Afvis ét eller alle nudges. | [src](../../../core/tools/nudge_broend_tools.py#L79) |
+
+## `core/tools/nudge_tools.py`
+_Tools Jarvis uses to surface or dismiss pending nudges._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_list_pending_nudges` | `(args)` | — | [src](../../../core/tools/nudge_tools.py#L22) |
+| function | `_exec_surface_nudge` | `(args)` | — | [src](../../../core/tools/nudge_tools.py#L31) |
+| function | `_exec_dismiss_nudge` | `(args)` | — | [src](../../../core/tools/nudge_tools.py#L43) |
+
 ## `core/tools/operator_bash_session.py`
 _operator_bash_session — vedvarende-FØLELSE bash-session på operatorens maskine._
 
@@ -633,31 +651,4 @@ _TikTok content generation tool — wraps jarvis_pollinations_pipeline._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_exec_tiktok_generate_video` | `(args)` | — | [src](../../../core/tools/tiktok_content_tools.py#L21) |
-
-## `core/tools/tiktok_tools.py`
-_TikTok auto-uploader integration tools for Jarvis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_tiktok_upload` | `(args)` | Upload a video to TikTok using tiktokautouploader. | [src](../../../core/tools/tiktok_tools.py#L38) |
-| function | `_exec_tiktok_login` | `(args)` | Log into TikTok via headless browser using username + password. | [src](../../../core/tools/tiktok_tools.py#L114) |
-| function | `_exec_tiktok_show` | `(args)` | List saved TikTok cookie profiles and available videos. | [src](../../../core/tools/tiktok_tools.py#L185) |
-| function | `_get_display` | `()` | Return a DISPLAY value for browser operations. | [src](../../../core/tools/tiktok_tools.py#L217) |
-
-## `core/tools/tool_scoping.py`
-_Tool-scoping policy — hvilke værktøjer er tilgængelige pr. rolle og mode._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_local_execution_tool` | `(name)` | True hvis værktøjet kører lokalt i code mode (resultat forlader ikke maskinen). | [src](../../../core/tools/tool_scoping.py#L133) |
-| function | `current_tool_scope` | `()` | Nuværende tool-scope ("chat" eller "" for ubegrænset). | [src](../../../core/tools/tool_scoping.py#L144) |
-| function | `set_tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L149) |
-| function | `reset_tool_scope` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L153) |
-| function | `tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L158) |
-| function | `_owner_has_live_bridge` | `()` | True hvis der findes en levende desk-bro for nuværende bruger (presence, cross-proces). | [src](../../../core/tools/tool_scoping.py#L166) |
-| function | `allowed_tool_names` | `(*, role, scope, all_names)` | Beregn det tilladte sæt tool-navne for (role, scope). | [src](../../../core/tools/tool_scoping.py#L180) |
-| function | `is_tool_allowed` | `(*, role, scope, name)` | Må (role, scope) eksekvere værktøjet `name`? (Spor A — serverside håndhævelse.) | [src](../../../core/tools/tool_scoping.py#L226) |
-| function | `_apply_computer_use_policy` | `(result)` | Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har | [src](../../../core/tools/tool_scoping.py#L239) |
-| function | `_fn_name` | `(td)` | — | [src](../../../core/tools/tool_scoping.py#L263) |
-| function | `filter_tool_definitions` | `(defs, *, role, scope)` | Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope). | [src](../../../core/tools/tool_scoping.py#L267) |
 

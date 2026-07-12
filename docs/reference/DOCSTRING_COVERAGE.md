@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 5917/12320 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 5926/12330 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 5917/12320 functions/methods documented (48%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 546 | 726 | 75% |
+| `apps.api.jarvis_api.routes` | 549 | 729 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 57 | 155 | 36% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -31,7 +31,7 @@ Generated from source. 5917/12320 functions/methods documented (48%). The list b
 | `core.services.visible_runs_sections` | 7 | 17 | 41% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 354 | 799 | 44% |
+| `core.tools` | 360 | 806 | 44% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |

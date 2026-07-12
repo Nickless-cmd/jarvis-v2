@@ -62,6 +62,67 @@ def test_execute_brain_write_denied_for_non_owner(monkeypatch):
     assert "brain" in r.json()["detail"].lower()
 
 
+def test_execute_normalizes_name(monkeypatch):
+    """Finding A: the SAME normalized name (unalias+strip+lower) must reach both the
+    brain-write gate and execute_tool. A messy alias with surrounding whitespace/caps
+    must still resolve to the canonical dispatch name."""
+    calls = {}
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.routes.agent_loop.execute_tool",
+        lambda name, arguments: calls.setdefault("name", name) or {"ok": True},
+    )
+    r = client.post("/v1/tools/execute",
+                    json={"name": "  RUNTIME_BASH  ", "arguments": {"command": "ls"}})
+    assert r.status_code == 200
+    assert calls["name"] == "bash"
+    assert r.json()["name"] == "bash"
+
+
+def test_execute_non_owner_role_reaches_tool_layer(monkeypatch):
+    """Finding B: a non-owner caller's real role must be visible to execute_tool via the
+    workspace ContextVar — NOT reset to "" (owner-equivalent). This proves the inner
+    server-side auth gate (simple_tools:_execute_tool_impl) sees the true role."""
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.routes.agent_loop._resolve_role", lambda *a, **k: "member"
+    )
+    seen = {}
+    def _fake_execute_tool(name, arguments):
+        from core.identity.workspace_context import effective_role
+        seen["role"] = effective_role()
+        return {"ok": True}
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.routes.agent_loop.execute_tool", _fake_execute_tool
+    )
+    # search_memory is not a brain-write tool → passes the endpoint gate, so we reach
+    # execute_tool and can observe the role the inner gate would enforce on.
+    r = client.post("/v1/tools/execute",
+                    json={"name": "search_memory", "arguments": {"query": "x"}})
+    assert r.status_code == 200
+    assert seen["role"] == "member", (
+        "caller role must reach the tool layer; got %r (empty/owner = privilege escalation)"
+        % seen.get("role")
+    )
+
+
+def test_execute_owner_role_preserved(monkeypatch):
+    """Owner path must still resolve to full owner role at the tool layer (do not break owner)."""
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.routes.agent_loop._resolve_role", lambda *a, **k: "owner"
+    )
+    seen = {}
+    def _fake_execute_tool(name, arguments):
+        from core.identity.workspace_context import effective_role
+        seen["role"] = effective_role()
+        return {"ok": True}
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.routes.agent_loop.execute_tool", _fake_execute_tool
+    )
+    r = client.post("/v1/tools/execute",
+                    json={"name": "search_memory", "arguments": {"query": "x"}})
+    assert r.status_code == 200
+    assert seen["role"] == "owner"
+
+
 def test_execute_runs_inside_workspace_context(monkeypatch):
     """Sanity: execute_tool sees the workspace ContextVar set by user_context —
     i.e. the context is entered on the SAME thread that runs the tool."""

@@ -184,7 +184,12 @@ async def tools_execute(body: _ExecBody):
     constrains user-initiated calls — his agency is untouched.
     """
     role = _resolve_role()
-    real = unalias(body.name)
+    # Finding A: normalize ONCE, then use the SAME `real` for the gate AND dispatch so
+    # they can never diverge on casing/whitespace/alias. Strip+lower BEFORE unalias so a
+    # messy alias ("  RUNTIME_BASH  ") is recognised and resolved to its canonical name.
+    # All native tool names are lowercase snake_case → .lower() is safe and the
+    # gate/dispatcher stay in lockstep.
+    real = unalias(body.name.strip().lower())
     if not check_brain_write_allowed(real, role=role):
         raise HTTPException(status_code=403,
                             detail="brain-write not permitted for this user")
@@ -206,13 +211,34 @@ async def tools_execute(body: _ExecBody):
     # ContextVar is visible to execute_tool on the SAME thread that executes it.
     # For the owner (empty user_id) this yields Bjørn's default "bjorn" workspace — the
     # same behaviour as today's owner path (do not break owner).
+    #
+    # Finding B (privilege escalation): user_context() does NOT carry a role — it calls
+    # set_context() without one, so the ContextVar's role resets to "" (owner-equivalent
+    # at the inner gate `_role not in ("", "owner")`). A non-owner caller would then run
+    # every forwarded tool unscoped-by-role. Fix: re-set the resolved caller role on the
+    # workspace state user_context() established, on the SAME worker thread, BEFORE
+    # calling execute_tool — so the inner server-side auth gate enforces the real role.
     def _run() -> Any:
-        from core.identity.workspace_context import user_context
+        from core.identity.workspace_context import (
+            user_context, set_context, reset_context, _current_state,
+        )
         ctx_kwargs: dict[str, str] = {}
         if body.user_id:
             ctx_kwargs["discord_id"] = str(body.user_id)
         with user_context(**ctx_kwargs):
-            return execute_tool(real, arguments)
+            base = _current_state.get()
+            role_token = set_context(
+                workspace_name=base.workspace_name,
+                user_id=base.user_id,
+                user_display_name=base.user_display_name,
+                role=role,
+                channel=base.channel,
+                session_id=base.session_id,
+            )
+            try:
+                return execute_tool(real, arguments)
+            finally:
+                reset_context(role_token)
 
     result = await run_in_threadpool(_run)
     return {"result": result, "name": real}

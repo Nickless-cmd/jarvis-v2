@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/ui_panel_tools.py`
+_open_ui_panel-tool (spec §8.2, Fase 6 #3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_open_ui_panel` | `(args)` | — | [src](../../../core/tools/ui_panel_tools.py#L23) |
+
 ## `core/tools/verify_tools.py`
 _Verification tools — wrap "do then check" into one call._
 

@@ -39,6 +39,21 @@ _Self-profile-route for cowork command center (spec §4.1 Account)._
 | function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L476) |
 | function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L489) |
 
+## `apps/api/jarvis_api/routes/agent_loop.py`
+_Client-owned agent loop: /v1/agent/step._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sse` | `(event, data)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L30) |
+| function | `_identity_context` | `()` | Kompakt identitets-lag (SOUL + IDENTITY + USER) fra default-workspace — nok til at | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L46) |
+| function | `_build_system_prompt` | `(context)` | context: 'none' (ren coding) | 'identity' (default: stemme + kender Bjørn). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L70) |
+| function | `_resolve_target` | `()` | (provider, model) for den synlige lane — health-gated (springer kvote-ramt over). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L78) |
+| function | `_openai_compat_credentials` | `(provider)` | (auth_profile, base_url) for en openai-compatible provider (jf. visible-adapteren). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L92) |
+| function | `list_native_tools` | `()` | List Jarvis' native (server-side) tools + deres lås-status (owner-styring). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L113) |
+| function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L132) |
+| function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L149) |
+| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L223) |
+
 ## `apps/api/jarvis_api/routes/agentic_guards.py`
 _MC endpoint for agentic-loop guard observability._
 
@@ -559,15 +574,4 @@ _Internal runtime-surface endpoint — proxy-mål for Centralens self/mind-flade
 _JarvisX-specific routes — small endpoints used by the desktop app._
 
 _(no top-level classes or functions)_
-
-## `apps/api/jarvis_api/routes/jarvisx_authtokens.py`
-_JarvisX bearer-token issuance + verification route group._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_IssueTokenPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L27) |
-| class | `_RefreshTokenPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L33) |
-| function | `refresh_auth_token` | `(payload)` | Veksl en refresh-token til et nyt access+refresh-par (§22.6). PUBLIC — | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L39) |
-| function | `issue_auth_token` | `(payload)` | Mint a signed bearer token for a user. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L51) |
-| function | `whoami_token` | `(authorization=…)` | Inspect the bearer token attached to this request. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L72) |
 

@@ -10,8 +10,8 @@ _(no top-level classes or functions)_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_runtime_services_enabled` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L135) |
-| function | `create_app` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L140) |
+| function | `_runtime_services_enabled` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L136) |
+| function | `create_app` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L141) |
 
 ## `apps/api/jarvis_api/mcp_server.py`
 _Jarvis MCP server — exposes memory, identity, state, and chat via Streamable HTTP._

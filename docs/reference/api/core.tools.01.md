@@ -454,6 +454,15 @@ _Tool wrappers for pinned monitor streams (monitor_streams)._
 | function | `_exec_monitor_close` | `(args)` | — | [src](../../../core/tools/monitor_tools.py#L22) |
 | function | `_exec_monitor_list` | `(args)` | — | [src](../../../core/tools/monitor_tools.py#L29) |
 
+## `core/tools/native_tool_gate.py`
+_Native-tool lås/lås-op — en runtime allowlist Bjørn styrer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `disabled_tools` | `()` | Sættet af låste native tool-navne. Fail-open → tom mængde. | [src](../../../core/tools/native_tool_gate.py#L16) |
+| function | `is_disabled` | `(name)` | — | [src](../../../core/tools/native_tool_gate.py#L26) |
+| function | `set_tool_disabled` | `(name, disabled)` | Lås (disabled=True) eller lås-op (False) et native tool. Returnerer det nye sæt. | [src](../../../core/tools/native_tool_gate.py#L30) |
+
 ## `core/tools/notification_tools.py`
 _Native tools til notifikations-præferencer (notif-routing spec §4)._
 
@@ -497,18 +506,4 @@ _Tools Jarvis uses to surface or dismiss pending nudges._
 | function | `_exec_list_pending_nudges` | `(args)` | — | [src](../../../core/tools/nudge_tools.py#L22) |
 | function | `_exec_surface_nudge` | `(args)` | — | [src](../../../core/tools/nudge_tools.py#L31) |
 | function | `_exec_dismiss_nudge` | `(args)` | — | [src](../../../core/tools/nudge_tools.py#L43) |
-
-## `core/tools/operator_bash_session.py`
-_operator_bash_session — vedvarende-FØLELSE bash-session på operatorens maskine._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/tools/operator_bash_session.py#L26) |
-| function | `_q` | `(s)` | — | [src](../../../core/tools/operator_bash_session.py#L30) |
-| function | `_reap` | `()` | — | [src](../../../core/tools/operator_bash_session.py#L34) |
-| function | `_extract_cwd` | `(out)` | Pluk cwd-markøren ud af stdout og fjern den fra det Jarvis ser. | [src](../../../core/tools/operator_bash_session.py#L41) |
-| function | `_exec_operator_bash_session_open` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L52) |
-| function | `_exec_operator_bash_session_run` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L65) |
-| function | `_exec_operator_bash_session_close` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L111) |
-| function | `_exec_operator_bash_session_list` | `(_args)` | — | [src](../../../core/tools/operator_bash_session.py#L127) |
 

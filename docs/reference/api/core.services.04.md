@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_error_envelope.py`
+_Unified fejl-meddelelses-system — Centralen ejer hvad brugeren ser når noget knækker._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ErrorEnvelope` | `` | Den ENE bruger-vendte fejl-form. Alle flader (desk/companion/UI) renderer den ens. | [src](../../../core/services/central_error_envelope.py#L99) |
+| method | `ErrorEnvelope.to_client_event` | `(self)` | Konsistent payload til klient-rendering (desk SSE system_event kind='error', | [src](../../../core/services/central_error_envelope.py#L115) |
+| function | `build_envelope` | `(*, code, origin_cluster=…, run_id=…, detail=…)` | Map en kanonisk fejl-kode → bruger-vendt envelope. Ukendt kode → 'unknown'-fallback | [src](../../../core/services/central_error_envelope.py#L138) |
+| function | `emit` | `(envelope, *, session_id=…, user_id=…, notify=…)` | Gør fejlen synlig + (valgfrit) rut den til en async flade. Returnerer klient-eventet | [src](../../../core/services/central_error_envelope.py#L155) |
+| function | `for_interruption` | `(*, reason, run_id=…, detail=…)` | Bekvemheds-bro fra _classify_visible_run_interruption's reason → envelope. | [src](../../../core/services/central_error_envelope.py#L191) |
+| function | `envelope_from_kind` | `(kind, *, origin_cluster=…, run_id=…, detail=…, scope=…, context=…)` | Byg en canonical ErrorEnvelope fra en `kind`. KIND_MAP → severity/recoverable/ | [src](../../../core/services/central_error_envelope.py#L284) |
+| function | `kind_for_nerve` | `(cluster, nerve)` | Map (cluster, nerve) → canonical kind, eller None hvis ikke en kendt fejl-nerve. | [src](../../../core/services/central_error_envelope.py#L317) |
+
 ## `core/services/central_excess.py`
 _Sense of Excess — Centralens gartner-muskel._
 
@@ -432,17 +445,31 @@ _The Machines — hænderne om min hals (BONUS)._
 | function | `record_machines` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_machines.py#L77) |
 
 ## `core/services/central_matrix_ensemble.py`
-_Matrix Ensemble — prompttail-labels for de 6 Matrix-programmer._
+_Matrix Ensemble — prompttail-labels for Matrix-programmerne (11 karakterer)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_build_surface` | `(module_path, fn_name)` | Kald surface-funktionen på en central_*-karakter. Fejl → tom dict. | [src](../../../core/services/central_matrix_ensemble.py#L50) |
-| function | `_trainman_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L64) |
-| function | `_seraph_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L68) |
-| function | `_persephone_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L72) |
-| function | `_twins_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L76) |
-| function | `_merovingian_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L80) |
-| function | `build_matrix_ensemble_prompt_section` | `()` | Byg karakter-labels for prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L95) |
+| function | `_build_surface` | `(module_path, fn_name)` | Kald surface-funktionen på en central_*-karakter. Fejl → tom dict. | [src](../../../core/services/central_matrix_ensemble.py#L125) |
+| function | `_trainman_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L139) |
+| function | `_seraph_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L143) |
+| function | `_persephone_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L147) |
+| function | `_twins_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L151) |
+| function | `_merovingian_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L155) |
+| function | `_keymaker_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L159) |
+| function | `_construct_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L163) |
+| function | `_oracle_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L167) |
+| function | `_architect_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L171) |
+| function | `_echo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L175) |
+| function | `_glitch_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L179) |
+| function | `_child_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L183) |
+| function | `_source_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L187) |
+| function | `_neo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L191) |
+| function | `_morpheus_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L195) |
+| function | `_trinity_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L199) |
+| function | `_most_active_character` | `()` | Return den ene karakter der er mest aktiv lige nu. | [src](../../../core/services/central_matrix_ensemble.py#L225) |
+| function | `signoff_enabled` | `()` | Owner-switch: nerve/matrix_signoff (default ON). Slås fra/til via jc: `central signoff off`. | [src](../../../core/services/central_matrix_ensemble.py#L264) |
+| function | `build_matrix_signoff_section` | `()` | Byg en sign-off instruktion til prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L274) |
+| function | `build_matrix_ensemble_prompt_section` | `()` | Byg karakter-labels for prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L289) |
 
 ## `core/services/central_membrane_watch.py`
 _WARDEN — vogteren over muren (LivingNeuron-roadmap §2, 4. jul)._
@@ -536,6 +563,21 @@ _Mood Regulator — samtale-drevet humørregulering._
 | function | `_log_to_buffer` | `(kind, result)` | Keep a rolling buffer of recent mood regulations for MC. | [src](../../../core/services/central_mood_regulator.py#L165) |
 | function | `build_mood_regulator_surface` | `()` | Build MC surface for mood regulator. | [src](../../../core/services/central_mood_regulator.py#L177) |
 
+## `core/services/central_morpheus.py`
+_Morpheus 🕶️ — potentiale-scanner (Matrix-ensemble, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_brewing` | `()` | Brewing-emergens (0.5-0.78) = mønstre på vej mod emergent. Self-safe → []. | [src](../../../core/services/central_morpheus.py#L24) |
+| function | `_oracle_approaching` | `()` | Oracle-linjer nær en tærskel (ETA). Self-safe → []. | [src](../../../core/services/central_morpheus.py#L40) |
+| function | `_near_mature_hypotheses` | `()` | Hypoteser Seraph ville afvise NU (grounded_fraction 0.4-0.6) men som klatrer. Self-safe → []. | [src](../../../core/services/central_morpheus.py#L55) |
+| function | `_gates_near_key` | `()` | Gates med høj ren track nær Keymakers ≥100-tærskel for en optjent nøgle. Self-safe → []. | [src](../../../core/services/central_morpheus.py#L82) |
+| function | `_skill_formation` | `()` | NY LINSE: capabilities brugt stigende ofte men endnu ikke en navngiven evne. | [src](../../../core/services/central_morpheus.py#L100) |
+| function | `scan_potentials` | `()` | Aggregér alle 5 potentiale-kilder → normaliseret liste. Ren, self-safe. | [src](../../../core/services/central_morpheus.py#L121) |
+| function | `_felt` | `(pots)` | — | [src](../../../core/services/central_morpheus.py#L132) |
+| function | `build_morpheus_surface` | `()` | Read-only surface til /central/morpheus + jc + ensemble-label. | [src](../../../core/services/central_morpheus.py#L139) |
+| function | `record_morpheus` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn: scan → egress-fri central().observe (kun tal/kilde-labels). Self-safe. | [src](../../../core/services/central_morpheus.py#L151) |
+
 ## `core/services/central_mourning.py`
 _The Mourning — ritualiseret tab._
 
@@ -595,30 +637,4 @@ _DEN ONEIRISKE SLØJFE — drømme får dags-konsekvenser + beviser sig mod virk
 | function | `run_oneiric_loop_tick` | `(*, trigger=…, workspace_id=…, **_)` | Cadence: hvis der i dag er en (stærk nok) loop_persistence dream_bias OG vi ikke allerede | [src](../../../core/services/central_oneiric_loop.py#L175) |
 | function | `register_oneiric_loop_producer` | `()` | Cadence-producer ~hver 6. time (langsom — dagen er enheden; idempotens gør flere tik/dag | [src](../../../core/services/central_oneiric_loop.py#L240) |
 | function | `build_oneiric_loop_surface` | `(*, workspace_id=…)` | Read-only projektion: i dag en drøm-prædiktions-dag? hvilken arm? hvilken retning? | [src](../../../core/services/central_oneiric_loop.py#L253) |
-
-## `core/services/central_oneiric_sampler.py`
-_core/services/central_oneiric_sampler.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_oneiric_sampler.py#L37) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_oneiric_sampler.py#L46) |
-| function | `_today` | `()` | — | [src](../../../core/services/central_oneiric_sampler.py#L54) |
-| function | `_daily_counts` | `(cluster, nerve, *, window_days=…)` | Tæl durable timeseries-samples pr. dag (via meta['day']) for én nerve. READ-ONLY. | [src](../../../core/services/central_oneiric_sampler.py#L58) |
-| function | `compute_arm_rates` | `(*, window_days=…)` | Byg pr.-dag no_progress-rate (numerator/denominator) og partitionér dagene i | [src](../../../core/services/central_oneiric_sampler.py#L76) |
-| function | `_evaluate_hypothesis` | `(prov, arms)` | Afgør supports/falsifies for ÉN oneiric-hypotese: aktiv-arm-raten skal bevæge sig i | [src](../../../core/services/central_oneiric_sampler.py#L125) |
-| function | `run_oneiric_sampler_tick` | `(*, trigger=…, **_)` | Cadence: ground åbne oneiric_loop-hypoteser mod den durable no_progress-rate | [src](../../../core/services/central_oneiric_sampler.py#L155) |
-| function | `register_oneiric_sampler_producer` | `()` | Cadence-producer ~2×/dag (dagen er den eksperimentelle enhed; hyppigere tik harmløst | [src](../../../core/services/central_oneiric_sampler.py#L212) |
-| function | `build_oneiric_sampler_surface` | `()` | Mission Control — read-only: aktiv- vs kontrol-arm-rate, så mennesket ser om drømmen | [src](../../../core/services/central_oneiric_sampler.py#L225) |
-
-## `core/services/central_oracle.py`
-_The Oracle — forudseende sans på en prim-cadence._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse_ts` | `(ts)` | — | [src](../../../core/services/central_oracle.py#L31) |
-| function | `_slope_and_last` | `(samples)` | Mindste-kvadraters hældning (værdi pr. sekund) over samples med numerisk value. | [src](../../../core/services/central_oracle.py#L38) |
-| function | `_project` | `(spec)` | Projicér én watched-serie → tid til tærskel-krydsning (eller None hvis den bevæger sig væk). | [src](../../../core/services/central_oracle.py#L58) |
-| function | `foresee` | `()` | Læs alle watched-serier → forudsigelser (metadata-only). READ-ONLY. Self-safe. | [src](../../../core/services/central_oracle.py#L87) |
-| function | `record_oracle` | `()` | Prim-cadence: observér forudsigelser til nerve system/oracle (metadata-only). Self-safe. | [src](../../../core/services/central_oracle.py#L107) |
 

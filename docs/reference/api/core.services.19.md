@@ -2,6 +2,64 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/somatic_daemon.py`
+_Somatic daemon — LLM-generated body-state description from structured metrics._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_request_start` | `()` | — | [src](../../../core/services/somatic_daemon.py#L36) |
+| function | `record_request_end` | `()` | — | [src](../../../core/services/somatic_daemon.py#L41) |
+| function | `record_latency_sample` | `(ms)` | — | [src](../../../core/services/somatic_daemon.py#L46) |
+| function | `get_latest_somatic_phrase` | `()` | — | [src](../../../core/services/somatic_daemon.py#L53) |
+| function | `build_body_state_surface` | `()` | Returns body state for Mission Control surface. | [src](../../../core/services/somatic_daemon.py#L57) |
+| function | `tick_somatic_daemon` | `(energy_level=…)` | Called each heartbeat. May trigger a new somatic phrase generation. | [src](../../../core/services/somatic_daemon.py#L84) |
+| function | `_collect_snapshot` | `(energy_level)` | — | [src](../../../core/services/somatic_daemon.py#L106) |
+| function | `_should_generate` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L146) |
+| function | `_generate_phrase` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L162) |
+| function | `_pressure_band` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L207) |
+| function | `_load_band` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L217) |
+| function | `_latency_band` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L230) |
+| function | `_store_phrase` | `(phrase, snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L239) |
+
+## `core/services/somatic_runtime_body.py`
+_Somatic runtime body: turn runtime signals into bodily regulation cues._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_decay_levels` | `(levels, age_seconds)` | Apply time-based decay to stress/arousal levels. | [src](../../../core/services/somatic_runtime_body.py#L38) |
+| function | `update_somatic_body` | `(*, event_type, intensity=…, detail=…)` | — | [src](../../../core/services/somatic_runtime_body.py#L53) |
+| function | `build_somatic_body_surface` | `()` | — | [src](../../../core/services/somatic_runtime_body.py#L104) |
+| function | `build_somatic_body_prompt_section` | `()` | — | [src](../../../core/services/somatic_runtime_body.py#L116) |
+| function | `_base_levels` | `()` | — | [src](../../../core/services/somatic_runtime_body.py#L129) |
+| function | `_posture` | `(levels)` | — | [src](../../../core/services/somatic_runtime_body.py#L133) |
+| function | `_regulation` | `(posture)` | — | [src](../../../core/services/somatic_runtime_body.py#L145) |
+
+## `core/services/source_confidence_gate.py`
+_Source-confidence gate (epistemisk gate, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tool_names` | `(tools_used)` | — | [src](../../../core/services/source_confidence_gate.py#L38) |
+| function | `assess_source_confidence` | `(*, output_text, tools_used=…)` | Vurdér epistemisk kilde-konfidens for en tur. | [src](../../../core/services/source_confidence_gate.py#L47) |
+| function | `build_source_confidence_surface` | `(*, output_text=…, tools_used=…)` | Central-CLI: jc raw /central/source-confidence (senest vurderede tur, hvis givet). | [src](../../../core/services/source_confidence_gate.py#L88) |
+
+## `core/services/spaced_repetition.py`
+_Spaced Repetition — schedule reviews for things Jarvis learned._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/spaced_repetition.py#L39) |
+| function | `_load` | `()` | — | [src](../../../core/services/spaced_repetition.py#L43) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/spaced_repetition.py#L59) |
+| function | `schedule_reviews_on_completion` | `(*, topic, plan_id=…, intervals_days=…)` | Create review entries for a topic at expanding intervals. | [src](../../../core/services/spaced_repetition.py#L71) |
+| function | `list_due_reviews` | `(*, now=…, limit=…)` | — | [src](../../../core/services/spaced_repetition.py#L103) |
+| function | `complete_review` | `(review_id, *, score)` | Mark a review as completed with score in [0, 1], update profile. | [src](../../../core/services/spaced_repetition.py#L120) |
+| function | `_update_profile` | `(profile, score)` | — | [src](../../../core/services/spaced_repetition.py#L150) |
+| function | `get_profile` | `(topic)` | — | [src](../../../core/services/spaced_repetition.py#L170) |
+| function | `build_spaced_repetition_surface` | `()` | — | [src](../../../core/services/spaced_repetition.py#L174) |
+| function | `_summary_line` | `(due, profiles, avg_conf)` | — | [src](../../../core/services/spaced_repetition.py#L205) |
+| function | `build_spaced_repetition_prompt_section` | `()` | — | [src](../../../core/services/spaced_repetition.py#L214) |
+
 ## `core/services/spatial_entity_ledger.py`
 _Spatial entity ledger — Step D.v1 of meta-evne stack._
 
@@ -586,62 +644,4 @@ _Thought Thread — continuity of attention across ticks._
 | function | `build_thought_thread_prompt_section` | `()` | Tell him what thread he was holding before this turn. | [src](../../../core/services/thought_thread.py#L227) |
 | function | `reset_thought_thread` | `()` | Reset cached state (for testing). | [src](../../../core/services/thought_thread.py#L249) |
 | function | `_emit_thought_thread_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/thought_thread.py#L256) |
-
-## `core/services/tick_cache.py`
-_Tick-scoped in-memory cache — lives exactly one heartbeat tick._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start_tick` | `()` | Activate cache for this tick. Resets any previous data. | [src](../../../core/services/tick_cache.py#L14) |
-| function | `end_tick` | `()` | Deactivate cache and clear all data. | [src](../../../core/services/tick_cache.py#L22) |
-| function | `get` | `(key)` | Return cached value or None. Safe to call when inactive. | [src](../../../core/services/tick_cache.py#L30) |
-| function | `set` | `(key, value)` | Store value for this tick. No-op when inactive. | [src](../../../core/services/tick_cache.py#L43) |
-| function | `get_tick_cache_stats` | `()` | Return hit/miss stats for current tick. | [src](../../../core/services/tick_cache.py#L50) |
-
-## `core/services/tiktok_content_daemon.py`
-_TikTok content daemon — autonomous 3x/day video generation and upload._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tiktok_setting` | `(key, fallback=…)` | Load a TikTok setting from runtime config. | [src](../../../core/services/tiktok_content_daemon.py#L83) |
-| function | `tick_tiktok_content_daemon` | `()` | Main tick — generate and upload a TikTok video for the current time slot. | [src](../../../core/services/tiktok_content_daemon.py#L138) |
-| function | `_detect_slot` | `(hour)` | Return slot name for the given UTC hour, or None if outside windows. | [src](../../../core/services/tiktok_content_daemon.py#L292) |
-| function | `_generate_quote` | `(slot)` | Generate a quote/line for the slot via LLM. Returns fallback on failure. | [src](../../../core/services/tiktok_content_daemon.py#L300) |
-| function | `_get_source_image` | `(slot)` | Return path to a source image for the slot. | [src](../../../core/services/tiktok_content_daemon.py#L316) |
-| function | `_generate_flux_image` | `(slot)` | Generate a high-quality image via pollinations.ai flux model (free API). | [src](../../../core/services/tiktok_content_daemon.py#L339) |
-| function | `_generate_sdxl_image` | `(slot)` | Generate a unique image for the slot via ComfyUI SDXL (fallback). | [src](../../../core/services/tiktok_content_daemon.py#L402) |
-| function | `_create_solid_image` | `(slot)` | Create a 1080x1920 solid color PNG using PIL. Returns path or None. | [src](../../../core/services/tiktok_content_daemon.py#L437) |
-| function | `_do_upload` | `(video_path, title)` | Upload via _exec_tiktok_upload. Returns result dict. | [src](../../../core/services/tiktok_content_daemon.py#L454) |
-| function | `_refill_pool` | `(slot_type=…)` | Auto-refill the pool with fresh LLM-generated concepts when running low. | [src](../../../core/services/tiktok_content_daemon.py#L470) |
-| function | `_count_unused` | `(pool, slot_type)` | Count how many unused concepts of a given type remain in the pool. | [src](../../../core/services/tiktok_content_daemon.py#L545) |
-| function | `_get_concept_from_pool` | `(slot_type)` | Read pool file and return (text, hashtags) for the first unused concept of slot_type. | [src](../../../core/services/tiktok_content_daemon.py#L550) |
-
-## `core/services/tiktok_research_daemon.py`
-_TikTok research daemon — daily content concept pool generator._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_tiktok_research_daemon` | `()` | Daily tick — generate content concepts and write to pool file. | [src](../../../core/services/tiktok_research_daemon.py#L75) |
-| function | `_load_pool` | `()` | Load the pool JSON from disk. Returns empty dict if missing or corrupt. | [src](../../../core/services/tiktok_research_daemon.py#L155) |
-| function | `_generate_concepts_for_type` | `(slot_type)` | Call LLM to generate 3 concepts for the given slot type. | [src](../../../core/services/tiktok_research_daemon.py#L165) |
-| function | `_parse_json_array` | `(text)` | Try to parse a JSON array from LLM output. Returns None on failure. | [src](../../../core/services/tiktok_research_daemon.py#L198) |
-
-## `core/services/tiny_webchat_execution_pilot.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `maybe_run_tiny_webchat_execution_pilot` | `(*, policy, heartbeat_tick_id, decision_summary, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L30) |
-| function | `build_runtime_webchat_execution_pilot_surface` | `(*, limit=…)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L150) |
-| function | `_build_execution_candidate` | `(*, heartbeat_tick_id, decision_summary, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L191) |
-| function | `_execution_focus` | `(*, question_gate, question_loop, question_pressure)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L325) |
-| function | `_normalize_focus_candidate` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L343) |
-| function | `_message_text` | `(*, focus, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L366) |
-| function | `_resolve_target_session_id` | `()` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L376) |
-| function | `_cooldown_state` | `(canonical_key)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L386) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L404) |
-| function | `_find_support_value` | `(summary, key, default)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L431) |
-| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L442) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L451) |
-| function | `_slug` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L460) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L467) |
 

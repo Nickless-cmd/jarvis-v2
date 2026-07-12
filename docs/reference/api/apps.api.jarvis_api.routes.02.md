@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/jarvisx_authtokens.py`
+_JarvisX bearer-token issuance + verification route group._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_IssueTokenPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L27) |
+| class | `_RefreshTokenPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L33) |
+| function | `refresh_auth_token` | `(payload)` | Veksl en refresh-token til et nyt access+refresh-par (§22.6). PUBLIC — | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L39) |
+| function | `issue_auth_token` | `(payload)` | Mint a signed bearer token for a user. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L51) |
+| function | `whoami_token` | `(authorization=…)` | Inspect the bearer token attached to this request. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L72) |
+
 ## `apps/api/jarvis_api/routes/jarvisx_bridge.py`
 _WebSocket endpoint for JarvisX tool-bridge._
 
@@ -499,15 +510,15 @@ _OpenAI-compatible proxy: /v1/chat/completions wrapping Jarvis visible lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `list_models` | `()` | OpenAI-compatible model list — exposes Jarvis as a single model. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L33) |
-| function | `chat_completions` | `(request)` | OpenAI-compatible chat completion endpoint wrapping Jarvis' visible lane. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L49) |
-| function | `_stream_response` | `(*, run_id, message, provider, model, session_id)` | Yield OpenAI-format SSE chunks from Jarvis' visible run. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L125) |
-| function | `_drain_visible_run_text` | `(*, message, session_id)` | Run the visible pipeline to completion and return the assembled prose. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L183) |
-| function | `_parse_sse_frame` | `(frame)` | Parse a webchat SSE frame ``event: <type>\ndata: <json>\n\n``. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L214) |
-| function | `_resolve_model_provider` | `(model_param)` | Map a model parameter to (provider, model) tuple. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L235) |
-| function | `_build_completion_response` | `(*, run_id, model, content, input_tokens, output_tokens)` | Build a standard OpenAI chat.completion response. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L270) |
-| function | `_build_stream_chunk` | `(*, run_id, model, delta_content)` | Build a standard OpenAI chat.completion.chunk for streaming. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L299) |
-| function | `_get_or_create_proxy_session` | `()` | Return the shared proxy chat session id. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L328) |
+| function | `list_models` | `()` | OpenAI-compatible model list — exposes Jarvis as a single model. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L32) |
+| function | `chat_completions` | `(request)` | OpenAI-compatible chat completion endpoint wrapping Jarvis' visible lane. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L48) |
+| function | `_stream_response` | `(*, run_id, message, provider, model, session_id)` | Yield OpenAI-format SSE chunks from Jarvis' visible run. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L124) |
+| function | `_drain_visible_run_text` | `(*, message, session_id)` | Run the visible pipeline to completion and return the assembled prose. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L179) |
+| function | `_parse_sse_frame` | `(frame)` | Parse a webchat SSE frame ``event: <type>\ndata: <json>\n\n``. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L203) |
+| function | `_resolve_model_provider` | `(model_param)` | Map a model parameter to (provider, model) tuple. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L224) |
+| function | `_build_completion_response` | `(*, run_id, model, content, input_tokens, output_tokens)` | Build a standard OpenAI chat.completion response. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L259) |
+| function | `_build_stream_chunk` | `(*, run_id, model, delta_content)` | Build a standard OpenAI chat.completion.chunk for streaming. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L288) |
+| function | `_get_or_create_proxy_session` | `()` | Return the shared proxy chat session id. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L317) |
 
 ## `apps/api/jarvis_api/routes/paste.py`
 _Paste-store endpoints: eksternalisér store bruger-pastes + lazy resolve._
@@ -633,16 +644,18 @@ _POST /transcribe — diktering-transskription til jarvis-desk's mic-knap._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `transcribe` | `(file)` | — | [src](../../../apps/api/jarvis_api/routes/transcribe.py#L22) |
+| function | `transcribe` | `(file, language=…)` | — | [src](../../../apps/api/jarvis_api/routes/transcribe.py#L22) |
 
 ## `apps/api/jarvis_api/routes/tts.py`
 _TTS synthesis route — backed by Microsoft Edge's read-aloud cloud_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `TTSRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/tts.py#L27) |
-| function | `synthesize` | `(req)` | Synthesize text → MP3 bytes via edge-tts. | [src](../../../apps/api/jarvis_api/routes/tts.py#L47) |
-| function | `list_voices` | `(lang=…)` | List available Edge-TTS voices, optionally filtered by language tag. | [src](../../../apps/api/jarvis_api/routes/tts.py#L97) |
+| class | `TTSRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/tts.py#L30) |
+| function | `_elevenlabs_preferred` | `()` | Runtime-flag så credits kan spares uden kode-ændring. Default True (ElevenLabs primær). | [src](../../../apps/api/jarvis_api/routes/tts.py#L54) |
+| function | `_synthesize_elevenlabs_bytes` | `(text)` | Jarvis' egen ElevenLabs-stemme → MP3-bytes. Genbruger nøgle+voice_id fra voice-skillen | [src](../../../apps/api/jarvis_api/routes/tts.py#L66) |
+| function | `synthesize` | `(req)` | Synthesize text → MP3 bytes via edge-tts. | [src](../../../apps/api/jarvis_api/routes/tts.py#L83) |
+| function | `list_voices` | `(lang=…)` | List available Edge-TTS voices, optionally filtered by language tag. | [src](../../../apps/api/jarvis_api/routes/tts.py#L153) |
 
 ## `apps/api/jarvis_api/routes/users.py`
 _Owner-only user-administration (spec 2026-06-15 §4/§6). CRUD + GDPR-erasure._

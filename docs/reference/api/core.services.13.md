@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/memory_density.py`
+_Memory Density — memories with emotional weight, not just facts._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/memory_density.py#L41) |
+| function | `_density_dir` | `()` | — | [src](../../../core/services/memory_density.py#L45) |
+| function | `_load` | `()` | — | [src](../../../core/services/memory_density.py#L49) |
+| function | `_save` | `(items)` | — | [src](../../../core/services/memory_density.py#L63) |
+| function | `_slug` | `(text)` | — | [src](../../../core/services/memory_density.py#L75) |
+| function | `write_density_note` | `(*, title, what_happened, what_it_meant, how_it_felt, what_it_changed, trigger_type=…, metadata=…)` | Record a density memory: what + meaning + feeling + change. | [src](../../../core/services/memory_density.py#L81) |
+| function | `confirm_density_note` | `(note_id, *, by=…)` | Increment confirmation count when a density note is re-referenced. | [src](../../../core/services/memory_density.py#L162) |
+| function | `list_promotable` | `()` | Return density notes confirmed >= threshold and not yet promoted. | [src](../../../core/services/memory_density.py#L175) |
+| function | `mark_promoted` | `(note_id)` | — | [src](../../../core/services/memory_density.py#L185) |
+| function | `list_recent` | `(*, limit=…)` | — | [src](../../../core/services/memory_density.py#L196) |
+| function | `tick` | `(_seconds=…)` | No periodic work — memory_density is event-driven. | [src](../../../core/services/memory_density.py#L200) |
+| function | `build_memory_density_surface` | `()` | — | [src](../../../core/services/memory_density.py#L206) |
+| function | `_surface_summary` | `(items, promotable, promoted)` | — | [src](../../../core/services/memory_density.py#L237) |
+| function | `build_memory_density_prompt_section` | `()` | — | [src](../../../core/services/memory_density.py#L252) |
+
 ## `core/services/memory_emotional_context.py`
 _Backwards-compatible shim — emotional memory now lives in emotional_memory_engine._
 
@@ -606,17 +626,4 @@ _core/services/network_health.py_
 | function | `_extract_github_copilot_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1164) |
 | function | `fetch_github_copilot_models` | `(*, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1176) |
 | function | `_estimate_tokens` | `(text)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1203) |
-
-## `core/services/notes_connector.py`
-_Huskesedler-connector (lokal) — simple per-bruger notater._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_store` | `()` | — | [src](../../../core/services/notes_connector.py#L68) |
-| function | `_bucket` | `(user_id)` | — | [src](../../../core/services/notes_connector.py#L73) |
-| function | `_save` | `(user_id, notes)` | — | [src](../../../core/services/notes_connector.py#L78) |
-| function | `add_note` | `(user_id, text, *, now=…)` | — | [src](../../../core/services/notes_connector.py#L84) |
-| function | `list_notes` | `(user_id, *, limit=…)` | — | [src](../../../core/services/notes_connector.py#L96) |
-| function | `search_notes` | `(user_id, query)` | — | [src](../../../core/services/notes_connector.py#L105) |
-| function | `delete_note` | `(user_id, note_id)` | — | [src](../../../core/services/notes_connector.py#L114) |
 

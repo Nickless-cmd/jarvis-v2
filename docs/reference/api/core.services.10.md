@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/experience_episodes.py`
+_Experience-episode collector + retrieval — embedding-based learning substrate._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_get_chroma_path` | `()` | — | [src](../../../core/services/experience_episodes.py#L53) |
+| function | `_get_embed_model` | `()` | — | [src](../../../core/services/experience_episodes.py#L62) |
+| function | `_get_collection` | `()` | — | [src](../../../core/services/experience_episodes.py#L73) |
+| function | `build_context_text` | `(*, intent, active_loops=…, last_tools=…, session_phase=…)` | Render the structured situation into the text we embed. | [src](../../../core/services/experience_episodes.py#L93) |
+| function | `record_episode` | `(*, session_id, turn_id, intent, active_loops=…, last_tools=…, session_phase=…, tool_sequence=…, outcome_signals=…, user_corrected=…)` | Persist one episode to DB + chroma. Returns episode_id on success. | [src](../../../core/services/experience_episodes.py#L123) |
+| function | `retrieve_similar` | `(*, intent, active_loops=…, last_tools=…, session_phase=…, k=…)` | Return up to K nearest-neighbour past episodes for the current shape. | [src](../../../core/services/experience_episodes.py#L213) |
+| function | `format_episode_for_prompt` | `(ep, *, max_chars=…)` | Compact substrate line describing one retrieved episode. | [src](../../../core/services/experience_episodes.py#L338) |
+
 ## `core/services/experience_substrate.py`
 _Experience substrate — embedding-retrieval learning layer._
 
@@ -527,13 +540,4 @@ _Goal signal synthesizer — surface candidate goals from dreams/reflections._
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/goal_signal_tracking.py#L493) |
 | function | `_rank` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L502) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L506) |
-
-## `core/services/good_enough_gate.py`
-_Good-enough gate — completion criterion for autonomous runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_recent_run_signals` | `(run_id, limit=…)` | — | [src](../../../core/services/good_enough_gate.py#L34) |
-| function | `evaluate_good_enough` | `(*, run_id=…, iterations_done=…, iteration_budget=…, minutes_elapsed=…, minutes_budget=…)` | — | [src](../../../core/services/good_enough_gate.py#L57) |
-| function | `_exec_check_good_enough` | `(args)` | — | [src](../../../core/services/good_enough_gate.py#L148) |
 

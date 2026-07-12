@@ -212,6 +212,15 @@ git commit -m "feat(jc-render): two-column banner (pure, tested)"
 
 ```python
 # add to tests/test_render.py
+def test_tool_target_from_args():
+    # mål = arg (path cwd-relativ, command, pattern, query, url) — som Textual _tool_target
+    assert render.tool_target("edit_file", {"path": "/home/bs/jarvis-code/src/parser.py"},
+                              "/home/bs/jarvis-code") == "src/parser.py"
+    assert render.tool_target("bash", {"command": "pytest -q"}, "/x") == "pytest -q"
+    assert render.tool_target("grep", {"pattern": "def foo"}, "/x") == "def foo"
+    assert render.tool_target("read_file", {}, "/x") == ""
+
+
 def test_tool_line_compact():
     assert render.tool_line("edit_file", "src/parser.py", "+32/-0") == "[edit_file: src/parser.py] +32/-0"
     assert render.tool_line("bash", "pytest -q", "exit 0") == "[bash: pytest -q] exit 0"
@@ -246,10 +255,30 @@ Expected: FAIL (`AttributeError: tool_line`).
 
 ```python
 # add to src/render.py
+import os
 _ADD = "fg:#8cff98"
 _DEL = "fg:#ff7b7b"
 _DIM = "fg:#2f6f4a"
 _CYAN = "fg:#00e5ff"
+
+
+def tool_target(name: str, args: dict, cwd: str) -> str:
+    """Kompakt mål fra args (som Textual _tool_target): relativ sti for fil-tools,
+    command for bash, pattern/query/url ellers."""
+    if not isinstance(args, dict):
+        return ""
+    for key in ("path", "file_path", "command", "pattern", "query", "url"):
+        v = args.get(key)
+        if v:
+            v = str(v)
+            if key in ("path", "file_path"):
+                try:
+                    from pathlib import Path
+                    v = str(Path(v).resolve().relative_to(Path(cwd).resolve()))
+                except Exception:
+                    v = os.path.basename(v)
+            return v[:64]
+    return ""
 
 
 def tool_line(name: str, target: str, meta: str) -> str:

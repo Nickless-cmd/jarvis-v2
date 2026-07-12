@@ -83,10 +83,50 @@ def _identity_context() -> str:
             + "\n\n".join(parts))
 
 
-def _build_system_prompt(context: str) -> str:
-    """context: 'none' (ren coding) | 'identity' (default: stemme + kender Bjørn)."""
+_FULL_CTX_CACHE: dict[str, tuple[str, float]] = {}
+_FULL_CTX_TTL = 90.0  # s — genbrug inden for en tur (flere tool-runder), undgå re-build
+
+
+def _full_context(user_message: str) -> str:
+    """FULD Jarvis-kontekst (memory-recall + cognitive_state + indre liv + awareness) til
+    'full'-tier client loop — samme assembly som den synlige lane (PromptAssembly.text),
+    men tools eksekveres stadig LOKALT af klienten. Tung → cache pr. besked-hash i kort TTL
+    så en turs flere tool-runder ikke genbygger den. Self-safe → '' (falder til identity)."""
+    import hashlib
+    import time as _t
+    key = hashlib.sha256((user_message or "").encode("utf-8")).hexdigest()[:16]
+    now = _t.monotonic()
+    hit = _FULL_CTX_CACHE.get(key)
+    if hit and hit[1] > now:
+        return hit[0]
+    text = ""
+    try:
+        from core.services.prompt_contract import build_visible_chat_prompt_assembly
+        provider, model = _resolve_target()
+        asm = build_visible_chat_prompt_assembly(
+            provider=provider, model=model, user_message=user_message or "", name="default")
+        text = str(getattr(asm, "text", "") or "")
+    except Exception:
+        logger.debug("agent/step: full-context build fejlede", exc_info=True)
+        text = ""
+    if text:
+        if len(_FULL_CTX_CACHE) > 32:
+            for k in list(_FULL_CTX_CACHE)[:16]:
+                _FULL_CTX_CACHE.pop(k, None)
+        _FULL_CTX_CACHE[key] = (text, now + _FULL_CTX_TTL)
+    return text
+
+
+def _build_system_prompt(context: str, user_message: str = "") -> str:
+    """context: 'none' (ren coding) | 'identity' (stemme + kender Bjørn, default) |
+    'full' (hele Jarvis: memory + cognitive_state + indre liv — tools stadig LOKALT)."""
     if context == "none":
         return _SYSTEM_PROMPT
+    if context == "full":
+        full = _full_context(user_message)
+        if full:
+            return _SYSTEM_PROMPT + "\n\n" + full
+        # full-assembly fejlede → degradér til identity (crash aldrig)
     ident = _identity_context()
     return _SYSTEM_PROMPT + ident if ident else _SYSTEM_PROMPT
 
@@ -308,8 +348,15 @@ async def agent_step(request: Request):
 
     auth_profile, base_url = _openai_compat_credentials(provider)
 
+    # Seneste bruger-besked → driver memory-recall i 'full'-context.
+    _last_user = ""
+    for _m in reversed(client_messages):
+        if isinstance(_m, dict) and _m.get("role") == "user":
+            _last_user = str(_m.get("content") or "")
+            break
     # System-prompt (tiered context) foran + klientens samtale (inkl. tool-resultater).
-    chat_messages: list[dict[str, Any]] = [{"role": "system", "content": _build_system_prompt(context)}]
+    chat_messages: list[dict[str, Any]] = [
+        {"role": "system", "content": _build_system_prompt(context, _last_user)}]
     chat_messages.extend(client_messages)
 
     if stream:

@@ -16,6 +16,14 @@ _cached_reflection: str = ""
 _reflection_buffer: list[str] = []
 
 
+def _text_signal(value: str) -> float:
+    """Deterministic 0..1 proxy of a short text state so the event-gate can
+    detect when this daemon's input actually changed (no hash randomisation)."""
+    if not value:
+        return 0.0
+    return float(sum(ord(c) for c in value) % 100) / 100.0
+
+
 def tick_reflection_cycle_daemon(snapshot: dict) -> dict[str, object]:
     """Generate a pure experience reflection if cadence allows.
     snapshot keys (all optional): energy_level, inner_voice_mode, latest_fragment,
@@ -27,6 +35,24 @@ def tick_reflection_cycle_daemon(snapshot: dict) -> dict[str, object]:
     if _last_reflection_at is not None:
         if (now - _last_reflection_at) < timedelta(minutes=_CADENCE_MINUTES):
             return {"generated": False}
+
+    # Fase 2 Lag 5: gate the (expensive) LLM generation behind the shared
+    # event-gate. Reflection reacts to inner conflict / valence-shift /
+    # surprise — fire on real change, skip cheaply otherwise. Flag off →
+    # legacy behaviour. Self-safe: any event_gate error fails open.
+    try:
+        from core.services import event_gate
+
+        if event_gate.event_driven_enabled():
+            _relevant = {
+                "conflict": 1.0 if snapshot.get("last_conflict") else 0.0,
+                "surprise": 1.0 if snapshot.get("last_surprise") else 0.0,
+                "valence": _text_signal(str(snapshot.get("inner_voice_mode", ""))),
+            }
+            if not event_gate.should_generative_fire("reflection_cycle", _relevant):
+                return {"skipped": "no_signal_change"}
+    except Exception:
+        pass  # fail-open: fall through to normal generation
 
     reflection = _generate_reflection(snapshot)
     if not reflection:

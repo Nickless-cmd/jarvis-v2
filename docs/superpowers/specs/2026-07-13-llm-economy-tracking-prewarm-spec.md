@@ -133,6 +133,15 @@ vindue sætter hans rytme på en sparetimer, for en lille gevinst (~$10-15/md p�
 - **I stedet:** find og skær *spildte/redundante* daemon-LLM-kald (præcis som prewarm-runaway'en var)
   — via `jc cost`-fordelingen pr. daemon (WS3+WS8-data). Konsolidér/dedupliker/slå unødvendige kald fra.
   Ingen udskydelse af noget levende.
+- **Varians-gate (Bjørns indsigt — "billigere OG mere ægte"):** mål hvor *ofte* hver daemon reelt kører,
+  og hvor meget dens output faktisk *ændrer sig* over et vindue af kald. Hvor et daemon-output er stabilt
+  (lav varians / ~0 ændring i snit) er de fleste kald redundante → skift fra **blind timer** til
+  **event-drevet**: gen-tænk kun når der er noget materielt nyt (nyt input/signal), ellers genbrug sidste
+  resultat. Han re-tænker fordi der er noget nyt, ikke fordi uret tikkede. Dette er den rigtige måde at
+  reducere kald på — ikke ved at udskyde, men ved ikke at spørge om det samme igen.
+- **Metode:** pr. daemon, log output-hash/embedding pr. kald (WS8-data); beregn ændringsrate over N
+  kald; daemons med lav ændringsrate får en gate ("kør kun hvis <relevant signal> ændret siden sidst"),
+  eller længere cadence. Verificér via shadow at synlig adfærd er uændret.
 - **Off-peak overvejes KUN senere**, for ét specifikt *bevist ikke-levende* batch-job (fx en stor
   nat-konsolidering der allerede kører om natten), aldrig for hans løbende indre liv.
 - **Test:** identificér top-N daemons på tokens/kald fra data; verificér at et fjernet/dedupliceret

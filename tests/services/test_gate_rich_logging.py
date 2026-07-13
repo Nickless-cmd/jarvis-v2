@@ -205,3 +205,25 @@ def test_threshold_crossing_emits_central_observe(monkeypatch):
                if e.get("nerve") == "gate_pattern_repeat"]
     assert repeats, "forventede en central-nudge ved threshold-krydsning"
     assert repeats[0].get("cluster") == "central_meta"
+
+
+def test_force_persist_at_threshold_survives_restart():
+    """Rapid-byge (3 records < 30s): throttlen ville ellers kun persistere count=1. Force-persist
+    ved tærskel-krydsning skal sikre count>=3 i durabel snapshot → overlever restart."""
+    from core.services import gate_pattern_learning as gpl
+
+    gpl._reset()  # rydder in-memory + durabel snapshot
+    for _ in range(3):  # krydser _EMIT_THRESHOLD i én hurtig byge
+        gpl.record_gate_pattern("self_stats", "2500 kald", session_id="s")
+
+    # simulér restart: ryd KUN in-memory (durabel snapshot skal have force-persisteret count=3)
+    with gpl._LOCK:
+        gpl._STORE.clear()
+    gpl._hydrated = False
+
+    n = gpl.hydrate()
+    assert n >= 1, "durabel snapshot burde have mindst én nøgle efter force-persist"
+    rep = gpl.repeated_patterns(threshold=3)
+    assert any(r["pattern"] == "self_stats" and r["count"] >= 3 for r in rep), \
+        "vanen (count>=3) skal overleve restart via force-persist ved tærskel"
+    gpl._reset()  # ryd op efter os

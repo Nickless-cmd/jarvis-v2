@@ -110,7 +110,9 @@ def record_gate_pattern(pattern: str, detected_text: str, *,
         if crossed:
             _emit_repeat_nudge(pat, snapshot["sample"], snapshot["count"],
                                n_sessions=len(entry.get("sessions") or ()))
-        _persist_best_effort()
+        # Force durabel persist NETOP når en vane krydser tærsklen (omgår throttle) — så
+        # "det er nu en vane"-tilstanden altid overlever restart, også ved rapid-byge.
+        _persist_best_effort(force=crossed)
         return snapshot
     except Exception:
         return {}
@@ -162,17 +164,19 @@ def _emit_repeat_nudge(pattern: str, sample: str, count: int, *, n_sessions: int
         pass
 
 
-def _persist_best_effort() -> None:
+def _persist_best_effort(force: bool = False) -> None:
     """Bedste-indsats durabel snapshot til runtime_state (overlever genstart). Fire-and-forget,
     fuldt self-safe: en DB-/offline-fejl må ALDRIG påvirke gate-eval. Læses tilbage af
     ``hydrate()`` ved proces-start (kaldes eksplicit, ikke ved import — så tests er offline-rene).
 
     Throttlet til højst én skriv pr. ``_PERSIST_MIN_INTERVAL_S`` — record kaldes pr. gate-fyring,
-    så en DB-skriv hver gang ville være hot-path-spild. Data-tab ved crash = seneste vindue."""
+    så en DB-skriv hver gang ville være hot-path-spild. Data-tab ved crash = seneste vindue.
+    ``force=True`` omgår throttlen: bruges når et mønster NETOP krydser habit-tærsklen, så
+    "det er nu en vane"-tilstanden altid er durabel uanset timing (også ved rapid-byge)."""
     global _last_persist_ts
     try:
         now = time.time()
-        if now - _last_persist_ts < _PERSIST_MIN_INTERVAL_S:
+        if not force and now - _last_persist_ts < _PERSIST_MIN_INTERVAL_S:
             return
         _last_persist_ts = now
         from core.runtime.db_core import set_runtime_state_value

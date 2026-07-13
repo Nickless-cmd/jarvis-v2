@@ -48,26 +48,60 @@ deres logning må ikke true det). inspect-fejl → None; ledger-fejl → skip.
 
 ---
 
-## FASE B — Selv-registrering (clusters/nerver deklarerer sig selv)
+## FASE B — CENTRAL-KONTRAKTEN (Bjørn 13. jul: "ubrydelig, sikker, specifik, rolle-baseret")
 I dag definerer koden gates/nerver, og Centralen *opdager* dem bagefter. Vend det om: hver komponent
-**deklarerer sig selv** via et manifest, og Centralen holder én durable registry af sine egne dele.
+**deklarerer sig selv** mod en **ubrydelig kontrakt**, og Centralen loader den LIVE eller **afviser den med
+klare fejl** — så en glemt ting i et modul stopper det ved døren, med en fejl vi kan læse hvor vi står.
 
-**Nerve/cluster-manifest** (deklareret ved registrering):
+### GRUND-INVARIANT (over alt): Centralen har ansvaret. ALTID.
+> **Der er aldrig et cluster eller en nerve der bestemmer uafhængigt af Centralen.** Hver beslutning,
+> emission og handling flyder gennem Centralen (`central().decide` / `central().observe`). Et modul der
+> forsøger at handle udenom = afvist. Ansvaret ligger i Centralen — ikke i komponenten.
+
+### Kontrakten: hvad Centralen KRÆVER af ethvert nyt cluster/nerve (alt valideres ved load)
+**Obligatorisk manifest** (mangler ét felt → afvist med præcis fejl):
 ```
-{ name, cluster, klass: cognitive|security|...,   # klasse styrer fail-open/closed + kill-bar
-  module_path, entrypoint,                         # hvor koden bor + hvordan den kaldes
+{ name, cluster, klass: cognitive|security|...,   # klasse → fail-open/closed + kill-bar-regler
+  identity: owner|claude|jarvis + signatur,        # verificeret mod runtime.json-secret (no-leak, Fase C §2)
+  module_path, entrypoint,                          # hvor koden bor + hvordan den kaldes
+  mode: shadow|on|off,                              # start-tilstand (Jarvis: se rolle-strenghed)
+  capabilities: [observe_only|can_emit|can_block|can_mutate],  # HVAD den må — HÅNDHÆVES
   interface: {input_ctx: [...], output: Verdict|Signal},
-  log_requirements: [session_id, run_id, detected_text, ...],   # hvad den SKAL logge (Fase A-kontrakt)
-  training_format: {...},                          # hvordan dens fyringer skal tolkes/aggregeres
-  capabilities: [read_only|can_block|can_emit|...],# hvad den MÅ (håndhæves — se governance)
-  kill_switch_key: gate_enforce.<name> }           # governed on/off uden deploy
+  kill_switch_key,                                  # OBLIGATORISK — hvert modul er flag-bart
+  trace: required,                                  # OBLIGATORISK — trace_id+session_id+run_id pr. fyring
+  log: required,                                    # OBLIGATORISK — struktureret logger, standard-felter
+  learning: on }                                    # TÆNDT FRA START — Centralen aggregerer fra fyring 1
 ```
-Centralen validerer manifestet mod kontrakten (Fase A), registrerer i sin durable komponent-registry,
-og *administrerer* derfra: den ved hvad der findes, kan surfe det (central_hub), aggregere dets mønstre,
-og slå det fra. To-vejs: komponenten conformer til Centralens krav; Centralen tolker den korrekt.
+**Ubrydelige invarianter** (håndhæves; en overtrædelse = afvist eller flagget, aldrig ignoreret):
+1. **Centralen er eneste autoritet** (grund-invarianten ovenfor).
+2. **Flag-system obligatorisk** — hvert modul har kill-switch (runtime-state), shadow/on/off, slukkes live uden deploy.
+3. **Trace obligatorisk** — hver fyring bærer trace_id + session_id + run_id → fuld to-vejs, spor til begge ender.
+4. **Logger obligatorisk** — struktureret standard-logning.
+5. **Læring TÆNDT fra start** — Centralen aggregerer modulets fyringer straks (Fase A-mønster-læring).
+6. **Capabilities HÅNDHÆVES** — `observe_only` kan ikke emit/block; `can_emit` kan ikke mutate. Overskridelse → afvist/flag.
+7. **Selv-sikker/isoleret** — et modul kan ALDRIG crashe Centralen eller runtime.
 
-**Selv-audit:** en registreret komponent der holder op med at fyre / afviger fra sit manifest → flag
-(det lukker "zombie-nerve"-hullet fra connectivity-auditten). Registry gen-verificerbar via samme audit.
+### Rolle-baseret strenghed (identitets-tier → hvor stram kontrakten er)
+- **Owner/Claude-moduler:** vi kan aktivere *hvad vi vil* i Centralen som vi har brug for. `mode: on` direkte,
+  enhver capability — Centralen loader live på identitets-verifikation. (Løsere; vi er approveren.)
+- **Jarvis-moduler:** strengere. `observe_only` må shadow-loades, men **alt der IKKE er observe-only**
+  (can_emit/can_block/can_mutate) KRÆVER shadow-først (hvis relevant) + eksplicit approval af owner ELLER Claude.
+  Strammere manifest-validering. (Bjørn: "lidt mere strikse krav for modul-bygning.")
+- **Ukendt identitet:** afvist, aldrig loadet.
+
+### Live load med KLAR afvisning (ingen delvis load)
+Centralen loader modulet på runtime (ingen deploy) og validerer manifestet mod kontrakten. Består ét krav ikke →
+**afvis HELE modulet med en specifik fejl-liste** der siger præcis hvad der mangler/er galt:
+`"mangler kill_switch_key"` · `"capability can_block kræver approval for jarvis-identitet"` ·
+`"ingen trace_id-emission detekteret"` · `"identitets-signatur ugyldig"` · `"handler udenom central().decide"`.
+Fejlen lander hvor forfatteren står (owner/Claude ved load; Jarvis som en afvisning han kan læse + rette).
+Alt-eller-intet: et modul består HELE kontrakten eller loades ikke.
+
+### Registry + selv-audit
+Et kontrakt-bestående modul registreres i Centralens **durable komponent-registry**; Centralen administrerer det
+derfra (surfaces via central_hub, mønster-læring, kill-switch). **Selv-audit:** en registreret komponent der holder
+op med at fyre / afviger fra sit manifest → flag (lukker "zombie-nerve"-hullet). Registry gen-verificerbar via
+connectivity-auditten.
 
 ---
 

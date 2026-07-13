@@ -30,6 +30,18 @@ def record_cost(
     """
     if provider == "deepseek" and model in ("deepseek-chat", "deepseek-reasoner"):
         model = "deepseek-v4-flash"
+    # WS2 (13. jul): DeepSeek returnerer tokens men IKKE pris → cost_usd lander som 0.
+    # Beregn den fra pris-tabellen ved skrivning når kalderen ikke gav en ægte pris.
+    if float(cost_usd) <= 0.0:
+        try:
+            from core.services.llm_pricing import compute_cost_usd
+            cost_usd = compute_cost_usd(
+                provider, model,
+                cache_hit_tokens=cache_hit_tokens, cache_miss_tokens=cache_miss_tokens,
+                output_tokens=output_tokens, input_tokens=input_tokens,
+            )
+        except Exception:
+            pass
     with connect() as conn:
         conn.execute(
             """

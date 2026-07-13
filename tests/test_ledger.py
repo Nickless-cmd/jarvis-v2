@@ -89,6 +89,35 @@ class TestDeprecatedDeepseekAliasLabel:
         assert r["model"] == "deepseek-chat"
 
 
+class TestRecordCostComputesUsd:
+    def test_deepseek_zero_cost_gets_computed(self, isolated_runtime):
+        # cost_usd=0.0 (default) + kendte tokens → beregnet fra pris-tabel
+        record_cost(lane="cheap", provider="deepseek", model="deepseek-v4-flash",
+                    input_tokens=0, output_tokens=1_000_000, cost_usd=0.0,
+                    cache_hit_tokens=0, cache_miss_tokens=1_000_000)
+        from core.runtime.db import connect
+        with connect() as conn:
+            r = conn.execute("SELECT cost_usd FROM costs ORDER BY id DESC LIMIT 1").fetchone()
+        assert abs(float(r["cost_usd"]) - 0.42) < 1e-6
+
+    def test_provided_cost_not_overwritten(self, isolated_runtime):
+        record_cost(lane="cheap", provider="deepseek", model="deepseek-v4-flash",
+                    output_tokens=1_000_000, cost_usd=99.0, cache_miss_tokens=1_000_000)
+        from core.runtime.db import connect
+        with connect() as conn:
+            r = conn.execute("SELECT cost_usd FROM costs ORDER BY id DESC LIMIT 1").fetchone()
+        assert abs(float(r["cost_usd"]) - 99.0) < 1e-6  # ægte pris bevaret
+
+    def test_legacy_alias_priced_as_flash(self, isolated_runtime):
+        record_cost(lane="cheap", provider="deepseek", model="deepseek-chat",
+                    cost_usd=0.0, cache_miss_tokens=1_000_000, output_tokens=0)
+        from core.runtime.db import connect
+        with connect() as conn:
+            r = conn.execute("SELECT model, cost_usd FROM costs ORDER BY id DESC LIMIT 1").fetchone()
+        assert r["model"] == "deepseek-v4-flash"
+        assert abs(float(r["cost_usd"]) - 0.14) < 1e-6
+
+
 class TestTelemetrySummary:
     def test_returns_expected_keys(self):
         result = telemetry_summary()

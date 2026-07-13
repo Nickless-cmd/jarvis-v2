@@ -24,9 +24,36 @@ shared_cache under ``assembly_prewarm_stats`` til observability.
 from __future__ import annotations
 
 import logging
+import os
+import sqlite3
 import threading
 import time
 from typing import Any
+
+_COSTS_DB = os.path.expanduser("~/.jarvis-v2/state/jarvis.db")
+
+
+def _max_created_at_real_deepseek() -> float | None:
+    """Epoch seconds of the most recent NON-warmer deepseek call in costs. None if none.
+    Self-safe (DB lock/error -> None); opens read-only."""
+    try:
+        c = sqlite3.connect(f"file:{_COSTS_DB}?mode=ro", uri=True, timeout=2)
+        row = c.execute(
+            "select max(created_at) from costs where provider='deepseek' "
+            "and coalesce(lane,'') not like '%warm%'"
+        ).fetchone()
+        c.close()
+        if not row or not row[0]:
+            return None
+        from datetime import datetime
+        return datetime.fromisoformat(row[0]).timestamp()
+    except Exception:
+        return None
+
+
+def _seconds_since_last_real_deepseek_call() -> float | None:
+    ts = _max_created_at_real_deepseek()
+    return None if ts is None else max(0.0, time.time() - ts)
 
 logger = logging.getLogger(__name__)
 

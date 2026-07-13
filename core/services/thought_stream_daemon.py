@@ -17,6 +17,14 @@ _fragment_buffer: list[str] = []
 _cached_fragment: str = ""
 
 
+def _text_signal(value: str) -> float:
+    """Deterministic 0..1 proxy of a short text state so the event-gate can
+    detect when this daemon's input actually changed (no hash randomisation)."""
+    if not value:
+        return 0.0
+    return float(sum(ord(c) for c in value) % 100) / 100.0
+
+
 def tick_thought_stream_daemon(
     energy_level: str = "",
     inner_voice_mode: str = "",
@@ -26,6 +34,22 @@ def tick_thought_stream_daemon(
     if _last_fragment_at is not None:
         if (now - _last_fragment_at) < timedelta(minutes=_CADENCE_MINUTES):
             return {"generated": False}
+    # Fase 2 Lag 5: gate the (expensive) LLM generation behind the shared
+    # event-gate. Flag off OR real signal change → generate as today. No
+    # change → cheap no-op, no LLM. Self-safe: any event_gate error fails open.
+    try:
+        from core.services import event_gate
+
+        if event_gate.event_driven_enabled():
+            _relevant = {
+                "energy": _text_signal(energy_level),
+                "mood": _text_signal(inner_voice_mode),
+                "continuity": 1.0 if _last_fragment else 0.0,
+            }
+            if not event_gate.should_generative_fire("thought_stream", _relevant):
+                return {"skipped": "no_signal_change"}
+    except Exception:
+        pass  # fail-open: fall through to normal generation
     fragment = _generate_fragment(energy_level, _last_fragment, inner_voice_mode)
     if not fragment:
         return {"generated": False}

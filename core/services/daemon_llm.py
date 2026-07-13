@@ -212,13 +212,24 @@ def quality_daemon_llm_call(
             if text:
                 if cache_key and _get_cache_ttl(daemon_name) > 0:
                     _store_cache(cache_key, text, daemon_name)
-                # SAMLET EGRESS: quality-lanen (inner_enrichment) forlader maskinen men
-                # går IKKE gennem _note_call → rapportér den separat, ellers usynlig.
+                # WS2 (13. jul): quality-lanen (inner_enrichment = deepseek-v4-flash)
+                # forlader maskinen men skrev FØR kun et separat egress-observe og INGEN
+                # costs-række → regnskabs-hul. Route gennem record_cost: det skriver
+                # costs-rækken OG egress-observer internt (samme lane). Det tidligere
+                # separate _egress_observe er derfor fjernet (ellers dobbelt-tælling).
+                # _execute_openai_compatible_chat returnerer allerede opsummerede
+                # output_tokens (= usage.completion_tokens, som for DeepSeek INKLUDERER
+                # reasoning-tokens) — vi lægger derfor ikke reasoning oveni igen.
                 try:
-                    from core.services.central_llm_egress import observe as _egress_observe
-                    _egress_observe(lane="inner_enrichment", provider=provider, model=model,
-                                    purpose="internal", autonomous=True,
-                                    source=f"quality_daemon:{daemon_name or 'ukendt'}")
+                    from core.costing.ledger import record_cost
+                    record_cost(
+                        lane="inner_enrichment", provider=provider, model=model,
+                        input_tokens=int(result.get("input_tokens") or 0),
+                        output_tokens=int(result.get("output_tokens") or 0),
+                        cost_usd=float(result.get("cost_usd") or 0.0),
+                        cache_hit_tokens=int(result.get("cache_hit_tokens") or 0),
+                        cache_miss_tokens=int(result.get("cache_miss_tokens") or 0),
+                    )
                 except Exception:
                     pass
                 try:

@@ -52,6 +52,18 @@ def tick_meta_reflection_daemon(cross_snapshot: dict) -> dict[str, object]:
     if not active_signals:
         return {"generated": False, "credit": credit_result}
 
+    # ── Event-gate (Fase 2 Lag 5): fire cross-signal synthesis only when a
+    #    relevant signal actually moved. Flag OFF → legacy always-fire. ──
+    from core.services import event_gate
+    if event_gate.event_driven_enabled():
+        _relevant = {
+            "latest_fragment": float(len(cross_snapshot.get("latest_fragment") or "")),
+            "last_surprise": float(len(cross_snapshot.get("last_surprise") or "")),
+            "last_conflict": float(len(cross_snapshot.get("last_conflict") or "")),
+        }
+        if not event_gate.should_generative_fire("meta_reflection", _relevant):
+            return {"skipped": "no_signal_change"}
+
     insight = _generate_meta_insight(cross_snapshot)
     if not insight:
         return {"generated": False, "credit": credit_result}

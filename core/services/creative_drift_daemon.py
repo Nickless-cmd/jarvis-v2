@@ -59,6 +59,19 @@ def tick_creative_drift_daemon(fragments: list[str]) -> dict:
         if (now - _last_tick_at) < timedelta(minutes=_CADENCE_MINUTES):
             return {"generated": False}
 
+    # ── Event-gate (Fase 2 Lag 5): fire the associative-surprise generation
+    #    only when idle-time / unused-context signals actually moved.
+    #    Flag OFF → legacy behaviour (cadence + daily-cap only). ──
+    from core.services import event_gate
+    if event_gate.event_driven_enabled():
+        _idle_seconds = (now - _last_tick_at).total_seconds() if _last_tick_at else 0.0
+        _relevant = {
+            "idle_seconds": float(_idle_seconds),
+            "unused_fragments": float(len(fragments or [])),
+        }
+        if not event_gate.should_generative_fire("creative_drift", _relevant):
+            return {"skipped": "no_signal_change"}
+
     idea = _generate_drift_idea(fragments)
     if not idea:
         return {"generated": False}

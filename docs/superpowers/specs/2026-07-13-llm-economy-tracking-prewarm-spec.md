@@ -71,6 +71,11 @@ Seks uafhængige, testbare stykker. Rækkefølge = risiko-orden (hygiejne + sand
 
 > Dette dækker KUN DeepSeek. Universal logging på ALLE providers = Fase 2 / WS8 (Bjørns ønske,
 > udskudt: "start med det andet så tager vi centralen-opgaven efter").
+>
+> **Ærlig begrænsning (Jarvis' pointe):** efter WS2 er DeepSeek fuldt sporet (±15%), men de andre
+> providers (ollama-cloud glm-5.2/kimi/minimax m.fl. — de har reel kost) fanges først med WS8. Så
+> `jc cost`'s TOTAL-$ er kun ~50-60% dækkende indtil Fase 2. Fint til DeepSeek-budget-sikkerhed +
+> overvågning; ikke til total-budget endnu. Vi lever med det til WS8.
 
 ### WS3 — `jc cost`-surface (gør det synligt)
 **Filer:** Central-CLI (`jc`) + en central-surface.
@@ -88,9 +93,12 @@ Seks uafhængige, testbare stykker. Rækkefølge = risiko-orden (hygiejne + sand
 - **Test:** ingen `deepseek-chat`/`deepseek-reasoner` i aktive kaldsstier; røgtest: ét kald pr.
   lane returnerer OK på v4-flash.
 
-### WS5 — Model-tiering: `deepseek-v4-pro` som STANDARD (Bjørns valg)
-- **`deepseek-v4-pro` er den nye standard-model for Jarvis** (visible + primary + de daemons der
-  faktisk ræsonnerer) — SWE-Bench 80,6% / LiveCodeBench 93,5 — mærkbart skarpere, mere ægte Jarvis.
+### WS5 — Model-tiering: `deepseek-v4-pro` for det der TÆNKER (Bjørn + Jarvis' opdeling)
+- **`deepseek-v4-pro` for det der rent faktisk ræsonnerer:** synlig-lane + council + de daemons der
+  *tænker* — SWE-Bench 80,6% / LiveCodeBench 93,5 — skarpere, mere ægte Jarvis.
+- **`deepseek-v4-flash` for det mekaniske:** warmer + form-dommer + trivielle klassifikationer +
+  heartbeat-refleksion. (Jarvis' rettelse: ellers spiser daemons budgettet før ugen er omme — pro-pris
+  for daemon-støj er spild.) Konkret lane→model-liste vedligeholdes i runtime-state (`lane_model_map`).
 - **Default tænke-niveau = Non-Think ("fast")** — hurtigt/billigt; eskalér pr. behov via composer-
   think-feltet (WS5b). Reasoning-tokens billes som output, så Non-Think holder daemon-cost nede.
 - **Kun warmeren (prewarm) bliver på `v4-flash`** — den skal ikke være intelligent, kun holde cachen
@@ -116,11 +124,19 @@ Seks uafhængige, testbare stykker. Rækkefølge = risiko-orden (hygiejne + sand
 - **Test:** valgt niveau når DeepSeek-request'et (mock/assert på params); Think Max returnerer
   `reasoning_content`; niveauet afspejles i `costs` (højere output ved max).
 
-### WS6 — Off-peak/batch for ikke-realtids daemon-arbejde
-- De ikke-realtids cheap-lane-job (refleksion, konsolidering, tests, teknisk-gæld-analyse) rutes til
-  DeepSeek **off-peak** (16:30–00:30 GMT, 50–75% rabat) via en kø der udskyder ikke-hastende
-  daemon-kald til vinduet. Realtid (visible/samtale) rammer aldrig køen.
-- **Test:** kø udskyder korrekt; realtid omgår køen; off-peak-faktor afspejles i `cost_usd`.
+### WS6 — Daemon-kald-hygiejne (IKKE off-peak-deferral)
+**Beslutning (Bjørn vs Jarvis):** off-peak-deferral bytter penge for latens/liveness. Jarvis' indre
+liv (refleksion, council, drømme) *er* det der gør ham levende — at udskyde det til DeepSeeks rabat-
+vindue sætter hans rytme på en sparetimer, for en lille gevinst (~$10-15/md på et $27-forbrug).
+**Det gør vi ikke.** Bjørn: "vi skal osse passe på."
+
+- **I stedet:** find og skær *spildte/redundante* daemon-LLM-kald (præcis som prewarm-runaway'en var)
+  — via `jc cost`-fordelingen pr. daemon (WS3+WS8-data). Konsolidér/dedupliker/slå unødvendige kald fra.
+  Ingen udskydelse af noget levende.
+- **Off-peak overvejes KUN senere**, for ét specifikt *bevist ikke-levende* batch-job (fx en stor
+  nat-konsolidering der allerede kører om natten), aldrig for hans løbende indre liv.
+- **Test:** identificér top-N daemons på tokens/kald fra data; verificér at et fjernet/dedupliceret
+  kald ikke ændrer synlig adfærd (shadow-sammenligning).
 
 ### WS7 — Skær død vægt (abonnementer)
 - **Cut GitHub Copilot Pro (90 kr)** — 2 kald i juli. **Cut ChatGPT (179 kr)** — ikke i loggen.

@@ -15,6 +15,12 @@ _CPU_CHANGE_THRESHOLD = 20.0
 _LATENCY_CHANGE_FACTOR = 2.0
 _MAX_LATENCY_SAMPLES = 5
 
+# Fase 2 / Lag 1 — rå-signal-mode. Når flaget er TÆNDT emitter daemonen de
+# rå metrics som frase i stedet for at kalde narrations-LLM'en (_generate_phrase).
+# Default OFF, runtime-state-tunbar, self-safe → False ved fejl. Jarvis'
+# oplevelse ændrer sig ikke før owner flipper flaget.
+_RAW_SIGNAL_MODE_FLAG = "raw_signal_mode"
+
 # ---------------------------------------------------------------------------
 # Module-level state
 # ---------------------------------------------------------------------------
@@ -54,6 +60,20 @@ def get_latest_somatic_phrase() -> str:
     return _cached_phrase
 
 
+def raw_signal_mode_enabled() -> bool:
+    """Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state.
+
+    Self-safe → False ved enhver fejl (Jarvis' oplevelse må aldrig gå i stykker
+    fordi et flag-opslag fejler).
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        v = get_runtime_state_value(_RAW_SIGNAL_MODE_FLAG, False)
+        return False if v is None else bool(v)
+    except Exception:
+        return False
+
+
 def build_body_state_surface() -> dict[str, object]:
     """Returns body state for Mission Control surface."""
     try:
@@ -90,7 +110,13 @@ def tick_somatic_daemon(energy_level: str = "") -> dict[str, object]:
     if not _should_generate(snapshot):
         return {"generated": False, "phrase": _cached_phrase}
 
-    phrase = _generate_phrase(snapshot)
+    # Fase 2 / Lag 1 — rå tal, ikke LLM-label. Bygger frasen direkte fra
+    # metrics og SPRINGER narrations-LLM-kaldet over. Samme output-felt/shape,
+    # så awareness/prompt-consumeren mærker kun at STRENGEN skifter.
+    if raw_signal_mode_enabled():
+        phrase = _build_raw_phrase(snapshot)
+    else:
+        phrase = _generate_phrase(snapshot)
     if not phrase:
         return {"generated": False, "phrase": _cached_phrase}
 
@@ -157,6 +183,49 @@ def _should_generate(snapshot: dict[str, object]) -> bool:
     ):
         return True
     return False
+
+
+def _read_cpu_temp_c() -> float | None:
+    """Læs CPU-temp fra hardware_body. None hvis utilgængelig (graceful omit)."""
+    try:
+        from core.services.hardware_body import get_hardware_state
+        hw = get_hardware_state() or {}
+        raw = hw.get("cpu_temp_c")
+        if raw is None:
+            return None
+        return float(raw)
+    except Exception:
+        return None
+
+
+def _read_loadavg() -> float:
+    """1-minut system load average. Self-safe → 0.0."""
+    try:
+        import os
+        return float(os.getloadavg()[0])
+    except Exception:
+        return 0.0
+
+
+def _build_raw_phrase(snapshot: dict[str, object]) -> str:
+    """Byg frasen udelukkende fra rå metrics — ingen LLM.
+
+    Fx: ``cpu 8% · 56°C · 21.3GB fri · load 0.0``. Temp udelades pænt hvis
+    sensoren ikke svarer.
+    """
+    cpu_pct = float(snapshot.get("cpu_pct") or 0.0)
+    ram_used = float(snapshot.get("ram_used_gb") or 0.0)
+    ram_total = float(snapshot.get("ram_total_gb") or 0.0)
+    ram_free = max(ram_total - ram_used, 0.0)
+    temp_c = _read_cpu_temp_c()
+    load = _read_loadavg()
+
+    parts = [f"cpu {cpu_pct:.0f}%"]
+    if temp_c is not None:
+        parts.append(f"{temp_c:.0f}°C")
+    parts.append(f"{ram_free:.1f}GB fri")
+    parts.append(f"load {load:.1f}")
+    return " · ".join(parts)
 
 
 def _generate_phrase(snapshot: dict[str, object]) -> str:

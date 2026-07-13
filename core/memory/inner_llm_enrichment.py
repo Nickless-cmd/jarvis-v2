@@ -403,6 +403,46 @@ def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
     return text
 
 
+def _build_inner_llm_body(
+    *,
+    provider: str,
+    model: str,
+    system_prompt: str,
+    user_message: str,
+) -> dict[str, object]:
+    """Build the openai-compat chat-completion body for inner enrichment.
+
+    Inner-enrichment is short reflective text; thinking-mode wastes the
+    _MAX_OUTPUT_TOKENS budget on reasoning_content (which counts toward the
+    cap) and leaves no room for actual content → empty-response.
+    WAS: remap to deepseek-chat (deprecated 2026-07-24).
+    NOW: keep deepseek-v4-flash but disable thinking via request param.
+    """
+    _disable_thinking = False
+    if provider == "deepseek" and model in (
+        "deepseek-v4-flash",
+        "deepseek-reasoner",
+        "deepseek-chat",
+    ):
+        model = "deepseek-v4-flash"
+        _disable_thinking = True
+    body: dict[str, object] = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ],
+        "max_tokens": _MAX_OUTPUT_TOKENS,
+        "temperature": 0.7,
+        "stream": False,
+    }
+    if _disable_thinking:
+        # DeepSeek reads this via extra_body; for a raw openai-compat POST the
+        # fields go directly in the body top-level.
+        body["thinking"] = {"type": "disabled"}
+    return body
+
+
 def _call_remote_chat(
     *,
     target: dict[str, object],
@@ -413,24 +453,16 @@ def _call_remote_chat(
     provider = str(target.get("provider") or "").strip()
     model = str(target.get("model") or "").strip()
     base_url = str(target.get("base_url") or "").rstrip("/")
-    # Inner-enrichment is short reflective text; thinking-mode wastes the
-    # _MAX_OUTPUT_TOKENS budget on reasoning_content (which counts toward
-    # the cap) and leaves no room for actual content → empty-response.
-    # Swap thinking-model aliases to the non-thinking compat alias.
-    if provider == "deepseek" and model in ("deepseek-v4-flash", "deepseek-reasoner"):
-        model = "deepseek-chat"
-    payload = json.dumps(
-        {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-            "max_tokens": _MAX_OUTPUT_TOKENS,
-            "temperature": 0.7,
-            "stream": False,
-        }
-    ).encode("utf-8")
+    body = _build_inner_llm_body(
+        provider=provider,
+        model=model,
+        system_prompt=system_prompt,
+        user_message=user_message,
+    )
+    # Reflect any model remap done inside the body builder (url routing uses
+    # provider, but egress reporting below reports the model actually sent).
+    model = str(body.get("model") or model)
+    payload = json.dumps(body).encode("utf-8")
 
     if provider == "github-copilot":
         url = f"{base_url or 'https://models.github.ai'}/inference/chat/completions"

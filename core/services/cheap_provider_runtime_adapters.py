@@ -488,7 +488,8 @@ def _execute_openai_compatible_chat(
         payload["thinking"] = (
             {"type": "disabled"} if model == "deepseek-chat" else {"type": "enabled"}
         )
-        payload["model"] = "deepseek-v4-flash"
+        model = "deepseek-v4-flash"          # reassign så cost-logging labeler ærligt
+        payload["model"] = model
     # Lag 10 Phase 1 (2026-05-12): caller may pass modulated values.
     # When None, omit from payload so server-side defaults apply (cheap-lane
     # callers don't pass them; only visible-lane wrappers do).

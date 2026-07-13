@@ -156,6 +156,15 @@ def _call_openai_compat_relevance(
     except Exception:
         auth_profile = provider
 
+    _extra = None
+    if provider == "deepseek":
+        from core.services.cheap_provider_runtime_adapters import (
+            deepseek_request_for_thinking_mode,
+        )
+        # Normalise the deprecated alias to v4-flash + disable thinking, so the
+        # cost LABEL is honest and no reasoning overhead is spent on ranking.
+        model, _extra = deepseek_request_for_thinking_mode(model, "fast")
+
     def _do_call() -> dict[str, Any]:
         return _execute_openai_compatible_chat(
             provider=provider,
@@ -163,6 +172,7 @@ def _call_openai_compat_relevance(
             auth_profile=auth_profile,
             base_url=base_url,
             message=prompt,
+            extra_body=_extra,
         )
 
     outcome, payload = _run_with_wall_clock_timeout(_do_call, timeout=timeout)

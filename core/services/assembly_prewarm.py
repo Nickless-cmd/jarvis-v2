@@ -58,9 +58,9 @@ def _seconds_since_last_real_deepseek_call() -> float | None:
 logger = logging.getLogger(__name__)
 
 _ENABLED_FLAG = "assembly_prewarm_enabled"          # default OFF → flip via runtime-state efter verifikation
-_INTERVAL_KEY = "assembly_prewarm_interval_s"       # default 240s
-_DEFAULT_INTERVAL = 240.0
-_MIN_INTERVAL = 180.0
+_INTERVAL_KEY = "assembly_prewarm_interval_s"       # default 600s
+_DEFAULT_INTERVAL = 600.0
+_MIN_INTERVAL = 300.0
 
 _PREWARM_SESSION = "__prewarm__"
 _loop_started = False
@@ -128,15 +128,32 @@ def _mark_prewarmed() -> None:
 
 
 def _should_prewarm() -> bool:
-    """Gate: (a) skip if real deepseek traffic keeps the cache warm; (b) skip if another
-    process already prewarmed within the interval. Cold + idle -> True."""
+    """Traffic-gate: spring prewarm over hvis rigtig deepseek-trafik holder cachen
+    varm inden for skip_if_recent_s. (Cross-process single-warmer håndteres separat
+    af _try_acquire_prewarm_lease.)"""
     since_real = _seconds_since_last_real_deepseek_call()
     if since_real is not None and since_real < _skip_if_recent_s():
         return False
-    since_pw = _seconds_since_last_prewarm()
-    if since_pw is not None and since_pw < _interval_s():
-        return False
     return True
+
+
+def _try_acquire_prewarm_lease(interval_s: float) -> bool:
+    """Atomisk cross-process: kun ÉN proces vinder retten til at warme pr. interval.
+    Conditional UPDATE i jarvis.db (SQLite serialiserer writes → ingen race).
+    Fail-CLOSED: kan vi ikke tage leasen, warmer vi IKKE (undgår runaway)."""
+    try:
+        c = sqlite3.connect(_COSTS_DB, timeout=5)
+        try:
+            c.execute("CREATE TABLE IF NOT EXISTS prewarm_lease (id INTEGER PRIMARY KEY CHECK(id=1), ts REAL)")
+            c.execute("INSERT OR IGNORE INTO prewarm_lease (id, ts) VALUES (1, 0)")
+            now = time.time()
+            cur = c.execute("UPDATE prewarm_lease SET ts=? WHERE id=1 AND ts < ?", (now, now - interval_s))
+            c.commit()
+            return cur.rowcount == 1
+        finally:
+            c.close()
+    except Exception:
+        return False
 
 
 def _record_stats(elapsed_s: float | None, error: str | None = None) -> None:
@@ -159,6 +176,8 @@ def prewarm_once() -> float | None:
     forløbet tid i sekunder, eller None hvis sprunget over/fejlet. Self-safe."""
     if not _should_prewarm():
         return None
+    if not _try_acquire_prewarm_lease(_interval_s()):
+        return None
     _local.prewarm_active = True
     try:
         from core.services.prompt_contract import build_visible_chat_prompt_assembly
@@ -170,7 +189,6 @@ def prewarm_once() -> float | None:
             session_id=_PREWARM_SESSION,
         )
         elapsed = time.monotonic() - t0
-        _mark_prewarmed()
         _record_stats(elapsed)
         logger.info("assembly_prewarm: build complete in %.2fs", elapsed)
         return elapsed

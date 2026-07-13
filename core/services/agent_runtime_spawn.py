@@ -12,6 +12,7 @@ Re-exported via ``core.services.agent_runtime`` for backward compatibility.
 from __future__ import annotations
 
 import json
+import time
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -370,6 +371,8 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
         started_at=_now_iso(),
     )
     result: dict[str, object] = {}  # A4: readable on the failure seam too
+    _t0 = time.monotonic()
+    _result_noted = False  # agent_result skal fyre PRÆCIS én gang pr. dispatch
     try:
         update_agent_registry_entry(agent_id, status="active")
         _needs_tools = _role_needs_tools(str(agent.get("role") or ""))
@@ -430,6 +433,28 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             cost_usd=float(result.get("cost_usd") or 0.0),
             provider_status=str(result.get("status") or "completed"),
         )
+        # Agents-cluster: dispatch-udfald SYNLIGT i Centralen (robusthedskonvolut +
+        # envelope-tidsserier). Self-safe — kaster aldrig ind i dispatch-stien.
+        _dispatch_status = str(result.get("status") or "completed")
+        try:
+            from core.services.agents import note_agent_blocked, note_agent_result
+            note_agent_result(
+                agent_id, _dispatch_status,
+                tokens_in=input_tokens, tokens_out=output_tokens,
+                cost_usd=float(result.get("cost_usd") or 0.0),
+                duration_ms=int((time.monotonic() - _t0) * 1000),
+                tool_calls=int(result.get("tool_calls") or 0),
+                role=str(agent.get("role") or ""), run_id=str(run_id or ""),
+            )
+            _result_noted = True
+            if _dispatch_status in ("blocked", "needs_context"):
+                note_agent_blocked(
+                    agent_id, _dispatch_status,
+                    reason=str(result.get("text") or "")[:160],
+                    role=str(agent.get("role") or ""),
+                )
+        except Exception:
+            pass
         tokens_used = input_tokens + output_tokens
         # A4b: cost is now logged at the execution chokepoint
         # (execute_with_role_or_fallback / execute_cheap_lane_via_pool) with
@@ -499,6 +524,25 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             note_agent_error(agent_id, exc, run_id=str(run_id or ""))
         except Exception:
             pass
+        # Agents-cluster: dispatch-udfald (fejl-stien) — agent_result skal fyre PRÆCIS
+        # én gang pr. dispatch. _result_noted-vagten forhindrer dobbelt-fyring hvis
+        # succes-stien nåede at note men senere efterbehandling kastede. Self-safe.
+        if not _result_noted:
+            try:
+                from core.services.agents import note_agent_result
+                note_agent_result(
+                    agent_id, "failed",
+                    tokens_in=int(result.get("input_tokens") or 0),
+                    tokens_out=int(result.get("output_tokens") or 0),
+                    cost_usd=float(result.get("cost_usd") or 0.0),
+                    duration_ms=int((time.monotonic() - _t0) * 1000),
+                    tool_calls=int(result.get("tool_calls") or 0),
+                    role=str(agent.get("role") or ""), run_id=str(run_id or ""),
+                    error=message[:160],
+                )
+                _result_noted = True
+            except Exception:
+                pass
         # Retry backoff for persistent agents
         refreshed = get_agent_registry_entry(agent_id)
         if refreshed and bool(refreshed.get("persistent")):

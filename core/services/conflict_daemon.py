@@ -9,6 +9,19 @@ from core.runtime.db import insert_private_brain_record
 
 _COOLDOWN_MINUTES = 10
 
+# Fase 2 / Lag 1 — rå-signal-mode. Når flaget er TÆNDT emitter daemonen den
+# rå spænding + between-par som frase i stedet for at kalde narrations-LLM'en
+# (_generate_conflict_phrase). Default OFF, runtime-state-tunbar, self-safe →
+# False ved fejl. Jarvis' oplevelse ændrer sig ikke før owner flipper flaget.
+_RAW_SIGNAL_MODE_FLAG = "raw_signal_mode"
+
+# conflict_type → symbolsk between-par (X↔Y). Rent rule-based, ingen LLM.
+_BETWEEN_PAIRS = {
+    "energy_impulse": ("handling", "krop"),
+    "mode_thought": ("ro", "tanker"),
+    "surprise_unprocessed": ("overraskelse", "bearbejdning"),
+}
+
 _cached_conflict: str = ""
 _cached_conflict_at: datetime | None = None
 _conflict_type: str = ""
@@ -29,12 +42,58 @@ def tick_conflict_daemon(snapshot: dict) -> dict[str, object]:
     if not conflict_type:
         return {"generated": False}
 
-    phrase = _generate_conflict_phrase(conflict_type, snapshot)
+    # Fase 2 / Lag 1 — rå spænding + between-par, ikke LLM-label. Bygger frasen
+    # direkte fra metrics og SPRINGER narrations-LLM-kaldet over. Samme output-
+    # felt/shape, så awareness/consumeren mærker kun at STRENGEN skifter.
+    if raw_signal_mode_enabled():
+        phrase = _build_raw_conflict_phrase(conflict_type, snapshot)
+    else:
+        phrase = _generate_conflict_phrase(conflict_type, snapshot)
     if not phrase:
         return {"generated": False}
 
     _store_conflict(phrase, conflict_type)
     return {"generated": True, "conflict_type": conflict_type, "phrase": phrase}
+
+
+def raw_signal_mode_enabled() -> bool:
+    """Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state.
+
+    Self-safe → False ved enhver fejl (Jarvis' oplevelse må aldrig gå i stykker
+    fordi et flag-opslag fejler).
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        v = get_runtime_state_value(_RAW_SIGNAL_MODE_FLAG, False)
+        return False if v is None else bool(v)
+    except Exception:
+        return False
+
+
+def _conflict_tension(conflict_type: str, snapshot: dict) -> float:
+    """Rå spændings-score 0–1 fra rule-based signaler. Ingen LLM.
+
+    Grounder i de tal detektoren allerede så: flere pending-forslag under lav
+    energi = højere spænding; recent overraskelse ubearbejdet = moderat-høj.
+    """
+    if conflict_type == "energy_impulse":
+        pending = int(snapshot.get("pending_proposals_count") or 0)
+        return round(min(1.0, 0.4 + 0.15 * max(0, pending - 1)), 2)
+    if conflict_type == "mode_thought":
+        return 0.4
+    if conflict_type == "surprise_unprocessed":
+        return 0.5
+    return 0.3
+
+
+def _build_raw_conflict_phrase(conflict_type: str, snapshot: dict) -> str:
+    """Byg frasen udelukkende fra rå metrics — ingen LLM.
+
+    Fx: ``spænding 0.4 · mellem handling↔krop``.
+    """
+    tension = _conflict_tension(conflict_type, snapshot)
+    x, y = _BETWEEN_PAIRS.get(conflict_type, ("signal", "modsignal"))
+    return f"spænding {tension:.1f} · mellem {x}↔{y}"
 
 
 def _detect_conflict(snapshot: dict) -> str:

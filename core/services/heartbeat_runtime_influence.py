@@ -870,6 +870,22 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # C5 — event-trigger SHADOW-meter (observe-only). Cheap, NON-LLM sibling to
+    # the old autonomous_council tick above (which is left UNTOUCHED and retires
+    # later). Each tick it evaluates the pure signal-delta trigger + consults the
+    # dispatch guards and records what it WOULD dispatch to central_timeseries —
+    # NEVER firing an LLM or convening a council. Guarded so it can never break
+    # the heartbeat; runs whenever the autonomous_council daemon is enabled.
+    if _dm.is_enabled("autonomous_council"):
+        try:
+            from core.services.event_trigger_shadow import tick_event_trigger_shadow
+            _et_result = _hb._daemon_tick_with_deadline(
+                "event_trigger_shadow", tick_event_trigger_shadow, deadline_seconds=10.0,
+            )
+            _dm.record_daemon_tick("event_trigger_shadow", _et_result or {})
+        except Exception:
+            pass
+
     if _dm.is_enabled("council_memory"):
         try:
             from core.services.council_memory_daemon import tick_council_memory_daemon

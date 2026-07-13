@@ -302,7 +302,11 @@ mine faktiske tool-skemaer i denne session — grupperet efter rolle.
 
 ### 4.2 ROBUSTHED-KONTRAKTEN (det Bjørn kræver — modelleret på hvordan jeg faktisk opfører mig)
 
-Fire invariante regler. Hvert dispatch i det nye system SKAL overholde alle fire:
+Fire invariante regler. Hvert dispatch i det nye system SKAL overholde alle fire.
+> ⚠️ HÆRDET af rådet 13. jul: disse 4 regler validerer kun STRUKTUR. Se
+> `2026-07-13-council-findings-synthesis.md` §2 for de 12 værn der skal med (hysterese,
+> dead-man-timeout, budget-loft, idempotens, plausibilitet, subscriber-ack, rekursions-guard,
+> gensidig udelukkelse …) — uden dem kan konvolutten stadig lyve eller trigge token-runaway.
 
 1. **Struktureret konvolut ALTID retur.** Hvert kald (agent/råd/daemon) returnerer:
    `{status, tokens_in, tokens_out, cost_usd, duration_ms, tool_calls, result}`. Det er

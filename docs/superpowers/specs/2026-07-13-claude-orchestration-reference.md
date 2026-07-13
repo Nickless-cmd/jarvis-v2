@@ -234,6 +234,101 @@ Krydstjek mod dok afslørede ting man kunne tro var der, men ikke er:
   design-valg (bygget på judge-panel/adversarial-verify-mønstrene), ikke en kopi af en
   navngivet funktion. Det er fint — det betyder bare vi ejer designet.
 
+## DEL 5 — Den KOMPLETTE værktøjskasse + robusthed-kontrakten (førstehånds audit)
+
+Bjørn: *"gå gennem din egen toolbox først, der er sikkert mere end de 3 ting… intet må
+fejle stille, der er taget højde for edges, agenten returnerer opgaven eller stopper ved
+noget uventet, og sender ALTID tid og usage tilbage."* Her er hele maskineriet, læst fra
+mine faktiske tool-skemaer i denne session — grupperet efter rolle.
+
+### 5.1 Hele overfladen (ikke 3 ting — 15+)
+
+**A. DISPATCH (start arbejde)**
+- **Agent** — spawn en subagent (type, model, effort, isolation=worktree/remote,
+  run_in_background). Baggrund default → notifikation ved færdig. Agentens SIDSTE besked =
+  returværdi. SendMessage for at fortsætte; nyt kald = frisk.
+- **Workflow** — deterministisk multi-agent-script (agent/parallel/pipeline/phase/log).
+  Returnerer runId straks, notifikation ved færdig. Indbygget: struktureret schema-output,
+  **budget-sporing** (budget.total/spent()/remaining()), concurrency-cap, resume.
+- **Bash(run_in_background)** — detached shell; gen-invokerer mig ved exit.
+- **Task-liste (TaskCreate/Get/List/Update/Stop)** — delt arbejdsliste med AFHÆNGIGHEDER
+  (blocks/blockedBy), status (pending→in_progress→completed/deleted), owner. Substratet
+  agenter koordinerer over.
+
+**B. VENT/VÆK (vær fraværende indtil en hændelse)**
+- **task-notification** — KERNEN. Fyrer når en baggrundsopgave stopper. Bærer: **status
+  (completed/failed + exit-kode), summary, output-fil, OG usage: tokens, tool_uses,
+  duration_ms.** Dvs. tid+usage kommer ALTID tilbage — det er selve konvolutten.
+- **Monitor** — stream hændelser fra et script/WebSocket; hver stdout-linje = én event.
+  Regel indbygget: filteret skal matche FEJL-tilstande, ikke kun success ("silence is not
+  success"). Rate-limitet; firehose auto-stoppes.
+- **TaskOutput** — hent output fra kørende/færdig opgave, blokerende el. ej (eksplicit poll).
+- **ScheduleWakeup** — /loop: væk mig selv efter valgt interval (cache-vindue-styret).
+- **CronCreate/List/Delete** — planlagte prompts (cron), fyrer når idle.
+- **RemoteTrigger** — cloud-routines (claude.ai). (Claude-specifikt; Jarvis' analog =
+  hans egen scheduler.)
+
+**C. UNDERRET MENNESKET**
+- **PushNotification** — desktop/telefon når noget kræver opmærksomhed / langt job færdigt
+  mens væk. Err mod IKKE at sende.
+- **SendUserFile / AskUserQuestion** — vis fil / stil blokerende beslutning.
+
+**D. AGENT-TIL-AGENT**
+- **SendMessage** — besked til anden agent (teammate el. "main"). Plain output er IKKE
+  synligt for andre agenter — man SKAL bruge dette. Kanalen agenter koordinerer over.
+
+**E. HOOKS (hændelses-triggere)**
+- SessionStart, PostToolUse, PostEditFile, PreCompaction, Task Created/Completed,
+  PreApprovalPrompt, PermissionModeChanged. Tre former: shell / prompt-LLM / agent-baseret.
+  Betinget via `if`-matcher. (Set førstehånds i denne session: SessionStart injicerede
+  kontekst; PostToolUse fyrede på MEMORY.md-størrelse.)
+
+**F. TOOL-DISCOVERY (billig stor værktøjskasse)**
+- **ToolSearch** — load tool-skemaer on-demand. Store værktøjskasser holdes billige ved
+  IKKE at loade alt — man henter skemaet når man skal bruge det. (Jarvis' analog:
+  tool-katalog-beskæring 128→8; [[reference_prompt_assembly_latency]].)
+
+### 5.2 ROBUSTHED-KONTRAKTEN (det Bjørn kræver — modelleret på hvordan jeg faktisk opfører mig)
+
+Fire invariante regler. Hvert dispatch i det nye system SKAL overholde alle fire:
+
+1. **Struktureret konvolut ALTID retur.** Hvert kald (agent/råd/daemon) returnerer:
+   `{status, tokens_in, tokens_out, cost_usd, duration_ms, tool_calls, result}`. Det er
+   præcis task-notification-formatet. (Vi byggede allerede `record_cost` → cost+tokens
+   fanges; udvid til den fulde konvolut pr. dispatch.) Ingen kald uden usage+tid.
+2. **Fejl er HØJLYDT og TYPET — aldrig falsk success.**
+   - Baggrundsopgave fejler → `failed`-notifikation med exit-kode (set i denne session).
+   - Agent møder noget uventet → returnerer status **BLOCKED / NEEDS_CONTEXT /
+     DONE_WITH_CONCERNS**, IKKE en opdigtet success (subagent-driven-development-kontrakten).
+   - Workflow-trin kaster → elementet dropper til null, resten springes over — men droppet
+     er SYNLIGT (filter+log). "No silent caps": bunder man dækning (top-N/no-retry), så log
+     hvad der blev droppet.
+   - Agent dør på terminal fejl efter retries → returnerer null (ikke hæng).
+3. **Returnér-opgaven-eller-stop.** En agent der ikke kan færdiggøre RETURNERER opgaven
+   (rapporterer blokeret) eller stopper — den fortsætter aldrig stille og digter ikke.
+   Controlleren beslutter eksplicit: giv kontekst + re-dispatch / eskalér model / split /
+   eskalér til Bjørn. Ignorér ALDRIG en eskalering; kør aldrig samme model igen uden at
+   ændre noget.
+4. **Intet er usynligt — hver sti er observerbar.** Hvert dispatch enten returnerer et
+   resultat controlleren inspicerer, ELLER fyrer en notifikation. Controlleren bliver
+   ALTID vækket og ser ALTID status+usage. Monitor-reglen: filteret skal fange fejl, ikke
+   kun success. Usage er altid hæftet på → cost er altid synlig (via `jc cost`).
+
+### 5.3 Hvorfor kontrakten dræber netop Jarvis' dræber-problem
+Bjørn: *"signaler + LLM-kald per daemon er det der dræber os — signalerne er ægte men vi
+koger token mange gange uden kontekst, selv om signalerne måske ikke ændrer sig længe."*
+Kontrakten rammer hvert led:
+- **Event-drevet, ikke timer** → LLM fyrer KUN når en signal-DELTA krydser tærskel. En
+  billig NON-LLM delta-tjek kører på hjerteslaget; LLM'en rører kun ilden ved ægte ændring.
+- **Idle = NUL brænd** → ændrer signalerne sig ikke i timevis, sker der NUL LLM-kald (mod
+  nu: min. 48 kald/døgn på 30-min-timeren uanset hvad).
+- **Kontekst-rig når den fyrer** → fød de faktiske tanker/samtale, ikke "autonomy:0.4".
+- **Output lander** → struktureret konvolut tilbage til Jarvis, ikke push_initiative-og-dør.
+- **Usage altid synlig** → hvert kald logget (record_cost, gjort) → ingen stille token-kogning.
+
+Det er "et dispatch der bare spiller": fyrer kun på ægte hændelse, rapporterer altid
+tid+usage, fejler aldrig stille, og idler gratis.
+
 ## Åbne spørgsmål til afklaring før byg
 1. Skal event-nudgen kunne VÆKKE Jarvis (skrive til ham/Bjørn proaktivt), eller kun lægge
    en markør han ser næste gang han er aktiv?

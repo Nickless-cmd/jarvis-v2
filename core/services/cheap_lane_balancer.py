@@ -569,6 +569,21 @@ def call_balanced(
             except Exception:
                 pass
             _append_recent_call(slot.slot_id, daemon_name, "ok", latency_ms)
+            # ── WS2: log costs-række (balanceren var før usynlig for ledgeren) ──
+            # record_cost egress-observer selv + beregner cost_usd fra pris-tabel
+            # når provider ikke returnerer pris (DeepSeek). Aldrig-vælt daemon-kald.
+            try:
+                from core.costing.ledger import record_cost
+                record_cost(
+                    lane="cheap-balanced", provider=slot.provider, model=slot.model,
+                    input_tokens=int(result.get("input_tokens") or 0),
+                    output_tokens=int(result.get("output_tokens") or 0),
+                    cost_usd=float(result.get("cost_usd") or 0.0),
+                    cache_hit_tokens=int(result.get("cache_hit_tokens") or result.get("prompt_cache_hit_tokens") or 0),
+                    cache_miss_tokens=int(result.get("cache_miss_tokens") or result.get("prompt_cache_miss_tokens") or 0),
+                )
+            except Exception:
+                pass
             return {
                 "status": "ok",
                 "lane": "cheap-balanced",

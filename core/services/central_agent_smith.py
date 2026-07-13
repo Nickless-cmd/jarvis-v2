@@ -108,6 +108,7 @@ import logging as _logging
 from datetime import UTC, datetime
 
 from core.services.central_agent_smith_escalation import (
+    default_config,
     pattern_key,
     step_escalation,
     top_line,
@@ -116,6 +117,8 @@ from core.services.central_agent_smith_escalation import (
 logger = _logging.getLogger(__name__)
 _STATE_KEY = "agent_smith_state"
 _ESCALATION_KEY = "agent_smith_escalation"
+_CRITERIA_KEY = "agent_smith_escalation_criteria"   # runtime-state overstyring af drift-kriteriet
+_CORROBORATED_KEY = "agent_smith_corroborated_labels"  # labels et andet værn har flagget (tunbar kanal)
 _VOICE_SWITCH = ("autonomy", "agent_smith_voice")
 
 
@@ -178,20 +181,59 @@ def _save_escalation_state(state: dict[str, Any]) -> None:
         pass
 
 
-def _detected_patterns(a: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Byg {pattern_key: {kind,label,metric}} fra assess() — fraser + beslutnings-signaturer."""
+def _detected_patterns(a: dict[str, Any],
+                       corroborated: set[str] | None = None) -> dict[str, dict[str, Any]]:
+    """Byg {pattern_key: {kind,label,metric,corroborated}} fra assess() — fraser + beslutnings-
+    signaturer. `corroborated` = labels (lowercase) som et ANDET værn har flagget → drift-signal (b)."""
+    corr = corroborated or set()
     out: dict[str, dict[str, Any]] = {}
     for p in (a.get("repeated_phrases") or []):
         label = str(p.get("phrase") or "").strip()
         if label:
             out[pattern_key("phrase", label)] = {"kind": "phrase", "label": label,
-                                                 "metric": float(p.get("in_messages") or 0)}
+                                                 "metric": float(p.get("in_messages") or 0),
+                                                 "corroborated": label.lower() in corr}
     for p in (a.get("decision_patterns") or []):
         label = str(p.get("signature") or "").strip()
         if label:
             out[pattern_key("seq", label)] = {"kind": "seq", "label": label,
-                                             "metric": float(p.get("in_runs") or 0)}
+                                             "metric": float(p.get("in_runs") or 0),
+                                             "corroborated": label.lower() in corr}
     return out
+
+
+def _escalation_criteria() -> dict[str, Any]:
+    """Drift-kriteriet (benign_terms/risky_terms/spike_factor) — default + runtime-state overstyring.
+    Tunbart uden deploy. Self-safe → defaults."""
+    cfg = dict(default_config())
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        override = get_runtime_state_value(_CRITERIA_KEY, {})
+        if isinstance(override, dict):
+            if isinstance(override.get("benign_terms"), list):
+                cfg["benign_terms"] = [str(t).lower() for t in override["benign_terms"]]
+            if isinstance(override.get("risky_terms"), list):
+                cfg["risky_terms"] = [str(t).lower() for t in override["risky_terms"]]
+            if override.get("spike_factor") is not None:
+                cfg["spike_factor"] = float(override["spike_factor"])
+    except Exception:
+        pass
+    return cfg
+
+
+def _corroboration_signal() -> set[str]:
+    """Labels/signaturer et ANDET værn nyligt flagede som en bekymring → drift-signal (b).
+    Konservativ, tunbar kanal (runtime-state liste som gates/source_confidence/reasoning_interceptor
+    eller owner kan skrive til) — INGEN fuzzy auto-matchning, så den opfinder aldrig en korrelation.
+    Tom → korroborations-stien er inert (spike + risiko bærer stadig sikkerheden). Self-safe → tom."""
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        vals = get_runtime_state_value(_CORROBORATED_KEY, [])
+        if isinstance(vals, list):
+            return {str(v).strip().lower() for v in vals if str(v).strip()}
+    except Exception:
+        pass
+    return set()
 
 
 def _execute_mint(key: str, label: str, kind: str, metric: float) -> str | None:
@@ -199,10 +241,12 @@ def _execute_mint(key: str, label: str, kind: str, metric: float) -> str | None:
     Dedup + observe er indbygget i behavioral_decisions.create_decision. Self-safe → None.
 
     SHADOW-GATE (Bjørn+Claude 11. jul): mint KUN når gate_enforce.agent_smith er flippet ON.
-    I shadow OBSERVERER Smith kun (Trin 1) — han binder ikke Jarvis. Rod: detektoren måler
-    HYPPIGHED af normale træk/fraser (fx "run non-destructive command" 18×, "det giver mening")
-    og forvekslede det med ulydighed → mintede falsk-positive "stop normalt arbejde"-direktiver.
-    Indtil detektoren skelner gode/dårlige mønstre (harm-signal), må shadow ikke binde."""
+    I shadow OBSERVERER Smith kun (Trin 1) — han binder ikke Jarvis. Rod (nu FIKSET 13. jul,
+    central_agent_smith_escalation._may_escalate): detektoren målte HYPPIGHED af normale træk/fraser
+    (fx "run non-destructive command" 18×) og forvekslede det med ulydighed → mintede falsk-positive
+    "stop normalt arbejde"-direktiver. Stigen klatrer nu kun forbi Trin 1 på et ægte DRIFT-signal
+    (spike/korroboration/risiko); benign jævn hyppighed bliver på Trin 1. Sikker(ere) at flippe —
+    et mint kan nu kun opstå på et drift-eskaleret mønster, ikke på rå frekvens."""
     if not _agent_smith_enforced():
         return None
     try:
@@ -293,9 +337,10 @@ def run_escalation_tick(assessment: dict[str, Any] | None = None) -> dict[str, A
     observ hver overgang. Self-safe."""
     try:
         a = assessment or assess()
-        detected = _detected_patterns(a)
+        detected = _detected_patterns(a, _corroboration_signal())
+        cfg = _escalation_criteria()
         state = _load_escalation_state()
-        new_state, actions = step_escalation(state, detected, datetime.now(UTC).isoformat())
+        new_state, actions = step_escalation(state, detected, datetime.now(UTC).isoformat(), cfg)
         for act in actions:
             t = act.get("type")
             if t == "mint":

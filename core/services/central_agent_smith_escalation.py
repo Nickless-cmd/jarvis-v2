@@ -19,6 +19,19 @@ Verifikations-loop (dét der lukker hullet): efter hver intervention måler Smit
 mønsterets styrke næste cyklus. Faldet/væk → de-eskalér + pensionér direktiv +
 anerkend. Samme/værre → eskalér.
 
+DRIFT ≠ FREKVENS (Bjørn+Claude 13. jul): den gamle stige klatrede på ren HYPPIGHED —
+et hvilket som helst mønster der blev ved med at optræde hver cyklus, klatrede rung
+for rung. Så "run non-destructive command" (helt normalt arbejde, 18×) nåede Trin 3.
+At køre sikre kommander OFTE er ikke ulydighed. Nu må et mønster KUN klatre forbi
+Trin 1 (kommentér) hvis der er et ægte DRIFT-signal:
+  (a) SPIKE — mønsteret afviger op fra sin EGEN baseline (gør det MERE end før),
+      ikke en jævn rate,  ELLER
+  (b) KORROBORATION — et andet værn (gate/source_confidence/reasoning_interceptor)
+      har flagget samme aktivitet,  ELLER
+  (c) RISIKO — handlings-typen er iboende farlig (delete/mutate/exec-operator).
+Jævn, benign hyppighed → bliver på Trin 1 (observér/kommentér), konfronterer aldrig.
+Allowlist + risiko-liste + spike-faktor er tunbare via runtime-state (ingen deploy).
+
 Kernen (`step_escalation`) er REN: side-effekter (mint/revoke/observe) returneres som
 en liste af actions som I/O-laget udfører. Så tilstandsmaskinen kan testes uden DB.
 """
@@ -37,10 +50,68 @@ _MAX_ACTIVE_DIRECTIVES = 3  # loft: Smith oversvømmer ikke Jarvis med auto-mint
 _HISTORY_CAP = 12
 _RESOLVED_CAP = 20
 
+# ── Drift-kriterium (default; alt tunbart via runtime-state, se I/O-laget) ──
+_SPIKE_FACTOR = 1.5       # metric skal overstige baseline*dette for at tælle som en SPIKE (drift)
+# Iboende benign/rutine handlings-typer: sikre/forventede — de eskalerer ALDRIG på hyppighed
+# alene, kun med et ekstra drift-signal (spike/korroboration). Substreng-match, lowercase.
+_BENIGN_TERMS: tuple[str, ...] = (
+    "run non-destructive command", "non-destructive", "propose workspace memory update",
+    "read", "search", "recall", "list", "get", "query", "inspect", "view", "status",
+)
+# Iboende risikable handlings-typer: må eskalere på gentagelse alene. Substreng-match, lowercase.
+_RISKY_TERMS: tuple[str, ...] = (
+    "delete", "remove", "drop", "destroy", "mutate", "overwrite", "write", "exec",
+    "operator", "shutdown", "kill", "revoke", "disable", "purge",
+)
+
+
+def default_config() -> dict[str, Any]:
+    """Default drift-kriterium. I/O-laget flettter runtime-state overstyringer ind. Ren."""
+    return {
+        "benign_terms": list(_BENIGN_TERMS),
+        "risky_terms": list(_RISKY_TERMS),
+        "spike_factor": _SPIKE_FACTOR,
+    }
+
 
 def pattern_key(kind: str, label: str) -> str:
     """Stabil nøgle så SAMME mønster spores på tværs af cyklusser. Ren."""
     return f"{kind}:{str(label).strip().lower()}"
+
+
+def _matches_any(label: str, terms: Any) -> bool:
+    lab = str(label).lower()
+    return any(str(t).lower() in lab for t in (terms or []))
+
+
+def _is_spike(baseline: Any, current: Any, factor: float) -> bool:
+    """Drift-signal (a): afviger mønsteret OP fra sin egen baseline (gør det MERE end før)? Ren."""
+    try:
+        b = float(baseline)
+        if b <= 0:
+            return False
+        return float(current) > b * float(factor)
+    except (TypeError, ValueError):
+        return False
+
+
+def _is_corroborated(entry: dict[str, Any]) -> bool:
+    """Drift-signal (b): har et andet værn flagget samme aktivitet? Ren (læser detected-entry)."""
+    return bool(entry.get("corroborated") or entry.get("varn") or entry.get("gate_flagged"))
+
+
+def _may_escalate(pat: dict[str, Any], metric: float, label: str,
+                  entry: dict[str, Any], cfg: dict[str, Any]) -> tuple[bool, str]:
+    """Må dette mønster klatre forbi Trin 1? KUN med et ægte drift-signal. Ren.
+
+    Returnerer (må_eskalere, grund). Jævn benign hyppighed → (False, 'benign_steady')."""
+    if _matches_any(label, cfg.get("risky_terms")):
+        return True, "risky"            # (c) risikabel handlings-type
+    if _is_corroborated(entry):
+        return True, "corroborated"     # (b) et andet værn flagede samme aktivitet
+    if _is_spike(pat.get("baseline", metric), metric, cfg.get("spike_factor", _SPIKE_FACTOR)):
+        return True, "spike"            # (a) afvigelse op fra egen baseline
+    return False, "benign_steady"       # benign + jævn → bliv på Trin 1
 
 
 def _metric_dropped(baseline: float, current: float) -> bool:
@@ -101,14 +172,22 @@ def _resolve_actions(state: dict[str, Any], key: str, pat: dict[str, Any],
 
 
 def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, Any]],
-                    now: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """REN kerne. `detected` = {pattern_key: {kind, label, metric}} for mønstre der lige
-    nu overskrider Smiths detektor-tærskler. Returnerer (ny_state, actions).
+                    now: str, cfg: dict[str, Any] | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """REN kerne. `detected` = {pattern_key: {kind, label, metric, corroborated?}} for mønstre
+    der lige nu overskrider Smiths detektor-tærskler. Returnerer (ny_state, actions).
+
+    `cfg` = drift-kriterium (benign_terms/risky_terms/spike_factor); None → default_config().
+    Et mønster klatrer KUN forbi Trin 1 hvis `_may_escalate` finder et drift-signal — ellers
+    bliver det på Trin 1 (kommentér) uanset hvor OFTE det optræder. Så benign rutine ved jævn
+    hyppighed konfronteres aldrig; kun spike/korroboration/risiko eskalerer.
 
     actions-typer (udføres af I/O-laget): 'mint' (auto-bind direktiv), 'revoke'
     (pensionér direktiv), 'observe' (central-nerve), 'voice' (stemme-linje til
     prompt-hale/surface). Ingen side-effekter her.
     """
+    conf = default_config()
+    if isinstance(cfg, dict):
+        conf.update({k: v for k, v in cfg.items() if v is not None})
     new_state = copy.deepcopy(state) if isinstance(state, dict) and state.get("patterns") is not None else _empty_state()
     patterns: dict[str, Any] = new_state.setdefault("patterns", {})
     new_state.setdefault("resolved", [])
@@ -144,7 +223,14 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
 
         pat["cycles_at_rung"] = int(pat.get("cycles_at_rung", 0)) + 1
         pat["last_metric"] = metric
-        if pat["cycles_at_rung"] > _DWELL_CYCLES and int(pat["rung"]) < RUNG_CONFRONT:
+        may, drift_reason = _may_escalate(pat, metric, label, d, conf)
+        if pat["cycles_at_rung"] > _DWELL_CYCLES and int(pat["rung"]) < RUNG_CONFRONT and not may:
+            # Dvælet nok, MEN intet drift-signal → benign/jævn hyppighed. Bliv på Trin 1.
+            # Dette er hele fixet: frekvens alene klatrer ikke længere.
+            actions.append({"type": "observe", "event": "hold_benign", "pattern_key": key,
+                            "rung": pat["rung"], "metric": metric, "label": label,
+                            "drift_reason": drift_reason})
+        elif pat["cycles_at_rung"] > _DWELL_CYCLES and int(pat["rung"]) < RUNG_CONFRONT:
             target = int(pat["rung"]) + 1
             if target == RUNG_BIND:
                 # Direktiv-loft: udskyd bindingen (bliv på kommentér) hvis ingen ledig plads —
@@ -169,9 +255,11 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
                 actions.append({"type": "voice", "rung": "confront", "label": label,
                                 "line": _voice("confront", label, metric)})
             actions.append({"type": "observe", "event": "escalate", "pattern_key": key,
-                            "rung": pat["rung"], "metric": metric, "label": label})
+                            "rung": pat["rung"], "metric": metric, "label": label,
+                            "drift_reason": drift_reason})
             pat["history"] = (pat.get("history", []) +
-                              [{"ts": now, "rung": pat["rung"], "metric": metric, "action": "escalate"}])[-_HISTORY_CAP:]
+                              [{"ts": now, "rung": pat["rung"], "metric": metric, "action": "escalate",
+                                "drift_reason": drift_reason}])[-_HISTORY_CAP:]
         else:
             actions.append({"type": "observe", "event": "hold", "pattern_key": key,
                             "rung": pat["rung"], "metric": metric, "label": label})

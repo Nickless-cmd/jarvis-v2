@@ -13,7 +13,11 @@ PK = pattern_key("phrase", "vil du have")
 
 
 def _det(metric: float, label: str = "vil du have", kind: str = "phrase"):
-    return {pattern_key(kind, label): {"kind": kind, "label": label, "metric": metric}}
+    # corroborated=True = et ægte drift-signal, så disse tests øver LADDER-MEKANISMEN
+    # (bind→mint→confront→loft) uafhængigt af drift-gaten. Jævn frekvens uden drift
+    # eskalerer bevidst IKKE længere — det dækkes af test_agent_smith_escalation_criteria.
+    return {pattern_key(kind, label): {"kind": kind, "label": label, "metric": metric,
+                                       "corroborated": True}}
 
 
 def _types(actions, t):

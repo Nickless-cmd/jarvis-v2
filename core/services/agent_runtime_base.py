@@ -12,9 +12,13 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
+
+from core.services.dispatch_envelope import build_envelope
+from core.services.dispatch_status import DispatchStatus
 
 logger = logging.getLogger(__name__)
 
@@ -211,59 +215,94 @@ def _run_agent_tool_loop(
     total_input = 0
     total_output = 0
     total_cost = 0.0
+    total_tool_calls = 0  # tool calls actually executed across all rounds
     final_text = ""
     rounds = 0
-    for _ in range(_AGENT_TOOL_LOOP_MAX_ROUNDS):
-        rounds += 1
-        result = _facade().execute_with_role_or_fallback(
-            provider=provider, model=model,
-            requires_tools=requires_tools,
-            messages=messages, tools=tools_payload,
-        )
-        total_input += int(result.get("input_tokens") or 0)
-        total_output += int(result.get("output_tokens") or 0)
-        total_cost += float(result.get("cost_usd") or 0.0)
-        final_text = str(result.get("text") or "")
-        tool_calls = list(result.get("tool_calls") or [])
-        if not tool_calls:
-            break
-        # Record the assistant turn that requested the tools, then each
-        # tool result, so the next round has full context.
-        messages.append({
-            "role": "assistant",
-            "content": final_text,
-            "tool_calls": tool_calls,
-        })
-        for tc in tool_calls:
-            tool_out = _execute_agent_tool_call(tc, agent_id=str(agent.get("agent_id") or ""))
+    error_str = ""
+    # Bracket the whole model/tool loop so duration reflects real work even on
+    # the failure path.
+    _t0 = time.monotonic()
+    try:
+        for _ in range(_AGENT_TOOL_LOOP_MAX_ROUNDS):
+            rounds += 1
+            result = _facade().execute_with_role_or_fallback(
+                provider=provider, model=model,
+                requires_tools=requires_tools,
+                messages=messages, tools=tools_payload,
+            )
+            total_input += int(result.get("input_tokens") or 0)
+            total_output += int(result.get("output_tokens") or 0)
+            total_cost += float(result.get("cost_usd") or 0.0)
+            final_text = str(result.get("text") or "")
+            tool_calls = list(result.get("tool_calls") or [])
+            if not tool_calls:
+                break
+            # Record the assistant turn that requested the tools, then each
+            # tool result, so the next round has full context.
             messages.append({
-                "role": "tool",
-                "tool_call_id": str(tc.get("id") or ""),
-                "content": tool_out,
+                "role": "assistant",
+                "content": final_text,
+                "tool_calls": tool_calls,
             })
-        try:
-            event_bus.publish("agent.tool_round", {
-                "agent_id": str(agent.get("agent_id") or ""),
-                "round": rounds,
-                "tool_calls": [
-                    str((tc.get("function") or {}).get("name") or "") for tc in tool_calls
-                ],
-            })
-        except Exception:
-            pass
+            for tc in tool_calls:
+                tool_out = _execute_agent_tool_call(tc, agent_id=str(agent.get("agent_id") or ""))
+                total_tool_calls += 1
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": str(tc.get("id") or ""),
+                    "content": tool_out,
+                })
+            try:
+                event_bus.publish("agent.tool_round", {
+                    "agent_id": str(agent.get("agent_id") or ""),
+                    "round": rounds,
+                    "tool_calls": [
+                        str((tc.get("function") or {}).get("name") or "") for tc in tool_calls
+                    ],
+                })
+            except Exception:
+                pass
+    except Exception as exc:  # model/loop failure — never a fake success
+        error_str = str(exc)[:400]
+    duration_ms = int((time.monotonic() - _t0) * 1000)
+
+    # Derive the true terminal status instead of hardcoding "completed":
+    #   exception       -> FAILED (error captured into result)
+    #   non-empty text  -> COMPLETED
+    #   empty/no text   -> BLOCKED (the agent produced nothing)
+    if error_str:
+        status = DispatchStatus.FAILED
+        result_payload: object = f"error: {error_str}"
+    elif final_text.strip():
+        status = DispatchStatus.COMPLETED
+        result_payload = final_text
+    else:
+        status = DispatchStatus.BLOCKED
+        result_payload = final_text
+
+    envelope = build_envelope(
+        status=status,
+        tokens_in=total_input,
+        tokens_out=total_output,
+        cost_usd=total_cost,
+        duration_ms=duration_ms,
+        tool_calls=total_tool_calls,
+        result=result_payload,
+    )
+    # Superset: the 7 typed envelope keys + legacy aliases that existing
+    # callers still read (agent_runtime_spawn / _council: input_tokens,
+    # output_tokens, cost_usd, status, text). Do not drop these.
     return {
+        **envelope,
         "lane": "cheap",
         "provider": provider,
         "model": model,
-        "status": "completed",
         "execution_mode": "role-primary-tool-loop",
         "source": "agent-tools",
         "text": final_text,
-        "tool_calls": [],
         "tool_rounds": rounds,
         "input_tokens": total_input,
         "output_tokens": total_output,
-        "cost_usd": total_cost,
     }
 
 

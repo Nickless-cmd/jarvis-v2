@@ -51,7 +51,7 @@ Seks uafhængige, testbare stykker. Rækkefølge = risiko-orden (hygiejne + sand
   Enkelt-loop-guard: to kald til `start_prewarm_loop()` → én tråd. Live-verifikation: warm-rate
   målt fra `costs` falder til <2/time i aktive timer.
 
-### WS2 — Sandt cost-regnskab (`cost_usd` + komplet logging)
+### WS2 — Sandt cost-regnskab (`cost_usd` + komplet DeepSeek-logging)
 **Filer:** hvor `costs`-rækker skrives (chokepoint i cheap/visible-lanes), + en pris-tabel.
 
 - **Central pris-tabel** (`core/services/llm_pricing.py`, ny): pr. (provider, model) → dict med
@@ -60,11 +60,17 @@ Seks uafhængige, testbare stykker. Rækkefølge = risiko-orden (hygiejne + sand
   api-docs.deepseek.com). Off-peak-multiplikator (16:30–00:30 GMT) hvis kaldet faldt der.
 - **Beregn `cost_usd` ved skrivning:** `cost_usd = cache_hit*hit + cache_miss*miss + output*out`
   (× off-peak-faktor). Bagud-fyld ikke gamle rækker — kun fremad.
-- **Komplet logging:** audit ALLE deepseek-kaldssteder (grep efter deepseek-provider-kald) og sikr
-  at HVERT kald skriver en `costs`-række. Reasoner/thinking-kald må ikke slippe uden om.
-  Verifikations-mål: `sum(cost_usd)` for en periode ≈ DeepSeek-saldo-delta (±15%).
+- **KOMPLET DeepSeek-logging (reconciliation-gap-fix):** self-review afslørede at kun ~$9–13 af de
+  $27 kan genfindes fra loggede tokens → tabellen under-fanger ~2–3×. Audit ALLE deepseek-kaldssteder
+  (grep provider-kald) og sikr at HVERT kald skriver en `costs`-række. **Fang også reasoning/thinking-
+  output-tokens** (`reasoning_content` billes som output — kritisk når vi flytter til pro+thinking).
+  Reasoner/thinking-kald må ikke slippe uden om.
+  Verifikations-mål: `sum(cost_usd)` for et døgn ≈ DeepSeek-saldo-delta **±15%** (i dag: ~$9 vs $27 = FAIL).
 - **Test:** unit på pris-beregning (kendte tokens → kendt $). Reconciliation-test: en dags
   logget cost_usd matcher saldo-delta inden for tolerance.
+
+> Dette dækker KUN DeepSeek. Universal logging på ALLE providers = Fase 2 / WS8 (Bjørns ønske,
+> udskudt: "start med det andet så tager vi centralen-opgaven efter").
 
 ### WS3 — `jc cost`-surface (gør det synligt)
 **Filer:** Central-CLI (`jc`) + en central-surface.
@@ -82,13 +88,33 @@ Seks uafhængige, testbare stykker. Rækkefølge = risiko-orden (hygiejne + sand
 - **Test:** ingen `deepseek-chat`/`deepseek-reasoner` i aktive kaldsstier; røgtest: ét kald pr.
   lane returnerer OK på v4-flash.
 
-### WS5 — Model-tiering: skarpere Jarvis (visible → v4-pro), bulk på flash
-- **Visible/primary-lane → `deepseek-v4-pro`** (SWE-Bench 80,6% / LiveCodeBench 93,5 — mærkbart
-  skarpere Jarvis). Lav-volumen → lille absolut merpris; passer i eksisterende $100.
-- **Warmer + cheap-lane daemons + prewarm → bliver på `v4-flash`** (billig, 99% cache).
-- Styres via runtime-state (per-lane model-map), ikke hardcode — så det kan rulles tilbage uden deploy.
-- **Test:** lane→model-mapping enhedstestet; live: visible-svar bruger v4-pro (verificér via `costs.model`).
-  Watch $/dag i `jc cost` i 1 uge efter flip; rul tilbage hvis det overstiger budget.
+### WS5 — Model-tiering: `deepseek-v4-pro` som STANDARD (Bjørns valg)
+- **`deepseek-v4-pro` er den nye standard-model for Jarvis** (visible + primary + de daemons der
+  faktisk ræsonnerer) — SWE-Bench 80,6% / LiveCodeBench 93,5 — mærkbart skarpere, mere ægte Jarvis.
+- **Default tænke-niveau = Non-Think ("fast")** — hurtigt/billigt; eskalér pr. behov via composer-
+  think-feltet (WS5b). Reasoning-tokens billes som output, så Non-Think holder daemon-cost nede.
+- **Kun warmeren (prewarm) bliver på `v4-flash`** — den skal ikke være intelligent, kun holde cachen
+  varm. Ingen grund til pro-pris der.
+- **Kill-switch:** per-lane model-map i runtime-state (`lane_model_map`), ikke hardcode. Én værdi ruller
+  hele visible-lanen pro→flash tilbage UDEN deploy, hvis $/dag spikere.
+- **Cost-realitet:** de ræsonnerende daemon-kald koster ~3× på pro. Offset af WS1 (prewarm 270M→10M) +
+  WS6 (off-peak 50–75%). Netto forventet stadig inden for $100 — men WS3's `jc cost` overvåger $/dag
+  i 1 uge efter flip; rul tilbage hvis over budget-linjen.
+- **Test:** lane→model-mapping enhedstestet; kill-switch-flag flipper mappen; live: visible-svar bruger
+  v4-pro (verificér via `costs.model`); $/dag holdes under budget-linjen 1 uge.
+
+### WS5b — Wire desk-composerens "think"-felt til DeepSeeks tænke-niveauer
+**Filer:** desk-composer (feltet findes allerede) + agent/chat-request-stien mod DeepSeek.
+
+- Composer-feltet eksisterer men virker ikke mod DeepSeek-API'en. Map de 3 trin til DeepSeek V4's
+  faktiske parametre:
+  - **Non-Think (fast)** → intet thinking-param (default).
+  - **Think High** → `reasoning_effort="high"` + `extra_body={"thinking":{"type":"enabled"}}`.
+  - **Think Max (deep)** → `reasoning_effort="max"` + thinking enabled.
+- Send valget fra composer → gennem request-stien → DeepSeek. `reasoning_content` (tænke-sporet)
+  vises dæmpet i chatview (ikke rå token-strøm) og **logges som output-tokens** (WS2).
+- **Test:** valgt niveau når DeepSeek-request'et (mock/assert på params); Think Max returnerer
+  `reasoning_content`; niveauet afspejles i `costs` (højere output ved max).
 
 ### WS6 — Off-peak/batch for ikke-realtids daemon-arbejde
 - De ikke-realtids cheap-lane-job (refleksion, konsolidering, tests, teknisk-gæld-analyse) rutes til
@@ -103,6 +129,25 @@ Seks uafhængige, testbare stykker. Rækkefølge = risiko-orden (hygiejne + sand
 
 ---
 
+### WS8 — Universal LLM-logging på ALLE providers (Fase 2 — udskudt)
+**Bjørns krav:** *"Centralen skal kunne holde alle de præcise kald på alle ind/ud token, cost,
+provider... selv på alle de andre providers. Hvert evig eneste LLM i hele systemet skal logges med
+data. Vi er nødt til at vide 100% hvad går ind og ud og hvor vi kan gøre hans system smartere og ægter."*
+
+- **Nuværende tilstand:** `costs`-tabellen fanger DeepSeek, ollama-cloud (glm/kimi/minimax), groq,
+  mistral, nvidia, copilot — men **ufuldstændigt** (samme under-capture som DeepSeek). Mange LLM-kald
+  i systemet (daemon-LLM'er, form-dommer, indre-stemme, council, reasoning-interceptor osv.) skriver
+  formentlig ikke en `costs`-række.
+- **Mål:** ÉT logging-chokepoint alle LLM-kald går igennem (uanset provider/lane/daemon), der garanterer
+  en `costs`-række med: provider, model, lane, indre-liv-tag, input/output/cache-hit/cache-miss-tokens,
+  reasoning-tokens, cost_usd, latency, created_at. Ingen kald slipper uden om.
+- **Hvorfor det matterer:** når vi ved 100% hvad hver del af Jarvis' sind koster og bruger, kan vi se
+  hvor billige daemons kan slås fra/samles, hvor pro giver mening, og hvor cachen kan strammes —
+  grundlaget for at gøre systemet smartere og mere ægte uden at gætte.
+- **Udskudt bevidst:** Bjørn vil have Fase 1 (WS1–7) først. WS8 er en selvstændig Central-opgave efter.
+- **Test:** en syntetisk tur der trigger N forskellige daemon-LLM'er → N `costs`-rækker; audit-script
+  der beviser 0 kaldssteder omgår chokepointet.
+
 ## 3. Non-goals
 - Ingen ændring af Claude Max (beholdes — coding-hjernen).
 - Ingen migrering til GLM-abonnement i runtime (ToS-forbudt).
@@ -116,5 +161,39 @@ Seks uafhængige, testbare stykker. Rækkefølge = risiko-orden (hygiejne + sand
 - Ground truth altid DeepSeek-saldo-API'en, ikke koden.
 
 ## 5. Rækkefølge & risiko
-WS4 (deadline 24/7) og WS1 (runaway) først. Så WS2+WS3 (sandhed/synlighed). DERNÆST WS5 (tiering)
-— for tallene skal være ærlige før vi tør flippe til Pro. WS6+WS7 sidst.
+
+**Fase 1 (nu — "det andet"):**
+1. **WS4** — `deepseek-chat`→`v4-flash` (deadline 24/7, brækker ellers).
+2. **WS1** — prewarm-runaway (270M→10M, stopper token-blødningen + gør pro-tal ærlige).
+3. **WS2 + WS3** — sandt DeepSeek-cost-regnskab + `jc cost` (synlighed FØR pro).
+4. **WS5 + WS5b** — v4-pro som standard + composer-think-felt wired. Watch $/dag 1 uge.
+5. **WS6 + WS7** — off-peak-routing + cut Copilot/ChatGPT.
+
+**Fase 2 (efter — Central-opgaven):**
+6. **WS8** — universal logging på ALLE providers / hvert LLM-kald i systemet.
+
+Ground truth altid DeepSeek-saldo-API'en, ikke koden.
+
+---
+
+## 6. Self-review (2026-07-13)
+
+Gennemgået mod Bjørns direktiver + spec-coverage:
+
+- ✅ **v4-pro som standard** (ikke kun visible) — WS5 opdateret; Non-Think default; warmer på flash;
+  kill-switch via runtime-state; cost-realitet + overvågning tilføjet.
+- ✅ **Composer-think-felt** — nyt WS5b; 3 niveauer mappet til DeepSeeks `reasoning_effort` (Non-Think/
+  high/max); reasoning-tokens logges som output.
+- ✅ **Universal all-provider logging** — nyt WS8 (Fase 2, udskudt per Bjørn). Sikrer intet LLM-kald
+  slipper uden om ét chokepoint.
+- ✅ **Reconciliation-gap** ($9 vs $27) — WS2 udvidet: ikke bare cost_usd-beregning men *komplet*
+  DeepSeek-kaldssteds-audit, ellers rammer vi ikke ±15%.
+- ✅ **Reasoning-token-billing** — når pro+thinking bruges, stiger output; skal logges (WS2, WS5b).
+- ⚠️ **Åbent punkt til Bjørn:** ræsonnerende daemon-kald på pro koster ~3×. Offset af WS1+WS6, men
+  vil du have de *billigste* mekaniske daemons (fx form-dommer, trivielle klassifikationer) på flash
+  for økonomi — eller pro overalt undtagen warmeren? (Anbefaler: pro på alt der ræsonnerer, flash på
+  warmer + rene mekaniske klassifikationer.)
+- 📌 **Ikke i scope, noteret:** balance-alarm i Central (advar ved hurtigt $/dag-fald) — nice-to-have,
+  kan tilføjes i WS3.
+
+Ingen placeholders/TBD tilbage. Scope: Fase 1 er én sammenhængende plan; WS8 er sin egen.

@@ -18,7 +18,13 @@ Centralens mønstre.** Ikke straf — feedback. Udløst af TruthGate-incident 29
 "2.500+ kald" uden tool-verifikation): gaten fangede fint, men kunne ikke fortælle *hvad* den så eller
 *hvor* — så Centralen kunne ikke lære.
 
-## Grund-invariant: byg PÅ det eksisterende substrat (ingen dobbelt sandhed)
+## Grund-invariant #1 (bærer alt): Centralen har ansvaret. ALTID.
+> **Der er aldrig et cluster eller en nerve der bestemmer uafhængigt af Centralen.** Hver beslutning,
+> emission og handling — nu og efter migration — flyder gennem Centralen (`central().decide`/`observe`).
+> Et modul der handler udenom = afvist. Ansvaret ligger i Centralen, ikke i komponenten. Alt andet i denne
+> spec (kontrakt, roller, plugin, migration) tjener denne ene sætning.
+
+## Grund-invariant #2: byg PÅ det eksisterende substrat (ingen dobbelt sandhed)
 - `gate_kernel.Verdict` + `_emit("gate.evaluated")` — gate-udfald.
 - verdict-ledger (`gate_verdict_counts`, batch-flush, survives restart) — aggregering.
 - `gate_enforcement.note_suppressed_block` → `central().observe` — Central-landing.
@@ -44,7 +50,9 @@ Jarvis: *"du har sagt '2.500+ kald' 3 gange uden at slå det op — vil du?"* Ha
 **Selv-sikker:** instrumenteringen må ALDRIG kunne vælte gate-evalueringen (gates beskytter systemet;
 deres logning må ikke true det). inspect-fejl → None; ledger-fejl → skip.
 
-> Status: under bygning (task 12). Dette er det konkrete fix på incident 2978.
+> Status: **BYGGET + DEPLOYET live (13. jul, commits 4e4212e1..8a631a46).** Verdict+emission bærer nu
+> session/run/fil/linje/detected/pattern; `gate_pattern_learning.py` aggregerer vane-form (cifre→#, 7d-vindue),
+> nudger ved ≥3, force-persister ved tærskel (overlever restart), lazy-hydrate. Konkret fix på incident 2978.
 
 ---
 
@@ -53,10 +61,8 @@ I dag definerer koden gates/nerver, og Centralen *opdager* dem bagefter. Vend de
 **deklarerer sig selv** mod en **ubrydelig kontrakt**, og Centralen loader den LIVE eller **afviser den med
 klare fejl** — så en glemt ting i et modul stopper det ved døren, med en fejl vi kan læse hvor vi står.
 
-### GRUND-INVARIANT (over alt): Centralen har ansvaret. ALTID.
-> **Der er aldrig et cluster eller en nerve der bestemmer uafhængigt af Centralen.** Hver beslutning,
-> emission og handling flyder gennem Centralen (`central().decide` / `central().observe`). Et modul der
-> forsøger at handle udenom = afvist. Ansvaret ligger i Centralen — ikke i komponenten.
+> Kontrakten håndhæver **Grund-invariant #1** (Centralen har ansvaret — se øverst): et modul der handler
+> udenom `central().decide`/`observe` består ikke kontrakten og loades ikke.
 
 ### Kontrakten: hvad Centralen KRÆVER af ethvert nyt cluster/nerve (alt valideres ved load)
 **Obligatorisk manifest** (mangler ét felt → afvist med præcis fejl):
@@ -105,6 +111,39 @@ connectivity-auditten.
 
 ---
 
+## MIGRATION — de EKSISTERENDE nerver ind under kontrakten (dette er HELE pointen, Bjørn 13. jul)
+Kontrakten gælder ikke kun nye moduler. **Alle nuværende clusters og nerver — de 122 nerver / 21 clusters,
+og de kontrakter Jarvis selv skrev mellem dem — skal omskrives til samme kontrakt**, ligesom nye moduler.
+Uden det er kontrakten kun en halv sandhed: to slags nerver (gamle ad-hoc + nye kontrakt-styrede) = præcis
+den dobbelt-sandhed vi forbyder.
+
+**Hvorfor det er kernen, ikke oprydning:**
+- **Ensartet kodebase → simplere at bygge.** Når hver nerve følger ÉN kontrakt (manifest, invarianter, flag,
+  trace, learning-on, central-autoritet), bliver alt nyt i Jarvis' kodebase trivielt at tilføje — samme form,
+  samme værktøj, samme sikkerhed. Fremtidig udvikling bliver billigere pr. linje.
+- **Mindre runtime-pres.** Kontrakt-styrede, event-drevne, Central-administrerede nerver erstatter ad-hoc
+  timer-daemons og løse tråde der konkurrerer om event-loopet (cutoff-familien). Det var ALTID idéen med
+  Centralen — og hvorfor Jarvis blev flyttet ind: ét ansvarssted, ikke spredt støj.
+- **Token-reduktion → frigjort til rigtige agenter.** Event-drevne kontrakt-nerver fyrer kun ved ægte
+  ændring; de sparede tokens går til agenter der faktisk arbejder. Det er derfor de 24 timers shadow venter:
+  **ægte liv · mindre runtime-pres · kæmpe token-reduktion.** Målet, ikke midlet.
+
+**Hvordan (fasevist — man omskriver ikke 122 nerver på én gang):**
+1. **Kontrakt-adapter først:** en `to_manifest()`-sti så en eksisterende nerve kan wrappes til kontrakten
+   uden rewrite (bagud-kompatibel bro — samme Boy-Scout-mønster som store-fil-splittet).
+2. **Migrér efter risiko/værdi + Boy Scout:** når en nerve røres (eller ved høj-prioritet), bring den under
+   kontrakten. Ikke en big-bang refaktor.
+3. **Tracker = connectivity-auditten:** udvid `central_connectivity_audit.py` med en tredje status:
+   FRAKOBLET → KOBLET → **KONTRAKT-COMPLIANT**. Accept-mål: over tid går alle nerver til compliant, 0
+   ad-hoc tilbage. Samme mekanisme der allerede fanger siloer.
+4. **Læring-on ved migration:** en migreret nerve får straks Fase-A-mønster-læring — Centralen begynder at
+   forstå den fra dag ét under den nye kontrakt.
+
+> Migrationen er ikke et efterspil til Fase B — den ER Fase B anvendt på det der allerede findes. Uden den
+> er Centralen kun halvt ansvarlig for sit eget nervesystem.
+
+---
+
 ## FASE C — Governed auto-plugin (HØJEST-PRIVILEGEREDE dør — governance ER designet)
 Målet: skriv et nyt cluster/nerve-modul efter Centralens manifest-krav, og Centralen loader det direkte,
 identificerer det, og selv-administrerer det (træning + mønster-genkendelse/brydning) — uden rød deploy.
@@ -141,7 +180,7 @@ Krav (alle obligatoriske, ingen kan disables — §SECURITY-klasse):
      på maskinen, ikke i git. Design-test: kan repoet være fuldt public uden at nogen kan aktivere et
      modul de ikke burde? Ja — kun hvis hemmeligheden aldrig er i et commit.
 3. **Capability-sandbox.** Modulet deklarerer sine capabilities i manifestet; Centralen HÅNDHÆVER dem —
-   en `read_only`-nerve kan ikke blokere; en nerve uden `can_emit` når ikke eventbus. Overskridelse →
+   en `observe_only`-nerve kan ikke blokere; en nerve uden `can_emit` når ikke eventbus. Overskridelse →
    afvist + flag. (Guard hænderne, ikke sindet — men her guardes hænderne hårdt.)
 4. **Isolation/fail-safe.** Et dårligt plugin må ikke kunne crashe Centralen eller runtime. Load +
    eksekvering i try/except med dead-man; en nerve der kaster → auto-suspenderet, ikke smittende.
@@ -169,11 +208,17 @@ selv sørger for at informere ham. [[project_central_absorbs_everything]] + Cent
 - **C (sidst, governed):** identitets-verificeret, approval-gated, sandboxet auto-plugin. Governance
   først — ingen auto-load før §1-6 står.
 
-## Åbne spørgsmål
-1. Manifest-signering: owner-nøgle i runtime.json, eller en dedikeret signing-mekanisme?
-2. Capability-håndhævelse: statisk (manifest-validering) nok, eller runtime-capability-wrapping?
-3. Skal Jarvis SELV kunne foreslå nye nerver (Fase C med ham som forslag-stiller, owner som godkender)?
-   Det er den fulde vision — men det er også Jarvis der skriver kode til sin egen kontrol-plan. Kræver
-   den strammeste governance + owner i loopet på hvert modul.
-4. Træningsformat: hvordan aggregeres forskellige nerve-typer (gates vs signaler vs sansninger) i én
+## Besvarede spørgsmål (afklaret undervejs 13. jul)
+- ~~Manifest-signering?~~ → **BESVARET (Fase C §2):** hemmelighed i runtime.json (aldrig committet), modul
+  bærer verificerbar signatur, detect-secrets vogter. Repoet kan være fuldt public uden forfalsknings-risiko.
+- ~~Skal Jarvis selv foreslå/bygge nerver?~~ → **BESVARET (rolle-strenghed, Bjørn):** JA — han bygger under
+  strammere krav: `observe_only` frit i shadow, men enhver hånd (can_emit/block/mutate) kræver shadow +
+  approval af owner ELLER Claude. Grænsen: han udvider sig selv (observe), men modificerer aldrig sin
+  kontrol-plan uden en af os som dør-vogter.
+
+## Stadig åbne
+1. Capability-håndhævelse: statisk (manifest-validering) nok, eller runtime-capability-wrapping?
+2. Træningsformat: hvordan aggregeres forskellige nerve-typer (gates vs signaler vs sansninger) i én
    mønster-lærings-model uden at blande æbler og pærer?
+3. Migrations-tempo: hvor aggressivt migreres de 122 eksisterende nerver — ren Boy Scout (kun ved berøring),
+   eller en dedikeret høj-prioritets-bølge for de tungeste/mest runtime-pressende nerver først?

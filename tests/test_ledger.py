@@ -59,6 +59,36 @@ class TestRecordCostCacheColumns:
         assert int(r["cache_miss_tokens"]) == 0
 
 
+class TestDeprecatedDeepseekAliasLabel:
+    """Wire-laget rewriter deepseek-chat/reasoner → v4-flash (deadline 2026-07-24).
+    record_cost er regnskabs-chokepointet → log det ÆRLIGE wire-navn, ikke aliaset."""
+
+    def test_deepseek_chat_label_normalized_to_v4_flash(self, isolated_runtime):
+        record_cost(lane="cheap", provider="deepseek", model="deepseek-chat",
+                    input_tokens=10, output_tokens=5, cost_usd=0.0)
+        from core.runtime.db import connect
+        with connect() as conn:
+            r = conn.execute("SELECT model FROM costs ORDER BY id DESC LIMIT 1").fetchone()
+        assert r["model"] == "deepseek-v4-flash"
+
+    def test_deepseek_reasoner_label_normalized_to_v4_flash(self, isolated_runtime):
+        record_cost(lane="cheap", provider="deepseek", model="deepseek-reasoner",
+                    input_tokens=10, output_tokens=5, cost_usd=0.0)
+        from core.runtime.db import connect
+        with connect() as conn:
+            r = conn.execute("SELECT model FROM costs ORDER BY id DESC LIMIT 1").fetchone()
+        assert r["model"] == "deepseek-v4-flash"
+
+    def test_non_deepseek_model_label_untouched(self, isolated_runtime):
+        record_cost(lane="cheap", provider="ollama", model="deepseek-chat",
+                    input_tokens=10, output_tokens=5, cost_usd=0.0)
+        from core.runtime.db import connect
+        with connect() as conn:
+            r = conn.execute("SELECT model FROM costs ORDER BY id DESC LIMIT 1").fetchone()
+        # kun deepseek-provider normaliseres; andre providers rører vi ikke
+        assert r["model"] == "deepseek-chat"
+
+
 class TestTelemetrySummary:
     def test_returns_expected_keys(self):
         result = telemetry_summary()

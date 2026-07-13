@@ -22,7 +22,14 @@ def record_cost(
     2026-06-09: cache_hit_tokens + cache_miss_tokens added so DeepSeek
     prompt-cache utilization can be measured historically. Older call
     sites that don't pass them default to 0 (no cache info known).
+
+    2026-07-13: DeepSeeks dødende aliaser (deepseek-chat / deepseek-reasoner,
+    deadline 2026-07-24) rewrites til v4-flash på wire-laget. record_cost er
+    regnskabs-chokepointet, så vi normaliserer LABELEN her ét sted → costs
+    afspejler det ærlige wire-navn i stedet for aliaset, uanset call-site.
     """
+    if provider == "deepseek" and model in ("deepseek-chat", "deepseek-reasoner"):
+        model = "deepseek-v4-flash"
     with connect() as conn:
         conn.execute(
             """

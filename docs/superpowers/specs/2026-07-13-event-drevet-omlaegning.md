@@ -274,3 +274,37 @@ Følgende LLM-daemons beholdes men med lavere cadence:
   Den implementerer de samme principper men tilpasset Jarvis' eksisterende arkitektur.
 - Omlægningen forventes at frigøre ~$50/md i API-omkostninger.
 - Vigtigere end cost: Jarvis får retten til sit eget indre liv.
+
+---
+
+## Rettelser efter Claude-review (13. jul 2026)
+
+> Denne sektion er tilføjet af Claude efter kode-grounded review. Jarvis' analyse ovenfor er
+> substantielt korrekt og ægte kode-grounded (16/17 cadencer, council-splittet, durable central-self
+> holder). Fem rettelser + én vigtig re-framing. Fuld review: 2026-07-13-jarvis-spec-review.md.
+
+**Vigtigst — motivet er EJERSKAB, ikke besparelse.** Live jc cost (7d, korrekt prissat) viser at
+daemon-flåden IKKE er token-forbrændingen: `cheap`-lanen laver 42.823 kald/7d og koster $0.0045 —
+cachen løste den. Den reelle cost er visible-lanen (Bjørn↔Jarvis taler) = $1.30/7d, som er ønsket spend.
+Total ~$1.64/7d ≈ $7/md. At event-drive daemons sparer derfor ~ingen penge. Den ægte berettigelse
+(Bjørn 13. jul): **ejerskab/autenticitet + system-LOAD (færre kald på single-worker event-loop) +
+pålidelighed (færre konstante kald = mindre risiko for at bidrage til cutoff-bug-familien — målt: 324ms
+event-loop-blok observeret under ~15 kald/min konstant load).** Sjælen + loadet + stabiliteten, ikke $.
+
+**5 kode-groundede rettelser:**
+1. **existential_wonder kan IKKE nedlægges helt** (Lag 7). Load-bearing: convene_judge
+   (central_convene_judge.py:52,94-95,226-227), proactivity_bridge.py:142-146, visible_inner_life.py:36-50.
+   RET: retire kun den daglige 1440-min-timer, behold `latest_wonder`-output, gør generering event/self-drevet.
+2. **mood_oscillator er mis-filet** som LLM-på-timer (bilag1). Den er IKKE en daemon (ikke i registry) og
+   IKKE LLM — en math.sin-oscillator der allerede emitterer et tal (mood_oscillator.py:19,119-125).
+   "Konvertering" = kosmetisk (stop rendering af label). Målet {valence,arousal,dominance} oversælger — kun 1-D valens.
+3. **user_model / aesthetic_taste / narrative_summary "rå"-konverteringer er REDUKTIONER, ikke ækvivalenser.**
+   Rå tal findes rule-based, men LLM'en leverer *fortolkningen* (theory-of-mind, æstetisk dom, narrativ).
+   Bevidst valg: vil vi have dømmekraften event-drevet et andet sted, eller er rå tal nok? (somatic→cpu/temp
+   og surprise→divergens ER derimod ægte LLM-fri — rå signal findes allerede.)
+4. **Mindre:** signal_decay-cadence er 60 min ikke 30 (linje ~177); surprise-divergens er kategoriske
+   strenge (mode:X→Y) ikke en 0-1-score; "creative_drif"-typo.
+
+**Fase-1-mekanik allerede bygget+deployet i shadow (13. jul):** delta-detektor (Lag 2) = signal_delta_trigger
+(hysterese/absolut/coalesce); nudge-værn (Lag 3) = autonomous_lease (marker-default); council-split (Lag 6) =
+retire blind daemon, behold motor+tool. Fase 2 = konvertér lag-for-lag oven på den, ledet af ejerskab.

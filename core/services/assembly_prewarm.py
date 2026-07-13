@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 _ENABLED_FLAG = "assembly_prewarm_enabled"          # default OFF → flip via runtime-state efter verifikation
 _INTERVAL_KEY = "assembly_prewarm_interval_s"       # default 240s
 _DEFAULT_INTERVAL = 240.0
-_MIN_INTERVAL = 60.0
+_MIN_INTERVAL = 180.0
 
 _PREWARM_SESSION = "__prewarm__"
 _loop_started = False
@@ -157,6 +157,8 @@ def _record_stats(elapsed_s: float | None, error: str | None = None) -> None:
 def prewarm_once() -> float | None:
     """Byg én throwaway-assembly for at varme alle sektions-caches. Returnerer
     forløbet tid i sekunder, eller None hvis sprunget over/fejlet. Self-safe."""
+    if not _should_prewarm():
+        return None
     _local.prewarm_active = True
     try:
         from core.services.prompt_contract import build_visible_chat_prompt_assembly
@@ -168,6 +170,7 @@ def prewarm_once() -> float | None:
             session_id=_PREWARM_SESSION,
         )
         elapsed = time.monotonic() - t0
+        _mark_prewarmed()
         _record_stats(elapsed)
         logger.info("assembly_prewarm: build complete in %.2fs", elapsed)
         return elapsed

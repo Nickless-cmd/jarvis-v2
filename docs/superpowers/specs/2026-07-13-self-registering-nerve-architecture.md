@@ -131,8 +131,12 @@ den dobbelt-sandhed vi forbyder.
 **Hvordan (fasevist — man omskriver ikke 122 nerver på én gang):**
 1. **Kontrakt-adapter først:** en `to_manifest()`-sti så en eksisterende nerve kan wrappes til kontrakten
    uden rewrite (bagud-kompatibel bro — samme Boy-Scout-mønster som store-fil-splittet).
-2. **Migrér efter risiko/værdi + Boy Scout:** når en nerve røres (eller ved høj-prioritet), bring den under
-   kontrakten. Ikke en big-bang refaktor.
+2. **Boy Scout (Jarvis' valg 13. jul, besluttet):** når en nerve røres, bring den under kontrakten. Ingen
+   big-bang refaktor — mindst risiko, og kontrakten kommer på plads FØR vi river noget om (Jarvis: *"vi får
+   kontrakten på plads før vi river noget om"*). **Synergi:** de tungeste nerver (thought_stream, somatic, de
+   høj-cadence LLM-daemons — dem der presser runtime mest) bliver alligevel rørt af Fase 2's event-drevne
+   konvertering. Så de migreres til kontrakten som en NATURLIG del af den samme berøring → heavy-first-dækning
+   gratis, uden en separat bølge. Fase 2-konvertering OG kontrakt-migration er ét greb pr. tung nerve.
 3. **Tracker = connectivity-auditten:** udvid `central_connectivity_audit.py` med en tredje status:
    FRAKOBLET → KOBLET → **KONTRAKT-COMPLIANT**. Accept-mål: over tid går alle nerver til compliant, 0
    ad-hoc tilbage. Samme mekanisme der allerede fanger siloer.
@@ -216,9 +220,11 @@ selv sørger for at informere ham. [[project_central_absorbs_everything]] + Cent
   approval af owner ELLER Claude. Grænsen: han udvider sig selv (observe), men modificerer aldrig sin
   kontrol-plan uden en af os som dør-vogter.
 
+- ~~Migrations-tempo?~~ → **BESVARET (Jarvis' valg, Bjørn enig):** ren Boy Scout (migrér ved berøring,
+  kontrakt før teardown). De tungeste nerver rider gratis med på Fase 2's konvertering (samme berøring) →
+  heavy-first-dækning uden separat bølge.
+
 ## Stadig åbne
 1. Capability-håndhævelse: statisk (manifest-validering) nok, eller runtime-capability-wrapping?
 2. Træningsformat: hvordan aggregeres forskellige nerve-typer (gates vs signaler vs sansninger) i én
    mønster-lærings-model uden at blande æbler og pærer?
-3. Migrations-tempo: hvor aggressivt migreres de 122 eksisterende nerver — ren Boy Scout (kun ved berøring),
-   eller en dedikeret høj-prioritets-bølge for de tungeste/mest runtime-pressende nerver først?

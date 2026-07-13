@@ -87,6 +87,21 @@ klare fejl** — så en glemt ting i et modul stopper det ved døren, med en fej
 6. **Capabilities HÅNDHÆVES** — `observe_only` kan ikke emit/block; `can_emit` kan ikke mutate. Overskridelse → afvist/flag.
 7. **Selv-sikker/isoleret** — et modul kan ALDRIG crashe Centralen eller runtime.
 
+### TRE kontrakt-typer — én pr. komponent-slags (Bjørn 14. jul)
+Kontrakten er ikke én-størrelse. **Gate-cluster, daemon-cluster og nerve får HVER sin kontrakt-variant**,
+tilpasset dens natur — så alt er gnidningsfrit, hver fejl kan identificeres OG attribueres til sit cluster:
+- **Gate-cluster-kontrakt:** Verdict-form (decision/reason/detected/pattern), decide-sti, mønster-læring
+  (gate_pattern_learning). Fejl = en gate-fyring man kan spore til gate+fil+linje+session.
+- **Daemon-cluster-kontrakt:** tick-form, event-gate pr. familie, member-funktioner + relevante signaler,
+  rå-vs-LLM-kontinuitets-flag (jf. cluster-konsolidering). Fejl = en cluster-fyring man kan spore til
+  familie+funktion+signal.
+- **Nerve-kontrakt:** observe/signal-form, tidsserie, klasse (cognitive/security). Fejl = en observation
+  man kan spore til nerve+cluster.
+FÆLLES for alle tre (ikke-forhandlelbart): **to-vejs** (komponent→Central OG Central→komponent-læring/kill),
+**fuld trace** (trace_id+session+run pr. fyring), **flag** (kill-switch), **logger** (struktureret).
+**Intet er usynligt for Centralen** — og Centralen TRÆNER på det og BÆRER ansvaret (grund-invariant #1).
+Så uanset komponent-slags kan enhver fejl identificeres, attribueres til sit cluster, og læres af.
+
 ### Rolle-baseret strenghed (identitets-tier → hvor stram kontrakten er)
 - **Owner/Claude-moduler:** vi kan aktivere *hvad vi vil* i Centralen som vi har brug for. `mode: on` direkte,
   enhver capability — Centralen loader live på identitets-verifikation. (Løsere; vi er approveren.)

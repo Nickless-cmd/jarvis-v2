@@ -15,6 +15,36 @@ _INTENSITY_MAP: dict[str, float] = {
     "udmattet": 0.6,
 }
 
+# Fase 2 / Lag 1 — rå-signal-mode. Når flaget er TÆNDT emitter daemonen de
+# rå metrics (ur-tid + aktivitets-tæthed) som frase i stedet for at kalde
+# narrations-LLM'en (_generate_felt_label). Default OFF, runtime-state-tunbar,
+# self-safe → False ved fejl. Jarvis' oplevelse ændrer sig ikke før owner flipper.
+_RAW_SIGNAL_MODE_FLAG = "raw_signal_mode"
+
+
+def raw_signal_mode_enabled() -> bool:
+    """Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state.
+
+    Self-safe → False ved enhver fejl (Jarvis' oplevelse må aldrig gå i stykker
+    fordi et flag-opslag fejler).
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        v = get_runtime_state_value(_RAW_SIGNAL_MODE_FLAG, False)
+        return False if v is None else bool(v)
+    except Exception:
+        return False
+
+
+def _build_raw_felt(*, base_minutes: float, density_factor: float) -> str:
+    """Byg felt-strengen udelukkende fra rå metrics — ingen LLM.
+
+    ur-tid = faktiske minutter siden session-start. aktivitet = tæthed 0-1
+    (density_factor ligger i 1.0-2.0 → normaliseres til 0-1). Fx ``ur-tid 47min · aktivitet 0.3``.
+    """
+    density_0_1 = max(0.0, min(1.0, density_factor - 1.0))
+    return f"ur-tid {base_minutes:.0f}min · aktivitet {density_0_1:.1f}"
+
 
 def tick_experienced_time_daemon(
     event_count: int,
@@ -40,12 +70,21 @@ def tick_experienced_time_daemon(
     intensity_factor = _INTENSITY_MAP.get(energy_level, 1.0)
     felt_minutes = base_minutes * density_factor * novelty_factor * intensity_factor
 
-    _felt_duration_label = _generate_felt_label(
-        felt_minutes=felt_minutes,
-        event_count=_session_event_count,
-        novelty_count=_session_novelty_count,
-        energy_level=energy_level,
-    )
+    # Fase 2 / Lag 1 — rå tal, ikke LLM-label. Bygger felt-strengen direkte fra
+    # metrics og SPRINGER narrations-LLM-kaldet over. Samme output-felt (felt_label),
+    # så awareness/prompt-consumeren mærker kun at STRENGEN skifter.
+    if raw_signal_mode_enabled():
+        _felt_duration_label = _build_raw_felt(
+            base_minutes=base_minutes,
+            density_factor=density_factor,
+        )
+    else:
+        _felt_duration_label = _generate_felt_label(
+            felt_minutes=felt_minutes,
+            event_count=_session_event_count,
+            novelty_count=_session_novelty_count,
+            energy_level=energy_level,
+        )
 
     return {
         "felt_minutes": felt_minutes,

@@ -78,11 +78,40 @@ def tick_surprise_daemon(
     divergence = _compute_divergence(inner_voice_mode, somatic_energy)
     if not divergence:
         return {"generated": False, "surprise": _cached_surprise}
-    phrase = _generate_surprise(inner_voice_mode, somatic_energy, divergence)
+    if _raw_signal_mode():
+        # Lag 1 — rå divergens, ingen narration. Samme output-felt som
+        # awareness konsumerer; flaget bytter blot strengen (regel-beregnet
+        # divergens ud, LLM-narration af).
+        phrase = _render_raw_divergence(divergence)
+    else:
+        phrase = _generate_surprise(inner_voice_mode, somatic_energy, divergence)
     if not phrase:
         return {"generated": False, "surprise": _cached_surprise}
     _store_surprise(phrase, divergence)
     return {"generated": True, "surprise": phrase, "divergence": divergence}
+
+
+def _raw_signal_mode() -> bool:
+    """Self-safe læsning af runtime-state-flaget `raw_signal_mode` (default off)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        return bool(get_runtime_state_value("raw_signal_mode", False))
+    except Exception:
+        return False
+
+
+def _render_raw_divergence(divergence: list[str]) -> str:
+    """Byg rå kategorisk divergens-streng (ingen LLM, ingen prosa).
+
+    `mode:reasoning→channel` → `mode reasoning→channel`
+    `energy:høj→lav`         → `energi høj→lav`
+    """
+    parts: list[str] = []
+    for label in divergence:
+        key, _, rest = label.partition(":")
+        prefix = {"mode": "mode", "energy": "energi"}.get(key, key)
+        parts.append(f"{prefix} {rest}" if rest else prefix)
+    return "divergens: " + " · ".join(parts)
 
 
 def get_latest_surprise() -> str:

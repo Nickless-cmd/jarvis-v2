@@ -90,6 +90,25 @@ def tick_user_model_daemon(recent_messages: list[str]) -> dict:
         }
 
     model = _analyze_messages(messages)
+
+    # Fase 2 Lag 5: gate the LLM behind the shared event-gate. Keep the LLM's
+    # judgment, but skip the call when the user-interaction signal hasn't moved.
+    # Placed AFTER the cadence/no-messages guards — only gates whether the LLM
+    # generation runs. Fail-open: any error falls through to normal generation.
+    try:
+        from core.services import event_gate
+
+        if event_gate.event_driven_enabled():
+            _relevant = {
+                "message_count": float(model.get("message_count", 0) or 0),
+                "avg_message_length": float(model.get("avg_message_length", 0) or 0),
+                "question_ratio": 1.0 if model.get("question_heavy") else 0.0,
+            }
+            if not event_gate.should_generative_fire("user_model", _relevant):
+                return {"skipped": "no_signal_change"}
+    except Exception:
+        pass
+
     summary = _generate_model_summary(messages, model)
 
     _user_model = model

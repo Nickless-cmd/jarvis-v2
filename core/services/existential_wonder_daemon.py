@@ -55,17 +55,39 @@ def tick_existential_wonder_daemon(
 
     now = datetime.now(UTC)
 
-    # Cadence gate: 24h
-    if _last_tick_at is not None:
-        if (now - _last_tick_at) < timedelta(hours=_CADENCE_HOURS):
-            return {"generated": False}
+    from core.services import event_gate
 
-    # Trigger conditions: long absence + active thought stream
+    # Trigger conditions: long absence + active thought stream. These quiet-period
+    # preconditions still hold in BOTH modes — wonder only arises when Jarvis sits
+    # alone with an active inner stream.
     if absence_hours < _MIN_ABSENCE_HOURS:
         return {"generated": False}
 
     if fragment_count < _MIN_FRAGMENT_COUNT:
         return {"generated": False}
+
+    # Fire-decision. Fase 2 Lag 7 (review-korrektion): retire the blind 24h daily
+    # TIMER when event-driven mode is on, replacing it with the shared event-gate
+    # so a wonder is generated only when a relevant signal actually moved. When the
+    # flag is OFF we keep the exact legacy 24h-cadence path. In EITHER case a skip
+    # NEVER clears _latest_wonder — the output pipeline is load-bearing for
+    # central_convene_judge, proactivity_bridge and visible_inner_life.
+    if event_gate.event_driven_enabled():
+        # Relevant signals: existential-pressure/long-absence (normalized over a
+        # day) + active-thought-stream depth. A move in any of these is what makes
+        # a fresh wonder worth spending an LLM on.
+        signals = {
+            "existential_pressure": min(max(absence_hours, 0.0) / 24.0, 1.0),
+            "long_absence": min(max(absence_hours, 0.0) / 24.0, 1.0),
+            "thought_stream": min(max(fragment_count, 0) / 20.0, 1.0),
+        }
+        if not event_gate.should_generative_fire("existential_wonder", signals):
+            return {"generated": False}
+    else:
+        # Legacy blind 24h-cadence gate.
+        if _last_tick_at is not None:
+            if (now - _last_tick_at) < timedelta(hours=_CADENCE_HOURS):
+                return {"generated": False}
 
     wonder = _generate_wonder_question()
     if not wonder:

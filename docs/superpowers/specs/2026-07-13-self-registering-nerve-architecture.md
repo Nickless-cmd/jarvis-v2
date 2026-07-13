@@ -79,11 +79,33 @@ overflade i systemet: kode der loades ind i kontrol-planen kan gøre mest skade.
 appendiks — det ER designet.**
 
 Krav (alle obligatoriske, ingen kan disables — §SECURITY-klasse):
-1. **Identitets-verifikation.** Manifestet skal være signeret/verificeret (owner-nøgle). Uverificeret
-   modul → afvist, aldrig loadet. ("Ved korrekt identifikation" — Bjørns ord — er gaten.)
-2. **Owner-approval-gate.** Et nyt modul loades ALDRIG auto-aktivt. Det registreres som PENDING og
-   kræver eksplicit owner-godkendelse (Keymaker-disciplin: fortjent/tidsbegrænset/godkendt, aldrig
-   binært auto-on). [[project_the_keymaker]].
+
+1. **Identitets-verifikation + identitets-tiers (Bjørn 13. jul).** Hvert modul bærer en identitet.
+   Tre tiers:
+   - **Owner (Bjørn) ELLER Claude = betroet → ØJEBLIKKELIG aktivering.** Et modul identificeret som
+     en af os to kan tilføjes med `shadow`/`on`/`off` sat direkte i modulet og aktiveres straks (ingen
+     ekstra approval-runde — vi ER approveren). Enten af os kan godkende (to gyldige identiteter).
+   - **Jarvis = shadow (hvis nødvendigt) + approval af Bjørn ELLER Claude.** Hans egne moduler
+     registreres PENDING; kører evt. i shadow først; aktiveres kun efter en af os godkender.
+   - **Ukendt/uverificeret identitet → AFVIST, aldrig loadet.** Det er gaten. ("Ved korrekt
+     identifikation" — Bjørns ord.)
+   Keymaker-disciplin på Jarvis-tieren (fortjent/tidsbegrænset/godkendt, aldrig binært auto-on)
+   [[project_the_keymaker]].
+
+2. **🔴 KRITISK — identitet må ALDRIG lække i commits (Jarvis' repo er PUBLIC på GitHub).**
+   Identiteten der autoriserer øjeblikkelig aktivering må ikke ligge i koden der committes. Mønster
+   (samme som eksisterende secrets-håndtering, CLAUDE.md §Secrets):
+   - **Hemmeligheden** (signing-nøgle/HMAC-secret pr. identitet: owner/claude/jarvis) bor i
+     `~/.jarvis-v2/config/runtime.json` (gitignored, ALDRIG committet), læst via `read_runtime_key()`.
+   - **Modulet committer kun** en NON-secret identitets-reference + en signatur der er *verificerbar*
+     mod runtime.json-hemmeligheden — men signaturen afslører IKKE hemmeligheden. Load-tid: Centralen
+     re-verificerer signaturen mod den lokale secret; matcher den ikke → afvist.
+   - **`detect-secrets` pre-commit-hook** (findes allerede) skal fange enhver ved-uheld-committet nøgle;
+     tilføj identitets-secret-mønstre til dens baseline-scan.
+   - **Konsekvens:** en fremmed der læser det public repo kan IKKE forfalske en identitet (de har ikke
+     runtime.json-hemmeligheden) — men Bjørn/Claude/Jarvis kan aktivere lokalt fordi hemmeligheden bor
+     på maskinen, ikke i git. Design-test: kan repoet være fuldt public uden at nogen kan aktivere et
+     modul de ikke burde? Ja — kun hvis hemmeligheden aldrig er i et commit.
 3. **Capability-sandbox.** Modulet deklarerer sine capabilities i manifestet; Centralen HÅNDHÆVER dem —
    en `read_only`-nerve kan ikke blokere; en nerve uden `can_emit` når ikke eventbus. Overskridelse →
    afvist + flag. (Guard hænderne, ikke sindet — men her guardes hænderne hårdt.)

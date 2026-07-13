@@ -64,18 +64,62 @@ def _drain() -> list[dict[str, Any]]:
         return deltas
 
 
+def _requeue(deltas: list[dict[str, Any]]) -> None:
+    """Læg ubekræftede deltas TILBAGE i akkumulatoren (merge-forward), så en fejlet flush
+    ikke taber vinduet — næste flush forsøger igen. Verdicts der ankom MENS flushet kørte
+    lægges oveni (deres count summeres). Selv-sikker."""
+    if not deltas:
+        return
+    try:
+        with _LOCK:
+            for d in deltas:
+                nerve = str(d.get("nerve") or "")
+                decision = str(d.get("decision") or "")
+                if not nerve or not decision:
+                    continue
+                key = (nerve, decision)
+                cnt = int(d.get("count") or 0)
+                entry = _ACC.get(key)
+                if entry is None:
+                    _ACC[key] = {"cluster": d.get("cluster", "") or "", "count": cnt,
+                                 "last_ts": d.get("last_ts", ""),
+                                 "last_reason": d.get("last_reason", "")}
+                else:
+                    entry["count"] += cnt
+                    # bevar det NYESTE last_ts/reason (ankomne-under-flush er nyere)
+                    if d.get("last_ts", "") > entry.get("last_ts", ""):
+                        entry["last_ts"] = d["last_ts"]
+                        if d.get("last_reason"):
+                            entry["last_reason"] = d["last_reason"]
+                    if d.get("cluster") and not entry.get("cluster"):
+                        entry["cluster"] = d["cluster"]
+    except Exception:
+        return
+
+
 def flush() -> int:
     """Skriv akkumulerede deltas til den persistente tabel. Returnerer antal rækker rørt.
 
-    Kaldes på cadence. Selv-sikker — ved fejl mistes vinduets tællere, aldrig runtime.
-    """
-    try:
-        deltas = _drain()
-        if not deltas:
-            return 0
-        return db_gate_verdicts.apply_deltas(deltas)
-    except Exception:
+    Kaldes på cadence + ved run-slut (api-proces). Selv-sikker — kaster ALDRIG.
+
+    HOLDBARHED: akkumulatoren drænes FØR skrivet, men bekræftes bagefter. Fejler DB-skrivet
+    (låst ud over busy_timeout, WAL-kontention på den store live-DB, disk-fejl) re-køes
+    HELE vinduet, så tællerne ikke tabes stille (= ground-truth for shadow→enforce-flip
+    forbliver komplet). Uden dette eroderede en travl live-DB ledgeren usynligt."""
+    deltas = _drain()
+    if not deltas:
         return 0
+    try:
+        written = db_gate_verdicts.apply_deltas(deltas)
+    except Exception:
+        written = 0
+    if not written:
+        # Skrivet fejlede totalt (connect-niveau) → intet blev committet → re-kø HELE
+        # vinduet. (apply_deltas committer batchen som ét; delvis fejl er kun enkelt-rækker
+        # den selv springer over — sjældent, og re-kø der ville dobbelt-tælle de committede.)
+        _requeue(deltas)
+        return 0
+    return written
 
 
 def summary() -> dict[str, dict[str, Any]]:

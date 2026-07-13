@@ -870,21 +870,25 @@ def _build_influence_trace(
         except Exception:
             pass
 
-    # C5 — event-trigger SHADOW-meter (observe-only). Cheap, NON-LLM sibling to
-    # the old autonomous_council tick above (which is left UNTOUCHED and retires
-    # later). Each tick it evaluates the pure signal-delta trigger + consults the
-    # dispatch guards and records what it WOULD dispatch to central_timeseries —
-    # NEVER firing an LLM or convening a council. Guarded so it can never break
-    # the heartbeat; runs whenever the autonomous_council daemon is enabled.
-    if _dm.is_enabled("autonomous_council"):
-        try:
-            from core.services.event_trigger_shadow import tick_event_trigger_shadow
-            _et_result = _hb._daemon_tick_with_deadline(
-                "event_trigger_shadow", tick_event_trigger_shadow, deadline_seconds=10.0,
-            )
-            _dm.record_daemon_tick("event_trigger_shadow", _et_result or {})
-        except Exception:
-            pass
+    # C5 — event-trigger SHADOW-meter (observe-only). Cheap, NON-LLM. The
+    # delta-check is a pure signal comparison (no LLM, no council), so it runs on
+    # EVERY heartbeat tick — DECOUPLED from the autonomous_council 30-min cadence.
+    # Rationale: central_timeseries is in-memory (wiped on restart) and the old
+    # 30-min gate meant a night of restarts left ZERO calibration samples. Now the
+    # tick persists durably (event_trigger_shadow_log runtime-state) AND fires
+    # every heartbeat, so a stable 24h window actually accumulates dense θ-data.
+    # The old autonomous_council daemon above is left UNTOUCHED (retires later).
+    # Each tick evaluates the pure signal-delta trigger + consults the dispatch
+    # guards and records what it WOULD dispatch — NEVER firing an LLM or convening
+    # a council. Guarded + deadline-bound so it can never break the heartbeat.
+    try:
+        from core.services.event_trigger_shadow import tick_event_trigger_shadow
+        _et_result = _hb._daemon_tick_with_deadline(
+            "event_trigger_shadow", tick_event_trigger_shadow, deadline_seconds=10.0,
+        )
+        _dm.record_daemon_tick("event_trigger_shadow", _et_result or {})
+    except Exception:
+        pass
 
     if _dm.is_enabled("council_memory"):
         try:

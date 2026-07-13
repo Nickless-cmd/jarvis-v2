@@ -25,7 +25,15 @@ Telemetri-nerve: central_timeseries.record("agents", "event_trigger", ...).
 """
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
+
+# Durable telemetri-ring-buffer i runtime-state. central_timeseries er IN-MEMORY
+# (wipes ved hver restart) → efter en nat med genstarter er der NUL kalibrerings-
+# samples. Denne durable log overlever restart, så et stabilt 24t-vindue faktisk
+# akkumulerer θ-kalibrerings-data. Cappet (nyeste vinder), self-safe.
+_DURABLE_KEY = "event_trigger_shadow_log"
+_DURABLE_CAP = 500
 
 # Lane hvis budget/breaker-værn beskytter den autonome dispatch. Vi observerer
 # hvad de VILLE sige for netop denne lane (rører ikke deres tilstand — kun læse).
@@ -105,7 +113,47 @@ def _record(value: float, meta: dict[str, Any]) -> None:
         pass
 
 
-def tick_event_trigger_shadow(signals: dict[str, float] | None = None) -> dict[str, Any]:
+def _persist_durable(sample: dict[str, Any]) -> None:
+    """Append ét telemetri-sample til den durable ring-buffer i runtime-state
+    (survives restart). Cappet til de nyeste ~500 (ældste droppes). Best-effort:
+    en persist-fejl må ALDRIG vælte ticket — kun logges bort."""
+    try:
+        from core.runtime import db_core
+        log = db_core.get_runtime_state_value(_DURABLE_KEY, [])
+        if not isinstance(log, list):
+            log = []
+        log.append(sample)
+        if len(log) > _DURABLE_CAP:
+            log = log[-_DURABLE_CAP:]
+        db_core.set_runtime_state_value(_DURABLE_KEY, log)
+    except Exception:
+        pass
+
+
+def recent_shadow_samples(limit: int = 200) -> list[dict]:
+    """Læs de seneste durable shadow-samples (for θ-kalibrering). Nyeste sidst.
+    Self-safe: returnerer [] ved enhver fejl."""
+    try:
+        from core.runtime import db_core
+        log = db_core.get_runtime_state_value(_DURABLE_KEY, [])
+        if not isinstance(log, list):
+            return []
+        try:
+            n = int(limit)
+        except (TypeError, ValueError):
+            n = 200
+        if n <= 0:
+            return []
+        return [dict(s) for s in log[-n:] if isinstance(s, dict)]
+    except Exception:
+        return []
+
+
+def tick_event_trigger_shadow(
+    signals: dict[str, float] | None = None,
+    *,
+    now: str | None = None,
+) -> dict[str, Any]:
     """Ét shadow-tick: saml signaler → evaluér den rene delta-trigger → konsultér
     værnene → registrér telemetri. FYRER ALDRIG en LLM, INDKALDER ALDRIG et råd
     (mode != "on" ⇒ ren observation; dette modul kalder aldrig en LLM/council-sti
@@ -165,6 +213,29 @@ def tick_event_trigger_shadow(signals: dict[str, float] | None = None) -> dict[s
         "visible_active": guards["visible_active"],
     }
     _record(max_movement, meta)
+
+    # Durabel persist (survives restart). Best-effort — må ALDRIG vælte ticket
+    # (dobbelt-værn: både her og internt i _persist_durable).
+    try:
+        try:
+            ts = now if isinstance(now, str) and now else datetime.now(UTC).isoformat()
+        except Exception:
+            ts = ""
+        _persist_durable(
+            {
+                "ts": ts,
+                "movement": round(float(max_movement), 3),
+                "would_dispatch": bool(would_dispatch),
+                "crossed": crossed,
+                "movements": meta["movements"],
+                "signals": meta["signals"],
+                "budget_ok": guards["budget_ok"],
+                "breaker_tripped": guards["breaker_tripped"],
+                "visible_active": guards["visible_active"],
+            }
+        )
+    except Exception:
+        pass
 
     return {
         "recorded": True,

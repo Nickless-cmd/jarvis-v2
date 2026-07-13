@@ -369,6 +369,7 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
         input_payload_json=json.dumps({"prompt": prompt}),
         started_at=_now_iso(),
     )
+    result: dict[str, object] = {}  # A4: readable on the failure seam too
     try:
         update_agent_registry_entry(agent_id, status="active")
         _needs_tools = _role_needs_tools(str(agent.get("role") or ""))
@@ -428,6 +429,32 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             provider_status=str(result.get("status") or "completed"),
         )
         tokens_used = input_tokens + output_tokens
+        # A4: write a costs ledger row so agent spend is visible to `jc cost`.
+        # Agent work runs on the free cheap-lane pool, so cost_usd is usually 0 —
+        # the point is visibility + lane="agent" attribution. record_cost is the
+        # accounting chokepoint (auto-prices deepseek, fires the egress observer).
+        # Fired on the primary-direct path, which has NO downstream record_cost
+        # (the cheap-lane pool fallback logs its own lane="cheap" row — see report).
+        try:
+            from core.costing.ledger import record_cost
+            record_cost(
+                lane="agent",
+                provider=str(result.get("provider") or agent.get("provider") or ""),
+                model=str(result.get("model") or agent.get("model") or ""),
+                input_tokens=int(input_tokens or 0),
+                output_tokens=int(output_tokens or 0),
+                cost_usd=float(result.get("cost_usd") or 0.0),
+                cache_hit_tokens=int(
+                    result.get("cache_hit_tokens")
+                    or result.get("prompt_cache_hit_tokens") or 0
+                ),
+                cache_miss_tokens=int(
+                    result.get("cache_miss_tokens")
+                    or result.get("prompt_cache_miss_tokens") or 0
+                ),
+            )
+        except Exception:
+            pass
         update_agent_registry_entry(
             agent_id,
             status="scheduled" if bool(agent.get("persistent")) and str(agent.get("next_wake_at") or "") else "completed",
@@ -474,6 +501,29 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             failure_reason=message,
             provider_status="failed",
         )
+        # A4: no dispatch without usage+time — log the costs row on failure too,
+        # with whatever usage the (possibly partial) result carried. lane="agent"
+        # keeps failed spend attributable in `jc cost`.
+        try:
+            from core.costing.ledger import record_cost
+            record_cost(
+                lane="agent",
+                provider=str(result.get("provider") or agent.get("provider") or ""),
+                model=str(result.get("model") or agent.get("model") or ""),
+                input_tokens=int(result.get("input_tokens") or 0),
+                output_tokens=int(result.get("output_tokens") or 0),
+                cost_usd=float(result.get("cost_usd") or 0.0),
+                cache_hit_tokens=int(
+                    result.get("cache_hit_tokens")
+                    or result.get("prompt_cache_hit_tokens") or 0
+                ),
+                cache_miss_tokens=int(
+                    result.get("cache_miss_tokens")
+                    or result.get("prompt_cache_miss_tokens") or 0
+                ),
+            )
+        except Exception:
+            pass
         update_agent_registry_entry(
             agent_id,
             status="failed",

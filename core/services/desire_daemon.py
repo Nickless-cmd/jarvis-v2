@@ -34,6 +34,19 @@ _SIGNAL_TYPE_MAP = {
     "connection": "connection-appetite",
 }
 
+# appetite type → dansk dimensions-navn (til rå-signal-mode)
+_DA_NAME = {
+    "curiosity-appetite": "nysgerrighed",
+    "craft-appetite": "håndværk",
+    "connection-appetite": "forbindelse",
+}
+
+# Fase 2 / Lag 1 — rå-signal-mode. Når flaget er TÆNDT bygger daemonen den nye
+# appetits label fra de rå intensiteter i stedet for at kalde narrations-LLM'en
+# (_generate_appetite_label). Default OFF, runtime-state-tunbar, self-safe →
+# False ved fejl. Jarvis' oplevelse ændrer sig ikke før owner flipper flaget.
+_RAW_SIGNAL_MODE_FLAG = "raw_signal_mode"
+
 # ---------------------------------------------------------------------------
 # Module-level state
 # ---------------------------------------------------------------------------
@@ -81,8 +94,14 @@ def tick_desire_daemon(signals: dict[str, str]) -> dict:
             existing["intensity"] = min(1.0, existing["intensity"] + _REINFORCEMENT_BOOST)
             existing["last_reinforced_at"] = now.isoformat()
         elif len(_appetites) < _MAX_APPETITES:
-            # Spawn new appetite from this signal
-            label = _generate_appetite_label(signal_text, appetite_type)
+            # Spawn new appetite from this signal.
+            # Fase 2 / Lag 1 — rå intensiteter, ikke LLM-label. Bygger label
+            # direkte fra de tre appetit-dimensioner og SPRINGER narrations-
+            # LLM-kaldet over. Samme appetite-shape; kun label-strengen skifter.
+            if raw_signal_mode_enabled():
+                label = _build_raw_appetite_label(appetite_type)
+            else:
+                label = _generate_appetite_label(signal_text, appetite_type)
             if label:
                 _spawn_appetite(label, appetite_type, now)
                 generated = True
@@ -168,6 +187,38 @@ def _spawn_appetite(label: str, appetite_type: str, now: datetime) -> None:
         )
     except Exception:
         pass
+
+
+def raw_signal_mode_enabled() -> bool:
+    """Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state.
+
+    Self-safe → False ved enhver fejl (Jarvis' oplevelse må aldrig gå i stykker
+    fordi et flag-opslag fejler).
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        v = get_runtime_state_value(_RAW_SIGNAL_MODE_FLAG, False)
+        return False if v is None else bool(v)
+    except Exception:
+        return False
+
+
+def _build_raw_appetite_label(spawning_type: str) -> str:
+    """Byg label udelukkende fra rå intensiteter — ingen LLM.
+
+    Fx: ``nysgerrighed 0.6 · håndværk 0.0 · forbindelse 0.0``. Den dimension der
+    lige nu spawner bærer NEW_APPETITE_INTENSITY; øvrige læses fra aktive
+    appetitter (0.0 hvis fraværende).
+    """
+    parts = []
+    for appetite_type in _SIGNAL_TYPE_MAP.values():
+        if appetite_type == spawning_type:
+            intensity = _NEW_APPETITE_INTENSITY
+        else:
+            existing = _find_appetite_by_type(appetite_type)
+            intensity = float(existing["intensity"]) if existing else 0.0
+        parts.append(f"{_DA_NAME[appetite_type]} {intensity:.1f}")
+    return " · ".join(parts)
 
 
 def _generate_appetite_label(signal_text: str, appetite_type: str) -> str:

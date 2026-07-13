@@ -479,6 +479,16 @@ def _execute_openai_compatible_chat(
         # single visible reply without burning the free quota.
         "max_tokens": 4096,
     }
+    # Send-grænse-normalisering: deepseek-chat/reasoner-aliaserne udfases 2026-07-24.
+    # Enhver upstream-sti der stadig vælger dem (fx classification-default =
+    # static_models[0]) omskrives transparent til v4-flash + tilsvarende thinking-param,
+    # så adfærden bevares (chat=non-thinking, reasoner=thinking) uden det døende alias.
+    # Ligger FØR extra_body-merge, så en eksplicit caller-thinking vinder over dette.
+    if provider == "deepseek" and model in ("deepseek-chat", "deepseek-reasoner"):
+        payload["thinking"] = (
+            {"type": "disabled"} if model == "deepseek-chat" else {"type": "enabled"}
+        )
+        payload["model"] = "deepseek-v4-flash"
     # Lag 10 Phase 1 (2026-05-12): caller may pass modulated values.
     # When None, omit from payload so server-side defaults apply (cheap-lane
     # callers don't pass them; only visible-lane wrappers do).

@@ -388,6 +388,7 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
                 provider=str(agent.get("provider") or ""),
                 model=str(agent.get("model") or ""),
                 requires_tools=_role_needs_tools(str(agent.get("role") or "")),
+                lane="council",
             )
             text = str(result.get("text") or "").strip()
             create_agent_message(
@@ -498,6 +499,7 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
                 provider=str(coordinator_agent.get("provider") or ""),
                 model=str(coordinator_agent.get("model") or ""),
                 requires_tools=_role_needs_tools(str(coordinator_agent.get("role") or "")),
+                lane="council",
             )
             synthesis = str(result.get("text") or "").strip()
             create_agent_message(
@@ -568,6 +570,7 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
                     provider=str(synth_member.get("provider") or ""),
                     model=str(synth_member.get("model") or ""),
                     requires_tools=_role_needs_tools("synthesizer"),
+                    lane="council",
                 )
                 return str(result.get("text") or "").strip()
 

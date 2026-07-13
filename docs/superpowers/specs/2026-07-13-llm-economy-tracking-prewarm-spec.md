@@ -56,10 +56,13 @@ Seks uafhængige, testbare stykker. Rækkefølge = risiko-orden (hygiejne + sand
 
 - **Central pris-tabel** (`core/services/llm_pricing.py`, ny): pr. (provider, model) → dict med
   `cache_hit`, `cache_miss`, `output` USD/token. DeepSeek v4-flash: 0.0028/0.14/0.28 per M.
-  v4-pro: 0.003625/0.435/0.87. Legacy `deepseek-chat`: dens *faktiske* legacy-priser (verificér mod
-  api-docs.deepseek.com). Off-peak-multiplikator (16:30–00:30 GMT) hvis kaldet faldt der.
-- **Beregn `cost_usd` ved skrivning:** `cost_usd = cache_hit*hit + cache_miss*miss + output*out`
-  (× off-peak-faktor). Bagud-fyld ikke gamle rækker — kun fremad.
+  v4-pro: 0.003625/0.435/0.87. Legacy `deepseek-chat`/`reasoner` mapper til v4-flash-priser (verificeret
+  api-docs.deepseek.com 13. jul) — og vores label-normalisering i `record_cost` giver dem allerede
+  v4-flash-labelen, så de prises korrekt automatisk. **Ingen off-peak-multiplikator:** DeepSeek V4 har
+  IKKE tidsbaseret rabat (verificeret 13. jul — droppet fra V3).
+- **Beregn `cost_usd` ved skrivning:** `cost_usd = (cache_hit*hit + cache_miss*miss + output*out)/1e6`.
+  Når cache-split er ukendt (begge 0) men `input_tokens>0`: behandl al input som cache_miss (konservativt).
+  Bagud-fyld ikke gamle rækker — kun fremad.
 - **KOMPLET DeepSeek-logging (reconciliation-gap-fix):** self-review afslørede at kun ~$9–13 af de
   $27 kan genfindes fra loggede tokens → tabellen under-fanger ~2–3×. Audit ALLE deepseek-kaldssteder
   (grep provider-kald) og sikr at HVERT kald skriver en `costs`-række. **Fang også reasoning/thinking-

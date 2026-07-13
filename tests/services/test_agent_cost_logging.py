@@ -1,12 +1,14 @@
-"""A4: agent dispatch must write a ``costs`` ledger row via
-``core.costing.ledger.record_cost`` with ``lane="agent"`` so agent spend is
-visible to ``jc cost``.
+"""A4b: agent cost is logged at the execution chokepoint
+(``execute_with_role_or_fallback`` / ``execute_cheap_lane_via_pool`` with
+``lane="agent"`` threaded in), NOT at the ``execute_agent_task`` dispatch
+seam. The prior A4 seam logs were removed because they double-counted every
+dispatch that fell back to the cheap-lane pool (lane="agent" + lane="cheap"
+for the same tokens).
 
-Both the completion/success seam and the failure seam in
-``execute_agent_task`` must fire ``record_cost`` exactly once with whatever
-usage is available (the dispatch contract requires no dispatch without
-usage + time). ``record_cost`` is patched at its definition module because the
-implementation imports it lazily inside the function body.
+These tests pin that removal: with the execution facade stubbed out (so the
+real chokepoint never runs), ``execute_agent_task`` fires ``record_cost``
+ZERO times — proving no seam log remains. Single-site coverage of the four
+lanes lives in ``test_agent_cost_single_site.py``.
 """
 
 import core.costing.ledger as ledger
@@ -39,7 +41,8 @@ def _capture_record_cost(monkeypatch):
     return calls
 
 
-def test_success_dispatch_logs_agent_lane_cost(monkeypatch):
+def test_success_dispatch_no_seam_cost_log(monkeypatch):
+    """Facade stubbed (chokepoint bypassed) → the seam logs nothing."""
     _stub_db(monkeypatch)
     monkeypatch.setattr(spawn, "get_agent_registry_entry", lambda *a, **k: _agent())
     calls = _capture_record_cost(monkeypatch)
@@ -56,16 +59,11 @@ def test_success_dispatch_logs_agent_lane_cost(monkeypatch):
 
     spawn.execute_agent_task(agent_id="a1")
 
-    assert len(calls) == 1, f"expected exactly one record_cost, got {len(calls)}"
-    kw = calls[0]
-    assert kw["lane"] == "agent"
-    assert kw["provider"] == "deepseek"
-    assert kw["model"] == "deepseek-chat"
-    assert kw["input_tokens"] == 100
-    assert kw["output_tokens"] == 50
+    assert calls == [], f"seam must not log cost anymore, got {len(calls)}"
 
 
-def test_failure_dispatch_still_logs_agent_lane_cost(monkeypatch):
+def test_failure_dispatch_no_seam_cost_log(monkeypatch):
+    """Failure before any model call → nothing to log, and no seam log."""
     _stub_db(monkeypatch)
     monkeypatch.setattr(spawn, "get_agent_registry_entry", lambda *a, **k: _agent())
     calls = _capture_record_cost(monkeypatch)
@@ -78,10 +76,4 @@ def test_failure_dispatch_still_logs_agent_lane_cost(monkeypatch):
 
     spawn.execute_agent_task(agent_id="a1")
 
-    assert len(calls) == 1, f"expected exactly one record_cost on failure, got {len(calls)}"
-    kw = calls[0]
-    assert kw["lane"] == "agent"
-    assert kw["provider"] == "deepseek"
-    assert kw["model"] == "deepseek-chat"
-    # usage may be 0 on the failure path, but the keys must be present
-    assert "input_tokens" in kw and "output_tokens" in kw
+    assert calls == [], f"seam must not log cost on failure anymore, got {len(calls)}"

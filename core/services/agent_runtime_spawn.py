@@ -387,6 +387,7 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
                     provider=str(agent.get("provider") or ""),
                     model=str(agent.get("model") or ""),
                     requires_tools=_needs_tools,
+                    lane="agent",
                 )
         else:
             result = _facade().execute_with_role_or_fallback(
@@ -394,6 +395,7 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
                 provider=str(agent.get("provider") or ""),
                 model=str(agent.get("model") or ""),
                 requires_tools=_needs_tools,
+                lane="agent",
             )
         text = str(result.get("text") or "").strip()
         output_tokens = int(result.get("output_tokens") or 0)
@@ -429,32 +431,11 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             provider_status=str(result.get("status") or "completed"),
         )
         tokens_used = input_tokens + output_tokens
-        # A4: write a costs ledger row so agent spend is visible to `jc cost`.
-        # Agent work runs on the free cheap-lane pool, so cost_usd is usually 0 —
-        # the point is visibility + lane="agent" attribution. record_cost is the
-        # accounting chokepoint (auto-prices deepseek, fires the egress observer).
-        # Fired on the primary-direct path, which has NO downstream record_cost
-        # (the cheap-lane pool fallback logs its own lane="cheap" row — see report).
-        try:
-            from core.costing.ledger import record_cost
-            record_cost(
-                lane="agent",
-                provider=str(result.get("provider") or agent.get("provider") or ""),
-                model=str(result.get("model") or agent.get("model") or ""),
-                input_tokens=int(input_tokens or 0),
-                output_tokens=int(output_tokens or 0),
-                cost_usd=float(result.get("cost_usd") or 0.0),
-                cache_hit_tokens=int(
-                    result.get("cache_hit_tokens")
-                    or result.get("prompt_cache_hit_tokens") or 0
-                ),
-                cache_miss_tokens=int(
-                    result.get("cache_miss_tokens")
-                    or result.get("prompt_cache_miss_tokens") or 0
-                ),
-            )
-        except Exception:
-            pass
+        # A4b: cost is now logged at the execution chokepoint
+        # (execute_with_role_or_fallback / execute_cheap_lane_via_pool) with
+        # lane="agent" threaded through — NOT here at the dispatch seam. Logging
+        # here as well double-counted every dispatch that fell back to the pool
+        # (lane="agent" + lane="cheap" for the same tokens). Seam log removed.
         update_agent_registry_entry(
             agent_id,
             status="scheduled" if bool(agent.get("persistent")) and str(agent.get("next_wake_at") or "") else "completed",
@@ -501,29 +482,10 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             failure_reason=message,
             provider_status="failed",
         )
-        # A4: no dispatch without usage+time — log the costs row on failure too,
-        # with whatever usage the (possibly partial) result carried. lane="agent"
-        # keeps failed spend attributable in `jc cost`.
-        try:
-            from core.costing.ledger import record_cost
-            record_cost(
-                lane="agent",
-                provider=str(result.get("provider") or agent.get("provider") or ""),
-                model=str(result.get("model") or agent.get("model") or ""),
-                input_tokens=int(result.get("input_tokens") or 0),
-                output_tokens=int(result.get("output_tokens") or 0),
-                cost_usd=float(result.get("cost_usd") or 0.0),
-                cache_hit_tokens=int(
-                    result.get("cache_hit_tokens")
-                    or result.get("prompt_cache_hit_tokens") or 0
-                ),
-                cache_miss_tokens=int(
-                    result.get("cache_miss_tokens")
-                    or result.get("prompt_cache_miss_tokens") or 0
-                ),
-            )
-        except Exception:
-            pass
+        # A4b: no cost log at the dispatch seam — the execution chokepoint owns
+        # cost logging now (lane threaded). On a failure that reached a provider,
+        # the pool/primary-direct site already logged; a failure before any model
+        # call has no usage to log. Removed to kill the agent→pool double-count.
         update_agent_registry_entry(
             agent_id,
             status="failed",

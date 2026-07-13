@@ -72,6 +72,7 @@ def execute_with_role_or_fallback(
     requires_tools: bool = False,
     messages: list[dict] | None = None,
     tools: list[dict] | None = None,
+    lane: str = "cheap",
 ) -> dict[str, object]:
     """Run the message on the role's preferred provider/model first, fall
     through to the cheap-lane chain on failure.
@@ -104,7 +105,7 @@ def execute_with_role_or_fallback(
     # Effective prompt for token-estimation / text-only fallback paths.
     _prompt_for_estimate = message or ""
     if not primary_provider or not primary_model:
-        return execute_cheap_lane_via_pool(message=_prompt_for_estimate)
+        return execute_cheap_lane_via_pool(message=_prompt_for_estimate, lane=lane)
 
     # Tool-support guard: skip primary if it can't actually use tools and
     # the caller needs them. Falls through to cheap_lane chain which has
@@ -122,6 +123,7 @@ def execute_with_role_or_fallback(
         return execute_cheap_lane_via_pool(
             message=_prompt_for_estimate,
             skip_providers=frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT),
+            lane=lane,
         )
 
     # Circuit breaker: skip primary if it's been failing repeatedly.
@@ -138,7 +140,7 @@ def execute_with_role_or_fallback(
             except Exception:
                 pass
             skip = frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT) if requires_tools else frozenset()
-            return execute_cheap_lane_via_pool(message=_prompt_for_estimate, skip_providers=skip)
+            return execute_cheap_lane_via_pool(message=_prompt_for_estimate, skip_providers=skip, lane=lane)
     except Exception:
         pass
 
@@ -210,7 +212,7 @@ def execute_with_role_or_fallback(
         except Exception:
             pass
         skip = frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT) if requires_tools else frozenset()
-        return execute_cheap_lane_via_pool(message=_prompt_for_estimate, skip_providers=skip)
+        return execute_cheap_lane_via_pool(message=_prompt_for_estimate, skip_providers=skip, lane=lane)
 
     # Primary succeeded — clear any prior failure tracking.
     try:
@@ -220,6 +222,32 @@ def execute_with_role_or_fallback(
         pass
 
     output_tokens = int(result.get("output_tokens") or _estimate_tokens(result.get("text") or ""))
+    input_tokens = int(result.get("input_tokens") or _estimate_tokens(_prompt_for_estimate))
+    # A4b: the primary-direct path is the ONLY execution site with no
+    # downstream record_cost (the pool fallback logs its own row). Log the
+    # costs ledger row HERE so this path is no longer a hole, attributed to
+    # the caller's lane. record_cost is the accounting chokepoint (auto-prices
+    # deepseek, fires the egress observer). try/except — never break the call.
+    try:
+        from core.costing.ledger import record_cost
+        record_cost(
+            lane=lane,
+            provider=primary_provider,
+            model=primary_model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=float(result.get("cost_usd") or 0.0),
+            cache_hit_tokens=int(
+                result.get("cache_hit_tokens")
+                or result.get("prompt_cache_hit_tokens") or 0
+            ),
+            cache_miss_tokens=int(
+                result.get("cache_miss_tokens")
+                or result.get("prompt_cache_miss_tokens") or 0
+            ),
+        )
+    except Exception:
+        pass
     return {
         "lane": "cheap",
         "provider": primary_provider,

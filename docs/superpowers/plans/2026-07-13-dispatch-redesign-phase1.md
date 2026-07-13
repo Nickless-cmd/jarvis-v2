@@ -70,6 +70,24 @@ def test_terminal():
 - [ ] **Step 5:** Run → PASS.
 - [ ] **Step 6:** Commit `feat(cost): log agent-dispatch spend via record_cost(lane=agent) (A4)`.
 
+### Task A4b: Fjern dobbelt-tælling på agent→pool-fallback-stien (opdaget i A4-review)
+**Kontekst:** A4 loggede `record_cost(lane="agent")` ved dispatch-seam (korrekt for det almindelige
+primary-direct-tilfælde, hvor `execute_with_role_or_fallback` IKKE logger cost — et ægte hul der nu er
+lukket). MEN: når et agent-dispatch falder tilbage til `execute_cheap_lane_via_pool` (minoritet: tom
+provider/ingen tool-support/circuit-breaker/primary-fejl), logger den path ALLEREDE `record_cost(lane="cheap")`
+(cheap_provider_runtime_selection.py:453) → to rækker, samme tokens (cost $0, forskellige lane-labels →
+lane-filtreret jc cost er korrekt, men ufiltreret token-SUM dobbelt-tæller på den sti).
+`execute_with_role_or_fallback` er DELT (agents + council, agent_runtime_council.py:386/496/566), så lane
+kan ikke hardkodes i den. **Ren løsning:** tråd en `lane`-param gennem `execute_with_role_or_fallback` +
+`execute_cheap_lane_via_pool` (default bevarer "cheap"), log `record_cost` ÉN gang ved eksekverings-chokepointet
+med korrekt lane (agent/council/cheap), og FJERN dispatch-seam-loggen fra A4. Lukker også council-hullet.
+**Files:** `core/services/non_visible_lane_execution.py` (primary-direct-retur ~223 + fallback-kald),
+`core/services/cheap_provider_runtime_selection.py:453` (respektér indkommende lane), `agent_runtime_spawn.py`
+(fjern A4-seam-log), `agent_runtime_council.py` (pass lane="council"); Test: dispatch via begge stier → PRÆCIS
+én costs-række pr. model-kald, korrekt lane, ingen dobbelt-tælling; council-kald logger lane="council".
+- [ ] TDD som ovenfor. Verificér med en dispatch der tvinges gennem pool-fallback → 1 række, ikke 2.
+- [ ] Commit `fix(cost): ét cost-log-site pr. model-kald m. lane-param — fjern agent→pool dobbelt-tælling (A4b)`.
+
 ---
 
 ## WORKSTREAM B — Central-wiring [byg PÅ agents.py, ingen ny silo]

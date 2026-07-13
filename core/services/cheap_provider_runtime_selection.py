@@ -381,6 +381,7 @@ def execute_cheap_lane_via_pool(
     message: str,
     skip_providers: frozenset[str] = frozenset(),
     task_kind: str = "default",
+    lane: str = "cheap",
 ) -> dict[str, object]:
     target = select_cheap_lane_target(
         skip_providers=skip_providers,
@@ -425,7 +426,9 @@ def execute_cheap_lane_via_pool(
                     "reason": exc.code,
                 },
             )
-            return execute_cheap_lane_via_pool(message=message, skip_providers=skip_providers | {provider})
+            return execute_cheap_lane_via_pool(
+                message=message, skip_providers=skip_providers | {provider}, lane=lane,
+            )
         raise RuntimeError(f"{provider} cheap lane failed: {exc.code}: {exc.message}")
 
     output_tokens = int(result.get("output_tokens") or _estimate_tokens(result["text"]))
@@ -451,7 +454,7 @@ def execute_cheap_lane_via_pool(
     _cache_hit = int(result.get("cache_hit_tokens") or result.get("prompt_cache_hit_tokens") or 0)
     _cache_miss = int(result.get("cache_miss_tokens") or result.get("prompt_cache_miss_tokens") or 0)
     record_cost(
-        lane="cheap",
+        lane=lane,
         provider=provider,
         model=model,
         input_tokens=input_tokens,

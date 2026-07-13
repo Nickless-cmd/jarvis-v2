@@ -208,7 +208,7 @@ def _run_agent_tool_loop(
         # Nothing to expose → identical to legacy text-only path.
         return _facade().execute_with_role_or_fallback(
             message=prompt, provider=provider, model=model,
-            requires_tools=requires_tools,
+            requires_tools=requires_tools, lane="agent",
         )
 
     messages: list[dict] = [{"role": "user", "content": prompt}]
@@ -229,6 +229,7 @@ def _run_agent_tool_loop(
                 provider=provider, model=model,
                 requires_tools=requires_tools,
                 messages=messages, tools=tools_payload,
+                lane="agent",
             )
             total_input += int(result.get("input_tokens") or 0)
             total_output += int(result.get("output_tokens") or 0)

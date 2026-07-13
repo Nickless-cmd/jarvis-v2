@@ -64,6 +64,23 @@ def tick_taste_daemon() -> dict[str, object]:
     if _last_insight_at and (now - _last_insight_at) < timedelta(minutes=_TIME_GATE_MINUTES):
         return {"generated": False, "insight": _latest_insight}
 
+    # Fase 2 Lag 5: gate the LLM behind the shared event-gate. Keep the LLM's
+    # judgment, but skip the call when accumulated style/tool-use signals haven't
+    # moved. Placed AFTER the motif-threshold and time-gate guards — only gates
+    # whether generation runs. Fail-open: any error falls through to generation.
+    try:
+        from core.services import event_gate
+
+        if event_gate.event_driven_enabled():
+            _relevant = {
+                "unique_motif_count": float(len(_accumulated_motifs)),
+                "choices_since_insight": float(_choices_since_insight),
+            }
+            if not event_gate.should_generative_fire("aesthetic_taste", _relevant):
+                return {"skipped": "no_signal_change"}
+    except Exception:
+        pass
+
     insight = _generate_insight()
     if not insight:
         return {"generated": False, "insight": _latest_insight}

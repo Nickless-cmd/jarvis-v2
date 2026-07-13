@@ -178,6 +178,22 @@ def run_summary_cycle() -> dict[str, Any]:
         # one-line story.
         return {**stats, "ran": False, "reason": "empty-chain"}
 
+    # ── Event-gate (Fase 2 Lag 5): fire the LLM narrative summary only when
+    #    the active narrative thread actually moved (a new anchor, or a
+    #    changed chain depth/age). Flag OFF → legacy behaviour (cadence +
+    #    dedupe guards only). Fail-open. ──
+    try:
+        from core.services import event_gate
+        if event_gate.event_driven_enabled():
+            _relevant = {
+                "anchor_id": float(anchor["id"]),
+                "chain_depth": float(len(chain)),
+            }
+            if not event_gate.should_generative_fire("narrative_summary", _relevant):
+                return {"skipped": "no_signal_change"}
+    except Exception:
+        pass  # fail-open
+
     system, user = _build_prompt(anchor, chain)
 
     try:

@@ -488,13 +488,26 @@ def _call_remote_chat(
         raise RuntimeError(f"http-error:{exc.code}:{detail}") from exc
     except Exception as exc:
         raise RuntimeError(str(exc) or type(exc).__name__) from exc
-    # SAMLET EGRESS: dette er et direkte urlopen-LLM-kald der IKKE rører cost-ledger
-    # eller daemon_llm_call → rapportér til det unified egress-billede (shadow, egress-frit).
+    # SAMLET EGRESS + COST (WS2, 13. jul): dette var et direkte urlopen-LLM-kald der
+    # IKKE skrev en costs-række — kun en separat egress-observation. Route nu gennem
+    # record_cost (regnskabs-chokepointet), som ALSO egress-observerer internt → én
+    # costs-række + præcis ÉN egress-observation (ingen dobbelt-tælling). DeepSeeks
+    # `completion_tokens` INKLUDERER allerede reasoning_tokens (reasoning_content
+    # faktureres som output), så output_tokens = completion_tokens tæller reasoning
+    # præcis én gang — vi lægger IKKE reasoning oveni igen.
+    _usage = data.get("usage") or {}
     try:
-        from core.services.central_llm_egress import observe as _egress_observe
-        _egress_observe(lane="inner_enrichment", provider=provider, model=model,
-                        purpose="internal", autonomous=True,
-                        source="inner_llm_enrichment:remote")
+        from core.costing.ledger import record_cost
+        record_cost(
+            lane="inner",
+            provider=provider,
+            model=model,
+            input_tokens=int(_usage.get("prompt_tokens") or 0),
+            output_tokens=int(_usage.get("completion_tokens") or 0),
+            cost_usd=0.0,
+            cache_hit_tokens=int(_usage.get("prompt_cache_hit_tokens") or 0),
+            cache_miss_tokens=int(_usage.get("prompt_cache_miss_tokens") or 0),
+        )
     except Exception:
         pass
     text = (

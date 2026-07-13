@@ -421,6 +421,7 @@ def _stream_openai_compatible_model(
 
 def _run_openai_compatible_visible(
     *, provider: str, model: str, message: str, session_id: str | None,
+    extra_body: dict | None = None,
 ) -> tuple[VisibleModelResult, list[dict]]:
     """Shared entry point for openai-compat visible providers.
 
@@ -485,6 +486,7 @@ def _run_openai_compatible_visible(
         tools=tools or None,
         temperature=_mod_temp,
         top_p=_mod_top_p,
+        extra_body=extra_body,
     )
     _api_ms = int((_time.monotonic() - _t_api) * 1000)
     print(

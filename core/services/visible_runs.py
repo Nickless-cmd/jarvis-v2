@@ -1733,6 +1733,7 @@ async def _stream_visible_run(
                 # med den NON-thinking compat-alias (deepseek-chat) som ikke har
                 # #1453 → den formulerer svaret. Andre providere: uændret resend.
                 _rs_provider, _rs_model = run.provider, run.model
+                _rs_thinking = None
                 try:
                     _rs_p = (run.provider or "").strip().lower()
                     _rs_m = (run.model or "").strip().lower()
@@ -1747,17 +1748,21 @@ async def _stream_visible_run(
                                     "minimax", "gpt-oss", "nemotron", "-r1", "o1-",
                                     "think", "reason")
                     if _rs_p == "deepseek":
-                        from core.services.cheap_provider_runtime import (
-                            deepseek_model_for_thinking_mode,
-                        )
-                        _rs_model = deepseek_model_for_thinking_mode(run.model, "fast")
+                        # execute_visible_model normaliserer modellen + slår thinking
+                        # fra via thinking_mode="fast" (ingen deprecated alias).
+                        _rs_model = run.model
+                        _rs_thinking = "fast"
                     elif any(_t in _rs_m for _t in _THINK_HINTS):
-                        _rs_provider, _rs_model = "deepseek", "deepseek-chat"
+                        _rs_provider, _rs_model, _rs_thinking = (
+                            "deepseek", "deepseek-v4-flash", "fast",
+                        )
                 except Exception:
                     _rs_provider, _rs_model = run.provider, run.model
+                    _rs_thinking = None
                 _rs = await asyncio.to_thread(
                     _exec_rs, message=run.user_message, provider=_rs_provider,
-                    model=_rs_model, session_id=run.session_id)
+                    model=_rs_model, session_id=run.session_id,
+                    thinking_mode=_rs_thinking)
                 _rs_text = (getattr(_rs, "text", "") or "").strip()
                 try:
                     from core.services import followup_observer as _fo_rs

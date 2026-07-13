@@ -197,7 +197,8 @@ def available_provider_models(*, provider: str, auth_profile: str = "") -> dict[
 
 
 def execute_visible_model(
-    *, message: str, provider: str, model: str, session_id: str | None = None
+    *, message: str, provider: str, model: str, session_id: str | None = None,
+    thinking_mode: str | None = None,
 ) -> VisibleModelResult:
     if provider == "openai":
         return _execute_openai_model(
@@ -228,11 +229,20 @@ def execute_visible_model(
             provider_runtime_defaults,
         )
         if provider in _OPENAI_COMPATIBLE_PROVIDERS:
+            _extra = None
+            if provider == "deepseek" and thinking_mode:
+                from core.services.cheap_provider_runtime_adapters import (
+                    deepseek_request_for_thinking_mode,
+                )
+                model, _extra = deepseek_request_for_thinking_mode(
+                    model, thinking_mode
+                )
             result, _tool_calls = _run_openai_compatible_visible(
                 provider=provider,
                 model=model,
                 message=message,
                 session_id=session_id,
+                extra_body=_extra,
             )
             return result
     except Exception as exc:

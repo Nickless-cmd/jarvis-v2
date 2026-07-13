@@ -456,6 +456,7 @@ def _execute_openai_compatible_chat(
     tools: list[dict] | None = None,
     temperature: float | None = None,
     top_p: float | None = None,
+    extra_body: dict | None = None,
 ) -> dict[str, object]:
     # Resolve monkeypatchable primitives through the facade (see _facade()).
     _f = _facade()
@@ -487,6 +488,8 @@ def _execute_openai_compatible_chat(
         payload["top_p"] = float(top_p)
     if tools:
         payload["tools"] = _normalize_tools_for_openai_chat(tools)
+    if extra_body:
+        payload.update(extra_body)
     if provider == "groq":
         data, _headers = _f._http_json_httpx(
             f"{root}/chat/completions",

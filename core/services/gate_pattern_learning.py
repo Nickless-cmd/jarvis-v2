@@ -221,8 +221,14 @@ def hydrate() -> int:
 
 
 def _reset() -> None:
-    """Test-hook: ryd in-memory-store + hydrate-flag."""
+    """Test-hook: ryd in-memory-store + durabel snapshot + hydrate-flag (ren slate, så
+    lazy-hydrate ikke genindlæser en tidligere tests persisterede data)."""
     global _hydrated
     with _LOCK:
         _STORE.clear()
     _hydrated = False
+    try:
+        from core.runtime.db_core import set_runtime_state_value
+        set_runtime_state_value(_RUNTIME_KEY, [])
+    except Exception:
+        pass

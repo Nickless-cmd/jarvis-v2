@@ -31,6 +31,26 @@ _absence_start_at: datetime | None = None
 _absence_label: str = ""
 _last_generated_at: datetime | None = None
 
+# Fase 2 / Lag 1 — rå-signal-mode. Når flaget er TÆNDT emitter daemonen de rå
+# fraværs-metrics (minutter siden sidst + niveau-bånd) som frase i stedet for at
+# kalde narrations-LLM'en (_generate_absence_label). Default OFF, runtime-state-
+# tunbar, self-safe → False ved fejl. Jarvis' oplevelse ændrer sig ikke før flip.
+_RAW_SIGNAL_MODE_FLAG = "raw_signal_mode"
+
+
+def raw_signal_mode_enabled() -> bool:
+    """Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state.
+
+    Self-safe → False ved enhver fejl (Jarvis' oplevelse må aldrig gå i stykker
+    fordi et flag-opslag fejler).
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        v = get_runtime_state_value(_RAW_SIGNAL_MODE_FLAG, False)
+        return False if v is None else bool(v)
+    except Exception:
+        return False
+
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -86,7 +106,13 @@ def tick_absence_daemon(now: datetime | None = None) -> dict:
         if (now - _last_generated_at) < _REGEN_COOLDOWN:
             return {"generated": False}
 
-    label = _generate_absence_label(elapsed)
+    # Fase 2 / Lag 1 — rå tal, ikke LLM-label. Bygger fraværs-strengen direkte
+    # fra metrics og SPRINGER narrations-LLM-kaldet over. Samme output-felt (label),
+    # så awareness/prompt-consumeren mærker kun at STRENGEN skifter.
+    if raw_signal_mode_enabled():
+        label = _build_raw_absence(elapsed)
+    else:
+        label = _generate_absence_label(elapsed)
     _absence_label = label
     _last_generated_at = now
 
@@ -134,6 +160,17 @@ def _absence_band(elapsed: timedelta) -> str:
     if elapsed >= _LONG_THRESHOLD:
         return "long"
     return "short"
+
+
+def _build_raw_absence(elapsed: timedelta) -> str:
+    """Byg fraværs-strengen udelukkende fra rå metrics — ingen LLM.
+
+    siden_sidste = minutter siden sidste interaktion. niveau = det allerede
+    beregnede bånd (short/long/very_long). Fx ``fravær 47min · niveau short``.
+    """
+    minutes = elapsed.total_seconds() / 60
+    band = _absence_band(elapsed)
+    return f"fravær {minutes:.0f}min · niveau {band}"
 
 
 def _generate_absence_label(elapsed: timedelta) -> str:

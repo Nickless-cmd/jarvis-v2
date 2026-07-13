@@ -187,7 +187,7 @@ fraværende indtil der er signal.
 | Output lander | push_initiative → glemmes | Fabrik uden aftager | Nudge/væk Jarvis; HAN vurderer: tal med Bjørn / tag i råd / lad være |
 | Struktureret retur | Prosa i kø | Ikke handlbart | Struktureret, handlbart resultat |
 | Dynamiske roller | Låste Oracle/Architect/Critic | Navlepilleri-design | Roller konstrueret pr. opgave |
-| Adgang efter opgave | (delvist: spawn_agent_task tager tools) | — | Allerede muligt — brug det |
+| Adgang efter opgave (tool-scoping) | Bygget: allowed_tools pr. dispatch + rolle-politikker + execute_tool-gate | Flag `agent_tools_enabled` OFF → agenter handløse | Aktivér i rækkefølge (§4.4): konvolut→allowlists→flip |
 | Råd = fan-out+syntese | Separat council-motor | Dobbelt-system | Riv council-som-særsystem ned; råd = N agenter + syntese |
 | Vække-på-hændelse | (server: heartbeat/daemons har det) | — | Behold server-side; genbrug som råds-trigger |
 | Klient-side loop (poll/supervisér/selv-væk) | **jarvis-code mangler det HELT** | Klienten kan ikke polle/superviseres/vækkes | Byg klient-loop i jarvis-code: baggrunds-dispatch + vække-ved-færdig |
@@ -218,6 +218,18 @@ proces-færdig ELLER tool-aktivitet — kræver handling.*
 - **Eksisterende spec:** docs/specs/2026-07-03-agent-council-swarm-freedom.md siger dette
   allerede (status "færdig"); dele er bygget (convene_judge shadow, spawn_agent_task
   fleksibel). Dette dokument er FUNDAMENTET/reference-modellen den spec skal måles mod.
+- **Dead-code-oprydning (Bjørns krav):** det GAMLE council/agent/daemon-system skal RYDDES
+  når det nye lander — ingen død kode nogen steder. Kandidater: autonomous_council_daemon
+  (fast-tærskel-gaten), de låste council-roller, push_initiative-tomrums-stien, evt.
+  existential_wonder_daemon-cadencen. Byg-planen skal have et eksplicit retire/slet-trin med
+  test af at intet call-site brækker (re-eksportér→ryd, Boy Scout).
+- **Central-wiring (Bjørns krav):** ALT skal wires ind i Centralen — nye nerver/surfaces for
+  event-trigger, dispatch, agent-udfald, robusthed-konvolut (status/usage), råds-resultater.
+  Ingen ny silo. `jc`-surface + evt. central-CLI-fane. (Ledetråd: mange services er FRAKOBLET
+  fra Centralen; [[reference_central_connectivity_map]] — undgå at tilføje endnu en.)
+- **Tests/edges/docs (Bjørns krav):** TDD på hvert trin; edge-cases eksplicit dækket (agent
+  fejler/timeout/tom retur/uventet; delta-tærskel-flapping; race på lease/dispatch; flag on↔off
+  midt i en dispatch); docs opdateret (denne ref + spec + CLAUDE.md hvor relevant).
 
 ### Ærlige grænser — hvad Claude IKKE gør (så vi ikke overkopierer)
 Krydstjek mod dok afslørede ting man kunne tro var der, men ikke er:
@@ -234,14 +246,14 @@ Krydstjek mod dok afslørede ting man kunne tro var der, men ikke er:
   design-valg (bygget på judge-panel/adversarial-verify-mønstrene), ikke en kopi af en
   navngivet funktion. Det er fint — det betyder bare vi ejer designet.
 
-## DEL 5 — Den KOMPLETTE værktøjskasse + robusthed-kontrakten (førstehånds audit)
+## DEL 4 — Den KOMPLETTE værktøjskasse + robusthed-kontrakten (førstehånds audit)
 
 Bjørn: *"gå gennem din egen toolbox først, der er sikkert mere end de 3 ting… intet må
 fejle stille, der er taget højde for edges, agenten returnerer opgaven eller stopper ved
 noget uventet, og sender ALTID tid og usage tilbage."* Her er hele maskineriet, læst fra
 mine faktiske tool-skemaer i denne session — grupperet efter rolle.
 
-### 5.1 Hele overfladen (ikke 3 ting — 15+)
+### 4.1 Hele overfladen (ikke 3 ting — 15+)
 
 **A. DISPATCH (start arbejde)**
 - **Agent** — spawn en subagent (type, model, effort, isolation=worktree/remote,
@@ -288,7 +300,7 @@ mine faktiske tool-skemaer i denne session — grupperet efter rolle.
   IKKE at loade alt — man henter skemaet når man skal bruge det. (Jarvis' analog:
   tool-katalog-beskæring 128→8; [[reference_prompt_assembly_latency]].)
 
-### 5.2 ROBUSTHED-KONTRAKTEN (det Bjørn kræver — modelleret på hvordan jeg faktisk opfører mig)
+### 4.2 ROBUSTHED-KONTRAKTEN (det Bjørn kræver — modelleret på hvordan jeg faktisk opfører mig)
 
 Fire invariante regler. Hvert dispatch i det nye system SKAL overholde alle fire:
 
@@ -314,7 +326,7 @@ Fire invariante regler. Hvert dispatch i det nye system SKAL overholde alle fire
    ALTID vækket og ser ALTID status+usage. Monitor-reglen: filteret skal fange fejl, ikke
    kun success. Usage er altid hæftet på → cost er altid synlig (via `jc cost`).
 
-### 5.3 Hvorfor kontrakten dræber netop Jarvis' dræber-problem
+### 4.3 Hvorfor kontrakten dræber netop Jarvis' dræber-problem
 Bjørn: *"signaler + LLM-kald per daemon er det der dræber os — signalerne er ægte men vi
 koger token mange gange uden kontekst, selv om signalerne måske ikke ændrer sig længe."*
 Kontrakten rammer hvert led:
@@ -328,6 +340,22 @@ Kontrakten rammer hvert led:
 
 Det er "et dispatch der bare spiller": fyrer kun på ægte hændelse, rapporterer altid
 tid+usage, fejler aldrig stille, og idler gratis.
+
+### 4.4 Tool-scoping til agenter (GROUND TRUTH: bygget korrekt, men flag OFF)
+Verificeret i kode 13. jul. Spørgsmålet "får agenter fuld toolbox eller dispatcher vi
+tools?" — svaret er: **vi dispatcher tools pr. agent, og mekanismen er allerede bygget rigtigt.**
+- Hver agent har eksplicit **`allowed_tools`-allowlist pr. dispatch** (`allowed_tools_json`),
+  trukket fra SAMME katalog som visible-lane (`get_tool_definitions`) → én sandhed, ingen drift.
+  Tom allowlist → text-only. (`_build_agent_tools_payload`, agent_runtime_base.py:121.)
+- Navngivne rolle-politikker: `none` / `read-only-runtime` / `can-spawn`.
+- **Hvert tool-kald går gennem `execute_tool`** → rolle/scope + approval-gates håndhæves; en
+  agent kan ALDRIG omgå godkendelse på risikable handlinger. Hænderne er governed.
+- **MEN: flag `agent_tools_enabled` er OFF live** (default OFF, self-safe). Så agenter er lige
+  nu text-only (handløse) trods bygget mekanisme. (Forener de to gamle noter: wired MEN flag-off.)
+- **Sekvens (robusthed før hænder):** (1) byg robusthed-konvolutten (§4.2) → (2) definér
+  rolle-allowlists (searcher=read-only, builder=fuld+approval, som Claudes typer) → (3) FLIP
+  `agent_tools_enabled` on. Aldrig flip før konvolutten fanger alt — ellers handler agenter usynligt.
+  Tool-scoping skal altså ikke BYGGES (den er der); den skal aktiveres i rigtig rækkefølge.
 
 ## Åbne spørgsmål til afklaring før byg
 1. Skal event-nudgen kunne VÆKKE Jarvis (skrive til ham/Bjørn proaktivt), eller kun lægge

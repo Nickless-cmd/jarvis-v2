@@ -545,36 +545,30 @@ def _execute_openai_compatible_chat(
     }
 
 
-def deepseek_model_for_thinking_mode(model: str, thinking_mode: str) -> str:
-    """Map composer's thinking_mode to the right Deepseek model alias.
-
-    Deepseek toggler thinking-mode via MODEL-NAVN (ikke via param):
-      - deepseek-chat       = v4-flash non-thinking (compat alias)
-      - deepseek-v4-flash   = thinking-mode default
-      - deepseek-reasoner   = v4-flash thinking (compat alias)
-      - deepseek-v4-pro     = ALWAYS thinking (kan ikke slås fra)
-
-    Composer modes:
-      - fast  → ingen thinking, hurtig respons
-      - think → default thinking
-      - deep  → thinking + reasoning_effort hvis modellen understøtter
-
-    Mapping for v4-flash:
-      - fast  → swap til deepseek-chat (non-thinking)
-      - think → deepseek-v4-flash som er
-      - deep  → deepseek-v4-flash som er
-
-    Mapping for v4-pro:
-      - alle modes → uændret (kan ikke slås fra)
-
-    Andre modeller (deepseek-chat, deepseek-reasoner) returneres uændret —
-    bruger har eksplicit valgt en bestemt mode-variant.
+def deepseek_request_for_thinking_mode(model: str, thinking_mode: str) -> tuple[str, dict]:
+    """Map composer thinking_mode -> (model, extra_body) WITHOUT the deprecated aliases
+    (deepseek-chat/reasoner die 2026-07-24). DeepSeek V4 toggles thinking via request params:
+      - fast -> non-thinking:  extra_body={"thinking":{"type":"disabled"}}
+      - think -> high:         reasoning_effort="high" + thinking enabled
+      - deep -> max:           reasoning_effort="max"  + thinking enabled
+      - deepseek-v4-pro:       always thinking, cannot disable -> (model, {})
     """
     mode = (thinking_mode or "think").strip().lower()
     m = (model or "").strip()
-    if m == "deepseek-v4-flash" and mode == "fast":
-        return "deepseek-chat"
-    return m
+    if m in ("deepseek-chat", "deepseek-reasoner"):
+        m = "deepseek-v4-flash"
+    if m == "deepseek-v4-pro":
+        return m, {}
+    if mode == "fast":
+        return m, {"thinking": {"type": "disabled"}}
+    if mode == "deep":
+        return m, {"reasoning_effort": "max", "thinking": {"type": "enabled"}}
+    return m, {"reasoning_effort": "high", "thinking": {"type": "enabled"}}
+
+
+def deepseek_model_for_thinking_mode(model: str, thinking_mode: str) -> str:
+    """Backward-compat: return only the model (never the deprecated alias)."""
+    return deepseek_request_for_thinking_mode(model, thinking_mode)[0]
 
 
 _DSML_OPEN = "<｜｜DSML｜｜tool_calls>"

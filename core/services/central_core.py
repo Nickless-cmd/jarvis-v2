@@ -188,6 +188,16 @@ class Central:
         self._breaker.record(nerve, ok=True)
         v = _coerce_verdict(nerve, result, klass)
         v.cluster = cluster  # §4 arbitrage: bær cluster-tilhør med verdiktet
+        # Rig attribuering (2026-07-13): thread run/session fra ctx ind i verdiktet, så
+        # gate-fyringen er præcist attribuerbar. Self-safe — må aldrig påvirke beslutningen.
+        try:
+            if isinstance(ctx, dict):
+                if not v.run_id:
+                    v.run_id = str(ctx.get("run_id") or "")
+                if not v.session_id:
+                    v.session_id = str(ctx.get("session_id") or "")
+        except Exception:
+            pass
         try:
             cdict = ctx if isinstance(ctx, dict) else {}
             self._sink.record(central_trace.TraceRecord(

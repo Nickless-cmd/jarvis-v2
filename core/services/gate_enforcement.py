@@ -44,17 +44,37 @@ def is_enforced(nerve: str, klass: GateClass) -> bool:
         return True
 
 
-def note_suppressed_block(nerve: str, cluster: str, reason: str) -> None:
+def note_suppressed_block(nerve: str, cluster: str, reason: str, *,
+                          detected_text: str = "", trigger_pattern: str = "",
+                          source_file: str | None = None, source_line: int | None = None,
+                          session_id: str = "", run_id: str = "") -> None:
     """En gate ville have blokeret, men håndhævelsen er governed-OFF → registrér det som
     central-observabilitet, så en undertrykt blokering er SYNLIG i stedet for tavs. Self-safe
-    (må aldrig kaste i hot-pathen)."""
+    (må aldrig kaste i hot-pathen).
+
+    Rig attribuering (2026-07-13): når kalderen kender detected_text/trigger_pattern/
+    source_file/session_id/run_id bæres de med, så Centralen kan aggregere pr. mønster.
+    Alle valgfrie → gamle 3-arg-kald er uændrede; tomme felter udelades af observe-dicten."""
     try:
         from core.services.central_core import central
-        central().observe({
+        event = {
             "cluster": cluster,
             "nerve": nerve,
             "kind": "enforce_suppressed",
             "reason": str(reason or "")[:200],
-        })
+        }
+        if detected_text:
+            event["detected_text"] = str(detected_text)[:120]
+        if trigger_pattern:
+            event["trigger_pattern"] = str(trigger_pattern)
+        if source_file:
+            event["source_file"] = str(source_file)
+        if source_line is not None:
+            event["source_line"] = source_line
+        if session_id:
+            event["session_id"] = str(session_id)
+        if run_id:
+            event["run_id"] = str(run_id)
+        central().observe(event)
     except Exception:
         pass

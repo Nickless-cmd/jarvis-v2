@@ -21,8 +21,12 @@ def truth_gate(ctx: dict[str, Any]) -> Verdict:
     verdicts = [claim_scanner_adapter(ctx), fact_gate_adapter(ctx), diagnosis_adapter(ctx)]
     decision = worst(verdicts)
     lead = max(verdicts, key=lambda v: _PRECEDENCE[v.decision])
+    # Rig attribuering: bær lead-delgatens detected_text/trigger_pattern videre på det
+    # kombinerede Verdict, så en fact_gate-fyring er præcist attribuerbar på truth-niveau.
     return Verdict("truth", decision, lead.reason, action=lead.action,
                    klass=GateClass.COGNITIVE,
+                   detected_text=getattr(lead, "detected_text", "") or "",
+                   trigger_pattern=getattr(lead, "trigger_pattern", "") or "",
                    evidence={v.gate: v.decision.value for v in verdicts})
 
 

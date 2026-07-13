@@ -49,7 +49,25 @@ def fact_gate_adapter(ctx: dict[str, Any]) -> Verdict:
             else str(br)
             for br in _reasons
         )[:200] or "fact-gate markeret"
-        return Verdict("fact_gate", Decision.YELLOW, reason, action="warn")
+        # Rig attribuering (2026-07-13): detected_text (matched substring) + trigger_pattern
+        # (mønster-navn) FANDTES allerede i block_reasons — bær dem videre på Verdiktet, så
+        # Centralen kan aggregere pr. mønster. Lead = første fund (det mest fremtrædende).
+        _lead = _reasons[0] if isinstance(_reasons[0], dict) else {}
+        _detected = str(_lead.get("matched") or "")[:120]
+        _pattern = str(_lead.get("pattern") or "")
+        _sid = str(ctx.get("session_id") or "")
+        _rid = str(ctx.get("run_id") or "")
+        # Vane-bryder: registrér mønsteret (durabelt, self-safe). Krydser det tærsklen
+        # emitter modulet selv en central-nudge (gate_pattern_repeat).
+        try:
+            from core.services.gate_pattern_learning import record_gate_pattern
+            if _pattern:
+                record_gate_pattern(_pattern, _detected, session_id=_sid)
+        except Exception:
+            pass
+        return Verdict("fact_gate", Decision.YELLOW, reason, action="warn",
+                       detected_text=_detected, trigger_pattern=_pattern,
+                       session_id=_sid, run_id=_rid)
     return Verdict("fact_gate", Decision.GREEN, "ok")
 
 

@@ -14,6 +14,7 @@ adaptere wrapper de eksisterende gates.
 from __future__ import annotations
 
 import enum
+import inspect
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FTimeout
 from dataclasses import dataclass, field
@@ -45,6 +46,15 @@ class Verdict:
     klass: GateClass = GateClass.COGNITIVE
     evidence: dict[str, Any] | None = None
     cluster: str = ""             # §4 arbitrage: hvilket cluster talte (sat af central.decide)
+    # Rig attribuering (2026-07-13): præcist HVOR/HVAD/HVEM en gate-fyring så, så
+    # Centralen kan aggregere pr. mønster + nudge ved gentagelse. Alle valgfrie —
+    # bagudkompatible defaults (eksisterende Verdict-konstruktioner rører dem ikke).
+    session_id: str = ""
+    run_id: str = ""
+    source_file: str | None = None   # gatens egen registrerings-fil (inspect)
+    source_line: int | None = None   # gatens firstlineno
+    detected_text: str = ""          # den matchede substring der udløste fyringen
+    trigger_pattern: str = ""        # mønster-navnet (fx fact_gate 'self_stats')
 
     def is_blocking(self) -> bool:
         return self.decision is Decision.RED
@@ -65,6 +75,29 @@ class _Gate:
     klass: GateClass
     timeout_ms: int
     flag_key: str
+    source_file: str | None = None   # hvor gaten er registreret (inspect, self-safe)
+    source_line: int | None = None
+
+
+def _source_loc(fn: Callable) -> tuple[str | None, int | None]:
+    """Gatens egen registrerings-placering (fil + firstlineno) via inspect. Self-safe:
+    inspect kan fejle for C-funktioner/lambdaer/partials → (None, None). Instrumentering
+    må ALDRIG kunne kaste ind i gate-registreringen."""
+    try:
+        target = inspect.unwrap(fn)
+    except Exception:
+        target = fn
+    src_file: str | None = None
+    src_line: int | None = None
+    try:
+        src_file = inspect.getsourcefile(target) or inspect.getfile(target)
+    except Exception:
+        src_file = None
+    try:
+        src_line = inspect.getsourcelines(target)[1]
+    except Exception:
+        src_line = None
+    return src_file, src_line
 
 
 class GateKernel:
@@ -79,7 +112,10 @@ class GateKernel:
     def register(self, name: str, phase: str, fn: Callable[[dict[str, Any]], Any],
                  *, klass: GateClass = GateClass.COGNITIVE, timeout_ms: int = 1500,
                  flag_key: str = "") -> None:
-        self._gates.append(_Gate(name, phase, fn, klass, timeout_ms, flag_key or f"gate.{name}"))
+        src_file, src_line = _source_loc(fn)
+        self._gates.append(_Gate(name, phase, fn, klass, timeout_ms,
+                                 flag_key or f"gate.{name}",
+                                 source_file=src_file, source_line=src_line))
 
     def gates_for(self, phase: str) -> list[_Gate]:
         return [g for g in self._gates if g.phase == phase]
@@ -117,6 +153,21 @@ class GateKernel:
             return self._fail_verdict(g, f"error:{type(e).__name__}")
         v = _normalize(g, raw)
         v.latency_ms = int((time.monotonic() - t0) * 1000)
+        # Rig attribuering (self-safe): gatens registrerings-sted + run/session fra ctx.
+        # En gate kan selv sætte source_file (fx via en Verdict den returnerer); overskriv
+        # kun hvis tom, ellers bevar gatens egen mere-præcise placering.
+        try:
+            if not v.source_file and g.source_file:
+                v.source_file = g.source_file
+            if v.source_line is None and g.source_line is not None:
+                v.source_line = g.source_line
+            if isinstance(ctx, dict):
+                if not v.run_id:
+                    v.run_id = str(ctx.get("run_id") or "")
+                if not v.session_id:
+                    v.session_id = str(ctx.get("session_id") or "")
+        except Exception:
+            pass
         return v
 
     def run_phase(self, phase: str, ctx: dict[str, Any]) -> list[Verdict]:
@@ -136,7 +187,11 @@ class GateKernel:
                 "phase": phase,
                 "verdicts": [
                     {"gate": v.gate, "decision": v.decision.value, "reason": v.reason,
-                     "action": v.action, "latency_ms": v.latency_ms, "klass": v.klass.value}
+                     "action": v.action, "latency_ms": v.latency_ms, "klass": v.klass.value,
+                     # rig attribuering — tomme/None-felter er harmløse for konsumenter
+                     "session_id": v.session_id, "run_id": v.run_id,
+                     "source_file": v.source_file, "source_line": v.source_line,
+                     "detected_text": v.detected_text, "trigger_pattern": v.trigger_pattern}
                     for v in verdicts
                 ],
                 "aggregate": worst(verdicts).value,

@@ -25,6 +25,20 @@ def tick_irony_daemon() -> dict[str, object]:
     condition = _detect_irony_conditions(snapshot)
     if not condition:
         return {"generated": False, "observation": _cached_observation}
+    # ── Event-gate (Fase 2 Lag 5): fire the LLM self-observation only when the
+    #    self-distance signals (user-inactivity / load) actually crossed. Flag
+    #    OFF → legacy behaviour (daily-cap + condition guards only). Fail-open. ──
+    try:
+        from core.services import event_gate
+        if event_gate.event_driven_enabled():
+            _relevant = {
+                "user_inactive_min": float(snapshot.get("user_inactive_min", 0.0)),
+                "cpu_pct": float(snapshot.get("cpu_pct", 0.0)),
+            }
+            if not event_gate.should_generative_fire("irony", _relevant):
+                return {"skipped": "no_signal_change"}
+    except Exception:
+        pass  # fail-open
     observation = _generate_observation(snapshot, condition)
     if not observation or observation.lower().strip() == "nej":
         return {"generated": False, "observation": _cached_observation}

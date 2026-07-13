@@ -103,6 +103,15 @@ async def central_providers() -> dict:
     return await asyncio.to_thread(build_provider_health_surface)
 
 
+@router.get("/cost")
+async def central_cost(window: str = "today", provider: str | None = None) -> dict:
+    """Cost-aggregat (WS3): today/7d/30d total $, tokens ind/ud, cache-hit%, fordelt på
+    provider/model/lane + DeepSeek-saldo. Owner-only. Blokerende DB-læsning via to_thread."""
+    _require_owner()
+    from core.services.central_cost_surface import build_cost_surface
+    return await asyncio.to_thread(build_cost_surface, window=window, provider=provider)
+
+
 @router.post("/command")
 async def central_command(payload: dict) -> dict:
     """Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/

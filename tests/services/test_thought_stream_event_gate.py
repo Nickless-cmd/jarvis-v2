@@ -21,13 +21,13 @@ def _reset() -> None:
 
 
 def _install_fake_event_gate(monkeypatch, *, enabled: bool, fire: bool):
-    """Inject a fake core.services.event_gate so the daemon's in-function
-    `from core.services import event_gate` resolves to our stub."""
-    fake = types.ModuleType("core.services.event_gate")
-    fake.event_driven_enabled = lambda: enabled
-    fake.should_generative_fire = lambda name, signals: fire
-    monkeypatch.setitem(sys.modules, "core.services.event_gate", fake)
-    return fake
+    """Patch the REAL event_gate module's functions (robust mod import-rækkefølge —
+    daemonens `from core.services import event_gate` henter pakke-attributten, så en
+    sys.modules-injection lækker/ignoreres når filer kører sammen)."""
+    from core.services import event_gate
+    monkeypatch.setattr(event_gate, "event_driven_enabled", lambda: enabled)
+    monkeypatch.setattr(event_gate, "should_generative_fire", lambda name, signals: fire)
+    return event_gate
 
 
 def test_flag_off_fires_llm_as_today(isolated_runtime, monkeypatch):
@@ -72,14 +72,13 @@ def test_flag_on_signal_changed_fires_llm(isolated_runtime, monkeypatch):
 def test_event_gate_error_fails_open(isolated_runtime, monkeypatch):
     """event_gate raising → fail-open: the daemon still fires the LLM."""
     _reset()
-    fake = types.ModuleType("core.services.event_gate")
+    from core.services import event_gate
 
     def _boom():
         raise RuntimeError("gate down")
 
-    fake.event_driven_enabled = _boom
-    fake.should_generative_fire = lambda name, signals: False
-    monkeypatch.setitem(sys.modules, "core.services.event_gate", fake)
+    monkeypatch.setattr(event_gate, "event_driven_enabled", _boom)
+    monkeypatch.setattr(event_gate, "should_generative_fire", lambda name, signals: False)
     with patch.object(ts, "_generate_fragment", return_value="Et fragment.") as mock_gen:
         with patch.object(ts, "_store_fragment"):
             result = ts.tick_thought_stream_daemon(energy_level="medium")

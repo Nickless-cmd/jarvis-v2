@@ -100,13 +100,40 @@ def _build_skills() -> dict[str, Any]:
     return build_skill_engine_surface()
 
 
+def _build_agency_agents() -> dict[str, Any]:
+    """Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald
+    (status/costs, lane in agent/council). Fletter de to eksisterende projektioner —
+    ingen ny sandhed. Self-safe pr. del."""
+    from core.services.agency_map import build_agency_map_surface
+    from core.services.central_agents_surface import build_agents_surface
+    out: dict[str, Any] = {"active": True}
+    try:
+        out["map"] = build_agency_map_surface()
+    except Exception as exc:
+        out["map"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+    try:
+        out["agents"] = build_agents_surface()
+    except Exception as exc:
+        out["agents"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+    return out
+
+
+def _build_council() -> dict[str, Any]:
+    """Council-fanen (B3): convocations/deadlocks/roller. Empty-safe."""
+    from core.services.central_agents_surface import build_council_surface
+    out = build_council_surface()
+    out.setdefault("active", True)
+    return out
+
+
 _BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
     "overview": _build_overview,
     "observability": _build_observability,
     "mind": _build_mind,
-    "agency": _build_agency,
+    "agency": _build_agency_agents,
+    "council": _build_council,
     "skills": _build_skills,
-    # memory/council/reflection/lab/hardening: fyldes tab-for-tab (læser deres eksisterende
+    # memory/reflection/lab/hardening: fyldes tab-for-tab (læser deres eksisterende
     # service-surface-builders), så hub'en forbliver ét ground truth.
 }
 

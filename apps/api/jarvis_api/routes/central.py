@@ -112,6 +112,25 @@ async def central_cost(window: str = "today", provider: str | None = None) -> di
     return await asyncio.to_thread(build_cost_surface, window=window, provider=provider)
 
 
+@router.get("/agents")
+async def central_agents(window: str = "today") -> dict:
+    """Agent-observabilitet (B3): costs-aggregat (lane in agent/council) + dispatch-
+    udfald (status/nerve fra agents-cluster-trace) + recent results. Owner-only.
+    Blokerende DB-læsning via to_thread."""
+    _require_owner()
+    from core.services.central_agents_surface import build_agents_surface
+    return await asyncio.to_thread(build_agents_surface, window=window)
+
+
+@router.get("/council")
+async def central_council(window: str = "today") -> dict:
+    """Council-observabilitet (B3): convocations/deadlocks/roller/event-vs-ondemand-
+    split (læser agents-cluster council-events). Empty-safe. Owner-only. to_thread."""
+    _require_owner()
+    from core.services.central_agents_surface import build_council_surface
+    return await asyncio.to_thread(build_council_surface, window=window)
+
+
 @router.post("/command")
 async def central_command(payload: dict) -> dict:
     """Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/

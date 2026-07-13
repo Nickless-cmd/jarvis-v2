@@ -93,23 +93,27 @@ Seks uafhængige, testbare stykker. Rækkefølge = risiko-orden (hygiejne + sand
 - **Test:** ingen `deepseek-chat`/`deepseek-reasoner` i aktive kaldsstier; røgtest: ét kald pr.
   lane returnerer OK på v4-flash.
 
-### WS5 — Model-tiering: `deepseek-v4-pro` for det der TÆNKER (Bjørn + Jarvis' opdeling)
-- **`deepseek-v4-pro` for det der rent faktisk ræsonnerer:** synlig-lane + council + de daemons der
-  *tænker* — SWE-Bench 80,6% / LiveCodeBench 93,5 — skarpere, mere ægte Jarvis.
-- **`deepseek-v4-flash` for det mekaniske:** warmer + form-dommer + trivielle klassifikationer +
-  heartbeat-refleksion. (Jarvis' rettelse: ellers spiser daemons budgettet før ugen er omme — pro-pris
-  for daemon-støj er spild.) Konkret lane→model-liste vedligeholdes i runtime-state (`lane_model_map`).
+### WS5 — Model-tiering: `deepseek-v4-pro` KUN i visible lane, KUN for owner (Bjørn 13. jul)
+- **Politik-indsnævring (Bjørn 13. jul):** v4-pro bruges **udelukkende i visible lane** — dér hvor
+  Bjørn skriver med Jarvis. **ALT andet = `deepseek-v4-flash`** (council, ræsonnerende daemons,
+  form-dommer, klassifikationer, heartbeat, warmer, indre-stemme — hele det interne liv). Den
+  tidligere "pro for alt der ræsonnerer" er FORKASTET: daemon-hæren ville spise budgettet, og pro-pris
+  for internt arbejde er spild.
+- **Owner-gate — kun Bjørns visible-trafik:** andre brugere er **låst til ollama cloud deepseek** i
+  visible lane (eksisterende routing, `visible_model_ollama.py`), så de rammer aldrig den betalte
+  DeepSeek-API. Derfor gælder pro-prisen reelt kun Bjørns egne samtaler = lav volumen mod daemon-hæren.
+  WS5 må derfor kun løfte til pro når (a) resolveret visible-provider er `deepseek` OG (b) requester er
+  owner — ellers flash. Seam: `resolve_provider_router_target(lane="visible")` +
+  `execute_visible_model`/`stream_visible_model` i `core/services/visible_model.py`.
 - **Default tænke-niveau = Non-Think ("fast")** — hurtigt/billigt; eskalér pr. behov via composer-
-  think-feltet (WS5b). Reasoning-tokens billes som output, så Non-Think holder daemon-cost nede.
-- **Kun warmeren (prewarm) bliver på `v4-flash`** — den skal ikke være intelligent, kun holde cachen
-  varm. Ingen grund til pro-pris der.
-- **Kill-switch:** per-lane model-map i runtime-state (`lane_model_map`), ikke hardcode. Én værdi ruller
-  hele visible-lanen pro→flash tilbage UDEN deploy, hvis $/dag spikere.
-- **Cost-realitet:** de ræsonnerende daemon-kald koster ~3× på pro. Offset af WS1 (prewarm 270M→10M) +
-  WS6 (off-peak 50–75%). Netto forventet stadig inden for $100 — men WS3's `jc cost` overvåger $/dag
-  i 1 uge efter flip; rul tilbage hvis over budget-linjen.
-- **Test:** lane→model-mapping enhedstestet; kill-switch-flag flipper mappen; live: visible-svar bruger
-  v4-pro (verificér via `costs.model`); $/dag holdes under budget-linjen 1 uge.
+  think-feltet (WS5b). Reasoning-tokens billes som output.
+- **Kill-switch:** owner-visible pro→flash via ét runtime-state-flag (`visible_owner_model` el.
+  `lane_model_map`), ikke hardcode. Ruller tilbage UDEN deploy hvis $/dag spikere.
+- **Cost-realitet:** kun Bjørns visible-samtaler på pro (~3× flash pr. token, men lav volumen + 86,6%
+  cache → pro-cache-hit $0.003625/M ≈ gratis). Netto marginal øgning. WS3's `jc cost` overvåger $/dag 1 uge.
+- **Test:** owner-visible-deepseek → v4-pro (enhedstest på routing-gaten); ikke-owner visible → ollama/flash;
+  alle interne lanes → flash; kill-switch-flag ruller owner-visible pro→flash; live: Bjørns visible-svar
+  bruger v4-pro (verificér `costs.model` for visible-lane), interne lanes uændret flash.
 
 ### WS5b — Wire desk-composerens "think"-felt til DeepSeeks tænke-niveauer
 **Filer:** desk-composer (feltet findes allerede) + agent/chat-request-stien mod DeepSeek.
@@ -191,8 +195,8 @@ data. Vi er nødt til at vide 100% hvad går ind og ud og hvor vi kan gøre hans
 1. **WS4** — `deepseek-chat`→`v4-flash` (deadline 24/7, brækker ellers).
 2. **WS1** — prewarm-runaway (270M→10M, stopper token-blødningen + gør pro-tal ærlige).
 3. **WS2 + WS3** — sandt DeepSeek-cost-regnskab + `jc cost` (synlighed FØR pro).
-4. **WS5 + WS5b** — v4-pro som standard + composer-think-felt wired. Watch $/dag 1 uge.
-5. **WS6 + WS7** — off-peak-routing + cut Copilot/ChatGPT.
+4. **WS5 + WS5b** — v4-pro KUN i owner-visible lane + composer-think-felt wired. Watch $/dag 1 uge.
+5. **WS7** — cut Copilot/ChatGPT. (WS6 off-peak-kø droppet — "vi skal osse passe på".)
 
 **Fase 2 (efter — Central-opgaven):**
 6. **WS8** — universal logging på ALLE providers / hvert LLM-kald i systemet.
@@ -205,8 +209,9 @@ Ground truth altid DeepSeek-saldo-API'en, ikke koden.
 
 Gennemgået mod Bjørns direktiver + spec-coverage:
 
-- ✅ **v4-pro som standard** (ikke kun visible) — WS5 opdateret; Non-Think default; warmer på flash;
-  kill-switch via runtime-state; cost-realitet + overvågning tilføjet.
+- ✅ **v4-pro KUN i owner-visible lane** (Bjørn 13. jul indsnævring) — WS5 omskrevet; alt internt +
+  andre brugere (ollama cloud) = flash; Non-Think default; owner-gate på routing-seam; kill-switch via
+  runtime-state; cost-realitet marginal (kun Bjørns samtaler på pro).
 - ✅ **Composer-think-felt** — nyt WS5b; 3 niveauer mappet til DeepSeeks `reasoning_effort` (Non-Think/
   high/max); reasoning-tokens logges som output.
 - ✅ **Universal all-provider logging** — nyt WS8 (Fase 2, udskudt per Bjørn). Sikrer intet LLM-kald

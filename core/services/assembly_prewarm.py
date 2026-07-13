@@ -95,6 +95,50 @@ def _interval_s() -> float:
         return _DEFAULT_INTERVAL
 
 
+_SKIP_IF_RECENT_KEY = "assembly_prewarm_skip_if_recent_s"   # default 300 (DeepSeek cache-TTL)
+_DEFAULT_SKIP_IF_RECENT = 300.0
+_LAST_PREWARM_CACHE_KEY = "assembly_prewarm_last_ts"        # cross-process via shared_cache
+
+
+def _skip_if_recent_s() -> float:
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        return float(get_runtime_state_value(_SKIP_IF_RECENT_KEY, _DEFAULT_SKIP_IF_RECENT)
+                     or _DEFAULT_SKIP_IF_RECENT)
+    except Exception:
+        return _DEFAULT_SKIP_IF_RECENT
+
+
+def _seconds_since_last_prewarm() -> float | None:
+    """Cross-process: seconds since ANY process last prewarmed. None if never."""
+    try:
+        from core.services import shared_cache as _sc
+        ts = _sc.get(_LAST_PREWARM_CACHE_KEY)
+        return None if not ts else max(0.0, time.time() - float(ts))
+    except Exception:
+        return None
+
+
+def _mark_prewarmed() -> None:
+    try:
+        from core.services import shared_cache as _sc
+        _sc.set(_LAST_PREWARM_CACHE_KEY, time.time(), ttl_seconds=3600)
+    except Exception:
+        pass
+
+
+def _should_prewarm() -> bool:
+    """Gate: (a) skip if real deepseek traffic keeps the cache warm; (b) skip if another
+    process already prewarmed within the interval. Cold + idle -> True."""
+    since_real = _seconds_since_last_real_deepseek_call()
+    if since_real is not None and since_real < _skip_if_recent_s():
+        return False
+    since_pw = _seconds_since_last_prewarm()
+    if since_pw is not None and since_pw < _interval_s():
+        return False
+    return True
+
+
 def _record_stats(elapsed_s: float | None, error: str | None = None) -> None:
     try:
         from core.services import shared_cache as _sc

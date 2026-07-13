@@ -131,6 +131,17 @@ async def central_council(window: str = "today") -> dict:
     return await asyncio.to_thread(build_council_surface, window=window)
 
 
+@router.get("/shadow-review")
+async def central_shadow_review() -> dict:
+    """Shadow-eksperiment-register: hvilke shadow-vinduer kører, og hvilke er MODNE
+    til review (så vi ikke glemmer at kalibrere/flippe dem). Bygger surface +
+    emitter passivt en `central_meta/shadow_review_due`-påmindelse når noget er
+    modent. Owner-only. Self-safe. to_thread."""
+    _require_owner()
+    from core.services.shadow_experiment_registry import build_shadow_review_surface
+    return await asyncio.to_thread(build_shadow_review_surface)
+
+
 @router.post("/command")
 async def central_command(payload: dict) -> dict:
     """Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/

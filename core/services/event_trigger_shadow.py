@@ -35,6 +35,19 @@ _LANE = "autonomous_council"
 # forbruges — record_spend kaldes ALDRIG i shadow).
 _EST_COST_USD = 0.02
 
+# Registrér dette shadow-vindue i det durable review-register ved import (idempotent,
+# self-safe) — så en modent 24t-vindue surfacer sig selv og hverken Bjørn eller
+# Claude glemmer at kalibrere θ. Rører intet hvis allerede registreret.
+try:
+    from core.services import shadow_experiment_registry as _shadow_reg
+    _shadow_reg.register_experiment(
+        "event_trigger",
+        review_after_hours=24,
+        note="C5 delta-trigger shadow — kalibrér θ fra 24t spor",
+    )
+except Exception:
+    pass
+
 
 def _mode() -> str:
     """Governance-mode (off|shadow|on) fra grund-dommerens flag. Self-safe."""

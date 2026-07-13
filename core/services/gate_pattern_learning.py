@@ -34,6 +34,20 @@ _RUNTIME_KEY = "central.gate_pattern_learning"
 _MAX_KEYS = 500                  # loft mod ubegrænset vækst (drop ældste ved overløb)
 _PERSIST_MIN_INTERVAL_S = 30.0   # throttle: højst én durabel skriv pr. 30s (hot-path-hygiejne)
 _last_persist_ts = 0.0
+_hydrated = False                # lazy-hydrate ved første brug → læring overlever restart (Jarvis reboot'er ofte)
+
+
+def _ensure_hydrated() -> None:
+    """Genindlæs den durable snapshot ÉN gang ved første brug (ikke ved import → tests offline-rene).
+    Sætter flaget FØR hydrate (undgår re-entry/deadlock, da hydrate selv tager _LOCK). Self-safe."""
+    global _hydrated
+    if _hydrated:
+        return
+    _hydrated = True
+    try:
+        hydrate()
+    except Exception:
+        pass
 
 _WS = re.compile(r"\s+")
 _NUM = re.compile(r"\d+")
@@ -57,6 +71,7 @@ def record_gate_pattern(pattern: str, detected_text: str, *,
     Returnerer entry-snapshottet (til test/introspektion). Krydser tælleren ``_EMIT_THRESHOLD``
     NETOP nu, emitteres én central-nudge (gate_pattern_repeat, cluster central_meta)."""
     try:
+        _ensure_hydrated()
         pat = str(pattern or "").strip()
         if not pat:
             return {}
@@ -106,6 +121,7 @@ def repeated_patterns(threshold: int = 3, now: float | None = None) -> list[dict
 
     Returnerer [{pattern, sample, count}] sorteret faldende på count. Self-safe."""
     try:
+        _ensure_hydrated()
         cutoff = float(now if now is not None else time.time()) - _MAX_AGE_S
         out: list[dict[str, Any]] = []
         with _LOCK:
@@ -205,6 +221,8 @@ def hydrate() -> int:
 
 
 def _reset() -> None:
-    """Test-hook: ryd in-memory-store."""
+    """Test-hook: ryd in-memory-store + hydrate-flag."""
+    global _hydrated
     with _LOCK:
         _STORE.clear()
+    _hydrated = False

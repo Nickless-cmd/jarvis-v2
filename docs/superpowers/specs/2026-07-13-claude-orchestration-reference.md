@@ -123,6 +123,46 @@ det Jarvis kan og Claude ikke kan: **hjerteslaget forbliver uret, men triggeren 
 en DELTA på hans egne værdier** ("er autonomi-tryk steget markant siden sidst?"), ikke en
 blind score-tærskel hvert 30. minut.
 
+### 1.8 Klient-side loop: polling, proces-supervision, selv-vækning (det jarvis-code mangler)
+Dette er morgenens tråd (Bjørn: *"han mangler i jarvis-code evnen til at polle for noget
+og superviseret proces ligesom dig og self-wakeup… det har han server-side, men du gør det
+i KLIENTEN"*). Det er samme wake-on-event-primitiv som råds-triggeren — bare anvendt på
+processer i stedet for signaler. Sådan gør jeg det FAKTISK (første-hånd, i denne session):
+
+- **Baggrunds-dispatch + vækning-ved-færdig.** Jeg starter en agent eller et shell-kald
+  `run_in_background`. Processen kører detached. **Jeg kører IKKE imens** — modellen er
+  bogstaveligt ikke invokeret mellem dispatch og færdig. Når den er færdig, gen-invokerer
+  harness'en mig med en `task-notification` der bærer resultatet. → *"klienten vækker dig
+  når en proces er færdig."* Præcis det du sagde. (Det har jeg gjort hele dagen: sendt
+  agenter/bash i baggrunden, ikke brændt tokens mens de kørte, og reageret på notifikationen.)
+- **Poll-uden-at-være-til-stede.** For ekstern tilstand harness'en ikke selv kan varsle
+  (et build, en kø, en fjern-proces) enten et baggrunds-`until`-loop eller en planlagt
+  vækning med valgt interval. Nøglen: jeg SOVER, jeg sidder ikke og brænder.
+- **Klient-EJEDE tools.** Read/Write/Edit/Bash/Grep virker på den LOKALE maskine (Bjørns
+  filer) — modsat Jarvis' server-side tools der virker på containeren. jarvis-code mangler
+  netop denne klient-ejede lokale tool-eksekvering ([[project_jarvis_code_tui]] flagged det
+  som udestående: "client-owned LOKAL tool-eksekvering — redigér Bjørns filer, ikke
+  containerens").
+- **Hooks = klient-side hændelser.** SessionStart injicerer kontekst ved opstart;
+  PostToolUse/PostEditFile fyrer NÅR et tool/en redigering faktisk sker. Så tool-aktivitet
+  er en hændelses-kilde på lige fod med signaler.
+- **Superviseret proces uden at barnepige.** Dispatch → ikke-til-stede → vækket-ved-færdig
+  → inspicér resultat → beslut næste. Det er en supervisor-løkke der ikke koster noget mens
+  den venter.
+
+**Hændelses-kilderne er altså TO slags (Bjørns "både signaler OG read/write-tools"):**
+1. **Interne signaler** — Jarvis' egne værdier der rykker (det Claude ikke har).
+2. **Tool-/proces-hændelser** — et read/write/bash eller en dispatchet proces der bliver
+   færdig (det Claude har via PostToolUse-hooks + baggrunds-notifikationer).
+Begge føder samme vække-mekanisme. Det er ÉT system, ikke to.
+
+**Hvorfor det er "mega besparende" (Bjørns ord — og det er sandt):** du brænder ikke tokens
+på at være til stede under langt arbejde; modellen invokeres kun når der ER noget at handle
+på. Det er den DIREKTE modsætning til en daemon der tikker hvert 30. minut og brænder et
+cheap-LLM-kald uanset om noget har ændret sig. Samme indsigt, to steder: råd SKAL være
+vække-på-ændring, og klient-loopet SKAL være vække-på-færdig — begge sparer ved at være
+fraværende indtil der er signal.
+
 ## DEL 2 — Hvorfor det er kraftfuldt OG simpelt
 
 1. **Ét primitiv komponerer til alt.** Enkelt-opgave, parallel bredde, judge-panel,
@@ -149,6 +189,19 @@ blind score-tærskel hvert 30. minut.
 | Dynamiske roller | Låste Oracle/Architect/Critic | Navlepilleri-design | Roller konstrueret pr. opgave |
 | Adgang efter opgave | (delvist: spawn_agent_task tager tools) | — | Allerede muligt — brug det |
 | Råd = fan-out+syntese | Separat council-motor | Dobbelt-system | Riv council-som-særsystem ned; råd = N agenter + syntese |
+| Vække-på-hændelse | (server: heartbeat/daemons har det) | — | Behold server-side; genbrug som råds-trigger |
+| Klient-side loop (poll/supervisér/selv-væk) | **jarvis-code mangler det HELT** | Klienten kan ikke polle/superviseres/vækkes | Byg klient-loop i jarvis-code: baggrunds-dispatch + vække-ved-færdig |
+| Klient-ejede lokale tools | jarvis-code kører server-tools (containeren) | Redigerer forkert maskine | Client-owned Read/Write/Bash på Bjørns maskine ([[project_jarvis_code_tui]]) |
+
+**To overflader, samme primitiv.** Redesignet er reelt TO forbundne ting drevet af samme
+vække-på-hændelse-mekanik:
+1. **Server-side (Jarvis' råd/agenter):** gør council event-drevet — vække-på-signal-ændring
+   + ejet dispatch + output der lander, i stedet for blind 30-min-daemon.
+2. **Klient-side (jarvis-code):** giv klienten det den mangler — polle uden at være til
+   stede, supervisere en dispatchet proces, blive vækket når den er færdig, og klient-ejede
+   lokale read/write/bash-tools (så den redigerer Bjørns filer, ikke containerens).
+Begge hviler på: *vær fraværende (brænd intet) indtil en hændelse — signal ELLER
+proces-færdig ELLER tool-aktivitet — kræver handling.*
 
 ### "Tag højde for det hele" — checklisten
 - **Governance:** guard hænderne (handlinger), ikke sindet (hvem der må tænke). De

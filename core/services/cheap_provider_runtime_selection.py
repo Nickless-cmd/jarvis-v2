@@ -300,6 +300,53 @@ def _is_public_proxy(provider: str) -> bool:
     return str(provider or "").strip().lower() in _PUBLIC_PROXY_PROVIDERS
 
 
+def _central_route_shadow() -> bool:
+    """Task 9: kør central_route-sammenligning (default OFF → nul overhead)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("central_route_shadow", False)
+    except Exception:
+        return False
+
+
+def _central_route_live() -> bool:
+    """Task 9: brug central_route's pick i stedet for den gamle sti (default OFF)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("central_route_live", False)
+    except Exception:
+        return False
+
+
+def _record_route_divergence(old: dict, new: dict) -> None:
+    """Shadow-sammenligning: log/observe når central_route ville vælge noget andet
+    end den gamle sti. Data til at beslutte hvornår vi flipper til live."""
+    try:
+        import logging
+        old_p = (str(old.get("provider") or ""), str(old.get("model") or ""))
+        new_p = (str(new.get("provider") or ""), str(new.get("model") or ""))
+        if old_p != new_p:
+            logging.getLogger(__name__).info(
+                "central_route shadow-divergens: gammel=%s ny=%s", old_p, new_p)
+            from core.services.central_core import central
+            central().observe({"cluster": "system", "nerve": "route_shadow",
+                               "old_provider": old_p[0], "new_provider": new_p[0]})
+    except Exception:
+        pass
+
+
+def _maybe_shadow_compare(old_target: dict) -> None:
+    """Shadow-hook før select returnerer. OFF → no-op, byte-identisk."""
+    if not _central_route_shadow():
+        return
+    try:
+        from core.services import central_route
+        new = central_route.route(lane="cheap")
+        _record_route_divergence(old_target, new)
+    except Exception:
+        pass
+
+
 def select_cheap_lane_target(
     *,
     skip_providers: frozenset[str] = frozenset(),
@@ -359,7 +406,7 @@ def select_cheap_lane_target(
             )
             continue
         adaptive = _candidate_adaptive_snapshot(candidate)
-        return {
+        _target = {
             **candidate,
             "effective_priority": adaptive["effective_priority"],
             "adaptive_penalty": adaptive["adaptive_penalty"],
@@ -367,6 +414,8 @@ def select_cheap_lane_target(
             "task_kind": kind,
             "blocked_candidates": blocked,
         }
+        _maybe_shadow_compare(_target)  # Task 9: shadow-sammenligning (OFF → no-op)
+        return _target
     return {
         "active": False,
         "lane": "cheap",

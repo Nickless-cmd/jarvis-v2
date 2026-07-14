@@ -19,3 +19,28 @@ def test_pool_falls_to_floor_instead_of_raising(monkeypatch):
     res = sel.execute_cheap_lane_via_pool(message="hej")
     assert res["provider"] == "floor"          # ingen exception
     assert called["reason"] == "no-healthy-provider"
+
+
+def test_shadow_compare_off_is_noop(monkeypatch):
+    """Task 9: default OFF → zero overhead, byte-identisk adfærd."""
+    import core.services.cheap_provider_runtime_selection as sel
+    monkeypatch.setattr(sel, "_central_route_shadow", lambda: False)
+    called = {"n": 0}
+    monkeypatch.setattr(sel, "_record_route_divergence",
+                        lambda o, n: called.__setitem__("n", called["n"] + 1))
+    sel._maybe_shadow_compare({"provider": "groq", "model": "y"})
+    assert called["n"] == 0
+
+
+def test_shadow_compare_on_records_divergence(monkeypatch):
+    """Task 9: shadow ON → central_route FORESLÅR, divergens registreres."""
+    import core.services.cheap_provider_runtime_selection as sel
+    monkeypatch.setattr(sel, "_central_route_shadow", lambda: True)
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda **kw: {"provider": "cerebras", "model": "gemma-4-31b"})
+    seen = {}
+    monkeypatch.setattr(sel, "_record_route_divergence",
+                        lambda o, n: seen.update({"old": o, "new": n}))
+    sel._maybe_shadow_compare({"provider": "groq", "model": "y"})
+    assert seen["new"]["provider"] == "cerebras"
+    assert seen["old"]["provider"] == "groq"

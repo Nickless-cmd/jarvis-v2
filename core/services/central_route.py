@@ -50,3 +50,35 @@ def route(*, lane: str, task: Any = None,
                 "reason": "central-route:floor", "is_floor": True}
     return {"provider": "floor", "model": "", "lane": lane,
             "reason": "central-route:degraded", "is_floor": True}
+
+
+def _fetch_invocations(provider: str, since: str) -> list[tuple[str, int]]:
+    """(status, latency_ms) for provider siden 'since' fra SQLite. Self-safe."""
+    from core.runtime.db_core import connect
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT status, latency_ms FROM cheap_provider_invocations "
+            "WHERE provider = ? AND created_at >= ?", (provider, since)).fetchall()
+    return [(str(r[0]), int(r[1] or 0)) for r in rows]
+
+
+def provider_history(provider: str, hours: int = 24) -> dict[str, Any]:
+    """Task 10: fejlrate, latency-p50, oppetid for en provider over N timer
+    (fra cheap_provider_invocations). Query-surface til central_query."""
+    empty = {"provider": provider, "hours": hours, "calls": 0,
+             "error_rate": 0.0, "latency_p50_ms": 0, "uptime_pct": 100.0}
+    try:
+        from datetime import datetime, timedelta, UTC
+        since = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
+        rows = _fetch_invocations(provider, since)
+    except Exception:
+        return empty
+    total = len(rows)
+    if not total:
+        return empty
+    fails = sum(1 for status, _ in rows if status not in ("ok", "completed"))
+    lats = sorted(lat for _, lat in rows)
+    p50 = lats[len(lats) // 2]
+    return {"provider": provider, "hours": hours, "calls": total,
+            "error_rate": round(fails / total, 4), "latency_p50_ms": p50,
+            "uptime_pct": round(100.0 * (total - fails) / total, 2)}

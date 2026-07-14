@@ -164,9 +164,12 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "rpm_limit": None,
         "daily_limit": None,
         # deepseek-chat = compat-alias for v4-flash non-thinking mode.
-        # Listet først så det er default-pick i classification-paths
-        # (relevance, memory_selection) — ingen reasoning overhead.
         "static_models": ["deepseek-chat", "deepseek-v4-flash", "deepseek-v4-pro"],
+        # routable=False (2026-07-14, Bjørn): deepseek er BETALT — hold den UDE af den
+        # routbare cheap-pool så de gratis modeller tager al normal last ($0-mål).
+        # Bevaret som nød-bund (cheap_lane_floor bruger base_url direkte) — kun brugt
+        # hvis alle gratis providers er nede samtidig. Ude af regningen i normal drift.
+        "routable": False,
     },
     "opencode": {
         "label": "OpenCode Zen",
@@ -283,6 +286,14 @@ def supported_cheap_providers() -> list[dict[str, object]]:
 
 def provider_runtime_defaults(provider: str) -> dict[str, object]:
     return dict(CHEAP_PROVIDER_DEFAULTS.get(str(provider or "").strip(), {}))
+
+
+def is_routable_provider(provider: str) -> bool:
+    """False = provideren må IKKE vælges i normal routing (kun evt. som nød-bund).
+    Bruges til at holde betalte providers (deepseek) ude af den gratis cheap-pool.
+    Default True — kun eksplicit routable=False udelukker."""
+    cfg = CHEAP_PROVIDER_DEFAULTS.get(str(provider or "").strip())
+    return bool((cfg or {}).get("routable", True))
 
 
 def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:

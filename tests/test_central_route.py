@@ -37,3 +37,29 @@ def test_provider_history_empty_is_safe(monkeypatch):
     monkeypatch.setattr(cr, "_fetch_invocations", lambda provider, since: [])
     h = cr.provider_history("unknown")
     assert h["calls"] == 0 and h["error_rate"] == 0.0
+
+
+def test_rank_honors_task_kind(monkeypatch):
+    """central_route SKAL matche select's task_kind-semantik: background=proxies først,
+    important=drop proxies. Ellers router den background til betalt deepseek."""
+    import core.services.central_route as cr
+    fake_cands = [
+        {"provider": "deepseek", "model": "deepseek-chat", "priority": 5, "credentials_ready": True},
+        {"provider": "opencode", "model": "big-pickle", "priority": 80, "credentials_ready": True},
+    ]
+    monkeypatch.setattr("core.services.cheap_provider_runtime_selection._configured_cheap_candidates",
+                        lambda include_public_proxy=True: [c for c in fake_cands
+                                                           if include_public_proxy or c["provider"] != "opencode"])
+    monkeypatch.setattr("core.services.cheap_provider_runtime_selection._is_public_proxy",
+                        lambda p: p in ("opencode", "arko", "ollamafreeapi"))
+    monkeypatch.setattr("core.services.central_route_headroom.headroom_ok", lambda p: True)
+    monkeypatch.setattr("core.services.central_route_headroom.headroom_weight", lambda p: 1.0)
+    # background → opencode (gratis proxy) FØRST, ikke betalt deepseek
+    bg = cr._rank_candidates("cheap", {"kind": "background"}, frozenset())
+    assert bg[0][0] == "opencode"
+    # important → deepseek (proxies droppet)
+    imp = cr._rank_candidates("cheap", {"kind": "important"}, frozenset())
+    assert all(p != "opencode" for p, _ in imp)
+    # default → priority-orden (deepseek priority 5 vinder)
+    df = cr._rank_candidates("cheap", {"kind": "default"}, frozenset())
+    assert df[0][0] == "deepseek"

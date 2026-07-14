@@ -758,6 +758,11 @@ def build_slot_pool() -> list[BalancerSlot]:
             continue
         if not _credentials_ready(provider, auth_profile):
             continue
+        # Routable-filter (2026-07-14): betalte providers (deepseek routable=False)
+        # holdes ude af balancer-poolen — kun gratis modeller. Bund bruger dem direkte.
+        from core.services.cheap_provider_runtime_adapters import is_routable_provider
+        if not is_routable_provider(provider):
+            continue
         meta = _provider_metadata(provider)
         slot = BalancerSlot(
             provider=provider,

@@ -819,6 +819,12 @@ def _configured_cheap_candidates(
             str(item.get("updated_at") or ""),
         )
     )
+    # Routable-filter (2026-07-14): hold betalte providers (deepseek routable=False)
+    # ude af den routbare cheap-pool — kun de gratis modeller tager last. deepseek
+    # bevares som nød-bund (cheap_lane_floor), ikke i normal routing.
+    from core.services.cheap_provider_runtime_adapters import is_routable_provider
+    candidates = [c for c in candidates
+                  if is_routable_provider(str(c.get("provider") or ""))]
     return candidates
 
 

@@ -13,19 +13,33 @@ logger = logging.getLogger(__name__)
 
 def _rank_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tuple[str, str]]:
     """Rangerede (provider, model) for en lane. Genbruger den eksisterende
-    selection-kandidat-bygger + proaktiv headroom-de-vægtning (Task 8)."""
-    from core.services.cheap_provider_runtime_selection import _configured_cheap_candidates
+    selection-kandidat-bygger + task_kind-semantik + proaktiv headroom (Task 8).
+
+    task_kind-semantik SKAL matche select_cheap_lane_target (ellers router den
+    fx background til BETALT deepseek i stedet for gratis proxies):
+      - important  → drop public proxies (kun betalte/private, høj kvalitet)
+      - background → public proxies FØRST (spar de betalte til vigtige tasks)
+      - default    → ren priority-orden
+    """
+    from core.services.cheap_provider_runtime_selection import (
+        _configured_cheap_candidates, _is_public_proxy)
     from core.services.central_route_headroom import headroom_ok, headroom_weight
-    cands = _configured_cheap_candidates(include_public_proxy=True)
+    kind = str((task or {}).get("kind") or "default") if isinstance(task, dict) else "default"
+    cands = _configured_cheap_candidates(include_public_proxy=(kind != "important"))
     out: list[tuple[float, str, str]] = []
     for c in cands:
         p, m = str(c.get("provider") or ""), str(c.get("model") or "")
         if not p or not m or p in exclude or not c.get("credentials_ready"):
             continue
+        if kind == "important" and _is_public_proxy(p):
+            continue                      # vigtige tasks bruger ikke public proxies
         if not headroom_ok(p):            # >=95% kvote → skip proaktivt
             continue
         prio = float(c.get("priority") or 9999)
-        out.append((prio / max(headroom_weight(p), 1e-3), p, m))  # de-vægt ved >=80%
+        # background: skub public proxies foran (træk 1000 fra så de vinder)
+        proxy_bonus = -1000.0 if (kind == "background" and _is_public_proxy(p)) else 0.0
+        rank = proxy_bonus + prio / max(headroom_weight(p), 1e-3)
+        out.append((rank, p, m))          # de-vægt ved >=80%
     out.sort(key=lambda x: x[0])
     return [(p, m) for _, p, m in out]
 

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12485 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12492 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -44,10 +44,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12485 functions/
 - [`core.services.16`](core.services.16.md) — `provider_health_check` … `run_closure_gate`
 - [`core.services.17`](core.services.17.md) — `run_event_log` … `self_model_blind_spots`
 - [`core.services.18`](core.services.18.md) — `self_model_distiller` … `signal_decay_daemon`
-- [`core.services.19`](core.services.19.md) — `signal_delta_trigger` … `temperament_tendency_signal_tracking`
-- [`core.services.20`](core.services.20.md) — `temporal_body` … `unconscious_temperature_field`
-- [`core.services.21`](core.services.21.md) — `unfinished_intent` … `voice_anchor`
-- [`core.services.22`](core.services.22.md) — `voice_curator` … `world_model_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `signal_delta_trigger` … `telegram_gateway`
+- [`core.services.20`](core.services.20.md) — `temperament_tendency_signal_tracking` … `unconscious_modulation`
+- [`core.services.21`](core.services.21.md) — `unconscious_temperature_field` … `visual_memory`
+- [`core.services.22`](core.services.22.md) — `voice_anchor` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

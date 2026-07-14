@@ -94,6 +94,11 @@ class RuntimeSettings:
     # ripping the tool out of the schema. Default on; flip to False if
     # the gate fires too aggressively or HF embed latency hurts UX.
     skill_gate_enabled: bool = True
+    # Governs jarvis-code skill auto-surfacing (catalog injection + client
+    # auto-call restricted to the owner-approved allowlist in
+    # skill_autosurface.json). Default OFF: the whole Fase 3 skill-trigger
+    # is inert until the owner opts in and approves skills.
+    skill_autosurface_enabled: bool = False
     # ── Forgetting (Lag 11 — added 2026-05-10) ─────────────────────────
     # Master kill-switch. When False, both daemon and release_memory
     # tool short-circuit. The tool stays in the schema so the model can
@@ -626,6 +631,9 @@ def load_settings() -> RuntimeSettings:
         ),
         skill_gate_enabled=bool(
             data.get("skill_gate_enabled", defaults.skill_gate_enabled)
+        ),
+        skill_autosurface_enabled=bool(
+            data.get("skill_autosurface_enabled", defaults.skill_autosurface_enabled)
         ),
         forgetting_enabled=bool(
             data.get("forgetting_enabled", defaults.forgetting_enabled)

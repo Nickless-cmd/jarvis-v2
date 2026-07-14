@@ -94,6 +94,22 @@ def _resolve_workspace_name(user_id: str) -> str:
     return "default"
 
 
+def _extract_text(content: Any) -> str:
+    """Extract plain text from a message `content` that may be a str OR an array of
+    typed blocks ({type:'text'|'image', ...}). Multimodal foundation: image blocks pass
+    through to the model untouched (chat_messages.extend), but memory-recall only needs
+    the text. For a plain str this is identical to today's behavior (inert)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(str(block.get("text") or ""))
+        return " ".join(p for p in parts if p)
+    return str(content or "")
+
+
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -407,7 +423,8 @@ async def agent_step(request: Request):
     _last_user = ""
     for _m in reversed(client_messages):
         if isinstance(_m, dict) and _m.get("role") == "user":
-            _last_user = str(_m.get("content") or "")
+            _c = _m.get("content")
+            _last_user = _extract_text(_c) if _flag("jc_agent_multimodal") else str(_c or "")
             break
     _ws_name = _resolve_workspace_name(user_id) if _flag("jc_agent_user_scoping") else "default"
     # System-prompt (tiered context) foran + klientens samtale (inkl. tool-resultater).
@@ -445,6 +462,12 @@ async def agent_step(request: Request):
     status = "ok" if (content or tool_calls) else "empty"
 
     if _flag("jc_agent_observability"):
+        try:
+            record_cost(lane="agent", provider=provider, model=model,
+                        input_tokens=tokens_in, output_tokens=tokens_out,
+                        cost_usd=cost_usd, user_id=user_id)
+        except Exception:
+            logger.debug("agent/step record_cost fejlede", exc_info=True)
         _emit_agent_nerve(
             status=status, provider=provider, model=model,
             tokens_in=tokens_in, tokens_out=tokens_out, cost_usd=cost_usd,
@@ -524,6 +547,12 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                 _fr = str(ev.get("finish_reason") or "")
                 _status = "ok" if (_content or collected) else "empty"
                 if _flag("jc_agent_observability"):
+                    try:
+                        record_cost(lane="agent", provider=provider, model=model,
+                                    input_tokens=_tin, output_tokens=_tout,
+                                    cost_usd=_cost, user_id=user_id)
+                    except Exception:
+                        logger.debug("agent/step stream record_cost fejlede", exc_info=True)
                     _emit_agent_nerve(
                         status=_status, provider=provider, model=model,
                         tokens_in=_tin, tokens_out=_tout, cost_usd=_cost,

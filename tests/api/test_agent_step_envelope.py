@@ -185,3 +185,56 @@ def test_full_context_cache_key_includes_workspace(monkeypatch):
     b = al._full_context("same message", name="ws_b")
     assert a == "CTX::ws_a" and b == "CTX::ws_b"
     assert calls == ["ws_a", "ws_b"]  # both built, no cross-workspace cache hit
+
+
+def test_record_cost_called_at_seam_when_observability_on(monkeypatch):
+    _patch_model(monkeypatch, cost=0.003, tin=9, tout=4)
+    monkeypatch.setattr(al, "_flag",
+                        lambda name, default=False: name == "jc_agent_observability")
+    rec = {}
+    monkeypatch.setattr(al, "record_cost", lambda **k: rec.update(k))
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": "x"}],
+                      "stream": False, "user_id": "member_x"})
+    assert rec["lane"] == "agent"
+    assert rec["cost_usd"] == 0.003 and rec["input_tokens"] == 9
+    assert rec["user_id"] == "member_x"
+
+
+def test_record_cost_not_called_when_flag_off(monkeypatch):
+    _patch_model(monkeypatch)
+    calls = []
+    monkeypatch.setattr(al, "record_cost", lambda **k: calls.append(k))
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": "x"}], "stream": False})
+    assert calls == []
+
+
+def test_extract_text_from_blocks():
+    # unit: block-aware extraction pulls text blocks, ignores image blocks
+    blocks = [{"type": "text", "text": "beskriv dette"},
+              {"type": "image", "image_url": {"url": "data:image/png;base64,AAA"}}]
+    assert al._extract_text(blocks) == "beskriv dette"
+    assert al._extract_text("plain") == "plain"
+
+
+def test_multimodal_blocks_pass_through_to_model(monkeypatch):
+    monkeypatch.setattr(al, "_flag",
+                        lambda name, default=False: name == "jc_agent_multimodal")
+    captured = {}
+    def _fake_chat(**kw):
+        captured["messages"] = kw["messages"]
+        return {"text": "ok", "tool_calls": [], "input_tokens": 1,
+                "output_tokens": 1, "cost_usd": 0.0, "finish_reason": "stop"}
+    monkeypatch.setattr(al, "_resolve_target", lambda: ("deepseek", "deepseek-v4-flash"))
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_adapters._execute_openai_compatible_chat",
+        _fake_chat)
+    blocks = [{"type": "text", "text": "hvad ser du"},
+              {"type": "image", "image_url": {"url": "data:image/png;base64,AAA"}}]
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": blocks}], "stream": False})
+    user_msg = [m for m in captured["messages"] if m.get("role") == "user"][-1]
+    # array content reached the model payload UNCHANGED (image block intact)
+    assert isinstance(user_msg["content"], list)
+    assert any(b.get("type") == "image" for b in user_msg["content"])

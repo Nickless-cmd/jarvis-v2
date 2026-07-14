@@ -131,6 +131,21 @@ def test_kilo_keyless_free_routes_and_tool_capable():
     assert provider_auth_ready(provider="kilo", auth_profile="default") is True
 
 
+def test_zai_zhipu_free_glm_flash():
+    """15. jul (Bjørn-nøgle): Z.ai/Zhipu — glm-4.5-flash ÆGTE gratis (betalte GLM gav
+    429 insufficient-balance). OpenAI-compat /paas/v4, bearer. static_models kun free."""
+    from core.services.cheap_provider_runtime_adapters import (
+        CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_cost_class,
+        _OPENAI_COMPATIBLE_PROVIDERS)
+    z = CHEAP_PROVIDER_DEFAULTS["zai"]
+    assert z["auth_kind"] == "bearer"
+    assert z["protocol"] == "openai-chat"
+    assert z["base_url"] == "https://api.z.ai/api/paas/v4"
+    assert z["static_models"] == ["glm-4.5-flash"]   # kun den gratis flash-variant
+    assert provider_cost_class("zai") == "free"
+    assert is_routable_provider("zai") and "zai" in _OPENAI_COMPATIBLE_PROVIDERS
+
+
 def test_require_credentials_still_raises_for_bearer_without_key(monkeypatch):
     """Guarden må kun gælde auth_kind=none. En bearer-provider uden nøgle skal stadig
     rejse auth-not-ready (ellers ville vi kalde en betalt/nøgle-provider uden auth)."""

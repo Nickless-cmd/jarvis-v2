@@ -339,6 +339,25 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
                           "cohere/north-mini-code:free", "openrouter/free",
                           "tencent/hy3:free"],
     },
+    # Z.ai / Zhipu GLM (15. jul, Bjørn-nøgle, live-verificeret): OpenAI-compat på
+    # /paas/v4. glm-4.5-flash = ÆGTE GRATIS (ikke i /models-katalog men svarer $0;
+    # de betalte glm-4.5/4.6/5.x gav 429 "insufficient balance" → fri/betalt-skel
+    # bekræftet). Stærk GLM-4.5-model. Tool-capable men narrerer i auto-mode; fyrer
+    # korrekt tool_calls med tool_choice forced (adapter sender auto → agent-lane får
+    # tekst nogle runder, degraderer pænt). Fremragende til cheap lane/indre liv.
+    # Nøgle (id.secret) gemt i CT105 auth-store — ALDRIG i repo.
+    "zai": {
+        "label": "Z.ai (Zhipu GLM)",
+        "priority": 45,
+        "base_url": "https://api.z.ai/api/paas/v4",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "",
+        "rpm_limit": 30,
+        "daily_limit": 1000,
+        "cost_class": "free",
+        "static_models": ["glm-4.5-flash"],
+    },
     # Copilot Pro (15. jul) — Bjørns betalte abonnement, delt i to efter multiplier:
     # copilot-free = 0x (inkluderet, nul premium-requests) → GRATIS, i cheap lane + pool.
     "copilot-free": {

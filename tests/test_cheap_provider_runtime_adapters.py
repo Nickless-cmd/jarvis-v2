@@ -97,5 +97,5 @@ def test_copilot_cost_classes():
     assert provider_cost_class("copilot-premium") == "paid"
     assert provider_cost_class("copilot-free") == "free"
     assert provider_cost_class("cerebras") == "free"   # default
-    assert "claude-opus-4.8" in CHEAP_PROVIDER_DEFAULTS["copilot-premium"]["static_models"]
+    assert "claude-sonnet-5" in CHEAP_PROVIDER_DEFAULTS["copilot-premium"]["static_models"]
     assert "gpt-4o" in CHEAP_PROVIDER_DEFAULTS["copilot-free"]["static_models"]

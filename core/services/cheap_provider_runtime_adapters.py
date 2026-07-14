@@ -330,7 +330,9 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "paid",
         "extra_headers": {"Editor-Version": "vscode/1.90.0",
                           "Copilot-Integration-Id": "vscode-chat"},
-        "static_models": ["claude-sonnet-5", "claude-opus-4.8", "gpt-5.6-terra",
+        # Verificeret API-tilgængelige premium-modeller (opus-4.8/gpt-5.6 IKKE tilgængelig
+        # via denne integration). claude-sonnet-5 = flagskib.
+        "static_models": ["claude-sonnet-5", "claude-sonnet-4.6", "gpt-5.4",
                           "gemini-3.1-pro-preview"],
     },
 }

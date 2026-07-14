@@ -103,8 +103,11 @@ def agent_tools_enabled() -> bool:
     DEFAULT OFF. Self-safe: any read error → False (agents stay handless).
     """
     try:
-        from core.runtime.db_core import get_runtime_state_value
-        return bool(get_runtime_state_value(AGENT_TOOLS_FLAG_KEY, False))
+        # get_runtime_state_bool (not bool(...)): a value stored as the string
+        # "off" must read False. bool("off") is True — that trap left dispatch
+        # reading ON while stored "off" (2026-07-14 incident).
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool(AGENT_TOOLS_FLAG_KEY, False)
     except Exception:
         return False
 

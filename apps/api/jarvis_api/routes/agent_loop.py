@@ -140,7 +140,14 @@ def _flag(name: str, default: bool = False) -> bool:
     All Fase-0 behavior changes gate on these; every flag defaults OFF so the
     deploy is inert until an operator flips it."""
     try:
-        return bool(get_runtime_state_value(name, default))
+        # Coerce like get_runtime_state_bool (kept inline so the module-level
+        # get_runtime_state_value seam stays monkeypatchable in tests): a flag
+        # stored as the string "off" must read False — bool("off") is True.
+        from core.runtime.db_core import _FALSEY_FLAG_STRINGS
+        val = get_runtime_state_value(name, default)
+        if isinstance(val, str):
+            return val.strip().lower() not in _FALSEY_FLAG_STRINGS
+        return bool(val)
     except Exception:
         return default
 

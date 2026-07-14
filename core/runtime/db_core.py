@@ -402,6 +402,29 @@ def get_runtime_state_value(key: str, default: object = None) -> object:
     return _val
 
 
+# Strings that a human/CLI/migration might store for a boolean flag but that
+# bool() would misread. bool("off") is True (non-empty str) — that trap left
+# agent_tools_enabled reading ON while stored as the string "off" (2026-07-14).
+_FALSEY_FLAG_STRINGS = frozenset({"", "0", "off", "false", "no", "none", "null", "disabled"})
+
+
+def get_runtime_state_bool(key: str, default: bool = False) -> bool:
+    """Read a runtime-state flag and coerce it to bool ROBUSTLY.
+
+    Unlike ``bool(get_runtime_state_value(...))``, this treats string
+    representations correctly: "off"/"false"/"no"/"0"/"" → False,
+    "on"/"true"/"1"/"yes" → True (case-insensitive). Real bools and numbers
+    pass through Python truthiness. Absent key or read error → ``default``.
+
+    Use this for EVERY boolean flag read — never ``bool(value)`` directly, or a
+    flag stored as the string "off" reads as True."""
+    _sentinel = object()
+    val = get_runtime_state_value(key, _sentinel)
+    if val is _sentinel:
+        return default
+    if isinstance(val, str):
+        return val.strip().lower() not in _FALSEY_FLAG_STRINGS
+    return bool(val)
 
 
 # === _now_iso helper (verbatim from db.py L29797-29799) ===

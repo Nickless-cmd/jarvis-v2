@@ -73,6 +73,21 @@ def test_agent_tools_flag_reads_runtime_state(monkeypatch):
     assert ar.agent_tools_enabled() is False
 
 
+def test_agent_tools_flag_string_off_reads_false(monkeypatch):
+    # Regression (2026-07-14): dispatch stod reelt TÆNDT fordi flaget var lagret
+    # som strengen "off" og læst med bool("off") == True. get_runtime_state_bool
+    # skal coerce det til False.
+    store: dict[str, object] = {"agent_tools_enabled": "off"}
+    monkeypatch.setattr(
+        "core.runtime.db_core.get_runtime_state_value",
+        lambda key, default=None: store.get(key, default),
+        raising=False,
+    )
+    assert ar.agent_tools_enabled() is False
+    store["agent_tools_enabled"] = "on"
+    assert ar.agent_tools_enabled() is True
+
+
 def test_build_agent_tools_payload_filters_to_allowlist(monkeypatch):
     catalog = [
         {"type": "function", "function": {"name": "read_file"}},

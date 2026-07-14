@@ -247,6 +247,50 @@ def _count_recent_calls(timestamps, now: float, window_seconds: int) -> int:
     return sum(1 for t in timestamps if t >= threshold)
 
 
+def _daily_used_from_db(provider: str) -> int:
+    """Task 4 / Fund 5: daglig brug fra SQLite cheap_provider_invocations (samme kilde
+    som selection). Self-safe → 0 ved fejl (headroom bliver fuld, aldrig falsk-blokerende)."""
+    try:
+        from datetime import datetime, timedelta, UTC
+        from core.runtime.db_cheap_provider import count_cheap_provider_invocations
+        since = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
+        return int(count_cheap_provider_invocations(
+            provider=provider, lane="cheap", since=since) or 0)
+    except Exception:
+        return 0
+
+
+def _daily_headroom_for(slot: BalancerSlot) -> float:
+    """Daily headroom fra SQLite frem for balancerens private JSON daily_use_count."""
+    if not slot.daily_limit:
+        return 1.0
+    used = _daily_used_from_db(slot.provider)
+    return max(0.0, 1.0 - used / slot.daily_limit)
+
+
+def _observe_central(nerve: str, payload: dict) -> None:
+    """Task 5: skriv til Centralens system/<nerve>. Self-safe — observabilitet må
+    aldrig bryde routing (mønster fra provider_circuit_breaker._observe_pp)."""
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "system", "nerve": nerve, **payload})
+    except Exception:
+        pass
+
+
+def _emit_balancer_event(name: str, payload: dict) -> None:
+    """Ét sted: emit til eventbus (bagudkompatibelt) + observe fejl-events til Central."""
+    try:
+        from core.eventbus.events import emit  # type: ignore
+        emit(name, payload)
+    except Exception:
+        pass
+    if name in ("cheap_balancer.call_failed", "cheap_balancer.pool_exhausted",
+                "cheap_balancer.provider_wide_cooldown"):
+        _observe_central("provider_health", {"source": "cheap_lane_balancer",
+                                             "event": name, **payload})
+
+
 def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
     """Returns non-negative weight; 0 means slot is ineligible right now.
 
@@ -263,12 +307,8 @@ def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
         rpm_headroom = max(0.0, 1.0 - rpm_used / slot.rpm_limit)
         base *= rpm_headroom
     if slot.daily_limit:
-        today = _today_iso(now)
-        if state.daily_window_start != today:
-            state.daily_use_count = 0
-            state.daily_window_start = today
-        daily_headroom = max(0.0, 1.0 - state.daily_use_count / slot.daily_limit)
-        base *= daily_headroom
+        # Fund 5: daily headroom fra SQLite (én sandhed), ikke privat JSON daily_use_count.
+        base *= _daily_headroom_for(slot)
 
     health = _BREAKER_HEALTH.get(state.breaker_level, 0.05)
     preference = _PROXY_BOOST if slot.is_public_proxy else 1.0
@@ -385,7 +425,7 @@ def _register_provider_wide_failure(
         )
         try:
             from core.eventbus.events import emit  # type: ignore
-            emit("cheap_balancer.provider_wide_cooldown", {
+            _emit_balancer_event("cheap_balancer.provider_wide_cooldown", {
                 "provider": provider,
                 "slots_affected": affected,
                 "cooldown_seconds": cooldown_s,
@@ -498,7 +538,12 @@ def call_balanced(
     states = _load_state()
     pool = build_slot_pool()
     if not pool:
-        raise RuntimeError("cheap_lane_balancer: empty pool (no eligible slots)")
+        # Fund 4: tom pool → garanteret bund, aldrig rejse.
+        from core.services.cheap_lane_floor import attempt_floor
+        fr = attempt_floor(message=prompt, lane="cheap", reason="empty-pool")
+        fr.setdefault("attempts", 0)
+        fr.setdefault("output_tokens", int(fr.get("output_tokens") or 0))
+        return fr
 
     tried_slot_ids: set[str] = set()
     last_error: Exception | None = None
@@ -560,7 +605,7 @@ def call_balanced(
 
             try:
                 from core.eventbus.events import emit  # type: ignore
-                emit("cheap_balancer.call_succeeded", {
+                _emit_balancer_event("cheap_balancer.call_succeeded", {
                     "slot_id": slot.slot_id,
                     "daemon": daemon_name,
                     "latency_ms": latency_ms,
@@ -631,7 +676,7 @@ def call_balanced(
                                 error=exc.code)
             try:
                 from core.eventbus.events import emit  # type: ignore
-                emit("cheap_balancer.call_failed", {
+                _emit_balancer_event("cheap_balancer.call_failed", {
                     "slot_id": slot.slot_id,
                     "daemon": daemon_name,
                     "error_kind": exc.code,
@@ -672,17 +717,19 @@ def call_balanced(
     _save_state(states)
     try:
         from core.eventbus.events import emit  # type: ignore
-        emit("cheap_balancer.pool_exhausted", {
+        _emit_balancer_event("cheap_balancer.pool_exhausted", {
             "tried_slots": list(tried_slot_ids),
             "daemon": daemon_name,
             "last_error": str(last_error) if last_error else None,
         })
     except Exception:
         pass
-    raise RuntimeError(
-        f"cheap_lane_balancer exhausted {len(tried_slot_ids)} slots; "
-        f"last error: {last_error}"
-    )
+    # Fund 4: aldrig rejse ved udmattelse — fald til garanteret bund.
+    from core.services.cheap_lane_floor import attempt_floor
+    fr = attempt_floor(message=prompt, lane="cheap", reason="balancer-exhausted")
+    fr.setdefault("attempts", len(tried_slot_ids))
+    fr.setdefault("output_tokens", int(fr.get("output_tokens") or 0))
+    return fr
 
 
 def build_slot_pool() -> list[BalancerSlot]:

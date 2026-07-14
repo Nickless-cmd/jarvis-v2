@@ -214,19 +214,17 @@ def test_weight_zero_when_manually_disabled():
     assert _compute_weight(s, state, _time.time()) == 0.0
 
 
-def test_weight_decreases_with_daily_usage():
-    from core.services.cheap_lane_balancer import (
-        _compute_weight, SlotState, _today_iso,
-    )
+def test_weight_decreases_with_daily_usage(monkeypatch):
+    # Fund 5: daily headroom kommer nu fra SQLite (_daily_used_from_db), ikke
+    # SlotState.daily_use_count. Vægten skal stadig falde med stigende brug.
+    from core.services import cheap_lane_balancer as clb
     s = _slot(rpm=30, daily=100)
-    today = _today_iso(_time.time())
-    state_low = SlotState(slot_id=s.slot_id, daily_use_count=0,
-                           daily_window_start=today)
-    state_high = SlotState(slot_id=s.slot_id, daily_use_count=80,
-                            daily_window_start=today)
+    state = clb.SlotState(slot_id=s.slot_id)
     now = _time.time()
-    w_low = _compute_weight(s, state_low, now)
-    w_high = _compute_weight(s, state_high, now)
+    monkeypatch.setattr(clb, "_daily_used_from_db", lambda provider: 0)
+    w_low = clb._compute_weight(s, state, now)
+    monkeypatch.setattr(clb, "_daily_used_from_db", lambda provider: 80)
+    w_high = clb._compute_weight(s, state, now)
     assert w_low > w_high
 
 
@@ -467,9 +465,12 @@ def test_call_balanced_raises_when_all_slots_exhausted(monkeypatch, tmp_path):
         )
 
     monkeypatch.setattr(clb, "_call_provider_chat", always_fail)
-
-    with pytest.raises(RuntimeError, match="exhausted"):
-        clb.call_balanced(prompt="hi", daemon_name="test", max_retries=3)
+    # Fund 4: udmattelse rejser ikke længere — den falder til bunden.
+    monkeypatch.setattr("core.services.cheap_lane_floor.attempt_floor",
+                        lambda **kw: {"status": "degraded", "provider": "floor",
+                                      "lane": "cheap", "text": "", "is_floor": True})
+    res = clb.call_balanced(prompt="hi", daemon_name="test", max_retries=3)
+    assert res["provider"] == "floor"
 
 
 def test_call_balanced_does_not_retry_same_slot_twice(monkeypatch, tmp_path):
@@ -488,10 +489,12 @@ def test_call_balanced_does_not_retry_same_slot_twice(monkeypatch, tmp_path):
         )
 
     monkeypatch.setattr(clb, "_call_provider_chat", fake_executor)
-
-    with pytest.raises(RuntimeError):
-        clb.call_balanced(prompt="hi", daemon_name="test", max_retries=5)
-    assert call_count["n"] == 1
+    monkeypatch.setattr("core.services.cheap_lane_floor.attempt_floor",
+                        lambda **kw: {"status": "degraded", "provider": "floor",
+                                      "lane": "cheap", "text": "", "is_floor": True})
+    res = clb.call_balanced(prompt="hi", daemon_name="test", max_retries=5)
+    assert res["provider"] == "floor"   # falder til bund frem for at rejse
+    assert call_count["n"] == 1          # men retryer stadig ikke samme slot
 
 
 # --- Task 7: Manual controls ---
@@ -700,3 +703,40 @@ def test_call_balanced_dns_failure_excludes_whole_provider(monkeypatch, tmp_path
     groq_calls = [p for p, _ in call_log if p == "groq"]
     assert len(ofa_calls) == 1, f"expected 1 ofa call, got {len(ofa_calls)}: {call_log}"
     assert len(groq_calls) == 1
+
+
+# --- Fase A: floor + SQLite-kvote + Central-observe ---
+
+def test_call_balanced_falls_to_floor_on_exhaustion(monkeypatch):
+    """Task 3 / Fund 4: call_balanced må aldrig rejse ved tom pool."""
+    import core.services.cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "build_slot_pool", lambda: [])
+
+    def fake_floor(*, message, lane, reason):
+        return {"status": "degraded", "provider": "floor", "lane": lane,
+                "text": "", "is_floor": True}
+
+    monkeypatch.setattr("core.services.cheap_lane_floor.attempt_floor", fake_floor)
+    res = bal.call_balanced(prompt="hej", daemon_name="test")
+    assert res["provider"] == "floor"   # ingen RuntimeError
+
+
+def test_daily_headroom_reads_sqlite_invocations(monkeypatch):
+    """Task 4 / Fund 5: daily-kvote fra SQLite, ikke privat JSON."""
+    import core.services.cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_daily_used_from_db", lambda provider: 90)
+    slot = bal.BalancerSlot(provider="groq", model="x", auth_profile="", base_url="",
+                            rpm_limit=None, daily_limit=100, is_public_proxy=False)
+    assert abs(bal._daily_headroom_for(slot) - 0.1) < 1e-6
+
+
+def test_balancer_events_observe_to_central(monkeypatch):
+    """Task 5: fejl-events skrives til Centralens provider_health i real-tid."""
+    import core.services.cheap_lane_balancer as bal
+    seen = []
+    monkeypatch.setattr(bal, "_observe_central",
+                        lambda nerve, payload: seen.append((nerve, payload)))
+    bal._emit_balancer_event("cheap_balancer.call_failed",
+                             {"slot_id": "groq::x", "error_kind": "rate-limited"})
+    assert seen and seen[0][0] == "provider_health"
+    assert seen[0][1]["error_kind"] == "rate-limited"

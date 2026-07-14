@@ -5,7 +5,8 @@ formål: Komplet provider/model management-system — auto-scanning, scoring,
  bekræftede gratis modeller og giver Centralen livscyklus-styring.
 kilder: Samtale Bjørn+Jarvis 14. jul, live API-tests (nøgle→model→svar),
  provider_router.json, settings.py, auth profiles, full provider audit
-revision: v7 — Cerebras (User-Agent fix), TokenRouter (insufficient quota), 15 providers testet, ~260 gratis
+revision: v7 — Cerebras (User-Agent fix), TokenRouter (insufficient quota),
+ Clinebot (16. provider, 5 modeller bekræftet), ~265 gratis
 ---
 
 # Provider/Model Management System
@@ -25,6 +26,7 @@ Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 | **NVIDIA NIM** (fixet) | `https://integrate.api.nvidia.com/v1` | **120+ modeller** inkl. `meta/llama-3.1-8b-instruct` (0.4s), `meta/llama-3.3-70b-instruct` (7.2s), 27 Llama-varianter | 0.4-7s |
 | **Cloudflare** (fixet) | `https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/{model}` | **61 modeller** inkl. `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (1.0s), `deepseek-r1-distill`, `llama-4-scout`, `qwen2.5-coder`, `kimi-k2.7-code`, `glm-5.2` | 0.5-2s |
 | **Cerebras** (fixet) | `https://api.cerebras.ai/v1` | `llama-3.1-8b`, `gpt-oss-120b` (1.1s) | 1-2s |
+| **Clinebot** 🆕 | `https://api.cline.bot/api/v1` | `minimax/minimax-m2.5` ($0.000002/kald), `deepseek/deepseek-chat` ($0.000022), `google/gemini-2.5-flash` (gratis), `openai/gpt-4o-mini` ($0.000003), `meta-llama/llama-3.3-70b-instruct` ($0.000028) | 1-4s |
 | **GitHub Models** 🆕 | `https://models.inference.ai.azure.com` | `gpt-4.1` (1.3s), `gpt-4.1-mini` (1.8s), `gpt-4o` (1.6s), `o4-mini` (3.6s), `DeepSeek-R1` (1.6s) | 1-4s |
 | **Mistral AI** 🆕 | `https://api.mistral.ai/v1` | `mistral-small-latest` (0.4s), `codestral-latest` (0.3s) | 0.3-0.4s |
 | **AIHubMix** 🆕 | `https://aihubmix.com/v1` / `https://api.inferera.com/v1` | `gpt-4o-free` (1.1-1.6s). **352 modeller i listen,** men kun gpt-4o-free bekræftet. | 1-2s |
@@ -36,6 +38,8 @@ Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 | **Lokal Ollama** | `localhost:11434` | 10 lokale modeller | varierer |
 
 **Vigtigt — Cloudflare-workaround:** OpenCode Go, Cerebras (og sandsynligvis flere) kræver en `User-Agent` header (fx `opencode/1.17.18`) for at komme igennem Cloudflare-gate. Uden den: 403 error code 1010. Bør være standard header på alle cheap lane-kald.
+
+**Clinebot særligt:** Returnerer svar indpakket i `{"success": true, "data": {...}}` — lidt anderledes end standard OpenAI format. Dokumentationen fremhæver `minimax/minimax-m2.5` som eksplicit test-model.
 
 ### ⚠️ Delvist/svagt virkende
 
@@ -66,6 +70,7 @@ Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 | **NVIDIA NIM** | 120+ | Gratis | ~100 rpm |
 | **Cloudflare** | 61 | Gratis | ~50 rpm |
 | **Cerebras** 🆕 | 2 | Gratis | ~20 rpm |
+| **Clinebot** 🆕 | 5 | <$0.00003/kald | ~30 rpm |
 | **GitHub Models** 🆕 | 5 | Gratis | 10-15 rpm, 50-150 rpd |
 | **Mistral AI** 🆕 | 2 | Gratis (~1B tokens/md) | ~10 rpm |
 | **AIHubMix** 🆕 | 1 | Gratis | ~20 rpm |
@@ -76,14 +81,14 @@ Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 | **Gemini** | 2 | Gratis | Tight quota |
 | **Lokal Ollama** | 10 | Gratis | Ubegrænset |
 | **DeepSeek** | v4-flash/pro | Betalt | ~100 rpm |
-| **I alt** | **~260 gratis** | **$0** | **>300 rpm kombineret** |
+| **I alt** | **~265 gratis** | **$0** | **>300 rpm kombineret** |
 
 ## Forventet effekt
 
 | Metric | Før | Efter |
 |---|---|---|
-| Gratis modeller i pool | ~2 | **~260** |
+| Gratis modeller i pool | ~2 | **~265** |
 | Deepseek belastning | 100% af agent-kald | <20% |
-| Provider diversity | 2 | **14 uafhængige kilder** |
+| Provider diversity | 2 | **16 uafhængige kilder** |
 | Rate limit redundans | Ingen | >300 rpm kombineret |
 | Centralen indsigt | Ingen | Live model registry + events |

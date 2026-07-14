@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6086/12534 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6092/12540 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6086/12534 functions/methods documented (48%). The list b
 | `core.memory` | 44 | 123 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 3979 | 8684 | 45% |
+| `core.services` | 3985 | 8690 | 45% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -727,8 +727,8 @@ Generated from source. 6086/12534 functions/methods documented (48%). The list b
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L284)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L274)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L77)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L379)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L620)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L428)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L669)
 - `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L51)
 - `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L55)
 - `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L169)

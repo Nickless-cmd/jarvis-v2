@@ -198,6 +198,54 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
             "gpt-5.4",
         ],
     },
+    # --- Nye providers, live-verificeret 14. jul (Bjørns nøgler, ~/new_providers_.txt).
+    # Alle OpenAI-compatible bearer. Modeller er de faktisk-bekræftede gratis.
+    "cerebras": {
+        "label": "Cerebras",
+        "priority": 22,
+        "base_url": "https://api.cerebras.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 30,
+        "daily_limit": 1000,
+        "static_models": ["gpt-oss-120b", "zai-glm-4.7", "gemma-4-31b"],
+    },
+    "cline": {
+        "label": "Cline",
+        "priority": 32,
+        # NB: base er /api/v1 (ikke /v1), host api.cline.bot (ikke clinebot.com).
+        "base_url": "https://api.cline.bot/api/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "",
+        "rpm_limit": 20,
+        "daily_limit": 200,
+        "static_models": ["deepseek/deepseek-chat", "meta-llama/llama-3.3-70b-instruct"],
+    },
+    "aihubmix": {
+        "label": "AIHubMix",
+        "priority": 42,
+        "base_url": "https://aihubmix.com/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 20,
+        "daily_limit": 200,
+        # KUN *-free — "auto" router til BETALT (403 balance). Se spec §1.
+        "static_models": ["gpt-5.5-free", "coding-glm-5.2-free", "coding-minimax-m3-free"],
+    },
+    "requesty": {
+        "label": "Requesty",
+        "priority": 52,
+        "base_url": "https://router.requesty.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 20,
+        "daily_limit": 200,
+        "static_models": ["novita/tencent/hy3"],
+    },
 }
 
 

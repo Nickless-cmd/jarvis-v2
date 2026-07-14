@@ -111,17 +111,62 @@ if not _can_access_via_sandbox(cwd) and _operator_channel_open:
   - `operator_channel_status()` — **alle** kan læse status (read-only). Returnerer `{"open": bool, "session_id": str | None}` — intet kan ændres.
 - Status kan altid læses (read-only) via `operator_channel_status()` — så alle kan se om kanalen er åben.
 
-## Implementeringsrækkefølge
+## Manglende implementering i jarvis-code (4 huller)
 
-1. Opret `core/tools/operator_channel.py` med:
+Denne spec er skrevet i **jarvis-v2** (runtime repo), men selve implementeringen skal ske i **jarvis-code** (klient-projekt). Her er hvad der pt. mangler i jarvis-code:
+
+### 1. 🔧 `operator_channel`-toollet findes ikke
+`/home/bs/jarvis-code/src/tools.py` har ingen `operator_channel()` eller `operator_channel_status()`. De skal:
+   - Skrives i `src/tools/operator_channel.py` (eller tilsvarende modul)
+   - Registreres i `tool_catalog.py`
    - `operator_channel(open=True|False)` — owner-gated, åben/luk
    - `operator_channel_status()` — read-only for alle
-2. Tilføj `_operator_channel_open`, `_operator_session_id`, og `_check_bridge_health()` som module-level state i `simple_tools_native.py`
-3. Opdater `bash`-toollets `execute()` — indsæt `_can_access_via_sandbox()` check før eksekvering, reroute til operator ved behov
-4. Test: `operator_channel(open=True)` → `bash ls /media/projects` → ser indhold
-5. Test: `operator_channel(open=False)` → `bash ls /media/projects` → sandbox-fejl
-6. Test: `operator_channel_status()` → returnér korrekt status uanset ejerskab
-7. Test: `operator_channel(open=True)` → process restart → `operator_channel_status()` viser lukket
+
+### 2. 🧱 `bash`-sandboxen har ingen fallback-logik
+`local_bash`-eksekutoren (i `simple_tools_native.py` eller tilsvarende) har i dag:
+   - Ét check: `bwrap` mount-stier — lykkes eller fejler
+   - **Intet** `_can_access_via_sandbox()` check
+   - **Ingen** reroute-logik til operator-kanalen
+   
+Skal tilføjes:
+   - `_can_access_via_sandbox(path)` — tjekker mod kendte sandbox-præfixer
+   - Før eksekvering: hvis sti ikke i sandbox OG `_operator_channel_open` → reroute via operator-session
+   - `_check_bridge_health()` — pinger broen før reroute, lukker kanal ved fejl
+
+### 3. 🏠 Owner gate — `src/permissions.py`
+`owner_only`-decoratoren i jarvis-code's permissions-lag skal verificeres. Den skal:
+   - Læse `owner_user_id` fra runtime-kontekst (runtime.json)
+   - Sammenligne med kaldets `user_id`
+   - Afvise ikke-owner med `access denied` — **før** tool-logikken køres
+   - Være implementeret i middleware, ikke i tool-logikken (så en kompromitteret model-instans ikke kan omgå den)
+
+### 4. 🧪 Ingen tests
+Følgende tests skal skrives (i jarvis-code's testsuite):
+   - Unit: `operator_channel(open=True)` → session åbnes
+   - Unit: `operator_channel(open=False)` → session lukkes
+   - Unit: `operator_channel(open=True)` kaldt af ikke-owner → `access denied`
+   - Unit: `operator_channel_status()` — alle kan læse
+   - Unit: `_can_access_via_sandbox()` — korrekt true/false for sandbox-præfixer
+   - Unit: `_check_bridge_health()` — bridge oppe vs nede
+   - Integration: `bash ls /media/projects` → kanal lukket → sandbox-fejl + guidance
+   - Integration: `bash ls /media/projects` → kanal åben → ser indhold
+   - Integration: process restart → `operator_channel_status()` viser lukket
+   - Integration: bro-disconnect midt i åben kanal → kanal lukkes automatisk
+
+## Implementeringsrækkefølge
+
+1. Opret `src/tools/operator_channel.py` i jarvis-code med:
+   - `operator_channel(open=True|False)` — owner-gated, åben/luk
+   - `operator_channel_status()` — read-only for alle
+2. Registrér i `tool_catalog.py`
+3. Tilføj `_operator_channel_open`, `_operator_session_id`, og `_check_bridge_health()` som module-level state i `simple_tools_native.py` (eller tilsvarende)
+4. Skriv `_can_access_via_sandbox()` og opdater `bash`-toollets `execute()` — indsæt check før eksekvering, reroute til operator ved behov
+5. Verificér `owner_only`-decoratoren i `src/permissions.py` — skal matche mod `owner_user_id` i runtime-konteksten
+6. Skriv tests (se punkt 4 ovenfor)
+7. Test: `operator_channel(open=True)` → `bash ls /media/projects` → ser indhold
+8. Test: `operator_channel(open=False)` → `bash ls /media/projects` → sandbox-fejl
+9. Test: `operator_channel_status()` → returnér korrekt status uanset ejerskab
+10. Test: `operator_channel(open=True)` → process restart → `operator_channel_status()` viser lukket
 
 ## Noter
 

@@ -58,6 +58,26 @@ def _flag(name: str, default: bool = False) -> bool:
         return default
 
 
+def _emit_agent_nerve(*, status: str, provider: str, model: str,
+                      tokens_in: int, tokens_out: int, cost_usd: float,
+                      duration_ms: int, tool_calls: int, finish_reason: str,
+                      user_id: str, session_id: str) -> None:
+    """Make the client-owned agent lane visible in Den Intelligente Central.
+    Self-safe: any failure is swallowed (observability must never break a turn)."""
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "agent", "nerve": "agent_step",
+            "status": str(status), "provider": str(provider), "model": str(model),
+            "tokens_in": int(tokens_in), "tokens_out": int(tokens_out),
+            "cost_usd": float(cost_usd), "duration_ms": int(duration_ms),
+            "tool_calls": int(tool_calls), "finish_reason": str(finish_reason),
+            "user_id": str(user_id or ""), "session_id": str(session_id or ""),
+        })
+    except Exception:
+        logger.debug("agent/step nerve emit fejlede", exc_info=True)
+
+
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -341,6 +361,8 @@ async def agent_step(request: Request):
     tools = body.get("tools") or None
     stream = bool(body.get("stream", False))
     context = str(body.get("context") or "identity").lower()
+    session_id = str(body.get("session_id") or "")
+    user_id = str(body.get("user_id") or "").strip()
 
     if not isinstance(client_messages, list) or not client_messages:
         return JSONResponse(status_code=400, content={
@@ -377,7 +399,8 @@ async def agent_step(request: Request):
     if stream:
         return StreamingResponse(
             _stream_step(provider=provider, model=model, auth_profile=auth_profile,
-                         base_url=base_url, chat_messages=chat_messages, tools=tools),
+                         base_url=base_url, chat_messages=chat_messages, tools=tools,
+                         session_id=session_id, user_id=user_id),
             media_type="text/event-stream",
         )
 
@@ -401,6 +424,21 @@ async def agent_step(request: Request):
     cost_usd = float(raw.get("cost_usd") or 0.0)
     finish_reason = str(raw.get("finish_reason") or "")
     status = "ok" if (content or tool_calls) else "empty"
+
+    if _flag("jc_agent_observability"):
+        _emit_agent_nerve(
+            status=status, provider=provider, model=model,
+            tokens_in=tokens_in, tokens_out=tokens_out, cost_usd=cost_usd,
+            duration_ms=_dur_ms, tool_calls=len(tool_calls),
+            finish_reason=finish_reason, user_id=user_id, session_id=session_id)
+        if status == "empty":
+            try:
+                note_empty_completion(
+                    f"jc-agent-{session_id or 'nosess'}", provider=provider, model=model,
+                    rounds=1, tools_executed=0, session_id=session_id, path="agent_step")
+            except Exception:
+                logger.debug("agent/step note_empty_completion fejlede", exc_info=True)
+
     return JSONResponse(content={
         # additive structured envelope (Fase 0 O1)
         "status": status,
@@ -425,7 +463,8 @@ async def agent_step(request: Request):
 
 
 def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
-                 chat_messages: list[dict], tools: list[dict] | None):
+                 chat_messages: list[dict], tools: list[dict] | None,
+                 session_id: str = "", user_id: str = ""):
     """Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau
     openai-compat SSE-iterator (rå messages+tools ind, delta/tool_call/done ud)."""
     from core.services.cheap_provider_runtime_streaming import (
@@ -465,6 +504,21 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                 _cost = float(ev.get("cost_usd") or 0.0)
                 _fr = str(ev.get("finish_reason") or "")
                 _status = "ok" if (_content or collected) else "empty"
+                if _flag("jc_agent_observability"):
+                    _emit_agent_nerve(
+                        status=_status, provider=provider, model=model,
+                        tokens_in=_tin, tokens_out=_tout, cost_usd=_cost,
+                        duration_ms=int((_time.monotonic() - _t0) * 1000),
+                        tool_calls=len(collected), finish_reason=_fr,
+                        user_id=user_id, session_id=session_id)
+                    if _status == "empty":
+                        try:
+                            note_empty_completion(
+                                f"jc-agent-{session_id or 'nosess'}", provider=provider,
+                                model=model, rounds=1, tools_executed=0,
+                                session_id=session_id, path="agent_step_stream")
+                        except Exception:
+                            logger.debug("stream note_empty_completion fejlede", exc_info=True)
                 yield _sse("done", {
                     "status": _status,
                     "tokens_in": _tin,

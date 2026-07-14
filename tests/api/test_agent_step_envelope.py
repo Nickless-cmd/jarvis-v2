@@ -78,3 +78,52 @@ def test_stream_done_has_cost_and_envelope(monkeypatch):
     assert payload["status"] == "ok"
     assert payload["tokens_in"] == 3 and payload["tokens_out"] == 2
     assert payload["finish_reason"] == "stop"
+
+
+def test_observability_off_by_default(monkeypatch):
+    _patch_model(monkeypatch, text="", tool_calls=[])  # empty completion
+    called = {"empty": 0, "nerve": 0}
+    monkeypatch.setattr(al, "note_empty_completion",
+                        lambda *a, **k: called.__setitem__("empty", called["empty"] + 1))
+    monkeypatch.setattr(al, "_emit_agent_nerve",
+                        lambda **k: called.__setitem__("nerve", called["nerve"] + 1))
+    # flag defaults OFF -> no side effects
+    r = client.post("/v1/agent/step",
+                    json={"messages": [{"role": "user", "content": "x"}], "stream": False})
+    assert r.status_code == 200
+    assert called == {"empty": 0, "nerve": 0}
+
+
+def test_observability_on_emits_nerve_and_empty(monkeypatch):
+    # tout=0: an empty-completion fixture should carry zero output tokens,
+    # consistent with the tokens_out==0 assertion below (plan's _patch_model
+    # default is tout=7, which would contradict this assertion if left unset).
+    _patch_model(monkeypatch, text="", tool_calls=[], tout=0)
+    monkeypatch.setattr(al, "_flag",
+                        lambda name, default=False: name == "jc_agent_observability")
+    seen = {}
+    monkeypatch.setattr(al, "note_empty_completion",
+                        lambda run_id, **k: seen.__setitem__("empty", k))
+    nerves = []
+    monkeypatch.setattr(al, "_emit_agent_nerve", lambda **k: nerves.append(k))
+    r = client.post("/v1/agent/step",
+                    json={"messages": [{"role": "user", "content": "x"}],
+                          "stream": False, "session_id": "s1"})
+    assert r.status_code == 200
+    assert seen["empty"]["path"] == "agent_step"
+    assert nerves and nerves[0]["status"] == "empty"
+    assert nerves[0]["tokens_out"] == 0
+
+
+def test_observability_on_nonempty_only_nerve(monkeypatch):
+    _patch_model(monkeypatch, text="svar", tout=4)
+    monkeypatch.setattr(al, "_flag",
+                        lambda name, default=False: name == "jc_agent_observability")
+    empties = []
+    monkeypatch.setattr(al, "note_empty_completion", lambda *a, **k: empties.append(k))
+    nerves = []
+    monkeypatch.setattr(al, "_emit_agent_nerve", lambda **k: nerves.append(k))
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": "x"}], "stream": False})
+    assert empties == []            # non-empty -> no empty_completion
+    assert nerves[0]["status"] == "ok"

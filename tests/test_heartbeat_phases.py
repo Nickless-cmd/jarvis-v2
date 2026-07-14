@@ -94,6 +94,52 @@ def test_act_runs_idle_when_no_priorities():
     assert result["kind"] == "productive_idle"
 
 
+def test_productive_idle_ticks_llm_free_baseline_daemons(monkeypatch):
+    """2026-07-14 incident-fix: raw-signal daemons + event_trigger θ-meter must tick on
+    the IDLE path too, else a long idle / active-chat freezes the inner-life rhythm
+    (somatic et al. silent ~16h in the 2026-07-13 incident)."""
+    import core.services.heartbeat_runtime as hb
+    from core.services import daemon_manager as dm
+    import core.services.somatic_daemon as somatic
+
+    ticked: list[str] = []
+    monkeypatch.setattr(somatic, "raw_signal_mode_enabled", lambda: True)
+    monkeypatch.setattr(dm, "is_enabled", lambda name: True)
+    monkeypatch.setattr(dm, "record_daemon_tick", lambda name, res: None)
+    monkeypatch.setattr(
+        hb, "_daemon_tick_with_deadline",
+        lambda name, fn, **k: (ticked.append(name), {"recorded": True})[1],
+    )
+
+    actions = productive_idle(budget_seconds=30.0)["actions"]
+    assert "idle_daemon:event_trigger_shadow" in actions
+    for d in ("somatic", "surprise", "absence"):
+        assert f"idle_daemon:{d}" in actions
+    assert set(ticked) >= {"event_trigger_shadow", "somatic", "surprise", "absence"}
+
+
+def test_productive_idle_skips_raw_daemons_when_raw_mode_off(monkeypatch):
+    """raw_signal_mode OFF → raw daemons would make LLM calls during idle, so only
+    event_trigger_shadow (always LLM-free) is ticked."""
+    import core.services.heartbeat_runtime as hb
+    from core.services import daemon_manager as dm
+    import core.services.somatic_daemon as somatic
+
+    ticked: list[str] = []
+    monkeypatch.setattr(somatic, "raw_signal_mode_enabled", lambda: False)
+    monkeypatch.setattr(dm, "is_enabled", lambda name: True)
+    monkeypatch.setattr(dm, "record_daemon_tick", lambda name, res: None)
+    monkeypatch.setattr(
+        hb, "_daemon_tick_with_deadline",
+        lambda name, fn, **k: (ticked.append(name), {"recorded": True})[1],
+    )
+
+    actions = productive_idle(budget_seconds=30.0)["actions"]
+    assert "idle_daemon:event_trigger_shadow" in actions
+    assert "idle_daemon:somatic" not in actions
+    assert ticked == ["event_trigger_shadow"]
+
+
 def test_productive_idle_completes_within_budget():
     result = productive_idle(budget_seconds=2.0)
     assert "actions" in result

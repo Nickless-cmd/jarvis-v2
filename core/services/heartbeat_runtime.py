@@ -2112,13 +2112,12 @@ def _run_heartbeat_tick_locked(
     except Exception:
         pass
     # C5 event-trigger SHADOW-meter (θ-kalibrering). Rå, NON-LLM signal-delta-tjek.
-    # Flyttet 2026-07-14 hertil fra _build_influence_trace (som var aktivitets-gated →
-    # tikkede kun når Jarvis var aktiv, tavs hele natten → kun 1 sample på 24t). Nu i den
-    # UBETINGEDE daemon-sektion: % 6 ≈ 3 min (30s-scheduler) → 500-ring dækker ~25t =
-    # ét fuldt 24t θ-vindue uanset idle. Cheap + deadline-bound → kan aldrig fryse heartbeat.
+    # Denne (priorities-)sti dækker aktive perioder; idle-perioder dækkes af
+    # productive_idle. Meteret selv-throttler internt til ~3 min (_CADENCE_SECONDS),
+    # så det er sikkert at kalde fra begge stier hver tick. Cheap + deadline-bound.
     try:
         from core.services import daemon_manager as _dm_et
-        if _HEARTBEAT_TICK_COUNTER % 6 == 0 and _dm_et.is_enabled("event_trigger_shadow"):
+        if _dm_et.is_enabled("event_trigger_shadow"):
             from core.services.event_trigger_shadow import tick_event_trigger_shadow
             _et_result = _daemon_tick_with_deadline(
                 "event_trigger_shadow", tick_event_trigger_shadow, deadline_seconds=10.0,

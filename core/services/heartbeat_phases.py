@@ -484,6 +484,52 @@ def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) 
             except Exception:
                 pass
 
+    # 7d. LLM-free baseline INNER-LIFE daemons (2026-07-14 incident-fix). The raw-
+    # signal daemons + the event-trigger θ-meter tick ONLY via run_heartbeat_tick,
+    # which act_phase reaches only on priorities+non-active. A long idle (no
+    # priorities) or an active-chat window therefore FROZE the inner-life rhythm —
+    # incident 2026-07-13: somatic/surprise/absence + the θ-meter silent for ~16h.
+    # These are LLM-free (raw_signal_mode) or non-LLM (event_trigger_shadow) and
+    # self-cadence-gated, so ticking them every idle poll is cheap and no-ops when
+    # not due. Same "orphaned baseline rhythms" rescue as section 7 — matches the
+    # event-driven design: raw signals tick always+cheap during idle, LLM fires only
+    # on delta. event_trigger_shadow is always safe; the raw daemons only when
+    # raw_signal_mode is ON (else they'd make LLM calls during idle).
+    if _budget_left():
+        try:
+            from core.services import daemon_manager as _dm
+            from core.services import heartbeat_runtime as _hb
+            _idle_daemons = [
+                ("event_trigger_shadow", "core.services.event_trigger_shadow",
+                 "tick_event_trigger_shadow"),
+            ]
+            try:
+                from core.services.somatic_daemon import raw_signal_mode_enabled as _raw_on
+                if _raw_on():
+                    _idle_daemons += [
+                        ("somatic", "core.services.somatic_daemon", "tick_somatic_daemon"),
+                        ("surprise", "core.services.surprise_daemon", "tick_surprise_daemon"),
+                        ("absence", "core.services.absence_daemon", "tick_absence_daemon"),
+                    ]
+            except Exception:
+                pass
+            for _dn, _dmod, _dfn in _idle_daemons:
+                if not _budget_left():
+                    break
+                try:
+                    if not _dm.is_enabled(_dn):
+                        continue
+                    _m = __import__(_dmod, fromlist=[_dfn])
+                    _res = _hb._daemon_tick_with_deadline(
+                        _dn, getattr(_m, _dfn), deadline_seconds=8.0,
+                    )
+                    _dm.record_daemon_tick(_dn, _res or {})
+                    actions.append(f"idle_daemon:{_dn}")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     # 8. Skill chain proposals (C3) — only if goals exist and budget allows
     if _budget_left():
         try:

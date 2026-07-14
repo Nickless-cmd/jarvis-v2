@@ -35,6 +35,16 @@ from typing import Any
 _DURABLE_KEY = "event_trigger_shadow_log"
 _DURABLE_CAP = 500
 
+# Selv-cadence for HEARTBEAT-stien (signals=None). Ringen holder ~500 samples; ved
+# ~3-min spacing dækker det et fuldt ~25t θ-kalibrerings-vindue. Meteret kaldes fra
+# TO steder — den ubetingede daemon-sektion (priorities-sti) OG productive_idle
+# (idle-sti) — så inderlivet får θ-data i ALLE tilstande. Selv-throttlen sikrer at
+# uanset hvor mange stier kalder, sampler vi højst hvert _CADENCE_SECONDS. Ved
+# injicerede signals (test/eksplicit kalder) throttler vi ALDRIG. Nulstilles til None
+# ved daemon-restart (daemon_manager reset_var) → fyrer straks efter genstart.
+_CADENCE_SECONDS = 180.0
+_last_tick_at: float | None = None
+
 # Lane hvis budget/breaker-værn beskytter den autonome dispatch. Vi observerer
 # hvad de VILLE sige for netop denne lane (rører ikke deres tilstand — kun læse).
 _LANE = "autonomous_council"
@@ -163,6 +173,20 @@ def tick_event_trigger_shadow(
     surfaces. En fejl i signal-kilden → sikker skip (registrerer intet).
 
     Returnerer en lille status-dict (til daemon-record), aldrig en exception."""
+    # Selv-cadence-gate (kun heartbeat-stien, signals=None). Injicerede signals
+    # (test/eksplicit) throttles ALDRIG. Holder θ-samplingen på ~3-min uanset hvor
+    # mange heartbeat-stier (priorities + idle) kalder meteret.
+    global _last_tick_at
+    if signals is None:
+        try:
+            import time as _time
+            _wall = _time.time()
+            if _last_tick_at is not None and (_wall - _last_tick_at) < _CADENCE_SECONDS:
+                return {"recorded": False, "skipped": "cadence", "would_dispatch": False}
+            _last_tick_at = _wall
+        except Exception:
+            pass
+
     mode = _mode()
 
     # --- Saml signaler. En signal-kilde-fejl → sikker skip, registrér INTET. ---

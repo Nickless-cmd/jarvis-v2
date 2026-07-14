@@ -989,7 +989,7 @@ Generated from source. 6043/12480 functions/methods documented (48%). The list b
 - `core/services/habits_pipeline.py` :: `reject_suggestion` (L350)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L451)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2188)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2187)
 - `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L317)
 - `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1177)
 - `core/services/heartbeat_runtime.py` :: `start_heartbeat_scheduler` (L245)

@@ -67,14 +67,14 @@ class RuntimeSettings:
     relevance_backend_primary: str = "opencode"
     relevance_opencode_model: str = "minimax-m2.5-free"
     relevance_opencode_timeout: int = 6
-    relevance_ollamafreeapi_model: str = "gpt-oss:20b"
+    relevance_ollamafreeapi_model: str = "deepseek-r1"
     relevance_ollamafreeapi_timeout: int = 6
     # Memory scoring backend (associative recall — score 15 candidate memories
     # against current context). Public-safe: only sends 200-char user-message
     # snippet + 80-char memory narrative snippets, no identity context.
     # "ollamafreeapi" = cloud (~0.7-1.5s typical), "ollama" = local LXC fallback.
     memory_scoring_primary: str = "ollamafreeapi"
-    memory_scoring_ollamafreeapi_model: str = "gpt-oss:20b"
+    memory_scoring_ollamafreeapi_model: str = "deepseek-r1"
     memory_scoring_ollamafreeapi_timeout: int = 2
     memory_scoring_ollama_timeout: int = 3
     # Generative autonomy (Spor-1: longing-toward-Bjorn). When False, the

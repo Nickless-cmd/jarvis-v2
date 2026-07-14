@@ -74,3 +74,19 @@ def test_opencode_free_models_current_not_deprecated():
     assert "nemotron-3-super-free" not in m   # udfaset
     assert "minimax-m2.5-free" not in m       # udfaset
     assert len(m) >= 5
+
+
+def test_github_models_and_ovhcloud_configured():
+    """14. jul: GitHub Models (gratis GPT-5/o4-mini/DeepSeek-R1 via Copilot-token) +
+    OVHcloud (anon, auth_kind=none) tilføjet til poolen."""
+    from core.services.cheap_provider_runtime_adapters import (
+        CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_auth_ready)
+    gh = CHEAP_PROVIDER_DEFAULTS["github-models"]
+    assert gh["protocol"] == "openai-chat" and gh["base_url"].startswith("https://models.github.ai")
+    assert "openai/gpt-5-mini" in gh["static_models"]
+    assert gh["daily_limit"] == 50           # rate-limitet → ikke arbejdshest
+    ov = CHEAP_PROVIDER_DEFAULTS["ovhcloud"]
+    assert ov["auth_kind"] == "none"
+    # auth_kind=none → altid ready uden nøgle
+    assert provider_auth_ready(provider="ovhcloud", auth_profile="default") is True
+    assert is_routable_provider("github-models") and is_routable_provider("ovhcloud")

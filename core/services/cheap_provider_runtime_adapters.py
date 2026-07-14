@@ -270,6 +270,36 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "daily_limit": 200,
         "static_models": ["novita/tencent/hy3"],
     },
+    # GitHub Models (14. jul research): 37 GRATIS modeller inkl. rigtige GPT-5/o3/o4-mini/
+    # DeepSeek-R1. OpenAI-compat, tool_calls virker. Auth = github-copilot OAuth-token
+    # (gho_, synket til container-auth). Rate: ~10 RPM / 50 RPD → premium-lejlighedsvis,
+    # lav daily så proaktiv rotation flytter væk før udmattelse. Prioritet moderat-høj
+    # (god kvalitet) men daily_limit=50 forhindrer den bliver arbejdshest.
+    "github-models": {
+        "label": "GitHub Models",
+        "priority": 25,
+        "base_url": "https://models.github.ai/inference",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "",
+        "rpm_limit": 10,
+        "daily_limit": 50,
+        "static_models": ["openai/gpt-5-mini", "openai/gpt-4o", "openai/o4-mini",
+                          "deepseek/deepseek-r1", "meta/llama-3.3-70b-instruct"],
+    },
+    # OVHcloud AI Endpoints (14. jul research): EU/GDPR, ANONYM (ingen key, auth_kind=none).
+    # 2 RPM anon → backup-lane. Model-navne m. UNDERSCORES. openai-compat.
+    "ovhcloud": {
+        "label": "OVHcloud AI Endpoints",
+        "priority": 88,
+        "base_url": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1",
+        "auth_kind": "none",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 2,
+        "daily_limit": 100,
+        "static_models": ["Meta-Llama-3_3-70B-Instruct", "Qwen3.5-9B"],
+    },
 }
 
 
@@ -319,6 +349,9 @@ def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
     if normalized_provider not in CHEAP_PROVIDER_DEFAULTS:
         return False
     if normalized_provider == "ollamafreeapi":
+        return True
+    # auth_kind=none (fx OVHcloud anon): ingen nøgle nødvendig — altid "ready".
+    if str((CHEAP_PROVIDER_DEFAULTS.get(normalized_provider) or {}).get("auth_kind")) == "none":
         return True
     if normalized_provider == "arko":
         # Arko's credentials live in runtime.json, not in auth profiles.

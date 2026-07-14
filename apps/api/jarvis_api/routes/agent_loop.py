@@ -78,6 +78,22 @@ def _emit_agent_nerve(*, status: str, provider: str, model: str,
         logger.debug("agent/step nerve emit fejlede", exc_info=True)
 
 
+def _resolve_workspace_name(user_id: str) -> str:
+    """Map an authenticated caller's user_id to their workspace name. Empty user_id
+    (owner) or unknown user -> 'default' (today's behavior, Bjørn's workspace)."""
+    uid = str(user_id or "").strip()
+    if not uid:
+        return "default"
+    try:
+        from core.identity.users import find_user_by_discord_id
+        user = find_user_by_discord_id(uid)
+        if user and str(getattr(user, "workspace", "") or "").strip():
+            return str(user.workspace).strip()
+    except Exception:
+        logger.debug("agent/step workspace-resolve fejlede", exc_info=True)
+    return "default"
+
+
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -94,12 +110,12 @@ _SYSTEM_PROMPT = (
 _IDENTITY_BUDGET = 1600  # tegn pr. workspace-fil (nok til stemme, billigt at cache)
 
 
-def _identity_context() -> str:
-    """Kompakt identitets-lag (SOUL + IDENTITY + USER) fra default-workspace — nok til at
-    Jarvis har sin STEMME og KENDER Bjørn, uden den tunge memory-assembly. Self-safe."""
+def _identity_context(name: str = "default") -> str:
+    """Kompakt identitets-lag (SOUL + IDENTITY + USER) fra `name`-workspace — nok til at
+    Jarvis har sin STEMME og KENDER brugeren, uden den tunge memory-assembly. Self-safe."""
     try:
         from core.identity.workspace_bootstrap import ensure_default_workspace
-        ws = ensure_default_workspace(name="default")
+        ws = ensure_default_workspace(name=name)
     except Exception:
         return ""
     parts: list[str] = []
@@ -122,14 +138,15 @@ _FULL_CTX_CACHE: dict[str, tuple[str, float]] = {}
 _FULL_CTX_TTL = 90.0  # s — genbrug inden for en tur (flere tool-runder), undgå re-build
 
 
-def _full_context(user_message: str) -> str:
+def _full_context(user_message: str, name: str = "default") -> str:
     """FULD Jarvis-kontekst (memory-recall + cognitive_state + indre liv + awareness) til
     'full'-tier client loop — samme assembly som den synlige lane (PromptAssembly.text),
-    men tools eksekveres stadig LOKALT af klienten. Tung → cache pr. besked-hash i kort TTL
-    så en turs flere tool-runder ikke genbygger den. Self-safe → '' (falder til identity)."""
+    men tools eksekveres stadig LOKALT af klienten. Tung → cache pr. besked-hash+workspace i
+    kort TTL så en turs flere tool-runder ikke genbygger den (nøglen inkluderer `name` så
+    caches for forskellige workspaces aldrig blander sig). Self-safe → '' (falder til identity)."""
     import hashlib
     import time as _t
-    key = hashlib.sha256((user_message or "").encode("utf-8")).hexdigest()[:16]
+    key = hashlib.sha256((f"{name}\x00{user_message or ''}").encode("utf-8")).hexdigest()[:16]
     now = _t.monotonic()
     hit = _FULL_CTX_CACHE.get(key)
     if hit and hit[1] > now:
@@ -139,7 +156,7 @@ def _full_context(user_message: str) -> str:
         from core.services.prompt_contract import build_visible_chat_prompt_assembly
         provider, model = _resolve_target()
         asm = build_visible_chat_prompt_assembly(
-            provider=provider, model=model, user_message=user_message or "", name="default")
+            provider=provider, model=model, user_message=user_message or "", name=name)
         text = str(getattr(asm, "text", "") or "")
     except Exception:
         logger.debug("agent/step: full-context build fejlede", exc_info=True)
@@ -152,17 +169,18 @@ def _full_context(user_message: str) -> str:
     return text
 
 
-def _build_system_prompt(context: str, user_message: str = "") -> str:
-    """context: 'none' (ren coding) | 'identity' (stemme + kender Bjørn, default) |
-    'full' (hele Jarvis: memory + cognitive_state + indre liv — tools stadig LOKALT)."""
+def _build_system_prompt(context: str, user_message: str = "", name: str = "default") -> str:
+    """context: 'none' (ren coding) | 'identity' (stemme + kender brugeren, default) |
+    'full' (hele Jarvis: memory + cognitive_state + indre liv — tools stadig LOKALT).
+    `name`: caller-workspace (jc_agent_user_scoping-gated, default 'default')."""
     if context == "none":
         return _SYSTEM_PROMPT
     if context == "full":
-        full = _full_context(user_message)
+        full = _full_context(user_message, name)
         if full:
             return _SYSTEM_PROMPT + "\n\n" + full
         # full-assembly fejlede → degradér til identity (crash aldrig)
-    ident = _identity_context()
+    ident = _identity_context(name)
     return _SYSTEM_PROMPT + ident if ident else _SYSTEM_PROMPT
 
 
@@ -391,9 +409,10 @@ async def agent_step(request: Request):
         if isinstance(_m, dict) and _m.get("role") == "user":
             _last_user = str(_m.get("content") or "")
             break
+    _ws_name = _resolve_workspace_name(user_id) if _flag("jc_agent_user_scoping") else "default"
     # System-prompt (tiered context) foran + klientens samtale (inkl. tool-resultater).
     chat_messages: list[dict[str, Any]] = [
-        {"role": "system", "content": _build_system_prompt(context, _last_user)}]
+        {"role": "system", "content": _build_system_prompt(context, _last_user, _ws_name)}]
     chat_messages.extend(client_messages)
 
     if stream:

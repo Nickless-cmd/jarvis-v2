@@ -144,3 +144,44 @@ def test_adapter_returns_finish_reason(monkeypatch):
         provider="deepseek", model="deepseek-v4-flash", auth_profile="deepseek",
         base_url="http://x", messages=[{"role": "user", "content": "hi"}])
     assert out["finish_reason"] == "length"
+
+
+def test_scoping_off_uses_default_workspace(monkeypatch):
+    _patch_model(monkeypatch)
+    seen = {}
+    monkeypatch.setattr(al, "_identity_context", lambda name="default": seen.__setitem__("name", name) or "")
+    # flag OFF -> name resolves to "default" regardless of body user_id
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": "x"}],
+                      "stream": False, "user_id": "member_x", "context": "identity"})
+    assert seen["name"] == "default"
+
+
+def test_scoping_on_resolves_caller_workspace(monkeypatch):
+    _patch_model(monkeypatch)
+    monkeypatch.setattr(al, "_flag",
+                        lambda name, default=False: name == "jc_agent_user_scoping")
+    monkeypatch.setattr(al, "_resolve_workspace_name",
+                        lambda user_id: "ws_member_x" if user_id == "member_x" else "default")
+    seen = {}
+    monkeypatch.setattr(al, "_identity_context", lambda name="default": seen.__setitem__("name", name) or "")
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": "x"}],
+                      "stream": False, "user_id": "member_x", "context": "identity"})
+    assert seen["name"] == "ws_member_x"
+
+
+def test_full_context_cache_key_includes_workspace(monkeypatch):
+    # same user_message, different workspace -> distinct cache entries (no bleed)
+    calls = []
+    def _fake_assembly(*, provider, model, user_message, name="default"):
+        calls.append(name)
+        class _A: text = f"CTX::{name}"
+        return _A()
+    monkeypatch.setattr("core.services.prompt_contract.build_visible_chat_prompt_assembly",
+                        _fake_assembly)
+    al._FULL_CTX_CACHE.clear()
+    a = al._full_context("same message", name="ws_a")
+    b = al._full_context("same message", name="ws_b")
+    assert a == "CTX::ws_a" and b == "CTX::ws_b"
+    assert calls == ["ws_a", "ws_b"]  # both built, no cross-workspace cache hit

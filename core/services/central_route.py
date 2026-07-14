@@ -24,12 +24,19 @@ def _rank_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tupl
     from core.services.cheap_provider_runtime_selection import (
         _configured_cheap_candidates, _is_public_proxy)
     from core.services.central_route_headroom import headroom_ok, headroom_weight
+    from core.services.cheap_provider_runtime_adapters import CHEAP_PROVIDER_DEFAULTS
     kind = str((task or {}).get("kind") or "default") if isinstance(task, dict) else "default"
     cands = _configured_cheap_candidates(include_public_proxy=(kind != "important"))
     out: list[tuple[float, str, str]] = []
     for c in cands:
         p, m = str(c.get("provider") or ""), str(c.get("model") or "")
         if not p or not m or p in exclude or not c.get("credentials_ready"):
+            continue
+        # Agent-lanen kalder /v1/agent/step som KUN kan openai-chat. Route aldrig til
+        # inkompatible providers (gemini-native/codex/cloudflare/arko/ollamafreeapi) —
+        # de ville trigge deepseek-fallback (BETALT). De hører til daemon-lanen hvor
+        # balanceren håndterer deres protokoller.
+        if lane == "agent" and (CHEAP_PROVIDER_DEFAULTS.get(p) or {}).get("protocol") != "openai-chat":
             continue
         if kind == "important" and _is_public_proxy(p):
             continue                      # vigtige tasks bruger ikke public proxies

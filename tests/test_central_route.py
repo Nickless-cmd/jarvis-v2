@@ -63,3 +63,22 @@ def test_rank_honors_task_kind(monkeypatch):
     # default → priority-orden (deepseek priority 5 vinder)
     df = cr._rank_candidates("cheap", {"kind": "default"}, frozenset())
     assert df[0][0] == "deepseek"
+
+
+def test_agent_lane_excludes_non_openai_chat(monkeypatch):
+    """Agent-lanen må kun route til openai-chat (agent-step-kompatible). gemini/codex
+    m.fl. ekskluderes så de ikke trigger deepseek-fallback. Daemon-lanen beholder dem."""
+    import core.services.central_route as cr
+    fake = [
+        {"provider": "nvidia-nim", "model": "m1", "priority": 10, "credentials_ready": True},
+        {"provider": "gemini", "model": "g1", "priority": 5, "credentials_ready": True},  # gemini-native
+    ]
+    monkeypatch.setattr("core.services.cheap_provider_runtime_selection._configured_cheap_candidates",
+                        lambda include_public_proxy=True: fake)
+    monkeypatch.setattr("core.services.central_route_headroom.headroom_ok", lambda p: True)
+    monkeypatch.setattr("core.services.central_route_headroom.headroom_weight", lambda p: 1.0)
+    monkeypatch.setattr("core.services.cheap_provider_runtime_selection._is_public_proxy", lambda p: False)
+    agent = cr._rank_candidates("agent", {"kind": "coding"}, frozenset())
+    assert [p for p, _ in agent] == ["nvidia-nim"]          # gemini ekskluderet på agent-lane
+    cheap = cr._rank_candidates("cheap", {"kind": "coding"}, frozenset())
+    assert "gemini" in [p for p, _ in cheap]                # men beholdt på cheap-lane

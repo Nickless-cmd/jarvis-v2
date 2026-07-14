@@ -570,12 +570,27 @@ async def agent_step(request: Request):
          "content": _build_system_prompt(context, _last_user, _ws_name, env=env)}]
     chat_messages.extend(client_messages)
 
+    # Fase 4 Task 4 (flag-gated): cache-prefix signature over the STABLE HEAD only
+    # ([system-without-env] + tools) — computed with env=None regardless of the
+    # env flag, so a per-turn env dict (Task 2's volatile tail) never busts the
+    # signature, and neither does a growing conversation (never fed in here).
+    _prefix_sha, _prefix_len = "", 0
+    if settings.agent_step_cache_contract_enabled:
+        try:
+            from core.services.cache_telemetry import prefix_signature
+            _head = _build_system_prompt(context, _last_user, _ws_name, env=None)
+            _prefix_sha, _prefix_len = prefix_signature(_head, tools)
+        except Exception:
+            logger.debug("agent/step prefix_signature fejlede", exc_info=True)
+
     if stream:
         return StreamingResponse(
             _stream_step(provider=provider, model=model, auth_profile=auth_profile,
                          base_url=base_url, chat_messages=chat_messages, tools=tools,
                          session_id=session_id, user_id=user_id, extra_body=extra_body,
-                         reasoning_replay_enabled=settings.agent_step_reasoning_replay_enabled),
+                         reasoning_replay_enabled=settings.agent_step_reasoning_replay_enabled,
+                         cache_contract_enabled=settings.agent_step_cache_contract_enabled,
+                         prefix_sha=_prefix_sha, prefix_len=_prefix_len),
             media_type="text/event-stream",
         )
 
@@ -621,6 +636,29 @@ async def agent_step(request: Request):
             except Exception:
                 logger.debug("agent/step note_empty_completion fejlede", exc_info=True)
 
+    usage_body: dict[str, Any] = {
+        "prompt_tokens": tokens_in,
+        "completion_tokens": tokens_out,
+        "cost_usd": cost_usd,
+    }
+    # Fase 4 Task 4 (flag-gated): record hit/miss telemetry against the STABLE
+    # HEAD signature computed above, and surface the tokens in usage. Off ->
+    # no telemetry call, no new usage keys, byte-identical to today.
+    if settings.agent_step_cache_contract_enabled:
+        _cache_hit = int(raw.get("cache_hit_tokens") or 0)
+        _cache_miss = int(raw.get("cache_miss_tokens") or 0)
+        usage_body["cache_hit_tokens"] = _cache_hit
+        usage_body["cache_miss_tokens"] = _cache_miss
+        try:
+            from core.services.cache_telemetry import record_visible_cache
+            record_visible_cache(
+                lane="jc-agent-step", provider=provider, model=model,
+                prefix_sha=_prefix_sha, prefix_len=_prefix_len,
+                cache_hit=_cache_hit, cache_miss=_cache_miss,
+            )
+        except Exception:
+            logger.debug("agent/step record_visible_cache fejlede", exc_info=True)
+
     response_body: dict[str, Any] = {
         # additive structured envelope (Fase 0 O1)
         "status": status,
@@ -636,11 +674,7 @@ async def agent_step(request: Request):
         "done": not tool_calls,
         "provider": provider,
         "model": model,
-        "usage": {
-            "prompt_tokens": tokens_in,
-            "completion_tokens": tokens_out,
-            "cost_usd": cost_usd,
-        },
+        "usage": usage_body,
     }
     # Fase 4 Task 1 (flag-gated): off -> key absent, byte-identical to today.
     if settings.agent_step_reasoning_replay_enabled:
@@ -651,7 +685,9 @@ async def agent_step(request: Request):
 def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                  chat_messages: list[dict], tools: list[dict] | None,
                  session_id: str = "", user_id: str = "", extra_body: dict | None = None,
-                 reasoning_replay_enabled: bool = False):
+                 reasoning_replay_enabled: bool = False,
+                 cache_contract_enabled: bool = False,
+                 prefix_sha: str = "", prefix_len: int = 0):
     """Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau
     openai-compat SSE-iterator (rå messages+tools ind, delta/tool_call/done ud)."""
     from core.services.cheap_provider_runtime_streaming import (
@@ -713,6 +749,23 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                                 session_id=session_id, path="agent_step_stream")
                         except Exception:
                             logger.debug("stream note_empty_completion fejlede", exc_info=True)
+                _usage_body: dict[str, Any] = {"prompt_tokens": _tin, "completion_tokens": _tout}
+                # Fase 4 Task 4 (flag-gated): off -> no telemetry call, no new usage keys.
+                if cache_contract_enabled:
+                    _cache_hit = int(ev.get("cache_hit_tokens") or 0)
+                    _cache_miss = int(ev.get("cache_miss_tokens") or 0)
+                    _usage_body["cache_hit_tokens"] = _cache_hit
+                    _usage_body["cache_miss_tokens"] = _cache_miss
+                    try:
+                        from core.services.cache_telemetry import record_visible_cache
+                        record_visible_cache(
+                            lane="jc-agent-step", provider=provider, model=model,
+                            prefix_sha=prefix_sha, prefix_len=prefix_len,
+                            cache_hit=_cache_hit, cache_miss=_cache_miss,
+                        )
+                    except Exception:
+                        logger.debug("agent/step stream record_visible_cache fejlede",
+                                    exc_info=True)
                 _done_body: dict[str, Any] = {
                     "status": _status,
                     "tokens_in": _tin,
@@ -724,7 +777,7 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                     # back-compat
                     "content": _content,
                     "done": not collected,
-                    "usage": {"prompt_tokens": _tin, "completion_tokens": _tout},
+                    "usage": _usage_body,
                 }
                 # Fase 4 Task 1 (flag-gated): off -> key absent, byte-identical to today.
                 if reasoning_replay_enabled:

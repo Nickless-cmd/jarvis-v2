@@ -248,3 +248,107 @@ def test_env_block_key_order_stable():
     b = render_env_block({"os": "linux", "cwd": "/x", "git_branch": "main"})
     c = render_env_block({"cwd": "/x", "git_branch": "main", "os": "linux"})
     assert a == b == c and a != ""
+
+
+# ── Task 4: prompt-caching contract — stable prefix + telemetry ────────────
+
+def test_prefix_signature_stable_across_steps(monkeypatch):
+    monkeypatch.setattr(al, "_resolve_target", lambda: ("deepseek", "deepseek-v4-flash"))
+    monkeypatch.setattr(al, "_settings",
+                        lambda: _fake_settings(agent_step_cache_contract_enabled=True))
+
+    def _fake_chat(**kw):
+        return {"text": "ok", "tool_calls": [], "input_tokens": 1, "output_tokens": 1,
+                "cost_usd": 0.0, "finish_reason": "stop",
+                "cache_hit_tokens": 10, "cache_miss_tokens": 5}
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_adapters._execute_openai_compatible_chat",
+        _fake_chat)
+    seen_shas = []
+    def _fake_record(**kw):
+        seen_shas.append(kw.get("prefix_sha"))
+    monkeypatch.setattr("core.services.cache_telemetry.record_visible_cache", _fake_record)
+
+    # SAME last user message, but the second call has extra prior turns
+    # (a growing conversation) — the recorded prefix signature must not move.
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": "hej"}], "stream": False})
+    client.post("/v1/agent/step",
+                json={"messages": [
+                    {"role": "user", "content": "turn 1"},
+                    {"role": "assistant", "content": "svar 1"},
+                    {"role": "user", "content": "hej"},
+                ], "stream": False})
+    assert len(seen_shas) == 2
+    assert seen_shas[0] == seen_shas[1]
+    assert seen_shas[0]  # non-empty
+
+
+def test_env_tail_does_not_bust_prefix(monkeypatch):
+    monkeypatch.setattr(al, "_resolve_target", lambda: ("deepseek", "deepseek-v4-flash"))
+    monkeypatch.setattr(al, "_settings",
+                        lambda: _fake_settings(agent_step_cache_contract_enabled=True,
+                                              agent_step_env_block_enabled=True))
+
+    def _fake_chat(**kw):
+        return {"text": "ok", "tool_calls": [], "input_tokens": 1, "output_tokens": 1,
+                "cost_usd": 0.0, "finish_reason": "stop",
+                "cache_hit_tokens": 1, "cache_miss_tokens": 1}
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_adapters._execute_openai_compatible_chat",
+        _fake_chat)
+    seen_shas = []
+    def _fake_record(**kw):
+        seen_shas.append(kw.get("prefix_sha"))
+    monkeypatch.setattr("core.services.cache_telemetry.record_visible_cache", _fake_record)
+
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": "hej"}], "stream": False,
+                      "env": {"git_branch": "main"}})
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": "hej"}], "stream": False,
+                      "env": {"git_branch": "some-other-branch-entirely"}})
+    assert len(seen_shas) == 2
+    assert seen_shas[0] == seen_shas[1]
+
+
+def test_cache_tokens_in_usage(monkeypatch):
+    monkeypatch.setattr(al, "_resolve_target", lambda: ("deepseek", "deepseek-v4-flash"))
+    monkeypatch.setattr(al, "_settings",
+                        lambda: _fake_settings(agent_step_cache_contract_enabled=True))
+
+    def _fake_chat(**kw):
+        return {"text": "ok", "tool_calls": [], "input_tokens": 50, "output_tokens": 5,
+                "cost_usd": 0.0, "finish_reason": "stop",
+                "cache_hit_tokens": 100, "cache_miss_tokens": 20}
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_adapters._execute_openai_compatible_chat",
+        _fake_chat)
+
+    r = client.post("/v1/agent/step",
+                    json={"messages": [{"role": "user", "content": "hej"}], "stream": False})
+    usage = r.json()["usage"]
+    assert usage["cache_hit_tokens"] == 100
+    assert usage["cache_miss_tokens"] == 20
+
+
+def test_cache_contract_off_no_new_usage_keys(monkeypatch):
+    monkeypatch.setattr(al, "_resolve_target", lambda: ("deepseek", "deepseek-v4-flash"))
+    # flag OFF (default)
+
+    def _fake_chat(**kw):
+        return {"text": "ok", "tool_calls": [], "input_tokens": 50, "output_tokens": 5,
+                "cost_usd": 0.0, "finish_reason": "stop",
+                "cache_hit_tokens": 100, "cache_miss_tokens": 20}
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_adapters._execute_openai_compatible_chat",
+        _fake_chat)
+    calls = []
+    monkeypatch.setattr("core.services.cache_telemetry.record_visible_cache",
+                        lambda **k: calls.append(k))
+
+    r = client.post("/v1/agent/step",
+                    json={"messages": [{"role": "user", "content": "hej"}], "stream": False})
+    usage = r.json()["usage"]
+    assert "cache_hit_tokens" not in usage
+    assert calls == []

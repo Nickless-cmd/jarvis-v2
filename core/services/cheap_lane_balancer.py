@@ -774,6 +774,40 @@ def build_slot_pool() -> list[BalancerSlot]:
             is_public_proxy=provider in _PUBLIC_PROXIES,
         )
         slots.append(slot)
+
+    # static_models-injektion (2026-07-14): providers hvis modeller KUN lever i
+    # CHEAP_PROVIDER_DEFAULTS.static_models (cerebras/aihubmix/requesty/cline) fik
+    # ellers aldrig en slot her — så inderlivet (daemon_llm) kørte på et smallere
+    # sæt end agent-lanen. Mirror selection-stien så HELE huset har samme pool.
+    from core.services.cheap_provider_runtime_adapters import (
+        CHEAP_PROVIDER_DEFAULTS, is_routable_provider)
+    seen = {s.slot_id for s in slots}
+    prov_profiles: dict[str, str] = {}
+    try:
+        data = json.loads(_provider_router_path().read_text(encoding="utf-8"))
+        for pe in data.get("providers", []):
+            prov_profiles[str(pe.get("provider") or "")] = str(pe.get("auth_profile") or "")
+    except Exception:
+        pass
+    for provider, cfg in CHEAP_PROVIDER_DEFAULTS.items():
+        static_models = cfg.get("static_models") or []
+        if (not static_models or provider in _EXCLUDED_PROVIDERS
+                or not is_routable_provider(provider)):
+            continue
+        auth_profile = prov_profiles.get(provider) or "default"
+        if not _credentials_ready(provider, auth_profile):
+            continue
+        for model in static_models:
+            sid = f"{provider}::{model}"
+            if sid in seen:
+                continue
+            seen.add(sid)
+            slots.append(BalancerSlot(
+                provider=provider, model=str(model), auth_profile=auth_profile,
+                base_url=str(cfg.get("base_url") or ""),
+                rpm_limit=cfg.get("rpm_limit"), daily_limit=cfg.get("daily_limit"),
+                is_public_proxy=provider in _PUBLIC_PROXIES,
+            ))
     return slots
 
 

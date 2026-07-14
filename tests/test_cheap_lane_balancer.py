@@ -740,3 +740,16 @@ def test_balancer_events_observe_to_central(monkeypatch):
                              {"slot_id": "groq::x", "error_kind": "rate-limited"})
     assert seen and seen[0][0] == "provider_health"
     assert seen[0][1]["error_kind"] == "rate-limited"
+
+
+def test_build_slot_pool_includes_static_models_providers(monkeypatch):
+    """Fund 14. jul: inderlivet (balancer) manglede static_models-only providers
+    (cerebras/aihubmix/requesty/cline). De injiceres nu → hele huset samme pool."""
+    import core.services.cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_router_enabled_models", lambda: [])
+    monkeypatch.setattr(clb, "_credentials_ready", lambda p, ap: True)
+    monkeypatch.setattr(clb, "_provider_metadata", lambda p: {})
+    provs = {s.provider for s in clb.build_slot_pool()}
+    assert "cerebras" in provs and "aihubmix" in provs
+    assert "deepseek" not in provs          # routable=False → ude
+    assert "openai-codex" not in provs      # excluded

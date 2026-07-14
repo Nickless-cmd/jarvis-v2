@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_runs_cognitive.py`
+_Per-turn cognitive/candidate tracking-pipeline for visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_track_step_failed` | `()` | En tracker i _track_runtime_candidates fejlede. | [src](../../../core/services/visible_runs_cognitive.py#L25) |
+| function | `_track_runtime_candidates` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_cognitive.py#L51) |
+
+## `core/services/visible_runs_error_messaging.py`
+_User-facing error messages for visible runs (Jarvis voice)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `friendly_provider_error_message` | `(exc)` | Return a Jarvis-voice Danish message for a visible-model exception. | [src](../../../core/services/visible_runs_error_messaging.py#L15) |
+
 ## `core/services/visible_runs_memory.py`
 _Memory/continuity post-processing for visible runs._
 

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12544 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12558 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -42,13 +42,13 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12544 functions/
 - [`core.services.13`](core.services.13.md) — `living_heartbeat_cycle` … `model_context`
 - [`core.services.14`](core.services.14.md) — `model_trust` … `perceptual_event_engine`
 - [`core.services.15`](core.services.15.md) — `periodic_jobs_scheduler` … `prompt_variant_tracker`
-- [`core.services.16`](core.services.16.md) — `proposal_classifier` … `rhythm_engine`
-- [`core.services.17`](core.services.17.md) — `role_model_resolver` … `self_authored_prompt_proposal_tracking`
-- [`core.services.18`](core.services.18.md) — `self_compassion` … `shared_language`
-- [`core.services.19`](core.services.19.md) — `shared_language_extended` … `system_cartographer`
-- [`core.services.20`](core.services.20.md) — `task_worker` … `tool_usage_store`
-- [`core.services.21`](core.services.21.md) — `totp_verifier` … `visible_runs_error_messaging`
-- [`core.services.22`](core.services.22.md) — `visible_runs_memory` … `world_model_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `proposal_classifier` … `resonance_decay`
+- [`core.services.17`](core.services.17.md) — `retention` … `selective_consolidation_daemon`
+- [`core.services.18`](core.services.18.md) — `selective_forgetting_candidate_tracking` … `share_guard_store`
+- [`core.services.19`](core.services.19.md) — `shared_cache` … `surprise_detector`
+- [`core.services.20`](core.services.20.md) — `sustained_attention` … `tool_router_runtime`
+- [`core.services.21`](core.services.21.md) — `tool_tagger` … `visible_runs_capabilities`
+- [`core.services.22`](core.services.22.md) — `visible_runs_cognitive` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

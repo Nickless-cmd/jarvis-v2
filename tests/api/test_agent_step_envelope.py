@@ -21,3 +21,60 @@ def test_seam_names_exist_for_monkeypatch():
     # Observability seams must be module-level names so tests can patch them.
     assert callable(al.record_cost)
     assert callable(al.note_empty_completion)
+
+
+def _patch_model(monkeypatch, text="hej", tool_calls=None, tin=12, tout=7, cost=0.002, fr="stop"):
+    monkeypatch.setattr(al, "_resolve_target", lambda: ("deepseek", "deepseek-v4-flash"))
+    def _fake_chat(**kw):
+        return {"text": text, "tool_calls": tool_calls or [], "input_tokens": tin,
+                "output_tokens": tout, "cost_usd": cost, "finish_reason": fr}
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_adapters._execute_openai_compatible_chat",
+        _fake_chat)
+
+
+def test_nonstream_envelope_additive(monkeypatch):
+    _patch_model(monkeypatch)
+    r = client.post("/v1/agent/step",
+                    json={"messages": [{"role": "user", "content": "hej"}], "stream": False})
+    assert r.status_code == 200
+    b = r.json()
+    # additive envelope
+    assert b["status"] == "ok"
+    assert b["tokens_in"] == 12 and b["tokens_out"] == 7
+    assert b["cost_usd"] == 0.002
+    assert isinstance(b["duration_ms"], int) and b["duration_ms"] >= 0
+    assert b["result"] == "hej"
+    assert b["finish_reason"] == "stop"
+    # back-compat: old keys still present
+    assert b["content"] == "hej" and b["done"] is True
+    assert b["usage"]["prompt_tokens"] == 12
+
+
+def test_nonstream_status_empty(monkeypatch):
+    _patch_model(monkeypatch, text="", tool_calls=[])
+    r = client.post("/v1/agent/step",
+                    json={"messages": [{"role": "user", "content": "hej"}], "stream": False})
+    assert r.json()["status"] == "empty"
+
+
+def test_stream_done_has_cost_and_envelope(monkeypatch):
+    monkeypatch.setattr(al, "_resolve_target", lambda: ("deepseek", "deepseek-v4-flash"))
+    def _fake_iter(**kw):
+        yield {"kind": "delta", "text": "hej"}
+        yield {"kind": "done", "full_text": "hej", "input_tokens": 3, "output_tokens": 2,
+               "cost_usd": 0.0009, "finish_reason": "stop"}
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_streaming._iter_openai_compatible_chat_events",
+        _fake_iter)
+    with client.stream("POST", "/v1/agent/step",
+                       json={"messages": [{"role": "user", "content": "hej"}], "stream": True}) as r:
+        body = "".join(chunk for chunk in r.iter_text())
+    assert "event: done" in body
+    import json as _j
+    done = [ln for ln in body.splitlines() if ln.startswith("data:") and "cost_usd" in ln][-1]
+    payload = _j.loads(done[len("data: "):])
+    assert payload["cost_usd"] == 0.0009
+    assert payload["status"] == "ok"
+    assert payload["tokens_in"] == 3 and payload["tokens_out"] == 2
+    assert payload["finish_reason"] == "stop"

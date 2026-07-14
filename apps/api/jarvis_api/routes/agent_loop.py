@@ -381,6 +381,8 @@ async def agent_step(request: Request):
             media_type="text/event-stream",
         )
 
+    import time as _time
+    _t0 = _time.monotonic()
     try:
         raw = _execute_openai_compatible_chat(
             provider=provider, model=model, auth_profile=auth_profile,
@@ -390,19 +392,34 @@ async def agent_step(request: Request):
         logger.exception("agent/step model-kald fejlede: %s", exc)
         return JSONResponse(status_code=502, content={
             "error": {"message": f"model-kald fejlede: {exc}", "type": "upstream_error"}})
+    _dur_ms = int((_time.monotonic() - _t0) * 1000)
 
     tool_calls = list(raw.get("tool_calls") or [])
     content = str(raw.get("text") or "")
+    tokens_in = int(raw.get("input_tokens") or 0)
+    tokens_out = int(raw.get("output_tokens") or 0)
+    cost_usd = float(raw.get("cost_usd") or 0.0)
+    finish_reason = str(raw.get("finish_reason") or "")
+    status = "ok" if (content or tool_calls) else "empty"
     return JSONResponse(content={
+        # additive structured envelope (Fase 0 O1)
+        "status": status,
+        "tokens_in": tokens_in,
+        "tokens_out": tokens_out,
+        "cost_usd": cost_usd,
+        "duration_ms": _dur_ms,
+        "finish_reason": finish_reason,
+        "result": content,
+        # back-compat keys (existing jarvis-code client reads these)
         "content": content,
         "tool_calls": tool_calls,
         "done": not tool_calls,
         "provider": provider,
         "model": model,
         "usage": {
-            "prompt_tokens": int(raw.get("input_tokens") or 0),
-            "completion_tokens": int(raw.get("output_tokens") or 0),
-            "cost_usd": float(raw.get("cost_usd") or 0.0),
+            "prompt_tokens": tokens_in,
+            "completion_tokens": tokens_out,
+            "cost_usd": cost_usd,
         },
     })
 
@@ -414,6 +431,8 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
     from core.services.cheap_provider_runtime_streaming import (
         _iter_openai_compatible_chat_events,
     )
+    import time as _time
+    _t0 = _time.monotonic()
     collected: list[dict] = []
     full = ""
     try:
@@ -440,13 +459,24 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
             elif kind == "done":
                 if collected:
                     yield _sse("tool_calls", {"tool_calls": collected})
+                _content = str(ev.get("full_text") or full)
+                _tin = int(ev.get("input_tokens") or 0)
+                _tout = int(ev.get("output_tokens") or 0)
+                _cost = float(ev.get("cost_usd") or 0.0)
+                _fr = str(ev.get("finish_reason") or "")
+                _status = "ok" if (_content or collected) else "empty"
                 yield _sse("done", {
-                    "content": str(ev.get("full_text") or full),
+                    "status": _status,
+                    "tokens_in": _tin,
+                    "tokens_out": _tout,
+                    "cost_usd": _cost,
+                    "duration_ms": int((_time.monotonic() - _t0) * 1000),
+                    "finish_reason": _fr,
+                    "result": _content,
+                    # back-compat
+                    "content": _content,
                     "done": not collected,
-                    "usage": {
-                        "prompt_tokens": int(ev.get("input_tokens") or 0),
-                        "completion_tokens": int(ev.get("output_tokens") or 0),
-                    },
+                    "usage": {"prompt_tokens": _tin, "completion_tokens": _tout},
                 })
                 return
     except Exception as exc:
@@ -456,4 +486,10 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
     # Strømmen sluttede uden eksplicit done → afslut alligevel (klient kan re-anmode).
     if collected:
         yield _sse("tool_calls", {"tool_calls": collected})
-    yield _sse("done", {"content": full, "done": not collected, "usage": {}})
+    yield _sse("done", {
+        "status": "ok" if (full or collected) else "empty",
+        "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0,
+        "duration_ms": int((_time.monotonic() - _t0) * 1000),
+        "finish_reason": "", "result": full,
+        "content": full, "done": not collected, "usage": {},
+    })

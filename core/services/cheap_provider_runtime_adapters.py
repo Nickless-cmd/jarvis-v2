@@ -575,9 +575,10 @@ def _execute_openai_compatible_chat(
     _f = _facade()
     credentials = _f._require_credentials(profile=auth_profile, provider=provider)
     root = str(base_url or _f.provider_runtime_defaults(provider).get("base_url") or "").rstrip("/")
-    headers = {
-        "Authorization": f"Bearer {str(credentials.get('api_key') or '').strip()}",
-    }
+    _api_key = str(credentials.get('api_key') or '').strip()
+    headers: dict[str, str] = {}
+    if _api_key:  # auth_kind=none (OVHcloud anon) → ingen Authorization-header
+        headers["Authorization"] = f"Bearer {_api_key}"
     if messages is None:
         if message is None:
             raise ValueError("Either 'messages' or 'message' must be provided")
@@ -614,6 +615,10 @@ def _execute_openai_compatible_chat(
         payload["tools"] = _normalize_tools_for_openai_chat(tools)
     if extra_body:
         payload.update(extra_body)
+    # GPT-5/o-series (reasoning) afviser 'max_tokens' → brug 'max_completion_tokens'.
+    _mname = str(model).split("/")[-1]
+    if any(_mname.startswith(p) for p in ("gpt-5", "o1", "o3", "o4")) and "max_tokens" in payload:
+        payload["max_completion_tokens"] = payload.pop("max_tokens")
     if provider == "groq":
         data, _headers = _f._http_json_httpx(
             f"{root}/chat/completions",
@@ -1185,6 +1190,9 @@ def _require_credentials(*, profile: str, provider: str) -> dict[str, object]:
                 message="cloudflare requires api_key and account_id",
             )
     elif not api_key:
+        # auth_kind=none (OVHcloud anon) kræver ingen nøgle.
+        if str((CHEAP_PROVIDER_DEFAULTS.get(provider) or {}).get("auth_kind")) == "none":
+            return credentials
         raise CheapProviderError(
             provider=provider,
             code="auth-not-ready",

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12507 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12509 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -38,17 +38,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12507 functions/
 - [`core.services.09`](core.services.09.md) — `dispatch_guards` … `epistemics`
 - [`core.services.10`](core.services.10.md) — `error_healers` … `gate_skill`
 - [`core.services.11`](core.services.11.md) — `gate_truth` … `idle_thinking`
-- [`core.services.12`](core.services.12.md) — `impulse_executor` … `longing_signal_daemon`
-- [`core.services.13`](core.services.13.md) — `loop_runtime` … `mood_oscillator`
-- [`core.services.14`](core.services.14.md) — `mood_regulator_subscriber` … `personality_drift`
-- [`core.services.15`](core.services.15.md) — `personality_vector` … `provider_circuit_breaker`
-- [`core.services.16`](core.services.16.md) — `provider_health_check` … `run_closure_gate`
-- [`core.services.17`](core.services.17.md) — `run_event_log` … `self_model_blind_spots`
-- [`core.services.18`](core.services.18.md) — `self_model_distiller` … `signal_decay_daemon`
-- [`core.services.19`](core.services.19.md) — `signal_delta_trigger` … `telegram_gateway`
-- [`core.services.20`](core.services.20.md) — `temperament_tendency_signal_tracking` … `unconscious_modulation`
-- [`core.services.21`](core.services.21.md) — `unconscious_temperature_field` … `visual_memory`
-- [`core.services.22`](core.services.22.md) — `voice_anchor` … `world_model_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `impulse_executor` … `long_horizon_goals`
+- [`core.services.13`](core.services.13.md) — `longing_signal_daemon` … `mood_dialer`
+- [`core.services.14`](core.services.14.md) — `mood_oscillator` … `personal_project`
+- [`core.services.15`](core.services.15.md) — `personality_drift` … `prospective_memory`
+- [`core.services.16`](core.services.16.md) — `provider_circuit_breaker` … `rule_engine`
+- [`core.services.17`](core.services.17.md) — `run_closure_gate` … `self_experiments`
+- [`core.services.18`](core.services.18.md) — `self_model_blind_spots` … `signal_baseline`
+- [`core.services.19`](core.services.19.md) — `signal_decay_daemon` … `teams`
+- [`core.services.20`](core.services.20.md) — `telegram_gateway` … `ui_panel_store`
+- [`core.services.21`](core.services.21.md) — `unconscious_modulation` … `visible_self_state_summary`
+- [`core.services.22`](core.services.22.md) — `visual_memory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

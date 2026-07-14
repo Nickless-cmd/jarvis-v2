@@ -608,7 +608,10 @@ async def tools_execute(body: _ExecBody):
             finally:
                 reset_context(role_token)
 
+    import time as _time
+    _exec_t0 = _time.monotonic()
     result = await run_in_threadpool(_run)
+    _exec_dur_ms = (_time.monotonic() - _exec_t0) * 1000.0
     # Fase 5 Task 9: audit-trail row for the ALLOWED path too (flag-gated,
     # inert when off — see record_if_enabled). Audit rows exist even when
     # the tool call carries zero cost (distinct from the cost-nerve).
@@ -618,6 +621,18 @@ async def tools_execute(body: _ExecBody):
                           target_summary=str(body.arguments or {})[:200], decision="allow")
     except Exception:
         logger.debug("agent_loop: agent_audit.record_if_enabled fejlede (allow)", exc_info=True)
+    # Fase 5 Task 20 (flag-gated, default OFF): per-tool eventbus telemetry
+    # for this FORWARDED tool call, closing part of the "blind lane" — the
+    # server previously saw nothing about individual jarvis-code tool runs.
+    if _flag("jc_tool_telemetry"):
+        try:
+            from core.services.jc_tool_telemetry import publish_tool_step
+            _status = "ok" if isinstance(result, dict) and result.get("status") != "error" else "error"
+            publish_tool_step(tool=real, status=_status, duration_ms=_exec_dur_ms,
+                              bytes_=len(str(result)), user_id=body.user_id or "",
+                              session_id=body.session_id or "")
+        except Exception:
+            logger.debug("agent_loop: jc_tool_telemetry.publish_tool_step fejlede", exc_info=True)
     return {"result": result, "name": real}
 
 
@@ -665,6 +680,19 @@ async def agent_step(request: Request):
     caller_role = _resolve_role()
     effective_approval_mode, privilege_downgraded = _apply_privilege_enforcement(
         caller_role, requested_approval_mode)
+
+    # Fase 5 Task 20 (flag-gated, default OFF): the client reports per-tool
+    # {tool, status, duration_ms, bytes} for LOCAL tool calls it ran itself
+    # (agent_step never sees those otherwise — only forwarded /v1/tools/
+    # execute calls are server-timed, see tools_execute above). This closes
+    # the rest of the "blind lane": local runs become an eventbus signal too.
+    tool_steps = body.get("tool_steps")
+    if isinstance(tool_steps, list) and tool_steps and _flag("jc_tool_telemetry"):
+        try:
+            from core.services.jc_tool_telemetry import publish_tool_steps
+            publish_tool_steps(tool_steps, user_id=user_id, session_id=session_id)
+        except Exception:
+            logger.debug("agent_loop: jc_tool_telemetry.publish_tool_steps fejlede", exc_info=True)
 
     if not isinstance(client_messages, list) or not client_messages:
         return JSONResponse(status_code=400, content={

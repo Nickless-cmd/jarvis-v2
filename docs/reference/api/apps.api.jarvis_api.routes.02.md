@@ -124,6 +124,14 @@ _JarvisX workspace + identity/mind route group._
 | class | `_ChroniclePayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L349) |
 | function | `write_chronicle_entry` | `(payload)` | Append a new chronicle entry to the workspace's chronicle/ dir. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L356) |
 
+## `apps/api/jarvis_api/routes/jc_env.py`
+_Pure helper: render an ``<env>`` block for the /v1/agent/step system prompt_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_clamp` | `(value, max_chars=…)` | — | [src](../../../apps/api/jarvis_api/routes/jc_env.py#L25) |
+| function | `render_env_block` | `(env)` | Render a fenced ``<env>...</env>`` block from a client-supplied env dict. | [src](../../../apps/api/jarvis_api/routes/jc_env.py#L32) |
+
 ## `apps/api/jarvis_api/routes/live.py`
 
 | Kind | Name | Signature | Summary | Source |

@@ -255,10 +255,14 @@ def _full_context(user_message: str, name: str = "default") -> str:
     return text
 
 
-def _build_system_prompt(context: str, user_message: str = "", name: str = "default") -> str:
+def _build_system_prompt(context: str, user_message: str = "", name: str = "default",
+                         env: dict | None = None) -> str:
     """context: 'none' (ren coding) | 'identity' (stemme + kender brugeren, default) |
     'full' (hele Jarvis: memory + cognitive_state + indre liv — tools stadig LOKALT).
-    `name`: caller-workspace (jc_agent_user_scoping-gated, default 'default')."""
+    `name`: caller-workspace (jc_agent_user_scoping-gated, default 'default').
+    `env`: client-supplied cwd/git/os/date facts (Fase 4, Task 2) — rendered as the
+    LAST, most volatile section (agent_step_env_block_enabled-gated) so everything
+    before it stays a stable, cacheable prefix (Fase 4, Task 4)."""
     if context == "none":
         base = _SYSTEM_PROMPT
     elif context == "full":
@@ -279,6 +283,15 @@ def _build_system_prompt(context: str, user_message: str = "", name: str = "defa
     catalog = _skill_catalog()
     if catalog:
         base = base + catalog + "\n\n" + _SKILL_ACTIVATION + "\n\n" + _CC_TOOL_LEGEND
+
+    # Fase 4 Task 2 (flag-gated): <env> is the LAST section appended — must stay
+    # the tail so Task 4's cache-prefix signature (computed over everything
+    # BEFORE this) never sees it. Off or no env -> base unchanged.
+    if env and _settings().agent_step_env_block_enabled:
+        from apps.api.jarvis_api.routes.jc_env import render_env_block
+        block = render_env_block(env)
+        if block:
+            base = base + block
     return base
 
 
@@ -499,6 +512,7 @@ async def agent_step(request: Request):
     context = str(body.get("context") or "identity").lower()
     session_id = str(body.get("session_id") or "")
     user_id = str(body.get("user_id") or "").strip()
+    env = body.get("env") if isinstance(body.get("env"), dict) else None
 
     if not isinstance(client_messages, list) or not client_messages:
         return JSONResponse(status_code=400, content={
@@ -552,7 +566,8 @@ async def agent_step(request: Request):
 
     # System-prompt (tiered context) foran + klientens samtale (inkl. tool-resultater).
     chat_messages: list[dict[str, Any]] = [
-        {"role": "system", "content": _build_system_prompt(context, _last_user, _ws_name)}]
+        {"role": "system",
+         "content": _build_system_prompt(context, _last_user, _ws_name, env=env)}]
     chat_messages.extend(client_messages)
 
     if stream:

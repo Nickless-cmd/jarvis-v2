@@ -195,3 +195,56 @@ def test_thinking_mode_ignored_when_flag_off(monkeypatch):
                 json={"messages": [{"role": "user", "content": "hej"}], "stream": False,
                       "thinking_mode": "deep"})
     assert captured["extra_body"] is None
+
+
+# ── Task 2: <env> block in the system prompt ────────────────────────────────
+
+def test_env_block_injected_when_flag_on(monkeypatch):
+    monkeypatch.setattr(al, "_resolve_target", lambda: ("deepseek", "deepseek-v4-flash"))
+    monkeypatch.setattr(al, "_settings",
+                        lambda: _fake_settings(agent_step_env_block_enabled=True))
+    captured = {}
+
+    def _fake_chat(**kw):
+        captured["messages"] = kw["messages"]
+        return {"text": "ok", "tool_calls": [], "input_tokens": 1, "output_tokens": 1,
+                "cost_usd": 0.0, "finish_reason": "stop"}
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_adapters._execute_openai_compatible_chat",
+        _fake_chat)
+
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": "hej"}], "stream": False,
+                      "env": {"cwd": "/home/bs/proj", "git_branch": "main"}})
+    system_msg = [m for m in captured["messages"] if m.get("role") == "system"][0]
+    assert "<env>" in system_msg["content"]
+    assert "/home/bs/proj" in system_msg["content"]
+    assert "main" in system_msg["content"]
+
+
+def test_env_block_absent_when_flag_off(monkeypatch):
+    monkeypatch.setattr(al, "_resolve_target", lambda: ("deepseek", "deepseek-v4-flash"))
+    # flag OFF (default) — don't monkeypatch al._settings.
+    captured = {}
+
+    def _fake_chat(**kw):
+        captured["messages"] = kw["messages"]
+        return {"text": "ok", "tool_calls": [], "input_tokens": 1, "output_tokens": 1,
+                "cost_usd": 0.0, "finish_reason": "stop"}
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_adapters._execute_openai_compatible_chat",
+        _fake_chat)
+
+    client.post("/v1/agent/step",
+                json={"messages": [{"role": "user", "content": "hej"}], "stream": False,
+                      "env": {"cwd": "/home/bs/proj", "git_branch": "main"}})
+    system_msg = [m for m in captured["messages"] if m.get("role") == "system"][0]
+    assert "<env>" not in system_msg["content"]
+
+
+def test_env_block_key_order_stable():
+    from apps.api.jarvis_api.routes.jc_env import render_env_block
+    a = render_env_block({"git_branch": "main", "cwd": "/x", "os": "linux"})
+    b = render_env_block({"os": "linux", "cwd": "/x", "git_branch": "main"})
+    c = render_env_block({"cwd": "/x", "git_branch": "main", "os": "linux"})
+    assert a == b == c and a != ""

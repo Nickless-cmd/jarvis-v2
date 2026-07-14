@@ -1,6 +1,8 @@
 """Tests for core/services/cheap_provider_runtime_adapters.py — provider defaults."""
 from __future__ import annotations
 
+import pytest
+
 from core.services.cheap_provider_runtime_adapters import CHEAP_PROVIDER_DEFAULTS
 
 
@@ -90,6 +92,35 @@ def test_github_models_and_ovhcloud_configured():
     # auth_kind=none → altid ready uden nøgle
     assert provider_auth_ready(provider="ovhcloud", auth_profile="default") is True
     assert is_routable_provider("github-models") and is_routable_provider("ovhcloud")
+
+
+def test_pollinations_keyless_free_and_routable():
+    """15. jul: Pollinations (anon, auth_kind=none, tool-capable, live-verificeret) i
+    cheap lane + pool. Keyless → _require_credentials må ALDRIG rejse for den, selv
+    uden nogen credential-entry i storen ( modsat de bearer-providers)."""
+    from core.services.cheap_provider_runtime_adapters import (
+        CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_cost_class,
+        provider_auth_ready, _OPENAI_COMPATIBLE_PROVIDERS, _require_credentials)
+    p = CHEAP_PROVIDER_DEFAULTS["pollinations"]
+    assert p["auth_kind"] == "none"
+    assert p["protocol"] == "openai-chat"
+    assert p["base_url"] == "https://text.pollinations.ai/openai"
+    assert p["static_models"] == ["openai-fast"]
+    assert provider_cost_class("pollinations") == "free"
+    assert is_routable_provider("pollinations")
+    assert "pollinations" in _OPENAI_COMPATIBLE_PROVIDERS
+    # auth_kind=none → altid ready + _require_credentials returnerer {} (rejser IKKE)
+    assert provider_auth_ready(provider="pollinations", auth_profile="default") is True
+    assert _require_credentials(profile="default", provider="pollinations") == {}
+
+
+def test_require_credentials_still_raises_for_bearer_without_key(monkeypatch):
+    """Guarden må kun gælde auth_kind=none. En bearer-provider uden nøgle skal stadig
+    rejse auth-not-ready (ellers ville vi kalde en betalt/nøgle-provider uden auth)."""
+    import core.services.cheap_provider_runtime_adapters as mod
+    monkeypatch.setattr(mod, "get_provider_credentials", lambda **kw: None)
+    with pytest.raises(mod.CheapProviderError):
+        mod._require_credentials(profile="default", provider="cerebras")
 
 
 def test_copilot_cost_classes():

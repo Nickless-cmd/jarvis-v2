@@ -300,6 +300,23 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "daily_limit": 100,
         "static_models": ["Meta-Llama-3_3-70B-Instruct", "Qwen3.5-9B"],
     },
+    # Pollinations (15. jul, live-verificeret): ANONYM (ingen key, auth_kind=none),
+    # openai-compat, TOOL-CAPABLE (tool_calls=1 testet med rigtigt tool-kald). Backed
+    # af GPT-OSS. Anonymt eksponeres kun "openai-fast". base_url ender på /openai
+    # (adapter poster /chat/completions). daily_limit=None → fuld headroom (linje 265),
+    # ægte keyless $0-gulv. rpm konservativt sat.
+    "pollinations": {
+        "label": "Pollinations",
+        "priority": 60,
+        "base_url": "https://text.pollinations.ai/openai",
+        "auth_kind": "none",
+        "protocol": "openai-chat",
+        "models_endpoint": "",
+        "rpm_limit": 15,
+        "daily_limit": None,
+        "cost_class": "free",
+        "static_models": ["openai-fast"],
+    },
     # Copilot Pro (15. jul) — Bjørns betalte abonnement, delt i to efter multiplier:
     # copilot-free = 0x (inkluderet, nul premium-requests) → GRATIS, i cheap lane + pool.
     "copilot-free": {
@@ -1232,6 +1249,11 @@ def _execute_public_safe_local_ollama(*, message: str) -> dict[str, object]:
 
 
 def _require_credentials(*, profile: str, provider: str) -> dict[str, object]:
+    # auth_kind=none (Pollinations/OVHcloud anon) kræver INGEN credential-entry —
+    # returnér tom dict så adapteren udelader Authorization-headeren (linje ~650).
+    # Uden dette ville en keyless provider uden nogen store-entry fejle "auth-not-ready".
+    if str((CHEAP_PROVIDER_DEFAULTS.get(provider) or {}).get("auth_kind")) == "none":
+        return dict(get_provider_credentials(profile=profile, provider=provider) or {})
     credentials = get_provider_credentials(profile=profile, provider=provider)
     if not credentials:
         raise CheapProviderError(

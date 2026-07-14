@@ -114,6 +114,19 @@ def spawn_agent_task(
             f"spawn depth limit reached: {spawn_depth}/{MAX_SPAWN_DEPTH} — recursion chain too deep"
         )
     allowed_tools = allowed_tools or []
+    # Fase 2 Task 3: strictest-mode inheritance — never-escalate ceiling. A
+    # child agent's effective tool allowlist is the requested tools
+    # intersected with the parent's own allowlist, so a child can never gain
+    # a tool its parent lacks. The root parent ("jarvis") has no ceiling
+    # (full catalog) — everything else spawns FROM some existing agent whose
+    # own allowlist already bounds it.
+    if str(parent_agent_id or "jarvis") != "jarvis":
+        parent_entry = get_agent_registry_entry(str(parent_agent_id))
+        parent_allowed = None
+        if parent_entry is not None:
+            parent_allowed = _json_loads(str(parent_entry.get("allowed_tools_json") or "[]"), [])
+        if isinstance(parent_allowed, list) and parent_allowed:
+            allowed_tools = [t for t in allowed_tools if t in set(parent_allowed)]
     context = context or {}
     context["spawn_depth"] = spawn_depth
     result_contract = result_contract or {

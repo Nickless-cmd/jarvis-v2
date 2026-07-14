@@ -109,11 +109,18 @@ def agent_tools_enabled() -> bool:
         return False
 
 
-def set_agent_tools_enabled(enabled: bool) -> bool:
-    """Flip the ``agent_tools_enabled`` flag. Returns the new value.
+def set_agent_tools_enabled(enabled: bool, *, role: str = "") -> bool:
+    """Flip the ``agent_tools_enabled`` flag. Returns the CURRENT value.
 
-    Reversible: pass False to return every agent to text-only behaviour.
+    Owner-gated (Fase 2 Task 3): flipping to True requires ``role == "owner"``
+    — enabling agent autonomy is an owner-only server-side decision (§6). A
+    non-owner call to enable is a no-op returning the flag's current value
+    unchanged. Flipping to False (disabling) is always allowed from any
+    role — de-escalation never needs a gate. Reading
+    (``agent_tools_enabled()``) is unaffected (default OFF, self-safe).
     """
+    if enabled and role != "owner":
+        return agent_tools_enabled()
     try:
         from core.runtime.db_core import set_runtime_state_value
         set_runtime_state_value(AGENT_TOOLS_FLAG_KEY, bool(enabled))
@@ -122,16 +129,27 @@ def set_agent_tools_enabled(enabled: bool) -> bool:
     return bool(enabled)
 
 
-def _build_agent_tools_payload(allowed_tools: list[str] | None) -> list[dict]:
+def _build_agent_tools_payload(
+    allowed_tools: list[str] | None, *, ceiling: list[str] | None = None,
+) -> list[dict]:
     """Build an OpenAI-compat tools array from an agent's allowed_tools.
 
     Reuses the SAME catalog the visible lane draws from
     (``get_tool_definitions``) so agents and Jarvis share one source of
     truth for tool schemas. Only the tools an agent is explicitly allowed
     are exposed; an empty/blank allowlist yields no tools (text-only).
+
+    ``ceiling`` (Fase 2 Task 3): belt-and-suspenders filter — when given, the
+    final tool set is ``allowed_tools`` intersected with ``ceiling``, so a
+    child agent can never present a tool schema outside both its own
+    allowlist AND its parent's ceiling, even if a caller forgets to
+    intersect upstream. ``None`` = no additional restriction (root agents).
     Self-safe: returns [] on any error.
     """
     names = {str(t).strip() for t in (allowed_tools or []) if str(t).strip()}
+    if ceiling is not None:
+        ceiling_names = {str(t).strip() for t in ceiling if str(t).strip()}
+        names = names & ceiling_names
     if not names:
         return []
     try:

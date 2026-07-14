@@ -390,12 +390,12 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 | function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/agent_runtime_base.py#L62) |
 | function | `_role_needs_tools` | `(role)` | — | [src](../../../core/services/agent_runtime_base.py#L85) |
 | function | `agent_tools_enabled` | `()` | Read the reversible ``agent_tools_enabled`` runtime-state flag. | [src](../../../core/services/agent_runtime_base.py#L100) |
-| function | `set_agent_tools_enabled` | `(enabled)` | Flip the ``agent_tools_enabled`` flag. Returns the new value. | [src](../../../core/services/agent_runtime_base.py#L112) |
-| function | `_build_agent_tools_payload` | `(allowed_tools)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L125) |
-| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L153) |
-| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L186) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L399) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L403) |
+| function | `set_agent_tools_enabled` | `(enabled, *, role=…)` | Flip the ``agent_tools_enabled`` flag. Returns the CURRENT value. | [src](../../../core/services/agent_runtime_base.py#L112) |
+| function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L132) |
+| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L171) |
+| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L204) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L417) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L421) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._
@@ -428,27 +428,27 @@ _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 | function | `_maybe_relay_watcher_signal` | `(*, agent_id, name, text)` | Emit watcher.signal event when output contains notable content. | [src](../../../core/services/agent_runtime_spawn.py#L52) |
 | function | `_spawn_depth_for` | `(parent_agent_id)` | Return depth for a new child agent (parent_depth + 1). | [src](../../../core/services/agent_runtime_spawn.py#L77) |
 | function | `spawn_agent_task` | `(*, role, goal, system_prompt=…, tool_policy=…, allowed_tools=…, parent_agent_id=…, persistent=…, ttl_seconds=…, budget_tokens=…, context=…, result_contract=…, execution_mode=…, auto_execute=…, council_id=…, provider=…, model=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L91) |
-| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L240) |
-| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L249) |
-| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L262) |
-| function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L269) |
-| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L324) |
-| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L348) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L553) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L581) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L609) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L613) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L651) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L849) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L893) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L902) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L932) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L947) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L966) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L983) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1002) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1024) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1058) |
+| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L253) |
+| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L262) |
+| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L275) |
+| function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L282) |
+| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L337) |
+| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L361) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L566) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L594) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L622) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L626) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L664) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L862) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L906) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L915) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L945) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L960) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L979) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L996) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1015) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1037) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1071) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._

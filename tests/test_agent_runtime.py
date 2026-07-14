@@ -64,7 +64,10 @@ def test_agent_tools_flag_reads_runtime_state(monkeypatch):
         raising=False,
     )
     assert ar.agent_tools_enabled() is False
-    assert ar.set_agent_tools_enabled(True) is True
+    # Fase 2 Task 3: enabling is owner-gated — a non-owner call is a no-op.
+    assert ar.set_agent_tools_enabled(True) is False
+    assert ar.agent_tools_enabled() is False
+    assert ar.set_agent_tools_enabled(True, role="owner") is True
     assert ar.agent_tools_enabled() is True
     ar.set_agent_tools_enabled(False)
     assert ar.agent_tools_enabled() is False

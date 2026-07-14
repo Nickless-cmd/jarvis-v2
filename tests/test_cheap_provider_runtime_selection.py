@@ -44,3 +44,23 @@ def test_shadow_compare_on_records_divergence(monkeypatch):
     sel._maybe_shadow_compare({"provider": "groq", "model": "y"})
     assert seen["new"]["provider"] == "cerebras"
     assert seen["old"]["provider"] == "groq"
+
+
+def test_cheap_selection_excludes_paid(monkeypatch):
+    """15. jul: direkte cheap/daemon-selection er gratis-only — copilot-premium (paid)
+    må aldrig vælges her (kun via central_route allow_paid)."""
+    import core.services.cheap_provider_runtime_selection as sel
+    fake = [
+        {"provider": "copilot-premium", "model": "claude-sonnet-5", "credentials_ready": True,
+         "priority": 5, "effective_priority": 5},
+        {"provider": "cerebras", "model": "gemma-4-31b", "credentials_ready": True,
+         "priority": 22, "effective_priority": 22},
+    ]
+    monkeypatch.setattr(sel, "_configured_cheap_candidates", lambda **kw: list(fake))
+    monkeypatch.setattr(sel, "_candidate_quota_snapshot", lambda c: {"blocked": False})
+    monkeypatch.setattr(sel, "_candidate_adaptive_snapshot",
+                        lambda c: {"effective_priority": c.get("priority", 99), "adaptive_penalty": 0})
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_cost_class",
+                        lambda p: "paid" if p == "copilot-premium" else "free")
+    t = sel.select_cheap_lane_target(task_kind="default")
+    assert t.get("provider") != "copilot-premium"   # betalt ekskluderet

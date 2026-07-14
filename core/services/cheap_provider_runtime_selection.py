@@ -366,6 +366,13 @@ def select_cheap_lane_target(
         include_public_proxy=True, skip_providers=skip_providers
     )
 
+    # Cost-filter (15. jul): den DIREKTE cheap/daemon-selection er gratis-only —
+    # betalte providers (copilot-premium) må ALDRIG vælges her (inderlivet brænder
+    # ikke premium-kvote). Betalt kun via central_route(allow_paid) på agent-lanen.
+    from core.services.cheap_provider_runtime_adapters import provider_cost_class
+    candidates = [c for c in candidates
+                  if provider_cost_class(str(c.get("provider") or "")) != "paid"]
+
     # For "important" calls, drop public proxies entirely.
     if kind == "important":
         candidates = [c for c in candidates if not _is_public_proxy(c.get("provider", ""))]

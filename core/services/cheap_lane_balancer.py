@@ -758,10 +758,12 @@ def build_slot_pool() -> list[BalancerSlot]:
             continue
         if not _credentials_ready(provider, auth_profile):
             continue
-        # Routable-filter (2026-07-14): betalte providers (deepseek routable=False)
-        # holdes ude af balancer-poolen — kun gratis modeller. Bund bruger dem direkte.
-        from core.services.cheap_provider_runtime_adapters import is_routable_provider
-        if not is_routable_provider(provider):
+        # Routable + cost-filter: betalte providers (deepseek routable=False; copilot-
+        # premium cost_class=paid) holdes UDE af balanceren/inderlivet — de må ALDRIG
+        # brænde premium-kvote. Kun gratis. Betalt kun via central_route(allow_paid).
+        from core.services.cheap_provider_runtime_adapters import (
+            is_routable_provider, provider_cost_class)
+        if not is_routable_provider(provider) or provider_cost_class(provider) == "paid":
             continue
         meta = _provider_metadata(provider)
         slot = BalancerSlot(
@@ -780,7 +782,7 @@ def build_slot_pool() -> list[BalancerSlot]:
     # ellers aldrig en slot her — så inderlivet (daemon_llm) kørte på et smallere
     # sæt end agent-lanen. Mirror selection-stien så HELE huset har samme pool.
     from core.services.cheap_provider_runtime_adapters import (
-        CHEAP_PROVIDER_DEFAULTS, is_routable_provider)
+        CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_cost_class)
     seen = {s.slot_id for s in slots}
     prov_profiles: dict[str, str] = {}
     try:
@@ -792,7 +794,8 @@ def build_slot_pool() -> list[BalancerSlot]:
     for provider, cfg in CHEAP_PROVIDER_DEFAULTS.items():
         static_models = cfg.get("static_models") or []
         if (not static_models or provider in _EXCLUDED_PROVIDERS
-                or not is_routable_provider(provider)):
+                or not is_routable_provider(provider)
+                or provider_cost_class(provider) == "paid"):  # betalt aldrig i balancer
             continue
         auth_profile = prov_profiles.get(provider) or "default"
         if not _credentials_ready(provider, auth_profile):

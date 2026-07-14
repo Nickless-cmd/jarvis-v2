@@ -753,3 +753,6 @@ def test_build_slot_pool_includes_static_models_providers(monkeypatch):
     assert "cerebras" in provs and "aihubmix" in provs
     assert "deepseek" not in provs          # routable=False → ude
     assert "openai-codex" not in provs      # excluded
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_cost_class", lambda p: "paid" if p=="copilot-premium" else "free")
+    provs2 = {s.provider for s in clb.build_slot_pool()}
+    assert "copilot-premium" not in provs2  # betalt aldrig i balancer

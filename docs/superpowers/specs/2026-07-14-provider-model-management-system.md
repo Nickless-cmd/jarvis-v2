@@ -6,7 +6,7 @@ formål: Komplet provider/model management-system — auto-scanning, scoring,
 kilder: Samtale Bjørn+Jarvis 14. jul, live API-tests (nøgle→model→svar),
  provider_router.json, settings.py, auth profiles, full provider audit
 revision: v7 — Cerebras (User-Agent fix), TokenRouter (insufficient quota),
- Clinebot (16. provider, 5 modeller bekræftet), ~265 gratis
+ Clinebot (16. provider, 5 modeller bekræftet), Requesty.ai (17. provider), ~270 gratis
 ---
 
 # Provider/Model Management System
@@ -27,6 +27,7 @@ Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 | **Cloudflare** (fixet) | `https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/{model}` | **61 modeller** inkl. `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (1.0s), `deepseek-r1-distill`, `llama-4-scout`, `qwen2.5-coder`, `kimi-k2.7-code`, `glm-5.2` | 0.5-2s |
 | **Cerebras** (fixet) | `https://api.cerebras.ai/v1` | `llama-3.1-8b`, `gpt-oss-120b` (1.1s) | 1-2s |
 | **Clinebot** 🆕 | `https://api.cline.bot/api/v1` | `minimax/minimax-m2.5` ($0.000002/kald), `deepseek/deepseek-chat` ($0.000022), `google/gemini-2.5-flash` (gratis), `openai/gpt-4o-mini` ($0.000003), `meta-llama/llama-3.3-70b-instruct` ($0.000028) | 1-4s |
+| **Requesty.ai** 🆕 | `https://router.requesty.ai/v1` | `novita/tencent/hy3` → `tencent/hy3` ($0.00, ~1.5s, 10 reasoning tokens) | 1.5s |
 | **GitHub Models** 🆕 | `https://models.inference.ai.azure.com` | `gpt-4.1` (1.3s), `gpt-4.1-mini` (1.8s), `gpt-4o` (1.6s), `o4-mini` (3.6s), `DeepSeek-R1` (1.6s) | 1-4s |
 | **Mistral AI** 🆕 | `https://api.mistral.ai/v1` | `mistral-small-latest` (0.4s), `codestral-latest` (0.3s) | 0.3-0.4s |
 | **AIHubMix** 🆕 | `https://aihubmix.com/v1` / `https://api.inferera.com/v1` | `gpt-4o-free` (1.1-1.6s). **352 modeller i listen,** men kun gpt-4o-free bekræftet. | 1-2s |
@@ -71,6 +72,7 @@ Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 | **Cloudflare** | 61 | Gratis | ~50 rpm |
 | **Cerebras** 🆕 | 2 | Gratis | ~20 rpm |
 | **Clinebot** 🆕 | 5 | <$0.00003/kald | ~30 rpm |
+| **Requesty.ai** 🆕 | 1 | Gratis | ~30 rpm |
 | **GitHub Models** 🆕 | 5 | Gratis | 10-15 rpm, 50-150 rpd |
 | **Mistral AI** 🆕 | 2 | Gratis (~1B tokens/md) | ~10 rpm |
 | **AIHubMix** 🆕 | 1 | Gratis | ~20 rpm |
@@ -81,14 +83,14 @@ Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 | **Gemini** | 2 | Gratis | Tight quota |
 | **Lokal Ollama** | 10 | Gratis | Ubegrænset |
 | **DeepSeek** | v4-flash/pro | Betalt | ~100 rpm |
-| **I alt** | **~265 gratis** | **$0** | **>300 rpm kombineret** |
+| **I alt** | **~270 gratis** | **$0** | **>300 rpm kombineret** |
 
 ## Forventet effekt
 
 | Metric | Før | Efter |
 |---|---|---|
-| Gratis modeller i pool | ~2 | **~265** |
+| Gratis modeller i pool | ~2 | **~270** |
 | Deepseek belastning | 100% af agent-kald | <20% |
-| Provider diversity | 2 | **16 uafhængige kilder** |
+| Provider diversity | 2 | **17 uafhængige kilder** |
 | Rate limit redundans | Ingen | >300 rpm kombineret |
 | Centralen indsigt | Ingen | Live model registry + events |

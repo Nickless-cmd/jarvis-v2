@@ -5,6 +5,30 @@ from unittest.mock import patch, MagicMock
 from urllib import request as urllib_request
 
 
+def test_db_query_restores_pooled_row_factory():
+    """Regression (Central RED, decision_gate fail-open, 2026-07-14): `_exec_db_query` set
+    `conn.row_factory = None` on the POOLED thread-local connection (2026-07-12 pooling) and
+    never restored it. The next `dict(sqlite3.Row)` on that thread — decision_gate reading
+    behavioral_decisions — then got raw tuples → `ValueError: dictionary update sequence
+    element #0 has length N`. db_query must leave the shared connection's row_factory intact."""
+    import sqlite3
+    from core.tools.simple_tools_native import _exec_db_query
+    from core.runtime.db import connect
+
+    # Prime the pooled connection to the normal Row factory (what _make_connection sets).
+    connect().row_factory = sqlite3.Row
+
+    res = _exec_db_query({"sql": "SELECT 1 AS x", "params": ""})
+    assert res["status"] == "ok"
+    assert res["rows"] == [{"x": 1}]
+
+    conn = connect()
+    assert conn.row_factory is sqlite3.Row, "db_query poisoned the shared pooled connection"
+    # The exact decision_gate failure path: dict() over a sqlite3.Row must succeed.
+    row = conn.execute("SELECT 1 AS a, 2 AS b").fetchone()
+    assert dict(row) == {"a": 1, "b": 2}
+
+
 def test_internal_api_injects_bearer_token():
     """_exec_internal_api should inject the system bearer token."""
     from core.tools.simple_tools_native import _exec_internal_api

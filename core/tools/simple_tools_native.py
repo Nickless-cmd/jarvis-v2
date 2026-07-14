@@ -2319,13 +2319,21 @@ def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
     try:
         from core.runtime.db import connect
         with connect() as conn:
-            conn.row_factory = None  # raw rows
-            cur = conn.execute(sql, params)
-            cols = [d[0] for d in cur.description] if cur.description else []
-            rows = cur.fetchmany(200)  # cap at 200 rows
-            result_rows = [
-                {k: _json_safe_cell(v) for k, v in zip(cols, row)} for row in rows
-            ]
+            # `connect()` returns a POOLED thread-local connection (2026-07-12) — mutating
+            # its row_factory poisons EVERY later query on this thread (e.g. decision_gate's
+            # dict(sqlite3.Row) → ValueError "update sequence element has length N"; Central
+            # RED 2026-07-13). zip(cols, row) works identically on a sqlite3.Row (iterable) as
+            # on a raw tuple, so we don't even need row_factory=None — but if set, RESTORE it.
+            _prev_factory = conn.row_factory
+            try:
+                cur = conn.execute(sql, params)
+                cols = [d[0] for d in cur.description] if cur.description else []
+                rows = cur.fetchmany(200)  # cap at 200 rows
+                result_rows = [
+                    {k: _json_safe_cell(v) for k, v in zip(cols, row)} for row in rows
+                ]
+            finally:
+                conn.row_factory = _prev_factory  # never leave the shared conn poisoned
         return {
             "columns": cols,
             "rows": result_rows,

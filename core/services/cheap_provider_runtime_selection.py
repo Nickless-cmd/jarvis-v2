@@ -388,7 +388,9 @@ def execute_cheap_lane_via_pool(
         task_kind=task_kind,
     )
     if not bool(target.get("active", True)) or not str(target.get("provider") or "").strip():
-        raise RuntimeError("cheap lane not executable: no-healthy-provider")
+        # Spec Fund 4: aldrig rejse ved tom pool — fald til garanteret bund.
+        from core.services.cheap_lane_floor import attempt_floor
+        return attempt_floor(message=message, lane=lane, reason="no-healthy-provider")
 
     provider = str(target.get("provider") or "").strip()
     model = str(target.get("model") or "").strip()

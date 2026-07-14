@@ -188,10 +188,16 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "models_endpoint": "",
         "rpm_limit": None,
         "daily_limit": None,
+        # De faktiske gratis OpenCode Zen-modeller (verificeret via `opencode models`
+        # på CheifOne, 14. jul). minimax-m2.5-free→mimo-v2.5-free og nemotron-3-super-
+        # free→nemotron-3-ultra-free var UDFASET. Alle 6 verificeret $0.
         "static_models": [
             "big-pickle",
-            "minimax-m2.5-free",
-            "nemotron-3-super-free",
+            "deepseek-v4-flash-free",
+            "hy3-free",
+            "mimo-v2.5-free",
+            "nemotron-3-ultra-free",
+            "north-mini-code-free",
         ],
     },
     "openai-codex": {

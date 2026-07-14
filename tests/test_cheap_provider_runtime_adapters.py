@@ -63,3 +63,14 @@ def test_gemini_cloudflare_openai_compat_for_tools():
     cf = CHEAP_PROVIDER_DEFAULTS["cloudflare"]
     assert cf["protocol"] == "openai-chat"
     assert "/ai/v1" in cf["base_url"]
+
+
+def test_opencode_free_models_current_not_deprecated():
+    """opencode static_models skal være de AKTUELLE gratis Zen-modeller (verificeret
+    via `opencode models` 14. jul), ikke de udfasede."""
+    from core.services.cheap_provider_runtime_adapters import CHEAP_PROVIDER_DEFAULTS
+    m = CHEAP_PROVIDER_DEFAULTS["opencode"]["static_models"]
+    assert "nemotron-3-ultra-free" in m and "mimo-v2.5-free" in m
+    assert "nemotron-3-super-free" not in m   # udfaset
+    assert "minimax-m2.5-free" not in m       # udfaset
+    assert len(m) >= 5

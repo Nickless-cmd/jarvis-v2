@@ -367,6 +367,16 @@ _Agent Outcomes Log — persists solo-agent task completions to AGENT_OUTCOMES.m
 | function | `_parse_single_entry` | `(block)` | — | [src](../../../core/services/agent_outcomes_log.py#L96) |
 | function | `_extract_section` | `(block, heading)` | — | [src](../../../core/services/agent_outcomes_log.py#L129) |
 
+## `core/services/agent_pool_router.py`
+_Agent-pool router (spec §4 + §5.5). Tyndt lag over central_route så agenter_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `route_agent_task` | `(*, kind=…, min_tokens=…, quality_threshold=…, exclude=…)` | Vælg (provider, model) for en agent-task via central_route. Aldrig tør. | [src](../../../core/services/agent_pool_router.py#L15) |
+| function | `_load_task_scores` | `(provider, model)` | Nuværende task_scores for (provider, model) fra runtime-state. {} ved intet. | [src](../../../core/services/agent_pool_router.py#L29) |
+| function | `_save_task_scores` | `(provider, model, scores)` | — | [src](../../../core/services/agent_pool_router.py#L40) |
+| function | `update_task_score` | `(*, provider, model, kind, outcome_quality, lr=…)` | §4.4 kvalitets-læring: EMA-opdatér task_score for (model, kind) fra et | [src](../../../core/services/agent_pool_router.py#L48) |
+
 ## `core/services/agent_relay.py`
 _Agent relay — direct A→B messaging between sub-agents._
 
@@ -633,13 +643,4 @@ _Ambient Sound daemon — Layer 6½: background acoustic context._
 | function | `get_music_accumulator_for_prompt` | `()` | Return prompt fragment if music threshold met, else empty string. | [src](../../../core/services/ambient_sound_daemon.py#L453) |
 | function | `_state` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L476) |
 | function | `_parse_iso` | `(s)` | — | [src](../../../core/services/ambient_sound_daemon.py#L481) |
-
-## `core/services/anthropic_identity.py`
-_Build Jarvis identity prefix from a workspace directory._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_signature` | `(workspace_dir)` | — | [src](../../../core/services/anthropic_identity.py#L20) |
-| function | `build_identity_prefix` | `(workspace_dir)` | Return concatenated identity files for this workspace, or empty string. | [src](../../../core/services/anthropic_identity.py#L32) |
-| function | `invalidate_cache` | `()` | — | [src](../../../core/services/anthropic_identity.py#L62) |
 

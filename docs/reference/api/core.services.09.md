@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dictation.py`
+_Dictation-transskription til jarvis-desk's mic-knap._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_resolve_model_size` | `(explicit)` | — | [src](../../../core/services/dictation.py#L22) |
+| function | `_get_model` | `(model_size, device=…, compute_type=…)` | — | [src](../../../core/services/dictation.py#L35) |
+| function | `_join_segments` | `(segments)` | Saml whisper-segmenter til én streng. Ren funktion (testbar). | [src](../../../core/services/dictation.py#L45) |
+| function | `transcribe_file` | `(path, *, model_size=…, language=…)` | Transskribér en lydfil. Returnerer {status, text, language}. | [src](../../../core/services/dictation.py#L50) |
+
 ## `core/services/discord_config.py`
 _Discord config — load/save ~/.jarvis-v2/config/discord.json._
 
@@ -676,19 +686,4 @@ _End-of-run memory consolidation driven by the local model._
 | function | `_normalize_confidence` | `(value)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L524) |
 | function | `_summary_from_line` | `(line)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L531) |
 | function | `_daily_excerpt` | `(value, *, limit)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L538) |
-
-## `core/services/endpoint_usage_store.py`
-_API-endpoint forbrugs-statistik (parallel til tool_usage_store). Centralen holder styr på_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/endpoint_usage_store.py#L22) |
-| function | `record_request` | `(method, path, status_code=…)` | UPSERT-increment for ét request. Best-effort, hot-path-sikker. path = rute-TEMPLATE | [src](../../../core/services/endpoint_usage_store.py#L35) |
-| function | `store_registered_routes` | `(routes)` | Snapshot af registrerede (method, path)-ruter ved api-start → shared_cache, så dead- | [src](../../../core/services/endpoint_usage_store.py#L63) |
-| function | `_registered` | `()` | — | [src](../../../core/services/endpoint_usage_store.py#L74) |
-| function | `usage_stats` | `()` | — | [src](../../../core/services/endpoint_usage_store.py#L83) |
-| function | `_bucket_for` | `(count)` | — | [src](../../../core/services/endpoint_usage_store.py#L101) |
-| function | `usage_buckets` | `()` | Klassificér endpoints most/often/sometimes/rare/never. Registrerede-men-aldrig-kaldte | [src](../../../core/services/endpoint_usage_store.py#L108) |
-| function | `dead_endpoints` | `()` | Registrerede endpoints der ALDRIG er kaldt. Kandidater til oprydning / smartere design. | [src](../../../core/services/endpoint_usage_store.py#L121) |
-| function | `observe_stats` | `()` | Periodisk (cadence): central.observe forbrugs-summary + flag antal døde endpoints. | [src](../../../core/services/endpoint_usage_store.py#L129) |
 

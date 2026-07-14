@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/anthropic_identity.py`
+_Build Jarvis identity prefix from a workspace directory._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_signature` | `(workspace_dir)` | — | [src](../../../core/services/anthropic_identity.py#L20) |
+| function | `build_identity_prefix` | `(workspace_dir)` | Return concatenated identity files for this workspace, or empty string. | [src](../../../core/services/anthropic_identity.py#L32) |
+| function | `invalidate_cache` | `()` | — | [src](../../../core/services/anthropic_identity.py#L62) |
+
 ## `core/services/anthropic_sse_emitter.py`
 _Anthropic Messages API SSE state machine._
 
@@ -605,13 +614,4 @@ _Boundary Awareness — "Where do I end?"_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `build_bounded_workspace_write_execution_surface` | `()` | — | [src](../../../core/services/bounded_workspace_write_runtime.py#L7) |
-
-## `core/services/bridge_presence.py`
-_Cross-proces bro-tilstedeværelse via shared_cache (samme mønster som central_xproc)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `publish` | `(bridges)` | Publicér denne proces' bro-registry-snapshot (kaldes ved register/unregister/dispatch). | [src](../../../core/services/bridge_presence.py#L25) |
-| function | `all_presence` | `()` | Bro-tilstedeværelse fra ALLE processer → {user_id: {process, client, capabilities, ...}}. | [src](../../../core/services/bridge_presence.py#L40) |
-| function | `process_for_user` | `(user_id)` | Hvilken proces holder en levende bro for user_id? None hvis ingen. | [src](../../../core/services/bridge_presence.py#L59) |
 

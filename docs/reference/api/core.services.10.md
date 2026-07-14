@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/endpoint_usage_store.py`
+_API-endpoint forbrugs-statistik (parallel til tool_usage_store). Centralen holder styr på_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/endpoint_usage_store.py#L22) |
+| function | `record_request` | `(method, path, status_code=…)` | UPSERT-increment for ét request. Best-effort, hot-path-sikker. path = rute-TEMPLATE | [src](../../../core/services/endpoint_usage_store.py#L35) |
+| function | `store_registered_routes` | `(routes)` | Snapshot af registrerede (method, path)-ruter ved api-start → shared_cache, så dead- | [src](../../../core/services/endpoint_usage_store.py#L63) |
+| function | `_registered` | `()` | — | [src](../../../core/services/endpoint_usage_store.py#L74) |
+| function | `usage_stats` | `()` | — | [src](../../../core/services/endpoint_usage_store.py#L83) |
+| function | `_bucket_for` | `(count)` | — | [src](../../../core/services/endpoint_usage_store.py#L101) |
+| function | `usage_buckets` | `()` | Klassificér endpoints most/often/sometimes/rare/never. Registrerede-men-aldrig-kaldte | [src](../../../core/services/endpoint_usage_store.py#L108) |
+| function | `dead_endpoints` | `()` | Registrerede endpoints der ALDRIG er kaldt. Kandidater til oprydning / smartere design. | [src](../../../core/services/endpoint_usage_store.py#L121) |
+| function | `observe_stats` | `()` | Periodisk (cadence): central.observe forbrugs-summary + flag antal døde endpoints. | [src](../../../core/services/endpoint_usage_store.py#L129) |
+
 ## `core/services/epistemic_pragmatic.py`
 _Epistemic/Pragmatic Balance — action-mode modulation._
 
@@ -604,11 +619,4 @@ _Privacy-cluster gate 🔒 — cross-user-deling, GRADERET + fail-CLOSED._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `privacy_gate` | `(ctx)` | ctx: {text, current_user_id}. Returnér ét SECURITY-Verdict for cross-user-deling. | [src](../../../core/services/gate_privacy.py#L26) |
-
-## `core/services/gate_proactivity.py`
-_Proactivity-cluster gate — verifikations-disciplin, GRADERET (R2 blød / R2.5 hård)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `proactivity_gate` | `(ctx)` | ctx: {reasoning_tier}. Returnér ét GRADERET Verdict for verifikations-disciplin. | [src](../../../core/services/gate_proactivity.py#L26) |
 

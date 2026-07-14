@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/proposal_classifier.py`
+_Proposal classifier — detects action impulses in thought fragments and scores destructiveness._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_fragment` | `(fragment)` | Classify a thought fragment for action impulses. | [src](../../../core/services/proposal_classifier.py#L59) |
+
 ## `core/services/proprioception_metrics.py`
 _Proprioception Metrics — process-level body sense._
 
@@ -689,12 +696,4 @@ _Rhythm Engine — tidal model for attention and response style._
 | function | `_classify_phase` | `(hour)` | — | [src](../../../core/services/rhythm_engine.py#L96) |
 | function | `_derive_energy` | `(phase, idle_hours)` | — | [src](../../../core/services/rhythm_engine.py#L108) |
 | function | `_derive_social` | `(phase)` | — | [src](../../../core/services/rhythm_engine.py#L118) |
-
-## `core/services/role_model_resolver.py`
-_Role-model resolver — pick best-fit (provider, model) for a role + task._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_classify_goal_tier` | `(goal)` | Classify goal text → fast | reasoning | deep using R1 classifier. | [src](../../../core/services/role_model_resolver.py#L39) |
-| function | `resolve_role_model` | `(*, role, goal=…)` | Pick (provider, model) for this role and goal complexity. | [src](../../../core/services/role_model_resolver.py#L54) |
 

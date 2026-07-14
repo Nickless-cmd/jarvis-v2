@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/model_trust.py`
+_Central-governed EARNED model-trust (harness refactor Part 1 foundation)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/model_trust.py#L19) |
+| function | `_row` | `(conn, model)` | — | [src](../../../core/services/model_trust.py#L33) |
+| function | `record_run_outcome` | `(model, *, degenerated)` | Record one run's outcome. Clean -> +1 streak (promote at threshold); degeneration -> reset | [src](../../../core/services/model_trust.py#L43) |
+| function | `set_pin` | `(model, pin)` | Owner override: 'weak' | 'strong' | 'auto' (default). Self-safe. | [src](../../../core/services/model_trust.py#L75) |
+| function | `model_strength` | `(model)` | 'strong' | 'weak'. Pin wins; else earned strength. FAILS OPEN to 'weak'. | [src](../../../core/services/model_trust.py#L91) |
+| function | `build_model_trust_surface` | `()` | Central-CLI view: per-model trust state. Self-safe. | [src](../../../core/services/model_trust.py#L105) |
+
 ## `core/services/modulator_witness.py`
 _Witness surface for hidden behavior modulators._
 
@@ -593,12 +605,4 @@ _Perceptual event engine — eventful perception for Jarvis._
 | function | `_summary_for_events` | `(events)` | — | [src](../../../core/services/perceptual_event_engine.py#L405) |
 | function | `_load_state` | `()` | — | [src](../../../core/services/perceptual_event_engine.py#L411) |
 | function | `_save_state` | `(state)` | — | [src](../../../core/services/perceptual_event_engine.py#L418) |
-
-## `core/services/periodic_jobs_scheduler.py`
-_Periodic jobs scheduler — enqueues overdue background jobs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_extract_last_time` | `(item)` | Pick the most relevant timestamp from a job record. | [src](../../../core/services/periodic_jobs_scheduler.py#L51) |
-| function | `check_and_enqueue_due_periodic_jobs` | `()` | Idempotent — enqueue any periodic jobs whose cadence is exceeded. | [src](../../../core/services/periodic_jobs_scheduler.py#L64) |
 

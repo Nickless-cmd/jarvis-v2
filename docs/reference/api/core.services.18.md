@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_compassion.py`
+_Self-Compassion & Resilience — counterweight to regret._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_compassion_label` | `(failure_count, regret_level, compassion_level)` | Return a descriptive state label, not a self-compassion sentence. | [src](../../../core/services/self_compassion.py#L12) |
+| function | `process_failure_toward_acceptance` | `(*, failure_count_recent=…, regret_level=…, lesson_learned=…)` | — | [src](../../../core/services/self_compassion.py#L32) |
+| function | `build_resilience_narrative` | `(*, consecutive_failures=…, current_bearing=…)` | Return a descriptive resilience-state label. | [src](../../../core/services/self_compassion.py#L56) |
+| function | `build_self_compassion_surface` | `()` | — | [src](../../../core/services/self_compassion.py#L76) |
+
 ## `core/services/self_critique_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -736,20 +746,4 @@ _Shared Language — tracks shorthand terms that develop between Jarvis and user
 | function | `scan_for_shared_terms` | `(*, user_message, assistant_response, run_id=…)` | Scan conversation for potential shared language terms. | [src](../../../core/services/shared_language.py#L25) |
 | function | `build_shared_language_surface` | `()` | — | [src](../../../core/services/shared_language.py#L61) |
 | function | `_is_common_phrase` | `(phrase)` | — | [src](../../../core/services/shared_language.py#L82) |
-
-## `core/services/shared_language_extended.py`
-_Shared Language Extended — shorthand-udvikling og -resolution._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/shared_language_extended.py#L34) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/shared_language_extended.py#L38) |
-| function | `_ngrams` | `(text)` | — | [src](../../../core/services/shared_language_extended.py#L60) |
-| function | `_load_recent_user_messages` | `(days=…, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L71) |
-| function | `propose_shorthand_terms` | `(*, min_occurrences=…, max_proposals=…)` | Scan chat messages for repeated n-grams; propose as shorthand. | [src](../../../core/services/shared_language_extended.py#L87) |
-| function | `_latest_suggestion_ts` | `()` | — | [src](../../../core/services/shared_language_extended.py#L151) |
-| function | `maybe_weekly_shorthand_suggestion` | `()` | Max 1 shorthand per 7 days. Returns the new term if added. | [src](../../../core/services/shared_language_extended.py#L166) |
-| function | `list_shorthand_terms` | `(*, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L210) |
-| function | `resolve_shorthand_text` | `(text)` | Expand shorthand in text. Returns {resolved_text, matched_terms}. | [src](../../../core/services/shared_language_extended.py#L229) |
-| function | `build_shared_language_extended_surface` | `()` | — | [src](../../../core/services/shared_language_extended.py#L265) |
 

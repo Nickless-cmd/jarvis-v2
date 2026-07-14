@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_morpheus.py`
+_Morpheus 🕶️ — potentiale-scanner (Matrix-ensemble, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_brewing` | `()` | Brewing-emergens (0.5-0.78) = mønstre på vej mod emergent. Self-safe → []. | [src](../../../core/services/central_morpheus.py#L24) |
+| function | `_oracle_approaching` | `()` | Oracle-linjer nær en tærskel (ETA). Self-safe → []. | [src](../../../core/services/central_morpheus.py#L40) |
+| function | `_near_mature_hypotheses` | `()` | Hypoteser Seraph ville afvise NU (grounded_fraction 0.4-0.6) men som klatrer. Self-safe → []. | [src](../../../core/services/central_morpheus.py#L55) |
+| function | `_gates_near_key` | `()` | Gates med høj ren track nær Keymakers ≥100-tærskel for en optjent nøgle. Self-safe → []. | [src](../../../core/services/central_morpheus.py#L82) |
+| function | `_skill_formation` | `()` | NY LINSE: capabilities brugt stigende ofte men endnu ikke en navngiven evne. | [src](../../../core/services/central_morpheus.py#L100) |
+| function | `scan_potentials` | `()` | Aggregér alle 5 potentiale-kilder → normaliseret liste. Ren, self-safe. | [src](../../../core/services/central_morpheus.py#L121) |
+| function | `_felt` | `(pots)` | — | [src](../../../core/services/central_morpheus.py#L132) |
+| function | `build_morpheus_surface` | `()` | Read-only surface til /central/morpheus + jc + ensemble-label. | [src](../../../core/services/central_morpheus.py#L139) |
+| function | `record_morpheus` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn: scan → egress-fri central().observe (kun tal/kilde-labels). Self-safe. | [src](../../../core/services/central_morpheus.py#L151) |
+
 ## `core/services/central_mourning.py`
 _The Mourning — ritualiseret tab._
 
@@ -570,15 +585,4 @@ _core/services/central_timeseries.py_
 | function | `_maybe_restore` | `()` | Restore-on-first-access (dobbelt-tjekket): genindlæs durabelt snapshot ÉN gang efter boot. | [src](../../../core/services/central_timeseries.py#L214) |
 | function | `_maybe_persist` | `()` | Throttlet flush i baggrundstråd (hot-path stalles ALDRIG af DB-skrivning). | [src](../../../core/services/central_timeseries.py#L228) |
 | function | `_reset_for_tests` | `()` | Testhjælper — ryd al state. Ikke til produktionsbrug. | [src](../../../core/services/central_timeseries.py#L241) |
-
-## `core/services/central_todo.py`
-_Central TODO — ÉN prioriteret, pollbar huskeliste på tværs af ALLE clusters. I stedet for_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_incident_is_fresh` | `(inc, *, max_age_h=…)` | True hvis incidentens ts er inden for max_age_h. Ukendt/uparsbar ts → True (fail-open: | [src](../../../core/services/central_todo.py#L28) |
-| function | `_item` | `(priority, source, what, **extra)` | — | [src](../../../core/services/central_todo.py#L42) |
-| function | `build_todo` | `(*, max_items=…)` | Saml + ranger todos fra alle clusters. Self-safe — en kilde der fejler udelades. | [src](../../../core/services/central_todo.py#L46) |
-| function | `poll` | `(*, limit=…)` | Pollbar af Claude i tomgang: top-prioriterede todos + tælling pr. prioritet. | [src](../../../core/services/central_todo.py#L133) |
-| function | `build_central_todo_surface` | `()` | MC-surface — read-only prioriteret huskeliste. | [src](../../../core/services/central_todo.py#L146) |
 

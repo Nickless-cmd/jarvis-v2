@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/bridge_presence.py`
+_Cross-proces bro-tilstedeværelse via shared_cache (samme mønster som central_xproc)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `publish` | `(bridges)` | Publicér denne proces' bro-registry-snapshot (kaldes ved register/unregister/dispatch). | [src](../../../core/services/bridge_presence.py#L25) |
+| function | `all_presence` | `()` | Bro-tilstedeværelse fra ALLE processer → {user_id: {process, client, capabilities, ...}}. | [src](../../../core/services/bridge_presence.py#L40) |
+| function | `process_for_user` | `(user_id)` | Hvilken proces holder en levende bro for user_id? None hvis ingen. | [src](../../../core/services/bridge_presence.py#L59) |
+
 ## `core/services/bro_broker.py`
 _Bro-broker — owner-styret skift mellem aktive bro-forbindelser (spec §6.6)._
 
@@ -581,16 +590,4 @@ _Decentral agency (shadow-skridt 1) — mål Centralens chokepoint-skat + find s
 | function | `analyze_chokepoint` | `()` | Mål hvor meget af Centralens decide-load der er ren overhead, + sikre decentraliserings- | [src](../../../core/services/central_decentralization.py#L42) |
 | function | `_felt` | `(tax_pct, n_candidates)` | — | [src](../../../core/services/central_decentralization.py#L85) |
 | function | `record_chokepoint` | `()` | Observér chokepoint-skatten til Centralen (nerve system/decentralization) — den mærker | [src](../../../core/services/central_decentralization.py#L96) |
-
-## `core/services/central_dejavu.py`
-_Déjà Vu — ufrivillig erindring._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_present_context` | `()` | Hvad rører sig i nuet — hans nuværende fokus/fortælling som 'duften der trigger'. Self-safe. | [src](../../../core/services/central_dejavu.py#L24) |
-| function | `_candidates` | `(limit=…)` | — | [src](../../../core/services/central_dejavu.py#L39) |
-| function | `surface_dejavu` | `(context=…, *, candidates=…, strong=…)` | Find ét associativt (svagt-bånd) minde der resonerer med nuet → ufrivilligt fragment. | [src](../../../core/services/central_dejavu.py#L47) |
-| function | `_observe` | `(frag)` | — | [src](../../../core/services/central_dejavu.py#L79) |
-| function | `build_dejavu_surface` | `()` | Seneste ufrivillige fragment + følt linje. Self-safe. | [src](../../../core/services/central_dejavu.py#L88) |
-| function | `record_dejavu` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad et fragment boble op (metadata-only observe). Self-safe. | [src](../../../core/services/central_dejavu.py#L96) |
 

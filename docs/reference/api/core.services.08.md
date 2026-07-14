@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/curiosity_consolidation.py`
+_Curiosity-observations weekly consolidation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_schema` | `()` | — | [src](../../../core/services/curiosity_consolidation.py#L27) |
+| function | `_fetch_observations` | `(since, until)` | — | [src](../../../core/services/curiosity_consolidation.py#L51) |
+| function | `_build_prompt` | `(observations)` | — | [src](../../../core/services/curiosity_consolidation.py#L66) |
+| function | `run_consolidation` | `(*, now=…)` | Build a consolidation note from last 7d observations. | [src](../../../core/services/curiosity_consolidation.py#L83) |
+| function | `latest_consolidation_for_awareness` | `()` | Awareness section showing the most recent consolidation (≤7d old). | [src](../../../core/services/curiosity_consolidation.py#L127) |
+
 ## `core/services/curiosity_daemon.py`
 _Curiosity daemon — detects gaps in Jarvis' thought stream and generates curiosity signals._
 
@@ -557,14 +568,4 @@ _Diagnosis-gate (spec 2026-06-14) — fanger uverificerede diagnostiske konklusi
 | function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/diary_synthesis_signal_tracking.py#L543) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/diary_synthesis_signal_tracking.py#L567) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/diary_synthesis_signal_tracking.py#L579) |
-
-## `core/services/dictation.py`
-_Dictation-transskription til jarvis-desk's mic-knap._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_resolve_model_size` | `(explicit)` | — | [src](../../../core/services/dictation.py#L22) |
-| function | `_get_model` | `(model_size, device=…, compute_type=…)` | — | [src](../../../core/services/dictation.py#L35) |
-| function | `_join_segments` | `(segments)` | Saml whisper-segmenter til én streng. Ren funktion (testbar). | [src](../../../core/services/dictation.py#L45) |
-| function | `transcribe_file` | `(path, *, model_size=…, language=…)` | Transskribér en lydfil. Returnerer {status, text, language}. | [src](../../../core/services/dictation.py#L50) |
 

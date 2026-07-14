@@ -66,6 +66,24 @@ def test_record_daemon_tick_updates_state(tmp_path):
         assert "generated: True" in c["last_result_summary"]
 
 
+def test_event_trigger_shadow_registered_and_records(tmp_path):
+    """2026-07-14: event_trigger_shadow flyttet fra aktivitets-gated _build_influence_trace
+    til den ubetingede daemon-sektion. Den SKAL være i registry, ellers er
+    record_daemon_tick en no-op (name not in _REGISTRY → return) og cadencen er blind."""
+    from core.services import daemon_manager
+    assert "event_trigger_shadow" in daemon_manager.get_daemon_names()
+    with patch.object(daemon_manager, "_state_file", return_value=tmp_path / "DAEMON_STATE.json"):
+        assert daemon_manager.is_enabled("event_trigger_shadow")  # default ON for θ-kalibrering
+        assert daemon_manager.get_effective_cadence("event_trigger_shadow") == 3
+        daemon_manager.record_daemon_tick(
+            "event_trigger_shadow", {"recorded": True, "would_dispatch": False},
+        )
+        states = daemon_manager.get_all_daemon_states()
+        e = next(s for s in states if s["name"] == "event_trigger_shadow")
+        assert e["last_run_at"] != ""
+        assert "recorded: True" in e["last_result_summary"]
+
+
 def test_unknown_daemon_raises(tmp_path):
     import pytest
     from core.services import daemon_manager

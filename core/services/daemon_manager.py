@@ -432,6 +432,17 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": False,
         "description": "[DEAKTIVERET 2026-06-11 — selv-bias problem] 6t adherence-loop: LLM-self-review af behavioral decisions.",
     },
+    "event_trigger_shadow": {
+        "module": "core.services.event_trigger_shadow",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 3,
+        # C5 θ-kalibrerings-meter. Rå, NON-LLM signal-delta-tjek. Var før placeret INDE i
+        # _build_influence_trace (aktivitets-gated) → tikkede kun når Jarvis var aktiv, tavs
+        # hele natten. Flyttet 2026-07-14 til den ubetingede daemon-sektion (% 6 ≈ 3 min ved
+        # 30s-scheduler) → 500-ring dækker ~25t = ét fuldt 24t θ-vindue uanset idle.
+        "description": "event-trigger SHADOW-meter (observe-only): registrerer hvad den event-drevne trigger VILLE dispatche, til θ-kalibrering. Fyrer aldrig LLM/råd.",
+    },
 }
 
 

@@ -2111,6 +2111,21 @@ def _run_heartbeat_tick_locked(
             tick_meta_cognition_daemon()
     except Exception:
         pass
+    # C5 event-trigger SHADOW-meter (θ-kalibrering). Rå, NON-LLM signal-delta-tjek.
+    # Flyttet 2026-07-14 hertil fra _build_influence_trace (som var aktivitets-gated →
+    # tikkede kun når Jarvis var aktiv, tavs hele natten → kun 1 sample på 24t). Nu i den
+    # UBETINGEDE daemon-sektion: % 6 ≈ 3 min (30s-scheduler) → 500-ring dækker ~25t =
+    # ét fuldt 24t θ-vindue uanset idle. Cheap + deadline-bound → kan aldrig fryse heartbeat.
+    try:
+        from core.services import daemon_manager as _dm_et
+        if _HEARTBEAT_TICK_COUNTER % 6 == 0 and _dm_et.is_enabled("event_trigger_shadow"):
+            from core.services.event_trigger_shadow import tick_event_trigger_shadow
+            _et_result = _daemon_tick_with_deadline(
+                "event_trigger_shadow", tick_event_trigger_shadow, deadline_seconds=10.0,
+            )
+            _dm_et.record_daemon_tick("event_trigger_shadow", _et_result or {})
+    except Exception:
+        pass
     # narrative_summary (Phase 2.5 of causal graph) + pattern_counterfactual
     # (Phase 3.5) were registered in daemon_manager but never wired into the
     # heartbeat tick loop. Result: 4 narrative.summary events ever, last

@@ -438,6 +438,14 @@ class RuntimeSettings:
     # unexpected token-burn on first deploy — flip to True deliberately.
     counterfactual_engine_phase2_llm_enabled: bool = False
     counterfactual_engine_phase2_max_per_cycle: int = 5  # cap LLM calls/tick
+    # ── jarvis-code Fase 4 parity (server-side), added 2026-07-14 ──────────
+    # All default False: /v1/agent/step behavior is byte-identical to today
+    # until an operator flips one deliberately. See apps/api/jarvis_api/
+    # routes/agent_loop.py for the gated call sites.
+    agent_step_reasoning_replay_enabled: bool = False
+    agent_step_env_block_enabled: bool = False
+    agent_step_cache_contract_enabled: bool = False
+    agent_step_harness_contract_enabled: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -524,6 +532,10 @@ class RuntimeSettings:
             "counterfactual_engine_promotion_threshold": self.counterfactual_engine_promotion_threshold,
             "counterfactual_engine_phase2_llm_enabled": self.counterfactual_engine_phase2_llm_enabled,
             "counterfactual_engine_phase2_max_per_cycle": self.counterfactual_engine_phase2_max_per_cycle,
+            "agent_step_reasoning_replay_enabled": self.agent_step_reasoning_replay_enabled,
+            "agent_step_env_block_enabled": self.agent_step_env_block_enabled,
+            "agent_step_cache_contract_enabled": self.agent_step_cache_contract_enabled,
+            "agent_step_harness_contract_enabled": self.agent_step_harness_contract_enabled,
         }
         return {**self.extra, **typed}
 
@@ -945,6 +957,10 @@ def load_settings() -> RuntimeSettings:
         counterfactual_engine_promotion_threshold=float(data.get("counterfactual_engine_promotion_threshold", defaults.counterfactual_engine_promotion_threshold)),
         counterfactual_engine_phase2_llm_enabled=bool(data.get("counterfactual_engine_phase2_llm_enabled", defaults.counterfactual_engine_phase2_llm_enabled)),
         counterfactual_engine_phase2_max_per_cycle=int(data.get("counterfactual_engine_phase2_max_per_cycle", defaults.counterfactual_engine_phase2_max_per_cycle)),
+        agent_step_reasoning_replay_enabled=bool(data.get("agent_step_reasoning_replay_enabled", defaults.agent_step_reasoning_replay_enabled)),
+        agent_step_env_block_enabled=bool(data.get("agent_step_env_block_enabled", defaults.agent_step_env_block_enabled)),
+        agent_step_cache_contract_enabled=bool(data.get("agent_step_cache_contract_enabled", defaults.agent_step_cache_contract_enabled)),
+        agent_step_harness_contract_enabled=bool(data.get("agent_step_harness_contract_enabled", defaults.agent_step_harness_contract_enabled)),
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 

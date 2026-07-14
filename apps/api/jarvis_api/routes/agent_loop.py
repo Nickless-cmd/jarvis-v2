@@ -59,6 +59,20 @@ def _flag(name: str, default: bool = False) -> bool:
         return default
 
 
+def _settings():
+    """RuntimeSettings for the jarvis-code Fase 4 parity flags (config-file backed,
+    core/runtime/settings.py — distinct from the DB-backed _flag() above). Test
+    seam: monkeypatch al._settings to stub the four `agent_step_*` booleans without
+    touching the on-disk runtime.json. Self-safe: any error -> a fresh (all-False)
+    RuntimeSettings, so a broken config never turns Fase-4 behavior on by accident."""
+    try:
+        from core.runtime.settings import load_settings
+        return load_settings()
+    except Exception:
+        from core.runtime.settings import RuntimeSettings
+        return RuntimeSettings()
+
+
 def _emit_agent_nerve(*, status: str, provider: str, model: str,
                       tokens_in: int, tokens_out: int, cost_usd: float,
                       duration_ms: int, tool_calls: int, finish_reason: str,
@@ -266,6 +280,26 @@ def _build_system_prompt(context: str, user_message: str = "", name: str = "defa
     if catalog:
         base = base + catalog + "\n\n" + _SKILL_ACTIVATION + "\n\n" + _CC_TOOL_LEGEND
     return base
+
+
+def _normalize_reasoning_for_provider(messages: list[dict], provider: str) -> list[dict]:
+    """Fase 4 Task S: keep `reasoning_content` on assistant(+tool_calls) messages for
+    providers that accept it on replay (deepseek); STRIP it for providers that 400 on
+    the unexpected field (ollama/copilot-compat — the documented "400=ollama-felter"
+    root cause). Never mutates the input list. Only touches assistant messages that
+    actually carry a `reasoning_content` key — everything else passes through
+    unchanged, so this is a no-op on messages that never had reasoning attached."""
+    if provider == "deepseek":
+        return list(messages or [])
+    out: list[dict] = []
+    for m in messages or []:
+        if isinstance(m, dict) and m.get("role") == "assistant" and "reasoning_content" in m:
+            m2 = dict(m)
+            m2.pop("reasoning_content", None)
+            out.append(m2)
+        else:
+            out.append(m)
+    return out
 
 
 def _resolve_target() -> tuple[str, str]:
@@ -486,6 +520,7 @@ async def agent_step(request: Request):
         provider, model = "deepseek", "deepseek-v4-flash"
 
     auth_profile, base_url = _openai_compat_credentials(provider)
+    settings = _settings()
 
     # Seneste bruger-besked → driver memory-recall i 'full'-context.
     _last_user = ""
@@ -495,6 +530,26 @@ async def agent_step(request: Request):
             _last_user = _extract_text(_c) if _flag("jc_agent_multimodal") else str(_c or "")
             break
     _ws_name = _resolve_workspace_name(user_id) if _flag("jc_agent_user_scoping") else "default"
+
+    # Fase 4 Task 1 (flag-gated): keep reasoning_content paired with its
+    # tool_calls-carrying assistant message for providers that accept replay
+    # (deepseek), strip it for providers that 400 on it. Off -> client_messages
+    # pass through byte-identical to today.
+    if settings.agent_step_reasoning_replay_enabled:
+        client_messages = _normalize_reasoning_for_provider(client_messages, provider)
+
+    # Fase 4 Task 1 (flag-gated): client-directed think-budget -> deepseek extra_body.
+    extra_body: dict | None = None
+    thinking_mode = body.get("thinking_mode")
+    if settings.agent_step_reasoning_replay_enabled and thinking_mode and provider == "deepseek":
+        try:
+            from core.services.cheap_provider_runtime_adapters import (
+                deepseek_request_for_thinking_mode,
+            )
+            model, extra_body = deepseek_request_for_thinking_mode(model, str(thinking_mode))
+        except Exception:
+            logger.debug("agent/step thinking_mode-mapping fejlede", exc_info=True)
+
     # System-prompt (tiered context) foran + klientens samtale (inkl. tool-resultater).
     chat_messages: list[dict[str, Any]] = [
         {"role": "system", "content": _build_system_prompt(context, _last_user, _ws_name)}]
@@ -504,7 +559,8 @@ async def agent_step(request: Request):
         return StreamingResponse(
             _stream_step(provider=provider, model=model, auth_profile=auth_profile,
                          base_url=base_url, chat_messages=chat_messages, tools=tools,
-                         session_id=session_id, user_id=user_id),
+                         session_id=session_id, user_id=user_id, extra_body=extra_body,
+                         reasoning_replay_enabled=settings.agent_step_reasoning_replay_enabled),
             media_type="text/event-stream",
         )
 
@@ -514,6 +570,7 @@ async def agent_step(request: Request):
         raw = _execute_openai_compatible_chat(
             provider=provider, model=model, auth_profile=auth_profile,
             base_url=base_url, messages=chat_messages, tools=tools,
+            extra_body=extra_body,
         )
     except Exception as exc:
         logger.exception("agent/step model-kald fejlede: %s", exc)
@@ -549,7 +606,7 @@ async def agent_step(request: Request):
             except Exception:
                 logger.debug("agent/step note_empty_completion fejlede", exc_info=True)
 
-    return JSONResponse(content={
+    response_body: dict[str, Any] = {
         # additive structured envelope (Fase 0 O1)
         "status": status,
         "tokens_in": tokens_in,
@@ -569,12 +626,17 @@ async def agent_step(request: Request):
             "completion_tokens": tokens_out,
             "cost_usd": cost_usd,
         },
-    })
+    }
+    # Fase 4 Task 1 (flag-gated): off -> key absent, byte-identical to today.
+    if settings.agent_step_reasoning_replay_enabled:
+        response_body["reasoning_content"] = str(raw.get("reasoning_content") or "")
+    return JSONResponse(content=response_body)
 
 
 def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                  chat_messages: list[dict], tools: list[dict] | None,
-                 session_id: str = "", user_id: str = ""):
+                 session_id: str = "", user_id: str = "", extra_body: dict | None = None,
+                 reasoning_replay_enabled: bool = False):
     """Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau
     openai-compat SSE-iterator (rå messages+tools ind, delta/tool_call/done ud)."""
     from core.services.cheap_provider_runtime_streaming import (
@@ -588,6 +650,7 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
         for ev in _iter_openai_compatible_chat_events(
             provider=provider, model=model, auth_profile=auth_profile,
             base_url=base_url, messages=chat_messages, tools=tools or None,
+            extra_body=extra_body,
         ):
             kind = ev.get("kind")
             if kind == "delta":
@@ -635,7 +698,7 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                                 session_id=session_id, path="agent_step_stream")
                         except Exception:
                             logger.debug("stream note_empty_completion fejlede", exc_info=True)
-                yield _sse("done", {
+                _done_body: dict[str, Any] = {
                     "status": _status,
                     "tokens_in": _tin,
                     "tokens_out": _tout,
@@ -647,7 +710,11 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                     "content": _content,
                     "done": not collected,
                     "usage": {"prompt_tokens": _tin, "completion_tokens": _tout},
-                })
+                }
+                # Fase 4 Task 1 (flag-gated): off -> key absent, byte-identical to today.
+                if reasoning_replay_enabled:
+                    _done_body["reasoning_content"] = str(ev.get("reasoning_content") or "")
+                yield _sse("done", _done_body)
                 return
     except Exception as exc:
         logger.exception("agent/step stream fejlede: %s", exc)

@@ -770,9 +770,9 @@ _Safe read/merge/write helpers for runtime.json._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `RuntimeSettings` | `` | — | [src](../../../core/runtime/settings.py#L11) |
-| method | `RuntimeSettings.to_dict` | `(self)` | — | [src](../../../core/runtime/settings.py#L443) |
-| function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L534) |
-| function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L952) |
+| method | `RuntimeSettings.to_dict` | `(self)` | — | [src](../../../core/runtime/settings.py#L451) |
+| function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L546) |
+| function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L968) |
 
 ## `core/runtime/state_store.py`
 _Tiny JSON-file state store for module-globals that must survive restart._

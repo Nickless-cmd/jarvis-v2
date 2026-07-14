@@ -518,6 +518,12 @@ def _execute_openai_compatible_chat(
     _first_choice = (data.get("choices") or [{}])[0] or {}
     first_msg = _first_choice.get("message") or {}
     tool_calls = list(first_msg.get("tool_calls") or [])
+    # Fase 4 Task S: deepseek (and other reasoning-capable openai-compat
+    # providers) expose the model's reasoning trace on
+    # choices[0].message.reasoning_content — plumb it through additively so
+    # /v1/agent/step can forward+pair it across tool rounds. Absent on
+    # providers that don't support it -> "" (unchanged behavior).
+    reasoning_content = str(first_msg.get("reasoning_content") or "")
     # Tool-only responses (no assistant text) are valid when tools are in
     # play — don't raise empty-response in that case.
     if tool_calls:
@@ -544,6 +550,7 @@ def _execute_openai_compatible_chat(
     return {
         "text": text,
         "tool_calls": tool_calls,
+        "reasoning_content": reasoning_content,
         "input_tokens": int(
             usage.get("prompt_tokens")
             or usage.get("input_tokens")

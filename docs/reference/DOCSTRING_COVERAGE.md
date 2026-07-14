@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6054/12493 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6056/12495 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6054/12493 functions/methods documented (48%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 559 | 739 | 75% |
+| `apps.api.jarvis_api.routes` | 561 | 741 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 57 | 155 | 36% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -487,9 +487,9 @@ Generated from source. 6054/12493 functions/methods documented (48%). The list b
 - `core/runtime/provider_router.py` :: `resolve_provider_router_target` (L254)
 - `core/runtime/provider_router.py` :: `select_main_agent_target` (L200)
 - `core/runtime/secrets.py` :: `mail_config` (L96)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L443)
-- `core/runtime/settings.py` :: `load_settings` (L534)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L952)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L451)
+- `core/runtime/settings.py` :: `load_settings` (L546)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L968)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L129)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L125)
 - `core/services/action_router.py` :: `build_action_router_surface` (L605)

@@ -40,6 +40,7 @@ def _iter_openai_compatible_chat_events(
     tools: list[dict] | None = None,
     temperature: float | None = None,
     top_p: float | None = None,
+    extra_body: dict | None = None,
 ):
     """Stream OpenAI-compatible /chat/completions deltas via SSE.
 
@@ -87,6 +88,11 @@ def _iter_openai_compatible_chat_events(
         payload["top_p"] = float(top_p)
     if tools:
         payload["tools"] = _normalize_tools_for_openai_chat(tools)
+    # Fase 4 Task S: think-budget directive (thinking_mode -> extra_body via
+    # deepseek_request_for_thinking_mode). Merged last so an explicit caller
+    # value always wins, same ordering as the non-stream adapter.
+    if extra_body:
+        payload.update(extra_body)
 
     # 2026-05-22 (Claude): cache-mystery investigation. When the sentinel file
     # /tmp/jarvis-payload-dump exists, dump full payload JSON to

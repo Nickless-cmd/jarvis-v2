@@ -65,6 +65,15 @@ _DB helpers for absence_traces (Lag 11 forgetting)._
 | function | `get_auto_counter` | `(*, workspace_id, month_key=…)` | Get the counter row for a given month (default: current month). | [src](../../../core/runtime/db_absence_traces.py#L135) |
 | function | `mark_self_released` | `(*, trace_id)` | Recursive release: mark an existing self-marker as released. | [src](../../../core/runtime/db_absence_traces.py#L157) |
 
+## `core/runtime/db_agent_audit.py`
+_Agent-audit-trail — PERSISTENT per-user/per-tool execution log for_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/runtime/db_agent_audit.py#L24) |
+| function | `write_row` | `(*, user_id, role, tool, target_summary=…, decision=…)` | Insert one audit row. Returns True on success, False on any failure | [src](../../../core/runtime/db_agent_audit.py#L44) |
+| function | `read_rows` | `(user_id=…, limit=…)` | Read audit rows, most recent first. Filters by user_id when given. | [src](../../../core/runtime/db_agent_audit.py#L72) |
+
 ## `core/runtime/db_agent_runtime.py`
 _Persistence for Jarvis' agent + council runtime cluster._
 
@@ -634,38 +643,4 @@ _Persistence for the `runtime_browser_bodies` table — Jarvis' browser bodies._
 | function | `get_runtime_browser_body` | `(body_id)` | — | [src](../../../core/runtime/db_runtime_browser.py#L41) |
 | function | `upsert_runtime_browser_body` | `(*, body_id, profile_name, status, active_task_id=…, active_flow_id=…, focused_tab_id=…, tabs_json=…, last_url=…, last_title=…, summary=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_browser.py#L82) |
 | function | `list_runtime_browser_bodies` | `(limit=…)` | — | [src](../../../core/runtime/db_runtime_browser.py#L149) |
-
-## `core/runtime/db_runtime_chronicle.py`
-_Persistence for Jarvis' runtime chronicle-consolidation signal cluster._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_runtime_consolidation_target_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L23) |
-| function | `_ensure_runtime_chronicle_consolidation_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L64) |
-| function | `_ensure_runtime_chronicle_consolidation_brief_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L107) |
-| function | `_ensure_runtime_chronicle_consolidation_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L150) |
-| function | `_runtime_consolidation_target_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L193) |
-| function | `_runtime_chronicle_consolidation_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L219) |
-| function | `_runtime_chronicle_consolidation_brief_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L245) |
-| function | `_runtime_chronicle_consolidation_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L271) |
-| function | `upsert_runtime_consolidation_target_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a consolidation-target signal keyed on ``signal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L297) |
-| function | `list_runtime_consolidation_target_signals` | `(*, status=…, limit=…)` | Return consolidation-target signals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L369) |
-| function | `get_runtime_consolidation_target_signal` | `(signal_id)` | Return the consolidation-target signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L419) |
-| function | `update_runtime_consolidation_target_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a consolidation-target signal. | [src](../../../core/runtime/db_runtime_chronicle.py#L456) |
-| function | `supersede_runtime_consolidation_target_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all live consolidation-target signals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L492) |
-| function | `upsert_runtime_chronicle_consolidation_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation signal keyed on ``signal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L528) |
-| function | `list_runtime_chronicle_consolidation_signals` | `(*, status=…, limit=…)` | Return chronicle-consolidation signals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L599) |
-| function | `get_runtime_chronicle_consolidation_signal` | `(signal_id)` | Return the chronicle-consolidation signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L649) |
-| function | `update_runtime_chronicle_consolidation_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation signal. | [src](../../../core/runtime/db_runtime_chronicle.py#L688) |
-| function | `supersede_runtime_chronicle_consolidation_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all live chronicle-consolidation signals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L724) |
-| function | `upsert_runtime_chronicle_consolidation_brief` | `(*, brief_id, brief_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation brief keyed on ``brief_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L760) |
-| function | `list_runtime_chronicle_consolidation_briefs` | `(*, status=…, limit=…)` | Return chronicle-consolidation briefs newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L831) |
-| function | `get_runtime_chronicle_consolidation_brief` | `(brief_id)` | Return the chronicle-consolidation brief row dict for ``brief_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L881) |
-| function | `update_runtime_chronicle_consolidation_brief_status` | `(brief_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation brief. | [src](../../../core/runtime/db_runtime_chronicle.py#L920) |
-| function | `supersede_runtime_chronicle_consolidation_briefs_for_domain` | `(*, domain_key, exclude_brief_id, updated_at, status_reason)` | Mark all live chronicle-consolidation briefs in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L956) |
-| function | `upsert_runtime_chronicle_consolidation_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation proposal keyed on ``proposal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L992) |
-| function | `list_runtime_chronicle_consolidation_proposals` | `(*, status=…, limit=…)` | Return chronicle-consolidation proposals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L1063) |
-| function | `get_runtime_chronicle_consolidation_proposal` | `(proposal_id)` | Return the chronicle-consolidation proposal row dict for ``proposal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L1113) |
-| function | `update_runtime_chronicle_consolidation_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation proposal. | [src](../../../core/runtime/db_runtime_chronicle.py#L1152) |
-| function | `supersede_runtime_chronicle_consolidation_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live chronicle-consolidation proposals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L1188) |
 

@@ -39,6 +39,15 @@ _Self-profile-route for cowork command center (spec §4.1 Account)._
 | function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L476) |
 | function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L489) |
 
+## `apps/api/jarvis_api/routes/agent_audit.py`
+_Agent-audit-trail route (Fase 5 Task 9) — GET /v1/agent/audit._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_flag` | `(name, default=…)` | Mirror agent_loop.py's `_flag` — fail-safe DB-backed runtime flag read. | [src](../../../apps/api/jarvis_api/routes/agent_audit.py#L20) |
+| function | `record_if_enabled` | `(*, user_id, role, tool, target_summary=…, decision=…)` | Write one audit row IFF `jc_audit_trail` is on. Inert (no-op, no DB | [src](../../../apps/api/jarvis_api/routes/agent_audit.py#L28) |
+| function | `agent_audit` | `(user_id=…, limit=…)` | Owner-only readback of the audit trail. Non-owner callers get 403. | [src](../../../apps/api/jarvis_api/routes/agent_audit.py#L42) |
+
 ## `apps/api/jarvis_api/routes/agent_loop.py`
 _Client-owned agent loop: /v1/agent/step._
 
@@ -63,9 +72,9 @@ _Client-owned agent loop: /v1/agent/step._
 | function | `tools_catalog` | `(unlocked=…)` | Kurateret jc tool-katalog. Låst: companions + load_more. Åbnet: + runtime_-aliaser. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L425) |
 | class | `_ExecBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L440) |
 | function | `tools_execute` | `(body)` | Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L449) |
-| function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L545) |
-| function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L562) |
-| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools, session_id=…, user_id=…, extra_body=…, reasoning_replay_enabled=…, cache_contract_enabled=…, prefix_sha=…, prefix_len=…)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L763) |
+| function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L563) |
+| function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L580) |
+| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools, session_id=…, user_id=…, extra_body=…, reasoning_replay_enabled=…, cache_contract_enabled=…, prefix_sha=…, prefix_len=…)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L781) |
 
 ## `apps/api/jarvis_api/routes/agentic_guards.py`
 _MC endpoint for agentic-loop guard observability._
@@ -586,9 +595,4 @@ _Internal runtime-surface endpoint — proxy-mål for Centralens self/mind-flade
 | function | `_autonomous_history` | `()` | Jarvis' autonome historie grupperet pr. oprindelse (drøm/råd/arbejde/…): antal | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L146) |
 | function | `_gate_verdicts` | `()` | Persistent verdict-fordeling pr. governet gate (survives restart). DB-backed → | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L154) |
 | function | `get_runtime_surface` | `(name, request)` | Return the named runtime-surface builder's output (raw). Loopback-only, self-safe. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L182) |
-
-## `apps/api/jarvis_api/routes/jarvisx.py`
-_JarvisX-specific routes — small endpoints used by the desktop app._
-
-_(no top-level classes or functions)_
 

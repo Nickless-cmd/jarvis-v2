@@ -480,6 +480,15 @@ async def tools_execute(body: _ExecBody):
         except Exception:
             logger.debug("agent_loop: gate_verdict_ledger.record fejlede (jc_forward deny)",
                         exc_info=True)
+        # Fase 5 Task 9: audit-trail row (flag-gated jc_audit_trail, default
+        # OFF) — distinct from the verdict-ledger (aggregated counts) and the
+        # cost-nerve (spend): who ran what, attributable to a user_id.
+        try:
+            from apps.api.jarvis_api.routes.agent_audit import record_if_enabled
+            record_if_enabled(user_id=body.user_id or "", role=role, tool=real,
+                              target_summary=str(body.arguments or {})[:200], decision="deny")
+        except Exception:
+            logger.debug("agent_loop: agent_audit.record_if_enabled fejlede (deny)", exc_info=True)
         raise HTTPException(status_code=403,
                             detail="brain-write not permitted for this user")
 
@@ -538,6 +547,15 @@ async def tools_execute(body: _ExecBody):
                 reset_context(role_token)
 
     result = await run_in_threadpool(_run)
+    # Fase 5 Task 9: audit-trail row for the ALLOWED path too (flag-gated,
+    # inert when off — see record_if_enabled). Audit rows exist even when
+    # the tool call carries zero cost (distinct from the cost-nerve).
+    try:
+        from apps.api.jarvis_api.routes.agent_audit import record_if_enabled
+        record_if_enabled(user_id=body.user_id or "", role=role, tool=real,
+                          target_summary=str(body.arguments or {})[:200], decision="allow")
+    except Exception:
+        logger.debug("agent_loop: agent_audit.record_if_enabled fejlede (allow)", exc_info=True)
     return {"result": result, "name": real}
 
 

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12498 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12504 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -8,8 +8,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12498 functions/
 
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
-- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `jarvisx`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `jarvisx_authtokens` … `users`
+- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `internal_runtime_surface`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `jarvisx` … `tts`
+- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `users` … `users`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
 - [`apps.desktop`](apps.desktop.md)
@@ -24,8 +25,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12498 functions/
 - [`core.identity`](core.identity.md)
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
-- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_runtime_chronicle`
-- [`core.runtime.02`](core.runtime.02.md) — `db_runtime_cognition_signals` … `workspace_paths`
+- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_runtime_browser`
+- [`core.runtime.02`](core.runtime.02.md) — `db_runtime_chronicle` … `workspace_paths`
 - [`core.services.01`](core.services.01.md) — `__init__` … `anthropic_identity`
 - [`core.services.02`](core.services.02.md) — `anthropic_sse_emitter` … `bridge_presence`
 - [`core.services.03`](core.services.03.md) — `bro_broker` … `central_dejavu`

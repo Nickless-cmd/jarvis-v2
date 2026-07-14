@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -47,6 +49,66 @@ def _resolve_role() -> str:
         return effective_role() or "owner"
     except Exception:
         return "owner"
+
+
+# ── Fase 5 Task 19: provider XML tool-call fallback (flag-gated) ──────────
+# Some providers/models (Ollama, Gemini — reference_gemini_ollama_toolcall_400)
+# return EMPTY native tool_calls and instead emit an XML/tagged convention in
+# the assistant TEXT: <tool_call>{"name": ..., "arguments": {...}}</tool_call>.
+# Behind jc_xml_toolcall_fallback (default OFF), parse that convention out of
+# the text and normalise it into the SAME tool_call structure the client
+# already consumes — ONLY when native tool_calls are absent.
+_XML_TOOLCALL_RE = re.compile(r"<tool_call>\s*(.*?)\s*</tool_call>", re.DOTALL)
+
+
+def _parse_xml_tool_calls(text: str) -> list[dict[str, Any]]:
+    """Extract <tool_call>{json}</tool_call> tags from `text` and normalise
+    them into the standard tool_call dict shape. Malformed JSON inside a tag
+    is skipped (never raises) — degrades to leaving that tag as content."""
+    calls: list[dict[str, Any]] = []
+    for m in _XML_TOOLCALL_RE.finditer(text or ""):
+        raw = m.group(1).strip()
+        try:
+            obj = json.loads(raw)
+        except Exception:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        name = str(obj.get("name") or obj.get("tool") or "").strip()
+        if not name:
+            continue
+        arguments = obj.get("arguments", obj.get("parameters", {}))
+        if not isinstance(arguments, (dict, list)):
+            arguments = {}
+        calls.append({
+            "id": f"xml-{uuid.uuid4().hex[:12]}",
+            "type": "function",
+            "function": {"name": name, "arguments": json.dumps(arguments, ensure_ascii=False)},
+        })
+    return calls
+
+
+def _strip_xml_tool_calls(text: str) -> str:
+    """Remove <tool_call>...</tool_call> tags from `text` (used once they've
+    been parsed into structured tool_calls, so they don't ALSO show up as
+    visible assistant content)."""
+    return _XML_TOOLCALL_RE.sub("", text or "").strip()
+
+
+def _apply_xml_toolcall_fallback(content: str, tool_calls: list[dict[str, Any]]
+                                 ) -> tuple[str, list[dict[str, Any]]]:
+    """Behind jc_xml_toolcall_fallback: if native tool_calls is empty AND the
+    text contains <tool_call> tags, parse+normalise them and strip them from
+    content. Flag OFF, native tool_calls present, or malformed/absent XML ->
+    unchanged pass-through (byte-identical to today)."""
+    if tool_calls:
+        return content, tool_calls
+    if not _flag("jc_xml_toolcall_fallback"):
+        return content, tool_calls
+    xml_calls = _parse_xml_tool_calls(content)
+    if not xml_calls:
+        return content, tool_calls
+    return _strip_xml_tool_calls(content), xml_calls
 
 
 def _apply_privilege_enforcement(role: str, requested_mode: str) -> tuple[str, bool]:
@@ -700,6 +762,9 @@ async def agent_step(request: Request):
 
     tool_calls = list(raw.get("tool_calls") or [])
     content = str(raw.get("text") or "")
+    # Fase 5 Task 19 (flag-gated, default OFF): only engages when native
+    # tool_calls is empty — the native path is otherwise untouched.
+    content, tool_calls = _apply_xml_toolcall_fallback(content, tool_calls)
     tokens_in = int(raw.get("input_tokens") or 0)
     tokens_out = int(raw.get("output_tokens") or 0)
     cost_usd = float(raw.get("cost_usd") or 0.0)
@@ -816,9 +881,12 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                     },
                 })
             elif kind == "done":
+                _content = str(ev.get("full_text") or full)
+                # Fase 5 Task 19 (flag-gated, default OFF): only engages when
+                # native tool_calls is empty (collected == []).
+                _content, collected = _apply_xml_toolcall_fallback(_content, collected)
                 if collected:
                     yield _sse("tool_calls", {"tool_calls": collected})
-                _content = str(ev.get("full_text") or full)
                 _tin = int(ev.get("input_tokens") or 0)
                 _tout = int(ev.get("output_tokens") or 0)
                 _cost = float(ev.get("cost_usd") or 0.0)

@@ -53,28 +53,31 @@ _Client-owned agent loop: /v1/agent/step._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_resolve_role` | `()` | Caller role. Mirror /v1/tools/native (owner default). Owner token -> 'owner'. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L43) |
-| function | `_apply_privilege_enforcement` | `(role, requested_mode)` | Fase 5 Task 1 (server half): owner-only privilege gate for the | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L52) |
-| function | `_flag` | `(name, default=…)` | Read a runtime-state boolean flag. Fail-safe: any error/absence -> default. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L76) |
-| function | `_settings` | `()` | RuntimeSettings for the jarvis-code Fase 4 parity flags (config-file backed, | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L86) |
-| function | `_emit_agent_nerve` | `(*, status, provider, model, tokens_in, tokens_out, cost_usd, duration_ms, tool_calls, finish_reason, user_id, session_id)` | Make the client-owned agent lane visible in Den Intelligente Central. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L100) |
-| function | `_resolve_workspace_name` | `(user_id)` | Map an authenticated caller's user_id to their workspace name. Empty user_id | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L120) |
-| function | `_extract_text` | `(content)` | Extract plain text from a message `content` that may be a str OR an array of | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L136) |
-| function | `_sse` | `(event, data)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L152) |
-| function | `_skill_catalog` | `()` | Owner-approved skill catalog for the system prompt (Fase 3, Task 3). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L202) |
-| function | `_identity_context` | `(name=…)` | Kompakt identitets-lag (SOUL + IDENTITY + USER) fra `name`-workspace — nok til at | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L243) |
-| function | `_full_context` | `(user_message, name=…)` | FULD Jarvis-kontekst (memory-recall + cognitive_state + indre liv + awareness) til | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L271) |
-| function | `_build_system_prompt` | `(context, user_message=…, name=…, env=…)` | context: 'none' (ren coding) | 'identity' (stemme + kender brugeren, default) | | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L302) |
-| function | `_normalize_reasoning_for_provider` | `(messages, provider)` | Fase 4 Task S: keep `reasoning_content` on assistant(+tool_calls) messages for | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L351) |
-| function | `_resolve_target` | `()` | (provider, model) for den synlige lane — health-gated (springer kvote-ramt over). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L371) |
-| function | `_openai_compat_credentials` | `(provider)` | (auth_profile, base_url) for en openai-compatible provider (jf. visible-adapteren). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L385) |
-| function | `list_native_tools` | `()` | List Jarvis' native (server-side) tools + deres lås-status (owner-styring). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L406) |
-| function | `tools_catalog` | `(unlocked=…)` | Kurateret jc tool-katalog. Låst: companions + load_more. Åbnet: + runtime_-aliaser. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L425) |
-| class | `_ExecBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L440) |
-| function | `tools_execute` | `(body)` | Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L449) |
-| function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L563) |
-| function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L580) |
-| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools, session_id=…, user_id=…, extra_body=…, reasoning_replay_enabled=…, cache_contract_enabled=…, prefix_sha=…, prefix_len=…)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L781) |
+| function | `_resolve_role` | `()` | Caller role. Mirror /v1/tools/native (owner default). Owner token -> 'owner'. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L45) |
+| function | `_parse_xml_tool_calls` | `(text)` | Extract <tool_call>{json}</tool_call> tags from `text` and normalise | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L64) |
+| function | `_strip_xml_tool_calls` | `(text)` | Remove <tool_call>...</tool_call> tags from `text` (used once they've | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L91) |
+| function | `_apply_xml_toolcall_fallback` | `(content, tool_calls)` | Behind jc_xml_toolcall_fallback: if native tool_calls is empty AND the | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L98) |
+| function | `_apply_privilege_enforcement` | `(role, requested_mode)` | Fase 5 Task 1 (server half): owner-only privilege gate for the | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L114) |
+| function | `_flag` | `(name, default=…)` | Read a runtime-state boolean flag. Fail-safe: any error/absence -> default. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L138) |
+| function | `_settings` | `()` | RuntimeSettings for the jarvis-code Fase 4 parity flags (config-file backed, | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L148) |
+| function | `_emit_agent_nerve` | `(*, status, provider, model, tokens_in, tokens_out, cost_usd, duration_ms, tool_calls, finish_reason, user_id, session_id)` | Make the client-owned agent lane visible in Den Intelligente Central. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L162) |
+| function | `_resolve_workspace_name` | `(user_id)` | Map an authenticated caller's user_id to their workspace name. Empty user_id | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L182) |
+| function | `_extract_text` | `(content)` | Extract plain text from a message `content` that may be a str OR an array of | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L198) |
+| function | `_sse` | `(event, data)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L214) |
+| function | `_skill_catalog` | `()` | Owner-approved skill catalog for the system prompt (Fase 3, Task 3). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L264) |
+| function | `_identity_context` | `(name=…)` | Kompakt identitets-lag (SOUL + IDENTITY + USER) fra `name`-workspace — nok til at | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L305) |
+| function | `_full_context` | `(user_message, name=…)` | FULD Jarvis-kontekst (memory-recall + cognitive_state + indre liv + awareness) til | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L333) |
+| function | `_build_system_prompt` | `(context, user_message=…, name=…, env=…)` | context: 'none' (ren coding) | 'identity' (stemme + kender brugeren, default) | | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L364) |
+| function | `_normalize_reasoning_for_provider` | `(messages, provider)` | Fase 4 Task S: keep `reasoning_content` on assistant(+tool_calls) messages for | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L413) |
+| function | `_resolve_target` | `()` | (provider, model) for den synlige lane — health-gated (springer kvote-ramt over). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L433) |
+| function | `_openai_compat_credentials` | `(provider)` | (auth_profile, base_url) for en openai-compatible provider (jf. visible-adapteren). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L447) |
+| function | `list_native_tools` | `()` | List Jarvis' native (server-side) tools + deres lås-status (owner-styring). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L468) |
+| function | `tools_catalog` | `(unlocked=…)` | Kurateret jc tool-katalog. Låst: companions + load_more. Åbnet: + runtime_-aliaser. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L487) |
+| class | `_ExecBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L502) |
+| function | `tools_execute` | `(body)` | Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L511) |
+| function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L625) |
+| function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L642) |
+| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools, session_id=…, user_id=…, extra_body=…, reasoning_replay_enabled=…, cache_contract_enabled=…, prefix_sha=…, prefix_len=…)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L846) |
 
 ## `apps/api/jarvis_api/routes/agentic_guards.py`
 _MC endpoint for agentic-loop guard observability._

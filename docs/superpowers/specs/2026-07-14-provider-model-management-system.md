@@ -71,6 +71,24 @@ Følgende huller blev identificeret i v8 og adresseret i denne revision:
 | 16 | **ClineBot** | `api.clinebot.com/v1` | 5 | ✅ Funktionerer |
 | 17 | **Google AI Studio** | `generativelanguage.googleapis.com` | 0 | ❌ Ingen gratis tier |
 
+### Live-verificerede nye providers (14. jul — Jarvis + Claude re-test)
+
+Ægte chat-completions, ikke kun `/models`-listing. Disse fire er **klar til Fase C-wiring** (nøgler i `~/new_providers_.txt`, aldrig i repoet):
+
+| Provider | Base URL | Bekræftede GRATIS modeller | Auth |
+|----------|----------|----------------------------|------|
+| **Cerebras** | `https://api.cerebras.ai/v1` | `gpt-oss-120b` (reasoning), `zai-glm-4.7`, `gemma-4-31b` | `csk-…` |
+| **Requesty** | `https://router.requesty.ai/v1` | `novita/tencent/hy3` (novita/* = billige; openai-responses/* = premium) | `rqsty-sk-…` |
+| **AIHubMix** | `https://aihubmix.com/v1` (= `api.inferera.com/v1`) | `gpt-5.5-free`, `coding-glm-5.2-free`, `coding-minimax-m3-free`, `gpt-image-2-free` | `sk-…` |
+| **Cline** | `https://api.cline.bot/api/v1` | `deepseek/deepseek-chat`, `minimax/minimax-m2.5`, `meta-llama/llama-3.3-70b-instruct` | `sk_…` |
+
+**Test-faldgruber (dokumenteret så vi ikke gentager):**
+- **AIHubMix `model:"auto"` router til BETALT** → 403 "balance insufficient". Brug `*-free`-modeller eksplicit. Premium (claude-sonnet-5, grok-4.5, gpt-5.6) tilgængelig hvis opladet → kandidat til betalt *garanteret bund* (§5.5 Fund 4).
+- **Cline endpoint = `api.cline.bot/api/v1`** (IKKE `api.clinebot.com`, IKKE `/v1`). `/models` er tom — model-IDs kendes fra brug.
+- **TokenRouter** (`api.tokenrouter.com/v1`, `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`): nøgle god men **$0 credit pt.** → 403. Genbesøg når opladet.
+- **tinyfish** (`api.search.tinyfish.ai`, header `X-API-Key`) er et **search-TOOL**, ikke en LLM-lane — hører i værktøjs-registret, ikke provider-poolen.
+- **Metode-læring:** test ALDRIG kun én model før "død"-dom. List `/models`, find gratis eksplicit, test flere. (Auto-discovery i Fase C skal gøre præcis dette, gated.)
+
 ## 2. Eksisterende fundament (allerede i kode)
 
 ### 2.1 Cheap Lane Balancer (`core/services/cheap_lane_balancer.py`)

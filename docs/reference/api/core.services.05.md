@@ -273,9 +273,9 @@ _Central-ejet unified router (spec §5.5). ÉT beslutnings-punkt for alle lanes.
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_rank_candidates` | `(lane, task, exclude)` | Rangerede (provider, model) for en lane. Genbruger den eksisterende | [src](../../../core/services/central_route.py#L14) |
-| function | `route` | `(*, lane, task=…, exclude=…)` | Vælg (provider, model) for en lane. Aldrig tør. | [src](../../../core/services/central_route.py#L54) |
-| function | `_fetch_invocations` | `(provider, since)` | (status, latency_ms) for provider siden 'since' fra SQLite. Self-safe. | [src](../../../core/services/central_route.py#L76) |
-| function | `provider_history` | `(provider, hours=…)` | Task 10: fejlrate, latency-p50, oppetid for en provider over N timer | [src](../../../core/services/central_route.py#L86) |
+| function | `route` | `(*, lane, task=…, exclude=…)` | Vælg (provider, model) for en lane. Aldrig tør. | [src](../../../core/services/central_route.py#L60) |
+| function | `_fetch_invocations` | `(provider, since)` | (status, latency_ms) for provider siden 'since' fra SQLite. Self-safe. | [src](../../../core/services/central_route.py#L82) |
+| function | `provider_history` | `(provider, hours=…)` | Task 10: fejlrate, latency-p50, oppetid for en provider over N timer | [src](../../../core/services/central_route.py#L92) |
 
 ## `core/services/central_route_headroom.py`
 _Proaktiv kvote-rotation (spec §5.5 Fund 3): flyt last væk FØR 429._

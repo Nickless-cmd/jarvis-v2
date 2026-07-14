@@ -469,6 +469,17 @@ async def tools_execute(body: _ExecBody):
     # gate/dispatcher stay in lockstep.
     real = unalias(body.name.strip().lower())
     if not check_brain_write_allowed(real, role=role):
+        # Fase 5 Task 3: additive verdict-ledger logging on a forwarded
+        # brain-write deny — distinct from (not a replacement for) the HARD
+        # gate above, which already raised nothing has changed about WHETHER
+        # this is denied. Never let a logging failure break the 403 path.
+        try:
+            from core.services.gate_verdict_ledger import record as _record_verdict
+            _record_verdict(nerve="jc_forward", cluster="brain_write", decision="deny",
+                            reason=f"tool={real} role={role}")
+        except Exception:
+            logger.debug("agent_loop: gate_verdict_ledger.record fejlede (jc_forward deny)",
+                        exc_info=True)
         raise HTTPException(status_code=403,
                             detail="brain-write not permitted for this user")
 

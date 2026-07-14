@@ -209,12 +209,16 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "models_endpoint": "/models",
         "rpm_limit": 30,
         "daily_limit": 1000,
-        "static_models": ["gpt-oss-120b", "zai-glm-4.7", "gemma-4-31b"],
+        # gemma-4-31b (non-reasoning) først = default-pick uden reasoning-overhead;
+        # gpt-oss/glm er reasoning (brænder korte token-budgetter på tanke → tom content).
+        "static_models": ["gemma-4-31b", "zai-glm-4.7", "gpt-oss-120b"],
     },
     "cline": {
         "label": "Cline",
-        "priority": 32,
-        # NB: base er /api/v1 (ikke /v1), host api.cline.bot (ikke clinebot.com).
+        # Demoteret (2026-07-14): api.cline.bot returnerer ofte tom message (agentic
+        # coding-værktøj, ikke ren OpenAI-chat). Bevaret som sidste-udvej fallback —
+        # tomt svar → CheapProviderError → pool fail-over. NB: base /api/v1, ikke /v1.
+        "priority": 92,
         "base_url": "https://api.cline.bot/api/v1",
         "auth_kind": "bearer",
         "protocol": "openai-chat",

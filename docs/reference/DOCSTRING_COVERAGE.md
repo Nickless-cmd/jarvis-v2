@@ -728,7 +728,7 @@ Generated from source. 6077/12522 functions/methods documented (48%). The list b
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L274)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L77)
 - `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L379)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L618)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L620)
 - `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L51)
 - `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L55)
 - `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L169)

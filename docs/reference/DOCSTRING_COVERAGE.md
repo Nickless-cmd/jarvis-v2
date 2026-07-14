@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6069/12510 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6072/12517 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -36,9 +36,10 @@ Generated from source. 6069/12510 functions/methods documented (48%). The list b
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 155 | 238 | 65% |
+| `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1818)
+## Undocumented public functions (1820)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1802,6 +1803,8 @@ Generated from source. 6069/12510 functions/methods documented (48%). The list b
 - `core/tools/workspace_capabilities.py` :: `invoke_workspace_capability` (L397)
 - `core/tools/workspace_capabilities.py` :: `load_workspace_capabilities` (L138)
 - `core/util/timezone.py` :: `dk_weekday_en` (L69)
+- `scripts/acceptance/migration_gate.py` :: `main` (L203)
+- `scripts/acceptance/migration_gate.py` :: `run_suites` (L99)
 - `scripts/api_reference_gen.py` :: `main` (L74)
 - `scripts/api_reference_gen.py` :: `render_md` (L63)
 - `scripts/bench_ollama_concurrency.py` :: `main` (L93)

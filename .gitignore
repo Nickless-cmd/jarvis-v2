@@ -32,3 +32,6 @@ jarvis.db
 
 # Anthropic-compat API key registry — scrub of secret leaked in a1f1f9ee (2026-05-06)
 state/anthropic_api_keys.json
+
+# Fase 6 migration-trigger gate output (generated, not committed)
+/verdict.json

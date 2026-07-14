@@ -1,12 +1,17 @@
-# Provider Router — Fase A: Aldrig-tør-bund + forén synlighed
+# Provider Router — Komplet plan (Fase A+B+C, hele speccen)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Cheap lane skal ALDRIG rejse en exception ved pool-udmattelse — den falder til en garanteret bund. Og balancerens kvote-syn + fejl skal være ét (SQLite) og synligt i Centralen.
+**Goal:** Realisér hele provider-model-speccen (v11): runtime løber ALDRIG tør for stemmer. Ét Central-ejet router-organ (`central_route`) over alle lanes med garanteret bund, proaktiv kvote-rotation, forenede subsystemer, kvote-bevidst agent-pool og gated auto-discovery.
 
-**Architecture:** Tre uafhængige, additive ændringer på den eksisterende cheap lane: (1) et nyt `cheap_lane_floor`-modul som begge routing-subsystemer falder til i stedet for at `raise`, (2) balanceren læser kvote fra SQLite `cheap_provider_invocations` (samme kilde som selection) i stedet for sin private JSON, (3) balancerens 5 events skrives til Centralens `system/provider_health`-nerve via `central().observe`. Ingen adfærd ændres på happy-path; kun udmattelses- og observabilitets-kanterne.
+**Architecture:** Bygget i tre faser, hver selvstændigt testbar og additiv (shadow→live hvor adfærd ændres):
+- **Fase A (task 1-6):** aldrig-tør-bund + forén kvote-sandhed (SQLite) + balancer→Central-synlighed.
+- **Fase B (task 7-10):** `central_route` unified router live (shadow→live) + proaktiv headroom-rotation (de-vægt ≥80%, skip ≥95%) + provider_history-query.
+- **Fase C (task 11-15):** kvote-bevidst agent-pool (`route_agent_task`) + kvalitets-lærings-loop + gated auto-discovery (staging) + selvhelbredelse/model-drift.
 
-**Tech Stack:** Python 3.11, pytest, SQLite (`cheap_provider_invocations`), eventbus, `central_core.observe`.
+**Tech Stack:** Python 3.11, pytest, SQLite (`cheap_provider_invocations`, `pending_models`), eventbus, `central_core.observe`, `central_switches` (shadow-flags).
+
+**Rækkefølge-princip (spec §6):** aldrig-tør FØRST — Fase A lukker RuntimeError-hullet før vi bygger intelligens ovenpå. Ingen fase flipper live før dens shadow-sammenligning er ren.
 
 **Kontekst (kode-groundet 14. jul):** Spec `docs/superpowers/specs/2026-07-14-provider-model-management-system.md` §5.5 Fund 4+5. Rejse-sites verificeret: `cheap_provider_runtime_selection.py:391`, `cheap_lane_balancer.py:682`. JSON-kvote: `cheap_lane_balancer.py:267-270`. Central-observe-mønster: `provider_circuit_breaker.py:335` (`_observe_pp`). De 4 nye providers (cerebras/aihubmix/requesty/cline) er allerede wired live (commit 1eb7bd96).
 
@@ -22,6 +27,8 @@
 Floor-kæden (config `cheap_lane_floor_targets`, default): `[("deepseek","deepseek-chat"), ("ollama","<lokal-default>")]`. Deepseek-chat er altid-sund i dag (betalt m. credit); ollama er lokal backup. Hvis ALT fejler → `floor_result(status="degraded", text="")` — kalderen håndterer, ingen crash.
 
 ---
+
+## FASE A — Aldrig-tør-bund + forén synlighed
 
 ### Task 1: `cheap_lane_floor` modul
 
@@ -495,6 +502,368 @@ git commit -m "test(cheap-lane): Fase A acceptance-script (aldrig-tør + Central
 
 ---
 
+## FASE B — `central_route` router live + proaktiv rotation
+
+### Task 7: `central_route` unified router-modul
+
+**Files:**
+- Create: `core/services/central_route.py`
+- Test: `tests/test_central_route.py`
+
+- [ ] **Step 1: Skriv den fejlende test**
+
+```python
+# tests/test_central_route.py
+"""Tests for core/services/central_route.py — Central-ejet unified router."""
+from __future__ import annotations
+import core.services.central_route as cr
+
+
+def test_route_returns_target_for_healthy_lane(monkeypatch):
+    monkeypatch.setattr(cr, "_rank_candidates",
+                        lambda lane, task, exclude: [("groq", "llama-3.3-70b-versatile")])
+    t = cr.route(lane="cheap")
+    assert t["provider"] == "groq"
+    assert t["is_floor"] is False
+
+
+def test_route_never_raises_falls_to_floor(monkeypatch):
+    monkeypatch.setattr(cr, "_rank_candidates", lambda lane, task, exclude: [])
+    monkeypatch.setattr("core.services.cheap_lane_floor.floor_targets",
+                        lambda: [("deepseek", "deepseek-chat")])
+    t = cr.route(lane="cheap")               # tom kandidat-liste
+    assert t["is_floor"] is True             # aldrig raise
+    assert t["provider"] in ("deepseek", "floor")
+```
+
+- [ ] **Step 2: Kør — verificér fejl**
+
+Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_central_route.py -q -o addopts=""`
+Expected: FAIL med `ModuleNotFoundError`
+
+- [ ] **Step 3: Skriv minimal implementation**
+
+```python
+# core/services/central_route.py
+"""Central-ejet unified router (spec §5.5). ÉT beslutnings-punkt for alle lanes.
+
+Invariant: route() returnerer ALTID et target eller den garanterede bund — rejser
+ALDRIG. Kandidat-rangering samles her; lanes' lokale hot-path-failover bevares.
+Bygges shadow→live via central_switches ('central_route_live')."""
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+def _rank_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tuple[str, str]]:
+    """Rangerede (provider, model) for en lane. Genbruger den eksisterende
+    selection-kandidat-bygger + proaktiv headroom-de-vægtning (Task 8)."""
+    from core.services.cheap_provider_runtime_selection import _configured_cheap_candidates
+    from core.services.central_route_headroom import headroom_ok, headroom_weight
+    cands = _configured_cheap_candidates(include_public_proxy=True)
+    out: list[tuple[float, str, str]] = []
+    for c in cands:
+        p, m = str(c.get("provider") or ""), str(c.get("model") or "")
+        if not p or not m or p in exclude or not c.get("credentials_ready"):
+            continue
+        if not headroom_ok(p):            # >=95% kvote → skip proaktivt
+            continue
+        prio = float(c.get("priority") or 9999)
+        out.append((prio / max(headroom_weight(p), 1e-3), p, m))  # de-vægt ved >=80%
+    out.sort(key=lambda x: x[0])
+    return [(p, m) for _, p, m in out]
+
+
+def route(*, lane: str, task: Any = None,
+          exclude: frozenset[str] = frozenset()) -> dict[str, Any]:
+    """Vælg (provider, model) for en lane. Aldrig tør."""
+    ranked = _rank_candidates(lane, task, exclude)
+    if ranked:
+        p, m = ranked[0]
+        return {"provider": p, "model": m, "lane": lane,
+                "reason": "central-route:ranked", "is_floor": False}
+    from core.services.cheap_lane_floor import floor_targets
+    ft = floor_targets()
+    if ft:
+        p, m = ft[0]
+        return {"provider": p, "model": m, "lane": lane,
+                "reason": "central-route:floor", "is_floor": True}
+    return {"provider": "floor", "model": "", "lane": lane,
+            "reason": "central-route:degraded", "is_floor": True}
+```
+
+- [ ] **Step 4: Kør — verificér består** — `pytest tests/test_central_route.py -q -o addopts=""` → PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add core/services/central_route.py tests/test_central_route.py
+git commit -m "feat(central-route): unified router-organ m. aldrig-tør-invariant (spec §5.5)"
+```
+
+### Task 8: Proaktiv headroom-rotation (de-vægt ≥80%, skip ≥95%)
+
+**Files:**
+- Create: `core/services/central_route_headroom.py`
+- Test: `tests/test_central_route_headroom.py`
+
+- [ ] **Step 1: Skriv den fejlende test**
+
+```python
+# tests/test_central_route_headroom.py
+from __future__ import annotations
+import core.services.central_route_headroom as hr
+
+
+def test_headroom_deweights_at_80_and_skips_at_95(monkeypatch):
+    monkeypatch.setattr(hr, "_usage_fraction", lambda provider: 0.5)  # 50%
+    assert hr.headroom_ok("groq") is True
+    assert hr.headroom_weight("groq") == 1.0
+    monkeypatch.setattr(hr, "_usage_fraction", lambda provider: 0.85) # 85%
+    assert hr.headroom_ok("groq") is True
+    assert hr.headroom_weight("groq") < 1.0        # de-vægtet
+    monkeypatch.setattr(hr, "_usage_fraction", lambda provider: 0.97) # 97%
+    assert hr.headroom_ok("groq") is False         # skip proaktivt
+```
+
+- [ ] **Step 2: Kør — verificér fejl** (`ModuleNotFoundError`)
+
+- [ ] **Step 3: Implementation**
+
+```python
+# core/services/central_route_headroom.py
+"""Proaktiv kvote-rotation (spec §5.5 Fund 3): flyt last væk FØR 429.
+
+Læser forbrug fra SQLite cheap_provider_invocations, beregner brug/limit-fraktion.
+>=80% -> de-vægt (mindre sandsynlig at vælges); >=95% -> skip proaktivt."""
+from __future__ import annotations
+
+_DEWEIGHT_AT = 0.80
+_SKIP_AT = 0.95
+
+
+def _usage_fraction(provider: str) -> float:
+    """Højeste (brug/limit) over provider's modeller i seneste vindue. 0 ved fejl."""
+    try:
+        from core.runtime.db_cheap_provider import count_cheap_provider_invocations
+        from core.services.cheap_provider_runtime_adapters import CHEAP_PROVIDER_DEFAULTS
+        cfg = CHEAP_PROVIDER_DEFAULTS.get(provider) or {}
+        daily = cfg.get("daily_limit")
+        if not daily:
+            return 0.0
+        used = int(count_cheap_provider_invocations(
+            provider=provider, lane="cheap", within_hours=24) or 0)
+        return min(1.0, used / float(daily))
+    except Exception:
+        return 0.0
+
+
+def headroom_ok(provider: str) -> bool:
+    """False = proaktivt skip (>=95% brugt)."""
+    return _usage_fraction(provider) < _SKIP_AT
+
+
+def headroom_weight(provider: str) -> float:
+    """1.0 = fuld headroom; falder lineært mod 0.1 mellem 80% og 95%."""
+    u = _usage_fraction(provider)
+    if u < _DEWEIGHT_AT:
+        return 1.0
+    span = max(_SKIP_AT - _DEWEIGHT_AT, 1e-6)
+    return max(0.1, 1.0 - (u - _DEWEIGHT_AT) / span * 0.9)
+```
+
+- [ ] **Step 4: Kør — verificér består** → PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add core/services/central_route_headroom.py tests/test_central_route_headroom.py
+git commit -m "feat(central-route): proaktiv headroom-rotation (de-vægt >=80%, skip >=95%)"
+```
+
+### Task 9: Shadow-wire selection → central_route
+
+**Files:**
+- Modify: `core/services/cheap_provider_runtime_selection.py` (i `select_cheap_lane_target`)
+- Test: `tests/test_central_route.py` (tilføj)
+
+- [ ] **Step 1: Skriv den fejlende test**
+
+```python
+# append til tests/test_central_route.py
+def test_shadow_compare_logs_divergence_without_changing_pick(monkeypatch):
+    """Shadow: central_route FORESLÅR, gammel sti BESLUTTER. Flag OFF -> byte-identisk."""
+    import core.services.cheap_provider_runtime_selection as sel
+    monkeypatch.setattr(sel, "_central_route_live", lambda: False)
+    seen = {}
+    monkeypatch.setattr(sel, "_record_route_divergence",
+                        lambda old, new: seen.update({"old": old, "new": new}),
+                        raising=False)
+    # (kald select_cheap_lane_target med mockede kandidater; assert pick uændret,
+    #  og at divergens blev registreret til shadow-sammenligning)
+    assert True  # konkret assertion udfyldes mod faktisk select-signatur ved eksekvering
+```
+
+- [ ] **Step 2-4:** Tilføj i `select_cheap_lane_target`: efter den gamle pick, kald `central_route.route(...)`, sammenlign, `_record_route_divergence(old, new)`. Gated på `_central_route_live()` (`central_switches` flag `central_route_live`, default OFF). Når OFF: gammel pick returneres uændret (shadow). Kør sammenligning over reelt trafik indtil divergens < aftalt tærskel, flip så flag til live.
+
+Run: `pytest tests/test_central_route.py -q -o addopts=""` → PASS
+
+- [ ] **Step 5: Commit** — `git commit -m "feat(central-route): shadow-wire selection -> central_route (compare før flip)"`
+
+### Task 10: `provider_history` query-surface
+
+**Files:**
+- Modify: `core/services/central_route.py` (tilføj `provider_history()`)
+- Test: `tests/test_central_route.py` (tilføj)
+
+- [ ] **Steps:** TDD en `provider_history(provider, hours=24) -> dict` der læser fra `cheap_provider_invocations` + Centralens provider_health-tidsserie: returnér `{fejlrate, latency_p50, oppetid_pct, headroom_forløb}`. Test med indsatte invocation-rækker. Commit: `feat(central-route): provider_history query-surface`.
+
+---
+
+## FASE C — Agent-pool + kvalitets-læring + gated auto-discovery
+
+### Task 11: `route_agent_task` + kvote-bevidst spawn
+
+**Files:**
+- Create: `core/services/agent_pool_router.py`
+- Modify: `core/services/agent_runtime_spawn.py:170-186` (flag-gated)
+- Test: `tests/test_agent_pool_router.py`
+
+- [ ] **Step 1: Fejlende test**
+
+```python
+# tests/test_agent_pool_router.py
+from __future__ import annotations
+import core.services.agent_pool_router as apr
+
+
+def test_route_agent_task_delegates_to_central_route(monkeypatch):
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda **kw: {"provider": "cerebras", "model": "gemma-4-31b",
+                                      "lane": kw.get("lane"), "is_floor": False})
+    r = apr.route_agent_task(kind="coding")
+    assert r["provider"] == "cerebras"
+    assert r["lane"] == "agent"
+```
+
+- [ ] **Step 2-3:** Implementér `route_agent_task(*, kind, min_tokens=0, quality_threshold=0.0) -> dict` = tyndt kald til `central_route.route(lane="agent", task={"kind": kind, ...})`. I `spawn_agent_task` (linje 170-186), FØR `resolve_role_model`-fallback: hvis flag `agent_pool_router_enabled` (default OFF) → brug `route_agent_task`. Ellers eksisterende sti (byte-identisk).
+
+- [ ] **Step 4:** `pytest tests/test_agent_pool_router.py -q -o addopts=""` → PASS
+- [ ] **Step 5:** `git commit -m "feat(agent-pool): route_agent_task -> central_route (kvote-bevidst primær hop)"`
+
+### Task 12: Kvalitets-lærings-loop (`task_scores`)
+
+**Files:**
+- Modify: `core/services/agent_pool_router.py` (tilføj `update_task_score`)
+- Test: `tests/test_agent_pool_router.py` (tilføj)
+
+- [ ] **Step 1: Fejlende test**
+
+```python
+# append til tests/test_agent_pool_router.py
+def test_update_task_score_ema(monkeypatch):
+    import core.services.agent_pool_router as apr
+    store = {}
+    monkeypatch.setattr(apr, "_load_task_scores", lambda p, m: {"coding": 0.5})
+    monkeypatch.setattr(apr, "_save_task_scores", lambda p, m, s: store.update(s))
+    apr.update_task_score(provider="cerebras", model="gemma-4-31b",
+                          kind="coding", outcome_quality=1.0, lr=0.1)
+    assert abs(store["coding"] - 0.55) < 1e-6      # (1-0.1)*0.5 + 0.1*1.0
+```
+
+- [ ] **Step 2-3:** Implementér `update_task_score(...)` (EMA lr=0.1) + outcome-kilde fra harness-signaler (finish_reason==stop, tool-succesrate, gate-verdicts). Emit `task_score_updated{provider, model, kind, prev, new}` til Central. Kald fra agent-outcome-seam (efter `execute_agent_task`).
+- [ ] **Step 4-5:** PASS → `git commit -m "feat(agent-pool): kvalitets-lærings-loop (task_scores EMA fra harness-outcomes)"`
+
+### Task 13: Auto-discovery daemon → `pending_models` staging
+
+**Files:**
+- Create: `core/services/provider_autodiscovery.py`
+- Modify: `core/runtime/db_schema.py` (tabel `pending_models`)
+- Test: `tests/test_provider_autodiscovery.py`
+
+- [ ] **Step 1: Fejlende test**
+
+```python
+# tests/test_provider_autodiscovery.py
+from __future__ import annotations
+import core.services.provider_autodiscovery as ad
+
+
+def test_discovery_stages_new_models_not_auto_add(monkeypatch):
+    monkeypatch.setattr(ad, "_list_remote_models",
+                        lambda provider: ["new-free-model", "existing"])
+    monkeypatch.setattr(ad, "_known_models", lambda: {"existing"})
+    staged = []
+    monkeypatch.setattr(ad, "_stage_pending", lambda p, m: staged.append((p, m)))
+    added = []
+    monkeypatch.setattr(ad, "_add_to_router", lambda p, m: added.append((p, m)))
+    ad.discover_provider("groq")
+    assert ("groq", "new-free-model") in staged
+    assert added == []          # GATER — auto-adder ALDRIG direkte
+```
+
+- [ ] **Step 2-3:** Implementér daglig scan: for hver provider, `_list_remote_models` (via `/models`), diff mod `_known_models`, nye → `_stage_pending` (tabel `pending_models{provider, model, discovered_at, status='pending'}`). ALDRIG `_add_to_router` direkte.
+- [ ] **Step 4-5:** PASS → `git commit -m "feat(autodiscovery): daglig scan -> pending_models staging (GATER, auto-adder ikke)"`
+
+### Task 14: Gated promotion af `pending_models`
+
+**Files:**
+- Modify: `core/services/provider_autodiscovery.py` (tilføj `promote_pending`)
+- Test: `tests/test_provider_autodiscovery.py` (tilføj)
+
+- [ ] **Step 1: Fejlende test**
+
+```python
+# append til tests/test_provider_autodiscovery.py
+def test_promote_requires_smoke_score_and_free(monkeypatch):
+    import core.services.provider_autodiscovery as ad
+    monkeypatch.setattr(ad, "_smoke_ok", lambda p, m: True)
+    monkeypatch.setattr(ad, "_is_free", lambda p, m: False)   # ikke gratis
+    assert ad.promote_pending("groq", "paid-model") is False  # afvist
+    monkeypatch.setattr(ad, "_is_free", lambda p, m: True)
+    monkeypatch.setattr(ad, "_score_model", lambda p, m: 0.7)
+    assert ad.promote_pending("groq", "free-model") is True
+```
+
+- [ ] **Step 2-3:** `promote_pending(provider, model) -> bool`: kræver `_smoke_ok` (svarer den?) AND `_is_free` AND `_score_model >= tærskel`. Kun da → tilføj til `provider_router.json` + markér pending 'promoted'. Owner-approval-gate (spec: governed).
+- [ ] **Step 4-5:** PASS → `git commit -m "feat(autodiscovery): gated promotion (smoke+score+gratis+owner) fra staging"`
+
+### Task 15: Selvhelbredelse + model-drift auto-fix
+
+**Files:**
+- Create: `core/services/provider_self_heal.py`
+- Test: `tests/test_provider_self_heal.py`
+
+- [ ] **Step 1: Fejlende test**
+
+```python
+# tests/test_provider_self_heal.py
+from __future__ import annotations
+import core.services.provider_self_heal as sh
+
+
+def test_escalates_when_three_plus_providers_down(monkeypatch):
+    sent = []
+    monkeypatch.setattr(sh, "_notify_bjorn", lambda msg: sent.append(msg))
+    sh.check_and_heal(down_providers=["a", "b", "c"])
+    assert sent, "3+ nede skal eskalere til Bjørn"
+
+
+def test_model_drift_404_auto_removes(monkeypatch):
+    removed = []
+    monkeypatch.setattr(sh, "_remove_from_router", lambda p, m: removed.append((p, m)))
+    sh.handle_model_drift(provider="groq", model="gone-model", status_code=404)
+    assert ("groq", "gone-model") in removed   # removal er sikkert at auto-køre
+```
+
+- [ ] **Step 2-3:** `check_and_heal(down_providers)`: 3+ nede → `_notify_bjorn` (Discord, via eksisterende notifikations-sti). `handle_model_drift(provider, model, status_code)`: 404 → `_remove_from_router` + log til Central. (Removal auto; addition kræver stadig gate — Task 14.)
+- [ ] **Step 4-5:** PASS → `git commit -m "feat(self-heal): 3+ nede -> Discord-eskalering; 404-model auto-fjernes"`
+
+---
+
 ## Deploy (efter alle tasks)
 
 ```bash
@@ -504,9 +873,19 @@ ssh bs@10.0.0.39 "git -C /media/projects/jarvis-v2 fetch -q origin && git -C /me
 ssh bs@10.0.0.39 'PYTHONPATH=/media/projects/jarvis-v2 /opt/conda/envs/ai/bin/python /media/projects/jarvis-v2/scripts/verify_fase_a.py'
 ```
 
-## Self-review (kør efter planen er skrevet)
+## Self-review (dækning af HELE spec v11)
 
-- **Spec-dækning:** Fase A AC (§6): garanteret bund ✓ (Task 1-3), forén kvote SQLite ✓ (Task 4), balancer→Central ✓ (Task 5), acceptance ✓ (Task 6).
-- **Placeholders:** ingen — al kode er konkret, alle kommandoer har forventet output.
-- **Type-konsistens:** `attempt_floor(message, lane, reason)` + `floor_result(...)` bruges identisk i Task 1/2/3. `_emit_balancer_event(name, payload)` konsistent i Task 5.
-- **Kendt justering:** `count_cheap_provider_invocations`-signaturen (Task 4) og Centralens read-API (Task 6) verificeres mod kode ved eksekvering — kwargs kan afvige.
+- **Spec-dækning (§5.5 + §6):**
+  - Fund 4 (kan løbe tør) → Fase A Task 1-3 (garanteret bund) ✓
+  - Fund 5 (splittet kvote) → Fase A Task 4 (forén SQLite) ✓
+  - Fase A synlighed → Task 5 (balancer→Central) + Task 6 (acceptance) ✓
+  - Fund 2 (Central ejer ikke routing) → Fase B Task 7 (`central_route`) ✓
+  - Fund 3 (ingen proaktiv rotation) → Fase B Task 8 (headroom de-vægt/skip) ✓
+  - Fund 1 (to gaflede subsystemer) → Fase B Task 9 (shadow-wire selection → central_route; balancer følger samme mønster) ✓
+  - §4 agent-pool → Fase C Task 11 (`route_agent_task`) ✓
+  - §4.4 kvalitets-læring → Fase C Task 12 ✓
+  - Fase C auto-discovery gated → Task 13-14 ✓; selvhelbredelse/drift → Task 15 ✓
+- **Placeholders:** kernekode er konkret; Task 9/10/12 har seams der udfyldes mod faktisk signatur ved eksekvering (markeret eksplicit — ikke skjulte huller).
+- **Type-konsistens:** `attempt_floor`/`floor_result` (A) → `central_route.route() -> {provider,model,lane,reason,is_floor}` (B) → `route_agent_task` returnerer samme form (C). `headroom_ok/headroom_weight` konsistent Task 8↔7.
+- **Kendte justeringer ved eksekvering:** `count_cheap_provider_invocations`-kwargs (Task 4/8/10), `select_cheap_lane_target`-seam (Task 9), agent-outcome-seam (Task 12), Discord-notifikations-sti (Task 15) — verificeres mod kode i den enkelte task.
+- **Shadow-sikkerhed:** hver adfærdsændrende flip (Task 9 central_route, Task 11 agent-pool) er flag-gated default OFF; live først efter shadow-sammenligning er ren. Fase A's bund er additiv (ingen shadow nødvendig — den fjerner kun en exception).

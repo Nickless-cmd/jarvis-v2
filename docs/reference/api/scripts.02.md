@@ -50,3 +50,12 @@ _One-shot bootstrap: generate tool tags via cheap LLM and warm embedding cache._
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/tool_router_bootstrap.py#L22) |
 
+## `scripts/verify_fase_a.py`
+_Fase A acceptance (kør på containeren). Beviser aldrig-tør-bunden:_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `check_selection_floor_no_raise` | `()` | — | [src](../../../scripts/verify_fase_a.py#L9) |
+| function | `check_balancer_floor_no_raise` | `()` | — | [src](../../../scripts/verify_fase_a.py#L21) |
+| function | `check_central_visibility` | `()` | — | [src](../../../scripts/verify_fase_a.py#L33) |
+

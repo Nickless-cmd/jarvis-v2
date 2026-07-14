@@ -44,20 +44,24 @@ _Client-owned agent loop: /v1/agent/step._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_resolve_role` | `()` | Caller role. Mirror /v1/tools/native (owner default). Owner token -> 'owner'. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L37) |
-| function | `_sse` | `(event, data)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L46) |
-| function | `_identity_context` | `()` | Kompakt identitets-lag (SOUL + IDENTITY + USER) fra default-workspace — nok til at | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L62) |
-| function | `_full_context` | `(user_message)` | FULD Jarvis-kontekst (memory-recall + cognitive_state + indre liv + awareness) til | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L90) |
-| function | `_build_system_prompt` | `(context, user_message=…)` | context: 'none' (ren coding) | 'identity' (stemme + kender Bjørn, default) | | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L120) |
-| function | `_resolve_target` | `()` | (provider, model) for den synlige lane — health-gated (springer kvote-ramt over). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L134) |
-| function | `_openai_compat_credentials` | `(provider)` | (auth_profile, base_url) for en openai-compatible provider (jf. visible-adapteren). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L148) |
-| function | `list_native_tools` | `()` | List Jarvis' native (server-side) tools + deres lås-status (owner-styring). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L169) |
-| function | `tools_catalog` | `(unlocked=…)` | Kurateret jc tool-katalog. Låst: companions + load_more. Åbnet: + runtime_-aliaser. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L188) |
-| class | `_ExecBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L203) |
-| function | `tools_execute` | `(body)` | Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L212) |
-| function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L297) |
-| function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L314) |
-| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L395) |
+| function | `_resolve_role` | `()` | Caller role. Mirror /v1/tools/native (owner default). Owner token -> 'owner'. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L42) |
+| function | `_flag` | `(name, default=…)` | Read a runtime-state boolean flag. Fail-safe: any error/absence -> default. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L51) |
+| function | `_emit_agent_nerve` | `(*, status, provider, model, tokens_in, tokens_out, cost_usd, duration_ms, tool_calls, finish_reason, user_id, session_id)` | Make the client-owned agent lane visible in Den Intelligente Central. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L61) |
+| function | `_resolve_workspace_name` | `(user_id)` | Map an authenticated caller's user_id to their workspace name. Empty user_id | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L81) |
+| function | `_extract_text` | `(content)` | Extract plain text from a message `content` that may be a str OR an array of | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L97) |
+| function | `_sse` | `(event, data)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L113) |
+| function | `_identity_context` | `(name=…)` | Kompakt identitets-lag (SOUL + IDENTITY + USER) fra `name`-workspace — nok til at | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L129) |
+| function | `_full_context` | `(user_message, name=…)` | FULD Jarvis-kontekst (memory-recall + cognitive_state + indre liv + awareness) til | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L157) |
+| function | `_build_system_prompt` | `(context, user_message=…, name=…)` | context: 'none' (ren coding) | 'identity' (stemme + kender brugeren, default) | | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L188) |
+| function | `_resolve_target` | `()` | (provider, model) for den synlige lane — health-gated (springer kvote-ramt over). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L203) |
+| function | `_openai_compat_credentials` | `(provider)` | (auth_profile, base_url) for en openai-compatible provider (jf. visible-adapteren). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L217) |
+| function | `list_native_tools` | `()` | List Jarvis' native (server-side) tools + deres lås-status (owner-styring). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L238) |
+| function | `tools_catalog` | `(unlocked=…)` | Kurateret jc tool-katalog. Låst: companions + load_more. Åbnet: + runtime_-aliaser. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L257) |
+| class | `_ExecBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L272) |
+| function | `tools_execute` | `(body)` | Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L281) |
+| function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L366) |
+| function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L383) |
+| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools, session_id=…, user_id=…)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L507) |
 
 ## `apps/api/jarvis_api/routes/agentic_guards.py`
 _MC endpoint for agentic-loop guard observability._

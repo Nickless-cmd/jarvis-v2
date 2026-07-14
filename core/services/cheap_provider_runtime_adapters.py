@@ -515,7 +515,8 @@ def _execute_openai_compatible_chat(
             headers=headers,
             provider=provider,
         )
-    first_msg = ((data.get("choices") or [{}])[0] or {}).get("message") or {}
+    _first_choice = (data.get("choices") or [{}])[0] or {}
+    first_msg = _first_choice.get("message") or {}
     tool_calls = list(first_msg.get("tool_calls") or [])
     # Tool-only responses (no assistant text) are valid when tools are in
     # play — don't raise empty-response in that case.
@@ -556,6 +557,7 @@ def _execute_openai_compatible_chat(
         "cache_hit_tokens": cache_hit,
         "cache_miss_tokens": cache_miss,
         "cost_usd": float(_estimate_cheap_cost(provider=provider, usage=enriched_usage)),
+        "finish_reason": str(_first_choice.get("finish_reason") or ""),
     }
 
 

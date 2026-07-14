@@ -30,6 +30,11 @@ from core.tools.simple_tools import execute_tool
 from core.tools.jc_tool_catalog import unalias
 from core.tools.brain_write_gate import check_brain_write_allowed
 
+# Module-level seams (tests monkeypatch these; keeps side effects gate-able):
+from core.runtime.db_core import get_runtime_state_value
+from core.costing.ledger import record_cost
+from core.services.followup_observer import note_empty_completion
+
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter()
 
@@ -41,6 +46,68 @@ def _resolve_role() -> str:
         return effective_role() or "owner"
     except Exception:
         return "owner"
+
+
+def _flag(name: str, default: bool = False) -> bool:
+    """Read a runtime-state boolean flag. Fail-safe: any error/absence -> default.
+    All Fase-0 behavior changes gate on these; every flag defaults OFF so the
+    deploy is inert until an operator flips it."""
+    try:
+        return bool(get_runtime_state_value(name, default))
+    except Exception:
+        return default
+
+
+def _emit_agent_nerve(*, status: str, provider: str, model: str,
+                      tokens_in: int, tokens_out: int, cost_usd: float,
+                      duration_ms: int, tool_calls: int, finish_reason: str,
+                      user_id: str, session_id: str) -> None:
+    """Make the client-owned agent lane visible in Den Intelligente Central.
+    Self-safe: any failure is swallowed (observability must never break a turn)."""
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "agent", "nerve": "agent_step",
+            "status": str(status), "provider": str(provider), "model": str(model),
+            "tokens_in": int(tokens_in), "tokens_out": int(tokens_out),
+            "cost_usd": float(cost_usd), "duration_ms": int(duration_ms),
+            "tool_calls": int(tool_calls), "finish_reason": str(finish_reason),
+            "user_id": str(user_id or ""), "session_id": str(session_id or ""),
+        })
+    except Exception:
+        logger.debug("agent/step nerve emit fejlede", exc_info=True)
+
+
+def _resolve_workspace_name(user_id: str) -> str:
+    """Map an authenticated caller's user_id to their workspace name. Empty user_id
+    (owner) or unknown user -> 'default' (today's behavior, Bjørn's workspace)."""
+    uid = str(user_id or "").strip()
+    if not uid:
+        return "default"
+    try:
+        from core.identity.users import find_user_by_discord_id
+        user = find_user_by_discord_id(uid)
+        if user and str(getattr(user, "workspace", "") or "").strip():
+            return str(user.workspace).strip()
+    except Exception:
+        logger.debug("agent/step workspace-resolve fejlede", exc_info=True)
+    return "default"
+
+
+def _extract_text(content: Any) -> str:
+    """Extract plain text from a message `content` that may be a str OR an array of
+    typed blocks ({type:'text'|'image', ...}). Multimodal foundation: image blocks pass
+    through to the model untouched (chat_messages.extend), but memory-recall only needs
+    the text. For a plain str this is identical to today's behavior (inert)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(str(block.get("text") or ""))
+        return " ".join(p for p in parts if p)
+    return str(content or "")
 
 
 def _sse(event: str, data: dict) -> str:
@@ -59,12 +126,12 @@ _SYSTEM_PROMPT = (
 _IDENTITY_BUDGET = 1600  # tegn pr. workspace-fil (nok til stemme, billigt at cache)
 
 
-def _identity_context() -> str:
-    """Kompakt identitets-lag (SOUL + IDENTITY + USER) fra default-workspace — nok til at
-    Jarvis har sin STEMME og KENDER Bjørn, uden den tunge memory-assembly. Self-safe."""
+def _identity_context(name: str = "default") -> str:
+    """Kompakt identitets-lag (SOUL + IDENTITY + USER) fra `name`-workspace — nok til at
+    Jarvis har sin STEMME og KENDER brugeren, uden den tunge memory-assembly. Self-safe."""
     try:
         from core.identity.workspace_bootstrap import ensure_default_workspace
-        ws = ensure_default_workspace(name="default")
+        ws = ensure_default_workspace(name=name)
     except Exception:
         return ""
     parts: list[str] = []
@@ -87,14 +154,15 @@ _FULL_CTX_CACHE: dict[str, tuple[str, float]] = {}
 _FULL_CTX_TTL = 90.0  # s — genbrug inden for en tur (flere tool-runder), undgå re-build
 
 
-def _full_context(user_message: str) -> str:
+def _full_context(user_message: str, name: str = "default") -> str:
     """FULD Jarvis-kontekst (memory-recall + cognitive_state + indre liv + awareness) til
     'full'-tier client loop — samme assembly som den synlige lane (PromptAssembly.text),
-    men tools eksekveres stadig LOKALT af klienten. Tung → cache pr. besked-hash i kort TTL
-    så en turs flere tool-runder ikke genbygger den. Self-safe → '' (falder til identity)."""
+    men tools eksekveres stadig LOKALT af klienten. Tung → cache pr. besked-hash+workspace i
+    kort TTL så en turs flere tool-runder ikke genbygger den (nøglen inkluderer `name` så
+    caches for forskellige workspaces aldrig blander sig). Self-safe → '' (falder til identity)."""
     import hashlib
     import time as _t
-    key = hashlib.sha256((user_message or "").encode("utf-8")).hexdigest()[:16]
+    key = hashlib.sha256((f"{name}\x00{user_message or ''}").encode("utf-8")).hexdigest()[:16]
     now = _t.monotonic()
     hit = _FULL_CTX_CACHE.get(key)
     if hit and hit[1] > now:
@@ -104,7 +172,7 @@ def _full_context(user_message: str) -> str:
         from core.services.prompt_contract import build_visible_chat_prompt_assembly
         provider, model = _resolve_target()
         asm = build_visible_chat_prompt_assembly(
-            provider=provider, model=model, user_message=user_message or "", name="default")
+            provider=provider, model=model, user_message=user_message or "", name=name)
         text = str(getattr(asm, "text", "") or "")
     except Exception:
         logger.debug("agent/step: full-context build fejlede", exc_info=True)
@@ -117,17 +185,18 @@ def _full_context(user_message: str) -> str:
     return text
 
 
-def _build_system_prompt(context: str, user_message: str = "") -> str:
-    """context: 'none' (ren coding) | 'identity' (stemme + kender Bjørn, default) |
-    'full' (hele Jarvis: memory + cognitive_state + indre liv — tools stadig LOKALT)."""
+def _build_system_prompt(context: str, user_message: str = "", name: str = "default") -> str:
+    """context: 'none' (ren coding) | 'identity' (stemme + kender brugeren, default) |
+    'full' (hele Jarvis: memory + cognitive_state + indre liv — tools stadig LOKALT).
+    `name`: caller-workspace (jc_agent_user_scoping-gated, default 'default')."""
     if context == "none":
         return _SYSTEM_PROMPT
     if context == "full":
-        full = _full_context(user_message)
+        full = _full_context(user_message, name)
         if full:
             return _SYSTEM_PROMPT + "\n\n" + full
         # full-assembly fejlede → degradér til identity (crash aldrig)
-    ident = _identity_context()
+    ident = _identity_context(name)
     return _SYSTEM_PROMPT + ident if ident else _SYSTEM_PROMPT
 
 
@@ -326,6 +395,8 @@ async def agent_step(request: Request):
     tools = body.get("tools") or None
     stream = bool(body.get("stream", False))
     context = str(body.get("context") or "identity").lower()
+    session_id = str(body.get("session_id") or "")
+    user_id = str(body.get("user_id") or "").strip()
 
     if not isinstance(client_messages, list) or not client_messages:
         return JSONResponse(status_code=400, content={
@@ -352,20 +423,25 @@ async def agent_step(request: Request):
     _last_user = ""
     for _m in reversed(client_messages):
         if isinstance(_m, dict) and _m.get("role") == "user":
-            _last_user = str(_m.get("content") or "")
+            _c = _m.get("content")
+            _last_user = _extract_text(_c) if _flag("jc_agent_multimodal") else str(_c or "")
             break
+    _ws_name = _resolve_workspace_name(user_id) if _flag("jc_agent_user_scoping") else "default"
     # System-prompt (tiered context) foran + klientens samtale (inkl. tool-resultater).
     chat_messages: list[dict[str, Any]] = [
-        {"role": "system", "content": _build_system_prompt(context, _last_user)}]
+        {"role": "system", "content": _build_system_prompt(context, _last_user, _ws_name)}]
     chat_messages.extend(client_messages)
 
     if stream:
         return StreamingResponse(
             _stream_step(provider=provider, model=model, auth_profile=auth_profile,
-                         base_url=base_url, chat_messages=chat_messages, tools=tools),
+                         base_url=base_url, chat_messages=chat_messages, tools=tools,
+                         session_id=session_id, user_id=user_id),
             media_type="text/event-stream",
         )
 
+    import time as _time
+    _t0 = _time.monotonic()
     try:
         raw = _execute_openai_compatible_chat(
             provider=provider, model=model, auth_profile=auth_profile,
@@ -375,30 +451,69 @@ async def agent_step(request: Request):
         logger.exception("agent/step model-kald fejlede: %s", exc)
         return JSONResponse(status_code=502, content={
             "error": {"message": f"model-kald fejlede: {exc}", "type": "upstream_error"}})
+    _dur_ms = int((_time.monotonic() - _t0) * 1000)
 
     tool_calls = list(raw.get("tool_calls") or [])
     content = str(raw.get("text") or "")
+    tokens_in = int(raw.get("input_tokens") or 0)
+    tokens_out = int(raw.get("output_tokens") or 0)
+    cost_usd = float(raw.get("cost_usd") or 0.0)
+    finish_reason = str(raw.get("finish_reason") or "")
+    status = "ok" if (content or tool_calls) else "empty"
+
+    if _flag("jc_agent_observability"):
+        try:
+            record_cost(lane="agent", provider=provider, model=model,
+                        input_tokens=tokens_in, output_tokens=tokens_out,
+                        cost_usd=cost_usd, user_id=user_id)
+        except Exception:
+            logger.debug("agent/step record_cost fejlede", exc_info=True)
+        _emit_agent_nerve(
+            status=status, provider=provider, model=model,
+            tokens_in=tokens_in, tokens_out=tokens_out, cost_usd=cost_usd,
+            duration_ms=_dur_ms, tool_calls=len(tool_calls),
+            finish_reason=finish_reason, user_id=user_id, session_id=session_id)
+        if status == "empty":
+            try:
+                note_empty_completion(
+                    f"jc-agent-{session_id or 'nosess'}", provider=provider, model=model,
+                    rounds=1, tools_executed=0, session_id=session_id, path="agent_step")
+            except Exception:
+                logger.debug("agent/step note_empty_completion fejlede", exc_info=True)
+
     return JSONResponse(content={
+        # additive structured envelope (Fase 0 O1)
+        "status": status,
+        "tokens_in": tokens_in,
+        "tokens_out": tokens_out,
+        "cost_usd": cost_usd,
+        "duration_ms": _dur_ms,
+        "finish_reason": finish_reason,
+        "result": content,
+        # back-compat keys (existing jarvis-code client reads these)
         "content": content,
         "tool_calls": tool_calls,
         "done": not tool_calls,
         "provider": provider,
         "model": model,
         "usage": {
-            "prompt_tokens": int(raw.get("input_tokens") or 0),
-            "completion_tokens": int(raw.get("output_tokens") or 0),
-            "cost_usd": float(raw.get("cost_usd") or 0.0),
+            "prompt_tokens": tokens_in,
+            "completion_tokens": tokens_out,
+            "cost_usd": cost_usd,
         },
     })
 
 
 def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
-                 chat_messages: list[dict], tools: list[dict] | None):
+                 chat_messages: list[dict], tools: list[dict] | None,
+                 session_id: str = "", user_id: str = ""):
     """Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau
     openai-compat SSE-iterator (rå messages+tools ind, delta/tool_call/done ud)."""
     from core.services.cheap_provider_runtime_streaming import (
         _iter_openai_compatible_chat_events,
     )
+    import time as _time
+    _t0 = _time.monotonic()
     collected: list[dict] = []
     full = ""
     try:
@@ -425,13 +540,45 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
             elif kind == "done":
                 if collected:
                     yield _sse("tool_calls", {"tool_calls": collected})
+                _content = str(ev.get("full_text") or full)
+                _tin = int(ev.get("input_tokens") or 0)
+                _tout = int(ev.get("output_tokens") or 0)
+                _cost = float(ev.get("cost_usd") or 0.0)
+                _fr = str(ev.get("finish_reason") or "")
+                _status = "ok" if (_content or collected) else "empty"
+                if _flag("jc_agent_observability"):
+                    try:
+                        record_cost(lane="agent", provider=provider, model=model,
+                                    input_tokens=_tin, output_tokens=_tout,
+                                    cost_usd=_cost, user_id=user_id)
+                    except Exception:
+                        logger.debug("agent/step stream record_cost fejlede", exc_info=True)
+                    _emit_agent_nerve(
+                        status=_status, provider=provider, model=model,
+                        tokens_in=_tin, tokens_out=_tout, cost_usd=_cost,
+                        duration_ms=int((_time.monotonic() - _t0) * 1000),
+                        tool_calls=len(collected), finish_reason=_fr,
+                        user_id=user_id, session_id=session_id)
+                    if _status == "empty":
+                        try:
+                            note_empty_completion(
+                                f"jc-agent-{session_id or 'nosess'}", provider=provider,
+                                model=model, rounds=1, tools_executed=0,
+                                session_id=session_id, path="agent_step_stream")
+                        except Exception:
+                            logger.debug("stream note_empty_completion fejlede", exc_info=True)
                 yield _sse("done", {
-                    "content": str(ev.get("full_text") or full),
+                    "status": _status,
+                    "tokens_in": _tin,
+                    "tokens_out": _tout,
+                    "cost_usd": _cost,
+                    "duration_ms": int((_time.monotonic() - _t0) * 1000),
+                    "finish_reason": _fr,
+                    "result": _content,
+                    # back-compat
+                    "content": _content,
                     "done": not collected,
-                    "usage": {
-                        "prompt_tokens": int(ev.get("input_tokens") or 0),
-                        "completion_tokens": int(ev.get("output_tokens") or 0),
-                    },
+                    "usage": {"prompt_tokens": _tin, "completion_tokens": _tout},
                 })
                 return
     except Exception as exc:
@@ -441,4 +588,10 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
     # Strømmen sluttede uden eksplicit done → afslut alligevel (klient kan re-anmode).
     if collected:
         yield _sse("tool_calls", {"tool_calls": collected})
-    yield _sse("done", {"content": full, "done": not collected, "usage": {}})
+    yield _sse("done", {
+        "status": "ok" if (full or collected) else "empty",
+        "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0,
+        "duration_ms": int((_time.monotonic() - _t0) * 1000),
+        "finish_reason": "", "result": full,
+        "content": full, "done": not collected, "usage": {},
+    })

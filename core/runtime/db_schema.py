@@ -383,6 +383,7 @@ def init_db() -> None:
                 cost_usd REAL NOT NULL DEFAULT 0,
                 cache_hit_tokens INTEGER NOT NULL DEFAULT 0,
                 cache_miss_tokens INTEGER NOT NULL DEFAULT 0,
+                user_id TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL
             )
             """
@@ -396,6 +397,8 @@ def init_db() -> None:
             conn.execute("ALTER TABLE costs ADD COLUMN cache_hit_tokens INTEGER NOT NULL DEFAULT 0")
         if "cache_miss_tokens" not in _cost_cols:
             conn.execute("ALTER TABLE costs ADD COLUMN cache_miss_tokens INTEGER NOT NULL DEFAULT 0")
+        if "user_id" not in _cost_cols:
+            conn.execute("ALTER TABLE costs ADD COLUMN user_id TEXT NOT NULL DEFAULT ''")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS cheap_provider_runtime_state (

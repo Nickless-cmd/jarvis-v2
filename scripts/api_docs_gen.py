@@ -18,10 +18,14 @@ _SKIP = {"__pycache__", "tests", "node_modules"}
 
 def iter_py(root: Path = REPO):
     """Yield every `.py` file under the SCAN_DIRS of `root`, sorted, skipping
-    _SKIP dirs (__pycache__, tests, node_modules) and dot-prefixed path parts."""
+    _SKIP dirs (__pycache__, tests, node_modules) and dot-prefixed path parts.
+    Checked relative to `root` (not the absolute filesystem path) so a checkout
+    that itself lives under a dot-prefixed directory (e.g. a git worktree under
+    `.claude/worktrees/...`) is still scanned correctly."""
     for d in SCAN_DIRS:
         for p in sorted((root / d).rglob("*.py")):
-            if any(part in _SKIP or (part.startswith(".") and part not in (".",)) for part in p.parts):
+            rel_parts = p.relative_to(root).parts
+            if any(part in _SKIP or (part.startswith(".") and part not in (".",)) for part in rel_parts):
                 continue
             yield p
 

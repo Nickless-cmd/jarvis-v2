@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6044/12481 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6048/12485 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6044/12481 functions/methods documented (48%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 554 | 734 | 75% |
+| `apps.api.jarvis_api.routes` | 558 | 738 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 57 | 155 | 36% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -221,8 +221,8 @@ Generated from source. 6044/12481 functions/methods documented (48%). The list b
 - `core/cli/visible_output.py` :: `normalize_visible_work_units` (L136)
 - `core/cli/visible_output.py` :: `visible_execution_section` (L4)
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
-- `core/costing/ledger.py` :: `recent_costs` (L103)
-- `core/costing/ledger.py` :: `telemetry_summary` (L83)
+- `core/costing/ledger.py` :: `recent_costs` (L105)
+- `core/costing/ledger.py` :: `telemetry_summary` (L85)
 - `core/eventbus/bus.py` :: `EventBus.recent` (L143)
 - `core/eventbus/bus.py` :: `EventBus.recent_by_family` (L164)
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L189)

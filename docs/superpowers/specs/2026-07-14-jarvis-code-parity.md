@@ -115,7 +115,7 @@ superpowers; SKILL.md-parser tolererer name+description → superpowers KOMPATIB
 1. Injicér available-skills-katalog i jarvis-code system-prompt (`_skill_catalog()` → list_skills() name+use_when+tags, ~100 tokens, progressive disclosure).
 2. CC-stil instruktion i `_SYSTEM_PROMPT`: "hvis en skill matcher, kald `skill_gate(query=...)` FØR du handler."
 3. Promovér `skill_gate` til `DEFAULT_COMPANIONS` (jc_tool_catalog.py:20).
-4. (Overvej: klient auto-kald af skill_gate på 1. tur = deterministisk, mere pålideligt end CC's egen svage prompt-baserede aktivering.)
+4. **BESLUTTET (Bjørn): klient auto-kald** af skill_gate på 1. tur = deterministisk, mere pålideligt end CC's egen svage prompt-baserede aktivering. (Prompt-instruktion #2 beholdes som backup, men klienten driver.)
 5. Genopliv tool-navn-oversættelse (Write→bash, Task→dispatch, Worktree→git worktree) fra skills-jarvis-compat.md.
 6. Render: **annoncér "▸ bruger skill: X — <one-liner>"** (rådet: ellers usynlig).
 - **GOVERNANCE (sikkerhed):** auto-surfacing + auto-kald udvider injektions-fladen. Kræv **owner-approval for at
@@ -148,6 +148,10 @@ confiner kun FIL-tool-stier og kun under opt-in `--sandbox`; **bash confineres A
   approval-timing. **dangerous-command + secret-path-guards SKAL fyre i ALLE modes inkl. bypass** (i dag springes
   de over ved bypass — den mode Jarvis kører unattended). Regex er ADVISORY; ægte gulv = **bash-confinement
   (bwrap/Landlock)** — flyttet fra Tier 4 til krav før Fase 2.
+  **BESLUTTET (Bjørn): sandbox fail-OPEN (som Claude Code)** — hvis selve sandbox-MEKANISMEN (bwrap/Landlock)
+  fejler/ikke kan starte, blokér ALDRIG Jarvis; degradér til de øvrige lag (approval + dangerous-command +
+  secret-guard) og LOG+markér det (nerve). Tilgængelighed vinder; gulvet forsvinder ikke helt. Fail-open gælder
+  KUN mekanik-fejl, ikke en bevidst deny fra guards.
 - **Untrusted-content** (invariant 15) — indirekte prompt-injektion via repo/web/fil er DEN dominerende angrebsklasse.
 - **Egress-akse** — bash-net (curl/wget/nc/scp) + web_fetch = separat approval; **secret-exfil-kæde** (`cat .env`
   auto-godkendt readonly → `curl --data @.env`) skal brydes: udvid secret-detektion til bash-bodies + egress-gate.
@@ -191,10 +195,13 @@ completion/attention-notifikation (bell/ntfy/desk-push for autonome runs) · Ctr
 
 Tag hvert item **[C]klient / [S]server**. jarvis-code kan **IKKE importere core.*** — hver "reuse" siger HVOR den kører
 (klient-reimplementering vs server-kald).
-- **Fase 0 [S] server Tier-0-lite FØRST (lav risiko, live API):** cost_usd i _stream_step done + record_cost + nerve +
-  note_empty_completion + finish_reason-plumbing + user_id-scoping af agent/step. Fjerner blind lane + multi-bruger-blocker.
+- **Fase 0 [S] server Tier-0-lite FØRST (lav risiko, live API, FLAG-GATED):** cost_usd i _stream_step done +
+  record_cost(+user_id) + nerve + note_empty_completion + finish_reason-plumbing + **user_id-scoping af agent/step
+  (BESLUTTET: NU)** + **multimodal-fundament: step-content str→typede blokke (R), så billeder KAN nå modellen
+  (BESLUTTET: tidligt — load-bearing for "SE UI før færdig")**. Fjerner blind lane + multi-bruger-blocker + åbner øjne.
 - **Fase 0.5 [C]:** udskil repl_ptk tur-loop → `jc_agent_loop`-modul (substrat-frø).
-- **Fase 1 [C] Tier 0:** A1-A8 (partiel-completion, round-atomicitet, tool-pair-aware fit, forwarded-error-typing, cap, degeneration).
+- **Fase 1 [C] Tier 0 + øjne-klient:** A1-A8 (partiel-completion, round-atomicitet, tool-pair-aware fit,
+  forwarded-error-typing, cap, degeneration) + **klient-side billede-input (read_file media-type + composer paste)**.
 - **Fase 2 [C/S]:** AKTIVÉR dispatch (server allerede bygget) + klient-executor · baggrund/polling · todos · memory · **bash-sandbox+egress (sikkerhedsgulv FØR autonomi)**.
 - **Fase 3 [C]:** skill-trigger (3 brikker).
 - **Fase 4 [C/S]:** input/interaktion (multimodal · thinking-replay · env · steering · caching · budget · resume/fork · adfærdskontrakt).
@@ -202,13 +209,13 @@ Tag hvert item **[C]klient / [S]server**. jarvis-code kan **IKKE importere core.
 - **Fase 6:** acceptance-harness → migrations-trigger → desk.
 **Riskeste antagelse (rådet):** at klient-side reuse af server-core er muligt — det er det ikke (ingen import); planlæg reimplementering.
 
-## 11. Åbne beslutninger (til Bjørn)
+## 11. Beslutninger (Bjørn, 14. jul — ALLE AFKLARET)
 
-1. **Server Tier-0-lite på LIVE api nu** (Fase 0) — ok at røre agent_loop.py på produktion med tests, eller separat staging?
-2. **bash-sandbox-gulv:** bwrap/Landlock FØR Fase 2 (rådet stærkt anbefaler; kernel xanmod/DKMS — kræver kernel-support-tjek).
-3. **Skill-trigger:** prompt-instruktion (model beslutter) vs. klient auto-kald (deterministisk). Rådet: auto-kald mere pålideligt.
-4. **Multimodal-prioritet:** nu (Fase 4) eller tidligere — givet "SE UI før færdig" er det load-bearing for Jarvis' egen honesty-stack?
-5. **Desk-multi-bruger-scoping** som Fase 0-blocker: enig i at det ER en prærekvisit, ikke "senere"?
+1. ✅ **Server Tier-0-lite på LIVE api:** ja — FLAG-GATED (ny adfærd default OFF, inert til flip) + testet + forsigtig deploy. Ingen separat staging.
+2. ✅ **bash-sandbox-gulv FØR Fase 2** — ja; **fail-OPEN ved mekanik-fejl** (§6). Kernel-support (xanmod/DKMS) tjekkes ved byg.
+3. ✅ **Skill-trigger: klient auto-kald** (deterministisk).
+4. ✅ **Multimodal: NU/tidligt** — server-fundament i Fase 0, klient-øjne i Fase 1. Load-bearing for "SE UI før færdig".
+5. ✅ **Multi-bruger-scoping: NU** (Fase 0-prærekvisit, del af server-lite — billigt at gøre samtidig).
 
 ---
 ## Integrations-log (v1 → v2, fra 6-linse råd)

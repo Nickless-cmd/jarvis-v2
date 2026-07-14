@@ -352,3 +352,29 @@ def test_cache_contract_off_no_new_usage_keys(monkeypatch):
     usage = r.json()["usage"]
     assert "cache_hit_tokens" not in usage
     assert calls == []
+
+
+# ── Task 7: harness behavioural contract in the system prompt ──────────────
+
+def test_harness_contract_present_when_flag_on(monkeypatch):
+    monkeypatch.setattr(al, "_settings",
+                        lambda: _fake_settings(agent_step_harness_contract_enabled=True))
+    prompt = al._build_system_prompt("identity", "fix a bug")
+    assert "verificér" in prompt.lower() or "verific" in prompt.lower()
+    assert "præamb" in prompt.lower() or "indledning" in prompt.lower()
+
+
+def test_harness_contract_absent_when_flag_off():
+    # flag OFF (default) -> prompt equals the pre-Fase-4 baseline (no harness text).
+    prompt = al._build_system_prompt("identity", "fix a bug")
+    assert al._HARNESS_CONTRACT not in prompt
+
+
+def test_harness_contract_in_cacheable_head(monkeypatch):
+    monkeypatch.setattr(al, "_settings",
+                        lambda: _fake_settings(agent_step_harness_contract_enabled=True,
+                                              agent_step_env_block_enabled=True))
+    prompt = al._build_system_prompt("identity", "fix a bug",
+                                     env={"cwd": "/x", "git_branch": "main"})
+    assert "<env>" in prompt
+    assert prompt.index(al._HARNESS_CONTRACT) < prompt.index("<env>")

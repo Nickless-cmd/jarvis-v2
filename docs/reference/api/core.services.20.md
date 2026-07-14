@@ -2,6 +2,32 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/teams.py`
+_Team data-lag: CRUD, medlemskab, rolle-opslag, scope-helper (Teams-feature,_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/teams.py#L19) |
+| function | `_new_id` | `()` | — | [src](../../../core/services/teams.py#L23) |
+| function | `_new_token` | `()` | — | [src](../../../core/services/teams.py#L27) |
+| function | `_invite_expiry_iso` | `()` | — | [src](../../../core/services/teams.py#L31) |
+| function | `create_team` | `(name, *, owner_user_id)` | Opret team + git-workspace; opretteren bliver owner, Jarvis bliver deltager. | [src](../../../core/services/teams.py#L35) |
+| function | `add_member` | `(team_id, user_id, team_role=…)` | — | [src](../../../core/services/teams.py#L58) |
+| function | `member_role` | `(team_id, user_id)` | — | [src](../../../core/services/teams.py#L67) |
+| function | `is_member` | `(team_id, user_id)` | — | [src](../../../core/services/teams.py#L76) |
+| function | `list_members` | `(team_id)` | — | [src](../../../core/services/teams.py#L80) |
+| function | `list_teams_for_user` | `(user_id)` | — | [src](../../../core/services/teams.py#L89) |
+| function | `get_team` | `(team_id)` | — | [src](../../../core/services/teams.py#L101) |
+| function | `list_team_sessions` | `(team_id)` | Delte sessioner der hører til et team (nyeste først). | [src](../../../core/services/teams.py#L114) |
+| function | `create_invite` | `(team_id, *, invited_email, invited_by)` | Opret et pending invite-token (gemmer email → muliggør email-onboarding | [src](../../../core/services/teams.py#L126) |
+| function | `get_invite` | `(token)` | — | [src](../../../core/services/teams.py#L139) |
+| function | `list_pending_invites_for` | `(*, user_id, email=…)` | Pull-baseret invite-levering: alle pending, ikke-udløbne invites hvor | [src](../../../core/services/teams.py#L152) |
+| function | `accept_invite` | `(token, *, accepting_user_id)` | Valider + acceptér et invite. Tilføjer brugeren som editor og markerer | [src](../../../core/services/teams.py#L179) |
+| function | `autocommit` | `(team_id, *, message, author_user_id)` | Stage alt i team-repoet og commit med den handlende bruger som author. | [src](../../../core/services/teams.py#L199) |
+| function | `team_scope_sql` | `(session_alias=…)` | SQL-fragment: 'sessionen er en team-session jeg er medlem af'. Bruger | [src](../../../core/services/teams.py#L218) |
+| function | `can_admin` | `(team_id, user_id)` | — | [src](../../../core/services/teams.py#L229) |
+| function | `remove_member` | `(team_id, user_id, *, acting_user_id)` | — | [src](../../../core/services/teams.py#L233) |
+
 ## `core/services/telegram_gateway.py`
 _Telegram gateway — bidirectional messaging via Telegram Bot API._
 
@@ -566,16 +592,4 @@ _End-of-turn changelog — auto-summarize what this turn changed._
 | function | `build_turn_changelog` | `(*, run_id=…, started_at=…, repo_root=…)` | — | [src](../../../core/services/turn_changelog.py#L67) |
 | function | `previous_turn_changelog_section` | `(session_id)` | Look at the most recent visible run for this session and surface the | [src](../../../core/services/turn_changelog.py#L80) |
 | function | `format_changelog` | `(changelog)` | Render a compact human-readable summary, or None if empty. | [src](../../../core/services/turn_changelog.py#L129) |
-
-## `core/services/ui_panel_store.py`
-_Pending UI-panel-kald (spec §8.2, Fase 6 #3, opdateret 2026-06-16 med scope)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `request_panel` | `(panel, *, detail=…, scope=…, session_id=…)` | Tilføj en pending panel-forespørgsel. | [src](../../../core/services/ui_panel_store.py#L25) |
-| function | `list_pending` | `(*, session_id=…)` | Returnér alle pending requests (status='pending'), valgfrit filtreret på session. | [src](../../../core/services/ui_panel_store.py#L61) |
-| function | `ack_panel` | `(request_id)` | Markér en request som 'opened' (desk-appen har åbnet panelet). | [src](../../../core/services/ui_panel_store.py#L71) |
-| function | `get_request_status` | `(request_id)` | Nuværende status ('pending'/'opened') for en request, eller None hvis ukendt. | [src](../../../core/services/ui_panel_store.py#L82) |
-| function | `_load` | `()` | — | [src](../../../core/services/ui_panel_store.py#L91) |
-| function | `_save` | `(state)` | — | [src](../../../core/services/ui_panel_store.py#L102) |
 

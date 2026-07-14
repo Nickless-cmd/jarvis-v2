@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12518 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12522 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -32,23 +32,23 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12518 functions/
 - [`core.services.03`](core.services.03.md) — `bro_broker` … `central_dejavu`
 - [`core.services.04`](core.services.04.md) — `central_dissent` … `central_morpheus`
 - [`core.services.05`](core.services.05.md) — `central_mourning` … `central_trace`
-- [`core.services.06`](core.services.06.md) — `central_trainman` … `conflict_resolution`
-- [`core.services.07`](core.services.07.md) — `connections` … `current_pull`
-- [`core.services.08`](core.services.08.md) — `daemon_health` … `dispatch_envelope`
-- [`core.services.09`](core.services.09.md) — `dispatch_guards` … `epistemics`
-- [`core.services.10`](core.services.10.md) — `error_healers` … `gate_skill`
-- [`core.services.11`](core.services.11.md) — `gate_truth` … `idle_thinking`
-- [`core.services.12`](core.services.12.md) — `impulse_executor` … `long_horizon_goals`
-- [`core.services.13`](core.services.13.md) — `longing_signal_daemon` … `mood_dialer`
-- [`core.services.14`](core.services.14.md) — `mood_oscillator` … `personal_project`
-- [`core.services.15`](core.services.15.md) — `personality_drift` … `prospective_memory`
-- [`core.services.16`](core.services.16.md) — `provider_circuit_breaker` … `rule_engine`
-- [`core.services.17`](core.services.17.md) — `run_closure_gate` … `self_experiments`
-- [`core.services.18`](core.services.18.md) — `self_model_blind_spots` … `signal_baseline`
-- [`core.services.19`](core.services.19.md) — `signal_decay_daemon` … `teams`
-- [`core.services.20`](core.services.20.md) — `telegram_gateway` … `ui_panel_store`
-- [`core.services.21`](core.services.21.md) — `unconscious_modulation` … `visible_self_state_summary`
-- [`core.services.22`](core.services.22.md) — `visual_memory` … `world_model_signal_tracking`
+- [`core.services.06`](core.services.06.md) — `central_trainman` … `conflict_prompt_service`
+- [`core.services.07`](core.services.07.md) — `conflict_resolution` … `curiosity_hypothesis_debt`
+- [`core.services.08`](core.services.08.md) — `current_pull` … `discord_gateway`
+- [`core.services.09`](core.services.09.md) — `dispatch_envelope` … `epistemic_runtime_state`
+- [`core.services.10`](core.services.10.md) — `epistemics` … `gate_shadow`
+- [`core.services.11`](core.services.11.md) — `gate_skill` … `idle_consolidation`
+- [`core.services.12`](core.services.12.md) — `idle_thinking` … `long_arc_synthesizer`
+- [`core.services.13`](core.services.13.md) — `long_horizon_goals` … `monitor_streams`
+- [`core.services.14`](core.services.14.md) — `mood_dialer` … `permission_engine`
+- [`core.services.15`](core.services.15.md) — `personal_project` … `prose_tool_calls`
+- [`core.services.16`](core.services.16.md) — `prospective_memory` … `rule_definitions`
+- [`core.services.17`](core.services.17.md) — `rule_engine` … `self_deception_guard`
+- [`core.services.18`](core.services.18.md) — `self_experiments` … `side_tasks`
+- [`core.services.19`](core.services.19.md) — `signal_baseline` … `team_mentions`
+- [`core.services.20`](core.services.20.md) — `teams` … `turn_changelog`
+- [`core.services.21`](core.services.21.md) — `ui_panel_store` … `visible_runs_sse_v2`
+- [`core.services.22`](core.services.22.md) — `visible_self_state_summary` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

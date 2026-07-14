@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/signal_baseline.py`
+_Persisted signal-baseline with cold-start guard (Task C1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | Read the whole baseline dict from the durable store. Fail-closed to {}. | [src](../../../core/services/signal_baseline.py#L32) |
+| function | `_save` | `(baselines)` | — | [src](../../../core/services/signal_baseline.py#L51) |
+| function | `get_baseline` | `(signal)` | Last recorded value for ``signal``; None if never recorded. | [src](../../../core/services/signal_baseline.py#L61) |
+| function | `set_baseline` | `(signal, value)` | Persist ``value`` durably as the new baseline for ``signal``. | [src](../../../core/services/signal_baseline.py#L72) |
+| function | `is_cold_start` | `(min_signals=…)` | True until at least ``min_signals`` distinct baselines have been recorded. | [src](../../../core/services/signal_baseline.py#L92) |
+| function | `clear_all` | `()` | Drop all baselines (test helper). Self-safe. | [src](../../../core/services/signal_baseline.py#L110) |
+
 ## `core/services/signal_decay_daemon.py`
 _Signal decay daemon — archive and delete stale signals across all signal tables._
 
@@ -587,30 +599,4 @@ _@mention-parsing for team-sessioner (Teams-feature, spec 2026-06-20 §5.2-5.3).
 | function | `extract_mentions` | `(text)` | Rå @-tokens i teksten (lowercased, dedupe, rækkefølge bevaret). | [src](../../../core/services/team_mentions.py#L17) |
 | function | `parse_mentions` | `(text, member_ids)` | Klassificér mentions mod et teams medlemskab. | [src](../../../core/services/team_mentions.py#L27) |
 | function | `should_jarvis_respond` | `(text, *, is_reply_to_jarvis=…)` | v1 (summoned baseline, spec §5.2): Jarvis svarer i en team-session KUN når | [src](../../../core/services/team_mentions.py#L47) |
-
-## `core/services/teams.py`
-_Team data-lag: CRUD, medlemskab, rolle-opslag, scope-helper (Teams-feature,_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/teams.py#L19) |
-| function | `_new_id` | `()` | — | [src](../../../core/services/teams.py#L23) |
-| function | `_new_token` | `()` | — | [src](../../../core/services/teams.py#L27) |
-| function | `_invite_expiry_iso` | `()` | — | [src](../../../core/services/teams.py#L31) |
-| function | `create_team` | `(name, *, owner_user_id)` | Opret team + git-workspace; opretteren bliver owner, Jarvis bliver deltager. | [src](../../../core/services/teams.py#L35) |
-| function | `add_member` | `(team_id, user_id, team_role=…)` | — | [src](../../../core/services/teams.py#L58) |
-| function | `member_role` | `(team_id, user_id)` | — | [src](../../../core/services/teams.py#L67) |
-| function | `is_member` | `(team_id, user_id)` | — | [src](../../../core/services/teams.py#L76) |
-| function | `list_members` | `(team_id)` | — | [src](../../../core/services/teams.py#L80) |
-| function | `list_teams_for_user` | `(user_id)` | — | [src](../../../core/services/teams.py#L89) |
-| function | `get_team` | `(team_id)` | — | [src](../../../core/services/teams.py#L101) |
-| function | `list_team_sessions` | `(team_id)` | Delte sessioner der hører til et team (nyeste først). | [src](../../../core/services/teams.py#L114) |
-| function | `create_invite` | `(team_id, *, invited_email, invited_by)` | Opret et pending invite-token (gemmer email → muliggør email-onboarding | [src](../../../core/services/teams.py#L126) |
-| function | `get_invite` | `(token)` | — | [src](../../../core/services/teams.py#L139) |
-| function | `list_pending_invites_for` | `(*, user_id, email=…)` | Pull-baseret invite-levering: alle pending, ikke-udløbne invites hvor | [src](../../../core/services/teams.py#L152) |
-| function | `accept_invite` | `(token, *, accepting_user_id)` | Valider + acceptér et invite. Tilføjer brugeren som editor og markerer | [src](../../../core/services/teams.py#L179) |
-| function | `autocommit` | `(team_id, *, message, author_user_id)` | Stage alt i team-repoet og commit med den handlende bruger som author. | [src](../../../core/services/teams.py#L199) |
-| function | `team_scope_sql` | `(session_alias=…)` | SQL-fragment: 'sessionen er en team-session jeg er medlem af'. Bruger | [src](../../../core/services/teams.py#L218) |
-| function | `can_admin` | `(team_id, user_id)` | — | [src](../../../core/services/teams.py#L229) |
-| function | `remove_member` | `(team_id, user_id, *, acting_user_id)` | — | [src](../../../core/services/teams.py#L233) |
 

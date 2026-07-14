@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from core.tools.simple_tools import execute_tool
 from core.tools.jc_tool_catalog import unalias
 from core.tools.brain_write_gate import check_brain_write_allowed
+from core.services import skill_engine, skill_autosurface
 
 # Module-level seams (tests monkeypatch these; keeps side effects gate-able):
 from core.runtime.db_core import get_runtime_state_value
@@ -123,6 +124,61 @@ _SYSTEM_PROMPT = (
     "klart og kort på dansk. Kald ikke værktøjer i tomgang; stop når opgaven er løst."
 )
 
+# ── Skill catalog injection (Fase 3, Task 3) ────────────────────────────
+# CC-style activation nudge + a client-side (jarvis-code) tool-name legend
+# (see docs/_archive/skills-jarvis-compat.md). Both are inert unless
+# `_skill_catalog()` actually produces a non-empty catalog — appended
+# together as a single trailing block so prompt-cache prefixes stay stable.
+_SKILL_ACTIVATION = (
+    "Hvis en skill nedenfor matcher opgaven, kald skill_gate(query=<opgaven>) FØR du gør "
+    "noget andet — den loader det rette workflow."
+)
+
+_CC_TOOL_LEGEND = (
+    "Skill-instruktioner kan nævne Claude Code-tools. Oversæt: Write → write_file/bash · "
+    "Read → read_file · Edit → edit_file · Task → dispatch (subagent) · "
+    "Worktree → git worktree via bash · TodoWrite → intern plan · Grep/Glob → grep/glob."
+)
+
+
+def _skill_catalog() -> str:
+    """Owner-approved skill catalog for the system prompt (Fase 3, Task 3).
+
+    Reuses the existing skill engine verbatim (skill_engine.list_skills) —
+    never rebuilds skill matching/loading. Narrowed to the owner-approved
+    allowlist (skill_autosurface.filter_to_approved), so with the master
+    flag off or nothing approved this returns "" and the prompt is
+    byte-identical to today (feature stays inert until the owner opts in).
+    Progressive disclosure: name + use_when + tags only, capped at ~15
+    lines / ~1000 chars so the injection cost stays tiny (~100 tokens).
+    Self-safe: any failure returns "" — must never break the prompt build.
+    """
+    try:
+        skills = skill_engine.list_skills()
+        names = skill_autosurface.filter_to_approved([s["name"] for s in skills])
+        if not names:
+            return ""
+        by_name = {s["name"]: s for s in skills}
+        lines: list[str] = []
+        for n in names[:15]:
+            s = by_name.get(n)
+            if not s:
+                continue
+            tags = ", ".join((s.get("tags") or [])[:3])
+            lines.append(f"- {n}: {s.get('use_when', '')} [{tags}]")
+        if not lines:
+            return ""
+        header = (
+            "\n\n## TILGÆNGELIGE SKILLS "
+            "(kald skill_gate(query=...) FØR du handler hvis én matcher)\n"
+        )
+        text = header + "\n".join(lines)
+        return text[:1000]
+    except Exception:
+        logger.debug("agent/step: skill catalog build fejlede", exc_info=True)
+        return ""
+
+
 _IDENTITY_BUDGET = 1600  # tegn pr. workspace-fil (nok til stemme, billigt at cache)
 
 
@@ -190,14 +246,26 @@ def _build_system_prompt(context: str, user_message: str = "", name: str = "defa
     'full' (hele Jarvis: memory + cognitive_state + indre liv — tools stadig LOKALT).
     `name`: caller-workspace (jc_agent_user_scoping-gated, default 'default')."""
     if context == "none":
-        return _SYSTEM_PROMPT
-    if context == "full":
+        base = _SYSTEM_PROMPT
+    elif context == "full":
         full = _full_context(user_message, name)
         if full:
-            return _SYSTEM_PROMPT + "\n\n" + full
-        # full-assembly fejlede → degradér til identity (crash aldrig)
-    ident = _identity_context(name)
-    return _SYSTEM_PROMPT + ident if ident else _SYSTEM_PROMPT
+            base = _SYSTEM_PROMPT + "\n\n" + full
+        else:
+            # full-assembly fejlede → degradér til identity (crash aldrig)
+            ident = _identity_context(name)
+            base = _SYSTEM_PROMPT + ident if ident else _SYSTEM_PROMPT
+    else:
+        ident = _identity_context(name)
+        base = _SYSTEM_PROMPT + ident if ident else _SYSTEM_PROMPT
+
+    # Skill catalog block appended once, AFTER identity/full context, on every
+    # path (including 'none' — skills are relevant even in pure-coding tier).
+    # Empty catalog -> base unchanged -> byte-identical to pre-Fase-3 prompt.
+    catalog = _skill_catalog()
+    if catalog:
+        base = base + catalog + "\n\n" + _SKILL_ACTIVATION + "\n\n" + _CC_TOOL_LEGEND
+    return base
 
 
 def _resolve_target() -> tuple[str, str]:

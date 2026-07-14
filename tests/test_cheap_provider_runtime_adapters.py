@@ -90,3 +90,12 @@ def test_github_models_and_ovhcloud_configured():
     # auth_kind=none → altid ready uden nøgle
     assert provider_auth_ready(provider="ovhcloud", auth_profile="default") is True
     assert is_routable_provider("github-models") and is_routable_provider("ovhcloud")
+
+
+def test_copilot_cost_classes():
+    from core.services.cheap_provider_runtime_adapters import provider_cost_class, CHEAP_PROVIDER_DEFAULTS
+    assert provider_cost_class("copilot-premium") == "paid"
+    assert provider_cost_class("copilot-free") == "free"
+    assert provider_cost_class("cerebras") == "free"   # default
+    assert "claude-opus-4.8" in CHEAP_PROVIDER_DEFAULTS["copilot-premium"]["static_models"]
+    assert "gpt-4o" in CHEAP_PROVIDER_DEFAULTS["copilot-free"]["static_models"]

@@ -71,14 +71,38 @@ def test_agent_lane_excludes_non_openai_chat(monkeypatch):
     import core.services.central_route as cr
     fake = [
         {"provider": "nvidia-nim", "model": "m1", "priority": 10, "credentials_ready": True},
-        {"provider": "gemini", "model": "g1", "priority": 5, "credentials_ready": True},  # gemini-native
+        {"provider": "arko", "model": "jarvis-cheap-lane", "priority": 90, "credentials_ready": True},  # arko-protokol
+    ]
+    monkeypatch.setattr("core.services.cheap_provider_runtime_selection._configured_cheap_candidates",
+                        lambda include_public_proxy=True: fake)
+    monkeypatch.setattr("core.services.central_route_headroom.headroom_ok", lambda p: True)
+    monkeypatch.setattr("core.services.central_route_headroom.headroom_weight", lambda p: 1.0)
+    monkeypatch.setattr("core.services.cheap_provider_runtime_selection._is_public_proxy",
+                        lambda p: p == "arko")
+    agent = cr._rank_candidates("agent", {"kind": "coding"}, frozenset())
+    assert [p for p, _ in agent] == ["nvidia-nim"]          # arko (non-openai-chat) ekskluderet
+    cheap = cr._rank_candidates("cheap", {"kind": "coding"}, frozenset())
+    assert "arko" in [p for p, _ in cheap]                  # men beholdt på cheap-lane
+
+
+def test_cost_gate_free_default_paid_requires_allow_paid(monkeypatch):
+    """Bjørn 15. jul: gratis = frit valg (default), betalt = rigtige opgaver (allow_paid).
+    central_route ekskluderer cost_class=paid medmindre task.allow_paid=True."""
+    import core.services.central_route as cr
+    fake = [
+        {"provider": "cerebras", "model": "gemma-4-31b", "priority": 22, "credentials_ready": True},
+        {"provider": "copilot-premium", "model": "claude-opus-4.8", "priority": 5, "credentials_ready": True},
     ]
     monkeypatch.setattr("core.services.cheap_provider_runtime_selection._configured_cheap_candidates",
                         lambda include_public_proxy=True: fake)
     monkeypatch.setattr("core.services.central_route_headroom.headroom_ok", lambda p: True)
     monkeypatch.setattr("core.services.central_route_headroom.headroom_weight", lambda p: 1.0)
     monkeypatch.setattr("core.services.cheap_provider_runtime_selection._is_public_proxy", lambda p: False)
-    agent = cr._rank_candidates("agent", {"kind": "coding"}, frozenset())
-    assert [p for p, _ in agent] == ["nvidia-nim"]          # gemini ekskluderet på agent-lane
-    cheap = cr._rank_candidates("cheap", {"kind": "coding"}, frozenset())
-    assert "gemini" in [p for p, _ in cheap]                # men beholdt på cheap-lane
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_cost_class",
+                        lambda p: "paid" if p == "copilot-premium" else "free")
+    # default: betalt ekskluderet → kun cerebras
+    free_only = [p for p, _ in cr._rank_candidates("agent", {"kind": "coding"}, frozenset())]
+    assert free_only == ["cerebras"]
+    # allow_paid: copilot-premium inkluderet OG #1 (prio 5 < cerebras 22)
+    with_paid = cr._rank_candidates("agent", {"kind": "coding", "allow_paid": True}, frozenset())
+    assert with_paid[0][0] == "copilot-premium"

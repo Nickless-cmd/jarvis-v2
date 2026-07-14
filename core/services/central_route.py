@@ -24,14 +24,20 @@ def _rank_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tupl
     from core.services.cheap_provider_runtime_selection import (
         _configured_cheap_candidates, _is_public_proxy)
     from core.services.central_route_headroom import headroom_ok, headroom_weight
-    from core.services.cheap_provider_runtime_adapters import CHEAP_PROVIDER_DEFAULTS
+    from core.services.cheap_provider_runtime_adapters import (
+        CHEAP_PROVIDER_DEFAULTS, provider_cost_class)
     kind = str((task or {}).get("kind") or "default") if isinstance(task, dict) else "default"
+    # Cost-gate (Bjørn 15. jul): betalte modeller (Copilot-premium) må KUN vælges når
+    # task'en eksplicit tillader det — "gratis = frit valg, betalt = rigtige opgaver".
+    allow_paid = bool((task or {}).get("allow_paid")) if isinstance(task, dict) else False
     cands = _configured_cheap_candidates(include_public_proxy=(kind != "important"))
     out: list[tuple[float, str, str]] = []
     for c in cands:
         p, m = str(c.get("provider") or ""), str(c.get("model") or "")
         if not p or not m or p in exclude or not c.get("credentials_ready"):
             continue
+        if not allow_paid and provider_cost_class(p) == "paid":
+            continue                      # betalt kræver allow_paid (rigtig opgave)
         # Agent-lanen kalder /v1/agent/step som KUN kan openai-chat. Route aldrig til
         # inkompatible providers (gemini-native/codex/cloudflare/arko/ollamafreeapi) —
         # de ville trigge deepseek-fallback (BETALT). De hører til daemon-lanen hvor

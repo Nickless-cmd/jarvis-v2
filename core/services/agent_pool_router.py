@@ -13,14 +13,18 @@ logger = logging.getLogger(__name__)
 
 
 def route_agent_task(*, kind: str = "default", min_tokens: int = 0,
-                     quality_threshold: float = 0.0,
+                     quality_threshold: float = 0.0, allow_paid: bool = False,
                      exclude: frozenset[str] = frozenset()) -> dict[str, Any]:
-    """Vælg (provider, model) for en agent-task via central_route. Aldrig tør."""
+    """Vælg (provider, model) for en agent-task via central_route. Aldrig tør.
+
+    allow_paid=False (default): kun GRATIS modeller (Jarvis' frie valg). allow_paid=True
+    ("rigtig opgave"): betalte Copilot-premium (Claude/GPT-5.6) bliver også kandidater,
+    scoret på kvalitet — de vælges først (høj prioritet) fordi de er bedst."""
     from core.services import central_route
     r = central_route.route(
         lane="agent",
         task={"kind": kind, "min_tokens": min_tokens,
-              "quality_threshold": quality_threshold},
+              "quality_threshold": quality_threshold, "allow_paid": allow_paid},
         exclude=exclude,
     )
     return r

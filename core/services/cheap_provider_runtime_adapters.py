@@ -300,6 +300,39 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "daily_limit": 100,
         "static_models": ["Meta-Llama-3_3-70B-Instruct", "Qwen3.5-9B"],
     },
+    # Copilot Pro (15. jul) — Bjørns betalte abonnement, delt i to efter multiplier:
+    # copilot-free = 0x (inkluderet, nul premium-requests) → GRATIS, i cheap lane + pool.
+    "copilot-free": {
+        "label": "GitHub Copilot (free-tier)",
+        "priority": 18,
+        "base_url": "https://api.githubcopilot.com",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "",
+        "rpm_limit": 20,
+        "daily_limit": 500,
+        "cost_class": "free",
+        "extra_headers": {"Editor-Version": "vscode/1.90.0",
+                          "Copilot-Integration-Id": "vscode-chat"},
+        "static_models": ["gpt-4o", "gpt-4.1", "gpt-5-mini"],
+    },
+    # copilot-premium = 1x+ (koster premium-requests) → BETALT, KUN agent pool, gated af
+    # task.allow_paid ("rigtige opgaver"). Claude Opus/Sonnet, GPT-5.6, Gemini-3.
+    "copilot-premium": {
+        "label": "GitHub Copilot (premium)",
+        "priority": 5,  # høj kvalitet — vælges FØRST når betalt er tilladt
+        "base_url": "https://api.githubcopilot.com",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "",
+        "rpm_limit": 20,
+        "daily_limit": 300,
+        "cost_class": "paid",
+        "extra_headers": {"Editor-Version": "vscode/1.90.0",
+                          "Copilot-Integration-Id": "vscode-chat"},
+        "static_models": ["claude-sonnet-5", "claude-opus-4.8", "gpt-5.6-terra",
+                          "gemini-3.1-pro-preview"],
+    },
 }
 
 
@@ -333,6 +366,13 @@ def supported_cheap_providers() -> list[dict[str, object]]:
 
 def provider_runtime_defaults(provider: str) -> dict[str, object]:
     return dict(CHEAP_PROVIDER_DEFAULTS.get(str(provider or "").strip(), {}))
+
+
+def provider_cost_class(provider: str) -> str:
+    """'free' (default) eller 'paid'. Betalte providers (copilot-premium) må KUN
+    vælges når en task eksplicit tillader det (task.allow_paid) — 'rigtige opgaver'."""
+    return str((CHEAP_PROVIDER_DEFAULTS.get(str(provider or "").strip()) or {})
+               .get("cost_class") or "free")
 
 
 def is_routable_provider(provider: str) -> bool:
@@ -579,6 +619,11 @@ def _execute_openai_compatible_chat(
     headers: dict[str, str] = {}
     if _api_key:  # auth_kind=none (OVHcloud anon) → ingen Authorization-header
         headers["Authorization"] = f"Bearer {_api_key}"
+    # Provider-specifikke ekstra-headers (fx Copilot kræver Editor-Version +
+    # Copilot-Integration-Id for at api.githubcopilot.com accepterer kaldet).
+    _extra_h = (CHEAP_PROVIDER_DEFAULTS.get(provider) or {}).get("extra_headers")
+    if isinstance(_extra_h, dict):
+        headers.update({str(k): str(v) for k, v in _extra_h.items()})
     if messages is None:
         if message is None:
             raise ValueError("Either 'messages' or 'message' must be provided")

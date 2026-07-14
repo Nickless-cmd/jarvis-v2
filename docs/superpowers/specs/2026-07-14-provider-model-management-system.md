@@ -147,6 +147,8 @@ async def route_agent_task(
     retur-fallback ved failure."""
 ```
 
+**Primær-konsument (Claude-review v9):** `route_agent_task()` er præcis hvad jarvis-code's parity-arbejde skal kalde — per-subagent-model-valg (parity Fase 4) og dispatch (parity Fase 2) skal route gennem denne pool i stedet for at hardkode en model pr. subagent. Cross-reference: `docs/superpowers/specs/2026-07-14-jarvis-code-parity.md`. Konkret seam: dispatch bygger en `AgentTask{kind}` ud fra subagent-rollen (fx `kind="coding"` for en implementer-agent, `kind="reasoning"` for en reviewer) og kalder `route_agent_task()` for at vælge (provider, model). Så bliver poolens kvalitets-læring (§4.4) fodret af rigtige dispatch-outcomes — de to systemer forstærker hinanden.
+
 ### 4.3 Rate-limit læring
 
 Features der trackes per (provider, time_of_day):
@@ -156,9 +158,39 @@ Features der trackes per (provider, time_of_day):
 - `daily_exhaustion_hour` — klokkeslæt hvornår daglig kvote typisk løber tør
 - `weekday_pattern` — 0=mindre trafik weekend, 1=samme hver dag
 
+### 4.4 Hvor `task_scores` kommer fra (kvalitets-læring)
+
+**Åbent kernepunkt (Claude-review v9):** §4.1's `task_scores` er selve krumtappen i routing — en `route_agent_task()` er kun så god som sine scores — men §3 noterer at "kvalitets-måling" mangler, og §4.3 dækker kun *rate-limit*-læring, ikke *kvalitets*-læring. Uden en kilde til scores er poolen en tom skal.
+
+**To-trins-plan:**
+
+1. **Seed (dag 0):** manuelt kuraterede start-scores pr. (model, task_kind), grovkornet (0.5 = ukendt, 0.9 = bevist stærk). Nok til at komme i gang — ikke autoritativt.
+2. **Outcome-feedback-loop (steady state):** efter en agent-task scores resultatets kvalitet → EMA-opdatér `task_scores[kind]` (læringsrate 0.1, samme mønster som §4.3):
+
+```python
+def update_task_score(target: AgentPoolTarget, kind: str, outcome_quality: float, lr: float = 0.1) -> None:
+    """outcome_quality ∈ [0,1] fra en outcome-signal-kilde (se nedenfor)."""
+    prev = target.task_scores.get(kind, 0.5)
+    target.task_scores[kind] = (1 - lr) * prev + lr * outcome_quality
+    # emit til Centralen: task_score_updated{provider, model, kind, prev, new}
+```
+
+**Outcome-signal-kilder (billigst→dyrest, brug hvad der findes):**
+- **Gratis, allerede der:** finish_reason (task fuldførte vs. cutoff/tom), tool-call-succesrate, retry-count, gate-verdicts fra harness-kontrakten (Fase 1-arbejdet), test-pass/fail hvis agenten kørte tests.
+- **Billig:** self-review-score fra agentens egen afsluttende review.
+- **Dyr (kun ved tvivl):** LLM-as-judge på et sample af outputs.
+
+Binder direkte til acceptance/verifikations-arbejdet — samme outcome-signaler harness-kontrakten allerede producerer. Emittér `task_score_updated` til Centralen så scoring-drift er synlig.
+
 ## 5. Centralen integration — single source of truth
 
 **Princip:** Centralens `system/provider_health` nerve er autoritativ for provider-status. Balancer og router konsulterer den — de ejer ikke deres egen sandhed.
+
+**Autoritet-split (vigtig præcisering, Claude-review v9):** "Central autoritativ" gælder **tvær-lane/historisk** sandhed, ikke per-kald. Balancerens circuit-breaker reagerer på en 429 i **hot-path** (`call_balanced`), hurtigere end Centralens ~6-min health-cyklus kan nå at opdatere. En 429 kan ikke vente på Central. Derfor:
+
+- **Balancer autoritativ i hot-path:** per-kald cooldown/failover på egne, øjeblikkelige signaler (429, timeout, connreset). Uden dette bløder et enkelt kald over i næste request.
+- **Central autoritativ i slow-path:** aggregeret oppetid, blacklist, tvær-lane mønstre, "hvem er oppe generelt?". Router-forespørgsler (§4.2 `health`-arg) læser Centralens billede, ikke balancerens lokale cache.
+- Konflikt-regel: ved cold start vinder Central for *historik*; balancerens *friske* hot-path-signal (< health-interval gammelt) vinder for *lige nu*. (Samme hot-path/slow-path-autoritet-lektie som daemon-cluster-arbejdet.)
 
 ```
 ┌──────────────────┐     ┌──────────────────────┐     ┌───────────────────┐
@@ -197,8 +229,9 @@ Features der trackes per (provider, time_of_day):
 **AC:**
 - [ ] `route_agent_task()` implementeret og testet med 10+ task-kinds
 - [ ] Auto-discovery daemon: daglig re-scan af alle providers' `/models` endpoints, diff mod `provider_router.json`
+- [ ] **Discovery GATER, auto-adder ikke (Claude-review v9):** en ny model i et `/models`-endpoint betyder ikke at den er god eller gratis. Nye modeller lander i `pending_models` (staging), IKKE i routbar pool. De skal først bestå smoke-test (svarer den?) + kvalitets-scoring (§4.4 seed) + gratis-verifikation. Kun derefter promoveres de — governed, aldrig auto-on. (Samme governance-princip som self-registering-nerve: opdagelse ≠ optagelse.)
 - [ ] Selvhelbredelse: hvis 3+ providers fejler samtidig → eskaler til Bjørn via Discord
-- [ ] Model-drift auto-fix: 404 model → fjernes automatisk fra pool, logges til Centralen
+- [ ] Model-drift auto-fix: 404 model → fjernes automatisk fra pool, logges til Centralen (removal er sikkert at auto-køre; addition er ikke)
 
 ## 7. Test-strategi
 
@@ -227,5 +260,6 @@ Features der trackes per (provider, time_of_day):
 
 ---
 
-*Spec v9 — 14. juli 2026. 17 providers, ~270 gratis modeller, $0.
+*Spec v10 — 14. juli 2026. 17 providers, ~270 gratis modeller, $0.
+v10 (Claude-review): (1) §5 hot-path/slow-path autoritet-split, (2) §4.4 kvalitets-lærings-loop — hvor task_scores kommer fra, (3) Fase C auto-discovery GATER frem for auto-adder, (4) §4.2 jarvis-code dispatch som primær-konsument.
 Næste: Bjørn review → build-authorisation.*

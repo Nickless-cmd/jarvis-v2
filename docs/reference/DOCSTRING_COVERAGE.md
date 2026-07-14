@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6043/12480 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6044/12481 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6043/12480 functions/methods documented (48%). The list b
 | `core.memory` | 44 | 123 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 550 | 1019 | 53% |
-| `core.services` | 3958 | 8661 | 45% |
+| `core.services` | 3959 | 8662 | 45% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1229,14 +1229,14 @@ Generated from source. 6043/12480 functions/methods documented (48%). The list b
 - `core/services/process_watcher.py` :: `set_watch_enabled` (L239)
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2694)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2542)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L2831)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2716)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2564)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L2853)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L147)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L95)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L122)
-- `core/services/prompt_contract.py` :: `build_visible_chat_prompt_assembly` (L522)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4310)
+- `core/services/prompt_contract.py` :: `build_visible_chat_prompt_assembly` (L538)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4332)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)

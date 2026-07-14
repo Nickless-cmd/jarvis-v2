@@ -261,6 +261,22 @@ _PHASE_DEADLINE_S = 10.0
 # capper mod RESTEN af dette → assembly capper hårdt uanset hvor mange der hænger.
 _ASSEMBLY_BUDGET_S = 12.0
 
+# Kold/frossen-vindue-værn (2026-07-14, Bjørn): når cognitive_state IKKE er live
+# (Centralens injection-producer er frosset/kold — som ved daemon-frysen 13.jul) faldt
+# HVERT svar tilbage til den dyre ~8s Ollama-build → 12-15s svar. _PHASE_DEADLINE_S=10s
+# lod en 8.4s-build passere. Cap cognitive_state-builden HÅRDT (den er berigelse, ikke
+# load-bearing) og fald tilbage til sidste cachede injection-tekst (read_injection, frisk-
+# ish, "" hvis aldrig bygget) → et koldt vindue kan aldrig koste mere end dette pr. svar.
+_COGNITIVE_STATE_BUILD_CAP_S = 2.5
+
+
+def _phase_timeout(elapsed: float, *, max_s: float | None = None) -> float:
+    """Deadline for én phase-future: cappet mod resten af det globale assembly-budget,
+    per-fase-loftet, og et valgfrit strammere per-fase-max (max_s). Gulv 0.3s så en
+    future altid får et lille vindue. Ren funktion → testbar uden en levende assembly."""
+    cap = _PHASE_DEADLINE_S if max_s is None else min(_PHASE_DEADLINE_S, float(max_s))
+    return max(0.3, min(cap, _ASSEMBLY_BUDGET_S - elapsed))
+
 
 def _permissive_relevance(mode: str = "visible_chat") -> "PromptRelevanceDecision":
     """All-on relevance-default når relevance-futuren timer ud — inkludér ALT (berigelse
@@ -579,7 +595,7 @@ def build_visible_chat_prompt_assembly(
                     _phase_timings[_name] = _elapsed
         return executor.submit(_wrapped)
 
-    def _timed_result(_future, _name: str, *, default=None):
+    def _timed_result(_future, _name: str, *, default=None, max_s: float | None = None):
         """Resolve a future MED hård deadline (Bjørn 2026-06-23, CUT-OFF-RODEN).
 
         Hænget flytter mellem ALLE phase-futures (frame/cognitive_state/recall/
@@ -600,7 +616,7 @@ def build_visible_chat_prompt_assembly(
         # <10s. Nu: når totalbudgettet er brugt, returnerer resterende futures default
         # straks → hele assembly capper hårdt (~12s) uanset hvor mange der hænger.
         _elapsed = _t_mod.monotonic() - _t_assembly_start
-        _timeout = max(0.3, min(_PHASE_DEADLINE_S, _ASSEMBLY_BUDGET_S - _elapsed))
+        _timeout = _phase_timeout(_elapsed, max_s=max_s)
         try:
             return _future.result(timeout=_timeout)
         except _cf.TimeoutError:
@@ -2101,7 +2117,13 @@ def build_visible_chat_prompt_assembly(
     elif _cog_live:
         cognitive_state_content = read_injection("cognitive_state") or None
     else:
-        cognitive_state_content = _timed_result(future_cognitive_state, "cognitive_state")
+        # Kold/frossen-vindue-værn: cap builden hårdt; hænger den, fald tilbage til sidste
+        # cachede injection-tekst (frisk-ish, aldrig load-bearing) i st. f. at betale ~8s.
+        cognitive_state_content = _timed_result(
+            future_cognitive_state, "cognitive_state",
+            default=(read_injection("cognitive_state") or None),
+            max_s=_COGNITIVE_STATE_BUILD_CAP_S,
+        )
     # Real-time self-state numbers (decision adherence, goal progress, tick
     # quality). Without this Jarvis confabulates pessimistic answers when
     # asked introspective questions in chat — claims 0% adherence when DB

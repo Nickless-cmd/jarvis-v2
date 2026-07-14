@@ -8,6 +8,38 @@ sees tests for prompt_contract.py changes.
 from __future__ import annotations
 
 
+class TestPhaseTimeout:
+    """Kold/frossen-vindue-værn (2026-07-14): _phase_timeout capper cognitive_state-builden
+    så et koldt injection-vindue aldrig koster ~8s pr. svar."""
+
+    def test_max_s_caps_below_phase_deadline(self):
+        from core.services.prompt_contract import _phase_timeout
+        # tidligt i assembly (elapsed 0): max_s=2.5 vinder over 10s-loftet + 12s-budgettet.
+        assert _phase_timeout(0.0, max_s=2.5) == 2.5
+
+    def test_no_max_s_uses_phase_deadline(self):
+        from core.services.prompt_contract import _phase_timeout, _PHASE_DEADLINE_S, _ASSEMBLY_BUDGET_S
+        # uden max_s: cappet af min(phase-deadline, resten af budget). elapsed 0 → budget 12 → 10.
+        assert _phase_timeout(0.0) == min(_PHASE_DEADLINE_S, _ASSEMBLY_BUDGET_S)
+
+    def test_global_budget_still_caps_when_elapsed_high(self):
+        from core.services.prompt_contract import _phase_timeout
+        # sent i assembly: resten af budgettet (12-11=1) vinder selv med rundhåndet max_s.
+        assert _phase_timeout(11.0, max_s=2.5) == 1.0
+
+    def test_floor_is_300ms(self):
+        from core.services.prompt_contract import _phase_timeout
+        # budget helt brugt → gulv 0.3s (aldrig 0 eller negativ).
+        assert _phase_timeout(20.0, max_s=2.5) == 0.3
+
+    def test_max_s_never_exceeds_phase_deadline(self):
+        from core.services.prompt_contract import (
+            _phase_timeout, _PHASE_DEADLINE_S, _ASSEMBLY_BUDGET_S,
+        )
+        # en rundhåndet max_s løfter ikke over det globale fase-loft / budget.
+        assert _phase_timeout(0.0, max_s=100.0) == min(_PHASE_DEADLINE_S, _ASSEMBLY_BUDGET_S)
+
+
 class TestTimePinSection:
     """Layer 1: prominent time block in every system prompt."""
 

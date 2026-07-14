@@ -317,6 +317,28 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["openai-fast"],
     },
+    # Kilo Gateway (15. jul, FreeLLMAPI-extraction + live-verificeret): OpenAI-compat
+    # aggregator, ANONYM keyless på :free-routes (200 req/t/IP). 343 modeller; :free
+    # tool-capable BEKRÆFTET (nemotron-3-super-120b/ultra-550b/cohere-north/openrouter
+    # → tool_calls=1). base ender på /gateway/v1 (chat), model-liste på /gateway/models.
+    # NB: :free-routes kan over tid skifte til paid (Kilos forbehold) + free-prompts
+    # logges til træning → backup-tier, ikke primær. static_models = konservativt
+    # verificeret-free-tool-capable-sæt.
+    "kilo": {
+        "label": "Kilo Gateway",
+        "priority": 55,
+        "base_url": "https://api.kilo.ai/api/gateway/v1",
+        "auth_kind": "none",
+        "protocol": "openai-chat",
+        "models_endpoint": "",
+        "rpm_limit": 30,
+        "daily_limit": 2000,
+        "cost_class": "free",
+        "static_models": ["nvidia/nemotron-3-super-120b-a12b:free",
+                          "nvidia/nemotron-3-ultra-550b-a55b:free",
+                          "cohere/north-mini-code:free", "openrouter/free",
+                          "tencent/hy3:free"],
+    },
     # Copilot Pro (15. jul) — Bjørns betalte abonnement, delt i to efter multiplier:
     # copilot-free = 0x (inkluderet, nul premium-requests) → GRATIS, i cheap lane + pool.
     "copilot-free": {

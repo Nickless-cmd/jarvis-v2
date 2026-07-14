@@ -114,6 +114,23 @@ def test_pollinations_keyless_free_and_routable():
     assert _require_credentials(profile="default", provider="pollinations") == {}
 
 
+def test_kilo_keyless_free_routes_and_tool_capable():
+    """15. jul (FreeLLMAPI-extraction): Kilo Gateway — anon keyless :free-routes,
+    tool-capable (live-verificeret). I cheap lane + pool. static_models kun :free."""
+    from core.services.cheap_provider_runtime_adapters import (
+        CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_cost_class,
+        provider_auth_ready, _OPENAI_COMPATIBLE_PROVIDERS)
+    k = CHEAP_PROVIDER_DEFAULTS["kilo"]
+    assert k["auth_kind"] == "none"
+    assert k["protocol"] == "openai-chat"
+    assert k["base_url"] == "https://api.kilo.ai/api/gateway/v1"
+    # aldrig paid-routes: hver model er en :free / /free-rute
+    assert all(m.endswith(":free") or m.endswith("/free") for m in k["static_models"])
+    assert provider_cost_class("kilo") == "free"
+    assert is_routable_provider("kilo") and "kilo" in _OPENAI_COMPATIBLE_PROVIDERS
+    assert provider_auth_ready(provider="kilo", auth_profile="default") is True
+
+
 def test_require_credentials_still_raises_for_bearer_without_key(monkeypatch):
     """Guarden må kun gælde auth_kind=none. En bearer-provider uden nøgle skal stadig
     rejse auth-not-ready (ellers ville vi kalde en betalt/nøgle-provider uden auth)."""

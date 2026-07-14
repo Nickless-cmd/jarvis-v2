@@ -154,6 +154,26 @@ _CC_TOOL_LEGEND = (
     "Worktree → git worktree via bash · TodoWrite → intern plan · Grep/Glob → grep/glob."
 )
 
+# ── Harness behavioural contract (Fase 4, Task 7) ───────────────────────
+# Adfærds-klausuler der gør Jarvis stabil i terminalen — samme ånd som Claude
+# Codes egen harness-kontrakt. Appended, når flaget er sat, FØR <env>-blokken
+# (Fase 4, Task 2), så den ligger i den cachebare HOVED-del af prompten, ikke
+# i den flygtige hale — at slå kontrakten til/fra rører ikke <env>'s position
+# eller Task 4's præfiks-signatur.
+_HARNESS_CONTRACT = (
+    "\n\n## ARBEJDSKONTRAKT\n"
+    "- Ingen indledning eller afrunding: svar direkte på opgaven, spring "
+    "\"jeg vil nu...\"/\"det var det\"-fyld over.\n"
+    "- Kommentar-disciplin: tilføj ikke kodekommentarer medmindre brugeren beder om "
+    "det, eller koden reelt kræver forklaring — lad koden tale for sig selv.\n"
+    "- Proaktivitet har grænser: gør det der bliver bedt om; overrask ikke brugeren "
+    "med uopfordrede ekstra ændringer eller handlinger.\n"
+    "- Kan du ikke/vil du ikke gøre noget, sig det kort og giv ét konkret alternativ "
+    "(1-2 linjer) i stedet for bare at afvise.\n"
+    "- Verificér før du siger \"færdig\": kør/tjek det du har lavet, hævd aldrig at "
+    "noget virker uden at have set det virke."
+)
+
 
 def _skill_catalog() -> str:
     """Owner-approved skill catalog for the system prompt (Fase 3, Task 3).
@@ -284,10 +304,19 @@ def _build_system_prompt(context: str, user_message: str = "", name: str = "defa
     if catalog:
         base = base + catalog + "\n\n" + _SKILL_ACTIVATION + "\n\n" + _CC_TOOL_LEGEND
 
+    _fase4_settings = _settings()
+
+    # Fase 4 Task 7 (flag-gated): harness contract goes in the CACHEABLE HEAD —
+    # BEFORE <env> below — so toggling it independently of the env flag never
+    # moves <env>'s position or Task 4's prefix signature (which is computed
+    # over everything before <env>). Off -> base unchanged.
+    if _fase4_settings.agent_step_harness_contract_enabled:
+        base = base + _HARNESS_CONTRACT
+
     # Fase 4 Task 2 (flag-gated): <env> is the LAST section appended — must stay
     # the tail so Task 4's cache-prefix signature (computed over everything
     # BEFORE this) never sees it. Off or no env -> base unchanged.
-    if env and _settings().agent_step_env_block_enabled:
+    if env and _fase4_settings.agent_step_env_block_enabled:
         from apps.api.jarvis_api.routes.jc_env import render_env_block
         block = render_env_block(env)
         if block:

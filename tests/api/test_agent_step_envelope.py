@@ -127,3 +127,20 @@ def test_observability_on_nonempty_only_nerve(monkeypatch):
                 json={"messages": [{"role": "user", "content": "x"}], "stream": False})
     assert empties == []            # non-empty -> no empty_completion
     assert nerves[0]["status"] == "ok"
+
+
+def test_adapter_returns_finish_reason(monkeypatch):
+    import core.services.cheap_provider_runtime_adapters as ad
+    fake_data = {"choices": [{"finish_reason": "length",
+                              "message": {"content": "trunc", "tool_calls": []}}],
+                 "usage": {"prompt_tokens": 5, "completion_tokens": 4}}
+
+    class _Facade:
+        def _require_credentials(self, **k): return {"api_key": "x"}
+        def provider_runtime_defaults(self, p): return {"base_url": "http://x"}
+        def _http_json(self, *a, **k): return fake_data, {}
+    monkeypatch.setattr(ad, "_facade", lambda: _Facade())
+    out = ad._execute_openai_compatible_chat(
+        provider="deepseek", model="deepseek-v4-flash", auth_profile="deepseek",
+        base_url="http://x", messages=[{"role": "user", "content": "hi"}])
+    assert out["finish_reason"] == "length"

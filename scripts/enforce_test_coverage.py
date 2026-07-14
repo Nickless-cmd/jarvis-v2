@@ -129,6 +129,12 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # Approval-resolution (cache-invalidering 2026-06-30) er integrationstestet
     # via mc_approve_tool_intent → surface reflekterer godkendelsen.
     "core/services/tool_intent_approval_runtime.py": "tests/test_mission_control_operations_route.py",
+    # jarvis-code parity Fase 0 (2026-07-14) — openai-compat seams for the
+    # client-owned /v1/agent/step loop. Tested where they're actually
+    # exercised: adapters via the deepseek thinking-param suite (direct
+    # import), streaming via the agent/step envelope suite (monkeypatch seam).
+    "core/services/cheap_provider_runtime_adapters.py": "tests/services/test_deepseek_thinking_param.py",
+    "core/services/cheap_provider_runtime_streaming.py": "tests/api/test_agent_step_envelope.py",
 }
 
 

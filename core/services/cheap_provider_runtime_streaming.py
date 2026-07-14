@@ -309,6 +309,7 @@ def _iter_openai_compatible_chat_events(
         "cache_hit_tokens": cache_hit,
         "cache_miss_tokens": cache_miss,
         "cost_usd": cost_usd,
+        "finish_reason": _finish_reason,
     }
 
 

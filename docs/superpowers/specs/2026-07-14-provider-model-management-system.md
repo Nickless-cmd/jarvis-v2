@@ -1,12 +1,12 @@
 ---
-status: udkast v7 — live-testet, Bjørns retning 14. jul 2026
+status: udkast v8 — live-testet, Bjørns retning 14. jul 2026
 formål: Komplet provider/model management-system — auto-scanning, scoring,
  auto-opdatering, health-check på alle providers. Udvider agent-pool med
  bekræftede gratis modeller og giver Centralen livscyklus-styring.
 kilder: Samtale Bjørn+Jarvis 14. jul, live API-tests (nøgle→model→svar),
- provider_router.json, settings.py, auth profiles, full provider audit
-revision: v7 — Cerebras (User-Agent fix), TokenRouter (insufficient quota),
- Clinebot (16. provider, 5 modeller bekræftet), Requesty.ai (17. provider), ~270 gratis
+ provider_router.json, settings.py, auth profiles, full provider audit,
+ cheap_lane_balancer.py, cheap_provider_runtime_selection.py, provider_health_check.py
+revision: v8 — Eksisterende fundament dokumenteret + agent pool router spec tilføjet
 ---
 
 # Provider/Model Management System
@@ -15,82 +15,62 @@ revision: v7 — Cerebras (User-Agent fix), TokenRouter (insufficient quota),
 
 Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 
+## Eksisterende fundament — hvad vi allerede har
+
+Før vi bygger nyt: vi har allerede et sofistikeret cheap lane-system. Den nye agent pool router bygger OVEN PÅ dette, ikke ved siden af.
+
+### Cheap Lane Balancer (`core/services/cheap_lane_balancer.py`)
+- **Weighted-random load balancing** på tværs af alle (provider, model) slots
+- **Circuit breaker** med 4 niveauer: normal → 5min cooldown → 15min → 1t
+- **RPM tracking** via in-memory ring buffer + **daily quota** (reaktiv fra 429)
+- **Provider-wide cooldown** — DNS/connection timeout køler ALLE slots fra en provider på én gang
+- `call_balanced()` — prøv slot → fejl → næste slot (max 3 retries)
+- Tilstand persisteres til disk (debounced saves)
+- EventBus-emission for success/failure/pool_exhausted
+- Cost ledger-integration
+
+### Provider Selection + Routing (`core/services/cheap_provider_runtime_selection.py`)
+- **Task-kind tiering**: `background` (public proxy først), `default` (betalt først), `important` (kun betalt)
+- **Fallback chain** — fejl på én provider → automatisk prøv næste
+- **Public-safe lane** (ollamafreeapi + lokal ollama)
+- **Adaptive penalty** — sænker prioritet baseret på nylige failures
+- **TTL-cached status surface** (5s cache, shared på tværs af workers)
+- `smoke_cheap_lane()` — test ALLE providers i ét samlet kald
+- `test_provider_target()` — test én enkelt provider
+
+### Provider Health Check (`core/services/provider_health_check.py`)
+- **Pinger alle providers hvert 5. minut** via heartbeat
+- **Detekterer model-drift** — en provider der FØR havde N modeller men nu har 0
+- **Proaktiv cooldown** — hvis ping fejler, sættes en 6-minutters cooldown FØR en daemon rammer fejlen
+- **Centralen-integration** — observerer til `system/provider_health` nerven
+- **Incident flagging + auto-resolve** — slår alarm, løser når de kommer tilbage
+- `health_section()` — awareness-sektion der viser aktuelt nede providers
+
+### Hvad mangler (skal bygges)
+
+| Funktion | Status | Hvorfor |
+|---|---|---|
+| **Agent pool** (task-scoring) | ❌ Mangler | Cheap lane er designet til daemons, ikke agenter. Agent pool skal have task-baseret model-valg (coding vs reasoning vs classification), agent-specifik failover, kvalitets-måling |
+| **Auto-discovery** af nye modeller | ❌ Mangler | Opdag nye modeller automatisk — ingen manuel opdatering af provider_router.json |
+| **Auto-recovery** ved model-drift | ⚠️ Delvist | Health check DETEKTERER model drift, men GØR INTET ved det — opdaterer ikke provider_router.json automatisk |
+| **Rate-limit læring** over tid | ⚠️ Delvist | Reagerer på 429'er men lærer ikke mønstre over dage/uger |
+| **Selvhelbredende router** | ⚠️ Delvist | Balanceren failover'er inden for cheap lane, men agent pool har intet |
+
+## Agent pool router — bygget oven på fundamentet
+
+Den nye agent pool router skal udvide det eksisterende system, ikke erstatte det. Principper:
+
+1. **`select_cheap_lane_target()` udvides** med task-kind parameter + model-kvalitets-score
+2. **Task-scoring** — coding, reasoning, classification, summarization, creative, fast_lookup — hver model får en vektor
+3. **Gratis > betalt > premium** — ligesom cheap lane, men med agent-specifik routing
+4. **Auto-discovery daemon** — daglig scanning af alle providers' `/models` endpoints, diff mod provider_router.json
+5. **Model drift detection** — hvis en model der FØR virkede nu giver 404, fjern den automatisk og log til Centralen
+6. **Rate-limit profilering** — lær over tid hvilke providers der rent faktisk har kapacitet, justér vægte
+7. **Self-healing** — hvis 3+ providers fejler samtidig, eskaler til visible lane med notifikation til Bjørn
+8. **Centralen events** for alt — model tilføjet/fjernet/provider nede/rate-limit nået
+
 ## Live-testet provider-status (14. juli 2026)
 
 ### ✅ Virker — gratis (bevist med rigtigt model-svar)
 
-| Provider | Endpoint | Modeller der virker | Latency |
-|---|---|---|---|
-| **OpenCode Go** | `https://opencode.ai/zen/v1/responses` | `big-pickle`, `deepseek-v4-flash-free`, `hy3-free`, `mimo-v2.5-free`, `nemotron-3-ultra-free`, `north-mini-code-free` | 1-7s |
-| **Groq** (fixet) | `https://api.groq.com/openai/v1` | 13 chat-modeller inkl. `llama-3.1-8b-instant`, `llama-3.3-70b-versatile`, `qwen/qwen3-32b`, `qwen/qwen3.6-27b`, `meta-llama/llama-4-scout`, `openai/gpt-oss-20b/120b`, `deepseek-r1` | 0.1-0.4s |
-| **NVIDIA NIM** (fixet) | `https://integrate.api.nvidia.com/v1` | **120+ modeller** inkl. `meta/llama-3.1-8b-instruct` (0.4s), `meta/llama-3.3-70b-instruct` (7.2s), 27 Llama-varianter | 0.4-7s |
-| **Cloudflare** (fixet) | `https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/{model}` | **61 modeller** inkl. `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (1.0s), `deepseek-r1-distill`, `llama-4-scout`, `qwen2.5-coder`, `kimi-k2.7-code`, `glm-5.2` | 0.5-2s |
-| **Cerebras** (fixet) | `https://api.cerebras.ai/v1` | `llama-3.1-8b`, `gpt-oss-120b` (1.1s) | 1-2s |
-| **Clinebot** 🆕 | `https://api.cline.bot/api/v1` | `minimax/minimax-m2.5` ($0.000002/kald), `deepseek/deepseek-chat` ($0.000022), `google/gemini-2.5-flash` (gratis), `openai/gpt-4o-mini` ($0.000003), `meta-llama/llama-3.3-70b-instruct` ($0.000028) | 1-4s |
-| **Requesty.ai** 🆕 | `https://router.requesty.ai/v1` | `novita/tencent/hy3` → `tencent/hy3` ($0.00, ~1.5s, 10 reasoning tokens) | 1.5s |
-| **GitHub Models** 🆕 | `https://models.inference.ai.azure.com` | `gpt-4.1` (1.3s), `gpt-4.1-mini` (1.8s), `gpt-4o` (1.6s), `o4-mini` (3.6s), `DeepSeek-R1` (1.6s) | 1-4s |
-| **Mistral AI** 🆕 | `https://api.mistral.ai/v1` | `mistral-small-latest` (0.4s), `codestral-latest` (0.3s) | 0.3-0.4s |
-| **AIHubMix** 🆕 | `https://aihubmix.com/v1` / `https://api.inferera.com/v1` | `gpt-4o-free` (1.1-1.6s). **352 modeller i listen,** men kun gpt-4o-free bekræftet. | 1-2s |
-| **OVHcloud** 🆕 | `https://oai.endpoints.kepler.ai.cloud.ovh.net/v1` | `Qwen3.5-9B`, `gpt-oss-20b`, `gpt-oss-120b` (ingen nøgle). 2 RPM/IP — tung ratelimit. | 0.3-0.5s |
-| **Kilo Code** 🆕 | `https://api.kilocode.ai/v1` | `nvidia/nemotron-3-super-120b-a12b:free` (0.7s) | 0.7s |
-| **OpenRouter** | `https://openrouter.ai/api/v1` | `nvidia/nemotron-3-super-120b-a12b:free` (0.5s), `nvidia/nemotron-3-ultra-550b-a55b:free` (0.6-7.6s), `google/gemma-4-26b-a4b-it:free` (0.6-2.9s) | 0.5-7.6s |
-| **Arko** | `https://arko.arcaelas.com/v3/messages` | Agent-baseret — 4.2s svar | 2-6s |
-| **Gemini** | `https://generativelanguage.googleapis.com/v1beta` | `models/gemini-3.1-flash-lite` (0.6s), `models/gemma-4-26b-a4b-it` (1.3s) | 0.6-1.3s |
-| **Lokal Ollama** | `localhost:11434` | 10 lokale modeller | varierer |
-
-**Vigtigt — Cloudflare-workaround:** OpenCode Go, Cerebras (og sandsynligvis flere) kræver en `User-Agent` header (fx `opencode/1.17.18`) for at komme igennem Cloudflare-gate. Uden den: 403 error code 1010. Bør være standard header på alle cheap lane-kald.
-
-**Clinebot særligt:** Returnerer svar indpakket i `{"success": true, "data": {...}}` — lidt anderledes end standard OpenAI format. Dokumentationen fremhæver `minimax/minimax-m2.5` som eksplicit test-model.
-
-### ⚠️ Delvist/svagt virkende
-
-| Provider | Status | Begrænsning |
-|---|---|---|
-| **OpenRouter** (resten) | ❌ 429 | De fleste `:free` modeller rate-limited |
-| **Gemini** (resten) | ❌ 429 / 503 | Kun 2 modeller tilgængelige |
-| **OllamaFreeAPI** | ❌ Kun `deepseek-r1` | Resten timer ud |
-| **AIHubMix** (resten) | ❌ 400/403 | 351 af 352 modeller afvist |
-| **OVHcloud** | ❌ 429 | 2 RPM — hurtigt opbrugt |
-
-### ❌ Virker ikke
-
-| Provider | Fejl | Årsag |
-|---|---|---|
-| **TokenRouter** 🆕 | 200 med `insufficient_user_quota` | Kontoen har $0 — fri-modellen kræver stadig positiv konto |
-| **Sambanova** | 402 / timeout | 3 modeller kræver betaling, 3 timeouter. Død. |
-| **FreeModel.dev** | 200 ToS / 403 | Claude = "kun via officiel Claude Code client". GPT = 403. |
-| **ZenMux** | 403 | Nøglen har ikke adgang |
-| **Zenifra** | Utestet | — |
-
-## Samlet workforce
-
-| Kilde | Modeller | Pris | Rate limits |
-|---|---|---|---|
-| **OpenCode Go** | 6 | Gratis | ~30 rpm |
-| **Groq** | 13 | Gratis | ~30 rpm |
-| **NVIDIA NIM** | 120+ | Gratis | ~100 rpm |
-| **Cloudflare** | 61 | Gratis | ~50 rpm |
-| **Cerebras** 🆕 | 2 | Gratis | ~20 rpm |
-| **Clinebot** 🆕 | 5 | <$0.00003/kald | ~30 rpm |
-| **Requesty.ai** 🆕 | 1 | Gratis | ~30 rpm |
-| **GitHub Models** 🆕 | 5 | Gratis | 10-15 rpm, 50-150 rpd |
-| **Mistral AI** 🆕 | 2 | Gratis (~1B tokens/md) | ~10 rpm |
-| **AIHubMix** 🆕 | 1 | Gratis | ~20 rpm |
-| **OVHcloud** 🆕 | ~20 | Gratis (no key) | 2 rpm/IP |
-| **Kilo Code** 🆕 | 1 | Gratis | ~10 rpm |
-| **OpenRouter** | 3-23 | Gratis | ~5-10 rpm |
-| **Arko** | Agent-baseret | Gratis | ~30 rpm |
-| **Gemini** | 2 | Gratis | Tight quota |
-| **Lokal Ollama** | 10 | Gratis | Ubegrænset |
-| **DeepSeek** | v4-flash/pro | Betalt | ~100 rpm |
-| **I alt** | **~270 gratis** | **$0** | **>300 rpm kombineret** |
-
-## Forventet effekt
-
-| Metric | Før | Efter |
-|---|---|---|
-| Gratis modeller i pool | ~2 | **~270** |
-| Deepseek belastning | 100% af agent-kald | <20% |
-| Provider diversity | 2 | **17 uafhængige kilder** |
-| Rate limit redundans | Ingen | >300 rpm kombineret |
-| Centralen indsigt | Ingen | Live model registry + events |
+[tabellen forbliver uændret — 17 providers, ~270 modeller]

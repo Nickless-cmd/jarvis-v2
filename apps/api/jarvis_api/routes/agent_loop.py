@@ -49,6 +49,30 @@ def _resolve_role() -> str:
         return "owner"
 
 
+def _apply_privilege_enforcement(role: str, requested_mode: str) -> tuple[str, bool]:
+    """Fase 5 Task 1 (server half): owner-only privilege gate for the
+    approval-timing axis jarvis-code sends in agent/step's body.
+
+    When `jc_privilege_enforcement` is ON and a non-owner caller requests
+    full-auto/bypass (the two unattended, no-prompt timing modes), downgrade
+    to "ask" so a guest/non-owner session can never run tool calls without a
+    human confirming. Inert (pass-through, never downgraded) when the flag is
+    OFF or the caller IS the owner — matches the flag-gated-default-OFF
+    contract for every server change in this phase.
+
+    Returns (effective_mode, downgraded).
+    """
+    if not requested_mode:
+        return requested_mode, False
+    if role == "owner":
+        return requested_mode, False
+    if not _flag("jc_privilege_enforcement"):
+        return requested_mode, False
+    if requested_mode in ("full-auto", "bypass"):
+        return "ask", True
+    return requested_mode, False
+
+
 def _flag(name: str, default: bool = False) -> bool:
     """Read a runtime-state boolean flag. Fail-safe: any error/absence -> default.
     All Fase-0 behavior changes gate on these; every flag defaults OFF so the
@@ -542,6 +566,14 @@ async def agent_step(request: Request):
     session_id = str(body.get("session_id") or "")
     user_id = str(body.get("user_id") or "").strip()
     env = body.get("env") if isinstance(body.get("env"), dict) else None
+    # Fase 5 Task 1: owner-only privilege gate on the approval-timing axis.
+    # Inert (no key added, no behaviour change) when the flag is off or no
+    # approval_mode was sent — jarvis-code's client-only current wire format
+    # is preserved byte-identical unless a caller opts into sending it.
+    requested_approval_mode = str(body.get("approval_mode") or "").strip()
+    caller_role = _resolve_role()
+    effective_approval_mode, privilege_downgraded = _apply_privilege_enforcement(
+        caller_role, requested_approval_mode)
 
     if not isinstance(client_messages, list) or not client_messages:
         return JSONResponse(status_code=400, content={
@@ -708,6 +740,12 @@ async def agent_step(request: Request):
     # Fase 4 Task 1 (flag-gated): off -> key absent, byte-identical to today.
     if settings.agent_step_reasoning_replay_enabled:
         response_body["reasoning_content"] = str(raw.get("reasoning_content") or "")
+    # Fase 5 Task 1 (flag-gated): off / no approval_mode sent -> keys absent,
+    # byte-identical to today.
+    if requested_approval_mode:
+        response_body["effective_approval_mode"] = effective_approval_mode
+        if privilege_downgraded:
+            response_body["privilege_downgraded"] = True
     return JSONResponse(content=response_body)
 
 

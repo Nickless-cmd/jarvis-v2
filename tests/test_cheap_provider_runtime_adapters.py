@@ -45,5 +45,6 @@ def test_deepseek_not_routable_but_free_providers_are():
     """Bjørn 14. jul: deepseek (betalt) skal UD af routbar cheap-pool; gratis ind."""
     from core.services.cheap_provider_runtime_adapters import is_routable_provider
     assert is_routable_provider("deepseek") is False
+    assert is_routable_provider("openai-codex") is False   # død efter opsigelse
     for free in ("cerebras", "aihubmix", "requesty", "groq", "nvidia-nim"):
         assert is_routable_provider(free) is True, f"{free} skal være routbar"

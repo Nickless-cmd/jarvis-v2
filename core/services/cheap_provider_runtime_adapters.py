@@ -200,6 +200,10 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
             "gpt-5.3-codex",
             "gpt-5.4",
         ],
+        # routable=False (2026-07-14): Bjørn opsagde ChatGPT Plus → OAuth død, svarer
+        # ikke (falder over til nvidia-nim). Ude af routbar pool så den ikke spilder
+        # failover-forsøg. Gen-aktivér (fjern denne linje) hvis abonnementet kommer igen.
+        "routable": False,
     },
     # --- Nye providers, live-verificeret 14. jul (Bjørns nøgler, ~/new_providers_.txt).
     # Alle OpenAI-compatible bearer. Modeller er de faktisk-bekræftede gratis.

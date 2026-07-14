@@ -4,176 +4,314 @@ formål: Komplet provider/model management-system — auto-scanning, scoring,
  auto-opdatering, health-check på alle providers. Udvider agent-pool med
  bekræftede gratis modeller og giver Centralen livscyklus-styring.
 kilder: Samtale Bjørn+Jarvis 14. jul, live API-tests (nøgle→model→svar),
- provider_router.json, settings.py, auth profiles, full provider audit
-revision: v4 — NVIDIA NIM (+120 modeller), Cloudflare (61 modeller), Arko (v3/messages)
+ provider_router.json, settings.py, auth profiles, Groq+Gemini+NVIDIA+Cloudflare+Arko+OpenRouter+Sambanova audit
+revision: v4 — alle kendte providers live-testet, reelle tal, key-fixes, fjernet FreeModel
 ---
 
-# Provider/Model Management System
+# Provider/model management system
 
-## Problem
+## 1. Baggrund
 
-Jarvis' provider-landscape er statisk og manuelt vedligeholdt:
-- `provider_router.json` har 16 providers, men model-lister er hardcodede og forældede
-- OpenCode base URL var forkert → 403
-- Groq brugte **forkert API-nøgle** i runtime.json (rigtig nøgle lå i auth profile)
-- Gemini model-navne er udgået
-- NVIDIA NIM brugte forkert model-navn (`nemotron-3-super-free` findes ikke, men 120+ andre virker)
-- Cloudflare brugte forkert model-navn-format (skal være `@cf/meta/llama-...`)
-- Arko DNS-fejl var forbigående — endpoint `/v3/messages` virker
-- `gpt-oss:20b` (ollamafreeapi) eksisterer ikke → memory scoring fejler stille
-- FreeModel.dev returnerer ToS-advarsel — ulovlig at bruge
-- Ingen mekanisme detekterer nye modeller eller udgåede modeller
-- Centralen har ingen indsigt i model-tilgængelighed eller -kvalitet
-- Agent-poolen er reelt kun deepseek-flash + lokal ollama
+I dag er Jarvis' model-økonomi meget smal:
+- **visible lane**: deepseek v4-pro/v4-flash (betalt)
+- **cheap lane**: groq llama-3.1-8b-instant (gratis tier)
+- **local lane**: lokal ollama
+- **relevance**: opencode (død — 403)
+- **memory scoring**: ollamafreeapi (kun deepseek-r1 virker)
 
-## Live-testet provider-status (14. juli 2026)
+Mange providers er konfigureret men virker ikke pga. forkerte nøgler, forkerte model-navne, udgåede endpoints eller døde gratis-modeller. Dette system skal:
+1. Finde alle providers vi har credentials til
+2. Teste hver provider live (nøgle → model → svar)
+3. Opdatere config automatisk
+4. Scanne dagligt for ændringer
+5. Vælge den skarpeste gratis model til hver agent-opgave
 
-### ✅ Virker — gratis (bevist med rigtigt model-svar)
+## 2. Mål
 
-| Provider | Endpoint | Modeller der virker | Latency |
+- **20+ bekræftede gratis modeller** i agent-poolen
+- **Auto-discovery** af nye/udgåede modeller hver dag
+- **Task-baseret scoring** så den rigtige model vælges til den rigtige opgave
+- **Centralen-integration** så vi altid ved hvad der virker
+- **Ingen betalte modeller uden godkendelse**
+
+## 3. Arkitektur
+
+### 3.1 Komponenter
+
+```
+┌─────────────────────────────────────────┐
+│  Provider Discovery Daemon (daglig)     │
+│  - Henter /models fra hver provider     │
+│  - Sammenligner med provider_router.json│
+│  - Rapporterer diff til Centralen       │
+└─────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────┐
+│  Provider Health Daemon (hver 6. time)    │
+│  - Tester nøgle → model → svar          │
+│  - Markerer reachable/unreachable       │
+│  - Opdaterer health-score               │
+└─────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────┐
+│  Model Scoring Engine                   │
+│  - Task-match: coding/reasoning/etc.    │
+│  - Cost: gratis først                   │
+│  - Quality: health + latency + output   │
+│  - Context: passende context window     │
+└─────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────┐
+│  Agent Pool Router                      │
+│  - Vælger bedste model pr. opgave       │
+│  - Fallback-kæde hvis model fejler       │
+│  - Budget-guard: ingen betalte uden OK  │
+└─────────────────────────────────────────┘
+```
+
+### 3.2 Dataformat
+
+Hver model registreres med:
+```json
+{
+  "provider": "groq",
+  "model": "llama-3.3-70b-versatile",
+  "lane": "cheap",
+  "cost_input": 0.0,
+  "cost_output": 0.0,
+  "context": 128000,
+  "tool_support": true,
+  "reasoning": false,
+  "health": {
+    "reachable": true,
+    "last_tested": "2026-07-14T14:20:00Z",
+    "latency_ms": 150,
+    "quality_score": 0.92
+  },
+  "task_scores": {
+    "coding": 0.85,
+    "reasoning": 0.80,
+    "classification": 0.90,
+    "summarization": 0.88,
+    "creative": 0.60,
+    "fast_lookup": 0.95
+  }
+}
+```
+
+## 4. Live-testede providers (14. jul 2026)
+
+### ✅ Bekræftet fungerende
+
+| Provider | Endpoint | Modeller | Bemærkning |
 |---|---|---|---|
-| **OpenCode Go** | `https://opencode.ai/zen/v1/responses` | `big-pickle`, `deepseek-v4-flash-free`, `hy3-free`, `mimo-v2.5-free`, `nemotron-3-ultra-free`, `north-mini-code-free` | 1-7s |
-| **Groq** | `https://api.groq.com/openai/v1` | `llama-3.1-8b-instant`, `llama-3.3-70b-versatile`, `qwen/qwen3-32b`, `qwen/qwen3.6-27b`, `meta-llama/llama-4-scout-17b-16e-instruct`, `allam-2-7b`, `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `openai/gpt-oss-safeguard-20b`, `deepseek-r1`, `llama-prompt-guard-2-22m`, `llama-prompt-guard-2-86m` (13 chat-modeller i alt) | 0.1-0.4s |
-| **NVIDIA NIM** | `https://integrate.api.nvidia.com/v1` | **120+ modeller** inkl. `meta/llama-3.1-8b-instruct` (0.4s), `meta/llama-3.3-70b-instruct` (7.2s), `mistralai/mistral-large`, `nvidia/nemotron-4-340b` og 27 Llama-varianter | 0.4-7s |
-| **Cloudflare Workers AI** | `https://api.cloudflare.com/client/v4/accounts/{id}/ai/run` | **61 modeller** inkl. `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (1.0s), `@cf/deepseek-r1-distill`, `@cf/meta/llama-4-scout`, `@cf/qwen2.5-coder`, `@cf/kimi-k2.7-code`, `@cf/glm-5.2` | 0.5-2s |
-| **Arko Studio** | `https://arko.arcaelas.com/v3/messages` | Agent-baseret inference (stateless). `aid` + `content` + `stream:false` — 4.2s svar på "Say OK" | 2-6s |
-| **Gemini** | `https://generativelanguage.googleapis.com/v1beta` | `models/gemini-3.1-flash-lite` (0.6s), `models/gemma-4-26b-a4b-it` (1.3s) | 0.6-1.3s |
-| **Lokal Ollama** | `localhost:11434` | 10 lokale modeller | varierer |
+| **OpenCode Go** | `https://opencode.ai/zen/v1/responses` | 6 gratis | Kræver `User-Agent: opencode/1.17.18` og `input`-array format |
+| **Groq** | `https://api.groq.com/openai/v1` | 12+ | Nøgle i runtime.json var forkert; rigtig nøgle ligger i auth profile |
+| **NVIDIA NIM** | `https://integrate.api.nvidia.com/v1` | 120+ | Nøgle virker; model-navne skal være `meta/llama-3.3-70b-instruct` etc. |
+| **Cloudflare** | `https://api.cloudflare.com/client/v4/accounts/{id}/ai/v1` | 61 | Model-navne skal have `@cf/` præfiks |
+| **Arko** | `https://arko.arcaelas.com/v3/messages` | Agent-baseret | `aid` + `content` + `stream: false` |
+| **Gemini** | `https://generativelanguage.googleapis.com/v1beta` | 2 | `gemini-3.1-flash-lite` og `gemma-4-26b-a4b-it` virker; resten quota/udgået |
+| **OpenRouter** | `https://openrouter.ai/api/v1` | 4-23 gratis | Mange 429; `nvidia/nemotron-3-super-120b-a12b:free` og `google/gemma-4-26b-a4b-it:free` bekræftet |
+| **Lokal Ollama** | `http://localhost:11434` | 10+ | Altid gratis, altid tilgængelig |
+| **DeepSeek** | `https://api.deepseek.com` | v4-flash, v4-pro | Betalt; reserveres til visible lane |
 
-### ⚠️ Delvist virkende — gratis, men begrænset
-
-| Provider | Status | Begrænsning |
-|---|---|---|
-| **Gemini** (resten) | ❌ 429 quota / 503 high demand | Kun 2 modeller tilgængelige lige nu |
-| **OllamaFreeAPI** | ❌ Kun `deepseek-r1` virker | Resten timer ud |
-
-### ❌ Virker ikke
+### ❌ Ikke fungerende / fjernet
 
 | Provider | Fejl | Årsag |
 |---|---|---|
-| **FreeModel.dev** (cc + api) | 200 men ToS-advarsel / 403 | Claude = "Access Denied — kun via officiel Claude Code client", GPT = 403 |
-| **ZenMux** | 403 | Nøglen har ikke adgang |
-| **Zenifra** | Ikke testet | — |
-| **OpenRouter** | 402 | Ingen credits |
-| **Sambanova** | 404 | Begge modeller findes ikke |
+| **FreeModel.dev** | ToS-violation | Claude-modeller returnerer 200 med advarsel om uautoriseret brug; GPT 403 |
+| **Sambanova** | 402/timeout | Halvdelen kræver betaling; resten timeout |
+| **ZenMux** | 403 | Nøgle har ikke adgang |
+| **Zenifra** | Utestet | Kræver sandsynligvis separat nøgle |
+| **opencode (relevance backend)** | 403 | Udgået endpoint; erstattes af OpenCode Go |
+| **ollamafreeapi** | Delvist død | Kun `deepseek-r1` svarer |
 
-## Auth-strategi
+## 5. Bekræftede gratis modeller (agent-pool kandidater)
 
-**Nøgler opbevares KUN i auth profiles — aldrig i specs, aldrig i kode, aldrig i repoet.**
+### OpenCode Go (6)
+- `big-pickle`
+- `deepseek-v4-flash-free`
+- `hy3-free`
+- `mimo-v2.5-free`
+- `nemotron-3-ultra-free`
+- `north-mini-code-free`
 
-| Provider | Auth type | Status |
+### Groq (12)
+- `llama-3.1-8b-instant`
+- `llama-3.3-70b-versatile`
+- `qwen/qwen3-32b`
+- `qwen/qwen3.6-27b`
+- `meta-llama/llama-4-scout-17b-16e-instruct`
+- `allam-2-7b`
+- `openai/gpt-oss-20b`
+- `openai/gpt-oss-120b`
+- `openai/gpt-oss-safeguard-20b`
+- `llama-prompt-guard-2-22m`
+- `llama-prompt-guard-2-86m`
+- `deepseek-r1`
+
+### NVIDIA NIM (120+, highlights)
+- `meta/llama-3.1-8b-instruct`
+- `meta/llama-3.3-70b-instruct`
+- `meta/llama-3.2-3b-instruct`
+- `nvidia/nemotron-3-super-120b-a12b`
+- `nvidia/nemotron-3-ultra-550b-a55b`
+- `google/gemma-4-26b-a4b-it`
+- `deepseek/deepseek-r1`
+
+### Cloudflare (61, highlights)
+- `@cf/meta/llama-3.3-70b-instruct-fp8-fast`
+- `@cf/meta/llama-4-scout-17b-16e-instruct`
+- `@cf/deepseek/deepseek-r1-distill-qwen-32b`
+- `@cf/qwen/qwen2.5-coder-32b-instruct`
+- `@cf/01-ai/glm-5.2-9b-instruct`
+- `@cf/moonshotai/kimi-k2.7-code`
+
+### OpenRouter (4 bekræftet, 23 listed)
+- `nvidia/nemotron-3-super-120b-a12b:free`
+- `nvidia/nemotron-3-ultra-550b-a55b:free`
+- `google/gemma-4-26b-a4b-it:free`
+- `tencent/hy3:free` (ustabil)
+
+### Gemini (2)
+- `gemini-3.1-flash-lite`
+- `gemma-4-26b-a4b-it`
+
+### Arko (agent-baseret)
+- Bruger agent ID `973c6091-988a-4c3c-bb0f-ea0aaa73c184`
+
+## 6. Task-baseret scoring
+
+For hver opgave beregnes:
+
+```
+score = (
+  task_match * 0.35 +
+  is_free * 0.25 +
+  health_score * 0.20 +
+  context_fit * 0.10 +
+  latency_score * 0.10
+)
+```
+
+| Faktor | Værdi | Bemærkning |
 |---|---|---|
-| OpenCode Go | Bearer token + User-Agent: `opencode/1.17.18` | ✅ Virker |
-| Groq | Bearer token (auth profile key, IKKE runtime.json key) | ✅ Virker — runtime.json key var forkert |
-| NVIDIA NIM | Bearer token | ✅ Virker — 120+ modeller |
-| Cloudflare | Bearer token + account_id | ✅ Virker — 61 modeller |
-| Arko | Bearer token + agent_id | ✅ Virker — `/v3/messages` |
-| Gemini | API key query param | ✅ Virker — 2 modeller, resten quota |
-| Ollama | Ingen (lokal) | ✅ Altid |
-| DeepSeek | Bearer token | ✅ Virker (betalt, kun visible lane) |
+| `task_match` | 0.0–1.0 | Gradient: hvor godt model egner sig til opgaven |
+| `is_free` | 1.0 hvis gratis, 0.0 hvis betalt | Betalte modeller fravælges medmindre godkendt |
+| `health_score` | 0.0–1.0 | Baseret på seneste health-check + historik |
+| `context_fit` | 0.0–1.0 | 1.0 hvis context window > 2× forventet input |
+| `latency_score` | 0.0–1.0 | Hurtigere = højere |
 
-**Single point of failure:** Ingen enkelt provider kan tage alt ned — alle er uafhængige.
+## 7. Auto-discovery
 
-## Endpoints & protokol (dokumenteret)
+### 7.1 Daglig scanning
 
-### OpenCode Go
-- **Endpoint:** `https://opencode.ai/zen/v1/responses`
-- **Format:** Responses API (`input` som array, ikke string)
-- **Headers:** `Authorization: Bearer {key}`, `User-Agent: opencode/1.17.18`
-- **Eksempel body:** `{"model": "big-pickle", "input": [{"role": "user", "content": "Say OK"}], "stream": false}`
+Hver dag kl. 04:00:
+1. Hent `/models` fra hver provider
+2. Sammenlign med `provider_router.json`
+3. Rapporter nye/udgåede modeller til Centralen
+4. Kør health-check på nye modeller
+5. Opdater scoring
 
-### NVIDIA NIM
-- **Endpoint:** `https://integrate.api.nvidia.com/v1/chat/completions`
-- **Format:** Standard OpenAI chat completions
-- **Model-navne:** `meta/llama-3.1-8b-instruct`, `mistralai/mistral-large`, `nvidia/nemotron-4-340b` (brug `/v1/models` for fuld liste)
-- **Bemærk:** `nemotron-3-super-free` findes IKKE. Brug de 120+ bekræftede modeller.
+### 7.2 Diff-format
 
-### Cloudflare Workers AI
-- **Endpoint:** `https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}`
-- **Format:** Cloudflare AI protokol (eget format, ikke OpenAI-kompatibelt)
-- **Model-navne:** Skal være fuldt qualified: `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, `@cf/kimi-k2.7-code`, `@cf/glm-5.2`
-- **Headers:** `Authorization: Bearer {key}`, `Content-Type: application/json`
+```json
+{
+  "provider": "groq",
+  "added": ["meta-llama/llama-4-scout-17b-16e-instruct"],
+  "removed": ["llama-3.1-70b-versatile"],
+  "changed": [{"model": "llama-3.3-70b-versatile", "was_free": true, "now_free": false}]
+}
+```
 
-### Arko Studio
-- **Endpoint:** `https://arko.arcaelas.com/v3/messages`
-- **Format:** `{"aid": "{agent_id}", "content": "Besked", "max_tokens": 512, "stream": false}`
-- **Auth:** `x-api-key: {key}` header
-- **Token-forbrug:** Kræver tokens på kontoen — tjek balance jævnligt
+## 8. Health-check
 
-## Arkitektur
+### 8.1 Hvad testes
 
-### Lag 1 — Provider Registry (eksisterende, udvides)
+For hver model:
+1. `GET /models` eller tilsvarende — tjek om model findes
+2. Send prompt: `"Say OK"` — tjek om der kommer svar
+3. Tjek om svaret faktisk indeholder "OK" (ikke bare 200)
+4. Mål latency
+5. Gem resultat
 
-`provider_router.json` opdateres med korrekte endpoints og modeller.
-Auth profiles som source of truth — runtime.json indeholder kun referencer.
+### 8.2 Kvalitetsflag
 
-### Lag 2 — Model Discovery Daemon (ny)
+| Flag | Betydning |
+|---|---|
+| `quality_pass` | Svar indeholder forventet indhold |
+| `quality_suspect` | Svar kom, men indhold var uventet |
+| `quality_fail` | Ingen svar, 4xx/5xx, eller ToS-advarsel |
 
-Kører dagligt:
-1. Scan `/v1/models` eller tilsvarende endpoint for hver provider
-2. Sammenlign modeller med eksisterende registry
-3. Test hver ny model med et minimalt prompt ("Say OK") — mål reachable, latency, output-tokens
-4. **Indholdstjek:** Verificér at svaret indeholder forventet tekst — HTTP 200 er ikke nok (jf. FreeModel-lektionen)
-5. Persistér opdateret model-liste
-6. Emit event til Centralen
+## 9. Centralen-integration
 
-### Lag 3 — Task-based scoring
+### 9.1 Nyt cluster: `models`
 
-Hver model scores pr. opgavetype (coding, reasoning, classification, summarization, creative, fast_lookup).
-Vægte: `is_free=0.5, task_match=0.0-1.0, latency=0.15, reliability=0.15, quality_score=0.1`
+| Nerve | Ansvar |
+|---|---|
+| `discovery` | Daglig scanning |
+| `health` | Health-checks |
+| `scoring` | Task-scoring |
+| `router` | Valg af model pr. opgave |
+| `budget_guard` | Blokerer betalte modeller uden godkendelse |
 
-### Lag 4 — Centralen `models` cluster
+### 9.2 Events
 
-Cluster: `models` med nerver:
-- `model_registry` — live oversigt over alle tilgængelige modeller
-- `model_discovery` — events når nye modeller opdages
-- `model_health` — events når modeller bliver unreachable
-- `model_quality` — events ved quality degradation
-- `agent_pool` — dispatch og rotation på tværs af modeller
+- `model.discovered`
+- `model.removed`
+- `model.health_changed`
+- `model.quality_degraded`
+- `provider.auth_failed`
+- `budget.betal_model_blocked`
 
-### Edge cases (15 stk.)
+## 10. Edge cases
 
-1. Provider nede → skip, log, prøv igen næste dag
-2. Model timeout (>30s) → marker som `unreachable`, prøv igen om 1t
-3. Rate limit → backoff, prøv senere
-4. Auth expired → nudge Bjørn via Centralen
-5. Model deprecated (404) → fjern fra registry, emit event
-6. Same model på flere providers → dedup: gratis > betalt; latency tiebreaker
-7. Provider skifter pris → re-scor ved næste daglige scan
-8. Rollback trigger → backup før hver sync; auto-rollback hvis >50% modeller unreachable
-9. Quality degradation over tid → daglig test fanger det; 3 dage i træk = auto-removal
-10. Garbage output → model svarer men indhold er ikke "OK" → `quality_suspect`
-11. Gammel model fjernet fra provider → næste daglige scan detekterer 404
-12. Ny model opdaget → tilføjes til registry som `discovered` (observe-only indtil testet)
-13. Free tier quota opbrugt → 429/402 → skip, prøv næste dag
-14. Cloudflare model-navn-ændring → daemon fanger det ved `/models` diff
-15. NVIDIA model-liste opdateres dagligt → daemon fanger det
+1. **Provider nede** → marker alle modeller unreachable, fallback til næste provider
+2. **Model forsvinder** → fjern fra pool, nudge hvis den var i brug
+3. **Model går fra gratis til betalt** → budget_guard blokerer, nudge
+4. **Rate limit** → backoff + prøv næste model
+5. **Tomt svar / ToS-advarsel** → quality_fail, fjern fra pool
+6. **Forkert model-navn** → discovery daemon finder korrekt navn
+7. **Forkert nøgle** → auth_failed event, brug auth profile i stedet
+8. **DNS fejl** → retry med exponential backoff
+9. **Context for lille** → vælg større model
+10. **Ingen gratis modeller til opgaven** → nudge Bjørn, tilbyd betalt model
+11. **Alle providers nede** → fallback til lokal ollama
+12. **Ny model tilføjet** → shadow-test før den aktiveres
+13. **Model duplicate på flere providers** → vælg efter health/latency
+14. **Quality falder over tid** → degrading alert
+15. **Rollback trigger** → hvis >50% modeller bliver unreachable, ruller til sidste backup
+16. **Betalingsmetode kræves** → marker som "kræver setup", ikke som gratis
+17. **429 Too Many Requests** → rate-limit queue, prøv igen senere
 
-## Implementeringsfaser
+## 11. Implementeringsfaser
 
-| Fase | Beskrivelse | Estimeret tid |
+| Fase | Hvad | Estimeret tid |
 |---|---|---|
-| 1 | Fix runtime.json nøgler (Groq, NVIDIA, Cloudflare, Arko) | 30min |
-| 2 | Opdater model-navne i settings.py (Gemini, NVIDIA, Cloudflare) | 30min |
-| 3 | OpenCode Go Responses API integration i cheap lane | 2t |
-| 4 | NVIDIA NIM + Cloudflare + Arko integration i cheap lane | 3t |
-| 5 | Model Discovery Daemon (scan, diff, test, persist, content check) | 4t |
-| 6 | Task-based scoring + dedup-logik | 3t |
-| 7 | Centralen cluster `models` (events + nudges) | 2t |
-| 8 | Agent pool integration (dispatch, rotation, fallback) | 2t |
-| 9 | Tests (unit + integration + edge cases) | 3t |
-| 10 | Shadow-kørsel (observe-only, 24t data) | 1t + 24t |
-| 11 | Flip til aktiv | 1t |
+| 1 | Discovery daemon + model-liste sync | 1 dag |
+| 2 | Health-check daemon med kvalitetsflag | 1 dag |
+| 3 | Scoring engine + task-mapping | 2 dage |
+| 4 | Agent pool router + fallback-kæde | 2 dage |
+| 5 | Centralen cluster + events | 1 dag |
+| 6 | Tests + edge cases + rollback | 2 dage |
 
-**Total udvikling: ~22t + 24t shadow**
+## 12. Åbne spørgsmål
 
-## Forventet effekt
+1. **OpenRouter rate limits** — hvor mange gratis kald pr. minut? Skal testes over tid.
+2. **Gemini quota** — hvor mange kald pr. dag på gratis tier?
+3. **NVIDIA NIM limits** — 120+ modeller, men hvor mange er faktisk gratis?
+4. **Cloudflare model format** — `@cf/` præfiks er bekræftet; skal håndtere specielle auth headers.
+5. **Arko agent ID** — hardcoded til én agent; skal generaliseres.
+6. **ZenMux/Zenifra** — kræver separat nøgle/adgang; udskydes indtil vi har credentials.
+7. **Sambanova** — død; fjernes eller genbesøges senere.
 
-| Metric | Før | Efter |
-|---|---|---|
-| Gratis modeller i pool | ~2 | **~200** (6 OpenCode + 12 Groq + 120 NVIDIA + 61 Cloudflare + Arko + 2 Gemini + lokal ollama) |
-| Deepseek belastning | 100% af agent-kald | <30% |
-| Model discovery | Manuel | Automatisk, daglig |
-| Udgået model detektion | Ingen | <24t |
-| Provider diversity | 2 | **7 uafhængige kilder** |
-| Centralen indsigt | Ingen | Live model registry + events |
+## 13. Principper
+
+- **Gratis først.** Altid.
+- **Betalte modeller kræver godkendelse.** Ingen auto-fallback til betalte.
+- **Rå data til Centralen.** Ingen gæt — kun live-testede facts.
+- **Fail soft.** Hvis en model fejler, prøv næste. Hvis alle fejler, ollama.
+- **Ingen ToS-brud.** FreeModel blev droppet af den grund.

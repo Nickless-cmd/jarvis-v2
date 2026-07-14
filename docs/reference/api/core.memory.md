@@ -25,11 +25,12 @@ _Async LLM enrichment for private memory pipeline layers._
 | function | `_resolve_cheap_cloud_fallback_targets` | `()` | Return non-Ollama cheap providers from the registry as fallback candidates. | [src](../../../core/memory/inner_llm_enrichment.py#L285) |
 | function | `call_cheap_llm` | `(system_prompt, user_message)` | Public alias for _call_cheap_llm so other services can reuse it. | [src](../../../core/memory/inner_llm_enrichment.py#L305) |
 | function | `_call_cheap_llm` | `(system_prompt, user_message)` | Call Groq-first LLM with local Ollama fallback. | [src](../../../core/memory/inner_llm_enrichment.py#L314) |
-| function | `_call_remote_chat` | `(*, target, system_prompt, user_message, timeout)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L406) |
-| function | `_call_ollama_chat` | `(*, model, base_url, system_prompt, user_message, timeout)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L479) |
-| function | `_observe_enrichment` | `(*, enriched, reused, failed)` | Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN antal lag | [src](../../../core/memory/inner_llm_enrichment.py#L549) |
-| function | `_enrich_worker` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Sequentially enrich 3 layers via cheap LLM, updating DB in-place. | [src](../../../core/memory/inner_llm_enrichment.py#L564) |
-| function | `enrich_private_layers_async` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Fire-and-forget: spawn daemon thread to enrich private layer payloads via LLM. | [src](../../../core/memory/inner_llm_enrichment.py#L683) |
+| function | `_build_inner_llm_body` | `(*, provider, model, system_prompt, user_message)` | Build the openai-compat chat-completion body for inner enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L406) |
+| function | `_call_remote_chat` | `(*, target, system_prompt, user_message, timeout)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L446) |
+| function | `_call_ollama_chat` | `(*, model, base_url, system_prompt, user_message, timeout)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L524) |
+| function | `_observe_enrichment` | `(*, enriched, reused, failed)` | Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN antal lag | [src](../../../core/memory/inner_llm_enrichment.py#L594) |
+| function | `_enrich_worker` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Sequentially enrich 3 layers via cheap LLM, updating DB in-place. | [src](../../../core/memory/inner_llm_enrichment.py#L609) |
+| function | `enrich_private_layers_async` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Fire-and-forget: spawn daemon thread to enrich private layer payloads via LLM. | [src](../../../core/memory/inner_llm_enrichment.py#L728) |
 
 ## `core/memory/memory_size_guard.py`
 _MEMORY.md størrelses-værn (spec C, 2026-07-10)._

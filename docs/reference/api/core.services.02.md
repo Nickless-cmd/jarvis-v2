@@ -121,13 +121,20 @@ _core/services/assembly_prewarm.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `is_prewarm_active` | `()` | True hvis den aktuelle tråd i øjeblikket kører en pre-warm-build. Self-safe. | [src](../../../core/services/assembly_prewarm.py#L47) |
-| function | `assembly_prewarm_enabled` | `()` | Kill-switch. Default OFF (shadow) — flip via runtime-state. Self-safe → False. | [src](../../../core/services/assembly_prewarm.py#L52) |
-| function | `_interval_s` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L62) |
-| function | `_record_stats` | `(elapsed_s, error=…)` | — | [src](../../../core/services/assembly_prewarm.py#L71) |
-| function | `prewarm_once` | `()` | Byg én throwaway-assembly for at varme alle sektions-caches. Returnerer | [src](../../../core/services/assembly_prewarm.py#L86) |
-| function | `_loop` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L111) |
-| function | `start_prewarm_loop` | `()` | Start baggrunds-pre-warm-loopet én gang pr. proces. Idempotent. Loopet kører | [src](../../../core/services/assembly_prewarm.py#L127) |
+| function | `_max_created_at_real_deepseek` | `()` | Epoch seconds of the most recent NON-warmer deepseek call in costs. None if none. | [src](../../../core/services/assembly_prewarm.py#L36) |
+| function | `_seconds_since_last_real_deepseek_call` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L54) |
+| function | `is_prewarm_active` | `()` | True hvis den aktuelle tråd i øjeblikket kører en pre-warm-build. Self-safe. | [src](../../../core/services/assembly_prewarm.py#L74) |
+| function | `assembly_prewarm_enabled` | `()` | Kill-switch. Default OFF (shadow) — flip via runtime-state. Self-safe → False. | [src](../../../core/services/assembly_prewarm.py#L79) |
+| function | `_interval_s` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L89) |
+| function | `_skip_if_recent_s` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L103) |
+| function | `_seconds_since_last_prewarm` | `()` | Cross-process: seconds since ANY process last prewarmed. None if never. | [src](../../../core/services/assembly_prewarm.py#L112) |
+| function | `_mark_prewarmed` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L122) |
+| function | `_should_prewarm` | `()` | Traffic-gate: spring prewarm over hvis rigtig deepseek-trafik holder cachen | [src](../../../core/services/assembly_prewarm.py#L130) |
+| function | `_try_acquire_prewarm_lease` | `(interval_s)` | Atomisk cross-process: kun ÉN proces vinder retten til at warme pr. interval. | [src](../../../core/services/assembly_prewarm.py#L140) |
+| function | `_record_stats` | `(elapsed_s, error=…)` | — | [src](../../../core/services/assembly_prewarm.py#L159) |
+| function | `prewarm_once` | `()` | Byg én throwaway-assembly for at varme alle sektions-caches. Returnerer | [src](../../../core/services/assembly_prewarm.py#L174) |
+| function | `_loop` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L203) |
+| function | `start_prewarm_loop` | `()` | Start baggrunds-pre-warm-loopet én gang pr. proces. Idempotent. Loopet kører | [src](../../../core/services/assembly_prewarm.py#L219) |
 
 ## `core/services/associative_recall.py`
 _Associative Recall — dormant memories triggered by context._
@@ -343,6 +350,21 @@ _Autonomous goals — persistent top-level goals with decomposition._
 | function | `_exec_goal_list` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L225) |
 | function | `_exec_goal_decompose` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L235) |
 | function | `_exec_goal_update_status` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L239) |
+
+## `core/services/autonomous_lease.py`
+_visible↔autonomous mutual-exclusion lease (marker-default)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `(now_ts)` | — | [src](../../../core/services/autonomous_lease.py#L37) |
+| function | `acquire_visible` | `(ttl_s=…, now_ts=…)` | Visible lane claims the lease for ``ttl_s`` seconds (fail-open). | [src](../../../core/services/autonomous_lease.py#L41) |
+| function | `release_visible` | `()` | Visible lane releases the lease (fail-open). | [src](../../../core/services/autonomous_lease.py#L52) |
+| function | `visible_active` | `(now_ts=…)` | True if a visible lease is currently held and not expired (fail-open). | [src](../../../core/services/autonomous_lease.py#L60) |
+| function | `_read_markers` | `()` | — | [src](../../../core/services/autonomous_lease.py#L75) |
+| function | `_write_markers` | `(markers)` | — | [src](../../../core/services/autonomous_lease.py#L85) |
+| function | `pending_markers` | `()` | Read (without draining) the deferred autonomous markers. | [src](../../../core/services/autonomous_lease.py#L92) |
+| function | `consume_markers` | `()` | Read AND drain the deferred markers (a second call returns empty). | [src](../../../core/services/autonomous_lease.py#L97) |
+| function | `try_autonomous_dispatch` | `(payload, now_ts=…)` | Gate an autonomous dispatch against the visible lane. | [src](../../../core/services/autonomous_lease.py#L105) |
 
 ## `core/services/autonomous_outreach_daemon.py`
 _Autonomous Outreach Daemon — Jarvis reaches out on his own initiative._
@@ -592,14 +614,4 @@ _Cross-proces bro-tilstedeværelse via shared_cache (samme mønster som central_
 | function | `publish` | `(bridges)` | Publicér denne proces' bro-registry-snapshot (kaldes ved register/unregister/dispatch). | [src](../../../core/services/bridge_presence.py#L25) |
 | function | `all_presence` | `()` | Bro-tilstedeværelse fra ALLE processer → {user_id: {process, client, capabilities, ...}}. | [src](../../../core/services/bridge_presence.py#L40) |
 | function | `process_for_user` | `(user_id)` | Hvilken proces holder en levende bro for user_id? None hvis ingen. | [src](../../../core/services/bridge_presence.py#L59) |
-
-## `core/services/bro_broker.py`
-_Bro-broker — owner-styret skift mellem aktive bro-forbindelser (spec §6.6)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `summarize_tool_result_for_server` | `(tool_name, result, *, max_error_chars=…)` | Filtrér et code-mode tool-resultat så KUN metadata/summary krydser til | [src](../../../core/services/bro_broker.py#L31) |
-| function | `_active_user_ids` | `()` | user_id'er med en aktiv bro (process-local registry). | [src](../../../core/services/bro_broker.py#L70) |
-| function | `list_active_bros` | `()` | Alle brugere med en aktiv bro lige nu. | [src](../../../core/services/bro_broker.py#L79) |
-| function | `switch` | `(target_user, *, requester_session, now=…)` | Skift requester-sessionen til target-brugerens bro — kræver gyldig override. | [src](../../../core/services/bro_broker.py#L84) |
 

@@ -23,15 +23,17 @@ _Absence daemon — tracks the *quality* of Jarvis' silence between interactions
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `mark_interaction` | `()` | Call whenever Jarvis interacts with the user. Resets absence clock. | [src](../../../core/services/absence_daemon.py#L40) |
-| function | `seed_last_interaction_from_db` | `()` | One-time seed: set _last_interaction_at from most recent visible run if not yet set. | [src](../../../core/services/absence_daemon.py#L48) |
-| function | `tick_absence_daemon` | `(now=…)` | Evaluate current absence quality. Returns {generated, label, duration_hours}. | [src](../../../core/services/absence_daemon.py#L64) |
-| function | `get_latest_absence` | `()` | — | [src](../../../core/services/absence_daemon.py#L99) |
-| function | `build_absence_surface` | `()` | — | [src](../../../core/services/absence_daemon.py#L103) |
-| function | `_classify_absence` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L122) |
-| function | `_absence_band` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L131) |
-| function | `_generate_absence_label` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L139) |
-| function | `_store_absence` | `(label, duration_hours, now)` | — | [src](../../../core/services/absence_daemon.py#L162) |
+| function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/absence_daemon.py#L41) |
+| function | `mark_interaction` | `()` | Call whenever Jarvis interacts with the user. Resets absence clock. | [src](../../../core/services/absence_daemon.py#L60) |
+| function | `seed_last_interaction_from_db` | `()` | One-time seed: set _last_interaction_at from most recent visible run if not yet set. | [src](../../../core/services/absence_daemon.py#L68) |
+| function | `tick_absence_daemon` | `(now=…)` | Evaluate current absence quality. Returns {generated, label, duration_hours}. | [src](../../../core/services/absence_daemon.py#L84) |
+| function | `get_latest_absence` | `()` | — | [src](../../../core/services/absence_daemon.py#L125) |
+| function | `build_absence_surface` | `()` | — | [src](../../../core/services/absence_daemon.py#L129) |
+| function | `_classify_absence` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L148) |
+| function | `_absence_band` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L157) |
+| function | `_build_raw_absence` | `(elapsed)` | Byg fraværs-strengen udelukkende fra rå metrics — ingen LLM. | [src](../../../core/services/absence_daemon.py#L165) |
+| function | `_generate_absence_label` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L176) |
+| function | `_store_absence` | `(label, duration_hours, now)` | — | [src](../../../core/services/absence_daemon.py#L199) |
 
 ## `core/services/abuse_monitor.py`
 _Abuse-monitoring (spec 2026-06-21 §5): prompt-injection, manipulation,_
@@ -213,10 +215,10 @@ _Aesthetic taste daemon — emergent taste from accumulated motif observations._
 | function | `_seed_from_db` | `()` | Load persisted motifs into memory on first tick. | [src](../../../core/services/aesthetic_taste_daemon.py#L30) |
 | function | `record_choice` | `(mode, style_signals)` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L44) |
 | function | `tick_taste_daemon` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L56) |
-| function | `get_latest_taste_insight` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L74) |
-| function | `build_taste_surface` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L78) |
-| function | `_generate_insight` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L100) |
-| function | `_store_insight` | `(insight)` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L131) |
+| function | `get_latest_taste_insight` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L91) |
+| function | `build_taste_surface` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L95) |
+| function | `_generate_insight` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L117) |
+| function | `_store_insight` | `(insight)` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L148) |
 
 ## `core/services/affect_modulation.py`
 _Affect-modulated runtime — emotions adjust behavioral parameters._
@@ -385,15 +387,15 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/agent_runtime_base.py#L58) |
-| function | `_role_needs_tools` | `(role)` | — | [src](../../../core/services/agent_runtime_base.py#L81) |
-| function | `agent_tools_enabled` | `()` | Read the reversible ``agent_tools_enabled`` runtime-state flag. | [src](../../../core/services/agent_runtime_base.py#L96) |
-| function | `set_agent_tools_enabled` | `(enabled)` | Flip the ``agent_tools_enabled`` flag. Returns the new value. | [src](../../../core/services/agent_runtime_base.py#L108) |
-| function | `_build_agent_tools_payload` | `(allowed_tools)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L121) |
-| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L149) |
-| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L182) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L359) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L363) |
+| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/agent_runtime_base.py#L62) |
+| function | `_role_needs_tools` | `(role)` | — | [src](../../../core/services/agent_runtime_base.py#L85) |
+| function | `agent_tools_enabled` | `()` | Read the reversible ``agent_tools_enabled`` runtime-state flag. | [src](../../../core/services/agent_runtime_base.py#L100) |
+| function | `set_agent_tools_enabled` | `(enabled)` | Flip the ``agent_tools_enabled`` flag. Returns the new value. | [src](../../../core/services/agent_runtime_base.py#L112) |
+| function | `_build_agent_tools_payload` | `(allowed_tools)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L125) |
+| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L153) |
+| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L186) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L399) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L403) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._
@@ -413,40 +415,40 @@ _Agent runtime — council & swarm collective rounds._
 | function | `_derive_initiative` | `(synthesis, *, topic=…)` | Distil a short, actionable initiative string from a synthesis. | [src](../../../core/services/agent_runtime_council.py#L272) |
 | function | `_augment_council_surface` | `(council_id, *, conclusion, initiative=…)` | Build the collective-round return dict with conclusion + initiative. | [src](../../../core/services/agent_runtime_council.py#L302) |
 | function | `_run_collective_round` | `(council_id, *, mode)` | Run one collective (council or swarm) round to a conclusion. | [src](../../../core/services/agent_runtime_council.py#L321) |
-| function | `_close_council_agents` | `(council_id)` | Mark all council member agents as completed to release spawn slots. | [src](../../../core/services/agent_runtime_council.py#L626) |
-| function | `_build_council_role_prefixed_summary` | `(members)` | — | [src](../../../core/services/agent_runtime_council.py#L649) |
-| function | `run_council_round` | `(council_id)` | Run one council round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L660) |
-| function | `run_swarm_round` | `(council_id)` | Run one swarm round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L677) |
+| function | `_close_council_agents` | `(council_id)` | Mark all council member agents as completed to release spawn slots. | [src](../../../core/services/agent_runtime_council.py#L629) |
+| function | `_build_council_role_prefixed_summary` | `(members)` | — | [src](../../../core/services/agent_runtime_council.py#L652) |
+| function | `run_council_round` | `(council_id)` | Run one council round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L663) |
+| function | `run_swarm_round` | `(council_id)` | Run one swarm round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L680) |
 
 ## `core/services/agent_runtime_spawn.py`
 _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_maybe_relay_watcher_signal` | `(*, agent_id, name, text)` | Emit watcher.signal event when output contains notable content. | [src](../../../core/services/agent_runtime_spawn.py#L51) |
-| function | `_spawn_depth_for` | `(parent_agent_id)` | Return depth for a new child agent (parent_depth + 1). | [src](../../../core/services/agent_runtime_spawn.py#L76) |
-| function | `spawn_agent_task` | `(*, role, goal, system_prompt=…, tool_policy=…, allowed_tools=…, parent_agent_id=…, persistent=…, ttl_seconds=…, budget_tokens=…, context=…, result_contract=…, execution_mode=…, auto_execute=…, council_id=…, provider=…, model=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L90) |
-| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L239) |
-| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L248) |
-| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L261) |
-| function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L268) |
-| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L323) |
-| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L347) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L497) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L525) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L553) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L557) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L595) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L793) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L837) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L846) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L876) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L891) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L910) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L927) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L946) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L968) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1002) |
+| function | `_maybe_relay_watcher_signal` | `(*, agent_id, name, text)` | Emit watcher.signal event when output contains notable content. | [src](../../../core/services/agent_runtime_spawn.py#L52) |
+| function | `_spawn_depth_for` | `(parent_agent_id)` | Return depth for a new child agent (parent_depth + 1). | [src](../../../core/services/agent_runtime_spawn.py#L77) |
+| function | `spawn_agent_task` | `(*, role, goal, system_prompt=…, tool_policy=…, allowed_tools=…, parent_agent_id=…, persistent=…, ttl_seconds=…, budget_tokens=…, context=…, result_contract=…, execution_mode=…, auto_execute=…, council_id=…, provider=…, model=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L91) |
+| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L240) |
+| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L249) |
+| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L262) |
+| function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L269) |
+| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L324) |
+| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L348) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L553) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L581) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L609) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L613) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L651) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L849) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L893) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L902) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L932) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L947) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L966) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L983) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1002) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1024) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1058) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._
@@ -584,8 +586,10 @@ _Agents-cluster — gør multi-agent-systemerne synlige i Den Intelligente Centr
 | function | `_observe` | `(nerve, data)` | — | [src](../../../core/services/agents.py#L15) |
 | function | `note_agent_spawn` | `(agent_id, role, *, parent=…, council_id=…, mode=…)` | En agent blev spawnet (pool/swarm). Metadata-only. | [src](../../../core/services/agents.py#L23) |
 | function | `note_agent_error` | `(agent_id, error, **data)` | En agent fejlede → observe (synlig). | [src](../../../core/services/agents.py#L33) |
-| function | `note_council` | `(topic, *, rounds=…, deadlocked=…, escalated=…, recruited=…)` | En council-deliberation kørte → observe udfald (rounds/deadlock/witness-escalation/ | [src](../../../core/services/agents.py#L39) |
-| function | `agents_summary` | `(*, window=…)` | Read-only: nylig agent/council-aktivitet (til MC). Self-safe. | [src](../../../core/services/agents.py#L50) |
+| function | `note_agent_result` | `(agent_id, status, *, tokens_in=…, tokens_out=…, cost_usd=…, duration_ms=…, tool_calls=…, role=…, **data)` | En agent-dispatch afsluttede (succes ELLER fejl) → observe robusthedskonvolut | [src](../../../core/services/agents.py#L39) |
+| function | `note_agent_blocked` | `(agent_id, status=…, *, reason=…, role=…, **data)` | En agent blev BLOKERET / mangler kontekst (typet ikke-fejl) → distinkt observe. | [src](../../../core/services/agents.py#L74) |
+| function | `note_council` | `(topic, *, rounds=…, deadlocked=…, escalated=…, recruited=…)` | En council-deliberation kørte → observe udfald (rounds/deadlock/witness-escalation/ | [src](../../../core/services/agents.py#L87) |
+| function | `agents_summary` | `(*, window=…)` | Read-only: nylig agent/council-aktivitet (til MC). Self-safe. | [src](../../../core/services/agents.py#L98) |
 
 ## `core/services/agreement_streak.py`
 _Agreement-streak substrate trigger._

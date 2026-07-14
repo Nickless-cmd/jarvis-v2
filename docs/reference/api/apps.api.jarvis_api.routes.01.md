@@ -47,16 +47,17 @@ _Client-owned agent loop: /v1/agent/step._
 | function | `_resolve_role` | `()` | Caller role. Mirror /v1/tools/native (owner default). Owner token -> 'owner'. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L37) |
 | function | `_sse` | `(event, data)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L46) |
 | function | `_identity_context` | `()` | Kompakt identitets-lag (SOUL + IDENTITY + USER) fra default-workspace — nok til at | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L62) |
-| function | `_build_system_prompt` | `(context)` | context: 'none' (ren coding) | 'identity' (default: stemme + kender Bjørn). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L86) |
-| function | `_resolve_target` | `()` | (provider, model) for den synlige lane — health-gated (springer kvote-ramt over). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L94) |
-| function | `_openai_compat_credentials` | `(provider)` | (auth_profile, base_url) for en openai-compatible provider (jf. visible-adapteren). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L108) |
-| function | `list_native_tools` | `()` | List Jarvis' native (server-side) tools + deres lås-status (owner-styring). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L129) |
-| function | `tools_catalog` | `(unlocked=…)` | Kurateret jc tool-katalog. Låst: companions + load_more. Åbnet: + runtime_-aliaser. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L148) |
-| class | `_ExecBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L163) |
-| function | `tools_execute` | `(body)` | Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L172) |
-| function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L257) |
-| function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L274) |
-| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L348) |
+| function | `_full_context` | `(user_message)` | FULD Jarvis-kontekst (memory-recall + cognitive_state + indre liv + awareness) til | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L90) |
+| function | `_build_system_prompt` | `(context, user_message=…)` | context: 'none' (ren coding) | 'identity' (stemme + kender Bjørn, default) | | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L120) |
+| function | `_resolve_target` | `()` | (provider, model) for den synlige lane — health-gated (springer kvote-ramt over). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L134) |
+| function | `_openai_compat_credentials` | `(provider)` | (auth_profile, base_url) for en openai-compatible provider (jf. visible-adapteren). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L148) |
+| function | `list_native_tools` | `()` | List Jarvis' native (server-side) tools + deres lås-status (owner-styring). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L169) |
+| function | `tools_catalog` | `(unlocked=…)` | Kurateret jc tool-katalog. Låst: companions + load_more. Åbnet: + runtime_-aliaser. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L188) |
+| class | `_ExecBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L203) |
+| function | `tools_execute` | `(body)` | Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L212) |
+| function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L297) |
+| function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L314) |
+| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L395) |
 
 ## `apps/api/jarvis_api/routes/agentic_guards.py`
 _MC endpoint for agentic-loop guard observability._
@@ -136,11 +137,15 @@ _Real-time Central-vindue til owner (jarvis-desk code mode)._
 | function | `central_timeseries_merged` | `()` | Per-nerve tidsserie merget PÅ TVÆRS af processer (runtime+api). Lukker cross-proces- | [src](../../../apps/api/jarvis_api/routes/central.py#L50) |
 | function | `central_diagnostics` | `()` | Fuldt diagnostik-sted til Central-HUD'ens Diagnostik-mode (Bjørn 2026-06-23: 'mangler et | [src](../../../apps/api/jarvis_api/routes/central.py#L60) |
 | function | `central_providers` | `()` | Provider-helbred til Central-HUD'en — læser DET GEMTE ping-snapshot (billigt, ingen live | [src](../../../apps/api/jarvis_api/routes/central.py#L98) |
-| function | `central_command` | `(payload)` | Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/ | [src](../../../apps/api/jarvis_api/routes/central.py#L107) |
-| function | `central_mind` | `(section=…)` | Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L118) |
-| function | `central_stream` | `()` | SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L132) |
-| function | `central_nerve_detail` | `(nerve)` | Lag 5: én nerves spor + kode-lokation + cluster + live tænd/sluk-tilstand. | [src](../../../apps/api/jarvis_api/routes/central.py#L162) |
-| function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L199) |
+| function | `central_cost` | `(window=…, provider=…)` | Cost-aggregat (WS3): today/7d/30d total $, tokens ind/ud, cache-hit%, fordelt på | [src](../../../apps/api/jarvis_api/routes/central.py#L107) |
+| function | `central_agents` | `(window=…)` | Agent-observabilitet (B3): costs-aggregat (lane in agent/council) + dispatch- | [src](../../../apps/api/jarvis_api/routes/central.py#L116) |
+| function | `central_council` | `(window=…)` | Council-observabilitet (B3): convocations/deadlocks/roller/event-vs-ondemand- | [src](../../../apps/api/jarvis_api/routes/central.py#L126) |
+| function | `central_shadow_review` | `()` | Shadow-eksperiment-register: hvilke shadow-vinduer kører, og hvilke er MODNE | [src](../../../apps/api/jarvis_api/routes/central.py#L135) |
+| function | `central_command` | `(payload)` | Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/ | [src](../../../apps/api/jarvis_api/routes/central.py#L146) |
+| function | `central_mind` | `(section=…)` | Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L157) |
+| function | `central_stream` | `()` | SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L171) |
+| function | `central_nerve_detail` | `(nerve)` | Lag 5: én nerves spor + kode-lokation + cluster + live tænd/sluk-tilstand. | [src](../../../apps/api/jarvis_api/routes/central.py#L201) |
+| function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L238) |
 
 ## `apps/api/jarvis_api/routes/central_absorb_routes.py`
 _Central-absorb routes — MC-kategorier PROJICERET som levende central-nerver._

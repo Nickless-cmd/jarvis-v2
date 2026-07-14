@@ -2,6 +2,49 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/connections.py`
+_Connections-cluster — gør forbindelses-LIVSCYKLUSSEN synlig i Den Intelligente Central:_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_observe` | `(nerve, data)` | — | [src](../../../core/services/connections.py#L18) |
+| function | `note_presence` | `(user_id, device_key, platform=…, **meta)` | En device-presence-ping (jarvis-desk/mobile companion). Metadata-only. | [src](../../../core/services/connections.py#L26) |
+| function | `note_ws` | `(event, client=…, **meta)` | MC-websocket-livscyklus: event ∈ {connected, disconnected, error}. client = host:port. | [src](../../../core/services/connections.py#L35) |
+| function | `note_connection_error` | `(client, reason, **meta)` | Forbindelses-FEJL (WS-error, broken pipe, abort). → observe (synlig, ikke severe). | [src](../../../core/services/connections.py#L41) |
+| function | `note_unauthorized` | `(user_id, session_id, resource, reason, *, role=…, run_id=…)` | UAUTORISERET adgang (tool-deny / identity-spoof / rate-limit) på en forbindelse → | [src](../../../core/services/connections.py#L46) |
+| function | `session_activity` | `(session_id, *, limit=…)` | Forbindelses-debugging pr. session: hvilke tools blev brugt, hvilke FEJLEDE (+ årsag), | [src](../../../core/services/connections.py#L75) |
+| function | `active_summary` | `(*, window=…)` | Read-only: hvem/hvad har været forbundet i den seneste trace (til MC/adaptiv-læring). | [src](../../../core/services/connections.py#L112) |
+
+## `core/services/connectors.py`
+_Connector-katalog + per-bruger status (v1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_enabled_store` | `()` | — | [src](../../../core/services/connectors.py#L143) |
+| function | `is_enabled` | `(user_id, connector_id)` | Default ON; kun False hvis brugeren eksplicit har slået den fra. | [src](../../../core/services/connectors.py#L148) |
+| function | `set_enabled` | `(user_id, connector_id, enabled)` | — | [src](../../../core/services/connectors.py#L157) |
+| function | `_provider_of` | `(c)` | OAuth-provider for en connector. Google-pakken deler provider='google'. | [src](../../../core/services/connectors.py#L171) |
+| function | `_connected` | `(user_id, c)` | — | [src](../../../core/services/connectors.py#L176) |
+| function | `oauth_request_for` | `(connector_id)` | Map et connector-id → (oauth_provider, scopes) til /api/oauth/{id}/start. | [src](../../../core/services/connectors.py#L182) |
+| function | `list_for_user` | `(user_id)` | Hele kataloget beriget med per-bruger `connected` + `enabled`. | [src](../../../core/services/connectors.py#L194) |
+| function | `_audit` | `(event, user_id, connector_id)` | — | [src](../../../core/services/connectors.py#L213) |
+| function | `delete_for_user` | `(user_id, connector_id)` | Afbryd & slet: revoke hos provider (best-effort) + lokal token-wipe + ryd flag. | [src](../../../core/services/connectors.py#L221) |
+
+## `core/services/consent_registry.py`
+_Consent Registry — user preferences and boundaries that persist across sessions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_persist_file` | `()` | — | [src](../../../core/services/consent_registry.py#L26) |
+| function | `_ensure_loaded` | `()` | — | [src](../../../core/services/consent_registry.py#L33) |
+| function | `_load` | `()` | — | [src](../../../core/services/consent_registry.py#L44) |
+| function | `_save` | `()` | — | [src](../../../core/services/consent_registry.py#L55) |
+| function | `register_consent` | `(*, kind, statement, source_session_id=…, confidence=…)` | Register a user preference or boundary. | [src](../../../core/services/consent_registry.py#L67) |
+| function | `revoke_consent` | `(consent_id)` | Mark a consent entry as inactive. | [src](../../../core/services/consent_registry.py#L101) |
+| function | `get_active_consents` | `()` | — | [src](../../../core/services/consent_registry.py#L112) |
+| function | `build_consent_prompt_section` | `()` | Return a prompt section with active consent entries, or None if empty. | [src](../../../core/services/consent_registry.py#L117) |
+| function | `build_consent_registry_surface` | `()` | — | [src](../../../core/services/consent_registry.py#L143) |
+
 ## `core/services/consolidation_judge_daemon.py`
 _Consolidation Judge Daemon — nightly reckoning, not observation._
 
@@ -348,11 +391,11 @@ _Creative drift daemon — generates spontaneous, unexpected ideas unrelated to 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `tick_creative_drift_daemon` | `(fragments)` | Maybe generate a spontaneous associative idea. | [src](../../../core/services/creative_drift_daemon.py#L38) |
-| function | `get_latest_drift` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L73) |
-| function | `build_creative_drift_surface` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L77) |
-| function | `_gather_concrete_anchor` | `()` | Returns (anchor_text, anchor_kind) — a single concrete thing to drift | [src](../../../core/services/creative_drift_daemon.py#L91) |
-| function | `_generate_drift_idea` | `(fragments)` | — | [src](../../../core/services/creative_drift_daemon.py#L125) |
-| function | `_store_drift` | `(idea, now)` | — | [src](../../../core/services/creative_drift_daemon.py#L179) |
+| function | `get_latest_drift` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L86) |
+| function | `build_creative_drift_surface` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L90) |
+| function | `_gather_concrete_anchor` | `()` | Returns (anchor_text, anchor_kind) — a single concrete thing to drift | [src](../../../core/services/creative_drift_daemon.py#L104) |
+| function | `_generate_drift_idea` | `(fragments)` | — | [src](../../../core/services/creative_drift_daemon.py#L138) |
+| function | `_store_drift` | `(idea, now)` | — | [src](../../../core/services/creative_drift_daemon.py#L192) |
 
 ## `core/services/creative_impulse_daemon.py`
 _Creative Impulse — unasked-for creations._
@@ -592,49 +635,4 @@ _Current pull — Jarvis' weekly self-set desire field._
 | function | `_expire_if_stale` | `()` | — | [src](../../../core/services/current_pull.py#L438) |
 | function | `_load_state` | `()` | — | [src](../../../core/services/current_pull.py#L459) |
 | function | `_enabled` | `()` | — | [src](../../../core/services/current_pull.py#L464) |
-
-## `core/services/daemon_health.py`
-_Daemon-helbred (Fase 1) — gør de standalone daemon-tråde + silent eventbus-listeners_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `note_error` | `(daemon, error, **data)` | En daemon/listener fejlede. → observe (cluster=system, nerve=daemon_health, ok=False). | [src](../../../core/services/daemon_health.py#L17) |
-| function | `note_tick` | `(daemon, *, ok=…, **data)` | En daemon kørte en cyklus. Valgfri helbreds-puls (brug sparsomt — fejl er hovedsignalet). | [src](../../../core/services/daemon_health.py#L30) |
-| function | `daemon_health_summary` | `(*, window=…)` | Read-only: hvilke daemons har fejlet i seneste trace (til MC/debug). Self-safe. | [src](../../../core/services/daemon_health.py#L42) |
-
-## `core/services/daemon_llm.py`
-_Shared LLM call for daemons — cheap lane first, heartbeat model fallback._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_note_call` | `(daemon_name, hit)` | Registrér ét daemon_llm-kald + om det ramte cachen → central_timeseries. Self-safe. | [src](../../../core/services/daemon_llm.py#L25) |
-| function | `daemon_llm_cache_snapshot` | `()` | Read-only: pr. daemon kald + cache-hits + hit-rate. Lav hit-rate + højt kald = | [src](../../../core/services/daemon_llm.py#L58) |
-| function | `_get_cache_ttl` | `(daemon_name)` | Return TTL in seconds for a daemon. 0 means no caching. | [src](../../../core/services/daemon_llm.py#L99) |
-| function | `_check_cache` | `(cache_key)` | Return cached response if present and not expired, else None. | [src](../../../core/services/daemon_llm.py#L104) |
-| function | `_store_cache` | `(cache_key, text, daemon_name)` | Store response in cache with daemon-specific TTL. | [src](../../../core/services/daemon_llm.py#L116) |
-| function | `daemon_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call LLM for daemon output. Tries cache first, then cheap lane (Groq), | [src](../../../core/services/daemon_llm.py#L129) |
-| function | `quality_daemon_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path for QUALITY-CRITICAL daemons (self-review, decision-review, | [src](../../../core/services/daemon_llm.py#L149) |
-| function | `daemon_public_safe_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path reserved for PUBLIC-SAFE prompts. | [src](../../../core/services/daemon_llm.py#L248) |
-| function | `_daemon_llm_call_impl` | `(prompt, *, max_len, fallback, daemon_name, public_safe)` | — | [src](../../../core/services/daemon_llm.py#L270) |
-
-## `core/services/daemon_manager.py`
-_Daemon Manager — registry, lifecycle control, and state persistence for all daemons._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_state_file` | `()` | — | [src](../../../core/services/daemon_manager.py#L20) |
-| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L438) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L442) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L452) |
-| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L458) |
-| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L462) |
-| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L470) |
-| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L476) |
-| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L485) |
-| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L490) |
-| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L499) |
-| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L508) |
-| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L520) |
-| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L543) |
-| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L574) |
 

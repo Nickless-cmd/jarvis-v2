@@ -2,6 +2,36 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shutdown_window_daemon.py`
+_Shutdown Window daemon — unannounced pauses to practice finitude._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_paused` | `()` | Return True if we are currently inside a shutdown window. | [src](../../../core/services/shutdown_window_daemon.py#L40) |
+| function | `tick_shutdown_window_daemon` | `()` | Called every heartbeat tick. Decides if a shutdown window should start. | [src](../../../core/services/shutdown_window_daemon.py#L51) |
+| function | `_trigger_shutdown_window` | `(*, now, pause_until, pause_minutes)` | Set the module-level pause flag and emit events. | [src](../../../core/services/shutdown_window_daemon.py#L111) |
+| function | `_finitude_note` | `()` | Short note about impermanence — chosen at random, no LLM call. | [src](../../../core/services/shutdown_window_daemon.py#L153) |
+| function | `build_shutdown_window_surface` | `()` | — | [src](../../../core/services/shutdown_window_daemon.py#L168) |
+| function | `_experiment_enabled` | `()` | — | [src](../../../core/services/shutdown_window_daemon.py#L180) |
+| function | `_days_in_month` | `(dt)` | — | [src](../../../core/services/shutdown_window_daemon.py#L189) |
+| function | `_state` | `()` | — | [src](../../../core/services/shutdown_window_daemon.py#L194) |
+
+## `core/services/side_tasks.py`
+_Side-task flag — keep the main thread focused._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_all` | `()` | — | [src](../../../core/services/side_tasks.py#L33) |
+| function | `_save_all` | `(items)` | — | [src](../../../core/services/side_tasks.py#L40) |
+| function | `flag` | `(*, title, prompt, tldr=…, session_id=…)` | — | [src](../../../core/services/side_tasks.py#L44) |
+| function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L64) |
+| function | `resolve` | `(side_task_id, *, decision)` | — | [src](../../../core/services/side_tasks.py#L68) |
+| function | `side_tasks_prompt_section` | `()` | — | [src](../../../core/services/side_tasks.py#L86) |
+| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L105) |
+| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L114) |
+| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L119) |
+| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L123) |
+
 ## `core/services/signal_baseline.py`
 _Persisted signal-baseline with cold-start guard (Task C1)._
 
@@ -578,25 +608,4 @@ _Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
 | function | `_suggested_agency_files` | `(*, scope, edge)` | — | [src](../../../core/services/task_worker.py#L346) |
 | function | `_suggested_observability_files` | `(*, scope, service)` | — | [src](../../../core/services/task_worker.py#L382) |
 | function | `_suggested_theater_files` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L396) |
-
-## `core/services/taste_profile.py`
-_Taste Profile — accumulating aesthetic preferences for code, design, and communication._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_taste_from_run` | `(*, run_id, user_message, was_corrected, outcome_status)` | Update taste profile based on a visible run interaction. | [src](../../../core/services/taste_profile.py#L67) |
-| function | `update_taste_async` | `(*, run_id, user_message, was_corrected, outcome_status)` | — | [src](../../../core/services/taste_profile.py#L125) |
-| function | `get_crystallized_tastes` | `()` | Return taste dimensions that have moved decisively (>0.72 or <0.28). | [src](../../../core/services/taste_profile.py#L140) |
-| function | `build_taste_profile_surface` | `()` | — | [src](../../../core/services/taste_profile.py#L155) |
-| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/taste_profile.py#L167) |
-| function | `_safe_json` | `(value, default)` | — | [src](../../../core/services/taste_profile.py#L174) |
-
-## `core/services/team_mentions.py`
-_@mention-parsing for team-sessioner (Teams-feature, spec 2026-06-20 §5.2-5.3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `extract_mentions` | `(text)` | Rå @-tokens i teksten (lowercased, dedupe, rækkefølge bevaret). | [src](../../../core/services/team_mentions.py#L17) |
-| function | `parse_mentions` | `(text, member_ids)` | Klassificér mentions mod et teams medlemskab. | [src](../../../core/services/team_mentions.py#L27) |
-| function | `should_jarvis_respond` | `(text, *, is_reply_to_jarvis=…)` | v1 (summoned baseline, spec §5.2): Jarvis svarer i en team-session KUN når | [src](../../../core/services/team_mentions.py#L47) |
 

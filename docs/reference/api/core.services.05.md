@@ -252,6 +252,23 @@ _core/services/central_render.py_
 | function | `render_decision` | `(cluster, *, verdict=…)` | En central-beslutning → notation. deny → 'grænse ! <term>' (grænsen blokerer); allow → | [src](../../../core/services/central_render.py#L50) |
 | function | `render_state_snapshot` | `(*, limit=…)` | Aktuelle central-tilstande renderet til notation (on-read). I dag: uløste anomalier. B2 lader | [src](../../../core/services/central_render.py#L64) |
 
+## `core/services/central_route.py`
+_Central-ejet unified router (spec §5.5). ÉT beslutnings-punkt for alle lanes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rank_candidates` | `(lane, task, exclude)` | Rangerede (provider, model) for en lane. Genbruger den eksisterende | [src](../../../core/services/central_route.py#L14) |
+| function | `route` | `(*, lane, task=…, exclude=…)` | Vælg (provider, model) for en lane. Aldrig tør. | [src](../../../core/services/central_route.py#L33) |
+
+## `core/services/central_route_headroom.py`
+_Proaktiv kvote-rotation (spec §5.5 Fund 3): flyt last væk FØR 429._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_usage_fraction` | `(provider)` | (brug/daily_limit) i seneste 24t-vindue. 0.0 ved fejl/ingen limit. | [src](../../../core/services/central_route_headroom.py#L11) |
+| function | `headroom_ok` | `(provider)` | False = proaktivt skip (>=95% brugt). | [src](../../../core/services/central_route_headroom.py#L29) |
+| function | `headroom_weight` | `(provider)` | 1.0 = fuld headroom; falder lineært mod 0.1 mellem 80% og 95%. | [src](../../../core/services/central_route_headroom.py#L34) |
+
 ## `core/services/central_router_adapt.py`
 _core/services/central_router_adapt.py_
 
@@ -562,32 +579,4 @@ _Central TODO — ÉN prioriteret, pollbar huskeliste på tværs af ALLE cluster
 | function | `build_todo` | `(*, max_items=…)` | Saml + ranger todos fra alle clusters. Self-safe — en kilde der fejler udelades. | [src](../../../core/services/central_todo.py#L46) |
 | function | `poll` | `(*, limit=…)` | Pollbar af Claude i tomgang: top-prioriterede todos + tælling pr. prioritet. | [src](../../../core/services/central_todo.py#L133) |
 | function | `build_central_todo_surface` | `()` | MC-surface — read-only prioriteret huskeliste. | [src](../../../core/services/central_todo.py#L146) |
-
-## `core/services/central_tone.py`
-_core/services/central_tone.py — Centralens sproglige TONE-PROFIL (rådets #5)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_read_valence` | `()` | Læs den ene FØLTE tilstand {tone, score, intensitet}. Kaster (fanges udenfor). | [src](../../../core/services/central_tone.py#L56) |
-| function | `_read_affect` | `()` | Læs affekt-fordelingen {tryk,varme,uro,ro,dominant,total}. Kaster (fanges udenfor). | [src](../../../core/services/central_tone.py#L63) |
-| function | `_read_pressure_signals` | `()` | Let central-status: åbne breakers + uløste severe incidents. Self-safe → {}. | [src](../../../core/services/central_tone.py#L70) |
-| function | `_absorb` | `(cluster, nerve, value, **kw)` | Indirektion så absorb kan patches i test uden at ramme central_core. | [src](../../../core/services/central_tone.py#L86) |
-| function | `_derive_register` | `(dominant_affect, *, under_pressure)` | Afled sprogligt register fra dominant affekt + system-pres. Deterministisk. | [src](../../../core/services/central_tone.py#L96) |
-| function | `build_tone_profile` | `()` | Producér Centralens sproglige tone-profil fra system-tilstand. Self-safe. | [src](../../../core/services/central_tone.py#L114) |
-| function | `build_tone_surface` | `()` | Mission Control / read-only surface for tone-profilen. Self-safe. | [src](../../../core/services/central_tone.py#L187) |
-
-## `core/services/central_trace.py`
-_Trace-sink for Centralen (§3.2/§7). En trådsikker, volumen-tolerant ring-buffer_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `TraceRecord` | `` | — | [src](../../../core/services/central_trace.py#L17) |
-| class | `TraceSink` | `` | — | [src](../../../core/services/central_trace.py#L30) |
-| method | `TraceSink.__init__` | `(self, maxlen=…)` | — | [src](../../../core/services/central_trace.py#L31) |
-| method | `TraceSink.record` | `(self, rec)` | — | [src](../../../core/services/central_trace.py#L38) |
-| method | `TraceSink.subscribe` | `(self)` | — | [src](../../../core/services/central_trace.py#L70) |
-| method | `TraceSink.unsubscribe` | `(self, q)` | — | [src](../../../core/services/central_trace.py#L76) |
-| method | `TraceSink.records_for_run` | `(self, run_id)` | — | [src](../../../core/services/central_trace.py#L84) |
-| method | `TraceSink.recent` | `(self, limit=…)` | — | [src](../../../core/services/central_trace.py#L88) |
-| function | `sink` | `()` | — | [src](../../../core/services/central_trace.py#L96) |
 

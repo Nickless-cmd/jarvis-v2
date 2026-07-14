@@ -1,12 +1,11 @@
 ---
-status: udkast v6 — live-testet, Bjørns retning 14. jul 2026
+status: udkast v7 — live-testet, Bjørns retning 14. jul 2026
 formål: Komplet provider/model management-system — auto-scanning, scoring,
  auto-opdatering, health-check på alle providers. Udvider agent-pool med
  bekræftede gratis modeller og giver Centralen livscyklus-styring.
 kilder: Samtale Bjørn+Jarvis 14. jul, live API-tests (nøgle→model→svar),
  provider_router.json, settings.py, auth profiles, full provider audit
-revision: v6 — AIHubMix (gpt-4o-free), GitHub Models (4), Mistral AI (2),
- OVHcloud (~20, no key), Kilo Code (1), Cerebras (død)
+revision: v7 — Cerebras genoplivet (User-Agent workaround), 14 providers, ~260 gratis modeller
 ---
 
 # Provider/Model Management System
@@ -25,6 +24,7 @@ Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 | **Groq** | `https://api.groq.com/openai/v1` | 13 chat-modeller inkl. `llama-3.1-8b-instant`, `llama-3.3-70b-versatile`, `qwen/qwen3-32b`, `qwen/qwen3.6-27b`, `meta-llama/llama-4-scout-17b-16e-instruct`, `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `deepseek-r1` | 0.1-0.4s |
 | **NVIDIA NIM** | `https://integrate.api.nvidia.com/v1` | **120+ modeller** inkl. `meta/llama-3.1-8b-instruct` (0.4s), `meta/llama-3.3-70b-instruct` (7.2s), 27 Llama-varianter | 0.4-7s |
 | **Cloudflare** | `https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/{model}` | **61 modeller** inkl. `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (1.0s), `@cf/deepseek-r1-distill`, `@cf/meta/llama-4-scout`, `@cf/qwen2.5-coder`, `@cf/kimi-k2.7-code`, `@cf/glm-5.2` | 0.5-2s |
+| **Cerebras** 🆕 | `https://api.cerebras.ai/v1` | `llama-3.1-8b`, `gpt-oss-120b` (1.1s) | 1-2s |
 | **GitHub Models** 🆕 | `https://models.inference.ai.azure.com` | `gpt-4.1` (1.3s), `gpt-4.1-mini` (1.8s), `gpt-4o` (1.6s), `o4-mini` (3.6s), `DeepSeek-R1` (1.6s) | 1-4s |
 | **Mistral AI** 🆕 | `https://api.mistral.ai/v1` | `mistral-small-latest` (0.4s), `codestral-latest` (0.3s) | 0.3-0.4s |
 | **AIHubMix** 🆕 | `https://aihubmix.com/v1` / `https://api.inferera.com/v1` | `gpt-4o-free` (1.1-1.6s). **352 modeller i listen,** men kun gpt-4o-free bekræftet virkende. | 1-2s |
@@ -34,6 +34,8 @@ Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 | **Arko** | `https://arko.arcaelas.com/v3/messages` | Agent-baseret — `aid` + `content` + `stream:false`. 4.2s svar | 2-6s |
 | **Gemini** | `https://generativelanguage.googleapis.com/v1beta` | `models/gemini-3.1-flash-lite` (0.6s), `models/gemma-4-26b-a4b-it` (1.3s) | 0.6-1.3s |
 | **Lokal Ollama** | `localhost:11434` | 10 lokale modeller | varierer |
+
+**Vigtigt — Cloudflare-blockerede providers:** OpenCode Go, Cerebras (og sandsynligvis flere) kræver en `User-Agent` header (fx `opencode/1.17.18`) for at komme igennem deres Cloudflare-gate. Uden den returneres 403 error code 1010. Dette bør være en standard header på alle cheap lane-kald.
 
 ### ⚠️ Delvist/svagt virkende
 
@@ -50,7 +52,6 @@ Jarvis' provider-landscape er statisk og manuelt vedligeholdt...
 | Provider | Fejl | Årsag |
 |---|---|---|
 | **Sambanova** | 402 / timeout | 3 modeller kræver betaling, 3 timeouter. Død. |
-| **Cerebras** 🆕 | 403 Forbidden | Nøglen ugyldig/udløbet |
 | **FreeModel.dev** | 200 ToS / 403 | Claude = "kun via officiel Claude Code client". GPT = 403. |
 | **ZenMux** | 403 | Nøglen har ikke adgang |
 | **Zenifra** | Utestet | — |
@@ -66,6 +67,7 @@ API-nøgler til AIHubMix og Cerebras udleveres separat og sættes i runtime.json
 | Groq | Bearer token (auth profile key, IKKE runtime.json key) | ✅ |
 | NVIDIA NIM | Bearer token | ✅ 120+ |
 | Cloudflare | Bearer token + account_id | ✅ 61 |
+| Cerebras 🆕 | Bearer token + User-Agent (kræver browser-UA for Cloudflare bypass) | ✅ |
 | GitHub Models | Bearer token (GitHub OAuth) | ✅ 5 |
 | Mistral AI | Bearer token | ✅ 2 |
 | AIHubMix | Bearer token | ✅ 1 (gpt-4o-free) |
@@ -77,7 +79,7 @@ API-nøgler til AIHubMix og Cerebras udleveres separat og sættes i runtime.json
 | Ollama | Ingen (lokal) | ✅ Altid |
 | DeepSeek | Bearer token | ✅ Betalt |
 
-**SPOF:** Ingen enkelt provider kan tage alt ned — 13 uafhængige kilder.
+**SPOF:** Ingen enkelt provider kan tage alt ned — 14 uafhængige kilder.
 
 ## Samlet workforce
 
@@ -87,6 +89,7 @@ API-nøgler til AIHubMix og Cerebras udleveres separat og sættes i runtime.json
 | **Groq** | 13 | Gratis | ~30 rpm |
 | **NVIDIA NIM** | 120+ | Gratis | ~100 rpm |
 | **Cloudflare** | 61 | Gratis | ~50 rpm |
+| **Cerebras** 🆕 | 2 | Gratis | ~20 rpm |
 | **GitHub Models** 🆕 | 5 | Gratis | 10-15 rpm, 50-150 rpd |
 | **Mistral AI** 🆕 | 2 | Gratis (~1B tokens/md) | ~10 rpm |
 | **AIHubMix** 🆕 | 1 | Gratis | ~20 rpm |
@@ -97,14 +100,14 @@ API-nøgler til AIHubMix og Cerebras udleveres separat og sættes i runtime.json
 | **Gemini** | 2 | Gratis | Tight quota |
 | **Lokal Ollama** | 10 | Gratis | Ubegrænset |
 | **DeepSeek** | v4-flash/pro | Betalt | ~100 rpm |
-| **I alt** | **~250 gratis** | **$0** | **>300 rpm kombineret** |
+| **I alt** | **~260 gratis** | **$0** | **>300 rpm kombineret** |
 
 ## Forventet effekt
 
 | Metric | Før | Efter |
 |---|---|---|
-| Gratis modeller i pool | ~2 | **~250** |
+| Gratis modeller i pool | ~2 | **~260** |
 | Deepseek belastning | 100% af agent-kald | <20% |
-| Provider diversity | 2 | **13 uafhængige kilder** |
+| Provider diversity | 2 | **14 uafhængige kilder** |
 | Rate limit redundans | Ingen | >300 rpm kombineret |
 | Centralen indsigt | Ingen | Live model registry + events |

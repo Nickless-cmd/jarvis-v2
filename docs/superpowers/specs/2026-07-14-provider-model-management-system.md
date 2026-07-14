@@ -1,5 +1,5 @@
 ---
-status: spec v9 — kritisk review + merge, 14. jul 2026
+status: spec v11 — kode-groundet review + Central-ejet router-redesign, 14. jul 2026
 formål: Komplet provider/model management-system — auto-scanning, scoring,
  auto-opdatering, health-check på alle providers. Udvider agent-pool med
  bekræftede gratis modeller og giver Centralen livscyklus-styring.
@@ -12,7 +12,7 @@ revision: v9 — Merged 'provider-management-system.md' + kritisk selv-review.
  SLA-mål, og konkret interface-spec for agent pool router.
 ---
 
-# Provider/Model Management System — Spec v9
+# Provider/Model Management System — Spec v11
 
 ## 0. Kritisk selv-review (14. juli 2026)
 
@@ -30,6 +30,16 @@ Følgende huller blev identificeret i v8 og adresseret i denne revision:
 | 8 | Provider-tabel var kun i den forkerte fil | Fuldt inventory inkluderet i §1 |
 | 9 | Arkitekturdiagram viste ikke dataflow for health-nerve | Rettet — nu eksplicit: event bus → Centralen → router queries |
 | 10 | Ingen migration-path for eksisterende data | §9 tilføjet |
+
+**v11 (Claude, kode-groundet review 14. jul — §5.5):** 3 parallelle kode-sonderinger afslørede 5 arkitektur-fund v10 ikke fangede:
+
+| # | Fund | Rettelse i v11 |
+|---|------|----------------|
+| 11 | "Cheap lane" er TO gaflede subsystemer (balancer/JSON vs selection/SQLite), deler ikke state; agenter bruger kun den ene | §5.5 Fund 1 + `central_route` forener dem til ét beslutnings-punkt |
+| 12 | Central EJER ikke routing (kun visible-lane præference-lærer, shadow-OFF) — Bjørns Central-router er et NYT organ | §5.5 redesign: `central_route` cross-lane, live |
+| 13 | Proaktiv rotation findes ikke — kun reaktiv failover | §5.5 Fund 3 + Fase B: headroom-baseret de-vægtning ved ≥80%/skip ≥95% |
+| 14 | Systemet KAN løbe tør (RuntimeError "pool exhausted") — nordstjernens fjende | §5.5 Fund 4 + Fase A: garanteret bund, rejser aldrig |
+| 15 | Kvote-state splittet (JSON vs SQLite) = to sandheder | §5.5 Fund 5 + Fase A: foren til SQLite `cheap_provider_invocations` |
 
 ## 1. Provider audit (14. juli 2026)
 
@@ -205,33 +215,94 @@ Binder direkte til acceptance/verifikations-arbejdet — samme outcome-signaler 
 - Ved cold start: balancer indlæser sin persisted state, men Centralen er autoritativ ved konflikt
 - Centralens health-data persisteres i DB (tidsserier) — ikke kun in-memory
 
+## 5.5 Kode-groundet kritisk review + Central-ejet router (v11 — Claude)
+
+**Groundet 14. juli mod ægte kode (3 parallelle sonderinger). Fem fund ændrer arkitekturen mod nordstjernen "runtime løber ALDRIG tør for stemmer":**
+
+### Fund 1 — "Cheap lane" er IKKE én lane. Der er TO gaflede subsystemer.
+- `cheap_lane_balancer.py`: weighted-random, **JSON**-state, 4-niveau circuit breaker, smart DNS-failover (provider-wide cooldown). **Kun** brugt af `daemon_llm.py`.
+- `cheap_provider_runtime_selection.py`: priority-walk, **SQLite**-state, adaptiv-penalty, rekursiv failover. Brugt af **agenter** (`execute_with_role_or_fallback`), public-safe, smoke.
+- De deler **ikke** state (JSON vs DB) eller algoritme. To sandheder om samme providers.
+- **Konsekvens:** en agent (bruger *selection*) kan routes til en provider som *balancer* ved er død. To siloede syn = ingen garanti mod at løbe tør. Den Central-ejede router SKAL forene dem til ét beslutnings-punkt. (Bjørns "load_ba har smart failover" er korrekt — men agenter bruger den ikke.)
+
+### Fund 2 — Central EJER ikke routing i dag.
+- `central_router_adapt.py` findes, men: kun visible-lane, shadow/default-OFF, og kun en *præference-lærer* — ikke beslutnings-ejer. `central_router_explore.py` = A/B-arm, også OFF.
+- Routing er spredt: balancer ejer cheap (via daemon_llm), `visible_runs` ejer visible, agenter arver cheap-selection-kæden. Intet Central-organ styrer på tværs.
+- Bjørns vision (Central egen router over ALLE lanes) er reelt et **nyt organ**. v10's §5 gjorde kun Central til sandheds-kilde for health-*telemetri*, ikke for routing-*beslutningen*. v11 retter dette.
+
+### Fund 3 — Proaktiv rotation findes IKKE.
+- Kun reaktiv failover (efter fejl) + probabilistisk load-spredning (weighted-random undgår near-fulde slots). Ingen kode roterer en provider *før* kvoten er brugt.
+- Frø findes: `provider_health_check._spread_load_proactively()` sætter 6-min cooldown på *unåelige* providers — men reaktivt-på-unåelighed, ikke proaktivt-på-kvote.
+- Bjørns eksplicitte ønske (rotér *før* limit) er den manglende mekanisme. Data findes allerede: `cheap_provider_invocations` tæller RPM/daily → vi kan forudsige udmattelse.
+
+### Fund 4 — Systemet KAN løbe tør i dag (RuntimeError).
+- `call_balanced()` **rejser `RuntimeError` "pool exhausted"** når alle slots er tried; `execute_cheap_lane_via_pool` kan ende uden kandidat.
+- Det er nordstjernens direkte fjende. Routeren skal have en **garanteret bund** (lokal ollama / deepseek som sidste udvej) så runtime ALDRIG får nul stemmer — degradér, rejs aldrig.
+
+### Fund 5 — Kvote-state er splittet (JSON vs SQLite) = to sandheder.
+- Foren til ÉN kvote-visning: genbrug SQLite `cheap_provider_invocations` (tæller allerede RPM/daily i vinduer) som eneste kilde; balancer læser samme DB frem for sin private JSON `daily_use_count`.
+
+### Korrektion til §1: 270 er *tilgængelige*, ikke *wired*.
+Live `provider_router.json`: **15 providers / 46 model-rækker (36 enabled, ~21 cheap-lane)** faktisk wired for agenter. De ~270 er audit-resultatet (tilgængelige). At udvide det wired sæt = mere redundans = stærkere aldrig-tør-garanti; det er en del af arbejdet (Fase C auto-discovery, gated).
+
+---
+
+### Redesign: `central_route` — Central-ejet unified router (nyt organ)
+
+**Princip:** ét routing-organ i Central som ALLE lanes (agent-pool, cheap, coding, local) kalder for at få (provider, model). Det ejer beslutningen, lærer, roterer proaktivt, garanterer aldrig-tør.
+
+**Invariant (nordstjernen, hårdt kodet):** `route()` returnerer ALTID et levende mål eller den garanterede bund — rejser ALDRIG "exhausted".
+
+```python
+def route(*, lane: str, task: "AgentTask | None" = None,
+          exclude: frozenset[str] = frozenset()) -> "RouteTarget":
+    """Ét beslutnings-punkt for ALLE lanes. Aldrig tør:
+    1. Filtrér: creds klar, ikke circuit-breaker-open, kvote-headroom > 0, ikke i exclude
+    2. Proaktiv de-vægtning: provider ved >=80% RPM/daily vægtes ned; >=95% -> skip (Fund 3)
+    3. Rangér: task_score x health x (1 - load) x (1 - kvote_forbrug)
+    4. Tom kandidat-liste -> GARANTERET BUND (local ollama / deepseek), aldrig raise (Fund 4)
+    Returnerer RouteTarget{provider, model, reason, is_floor: bool}."""
+```
+
+**Proaktiv rotation (Fund 3):** en cadence-producer i Central læser `cheap_provider_invocations`, beregner forbrug pr. (provider, vindue) + `daily_exhaustion_hour`-læring (§4.3), og opdaterer en delt `route_headroom`-projektion. Ved ≥80% flyttes last væk *før* 429; ved ≥95% skippes proaktivt.
+
+**Foren subsystemerne (Fund 1+5):** både `cheap_lane_balancer` og `cheap_provider_runtime_selection` refaktoreres til at hente kandidat-rangering fra `central_route.route()` og læse kvote fra den delte SQLite-kilde. Deres lokale hot-path-failover bevares (en 429 kan ikke vente på Central — samme hot-path/slow-path-split som §5), men kandidat-*udvælgelsen* kommer ét sted fra.
+
+**Agent-pool (Fund 1, §4):** `route_agent_task()` bliver et tyndt kald til `central_route.route(lane="agent", task=...)`. Indsættes ved `spawn_agent_task()` (`agent_runtime_spawn.py:170-186`) så den primære hop bliver kvote-*bevidst* (i dag er første hop kvote-blind; kun fallback er kvote-aware).
+
+**Hjem:** udvid `central_router_adapt.py` (eneste eksisterende routing-organ) fra visible-only/shadow → cross-lane/live; registrér i `central_catalog.py`; cadence via `internal_cadence_central_wiring.py`; shadow→live via `central_switches` som alt andet.
+
 ## 6. Implementeringsfaser
 
-### Fase A — Error-routing til Centralen (først)
+Faserne er omstruktureret i v11 så **aldrig-tør-garantien kommer FØRST** (Fase A), routeren bygges shadow→live (Fase B), og agent-pool + auto-discovery kommer sidst (Fase C). Hver fase er selvstændigt testbar og additiv.
+
+### Fase A — Foren synlighed + garanteret bund (aldrig-tør FØRST)
+
+Det mest sikkerheds-kritiske: luk RuntimeError-hullet (Fund 4) og foren de to sandheder (Fund 1+5) FØR vi bygger intelligens ovenpå.
 
 **AC:**
-- [ ] `eventbus_central_bridge.py` har routes for ALLE 5 cheap balancer events
-- [ ] Nerve `system/provider_health` modtager og logger events fra cheap lane
-- [ ] Visible/coding/local lane wired til samme nerve
-- [ ] `central_query status` viser aktuelle provider-fejl som anomalier
-- [ ] Test: simuler provider-fejl → verifcér at de dukker op i Centralen inden for 60s
+- [ ] **Garanteret bund:** `call_balanced()` og `execute_cheap_lane_via_pool()` rejser ALDRIG "exhausted" — ved tom kandidat-liste falder de til en konfigurerbar floor (local ollama → deepseek). Regressionstest: sluk ALLE cheap-providers → verificér et floor-svar, ikke en exception.
+- [ ] **Foren kvote-state:** balancer læser RPM/daily fra SQLite `cheap_provider_invocations` (samme kilde som selection), ikke sin private JSON `daily_use_count`. Én sandhed.
+- [ ] **Balancer → Central:** de 5 `cheap_balancer.*` events får enten bridge-routes i `eventbus_central_bridge.py` ELLER direkte `central().observe` (som `provider_circuit_breaker` allerede gør). Cheap-lane 429/quota bliver realtids-synligt i `system/provider_health`, ikke kun via 5-min poll.
+- [ ] Test: simulér cheap-provider-429 → verificér synlig i Centralen ≤ 60s (ikke ≤ 5 min).
 
-### Fase B — Persistens + tidsserier
-
-**AC:**
-- [ ] Health-data gemmes i DB (tabel: `provider_health_events`)
-- [ ] Query-surface: `central_query provider_history --provider groq --hours 24` returnerer fejlrate, latency, oppetid
-- [ ] Time-to-refill estimat fra historisk kvote-forbrug (inden for ±30% nøjagtighed)
-- [ ] Provider blacklist der konsulteres af ALLE lanes
-
-### Fase C — Agent pool komplet
+### Fase B — `central_route` router live (shadow→live) + proaktiv rotation
 
 **AC:**
-- [ ] `route_agent_task()` implementeret og testet med 10+ task-kinds
-- [ ] Auto-discovery daemon: daglig re-scan af alle providers' `/models` endpoints, diff mod `provider_router.json`
-- [ ] **Discovery GATER, auto-adder ikke (Claude-review v9):** en ny model i et `/models`-endpoint betyder ikke at den er god eller gratis. Nye modeller lander i `pending_models` (staging), IKKE i routbar pool. De skal først bestå smoke-test (svarer den?) + kvalitets-scoring (§4.4 seed) + gratis-verifikation. Kun derefter promoveres de — governed, aldrig auto-on. (Samme governance-princip som self-registering-nerve: opdagelse ≠ optagelse.)
-- [ ] Selvhelbredelse: hvis 3+ providers fejler samtidig → eskaler til Bjørn via Discord
-- [ ] Model-drift auto-fix: 404 model → fjernes automatisk fra pool, logges til Centralen (removal er sikkert at auto-køre; addition er ikke)
+- [ ] `central_route.route(lane, task, exclude) -> RouteTarget` implementeret med invarianten (aldrig raise; floor-fallback). Unit-testet: tom pool → floor, is_floor=True.
+- [ ] **Proaktiv rotation (Fund 3):** cadence-producer beregner headroom fra `cheap_provider_invocations`; provider ved ≥80% RPM/daily de-vægtes, ≥95% skippes. Test: fyld en provider til 90% → verificér last flyttes *før* 429.
+- [ ] Både `cheap_lane_balancer` og `cheap_provider_runtime_selection` henter kandidat-rangering fra `central_route` (hot-path-failover bevaret lokalt). Shadow-flag først: router *foreslår*, gammel sti *beslutter*, sammenlign i logs; flip til live når divergens < aftalt tærskel.
+- [ ] Query-surface: `central_query provider_history --provider groq --hours 24` → fejlrate, latency, oppetid, headroom-forløb.
+
+### Fase C — Agent-pool + kvalitets-læring + gated auto-discovery
+
+**AC:**
+- [ ] `route_agent_task(task)` = tyndt kald til `central_route.route(lane="agent", task=...)`, indsat ved `spawn_agent_task()` (`agent_runtime_spawn.py:170-186`) → primær hop bliver kvote-*bevidst*. Testet med 10+ task-kinds.
+- [ ] Kvalitets-læring (§4.4): outcome-feedback-loop opdaterer `task_scores` fra harness-signaler (finish_reason, tool-succes, gate-verdicts). `task_score_updated` emitteres til Centralen.
+- [ ] Auto-discovery daemon: daglig re-scan af providers' `/models`, diff mod `provider_router.json`.
+- [ ] **Discovery GATER, auto-adder ikke (Claude-review v9):** nye modeller lander i `pending_models` (staging), IKKE routbar pool. Skal bestå smoke-test + kvalitets-scoring (§4.4 seed) + gratis-verifikation før promovering — governed, aldrig auto-on. (Opdagelse ≠ optagelse; jf. self-registering-nerve.)
+- [ ] Selvhelbredelse: 3+ providers fejler samtidig → eskalér til Bjørn via Discord.
+- [ ] Model-drift auto-fix: 404-model fjernes auto fra pool + logges (removal sikkert at auto-køre; addition ikke).
 
 ## 7. Test-strategi
 
@@ -254,12 +325,13 @@ Binder direkte til acceptance/verifikations-arbejdet — samme outcome-signaler 
 
 ## 9. Migration-path
 
-- **Eksisterende data:** Balancerens persisted state (`cheap_lane_state.json`) forbliver — den er balancerens private cache. Centralen bygger sin egen tidsserie uafhængigt.
-- **Ingen nedetid:** Alle ændringer er additive (nye routes, ny nerve). Eksisterende `call_balanced()` flow ændres ikke.
-- **Rollback:** Fjern event bus routes → systemet falder tilbage til nuværende isolerede fejlhåndtering.
+- **Eksisterende data:** Balancerens JSON-state migreres til SQLite `cheap_provider_invocations` som eneste kvote-kilde (Fund 5). Migration er additiv: balancer læser DB, JSON bevares read-only til rollback indtil bevist.
+- **Ingen nedetid:** Alle ændringer er additive og shadow-gated (router foreslår før den beslutter). Eksisterende `call_balanced()`-flow bevarer sin hot-path-failover.
+- **Rollback:** Flip router-shadow-flag OFF → hver lane falder tilbage til sin nuværende lokale routing. Garanteret bund (Fase A) er additiv og forbliver.
 
 ---
 
-*Spec v10 — 14. juli 2026. 17 providers, ~270 gratis modeller, $0.
-v10 (Claude-review): (1) §5 hot-path/slow-path autoritet-split, (2) §4.4 kvalitets-lærings-loop — hvor task_scores kommer fra, (3) Fase C auto-discovery GATER frem for auto-adder, (4) §4.2 jarvis-code dispatch som primær-konsument.
-Næste: Bjørn review → build-authorisation.*
+*Spec v11 — 14. juli 2026. 17 providers audit / ~15 wired / ~270 tilgængelige, $0.
+v11 (Claude, kode-groundet): 5 arkitektur-fund (§5.5) — TO gaflede cheap-subsystemer, Central ejer ikke routing, ingen proaktiv rotation, KAN løbe tør (RuntimeError), splittet kvote-state. Redesign: `central_route` = Central-ejet unified router med aldrig-tør-invariant + proaktiv kvote-rotation. Faser omstruktureret: aldrig-tør-bund FØRST (A), router shadow→live (B), agent-pool+auto-discovery (C).
+Nordstjerne: runtime løber ALDRIG tør for stemmer.
+Næste: writing-plans → eksekvering (lukket kredsløb).*

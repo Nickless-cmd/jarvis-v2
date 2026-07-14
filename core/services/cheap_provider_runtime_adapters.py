@@ -337,6 +337,17 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     },
 }
 
+# Gen-udled openai-compat-sættet FRA protocol (15. jul) — den hardkodede liste
+# (linje 35) gik glip af alle nye providers (cerebras/aihubmix/requesty/cline/
+# github-models/ovhcloud/copilot-*) + gemini/cloudflare efter deres openai-compat-
+# konvertering. Det gav "unsupported-provider" i balanceren OG deepseek-fallback i
+# agent-step. Nu auto-inkluderes enhver protocol="openai-chat"-provider. deepseek
+# beholdes (floor bruger den direkte selvom den er routable=False).
+_OPENAI_COMPATIBLE_PROVIDERS = frozenset(
+    p for p, _cfg in CHEAP_PROVIDER_DEFAULTS.items()
+    if str(_cfg.get("protocol")) == "openai-chat"
+) | {"deepseek"}
+
 
 class CheapProviderError(RuntimeError):
     def __init__(

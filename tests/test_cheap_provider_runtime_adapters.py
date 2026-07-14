@@ -99,3 +99,16 @@ def test_copilot_cost_classes():
     assert provider_cost_class("cerebras") == "free"   # default
     assert "claude-sonnet-5" in CHEAP_PROVIDER_DEFAULTS["copilot-premium"]["static_models"]
     assert "gpt-4o" in CHEAP_PROVIDER_DEFAULTS["copilot-free"]["static_models"]
+
+
+def test_openai_compatible_set_derived_from_protocol():
+    """15. jul: _OPENAI_COMPATIBLE_PROVIDERS udledes fra protocol → auto-inkluderer alle
+    openai-chat (nye + gemini/cloudflare). Fikser balancer 'unsupported-provider' +
+    agent-step deepseek-fallback."""
+    from core.services.cheap_provider_runtime_adapters import _OPENAI_COMPATIBLE_PROVIDERS
+    for p in ("cerebras", "aihubmix", "requesty", "cline", "gemini", "cloudflare",
+              "github-models", "ovhcloud", "copilot-free", "copilot-premium",
+              "groq", "nvidia-nim", "openrouter", "mistral", "opencode"):
+        assert p in _OPENAI_COMPATIBLE_PROVIDERS, f"{p} mangler"
+    assert "arko" not in _OPENAI_COMPATIBLE_PROVIDERS          # arko-protokol
+    assert "ollamafreeapi" not in _OPENAI_COMPATIBLE_PROVIDERS

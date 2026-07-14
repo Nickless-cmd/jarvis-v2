@@ -95,12 +95,16 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     "gemini": {
         "label": "Gemini",
         "priority": 50,
-        "base_url": "https://generativelanguage.googleapis.com/v1beta",
-        "auth_kind": "api-key-query",
-        "protocol": "gemini-native",
+        # OpenAI-compat endpoint (2026-07-14 research): tool_calls virker out-of-the-box,
+        # så gemini bliver en fuld tool-kapabel provider. gemini-2.5 er UDFASET (404 for
+        # nye brugere) → -latest-aliaser tracker nyeste (Gemini 3.x) og udfases aldrig.
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
         "models_endpoint": "/models",
         "rpm_limit": 15,
         "daily_limit": 1000,
+        "static_models": ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-pro-latest"],
     },
     "groq": {
         "label": "Groq",
@@ -115,10 +119,13 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     "cloudflare": {
         "label": "Cloudflare Workers AI",
         "priority": 70,
-        "base_url": "https://api.cloudflare.com/client/v4",
-        "auth_kind": "bearer+account-id",
-        "protocol": "cloudflare-ai",
-        "models_endpoint": "/accounts/{account_id}/ai/models/search",
+        # OpenAI-compat endpoint (2026-07-14 research): tool_calls virker (CF fiksede lige
+        # tool-call-IDs + finish_reason). account_id injiceres i base_url via provider_
+        # router.json på containeren (per-konto, ikke i repoet). Fald-back-placeholder her.
+        "base_url": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
         "rpm_limit": None,
         "daily_limit": None,
         "daily_neurons": 10000,

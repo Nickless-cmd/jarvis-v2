@@ -48,3 +48,18 @@ def test_deepseek_not_routable_but_free_providers_are():
     assert is_routable_provider("openai-codex") is False   # død efter opsigelse
     for free in ("cerebras", "aihubmix", "requesty", "groq", "nvidia-nim"):
         assert is_routable_provider(free) is True, f"{free} skal være routbar"
+
+
+def test_gemini_cloudflare_openai_compat_for_tools():
+    """Research 14. jul: gemini + cloudflare bruger nu deres OpenAI-compat endpoints
+    (protocol=openai-chat) → tool_calls virker → i den tool-kapable agent-pool.
+    gemini-2.5 udfaset → -latest-aliaser."""
+    from core.services.cheap_provider_runtime_adapters import CHEAP_PROVIDER_DEFAULTS
+    g = CHEAP_PROVIDER_DEFAULTS["gemini"]
+    assert g["protocol"] == "openai-chat"
+    assert g["base_url"].endswith("/openai")
+    assert "gemini-flash-latest" in g["static_models"]
+    assert "gemini-2.5-flash-lite" not in g.get("static_models", [])
+    cf = CHEAP_PROVIDER_DEFAULTS["cloudflare"]
+    assert cf["protocol"] == "openai-chat"
+    assert "/ai/v1" in cf["base_url"]

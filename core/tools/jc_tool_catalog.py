@@ -3,7 +3,9 @@
 Defines the curated default companion set, the runtime_-alias for the four
 colliding file/shell primitives, and (in later tasks) the load_more contents.
 Kept tiny and dependency-light so both the /v1/tools/catalog endpoint and tests
-import it.
+import it. `skill_gate` is an always-present companion (Fase 3, Task 2) so
+jarvis-code's model can call it mid-turn like any other tool; the client's
+first-turn auto-call is separate glue on top (see jarvis-code src/skill_trigger.py).
 """
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ DEFAULT_COMPANIONS: tuple[str, ...] = (
     "search_memory", "read_memory_topic", "write_memory_topic",
     "read_project_notes", "update_project_notes",
     "recall_memories", "search_jarvis_brain",
-    "remember_this", "archive_brain_entry", "read_mood",
+    "remember_this", "archive_brain_entry", "read_mood", "skill_gate",
 )
 
 

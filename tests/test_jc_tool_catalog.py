@@ -10,8 +10,20 @@ def test_default_companions_list():
         "search_memory", "read_memory_topic", "write_memory_topic",
         "read_project_notes", "update_project_notes",
         "recall_memories", "search_jarvis_brain",
-        "remember_this", "archive_brain_entry", "read_mood",
+        "remember_this", "archive_brain_entry", "read_mood", "skill_gate",
     )
+
+
+def test_skill_gate_in_catalog_locked(monkeypatch):
+    def _fake_defs(role):
+        return [
+            {"type": "function", "function": {"name": "read_mood", "description": "mood"}},
+            {"type": "function", "function": {"name": "skill_gate", "description": "gate"}},
+        ]
+    monkeypatch.setattr(cat, "_all_native_defs", _fake_defs)
+    out = cat.build_jc_catalog(role="owner", unlocked=False)
+    names = _names(out)
+    assert "skill_gate" in names
 
 
 def test_alias_roundtrip():

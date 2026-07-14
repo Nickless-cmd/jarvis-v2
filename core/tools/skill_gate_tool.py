@@ -153,6 +153,18 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
         context_tags=context_tags,
     )
 
+    # ── Autosurface narrowing (Fase 3, Task 4) ───────────────────────
+    # Used only by jarvis-code's client-driven first-turn auto-call
+    # (autosurface=true). Narrows candidates to the owner-approved
+    # allowlist BEFORE selection, so the deterministic client trigger
+    # can never surface a skill the owner hasn't approved. Every other
+    # caller (the model calling skill_gate directly) is unaffected —
+    # default false, backward-compatible.
+    if bool(args.get("autosurface")):
+        from core.services import skill_autosurface
+        allowed = set(skill_autosurface.filter_to_approved([s["name"] for s in suggestions]))
+        suggestions = [s for s in suggestions if s["name"] in allowed]
+
     # Lag #4: compute chain candidates from suggestions (always, all return paths)
     chain_candidates = _build_chain_candidates(suggestions)
     chain_hint = _build_chain_hint(chain_candidates)
@@ -317,6 +329,13 @@ SKILL_GATE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                             "Minimum match score to auto-invoke (0.0-1.0). "
                             "Default 0.30 after multi-candidate aggregation. "
                             "Raise for stricter matching."
+                        ),
+                    },
+                    "autosurface": {
+                        "type": "boolean",
+                        "description": (
+                            "Restrict matching to owner-approved auto-surface skills "
+                            "(used by jarvis-code's first-turn auto-call). Default false."
                         ),
                     },
                 },

@@ -2,6 +2,40 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_runtime_chronicle.py`
+_Persistence for Jarvis' runtime chronicle-consolidation signal cluster._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_runtime_consolidation_target_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L23) |
+| function | `_ensure_runtime_chronicle_consolidation_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L64) |
+| function | `_ensure_runtime_chronicle_consolidation_brief_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L107) |
+| function | `_ensure_runtime_chronicle_consolidation_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L150) |
+| function | `_runtime_consolidation_target_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L193) |
+| function | `_runtime_chronicle_consolidation_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L219) |
+| function | `_runtime_chronicle_consolidation_brief_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L245) |
+| function | `_runtime_chronicle_consolidation_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_chronicle.py#L271) |
+| function | `upsert_runtime_consolidation_target_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a consolidation-target signal keyed on ``signal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L297) |
+| function | `list_runtime_consolidation_target_signals` | `(*, status=…, limit=…)` | Return consolidation-target signals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L369) |
+| function | `get_runtime_consolidation_target_signal` | `(signal_id)` | Return the consolidation-target signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L419) |
+| function | `update_runtime_consolidation_target_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a consolidation-target signal. | [src](../../../core/runtime/db_runtime_chronicle.py#L456) |
+| function | `supersede_runtime_consolidation_target_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all live consolidation-target signals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L492) |
+| function | `upsert_runtime_chronicle_consolidation_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation signal keyed on ``signal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L528) |
+| function | `list_runtime_chronicle_consolidation_signals` | `(*, status=…, limit=…)` | Return chronicle-consolidation signals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L599) |
+| function | `get_runtime_chronicle_consolidation_signal` | `(signal_id)` | Return the chronicle-consolidation signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L649) |
+| function | `update_runtime_chronicle_consolidation_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation signal. | [src](../../../core/runtime/db_runtime_chronicle.py#L688) |
+| function | `supersede_runtime_chronicle_consolidation_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all live chronicle-consolidation signals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L724) |
+| function | `upsert_runtime_chronicle_consolidation_brief` | `(*, brief_id, brief_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation brief keyed on ``brief_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L760) |
+| function | `list_runtime_chronicle_consolidation_briefs` | `(*, status=…, limit=…)` | Return chronicle-consolidation briefs newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L831) |
+| function | `get_runtime_chronicle_consolidation_brief` | `(brief_id)` | Return the chronicle-consolidation brief row dict for ``brief_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L881) |
+| function | `update_runtime_chronicle_consolidation_brief_status` | `(brief_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation brief. | [src](../../../core/runtime/db_runtime_chronicle.py#L920) |
+| function | `supersede_runtime_chronicle_consolidation_briefs_for_domain` | `(*, domain_key, exclude_brief_id, updated_at, status_reason)` | Mark all live chronicle-consolidation briefs in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L956) |
+| function | `upsert_runtime_chronicle_consolidation_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation proposal keyed on ``proposal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L992) |
+| function | `list_runtime_chronicle_consolidation_proposals` | `(*, status=…, limit=…)` | Return chronicle-consolidation proposals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L1063) |
+| function | `get_runtime_chronicle_consolidation_proposal` | `(proposal_id)` | Return the chronicle-consolidation proposal row dict for ``proposal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L1113) |
+| function | `update_runtime_chronicle_consolidation_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation proposal. | [src](../../../core/runtime/db_runtime_chronicle.py#L1152) |
+| function | `supersede_runtime_chronicle_consolidation_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live chronicle-consolidation proposals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L1188) |
+
 ## `core/runtime/db_runtime_cognition_signals.py`
 _Persistence for Jarvis' runtime cognition-* signal cluster._
 
@@ -770,9 +804,9 @@ _Safe read/merge/write helpers for runtime.json._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `RuntimeSettings` | `` | — | [src](../../../core/runtime/settings.py#L11) |
-| method | `RuntimeSettings.to_dict` | `(self)` | — | [src](../../../core/runtime/settings.py#L438) |
-| function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L529) |
-| function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L944) |
+| method | `RuntimeSettings.to_dict` | `(self)` | — | [src](../../../core/runtime/settings.py#L451) |
+| function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L546) |
+| function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L968) |
 
 ## `core/runtime/state_store.py`
 _Tiny JSON-file state store for module-globals that must survive restart._

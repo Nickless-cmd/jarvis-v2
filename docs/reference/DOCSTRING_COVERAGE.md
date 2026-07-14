@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6048/12485 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6072/12517 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6048/12485 functions/methods documented (48%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 558 | 738 | 75% |
+| `apps.api.jarvis_api.routes` | 570 | 751 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 57 | 155 | 36% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -23,8 +23,8 @@ Generated from source. 6048/12485 functions/methods documented (48%). The list b
 | `core.identity` | 63 | 154 | 40% |
 | `core.memory` | 44 | 123 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 550 | 1019 | 53% |
-| `core.services` | 3959 | 8662 | 45% |
+| `core.runtime` | 552 | 1022 | 54% |
+| `core.services` | 3966 | 8671 | 45% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -36,11 +36,12 @@ Generated from source. 6048/12485 functions/methods documented (48%). The list b
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 155 | 238 | 65% |
+| `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1818)
+## Undocumented public functions (1820)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L141)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -487,9 +488,9 @@ Generated from source. 6048/12485 functions/methods documented (48%). The list b
 - `core/runtime/provider_router.py` :: `resolve_provider_router_target` (L254)
 - `core/runtime/provider_router.py` :: `select_main_agent_target` (L200)
 - `core/runtime/secrets.py` :: `mail_config` (L96)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L438)
-- `core/runtime/settings.py` :: `load_settings` (L529)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L944)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L451)
+- `core/runtime/settings.py` :: `load_settings` (L546)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L968)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L129)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L125)
 - `core/services/action_router.py` :: `build_action_router_surface` (L605)
@@ -522,16 +523,16 @@ Generated from source. 6048/12485 functions/methods documented (48%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L149)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L199)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L249)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L947)
-- `core/services/agent_runtime_spawn.py` :: `execute_agent_task` (L348)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1002)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L983)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L849)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L613)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L553)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L581)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L960)
+- `core/services/agent_runtime_spawn.py` :: `execute_agent_task` (L361)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1015)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L996)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L862)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L626)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L566)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L594)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L91)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L966)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L979)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L89)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L133)
@@ -1802,6 +1803,8 @@ Generated from source. 6048/12485 functions/methods documented (48%). The list b
 - `core/tools/workspace_capabilities.py` :: `invoke_workspace_capability` (L397)
 - `core/tools/workspace_capabilities.py` :: `load_workspace_capabilities` (L138)
 - `core/util/timezone.py` :: `dk_weekday_en` (L69)
+- `scripts/acceptance/migration_gate.py` :: `main` (L203)
+- `scripts/acceptance/migration_gate.py` :: `run_suites` (L99)
 - `scripts/api_reference_gen.py` :: `main` (L74)
 - `scripts/api_reference_gen.py` :: `render_md` (L63)
 - `scripts/bench_ollama_concurrency.py` :: `main` (L93)

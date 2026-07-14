@@ -2,6 +2,11 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/jarvisx.py`
+_JarvisX-specific routes — small endpoints used by the desktop app._
+
+_(no top-level classes or functions)_
+
 ## `apps/api/jarvis_api/routes/jarvisx_authtokens.py`
 _JarvisX bearer-token issuance + verification route group._
 
@@ -123,6 +128,14 @@ _JarvisX workspace + identity/mind route group._
 | function | `remove_identity_pin` | `(pin_id)` | Unpin by pin_id. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L339) |
 | class | `_ChroniclePayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L349) |
 | function | `write_chronicle_entry` | `(payload)` | Append a new chronicle entry to the workspace's chronicle/ dir. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L356) |
+
+## `apps/api/jarvis_api/routes/jc_env.py`
+_Pure helper: render an ``<env>`` block for the /v1/agent/step system prompt_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_clamp` | `(value, max_chars=…)` | — | [src](../../../apps/api/jarvis_api/routes/jc_env.py#L25) |
+| function | `render_env_block` | `(env)` | Render a fenced ``<env>...</env>`` block from a client-supplied env dict. | [src](../../../apps/api/jarvis_api/routes/jc_env.py#L32) |
 
 ## `apps/api/jarvis_api/routes/live.py`
 
@@ -656,16 +669,4 @@ _TTS synthesis route — backed by Microsoft Edge's read-aloud cloud_
 | function | `_synthesize_elevenlabs_bytes` | `(text)` | Jarvis' egen ElevenLabs-stemme → MP3-bytes. Genbruger nøgle+voice_id fra voice-skillen | [src](../../../apps/api/jarvis_api/routes/tts.py#L66) |
 | function | `synthesize` | `(req)` | Synthesize text → MP3 bytes via edge-tts. | [src](../../../apps/api/jarvis_api/routes/tts.py#L83) |
 | function | `list_voices` | `(lang=…)` | List available Edge-TTS voices, optionally filtered by language tag. | [src](../../../apps/api/jarvis_api/routes/tts.py#L153) |
-
-## `apps/api/jarvis_api/routes/users.py`
-_Owner-only user-administration (spec 2026-06-15 §4/§6). CRUD + GDPR-erasure._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `PatchUserReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L20) |
-| class | `DeleteUserReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L30) |
-| function | `list_all` | `(claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L35) |
-| function | `get_one` | `(user_id, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L40) |
-| function | `patch_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L48) |
-| function | `delete_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L75) |
 

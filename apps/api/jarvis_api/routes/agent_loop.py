@@ -30,6 +30,11 @@ from core.tools.simple_tools import execute_tool
 from core.tools.jc_tool_catalog import unalias
 from core.tools.brain_write_gate import check_brain_write_allowed
 
+# Module-level seams (tests monkeypatch these; keeps side effects gate-able):
+from core.runtime.db_core import get_runtime_state_value
+from core.costing.ledger import record_cost
+from core.services.followup_observer import note_empty_completion
+
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter()
 
@@ -41,6 +46,16 @@ def _resolve_role() -> str:
         return effective_role() or "owner"
     except Exception:
         return "owner"
+
+
+def _flag(name: str, default: bool = False) -> bool:
+    """Read a runtime-state boolean flag. Fail-safe: any error/absence -> default.
+    All Fase-0 behavior changes gate on these; every flag defaults OFF so the
+    deploy is inert until an operator flips it."""
+    try:
+        return bool(get_runtime_state_value(name, default))
+    except Exception:
+        return default
 
 
 def _sse(event: str, data: dict) -> str:

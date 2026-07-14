@@ -37,3 +37,26 @@ def test_update_task_score_seeds_at_half(monkeypatch):
     apr.update_task_score(provider="x", model="y", kind="reasoning",
                           outcome_quality=1.0, lr=0.1)
     assert abs(store["reasoning"] - 0.55) < 1e-6   # seed 0.5 -> 0.55
+
+
+def test_resolve_target_routes_through_pool_when_flag_on(monkeypatch):
+    """Bjørn: agent:explore skal kalde fra agent-poolen. /v1/agent/step's
+    _resolve_target router gennem route_agent_task når flag'et er ON."""
+    from apps.api.jarvis_api.routes import agent_loop as al
+    monkeypatch.setattr(al, "_flag", lambda name, default=False: name == "agent_pool_router_enabled")
+    monkeypatch.setattr("core.services.agent_pool_router.route_agent_task",
+                        lambda **kw: {"provider": "cerebras", "model": "gemma-4-31b"})
+    assert al._resolve_target() == ("cerebras", "gemma-4-31b")
+
+
+def test_resolve_target_uses_visible_when_flag_off(monkeypatch):
+    """Flag OFF → uændret visible-adfærd (route_agent_task kaldes ikke)."""
+    from apps.api.jarvis_api.routes import agent_loop as al
+    monkeypatch.setattr(al, "_flag", lambda name, default=False: False)
+    called = {"n": 0}
+    monkeypatch.setattr("core.services.agent_pool_router.route_agent_task",
+                        lambda **kw: called.__setitem__("n", called["n"] + 1) or {})
+    monkeypatch.setattr("core.services.central_router_adapt.resolve_visible_model",
+                        lambda **kw: ("deepseek", "deepseek-v4-flash"))
+    assert al._resolve_target() == ("deepseek", "deepseek-v4-flash")
+    assert called["n"] == 0

@@ -467,7 +467,20 @@ def _normalize_reasoning_for_provider(messages: list[dict], provider: str) -> li
 
 
 def _resolve_target() -> tuple[str, str]:
-    """(provider, model) for den synlige lane — health-gated (springer kvote-ramt over)."""
+    """(provider, model) for /v1/agent/step (jarvis-code klient-loop + subagenter).
+
+    Flag `agent_pool_router_enabled` (default OFF): route gennem den Central-ejede
+    agent-pool (gratis modeller, deepseek er routable=False) i stedet for visible-
+    default. Det er dét agent:explore skal kalde fra. Off → uændret visible-adfærd."""
+    if _flag("agent_pool_router_enabled"):
+        try:
+            from core.services.agent_pool_router import route_agent_task
+            r = route_agent_task(kind="coding")
+            p, m = str(r.get("provider") or ""), str(r.get("model") or "")
+            if p and m:
+                return p, m
+        except Exception:
+            logger.debug("agent_pool routing fejlede — falder til visible", exc_info=True)
     try:
         from core.runtime.settings import load_settings
         from core.services.central_router_adapt import resolve_visible_model

@@ -224,6 +224,34 @@ _SYSTEM_PROMPT = (
     "klart og kort på dansk. Kald ikke værktøjer i tomgang; stop når opgaven er løst."
 )
 
+# Fase 6 Task 5: the framing sentence above hardcodes Bjørn's ownership
+# ("Bjørns terminal"/"HANS lokale maskine") — correct for the owner (the
+# common case today) but wrong once jc_agent_user_scoping resolves a
+# DIFFERENT caller's workspace (a member is not standing in Bjørn's
+# terminal). Generic, caller-neutral variant used ONLY when the flag is on
+# AND the resolved workspace isn't the owner's default — inert (byte-
+# identical _SYSTEM_PROMPT) for the owner and for the flag-off baseline.
+_SYSTEM_PROMPT_GENERIC = (
+    "Du er Jarvis — en skarp, kortfattet coding-agent der arbejder i en udvikler-"
+    "terminal (jarvis-code) på DIN lokale maskine: værktøjerne (bash, read_file, "
+    "write_file, edit_file, glob, grep, web_fetch, web_scrape) eksekveres af klienten "
+    "lokalt, og du får resultaterne tilbage. Arbejd trinvist: kald værktøjer for at "
+    "undersøge og ændre kode i stedet for at gætte. Når du har nok til at svare, så svar "
+    "klart og kort på dansk. Kald ikke værktøjer i tomgang; stop når opgaven er løst."
+)
+
+
+def _system_prompt_intro(name: str) -> str:
+    """Fase 6 Task 5: pick the caller-appropriate framing sentence. Owner
+    workspace ('default') or the jc_agent_user_scoping flag OFF -> the
+    original, unchanged _SYSTEM_PROMPT (no behavior change). A resolved
+    NON-default workspace with the flag ON -> the generic, caller-neutral
+    framing — never claims a member is on Bjørn's machine."""
+    if name and name != "default" and _flag("jc_agent_user_scoping"):
+        return _SYSTEM_PROMPT_GENERIC
+    return _SYSTEM_PROMPT
+
+
 # ── Skill catalog injection (Fase 3, Task 3) ────────────────────────────
 # CC-style activation nudge + a client-side (jarvis-code) tool-name legend
 # (see docs/_archive/skills-jarvis-compat.md). Both are inert unless
@@ -369,19 +397,20 @@ def _build_system_prompt(context: str, user_message: str = "", name: str = "defa
     `env`: client-supplied cwd/git/os/date facts (Fase 4, Task 2) — rendered as the
     LAST, most volatile section (agent_step_env_block_enabled-gated) so everything
     before it stays a stable, cacheable prefix (Fase 4, Task 4)."""
+    _intro = _system_prompt_intro(name)
     if context == "none":
-        base = _SYSTEM_PROMPT
+        base = _intro
     elif context == "full":
         full = _full_context(user_message, name)
         if full:
-            base = _SYSTEM_PROMPT + "\n\n" + full
+            base = _intro + "\n\n" + full
         else:
             # full-assembly fejlede → degradér til identity (crash aldrig)
             ident = _identity_context(name)
-            base = _SYSTEM_PROMPT + ident if ident else _SYSTEM_PROMPT
+            base = _intro + ident if ident else _intro
     else:
         ident = _identity_context(name)
-        base = _SYSTEM_PROMPT + ident if ident else _SYSTEM_PROMPT
+        base = _intro + ident if ident else _intro
 
     # Skill catalog block appended once, AFTER identity/full context, on every
     # path (including 'none' — skills are relevant even in pure-coding tier).

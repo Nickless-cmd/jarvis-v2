@@ -17,7 +17,7 @@ _last_reset_date: str = ""
 _last_condition_matched: str = ""
 
 
-def tick_irony_daemon() -> dict[str, object]:
+def tick_irony_daemon(*, skip_event_gate: bool = False) -> dict[str, object]:
     _maybe_reset_daily_count()
     if _observations_today >= _OBSERVATIONS_MAX_PER_DAY:
         return {"generated": False, "observation": _cached_observation}
@@ -27,18 +27,21 @@ def tick_irony_daemon() -> dict[str, object]:
         return {"generated": False, "observation": _cached_observation}
     # ── Event-gate (Fase 2 Lag 5): fire the LLM self-observation only when the
     #    self-distance signals (user-inactivity / load) actually crossed. Flag
-    #    OFF → legacy behaviour (daily-cap + condition guards only). Fail-open. ──
-    try:
-        from core.services import event_gate
-        if event_gate.event_driven_enabled():
-            _relevant = {
-                "user_inactive_min": float(snapshot.get("user_inactive_min", 0.0)),
-                "cpu_pct": float(snapshot.get("cpu_pct", 0.0)),
-            }
-            if not event_gate.should_generative_fire("irony", _relevant):
-                return {"skipped": "no_signal_change"}
-    except Exception:
-        pass  # fail-open
+    #    OFF → legacy behaviour (daily-cap + condition guards only). Fail-open.
+    #    ``skip_event_gate``: the inner-voice cluster owns ONE family gate — the
+    #    daily-cap + condition guards above remain this member's rate limit. ──
+    if not skip_event_gate:
+        try:
+            from core.services import event_gate
+            if event_gate.event_driven_enabled():
+                _relevant = {
+                    "user_inactive_min": float(snapshot.get("user_inactive_min", 0.0)),
+                    "cpu_pct": float(snapshot.get("cpu_pct", 0.0)),
+                }
+                if not event_gate.should_generative_fire("irony", _relevant):
+                    return {"skipped": "no_signal_change"}
+        except Exception:
+            pass  # fail-open
     observation = _generate_observation(snapshot, condition)
     if not observation or observation.lower().strip() == "nej":
         return {"generated": False, "observation": _cached_observation}

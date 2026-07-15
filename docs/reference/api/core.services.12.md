@@ -434,14 +434,14 @@ _Irony daemon — situational self-distance and absurd self-observations._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `tick_irony_daemon` | `()` | — | [src](../../../core/services/irony_daemon.py#L20) |
-| function | `get_latest_irony_observation` | `()` | — | [src](../../../core/services/irony_daemon.py#L49) |
-| function | `build_irony_surface` | `()` | — | [src](../../../core/services/irony_daemon.py#L53) |
-| function | `_maybe_reset_daily_count` | `()` | — | [src](../../../core/services/irony_daemon.py#L62) |
-| function | `_collect_snapshot` | `()` | — | [src](../../../core/services/irony_daemon.py#L70) |
-| function | `_detect_irony_conditions` | `(snapshot)` | — | [src](../../../core/services/irony_daemon.py#L95) |
-| function | `_generate_observation` | `(snapshot, condition)` | — | [src](../../../core/services/irony_daemon.py#L108) |
-| function | `_store_observation` | `(observation, condition)` | — | [src](../../../core/services/irony_daemon.py#L135) |
+| function | `tick_irony_daemon` | `(*, skip_event_gate=…)` | — | [src](../../../core/services/irony_daemon.py#L20) |
+| function | `get_latest_irony_observation` | `()` | — | [src](../../../core/services/irony_daemon.py#L52) |
+| function | `build_irony_surface` | `()` | — | [src](../../../core/services/irony_daemon.py#L56) |
+| function | `_maybe_reset_daily_count` | `()` | — | [src](../../../core/services/irony_daemon.py#L65) |
+| function | `_collect_snapshot` | `()` | — | [src](../../../core/services/irony_daemon.py#L73) |
+| function | `_detect_irony_conditions` | `(snapshot)` | — | [src](../../../core/services/irony_daemon.py#L98) |
+| function | `_generate_observation` | `(snapshot, condition)` | — | [src](../../../core/services/irony_daemon.py#L111) |
+| function | `_store_observation` | `(observation, condition)` | — | [src](../../../core/services/irony_daemon.py#L138) |
 
 ## `core/services/jarvis_brain.py`
 _Jarvis Brain — kurateret vidensjournal. Kerne-CRUD-laget._

@@ -708,6 +708,34 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Cluster-daemon FAMILIE #2 — inner-voice (LIVE, prove-then-retire END STATE).
+    # thought_stream+reflection_cycle+meta_reflection+irony+existential_wonder+
+    # creative_drift foldet ind i ÉN Central-styret familie under ÉN event-gate.
+    # De 6 gamle daemons er PENSIONERET (default_enabled=False) → deres tick-blokke
+    # ovenfor no-op'er via is_enabled. Familien kalder de gamle daemons' generering
+    # (skip_event_gate=True) og bevarer alle outputs — især _latest_wonder
+    # (load-bearing for convene_judge/proactivity_bridge/visible_inner_life). En
+    # bredere deadline end somatic fordi et enkelt member kan lave ét LLM-kald
+    # (cadence sikrer sjældent >1 generering pr. tick). Self-safe: crasher aldrig.
+    if _dm.is_enabled("cluster_innervoice"):
+        try:
+            from core.services.cluster_daemon import tick_cluster_innervoice
+            _iv_cluster_result = _hb._daemon_tick_with_deadline(
+                "cluster_innervoice", tick_cluster_innervoice, deadline_seconds=25.0,
+            )
+            _dm.record_daemon_tick("cluster_innervoice", _iv_cluster_result or {})
+            # Surface the freshly-produced inner-voice outputs into the trace, as
+            # the retired daemons' own tick blocks used to.
+            try:
+                from core.services.thought_stream_daemon import get_latest_thought_fragment
+                _iv_frag = get_latest_thought_fragment()
+                if _iv_frag:
+                    inputs_present.append(f"thought-stream: {_iv_frag[:80]}")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     # Creative drift daemon — spontaneous unexpected associations
     if _dm.is_enabled("creative_drift"):
         try:

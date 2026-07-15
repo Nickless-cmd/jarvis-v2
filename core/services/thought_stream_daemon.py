@@ -28,6 +28,8 @@ def _text_signal(value: str) -> float:
 def tick_thought_stream_daemon(
     energy_level: str = "",
     inner_voice_mode: str = "",
+    *,
+    skip_event_gate: bool = False,
 ) -> dict[str, object]:
     global _last_fragment_at
     now = datetime.now(UTC)
@@ -37,19 +39,25 @@ def tick_thought_stream_daemon(
     # Fase 2 Lag 5: gate the (expensive) LLM generation behind the shared
     # event-gate. Flag off OR real signal change → generate as today. No
     # change → cheap no-op, no LLM. Self-safe: any event_gate error fails open.
-    try:
-        from core.services import event_gate
+    #
+    # ``skip_event_gate``: the inner-voice cluster-daemon (cluster_daemon.py)
+    # owns ONE event-gate for the whole family, so when it dispatches to this
+    # member the redundant per-daemon gate is skipped — the cadence floor above
+    # still applies as this member's intrinsic rate limit.
+    if not skip_event_gate:
+        try:
+            from core.services import event_gate
 
-        if event_gate.event_driven_enabled():
-            _relevant = {
-                "energy": _text_signal(energy_level),
-                "mood": _text_signal(inner_voice_mode),
-                "continuity": 1.0 if _last_fragment else 0.0,
-            }
-            if not event_gate.should_generative_fire("thought_stream", _relevant):
-                return {"skipped": "no_signal_change"}
-    except Exception:
-        pass  # fail-open: fall through to normal generation
+            if event_gate.event_driven_enabled():
+                _relevant = {
+                    "energy": _text_signal(energy_level),
+                    "mood": _text_signal(inner_voice_mode),
+                    "continuity": 1.0 if _last_fragment else 0.0,
+                }
+                if not event_gate.should_generative_fire("thought_stream", _relevant):
+                    return {"skipped": "no_signal_change"}
+        except Exception:
+            pass  # fail-open: fall through to normal generation
     fragment = _generate_fragment(energy_level, _last_fragment, inner_voice_mode)
     if not fragment:
         return {"generated": False}

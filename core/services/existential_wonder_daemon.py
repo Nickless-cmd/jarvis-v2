@@ -45,11 +45,19 @@ _wonder_buffer: list[str] = []
 def tick_existential_wonder_daemon(
     absence_hours: float,
     fragment_count: int,
+    *,
+    skip_event_gate: bool = False,
 ) -> dict:
     """Maybe generate an existential wonder question.
 
     absence_hours: hours since last user interaction
     fragment_count: number of thought stream fragments this session
+
+    ``skip_event_gate``: the inner-voice cluster-daemon owns ONE gate for the
+    whole family. When it dispatches to this member the redundant per-daemon
+    event-gate is skipped, but the 24h cadence floor is KEPT so a wonder stays
+    rare (its defining character) even under the cluster — the family gate fires
+    on any member's signal, far more often than wonder should speak.
     """
     global _last_tick_at, _latest_wonder, _wonder_buffer
 
@@ -72,7 +80,13 @@ def tick_existential_wonder_daemon(
     # flag is OFF we keep the exact legacy 24h-cadence path. In EITHER case a skip
     # NEVER clears _latest_wonder — the output pipeline is load-bearing for
     # central_convene_judge, proactivity_bridge and visible_inner_life.
-    if event_gate.event_driven_enabled():
+    if skip_event_gate:
+        # Cluster-owned path: the family gate already fired. Keep the 24h cadence
+        # floor so wonder does not spam every time a sibling member's signal moves.
+        if _last_tick_at is not None:
+            if (now - _last_tick_at) < timedelta(hours=_CADENCE_HOURS):
+                return {"generated": False}
+    elif event_gate.event_driven_enabled():
         # Relevant signals: existential-pressure/long-absence (normalized over a
         # day) + active-thought-stream depth. A move in any of these is what makes
         # a fresh wonder worth spending an LLM on.

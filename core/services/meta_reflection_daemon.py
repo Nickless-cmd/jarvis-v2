@@ -26,13 +26,39 @@ _cached_meta_insight: str = ""
 _meta_buffer: list[str] = []
 
 
-def tick_meta_reflection_daemon(cross_snapshot: dict) -> dict[str, object]:
+def run_credit_assignment(cross_snapshot: dict) -> dict[str, object]:
+    """Public wrapper over the Lag-1 credit-assignment pass (:func:`_check_outcomes`).
+
+    The credit-assignment bookkeeping (scoring unreviewed model_tier /
+    response_style decisions) is NON-LLM and must run on EVERY heartbeat tick,
+    independent of the generative meta-insight gate. The inner-voice cluster
+    calls this unconditionally each tick (before its single family gate), which
+    preserves the old daemon's every-tick credit-scoring behaviour even though
+    the generative insight is now gated once for the whole family. Self-safe."""
+    try:
+        return _check_outcomes(cross_snapshot or {})
+    except Exception as exc:
+        return {"checked": False, "error": f"{type(exc).__name__}: {exc}"}
+
+
+def tick_meta_reflection_daemon(
+    cross_snapshot: dict,
+    *,
+    skip_event_gate: bool = False,
+    skip_credit: bool = False,
+) -> dict[str, object]:
     """Generate cross-signal meta-insight if cadence allows. Also checks for
     unreviewed prompt-variant decisions (Lag 1 credit assignment) every tick.
     cross_snapshot keys (all optional): energy_level, inner_voice_mode, latest_fragment,
-    last_surprise, last_conflict, last_irony, last_taste, curiosity_signal."""
-    # ── Always: check for unreviewed decisions ──────────────────────────
-    credit_result = _check_outcomes(cross_snapshot)
+    last_surprise, last_conflict, last_irony, last_taste, curiosity_signal.
+
+    ``skip_event_gate``: the inner-voice cluster owns ONE gate for the family; the
+    redundant per-daemon event-gate is skipped (cadence + active-signal guards
+    still apply). ``skip_credit``: the cluster already ran the credit-assignment
+    pass unconditionally this tick (see :func:`run_credit_assignment`), so don't
+    double-run it here."""
+    # ── Always: check for unreviewed decisions (unless the caller already did) ──
+    credit_result: dict[str, object] = {"skipped": "credit_run_by_cluster"} if skip_credit else _check_outcomes(cross_snapshot)
 
     # ── Cadence-gated: meta-insight ─────────────────────────────────────
     global _last_meta_at
@@ -54,15 +80,16 @@ def tick_meta_reflection_daemon(cross_snapshot: dict) -> dict[str, object]:
 
     # ── Event-gate (Fase 2 Lag 5): fire cross-signal synthesis only when a
     #    relevant signal actually moved. Flag OFF → legacy always-fire. ──
-    from core.services import event_gate
-    if event_gate.event_driven_enabled():
-        _relevant = {
-            "latest_fragment": float(len(cross_snapshot.get("latest_fragment") or "")),
-            "last_surprise": float(len(cross_snapshot.get("last_surprise") or "")),
-            "last_conflict": float(len(cross_snapshot.get("last_conflict") or "")),
-        }
-        if not event_gate.should_generative_fire("meta_reflection", _relevant):
-            return {"skipped": "no_signal_change"}
+    if not skip_event_gate:
+        from core.services import event_gate
+        if event_gate.event_driven_enabled():
+            _relevant = {
+                "latest_fragment": float(len(cross_snapshot.get("latest_fragment") or "")),
+                "last_surprise": float(len(cross_snapshot.get("last_surprise") or "")),
+                "last_conflict": float(len(cross_snapshot.get("last_conflict") or "")),
+            }
+            if not event_gate.should_generative_fire("meta_reflection", _relevant):
+                return {"skipped": "no_signal_change"}
 
     insight = _generate_meta_insight(cross_snapshot)
     if not insight:

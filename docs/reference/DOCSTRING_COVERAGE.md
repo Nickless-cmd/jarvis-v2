@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6174/12648 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6179/12669 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 | `core.memory` | 44 | 123 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4060 | 8788 | 46% |
+| `core.services` | 4065 | 8809 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -39,7 +39,7 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1830)
+## Undocumented public functions (1831)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -658,7 +658,7 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 - `core/services/central_catalog.py` :: `clusters` (L517)
 - `core/services/central_catalog.py` :: `nerve_cluster` (L488)
 - `core/services/central_catalog.py` :: `security_clusters` (L532)
-- `core/services/central_convene_judge.py` :: `current_mode` (L71)
+- `core/services/central_convene_judge.py` :: `current_mode` (L60)
 - `core/services/central_core.py` :: `Central.register` (L271)
 - `core/services/central_core.py` :: `central` (L281)
 - `core/services/central_dissent.py` :: `record_dissent` (L87)
@@ -746,6 +746,7 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 - `core/services/chronicle_engine.py` :: `project_entry_to_markdown` (L483)
 - `core/services/clarification_classifier.py` :: `clarification_prompt_section` (L78)
 - `core/services/clarification_classifier.py` :: `score_message` (L39)
+- `core/services/cluster_daemon.py` :: `innervoice_family` (L766)
 - `core/services/cluster_daemon.py` :: `somatic_family` (L412)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
 - `core/services/code_aesthetic_daemon.py` :: `get_latest_aesthetic_reflection` (L64)
@@ -790,8 +791,8 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 - `core/services/counterfactual_self_simulation.py` :: `simulate_from_latest_episode` (L21)
 - `core/services/cowork_feed.py` :: `channel_status` (L205)
 - `core/services/cowork_feed.py` :: `list_plans` (L121)
-- `core/services/creative_drift_daemon.py` :: `build_creative_drift_surface` (L90)
-- `core/services/creative_drift_daemon.py` :: `get_latest_drift` (L86)
+- `core/services/creative_drift_daemon.py` :: `build_creative_drift_surface` (L95)
+- `core/services/creative_drift_daemon.py` :: `get_latest_drift` (L91)
 - `core/services/creative_impulse_daemon.py` :: `build_creative_impulse_prompt_section` (L322)
 - `core/services/creative_impulse_daemon.py` :: `build_creative_impulse_surface` (L289)
 - `core/services/creative_impulse_daemon.py` :: `list_creations` (L284)
@@ -829,8 +830,8 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `maybe_register_from_text` (L53)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L15)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L489)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L536)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L518)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L565)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L266)
@@ -922,8 +923,8 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 - `core/services/executive_contradiction_signal_tracking.py` :: `build_runtime_executive_contradiction_signal_surface` (L77)
 - `core/services/executive_contradiction_signal_tracking.py` :: `refresh_runtime_executive_contradiction_signal_statuses` (L46)
 - `core/services/executive_contradiction_signal_tracking.py` :: `track_runtime_executive_contradiction_signals_for_visible_turn` (L23)
-- `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L149)
-- `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L145)
+- `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L163)
+- `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L159)
 - `core/services/experience_correction_listener.py` :: `stop_listener` (L215)
 - `core/services/experienced_time_daemon.py` :: `build_experienced_time_surface` (L149)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L64)
@@ -1022,8 +1023,8 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 - `core/services/internal_opposition_signal_tracking.py` :: `build_runtime_internal_opposition_signal_surface` (L80)
 - `core/services/internal_opposition_signal_tracking.py` :: `refresh_runtime_internal_opposition_signal_statuses` (L49)
 - `core/services/internal_opposition_signal_tracking.py` :: `track_runtime_internal_opposition_signals_for_visible_turn` (L27)
-- `core/services/irony_daemon.py` :: `build_irony_surface` (L53)
-- `core/services/irony_daemon.py` :: `get_latest_irony_observation` (L49)
+- `core/services/irony_daemon.py` :: `build_irony_surface` (L56)
+- `core/services/irony_daemon.py` :: `get_latest_irony_observation` (L52)
 - `core/services/irony_daemon.py` :: `tick_irony_daemon` (L20)
 - `core/services/jarvis_brain.py` :: `connect_index` (L314)
 - `core/services/jarvis_brain.py` :: `index_db_path` (L310)
@@ -1097,8 +1098,8 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 - `core/services/meta_learning_hypotheses.py` :: `list_active_hypotheses` (L189)
 - `core/services/meta_learning_retrospective.py` :: `fetch_memo_by_id` (L256)
 - `core/services/meta_learning_retrospective.py` :: `list_recent_memos` (L272)
-- `core/services/meta_reflection_daemon.py` :: `build_meta_reflection_surface` (L307)
-- `core/services/meta_reflection_daemon.py` :: `get_latest_meta_insight` (L303)
+- `core/services/meta_reflection_daemon.py` :: `build_meta_reflection_surface` (L334)
+- `core/services/meta_reflection_daemon.py` :: `get_latest_meta_insight` (L330)
 - `core/services/metabolism_state_signal_tracking.py` :: `build_runtime_metabolism_state_signal_surface` (L79)
 - `core/services/metabolism_state_signal_tracking.py` :: `refresh_runtime_metabolism_state_signal_statuses` (L48)
 - `core/services/metabolism_state_signal_tracking.py` :: `track_runtime_metabolism_state_signals_for_visible_turn` (L25)
@@ -1282,8 +1283,8 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 - `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L229)
 - `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L336)
 - `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L345)
-- `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L138)
-- `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L134)
+- `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L143)
+- `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L139)
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L92)
 - `core/services/reflection_signal_tracking.py` :: `refresh_runtime_reflection_signal_statuses` (L53)
 - `core/services/reflection_signal_tracking.py` :: `track_runtime_reflection_signals_for_visible_turn` (L24)
@@ -1641,8 +1642,8 @@ Generated from source. 6174/12648 functions/methods documented (48%). The list b
 - `core/services/theory_of_mind_engine.py` :: `build_theory_of_mind_prompt_section` (L53)
 - `core/services/thought_action_proposal_daemon.py` :: `build_proposal_surface` (L142)
 - `core/services/thought_action_proposal_daemon.py` :: `get_pending_proposals` (L138)
-- `core/services/thought_stream_daemon.py` :: `build_thought_stream_surface` (L181)
-- `core/services/thought_stream_daemon.py` :: `get_latest_thought_fragment` (L167)
+- `core/services/thought_stream_daemon.py` :: `build_thought_stream_surface` (L189)
+- `core/services/thought_stream_daemon.py` :: `get_latest_thought_fragment` (L175)
 - `core/services/thought_stream_daemon.py` :: `tick_thought_stream_daemon` (L28)
 - `core/services/thought_thread.py` :: `build_thought_thread_surface` (L192)
 - `core/services/tiny_webchat_execution_pilot.py` :: `build_runtime_webchat_execution_pilot_surface` (L150)

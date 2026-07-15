@@ -222,12 +222,12 @@ _Existential wonder daemon — open, unresolved questions from self-observation.
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `tick_existential_wonder_daemon` | `(absence_hours, fragment_count)` | Maybe generate an existential wonder question. | [src](../../../core/services/existential_wonder_daemon.py#L45) |
-| function | `_maybe_propose_convening` | `(wonder)` | Offer this wonder to the Central reason-judge as a reason to convene the council. | [src](../../../core/services/existential_wonder_daemon.py#L115) |
-| function | `get_latest_wonder` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L145) |
-| function | `build_existential_wonder_surface` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L149) |
-| function | `_generate_wonder_question` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L162) |
-| function | `_store_wonder` | `(wonder, now)` | — | [src](../../../core/services/existential_wonder_daemon.py#L181) |
+| function | `tick_existential_wonder_daemon` | `(absence_hours, fragment_count, *, skip_event_gate=…)` | Maybe generate an existential wonder question. | [src](../../../core/services/existential_wonder_daemon.py#L45) |
+| function | `_maybe_propose_convening` | `(wonder)` | Offer this wonder to the Central reason-judge as a reason to convene the council. | [src](../../../core/services/existential_wonder_daemon.py#L129) |
+| function | `get_latest_wonder` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L159) |
+| function | `build_existential_wonder_surface` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L163) |
+| function | `_generate_wonder_question` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L176) |
+| function | `_store_wonder` | `(wonder, now)` | — | [src](../../../core/services/existential_wonder_daemon.py#L195) |
 
 ## `core/services/experience_correction_listener.py`
 _Experience-episode correction enrichment — closes the negative-signal loop._

@@ -24,10 +24,14 @@ def _text_signal(value: str) -> float:
     return float(sum(ord(c) for c in value) % 100) / 100.0
 
 
-def tick_reflection_cycle_daemon(snapshot: dict) -> dict[str, object]:
+def tick_reflection_cycle_daemon(snapshot: dict, *, skip_event_gate: bool = False) -> dict[str, object]:
     """Generate a pure experience reflection if cadence allows.
     snapshot keys (all optional): energy_level, inner_voice_mode, latest_fragment,
-    last_conflict, conflict_type, last_surprise."""
+    last_conflict, conflict_type, last_surprise.
+
+    ``skip_event_gate``: the inner-voice cluster-daemon owns ONE gate for the
+    whole family; when it dispatches to this member the redundant per-daemon
+    event-gate is skipped (the cadence floor above still rate-limits)."""
     global _last_reflection_at
 
     now = datetime.now(UTC)
@@ -40,19 +44,20 @@ def tick_reflection_cycle_daemon(snapshot: dict) -> dict[str, object]:
     # event-gate. Reflection reacts to inner conflict / valence-shift /
     # surprise — fire on real change, skip cheaply otherwise. Flag off →
     # legacy behaviour. Self-safe: any event_gate error fails open.
-    try:
-        from core.services import event_gate
+    if not skip_event_gate:
+        try:
+            from core.services import event_gate
 
-        if event_gate.event_driven_enabled():
-            _relevant = {
-                "conflict": 1.0 if snapshot.get("last_conflict") else 0.0,
-                "surprise": 1.0 if snapshot.get("last_surprise") else 0.0,
-                "valence": _text_signal(str(snapshot.get("inner_voice_mode", ""))),
-            }
-            if not event_gate.should_generative_fire("reflection_cycle", _relevant):
-                return {"skipped": "no_signal_change"}
-    except Exception:
-        pass  # fail-open: fall through to normal generation
+            if event_gate.event_driven_enabled():
+                _relevant = {
+                    "conflict": 1.0 if snapshot.get("last_conflict") else 0.0,
+                    "surprise": 1.0 if snapshot.get("last_surprise") else 0.0,
+                    "valence": _text_signal(str(snapshot.get("inner_voice_mode", ""))),
+                }
+                if not event_gate.should_generative_fire("reflection_cycle", _relevant):
+                    return {"skipped": "no_signal_change"}
+        except Exception:
+            pass  # fail-open: fall through to normal generation
 
     reflection = _generate_reflection(snapshot)
     if not reflection:

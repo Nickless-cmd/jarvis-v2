@@ -48,14 +48,18 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_observations_today",
         "reset_value": 0,
         "default_cadence_minutes": 30,
-        "description": "Generates situational self-distance observations (max 1/day)",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_innervoice overtager (samme generering, én familie-gate)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_innervoice] Generates situational self-distance observations (max 1/day)",
     },
     "thought_stream": {
         "module": "core.services.thought_stream_daemon",
         "reset_var": "_last_fragment_at",
         "reset_value": None,
         "default_cadence_minutes": 2,
-        "description": "Generates associative thought fragments",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_innervoice overtager (samme generering, én familie-gate)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_innervoice] Generates associative thought fragments",
     },
     "thought_action_proposal": {
         "module": "core.services.thought_action_proposal_daemon",
@@ -76,7 +80,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_reflection_at",
         "reset_value": None,
         "default_cadence_minutes": 10,
-        "description": "Pure experiential awareness — non-instrumental reflection",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_innervoice overtager (samme generering, én familie-gate)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_innervoice] Pure experiential awareness — non-instrumental reflection",
     },
     "memory_safeguard": {
         "module": "core.services.daemon_memory_safeguard",
@@ -97,7 +103,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_meta_at",
         "reset_value": None,
         "default_cadence_minutes": 30,
-        "description": "Cross-signal pattern synthesis and meta-insights",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_innervoice overtager (insight+credit-assignment i familien)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_innervoice] Cross-signal pattern synthesis and meta-insights",
     },
     "experienced_time": {
         "module": "core.services.experienced_time_daemon",
@@ -125,14 +133,18 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 30,
-        "description": "Spontaneous unexpected associations and ideas",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_innervoice overtager (samme generering, én familie-gate)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_innervoice] Spontaneous unexpected associations and ideas",
     },
     "existential_wonder": {
         "module": "core.services.existential_wonder_daemon",
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 1440,
-        "description": "Self-generated philosophical questions from self-observation",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_innervoice overtager; _latest_wonder-output BEVARET (convene_judge/proactivity_bridge/visible_inner_life)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_innervoice] Self-generated philosophical questions from self-observation",
     },
     "dream_insight": {
         "module": "core.services.dream_insight_daemon",
@@ -482,6 +494,23 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # cluster_shadow-markør til parity-sammenligning. AFMONTERER IKKE de 3
         # gamle daemons — prove-then-retire, retire er gated på parity-data.
         "description": "[SHADOW] cluster-daemon FAMILIE #1 (somatic/embodiment): somatic+experienced_time+absence under én event-gate; observe-only parity mod de 3 gamle daemons (aldrig begge live).",
+    },
+    "cluster_innervoice": {
+        "module": "core.services.cluster_daemon",
+        "reset_var": "_INNERVOICE_FAMILY",
+        "reset_value": None,
+        "default_cadence_minutes": 2,
+        "default_enabled": True,
+        # Cluster-daemon-konsolidering (spec 2026-07-14), FAMILIE #2 (inner-voice):
+        # thought_stream + reflection_cycle + meta_reflection + irony +
+        # existential_wonder + creative_drift foldet ind i ÉN Central-styret
+        # familie under ÉN event-gate. Kører LIVE (prove-then-retire END STATE) —
+        # de 6 gamle daemons er PENSIONERET (default_enabled=False, retired
+        # 2026-07-15). Hvert member kalder den gamle daemons generering
+        # (skip_event_gate=True) så alle outputs bevares — især
+        # existential_wonder._latest_wonder (load-bearing for convene_judge,
+        # proactivity_bridge, visible_inner_life). Aldrig begge live.
+        "description": "cluster-daemon FAMILIE #2 (inner-voice) LIVE: thought_stream+reflection_cycle+meta_reflection+irony+existential_wonder+creative_drift under ÉN event-gate; erstatter de 6 pensionerede daemons; bevarer alle outputs (incl. latest_wonder).",
     },
 }
 

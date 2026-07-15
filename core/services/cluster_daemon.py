@@ -432,3 +432,372 @@ def tick_cluster_somatic(snapshot: dict | None = None, *, shadow: bool | None = 
             "members_ran": [],
             "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
         }
+
+
+# ---------------------------------------------------------------------------
+# Family #2 — inner-voice (thought_stream + reflection_cycle + meta_reflection +
+#             irony + existential_wonder + creative_drift)
+# ---------------------------------------------------------------------------
+#
+# The heavy, LLM-with-context family (spec §"De ~10 familier" #3 + §LLM-
+# kontinuitet). These are the thoughts that carry Jarvis' HISTORY to himself —
+# a thought with an ORIGIN, not a context-less fragment — so the LLM is NEVER
+# stripped here. Unlike the somatic family this one runs LIVE (not shadow):
+# it is the prove-then-retire END STATE. Each member's ``live`` dispatches to
+# the SAME generation function the old daemon used (``tick_<x>_daemon`` with
+# ``skip_event_gate=True``), so every load-bearing output is preserved:
+#
+#   * thought_stream    → _cached_fragment / build_thought_stream_surface
+#   * reflection_cycle  → _cached_reflection / build_reflection_surface
+#   * meta_reflection   → _cached_meta_insight (+ Lag-1 credit assignment)
+#   * irony             → _cached_observation / build_irony_surface
+#   * existential_wonder→ _latest_wonder  (LOAD-BEARING: convene_judge,
+#                         proactivity_bridge, visible_inner_life read this)
+#   * creative_drift    → _drift_buffer / build_creative_drift_surface
+#
+# The OLD daemons update their own module-level caches, and every consumer reads
+# those same caches via get_latest_*/build_*_surface — so folding generation
+# into the cluster keeps the entire output pipeline flowing untouched. Each
+# member keeps its intrinsic cadence/cap (thought 2min, reflection 10min, meta
+# 30min, irony 1/day, drift 30min+3/day, wonder 24h floor); the ONE family gate
+# replaces the 6 separate should_generative_fire() calls — that is the load cut.
+
+INNERVOICE_FAMILY = "cluster_innervoice"
+
+
+def _iv_text_signal(value: str) -> float:
+    """Deterministic 0..1 proxy of a short text state (mirrors the daemons'
+    own ``_text_signal`` — no hash randomisation, so the gate sees real moves)."""
+    if not value:
+        return 0.0
+    return float(sum(ord(c) for c in value) % 100) / 100.0
+
+
+def _collect_innervoice_snapshot() -> dict[str, Any]:
+    """Gather the inner-voice family's shared snapshot once per tick.
+
+    Reads the same live surfaces the heartbeat used to assemble inline for each
+    of the 6 daemons. Self-safe: any missing source degrades to a neutral
+    default; the family still ticks. NO LLM, no writes here — this is only the
+    input gathering; the members' ``live`` functions do the generation.
+    """
+    snap: dict[str, Any] = {
+        "energy_level": "",
+        "inner_voice_mode": "",
+        "latest_fragment": "",
+        "fragment_count": 0,
+        "fragment_buffer": [],
+        "last_conflict": "",
+        "last_surprise": "",
+        "last_irony": "",
+        "last_taste": "",
+        "curiosity_signal": "",
+        "absence_hours": 0.0,
+        "user_inactive_min": 999.0,
+        "cpu_pct": 0.0,
+    }
+    try:
+        from core.runtime.circadian_state import get_circadian_context
+        snap["energy_level"] = str(get_circadian_context().get("energy_level") or "")
+    except Exception:
+        pass
+    try:
+        from core.services.inner_voice_daemon import get_inner_voice_daemon_state
+        _iv = get_inner_voice_daemon_state()
+        snap["inner_voice_mode"] = str((_iv.get("last_result") or {}).get("mode") or "")
+    except Exception:
+        pass
+    try:
+        from core.services.thought_stream_daemon import build_thought_stream_surface
+        _ts = build_thought_stream_surface() or {}
+        snap["latest_fragment"] = str(_ts.get("latest_fragment") or "")
+        snap["fragment_count"] = int(_ts.get("fragment_count") or 0)
+        snap["fragment_buffer"] = list(_ts.get("fragment_buffer") or [])
+    except Exception:
+        pass
+    try:
+        from core.services.conflict_daemon import get_latest_conflict
+        snap["last_conflict"] = str(get_latest_conflict() or "")
+    except Exception:
+        pass
+    try:
+        from core.services.surprise_daemon import build_surprise_surface
+        snap["last_surprise"] = str((build_surprise_surface() or {}).get("last_surprise") or "")
+    except Exception:
+        pass
+    try:
+        from core.services.irony_daemon import build_irony_surface
+        snap["last_irony"] = str((build_irony_surface() or {}).get("last_observation") or "")
+    except Exception:
+        pass
+    try:
+        from core.services.aesthetic_taste_daemon import build_taste_surface
+        snap["last_taste"] = str((build_taste_surface() or {}).get("latest_insight") or "")
+    except Exception:
+        pass
+    try:
+        from core.services.curiosity_daemon import get_latest_curiosity
+        snap["curiosity_signal"] = str(get_latest_curiosity() or "")
+    except Exception:
+        pass
+    try:
+        from core.services.absence_daemon import build_absence_surface
+        snap["absence_hours"] = float((build_absence_surface() or {}).get("absence_duration_hours") or 0.0)
+    except Exception:
+        pass
+    # user-inactivity + cpu for the irony gate signal (collected once here so the
+    # irony member's cheap signal probe doesn't re-hit psutil/DB every tick).
+    try:
+        from core.services.irony_daemon import _collect_snapshot as _irony_collect
+        _isnap = _irony_collect() or {}
+        snap["user_inactive_min"] = float(_isnap.get("user_inactive_min", 999.0))
+        snap["cpu_pct"] = float(_isnap.get("cpu_pct", 0.0))
+    except Exception:
+        pass
+    return snap
+
+
+# ── member signal extractors (aggregated into the ONE family gate) ──────────
+
+
+def _iv_thought_stream_signals(snap: dict) -> dict[str, float]:
+    return {
+        "energy": _iv_text_signal(str(snap.get("energy_level", ""))),
+        "mood": _iv_text_signal(str(snap.get("inner_voice_mode", ""))),
+        "continuity": 1.0 if snap.get("latest_fragment") else 0.0,
+    }
+
+
+def _iv_reflection_signals(snap: dict) -> dict[str, float]:
+    return {
+        "conflict": 1.0 if snap.get("last_conflict") else 0.0,
+        "surprise": 1.0 if snap.get("last_surprise") else 0.0,
+        "valence": _iv_text_signal(str(snap.get("inner_voice_mode", ""))),
+    }
+
+
+def _iv_meta_signals(snap: dict) -> dict[str, float]:
+    return {
+        "latest_fragment": float(len(str(snap.get("latest_fragment") or ""))),
+        "last_surprise": float(len(str(snap.get("last_surprise") or ""))),
+        "last_conflict": float(len(str(snap.get("last_conflict") or ""))),
+    }
+
+
+def _iv_irony_signals(snap: dict) -> dict[str, float]:
+    return {
+        "user_inactive_min": float(snap.get("user_inactive_min", 0.0) or 0.0),
+        "cpu_pct": float(snap.get("cpu_pct", 0.0) or 0.0),
+    }
+
+
+def _iv_wonder_signals(snap: dict) -> dict[str, float]:
+    hours = float(snap.get("absence_hours", 0.0) or 0.0)
+    frags = int(snap.get("fragment_count", 0) or 0)
+    return {
+        "existential_pressure": min(max(hours, 0.0) / 24.0, 1.0),
+        "long_absence": min(max(hours, 0.0) / 24.0, 1.0),
+        "thought_stream": min(max(frags, 0) / 20.0, 1.0),
+    }
+
+
+def _iv_drift_signals(snap: dict) -> dict[str, float]:
+    return {
+        "idle_seconds": float(snap.get("user_inactive_min", 0.0) or 0.0) * 60.0,
+        "unused_fragments": float(len(snap.get("fragment_buffer") or [])),
+    }
+
+
+# ── member live dispatchers (reuse the old daemons' generation, one shared
+#    family gate having already fired → skip_event_gate=True) ────────────────
+
+
+def _iv_thought_stream_live(snap: dict) -> dict[str, Any]:
+    from core.services.thought_stream_daemon import tick_thought_stream_daemon
+    return tick_thought_stream_daemon(
+        energy_level=str(snap.get("energy_level", "")),
+        inner_voice_mode=str(snap.get("inner_voice_mode", "")),
+        skip_event_gate=True,
+    )
+
+
+def _iv_reflection_live(snap: dict) -> dict[str, Any]:
+    from core.services.reflection_cycle_daemon import tick_reflection_cycle_daemon
+    return tick_reflection_cycle_daemon(
+        {
+            "energy_level": snap.get("energy_level", ""),
+            "inner_voice_mode": snap.get("inner_voice_mode", ""),
+            "latest_fragment": snap.get("latest_fragment", ""),
+            "last_conflict": snap.get("last_conflict", ""),
+            "last_surprise": snap.get("last_surprise", ""),
+        },
+        skip_event_gate=True,
+    )
+
+
+def _iv_meta_live(snap: dict) -> dict[str, Any]:
+    from core.services.meta_reflection_daemon import tick_meta_reflection_daemon
+    return tick_meta_reflection_daemon(
+        {
+            "energy_level": snap.get("energy_level", ""),
+            "inner_voice_mode": snap.get("inner_voice_mode", ""),
+            "latest_fragment": snap.get("latest_fragment", ""),
+            "last_surprise": snap.get("last_surprise", ""),
+            "last_conflict": snap.get("last_conflict", ""),
+            "last_irony": snap.get("last_irony", ""),
+            "last_taste": snap.get("last_taste", ""),
+            "curiosity_signal": snap.get("curiosity_signal", ""),
+        },
+        skip_event_gate=True,
+        skip_credit=True,  # credit-assignment already run unconditionally this tick
+    )
+
+
+def _iv_irony_live(snap: dict) -> dict[str, Any]:
+    from core.services.irony_daemon import tick_irony_daemon
+    return tick_irony_daemon(skip_event_gate=True)
+
+
+def _iv_wonder_live(snap: dict) -> dict[str, Any]:
+    from core.services.existential_wonder_daemon import tick_existential_wonder_daemon
+    return tick_existential_wonder_daemon(
+        absence_hours=float(snap.get("absence_hours", 0.0) or 0.0),
+        fragment_count=int(snap.get("fragment_count", 0) or 0),
+        skip_event_gate=True,
+    )
+
+
+def _iv_drift_live(snap: dict) -> dict[str, Any]:
+    from core.services.creative_drift_daemon import tick_creative_drift_daemon
+    return tick_creative_drift_daemon(list(snap.get("fragment_buffer") or []), skip_event_gate=True)
+
+
+# ── member observe probes (side-effect-free; used only if ever run in shadow) ─
+
+
+def _iv_surface_observe(builder_path: tuple[str, str], keys: tuple[str, ...]) -> Callable[[dict], Any]:
+    def _obs(_snap: dict) -> dict[str, Any]:
+        try:
+            import importlib
+            mod = importlib.import_module(builder_path[0])
+            surf = getattr(mod, builder_path[1])() or {}
+            return {k: surf.get(k) for k in keys}
+        except Exception:
+            return {}
+    return _obs
+
+
+def build_innervoice_family() -> ClusterDaemon:
+    """Construct the inner-voice cluster-daemon (family #2), LIVE.
+
+    Six members, ONE family gate. Each member dispatches to the proven
+    generation function of the daemon it replaces (skip_event_gate=True), so all
+    outputs — crucially ``existential_wonder``'s ``_latest_wonder`` — keep
+    flowing to their existing consumers.
+    """
+    return ClusterDaemon(
+        family_name=INNERVOICE_FAMILY,
+        cluster="cognition",
+        collect_snapshot=_collect_innervoice_snapshot,
+        members=[
+            ClusterMember(
+                name="thought_stream",
+                signals=_iv_thought_stream_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.thought_stream_daemon", "build_thought_stream_surface"),
+                    ("latest_fragment", "fragment_count"),
+                ),
+                live=_iv_thought_stream_live,
+            ),
+            ClusterMember(
+                name="reflection_cycle",
+                signals=_iv_reflection_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.reflection_cycle_daemon", "build_reflection_surface"),
+                    ("latest_reflection", "reflection_count"),
+                ),
+                live=_iv_reflection_live,
+            ),
+            ClusterMember(
+                name="meta_reflection",
+                signals=_iv_meta_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.meta_reflection_daemon", "build_meta_reflection_surface"),
+                    ("latest_insight", "insight_count"),
+                ),
+                live=_iv_meta_live,
+            ),
+            ClusterMember(
+                name="irony",
+                signals=_iv_irony_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.irony_daemon", "build_irony_surface"),
+                    ("last_observation", "observations_today"),
+                ),
+                live=_iv_irony_live,
+            ),
+            ClusterMember(
+                name="existential_wonder",
+                signals=_iv_wonder_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.existential_wonder_daemon", "build_existential_wonder_surface"),
+                    ("latest_wonder",),
+                ),
+                live=_iv_wonder_live,
+            ),
+            ClusterMember(
+                name="creative_drift",
+                signals=_iv_drift_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.creative_drift_daemon", "build_creative_drift_surface"),
+                    ("latest_drift", "drift_count_today"),
+                ),
+                live=_iv_drift_live,
+            ),
+        ],
+    )
+
+
+# Process-level singleton (keeps the family's gate baselines + Central trace
+# continuous across heartbeat ticks, mirroring the somatic family).
+_INNERVOICE_FAMILY: ClusterDaemon | None = None
+
+
+def innervoice_family() -> ClusterDaemon:
+    global _INNERVOICE_FAMILY
+    if _INNERVOICE_FAMILY is None:
+        _INNERVOICE_FAMILY = build_innervoice_family()
+    return _INNERVOICE_FAMILY
+
+
+def tick_cluster_innervoice(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
+    """Heartbeat entry-point for the inner-voice cluster-daemon family.
+
+    Runs LIVE by default (``shadow=False``) — this family IS the prove-then-retire
+    end state that replaces the 6 old inner-voice daemons, so it must actually
+    produce their outputs, not merely observe. Before the single family gate it
+    runs the NON-LLM Lag-1 credit-assignment pass UNCONDITIONALLY (as the old
+    meta_reflection daemon did every heartbeat tick), independent of whether the
+    generative family gate fires.
+
+    Self-safe: returns a minimal skipped result on catastrophic failure and
+    NEVER raises into the heartbeat.
+    """
+    try:
+        snap = _collect_innervoice_snapshot() if snapshot is None else snapshot
+        # Unconditional every-tick credit assignment (preserves old behaviour).
+        try:
+            from core.services.meta_reflection_daemon import run_credit_assignment
+            run_credit_assignment(snap)
+        except Exception:
+            pass
+        run_live = False if shadow is None else bool(shadow)
+        return innervoice_family().tick(snap, shadow=run_live)
+    except Exception as exc:  # never crash the heartbeat
+        return {
+            "family": INNERVOICE_FAMILY,
+            "fired": False,
+            "gate_calls": 1,
+            "members_ran": [],
+            "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
+        }

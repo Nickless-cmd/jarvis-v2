@@ -35,10 +35,14 @@ _today_date: date | None = None
 # ---------------------------------------------------------------------------
 
 
-def tick_creative_drift_daemon(fragments: list[str]) -> dict:
+def tick_creative_drift_daemon(fragments: list[str], *, skip_event_gate: bool = False) -> dict:
     """Maybe generate a spontaneous associative idea.
 
     fragments: recent thought-stream fragments (latest first).
+
+    ``skip_event_gate``: the inner-voice cluster owns ONE family gate; when it
+    dispatches to this member the redundant per-daemon event-gate is skipped —
+    the 30-min cadence + 3/day cap above remain this member's rate limit.
     """
     global _last_tick_at, _today_count, _today_date
 
@@ -62,15 +66,16 @@ def tick_creative_drift_daemon(fragments: list[str]) -> dict:
     # ── Event-gate (Fase 2 Lag 5): fire the associative-surprise generation
     #    only when idle-time / unused-context signals actually moved.
     #    Flag OFF → legacy behaviour (cadence + daily-cap only). ──
-    from core.services import event_gate
-    if event_gate.event_driven_enabled():
-        _idle_seconds = (now - _last_tick_at).total_seconds() if _last_tick_at else 0.0
-        _relevant = {
-            "idle_seconds": float(_idle_seconds),
-            "unused_fragments": float(len(fragments or [])),
-        }
-        if not event_gate.should_generative_fire("creative_drift", _relevant):
-            return {"skipped": "no_signal_change"}
+    if not skip_event_gate:
+        from core.services import event_gate
+        if event_gate.event_driven_enabled():
+            _idle_seconds = (now - _last_tick_at).total_seconds() if _last_tick_at else 0.0
+            _relevant = {
+                "idle_seconds": float(_idle_seconds),
+                "unused_fragments": float(len(fragments or [])),
+            }
+            if not event_gate.should_generative_fire("creative_drift", _relevant):
+                return {"skipped": "no_signal_change"}
 
     idea = _generate_drift_idea(fragments)
     if not idea:

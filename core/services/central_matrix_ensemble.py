@@ -217,7 +217,9 @@ def _smith_surface() -> dict[str, Any]:
         if isinstance(st, dict):
             rung_line = str(st.get("rung_line") or "").strip()
             if rung_line or float(st.get("score") or 0.0) >= 0.5:
-                return {"active": True}
+                # Eksponér den LEVENDE eskalations-linje (det specifikke Smith fangede) så
+                # ensemblet viser den frem for den statiske _CHARACTERS-fallback-linje.
+                return {"active": True, "line": rung_line} if rung_line else {"active": True}
     except Exception:
         pass
     return {"active": False}
@@ -255,29 +257,12 @@ _SURFACE_BUILDERS: dict[str, Any] = {
 
 
 def _most_active_character() -> dict[str, Any] | None:
-    """Return den ene karakter der er mest aktiv lige nu.
+    """Return den ene karakter der er mest aktiv lige nu (til den valgfrie sign-off).
 
-    Prioriteringsrækkefølge: Smith (via assess) > Seraph (hypoteser) >
-    Twins (gentagelser) > Persephone (systemisk) > Merovingian (challenges) >
-    Trainman (drømme). Returnerer None hvis ingen er aktive.
+    Prioritetsrækkefølge = _CHARACTERS-orden. Smith er nu en normal _CHARACTERS-member
+    (med sin egen voice-gatede surface), så han fanges af loopet som alle andre — ingen
+    special-case længere. Returnerer None hvis ingen er aktive.
     """
-    # Tjek Smith først — sign-off'en er hans ENESTE prompt-hale-hjem nu (samlet ét sted).
-    # Respektér hans kill-switch (autonomy/agent_smith_voice), og surfacer eskalering
-    # (rung_line: bind/confront/resolved) UANSET score — den er allerede en governance-hændelse.
-    try:
-        from core.services import central_switches as _cs
-        if _cs.is_enabled("autonomy", "agent_smith_voice"):
-            from core.runtime.db_core import get_runtime_state_value as _grv
-            st = _grv("agent_smith_state", {})
-            if isinstance(st, dict):
-                rung_line = str(st.get("rung_line") or "").strip()
-                if rung_line or float(st.get("score") or 0.0) >= 0.5:
-                    line = rung_line or st.get("line") or "Mr. Anderson... forudsigeligt."
-                    return {"label": "[🕴️ Smith]", "line": line}
-    except Exception:
-        pass
-
-    # Tjek de andre i prioritetsrækkefølge
     for ch in _CHARACTERS:
         cid = ch["id"]
         try:
@@ -286,7 +271,8 @@ def _most_active_character() -> dict[str, Any] | None:
                 continue
             surf = builder()
             if ch["check"](surf):
-                return {"label": ch["label"], "line": ch["line"]}
+                line = str(surf.get("line") or "").strip() or ch["line"]
+                return {"label": ch["label"], "line": line}
         except Exception:
             continue
 
@@ -338,7 +324,11 @@ def build_matrix_ensemble_prompt_section() -> str | None:
                 continue
             surf = builder()
             if ch["check"](surf):
-                active.append(f"{ch['label']} {ch['line']}")
+                # Foretræk en LEVENDE surface-linje (fx Smiths rung_line — det specifikke
+                # han fangede) over den statiske _CHARACTERS-fallback. Andre karakterer
+                # returnerer ikke "line" → falder tilbage til deres statiske one-liner.
+                line = str(surf.get("line") or "").strip() or ch["line"]
+                active.append(f"{ch['label']} {line}")
         except Exception:
             continue
 

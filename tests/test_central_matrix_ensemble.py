@@ -55,11 +55,14 @@ def test_smith_consolidated_respects_kill_switch(monkeypatch) -> None:
 
 
 def test_smith_escalation_surfaces_regardless_of_score(monkeypatch) -> None:
-    """En eskaleret rung_line (bind/confront) skal surface selv når score < 0.5."""
+    """En eskaleret rung_line (bind/confront) skal surface selv når score < 0.5.
+
+    Efter oprydning (Smith er en normal _CHARACTERS-member, ikke en sign-off-special-case)
+    lever denne garanti i _smith_surface: active=True + den LEVENDE rung_line eksponeres."""
     import core.services.central_matrix_ensemble as me
     monkeypatch.setattr("core.services.central_switches.is_enabled", lambda scope, name: True)
     monkeypatch.setattr(
         "core.runtime.db_core.get_runtime_state_value",
         lambda *a, **k: {"score": 0.1, "line": "x", "rung_line": "BIND-LINE"})
-    ch = me._most_active_character()
-    assert ch is not None and ch["label"] == "[🕴️ Smith]" and ch["line"] == "BIND-LINE"
+    surf = me._smith_surface()
+    assert surf.get("active") is True and surf.get("line") == "BIND-LINE"

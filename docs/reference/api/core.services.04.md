@@ -522,12 +522,12 @@ _Matrix Ensemble — prompttail-labels for Matrix-programmerne (11 karakterer)._
 | function | `_source_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L196) |
 | function | `_neo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L200) |
 | function | `_smith_surface` | `()` | Smith — mønster-detektor og forpligtelseshåndhæver. | [src](../../../core/services/central_matrix_ensemble.py#L204) |
-| function | `_morpheus_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L226) |
-| function | `_trinity_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L230) |
-| function | `_most_active_character` | `()` | Return den ene karakter der er mest aktiv lige nu. | [src](../../../core/services/central_matrix_ensemble.py#L257) |
-| function | `signoff_enabled` | `()` | Owner-switch: nerve/matrix_signoff (default ON). Slås fra/til via jc: `central signoff off`. | [src](../../../core/services/central_matrix_ensemble.py#L296) |
-| function | `build_matrix_signoff_section` | `()` | Byg en sign-off instruktion til prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L306) |
-| function | `build_matrix_ensemble_prompt_section` | `()` | Byg karakter-labels for prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L321) |
+| function | `_morpheus_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L228) |
+| function | `_trinity_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L232) |
+| function | `_most_active_character` | `()` | Return den ene karakter der er mest aktiv lige nu (til den valgfrie sign-off). | [src](../../../core/services/central_matrix_ensemble.py#L259) |
+| function | `signoff_enabled` | `()` | Owner-switch: nerve/matrix_signoff (default ON). Slås fra/til via jc: `central signoff off`. | [src](../../../core/services/central_matrix_ensemble.py#L282) |
+| function | `build_matrix_signoff_section` | `()` | Byg en sign-off instruktion til prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L292) |
+| function | `build_matrix_ensemble_prompt_section` | `()` | Byg karakter-labels for prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L307) |
 
 ## `core/services/central_membrane_watch.py`
 _WARDEN — vogteren over muren (LivingNeuron-roadmap §2, 4. jul)._

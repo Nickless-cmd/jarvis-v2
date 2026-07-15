@@ -1818,6 +1818,7 @@ def _force_write_file(args: dict[str, Any]) -> dict[str, Any]:
     content = str(args.get("content") or "")
     if not path:
         return {"error": "path is required", "status": "error"}
+    content, _esc_note = _guard_py_escapes(content, path)
     target = Path(path).expanduser().resolve()
     target, redirected_from = _canonicalize_workspace_target(target)
     from core.services.gate_execution import check_file as _check_file
@@ -1830,6 +1831,8 @@ def _force_write_file(args: dict[str, Any]) -> dict[str, Any]:
     if redirected_from:
         result["redirected_from"] = redirected_from
         result["note"] = f"Path redirected to canonical workspace location: {target}"
+    if _esc_note:
+        result["escape_guard"] = _esc_note
     return result
 
 
@@ -1852,8 +1855,11 @@ def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     if old_text not in content:
         return {"error": "old_text not found in file", "status": "error"}
     new_content = content.replace(old_text, new_text, 1)
+    new_content, _esc_note = _guard_py_escapes(new_content, str(target))
     _ws_write_text(target, new_content)
     result = {"status": "ok", "path": str(target), "replacements": 1}
+    if _esc_note:
+        result["escape_guard"] = _esc_note
     if redirected_from:
         result["redirected_from"] = redirected_from
         result["note"] = f"Path redirected to canonical workspace location: {target}"

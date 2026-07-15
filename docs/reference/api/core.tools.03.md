@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/tiktok_content_tools.py`
+_TikTok content generation tool — wraps jarvis_pollinations_pipeline._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_tiktok_generate_video` | `(args)` | — | [src](../../../core/tools/tiktok_content_tools.py#L21) |
+
 ## `core/tools/tiktok_tools.py`
 _TikTok auto-uploader integration tools for Jarvis._
 

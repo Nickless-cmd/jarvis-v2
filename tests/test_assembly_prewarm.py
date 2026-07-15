@@ -41,6 +41,7 @@ def test_prewarm_once_sets_and_clears_flag(monkeypatch):
     monkeypatch.setattr(
         "core.services.prompt_contract.build_visible_chat_prompt_assembly", _fake_build
     )
+    monkeypatch.setattr(ap, "_should_prewarm", lambda: True)   # test af flag, ikke event-gate
     elapsed = ap.prewarm_once()
     assert elapsed is not None and elapsed >= 0.0
     assert seen["active_during_build"] is True          # flag set during build
@@ -94,3 +95,38 @@ def test_start_loop_is_idempotent(monkeypatch):
     assert ap.start_prewarm_loop() is True               # first start
     assert ap.start_prewarm_loop() is False              # already started
     assert len(started_threads) == 1
+
+
+class TestEventDrivenPrewarmGate:
+    """15. jul: event-drevet gate dræber 292M-tokens/13d-burnet. Warm KUN når det
+    tilføjer værdi (aktiv bruger + kold cache + ikke nylig warmet)."""
+
+    def _patch(self, monkeypatch, *, warm=None, real=None, activity=None):
+        import core.services.assembly_prewarm as P
+        monkeypatch.setattr(P, "_seconds_since_last_prewarm", lambda: warm)
+        monkeypatch.setattr(P, "_seconds_since_last_real_deepseek_call", lambda: real)
+        monkeypatch.setattr(P, "_seconds_since_last_user_activity", lambda: activity)
+        monkeypatch.setattr(P, "_interval_s", lambda: 300.0)
+        monkeypatch.setattr(P, "_skip_if_recent_s", lambda: 300.0)
+        monkeypatch.setattr(P, "_idle_window_s", lambda: 900.0)
+        return P
+
+    def test_idle_no_activity_skips(self, monkeypatch):
+        P = self._patch(monkeypatch, warm=None, real=None, activity=None)
+        assert P._should_prewarm() is False
+
+    def test_idle_stale_activity_skips(self, monkeypatch):
+        P = self._patch(monkeypatch, warm=None, real=None, activity=1200.0)
+        assert P._should_prewarm() is False
+
+    def test_active_cold_cache_warms(self, monkeypatch):
+        P = self._patch(monkeypatch, warm=None, real=None, activity=120.0)
+        assert P._should_prewarm() is True
+
+    def test_active_but_warm_cache_skips(self, monkeypatch):
+        P = self._patch(monkeypatch, warm=None, real=60.0, activity=120.0)
+        assert P._should_prewarm() is False
+
+    def test_recently_warmed_throttles(self, monkeypatch):
+        P = self._patch(monkeypatch, warm=100.0, real=None, activity=120.0)
+        assert P._should_prewarm() is False

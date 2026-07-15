@@ -506,27 +506,28 @@ _Matrix Ensemble — prompttail-labels for Matrix-programmerne (11 karakterer)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_build_surface` | `(module_path, fn_name)` | Kald surface-funktionen på en central_*-karakter. Fejl → tom dict. | [src](../../../core/services/central_matrix_ensemble.py#L125) |
-| function | `_trainman_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L139) |
-| function | `_seraph_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L143) |
-| function | `_persephone_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L147) |
-| function | `_twins_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L151) |
-| function | `_merovingian_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L155) |
-| function | `_keymaker_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L159) |
-| function | `_construct_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L163) |
-| function | `_oracle_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L167) |
-| function | `_architect_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L171) |
-| function | `_echo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L175) |
-| function | `_glitch_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L179) |
-| function | `_child_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L183) |
-| function | `_source_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L187) |
-| function | `_neo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L191) |
-| function | `_morpheus_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L195) |
-| function | `_trinity_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L199) |
-| function | `_most_active_character` | `()` | Return den ene karakter der er mest aktiv lige nu. | [src](../../../core/services/central_matrix_ensemble.py#L225) |
-| function | `signoff_enabled` | `()` | Owner-switch: nerve/matrix_signoff (default ON). Slås fra/til via jc: `central signoff off`. | [src](../../../core/services/central_matrix_ensemble.py#L264) |
-| function | `build_matrix_signoff_section` | `()` | Byg en sign-off instruktion til prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L274) |
-| function | `build_matrix_ensemble_prompt_section` | `()` | Byg karakter-labels for prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L289) |
+| function | `_build_surface` | `(module_path, fn_name)` | Kald surface-funktionen på en central_*-karakter. Fejl → tom dict. | [src](../../../core/services/central_matrix_ensemble.py#L134) |
+| function | `_trainman_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L148) |
+| function | `_seraph_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L152) |
+| function | `_persephone_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L156) |
+| function | `_twins_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L160) |
+| function | `_merovingian_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L164) |
+| function | `_keymaker_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L168) |
+| function | `_construct_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L172) |
+| function | `_oracle_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L176) |
+| function | `_architect_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L180) |
+| function | `_echo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L184) |
+| function | `_glitch_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L188) |
+| function | `_child_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L192) |
+| function | `_source_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L196) |
+| function | `_neo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L200) |
+| function | `_smith_surface` | `()` | Smith — mønster-detektor og forpligtelseshåndhæver. | [src](../../../core/services/central_matrix_ensemble.py#L204) |
+| function | `_morpheus_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L226) |
+| function | `_trinity_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L230) |
+| function | `_most_active_character` | `()` | Return den ene karakter der er mest aktiv lige nu. | [src](../../../core/services/central_matrix_ensemble.py#L257) |
+| function | `signoff_enabled` | `()` | Owner-switch: nerve/matrix_signoff (default ON). Slås fra/til via jc: `central signoff off`. | [src](../../../core/services/central_matrix_ensemble.py#L296) |
+| function | `build_matrix_signoff_section` | `()` | Byg en sign-off instruktion til prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L306) |
+| function | `build_matrix_ensemble_prompt_section` | `()` | Byg karakter-labels for prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L321) |
 
 ## `core/services/central_membrane_watch.py`
 _WARDEN — vogteren over muren (LivingNeuron-roadmap §2, 4. jul)._

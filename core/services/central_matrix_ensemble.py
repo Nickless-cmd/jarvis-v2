@@ -25,6 +25,15 @@ _CHARACTERS: list[dict[str, Any]] = [
         ),
     },
     {
+        # Smith = mønster-detektor og forpligtelseshåndhæver. Aktivér når han har
+        # en rung_line (han fangede noget) ELLER score ≥ 0.5. Voice gate:
+        # autonomy/agent_smith_voice (default ON via fail-safe i _most_active_character).
+        "id": "smith",
+        "label": "[🕴️ Smith]",
+        "line": "Nej, Mr. Anderson. Forudsigeligt som altid.",
+        "check": lambda surf: bool(surf.get("active")),
+    },
+    {
         "id": "trainman",
         "label": "[🚂 Trainman]",
         "line": "Drømme ankommer. Erindringer forlader. Hold øje med perronen.",
@@ -192,6 +201,28 @@ def _neo_surface() -> dict[str, Any]:
     return _build_surface("core.services.emergence", "build_emergence_surface")
 
 
+def _smith_surface() -> dict[str, Any]:
+    """Smith — mønster-detektor og forpligtelseshåndhæver.
+
+    Surface læser agent_smith_state direkte fra DB (samme logik som
+    sign-off'ens _most_active_character). Returnerer active=True når
+    voice-gaten er åben OG han har en rung_line eller score ≥ 0.5.
+    """
+    try:
+        from core.services import central_switches as _cs
+        if not _cs.is_enabled("autonomy", "agent_smith_voice"):
+            return {"active": False}
+        from core.runtime.db_core import get_runtime_state_value as _grv
+        st = _grv("agent_smith_state", {})
+        if isinstance(st, dict):
+            rung_line = str(st.get("rung_line") or "").strip()
+            if rung_line or float(st.get("score") or 0.0) >= 0.5:
+                return {"active": True}
+    except Exception:
+        pass
+    return {"active": False}
+
+
 def _morpheus_surface() -> dict[str, Any]:
     return _build_surface("core.services.central_morpheus", "build_morpheus_surface")
 
@@ -204,6 +235,7 @@ def _trinity_surface() -> dict[str, Any]:
 
 _SURFACE_BUILDERS: dict[str, Any] = {
     "neo": _neo_surface,
+    "smith": _smith_surface,
     "trainman": _trainman_surface,
     "seraph": _seraph_surface,
     "persephone": _persephone_surface,

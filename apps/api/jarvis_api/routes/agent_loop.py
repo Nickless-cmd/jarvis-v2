@@ -776,7 +776,20 @@ async def agent_step(request: Request):
         return JSONResponse(status_code=400, content={
             "error": {"message": "messages[] er påkrævet", "type": "invalid_request_error"}})
 
-    provider, model = _resolve_target()
+    # jarvis-code CHAT: rolle-aware model — member→ollama-deepseek LÅST, owner→sin valgte
+    # model (default deepseek-flash). IKKE agent-poolen/adaptive-router: den er reserveret
+    # til Jarvis' indre liv + autonome agenter, ALDRIG bruger-chat. Klientens model-vælger
+    # styrer nu faktisk (den sender provider+model). Genbruger desks _resolve_visible_target
+    # så member-lås/owner-frihed er BIT-for-BIT samme politik som desk.
+    _prov_req = str(body.get("provider") or "").strip()
+    _model_req = str(body.get("model") or "").strip()
+    try:
+        from apps.api.jarvis_api.routes.chat import _resolve_visible_target
+        provider, model = _resolve_visible_target(user_id or None, _prov_req, _model_req)
+    except Exception:
+        provider, model = "", ""
+    if not provider or not model:
+        provider, model = "deepseek", "deepseek-v4-flash"  # jarvis-code chat-default (owner)
 
     try:
         from core.services.cheap_provider_runtime_adapters import (

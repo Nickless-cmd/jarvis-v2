@@ -104,15 +104,17 @@ def test_reasoning_stripped_for_non_deepseek_replay(monkeypatch):
         {"role": "tool", "tool_call_id": "1", "content": "result"},
     ]
 
-    monkeypatch.setattr(al, "_resolve_target", lambda: ("opencode", "some-model"))
-    client.post("/v1/agent/step", json={"messages": payload_messages, "stream": False})
+    # Owner honorerer klient-sendt provider/model (rolle-aware resolution) — så en
+    # non-deepseek provider tvinges nu via body, ikke via _resolve_target-monkeypatch.
+    client.post("/v1/agent/step", json={"messages": payload_messages, "stream": False,
+                                        "provider": "opencode", "model": "some-model"})
     assistant_msg = [m for m in captured["messages"] if m.get("role") == "assistant"][-1]
     assert "reasoning_content" not in assistant_msg
     assert assistant_msg.get("tool_calls")  # tool_calls pairing preserved
 
     captured.clear()
-    monkeypatch.setattr(al, "_resolve_target", lambda: ("deepseek", "deepseek-v4-flash"))
-    client.post("/v1/agent/step", json={"messages": payload_messages, "stream": False})
+    client.post("/v1/agent/step", json={"messages": payload_messages, "stream": False,
+                                        "provider": "deepseek", "model": "deepseek-v4-flash"})
     assistant_msg2 = [m for m in captured["messages"] if m.get("role") == "assistant"][-1]
     assert assistant_msg2.get("reasoning_content") == "thinking..."
 

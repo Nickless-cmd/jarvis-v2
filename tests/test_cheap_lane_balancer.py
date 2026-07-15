@@ -187,7 +187,7 @@ import time as _time
 from collections import Counter
 
 
-def _slot(provider="groq", model="m", rpm=None, daily=None, proxy=False):
+def _slot(provider="groq", model="m", rpm_limit=None, daily_limit=None, is_public_proxy=False):
     from core.services.cheap_lane_balancer import BalancerSlot
     return BalancerSlot(
         provider=provider, model=model, auth_profile="default",
@@ -200,7 +200,7 @@ def test_weight_zero_during_cooldown():
     from core.services.cheap_lane_balancer import (
         _compute_weight, SlotState,
     )
-    s = _slot(rpm=30, daily=10000)
+    s = _slot(rpm_limit=30, daily_limit=10000)
     state = SlotState(slot_id=s.slot_id, cooldown_until=_time.time() + 60)
     assert _compute_weight(s, state, _time.time()) == 0.0
 
@@ -209,7 +209,7 @@ def test_weight_zero_when_manually_disabled():
     from core.services.cheap_lane_balancer import (
         _compute_weight, SlotState,
     )
-    s = _slot(rpm=30, daily=10000)
+    s = _slot(rpm_limit=30, daily_limit=10000)
     state = SlotState(slot_id=s.slot_id, manually_disabled=True)
     assert _compute_weight(s, state, _time.time()) == 0.0
 
@@ -218,7 +218,7 @@ def test_weight_decreases_with_daily_usage(monkeypatch):
     # Fund 5: daily headroom kommer nu fra SQLite (_daily_used_from_db), ikke
     # SlotState.daily_use_count. Vægten skal stadig falde med stigende brug.
     from core.services import cheap_lane_balancer as clb
-    s = _slot(rpm=30, daily=100)
+    s = _slot(rpm_limit=30, daily_limit=100)
     state = clb.SlotState(slot_id=s.slot_id)
     now = _time.time()
     monkeypatch.setattr(clb, "_daily_used_from_db", lambda provider: 0)
@@ -232,8 +232,8 @@ def test_public_proxy_boost_applied():
     from core.services.cheap_lane_balancer import (
         _compute_weight, SlotState,
     )
-    paid = _slot(provider="groq", rpm=None, daily=None, proxy=False)
-    free = _slot(provider="ollamafreeapi", rpm=None, daily=None, proxy=True)
+    paid = _slot(provider="groq", rpm_limit=None, daily_limit=None, is_public_proxy=False)
+    free = _slot(provider="ollamafreeapi", rpm_limit=None, daily_limit=None, is_public_proxy=True)
     state_paid = SlotState(slot_id=paid.slot_id)
     state_free = SlotState(slot_id=free.slot_id)
     now = _time.time()
@@ -250,7 +250,7 @@ def test_breaker_level_reduces_weight():
     from core.services.cheap_lane_balancer import (
         _compute_weight, SlotState,
     )
-    s = _slot(rpm=None, daily=None, proxy=False)
+    s = _slot(rpm_limit=None, daily_limit=None, is_public_proxy=False)
     state_healthy = SlotState(slot_id=s.slot_id, breaker_level=0)
     state_breaker = SlotState(slot_id=s.slot_id, breaker_level=2)
     now = _time.time()
@@ -294,8 +294,8 @@ def test_weighted_random_distribution_respects_weights():
     from core.services.cheap_lane_balancer import (
         _select_slot, SlotState,
     )
-    high = _slot(provider="high", model="m", rpm=None, daily=None, proxy=True)
-    low = _slot(provider="low", model="m", rpm=None, daily=None, proxy=False)
+    high = _slot(provider="high", model="m", rpm_limit=None, daily_limit=None, is_public_proxy=True)
+    low = _slot(provider="low", model="m", rpm_limit=None, daily_limit=None, is_public_proxy=False)
     pool = [high, low]
     states = {sl.slot_id: SlotState(slot_id=sl.slot_id) for sl in pool}
 
@@ -398,7 +398,7 @@ def test_call_balanced_succeeds_on_first_slot(monkeypatch, tmp_path):
     monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
     monkeypatch.setattr(
         clb, "build_slot_pool",
-        lambda: [_slot(provider="ollamafreeapi", model="m", proxy=True)],
+        lambda: [_slot(provider="ollamafreeapi", model="m", is_public_proxy=True)],
     )
 
     def fake_executor(*, provider, model, auth_profile, base_url, message):
@@ -417,8 +417,8 @@ def test_call_balanced_retries_on_failure_until_success(monkeypatch, tmp_path):
     from core.services import cheap_lane_balancer as clb
     monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
     pool = [
-        _slot(provider="p1", model="m", proxy=False),
-        _slot(provider="p2", model="m", proxy=False),
+        _slot(provider="p1", model="m", is_public_proxy=False),
+        _slot(provider="p2", model="m", is_public_proxy=False),
     ]
     monkeypatch.setattr(clb, "build_slot_pool", lambda: pool)
 
@@ -577,8 +577,8 @@ def test_snapshot_returns_pool_metadata(monkeypatch, tmp_path):
     monkeypatch.setattr(
         clb, "build_slot_pool",
         lambda: [
-            _slot(provider="groq", model="m1", rpm=30, daily=10000),
-            _slot(provider="ollamafreeapi", model="x", proxy=True),
+            _slot(provider="groq", model="m1", rpm_limit=30, daily_limit=10000),
+            _slot(provider="ollamafreeapi", model="x", is_public_proxy=True),
         ],
     )
     snap = clb.balancer_snapshot()
@@ -641,10 +641,10 @@ def test_register_provider_wide_failure_cools_all_provider_slots(tmp_path, monke
     from core.services import cheap_lane_balancer as clb
     monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
     pool = [
-        _slot(provider="ollamafreeapi", model="m1", proxy=True),
-        _slot(provider="ollamafreeapi", model="m2", proxy=True),
-        _slot(provider="ollamafreeapi", model="m3", proxy=True),
-        _slot(provider="groq", model="g1", proxy=False),
+        _slot(provider="ollamafreeapi", model="m1", is_public_proxy=True),
+        _slot(provider="ollamafreeapi", model="m2", is_public_proxy=True),
+        _slot(provider="ollamafreeapi", model="m3", is_public_proxy=True),
+        _slot(provider="groq", model="g1", is_public_proxy=False),
     ]
     states = {}
     affected = clb._register_provider_wide_failure(
@@ -667,10 +667,10 @@ def test_call_balanced_dns_failure_excludes_whole_provider(monkeypatch, tmp_path
     from core.services import cheap_lane_balancer as clb
     monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
     pool = [
-        _slot(provider="ollamafreeapi", model="m1", proxy=True),
-        _slot(provider="ollamafreeapi", model="m2", proxy=True),
-        _slot(provider="ollamafreeapi", model="m3", proxy=True),
-        _slot(provider="groq", model="alive", proxy=False),
+        _slot(provider="ollamafreeapi", model="m1", is_public_proxy=True),
+        _slot(provider="ollamafreeapi", model="m2", is_public_proxy=True),
+        _slot(provider="ollamafreeapi", model="m3", is_public_proxy=True),
+        _slot(provider="groq", model="alive", is_public_proxy=False),
     ]
     monkeypatch.setattr(clb, "build_slot_pool", lambda: pool)
 
@@ -865,3 +865,47 @@ def test_call_balanced_live_hook_routes_to_central_pick(monkeypatch, tmp_path):
     res = clb.call_balanced(prompt="hi", daemon_name="test")
     assert res["status"] == "ok"
     assert res["provider"] == "nebius"    # central_route's pick, ikke groq
+
+
+# --- 15. jul: pålideligheds-vægtning + fejl-tælling-fix ---
+
+def _slot(**over):
+    from core.services.cheap_lane_balancer import BalancerSlot
+    d = dict(provider="p", model="m", auth_profile="default", base_url="",
+             rpm_limit=None, daily_limit=None, is_public_proxy=False)
+    d.update(over)
+    return BalancerSlot(**d)
+
+
+def test_register_failure_increments_total_calls():
+    """FIX: total_calls skal tælle ALLE forsøg (før: kun succes → fejl% kunne >100%)."""
+    from core.services.cheap_lane_balancer import SlotState, _register_failure
+    st = SlotState(slot_id="p::m")
+    _register_failure(st, "500 server_error", now=1000.0)
+    assert st.total_calls == 1 and st.total_failures == 1
+
+
+def test_reliability_deweights_high_failure_slot():
+    """Bjørn: læg de mest fejlende længere ned (fjern dem ikke). En slot der fejler
+    meget (≥ min-sample) skal veje MINDRE end en pålidelig — men aldrig 0."""
+    from core.services.cheap_lane_balancer import (
+        SlotState, _compute_weight, _RELIABILITY_FLOOR, _MIN_RELIABILITY_SAMPLES)
+    slot = _slot()
+    good = SlotState(slot_id="p::m", total_calls=100, total_failures=2)
+    bad = SlotState(slot_id="p::m", total_calls=100, total_failures=81)
+    wg = _compute_weight(slot, good, now=1000.0)
+    wb = _compute_weight(slot, bad, now=1000.0)
+    assert wb < wg              # de-vægtet
+    assert wb > 0.0             # men ALDRIG fjernet (gulv)
+    assert wb >= wg * _RELIABILITY_FLOOR
+
+
+def test_reliability_not_penalized_below_min_samples():
+    """En ny/lav-volumen-slot straffes ikke på 1-2 uheldige kald."""
+    from core.services.cheap_lane_balancer import (
+        SlotState, _compute_weight, _MIN_RELIABILITY_SAMPLES)
+    slot = _slot()
+    fresh = SlotState(slot_id="p::m", total_calls=0, total_failures=0)
+    noisy = SlotState(slot_id="p::m",
+                      total_calls=_MIN_RELIABILITY_SAMPLES - 1, total_failures=_MIN_RELIABILITY_SAMPLES - 1)
+    assert _compute_weight(slot, noisy, now=1000.0) == _compute_weight(slot, fresh, now=1000.0)

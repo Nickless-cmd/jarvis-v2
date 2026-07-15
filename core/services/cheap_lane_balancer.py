@@ -313,7 +313,19 @@ def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
     health = _BREAKER_HEALTH.get(state.breaker_level, 0.05)
     preference = _PROXY_BOOST if slot.is_public_proxy else 1.0
 
-    return max(0.0, base * health * preference)
+    # Pålideligheds-læring (15. jul, Bjørn: "læg de mest fejlende længere ned, fjern dem
+    # ikke — det er hele meningen med loaderen"). En slot der fejler intermitterende
+    # (breaker'en trigger aldrig nok, consec nulstilles) blev ved med at blive valgt.
+    # Nu de-vægtes den efter observeret fejl-rate: reliability = 1 - fejl%, gulvet ved
+    # _RELIABILITY_FLOOR så den ALDRIG rammer 0 (bliver stadig prøvet lejlighedsvis →
+    # kan komme igen når den begynder at svare). Kun efter nok data (min-sample), så
+    # nye/lav-volumen-slots ikke straffes på støj.
+    reliability = 1.0
+    if state.total_calls >= _MIN_RELIABILITY_SAMPLES:
+        fail_rate = min(1.0, state.total_failures / max(1, state.total_calls))
+        reliability = max(_RELIABILITY_FLOOR, 1.0 - fail_rate)
+
+    return max(0.0, base * health * preference * reliability)
 
 
 # ---------------------------------------------------------------------------
@@ -324,6 +336,11 @@ def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
 _BREAKER_COOLDOWN_SECONDS = {0: 0, 1: 300, 2: 900, 3: 3600}  # 5min/15min/1h
 _CONSECUTIVE_FAILURE_THRESHOLD = 3
 _DEFAULT_429_COOLDOWN_SECONDS = 3600
+# Pålideligheds-vægtning: kræv ≥ dette antal kald før fejl-rate straffer vægten
+# (ellers straffes en ny slot på 1-2 uheldige kald); gulv så de-vægtede slots aldrig
+# rammer 0 og kan komme igen.
+_MIN_RELIABILITY_SAMPLES = 20
+_RELIABILITY_FLOOR = 0.05
 
 
 def _register_failure(
@@ -342,6 +359,7 @@ def _register_failure(
     state.consecutive_failures += 1
     state.last_failure_at = now
     state.total_failures += 1
+    state.total_calls += 1   # FIX 15. jul: tæl ALLE forsøg (før: kun succes → fejl% kunne >100%)
     state.cooldown_reason = error_kind
 
     if "429" in error_kind:

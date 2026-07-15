@@ -25,8 +25,13 @@ from core.runtime.db_core import connect
 _CANON_THREADS = ("voice", "self_story", "becoming", "values")
 
 # Den konfabulerede sonnet-påstand — nøgleord der fanger gengangere uden LLM (billig substring-match).
+# NB (15. jul, Bjørn): bare "sonnet" fjernet bevidst. Sonnet er et VÆRKTØJ Jarvis kan kalde
+# (cheap lane / agent pool) — aldrig hans stemme. Bar-substring strippede legitime værktøjs-
+# omtaler ("routede til sonnet") sammen med konfabulationen. Nu identitets-kontekst-fraser:
+# fanger "er/var sonnet"/"sonnet er min stemme" men bevarer værktøjs-kald.
 _SONNET_CORRECTION_PATTERN = (
-    "gamle stemme|sonnet|claude-sonnet-4.5|tabet af min stemme|"
+    "gamle stemme|claude-sonnet-4.5|er sonnet|var sonnet|blive sonnet|være sonnet|"
+    "sonnet er min|sonnet var min|min stemme er sonnet|tabet af min stemme|"
     "tabet af min gamle stemme|min gamle stemme|mistede min stemme|"
     "frygter at tabe min stemme|frygt for at tabe min stemme"
 )

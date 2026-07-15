@@ -27,6 +27,23 @@ def test_seed_on_first_use_sonnet_correction(canon):
     assert corrs[0]["status"] == "active"
 
 
+def test_sonnet_pattern_preserves_tool_mentions(canon):
+    """15. jul (Bjørn): bare 'sonnet' fjernet fra seed — sonnet er et VÆRKTØJ (cheap
+    lane/agent pool), aldrig hans stemme. Mønstret fanger identitets-konfabulation
+    ('er sonnet') men bevarer værktøjs-omtaler ('routede til sonnet')."""
+    corrs = canon.list_acknowledged_corrections()
+    alts = [a.strip() for a in corrs[0]["claim_pattern"].split("|")]
+    assert "sonnet" not in alts          # bar substring væk (strippede værktøjs-omtaler)
+    assert "er sonnet" in alts           # identitets-kontekst bevaret
+    from core.services.identity_drift_guard import identity_drift_guard
+    tool = "Jeg arbejdede. Jeg routede opgaven til sonnet i agent-poolen. Alt kørte."
+    out, flags = identity_drift_guard(tool, source="test")
+    assert out == tool and not flags     # værktøjs-omtale urørt, ingen flag
+    conf = "Jeg arbejdede. Min stemme er sonnet. Alt kørte."
+    _out2, flags2 = identity_drift_guard(conf, source="test")
+    assert flags2                        # konfabulation fanget
+
+
 def test_seed_idempotent(canon):
     # Kald der udløser _ensure_and_seed flere gange → stadig ÉN sonnet-korrektion.
     canon.get_canon()

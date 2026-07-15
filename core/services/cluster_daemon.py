@@ -801,3 +801,296 @@ def tick_cluster_innervoice(snapshot: dict | None = None, *, shadow: bool | None
             "members_ran": [],
             "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
         }
+
+
+# ---------------------------------------------------------------------------
+# Family #3 — affect / affective-signals (surprise + conflict + desire +
+#             longing_signal + emotion_repair_bridge)
+# ---------------------------------------------------------------------------
+#
+# The affective-signal family (spec §"De ~10 familier"). Five daemons that read
+# Jarvis' state and produce affect: reaction-surprise, inner conflict, emergent
+# appetites (all three LLM-narrated), plus longing-toward-user (rules-based) and
+# the emotion↔self-repair bridge (rules/DB-driven, with LLM only inside repair
+# ACTIONS). Runs LIVE (prove-then-retire END STATE), replacing the 5 old daemons.
+#
+# TWO tiers of member (mirrors how the inner-voice family split gated generation
+# from the unconditional Lag-1 credit pass):
+#
+#   * GATED / LLM members — surprise, conflict, desire — sit inside the family's
+#     ONE ``should_generative_fire("cluster_affect", …)`` gate. surprise/conflict/
+#     desire were each individually event-gated in an earlier commit; the family
+#     replaces those 3 gates with ONE. Each member's ``live`` dispatches to the
+#     old daemon's tick with ``skip_event_gate=True`` so the SAME caches every
+#     consumer reads keep filling:
+#       - surprise → _cached_surprise / build_surprise_surface / get_latest_surprise
+#                    (LOAD-BEARING: conflict_daemon + cluster_innervoice read it)
+#       - conflict → _cached_conflict / build_conflict_surface / get_latest_conflict
+#                    (LOAD-BEARING: cluster_innervoice + reflection read it)
+#       - desire   → _appetites / build_desire_surface / get_active_appetites
+#
+#   * NON-LLM members — longing_signal, emotion_repair_bridge — have NO
+#     ``should_generative_fire`` gate of their own; their whole tick is rules/DB-
+#     driven with an internal cadence/killswitch. Like meta_reflection's credit
+#     scoring, they run UNCONDITIONALLY every family tick (independent of the
+#     generative gate), so their load-bearing outputs never stall:
+#       - longing_signal → ingest_signal("longing", …) into the pressure
+#                          accumulator (LOAD-BEARING for the autonomy chain)
+#       - emotion_repair_bridge → self_repair_attempts + eventbus repair actions
+#                          + sensory anchors (self-safe; own 5-min cadence gate)
+#
+# Self-safe throughout: a member error is captured, never propagated.
+
+AFFECT_FAMILY = "cluster_affect"
+
+
+def _affect_text_signal(value: str) -> float:
+    """Deterministic 0..1 proxy of a short text state (no hash randomisation)."""
+    if not value:
+        return 0.0
+    return float(sum(ord(c) for c in value) % 100) / 100.0
+
+
+def _collect_affect_snapshot() -> dict[str, Any]:
+    """Gather the affect family's shared snapshot once per tick.
+
+    Reassembles the same inputs the heartbeat used to build inline for each of
+    the surprise/conflict/desire daemons, from the members' own side-effect-free
+    surfaces. Self-safe: any missing source degrades to a neutral default; the
+    family still ticks. NO LLM, no writes here — the members' ``live`` functions
+    do the generation.
+    """
+    snap: dict[str, Any] = {
+        "inner_voice_mode": "",
+        "somatic_energy": "",
+        "conflict_snapshot": {},
+        "desire_signals": {"curiosity": "", "craft": "", "connection": ""},
+    }
+    try:
+        from core.services.inner_voice_daemon import get_inner_voice_daemon_state
+        _iv = get_inner_voice_daemon_state()
+        snap["inner_voice_mode"] = str((_iv.get("last_result") or {}).get("mode") or "")
+    except Exception:
+        pass
+    try:
+        from core.runtime.circadian_state import get_circadian_context
+        snap["somatic_energy"] = str(get_circadian_context().get("energy_level") or "")
+    except Exception:
+        pass
+    # conflict snapshot (body + surprise + pending proposals + thought stream)
+    _body: dict[str, Any] = {}
+    _surp: dict[str, Any] = {}
+    _tap: dict[str, Any] = {}
+    _tss: dict[str, Any] = {}
+    try:
+        from core.services.somatic_daemon import build_body_state_surface
+        _body = build_body_state_surface() or {}
+    except Exception:
+        pass
+    try:
+        from core.services.surprise_daemon import build_surprise_surface
+        _surp = build_surprise_surface() or {}
+    except Exception:
+        pass
+    try:
+        from core.services.thought_action_proposal_daemon import build_proposal_surface
+        _tap = build_proposal_surface() or {}
+    except Exception:
+        pass
+    try:
+        from core.services.thought_stream_daemon import build_thought_stream_surface
+        _tss = build_thought_stream_surface() or {}
+    except Exception:
+        pass
+    snap["conflict_snapshot"] = {
+        "energy_level": _body.get("energy_level", ""),
+        "inner_voice_mode": snap["inner_voice_mode"],
+        "pending_proposals_count": _tap.get("pending_count", 0),
+        "latest_fragment": _tss.get("latest_fragment", ""),
+        "last_surprise": _surp.get("last_surprise", ""),
+        "last_surprise_at": _surp.get("generated_at", ""),
+        "fragment_count": _tss.get("fragment_count", 0),
+    }
+    # desire signals (curiosity / craft / connection)
+    _curiosity = ""
+    _drift = ""
+    try:
+        from core.services.curiosity_daemon import get_latest_curiosity
+        _curiosity = str(get_latest_curiosity() or "")
+    except Exception:
+        pass
+    try:
+        from core.services.creative_drift_daemon import get_latest_drift
+        _drift = str(get_latest_drift() or "")
+    except Exception:
+        pass
+    snap["desire_signals"] = {
+        "curiosity": _curiosity,
+        "craft": _drift,
+        "connection": str(_tss.get("latest_fragment", ""))[:80],
+    }
+    return snap
+
+
+# ── gated member signal extractors (aggregated into the ONE family gate) ─────
+
+
+def _affect_surprise_signals(snap: dict) -> dict[str, float]:
+    return {
+        "mode": _affect_text_signal(str(snap.get("inner_voice_mode", ""))),
+        "energy": _affect_text_signal(str(snap.get("somatic_energy", ""))),
+    }
+
+
+def _affect_conflict_signals(snap: dict) -> dict[str, float]:
+    cs = snap.get("conflict_snapshot") or {}
+    return {
+        "pending": float(int(cs.get("pending_proposals_count") or 0)),
+        "fragments": float(int(cs.get("fragment_count") or 0)),
+        "surprise": 1.0 if cs.get("last_surprise") else 0.0,
+    }
+
+
+def _affect_desire_signals(snap: dict) -> dict[str, float]:
+    ds = snap.get("desire_signals") or {}
+    return {
+        "curiosity": _affect_text_signal(str(ds.get("curiosity", ""))),
+        "craft": _affect_text_signal(str(ds.get("craft", ""))),
+        "connection": _affect_text_signal(str(ds.get("connection", ""))),
+    }
+
+
+# ── gated member live dispatchers (reuse old daemons, skip_event_gate=True) ──
+
+
+def _affect_surprise_live(snap: dict) -> dict[str, Any]:
+    from core.services.surprise_daemon import tick_surprise_daemon
+    return tick_surprise_daemon(
+        inner_voice_mode=str(snap.get("inner_voice_mode", "")),
+        somatic_energy=str(snap.get("somatic_energy", "")),
+        skip_event_gate=True,
+    )
+
+
+def _affect_conflict_live(snap: dict) -> dict[str, Any]:
+    from core.services.conflict_daemon import tick_conflict_daemon
+    return tick_conflict_daemon(dict(snap.get("conflict_snapshot") or {}), skip_event_gate=True)
+
+
+def _affect_desire_live(snap: dict) -> dict[str, Any]:
+    from core.services.desire_daemon import tick_desire_daemon
+    return tick_desire_daemon(dict(snap.get("desire_signals") or {}), skip_event_gate=True)
+
+
+def build_affect_family() -> ClusterDaemon:
+    """Construct the affect cluster-daemon (family #3), LIVE.
+
+    THREE gated LLM members (surprise, conflict, desire) under ONE family gate.
+    The two NON-LLM members (longing_signal, emotion_repair_bridge) are run
+    UNCONDITIONALLY by the ``tick_cluster_affect`` entry-point, not gated here.
+    """
+    return ClusterDaemon(
+        family_name=AFFECT_FAMILY,
+        cluster="cognition",
+        collect_snapshot=_collect_affect_snapshot,
+        members=[
+            ClusterMember(
+                name="surprise",
+                signals=_affect_surprise_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.surprise_daemon", "build_surprise_surface"),
+                    ("last_surprise", "surprise_type"),
+                ),
+                live=_affect_surprise_live,
+            ),
+            ClusterMember(
+                name="conflict",
+                signals=_affect_conflict_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.conflict_daemon", "build_conflict_surface"),
+                    ("last_conflict",),
+                ),
+                live=_affect_conflict_live,
+            ),
+            ClusterMember(
+                name="desire",
+                signals=_affect_desire_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.desire_daemon", "build_desire_surface"),
+                    ("active_count",),
+                ),
+                live=_affect_desire_live,
+            ),
+        ],
+    )
+
+
+# Process-level singleton (keeps the family's gate baselines + Central trace
+# continuous across heartbeat ticks, mirroring the other families).
+_AFFECT_FAMILY: ClusterDaemon | None = None
+
+
+def affect_family() -> ClusterDaemon:
+    global _AFFECT_FAMILY
+    if _AFFECT_FAMILY is None:
+        _AFFECT_FAMILY = build_affect_family()
+    return _AFFECT_FAMILY
+
+
+def _run_affect_nonllm_members(snap: dict, result: dict[str, Any]) -> None:
+    """Run the NON-LLM affect members UNCONDITIONALLY (independent of the family
+    generative gate), self-safe. Mirrors the inner-voice family's unconditional
+    Lag-1 credit pass. Each member's error is isolated into ``member_errors`` and
+    never propagated; a successful run is recorded into ``members_ran``/``outputs``.
+    """
+    # longing_signal — rules-based; emits ingest_signal("longing", …) into the
+    # pressure accumulator (load-bearing for the autonomy chain). Own killswitch.
+    try:
+        from core.services.longing_signal_daemon import run_longing_signal_daemon_tick
+        out = run_longing_signal_daemon_tick()
+        result["outputs"]["longing_signal"] = out
+        result["members_ran"].append("longing_signal")
+    except Exception as exc:
+        result["member_errors"]["longing_signal"] = f"{type(exc).__name__}: {exc}"
+    # emotion_repair_bridge — rules/DB-driven; own 5-min cadence gate; maps
+    # emotion signals to repair actions + bridges outcomes to the senses.
+    try:
+        from core.services.emotion_repair_bridge_daemon import tick_emotion_repair_bridge
+        out = tick_emotion_repair_bridge()
+        result["outputs"]["emotion_repair_bridge"] = out
+        result["members_ran"].append("emotion_repair_bridge")
+    except Exception as exc:
+        result["member_errors"]["emotion_repair_bridge"] = f"{type(exc).__name__}: {exc}"
+
+
+def tick_cluster_affect(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
+    """Heartbeat entry-point for the affect cluster-daemon family (#3).
+
+    Runs LIVE by default (``shadow=False``) — this family IS the prove-then-retire
+    end state replacing the 5 old affect daemons, so it must actually produce
+    their outputs. Two-tier:
+
+    1. The NON-LLM members (longing_signal, emotion_repair_bridge) run
+       UNCONDITIONALLY every tick, before/independent of the generative gate
+       (each has its own internal cadence/killswitch).
+    2. The gated LLM members (surprise, conflict, desire) run behind the ONE
+       family gate via ``affect_family().tick()``.
+
+    Self-safe: returns a minimal skipped result on catastrophic failure and
+    NEVER raises into the heartbeat.
+    """
+    try:
+        snap = _collect_affect_snapshot() if snapshot is None else snapshot
+        run_live = False if shadow is None else bool(shadow)
+        result = affect_family().tick(snap, shadow=run_live)
+        # Unconditional non-LLM members (independent of the gate result above).
+        _run_affect_nonllm_members(snap, result)
+        return result
+    except Exception as exc:  # never crash the heartbeat
+        return {
+            "family": AFFECT_FAMILY,
+            "fired": False,
+            "gate_calls": 1,
+            "members_ran": [],
+            "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
+        }

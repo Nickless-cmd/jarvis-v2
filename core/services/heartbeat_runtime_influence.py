@@ -736,6 +736,41 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Cluster-daemon FAMILIE #3 — affect (LIVE, prove-then-retire END STATE).
+    # surprise+conflict+desire (gated LLM) + longing_signal+emotion_repair_bridge
+    # (non-LLM, ubetinget) foldet ind i ÉN Central-styret familie under ÉN
+    # event-gate. De 5 gamle daemons er PENSIONERET (default_enabled=False) →
+    # deres tick-blokke (surprise/conflict/desire/emotion_repair_bridge her, longing
+    # i action_router) no-op'er via is_enabled. Familien kalder de gamle daemons'
+    # generering (skip_event_gate=True for LLM-medlemmerne) og bevarer alle
+    # outputs — surprise/conflict-cachen er load-bearing for cluster_innervoice, og
+    # longing ingest'er stadig i pressure-accumulatoren. Self-safe: crasher aldrig.
+    if _dm.is_enabled("cluster_affect"):
+        try:
+            from core.services.cluster_daemon import tick_cluster_affect
+            _affect_cluster_result = _hb._daemon_tick_with_deadline(
+                "cluster_affect", tick_cluster_affect, deadline_seconds=25.0,
+            )
+            _dm.record_daemon_tick("cluster_affect", _affect_cluster_result or {})
+            # Surface the freshly-produced affect outputs into the trace, as the
+            # retired daemons' own tick blocks used to.
+            try:
+                from core.services.surprise_daemon import get_latest_surprise
+                _affect_surprise = get_latest_surprise()
+                if _affect_surprise:
+                    inputs_present.append(f"overraskelse: {_affect_surprise}")
+            except Exception:
+                pass
+            try:
+                from core.services.conflict_daemon import get_latest_conflict
+                _affect_conflict = get_latest_conflict()
+                if _affect_conflict:
+                    inputs_present.append(f"indre konflikt: {_affect_conflict[:60]}")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     # Creative drift daemon — spontaneous unexpected associations
     if _dm.is_enabled("creative_drift"):
         try:

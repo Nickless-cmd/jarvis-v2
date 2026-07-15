@@ -543,17 +543,29 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
     # 0. Spor-1 signal source: longing-toward-user
     # Runs BEFORE pressure_accumulator so its emitted signal can be ingested
     # in the same tick. Internally killswitch-gated; no-op when disabled.
+    # PENSIONERET 2026-07-15: longing_signal er foldet ind i cluster_affect (som
+    # kører den ubetinget hver familie-tick). Denne call-site er nu is_enabled-
+    # gatet → no-op når longing_signal er retired, så vi ikke dobbelt-producerer.
+    # Signalet ingest'er stadig i den samme (process-globale) pressure-accumulator.
     try:
-        from core.services.longing_signal_daemon import run_longing_signal_daemon_tick
-        longing_snap = run_longing_signal_daemon_tick()
-        chain_result["longing"] = {
-            "status": longing_snap.get("status"),
-            "emitted": longing_snap.get("emitted", False),
-            "intensity": longing_snap.get("intensity"),
-        }
-    except Exception as exc:
-        logger.debug(f"Longing daemon tick failed: {exc}")
-        chain_result["longing"] = {"error": str(exc)[:120]}
+        from core.services.daemon_manager import is_enabled as _dm_is_enabled
+        _longing_enabled = _dm_is_enabled("longing_signal")
+    except Exception:
+        _longing_enabled = False  # retired-safe default; cluster_affect owns it
+    if _longing_enabled:
+        try:
+            from core.services.longing_signal_daemon import run_longing_signal_daemon_tick
+            longing_snap = run_longing_signal_daemon_tick()
+            chain_result["longing"] = {
+                "status": longing_snap.get("status"),
+                "emitted": longing_snap.get("emitted", False),
+                "intensity": longing_snap.get("intensity"),
+            }
+        except Exception as exc:
+            logger.debug(f"Longing daemon tick failed: {exc}")
+            chain_result["longing"] = {"error": str(exc)[:120]}
+    else:
+        chain_result["longing"] = {"status": "retired", "handled_by": "cluster_affect"}
 
     try:
         from core.services.signal_pressure_accumulator import run_pressure_accumulator_tick

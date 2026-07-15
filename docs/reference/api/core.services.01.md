@@ -74,11 +74,11 @@ _Action Router — close the loop: signal → handling._
 | function | `route` | `(event_kind, payload=…)` | Evaluate + execute. Returns decision record. | [src](../../../core/services/action_router.py#L439) |
 | function | `_drain_eventbus` | `(limit=…)` | Pull events from eventbus without blocking; route routable ones. | [src](../../../core/services/action_router.py#L492) |
 | function | `tick` | `(_seconds=…)` | Heartbeat hook — drain eventbus + route + run generative autonomy chain. | [src](../../../core/services/action_router.py#L525) |
-| function | `recent_actions` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L597) |
-| function | `recent_proactive` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L601) |
-| function | `build_action_router_surface` | `()` | — | [src](../../../core/services/action_router.py#L605) |
-| function | `_surface_summary` | `(actions, proactive_today, proactive_sent_today)` | — | [src](../../../core/services/action_router.py#L633) |
-| function | `build_action_router_prompt_section` | `()` | Tell him quietly what the router has done recently. | [src](../../../core/services/action_router.py#L646) |
+| function | `recent_actions` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L609) |
+| function | `recent_proactive` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L613) |
+| function | `build_action_router_surface` | `()` | — | [src](../../../core/services/action_router.py#L617) |
+| function | `_surface_summary` | `(actions, proactive_today, proactive_sent_today)` | — | [src](../../../core/services/action_router.py#L645) |
+| function | `build_action_router_prompt_section` | `()` | Tell him quietly what the router has done recently. | [src](../../../core/services/action_router.py#L658) |
 
 ## `core/services/active_file_store.py`
 _Live "aktiv fil" — den sti Jarvis senest læste/skrev (file-tree-control-spec)._

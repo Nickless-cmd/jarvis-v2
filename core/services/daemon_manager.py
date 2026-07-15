@@ -34,7 +34,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_heartbeats_since_surprise",
         "reset_value": 999,
         "default_cadence_minutes": 4,
-        "description": "Detects divergence from baseline reaction patterns",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_affect overtager (samme generering, én familie-gate)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_affect] Detects divergence from baseline reaction patterns",
     },
     "aesthetic_taste": {
         "module": "core.services.aesthetic_taste_daemon",
@@ -73,7 +75,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 8,
-        "description": "Detects inner tensions between active states",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_affect overtager (samme generering, én familie-gate)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_affect] Detects inner tensions between active states",
     },
     "reflection_cycle": {
         "module": "core.services.reflection_cycle_daemon",
@@ -216,7 +220,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 10,
-        "description": "Generative autonomy Spor-1: longing-toward-user pressure signal (gated by generative_autonomy_enabled)",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_affect overtager (non-LLM member; kører ubetinget hver familie-tick); action_router-kaldet er is_enabled-gatet → no-op
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_affect] Generative autonomy Spor-1: longing-toward-user pressure signal (gated by generative_autonomy_enabled)",
     },
     "user_model": {
         "module": "core.services.user_model_daemon",
@@ -230,7 +236,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_generated_at",
         "reset_value": None,
         "default_cadence_minutes": 8,
-        "description": "Emergent appetites with intensity-based lifecycle",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_affect overtager (samme generering, én familie-gate)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_affect] Emergent appetites with intensity-based lifecycle",
     },
     "autonomous_council": {
         "module": "core.services.autonomous_council_daemon",
@@ -286,7 +294,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 5,
-        "description": "Emotion→Selvreparation + Selvreparation→Sanser: mapter frustration/doubt/skam til repair patterns og bridge outcome til emotional memory",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_affect overtager (non-LLM member; kører ubetinget hver familie-tick; egen cadence-gate)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_affect] Emotion→Selvreparation + Selvreparation→Sanser: mapter frustration/doubt/skam til repair patterns og bridge outcome til emotional memory",
     },
     "mail_checker": {
         "module": "core.services.mail_checker_daemon",
@@ -511,6 +521,24 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # existential_wonder._latest_wonder (load-bearing for convene_judge,
         # proactivity_bridge, visible_inner_life). Aldrig begge live.
         "description": "cluster-daemon FAMILIE #2 (inner-voice) LIVE: thought_stream+reflection_cycle+meta_reflection+irony+existential_wonder+creative_drift under ÉN event-gate; erstatter de 6 pensionerede daemons; bevarer alle outputs (incl. latest_wonder).",
+    },
+    "cluster_affect": {
+        "module": "core.services.cluster_daemon",
+        "reset_var": "_AFFECT_FAMILY",
+        "reset_value": None,
+        "default_cadence_minutes": 4,
+        "default_enabled": True,
+        # Cluster-daemon-konsolidering (spec 2026-07-14), FAMILIE #3 (affect):
+        # surprise + conflict + desire + longing_signal + emotion_repair_bridge
+        # foldet ind i ÉN Central-styret familie. Kører LIVE (prove-then-retire
+        # END STATE) — de 5 gamle daemons er PENSIONERET (default_enabled=False,
+        # retired 2026-07-15). To tiers: de 3 LLM-medlemmer (surprise/conflict/
+        # desire) bag ÉN event-gate (skip_event_gate=True i deres tick); de 2
+        # non-LLM-medlemmer (longing_signal, emotion_repair_bridge) kører
+        # UBETINGET hver tick (egen cadence/killswitch). Bevarer alle outputs —
+        # surprise/conflict-cachen er load-bearing for cluster_innervoice, og
+        # longing ingest'er stadig i pressure-accumulatoren. Aldrig begge live.
+        "description": "cluster-daemon FAMILIE #3 (affect) LIVE: surprise+conflict+desire (gated LLM) + longing_signal+emotion_repair_bridge (non-LLM, ubetinget) under ÉN event-gate; erstatter de 5 pensionerede daemons; bevarer alle outputs (surprise/conflict-cache, longing-pressure).",
     },
 }
 

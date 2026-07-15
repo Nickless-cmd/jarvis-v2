@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6179/12669 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6184/12681 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6179/12669 functions/methods documented (48%). The list b
 | `core.memory` | 44 | 123 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4065 | 8809 | 46% |
+| `core.services` | 4070 | 8821 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -39,7 +39,7 @@ Generated from source. 6179/12669 functions/methods documented (48%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1831)
+## Undocumented public functions (1832)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -493,9 +493,9 @@ Generated from source. 6179/12669 functions/methods documented (48%). The list b
 - `core/runtime/settings.py` :: `update_visible_execution_settings` (L968)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L148)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L144)
-- `core/services/action_router.py` :: `build_action_router_surface` (L605)
-- `core/services/action_router.py` :: `recent_actions` (L597)
-- `core/services/action_router.py` :: `recent_proactive` (L601)
+- `core/services/action_router.py` :: `build_action_router_surface` (L617)
+- `core/services/action_router.py` :: `recent_actions` (L609)
+- `core/services/action_router.py` :: `recent_proactive` (L613)
 - `core/services/active_file_store.py` :: `clear_active_file` (L43)
 - `core/services/adaptive_learning_runtime.py` :: `build_adaptive_learning_prompt_section` (L140)
 - `core/services/adaptive_learning_runtime.py` :: `build_adaptive_learning_runtime_from_sources` (L31)
@@ -746,6 +746,7 @@ Generated from source. 6179/12669 functions/methods documented (48%). The list b
 - `core/services/chronicle_engine.py` :: `project_entry_to_markdown` (L483)
 - `core/services/clarification_classifier.py` :: `clarification_prompt_section` (L78)
 - `core/services/clarification_classifier.py` :: `score_message` (L39)
+- `core/services/cluster_daemon.py` :: `affect_family` (L1033)
 - `core/services/cluster_daemon.py` :: `innervoice_family` (L766)
 - `core/services/cluster_daemon.py` :: `somatic_family` (L412)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
@@ -765,8 +766,8 @@ Generated from source. 6179/12669 functions/methods documented (48%). The list b
 - `core/services/composite_tools.py` :: `revoke` (L128)
 - `core/services/computer_use_policy.py` :: `is_computer_use_tool` (L25)
 - `core/services/computer_use_policy.py` :: `set_computer_use` (L42)
-- `core/services/conflict_daemon.py` :: `build_conflict_surface` (L227)
-- `core/services/conflict_daemon.py` :: `get_latest_conflict` (L223)
+- `core/services/conflict_daemon.py` :: `build_conflict_surface` (L231)
+- `core/services/conflict_daemon.py` :: `get_latest_conflict` (L227)
 - `core/services/conflict_prompt_service.py` :: `build_conflict_memory_surface` (L37)
 - `core/services/conflict_resolution.py` :: `ConflictTrace.to_dict` (L40)
 - `core/services/conflict_resolution.py` :: `QuietInitiative.to_dict` (L73)
@@ -830,8 +831,8 @@ Generated from source. 6179/12669 functions/methods documented (48%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `maybe_register_from_text` (L53)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L15)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L518)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L565)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L546)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L593)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L266)
@@ -845,7 +846,7 @@ Generated from source. 6179/12669 functions/methods documented (48%). The list b
 - `core/services/deep_reflection_slot.py` :: `run_reflection` (L260)
 - `core/services/deep_reflection_slot.py` :: `tick` (L357)
 - `core/services/delegation_advisor.py` :: `advise` (L46)
-- `core/services/desire_daemon.py` :: `build_desire_surface` (L137)
+- `core/services/desire_daemon.py` :: `build_desire_surface` (L141)
 - `core/services/desktop_notifications.py` :: `drain` (L30)
 - `core/services/desktop_notifications.py` :: `enqueue` (L20)
 - `core/services/desktop_notifications.py` :: `prune` (L37)
@@ -1582,8 +1583,8 @@ Generated from source. 6179/12669 functions/methods documented (48%). The list b
 - `core/services/subagent_ecology.py` :: `build_subagent_ecology_surface` (L13)
 - `core/services/subjective_time.py` :: `build_subjective_time_perception` (L9)
 - `core/services/subjective_time.py` :: `build_subjective_time_surface` (L29)
-- `core/services/surprise_daemon.py` :: `build_surprise_surface` (L146)
-- `core/services/surprise_daemon.py` :: `get_latest_surprise` (L142)
+- `core/services/surprise_daemon.py` :: `build_surprise_surface` (L150)
+- `core/services/surprise_daemon.py` :: `get_latest_surprise` (L146)
 - `core/services/surprise_daemon.py` :: `tick_surprise_daemon` (L73)
 - `core/services/sustained_attention.py` :: `add_progress` (L105)
 - `core/services/sustained_attention.py` :: `build_sustained_attention_prompt_section` (L246)

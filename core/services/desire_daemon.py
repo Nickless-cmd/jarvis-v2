@@ -66,10 +66,13 @@ def _persist_appetites() -> None:
 # ---------------------------------------------------------------------------
 
 
-def tick_desire_daemon(signals: dict[str, str]) -> dict:
+def tick_desire_daemon(signals: dict[str, str], skip_event_gate: bool = False) -> dict:
     """Update appetites based on current signals.
 
     signals: dict with keys 'curiosity', 'craft', 'connection' — each a string signal or ''.
+
+    ``skip_event_gate=True`` bypasses the per-daemon event-gate — used by the
+    cluster_affect family whose ONE gate already fired for the whole family.
     """
     global _last_generated_at
 
@@ -98,20 +101,21 @@ def tick_desire_daemon(signals: dict[str, str]) -> dict:
             # Event-gate (Fase 2 Lag 6/Fase 6): fire the LLM label generation only
             # when the appetite landscape / incoming signal actually moved. Flag
             # OFF → legacy behaviour. Fail-open (fall through to normal spawn).
-            try:
-                from core.services import event_gate
+            if not skip_event_gate:
+                try:
+                    from core.services import event_gate
 
-                if event_gate.event_driven_enabled():
-                    _relevant = {
-                        "curiosity": _appetite_intensity("curiosity-appetite"),
-                        "craft": _appetite_intensity("craft-appetite"),
-                        "connection": _appetite_intensity("connection-appetite"),
-                        "signal": _text_signal(signal_text),
-                    }
-                    if not event_gate.should_generative_fire("desire", _relevant):
-                        continue
-            except Exception:
-                pass  # fail-open
+                    if event_gate.event_driven_enabled():
+                        _relevant = {
+                            "curiosity": _appetite_intensity("curiosity-appetite"),
+                            "craft": _appetite_intensity("craft-appetite"),
+                            "connection": _appetite_intensity("connection-appetite"),
+                            "signal": _text_signal(signal_text),
+                        }
+                        if not event_gate.should_generative_fire("desire", _relevant):
+                            continue
+                except Exception:
+                    pass  # fail-open
 
             # Fase 2 / Lag 1 — rå intensiteter, ikke LLM-label. Bygger label
             # direkte fra de tre appetit-dimensioner og SPRINGER narrations-

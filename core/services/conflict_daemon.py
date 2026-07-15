@@ -28,9 +28,12 @@ _conflict_type: str = ""
 _last_snapshot: dict = {}
 
 
-def tick_conflict_daemon(snapshot: dict) -> dict[str, object]:
+def tick_conflict_daemon(snapshot: dict, skip_event_gate: bool = False) -> dict[str, object]:
     """Detect conflict in signal snapshot. snapshot keys: energy_level, inner_voice_mode,
-    pending_proposals_count, latest_fragment, last_surprise, last_surprise_at, fragment_count."""
+    pending_proposals_count, latest_fragment, last_surprise, last_surprise_at, fragment_count.
+
+    ``skip_event_gate=True`` bypasses the per-daemon event-gate — used by the
+    cluster_affect family whose ONE gate already fired for the whole family."""
     global _last_snapshot
     _last_snapshot = snapshot
 
@@ -46,19 +49,20 @@ def tick_conflict_daemon(snapshot: dict) -> dict[str, object]:
     # shared event-gate. Conflict fires on real tension/pending/fragment change —
     # skip cheaply otherwise. Flag OFF → legacy behaviour. Self-safe: any
     # event_gate error fails open (fall through to normal generation).
-    try:
-        from core.services import event_gate
+    if not skip_event_gate:
+        try:
+            from core.services import event_gate
 
-        if event_gate.event_driven_enabled():
-            _relevant = {
-                "tension": _conflict_tension(conflict_type, snapshot),
-                "pending": float(int(snapshot.get("pending_proposals_count") or 0)),
-                "fragments": float(int(snapshot.get("fragment_count") or 0)),
-            }
-            if not event_gate.should_generative_fire("conflict", _relevant):
-                return {"skipped": "no_signal_change"}
-    except Exception:
-        pass  # fail-open: fall through to normal generation
+            if event_gate.event_driven_enabled():
+                _relevant = {
+                    "tension": _conflict_tension(conflict_type, snapshot),
+                    "pending": float(int(snapshot.get("pending_proposals_count") or 0)),
+                    "fragments": float(int(snapshot.get("fragment_count") or 0)),
+                }
+                if not event_gate.should_generative_fire("conflict", _relevant):
+                    return {"skipped": "no_signal_change"}
+        except Exception:
+            pass  # fail-open: fall through to normal generation
 
     # Fase 2 / Lag 1 — rå spænding + between-par, ikke LLM-label. Bygger frasen
     # direkte fra metrics og SPRINGER narrations-LLM-kaldet over. Samme output-

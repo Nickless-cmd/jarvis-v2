@@ -73,6 +73,7 @@ def _process_pending_afterimages() -> None:
 def tick_surprise_daemon(
     inner_voice_mode: str = "",
     somatic_energy: str = "",
+    skip_event_gate: bool = False,
 ) -> dict[str, object]:
     global _heartbeats_since_surprise
     _heartbeats_since_surprise += 1
@@ -89,20 +90,23 @@ def tick_surprise_daemon(
     # Event-gate (Fase 2 Lag 5/Fase 6): fire the LLM surprise narration only when
     # the divergence/mode/energy signals actually moved. Flag OFF → legacy
     # behaviour (history + cooldown + divergence guards only). Fail-open.
-    try:
-        from core.services import event_gate
-        if event_gate.event_driven_enabled():
-            _relevant = {
-                "divergence_count": float(len(divergence)),
-                "mode": _text_signal(inner_voice_mode),
-                "energy": float(ENERGY_ORDER.index(somatic_energy))
-                if somatic_energy in ENERGY_ORDER
-                else 0.0,
-            }
-            if not event_gate.should_generative_fire("surprise", _relevant):
-                return {"skipped": "no_signal_change", "surprise": _cached_surprise}
-    except Exception:
-        pass  # fail-open
+    # ``skip_event_gate=True`` bypasses this entirely — used by the cluster_affect
+    # family whose ONE gate has already fired for the whole family.
+    if not skip_event_gate:
+        try:
+            from core.services import event_gate
+            if event_gate.event_driven_enabled():
+                _relevant = {
+                    "divergence_count": float(len(divergence)),
+                    "mode": _text_signal(inner_voice_mode),
+                    "energy": float(ENERGY_ORDER.index(somatic_energy))
+                    if somatic_energy in ENERGY_ORDER
+                    else 0.0,
+                }
+                if not event_gate.should_generative_fire("surprise", _relevant):
+                    return {"skipped": "no_signal_change", "surprise": _cached_surprise}
+        except Exception:
+            pass  # fail-open
     if _raw_signal_mode():
         # Lag 1 — rå divergens, ingen narration. Samme output-felt som
         # awareness konsumerer; flaget bytter blot strengen (regel-beregnet

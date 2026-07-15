@@ -1308,3 +1308,192 @@ def tick_cluster_narrative(snapshot: dict | None = None, *, shadow: bool | None 
             "members_ran": [],
             "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
         }
+
+
+# ---------------------------------------------------------------------------
+# Family #5 — cognition / inference (causal_inference + pattern_counterfactual +
+#             dream_insight + active_sensing)
+# ---------------------------------------------------------------------------
+#
+# The neuro-symbolic / self-sensing family. Runs LIVE (prove-then-retire END
+# STATE), replacing the 4 old daemons. TWO tiers (mirrors the affect family):
+#
+#   * GATED LLM member — pattern_counterfactual — behind the family's ONE
+#     should_generative_fire("cluster_cognition", …) gate. It was a blind-timer LLM
+#     (hourly cheap-LLM call, no salience gate); the family gives it the event-driven
+#     salience gate it lacked (ref daemon_llm_inventory). When the gate fires its
+#     live() calls the old tick (self-throttles 60min + 24h dedupe) so
+#     counterfactual.pattern_what_if events keep filling the causal_patterns prompt.
+#     NOTE: the old daemon has no internal should_generative_fire → nothing to skip;
+#     the family gate is the ONLY generative gate (no skip_event_gate kwarg needed).
+#
+#   * NON-LLM members — causal_inference, dream_insight, active_sensing — no
+#     generative gate; each is rules/persist-driven with its OWN internal cadence and
+#     runs UNCONDITIONALLY every tick, so its load-bearing output never stalls:
+#       - causal_inference → causal_edges + causal.inference_stats (15min throttle).
+#         LOAD-BEARING: central_causal_quality/causal_graph; pattern_cf builds on it.
+#       - dream_insight → private_brain "dream-insight" record + _last_insight cache
+#         (signal-id dedupe). LOAD-BEARING: central_inner_life_digest,
+#         signal_surface_router, mission_control_living_mind. Its tick needs
+#         (signal_id, signal_summary) from dream_articulation, gathered here as the
+#         old influence tick site did.
+#       - active_sensing → state + cognitive_state.active_sensing event +
+#         sensory_archive (30-90min desire throttle). LOAD-BEARING:
+#         central_soul_digest, prompt_heartbeat_self_knowledge.
+#
+# Self-safe throughout: a member error is captured, never propagated.
+
+COGNITION_FAMILY = "cluster_cognition"
+
+
+def _collect_cognition_snapshot() -> dict[str, Any]:
+    """Gather the cognition family's shared snapshot once per tick.
+
+    Only the gated member (pattern_counterfactual) needs a gate signal; its
+    salience is the volume of top recurring causal patterns available to
+    counterfactualise. Self-safe: degrades to empty on any error.
+    """
+    snap: dict[str, Any] = {"top_patterns": [], "pattern_count": 0, "pattern_occurrences": 0.0}
+    try:
+        from core.services.pattern_counterfactual_daemon import _fetch_top_patterns
+        pats = _fetch_top_patterns() or []
+        snap["top_patterns"] = pats
+        snap["pattern_count"] = len(pats)
+        snap["pattern_occurrences"] = float(sum(int(p.get("count") or 0) for p in pats))
+    except Exception:
+        pass
+    return snap
+
+
+# ── gated LLM member (pattern_counterfactual) ───────────────────────────────
+
+
+def _cog_pattern_cf_signals(snap: dict) -> dict[str, float]:
+    return {
+        "pattern_count": min(float(snap.get("pattern_count", 0) or 0) / 3.0, 1.0),
+        "occurrences": min(float(snap.get("pattern_occurrences", 0.0) or 0.0) / 50.0, 1.0),
+    }
+
+
+def _cog_pattern_cf_observe(snap: dict) -> dict[str, Any]:
+    return {"pattern_count": int(snap.get("pattern_count", 0) or 0)}
+
+
+def _cog_pattern_cf_live(_snap: dict) -> dict[str, Any]:
+    from core.services.pattern_counterfactual_daemon import tick_pattern_counterfactual_daemon
+    return tick_pattern_counterfactual_daemon()
+
+
+def build_cognition_family() -> ClusterDaemon:
+    """Construct the cognition cluster-daemon (family #5), LIVE.
+
+    ONE gated LLM member (pattern_counterfactual) behind the family gate. The
+    three NON-LLM members (causal_inference, dream_insight, active_sensing) are
+    run UNCONDITIONALLY by ``tick_cluster_cognition``, not gated here.
+    """
+    return ClusterDaemon(
+        family_name=COGNITION_FAMILY,
+        cluster="cognition",
+        collect_snapshot=_collect_cognition_snapshot,
+        members=[
+            ClusterMember(
+                name="pattern_counterfactual",
+                signals=_cog_pattern_cf_signals,
+                observe=_cog_pattern_cf_observe,
+                live=_cog_pattern_cf_live,
+            ),
+        ],
+    )
+
+
+# Process-level singleton (mirrors the other families' gate/trace continuity).
+_COGNITION_FAMILY: ClusterDaemon | None = None
+
+
+def cognition_family() -> ClusterDaemon:
+    global _COGNITION_FAMILY
+    if _COGNITION_FAMILY is None:
+        _COGNITION_FAMILY = build_cognition_family()
+    return _COGNITION_FAMILY
+
+
+# ── unconditional (non-LLM) member live dispatchers ─────────────────────────
+
+
+def _cog_causal_inference_live(_snap: dict) -> dict[str, Any]:
+    from core.services.causal_inference_daemon import tick_causal_inference_daemon
+    return tick_causal_inference_daemon()
+
+
+def _cog_active_sensing_live(_snap: dict) -> dict[str, Any]:
+    from core.services.active_sensing_daemon import tick_active_sensing_daemon
+    return tick_active_sensing_daemon()
+
+
+def _cog_dream_insight_live(_snap: dict) -> dict[str, Any]:
+    """dream_insight is signal-driven (not a timer): gather the latest dream-
+    articulation candidate as the old influence tick site did, then persist it
+    (dedupes on signal_id). No candidate yet → harmless skip."""
+    from core.services.dream_insight_daemon import tick_dream_insight_daemon
+    from core.services.dream_articulation import build_dream_articulation_surface
+    surf = build_dream_articulation_surface() or {}
+    summ = surf.get("summary") or {}
+    sid = str(summ.get("latest_signal_id") or "")
+    text = str(summ.get("latest_summary") or "")
+    if not sid:
+        art = surf.get("latest_artifact") or {}
+        sid = str(art.get("signal_id") or "")
+        text = str(art.get("summary") or text)
+    if sid and text:
+        return tick_dream_insight_daemon(signal_id=sid, signal_summary=text)
+    return {"persisted": False, "reason": "no-articulation-candidate"}
+
+
+_COGNITION_UNCONDITIONAL = (
+    ("causal_inference", _cog_causal_inference_live),
+    ("dream_insight", _cog_dream_insight_live),
+    ("active_sensing", _cog_active_sensing_live),
+)
+
+
+def _run_cognition_nonllm_members(snap: dict, result: dict[str, Any]) -> None:
+    """Run the NON-LLM cognition members UNCONDITIONALLY (independent of the
+    family generative gate), self-safe. Mirrors the affect family's non-LLM
+    runner. Each self-throttles on its own internal cadence; a member error is
+    isolated into ``member_errors`` and never propagated; a successful run is
+    recorded into ``members_ran``/``outputs``.
+    """
+    for name, fn in _COGNITION_UNCONDITIONAL:
+        try:
+            out = fn(snap)
+            result["outputs"][name] = out
+            result["members_ran"].append(name)
+        except Exception as exc:
+            result["member_errors"][name] = f"{type(exc).__name__}: {exc}"
+
+
+def tick_cluster_cognition(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
+    """Heartbeat entry-point for the cognition cluster-daemon family (#5).
+
+    Runs LIVE by default (``shadow=False``) — the prove-then-retire end state
+    replacing the 4 old cognition/inference daemons. Two-tier: the gated LLM
+    member (pattern_counterfactual) runs behind the ONE family gate via
+    ``cognition_family().tick()``; the NON-LLM members (causal_inference,
+    dream_insight, active_sensing) run UNCONDITIONALLY every tick (each has its
+    own internal cadence/dedupe). Self-safe: NEVER raises into the heartbeat.
+    """
+    try:
+        snap = _collect_cognition_snapshot() if snapshot is None else snapshot
+        run_live = False if shadow is None else bool(shadow)
+        result = cognition_family().tick(snap, shadow=run_live)
+        # Unconditional non-LLM members (independent of the gate result above).
+        _run_cognition_nonllm_members(snap, result)
+        return result
+    except Exception as exc:  # never crash the heartbeat
+        return {
+            "family": COGNITION_FAMILY,
+            "fired": False,
+            "gate_calls": 1,
+            "members_ran": [],
+            "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
+        }

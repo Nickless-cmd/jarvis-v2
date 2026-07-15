@@ -802,6 +802,34 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Cluster-daemon FAMILIE #5 — cognition/inference (LIVE, prove-then-retire).
+    # pattern_counterfactual (gated LLM bag ÉN event-gate) + causal_inference +
+    # dream_insight + active_sensing (non-LLM, ubetinget) foldet ind i ÉN Central-
+    # styret familie. De 4 gamle daemons er PENSIONERET (default_enabled=False) →
+    # deres tick-blokke (causal_inference/pattern_counterfactual i heartbeat_runtime,
+    # dream_insight/active_sensing her) no-op'er via is_enabled. Familien kalder de
+    # gamle daemons' tick og bevarer alle outputs — causal_edges er load-bearing for
+    # central_causal_quality/causal_graph. Bred deadline: pattern_cf + active_sensing
+    # kan hver lave ét LLM/vision-kald. Self-safe: crasher aldrig heartbeaten.
+    if _dm.is_enabled("cluster_cognition"):
+        try:
+            from core.services.cluster_daemon import tick_cluster_cognition
+            _cog_cluster_result = _hb._daemon_tick_with_deadline(
+                "cluster_cognition", tick_cluster_cognition, deadline_seconds=40.0,
+            )
+            _dm.record_daemon_tick("cluster_cognition", _cog_cluster_result or {})
+            # Surface the freshly-produced dream insight into the trace, as the
+            # retired dream_insight daemon's own tick block used to.
+            try:
+                from core.services.dream_insight_daemon import get_latest_dream_insight
+                _cog_dream = get_latest_dream_insight()
+                if _cog_dream:
+                    inputs_present.append(f"drøm-indsigt: {_cog_dream[:80]}")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     # Creative drift daemon — spontaneous unexpected associations
     if _dm.is_enabled("creative_drift"):
         try:
@@ -877,6 +905,15 @@ def _build_influence_trace(
                 "ambient_sound", tick_ambient_sound_daemon, deadline_seconds=15.0,
             )
             _dm.record_daemon_tick("ambient_sound", _as_result or {})
+        except Exception:
+            pass
+
+    # active_sensing PENSIONERET 2026-07-15 → cluster_cognition overtager (non-LLM
+    # member, egen desire/interval-throttle). Var UNGATED (nestet i ambient_sound-
+    # blokken uden egen is_enabled) → nu egen is_enabled-gate så retirement gør den
+    # til no-op (aldrig begge live via default).
+    if _dm.is_enabled("active_sensing"):
+        try:
             from core.services.active_sensing_daemon import tick_active_sensing_daemon
             _asense_result = _hb._daemon_tick_with_deadline(
                 "active_sensing", tick_active_sensing_daemon, deadline_seconds=15.0,

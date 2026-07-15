@@ -157,7 +157,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 30,
-        "description": "Persists dream articulation output as private brain records",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_cognition overtager (non-LLM member; kører ubetinget hver familie-tick; signal-id-dedupe). _last_insight-cache + private_brain-record BEVARET (central_inner_life_digest/signal_surface_router/mission_control_living_mind læser dem).
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_cognition] Persists dream articulation output as private brain records",
     },
     "code_aesthetic": {
         "module": "core.services.code_aesthetic_daemon",
@@ -196,7 +198,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 15,
-        "description": "15min causal-graph inference (three-tier matching) — populates causal_edges from events allowlist, emits causal.inference_stats",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_cognition overtager (non-LLM member; kører ubetinget hver familie-tick; self-throttler 15min). causal_edges + causal.inference_stats BEVARET (central_causal_quality/causal_graph; pattern_cf bygger PÅ inferred-tier).
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_cognition] 15min causal-graph inference (three-tier matching) — populates causal_edges from events allowlist, emits causal.inference_stats",
     },
     "narrative_summary": {
         "module": "core.services.narrative_summary_daemon",
@@ -212,7 +216,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 60,
-        "description": "Phase 3.5 of causal graph — hourly, takes top 3 recurring patterns and asks cheap LLM 'what would change if this stopped?'; persists as counterfactual.pattern_what_if events (24h dedupe per pattern)",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_cognition overtager (GATED LLM member bag familiens ÉNE should_generative_fire — blind-timer LLM → salience-gatet; self-throttler stadig 60min + 24h dedupe). counterfactual.pattern_what_if BEVARET (causal_patterns prompt-section).
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_cognition] Phase 3.5 of causal graph — hourly, takes top 3 recurring patterns and asks cheap LLM 'what would change if this stopped?'; persists as counterfactual.pattern_what_if events (24h dedupe per pattern)",
     },
     "memory_maintenance": {
         "module": "core.services.memory_maintenance_daemon",
@@ -377,8 +383,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 30,
-        "default_enabled": True,
-        "description": "Aktiv sansetrang: Sansernes Arkiv vælger selv at sanse (visual/audio/atmosphere/mixed) på eget initiativ",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_cognition overtager (non-LLM member; kører ubetinget hver familie-tick; egen desire/interval-throttle 30-90min). Surface + cognitive_state.active_sensing + sensory_archive BEVARET (central_soul_digest/prompt_heartbeat_self_knowledge).
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_cognition] Aktiv sansetrang: Sansernes Arkiv vælger selv at sanse (visual/audio/atmosphere/mixed) på eget initiativ",
     },
     "ground_truth_registry": {
         "module": "core.services.ground_truth_registry",
@@ -568,6 +575,27 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # dominerende daglige rytme (dokumentation; heartbeaten gater på is_enabled,
         # ikke cadence — medlemmerne self-throttler). Aldrig begge live.
         "description": "cluster-daemon FAMILIE #4 (narrative/self-history) LIVE, TIME-BASED (ingen event-gate): development_narrative+narrative_summary+identity_drift+identity_sketch+consolidation_judge; hvert medlem self-throttler på egen cadence; erstatter de 5 pensionerede daemons; bevarer alle outputs (development-narrative log, identity_drift snapshot).",
+    },
+    "cluster_cognition": {
+        "module": "core.services.cluster_daemon",
+        "reset_var": "_COGNITION_FAMILY",
+        "reset_value": None,
+        "default_cadence_minutes": 5,
+        "default_enabled": True,
+        # Cluster-daemon-konsolidering (spec 2026-07-14), FAMILIE #5 (cognition/
+        # inference): causal_inference + pattern_counterfactual + dream_insight +
+        # active_sensing foldet ind i ÉN Central-styret familie. Kører LIVE
+        # (prove-then-retire END STATE) — de 4 gamle daemons er PENSIONERET
+        # (default_enabled=False, retired 2026-07-15). To tiers: DET ENE LLM-medlem
+        # (pattern_counterfactual, tidl. blind-timer LLM) bag familiens ÉNE
+        # should_generative_fire event-gate → salience-gatet; de 3 non-LLM-medlemmer
+        # (causal_inference, dream_insight, active_sensing) kører UBETINGET hver tick
+        # med hver deres interne cadence/dedupe. Bevarer alle outputs — causal_edges
+        # (load-bearing for central_causal_quality/causal_graph), dream-insight-cache,
+        # active_sensing-surface. default_cadence_minutes=5 markerer den hyppigste
+        # meningsfulde rytme (causal 15min self-throttler evalueres ofte); heartbeaten
+        # gater på is_enabled, medlemmerne self-throttler. Aldrig begge live.
+        "description": "cluster-daemon FAMILIE #5 (cognition/inference) LIVE: pattern_counterfactual (gated LLM, ÉN event-gate) + causal_inference+dream_insight+active_sensing (non-LLM, ubetinget) foldet i ÉN familie; erstatter de 4 pensionerede daemons; bevarer alle outputs (causal_edges, dream-insight, active_sensing-surface).",
     },
 }
 

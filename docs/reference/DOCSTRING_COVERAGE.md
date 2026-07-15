@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6188/12691 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6193/12702 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6188/12691 functions/methods documented (48%). The list b
 | `core.memory` | 44 | 123 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4074 | 8831 | 46% |
+| `core.services` | 4079 | 8842 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -39,7 +39,7 @@ Generated from source. 6188/12691 functions/methods documented (48%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1833)
+## Undocumented public functions (1834)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -747,6 +747,7 @@ Generated from source. 6188/12691 functions/methods documented (48%). The list b
 - `core/services/clarification_classifier.py` :: `clarification_prompt_section` (L78)
 - `core/services/clarification_classifier.py` :: `score_message` (L39)
 - `core/services/cluster_daemon.py` :: `affect_family` (L1033)
+- `core/services/cluster_daemon.py` :: `cognition_family` (L1413)
 - `core/services/cluster_daemon.py` :: `innervoice_family` (L766)
 - `core/services/cluster_daemon.py` :: `narrative_family` (L1243)
 - `core/services/cluster_daemon.py` :: `somatic_family` (L412)
@@ -832,8 +833,8 @@ Generated from source. 6188/12691 functions/methods documented (48%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `maybe_register_from_text` (L53)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L15)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L575)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L622)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L603)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L650)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L266)
@@ -994,7 +995,7 @@ Generated from source. 6188/12691 functions/methods documented (48%). The list b
 - `core/services/habits_pipeline.py` :: `reject_suggestion` (L350)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L451)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2217)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2225)
 - `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L317)
 - `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1177)
 - `core/services/heartbeat_runtime.py` :: `start_heartbeat_scheduler` (L245)

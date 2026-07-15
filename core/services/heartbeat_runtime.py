@@ -2140,13 +2140,17 @@ def _run_heartbeat_tick_locked(
     # daemon_manager og ALDRIG kaldt herfra → inferred-tier stod tom, kun eksplicitte edges blev
     # skrevet. Bjørns 'neuro-symbolsk #1', det ene ægte døde lag. Self-throttler internt (15min).
     # Deadline-guard OBLIGATORISK: tre-tier matching + causal_edges-skrivning kan spike DB.
-    try:
-        from core.services.causal_inference_daemon import tick_causal_inference_daemon
-        _daemon_tick_with_deadline(
-            "causal_inference", tick_causal_inference_daemon, deadline_seconds=15.0,
-        )
-    except Exception:
-        pass
+    # causal_inference PENSIONERET 2026-07-15 → cluster_cognition overtager
+    # (non-LLM member, self-throttler 15min). is_enabled-gate gør denne tick-blok
+    # til no-op når daemonen er retired (var UNGATED før — wrap som narrative_summary).
+    if _dm.is_enabled("causal_inference"):
+        try:
+            from core.services.causal_inference_daemon import tick_causal_inference_daemon
+            _daemon_tick_with_deadline(
+                "causal_inference", tick_causal_inference_daemon, deadline_seconds=15.0,
+            )
+        except Exception:
+            pass
     # narrative_summary PENSIONERET 2026-07-15 → cluster_narrative overtager
     # (medlem, self-throttler 15min). is_enabled-gate gør denne tick-blok til
     # no-op når daemonen er retired; falder tilbage til at køre hvis nogen
@@ -2159,13 +2163,17 @@ def _run_heartbeat_tick_locked(
             )
         except Exception:
             pass
-    try:
-        from core.services.pattern_counterfactual_daemon import tick_pattern_counterfactual_daemon
-        _daemon_tick_with_deadline(
-            "pattern_counterfactual", tick_pattern_counterfactual_daemon, deadline_seconds=25.0,
-        )
-    except Exception:
-        pass
+    # pattern_counterfactual PENSIONERET 2026-07-15 → cluster_cognition overtager
+    # (gated LLM member bag familiens event-gate). is_enabled-gate gør denne tick-blok
+    # til no-op når daemonen er retired (var UNGATED før — wrap som narrative_summary).
+    if _dm.is_enabled("pattern_counterfactual"):
+        try:
+            from core.services.pattern_counterfactual_daemon import tick_pattern_counterfactual_daemon
+            _daemon_tick_with_deadline(
+                "pattern_counterfactual", tick_pattern_counterfactual_daemon, deadline_seconds=25.0,
+            )
+        except Exception:
+            pass
     # Provider auto-discovery (spec §5.5 Fase C) — dagligt /models-scan → pending_models-
     # staging. Self-throttler internt (1440min); default_enabled=False (governed — stager kun,
     # promotion manuel). Deadline-guard: scanner alle providers via /models (netværk).

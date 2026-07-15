@@ -396,24 +396,11 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["reka-edge-2603"],
     },
-    # SiliconFlow (15. jul, Bjørn-nøgle): OpenAI-compat `api.siliconflow.com/v1`, bearer.
-    # ÆGTE GRATIS-modeller EMPIRISK bevist: 5× Qwen3-8B + 3× Qwen2.5-7B → saldo uændret
-    # (totalBalance=1 før=efter → tærer IKKE på credit). Qwen3-8B tool-capable
-    # (tool_calls=1). $1 start-credit findes til de BETALTE modeller (GLM-5.2/DeepSeek-V4)
-    # men static_models = kun de gratis Qwen → ingen credit-brug; ved tom credit 402'er
-    # kun de betalte, de frie kører videre. Nøgle gemt CT105 — ALDRIG repo.
-    "siliconflow": {
-        "label": "SiliconFlow",
-        "priority": 48,
-        "base_url": "https://api.siliconflow.com/v1",
-        "auth_kind": "bearer",
-        "protocol": "openai-chat",
-        "models_endpoint": "/models",
-        "rpm_limit": 30,
-        "daily_limit": 1000,
-        "cost_class": "free",
-        "static_models": ["Qwen/Qwen3-8B", "Qwen/Qwen2.5-7B-Instruct"],
-    },
+    # SiliconFlow AFVIST 15. jul: så gratis ud i et lille trial-vindue (~8 kald), men
+    # hård-gater derefter til 403 code=30001 "account balance insufficient" på ALLE
+    # kald (selv max_tokens=100, efter pause). Kræver rigtig betaling for vedvarende
+    # brug → ikke en $0-provider (som LLM7). Burst-test narrede først: trial-kvoten
+    # holdt saldo=1 mens den varede. Ikke wired.
     # Copilot Pro (15. jul) — Bjørns betalte abonnement, delt i to efter multiplier:
     # copilot-free = 0x (inkluderet, nul premium-requests) → GRATIS, i cheap lane + pool.
     "copilot-free": {

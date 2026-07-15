@@ -177,21 +177,6 @@ def test_reka_edge_conservative_cap():
     assert is_routable_provider("reka") and "reka" in _OPENAI_COMPATIBLE_PROVIDERS
 
 
-def test_siliconflow_free_qwen_models():
-    """15. jul: SiliconFlow — Qwen3-8B/Qwen2.5-7B EMPIRISK gratis (saldo uændret efter
-    burst). Qwen3-8B tool-capable. static_models kun de gratis Qwen (ikke betalte GLM/DS)."""
-    from core.services.cheap_provider_runtime_adapters import (
-        CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_cost_class,
-        _OPENAI_COMPATIBLE_PROVIDERS)
-    sf = CHEAP_PROVIDER_DEFAULTS["siliconflow"]
-    assert sf["auth_kind"] == "bearer"
-    assert sf["base_url"] == "https://api.siliconflow.com/v1"
-    assert sf["static_models"] == ["Qwen/Qwen3-8B", "Qwen/Qwen2.5-7B-Instruct"]
-    assert all(m.startswith("Qwen/") for m in sf["static_models"])  # kun gratis Qwen, ingen betalt GLM/DeepSeek
-    assert provider_cost_class("siliconflow") == "free"
-    assert is_routable_provider("siliconflow") and "siliconflow" in _OPENAI_COMPATIBLE_PROVIDERS
-
-
 def test_require_credentials_still_raises_for_bearer_without_key(monkeypatch):
     """Guarden må kun gælde auth_kind=none. En bearer-provider uden nøgle skal stadig
     rejse auth-not-ready (ellers ville vi kalde en betalt/nøgle-provider uden auth)."""

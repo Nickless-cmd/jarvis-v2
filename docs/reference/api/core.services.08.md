@@ -91,20 +91,20 @@ _Daemon Manager — registry, lifecycle control, and state persistence for all d
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_state_file` | `()` | — | [src](../../../core/services/daemon_manager.py#L20) |
-| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L449) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L453) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L463) |
-| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L469) |
-| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L473) |
-| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L481) |
-| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L487) |
-| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L496) |
-| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L501) |
-| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L510) |
-| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L519) |
-| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L531) |
-| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L554) |
-| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L585) |
+| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L455) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L459) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L469) |
+| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L475) |
+| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L479) |
+| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L487) |
+| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L493) |
+| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L502) |
+| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L507) |
+| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L516) |
+| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L525) |
+| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L537) |
+| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L560) |
+| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L591) |
 
 ## `core/services/daemon_memory_safeguard.py`
 _Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
@@ -378,15 +378,17 @@ _Desire daemon — emergent appetites based on Jarvis' actual experiences._
 |---|---|---|---|---|
 | function | `_persist_appetites` | `()` | — | [src](../../../core/services/desire_daemon.py#L61) |
 | function | `tick_desire_daemon` | `(signals)` | Update appetites based on current signals. | [src](../../../core/services/desire_daemon.py#L69) |
-| function | `get_active_appetites` | `()` | Return active appetites sorted by intensity descending. | [src](../../../core/services/desire_daemon.py#L114) |
-| function | `build_desire_surface` | `()` | — | [src](../../../core/services/desire_daemon.py#L119) |
-| function | `_apply_decay` | `(now)` | — | [src](../../../core/services/desire_daemon.py#L133) |
-| function | `_prune_expired` | `()` | — | [src](../../../core/services/desire_daemon.py#L143) |
-| function | `_find_appetite_by_type` | `(appetite_type)` | — | [src](../../../core/services/desire_daemon.py#L149) |
-| function | `_spawn_appetite` | `(label, appetite_type, now)` | — | [src](../../../core/services/desire_daemon.py#L156) |
-| function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/desire_daemon.py#L192) |
-| function | `_build_raw_appetite_label` | `(spawning_type)` | Byg label udelukkende fra rå intensiteter — ingen LLM. | [src](../../../core/services/desire_daemon.py#L206) |
-| function | `_generate_appetite_label` | `(signal_text, appetite_type)` | — | [src](../../../core/services/desire_daemon.py#L224) |
+| function | `get_active_appetites` | `()` | Return active appetites sorted by intensity descending. | [src](../../../core/services/desire_daemon.py#L132) |
+| function | `build_desire_surface` | `()` | — | [src](../../../core/services/desire_daemon.py#L137) |
+| function | `_apply_decay` | `(now)` | — | [src](../../../core/services/desire_daemon.py#L151) |
+| function | `_prune_expired` | `()` | — | [src](../../../core/services/desire_daemon.py#L161) |
+| function | `_find_appetite_by_type` | `(appetite_type)` | — | [src](../../../core/services/desire_daemon.py#L167) |
+| function | `_appetite_intensity` | `(appetite_type)` | Current intensity of an appetite type (0.0 when absent). Non-LLM. | [src](../../../core/services/desire_daemon.py#L174) |
+| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/desire_daemon.py#L180) |
+| function | `_spawn_appetite` | `(label, appetite_type, now)` | — | [src](../../../core/services/desire_daemon.py#L188) |
+| function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/desire_daemon.py#L224) |
+| function | `_build_raw_appetite_label` | `(spawning_type)` | Byg label udelukkende fra rå intensiteter — ingen LLM. | [src](../../../core/services/desire_daemon.py#L238) |
+| function | `_generate_appetite_label` | `(signal_text, appetite_type)` | — | [src](../../../core/services/desire_daemon.py#L256) |
 
 ## `core/services/desktop_notifications.py`
 _Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_

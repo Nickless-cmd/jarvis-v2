@@ -146,7 +146,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 10080,
-        "description": "Weekly codebase aesthetic reflection (7 days)",
+        "default_enabled": False,  # PENSIONERET 2026-07-13 (Fase 7) — blind ugentlig LLM-refleksion nedlagt
+        "retired": "2026-07-13",
+        "description": "[PENSIONERET] Weekly codebase aesthetic reflection (7 days)",
     },
     "memory_decay": {
         "module": "core.services.memory_decay_daemon",
@@ -223,7 +225,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_council_at",
         "reset_value": None,
         "default_cadence_minutes": 30,
-        "description": "Spontaneous self-triggered council deliberation via signal scoring",
+        "default_enabled": False,  # PENSIONERET 2026-07-13 (Lag 6) — convene_judge overtager; motor (convene_council + council_deliberation_controller) bevaret
+        "retired": "2026-07-13",
+        "description": "[PENSIONERET] Spontaneous self-triggered council deliberation via signal scoring",
     },
     "council_memory": {
         "module": "core.services.council_memory_daemon",
@@ -284,7 +288,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 10080,
-        "description": "Lag 5: weekly self-set desire field — what pulls at Jarvis right now",
+        "default_enabled": False,  # PENSIONERET 2026-07-13 (Fase 7) — blind ugentlig LLM-pull nedlagt
+        "retired": "2026-07-13",
+        "description": "[PENSIONERET] Lag 5: weekly self-set desire field — what pulls at Jarvis right now",
     },
     "visual_memory": {
         "module": "core.services.visual_memory",

@@ -106,6 +106,25 @@ def tick_absence_daemon(now: datetime | None = None) -> dict:
         if (now - _last_generated_at) < _REGEN_COOLDOWN:
             return {"generated": False}
 
+    # Event-gate (Fase 2 Lag 7/Fase 6): fire the LLM absence narration only when
+    # the silence actually deepened (band crossing / hour drift). Flag OFF →
+    # legacy behaviour (30-min regen cooldown only). Fail-open.
+    try:
+        from core.services import event_gate
+
+        if event_gate.event_driven_enabled():
+            hours = elapsed.total_seconds() / 3600.0
+            _relevant = {
+                "hours_frac": min(1.0, hours / 24.0),
+                "band": {"short": 0.0, "long": 0.5, "very_long": 1.0}[
+                    _absence_band(elapsed)
+                ],
+            }
+            if not event_gate.should_generative_fire("absence", _relevant):
+                return {"skipped": "no_signal_change"}
+    except Exception:
+        pass  # fail-open
+
     # Fase 2 / Lag 1 — rå tal, ikke LLM-label. Bygger fraværs-strengen direkte
     # fra metrics og SPRINGER narrations-LLM-kaldet over. Samme output-felt (label),
     # så awareness/prompt-consumeren mærker kun at STRENGEN skifter.

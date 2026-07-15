@@ -118,6 +118,19 @@ def test_restart_clears_state_var(tmp_path):
     assert curiosity_daemon._last_tick_at is None
 
 
+def test_retired_daemons_default_disabled(tmp_path):
+    """Fase 6/7 + Lag 6: autonomous_council, code_aesthetic and current_pull are
+    retired — registered (code + engine preserved) but not running by default."""
+    from core.services import daemon_manager
+    retired = ("autonomous_council", "code_aesthetic", "current_pull")
+    for name in retired:
+        assert name in daemon_manager.get_daemon_names()
+        assert daemon_manager._REGISTRY[name].get("default_enabled") is False, name
+    with patch.object(daemon_manager, "_state_file", return_value=tmp_path / "DAEMON_STATE.json"):
+        for name in retired:
+            assert daemon_manager.is_enabled(name) is False, name
+
+
 def test_unknown_daemon_control_raises(tmp_path):
     import pytest
     from core.services import daemon_manager

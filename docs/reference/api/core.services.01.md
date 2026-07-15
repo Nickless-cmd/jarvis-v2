@@ -27,13 +27,13 @@ _Absence daemon — tracks the *quality* of Jarvis' silence between interactions
 | function | `mark_interaction` | `()` | Call whenever Jarvis interacts with the user. Resets absence clock. | [src](../../../core/services/absence_daemon.py#L60) |
 | function | `seed_last_interaction_from_db` | `()` | One-time seed: set _last_interaction_at from most recent visible run if not yet set. | [src](../../../core/services/absence_daemon.py#L68) |
 | function | `tick_absence_daemon` | `(now=…)` | Evaluate current absence quality. Returns {generated, label, duration_hours}. | [src](../../../core/services/absence_daemon.py#L84) |
-| function | `get_latest_absence` | `()` | — | [src](../../../core/services/absence_daemon.py#L125) |
-| function | `build_absence_surface` | `()` | — | [src](../../../core/services/absence_daemon.py#L129) |
-| function | `_classify_absence` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L148) |
-| function | `_absence_band` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L157) |
-| function | `_build_raw_absence` | `(elapsed)` | Byg fraværs-strengen udelukkende fra rå metrics — ingen LLM. | [src](../../../core/services/absence_daemon.py#L165) |
-| function | `_generate_absence_label` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L176) |
-| function | `_store_absence` | `(label, duration_hours, now)` | — | [src](../../../core/services/absence_daemon.py#L199) |
+| function | `get_latest_absence` | `()` | — | [src](../../../core/services/absence_daemon.py#L144) |
+| function | `build_absence_surface` | `()` | — | [src](../../../core/services/absence_daemon.py#L148) |
+| function | `_classify_absence` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L167) |
+| function | `_absence_band` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L176) |
+| function | `_build_raw_absence` | `(elapsed)` | Byg fraværs-strengen udelukkende fra rå metrics — ingen LLM. | [src](../../../core/services/absence_daemon.py#L184) |
+| function | `_generate_absence_label` | `(elapsed)` | — | [src](../../../core/services/absence_daemon.py#L195) |
+| function | `_store_absence` | `(label, duration_hours, now)` | — | [src](../../../core/services/absence_daemon.py#L218) |
 
 ## `core/services/abuse_monitor.py`
 _Abuse-monitoring (spec 2026-06-21 §5): prompt-injection, manipulation,_

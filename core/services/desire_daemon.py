@@ -95,6 +95,24 @@ def tick_desire_daemon(signals: dict[str, str]) -> dict:
             existing["last_reinforced_at"] = now.isoformat()
         elif len(_appetites) < _MAX_APPETITES:
             # Spawn new appetite from this signal.
+            # Event-gate (Fase 2 Lag 6/Fase 6): fire the LLM label generation only
+            # when the appetite landscape / incoming signal actually moved. Flag
+            # OFF → legacy behaviour. Fail-open (fall through to normal spawn).
+            try:
+                from core.services import event_gate
+
+                if event_gate.event_driven_enabled():
+                    _relevant = {
+                        "curiosity": _appetite_intensity("curiosity-appetite"),
+                        "craft": _appetite_intensity("craft-appetite"),
+                        "connection": _appetite_intensity("connection-appetite"),
+                        "signal": _text_signal(signal_text),
+                    }
+                    if not event_gate.should_generative_fire("desire", _relevant):
+                        continue
+            except Exception:
+                pass  # fail-open
+
             # Fase 2 / Lag 1 — rå intensiteter, ikke LLM-label. Bygger label
             # direkte fra de tre appetit-dimensioner og SPRINGER narrations-
             # LLM-kaldet over. Samme appetite-shape; kun label-strengen skifter.
@@ -151,6 +169,20 @@ def _find_appetite_by_type(appetite_type: str) -> dict | None:
         if a["type"] == appetite_type:
             return a
     return None
+
+
+def _appetite_intensity(appetite_type: str) -> float:
+    """Current intensity of an appetite type (0.0 when absent). Non-LLM."""
+    existing = _find_appetite_by_type(appetite_type)
+    return float(existing["intensity"]) if existing else 0.0
+
+
+def _text_signal(value: str) -> float:
+    """Deterministic 0..1 proxy of a short text state so the event-gate can
+    detect when this daemon's input actually changed (no hash randomisation)."""
+    if not value:
+        return 0.0
+    return float(sum(ord(c) for c in value) % 100) / 100.0
 
 
 def _spawn_appetite(label: str, appetite_type: str, now: datetime) -> None:

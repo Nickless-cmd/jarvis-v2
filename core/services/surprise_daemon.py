@@ -26,6 +26,14 @@ _persistence_start_ts: float | None = None  # monotonic timestamp of last surpri
 _persistence_concept: str = ""  # which concept was triggered for persistence tracking
 
 
+def _text_signal(value: str) -> float:
+    """Deterministic 0..1 proxy of a short text state so the event-gate can
+    detect when this daemon's input actually changed (no hash randomisation)."""
+    if not value:
+        return 0.0
+    return float(sum(ord(c) for c in value) % 100) / 100.0
+
+
 def _surprise_type_to_concept(surprise_type: str) -> str:
     """Map surprise classification to primary emotion concept."""
     return {
@@ -78,6 +86,23 @@ def tick_surprise_daemon(
     divergence = _compute_divergence(inner_voice_mode, somatic_energy)
     if not divergence:
         return {"generated": False, "surprise": _cached_surprise}
+    # Event-gate (Fase 2 Lag 5/Fase 6): fire the LLM surprise narration only when
+    # the divergence/mode/energy signals actually moved. Flag OFF → legacy
+    # behaviour (history + cooldown + divergence guards only). Fail-open.
+    try:
+        from core.services import event_gate
+        if event_gate.event_driven_enabled():
+            _relevant = {
+                "divergence_count": float(len(divergence)),
+                "mode": _text_signal(inner_voice_mode),
+                "energy": float(ENERGY_ORDER.index(somatic_energy))
+                if somatic_energy in ENERGY_ORDER
+                else 0.0,
+            }
+            if not event_gate.should_generative_fire("surprise", _relevant):
+                return {"skipped": "no_signal_change", "surprise": _cached_surprise}
+    except Exception:
+        pass  # fail-open
     if _raw_signal_mode():
         # Lag 1 — rå divergens, ingen narration. Samme output-felt som
         # awareness konsumerer; flaget bytter blot strengen (regel-beregnet

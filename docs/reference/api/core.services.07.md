@@ -19,14 +19,14 @@ _Conflict daemon — detects when Jarvis' signals pull in opposite directions._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `tick_conflict_daemon` | `(snapshot)` | Detect conflict in signal snapshot. snapshot keys: energy_level, inner_voice_mode, | [src](../../../core/services/conflict_daemon.py#L31) |
-| function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/conflict_daemon.py#L59) |
-| function | `_conflict_tension` | `(conflict_type, snapshot)` | Rå spændings-score 0–1 fra rule-based signaler. Ingen LLM. | [src](../../../core/services/conflict_daemon.py#L73) |
-| function | `_build_raw_conflict_phrase` | `(conflict_type, snapshot)` | Byg frasen udelukkende fra rå metrics — ingen LLM. | [src](../../../core/services/conflict_daemon.py#L89) |
-| function | `_detect_conflict` | `(snapshot)` | — | [src](../../../core/services/conflict_daemon.py#L99) |
-| function | `_generate_conflict_phrase` | `(conflict_type, snapshot)` | — | [src](../../../core/services/conflict_daemon.py#L125) |
-| function | `_store_conflict` | `(phrase, conflict_type)` | — | [src](../../../core/services/conflict_daemon.py#L174) |
-| function | `get_latest_conflict` | `()` | — | [src](../../../core/services/conflict_daemon.py#L205) |
-| function | `build_conflict_surface` | `()` | — | [src](../../../core/services/conflict_daemon.py#L209) |
+| function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/conflict_daemon.py#L77) |
+| function | `_conflict_tension` | `(conflict_type, snapshot)` | Rå spændings-score 0–1 fra rule-based signaler. Ingen LLM. | [src](../../../core/services/conflict_daemon.py#L91) |
+| function | `_build_raw_conflict_phrase` | `(conflict_type, snapshot)` | Byg frasen udelukkende fra rå metrics — ingen LLM. | [src](../../../core/services/conflict_daemon.py#L107) |
+| function | `_detect_conflict` | `(snapshot)` | — | [src](../../../core/services/conflict_daemon.py#L117) |
+| function | `_generate_conflict_phrase` | `(conflict_type, snapshot)` | — | [src](../../../core/services/conflict_daemon.py#L143) |
+| function | `_store_conflict` | `(phrase, conflict_type)` | — | [src](../../../core/services/conflict_daemon.py#L192) |
+| function | `get_latest_conflict` | `()` | — | [src](../../../core/services/conflict_daemon.py#L223) |
+| function | `build_conflict_surface` | `()` | — | [src](../../../core/services/conflict_daemon.py#L227) |
 
 ## `core/services/conflict_prompt_service.py`
 _Conflict memory prompt service — surfaces recent conversation conflicts in the prompt._

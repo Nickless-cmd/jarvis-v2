@@ -918,6 +918,35 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # cluster-daemon FAMILIE #9 (projects) — task_worker + my_projects_watchdog +
+    # life_projects_reassessment + thought_action_proposal foldet i ÉN Central-styret
+    # familie. Kører LIVE (prove-then-retire END STATE) → de 4 gamle daemons er
+    # PENSIONERET (default_enabled=False) → deres gamle tick-sites (task_worker,
+    # my_projects_watchdog, thought_action_proposal i heartbeaten; life_projects_
+    # reassessment i internal_cadence-produceren) no-op'er via is_enabled. INGEN LLM-
+    # medlem → ingen gated tier: alle fire kører i den UBETINGEDE tier og self-throttler.
+    # task_worker er LOAD-BEARING: FØRST i tieren, budget=3, drænes runtime_tasks HVER
+    # tick uden throttle — hverken en fejlende sibling eller den (fail-open) familie-gate
+    # kan blokere drænet. Self-safe: crasher aldrig ind i heartbeaten.
+    if _dm.is_enabled("cluster_projects"):
+        try:
+            from core.services.cluster_daemon_families import tick_cluster_projects
+            _proj_cluster_result = _hb._daemon_tick_with_deadline(
+                "cluster_projects", tick_cluster_projects, deadline_seconds=30.0,
+            )
+            _dm.record_daemon_tick("cluster_projects", _proj_cluster_result or {})
+            # Surface pending action-proposals into the trace, as the retired
+            # thought_action_proposal daemon's own tick block used to feed it.
+            try:
+                from core.services.thought_action_proposal_daemon import get_pending_proposals
+                _pending_c = get_pending_proposals()
+                if _pending_c:
+                    inputs_present.append(f"handlingsforslag: {len(_pending_c)} afventer")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     # Creative drift daemon — spontaneous unexpected associations
     if _dm.is_enabled("creative_drift"):
         try:

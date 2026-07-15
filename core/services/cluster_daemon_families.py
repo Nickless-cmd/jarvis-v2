@@ -65,6 +65,7 @@ the other seven.
 """
 from __future__ import annotations
 
+import time
 from typing import Any, Callable
 
 from core.services.cluster_daemon import ClusterDaemon, ClusterMember, _iv_surface_observe
@@ -733,3 +734,256 @@ def tick_cluster_relation(snapshot: dict | None = None, *, shadow: bool | None =
             "members_ran": [],
             "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
         }
+
+
+# ===========================================================================
+# Family #9 — projects (task_worker + my_projects_watchdog +
+#             life_projects_reassessment + thought_action_proposal)
+# ===========================================================================
+#
+# The PROJECTS / WORK-EXECUTION family. Four daemons that keep Jarvis' concrete
+# work moving — the runtime task queue, his own background processes, his
+# long-term life projects, and turning action-impulses into proposals. UNLIKE
+# families #6/#7/#8 this family has NO LLM member: all four are rules/DB-driven,
+# so there is NO gated (LLM) tier — every member runs in the UNCONDITIONAL tier
+# and self-throttles on its own cadence. The ONE family gate is therefore
+# fail-open (no gated member signals → it always fires); the load-reduction is
+# purely structural: ONE family tick + ONE registry entry replacing four.
+#
+#   * task_worker — RULES, LOAD-BEARING INFRASTRUCTURE. Every tick it claims and
+#     executes up to ``budget`` queued ``runtime_tasks`` (initiative/heartbeat/
+#     open-loop followups + agency/observability/theater refactor briefs). It has
+#     NO self-throttle by design — it MUST drain the queue every family tick, so
+#     it is placed FIRST in the unconditional tier and runs with budget=3 exactly
+#     as the old heartbeat site did. A sibling error must NEVER block it (per-member
+#     isolation + a defensive entry-point that runs the unconditional tier even if
+#     the gated tick blows up). Output: processed/succeeded/failed/blocked/
+#     remaining_queued → consumed by the heartbeat's followup pipeline.
+#
+#   * my_projects_watchdog — RULES. Restarts Jarvis' own dead background processes
+#     (grid-bot, dealwork-worker, superteam-scanner, toku-poller). Had NO internal
+#     timer (relied on its 240-min registry cadence), so the family gives it a
+#     240-min self-throttle to preserve that cadence and avoid a per-tick
+#     list_processes hit. Output: running/restarted/errors.
+#
+#   * life_projects_reassessment — RULES. Scans active long_term_intentions and
+#     publishes ``life_projects.reassessment_due`` for any older than the decay
+#     threshold. Had NO internal timer (it relied on the internal_cadence
+#     producer's 1440-min cooldown), and it re-publishes for every still-stale item
+#     on each run → the family gives it a 1440-min (24h) self-throttle so it keeps
+#     its daily cadence and never spams reassessment_due events. Kill-switch:
+#     layer_life_projects_enabled (checked inside the tick). Output: reviewed/skipped.
+#
+#   * thought_action_proposal — RULES (regex classifier, NO LLM). Turns the latest
+#     thought-stream fragment into an MC action-proposal when an action impulse is
+#     detected. It self-throttles intrinsically via its ``_last_classified_fragment``
+#     dedup (a repeated fragment → "duplicate_fragment"), so it runs every tick on
+#     the freshly-collected fragment exactly as the old heartbeat site did (skip when
+#     no fragment). Output: thought_action_proposal.created event + private-brain
+#     record + build_proposal_surface/get_pending_proposals (read by cluster_affect's
+#     conflict snapshot, central_inner_life_digest, signal_surface_router).
+#
+# Self-safe throughout: a member error is captured into ``member_errors`` and never
+# propagated; task_worker's drain is paramount, so neither a failing sibling nor a
+# broken family gate can block it; ``tick_cluster_projects`` never raises.
+
+PROJECTS_FAMILY = "cluster_projects"
+
+
+# ---------------------------------------------------------------------------
+# Per-member self-throttle (for the members that had no internal cadence guard)
+# ---------------------------------------------------------------------------
+
+_PROJECTS_THROTTLE: dict[str, float] = {}
+
+
+def _projects_throttle_ready(key: str, minutes: float) -> bool:
+    """Return True (and stamp 'now') iff ``minutes`` have elapsed since the last
+    ready for ``key``. First call is always ready (last defaults to 0). Gives the
+    members that lacked an internal timer their own cadence self-throttle so
+    folding them into the every-tick family does not change how often they fire."""
+    now = time.time()
+    last = _PROJECTS_THROTTLE.get(key, 0.0)
+    if (now - last) >= float(minutes) * 60.0:
+        _PROJECTS_THROTTLE[key] = now
+        return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Shared snapshot
+# ---------------------------------------------------------------------------
+
+
+def _collect_projects_snapshot() -> dict[str, Any]:
+    """Gather the projects family's shared snapshot once per tick.
+
+    Only thought_action_proposal needs an input from here — the latest
+    thought-stream fragment it classifies (collected once, as the old heartbeat
+    site did via ``get_latest_thought_fragment``). task_worker, my_projects_watchdog
+    and life_projects_reassessment self-collect inside their own ticks and need
+    nothing here. This family has NO LLM member, so there are no gate signals to
+    collect. Self-safe: degrades to a neutral default on any error; the family
+    still ticks.
+    """
+    snap: dict[str, Any] = {"latest_fragment": ""}
+    try:
+        from core.services.thought_stream_daemon import get_latest_thought_fragment
+        snap["latest_fragment"] = str(get_latest_thought_fragment() or "")
+    except Exception:
+        pass
+    return snap
+
+
+def build_projects_family() -> ClusterDaemon:
+    """Construct the projects/work-execution cluster-daemon (family #9), LIVE.
+
+    NO gated LLM member — all four members are rules/DB-driven and run in the
+    UNCONDITIONAL tier via ``tick_cluster_projects``. The ClusterDaemon is built
+    with an EMPTY ``members`` list (the gated tier): its one-gate call is therefore
+    fail-open (no signals → always fires) and exists only to keep the family's
+    ONE-gate invariant + Central trace continuous, mirroring the other families.
+    """
+    return ClusterDaemon(
+        family_name=PROJECTS_FAMILY,
+        cluster="cognition",
+        collect_snapshot=_collect_projects_snapshot,
+        members=[],  # no LLM member — every member is unconditional (see below)
+    )
+
+
+# Process-level singleton (keeps the family's Central trace continuous across
+# heartbeat ticks, mirroring the other families).
+_PROJECTS_FAMILY: ClusterDaemon | None = None
+
+
+def projects_family() -> ClusterDaemon:
+    global _PROJECTS_FAMILY
+    if _PROJECTS_FAMILY is None:
+        _PROJECTS_FAMILY = build_projects_family()
+    return _PROJECTS_FAMILY
+
+
+# ---------------------------------------------------------------------------
+# UNCONDITIONAL (non-LLM) member live dispatchers
+# ---------------------------------------------------------------------------
+
+
+def _projects_task_worker_live(_snap: dict) -> dict[str, Any]:
+    """LOAD-BEARING + EVERY TICK — drain up to 3 queued runtime_tasks. NO throttle:
+    task_worker must drain the queue on every family tick exactly as the old
+    heartbeat site (budget=3) did. Rules-based, no LLM, no family gate."""
+    from core.services.task_worker import tick_task_worker
+    return tick_task_worker(budget=3)
+
+
+def _projects_my_projects_live(_snap: dict) -> dict[str, Any]:
+    """Restart Jarvis' dead background processes. Rules-based, no LLM. Self-throttles
+    on a 240-min cadence (the daemon has no internal timer) so folding it into the
+    every-tick family preserves its cadence and avoids a per-tick list_processes."""
+    if not _projects_throttle_ready("my_projects_watchdog", 240):
+        return {"status": "throttled", "cadence_minutes": 240}
+    from core.services.my_projects import tick_my_projects_watchdog
+    return tick_my_projects_watchdog()
+
+
+def _projects_life_reassessment_live(_snap: dict) -> dict[str, Any]:
+    """Re-assess active life projects; publish reassessment_due for stale ones.
+    Rules-based, no LLM. Self-throttles on a 1440-min (24h) cadence (the daemon has
+    no internal timer and re-emits events for every still-stale item each run) so
+    it keeps its daily cadence and never spams reassessment_due."""
+    if not _projects_throttle_ready("life_projects_reassessment", 1440):
+        return {"status": "throttled", "cadence_minutes": 1440}
+    from core.services.life_projects import tick_life_projects_reassessment
+    return tick_life_projects_reassessment(trigger="heartbeat")
+
+
+def _projects_thought_action_live(snap: dict) -> dict[str, Any]:
+    """Classify the latest thought-stream fragment into an action-proposal. Rules-
+    based (regex classifier), no LLM, no family gate. Self-throttles intrinsically
+    via the daemon's ``_last_classified_fragment`` dedup, so running it every tick on
+    the freshly-collected fragment matches the old heartbeat behaviour. Skips
+    harmlessly when there is no fragment this tick."""
+    fragment = str(snap.get("latest_fragment") or "")
+    if not fragment:
+        return {"generated": False, "skip_reason": "no_fragment"}
+    from core.services.thought_action_proposal_daemon import tick_thought_action_proposal_daemon
+    return tick_thought_action_proposal_daemon(fragment)
+
+
+# (member_name, live_fn) in a stable order. task_worker is placed FIRST so the
+# LOAD-BEARING queue drain runs before any sibling — and its per-member try/except
+# guarantees a failing sibling can never block it.
+_PROJECTS_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
+    ("task_worker", _projects_task_worker_live),
+    ("my_projects_watchdog", _projects_my_projects_live),
+    ("life_projects_reassessment", _projects_life_reassessment_live),
+    ("thought_action_proposal", _projects_thought_action_live),
+)
+
+
+def _run_projects_unconditional(snap: dict, result: dict[str, Any]) -> None:
+    """Run every projects member UNCONDITIONALLY (this family has no LLM/gated tier),
+    self-safe. task_worker runs FIRST; each member self-throttles on its own cadence;
+    a member error is isolated into ``member_errors`` and NEVER propagated (task_worker
+    robustness is paramount — one failing sibling never blocks the drain); a
+    successful run is recorded into ``members_ran``/``outputs``.
+    """
+    for name, fn in _PROJECTS_UNCONDITIONAL:
+        try:
+            out = fn(snap)
+            result["outputs"][name] = out
+            result["members_ran"].append(name)
+        except Exception as exc:
+            result["member_errors"][name] = f"{type(exc).__name__}: {exc}"
+
+
+def tick_cluster_projects(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
+    """Heartbeat entry-point for the projects/work-execution cluster-daemon family (#9).
+
+    Runs LIVE by default (``shadow=False``) — the prove-then-retire end state
+    replacing the task_worker + my_projects_watchdog + life_projects_reassessment +
+    thought_action_proposal daemons. This family has NO LLM member: every member
+    runs in the UNCONDITIONAL tier and self-throttles on its own cadence.
+
+    task_worker robustness is paramount, so the unconditional tier is run
+    DEFENSIVELY — the (empty, fail-open) family gate tick is wrapped so that even a
+    catastrophic gate failure can never skip the queue drain, and task_worker is
+    FIRST in the unconditional tier with per-member error isolation. Self-safe:
+    NEVER raises into the heartbeat.
+    """
+    run_live = False if shadow is None else bool(shadow)
+    try:
+        snap = _collect_projects_snapshot() if snapshot is None else snapshot
+    except Exception:
+        snap = {"latest_fragment": ""}
+
+    result: dict[str, Any] = {
+        "family": PROJECTS_FAMILY,
+        "shadow": run_live,
+        "gate_calls": 1,
+        "fired": False,
+        "members_ran": [],
+        "members_skipped": [],
+        "member_errors": {},
+        "outputs": {},
+    }
+
+    # The family's ONE gate tick (no gated members → fail-open) — kept only for the
+    # one-gate invariant + Central trace. Wrapped so it can NEVER block task_worker.
+    try:
+        gres = projects_family().tick(snap, shadow=run_live)
+        result["fired"] = bool(gres.get("fired"))
+        result["gate_calls"] = int(gres.get("gate_calls") or 1)
+        result["members_skipped"].extend(gres.get("members_skipped") or [])
+        for _mn in (gres.get("members_ran") or []):
+            if _mn not in result["members_ran"]:
+                result["members_ran"].append(_mn)
+        result["outputs"].update(gres.get("outputs") or {})
+        result["member_errors"].update(gres.get("member_errors") or {})
+    except Exception as exc:
+        result["member_errors"]["__gated__"] = f"{type(exc).__name__}: {exc}"
+
+    # Unconditional tier — task_worker FIRST — runs REGARDLESS of the gate above.
+    _run_projects_unconditional(snap, result)
+    return result

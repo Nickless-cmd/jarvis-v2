@@ -94,6 +94,16 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
     ))
 
     def _run_life_projects_reassessment(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        # PENSIONERET 2026-07-15 — cluster_projects (familie #9) overtager
+        # life_projects_reassessment som non-LLM medlem (1440min/24t self-throttle).
+        # Gate den gamle produceren på is_enabled så den no-op'er når daemonen er
+        # pensioneret (undgår dobbelt-eksekvering + reassessment_due-spam med familien).
+        try:
+            from core.services import daemon_manager as _dm
+            if not _dm.is_enabled("life_projects_reassessment"):
+                return {"status": "retired", "reason": "cluster_projects overtager"}
+        except Exception:
+            pass
         from core.services.life_projects import tick_life_projects_reassessment
         return tick_life_projects_reassessment(trigger=trigger, last_visible_at=last_visible_at)
 

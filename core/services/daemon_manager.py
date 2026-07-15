@@ -70,7 +70,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 5,
-        "description": "Converts thought fragments into action proposals",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_projects overtager (non-LLM regel-medlem, ubetinget hver familie-tick; self-throttler via _last_classified_fragment-dedup); heartbeat-kaldet er is_enabled-gatet → no-op
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_projects] Converts thought fragments into action proposals",
     },
     "conflict": {
         "module": "core.services.conflict_daemon",
@@ -354,14 +356,18 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 2,
-        "description": "Consumes queued runtime_tasks (initiative/heartbeat/open-loop followups, generic)",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_projects overtager (LOAD-BEARING non-LLM medlem, FØRST i den ubetingede tier, budget=3, drænes hver familie-tick — INGEN throttle); heartbeat-kaldet er is_enabled-gatet → no-op
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_projects] Consumes queued runtime_tasks (initiative/heartbeat/open-loop followups, generic)",
     },
     "life_projects_reassessment": {
         "module": "core.services.life_projects",
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 1440,
-        "description": "24t re-vurdering af aktive life projects (long_term_intentions)",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_projects overtager (non-LLM regel-medlem, ubetinget hver familie-tick; self-throttler på 1440min/24t cadence så reassessment_due ikke spammes); internal_cadence-produceren er is_enabled-gatet → no-op
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_projects] 24t re-vurdering af aktive life projects (long_term_intentions)",
     },
     "relation_map_refresh": {
         "module": "core.services.relation_map",
@@ -395,8 +401,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 240,
-        "default_enabled": True,
-        "description": "240min checker: genstarter grid-bot, dealwork-worker, superteam-scanner og toku-poller hvis de er døde",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_projects overtager (non-LLM regel-medlem, ubetinget hver familie-tick; self-throttler på 240min cadence); heartbeat-kaldet er is_enabled-gatet → no-op
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_projects] 240min checker: genstarter grid-bot, dealwork-worker, superteam-scanner og toku-poller hvis de er døde",
     },
     "active_sensing": {
         "module": "core.services.active_sensing_daemon",
@@ -698,6 +705,37 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # scrub; relation_map-state + relation_map.refresh_tick. heartbeaten gater på
         # is_enabled, medlemmerne self-throttler. Aldrig begge live.
         "description": "cluster-daemon FAMILIE #8 (relation) LIVE: user_model (gated LLM, ÉN event-gate, LLM-theory-of-mind bevaret jf. spec-korrektion #3) + communication_guard + relation_map_refresh (non-LLM, ubetinget) foldet i ÉN familie; erstatter de 3 pensionerede daemons; bevarer alle outputs (user-model-surface, user_model.updated, comm-guard TTL-cleanup, relation-map-state/refresh_tick).",
+    },
+    "cluster_projects": {
+        "module": "core.services.cluster_daemon_families",
+        "reset_var": "_PROJECTS_FAMILY",
+        "reset_value": None,
+        "default_cadence_minutes": 2,
+        "default_enabled": True,
+        # Cluster-daemon-konsolidering, FAMILIE #9 (projects): task_worker +
+        # my_projects_watchdog + life_projects_reassessment + thought_action_proposal
+        # foldet ind i ÉN Central-styret familie (i cluster_daemon_families.py —
+        # cluster_daemon.py har ramt 1500-linjers kodegrænsen). Kører LIVE (prove-then-
+        # retire END STATE) — de 4 gamle daemons er PENSIONERET (default_enabled=False,
+        # retired 2026-07-15). INGEN LLM-medlem: alle fire er regel/DB-drevne, så der er
+        # INGEN gated (LLM) tier — hver medlem kører i den UBETINGEDE tier og self-
+        # throttler på egen cadence; familiens ÉNE gate er fail-open (ingen gate-signaler
+        # → fyrer altid). task_worker er LOAD-BEARING infrastruktur: FØRST i den ubetingede
+        # tier, budget=3, drænes runtime_tasks-køen HVER familie-tick UDEN throttle — en
+        # fejlende sibling eller en brudt familie-gate kan ALDRIG blokere drænet (per-medlem
+        # isolation + defensivt entry-point). my_projects_watchdog (240min self-throttle,
+        # genstarter døde baggrundsprocesser), life_projects_reassessment (1440min/24t self-
+        # throttle så reassessment_due ikke spammes) og thought_action_proposal (regel-
+        # klassifikator, self-throttler via _last_classified_fragment-dedup på seneste
+        # thought-stream-fragment). De 4 gamle tick-sites (task_worker + my_projects_watchdog
+        # + thought_action_proposal i heartbeaten, life_projects_reassessment i internal_
+        # cadence-produceren) no-op'er via is_enabled. Bevarer alle outputs — task-drænets
+        # processed/succeeded/…, watchdog-genstarter, life_projects.reassessment_due-events,
+        # thought_action_proposal.created + private-brain-record + build_proposal_surface/
+        # get_pending_proposals (cluster_affect conflict-snapshot, central_inner_life_digest,
+        # signal_surface_router). heartbeaten gater på is_enabled, medlemmerne self-throttler.
+        # Aldrig begge live.
+        "description": "cluster-daemon FAMILIE #9 (projects) LIVE: task_worker (LOAD-BEARING, non-LLM, FØRST i ubetinget tier, budget=3, drænes hver tick uden throttle) + my_projects_watchdog (240min) + life_projects_reassessment (1440min/24t) + thought_action_proposal (fragment-dedup) foldet i ÉN familie; INGEN LLM-medlem (fail-open gate); erstatter de 4 pensionerede daemons; bevarer alle outputs (task-dræn, watchdog-genstarter, reassessment_due, thought_action_proposal.created/proposal-surface).",
     },
 }
 

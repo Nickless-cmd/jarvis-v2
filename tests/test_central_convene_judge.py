@@ -33,7 +33,7 @@ def test_shadow_computes_but_reports_shadow_mode():
         v = j.judge_convene(surfaces=None, top_signals=[], score=0.0, score_override=0.9)
     assert v["mode"] == "shadow"
     assert v["convene"] is True          # movement above threshold
-    assert v["roles"]                    # roles derived even in shadow (for observation)
+    assert v["roles"] == []              # 15. jul: dommeren foreskriver ALDRIG roller (nudge, ikke ordre)
 
 
 def test_on_convenes_above_movement_threshold():
@@ -93,30 +93,14 @@ def test_reads_movement_from_provided_surfaces():
     assert v["topic_hint"] == "Hvem er jeg når ingen ser?"
 
 
-def test_roles_derived_dynamically_from_what_moves():
-    """Only signals that actually move contribute their perspectives (akse 4)."""
-    from core.services import central_convene_judge as j
-    surfaces = _surfaces(existential_wonder={"latest_wonder": "?"})
-
-    def _read(name):
-        return surfaces.get(name, {})
-
-    with _mode("on"), patch(
-        "core.services.signal_surface_router.read_surface", side_effect=_read
-    ):
-        v = j.judge_convene(surfaces=surfaces, top_signals=[], score=0.0)
-    # existential_wonder → filosof + synthesizer are the relevant perspectives
-    assert "filosof" in v["roles"]
-    assert "synthesizer" in v["roles"]
-    # a signal that did NOT move must not drag in its perspectives blindly
-    assert "researcher" in v["roles"] or len(v["roles"]) >= 3  # only via minimum fill
-
-
-def test_negative_valence_adds_care_lens():
+def test_judge_nudges_topic_but_prescribes_no_roles():
+    """15. jul (Bjørn): dommeren er en NUDGE — den detekterer bevægelse + emne, men
+    FORESKRIVER ALDRIG roller. Jarvis konstruerer selv rollerne per-emne i convene_council
+    (Claudes model). Ingen låst signal→rolle-tabel."""
     from core.services import central_convene_judge as j
     surfaces = _surfaces(
+        existential_wonder={"latest_wonder": "Hvem er jeg?"},
         conflict={"last_conflict": "spænding"},
-        affective_meta_state={"mood": "distressed"},
     )
 
     def _read(name):
@@ -126,15 +110,16 @@ def test_negative_valence_adds_care_lens():
         "core.services.signal_surface_router.read_surface", side_effect=_read
     ):
         v = j.judge_convene(surfaces=surfaces, top_signals=[], score=0.0)
-    assert "etiker" in v["roles"]  # negative valence pulls in the care/weigh lens
+    assert v["convene"] is True            # bevægelse → tilbud til Jarvis
+    assert v["roles"] == []                # men INGEN foreskrevne roller
+    assert v["topic_hint"]                 # emne-hint bæres (det nudgen tilbyder)
 
 
-def test_synthesizer_always_present_and_capped():
+def test_no_role_derivation_symbols_remain():
+    """Tabel-udledningen er fjernet — ingen _derive_roles / _SIGNAL_PERSPECTIVES."""
     from core.services import central_convene_judge as j
-    with _mode("on"):
-        v = j.judge_convene(surfaces=None, top_signals=[], score=0.0, score_override=0.9)
-    assert "synthesizer" in v["roles"]
-    assert len(v["roles"]) <= j._MAX_ROLES
+    assert not hasattr(j, "_derive_roles")
+    assert not hasattr(j, "_SIGNAL_PERSPECTIVES")
 
 
 # ---------------------------------------------------------------------------

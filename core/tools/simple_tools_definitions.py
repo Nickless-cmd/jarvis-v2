@@ -2444,12 +2444,15 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "convene_council",
             "description": (
-                "Convene a council of agents to deliberate on a decision or topic. "
-                "Use this when facing a significant or complex decision that warrants "
-                "multiple perspectives before acting. The council runs synchronously "
-                "and returns a summary recommendation. "
-                "Suitable for: identity changes, multi-step plans, ambiguous tradeoffs, "
-                "actions with lasting consequences."
+                "Fan out several agents with DISTINCT perspectives on a question, then "
+                "synthesise their positions. This is not a separate 'council system' — "
+                "it is one shape of your own dispatch: you decide whether a question needs "
+                "WORK (one agent, spawn_agent_task) or PERSPECTIVES (this), and you "
+                "CONSTRUCT the roles that fit THIS specific question — e.g. a security "
+                "critic, the user's advocate, a refuter, a long-term-consequences lens. "
+                "Roles are born from the question and die with it; there is no fixed set. "
+                "Use when a decision genuinely benefits from being pulled at from several "
+                "angles: identity changes, ambiguous tradeoffs, lasting consequences."
             ),
             "parameters": {
                 "type": "object",
@@ -2466,7 +2469,12 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "roles": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Optional explicit role list. Omit to use urgency defaults.",
+                        "description": (
+                            "Construct the perspectives that fit THIS question — give each "
+                            "agent a distinct lens (e.g. 'security-critic', 'user-advocate', "
+                            "'refuter', 'first-principles'). Prefer constructing your own over "
+                            "the generic defaults; omit only when generic deliberation is fine."
+                        ),
                     },
                 },
                 "required": ["topic"],

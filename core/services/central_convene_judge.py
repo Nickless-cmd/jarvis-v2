@@ -41,21 +41,10 @@ _MODE_KEY = "central_convene_judge_mode"
 # en reel grund. Bevidst lav — dommeren skal fange ægte bevægelse, ikke kræve en storm.
 _MOVEMENT_THRESHOLD = 0.30
 
-# Dynamisk rolle-udledning: hvert flydende signal peger på hvilke perspektiver der er
-# relevante NÅR det bevæger sig. Bruges KUN til at oversætte faktisk bevægelse → roller
-# (modsat det statiske _SIGNAL_TO_ROLES der altid gav de samme to uanset kontekst).
-_SIGNAL_PERSPECTIVES: dict[str, list[str]] = {
-    "autonomy_pressure": ["planner", "critic"],
-    "open_loop": ["planner", "researcher"],
-    "internal_opposition": ["critic", "filosof"],
-    "conflict": ["critic", "etiker"],
-    "existential_wonder": ["filosof", "synthesizer"],
-    "creative_drift": ["filosof", "researcher"],
-    "desire": ["planner", "etiker"],
-    "valence_negative": ["etiker", "critic"],     # lav valens → afvej/omsorg-vinkler
-    "valence_positive": ["planner", "researcher"], # høj valens → udforsk/byg-vinkler
-}
-
+# Rolle-udledning FJERNET (Bjørn 15. jul): dommeren foreskriver ikke roller. Den
+# nudger (bevægelse + emne); Jarvis konstruerer selv rollerne per-emne i convene_council
+# — som Claudes model, hvor råd = fan-out af dispatch-primitivet med roller valgt til
+# lige det spørgsmål, ikke et opslag i et skema.
 _MAX_ROLES = 4
 
 
@@ -179,42 +168,6 @@ def _mood_to_valence(mood: str) -> float:
 # The verdict
 # ---------------------------------------------------------------------------
 
-def _derive_roles(movement: dict[str, float], valence: float) -> list[str]:
-    """Derive council roles DYNAMICALLY from what is actually moving — the core of
-    akse 4. A signal only contributes its perspectives when it is genuinely active.
-    Valence sign adds a care- or explore-lens. Synthesizer always closes the loop."""
-    active = sorted(
-        (n for n, v in movement.items() if v > 0.0),
-        key=lambda n: movement[n],
-        reverse=True,
-    )
-    roles: list[str] = []
-    for name in active:
-        for role in _SIGNAL_PERSPECTIVES.get(name, []):
-            if role not in roles:
-                roles.append(role)
-
-    if valence <= -0.4:
-        for role in _SIGNAL_PERSPECTIVES["valence_negative"]:
-            if role not in roles:
-                roles.append(role)
-    elif valence >= 0.4:
-        for role in _SIGNAL_PERSPECTIVES["valence_positive"]:
-            if role not in roles:
-                roles.append(role)
-
-    if "synthesizer" not in roles:
-        roles.append("synthesizer")
-
-    # Minimum of three perspectives so a council is meaningful.
-    for fallback in ("critic", "planner", "researcher"):
-        if len(roles) >= 3:
-            break
-        if fallback not in roles:
-            roles.append(fallback)
-    return roles[:_MAX_ROLES]
-
-
 def _derive_topic_hint(
     movement: dict[str, float],
     latest_wonder: str,
@@ -292,7 +245,13 @@ def judge_convene(
             movement_total = min(sum(movement.values()), 4.0)
 
         convene = movement_total >= _MOVEMENT_THRESHOLD
-        roles = _derive_roles(movement, float(flowing.get("valence") or 0.0)) if convene else []
+        # Bjørn 15. jul: dommeren FORESKRIVER ikke længere roller ("du bestemmer selv
+        # hvilke roller dine agenter har, og om det er arbejde eller et råd"). Den er
+        # en ren NUDGE — den detekterer bevægelse + et emne-hint og TILBYDER det til
+        # Jarvis. Rollerne — og selve valget (tænke alene / spawn_agent_task-arbejde /
+        # convene_council-perspektiver) — konstruerer HAN per-emne, som Claudes model.
+        # Ingen låst signal→rolle-tabel længere.
+        roles: list[str] = []
         topic_hint = (
             _derive_topic_hint(
                 movement,

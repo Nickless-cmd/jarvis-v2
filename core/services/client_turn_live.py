@@ -51,6 +51,16 @@ def begin_live_turn(*, session_id: str, run_id: str, user_message: str = "",
             begin_follow(sid, str(run_id or ""))
         except Exception:
             logger.debug("begin_live_turn: begin_follow fejlede", exc_info=True)
+        # KRITISK for desk-poller/liveness: registrér i run_event_log (rel). Når
+        # server_authoritative_runs er på læser /chat/active-runs + liveness-linjen
+        # rel.live_run_ids()/active_run_for_session — IKKE run_follow. Uden dette
+        # lyser venstre-panels aktivitets-prik + liveness-linje ALDRIG op for en
+        # jarvis-code-tur (selvom follow-token-streamen virker).
+        try:
+            import core.services.run_event_log as rel
+            rel.create(str(run_id or ""), sid)
+        except Exception:
+            logger.debug("begin_live_turn: rel.create fejlede", exc_info=True)
 
 
 def end_live_turn(*, session_id: str, run_id: str = "") -> None:
@@ -66,6 +76,12 @@ def end_live_turn(*, session_id: str, run_id: str = "") -> None:
             _set_active_visible_run({"active": False})
     except Exception:
         logger.debug("end_live_turn: active-run clear fejlede", exc_info=True)
+    if run_id:
+        try:
+            import core.services.run_event_log as rel
+            rel.mark_done(str(run_id))
+        except Exception:
+            logger.debug("end_live_turn: rel.mark_done fejlede", exc_info=True)
     sid = str(session_id or "")
     if sid.startswith("chat-"):
         try:

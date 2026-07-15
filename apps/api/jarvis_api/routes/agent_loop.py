@@ -807,6 +807,13 @@ async def agent_step(request: Request):
                 touch_active_visible_run(_run_id)
             except Exception:
                 logger.debug("agent_step: touch_active_visible_run fejlede", exc_info=True)
+            # Hold run_event_log-liveness frisk (desk-poller/liveness-linje) under en
+            # multi-round-tur — ellers udløber _LIVE_IDLE_S mellem runder og prikken dør.
+            try:
+                import core.services.run_event_log as rel
+                rel.touch_liveness(_run_id)
+            except Exception:
+                logger.debug("agent_step: rel.touch_liveness fejlede", exc_info=True)
 
     # jarvis-code CHAT: rolle-aware model — member→ollama-deepseek LÅST, owner→sin valgte
     # model (default deepseek-flash). IKKE agent-poolen/adaptive-router: den er reserveret

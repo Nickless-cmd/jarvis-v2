@@ -13,6 +13,9 @@ def test_begin_registers_active_run_and_follow(monkeypatch):
     follows = []
     monkeypatch.setattr("core.services.run_follow.begin_follow",
                         lambda sid, rid="": follows.append((sid, rid)))
+    rel_created = []
+    monkeypatch.setattr("core.services.run_event_log.create",
+                        lambda rid, sid: rel_created.append((rid, sid)))
     ctl.begin_live_turn(session_id="chat-abc", run_id="r1", user_message="hej",
                         provider="ollama", model="deepseek", user_id="u")
     a = saved["active"]
@@ -20,6 +23,8 @@ def test_begin_registers_active_run_and_follow(monkeypatch):
     assert a["session_id"] == "chat-abc" and a["origin"] == "jarvis-code"
     assert a["current_user_message_preview"] == "hej"
     assert follows == [("chat-abc", "r1")]
+    # desk-poller/liveness: turen SKAL registreres i run_event_log
+    assert rel_created == [("r1", "chat-abc")]
 
 
 def test_begin_local_session_skips_follow(monkeypatch):
@@ -56,9 +61,12 @@ def test_end_clears_own_run(monkeypatch):
         lambda payload: cleared.append(payload))
     ends = []
     monkeypatch.setattr("core.services.run_follow.end_follow", lambda sid: ends.append(sid))
+    done = []
+    monkeypatch.setattr("core.services.run_event_log.mark_done", lambda rid: done.append(rid))
     ctl.end_live_turn(session_id="chat-abc", run_id="r1")
     assert cleared == [{"active": False}]
     assert ends == ["chat-abc"]
+    assert done == ["r1"]  # run_event_log lukkes → poller/liveness rydder straks
 
 
 # ── endpoint flag-gating ────────────────────────────────────────────────────

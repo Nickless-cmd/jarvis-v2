@@ -517,7 +517,7 @@ _client_turn_live.py — cross-device live-broadcast for en KLIENT-drevet tur (C
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `begin_live_turn` | `(*, session_id, run_id, user_message=…, provider=…, model=…, user_id=…)` | Registrér turen som det aktive visible run + åbn run_follow (kun for ægte | [src](../../../core/services/client_turn_live.py#L23) |
-| function | `end_live_turn` | `(*, session_id, run_id=…)` | Ryd active-run (kun hvis det stadig er DETTE run — undgå at rydde en efterfølger) | [src](../../../core/services/client_turn_live.py#L56) |
+| function | `end_live_turn` | `(*, session_id, run_id=…)` | Ryd active-run (kun hvis det stadig er DETTE run — undgå at rydde en efterfølger) | [src](../../../core/services/client_turn_live.py#L66) |
 
 ## `core/services/cluster_daemon.py`
 _Cluster-daemon primitive — one Central-governed daemon per FAMILY of nerves._

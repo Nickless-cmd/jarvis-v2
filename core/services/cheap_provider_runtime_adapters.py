@@ -1351,11 +1351,19 @@ def _execute_public_safe_local_ollama(*, message: str) -> dict[str, object]:
 
 
 def _require_credentials(*, profile: str, provider: str) -> dict[str, object]:
-    # auth_kind=none (Pollinations/OVHcloud anon) kræver INGEN credential-entry —
+    # Tom/whitespace profil → "default" (aldrig kald _profile_dir("") som rejser
+    # "Profile name must be a simple non-empty identifier"). Cheap-lane-selection kan
+    # give tom auth_profile for keyless providers (kilo/pollinations) — normalisering
+    # her gør at en evt. gemt token (kilo's JWT under "default") stadig hentes.
+    profile = (str(profile or "").strip()) or "default"
+    # auth_kind=none (Pollinations/OVHcloud/kilo anon) kræver INGEN credential-entry —
     # returnér tom dict så adapteren udelader Authorization-headeren (linje ~650).
-    # Uden dette ville en keyless provider uden nogen store-entry fejle "auth-not-ready".
+    # try/except: enhver profil-fejl → {} (kør anonymt), aldrig crash i cheap-lane.
     if str((CHEAP_PROVIDER_DEFAULTS.get(provider) or {}).get("auth_kind")) == "none":
-        return dict(get_provider_credentials(profile=profile, provider=provider) or {})
+        try:
+            return dict(get_provider_credentials(profile=profile, provider=provider) or {})
+        except Exception:
+            return {}
     credentials = get_provider_credentials(profile=profile, provider=provider)
     if not credentials:
         raise CheapProviderError(

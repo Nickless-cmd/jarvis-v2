@@ -191,6 +191,18 @@ def test_bazaarlink_auto_free_sustained():
     assert is_routable_provider("bazaarlink") and "bazaarlink" in _OPENAI_COMPATIBLE_PROVIDERS
 
 
+def test_require_credentials_empty_profile_keyless_no_crash():
+    """15. jul regression: cheap-lane-selection kan give TOM auth_profile for en keyless
+    provider (kilo/pollinations blev cheap-lane-pick på containeren). _profile_dir('')
+    rejste 'Profile name must be a simple non-empty identifier' → crash i inderlivet.
+    Fix: normalisér tom→'default' + try/except → aldrig crash, kør anonymt."""
+    from core.services.cheap_provider_runtime_adapters import _require_credentials
+    for p in ("pollinations", "kilo", "ovhcloud"):
+        # tom + whitespace profil → returnerer dict (evt. tom), rejser ALDRIG
+        assert isinstance(_require_credentials(profile="", provider=p), dict)
+        assert isinstance(_require_credentials(profile="   ", provider=p), dict)
+
+
 def test_require_credentials_still_raises_for_bearer_without_key(monkeypatch):
     """Guarden må kun gælde auth_kind=none. En bearer-provider uden nøgle skal stadig
     rejse auth-not-ready (ellers ville vi kalde en betalt/nøgle-provider uden auth)."""

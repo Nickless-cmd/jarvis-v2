@@ -262,6 +262,9 @@ from core.services.visible_runs_sections.run_control_state import (  # noqa: E40
     _visible_run_control_key,
     append_visible_run_steer,
     consume_visible_run_steers,
+    _get_visible_client_tool_state,
+    _set_visible_client_tool_state,
+    resolve_visible_client_tool,
 )
 
 

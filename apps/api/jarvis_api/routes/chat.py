@@ -1428,3 +1428,20 @@ async def chat_steer_run(run_id: str, body: dict) -> dict:
     if not ok:
         raise HTTPException(status_code=404, detail="Visible run not active")
     return {"ok": True, "run_id": run_id, "queued": True}
+
+
+@router.post("/runs/{run_id}/tool-result")
+async def chat_client_tool_result(run_id: str, body: dict) -> dict:
+    """Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et
+    delegeret execution=="client"-tool. Serverens turn-loop emitterede tool_use
+    og venter (poll) på dette. Body: {call_id, result}. 404 hvis call_id ikke er
+    en pending delegeret tool (ukendt/allerede resolved/expired)."""
+    from core.services.visible_runs import resolve_visible_client_tool
+    call_id = str((body or {}).get("call_id") or "").strip()
+    if not call_id:
+        raise HTTPException(status_code=400, detail="call_id required")
+    result_text = str((body or {}).get("result") or "")
+    ok = resolve_visible_client_tool(call_id, result_text)
+    if not ok:
+        raise HTTPException(status_code=404, detail="No pending client tool for call_id")
+    return {"ok": True, "run_id": run_id, "call_id": call_id, "resolved": True}

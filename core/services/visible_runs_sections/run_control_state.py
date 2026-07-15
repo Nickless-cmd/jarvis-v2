@@ -22,6 +22,11 @@ from core.runtime.db import get_runtime_state_value, set_runtime_state_value
 _VISIBLE_RUN_CONTROL_PREFIX = "visible_runs.control."
 _VISIBLE_RUN_ACTIVE_KEY = "visible_runs.active_run"
 _VISIBLE_RUN_APPROVAL_PREFIX = "visible_runs.approval."
+# Fase 1 (jarvis-code↔v2 forening): pending KLIENT-tool-delegering. Når serverens
+# loop rammer et execution=="client"-tool emitteres det som tool_use og loopet
+# venter (poll) her, indtil klienten POSTer resultatet via /chat/runs/{id}/tool-result.
+# Spejler approval-state-mønstret: pending → resolved|expired, cross-worker via DB.
+_VISIBLE_RUN_CLIENT_TOOL_PREFIX = "visible_runs.client_tool."
 
 
 def _visible_run_control_key(run_id: str) -> str:
@@ -130,3 +135,35 @@ def _set_visible_approval_state(approval_id: str, payload: dict[str, object]) ->
 def _get_visible_approval_state(approval_id: str) -> dict[str, object]:
     payload = get_runtime_state_value(_visible_run_approval_key(approval_id), default={})
     return payload if isinstance(payload, dict) else {}
+
+
+# ── Fase 1: klient-tool-delegering state (spejler approval-state) ─────────────
+
+
+def _visible_run_client_tool_key(call_id: str) -> str:
+    return f"{_VISIBLE_RUN_CLIENT_TOOL_PREFIX}{call_id}"
+
+
+def _set_visible_client_tool_state(call_id: str, payload: dict[str, object]) -> None:
+    """Sæt state for en delegeret klient-tool (cross-worker via DB)."""
+    set_runtime_state_value(_visible_run_client_tool_key(call_id), payload)
+
+
+def _get_visible_client_tool_state(call_id: str) -> dict[str, object]:
+    payload = get_runtime_state_value(_visible_run_client_tool_key(call_id), default={})
+    return payload if isinstance(payload, dict) else {}
+
+
+def resolve_visible_client_tool(call_id: str, result_text: str) -> bool:
+    """Klienten leverer resultatet af en delegeret tool. Flip pending → resolved
+    med result_text, som loopet poller efter. False hvis call_id er ukendt eller
+    ikke længere pending (idempotent — dobbelt-post skader ikke). Kaldes af
+    POST /chat/runs/{run_id}/tool-result."""
+    state = _get_visible_client_tool_state(call_id)
+    if not state or str(state.get("status") or "") != "pending":
+        return False
+    state["status"] = "resolved"
+    state["result_text"] = str(result_text or "")
+    state["resolved_at"] = datetime.now(UTC).isoformat()
+    _set_visible_client_tool_state(call_id, state)
+    return True

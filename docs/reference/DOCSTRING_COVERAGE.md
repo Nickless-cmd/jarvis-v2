@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6261/12792 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6263/12800 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6261/12792 functions/methods documented (48%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4134 | 8909 | 46% |
+| `core.services` | 4136 | 8917 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -39,7 +39,7 @@ Generated from source. 6261/12792 functions/methods documented (48%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1839)
+## Undocumented public functions (1842)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -680,6 +680,9 @@ Generated from source. 6261/12792 functions/methods documented (48%). The list b
 - `core/services/central_lexicon.py` :: `operators` (L189)
 - `core/services/central_machines.py` :: `build_machines_surface` (L73)
 - `core/services/central_machines.py` :: `record_machines` (L77)
+- `core/services/central_matrix_ensemble.py` :: `get_unaddressed` (L43)
+- `core/services/central_matrix_ensemble.py` :: `increment_unaddressed` (L47)
+- `core/services/central_matrix_ensemble.py` :: `reset_unaddressed` (L54)
 - `core/services/central_merovingian.py` :: `list_challenges` (L324)
 - `core/services/central_mourning.py` :: `list_epitaphs` (L131)
 - `core/services/central_prompt_composer.py` :: `is_live_enabled` (L97)
@@ -1246,14 +1249,14 @@ Generated from source. 6261/12792 functions/methods documented (48%). The list b
 - `core/services/process_watcher.py` :: `set_watch_enabled` (L239)
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2716)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2564)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L2853)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2715)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2563)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L2852)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L147)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L95)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L122)
 - `core/services/prompt_contract.py` :: `build_visible_chat_prompt_assembly` (L538)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4332)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4331)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)

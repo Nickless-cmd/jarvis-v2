@@ -91,7 +91,6 @@ def push(
     try:
         from core.services.outbound_nudges import push_nudge
         _kind = kind[:50] if kind and kind not in ("info", "") else "action_router"
-        from core.services.outbound_nudges import push_nudge
         push_nudge(
             source=source or "action_router",
             kind=_kind,

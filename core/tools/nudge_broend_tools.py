@@ -61,6 +61,14 @@ def _exec_nudge_send(args: dict[str, Any]) -> dict[str, Any]:
 
     if result.get("status") == "ok":
         mark_sent(nudge_id)
+        # Hvis det var en Matrix-karakter-nudge, nulstil unaddressed count
+        try:
+            from core.services.central_matrix_ensemble import extract_cid, reset_unaddressed
+            cid = extract_cid(str(nudge.get("source", "")))
+            if cid:
+                reset_unaddressed(cid)
+        except Exception:
+            pass
         return {
             "status": "ok",
             "nudge_id": nudge_id,
@@ -92,6 +100,17 @@ def _exec_nudge_dismiss(args: dict[str, Any]) -> dict[str, Any]:
 
     if not nudge_id:
         return {"status": "error", "error": "nudge_id er påkrævet (eller 'all' for alle)"}
+
+    # Hvis det var en Matrix-karakter-nudge, tæl unaddressed op
+    try:
+        from core.services.central_matrix_ensemble import extract_cid, increment_unaddressed
+        from core.services.nudge_broend import get  # var ikke importeret → NameError → dead
+        nudge_data = get(nudge_id)
+        cid = extract_cid(str(nudge_data.get("source", ""))) if nudge_data else None
+        if cid:
+            increment_unaddressed(cid)
+    except Exception:
+        pass
 
     ok = mark_dismissed(nudge_id, reason=reason)
     if ok:

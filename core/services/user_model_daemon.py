@@ -49,10 +49,15 @@ def _persist_user_model() -> None:
 # ---------------------------------------------------------------------------
 
 
-def tick_user_model_daemon(recent_messages: list[str]) -> dict:
+def tick_user_model_daemon(recent_messages: list[str], *, skip_event_gate: bool = False) -> dict:
     """Analyze recent interaction and update user model.
 
     recent_messages: list of visible user message texts (latest first).
+    skip_event_gate: when True (cluster_relation family #8 dispatch), the family
+        already consulted ``should_generative_fire`` ONCE for the whole family, so
+        this daemon's own per-daemon event-gate is bypassed. The cadence + no-message
+        guards still apply, and the LLM interpretation (theory-of-mind about the
+        user) is fully preserved — the family only replaces the per-daemon gate.
     """
     global _last_tick_at, _user_model, _model_summary, _last_generated_at
 
@@ -98,7 +103,7 @@ def tick_user_model_daemon(recent_messages: list[str]) -> dict:
     try:
         from core.services import event_gate
 
-        if event_gate.event_driven_enabled():
+        if not skip_event_gate and event_gate.event_driven_enabled():
             _relevant = {
                 "message_count": float(model.get("message_count", 0) or 0),
                 "avg_message_length": float(model.get("avg_message_length", 0) or 0),

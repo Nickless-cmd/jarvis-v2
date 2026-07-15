@@ -237,13 +237,13 @@ _User model daemon — Theory of Mind: a living model of the user's state and pa
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_persist_user_model` | `()` | — | [src](../../../core/services/user_model_daemon.py#L44) |
-| function | `tick_user_model_daemon` | `(recent_messages)` | Analyze recent interaction and update user model. | [src](../../../core/services/user_model_daemon.py#L52) |
-| function | `get_user_model_summary` | `()` | — | [src](../../../core/services/user_model_daemon.py#L125) |
-| function | `build_user_model_surface` | `()` | — | [src](../../../core/services/user_model_daemon.py#L129) |
-| function | `_analyze_messages` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L142) |
-| function | `_detect_communication_style` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L159) |
-| function | `_generate_model_summary` | `(messages, model)` | — | [src](../../../core/services/user_model_daemon.py#L170) |
-| function | `_store_model` | `(summary, now)` | — | [src](../../../core/services/user_model_daemon.py#L198) |
+| function | `tick_user_model_daemon` | `(recent_messages, *, skip_event_gate=…)` | Analyze recent interaction and update user model. | [src](../../../core/services/user_model_daemon.py#L52) |
+| function | `get_user_model_summary` | `()` | — | [src](../../../core/services/user_model_daemon.py#L130) |
+| function | `build_user_model_surface` | `()` | — | [src](../../../core/services/user_model_daemon.py#L134) |
+| function | `_analyze_messages` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L147) |
+| function | `_detect_communication_style` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L164) |
+| function | `_generate_model_summary` | `(messages, model)` | — | [src](../../../core/services/user_model_daemon.py#L175) |
+| function | `_store_model` | `(summary, now)` | — | [src](../../../core/services/user_model_daemon.py#L203) |
 
 ## `core/services/user_scope.py`
 _Per-bruger data-scope (SECURITY #154, streng GDPR)._

@@ -253,7 +253,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 10,
-        "description": "Theory of mind — models user preferences and patterns",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_relation overtager (gated LLM-medlem bag familiens ÉNE event-gate, skip_event_gate=True; 10-min cadence + LLM-theory-of-mind BEVARET); heartbeat-kaldet er is_enabled-gatet → no-op
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_relation] Theory of mind — models user preferences and patterns",
     },
     "desire": {
         "module": "core.services.desire_daemon",
@@ -366,7 +368,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 720,
-        "description": "12t opdatering af relation map: last_seen for primary, tom stale-check for secondary",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_relation overtager (non-LLM medlem, ubetinget hver familie-tick; self-throttler per-bruger på 12t staleness); internal_cadence-produceren er is_enabled-gatet → no-op
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_relation] 12t opdatering af relation map: last_seen for primary, tom stale-check for secondary",
     },
     "consolidation_judge": {
         "module": "core.services.consolidation_judge_daemon",
@@ -468,8 +472,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 60,
-        "default_enabled": True,
-        "description": "60min cleanup af udløbne TTL-triggers i communication guard (godnat-fraser etc.)",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_relation overtager (non-LLM medlem, ubetinget hver familie-tick; TTL-cleanup bevaret); heartbeat-kaldet er is_enabled-gatet → no-op
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_relation] 60min cleanup af udløbne TTL-triggers i communication guard (godnat-fraser etc.)",
     },
     "file_awareness": {
         "module": "core.services.file_awareness_daemon",
@@ -667,6 +672,32 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # snapshot-collector (kører hver tick som den gamle heartbeat-blok gjorde).
         # heartbeaten gater på is_enabled, medlemmerne self-throttler. Aldrig begge live.
         "description": "cluster-daemon FAMILIE #7 (aesthetic/curiosity) LIVE: aesthetic_taste (gated LLM, ÉN event-gate) + curiosity (non-LLM, ubetinget, egen 5-min cadence) foldet i ÉN familie; erstatter de 2 pensionerede daemons; bevarer alle outputs (taste-insight-surface, curiosity-surface, curiosity.detected, open-questions-state).",
+    },
+    "cluster_relation": {
+        "module": "core.services.cluster_daemon_families",
+        "reset_var": "_RELATION_FAMILY",
+        "reset_value": None,
+        "default_cadence_minutes": 10,
+        "default_enabled": True,
+        # Cluster-daemon-konsolidering, FAMILIE #8 (relation): user_model +
+        # communication_guard + relation_map_refresh foldet ind i ÉN Central-styret
+        # familie (i cluster_daemon_families.py — cluster_daemon.py har ramt 1500-
+        # linjers kodegrænsen). Kører LIVE (prove-then-retire END STATE) — de 3 gamle
+        # daemons er PENSIONERET (default_enabled=False, retired 2026-07-15). To tiers:
+        # DET ENE LLM-medlem (user_model, tidl. med egen should_generative_fire-gate
+        # oven på sin 10-min cadence) bag familiens ÉNE should_generative_fire event-
+        # gate → daemonens tick kaldes med skip_event_gate=True (10-min cadence bevaret).
+        # Spec-korrektion #3: user_models LLM-theory-of-mind er en BEVIDST BEVARING —
+        # den strippes IKKE til regler; medlemmet forbliver LLM bag familie-gaten. De to
+        # non-LLM regel-baserede medlemmer (communication_guard — godnat-split TTL-
+        # cleanup; relation_map_refresh — primary last_seen + stale secondary ToM-stamps,
+        # self-throttler på 12t staleness) kører UBETINGET hver tick. Bevarer alle
+        # outputs — build_user_model_surface/model_summary (central_soul_digest,
+        # central_inner_life_digest, signal_surface_router, MC living-mind) +
+        # user_model.updated + private-brain-record; communication_guard prompt_section/
+        # scrub; relation_map-state + relation_map.refresh_tick. heartbeaten gater på
+        # is_enabled, medlemmerne self-throttler. Aldrig begge live.
+        "description": "cluster-daemon FAMILIE #8 (relation) LIVE: user_model (gated LLM, ÉN event-gate, LLM-theory-of-mind bevaret jf. spec-korrektion #3) + communication_guard + relation_map_refresh (non-LLM, ubetinget) foldet i ÉN familie; erstatter de 3 pensionerede daemons; bevarer alle outputs (user-model-surface, user_model.updated, comm-guard TTL-cleanup, relation-map-state/refresh_tick).",
     },
 }
 

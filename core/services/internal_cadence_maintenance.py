@@ -106,6 +106,15 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
     ))
 
     def _run_relation_map_refresh(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        # PENSIONERET 2026-07-15 — cluster_relation (familie #8) overtager relation_map
+        # som non-LLM medlem. Gate den gamle produceren på is_enabled så den no-op'er
+        # når daemonen er pensioneret (undgår dobbelt-eksekvering med familien).
+        try:
+            from core.services import daemon_manager as _dm
+            if not _dm.is_enabled("relation_map_refresh"):
+                return {"status": "retired", "reason": "cluster_relation overtager"}
+        except Exception:
+            pass
         from core.services.relation_map import tick_relation_map_refresh
         return tick_relation_map_refresh(trigger=trigger, last_visible_at=last_visible_at)
 

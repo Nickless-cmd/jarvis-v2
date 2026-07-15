@@ -891,6 +891,33 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # cluster_relation — FAMILIE #8 (relation). PENSIONEREREDE daemons (user_model +
+    # communication_guard + relation_map_refresh, default_enabled=False) → deres gamle
+    # tick-sites (user_model + communication_guard i heartbeat, relation_map_refresh i
+    # internal_cadence-produceren) no-op'er via is_enabled. To tiers: user_model (gated
+    # LLM, LLM-theory-of-mind bevaret jf. spec-korrektion #3) bag familiens ÉNE event-
+    # gate (skip_event_gate=True; 10-min cadence bevaret) + communication_guard +
+    # relation_map_refresh (non-LLM, ubetinget, self-throttler). Bred deadline:
+    # user_model kan lave ét cheap-LLM-kald. Self-safe: crasher aldrig.
+    if _dm.is_enabled("cluster_relation"):
+        try:
+            from core.services.cluster_daemon_families import tick_cluster_relation
+            _rel_cluster_result = _hb._daemon_tick_with_deadline(
+                "cluster_relation", tick_cluster_relation, deadline_seconds=20.0,
+            )
+            _dm.record_daemon_tick("cluster_relation", _rel_cluster_result or {})
+            # Surface the refreshed user-model summary into the trace, as the retired
+            # user_model daemon's own tick block used to feed it.
+            try:
+                from core.services.user_model_daemon import get_user_model_summary
+                _um_summary_c = get_user_model_summary()
+                if _um_summary_c:
+                    inputs_present.append(f"bruger-model: {str(_um_summary_c)[:80]}")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     # Creative drift daemon — spontaneous unexpected associations
     if _dm.is_enabled("creative_drift"):
         try:

@@ -499,3 +499,237 @@ def tick_cluster_aesthetic(snapshot: dict | None = None, *, shadow: bool | None 
             "members_ran": [],
             "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
         }
+
+
+# ===========================================================================
+# Family #8 — relation (user_model + communication_guard + relation_map_refresh)
+# ===========================================================================
+#
+# The RELATION family (spec §"event-drevet" correction #3). Three daemons that
+# keep Jarvis' model of, and conduct toward, the people he talks to:
+#
+#   * user_model — LLM interpretation daemon (Theory of Mind). Analyses recent
+#     visible user messages (communication style, question-heaviness, avg length)
+#     and asks the cheap LLM "what do I sense about the user?", storing a
+#     one-to-two-sentence first-person inference. It ALREADY had an internal
+#     should_generative_fire("user_model", …) gate on top of its 10-min cadence
+#     guard — the family replaces THAT per-daemon gate with its ONE family gate
+#     (the daemon's tick is called with skip_event_gate=True; its 10-min cadence
+#     guard still applies). Spec correction #3: this LLM interpretation is a
+#     DELIBERATE keep — stripping it would be a reduction of Jarvis' theory-of-mind
+#     — so user_model stays an LLM member BEHIND the family gate, never demoted to
+#     rules. Runs behind the family gate. LOAD-BEARING: build_user_model_surface()/
+#     model_summary feeds central_soul_digest, central_inner_life_digest,
+#     signal_surface_router and Mission Control's living-mind user-model state; it
+#     also emits the user_model.updated event + a private-brain user-model-signal
+#     record.
+#
+#   * communication_guard — RULES-based (no LLM). The godnat-split guard: every
+#     tick it sweeps expired TTL communication-triggers (cleanup_expired) and logs
+#     the active-trigger count. Self-throttles at the heartbeat cadence (it is a
+#     cheap cleanup; no internal timer). Run UNCONDITIONALLY every family tick.
+#     LOAD-BEARING: keeps the active trigger set from leaking stale phrases into
+#     communication_guard.prompt_section() / guard_channel_text scrubbing.
+#
+#   * relation_map_refresh — RULES-based (no LLM). Refreshes the relation map:
+#     bumps the primary user's last_seen and re-stamps stale (>12h) secondary-user
+#     theory-of-mind snapshots. Self-throttles per-user via the 12h staleness
+#     threshold (a re-run inside the window refreshes nothing). Run UNCONDITIONALLY
+#     every family tick. LOAD-BEARING: persists relation-map state and emits the
+#     relation_map.refresh_tick event; build_relation_map_surface() reads that
+#     state for Mission Control.
+#
+# TWO tiers (mirrors families #6/#7): the ONE LLM member (user_model) sits behind
+# the ONE family gate; the two non-LLM members (communication_guard,
+# relation_map_refresh) run unconditionally and self-throttle. Self-safe: a member
+# error is captured into ``member_errors`` and never propagated;
+# ``tick_cluster_relation`` never raises into the heartbeat.
+
+RELATION_FAMILY = "cluster_relation"
+
+_VISIBLE_LANES = {"visible", "primary"}
+
+
+# ---------------------------------------------------------------------------
+# Shared snapshot
+# ---------------------------------------------------------------------------
+
+
+def _collect_relation_snapshot() -> dict[str, Any]:
+    """Gather the relation family's shared snapshot once per tick.
+
+    The gated member (user_model) needs recent visible user messages both as its
+    gate signal (interaction volume/shape) AND as the input to its LLM analysis —
+    collected here ONCE so the gate decision and the generation see the same
+    messages (the old daemon self-fetched with an empty list; the family fetches
+    identically and passes them in). The two non-LLM members self-collect inside
+    their own ticks and need nothing here. Self-safe: degrades to neutral defaults
+    on any error; the family still ticks.
+    """
+    snap: dict[str, Any] = {
+        "user_messages": [],
+        "message_count": 0.0,
+        "avg_message_length": 0.0,
+        "question_ratio": 0.0,
+    }
+    try:
+        from core.runtime.db import recent_visible_runs
+        runs = recent_visible_runs(limit=10) or []
+        messages = [
+            str(r.get("text_preview") or "")
+            for r in runs
+            if str(r.get("lane") or "").lower() in _VISIBLE_LANES and r.get("text_preview")
+        ]
+        snap["user_messages"] = messages
+        if messages:
+            lengths = [len(m) for m in messages]
+            snap["message_count"] = float(len(messages))
+            snap["avg_message_length"] = float(sum(lengths) / len(lengths))
+            q = sum(1 for m in messages if "?" in m)
+            snap["question_ratio"] = float(q) / float(len(messages))
+    except Exception:
+        pass
+    return snap
+
+
+# ---------------------------------------------------------------------------
+# GATED LLM member — user_model
+# ---------------------------------------------------------------------------
+
+
+def _relation_user_model_signals(snap: dict) -> dict[str, float]:
+    """user_model gate signals: how much (and what shape of) user interaction has
+    accumulated. Mirrors the daemon's own (now family-gated) internal gate signal —
+    message volume, average message length and question-ratio — normalised to 0-1
+    for the family gate."""
+    count = float(snap.get("message_count", 0.0) or 0.0)
+    avg_len = float(snap.get("avg_message_length", 0.0) or 0.0)
+    q_ratio = float(snap.get("question_ratio", 0.0) or 0.0)
+    return {
+        "message_count": max(0.0, min(1.0, count / 10.0)),
+        "avg_message_length": max(0.0, min(1.0, avg_len / 100.0)),
+        "question_ratio": max(0.0, min(1.0, q_ratio)),
+    }
+
+
+def _relation_user_model_live(snap: dict) -> dict[str, Any]:
+    """The family gate already fired → skip the daemon's per-daemon event-gate.
+
+    The daemon's 10-min cadence guard still applies, and the LLM theory-of-mind
+    interpretation (spec correction #3: a deliberate keep) is fully preserved, so
+    ALL its outputs (build_user_model_surface / model_summary, the private-brain
+    user-model-signal record and the user_model.updated event) are unchanged. The
+    recent user messages collected in the shared snapshot are passed in so the
+    generation sees exactly the messages the gate weighed."""
+    from core.services.user_model_daemon import tick_user_model_daemon
+    return tick_user_model_daemon(list(snap.get("user_messages") or []), skip_event_gate=True)
+
+
+def build_relation_family() -> ClusterDaemon:
+    """Construct the relation cluster-daemon (family #8), LIVE.
+
+    ONE gated LLM member (user_model) behind the family gate. The two NON-LLM
+    members (communication_guard, relation_map_refresh) are run UNCONDITIONALLY by
+    ``tick_cluster_relation``, not gated here.
+    """
+    return ClusterDaemon(
+        family_name=RELATION_FAMILY,
+        cluster="cognition",
+        collect_snapshot=_collect_relation_snapshot,
+        members=[
+            ClusterMember(
+                name="user_model",
+                signals=_relation_user_model_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.user_model_daemon", "build_user_model_surface"),
+                    ("model_summary", "last_generated_at"),
+                ),
+                live=_relation_user_model_live,
+            ),
+        ],
+    )
+
+
+# Process-level singleton (keeps the family's gate baselines + Central trace
+# continuous across heartbeat ticks, mirroring the other families).
+_RELATION_FAMILY: ClusterDaemon | None = None
+
+
+def relation_family() -> ClusterDaemon:
+    global _RELATION_FAMILY
+    if _RELATION_FAMILY is None:
+        _RELATION_FAMILY = build_relation_family()
+    return _RELATION_FAMILY
+
+
+# ---------------------------------------------------------------------------
+# UNCONDITIONAL (non-LLM) member live dispatchers
+# ---------------------------------------------------------------------------
+
+
+def _relation_comm_guard_live(_snap: dict) -> dict[str, Any]:
+    """Godnat-split guard: sweep expired TTL communication-triggers + log active
+    count. Rules-based, no LLM, no family gate. Preserves its outputs (the pruned
+    active trigger set that feeds prompt_section / guard_channel_text scrubbing)."""
+    from core.services.communication_guard_daemon import tick_communication_guard_daemon
+    return tick_communication_guard_daemon()
+
+
+def _relation_map_refresh_live(_snap: dict) -> dict[str, Any]:
+    """Refresh the relation map (primary last_seen + stale secondary ToM stamps).
+    Rules-based, no LLM, no family gate. Self-throttles per-user via the 12h
+    staleness threshold. Preserves its outputs (persisted relation-map state + the
+    relation_map.refresh_tick event that build_relation_map_surface reads)."""
+    from core.services.relation_map import tick_relation_map_refresh
+    return tick_relation_map_refresh(trigger="heartbeat")
+
+
+# (member_name, live_fn) in a stable order. communication_guard is placed FIRST so
+# the cheap TTL cleanup runs even under tight scheduling.
+_RELATION_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
+    ("communication_guard", _relation_comm_guard_live),
+    ("relation_map_refresh", _relation_map_refresh_live),
+)
+
+
+def _run_relation_nonllm_members(snap: dict, result: dict[str, Any]) -> None:
+    """Run the NON-LLM members UNCONDITIONALLY (independent of the family generative
+    gate), self-safe. Each self-throttles on its own internal cadence; a member
+    error is isolated into ``member_errors`` and NEVER propagated (one failing
+    member never blocks the other); a successful run is recorded into
+    ``members_ran``/``outputs``.
+    """
+    for name, fn in _RELATION_UNCONDITIONAL:
+        try:
+            out = fn(snap)
+            result["outputs"][name] = out
+            result["members_ran"].append(name)
+        except Exception as exc:
+            result["member_errors"][name] = f"{type(exc).__name__}: {exc}"
+
+
+def tick_cluster_relation(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
+    """Heartbeat entry-point for the relation cluster-daemon family (#8).
+
+    Runs LIVE by default (``shadow=False``) — the prove-then-retire end state
+    replacing the user_model + communication_guard + relation_map_refresh daemons.
+    Two-tier: the gated LLM member (user_model) runs behind the ONE family gate via
+    ``relation_family().tick()``; the two NON-LLM members (communication_guard,
+    relation_map_refresh) run UNCONDITIONALLY every tick (each self-throttles).
+    Self-safe: NEVER raises into the heartbeat.
+    """
+    try:
+        snap = _collect_relation_snapshot() if snapshot is None else snapshot
+        run_live = False if shadow is None else bool(shadow)
+        result = relation_family().tick(snap, shadow=run_live)
+        # Unconditional non-LLM members (independent of the gate above).
+        _run_relation_nonllm_members(snap, result)
+        return result
+    except Exception as exc:  # never crash the heartbeat
+        return {
+            "family": RELATION_FAMILY,
+            "fired": False,
+            "gate_calls": 1,
+            "members_ran": [],
+            "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
+        }

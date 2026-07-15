@@ -1,7 +1,15 @@
 # Én Jarvis overalt — jarvis-code ↔ v2 forening (design)
 
 **Dato:** 2026-07-15
-**Status:** Design godkendt af Bjørn ("ja vi prøver med den"), afventer eksekvering.
+**Status:** ⚠️ **REVIDERET 2026-07-15 — retningen ændret til DELT SUBSTRAT.** Efter fuld kortlægning af
+jarvis-codes klient-flade ([jarvis-code-capability-surface.md](2026-07-15-jarvis-code-capability-surface.md))
+valgte Bjørn Option B (delt substrat), IKKE Option A (server driver loopet) som dette dokument oprindeligt
+beskrev. Se §12 i capability-surface-dokumentet for beslutningen. **Kernemodel nu:** begge overflader kører
+SAMME `jc_agent_loop` (klient driver); serveren er hjernen via de kald loopet allerede laver — fuld prompt-
+assembly + per-step-gates ved hvert step-kald, ~85 trackers/memory/cost ved tur-slut, server-ejede sessioner.
+Nøgle-indsigt: "server ejer hjernen" ≠ "server ejer loopet", fordi model-kaldet allerede er et server-round-
+trip. Fase 1's server→klient-delegering (nedenfor) er dermed OVERFLØDIG (parkeret). Resten af dette dokument
+er bevaret som historik for Option A; den bygges IKKE.
 **Grundlag:** [v2-responsibility-surface-map.md](2026-07-15-v2-responsibility-surface-map.md) (6 kortlægninger af v2's ansvarsflade).
 
 ---

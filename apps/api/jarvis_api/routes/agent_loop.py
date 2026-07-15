@@ -446,6 +446,35 @@ def _build_system_prompt(context: str, user_message: str = "", name: str = "defa
     return base
 
 
+def _apply_dynamic_tail_split(chat_messages: list[dict], enabled: bool) -> list[dict]:
+    """Fase A1: honorér DYNAMIC_TAIL_SENTINEL i system-beskeden — klip systemet ved
+    sentinel'en (stabilt cacheligt hoved) og flyt den volatile hale til den SIDSTE
+    user-besked, så [stabilt system + samtale] forbliver et cache-stabilt prefix
+    (spejler visible_model._build_visible_input). enabled=False eller ingen sentinel
+    → chat_messages returneres byte-identisk. Uden en user-besked at hænge halen på
+    beholdes halen (uden sentinel) i systemet (fallback — aldrig tab)."""
+    if not enabled or not chat_messages:
+        return chat_messages
+    from core.services.prompt_contract import DYNAMIC_TAIL_SENTINEL
+    sys_msg = chat_messages[0]
+    if sys_msg.get("role") != "system":
+        return chat_messages
+    content = str(sys_msg.get("content") or "")
+    if DYNAMIC_TAIL_SENTINEL not in content:
+        return chat_messages
+    head, _, tail = content.partition(DYNAMIC_TAIL_SENTINEL)
+    out = [dict(m) for m in chat_messages]
+    out[0]["content"] = head
+    last_user_idx = next((i for i in range(len(out) - 1, -1, -1)
+                          if out[i].get("role") == "user"), None)
+    if last_user_idx is None:
+        out[0]["content"] = head + tail  # fallback: ingen user → behold hale i system
+        return out
+    out[last_user_idx] = dict(out[last_user_idx])
+    out[last_user_idx]["content"] = str(out[last_user_idx].get("content") or "") + tail
+    return out
+
+
 def _normalize_reasoning_for_provider(messages: list[dict], provider: str) -> list[dict]:
     """Fase 4 Task S: keep `reasoning_content` on assistant(+tool_calls) messages for
     providers that accept it on replay (deepseek); STRIP it for providers that 400 on
@@ -798,6 +827,10 @@ async def agent_step(request: Request):
         {"role": "system",
          "content": _build_system_prompt(context, _last_user, _ws_name, env=env)}]
     chat_messages.extend(client_messages)
+    # Fase A1: flyt den volatile assembly-hale bag samtalen (cache-stabilt prefix).
+    # Flag default OFF → chat_messages uændret (byte-identisk med i dag).
+    chat_messages = _apply_dynamic_tail_split(
+        chat_messages, enabled=getattr(settings, "agent_step_cache_split_enabled", False))
 
     # Fase 4 Task 4 (flag-gated): cache-prefix signature over the STABLE HEAD only
     # ([system-without-env] + tools) — computed with env=None regardless of the

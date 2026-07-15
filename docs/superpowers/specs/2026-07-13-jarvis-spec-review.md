@@ -1,5 +1,6 @@
 ---
-status: Claudes review af Jarvis' event-drevne spec (13. jul 2026)
+status: reference (review-doc — de 5 kode-groundede rettelser er foldet ind i SPEC 1 event-drevet-omlægning-implementeringen 15. jul; multi-user-planen = SPEC 3 bilag2)
+oprindelig_status: Claudes review af Jarvis' event-drevne spec (13. jul 2026)
 formål: Kode-grounded review + rettelser + indpasning i systemet + multi-user-plan.
          Bestilt af Bjørn: "review på den og ret den og se hvorn det passer ind."
 kilder: Jarvis' 2 specs (2026-07-13-event-drevet-omlaegning{,-bilag1}), kode-verifikation

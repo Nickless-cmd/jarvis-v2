@@ -1,5 +1,6 @@
 ---
-status: spec v2 — udkast til review (14. jul 2026). Grundet i et 5-agent research-sweep +
+status: IMPLEMENTERET (Fase 0-6 udført + merged, 762 klient-tests grønne, scripts/acceptance/migration_gate.py GO:True, jc-server-flags flippet on — 15. jul 2026)
+oprindelig_status: spec v2 — udkast til review (14. jul 2026). Grundet i et 5-agent research-sweep +
         6-linse råds-review (completeness · stabilitets-adversary · sikkerhed · Jarvis-integration ·
         sekvensering · operator-UX), begge verificeret mod kildekode. + Claudes egen introspektion.
 formål: Gør jarvis-code til Jarvis' klient-ejede agentiske harness med FULD Claude-Code-paritet i

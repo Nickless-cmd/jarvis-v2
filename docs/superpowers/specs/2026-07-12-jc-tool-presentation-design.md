@@ -1,7 +1,7 @@
 # jarvis-code Tool-Presentation & Namespace Design
 
 **Dato:** 2026-07-12
-**Status:** Godkendt + self-reviewed. Beslutninger låst: (1) HARD gate for brain-skriv,
+**Status:** IMPLEMENTERET (15. jul 2026) — runtime_-prefix-router, brain HARD gate server-side, load_more_tools. Godkendt + self-reviewed. Beslutninger låst: (1) HARD gate for brain-skriv,
 (2) `runtime_`-præfiks, (3) project_notes i det faste sæt. Klar til writing-plans.
 **Kontekst:** jarvis-code (jc) er en client-owned-loop CLI. Klienten eksekverer tools
 LOKALT på Bjørns maskine (hurtig, bevist vej). Runtime/native tools eksekverer i

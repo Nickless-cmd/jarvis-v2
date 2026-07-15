@@ -1,5 +1,5 @@
 ---
-status: udkast (research + introspektion)
+status: reference (nord-stjerne research/introspektion — måle-model for dispatch-redesign; per design ikke en leverance der "implementeres")
 formål: Præcis, kilde-grounded model af HVORDAN Claude orkestrerer agenter + "råd",
          som fundament for redesign af Jarvis' agentur/råd/swarm. "Gør det rigtigt
          første gang — tag højde for det hele" (Bjørn, 13. jul).

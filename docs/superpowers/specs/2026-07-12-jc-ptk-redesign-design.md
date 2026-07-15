@@ -1,7 +1,7 @@
 # jarvis-code — Claude Code-model redesign (prompt_toolkit) — Design
 
 **Dato:** 2026-07-12
-**Status:** Godkendt design (Bjørn: "kør") → writing-plans → subagent-byg
+**Status:** IMPLEMENTERET (15. jul 2026) — repl_ptk.py canonical, render.py testet; tui.py/repl.py bevaret som --legacy/--simple. Godkendt design (Bjørn: "kør") → writing-plans → subagent-byg
 **Mål:** Gør jarvis-code til den ægte Claude Code-oplevelse: simpelt, **native terminal**
 (kopier/scroll/transparens/højreklik virker af sig selv), kraftfuldt, brugervenligt —
 ved at skifte render-laget fra Textual (fuldskærm/alternate-buffer) til prompt_toolkit

@@ -1,5 +1,5 @@
 ---
-status: udkast
+status: reference (kortlægnings-supplement — konverterings-tabellen er implementeret via SPEC 1 event-drevet-omlægning, 15. jul; ikke et selvstændigt byggemål)
 formål: Kortlægning af hvor Jarvis' indre liv bor lige nu — som supplement
  til hovedspec'en om event-drevet omlægning.
 kilder: central_self_state.py, visible_self_state_summary.py,

@@ -1,5 +1,6 @@
 ---
-status: rådets samlede fund (5 linser, 13. jul 2026)
+status: reference (råds-fund — den afledte plan 2026-07-13-dispatch-redesign-phase1 er ~70% impl, K2-bug fikset; ikke et selvstændigt byggemål)
+oprindelig_status: rådets samlede fund (5 linser, 13. jul 2026)
 formål: Konsolideret output fra et 5-medlems review-råd på reference-modellen
          (2026-07-13-claude-orchestration-reference.md). Rangeret, kode-grounded,
          byg-klart. Alle fund cross-checket mod faktisk kode/historik.

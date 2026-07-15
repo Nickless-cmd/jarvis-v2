@@ -101,3 +101,54 @@ def test_turn_end_flag_on_dispatches(monkeypatch):
 def test_settings_flag_default_false():
     from core.runtime.settings import load_settings
     assert load_settings().agent_live_broadcast_enabled is False
+
+
+# ── Lag 3: token-follow (jc deltas → v2-frames) ──────────────────────────────
+
+
+def test_live_follow_active_gate():
+    from apps.api.jarvis_api.routes import agent_loop as al
+    on = SimpleNamespace(agent_live_follow_tokens_enabled=True)
+    off = SimpleNamespace(agent_live_follow_tokens_enabled=False)
+    assert al._live_follow_active(on, "chat-abc") is True
+    assert al._live_follow_active(on, "local-uuid") is False   # kun chat-<hex>
+    assert al._live_follow_active(off, "chat-abc") is False    # flag off
+
+
+def test_follow_begin_delta_end_publish_v2_frames(monkeypatch):
+    from apps.api.jarvis_api.routes import agent_loop as al
+    frames = []
+    monkeypatch.setattr("core.services.run_follow.publish_follow_frame",
+                        lambda sid, line: frames.append((sid, line)))
+    al._follow_begin_frames("chat-x", "r1", "ollama", "deepseek")
+    al._follow_delta_frame("chat-x", "Hej ")
+    al._follow_delta_frame("chat-x", "Bjørn")
+    al._follow_end_frames("chat-x")
+    joined = "\n".join(l for _, l in frames)
+    assert "message_start" in joined and "content_block_start" in joined
+    assert "Hej " in joined and "Bjørn" in joined
+    assert "content_block_stop" in joined and "message_stop" in joined
+    # rækkefølge: start → deltas → stop
+    order = [l.split("event: ")[1].split("\n")[0] if "event: " in l else "" for _, l in frames]
+    assert order[0] == "message_start"
+    assert order[-1] == "message_stop"
+
+
+def test_turn_begin_publishes_follow_when_flag_on(monkeypatch):
+    from apps.api.jarvis_api.routes import agent_loop as al
+    import asyncio
+    monkeypatch.setattr(al, "_settings", lambda: SimpleNamespace(
+        agent_live_broadcast_enabled=True, agent_live_follow_tokens_enabled=True))
+    monkeypatch.setattr(al, "_resolve_role", lambda: "owner")
+    monkeypatch.setattr("core.services.client_turn_live.begin_live_turn", lambda **kw: None)
+    frames = []
+    monkeypatch.setattr("core.services.run_follow.publish_follow_frame",
+                        lambda sid, line: frames.append(line))
+    body = al._TurnLiveBody(session_id="chat-x", run_id="r1", provider="ollama", model="deepseek")
+    asyncio.run(al.agent_turn_begin(body))
+    assert any("message_start" in f for f in frames)
+
+
+def test_settings_follow_flag_default_false():
+    from core.runtime.settings import load_settings
+    assert load_settings().agent_live_follow_tokens_enabled is False

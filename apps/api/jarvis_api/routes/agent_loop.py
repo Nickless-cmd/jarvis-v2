@@ -897,7 +897,8 @@ async def agent_step(request: Request):
                          session_id=session_id, user_id=user_id, extra_body=extra_body,
                          reasoning_replay_enabled=settings.agent_step_reasoning_replay_enabled,
                          cache_contract_enabled=settings.agent_step_cache_contract_enabled,
-                         prefix_sha=_prefix_sha, prefix_len=_prefix_len),
+                         prefix_sha=_prefix_sha, prefix_len=_prefix_len,
+                         follow_tee=_live_follow_active(settings, session_id)),
             media_type="text/event-stream",
         )
 
@@ -1003,7 +1004,8 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                  session_id: str = "", user_id: str = "", extra_body: dict | None = None,
                  reasoning_replay_enabled: bool = False,
                  cache_contract_enabled: bool = False,
-                 prefix_sha: str = "", prefix_len: int = 0):
+                 prefix_sha: str = "", prefix_len: int = 0,
+                 follow_tee: bool = False):
     """Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau
     openai-compat SSE-iterator (rå messages+tools ind, delta/tool_call/done ud)."""
     from core.services.cheap_provider_runtime_streaming import (
@@ -1024,6 +1026,10 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                 text = str(ev.get("text") or "")
                 if text:
                     full += text
+                    # Lag 3: tee tekst-delta som v2 content_block_delta ind i follow-
+                    # bufferen → desk/mobil-follower ser Jarvis' ord token-for-token.
+                    if follow_tee:
+                        _follow_delta_frame(session_id, text)
                     yield _sse("delta", {"text": text})
             elif kind == "tool_call":
                 collected.append({
@@ -1173,6 +1179,58 @@ class _TurnLiveBody(BaseModel):
     user_id: str = ""
 
 
+# Lag 3 (token-for-token follow): oversæt jarvis-codes tekst-stream til v2-anthropic
+# frames i run_follow-bufferen, så en desk/mobil-klient på SAMME session kan følge
+# Jarvis' ord token-for-token via GET /chat/sessions/{id}/follow — SAMME renderer som
+# en server-drevet tur (desk uændret). Én tekst-block pr. tur: MessageStart+
+# ContentBlockStart ved tur-start, ContentBlockDelta pr. delta (på tværs af runder),
+# ContentBlockStop+MessageDelta+MessageStop ved tur-slut. Flag-gated, self-safe.
+def _live_follow_active(settings, session_id: str) -> bool:
+    return (bool(getattr(settings, "agent_live_follow_tokens_enabled", False))
+            and str(session_id or "").startswith("chat-"))
+
+
+def _follow_publish_line(session_id: str, line: str) -> None:
+    try:
+        from core.services.run_follow import publish_follow_frame
+        publish_follow_frame(session_id, line)
+    except Exception:
+        logger.debug("lag3: follow publish fejlede", exc_info=True)
+
+
+def _follow_begin_frames(session_id: str, run_id: str, provider: str, model: str) -> None:
+    try:
+        from apps.api.jarvis_api.sse_v2_events import ContentBlockStart, MessageStart
+        _follow_publish_line(session_id, MessageStart(
+            run_id=run_id, model=model, provider=provider, lane="agent",
+            session_id=session_id).to_sse_line())
+        _follow_publish_line(session_id, ContentBlockStart(
+            index=0, block_type="text").to_sse_line())
+    except Exception:
+        logger.debug("lag3: begin-frames fejlede", exc_info=True)
+
+
+def _follow_delta_frame(session_id: str, text: str) -> None:
+    try:
+        from apps.api.jarvis_api.sse_v2_events import ContentBlockDelta
+        _follow_publish_line(session_id, ContentBlockDelta(
+            index=0, delta_type="text_delta", content=text).to_sse_line())
+    except Exception:
+        logger.debug("lag3: delta-frame fejlede", exc_info=True)
+
+
+def _follow_end_frames(session_id: str) -> None:
+    try:
+        from apps.api.jarvis_api.sse_v2_events import (
+            ContentBlockStop, MessageDelta, MessageStop,
+        )
+        _follow_publish_line(session_id, ContentBlockStop(index=0).to_sse_line())
+        _follow_publish_line(session_id, MessageDelta(stop_reason="end_turn").to_sse_line())
+        _follow_publish_line(session_id, MessageStop().to_sse_line())
+    except Exception:
+        logger.debug("lag3: end-frames fejlede", exc_info=True)
+
+
 @router.post("/v1/agent/turn-begin", response_model=None)
 async def agent_turn_begin(body: _TurnLiveBody):
     """Registrér en klient-drevet tur som live (aktivt visible run + run_follow).
@@ -1187,6 +1245,9 @@ async def agent_turn_begin(body: _TurnLiveBody):
             session_id=body.session_id, run_id=body.run_id,
             user_message=body.user_message, provider=body.provider,
             model=body.model, user_id=uid)
+        # Lag 3: åbn en v2-tekst-message i follow-bufferen (efter begin_follow).
+        if _live_follow_active(settings, body.session_id):
+            _follow_begin_frames(body.session_id, body.run_id, body.provider, body.model)
     except Exception:
         logger.debug("agent/turn-begin fejlede", exc_info=True)
         return {"ok": False, "error": "begin_failed"}
@@ -1201,6 +1262,10 @@ async def agent_turn_end(body: _TurnLiveBody):
     if not getattr(settings, "agent_live_broadcast_enabled", False):
         return {"ok": False, "skipped": "flag_off"}
     try:
+        # Lag 3: luk v2-tekst-message'en FØR end_follow markerer bufferen done, så en
+        # follower får message_stop og terminerer rent (ikke syntetisk timeout-frame).
+        if _live_follow_active(settings, body.session_id):
+            _follow_end_frames(body.session_id)
         from core.services.client_turn_live import end_live_turn
         end_live_turn(session_id=body.session_id, run_id=body.run_id)
     except Exception:

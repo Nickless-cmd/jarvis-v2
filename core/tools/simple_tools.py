@@ -166,6 +166,11 @@ from core.tools.operator_bash_session import (
     _exec_operator_bash_session_close,
     _exec_operator_bash_session_list,
 )
+from core.tools.operator_tools import (
+    _exec_operator_session_open,
+    _exec_operator_session_run,
+    _exec_operator_session_close,
+)
 from core.tools.staged_edits_tools import (
     STAGED_EDITS_TOOL_DEFINITIONS,
     STAGED_EDITS_TOOL_HANDLERS,
@@ -1608,6 +1613,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "operator_bash_session_run": _exec_operator_bash_session_run,
     "operator_bash_session_close": _exec_operator_bash_session_close,
     "operator_bash_session_list": _exec_operator_bash_session_list,
+    "operator_session_open": _exec_operator_session_open,
+    "operator_session_run": _exec_operator_session_run,
+    "operator_session_close": _exec_operator_session_close,
     **STAGED_EDITS_TOOL_HANDLERS,
     **PROJECT_NOTES_TOOL_HANDLERS,
     **PROCESS_SUPERVISOR_TOOL_HANDLERS,

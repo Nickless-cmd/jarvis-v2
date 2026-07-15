@@ -2,6 +2,37 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/living_executive.py`
+_Living Executive — Jarvis' active impulse/choice/action loop._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/living_executive.py#L31) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/living_executive.py#L35) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/living_executive.py#L46) |
+| function | `build_living_executive_surface` | `(*, limit=…)` | — | [src](../../../core/services/living_executive.py#L50) |
+| function | `choose_impulse` | `(events)` | — | [src](../../../core/services/living_executive.py#L75) |
+| function | `process_event` | `(event)` | — | [src](../../../core/services/living_executive.py#L87) |
+| function | `run_once` | `(*, events=…)` | One non-daemon pass used by tests and manual MC experiments. | [src](../../../core/services/living_executive.py#L94) |
+| function | `execute_impulse` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L104) |
+| function | `_impulse_from_event` | `(event)` | — | [src](../../../core/services/living_executive.py#L138) |
+| function | `_impulse` | `(*, source_event_id, source_kind, felt_signal, impulse, intensity, action_id, choice, payload, cooldown_key, cooldown_seconds=…)` | — | [src](../../../core/services/living_executive.py#L284) |
+| function | `_action_schedule_self_wakeup` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L311) |
+| function | `_action_record_focus_intent` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L330) |
+| function | `_action_create_jarvis_brain_observation` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L349) |
+| function | `_action_propose_tool_plan` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L364) |
+| function | `_record_trace` | `(impulse, *, status, outcome, details=…)` | — | [src](../../../core/services/living_executive.py#L405) |
+| function | `_attach_memory_precedents` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L472) |
+| function | `_recent_memory_precedents` | `(*, action_hint=…, tool_hint=…, limit=…)` | — | [src](../../../core/services/living_executive.py#L486) |
+| function | `_choice_bias_from_precedents` | `(impulse, precedents)` | — | [src](../../../core/services/living_executive.py#L521) |
+| function | `_emotional_choice_precedents` | `(*, limit)` | — | [src](../../../core/services/living_executive.py#L541) |
+| function | `_tool_family` | `(tool_name)` | — | [src](../../../core/services/living_executive.py#L561) |
+| function | `_runnable_tool_proposals` | `(*, tool_name, status, reason, precedents)` | — | [src](../../../core/services/living_executive.py#L569) |
+| function | `_aftertaste` | `(*, status, impulse)` | — | [src](../../../core/services/living_executive.py#L630) |
+| function | `start_listener` | `()` | — | [src](../../../core/services/living_executive.py#L642) |
+| function | `stop_listener` | `()` | — | [src](../../../core/services/living_executive.py#L658) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/living_executive.py#L667) |
+
 ## `core/services/living_heartbeat_cycle.py`
 _Living Heartbeat Cycle — Jarvis' inner life rhythm._
 
@@ -611,14 +642,4 @@ _Missions Pipeline — flerfase opgaver med state-machine._
 | function | `list_mission_messages` | `(*, mission_id, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L311) |
 | function | `list_missions` | `(*, status=…, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L331) |
 | function | `build_missions_surface` | `()` | — | [src](../../../core/services/missions_pipeline.py#L350) |
-
-## `core/services/model_context.py`
-_Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `model_context_window` | `(provider, model)` | Bedste bud på modellens context-vindue (tokens). 0 = ukendt. | [src](../../../core/services/model_context.py#L29) |
-| function | `effective_context_limit` | `(provider, model, compact_threshold)` | Det første loft der rammer: min(modellens vindue, autocompact-tærskel). | [src](../../../core/services/model_context.py#L46) |
-| function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L61) |
-| function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L65) |
 

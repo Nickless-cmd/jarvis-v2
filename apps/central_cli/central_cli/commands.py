@@ -71,14 +71,52 @@ _TERMINAL_VERBS = {
 # Verber som dispatchen kender eksplicit (dvs. IKKE catch-all til /central/command
 # med et helt ukendt verbum). Palette bruger dette til at afvise vrøvl-input.
 KNOWN_VERBS = frozenset(_GET_ENDPOINTS) | _TERMINAL_VERBS | {
-    "nerve", "toggle", "signoff", "approve", "deny", "unlock",
+    "nerve", "toggle", "signoff", "approve", "deny", "unlock", "cost",
 }
+
+
+def _cost_command(args: list[str]) -> CommandSpec:
+    """WS3: `jc cost` → GET /central/cost (owner-gated cost-aggregat).
+
+    Flag-passthrough til query-params:
+    - ``--today``        → window=today (default)
+    - ``--week``/``--7d`` → window=7d
+    - ``--month``/``--30d`` → window=30d
+    - ``--provider X`` / ``--provider=X`` → provider=X
+    """
+    from urllib.parse import quote
+
+    params: list[str] = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        low = a.lower()
+        if low == "--today":
+            params.append("window=today")
+        elif low in ("--week", "--7d"):
+            params.append("window=7d")
+        elif low in ("--month", "--30d"):
+            params.append("window=30d")
+        elif low == "--provider" and i + 1 < len(args):
+            params.append(f"provider={quote(args[i + 1])}")
+            i += 1
+        elif low.startswith("--provider="):
+            params.append(f"provider={quote(a.split('=', 1)[1])}")
+        i += 1
+
+    path = "/central/cost"
+    if params:
+        path += "?" + "&".join(params)
+    return CommandSpec("GET", path, None, False)
 
 
 def resolve_command(verb: str, args: list[str]) -> CommandSpec:
     """Map (verb, args) → CommandSpec. Writes markeres write=True (til confirm-guard)."""
     if verb in _GET_ENDPOINTS:
         return CommandSpec("GET", _GET_ENDPOINTS[verb], None, False)
+
+    if verb == "cost":
+        return _cost_command(args)
 
     if verb == "nerve" and args:
         return CommandSpec("GET", f"/central/nerve/{args[0]}", None, False)

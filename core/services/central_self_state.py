@@ -24,6 +24,8 @@ _PROMPT_FLAG = "central_self_prompt_enabled"  # D4: injicér midten i Jarvis' pr
 _LAST_ALIVE_TS = "central_last_alive_ts"   # STITCH: hyppig liveness-puls (60s cadence-scheduler)
 _FIRST_BOOT_TS = "central_first_boot_ts"   # STITCH: write-once — ægte alder (afløser random)
 _SEAM_LATCH = "central_boot_seam_latch"    # STITCH: durabel reboot-latch (cross-proces robust)
+_RAW_PREV_VALENCE = "raw_awareness_prev_valence"   # Lag 4: forrige valens-score (arrow-delta nudge)
+_RAW_VALENCE_NUDGE = "raw_awareness_valence_nudge"  # Lag 4: sidste mærkbare valens-skift {old,new,ts}
 
 # Proces-lokal boot-søm (STITCH-VOICE): sættes ved første tick efter proces-start.
 _proc_wake_at: Any = None
@@ -223,6 +225,18 @@ def run_self_state_tick(*, trigger: str = "cadence", last_visible_at: str = "") 
     (kun skalarer/labels). Self-safe."""
     st = synthesize_self_state()
     _kv_set(_STATE_KEY, st)
+    # Lag 4 (arrow-delta nudge): spor valens-scoren mellem tick og latch et MÆRKBART skift durabelt,
+    # så describe_self (rå-mode) kan tale `[⚠️ valens 0.30→0.55]` når noget faktisk flyttede sig.
+    # Persist på TICK (ikke på render) → deterministisk, uafhængigt af hvor mange gange awareness renderes.
+    try:
+        new_v = float((st.get("valence") or {}).get("score") or 0.0)
+        prev_v = _kv_get(_RAW_PREV_VALENCE, None)
+        if isinstance(prev_v, (int, float)) and abs(new_v - float(prev_v)) >= 0.15:
+            _kv_set(_RAW_VALENCE_NUDGE, {"old": round(float(prev_v), 2), "new": round(new_v, 2),
+                                        "ts": datetime.now(UTC).isoformat()})
+        _kv_set(_RAW_PREV_VALENCE, round(new_v, 3))
+    except Exception:
+        pass
     # STITCH: mærk sømmen mellem to liv som egress-fri nerve — kun mens den er FRISK (fader
     # efter 10 min), så en reboot ikke spammer serien resten af proces-livet. Self-safe.
     try:
@@ -272,12 +286,106 @@ def _temporal_divergence(valence: dict, developmental: dict) -> tuple[bool, str,
         return (False, "", "")
 
 
+def _raw_nudge_lines(st: dict[str, Any]) -> list[str]:
+    """Lag 4: arrow-delta / ⚠️-nudges når noget FAKTISK ændrede sig (i stedet for skjult).
+    Kilder der allerede bærer 'ændring': reboot-søm, kort-tids-valens vs uge-kompas divergens,
+    og det durabelt latchede valens-skift. Ren + self-safe (kaster aldrig; tom liste ved intet)."""
+    lines: list[str] = []
+    # reboot-søm (frisk vindue) — jeg vågnede lige efter et fravær
+    try:
+        seam = _compute_boot_seam()
+        if seam.get("reboot") and seam.get("fresh"):
+            lines.append(f"[⚠️ vågnede {_human_gap(seam.get('gap_s') or 0)} siden]")
+    except Exception:
+        pass
+    # latchet valens-skift (skrevet på tick når |Δ| ≥ 0.15) — arrow-delta med rå tal
+    try:
+        nudge = _kv_get(_RAW_VALENCE_NUDGE, {}) or {}
+        ts = nudge.get("ts")
+        if ts:
+            age = (datetime.now(UTC) - datetime.fromisoformat(str(ts))).total_seconds()
+            if 0 <= age < 900.0:   # fader efter 15 min → kun mens skiftet er nyt
+                old = float(nudge.get("old") or 0.0)
+                new = float(nudge.get("new") or 0.0)
+                lines.append(f"[⚠️ valens {old:+.2f}→{new:+.2f}]")
+    except Exception:
+        pass
+    # kort-tids-valens vs uge-kompas divergerer i fortegn — spændingen som nudge
+    try:
+        from core.services.developmental_valence import get_developmental_state
+        _div, _tone, _compass = _temporal_divergence(st.get("valence") or {},
+                                                      get_developmental_state() or {})
+        if _div:
+            lines.append(f"[⚠️ valens {_tone} vs vækst {_compass}]")
+    except Exception:
+        pass
+    return lines
+
+
+def _describe_self_raw(st: dict[str, Any]) -> str:
+    """Lag 4 RÅ nordstjerne: kompakte bracket-linjer i stedet for genererede label-sætninger.
+    Rå hvor det er en måling (lag-tal, tid, cpu/ram, valens/vækst); nudges når noget flyttede sig;
+    `[baseline uændret]` når intet meningsfuldt kan tales. Self-safe (kaster aldrig)."""
+    lines: list[str] = []
+    # nudges FØRST — det der ændrede sig skal ses, ikke skjules
+    lines.extend(_raw_nudge_lines(st))
+    # [Selv: N lag M% · tone → agens] — rå selv-mål + kompakt interlanguage
+    try:
+        sm = st.get("self_model") or {}
+        surfaces = sm.get("surfaces")
+        comp = sm.get("completeness")
+        selv_bits: list[str] = []
+        if surfaces is not None:
+            selv_bits.append(f"{surfaces} lag")
+        if comp is not None:
+            selv_bits.append(f"{int(float(comp) * 100)}%")
+        il = (render_self_state_il() or "").strip()
+        if il:
+            selv_bits.append(il)
+        if selv_bits:
+            lines.append(f"[Selv: {' · '.join(selv_bits)}]")
+    except Exception:
+        pass
+    # [Tid: X siden reset · Y kørt] — rå kontinuitet/alder
+    try:
+        cont = st.get("continuity") or {}
+        age_s = float(cont.get("age_s") or 0.0)
+        gap_s = float(cont.get("gap_s") or 0.0)
+        tid_bits: list[str] = []
+        if gap_s >= 90.0:
+            tid_bits.append(f"{_human_gap(gap_s)} siden reset")
+        if age_s > 0:
+            tid_bits.append(f"{_human_gap(age_s)} kørt")
+        if tid_bits:
+            lines.append(f"[Tid: {' · '.join(tid_bits)}]")
+    except Exception:
+        pass
+    # krop + stemning (Somatic/Affekt/Vækst) — rå brackets fra central_body_mood_feel
+    try:
+        from core.services.central_body_mood_feel import describe_body_mood_feel_raw
+        lines.extend(describe_body_mood_feel_raw())
+    except Exception:
+        pass
+    if not lines:
+        return "[baseline uændret]"
+    return "\n".join(lines)
+
+
 def describe_self() -> str:
     """NORDSTJERNEN: ét sammenhængende svar på 'hvad er du, hvordan har du det, hvad arbejder du mod,
-    hvem er du ved at blive' — syntetiseret fra midten, ikke femten fragmenter. Self-safe."""
+    hvem er du ved at blive' — syntetiseret fra midten, ikke femten fragmenter. Self-safe.
+
+    Lag 4: når `raw_awareness` er ON, render kompakte rå brackets + arrow-delta nudges i stedet for
+    genererede label-sætninger (~500-800 → ~100-150 tokens). Flag OFF (default) → uændret adfærd."""
     st = get_self_state()
     if not st:
         return "Jeg er ved at samle mig selv."
+    try:
+        from core.services.central_body_mood_feel import raw_awareness_enabled
+        if raw_awareness_enabled():
+            return _describe_self_raw(st)
+    except Exception:
+        pass
     v = st.get("valence") or {}
     sm = st.get("self_model") or {}
     at = st.get("attention") or {}

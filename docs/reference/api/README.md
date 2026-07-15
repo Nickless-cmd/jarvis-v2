@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12563 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12638 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -32,23 +32,23 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12563 functions/
 - [`core.services.03`](core.services.03.md) — `bridge_presence` … `central_decentralization`
 - [`core.services.04`](core.services.04.md) — `central_dejavu` … `central_mood_regulator`
 - [`core.services.05`](core.services.05.md) — `central_morpheus` … `central_timeseries`
-- [`core.services.06`](core.services.06.md) — `central_todo` … `concept_baseline_tracker`
-- [`core.services.07`](core.services.07.md) — `config_drift` … `curiosity_budget`
-- [`core.services.08`](core.services.08.md) — `curiosity_consolidation` … `diary_synthesis_signal_tracking`
-- [`core.services.09`](core.services.09.md) — `dictation` … `end_of_run_memory_consolidation`
-- [`core.services.10`](core.services.10.md) — `endpoint_usage_store` … `gate_privacy`
-- [`core.services.11`](core.services.11.md) — `gate_proactivity` … `identity_guard`
-- [`core.services.12`](core.services.12.md) — `identity_mutation_log` … `living_executive`
-- [`core.services.13`](core.services.13.md) — `living_heartbeat_cycle` … `model_context`
-- [`core.services.14`](core.services.14.md) — `model_trust` … `perceptual_event_engine`
-- [`core.services.15`](core.services.15.md) — `periodic_jobs_scheduler` … `prompt_variant_tracker`
-- [`core.services.16`](core.services.16.md) — `proposal_classifier` … `resonance_decay`
-- [`core.services.17`](core.services.17.md) — `retention` … `selective_consolidation_daemon`
-- [`core.services.18`](core.services.18.md) — `selective_forgetting_candidate_tracking` … `share_guard_store`
-- [`core.services.19`](core.services.19.md) — `shared_cache` … `surprise_detector`
-- [`core.services.20`](core.services.20.md) — `sustained_attention` … `tool_router_runtime`
-- [`core.services.21`](core.services.21.md) — `tool_tagger` … `visible_runs_capabilities`
-- [`core.services.22`](core.services.22.md) — `visible_runs_cognitive` … `world_model_signal_tracking`
+- [`core.services.06`](core.services.06.md) — `central_todo` … `computer_use_policy`
+- [`core.services.07`](core.services.07.md) — `concept_baseline_tracker` … `cross_user_share_guard`
+- [`core.services.08`](core.services.08.md) — `curiosity_budget` … `diagnosis_gate`
+- [`core.services.09`](core.services.09.md) — `diary_synthesis_signal_tracking` … `encryption`
+- [`core.services.10`](core.services.10.md) — `end_of_run_memory_consolidation` … `gate_pattern_learning`
+- [`core.services.11`](core.services.11.md) — `gate_privacy` … `identity_drift_proposer`
+- [`core.services.12`](core.services.12.md) — `identity_guard` … `liveness_registry`
+- [`core.services.13`](core.services.13.md) — `living_executive` … `missions_pipeline`
+- [`core.services.14`](core.services.14.md) — `model_context` … `pattern_counterfactual_daemon`
+- [`core.services.15`](core.services.15.md) — `pdf_connector` … `prompt_relevance_backend`
+- [`core.services.16`](core.services.16.md) — `prompt_support_signals` … `release_marker_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `remembered_fact_signal_tracking` … `seed_system`
+- [`core.services.18`](core.services.18.md) — `selective_attention` … `shadow_experiment_registry`
+- [`core.services.19`](core.services.19.md) — `shadow_scan_daemon` … `subjective_time`
+- [`core.services.20`](core.services.20.md) — `surprise_daemon` … `tool_result_store`
+- [`core.services.21`](core.services.21.md) — `tool_router` … `visible_runs`
+- [`core.services.22`](core.services.22.md) — `visible_runs_approvals` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -18,10 +18,25 @@ Design decisions
   ``is_cold_start`` returns True.
 
 Interface (other modules code against this exact surface):
-    get_baseline(signal) -> float | None
-    set_baseline(signal, value) -> None
-    is_cold_start(min_signals=3) -> bool
-    clear_all() -> None   # test helper
+    get_baseline(signal, scope=None) -> float | None
+    set_baseline(signal, value, scope=None) -> None
+    is_cold_start(min_signals=3, scope=None) -> bool
+    clear_all(scope=None) -> None   # test helper
+
+Scoping ("one self, many projections", Bilag 2)
+-----------------------------------------------
+An OPTIONAL ``scope`` namespaces the durable KV *partition*:
+
+* ``scope=None`` — the GLOBAL self-signals (somatic, mood, identity, …). This
+  is the original behaviour, byte-for-byte: it stores under ``signal_baselines``
+  and its cold-start count is exactly ``len`` of that dict. Every default call
+  path is unchanged.
+* ``scope="<user_id>"`` (or ``"<user_id>:<session>"``) — a per-relation
+  namespace for USER/SESSION signals (frustration-with-this-user, conversation
+  context). Stored under a SEPARATE KV key ``signal_baselines:<scope>`` so that
+  two scopes get fully independent baselines and one relation's delta can never
+  leak into another's — and so a scope's cold-start count never inflates the
+  global one. Same store (runtime_state_kv), disjoint key-spaces.
 """
 
 from __future__ import annotations
@@ -29,12 +44,20 @@ from __future__ import annotations
 _STORE_KEY = "signal_baselines"
 
 
-def _load() -> dict[str, float]:
-    """Read the whole baseline dict from the durable store. Fail-closed to {}."""
+def _store_key(scope: str | None) -> str:
+    """Durable KV key for ``scope``. None/empty → the global key, unchanged."""
+    name = str(scope or "").strip()
+    if not name:
+        return _STORE_KEY
+    return f"{_STORE_KEY}:{name}"
+
+
+def _load(scope: str | None = None) -> dict[str, float]:
+    """Read the whole baseline dict for ``scope``. Fail-closed to {}."""
     try:
         from core.runtime.db_core import get_runtime_state_value
 
-        raw = get_runtime_state_value(_STORE_KEY, {})
+        raw = get_runtime_state_value(_store_key(scope), {})
         if not isinstance(raw, dict):
             return {}
         out: dict[str, float] = {}
@@ -48,29 +71,29 @@ def _load() -> dict[str, float]:
         return {}
 
 
-def _save(baselines: dict[str, float]) -> bool:
+def _save(baselines: dict[str, float], scope: str | None = None) -> bool:
     try:
         from core.runtime.db_core import set_runtime_state_value
 
-        set_runtime_state_value(_STORE_KEY, baselines)
+        set_runtime_state_value(_store_key(scope), baselines)
         return True
     except Exception:
         return False
 
 
-def get_baseline(signal: str) -> float | None:
-    """Last recorded value for ``signal``; None if never recorded."""
+def get_baseline(signal: str, scope: str | None = None) -> float | None:
+    """Last recorded value for ``signal`` in ``scope``; None if never recorded."""
     name = str(signal or "").strip()
     if not name:
         return None
     try:
-        return _load().get(name)
+        return _load(scope).get(name)
     except Exception:
         return None
 
 
-def set_baseline(signal: str, value: float) -> None:
-    """Persist ``value`` durably as the new baseline for ``signal``.
+def set_baseline(signal: str, value: float, scope: str | None = None) -> None:
+    """Persist ``value`` durably as the new baseline for ``signal`` in ``scope``.
 
     Self-safe: an unparseable value or a store error is a silent no-op.
     """
@@ -82,18 +105,19 @@ def set_baseline(signal: str, value: float) -> None:
     except (TypeError, ValueError):
         return
     try:
-        baselines = _load()
+        baselines = _load(scope)
         baselines[name] = numeric
-        _save(baselines)
+        _save(baselines, scope)
     except Exception:
         return
 
 
-def is_cold_start(min_signals: int = 3) -> bool:
-    """True until at least ``min_signals`` distinct baselines have been recorded.
+def is_cold_start(min_signals: int = 3, scope: str | None = None) -> bool:
+    """True until ``min_signals`` distinct baselines exist *within* ``scope``.
 
     Used to suppress delta-firing right after boot until a fresh baseline
-    exists. Fails toward suppression (True) on any error.
+    exists. Per-scope: a fresh user relation is cold-started independently of
+    the global self-signals. Fails toward suppression (True) on any error.
     """
     try:
         threshold = int(min_signals)
@@ -102,14 +126,14 @@ def is_cold_start(min_signals: int = 3) -> bool:
     if threshold <= 0:
         return False
     try:
-        return len(_load()) < threshold
+        return len(_load(scope)) < threshold
     except Exception:
         return True
 
 
-def clear_all() -> None:
-    """Drop all baselines (test helper). Self-safe."""
+def clear_all(scope: str | None = None) -> None:
+    """Drop all baselines in ``scope`` (test helper). Self-safe."""
     try:
-        _save({})
+        _save({}, scope)
     except Exception:
         return

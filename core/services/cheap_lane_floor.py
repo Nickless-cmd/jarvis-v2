@@ -12,9 +12,10 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Default-kæde: deepseek-chat (altid-sund, betalt m. credit) → lokal ollama.
+# Default-kæde: deepseek-v4-flash (altid-sund, betalt m. credit) → lokal ollama.
 # Overstyres af config-nøgle ``cheap_lane_floor_targets`` (liste af [provider, model]).
-_DEFAULT_FLOOR: list[tuple[str, str]] = [("deepseek", "deepseek-chat")]
+# (WS4: den døende ``deepseek-chat``-alias udfases 24. juli 2026 → v4-flash.)
+_DEFAULT_FLOOR: list[tuple[str, str]] = [("deepseek", "deepseek-v4-flash")]
 
 
 def floor_targets() -> list[tuple[str, str]]:

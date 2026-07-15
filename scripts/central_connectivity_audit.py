@@ -128,8 +128,22 @@ def _family_of(event_name: str) -> str:
     return head.strip()
 
 
+def _compliant_names() -> set[str]:
+    """Navne på nerver der har SELV-REGISTRERET et kontrakt-compliant manifest (Fase B).
+
+    Læses fra det durable komponent-registry (nerve_registry) — read-only, self-safe. Dette
+    er migrations-trackeren: FRAKOBLET → KOBLET → KONTRAKT-COMPLIANT. En DB-/offline-fejl →
+    tom mængde (auditten fungerer stadig, bare uden compliant-markering)."""
+    try:
+        from core.services.nerve_registry import compliant_names
+        return {str(n) for n in compliant_names()}
+    except Exception:
+        return set()
+
+
 def scan() -> dict:
     route_families = _parse_route_families()
+    compliant = _compliant_names()
     rows = []
     paths = [(area, p) for area, d in AREAS.items() for p in sorted(d.glob("*.py"))]
     for area, path in paths:
@@ -174,6 +188,10 @@ def scan() -> dict:
             "routed_families": routed,
             "dark_families": dark,
             "quadrant": quadrant,
+            # Tredje migrations-status (spec §MIGRATION): har filen selv-registreret et
+            # kontrakt-compliant manifest? Matches på fil-stem ELLER cluster-navnet en nerve
+            # bor i (registry-nøglen er nerve-navnet, ikke altid = fil-stem).
+            "contract_compliant": name in compliant,
         })
 
     counts: dict[str, int] = {}
@@ -182,8 +200,13 @@ def scan() -> dict:
         counts[r["quadrant"]] = counts.get(r["quadrant"], 0) + 1
         a = by_area.setdefault(r["area"], {})
         a[r["quadrant"]] = a.get(r["quadrant"], 0) + 1
+    # Migrations-tracker: registrerede kontrakt-compliant manifester (kan omfatte nerve-navne
+    # der ikke er 1:1 med et fil-stem — vi rapporterer BEGGE tal så trackeren er ærlig).
+    compliant_rows = sum(1 for r in rows if r["contract_compliant"])
     return {"rows": rows, "counts": counts, "by_area": by_area,
-            "route_family_count": len(route_families), "total": len(rows)}
+            "route_family_count": len(route_families), "total": len(rows),
+            "contract_compliant_files": compliant_rows,
+            "contract_compliant_registered": len(compliant)}
 
 
 def render_md(data: dict) -> str:
@@ -205,7 +228,23 @@ def render_md(data: dict) -> str:
         f"| FRAKOBLET+DARK | {c.get('FRAKOBLET+DARK',0)} | emitterer events hvis family INGEN rute har → signal tabt |",
         f"| FRAKOBLET-STILLE | {c.get('FRAKOBLET-STILLE',0)} | ingen binding/LLM/events → ren utility (oftest OK) |",
         "",
+        "## Migrations-tracker: KONTRAKT-COMPLIANT (Fase B)",
+        "",
+        "Tredje status oven på KOBLET/FRAKOBLET (spec §MIGRATION): FRAKOBLET → KOBLET →",
+        "**KONTRAKT-COMPLIANT**. En fil er compliant når den har SELV-REGISTRERET et",
+        "kontrakt-bestående `NerveManifest` i det durable komponent-registry. Accept-mål:",
+        "over tid → alle nerver compliant, 0 ad-hoc tilbage.",
+        "",
+        f"- **{data.get('contract_compliant_files', 0)}** filer matcher et registreret "
+        f"compliant manifest (af {data['total']}).",
+        f"- **{data.get('contract_compliant_registered', 0)}** compliant manifester i "
+        "registry i alt (nogle nerve-navne er ikke 1:1 med et fil-stem).",
+        "",
     ]
+    _compliant_files = sorted(r["name"] for r in data["rows"] if r.get("contract_compliant"))
+    if _compliant_files:
+        lines.append("Kontrakt-compliant filer: " + ", ".join(f"`{n}`" for n in _compliant_files))
+        lines.append("")
     for q in order:
         qrows = [r for r in data["rows"] if r["quadrant"] == q]
         lines.append(f"## {q} ({len(qrows)})")
@@ -246,6 +285,8 @@ def main() -> None:
         kob = ac.get("KOBLET", 0)
         tot = sum(ac.values())
         print(f"  [{area:8s}] {kob}/{tot} KOBLET  ({tot-kob} frakoblet)")
+    print(f"  {'KONTRAKT-COMPLIANT':20s} {data.get('contract_compliant_files',0)} filer "
+          f"({data.get('contract_compliant_registered',0)} manifester i registry)")
     print(f"skrev {OUT_MD.relative_to(ROOT)} + .json")
 
 

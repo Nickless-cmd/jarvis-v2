@@ -690,6 +690,24 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Cluster-daemon FAMILIE #1 — somatic/embodiment (SHADOW/parallel).
+    # Cluster-daemon-konsolidering (spec 2026-07-14): somatic+experienced_time+
+    # absence foldet ind i ÉN Central-styret familie under ÉN event-gate. Kører
+    # ALONGSIDE de 3 gamle daemons ovenfor (prove-then-retire — aldrig begge
+    # live). Default cluster_daemon_shadow=True → familien observerer kun hvad
+    # den VILLE producere og rapporterer til Centralen med cluster_shadow-markør
+    # til parity-sammenligning; ingen DB-writes, ingen publishes, afmonterer
+    # ingen af de 3 gamle daemons. Self-safe: crasher aldrig heartbeaten.
+    if _dm.is_enabled("cluster_somatic"):
+        try:
+            from core.services.cluster_daemon import tick_cluster_somatic
+            _cluster_result = _hb._daemon_tick_with_deadline(
+                "cluster_somatic", tick_cluster_somatic, deadline_seconds=8.0,
+            )
+            _dm.record_daemon_tick("cluster_somatic", _cluster_result or {})
+        except Exception:
+            pass
+
     # Creative drift daemon — spontaneous unexpected associations
     if _dm.is_enabled("creative_drift"):
         try:

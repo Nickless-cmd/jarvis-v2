@@ -449,6 +449,20 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # 30s-scheduler) → 500-ring dækker ~25t = ét fuldt 24t θ-vindue uanset idle.
         "description": "event-trigger SHADOW-meter (observe-only): registrerer hvad den event-drevne trigger VILLE dispatche, til θ-kalibrering. Fyrer aldrig LLM/råd.",
     },
+    "cluster_somatic": {
+        "module": "core.services.cluster_daemon",
+        "reset_var": "_SOMATIC_FAMILY",
+        "reset_value": None,
+        "default_cadence_minutes": 3,
+        "default_enabled": True,
+        # Cluster-daemon-konsolidering (spec 2026-07-14), FAMILIE #1:
+        # somatic + experienced_time + absence under ÉN event-gate. Kører i
+        # SHADOW/parallel (cluster_daemon_shadow-flag, default True): observerer
+        # kun hvad familien VILLE producere og rapporterer til Centralen med
+        # cluster_shadow-markør til parity-sammenligning. AFMONTERER IKKE de 3
+        # gamle daemons — prove-then-retire, retire er gated på parity-data.
+        "description": "[SHADOW] cluster-daemon FAMILIE #1 (somatic/embodiment): somatic+experienced_time+absence under én event-gate; observe-only parity mod de 3 gamle daemons (aldrig begge live).",
+    },
 }
 
 

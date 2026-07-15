@@ -122,6 +122,10 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
 CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "read_file", "write_file", "edit_file", "search", "find_files", "bash",
     "dispatch_to_claude_code", "dispatch_code_mode_task",
+    # Owner-only operator backup-channel (jarvis-code bash reroute). Deliberately
+    # NOT in the member/guest base scope — a non-owner must never get the
+    # dialog-free operator reroute.
+    "operator_session_open", "operator_session_run", "operator_session_close",
 })
 
 # §17: værktøjer der eksekverer LOKALT på brugerens maskine i code mode. Deres rå

@@ -76,3 +76,30 @@ def test_keys_read_and_unlock_write():
     assert spec.path == "/central/keys/7/approve"
     assert spec.write is True
     assert spec.body == {}
+
+
+def test_cost_verb_maps_to_central_cost():
+    spec = resolve_command("cost", [])
+    assert spec == CommandSpec(method="GET", path="/central/cost", body=None, write=False)
+
+
+def test_cost_verb_is_known():
+    from central_cli.commands import KNOWN_VERBS
+    assert "cost" in KNOWN_VERBS
+
+
+def test_cost_today_flag_passthrough():
+    spec = resolve_command("cost", ["--today"])
+    assert spec.method == "GET"
+    assert spec.path == "/central/cost?window=today"
+    assert spec.write is False
+
+
+def test_cost_provider_flag_passthrough():
+    assert resolve_command("cost", ["--provider", "deepseek"]).path == "/central/cost?provider=deepseek"
+    assert resolve_command("cost", ["--provider=deepseek"]).path == "/central/cost?provider=deepseek"
+
+
+def test_cost_combined_flags():
+    spec = resolve_command("cost", ["--today", "--provider", "deepseek"])
+    assert spec.path == "/central/cost?window=today&provider=deepseek"

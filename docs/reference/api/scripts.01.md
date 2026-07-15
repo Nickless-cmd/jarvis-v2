@@ -98,9 +98,10 @@ _central_connectivity_audit.py — HOLDBART kort over hvad der er koblet til Cen
 | function | `_parse_route_families` | `()` | Læs FAMILY_ROUTES ∪ PRIVATE_NO_EGRESS_ROUTES's nøgler direkte fra broen (AST). | [src](../../../scripts/central_connectivity_audit.py#L85) |
 | function | `_code_only` | `(src)` | Fjern kommentarer + blank string-INDHOLD (behold koden) → signal-scan tæller ikke | [src](../../../scripts/central_connectivity_audit.py#L107) |
 | function | `_family_of` | `(event_name)` | — | [src](../../../scripts/central_connectivity_audit.py#L124) |
-| function | `scan` | `()` | — | [src](../../../scripts/central_connectivity_audit.py#L131) |
-| function | `render_md` | `(data)` | — | [src](../../../scripts/central_connectivity_audit.py#L189) |
-| function | `main` | `()` | — | [src](../../../scripts/central_connectivity_audit.py#L237) |
+| function | `_compliant_names` | `()` | Navne på nerver der har SELV-REGISTRERET et kontrakt-compliant manifest (Fase B). | [src](../../../scripts/central_connectivity_audit.py#L131) |
+| function | `scan` | `()` | — | [src](../../../scripts/central_connectivity_audit.py#L144) |
+| function | `render_md` | `(data)` | — | [src](../../../scripts/central_connectivity_audit.py#L212) |
+| function | `main` | `()` | — | [src](../../../scripts/central_connectivity_audit.py#L276) |
 
 ## `scripts/db_decomposition_map.py`
 _Read-only db.py dekomponerings-kort — grupperer 171 tabeller i naturlige domæner efter_

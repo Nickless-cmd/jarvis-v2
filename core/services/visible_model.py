@@ -82,6 +82,69 @@ from core.services.visible_model_prompt import (  # noqa: F401
 
 
 
+# ── WS5: deepseek-v4-pro cost-gate (owner + visible-lane only) ──────────────
+# v4-pro er ~3× dyrere pr. token end v4-flash. Politik (spec 2026-07-13, WS5):
+# pro må KUN bruges i visible lane, KUN for owner (Bjørn), og KUN når runtime-
+# kill-switch-flaget ``visible_v4pro_enabled`` er tændt. Alt andet → v4-flash.
+# FAIL-SAFE: default = pro IKKE brugt (nedgradér til flash), så kost aldrig kan
+# lække — hverken ved manglende flag, ikke-owner-tur, eller læsefejl.
+_V4PRO_ENABLE_FLAG = "visible_v4pro_enabled"
+_V4PRO_FALLBACK_MODEL = "deepseek-v4-flash"
+
+
+def _model_is_deepseek_pro_tier(model: str) -> bool:
+    """True hvis modellen er den dyre deepseek-pro/reasoner-pro-tier.
+
+    Matcher ``deepseek-v4-pro`` og enhver pro-variant, men IKKE ``deepseek-v4-flash``,
+    ``deepseek-chat`` eller ``deepseek-reasoner`` (sidstnævnte er en flash-thinking-alias,
+    ikke pro-tier — jf. WS4)."""
+    normalized = str(model or "").strip().lower()
+    if not normalized:
+        return False
+    return "pro" in normalized
+
+
+def _turn_is_owner_scoped() -> bool:
+    """Er den aktuelle tur owner-scoped (Bjørn)? Self-safe → False ved fejl."""
+    try:
+        from core.identity.workspace_context import current_user_id
+        from core.services.security_guard import is_owner
+        uid = current_user_id()
+        return bool(uid) and is_owner(uid)
+    except Exception:
+        return False
+
+
+def gate_visible_model_tier(
+    provider: str, model: str, *, is_owner: bool | None = None
+) -> str:
+    """WS5-gate: nedgradér deepseek-v4-pro → v4-flash medmindre (a) kill-switch-
+    flaget er tændt OG (b) turen er owner-scoped. Fail-safe: enhver usikkerhed
+    (flag af, ikke-owner, læsefejl) → flash. Returnerer den (evt. nedgraderede)
+    model. Ikke-deepseek eller ikke-pro-tier passerer uændret igennem."""
+    if str(provider or "").strip().lower() != "deepseek":
+        return model
+    if not _model_is_deepseek_pro_tier(model):
+        return model
+
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        flag_on = get_runtime_state_bool(_V4PRO_ENABLE_FLAG, False)
+    except Exception:
+        flag_on = False
+
+    owner = _turn_is_owner_scoped() if is_owner is None else bool(is_owner)
+
+    if flag_on and owner:
+        return model
+
+    logger.info(
+        "WS5 v4-pro gate: nedgraderer %s → %s (flag_on=%s owner=%s)",
+        model, _V4PRO_FALLBACK_MODEL, flag_on, owner,
+    )
+    return _V4PRO_FALLBACK_MODEL
+
+
 def _configured_provider_models(provider: str) -> list[str]:
     normalized_provider = str(provider or "").strip()
     if not normalized_provider:
@@ -200,6 +263,8 @@ def execute_visible_model(
     *, message: str, provider: str, model: str, session_id: str | None = None,
     thinking_mode: str | None = None,
 ) -> VisibleModelResult:
+    # WS5: enforce v4-pro cost-gate at the execution seam (fail-safe → flash).
+    model = gate_visible_model_tier(provider, model)
     if provider == "openai":
         return _execute_openai_model(
             message=message, model=model, session_id=session_id
@@ -262,6 +327,8 @@ def stream_visible_model(
     controller=None,
     thinking_mode: str = "think",
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
+    # WS5: enforce v4-pro cost-gate at the streaming seam (fail-safe → flash).
+    model = gate_visible_model_tier(provider, model)
     if provider == "openai":
         yield from _stream_openai_model(
             message=message,

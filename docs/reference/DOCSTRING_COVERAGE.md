@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6113/12563 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6164/12638 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -10,7 +10,7 @@ Generated from source. 6113/12563 functions/methods documented (48%). The list b
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
 | `apps.api.jarvis_api.routes` | 570 | 751 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
-| `apps.central_cli.central_cli` | 57 | 155 | 36% |
+| `apps.central_cli.central_cli` | 58 | 156 | 37% |
 | `apps.desktop` | 6 | 7 | 85% |
 | `core.auth` | 3 | 48 | 6% |
 | `core.browser` | 11 | 13 | 84% |
@@ -24,22 +24,22 @@ Generated from source. 6113/12563 functions/methods documented (48%). The list b
 | `core.memory` | 44 | 123 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4006 | 8713 | 45% |
+| `core.services` | 4050 | 8778 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 7 | 17 | 41% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 360 | 806 | 44% |
+| `core.tools` | 365 | 814 | 44% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 155 | 241 | 64% |
+| `scripts` | 156 | 242 | 64% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1823)
+## Undocumented public functions (1830)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -649,11 +649,11 @@ Generated from source. 6113/12563 functions/methods documented (48%). The list b
 - `core/services/central_analyst.py` :: `record_analyst` (L76)
 - `core/services/central_belief_gap.py` :: `build_belief_gap_surface` (L85)
 - `core/services/central_belief_gap.py` :: `record_belief_gap` (L89)
-- `core/services/central_body_mood_feel.py` :: `get_affective_reading` (L234)
-- `core/services/central_body_mood_feel.py` :: `get_developmental_reading` (L230)
-- `core/services/central_body_mood_feel.py` :: `get_embodied_reading` (L222)
-- `core/services/central_body_mood_feel.py` :: `get_mood_reading` (L226)
-- `core/services/central_body_mood_feel.py` :: `get_proprioception_reading` (L218)
+- `core/services/central_body_mood_feel.py` :: `get_affective_reading` (L248)
+- `core/services/central_body_mood_feel.py` :: `get_developmental_reading` (L244)
+- `core/services/central_body_mood_feel.py` :: `get_embodied_reading` (L236)
+- `core/services/central_body_mood_feel.py` :: `get_mood_reading` (L240)
+- `core/services/central_body_mood_feel.py` :: `get_proprioception_reading` (L232)
 - `core/services/central_catalog.py` :: `by_cluster` (L528)
 - `core/services/central_catalog.py` :: `clusters` (L509)
 - `core/services/central_catalog.py` :: `nerve_cluster` (L480)
@@ -691,7 +691,7 @@ Generated from source. 6113/12563 functions/methods documented (48%). The list b
 - `core/services/central_redpill.py` :: `record_redpill` (L120)
 - `core/services/central_router_adapt.py` :: `is_live_enabled` (L63)
 - `core/services/central_router_explore.py` :: `is_explore_live` (L45)
-- `core/services/central_self_state.py` :: `is_prompt_authoritative` (L400)
+- `core/services/central_self_state.py` :: `is_prompt_authoritative` (L508)
 - `core/services/central_sentinel.py` :: `list_attacks` (L140)
 - `core/services/central_sequence.py` :: `ensure_schema` (L47)
 - `core/services/central_soul_feel.py` :: `get_calm_anchor_reading` (L303)
@@ -746,6 +746,7 @@ Generated from source. 6113/12563 functions/methods documented (48%). The list b
 - `core/services/chronicle_engine.py` :: `project_entry_to_markdown` (L483)
 - `core/services/clarification_classifier.py` :: `clarification_prompt_section` (L78)
 - `core/services/clarification_classifier.py` :: `score_message` (L39)
+- `core/services/cluster_daemon.py` :: `somatic_family` (L412)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
 - `core/services/code_aesthetic_daemon.py` :: `get_latest_aesthetic_reflection` (L64)
 - `core/services/cognitive_episodes.py` :: `build_cognitive_episode_prompt_section` (L325)
@@ -828,8 +829,8 @@ Generated from source. 6113/12563 functions/methods documented (48%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `maybe_register_from_text` (L53)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L15)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L455)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L502)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L469)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L516)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L266)
@@ -1125,6 +1126,12 @@ Generated from source. 6113/12563 functions/methods documented (48%). The list b
 - `core/services/negotiation_pipeline.py` :: `build_negotiation_surface` (L233)
 - `core/services/negotiation_pipeline.py` :: `list_recent_trade_outcomes` (L222)
 - `core/services/negotiation_pipeline.py` :: `record_trade_outcome` (L172)
+- `core/services/nerve_registry.py` :: `GovernedPluginLoader.is_active` (L680)
+- `core/services/nerve_registry.py` :: `GovernedPluginLoader.pending` (L673)
+- `core/services/nerve_registry.py` :: `GovernedPluginLoader.status` (L669)
+- `core/services/nerve_registry.py` :: `NerveManifest.to_dict` (L139)
+- `core/services/nerve_registry.py` :: `is_registered` (L313)
+- `core/services/nerve_registry.py` :: `loader` (L704)
 - `core/services/non_visible_lane_execution.py` :: `cheap_lane_execution_truth` (L31)
 - `core/services/non_visible_lane_execution.py` :: `coding_lane_execution_truth` (L289)
 - `core/services/non_visible_lane_execution.py` :: `execute_coding_lane` (L320)
@@ -1697,10 +1704,10 @@ Generated from source. 6113/12563 functions/methods documented (48%). The list b
 - `core/services/visible_followup_adapters.py` :: `OllamaFollowupAdapter.stream_followup` (L201)
 - `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L710)
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L154)
-- `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L326)
-- `core/services/visible_model.py` :: `available_provider_models` (L107)
-- `core/services/visible_model.py` :: `execute_visible_model` (L199)
-- `core/services/visible_model.py` :: `stream_visible_model` (L256)
+- `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L393)
+- `core/services/visible_model.py` :: `available_provider_models` (L170)
+- `core/services/visible_model.py` :: `execute_visible_model` (L262)
+- `core/services/visible_model.py` :: `stream_visible_model` (L321)
 - `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L513)
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
@@ -1794,9 +1801,9 @@ Generated from source. 6113/12563 functions/methods documented (48%). The list b
 - `core/tools/team_tools.py` :: `exec_create_team` (L25)
 - `core/tools/team_tools.py` :: `exec_invite_to_team` (L109)
 - `core/tools/team_tools.py` :: `exec_list_teams` (L44)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L153)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L149)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L158)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L157)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L153)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L162)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1864)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L549)
@@ -1813,9 +1820,9 @@ Generated from source. 6113/12563 functions/methods documented (48%). The list b
 - `scripts/capabilities_gen.py` :: `collect` (L35)
 - `scripts/capabilities_gen.py` :: `main` (L44)
 - `scripts/capabilities_gen.py` :: `render_md` (L24)
-- `scripts/central_connectivity_audit.py` :: `main` (L237)
-- `scripts/central_connectivity_audit.py` :: `render_md` (L189)
-- `scripts/central_connectivity_audit.py` :: `scan` (L131)
+- `scripts/central_connectivity_audit.py` :: `main` (L276)
+- `scripts/central_connectivity_audit.py` :: `render_md` (L212)
+- `scripts/central_connectivity_audit.py` :: `scan` (L144)
 - `scripts/db_decomposition_map.py` :: `comp_of` (L55)
 - `scripts/db_decomposition_map.py` :: `find` (L36)
 - `scripts/db_decomposition_map.py` :: `union` (L40)

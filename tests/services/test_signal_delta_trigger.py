@@ -164,3 +164,101 @@ def test_composite_coalesce(trigger, fake_baseline, runtime_state):
     assert decision is not None
     assert sorted(decision["crossed"]) == ["x", "y"]
     assert set(decision["movements"]) == {"x", "y"}
+
+
+# --------------------------------------------------------------------------- #
+# Bilag 2 — scope-aware evaluate ("one self, many projections")
+# --------------------------------------------------------------------------- #
+@pytest.fixture()
+def scoped_baseline(monkeypatch):
+    """Scope-aware fake `signal_baseline` with a per-scope store."""
+    ns = types.ModuleType("core.services.signal_baseline")
+    ns._stores = {None: {}}  # scope -> {signal: value}
+    ns._cold = {}  # scope -> bool
+
+    def _store(scope):
+        return ns._stores.setdefault(scope, {})
+
+    def get_baseline(signal, scope=None):
+        return _store(scope).get(str(signal))
+
+    def set_baseline(signal, value, scope=None):
+        _store(scope)[str(signal)] = float(value)
+
+    def is_cold_start(min_signals: int = 3, scope=None):
+        return bool(ns._cold.get(scope, False))
+
+    ns.get_baseline = get_baseline
+    ns.set_baseline = set_baseline
+    ns.is_cold_start = is_cold_start
+
+    monkeypatch.setitem(sys.modules, "core.services.signal_baseline", ns)
+    import core.services as _svc
+
+    monkeypatch.setattr(_svc, "signal_baseline", ns, raising=False)
+    return ns
+
+
+@pytest.fixture()
+def scoped_trigger(scoped_baseline, runtime_state):
+    import importlib
+
+    mod = importlib.import_module("core.services.signal_delta_trigger")
+    return mod
+
+
+def test_scope_none_is_the_global_default(scoped_trigger, scoped_baseline):
+    """(1) The default (scope=None) path is unchanged and carries no scope tag."""
+    scoped_baseline._stores[None]["cpu"] = 0.20
+    decision = scoped_trigger.evaluate({"cpu": 0.55})
+    assert decision is not None
+    assert decision["crossed"] == ["cpu"]
+    assert "scope" not in decision
+
+
+def test_scoped_fires_against_own_baseline_and_tags_scope(
+    scoped_trigger, scoped_baseline
+):
+    """(2) A scope evaluates against its OWN baseline and tags the decision."""
+    scoped_baseline._stores["userA"] = {"tension": 0.20}
+    decision = scoped_trigger.evaluate({"tension": 0.60}, scope="userA")
+    assert decision is not None
+    assert decision["crossed"] == ["tension"]
+    assert decision["scope"] == "userA"
+
+
+def test_user_scoped_delta_does_not_leak_to_other_scope(
+    scoped_trigger, scoped_baseline, runtime_state
+):
+    """(3) A per-user delta fires in its room without touching another scope."""
+    scoped_baseline._stores["userA"] = {"tension": 0.20}
+    scoped_baseline._stores["userB"] = {"tension": 0.20}
+    scoped_baseline._stores[None] = {"tension": 0.20}
+
+    fired = scoped_trigger.evaluate({"tension": 0.70}, scope="userA")
+    assert fired is not None and fired["scope"] == "userA"
+
+    # userB's and the global baseline are untouched by userA's fire.
+    assert scoped_baseline._stores["userB"]["tension"] == 0.20
+    assert scoped_baseline._stores[None]["tension"] == 0.20
+    # Durable hot/cooldown are namespaced to userA only.
+    assert "signal_delta_trigger:last_dispatch_ts:userA" in runtime_state
+    assert "signal_delta_trigger:last_dispatch_ts" not in runtime_state
+    assert "signal_delta_trigger:last_dispatch_ts:userB" not in runtime_state
+
+
+def test_cooldown_is_per_scope_no_cross_block(
+    scoped_trigger, scoped_baseline, runtime_state
+):
+    """A global (or userA) dispatch's cooldown never gates another scope."""
+    # Default cooldown (1200s) is active after the first fire.
+    scoped_baseline._stores[None] = {"s": 0.20}
+    scoped_baseline._stores["userA"] = {"s": 0.20}
+
+    assert scoped_trigger.evaluate({"s": 0.60}) is not None  # global fires
+    # global is now in cooldown, but userA has its OWN cooldown → still fires.
+    scoped = scoped_trigger.evaluate({"s": 0.60}, scope="userA")
+    assert scoped is not None and scoped["scope"] == "userA"
+    # a second global fire IS blocked by the global cooldown (proves it is real).
+    scoped_baseline._stores[None]["s"] = 0.20
+    assert scoped_trigger.evaluate({"s": 0.61}) is None

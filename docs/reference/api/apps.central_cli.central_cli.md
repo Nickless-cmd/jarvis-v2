@@ -26,7 +26,8 @@ _(no top-level classes or functions)_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `CommandSpec` | `` | — | [src](../../../apps/central_cli/central_cli/commands.py#L7) |
-| function | `resolve_command` | `(verb, args)` | Map (verb, args) → CommandSpec. Writes markeres write=True (til confirm-guard). | [src](../../../apps/central_cli/central_cli/commands.py#L78) |
+| function | `_cost_command` | `(args)` | WS3: `jc cost` → GET /central/cost (owner-gated cost-aggregat). | [src](../../../apps/central_cli/central_cli/commands.py#L78) |
+| function | `resolve_command` | `(verb, args)` | Map (verb, args) → CommandSpec. Writes markeres write=True (til confirm-guard). | [src](../../../apps/central_cli/central_cli/commands.py#L113) |
 
 ## `apps/central_cli/central_cli/config.py`
 

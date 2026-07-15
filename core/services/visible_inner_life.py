@@ -461,6 +461,20 @@ def _self_narrative_line() -> Optional[str]:
         desc = (describe_self() or "").strip()
         if not desc or desc.startswith("Jeg er ved at samle"):
             return None
+        # Lag 4: i rå-mode er describe_self() kompakte bracket-linjer (én pr. linje) — ingen
+        # sætnings-salience at vælge imellem. Vis den mest selv-bærende bracket ([Selv]/[⚠️]),
+        # ellers den første. Flag OFF → uændret sætnings-path nedenfor.
+        try:
+            from core.services.central_body_mood_feel import raw_awareness_enabled
+            if raw_awareness_enabled():
+                blines = [ln.strip() for ln in desc.split("\n") if ln.strip()]
+                if not blines:
+                    return None
+                pick = next((ln for ln in blines
+                             if ln.startswith("[⚠️") or ln.startswith("[Selv")), blines[0])
+                return _truncate_clean(f"Selv: {pick}", 80)
+        except Exception:
+            logger.debug("inner-life: self_narrative raw failed", exc_info=True)
         # describe_self() er '. '-sammenføjet — split i fragmenter og vælg det
         # mest saliente (bærer/emergens/becoming), ellers det første.
         frags = [f.strip() for f in desc.split(". ") if f.strip()]

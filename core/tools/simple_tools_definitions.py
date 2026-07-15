@@ -40,6 +40,7 @@ from core.tools.claude_dispatch import (CLAUDE_DISPATCH_TOOL_DEFINITIONS)
 from core.tools.agent_dispatch_tool import (AGENT_DISPATCH_TOOL_DEFINITIONS)
 from core.tools.bash_session import (BASH_SESSION_TOOL_DEFINITIONS)
 from core.tools.operator_bash_session import (OPERATOR_BASH_SESSION_TOOL_DEFINITIONS)
+from core.tools.operator_tools import (OPERATOR_SESSION_TOOL_DEFINITIONS)
 from core.tools.staged_edits_tools import (STAGED_EDITS_TOOL_DEFINITIONS)
 from core.tools.project_notes_tools import (PROJECT_NOTES_TOOL_DEFINITIONS)
 from core.tools.process_supervisor_tools import (PROCESS_SUPERVISOR_TOOL_DEFINITIONS)
@@ -3119,6 +3120,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *AGENT_DISPATCH_TOOL_DEFINITIONS,
     *BASH_SESSION_TOOL_DEFINITIONS,
     *OPERATOR_BASH_SESSION_TOOL_DEFINITIONS,
+    *OPERATOR_SESSION_TOOL_DEFINITIONS,
     *STAGED_EDITS_TOOL_DEFINITIONS,
     *PROJECT_NOTES_TOOL_DEFINITIONS,
     *PROCESS_SUPERVISOR_TOOL_DEFINITIONS,

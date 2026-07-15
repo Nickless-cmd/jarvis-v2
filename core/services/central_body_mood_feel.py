@@ -45,6 +45,20 @@ from core.services.central_layer_contract import (
 _CLUSTER = "cognition"
 _HELD_KEY = "body_mood_feel"        # fælles held_key på tværs af lagene (hver sit contract-navn)
 _BODY_FRESH_MAX_AGE_S = 1800.0      # 30 min: en KROP-tilstand ældre end dette er forældet → ties (#3)
+_RAW_AWARENESS_FLAG = "raw_awareness"   # Lag 4: rå kompakte brackets i stedet for genererede sætninger
+
+
+def raw_awareness_enabled() -> bool:
+    """Lag 4 kill-switch: rå kompakte awareness-brackets frem for genererede label-sætninger.
+
+    Default OFF — flip via runtime-state. Læses ROBUST via get_runtime_state_bool (så flaget
+    lagret som strengen "off" ikke fejllæses som True). Self-safe → False ved enhver fejl
+    (awareness må aldrig gå i stykker fordi et flag-opslag fejler)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool(_RAW_AWARENESS_FLAG, False)
+    except Exception:
+        return False
 
 # KROP-spor
 _PROPRIOCEPTION = "body_proprioception"
@@ -235,10 +249,73 @@ def get_affective_reading() -> dict[str, Any]:
     return _read_held(_AFFECTIVE)
 
 
+def _fmt_num(v: Any) -> str:
+    """Kompakt tal uden hale-nuller: 12.0 → '12', 11.2 → '11.2'. Self-safe."""
+    try:
+        f = float(v)
+        return f"{f:g}"
+    except Exception:
+        return "0"
+
+
+def describe_body_mood_feel_raw() -> list[str]:
+    """Lag 4 RÅ NED-syntese: kompakte bracket-linjer fra de holdte krop-/stemning-aflæsninger +
+    mood-oscillatorens rå tal — i stedet for genererede label-sætninger. Rækkefølge = krop → stemning.
+    Rå hvor det er en måling (cpu/ram/latens · valens/intensitet · vækst-vektor); ingen mood-ord.
+    Returnerer en liste af bracket-strenge (kan være tom). Self-safe: kaster ALDRIG."""
+    parts: list[str] = []
+    # ── SOMATIC (krop som måling) — freshness-gated som sætnings-pathen ──
+    try:
+        prop = _read_held_fresh(_PROPRIOCEPTION, _BODY_FRESH_MAX_AGE_S)
+        bits: list[str] = []
+        cpu = prop.get("cpu_pct")
+        rss = prop.get("rss_mb")
+        lat = prop.get("self_latency_ms")
+        if isinstance(cpu, (int, float)):
+            bits.append(f"cpu {_fmt_num(cpu)}%")
+        if isinstance(rss, (int, float)) and rss:
+            bits.append(f"ram {_fmt_num(rss)}MB")
+        if isinstance(lat, (int, float)) and lat:
+            bits.append(f"latens {_fmt_num(lat)}ms")
+        # host/krop-tilstand som rå etiket kun når den er mærkbar (steady = tie-værdig)
+        emb = _read_held_fresh(_EMBODIED, _BODY_FRESH_MAX_AGE_S)
+        est = str(emb.get("state") or "").strip()
+        if est and est not in ("steady", "unknown", ""):
+            bits.append(est)
+        if bits:
+            parts.append(f"[Somatic: {' · '.join(bits)}]")
+    except Exception:
+        pass
+    # ── AFFEKT (stemning som TAL, ikke ord — drop mood-labelen) ──
+    try:
+        from core.services.mood_oscillator import _combined_value, get_mood_intensity
+        val = float(_combined_value())
+        inten = float(get_mood_intensity())
+        parts.append(f"[Affekt: valens {val:+.2f} · intensitet {inten:.2f}]")
+    except Exception:
+        pass
+    # ── VÆKST (uge-skala kompas som vektor + trend-metadata, ungated) ──
+    try:
+        dev = get_developmental_reading()
+        vec = dev.get("vector")
+        traj = str(dev.get("trajectory") or "").strip()
+        if isinstance(vec, (int, float)):
+            arrow = "stigende" if vec > 0.05 else ("faldende" if vec < -0.05 else "stille")
+            parts.append(f"[Vækst: puls {float(vec):+.2f} → {traj or arrow}]")
+    except Exception:
+        pass
+    return parts
+
+
 def describe_body_mood_feel() -> list[str]:
     """NED-syntese for describe_self: nøgterne selv-sætninger fra de holdte krop-/stemning-aflæsninger.
     Kun meningsfulde aflæsninger tales (guarded pr. lag). Rækkefølge = krop → stemning.
-    Returnerer en liste af parts (kan være tom). Self-safe: kaster ALDRIG. Ingen melodrama."""
+    Returnerer en liste af parts (kan være tom). Self-safe: kaster ALDRIG. Ingen melodrama.
+
+    Lag 4: når `raw_awareness` er ON, returnér kompakte rå brackets i stedet for label-sætninger.
+    Flag OFF (default) → nøjagtig samme sætninger som før (purely additive)."""
+    if raw_awareness_enabled():
+        return describe_body_mood_feel_raw()
     parts: list[str] = []
     # ── KROP ── (freshness-gated: en KROP-tilstand ældre end _BODY_FRESH_MAX_AGE_S ties — den beskriver
     # ikke længere hvordan kroppen føles NU. Stemning/udviklings-kompas er bevidst LANGSOMME → ugated.)

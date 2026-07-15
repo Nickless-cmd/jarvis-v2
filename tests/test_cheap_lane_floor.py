@@ -12,6 +12,25 @@ def test_floor_result_is_typed_and_never_empty_shape():
     assert "text" in r  # nøglen findes altid (tom er ok)
 
 
+def test_default_floor_uses_v4_flash_not_dying_chat_alias():
+    """WS4 (spec 2026-07-13): default-bunden må IKKE bruge den døende
+    ``deepseek-chat``-alias (udfases 24. juli 2026) — den skal være
+    ``deepseek-v4-flash``."""
+    assert floor._DEFAULT_FLOOR == [("deepseek", "deepseek-v4-flash")]
+    # floor_targets() falder tilbage til default når config er tom
+    import core.runtime.settings as settings_mod
+
+    class _S:
+        cheap_lane_floor_targets = None
+
+    orig = settings_mod.load_settings
+    try:
+        settings_mod.load_settings = lambda: _S()  # type: ignore[assignment]
+        assert floor.floor_targets() == [("deepseek", "deepseek-v4-flash")]
+    finally:
+        settings_mod.load_settings = orig  # type: ignore[assignment]
+
+
 def test_attempt_floor_returns_ok_when_a_floor_target_answers(monkeypatch):
     calls = []
 

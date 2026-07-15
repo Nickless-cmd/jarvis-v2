@@ -39,6 +39,14 @@ _KEY_PREFIX = "signal_delta_trigger:"
 _KEY_LAST_DISPATCH = _KEY_PREFIX + "last_dispatch_ts"
 _KEY_HOT = _KEY_PREFIX + "hot_signals"
 
+
+def _scoped_key(base: str, scope: str | None) -> str:
+    """Namespace a durable key by ``scope``. None → the global key, unchanged."""
+    name = str(scope or "").strip()
+    if not name:
+        return base
+    return f"{base}:{name}"
+
 # Tunable defaults (override via runtime-state key ``signal_delta_trigger:<name>``).
 _DEFAULT_THETA_HIGH = 0.30
 _DEFAULT_THETA_LOW = 0.15
@@ -59,6 +67,29 @@ def _baseline():
     from core.services import signal_baseline
 
     return signal_baseline
+
+
+# --- Scope-aware baseline shims -------------------------------------------- #
+# The default (global) path calls the baseline module with its ORIGINAL 1-/2-arg
+# signatures so behaviour — and any test double — is unchanged. A ``scope`` is
+# forwarded only when explicitly given, keying the per-user/session baselines.
+def _bl_is_cold_start(baseline, scope):
+    if scope is None:
+        return baseline.is_cold_start()
+    return baseline.is_cold_start(scope=scope)
+
+
+def _bl_get(baseline, name, scope):
+    if scope is None:
+        return baseline.get_baseline(name)
+    return baseline.get_baseline(name, scope=scope)
+
+
+def _bl_set(baseline, name, val, scope):
+    if scope is None:
+        baseline.set_baseline(name, val)
+    else:
+        baseline.set_baseline(name, val, scope=scope)
 
 
 def _cfg_float(db, name: str, default: float) -> float:
@@ -82,9 +113,9 @@ def _store_float(db, key: str, value: float) -> None:
         pass
 
 
-def _load_hot(db) -> dict[str, bool]:
+def _load_hot(db, key: str = _KEY_HOT) -> dict[str, bool]:
     try:
-        raw = db.get_runtime_state_value(_KEY_HOT, None)
+        raw = db.get_runtime_state_value(key, None)
         if isinstance(raw, dict):
             return {str(k): bool(v) for k, v in raw.items()}
     except Exception:
@@ -92,9 +123,9 @@ def _load_hot(db) -> dict[str, bool]:
     return {}
 
 
-def _store_hot(db, hot: dict[str, bool]) -> None:
+def _store_hot(db, hot: dict[str, bool], key: str = _KEY_HOT) -> None:
     try:
-        db.set_runtime_state_value(_KEY_HOT, {str(k): bool(v) for k, v in hot.items()})
+        db.set_runtime_state_value(key, {str(k): bool(v) for k, v in hot.items()})
     except Exception:
         pass
 
@@ -107,12 +138,20 @@ def _reason(crossed: list[str], movements: dict[str, float], theta_abs: float) -
     return "signal-delta dispatch: " + ", ".join(parts)
 
 
-def evaluate(signals: dict[str, float]) -> Optional[dict]:
+def evaluate(signals: dict[str, float], scope: str | None = None) -> Optional[dict]:
     """Decide whether a real change warrants a dispatch.
 
     Returns ``None`` when nothing should dispatch. Otherwise returns ONE
     decision dict ``{"crossed": [...], "movements": {sig: delta}, "reason": str}``
     carrying every signal that crossed this call.
+
+    ``scope`` (Bilag 2, "one self, many projections"): ``None`` evaluates the
+    GLOBAL self-signals against the global baselines/cooldown/hysteresis exactly
+    as before. A ``scope`` (e.g. a ``user_id`` or ``"user_id:session"``)
+    evaluates USER/SESSION signals against that scope's OWN baselines, cooldown
+    and hot-set — so a per-user delta fires only in that user's room and never
+    against, nor bleeds into, another scope. When scoped, the returned decision
+    carries a ``"scope"`` key so the nudge path can route it.
     """
     try:
         if not signals:
@@ -132,13 +171,13 @@ def evaluate(signals: dict[str, float]) -> Optional[dict]:
 
         # --- Cold-start suppression: establish baselines, never fire. ---------
         try:
-            cold = baseline.is_cold_start()
+            cold = _bl_is_cold_start(baseline, scope)
         except Exception:
             cold = False
         if cold:
             for name, val in clean.items():
                 try:
-                    baseline.set_baseline(name, val)
+                    _bl_set(baseline, name, val, scope)
                 except Exception:
                     pass
             return None
@@ -152,11 +191,16 @@ def evaluate(signals: dict[str, float]) -> Optional[dict]:
         if theta_low >= theta_high:
             theta_low = theta_high / 2.0
 
+        # Per-scope durable state so a global cooldown/hot-set never gates a
+        # user's room and vice-versa. None → the original global keys.
+        key_last_dispatch = _scoped_key(_KEY_LAST_DISPATCH, scope)
+        key_hot = _scoped_key(_KEY_HOT, scope)
+
         now = _time.time()
-        last_ts = _load_float(db, _KEY_LAST_DISPATCH, 0.0)
+        last_ts = _load_float(db, key_last_dispatch, 0.0)
         in_cooldown = (now - last_ts) < cooldown_s
 
-        hot = _load_hot(db)
+        hot = _load_hot(db, key_hot)
 
         crossed: list[str] = []
         movements: dict[str, float] = {}
@@ -164,11 +208,11 @@ def evaluate(signals: dict[str, float]) -> Optional[dict]:
         settle_changed = False  # hot->settled transitions persist independent of dispatch
 
         for name, val in clean.items():
-            b = baseline.get_baseline(name)
+            b = _bl_get(baseline, name, scope)
             if b is None:
                 # Newly seen signal (post cold-start): seed baseline, never fire.
                 try:
-                    baseline.set_baseline(name, val)
+                    _bl_set(baseline, name, val, scope)
                 except Exception:
                     pass
                 continue
@@ -197,24 +241,27 @@ def evaluate(signals: dict[str, float]) -> Optional[dict]:
             for name in crossed_sorted:
                 # Advance baseline to the new value and arm hysteresis.
                 try:
-                    baseline.set_baseline(name, new_baselines[name])
+                    _bl_set(baseline, name, new_baselines[name], scope)
                 except Exception:
                     pass
                 hot[name] = True
-            _store_hot(db, hot)
-            _store_float(db, _KEY_LAST_DISPATCH, now)
-            return {
+            _store_hot(db, hot, key_hot)
+            _store_float(db, key_last_dispatch, now)
+            decision = {
                 "crossed": crossed_sorted,
                 "movements": {n: movements[n] for n in crossed_sorted},
                 "reason": _reason(crossed_sorted, movements, theta_abs),
             }
+            if scope is not None:
+                decision["scope"] = str(scope)
+            return decision
 
         # No dispatch (nothing crossed, or crossed-but-in-cooldown). We do NOT
         # advance baselines or arm hot for the crossed-but-cooled signals — the
         # change stays "pending" and can fire once cooldown expires. Only the
         # settle transitions (hysteresis release) are durably persisted.
         if settle_changed:
-            _store_hot(db, hot)
+            _store_hot(db, hot, key_hot)
         return None
     except Exception:
         # Self-safe: any failure must NOT fire (fail-closed).

@@ -1148,3 +1148,179 @@ async def operator_process_list_async(
         user_id=user_id, timeout_s=timeout_s,
     )
     return result or {}
+
+
+# ── operator_session_* — owner-gated backup channel for jarvis-code ─────────
+#
+# A persistent operator session that jarvis-code's client-side `bash` reroutes
+# through when a command targets a path OUTSIDE the client bwrap sandbox (e.g.
+# /media/projects). Dispatches via the bridge with skip_approval=True so there
+# is NO per-reroute approval dialog — the owner opts in ONCE on the client
+# (operator_channel(open=True)); every subsequent reroute is dialog-free.
+#
+# STEP-0 FINDING: the bridge protocol ALREADY carries a skip_approval flag
+# (operator_bash_async → bridge_registry.dispatch args["skip_approval"]), so NO
+# dedicated bridge route is needed — these tools reuse the existing path via
+# simple_tools_operator._exec_operator_bash (which passes skip_approval=True).
+#
+# Owner-only: a real non-owner role is refused server-side too (defense in
+# depth on top of the client owner-gate).
+#
+# Spec: docs/superpowers/specs/2026-07-14-operator-channel-design.md
+
+import threading as _threading
+import time as _time
+import uuid as _uuid
+
+_OPERATOR_SESSIONS: dict[str, dict[str, Any]] = {}
+_OP_SESS_LOCK = _threading.Lock()
+_OP_SESS_IDLE_TTL = 1800.0  # 30 min, matching operator_bash_session
+
+
+def _op_sess_now() -> float:
+    return _time.time()
+
+
+def _op_sess_reap() -> None:
+    cutoff = _op_sess_now() - _OP_SESS_IDLE_TTL
+    with _OP_SESS_LOCK:
+        for sid in [s for s, v in _OPERATOR_SESSIONS.items()
+                    if v.get("last", 0.0) < cutoff]:
+            _OPERATOR_SESSIONS.pop(sid, None)
+
+
+def _op_sess_owner_denied() -> str | None:
+    """Denial reason if the caller is a real non-owner role, else None.
+
+    Owner and unbound ("" — trusted internal/daemon callers) pass. This is a
+    server-side backstop; the client already owner-gates operator_channel.
+    """
+    try:
+        from core.identity.workspace_context import effective_role
+        role = str(effective_role() or "")
+    except Exception:
+        role = ""
+    if role and role != "owner":
+        return f"access denied: operator_session is owner-only (role={role})"
+    return None
+
+
+def _op_sess_user_id(args: dict[str, Any]) -> str:
+    from core.tools.simple_tools_operator import _operator_user_id
+    return _operator_user_id(args)
+
+
+def _op_dispatch_bash(command: str, *, user_id: str, cwd: str | None,
+                      timeout_s: float) -> dict[str, Any]:
+    """Dispatch a command via the bridge with skip_approval=True (reuses the
+    existing operator_bash path). Returns simple_tools_operator's
+    {status, result|error} envelope."""
+    from core.tools.simple_tools import _exec_operator_bash
+    op_args: dict[str, Any] = {
+        "command": command, "_user_id": user_id, "timeout_s": timeout_s,
+    }
+    if cwd:
+        op_args["cwd"] = cwd
+    return _exec_operator_bash(op_args)
+
+
+def _exec_operator_session_open(args: dict[str, Any]) -> dict[str, Any]:
+    """Open a persistent operator session. Owner-only. Probes the bridge with a
+    no-op so an unavailable companion app fails fast (edge case 9)."""
+    denied = _op_sess_owner_denied()
+    if denied:
+        return {"status": "error", "error": denied}
+    _op_sess_reap()
+    uid = _op_sess_user_id(args)
+    # Liveness probe: a no-op bash over the bridge proves the companion app is
+    # reachable BEFORE we hand back a session (edge case 9).
+    probe = _op_dispatch_bash("true", user_id=uid, cwd=None, timeout_s=10.0)
+    if str((probe or {}).get("status")) == "error":
+        return {"status": "error",
+                "error": str(probe.get("error") or "bridge_not_connected")}
+    sid = "opchan-" + _uuid.uuid4().hex[:12]
+    with _OP_SESS_LOCK:
+        _OPERATOR_SESSIONS[sid] = {"user_id": uid, "last": _op_sess_now()}
+    return {"status": "ok", "session_id": sid}
+
+
+def _exec_operator_session_run(args: dict[str, Any]) -> dict[str, Any]:
+    """Run a command in an operator session via the bridge WITHOUT an approval
+    dialog (skip_approval=True). Owner-only. Flattens the bridge result so the
+    client sees stdout/stderr/exit_code at the top level."""
+    denied = _op_sess_owner_denied()
+    if denied:
+        return {"status": "error", "error": denied}
+    sid = str(args.get("session_id") or "").strip()
+    cmd = str(args.get("command") or "")
+    if not cmd:
+        return {"status": "error", "error": "command is required"}
+    with _OP_SESS_LOCK:
+        sess = _OPERATOR_SESSIONS.get(sid)
+    if sid and sess is None:
+        return {"status": "error",
+                "error": "unknown session_id (udløbet?) — kald operator_session_open"}
+    uid = (sess or {}).get("user_id") or _op_sess_user_id(args)
+    try:
+        timeout_s = max(1.0, min(float(args.get("timeout") or args.get("timeout_s") or 30.0), 300.0))
+    except Exception:
+        timeout_s = 30.0
+    res = _op_dispatch_bash(cmd, user_id=uid, cwd=args.get("cwd"), timeout_s=timeout_s)
+    if sess is not None:
+        with _OP_SESS_LOCK:
+            if sid in _OPERATOR_SESSIONS:
+                _OPERATOR_SESSIONS[sid]["last"] = _op_sess_now()
+    if isinstance(res, dict) and str(res.get("status")) == "error":
+        return {"status": "error",
+                "error": str(res.get("error") or "operator_bash failed"),
+                "session_id": sid or None}
+    inner = res.get("result") if isinstance(res, dict) else None
+    out: dict[str, Any] = {"status": "ok", "session_id": sid or None}
+    if isinstance(inner, dict):
+        for k in ("stdout", "stderr", "exit_code", "timed_out", "approved"):
+            if k in inner:
+                out[k] = inner[k]
+    else:
+        out["result"] = inner
+    return out
+
+
+def _exec_operator_session_close(args: dict[str, Any]) -> dict[str, Any]:
+    """Close an operator session (owner-only)."""
+    denied = _op_sess_owner_denied()
+    if denied:
+        return {"status": "error", "error": denied}
+    sid = str(args.get("session_id") or "").strip()
+    with _OP_SESS_LOCK:
+        sess = _OPERATOR_SESSIONS.pop(sid, None)
+    return {"status": "ok", "closed": bool(sess)}
+
+
+OPERATOR_SESSION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
+    {"type": "function", "function": {
+        "name": "operator_session_open",
+        "description": (
+            "Owner-only. Åbn en vedvarende operator-session (backup-kanal for "
+            "jarvis-code). Kald bruges af klientens operator_channel — reroute af "
+            "bash til stier udenfor klient-sandboxen, uden approval-dialog. Fejler "
+            "hvis JarvisX companion-appen ikke kører."),
+        "parameters": {"type": "object", "properties": {}, "required": []}}},
+    {"type": "function", "function": {
+        "name": "operator_session_run",
+        "description": (
+            "Owner-only. Kør en kommando på operatorens maskine via broen UDEN "
+            "approval-dialog (skip_approval). Bruges af klientens bash-reroute."),
+        "parameters": {"type": "object", "properties": {
+            "session_id": {"type": "string",
+                           "description": "Returneret af operator_session_open."},
+            "command": {"type": "string", "description": "Shell-kommando."},
+            "cwd": {"type": "string", "description": "Arbejdsmappe (valgfri)."},
+            "timeout": {"type": "number",
+                        "description": "Sekunder før timeout (default 30, max 300)."}},
+            "required": ["command"]}}},
+    {"type": "function", "function": {
+        "name": "operator_session_close",
+        "description": "Owner-only. Luk en operator-session.",
+        "parameters": {"type": "object", "properties": {
+            "session_id": {"type": "string"}}, "required": ["session_id"]}}},
+]

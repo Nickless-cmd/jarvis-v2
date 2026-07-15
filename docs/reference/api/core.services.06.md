@@ -577,6 +577,26 @@ _Cluster-daemon primitive — one Central-governed daemon per FAMILY of nerves._
 | function | `_run_cognition_nonllm_members` | `(snap, result)` | Run the NON-LLM cognition members UNCONDITIONALLY (independent of the | [src](../../../core/services/cluster_daemon.py#L1459) |
 | function | `tick_cluster_cognition` | `(snapshot=…, *, shadow=…)` | Heartbeat entry-point for the cognition cluster-daemon family (#5). | [src](../../../core/services/cluster_daemon.py#L1475) |
 
+## `core/services/cluster_daemon_families.py`
+_Cluster-daemon FAMILIES — the second file of consolidated nerve-families._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_collect_memory_snapshot` | `()` | Gather the memory family's shared snapshot once per tick. | [src](../../../core/services/cluster_daemon_families.py#L80) |
+| function | `_mem_council_signals` | `(snap)` | council_memory gate signal: how much council history there is to weigh. | [src](../../../core/services/cluster_daemon_families.py#L110) |
+| function | `_mem_council_live` | `(snap)` | — | [src](../../../core/services/cluster_daemon_families.py#L116) |
+| function | `build_memory_family` | `()` | Construct the memory/maintenance cluster-daemon (family #6), LIVE. | [src](../../../core/services/cluster_daemon_families.py#L121) |
+| function | `memory_family` | `()` | — | [src](../../../core/services/cluster_daemon_families.py#L151) |
+| function | `_mem_decay_live` | `(_snap)` | Daily decay + re-discovery. Replicates the old heartbeat influence site: | [src](../../../core/services/cluster_daemon_families.py#L163) |
+| function | `_mem_pruning_live` | `(_snap)` | — | [src](../../../core/services/cluster_daemon_families.py#L181) |
+| function | `_mem_maintenance_live` | `(_snap)` | — | [src](../../../core/services/cluster_daemon_families.py#L186) |
+| function | `_mem_safeguard_live` | `(_snap)` | The safeguard daemon exposes ``run()`` (its old heartbeat site imported a | [src](../../../core/services/cluster_daemon_families.py#L191) |
+| function | `_mem_selective_consolidation_live` | `(_snap)` | — | [src](../../../core/services/cluster_daemon_families.py#L199) |
+| function | `_mem_associative_recall_live` | `(_snap)` | — | [src](../../../core/services/cluster_daemon_families.py#L204) |
+| function | `_mem_write_queue_live` | `(_snap)` | LOAD-BEARING + FREQUENT — drains the deferred write queue every 120s. | [src](../../../core/services/cluster_daemon_families.py#L209) |
+| function | `_run_memory_nonllm_members` | `(snap, result)` | Run the NON-LLM maintenance members UNCONDITIONALLY (independent of the | [src](../../../core/services/cluster_daemon_families.py#L228) |
+| function | `tick_cluster_memory` | `(snapshot=…, *, shadow=…)` | Heartbeat entry-point for the memory/maintenance cluster-daemon family (#6). | [src](../../../core/services/cluster_daemon_families.py#L244) |
+
 ## `core/services/code_aesthetic_daemon.py`
 _Code aesthetic daemon — weekly aesthetic reflection on the codebase._
 
@@ -779,14 +799,4 @@ _Composite tools — safe self-extension through composition only._
 | function | `_substitute` | `(value, context)` | — | [src](../../../core/services/composite_tools.py#L237) |
 | function | `_resolve_string` | `(s, context)` | Resolve {{...}} templates. | [src](../../../core/services/composite_tools.py#L247) |
 | function | `_lookup` | `(path, context)` | — | [src](../../../core/services/composite_tools.py#L267) |
-
-## `core/services/computer_use_policy.py`
-_Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_computer_use_tool` | `(name)` | — | [src](../../../core/services/computer_use_policy.py#L25) |
-| function | `_load` | `()` | — | [src](../../../core/services/computer_use_policy.py#L30) |
-| function | `computer_use_enabled` | `(user_id)` | Default TIL — kun eksplicit fravalg slår fra. | [src](../../../core/services/computer_use_policy.py#L37) |
-| function | `set_computer_use` | `(user_id, enabled)` | — | [src](../../../core/services/computer_use_policy.py#L42) |
 

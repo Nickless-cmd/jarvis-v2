@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/missions_pipeline.py`
+_Missions Pipeline — flerfase opgaver med state-machine._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MissionError` | `` | — | [src](../../../core/services/missions_pipeline.py#L52) |
+| method | `MissionError.__init__` | `(self, code, message)` | — | [src](../../../core/services/missions_pipeline.py#L53) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/missions_pipeline.py#L58) |
+| function | `_ensure_tables` | `()` | — | [src](../../../core/services/missions_pipeline.py#L62) |
+| function | `_row_to_mission` | `(row)` | — | [src](../../../core/services/missions_pipeline.py#L107) |
+| function | `create_mission` | `(*, title, description=…, goal=…, constraints=…, success_criteria=…, roles=…, metadata=…)` | Create a new mission in 'created' status. | [src](../../../core/services/missions_pipeline.py#L120) |
+| function | `get_mission` | `(*, mission_id)` | — | [src](../../../core/services/missions_pipeline.py#L176) |
+| function | `transition_mission_state` | `(*, mission_id, new_status, reason=…)` | Transition mission to new status, respecting _ALLOWED_TRANSITIONS. | [src](../../../core/services/missions_pipeline.py#L188) |
+| function | `send_mission_message` | `(*, mission_id, role=…, content, metadata=…)` | Post a message on the mission channel. Roles: researcher/implementer/reviewer etc. | [src](../../../core/services/missions_pipeline.py#L258) |
+| function | `list_mission_messages` | `(*, mission_id, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L311) |
+| function | `list_missions` | `(*, status=…, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L331) |
+| function | `build_missions_surface` | `()` | — | [src](../../../core/services/missions_pipeline.py#L350) |
+
 ## `core/services/model_context.py`
 _Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
 
@@ -622,16 +640,4 @@ _Paste-store: eksternalisér store bruger-pastes med en kompakt reference._
 | function | `project_paste_for_model` | `(content)` | Projicér en bruger-besked til modellen: ekspandér paste-referencer når flag ON. | [src](../../../core/services/paste_store.py#L165) |
 | function | `cleanup_old_pastes` | `(max_age_days=…)` | Slet pastes ældre end `max_age_days`. Returnér antal slettede (best-effort). | [src](../../../core/services/paste_store.py#L176) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/paste_store.py#L195) |
-
-## `core/services/pattern_counterfactual_daemon.py`
-_Pattern counterfactual daemon — Phase 3.5 of causal graph._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_fetch_top_patterns` | `()` | Reuse causal_patterns._fetch_patterns; take top N filtered. | [src](../../../core/services/pattern_counterfactual_daemon.py#L46) |
-| function | `_already_counterfactualized` | `(parent_kind, child_kind)` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L57) |
-| function | `_build_prompt` | `(pattern)` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L72) |
-| function | `_persist` | `(pattern, hypothesis)` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L89) |
-| function | `run_pattern_cf_cycle` | `()` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L105) |
-| function | `tick_pattern_counterfactual_daemon` | `()` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L145) |
 

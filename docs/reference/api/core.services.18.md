@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/seed_system.py`
+_Seed System — prospective memory / dormant intentions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `plant_seed` | `(*, title, summary=…, activate_at=…, activate_on_event=…, activate_on_context=…, relevance_score=…, linked_goal=…)` | Plant a dormant intention seed. | [src](../../../core/services/seed_system.py#L26) |
+| function | `check_seed_activation` | `(*, current_context=…, current_event=…)` | Check if any planted seeds should activate. | [src](../../../core/services/seed_system.py#L56) |
+| function | `fulfill_seed` | `(seed_id)` | Mark a seed as fulfilled. | [src](../../../core/services/seed_system.py#L103) |
+| function | `build_seed_surface` | `()` | — | [src](../../../core/services/seed_system.py#L109) |
+| function | `auto_plant_seeds_from_conversation` | `(*, user_message)` | Scan user message for future-intent markers and auto-plant seeds. | [src](../../../core/services/seed_system.py#L123) |
+| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/seed_system.py#L160) |
+
 ## `core/services/selective_attention.py`
 _Selective Attention — metacognitive focus modulation._
 
@@ -757,21 +769,4 @@ _Eventbus → visible-prompt wake-up digest._
 | function | `mark_seen` | `(session_id, event_id)` | — | [src](../../../core/services/session_wakeup.py#L92) |
 | function | `_format_event` | `(ev)` | — | [src](../../../core/services/session_wakeup.py#L100) |
 | function | `wakeup_digest` | `(session_id)` | Return a short digest of notable events since this session last saw, | [src](../../../core/services/session_wakeup.py#L116) |
-
-## `core/services/shadow_experiment_registry.py`
-_core/services/shadow_experiment_registry.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | Læs hele register-dict'en fra KV. Self-safe → {} ved fejl/ugyldig form. | [src](../../../core/services/shadow_experiment_registry.py#L31) |
-| function | `_save` | `(data)` | Skriv hele register-dict'en durabelt. Self-safe (best-effort). | [src](../../../core/services/shadow_experiment_registry.py#L44) |
-| function | `register_experiment` | `(name, review_after_hours, note=…, started_ts=…)` | Registrér et shadow-eksperiment. Idempotent på navn: hvis det allerede er | [src](../../../core/services/shadow_experiment_registry.py#L54) |
-| function | `_annotate` | `(rec, now)` | Berig én rå-record med `hours_running` + `ripe`. | [src](../../../core/services/shadow_experiment_registry.py#L89) |
-| function | `list_experiments` | `(now_ts=…)` | Alle registrerede eksperimenter, beriget med `hours_running` + `ripe`. | [src](../../../core/services/shadow_experiment_registry.py#L107) |
-| function | `ready_for_review` | `(now_ts=…)` | De modne (ripe), ikke-reviewede eksperimenter. Self-safe → []. | [src](../../../core/services/shadow_experiment_registry.py#L120) |
-| function | `mark_reviewed` | `(name)` | Markér et eksperiment som reviewet (fjerner det fra `ripe`). Self-safe. | [src](../../../core/services/shadow_experiment_registry.py#L125) |
-| function | `register_known_shadows` | `()` | Seed registeret med de bekræftede live shadows (idempotent, self-safe). | [src](../../../core/services/shadow_experiment_registry.py#L154) |
-| function | `build_shadow_review_surface` | `(now_ts=…)` | Byg surface til Central-route/`jc shadows`. Seeder kendte shadows, | [src](../../../core/services/shadow_experiment_registry.py#L161) |
-| function | `_emit_reminder` | `(ripe_names)` | Passiv Central-påmindelse: observe `central_meta/shadow_review_due`. | [src](../../../core/services/shadow_experiment_registry.py#L182) |
-| function | `tick_shadow_review_reminder` | `(now_ts=…)` | Heartbeat-venlig tick: byg surface (som emit'er påmindelsen ved modenhed) | [src](../../../core/services/shadow_experiment_registry.py#L198) |
 

@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/liveness_registry.py`
+_Liveness-registry (Stage 2, liveness-audit 2026-06-15)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_table` | `(name)` | Returnér klassifikation for en tabel. Ukendt → 'unclassified' (IKKE 'død'). | [src](../../../core/services/liveness_registry.py#L89) |
+| function | `is_alive` | `(name)` | True hvis tabellen IKKE er forældreløs/død. Afløst/manuel/aktiv tæller som levende. | [src](../../../core/services/liveness_registry.py#L97) |
+| function | `liveness_summary` | `()` | Aggregeret overblik — til Mission Control / anti-konfabulations-flade. | [src](../../../core/services/liveness_registry.py#L102) |
+
 ## `core/services/living_executive.py`
 _Living Executive — Jarvis' active impulse/choice/action loop._
 
@@ -625,22 +634,4 @@ _Mirror Engine — compassionate self-reflection during idle time._
 | function | `generate_mirror_insight` | `(*, idle_hours=…, open_loop_count=…, recent_error_count=…, recent_success_count=…, top_loop_summary=…)` | Generate a deterministic mirror insight. | [src](../../../core/services/mirror_engine.py#L20) |
 | function | `build_mirror_surface` | `()` | — | [src](../../../core/services/mirror_engine.py#L56) |
 | function | `_deterministic_insight` | `(*, idle_hours, open_loop_count, recent_error_count, recent_success_count, top_loop_summary)` | — | [src](../../../core/services/mirror_engine.py#L65) |
-
-## `core/services/missions_pipeline.py`
-_Missions Pipeline — flerfase opgaver med state-machine._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `MissionError` | `` | — | [src](../../../core/services/missions_pipeline.py#L52) |
-| method | `MissionError.__init__` | `(self, code, message)` | — | [src](../../../core/services/missions_pipeline.py#L53) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/missions_pipeline.py#L58) |
-| function | `_ensure_tables` | `()` | — | [src](../../../core/services/missions_pipeline.py#L62) |
-| function | `_row_to_mission` | `(row)` | — | [src](../../../core/services/missions_pipeline.py#L107) |
-| function | `create_mission` | `(*, title, description=…, goal=…, constraints=…, success_criteria=…, roles=…, metadata=…)` | Create a new mission in 'created' status. | [src](../../../core/services/missions_pipeline.py#L120) |
-| function | `get_mission` | `(*, mission_id)` | — | [src](../../../core/services/missions_pipeline.py#L176) |
-| function | `transition_mission_state` | `(*, mission_id, new_status, reason=…)` | Transition mission to new status, respecting _ALLOWED_TRANSITIONS. | [src](../../../core/services/missions_pipeline.py#L188) |
-| function | `send_mission_message` | `(*, mission_id, role=…, content, metadata=…)` | Post a message on the mission channel. Roles: researcher/implementer/reviewer etc. | [src](../../../core/services/missions_pipeline.py#L258) |
-| function | `list_mission_messages` | `(*, mission_id, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L311) |
-| function | `list_missions` | `(*, status=…, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L331) |
-| function | `build_missions_surface` | `()` | — | [src](../../../core/services/missions_pipeline.py#L350) |
 

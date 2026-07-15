@@ -2199,9 +2199,15 @@ def _run_heartbeat_tick_locked(
             _dm.record_daemon_tick("provider_self_heal", _psh_result or {})
         except Exception:
             pass
+    # memory_safeguard — PENSIONERET 2026-07-15 → cluster_memory (kalder run() som
+    # non-LLM member). Denne gamle bare tick-site importerede en IKKE-EKSISTERENDE
+    # tick_memory_safeguard_daemon (ImportError → swallowed) og var reelt DØD; nu
+    # is_enabled-gatet så den no-op'er under retirement. Aldrig begge live.
     try:
-        from core.services.daemon_memory_safeguard import tick_memory_safeguard_daemon
-        tick_memory_safeguard_daemon()
+        from core.services.daemon_manager import is_enabled as _is_enabled
+        if _is_enabled("memory_safeguard"):
+            from core.services.daemon_memory_safeguard import run as _run_memory_safeguard
+            _run_memory_safeguard()
     except Exception:
         pass
     try:

@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/computer_use_policy.py`
+_Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_computer_use_tool` | `(name)` | — | [src](../../../core/services/computer_use_policy.py#L25) |
+| function | `_load` | `()` | — | [src](../../../core/services/computer_use_policy.py#L30) |
+| function | `computer_use_enabled` | `(user_id)` | Default TIL — kun eksplicit fravalg slår fra. | [src](../../../core/services/computer_use_policy.py#L37) |
+| function | `set_computer_use` | `(user_id, enabled)` | — | [src](../../../core/services/computer_use_policy.py#L42) |
+
 ## `core/services/concept_baseline_tracker.py`
 _Concept baseline tracker — Layer 3 of emotion concepts integration._
 
@@ -621,12 +631,4 @@ _Cross-Signal Analysis — find patterns across cognitive signals._
 |---|---|---|---|---|
 | function | `analyze_signal_patterns` | `(*, limit_items=…)` | Find cross-signal patterns from accumulated cognitive data. | [src](../../../core/services/cross_signal_analysis.py#L20) |
 | function | `build_cross_signal_analysis_surface` | `()` | — | [src](../../../core/services/cross_signal_analysis.py#L84) |
-
-## `core/services/cross_user_share_guard.py`
-_Altid-aktiv deling-guard — stopper Jarvis før han deler info om en ANDEN bruger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `check_outbound` | `(text, *, current_user_id, known_users, session_id=…)` | Tjek et udgående svar for omtale af andre brugere end samtalepartneren. | [src](../../../core/services/cross_user_share_guard.py#L25) |
-| function | `check_against_registry` | `(text, *, current_user_id)` | Som check_outbound, men henter kendte brugere fra users-registry. | [src](../../../core/services/cross_user_share_guard.py#L80) |
 

@@ -830,6 +830,38 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Cluster-daemon FAMILIE #6 — memory/maintenance (LIVE, prove-then-retire).
+    # council_memory (gated LLM bag ÉN event-gate) + memory_write_queue +
+    # memory_decay + memory_pruning + memory_maintenance + memory_safeguard +
+    # selective_consolidation + associative_recall (non-LLM, ubetinget) foldet ind i
+    # ÉN Central-styret familie (i cluster_daemon_families.py). De 8 gamle daemons er
+    # PENSIONERET (default_enabled=False) → deres tick-blokke (memory_decay/
+    # memory_maintenance/council_memory/associative_recall/memory_write_queue/
+    # selective_consolidation her, memory_safeguard i heartbeat_runtime) no-op'er via
+    # is_enabled. memory_pruning var ORPHAN og memory_safeguard var reelt DØD (bad
+    # import) → familien giver dem begge en fungerende live tick. memory_write_queue er
+    # LOAD-BEARING + hyppig → drænes hver tick. Bred deadline: consolidation kan scanne
+    # dagens records, council kan lave ét cheap-LLM-kald. Self-safe: crasher aldrig.
+    if _dm.is_enabled("cluster_memory"):
+        try:
+            from core.services.cluster_daemon_families import tick_cluster_memory
+            _mem_cluster_result = _hb._daemon_tick_with_deadline(
+                "cluster_memory", tick_cluster_memory, deadline_seconds=60.0,
+            )
+            _dm.record_daemon_tick("cluster_memory", _mem_cluster_result or {})
+            # Surface a freshly-rediscovered memory into the trace, as the retired
+            # memory_decay daemon's own tick block used to inject it.
+            try:
+                _mem_outputs = (_mem_cluster_result or {}).get("outputs") or {}
+                _mem_decay_out = _mem_outputs.get("memory_decay") or {}
+                _mem_rediscovered = _mem_decay_out.get("rediscovered")
+                if _mem_rediscovered:
+                    inputs_present.append(f"gen-opdaget: {str(_mem_rediscovered)[:80]}")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     # Creative drift daemon — spontaneous unexpected associations
     if _dm.is_enabled("creative_drift"):
         try:

@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cross_user_share_guard.py`
+_Altid-aktiv deling-guard — stopper Jarvis før han deler info om en ANDEN bruger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `check_outbound` | `(text, *, current_user_id, known_users, session_id=…)` | Tjek et udgående svar for omtale af andre brugere end samtalepartneren. | [src](../../../core/services/cross_user_share_guard.py#L25) |
+| function | `check_against_registry` | `(text, *, current_user_id)` | Som check_outbound, men henter kendte brugere fra users-registry. | [src](../../../core/services/cross_user_share_guard.py#L80) |
+
 ## `core/services/curiosity_budget.py`
 _Curiosity-budget service — Phase 1 (AGI track #6 Åben udforskning)._
 
@@ -110,20 +118,20 @@ _Daemon Manager — registry, lifecycle control, and state persistence for all d
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_state_file` | `()` | — | [src](../../../core/services/daemon_manager.py#L20) |
-| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L603) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L607) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L617) |
-| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L623) |
-| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L627) |
-| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L635) |
-| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L641) |
-| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L650) |
-| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L655) |
-| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L664) |
-| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L673) |
-| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L685) |
-| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L708) |
-| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L739) |
+| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L643) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L647) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L657) |
+| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L663) |
+| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L667) |
+| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L675) |
+| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L681) |
+| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L690) |
+| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L695) |
+| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L704) |
+| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L713) |
+| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L725) |
+| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L748) |
+| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L779) |
 
 ## `core/services/daemon_memory_safeguard.py`
 _Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
@@ -549,16 +557,4 @@ _Per-bruger FCM device-tokens. Egen tabel — rører ikke db.py's 33k linjer._
 | function | `register` | `(user_id, token, platform=…)` | — | [src](../../../core/services/device_tokens.py#L28) |
 | function | `list_for_user` | `(user_id)` | — | [src](../../../core/services/device_tokens.py#L45) |
 | function | `delete` | `(token)` | — | [src](../../../core/services/device_tokens.py#L57) |
-
-## `core/services/diagnosis_gate.py`
-_Diagnosis-gate (spec 2026-06-14) — fanger uverificerede diagnostiske konklusioner._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_promise_footnote` | `(claim_snippet)` | Fodnote-linje for en uverificeret completion-claim (konsistent stil). | [src](../../../core/services/diagnosis_gate.py#L53) |
-| class | `DiagnosisResult` | `` | — | [src](../../../core/services/diagnosis_gate.py#L88) |
-| class | `DiagnosisEvent` | `` | — | [src](../../../core/services/diagnosis_gate.py#L97) |
-| function | `analyze_diagnosis` | `(text, *, tools_used=…)` | Ren detektion: er der en uverificeret diagnostisk konklusion i teksten? | [src](../../../core/services/diagnosis_gate.py#L110) |
-| function | `analyze_completion_claim` | `(text, *, tools_used=…)` | Promise-ledger §8: påstår teksten en FULDFØRT handling ('det er committet/ | [src](../../../core/services/diagnosis_gate.py#L151) |
-| function | `diagnosis_gate_enforce` | `(text, *, session_id=…, run_id=…, tools_used=…)` | Pipeline-hook (spec §3.2): kører efter fact-gate, før append_chat_message. | [src](../../../core/services/diagnosis_gate.py#L185) |
 

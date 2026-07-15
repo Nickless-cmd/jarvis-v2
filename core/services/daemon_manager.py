@@ -93,7 +93,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_nudge_at",
         "reset_value": None,
         "default_cadence_minutes": 15,
-        "description": "Post-hoc check for missed memory consolidation — nudges if learning markers found without save calls",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (non-LLM member; kører ubetinget hver familie-tick via run()). Gammel bare tick-site importerede en IKKE-EKSISTERENDE tick_memory_safeguard_daemon → var reelt DØD; familien kalder den rigtige run() og genopliver den.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_memory] Post-hoc check for missed memory consolidation — nudges if learning markers found without save calls",
     },
     "curiosity": {
         "module": "core.services.curiosity_daemon",
@@ -175,14 +177,18 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_decay_at",
         "reset_value": None,
         "default_cadence_minutes": 1440,
-        "description": "Selective forgetting + re-discovery of signals",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (non-LLM member; kører ubetinget hver familie-tick; self-throttler 24t). Re-discovery-fragment-injektion i thought stream BEVARET.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_memory] Selective forgetting + re-discovery of signals",
     },
     "memory_pruning": {
         "module": "core.services.memory_pruning_daemon",
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 360,
-        "description": "6t arkivering af entries med salience < 0.05 — learning to forget",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (non-LLM member; self-throttler 6t). Var ORPHAN (ingen tick-site nogensteds) → familien giver den sin FØRSTE live tick.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_memory] 6t arkivering af entries med salience < 0.05 — learning to forget",
     },
     "identity_drift": {
         "module": "core.services.identity_drift_daemon",
@@ -225,7 +231,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 720,
-        "description": "Periodic MEMORY.md dedup: Tier A auto-merge duplicates, Tier B flag overlaps",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (non-LLM member; kører ubetinget hver familie-tick; self-throttler 12t).
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_memory] Periodic MEMORY.md dedup: Tier A auto-merge duplicates, Tier B flag overlaps",
     },
     "longing_signal": {
         "module": "core.services.longing_signal_daemon",
@@ -266,7 +274,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_llm_call_at",
         "reset_value": None,
         "default_cadence_minutes": 10,
-        "description": "Injects relevant past council conclusions into heartbeat context",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (GATED LLM member bag familiens ÉNE should_generative_fire — cooldown-timer LLM → salience-gatet; self-throttler stadig 10min cooldown). council.memory_injected + heartbeat council_memory-context BEVARET.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_memory] Injects relevant past council conclusions into heartbeat context",
     },
     "signal_decay": {
         "module": "core.services.signal_decay_daemon",
@@ -368,7 +378,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 15,
-        "description": "Daemon-sikkerhedsnet: tjekker om seneste tur indeholdt læringsmarkører uden save-tool kald",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (dublet-nøgle; se øvre memory_safeguard-entry). run() kaldes nu af familien.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_memory] Daemon-sikkerhedsnet: tjekker om seneste tur indeholdt læringsmarkører uden save-tool kald",
     },
     "my_projects_watchdog": {
         "module": "core.services.my_projects",
@@ -400,8 +412,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 2,
-        "default_enabled": True,
-        "description": "Associativ hukommelse: dormant memories trigged by context — queries experiential + private brain + sensory DBs, scores candidates, maintains persistent active memories",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (non-LLM member; kører ubetinget hver familie-tick; self-adaptiv ~2min). recall_active_memories-persistens + [ASSOCIATIONER]-injektion BEVARET.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_memory] Associativ hukommelse: dormant memories trigged by context — queries experiential + private brain + sensory DBs, scores candidates, maintains persistent active memories",
     },
     "wakeup_cleanup": {
         "module": "core.services.self_wakeup",
@@ -416,16 +429,18 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 2,
-        "default_enabled": True,
-        "description": "B5: async write queue — processes deferred sensory/brain/sidecar writes every 120s for non-blocking memory writes",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (non-LLM member; LOAD-BEARING + hyppig; kører ubetinget hver familie-tick; self-throttler 120s). Køen drænes stadig hver tick.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_memory] B5: async write queue — processes deferred sensory/brain/sidecar writes every 120s for non-blocking memory writes",
     },
     "selective_consolidation": {
         "module": "core.services.selective_consolidation_daemon",
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 1440,
-        "default_enabled": True,
-        "description": "D1: daily selective consolidation — archives bottom (100-K)% af dagens sensory/brain/private records; kun top-K% når long-term",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (non-LLM member; kører ubetinget hver familie-tick; self-throttler 24t).
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_memory] D1: daily selective consolidation — archives bottom (100-K)% af dagens sensory/brain/private records; kun top-K% når long-term",
     },
     "cost_optimization": {
         "module": "core.services.cost_optimization_daemon",
@@ -596,6 +611,31 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # meningsfulde rytme (causal 15min self-throttler evalueres ofte); heartbeaten
         # gater på is_enabled, medlemmerne self-throttler. Aldrig begge live.
         "description": "cluster-daemon FAMILIE #5 (cognition/inference) LIVE: pattern_counterfactual (gated LLM, ÉN event-gate) + causal_inference+dream_insight+active_sensing (non-LLM, ubetinget) foldet i ÉN familie; erstatter de 4 pensionerede daemons; bevarer alle outputs (causal_edges, dream-insight, active_sensing-surface).",
+    },
+    "cluster_memory": {
+        "module": "core.services.cluster_daemon_families",
+        "reset_var": "_MEMORY_FAMILY",
+        "reset_value": None,
+        "default_cadence_minutes": 2,
+        "default_enabled": True,
+        # Cluster-daemon-konsolidering (spec 2026-07-14), FAMILIE #6 (memory/
+        # maintenance): memory_decay + memory_pruning + memory_maintenance +
+        # memory_safeguard + selective_consolidation + associative_recall +
+        # memory_write_queue + council_memory foldet ind i ÉN Central-styret familie
+        # (i cluster_daemon_families.py — cluster_daemon.py har ramt 1500-linjers
+        # kodegrænsen). Kører LIVE (prove-then-retire END STATE) — de 8 gamle daemons
+        # er PENSIONERET (default_enabled=False, retired 2026-07-15). To tiers: DET ENE
+        # LLM-medlem (council_memory, tidl. cooldown-timer LLM) bag familiens ÉNE
+        # should_generative_fire event-gate → salience-gatet; de 7 non-LLM
+        # vedligeholdelses-medlemmer kører UBETINGET hver tick med hver deres interne
+        # cadence (write_queue 120s, decay 24t, pruning 6t, maintenance 12t,
+        # consolidation 24t, associative ~2min, safeguard hver tick). memory_write_queue
+        # er LOAD-BEARING + hyppig → drænes hver tick. memory_pruning var ORPHAN og
+        # memory_safeguard var reelt DØD (bad import) → familien giver dem begge en
+        # fungerende live tick. default_cadence_minutes=2 markerer den hyppigste rytme
+        # (write_queue-drain); heartbeaten gater på is_enabled, medlemmerne
+        # self-throttler. Self-safe: ét fejlende medlem blokerer aldrig de andre.
+        "description": "cluster-daemon FAMILIE #6 (memory/maintenance) LIVE: council_memory (gated LLM, ÉN event-gate) + memory_write_queue+memory_decay+memory_pruning+memory_maintenance+memory_safeguard+selective_consolidation+associative_recall (non-LLM, ubetinget) foldet i ÉN familie; erstatter de 8 pensionerede daemons; bevarer alle outputs (write-queue-drain, rediscovery, recall-persistens, council-injektion).",
     },
 }
 

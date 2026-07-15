@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12702 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12716 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -32,23 +32,23 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12702 functions/
 - [`core.services.03`](core.services.03.md) — `bridge_presence` … `central_decentralization`
 - [`core.services.04`](core.services.04.md) — `central_dejavu` … `central_mood_regulator`
 - [`core.services.05`](core.services.05.md) — `central_morpheus` … `central_timeseries`
-- [`core.services.06`](core.services.06.md) — `central_todo` … `computer_use_policy`
-- [`core.services.07`](core.services.07.md) — `concept_baseline_tracker` … `cross_user_share_guard`
-- [`core.services.08`](core.services.08.md) — `curiosity_budget` … `diagnosis_gate`
-- [`core.services.09`](core.services.09.md) — `diary_synthesis_signal_tracking` … `encryption`
-- [`core.services.10`](core.services.10.md) — `end_of_run_memory_consolidation` … `gate_pattern_learning`
-- [`core.services.11`](core.services.11.md) — `gate_privacy` … `identity_drift_proposer`
-- [`core.services.12`](core.services.12.md) — `identity_guard` … `liveness_registry`
-- [`core.services.13`](core.services.13.md) — `living_executive` … `missions_pipeline`
-- [`core.services.14`](core.services.14.md) — `model_context` … `pattern_counterfactual_daemon`
-- [`core.services.15`](core.services.15.md) — `pdf_connector` … `prompt_relevance_backend`
-- [`core.services.16`](core.services.16.md) — `prompt_support_signals` … `release_marker_signal_tracking`
-- [`core.services.17`](core.services.17.md) — `remembered_fact_signal_tracking` … `seed_system`
-- [`core.services.18`](core.services.18.md) — `selective_attention` … `shadow_experiment_registry`
-- [`core.services.19`](core.services.19.md) — `shadow_scan_daemon` … `subjective_time`
-- [`core.services.20`](core.services.20.md) — `surprise_daemon` … `tool_result_store`
-- [`core.services.21`](core.services.21.md) — `tool_router` … `visible_runs`
-- [`core.services.22`](core.services.22.md) — `visible_runs_approvals` … `world_model_signal_tracking`
+- [`core.services.06`](core.services.06.md) — `central_todo` … `composite_tools`
+- [`core.services.07`](core.services.07.md) — `computer_use_policy` … `cross_signal_analysis`
+- [`core.services.08`](core.services.08.md) — `cross_user_share_guard` … `device_tokens`
+- [`core.services.09`](core.services.09.md) — `diagnosis_gate` … `emotional_memory_engine`
+- [`core.services.10`](core.services.10.md) — `encryption` … `gate_mutation`
+- [`core.services.11`](core.services.11.md) — `gate_pattern_learning` … `identity_drift_guard`
+- [`core.services.12`](core.services.12.md) — `identity_drift_proposer` … `life_projects`
+- [`core.services.13`](core.services.13.md) — `liveness_registry` … `mirror_engine`
+- [`core.services.14`](core.services.14.md) — `missions_pipeline` … `paste_store`
+- [`core.services.15`](core.services.15.md) — `pattern_counterfactual_daemon` … `prompt_observer`
+- [`core.services.16`](core.services.16.md) — `prompt_relevance_backend` … `relationship_texture`
+- [`core.services.17`](core.services.17.md) — `release_marker_signal_tracking` … `security_guard`
+- [`core.services.18`](core.services.18.md) — `seed_system` … `session_wakeup`
+- [`core.services.19`](core.services.19.md) — `shadow_experiment_registry` … `subagent_ecology`
+- [`core.services.20`](core.services.20.md) — `subjective_time` … `tool_result_aging`
+- [`core.services.21`](core.services.21.md) — `tool_result_store` … `visible_model_types`
+- [`core.services.22`](core.services.22.md) — `visible_runs` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/subjective_time.py`
+_Subjective Time — how time FEELS, not just passes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_subjective_time_perception` | `(*, tick_count_last_hour=…, conversation_intensity=…, novelty_score=…, idle_hours=…)` | — | [src](../../../core/services/subjective_time.py#L9) |
+| function | `build_subjective_time_surface` | `()` | — | [src](../../../core/services/subjective_time.py#L29) |
+
 ## `core/services/surprise_daemon.py`
 _Surprise daemon — first-person surprise when Jarvis's reactions diverge from baseline._
 
@@ -615,19 +623,4 @@ _Provider-agnostic tool-result aging for the visible agentic loop._
 | function | `_clear_placeholder` | `(n)` | — | [src](../../../core/services/tool_result_aging.py#L48) |
 | function | `_is_already_aged` | `(content)` | — | [src](../../../core/services/tool_result_aging.py#L52) |
 | function | `age_tool_results` | `(exchanges, *, keep_full=…, mode, strength, round_index, compress_fn=…)` | Age tool-result content on exchanges older than the ``keep_full`` most recent. | [src](../../../core/services/tool_result_aging.py#L56) |
-
-## `core/services/tool_result_store.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `summarize_result` | `(content, max_length=…)` | — | [src](../../../core/services/tool_result_store.py#L15) |
-| function | `save_tool_result` | `(tool_name, arguments, result_content, *, created_at=…)` | — | [src](../../../core/services/tool_result_store.py#L22) |
-| function | `get_tool_result` | `(result_id)` | — | [src](../../../core/services/tool_result_store.py#L47) |
-| function | `cleanup_old_results` | `(max_age_days=…)` | — | [src](../../../core/services/tool_result_store.py#L63) |
-| function | `build_tool_result_reference` | `(result_id, *, tool_name, summary)` | — | [src](../../../core/services/tool_result_store.py#L80) |
-| function | `parse_tool_result_reference` | `(content)` | — | [src](../../../core/services/tool_result_store.py#L92) |
-| function | `render_tool_result_for_prompt` | `(content, *, expand, max_chars=…)` | — | [src](../../../core/services/tool_result_store.py#L108) |
-| function | `_result_path` | `(result_id)` | — | [src](../../../core/services/tool_result_store.py#L138) |
-| function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L142) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L150) |
 

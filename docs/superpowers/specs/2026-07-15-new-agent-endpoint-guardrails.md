@@ -78,7 +78,11 @@ pause-UX. **Mål (ægte):**
   3488563): `_context_estimate` bruger serverens prompt_tokens (ægte), trigger bundet til %'en
   (`jm.should_compact`), synlige "🗜 komprimerer…/✓ komprimeret"-linjer, kontekst bevaret. UDESTÅR: ægte
   LLM-resumé (i dag klient-lokal trunkering) + server-ownership + SSE-lifecycle → kommer i Fase C.
-- [ ] Absorb fyrer alle ~85 trackers + memory + cost + episodes (spejl visible_runs._post_process).
+- [~] **Absorb fyrer alle ~85 trackers + memory + episodes** — endpoint BYGGET (v2 main aa107f83):
+  `POST /v1/agent/turn-absorb` + `client_turn_absorb.py` konstruerer VisibleRun + fyrer
+  set_last_visible_run_outcome (→ ~25 cognitive) + _track_runtime_candidates (~61) + _run_memory_postprocess.
+  Flag `agent_turn_absorb_enabled` default off. UDESTÅR: klient-wiring (jarvis-code POSTer ved tur-slut) +
+  flip + live-verifikation af at trackers faktisk fyrer på containeren.
 - [ ] Delt session skrevet fra jarvis-code synlig + konsistent i desk.
 - [ ] Samme prompt i desk vs jarvis-code → byte-identisk hjerne + identisk render.
 - [ ] Prompt-størrelse pr. runde IKKE vokset vs desk i dag (ingen bloat-regression).

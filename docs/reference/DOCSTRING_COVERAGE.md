@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6239/12758 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6240/12762 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6239/12758 functions/methods documented (48%). The list b
 | `core.memory` | 44 | 123 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4125 | 8898 | 46% |
+| `core.services` | 4126 | 8902 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -491,8 +491,8 @@ Generated from source. 6239/12758 functions/methods documented (48%). The list b
 - `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L451)
 - `core/runtime/settings.py` :: `load_settings` (L546)
 - `core/runtime/settings.py` :: `update_visible_execution_settings` (L968)
-- `core/services/absence_daemon.py` :: `build_absence_surface` (L148)
-- `core/services/absence_daemon.py` :: `get_latest_absence` (L144)
+- `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
+- `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)
 - `core/services/action_router.py` :: `recent_actions` (L609)
 - `core/services/action_router.py` :: `recent_proactive` (L613)
@@ -746,11 +746,11 @@ Generated from source. 6239/12758 functions/methods documented (48%). The list b
 - `core/services/chronicle_engine.py` :: `project_entry_to_markdown` (L483)
 - `core/services/clarification_classifier.py` :: `clarification_prompt_section` (L78)
 - `core/services/clarification_classifier.py` :: `score_message` (L39)
-- `core/services/cluster_daemon.py` :: `affect_family` (L1033)
-- `core/services/cluster_daemon.py` :: `cognition_family` (L1413)
-- `core/services/cluster_daemon.py` :: `innervoice_family` (L766)
-- `core/services/cluster_daemon.py` :: `narrative_family` (L1243)
-- `core/services/cluster_daemon.py` :: `somatic_family` (L412)
+- `core/services/cluster_daemon.py` :: `affect_family` (L1166)
+- `core/services/cluster_daemon.py` :: `cognition_family` (L1546)
+- `core/services/cluster_daemon.py` :: `innervoice_family` (L899)
+- `core/services/cluster_daemon.py` :: `narrative_family` (L1376)
+- `core/services/cluster_daemon.py` :: `somatic_family` (L498)
 - `core/services/cluster_daemon_families.py` :: `aesthetic_family` (L435)
 - `core/services/cluster_daemon_families.py` :: `infra_family` (L1130)
 - `core/services/cluster_daemon_families.py` :: `memory_family` (L152)
@@ -838,8 +838,8 @@ Generated from source. 6239/12758 functions/methods documented (48%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `maybe_register_from_text` (L53)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L15)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L785)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L832)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L798)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L845)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L266)

@@ -81,8 +81,14 @@ def seed_last_interaction_from_db() -> None:
         pass
 
 
-def tick_absence_daemon(now: datetime | None = None) -> dict:
-    """Evaluate current absence quality. Returns {generated, label, duration_hours}."""
+def tick_absence_daemon(now: datetime | None = None, *, skip_event_gate: bool = False) -> dict:
+    """Evaluate current absence quality. Returns {generated, label, duration_hours}.
+
+    ``skip_event_gate=True`` bypasses the internal ``should_generative_fire``
+    absence gate entirely — used by the cluster_somatic family whose single
+    governing point has already decided to run this tick (mirrors surprise/
+    conflict in cluster_affect). The cooldown + 1-minute-silence guards still
+    apply, so the daemon self-throttles as before."""
     global _absence_start_at, _absence_label, _last_generated_at
 
     now = now or datetime.now(UTC)
@@ -109,21 +115,22 @@ def tick_absence_daemon(now: datetime | None = None) -> dict:
     # Event-gate (Fase 2 Lag 7/Fase 6): fire the LLM absence narration only when
     # the silence actually deepened (band crossing / hour drift). Flag OFF →
     # legacy behaviour (30-min regen cooldown only). Fail-open.
-    try:
-        from core.services import event_gate
+    if not skip_event_gate:
+        try:
+            from core.services import event_gate
 
-        if event_gate.event_driven_enabled():
-            hours = elapsed.total_seconds() / 3600.0
-            _relevant = {
-                "hours_frac": min(1.0, hours / 24.0),
-                "band": {"short": 0.0, "long": 0.5, "very_long": 1.0}[
-                    _absence_band(elapsed)
-                ],
-            }
-            if not event_gate.should_generative_fire("absence", _relevant):
-                return {"skipped": "no_signal_change"}
-    except Exception:
-        pass  # fail-open
+            if event_gate.event_driven_enabled():
+                hours = elapsed.total_seconds() / 3600.0
+                _relevant = {
+                    "hours_frac": min(1.0, hours / 24.0),
+                    "band": {"short": 0.0, "long": 0.5, "very_long": 1.0}[
+                        _absence_band(elapsed)
+                    ],
+                }
+                if not event_gate.should_generative_fire("absence", _relevant):
+                    return {"skipped": "no_signal_change"}
+        except Exception:
+            pass  # fail-open
 
     # Fase 2 / Lag 1 — rå tal, ikke LLM-label. Bygger fraværs-strengen direkte
     # fra metrics og SPRINGER narrations-LLM-kaldet over. Samme output-felt (label),

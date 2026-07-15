@@ -27,7 +27,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_heartbeat_count_since_gen",
         "reset_value": 999,
         "default_cadence_minutes": 3,
-        "description": "LLM-generated first-person body/energy description",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_somatic overtager (non-LLM regel-medlem, ubetinget hver familie-tick; self-throttler via _should_generate-cadence). _cached_phrase + build_body_state_surface-output BEVARET (heartbeat-influence, cluster_innervoice/cluster_affect somatic_energy, visible_inner_life). Heartbeat-kaldet er is_enabled-gatet → no-op.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_somatic] LLM-generated first-person body/energy description",
     },
     "surprise": {
         "module": "core.services.surprise_daemon",
@@ -124,7 +126,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 5,
-        "description": "Density-based felt duration — how time feels vs. clock time",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_somatic overtager (non-LLM regel-medlem, ubetinget hver familie-tick; akkumulerer felt-tid). _felt_duration_label + build_experienced_time_surface-output BEVARET. Heartbeat-kaldet er is_enabled-gatet → no-op.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_somatic] Density-based felt duration — how time feels vs. clock time",
     },
     "development_narrative": {
         "module": "core.services.development_narrative_daemon",
@@ -140,7 +144,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_generated_at",
         "reset_value": None,
         "default_cadence_minutes": 15,
-        "description": "Three-tier tracking of experiential absence quality",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_somatic overtager (non-LLM regel-medlem, ubetinget hver familie-tick med skip_event_gate=True; 1-min-stilhed + regen-cooldown self-throttler). _absence_label + build_absence_surface-output BEVARET (cluster_innervoice absence_hours/wonder). Heartbeat-kaldet er is_enabled-gatet → no-op.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_somatic] Three-tier tracking of experiential absence quality",
     },
     "creative_drift": {
         "module": "core.services.creative_drift_daemon",
@@ -556,13 +562,20 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_value": None,
         "default_cadence_minutes": 3,
         "default_enabled": True,
-        # Cluster-daemon-konsolidering (spec 2026-07-14), FAMILIE #1:
-        # somatic + experienced_time + absence under ÉN event-gate. Kører i
-        # SHADOW/parallel (cluster_daemon_shadow-flag, default True): observerer
-        # kun hvad familien VILLE producere og rapporterer til Centralen med
-        # cluster_shadow-markør til parity-sammenligning. AFMONTERER IKKE de 3
-        # gamle daemons — prove-then-retire, retire er gated på parity-data.
-        "description": "[SHADOW] cluster-daemon FAMILIE #1 (somatic/embodiment): somatic+experienced_time+absence under én event-gate; observe-only parity mod de 3 gamle daemons (aldrig begge live).",
+        # Cluster-daemon-konsolidering (spec 2026-07-14), FAMILIE #1 (somatic/
+        # embodiment): somatic + experienced_time + absence foldet ind i ÉN
+        # Central-styret familie. Kører LIVE (prove-then-retire END STATE) — de 3
+        # gamle daemons er PENSIONERET (default_enabled=False, retired 2026-07-15).
+        # INGEN LLM-medlem: alle 3 er regel/raw-signal-daemons, så de kører
+        # UBETINGET hver familie-tick (ingen should_generative_fire; gate_calls=0)
+        # og self-throttler hver på egen interne cadence — som narrative/projects/
+        # infra-familierne. absence kaldes med skip_event_gate=True (familien er
+        # det ene styrende punkt). Bevarer alle outputs — somatic-cachen +
+        # build_body_state_surface er load-bearing for cluster_innervoice/
+        # cluster_affect (somatic_energy) + visible_inner_life; absence-surface
+        # for cluster_innervoice absence_hours/wonder. observe-path bevaret til
+        # eksplicit shadow=True parity. Aldrig begge live.
+        "description": "cluster-daemon FAMILIE #1 (somatic/embodiment) LIVE: somatic+experienced_time+absence (non-LLM, ubetinget hver tick, self-throttler); erstatter de 3 pensionerede daemons; bevarer alle outputs (somatic-phrase/energy, felt-tid, absence-surface).",
     },
     "cluster_innervoice": {
         "module": "core.services.cluster_daemon",

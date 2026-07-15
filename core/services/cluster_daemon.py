@@ -274,10 +274,33 @@ class ClusterDaemon:
 # ---------------------------------------------------------------------------
 #
 # The mostly-raw-number family (spec §"De ~10 familier" #1). Per the
-# LLM-continuity rule these are pure measurement/classification → no LLM in the
-# cluster; the shadow probes read the members' own SIDE-EFFECT-FREE surface
-# builders so the cluster observes exactly what the old daemons produced without
-# any writes or publishes.
+# LLM-continuity rule these are pure measurement/classification → NO LLM in the
+# cluster. Runs LIVE (prove-then-retire END STATE) replacing the 3 old daemons,
+# which are PENSIONERET (default_enabled=False, retired 2026-07-15). Like the
+# narrative/projects/infra families this has NO gated (LLM) tier: all three
+# members are rules-based / raw-signal and run UNCONDITIONALLY every family tick,
+# each self-throttling on its OWN internal cadence, so every LOAD-BEARING output
+# keeps flowing to its existing consumers untouched:
+#
+#   * somatic          → tick_somatic_daemon (internal _should_generate cadence).
+#         → _cached_phrase / build_body_state_surface(). LOAD-BEARING:
+#           get_latest_somatic_phrase() + build_body_state_surface() feed the
+#           heartbeat influence trace, cluster_innervoice/cluster_affect snapshots
+#           (somatic_energy) and visible_inner_life.
+#   * experienced_time → tick_experienced_time_daemon (accumulates felt-time each
+#         tick, no internal gate). → _felt_duration_label /
+#         build_experienced_time_surface(). LOAD-BEARING for felt-duration prompt.
+#   * absence          → tick_absence_daemon(skip_event_gate=True) — its internal
+#         should_generative_fire gate is bypassed (the family is the single
+#         governing point, mirroring surprise/conflict in cluster_affect); the
+#         1-min-silence + regen cooldown guards still self-throttle it.
+#         → _absence_label / build_absence_surface(). LOAD-BEARING: the absence
+#           surface feeds cluster_innervoice's absence_hours + wonder signals.
+#
+# The observe probes (side-effect-free surface reads) are KEPT so an explicit
+# ``tick(shadow=True)`` still yields observe-only parity telemetry — but the
+# DEFAULT entry-point behaviour is LIVE. Self-safe throughout: a member error is
+# captured, never propagated; the tick never raises into the heartbeat.
 
 SOMATIC_FAMILY = "cluster_somatic"
 
@@ -349,11 +372,18 @@ def _absence_observe(snapshot: dict) -> dict[str, Any]:
 
 
 def _collect_somatic_snapshot() -> dict:
-    """Gather the somatic family's shared snapshot from the members' own
-    SIDE-EFFECT-FREE surface builders. No LLM, no DB writes, no publishes.
+    """Gather the somatic family's shared snapshot.
 
-    Self-safe: any missing member surface degrades to an empty dict for that
-    member — the family still ticks.
+    Two purposes, one cheap pass, no LLM / no DB writes / no publishes:
+
+    * ``somatic`` / ``experienced_time`` / ``absence`` — the members' own
+      SIDE-EFFECT-FREE surface dicts, read by the observe probes (shadow parity).
+    * top-level ``energy_level`` + ``event_count`` + ``new_signal_count`` — the
+      inputs the LIVE dispatchers hand to ``tick_experienced_time_daemon`` /
+      ``tick_somatic_daemon`` (both self-throttle internally).
+
+    Self-safe: any missing source degrades to a neutral default — the family
+    still ticks.
     """
     snap: dict[str, Any] = {}
     try:
@@ -374,7 +404,60 @@ def _collect_somatic_snapshot() -> dict:
         snap["absence"] = build_absence_surface() or {}
     except Exception:
         snap["absence"] = {}
+
+    # ── LIVE inputs (energy + felt-time density counts) ──────────────────────
+    energy = str((snap.get("somatic") or {}).get("energy_level") or "")
+    if not energy:
+        try:
+            from core.runtime.circadian_state import get_circadian_context
+            energy = str(get_circadian_context().get("energy_level") or "")
+        except Exception:
+            energy = ""
+    snap["energy_level"] = energy
+    # experienced_time density: a small, bounded per-tick event/novelty proxy
+    # derived from the surfaces already collected (mirrors the old heartbeat's
+    # len(inputs_present)/fragment-novelty inputs without a second gather pass).
+    present = 0
+    if (snap.get("somatic") or {}).get("somatic_phrase"):
+        present += 1
+    if (snap.get("absence") or {}).get("absence_label"):
+        present += 1
+    if (snap.get("experienced_time") or {}).get("felt_label"):
+        present += 1
+    snap["event_count"] = present
+    snap["new_signal_count"] = 1 if present else 0
     return snap
+
+
+# ── member live dispatchers (call the old daemon's self-throttling tick) ─────
+
+
+def _somatic_live(snap: dict) -> dict[str, Any]:
+    from core.services.somatic_daemon import tick_somatic_daemon
+    return tick_somatic_daemon(energy_level=str(snap.get("energy_level", "")))
+
+
+def _experienced_time_live(snap: dict) -> dict[str, Any]:
+    from core.services.experienced_time_daemon import tick_experienced_time_daemon
+    return tick_experienced_time_daemon(
+        event_count=int(snap.get("event_count", 0) or 0),
+        new_signal_count=int(snap.get("new_signal_count", 0) or 0),
+        energy_level=str(snap.get("energy_level", "")),
+    )
+
+
+def _absence_live(snap: dict) -> dict[str, Any]:
+    from core.services.absence_daemon import (
+        seed_last_interaction_from_db,
+        tick_absence_daemon,
+    )
+    # Seed the last-interaction anchor from the DB (the old heartbeat site did
+    # this before every tick) so absence is measured from real activity.
+    try:
+        seed_last_interaction_from_db()
+    except Exception:
+        pass
+    return tick_absence_daemon(skip_event_gate=True)
 
 
 def build_somatic_family() -> ClusterDaemon:
@@ -388,16 +471,19 @@ def build_somatic_family() -> ClusterDaemon:
                 name="somatic",
                 signals=_somatic_signals,
                 observe=_somatic_observe,
+                live=_somatic_live,
             ),
             ClusterMember(
                 name="experienced_time",
                 signals=_experienced_time_signals,
                 observe=_experienced_time_observe,
+                live=_experienced_time_live,
             ),
             ClusterMember(
                 name="absence",
                 signals=_absence_signals,
                 observe=_absence_observe,
+                live=_absence_live,
             ),
         ],
     )
@@ -416,19 +502,66 @@ def somatic_family() -> ClusterDaemon:
     return _SOMATIC_FAMILY
 
 
-def tick_cluster_somatic(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
-    """Heartbeat entry-point for the somatic cluster-daemon family.
+def _run_somatic_members(snap: dict, result: dict[str, Any]) -> None:
+    """Run every somatic member UNCONDITIONALLY (no generative gate — they are
+    rules-based / raw-signal and each self-throttles on its OWN internal
+    cadence), self-safe. Mirrors the narrative family's unconditional runner.
 
-    Self-safe wrapper: returns the tick result (or a minimal skipped result on
-    catastrophic failure) and NEVER raises into the heartbeat.
+    A member error is isolated into ``member_errors`` and never propagated; a
+    successful run is recorded into ``members_ran``/``outputs``.
+    """
+    for m in somatic_family().members:
+        try:
+            out = (m.live or m.observe)(snap)
+            result["outputs"][m.name] = out
+            result["members_ran"].append(m.name)
+        except Exception as exc:
+            result["member_errors"][m.name] = f"{type(exc).__name__}: {exc}"
+
+
+def tick_cluster_somatic(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
+    """Heartbeat entry-point for the somatic cluster-daemon family (#1).
+
+    Runs LIVE by default (``shadow`` unset) — this family IS the prove-then-retire
+    END STATE replacing the 3 old somatic/experienced_time/absence daemons, so it
+    must actually PRODUCE their outputs, not merely observe. Every member is a
+    rules-based / raw-signal daemon with its own internal cadence, so — like the
+    narrative/projects/infra families — all three run UNCONDITIONALLY each tick
+    (no ``should_generative_fire`` gate; ``gate_calls`` is 0).
+
+    Passing ``shadow=True`` restores the observe-only parity path via
+    ``somatic_family().tick(..., shadow=True)`` (kept for introspection/parity).
+
+    Self-safe: returns a minimal result on catastrophic failure and NEVER raises
+    into the heartbeat.
     """
     try:
-        return somatic_family().tick(snapshot, shadow=shadow)
+        snap = _collect_somatic_snapshot() if snapshot is None else snapshot
+        # Explicit shadow=True → observe-only parity path (side-effect-free).
+        if shadow is True:
+            return somatic_family().tick(snap, shadow=True)
+        # Default / shadow=False → LIVE: run all rules-based members unconditionally.
+        result: dict[str, Any] = {
+            "family": SOMATIC_FAMILY,
+            "shadow": False,
+            "gate_calls": 0,  # no LLM member → no event-gate, by design
+            "fired": True,    # always runs; members self-throttle on their own cadence
+            "members_ran": [],
+            "members_skipped": [],
+            "member_errors": {},
+            "outputs": {},
+        }
+        _run_somatic_members(snap, result)
+        try:
+            somatic_family()._report_to_central(result, False)
+        except Exception:
+            pass
+        return result
     except Exception as exc:  # never crash the heartbeat
         return {
             "family": SOMATIC_FAMILY,
             "fired": False,
-            "gate_calls": 1,
+            "gate_calls": 0,
             "members_ran": [],
             "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
         }

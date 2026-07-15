@@ -690,14 +690,15 @@ def _build_influence_trace(
         except Exception:
             pass
 
-    # Cluster-daemon FAMILIE #1 — somatic/embodiment (SHADOW/parallel).
+    # Cluster-daemon FAMILIE #1 — somatic/embodiment (LIVE, prove-then-retire END STATE).
     # Cluster-daemon-konsolidering (spec 2026-07-14): somatic+experienced_time+
-    # absence foldet ind i ÉN Central-styret familie under ÉN event-gate. Kører
-    # ALONGSIDE de 3 gamle daemons ovenfor (prove-then-retire — aldrig begge
-    # live). Default cluster_daemon_shadow=True → familien observerer kun hvad
-    # den VILLE producere og rapporterer til Centralen med cluster_shadow-markør
-    # til parity-sammenligning; ingen DB-writes, ingen publishes, afmonterer
-    # ingen af de 3 gamle daemons. Self-safe: crasher aldrig heartbeaten.
+    # absence foldet ind i ÉN Central-styret familie. De 3 gamle daemons er
+    # PENSIONERET (default_enabled=False, retired 2026-07-15) → deres tick-blokke
+    # ovenfor no-op'er via is_enabled. INGEN LLM-medlem: alle 3 er regel/raw-signal
+    # og kører UBETINGET hver familie-tick (self-throttler hver på egen cadence);
+    # absence kaldes med skip_event_gate=True. Bevarer alle outputs (somatic-phrase/
+    # energy load-bearing for cluster_innervoice/cluster_affect + visible_inner_life;
+    # absence-surface for cluster_innervoice). Aldrig begge live. Self-safe.
     if _dm.is_enabled("cluster_somatic"):
         try:
             from core.services.cluster_daemon import tick_cluster_somatic

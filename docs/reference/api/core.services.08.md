@@ -267,10 +267,11 @@ _Decision review prompter — closes the adherence loop._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_last_review_time` | `(decision)` | — | [src](../../../core/services/decision_review_prompter.py#L30) |
-| function | `_build_review_prompt` | `(decision)` | — | [src](../../../core/services/decision_review_prompter.py#L46) |
-| function | `_parse_review` | `(text)` | — | [src](../../../core/services/decision_review_prompter.py#L61) |
-| function | `review_pending_decisions` | `()` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L82) |
+| function | `_dedup_gate_enabled` | `()` | Er 24t-skip-gaten aktiv? Default TRUE (den reducerede, tilsigtede adfærd). | [src](../../../core/services/decision_review_prompter.py#L39) |
+| function | `_last_review_time` | `(decision)` | Nyeste review-tidspunkt for en beslutning. | [src](../../../core/services/decision_review_prompter.py#L48) |
+| function | `_build_review_prompt` | `(decision)` | — | [src](../../../core/services/decision_review_prompter.py#L77) |
+| function | `_parse_review` | `(text)` | — | [src](../../../core/services/decision_review_prompter.py#L92) |
+| function | `review_pending_decisions` | `(*, max_reviews=…)` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L113) |
 
 ## `core/services/decision_signal_staging.py`
 _Efemer staging af decision-signals til model-kontekst (2026-07-04 runaway-fix)._

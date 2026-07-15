@@ -26,21 +26,52 @@ logger = logging.getLogger(__name__)
 
 _REVIEW_INTERVAL_HOURS = 24
 
+# GATE-FLAG (2026-07-15): den 24t-anti-gentagelses-gate nedenfor var reelt DØD pga. en
+# nøgle-mismatch (læste 'reviews', men get_decision_with_reviews skriver 'recent_reviews'),
+# så HVER aktiv beslutning blev genanmeldt på HVER tick → decision_review var den absolut
+# største cheap-lane-brænder (~halvdelen af al daemon-LLM-trafik, ~halvdelen til deepseek/
+# inner_enrichment-lanen). Gaten er nu rettet + flag-styret så den kan rulles tilbage.
+#   'on'/True (DEFAULT) → spring beslutninger anmeldt inden for 24t over (den TILSIGTEDE adfærd).
+#   'off'/False         → gammel adfærd (anmeld altid) — kun til fejlsøgning.
+_DEDUP_GATE_FLAG = "decision_review_dedup_gate"
+
+
+def _dedup_gate_enabled() -> bool:
+    """Er 24t-skip-gaten aktiv? Default TRUE (den reducerede, tilsigtede adfærd)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool(_DEDUP_GATE_FLAG, True)
+    except Exception:
+        return True
+
 
 def _last_review_time(decision: dict[str, Any]) -> datetime | None:
-    reviews = decision.get("reviews") or []
+    """Nyeste review-tidspunkt for en beslutning.
+
+    RETTELSE (2026-07-15): læs 'recent_reviews' (det get_decision_with_reviews faktisk
+    udfylder) med 'reviews' som fallback. list_reviews returnerer NYESTE-først (created_at
+    DESC), så vi tager det MAKSIMALE gyldige tidsstempel i stedet for et fast indeks —
+    robust uanset rækkefølge. FØR: læste 'reviews' (altid tom) + tog [-1] (ældste ved DESC)
+    → gaten trippede aldrig → gentagne genanmeldelser."""
+    reviews = decision.get("recent_reviews")
+    if not isinstance(reviews, list) or not reviews:
+        reviews = decision.get("reviews") or []
     if not isinstance(reviews, list) or not reviews:
         return None
-    latest = reviews[-1]
-    if not isinstance(latest, dict):
-        return None
-    ts = str(latest.get("created_at") or latest.get("at") or "")
-    if not ts:
-        return None
-    try:
-        return datetime.fromisoformat(ts)
-    except ValueError:
-        return None
+    latest: datetime | None = None
+    for entry in reviews:
+        if not isinstance(entry, dict):
+            continue
+        ts = str(entry.get("created_at") or entry.get("at") or "")
+        if not ts:
+            continue
+        try:
+            parsed = datetime.fromisoformat(ts)
+        except ValueError:
+            continue
+        if latest is None or parsed > latest:
+            latest = parsed
+    return latest
 
 
 def _build_review_prompt(decision: dict[str, Any]) -> str:
@@ -79,8 +110,13 @@ def _parse_review(text: str) -> tuple[str, str] | None:
     return verdict, evidence[:280]
 
 
-def review_pending_decisions() -> dict[str, Any]:
-    """Run the review loop. Returns counts."""
+def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any]:
+    """Run the review loop. Returns counts.
+
+    ``max_reviews`` caps the number of ACTUAL LLM reviews performed in this
+    invocation (skips don't count). Bounds burst load on the quality lane even
+    if the 24h gate has an edge case. None → no cap (walk all active decisions).
+    """
     try:
         from core.services.behavioral_decisions import (
             list_active_decisions, get_decision_with_reviews, review_decision,
@@ -100,8 +136,14 @@ def review_pending_decisions() -> dict[str, Any]:
 
     now = datetime.now(UTC)
     cutoff = now - timedelta(hours=_REVIEW_INTERVAL_HOURS)
+    gate_on = _dedup_gate_enabled()
     reviewed = skipped = failed = 0
     for d in active:
+        if max_reviews is not None and reviewed >= max_reviews:
+            # Per-tick cap reached — remaining overdue decisions wait for the
+            # next tick. Counted as skipped so observability stays honest.
+            skipped += 1
+            continue
         decision_id = str(d.get("decision_id") or "")
         if not decision_id:
             skipped += 1
@@ -111,10 +153,12 @@ def review_pending_decisions() -> dict[str, Any]:
             full = get_decision_with_reviews(decision_id) or d
         except Exception:
             full = d
-        last = _last_review_time(full)
-        if last is not None and last > cutoff:
-            skipped += 1
-            continue
+        # 24h anti-repeat gate (flag-guarded; default on = intended behavior).
+        if gate_on:
+            last = _last_review_time(full)
+            if last is not None and last > cutoff:
+                skipped += 1
+                continue
 
         prompt = _build_review_prompt(full)
         try:

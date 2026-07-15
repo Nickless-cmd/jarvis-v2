@@ -6,7 +6,22 @@ import time
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.runtime import db as jarvis_db
+
+
+@pytest.fixture(autouse=True)
+def _clear_inner_enrichment_response_cache():
+    """FIX 2 added a module-level lossless response cache. Clear it between tests
+    so back-to-back calls that reuse the same prompt string (backend-routing tests)
+    aren't served a stale cached value."""
+    import core.memory.inner_llm_enrichment as _ile
+    with _ile._RESPONSE_CACHE_LOCK:
+        _ile._RESPONSE_CACHE.clear()
+    yield
+    with _ile._RESPONSE_CACHE_LOCK:
+        _ile._RESPONSE_CACHE.clear()
 
 
 def _iso_now() -> str:

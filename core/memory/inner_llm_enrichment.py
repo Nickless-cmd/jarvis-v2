@@ -7,6 +7,7 @@ inner thoughts. Template values serve as immediate fallback.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import threading
@@ -302,6 +303,67 @@ def _resolve_cheap_cloud_fallback_targets() -> list[dict[str, object]]:
         return []
 
 
+# ---------------------------------------------------------------------------
+# Lossless response cache (FIX 2, 2026-07-15) — inner lane 3% deepseek cache
+# ---------------------------------------------------------------------------
+# BAGGRUND: `inner`-lanen (denne fils remote-kald) ramte kun ~3% DeepSeek-prefix-cache
+# mod ~89% på primary-lanen. Prefix-caching kræver et IDENTISK ledende prefix; men de
+# indre berigelses-prompts er BEVIDST korte reflektions-prompts (~60 tokens system + kort
+# volatilt user-indhold). At tvinge dem til at dele visible-lanens store cache-prefix
+# (build_visible_chat_prompt_assembly, ~5-10k tokens) ville MANGEDOBLE input-tokens pr.
+# kald for nul brugerværdi — en netto-FORDYRELSE, ikke besparelse. Den lave hit-rate er
+# derfor benign (få, billige miss-tokens pr. kald). Rigtige løftestang = færre KALD.
+#
+# Denne cache er tabsfri pr. konstruktion: ved en IDENTISK (system+user)-prompt inden for
+# TTL genbruges det sidste svar i stedet for et nyt kald. Rammer successive runs med
+# uændret chat-kontekst + uændret status. Flag-styret, default on, reversibel.
+_RESPONSE_CACHE: dict[str, tuple[str, float]] = {}
+_RESPONSE_CACHE_LOCK = threading.Lock()
+_RESPONSE_CACHE_TTL_SECONDS = 900.0   # 15 min — kort nok til at følge selvets bevægelse
+_RESPONSE_CACHE_MAX = 256
+_RESPONSE_CACHE_FLAG = "inner_enrichment_response_cache"
+
+
+def _response_cache_enabled() -> bool:
+    """Er den tabsfri prompt-hash-cache aktiv? Default TRUE (reduceret adfærd)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool(_RESPONSE_CACHE_FLAG, True)
+    except Exception:
+        return True
+
+
+def _response_cache_key(system_prompt: str, user_message: str) -> str:
+    return hashlib.sha256(
+        f"{system_prompt}\x00{user_message}".encode("utf-8", "replace")
+    ).hexdigest()
+
+
+def _response_cache_get(key: str) -> str | None:
+    now = time.time()
+    with _RESPONSE_CACHE_LOCK:
+        entry = _RESPONSE_CACHE.get(key)
+        if entry is None:
+            return None
+        text, expires_at = entry
+        if now > expires_at:
+            _RESPONSE_CACHE.pop(key, None)
+            return None
+        return text
+
+
+def _response_cache_put(key: str, text: str) -> None:
+    if not text:
+        return
+    with _RESPONSE_CACHE_LOCK:
+        if len(_RESPONSE_CACHE) >= _RESPONSE_CACHE_MAX:
+            # Drop the oldest-expiring entry to bound memory.
+            oldest = min(_RESPONSE_CACHE.items(), key=lambda kv: kv[1][1], default=None)
+            if oldest is not None:
+                _RESPONSE_CACHE.pop(oldest[0], None)
+        _RESPONSE_CACHE[key] = (text, time.time() + _RESPONSE_CACHE_TTL_SECONDS)
+
+
 def call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
     """Public alias for _call_cheap_llm so other services can reuse it.
 
@@ -313,6 +375,16 @@ def call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
 
 def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
     """Call Groq-first LLM with local Ollama fallback."""
+    # FIX 2: tabsfri prompt-hash-cache — spring hele kaldet over ved identisk prompt
+    # inden for TTL (reducerer inner-lane call-count uden kvalitetstab). Self-safe.
+    _cache_enabled = _response_cache_enabled()
+    _cache_key = ""
+    if _cache_enabled:
+        _cache_key = _response_cache_key(system_prompt, user_message)
+        _cached = _response_cache_get(_cache_key)
+        if _cached is not None:
+            logger.debug("inner-llm-enrichment: response-cache hit — kald sprunget over")
+            return _cached
     target = _resolve_enrichment_target()
     # KRITISK (2026-06-22, Bjørn): spring den BETALTE primary over når den er quota-
     # blokeret (fx deepseek tør til d. 1). Ellers hamrer enrichment-daemonsne den døde
@@ -353,6 +425,8 @@ def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
                     model,
                     elapsed,
                 )
+                if _cache_key:
+                    _response_cache_put(_cache_key, text)
                 return text
         except Exception as exc:
             logger.warning(
@@ -374,7 +448,10 @@ def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
         if _res and _res.get("text"):
             logger.info("inner-llm-enrichment: via load-spredt cheap-fallback (%s)",
                         _res.get("provider") or "?")
-            return str(_res["text"])
+            _fb_text = str(_res["text"])
+            if _cache_key:
+                _response_cache_put(_cache_key, _fb_text)
+            return _fb_text
     except Exception as exc:
         logger.warning("inner-llm-enrichment: load-spredt cheap-fallback fejlede (%s)", exc)
 
@@ -400,6 +477,8 @@ def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
             str(fallback.get("model") or ""),
             elapsed,
         )
+        if _cache_key:
+            _response_cache_put(_cache_key, text)
     return text
 
 

@@ -637,6 +637,18 @@ def call_balanced(
 
     Returns: {status, text, provider, model, attempts, ...}
     Raises RuntimeError when all eligible slots exhausted.
+
+    FIX 3 (2026-07-15) — hvorfor 'cheap-balanced'-lanen IKKE er foldet ind i 'cheap':
+    Den er IKKE redundant. Denne balancer bærer sin egen distinkte adfærd:
+      · vægtet-tilfældigt slot-valg pr. (provider, model) med per-slot succes/fejl-state,
+      · retry på tværs af slots + garanteret bund (attempt_floor),
+      · credit-assignment-registrering pr. pick.
+    central_route-forening (SPEC 7) findes allerede som _maybe_central_route_slot-hook'et,
+    men er DEFAULT OFF (central_route_live=False) — migrationen er stadig shadow-først og
+    endnu ikke flippet på grundlag af divergens-data. At folde nu ville (a) miste balancerens
+    kvote-spredning på tværs af providers og (b) foregribe den igangværende migration. Den
+    separate lane-label er bevidst: den adskiller balancer-stien (daemon load-spredning) fra
+    selection-stien ('cheap'). Forening sker naturligt når central_route_live flippes.
     """
     from core.services.cheap_provider_runtime import CheapProviderError
 

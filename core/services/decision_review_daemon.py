@@ -48,7 +48,7 @@ def tick_decision_review_daemon() -> dict[str, Any]:
         return {"status": "error", "error": f"import failed: {exc}"}
 
     try:
-        result = review_pending_decisions()
+        result = review_pending_decisions(max_reviews=_MAX_REVIEW_PER_TICK)
         if not isinstance(result, dict):
             return {"status": "error", "error": f"unexpected return type: {type(result)}"}
         return result

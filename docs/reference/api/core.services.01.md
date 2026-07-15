@@ -214,11 +214,11 @@ _Aesthetic taste daemon — emergent taste from accumulated motif observations._
 |---|---|---|---|---|
 | function | `_seed_from_db` | `()` | Load persisted motifs into memory on first tick. | [src](../../../core/services/aesthetic_taste_daemon.py#L30) |
 | function | `record_choice` | `(mode, style_signals)` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L44) |
-| function | `tick_taste_daemon` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L56) |
-| function | `get_latest_taste_insight` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L91) |
-| function | `build_taste_surface` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L95) |
-| function | `_generate_insight` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L117) |
-| function | `_store_insight` | `(insight)` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L148) |
+| function | `tick_taste_daemon` | `(*, skip_event_gate=…)` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L56) |
+| function | `get_latest_taste_insight` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L98) |
+| function | `build_taste_surface` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L102) |
+| function | `_generate_insight` | `()` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L124) |
+| function | `_store_insight` | `(insight)` | — | [src](../../../core/services/aesthetic_taste_daemon.py#L155) |
 
 ## `core/services/affect_modulation.py`
 _Affect-modulated runtime — emotions adjust behavioral parameters._

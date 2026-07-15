@@ -265,3 +265,237 @@ def tick_cluster_memory(snapshot: dict | None = None, *, shadow: bool | None = N
             "members_ran": [],
             "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
         }
+
+
+# ===========================================================================
+# Family #7 — aesthetic / curiosity (aesthetic_taste + curiosity)
+# ===========================================================================
+#
+# The AESTHETIC-INTERPRETATION family (spec §"event-drevet"). Two daemons that
+# read what Jarvis has been doing and produce taste/curiosity:
+#
+#   * aesthetic_taste — LLM interpretation daemon. Accumulates motif observations
+#     across daemon outputs (aesthetic_sense.accumulate_from_daemon) + records
+#     each visible run's style/mode; once ≥3 unique motifs AND ≥30 min since the
+#     last insight it asks the cheap LLM "what does my taste say about me?" and
+#     stores a one-sentence insight. It ALREADY had an internal
+#     should_generative_fire("aesthetic_taste", …) gate on top of those two
+#     self-throttle guards — the family replaces that per-daemon gate with its ONE
+#     family gate (the daemon's tick is called with skip_event_gate=True). Runs
+#     behind the family gate. LOAD-BEARING: build_taste_surface()/latest_insight
+#     feed central_inner_life_digest, signal_surface_router, Mission Control's
+#     living-mind taste-state, the meta_reflection snapshot and the heartbeat
+#     influence trace.
+#
+#   * curiosity — RULES-based (no LLM). Scans the thought-stream fragment buffer
+#     for gap patterns (question marks, "ved ikke", "hvad hvis", "…") and emits a
+#     structured curiosity-cue label (cause-seeking / counterfactual / … ) — NOT
+#     an LLM-confabulated sentence (teater-pass 2026-05-13). Self-throttles on a
+#     5-min cadence. Run UNCONDITIONALLY every family tick. LOAD-BEARING:
+#     build_curiosity_surface()/get_latest_curiosity() feed inheritance_seed,
+#     central_inner_life_digest, signal_surface_router, Mission Control's
+#     living-mind curiosity-state and the innervoice/affect snapshots + the
+#     curiosity.detected event + the persisted curiosity_open_questions state.
+#
+# TWO tiers (mirrors the affect family #3): the LLM member (aesthetic_taste) sits
+# behind the ONE family gate; the non-LLM member (curiosity) runs unconditionally
+# and self-throttles. Self-safe: a member error is captured into ``member_errors``
+# and never propagated; ``tick_cluster_aesthetic`` never raises into the heartbeat.
+
+AESTHETIC_FAMILY = "cluster_aesthetic"
+
+
+# ---------------------------------------------------------------------------
+# Shared snapshot
+# ---------------------------------------------------------------------------
+
+
+def _feed_aesthetic_choice() -> None:
+    """Record the latest visible run's style/mode into the taste daemon.
+
+    Replicates the OLD heartbeat aesthetic_taste block's ``record_choice`` feeding
+    (which is retired along with that block). Runs every family tick so the taste
+    daemon's ``_choice_log`` / ``_choices_since_insight`` keep accumulating exactly
+    as before — otherwise the daemon's gate signal and ``build_taste_surface``
+    dominant-modes/choice-count would go stale. Fully self-safe: any error is
+    swallowed; the family still ticks.
+    """
+    try:
+        from core.services.aesthetic_taste_daemon import record_choice
+        from core.services.inner_voice_daemon import get_inner_voice_daemon_state
+        from core.runtime.db import recent_visible_runs
+
+        iv_state = get_inner_voice_daemon_state() or {}
+        iv_mode = str((iv_state.get("last_result") or {}).get("mode") or "")
+        style_signals: list[str] = []
+        last_runs = recent_visible_runs(limit=1) or []
+        if last_runs:
+            preview = str(last_runs[0].get("text_preview") or "")
+            style_signals.append("short" if len(preview.split()) < 100 else "long")
+            style_signals.append("code_heavy" if "```" in preview else "prose_heavy")
+            dk = sum(1 for w in ["jeg", "er", "og", "det", "at", "en"] if w in preview.lower())
+            style_signals.append("danish" if dk >= 2 else "english")
+        record_choice(mode=iv_mode, style_signals=style_signals)
+    except Exception:
+        pass
+
+
+def _collect_aesthetic_snapshot() -> dict[str, Any]:
+    """Gather the aesthetic family's shared snapshot once per tick.
+
+    The gated member (aesthetic_taste) needs its accumulated motif/choice counts
+    as gate signals; the non-LLM member (curiosity) needs the thought-stream
+    fragment buffer to scan for gaps. Feeding ``record_choice`` happens here (as
+    the old heartbeat block did every tick) BEFORE the counts are read, so the
+    gate signal reflects the freshly-recorded choice. Self-safe: degrades to
+    neutral defaults on any error; the family still ticks.
+    """
+    _feed_aesthetic_choice()
+    snap: dict[str, Any] = {
+        "unique_motif_count": 0.0,
+        "choices_since_insight": 0.0,
+        "fragment_buffer": [],
+    }
+    try:
+        import core.services.aesthetic_taste_daemon as _atd
+        snap["unique_motif_count"] = float(len(getattr(_atd, "_accumulated_motifs", set()) or set()))
+        snap["choices_since_insight"] = float(getattr(_atd, "_choices_since_insight", 0) or 0)
+    except Exception:
+        pass
+    try:
+        from core.services.thought_stream_daemon import build_thought_stream_surface
+        snap["fragment_buffer"] = list((build_thought_stream_surface() or {}).get("fragment_buffer") or [])
+    except Exception:
+        pass
+    return snap
+
+
+# ---------------------------------------------------------------------------
+# GATED LLM member — aesthetic_taste
+# ---------------------------------------------------------------------------
+
+
+def _aesthetic_taste_signals(snap: dict) -> dict[str, float]:
+    """aesthetic_taste gate signals: how much taste-evidence has accumulated.
+
+    Mirrors the daemon's own (now family-gated) internal gate signal — unique
+    motif volume and choices seen since the last insight — normalised to 0-1 for
+    the family gate.
+    """
+    motifs = float(snap.get("unique_motif_count", 0.0) or 0.0)
+    choices = float(snap.get("choices_since_insight", 0.0) or 0.0)
+    return {
+        "unique_motif_count": max(0.0, min(1.0, motifs / 3.0)),
+        "choices_since_insight": max(0.0, min(1.0, choices / 5.0)),
+    }
+
+
+def _aesthetic_taste_live(_snap: dict) -> dict[str, Any]:
+    """The family gate already fired → skip the daemon's per-daemon event-gate.
+
+    The daemon's motif-threshold + 30-min time-gate self-throttle still apply, so
+    the SAME insight cadence and ALL its outputs (build_taste_surface /
+    latest_insight, the private-brain taste record, cognitive_taste.insight_noted
+    and the heartbeat trigger) are preserved."""
+    from core.services.aesthetic_taste_daemon import tick_taste_daemon
+    return tick_taste_daemon(skip_event_gate=True)
+
+
+def build_aesthetic_family() -> ClusterDaemon:
+    """Construct the aesthetic/curiosity cluster-daemon (family #7), LIVE.
+
+    ONE gated LLM member (aesthetic_taste) behind the family gate. The single
+    NON-LLM member (curiosity) is run UNCONDITIONALLY by
+    ``tick_cluster_aesthetic``, not gated here.
+    """
+    return ClusterDaemon(
+        family_name=AESTHETIC_FAMILY,
+        cluster="cognition",
+        collect_snapshot=_collect_aesthetic_snapshot,
+        members=[
+            ClusterMember(
+                name="aesthetic_taste",
+                signals=_aesthetic_taste_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.aesthetic_taste_daemon", "build_taste_surface"),
+                    ("latest_insight", "unique_motif_count"),
+                ),
+                live=_aesthetic_taste_live,
+            ),
+        ],
+    )
+
+
+# Process-level singleton (keeps the family's gate baselines + Central trace
+# continuous across heartbeat ticks, mirroring the other families).
+_AESTHETIC_FAMILY: ClusterDaemon | None = None
+
+
+def aesthetic_family() -> ClusterDaemon:
+    global _AESTHETIC_FAMILY
+    if _AESTHETIC_FAMILY is None:
+        _AESTHETIC_FAMILY = build_aesthetic_family()
+    return _AESTHETIC_FAMILY
+
+
+# ---------------------------------------------------------------------------
+# UNCONDITIONAL (non-LLM) member — curiosity
+# ---------------------------------------------------------------------------
+
+
+def _aesthetic_curiosity_live(snap: dict) -> dict[str, Any]:
+    """Rules-based gap scan over the thought-stream fragment buffer. Self-throttles
+    on its own 5-min cadence; no LLM, no family gate. Preserves all its outputs
+    (build_curiosity_surface / get_latest_curiosity, the private-brain
+    curiosity-signal record, the curiosity.detected event and the persisted
+    curiosity_open_questions state)."""
+    from core.services.curiosity_daemon import tick_curiosity_daemon
+    return tick_curiosity_daemon(list(snap.get("fragment_buffer") or []))
+
+
+# (member_name, live_fn) in a stable order.
+_AESTHETIC_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
+    ("curiosity", _aesthetic_curiosity_live),
+)
+
+
+def _run_aesthetic_nonllm_members(snap: dict, result: dict[str, Any]) -> None:
+    """Run the NON-LLM member(s) UNCONDITIONALLY (independent of the family
+    generative gate), self-safe. Each self-throttles on its own internal cadence;
+    a member error is isolated into ``member_errors`` and NEVER propagated; a
+    successful run is recorded into ``members_ran``/``outputs``.
+    """
+    for name, fn in _AESTHETIC_UNCONDITIONAL:
+        try:
+            out = fn(snap)
+            result["outputs"][name] = out
+            result["members_ran"].append(name)
+        except Exception as exc:
+            result["member_errors"][name] = f"{type(exc).__name__}: {exc}"
+
+
+def tick_cluster_aesthetic(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
+    """Heartbeat entry-point for the aesthetic/curiosity cluster-daemon family (#7).
+
+    Runs LIVE by default (``shadow=False``) — the prove-then-retire end state
+    replacing the aesthetic_taste + curiosity daemons. Two-tier: the gated LLM
+    member (aesthetic_taste) runs behind the ONE family gate via
+    ``aesthetic_family().tick()``; the NON-LLM member (curiosity) runs
+    UNCONDITIONALLY every tick (its own 5-min cadence). Self-safe: NEVER raises
+    into the heartbeat.
+    """
+    try:
+        snap = _collect_aesthetic_snapshot() if snapshot is None else snapshot
+        run_live = False if shadow is None else bool(shadow)
+        result = aesthetic_family().tick(snap, shadow=run_live)
+        # Unconditional non-LLM member(s) (independent of the gate above).
+        _run_aesthetic_nonllm_members(snap, result)
+        return result
+    except Exception as exc:  # never crash the heartbeat
+        return {
+            "family": AESTHETIC_FAMILY,
+            "fired": False,
+            "gate_calls": 1,
+            "members_ran": [],
+            "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
+        }

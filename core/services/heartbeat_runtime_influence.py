@@ -862,6 +862,35 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # cluster_aesthetic — FAMILIE #7 (aesthetic/curiosity). PENSIONEREREDE daemons
+    # (aesthetic_taste + curiosity, default_enabled=False) → deres gamle tick-blokke
+    # ovenfor no-op'er via is_enabled. To tiers: aesthetic_taste (gated LLM) bag
+    # familiens ÉNE event-gate (skip_event_gate=True) + curiosity (non-LLM, ubetinget,
+    # egen 5-min cadence). record_choice-feeding sker i familiens snapshot-collector.
+    # Bred deadline: taste kan lave ét cheap-LLM-kald. Self-safe: crasher aldrig.
+    if _dm.is_enabled("cluster_aesthetic"):
+        try:
+            from core.services.cluster_daemon_families import tick_cluster_aesthetic
+            _aesth_cluster_result = _hb._daemon_tick_with_deadline(
+                "cluster_aesthetic", tick_cluster_aesthetic, deadline_seconds=20.0,
+            )
+            _dm.record_daemon_tick("cluster_aesthetic", _aesth_cluster_result or {})
+            # Surface the taste insight + curiosity signal into the trace, as the
+            # retired aesthetic_taste/curiosity tick blocks used to do.
+            try:
+                from core.services.aesthetic_taste_daemon import get_latest_taste_insight
+                from core.services.curiosity_daemon import get_latest_curiosity
+                _taste_c = get_latest_taste_insight()
+                if _taste_c:
+                    inputs_present.append(f"smagstendens: {_taste_c}")
+                _curiosity_c = get_latest_curiosity()
+                if _curiosity_c:
+                    inputs_present.append(f"nysgerrighed: {_curiosity_c[:60]}")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     # Creative drift daemon — spontaneous unexpected associations
     if _dm.is_enabled("creative_drift"):
         try:

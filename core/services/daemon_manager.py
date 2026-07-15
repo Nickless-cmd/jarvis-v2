@@ -43,7 +43,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_insight_at",
         "reset_value": None,
         "default_cadence_minutes": 7,
-        "description": "Tracks style preferences and aesthetic tendencies",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_aesthetic overtager (gated LLM-medlem; samme generering bag familiens ÉNE event-gate, skip_event_gate=True)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_aesthetic] Tracks style preferences and aesthetic tendencies",
     },
     "irony": {
         "module": "core.services.irony_daemon",
@@ -102,7 +104,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 5,
-        "description": "Scans thought stream for gaps and generates curiosity signals",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_aesthetic overtager (non-LLM member; kører UBETINGET hver familie-tick med egen 5-min cadence)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_aesthetic] Scans thought stream for gaps and generates curiosity signals",
     },
     "meta_reflection": {
         "module": "core.services.meta_reflection_daemon",
@@ -636,6 +640,33 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # (write_queue-drain); heartbeaten gater på is_enabled, medlemmerne
         # self-throttler. Self-safe: ét fejlende medlem blokerer aldrig de andre.
         "description": "cluster-daemon FAMILIE #6 (memory/maintenance) LIVE: council_memory (gated LLM, ÉN event-gate) + memory_write_queue+memory_decay+memory_pruning+memory_maintenance+memory_safeguard+selective_consolidation+associative_recall (non-LLM, ubetinget) foldet i ÉN familie; erstatter de 8 pensionerede daemons; bevarer alle outputs (write-queue-drain, rediscovery, recall-persistens, council-injektion).",
+    },
+    "cluster_aesthetic": {
+        "module": "core.services.cluster_daemon_families",
+        "reset_var": "_AESTHETIC_FAMILY",
+        "reset_value": None,
+        "default_cadence_minutes": 5,
+        "default_enabled": True,
+        # Cluster-daemon-konsolidering, FAMILIE #7 (aesthetic/curiosity):
+        # aesthetic_taste + curiosity foldet ind i ÉN Central-styret familie (i
+        # cluster_daemon_families.py — cluster_daemon.py har ramt 1500-linjers
+        # kodegrænsen). Kører LIVE (prove-then-retire END STATE) — de 2 gamle daemons
+        # er PENSIONERET (default_enabled=False, retired 2026-07-15). To tiers: DET ENE
+        # LLM-medlem (aesthetic_taste, tidl. med egen should_generative_fire-gate oven
+        # på sine motif-tærskel + 30-min tids-gate self-throttles) bag familiens ÉNE
+        # should_generative_fire event-gate → daemonens tick kaldes med
+        # skip_event_gate=True (motif/tids-selv-throttle bevaret). Det non-LLM regel-
+        # baserede medlem (curiosity — scanner thought-stream fragment-buffer for gaps,
+        # udsender struktureret cue-label, IKKE LLM-konfabulering) kører UBETINGET hver
+        # tick med egen 5-min cadence. Bevarer alle outputs — build_taste_surface/
+        # latest_insight (central_inner_life_digest, signal_surface_router, MC living-
+        # mind, meta_reflection-snapshot, heartbeat-trace) og build_curiosity_surface/
+        # get_latest_curiosity + curiosity.detected + curiosity_open_questions-state
+        # (inheritance_seed, central_inner_life_digest, signal_surface_router, MC,
+        # innervoice/affect-snapshots). record_choice-feeding flyttet ind i familiens
+        # snapshot-collector (kører hver tick som den gamle heartbeat-blok gjorde).
+        # heartbeaten gater på is_enabled, medlemmerne self-throttler. Aldrig begge live.
+        "description": "cluster-daemon FAMILIE #7 (aesthetic/curiosity) LIVE: aesthetic_taste (gated LLM, ÉN event-gate) + curiosity (non-LLM, ubetinget, egen 5-min cadence) foldet i ÉN familie; erstatter de 2 pensionerede daemons; bevarer alle outputs (taste-insight-surface, curiosity-surface, curiosity.detected, open-questions-state).",
     },
 }
 

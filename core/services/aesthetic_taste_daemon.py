@@ -53,7 +53,7 @@ def record_choice(mode: str, style_signals: list[str]) -> None:
     _choices_since_insight += 1
 
 
-def tick_taste_daemon() -> dict[str, object]:
+def tick_taste_daemon(*, skip_event_gate: bool = False) -> dict[str, object]:
     _seed_from_db()
 
     now = datetime.now(UTC)
@@ -68,18 +68,25 @@ def tick_taste_daemon() -> dict[str, object]:
     # judgment, but skip the call when accumulated style/tool-use signals haven't
     # moved. Placed AFTER the motif-threshold and time-gate guards — only gates
     # whether generation runs. Fail-open: any error falls through to generation.
-    try:
-        from core.services import event_gate
+    #
+    # ``skip_event_gate=True`` bypasses this internal gate: the cluster_aesthetic
+    # family (family #7) has ALREADY consulted its ONE
+    # should_generative_fire("cluster_aesthetic", …) gate for the whole family, so
+    # a second per-daemon gate here would double-count. The motif-threshold and
+    # time-gate self-throttle above still apply.
+    if not skip_event_gate:
+        try:
+            from core.services import event_gate
 
-        if event_gate.event_driven_enabled():
-            _relevant = {
-                "unique_motif_count": float(len(_accumulated_motifs)),
-                "choices_since_insight": float(_choices_since_insight),
-            }
-            if not event_gate.should_generative_fire("aesthetic_taste", _relevant):
-                return {"skipped": "no_signal_change"}
-    except Exception:
-        pass
+            if event_gate.event_driven_enabled():
+                _relevant = {
+                    "unique_motif_count": float(len(_accumulated_motifs)),
+                    "choices_since_insight": float(_choices_since_insight),
+                }
+                if not event_gate.should_generative_fire("aesthetic_taste", _relevant):
+                    return {"skipped": "no_signal_change"}
+        except Exception:
+            pass
 
     insight = _generate_insight()
     if not insight:

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6201/12716 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6209/12725 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6201/12716 functions/methods documented (48%). The list b
 | `core.memory` | 44 | 123 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4087 | 8856 | 46% |
+| `core.services` | 4095 | 8865 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -39,7 +39,7 @@ Generated from source. 6201/12716 functions/methods documented (48%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1835)
+## Undocumented public functions (1836)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -508,8 +508,8 @@ Generated from source. 6201/12716 functions/methods documented (48%). The list b
 - `core/services/adaptive_reasoning_runtime.py` :: `build_adaptive_reasoning_runtime_surface` (L10)
 - `core/services/aesthetic_sense.py` :: `build_aesthetic_surface` (L83)
 - `core/services/aesthetic_sense.py` :: `list_aesthetic_notes` (L234)
-- `core/services/aesthetic_taste_daemon.py` :: `build_taste_surface` (L95)
-- `core/services/aesthetic_taste_daemon.py` :: `get_latest_taste_insight` (L91)
+- `core/services/aesthetic_taste_daemon.py` :: `build_taste_surface` (L102)
+- `core/services/aesthetic_taste_daemon.py` :: `get_latest_taste_insight` (L98)
 - `core/services/aesthetic_taste_daemon.py` :: `record_choice` (L44)
 - `core/services/aesthetic_taste_daemon.py` :: `tick_taste_daemon` (L56)
 - `core/services/affective_meta_state.py` :: `build_affective_meta_prompt_section` (L299)
@@ -751,6 +751,7 @@ Generated from source. 6201/12716 functions/methods documented (48%). The list b
 - `core/services/cluster_daemon.py` :: `innervoice_family` (L766)
 - `core/services/cluster_daemon.py` :: `narrative_family` (L1243)
 - `core/services/cluster_daemon.py` :: `somatic_family` (L412)
+- `core/services/cluster_daemon_families.py` :: `aesthetic_family` (L434)
 - `core/services/cluster_daemon_families.py` :: `memory_family` (L151)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
 - `core/services/code_aesthetic_daemon.py` :: `get_latest_aesthetic_reflection` (L64)
@@ -834,8 +835,8 @@ Generated from source. 6201/12716 functions/methods documented (48%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `maybe_register_from_text` (L53)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L15)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L643)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L690)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L674)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L721)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L266)

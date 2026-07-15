@@ -51,6 +51,21 @@ def _resolve_role() -> str:
         return "owner"
 
 
+def _owner_scoped_user_id(raw: str | None, role: str) -> str:
+    """jarvis-code (owner-authed) sender ofte TOMT user_id → uden det kan memory/
+    workspace-tools ikke scope til ejerens workspace (workspace_dir kræver user_id →
+    tom recall, 'kun vores session'). Udled ejerens discord_id når kalderen er owner
+    og intet user_id blev sendt. Non-owner / eksplicit user_id → uændret."""
+    uid = str(raw or "").strip()
+    if uid or role != "owner":
+        return uid
+    try:
+        from core.identity.owner_resolver import get_owner_discord_id
+        return str(get_owner_discord_id() or "").strip()
+    except Exception:
+        return ""
+
+
 # ── Fase 5 Task 19: provider XML tool-call fallback (flag-gated) ──────────
 # Some providers/models (Ollama, Gemini — reference_gemini_ollama_toolcall_400)
 # return EMPTY native tool_calls and instead emit an XML/tagged convention in
@@ -669,8 +684,9 @@ async def tools_execute(body: _ExecBody):
             user_context, set_context, reset_context, _current_state,
         )
         ctx_kwargs: dict[str, str] = {}
-        if body.user_id:
-            ctx_kwargs["discord_id"] = str(body.user_id)
+        _uid = _owner_scoped_user_id(body.user_id, role)
+        if _uid:
+            ctx_kwargs["discord_id"] = _uid
         with user_context(**ctx_kwargs):
             base = _current_state.get()
             role_token = set_context(
@@ -748,7 +764,9 @@ async def agent_step(request: Request):
     stream = bool(body.get("stream", False))
     context = str(body.get("context") or "identity").lower()
     session_id = str(body.get("session_id") or "")
-    user_id = str(body.get("user_id") or "").strip()
+    # Owner-scoping: jarvis-code sender ofte tomt user_id → udled ejerens id så
+    # memory/workspace-recall i assembly'en (og forwarded memory-tools) scoper rigtigt.
+    user_id = _owner_scoped_user_id(body.get("user_id"), _resolve_role())
     env = body.get("env") if isinstance(body.get("env"), dict) else None
     # Fase 5 Task 1: owner-only privilege gate on the approval-timing axis.
     # Inert (no key added, no behaviour change) when the flag is off or no

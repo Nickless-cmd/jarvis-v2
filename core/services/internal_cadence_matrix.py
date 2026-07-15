@@ -92,7 +92,12 @@ def register_matrix_producers(register_producer: Callable[[ProducerSpec], None])
         visible_grace_minutes=0,
         run_fn=_run_continuity_healer,
         priority=2,
-        depends_on=["central_self_state"],
+        # BUGFIX (2026-07-15): samme inverterede-priority-fælde som trainman —
+        # central_self_state har priority 7 (kører SENERE i samme tick end healeren
+        # på priority 2), så den er aldrig i `ran_this_tick` når healeren evalueres →
+        # continuity_healer var PERMANENT "blocked: dependency-not-met" og healede
+        # aldrig. Den læser persisteret self-state fra DB; ingen samme-tick-ordning nødig.
+        depends_on=[],
     ))
 
     # 5 nye Matrix-temaer + 2 bonus (6. jul) — alle observe/propose-only, self-safe.
@@ -286,7 +291,12 @@ def register_matrix_producers(register_producer: Callable[[ProducerSpec], None])
         visible_grace_minutes=0,
         run_fn=_run_trainman,
         priority=5,
-        depends_on=["dream_distillation_daemon"],
+        # BUGFIX (2026-07-15): afhang før af dream_distillation_daemon (priority 22,
+        # kører SENERE end trainmans priority 5 i den ene globale tick) → aldrig i
+        # `ran_this_tick` → trainman var permanent "blocked: dependency-not-met" → 0
+        # vævede erindringer trods drømme i kø. Trainman læser persisterede drømme fra
+        # DB (idempotent) og behøver ingen samme-tick-ordning. Afhængighed fjernet.
+        depends_on=[],
     ))
 
     # Seraph (7. jul, Spec F §1): portvagt for hypotese-MODENHED. Sidder mellem Sentinel (angriber)

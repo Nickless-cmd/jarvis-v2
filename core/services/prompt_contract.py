@@ -2492,16 +2492,15 @@ def build_visible_chat_prompt_assembly(
     derived_inputs.append("epistemic abstention anchor (user-msg tail)")
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
-    # Matrix Ensemble — aktive karakter-labels i prompt-halen. Smith er IKKE her og ikke
-    # et separat blok længere: han er samlet ÉT sted — Matrix Sign-Off nedenfor, som vælger
-    # ham først (via _most_active_character) og bærer hans eskalerings-linje + kill-switch.
-    # Fail-safe: ingen import-fejl kan vælte prompt-bygningen.
+    # Matrix Nudges — i stedet for den gamle ensemble-label-liste postes der nu
+    # nudges via nudge_broend. Kun en indikatorlinje i prompt-halen hvis nogen
+    # har noget at sige. Karaktererne dukker op i awareness via nudge-systemet.
     try:
-        from core.services.central_matrix_ensemble import build_matrix_ensemble_prompt_section as _matrix_fn
-        _matrix = _matrix_fn()
-        if _matrix:
-            _dyn_tail.append(_matrix)
-            derived_inputs.append("matrix ensemble character labels (tail)")
+        from core.services.central_matrix_ensemble import push_active_character_nudges as _push_matrix_nudges
+        _nudge_count = _push_matrix_nudges()
+        if _nudge_count > 0:
+            _dyn_tail.append(f"🎬 Matrix: {_nudge_count} karakter(er) har meldinger — tjek pending nudges.")
+            derived_inputs.append("matrix character nudges indicator (tail)")
     except Exception:
         pass
     # Matrix Sign-Off — automatisk karakter-signatur i bunden af svar.

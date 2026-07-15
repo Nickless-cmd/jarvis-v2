@@ -84,14 +84,17 @@ def push(
     nudges.append(entry)
     _save(_cleanup(nudges))
     logger.info("nudge_broend: %s deposited from %s (importance=%s)", nudge_id, source, importance)
-    # Dual-write to outbound_nudges DB (2026-05-13): action_router's nudges
-    # used to live ONLY in JSON brønden — never reached Jarvis' prompt. Now
-    # mirrors to the unified ledger so awareness picks them up.
+    # Dual-write to outbound_nudges DB (2026-05-13): nudges used to live
+    # ONLY in JSON brønden — never reached Jarvis' prompt. Now mirrors to
+    # the unified ledger so awareness picks them up. Kind passed through so
+    # Matrix-character nudges (kind="matrix_character") surface correctly.
     try:
+        from core.services.outbound_nudges import push_nudge
+        _kind = kind[:50] if kind and kind not in ("info", "") else "action_router"
         from core.services.outbound_nudges import push_nudge
         push_nudge(
             source=source or "action_router",
-            kind="action_router",
+            kind=_kind,
             message=message,
             importance=importance if importance in {"low", "normal", "high", "critical"} else "normal",
         )

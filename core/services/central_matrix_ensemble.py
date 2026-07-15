@@ -304,6 +304,48 @@ def build_matrix_signoff_section() -> str | None:
     return f"MATRIX SIGN-OFF: Afslut dit svar med {ch['label']} {ch['line']}"
 
 
+def push_active_character_nudges() -> int:
+    \"\"\"Iterer alle Matrix-karakterer, push en nudge for hver aktiv med rung_line.
+
+    Dedupliker: tjek om der allerede findes en pending nudge med
+    source='matrix/<id>' før push. Returnér antal nudges postet.
+    Kaldes fra prompt_contract.py i stedet for ensemble-listen.
+    \"\"\"
+    count = 0
+    try:
+        from core.services.nudge_broend import list_pending as _list_nudges, push as _push_nudge
+        pending = _list_nudges(limit=50)
+        pending_sources = {n.get("source", "") for n in pending if n.get("status") == "pending"}
+
+        for ch in _CHARACTERS:
+            cid = ch["id"]
+            try:
+                builder = _SURFACE_BUILDERS.get(cid)
+                if builder is None:
+                    continue
+                surf = builder()
+                if not ch["check"](surf):
+                    continue
+                line = str(surf.get("line") or "").strip() or ch["line"]
+                if not line:
+                    continue
+                source = f"matrix/{cid}"
+                if source in pending_sources:
+                    continue  # allerede pending — undgå dublet
+                _push_nudge(
+                    source=source,
+                    kind="matrix_character",
+                    message=f"{ch['label']} {line}",
+                    importance="normal",
+                )
+                count += 1
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return count
+
+
 def build_matrix_ensemble_prompt_section() -> str | None:
     """Byg karakter-labels for prompt-halen.
 

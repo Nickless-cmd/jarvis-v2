@@ -387,9 +387,11 @@ _Single source of truth for what jarvis-code (jc) presents as tools._
 | function | `alias_for` | `(name)` | runtime_ alias for a colliding tool name. | [src](../../../core/tools/jc_tool_catalog.py#L30) |
 | function | `unalias` | `(name)` | Strip the runtime_ prefix iff it maps to a colliding tool; else unchanged. | [src](../../../core/tools/jc_tool_catalog.py#L35) |
 | function | `is_runtime_alias` | `(name)` | True only for runtime_<one-of-the-four-colliding-tools>. | [src](../../../core/tools/jc_tool_catalog.py#L42) |
-| function | `_def_name` | `(d)` | — | [src](../../../core/tools/jc_tool_catalog.py#L63) |
-| function | `_all_native_defs` | `(role)` | Full native tool defs for a role. Wrapped as a module function for test injection. | [src](../../../core/tools/jc_tool_catalog.py#L67) |
-| function | `build_jc_catalog` | `(*, role, unlocked)` | Native-side tool defs jc should present (WITHOUT the 8 local client tools — | [src](../../../core/tools/jc_tool_catalog.py#L73) |
+| function | `execution_location` | `(name)` | Hvor et tool med DETTE præsenterede navn eksekverer: | [src](../../../core/tools/jc_tool_catalog.py#L59) |
+| function | `execution_map` | `(defs)` | Kortlæg en liste af tool-defs → {navn: execution_location}. Muterer IKKE | [src](../../../core/tools/jc_tool_catalog.py#L74) |
+| function | `_def_name` | `(d)` | — | [src](../../../core/tools/jc_tool_catalog.py#L95) |
+| function | `_all_native_defs` | `(role)` | Full native tool defs for a role. Wrapped as a module function for test injection. | [src](../../../core/tools/jc_tool_catalog.py#L99) |
+| function | `build_jc_catalog` | `(*, role, unlocked)` | Native-side tool defs jc should present (WITHOUT the 8 local client tools — | [src](../../../core/tools/jc_tool_catalog.py#L105) |
 
 ## `core/tools/mail_tools.py`
 _Mail tools for Jarvis — jarvis@srvlab.dk_

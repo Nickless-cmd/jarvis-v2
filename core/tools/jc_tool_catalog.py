@@ -46,6 +46,38 @@ def is_runtime_alias(name: str) -> bool:
     return name[len(RUNTIME_ALIAS_PREFIX):] in COLLIDING_TOOLS
 
 
+# Tools jarvis-code EJER og eksekverer på KLIENTENS host (ikke server/container).
+# Single source of truth for "client"-klassifikationen. De fire COLLIDING_TOOLS er
+# klient-side når de er bare; deres runtime_-alias er container-formen ("runtime").
+CLIENT_TOOLS: frozenset[str] = frozenset({
+    "bash", "read_file", "write_file", "edit_file", "multi_edit",
+    "glob", "grep", "web_fetch", "web_scrape", "web_search",
+    "bash_output", "todo_write", "task",
+})
+
+
+def execution_location(name: str) -> str:
+    """Hvor et tool med DETTE præsenterede navn eksekverer:
+      "client"  — den forbundne overflades host (jarvis-code/desk lokale tools)
+      "runtime" — Jarvis' egen container (de runtime_-aliasede kolliderende tools)
+      "server"  — server-processen / hjernen (memory, operator, cognitive tools)
+    Single source of truth som Fase 1's loop-router slår op i. runtime_-aliaset er
+    blot PRÆSENTATIONEN af execution=="runtime"."""
+    n = (name or "").strip()
+    if is_runtime_alias(n):
+        return "runtime"
+    if n in CLIENT_TOOLS:
+        return "client"
+    return "server"
+
+
+def execution_map(defs: list[dict[str, Any]]) -> dict[str, str]:
+    """Kortlæg en liste af tool-defs → {navn: execution_location}. Muterer IKKE
+    def'sne (de sendes til providers; en fremmed nøgle kunne bryde et strengt kald).
+    Router-laget (Fase 1) læser dette kort ved navn."""
+    return {_def_name(d): execution_location(_def_name(d)) for d in defs}
+
+
 LOAD_MORE_TOOL_DEF: dict[str, Any] = {
     "type": "function",
     "function": {

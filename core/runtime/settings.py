@@ -447,6 +447,7 @@ class RuntimeSettings:
     agent_step_cache_contract_enabled: bool = False
     agent_step_cache_split_enabled: bool = False
     agent_turn_absorb_enabled: bool = False
+    agent_live_broadcast_enabled: bool = False
     agent_step_harness_contract_enabled: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -539,6 +540,7 @@ class RuntimeSettings:
             "agent_step_cache_contract_enabled": self.agent_step_cache_contract_enabled,
             "agent_step_cache_split_enabled": self.agent_step_cache_split_enabled,
             "agent_turn_absorb_enabled": self.agent_turn_absorb_enabled,
+            "agent_live_broadcast_enabled": self.agent_live_broadcast_enabled,
             "agent_step_harness_contract_enabled": self.agent_step_harness_contract_enabled,
         }
         return {**self.extra, **typed}
@@ -966,6 +968,7 @@ def load_settings() -> RuntimeSettings:
         agent_step_cache_contract_enabled=bool(data.get("agent_step_cache_contract_enabled", defaults.agent_step_cache_contract_enabled)),
         agent_step_cache_split_enabled=bool(data.get("agent_step_cache_split_enabled", defaults.agent_step_cache_split_enabled)),
         agent_turn_absorb_enabled=bool(data.get("agent_turn_absorb_enabled", defaults.agent_turn_absorb_enabled)),
+        agent_live_broadcast_enabled=bool(data.get("agent_live_broadcast_enabled", defaults.agent_live_broadcast_enabled)),
         agent_step_harness_contract_enabled=bool(data.get("agent_step_harness_contract_enabled", defaults.agent_step_harness_contract_enabled)),
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )

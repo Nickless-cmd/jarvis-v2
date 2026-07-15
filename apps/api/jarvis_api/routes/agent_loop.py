@@ -794,6 +794,20 @@ async def agent_step(request: Request):
         return JSONResponse(status_code=400, content={
             "error": {"message": "messages[] er påkrævet", "type": "invalid_request_error"}})
 
+    # C2b heartbeat: hold det aktive visible run frisk under en multi-round-tur, så
+    # desk/mobils freshness-vindue ikke udløber mid-tur (kun hvis DETTE run stadig er
+    # aktivt — touch no-op'er ellers). Flag-gated; self-safe.
+    if getattr(_settings(), "agent_live_broadcast_enabled", False):
+        _run_id = str(body.get("run_id") or "")
+        if _run_id:
+            try:
+                from core.services.visible_runs_sections.run_control_state import (
+                    touch_active_visible_run,
+                )
+                touch_active_visible_run(_run_id)
+            except Exception:
+                logger.debug("agent_step: touch_active_visible_run fejlede", exc_info=True)
+
     # jarvis-code CHAT: rolle-aware model — member→ollama-deepseek LÅST, owner→sin valgte
     # model (default deepseek-flash). IKKE agent-poolen/adaptive-router: den er reserveret
     # til Jarvis' indre liv + autonome agenter, ALDRIG bruger-chat. Klientens model-vælger
@@ -1143,3 +1157,53 @@ async def agent_turn_absorb(body: _AbsorbBody):
         logger.debug("agent/turn-absorb dispatch fejlede", exc_info=True)
         return {"ok": False, "error": "absorb_failed"}
     return {"ok": True, "run_id": body.run_id, "persisted": persisted}
+
+
+# ── C2b (cross-device live streaming): tur-liveness for en KLIENT-drevet tur.
+# jarvis-code driver loopet klient-side → serveren ser ikke turen som et kørende run,
+# så desk/mobils poller/liveness/spinner/systray/takeover lyser aldrig op. begin
+# registrerer turen som det aktive visible run + åbner run_follow; end rydder igen
+# (kaldes ALTID i klientens finally). Flag agent_live_broadcast_enabled default OFF.
+class _TurnLiveBody(BaseModel):
+    session_id: str = ""
+    run_id: str = ""
+    user_message: str = ""
+    provider: str = ""
+    model: str = ""
+    user_id: str = ""
+
+
+@router.post("/v1/agent/turn-begin", response_model=None)
+async def agent_turn_begin(body: _TurnLiveBody):
+    """Registrér en klient-drevet tur som live (aktivt visible run + run_follow).
+    Flag agent_live_broadcast_enabled default OFF → no-op."""
+    settings = _settings()
+    if not getattr(settings, "agent_live_broadcast_enabled", False):
+        return {"ok": False, "skipped": "flag_off"}
+    uid = _owner_scoped_user_id(body.user_id, _resolve_role())
+    try:
+        from core.services.client_turn_live import begin_live_turn
+        begin_live_turn(
+            session_id=body.session_id, run_id=body.run_id,
+            user_message=body.user_message, provider=body.provider,
+            model=body.model, user_id=uid)
+    except Exception:
+        logger.debug("agent/turn-begin fejlede", exc_info=True)
+        return {"ok": False, "error": "begin_failed"}
+    return {"ok": True, "run_id": body.run_id}
+
+
+@router.post("/v1/agent/turn-end", response_model=None)
+async def agent_turn_end(body: _TurnLiveBody):
+    """Ryd live-tilstanden for en klient-drevet tur (altid safe at kalde). Flag
+    agent_live_broadcast_enabled default OFF → no-op."""
+    settings = _settings()
+    if not getattr(settings, "agent_live_broadcast_enabled", False):
+        return {"ok": False, "skipped": "flag_off"}
+    try:
+        from core.services.client_turn_live import end_live_turn
+        end_live_turn(session_id=body.session_id, run_id=body.run_id)
+    except Exception:
+        logger.debug("agent/turn-end fejlede", exc_info=True)
+        return {"ok": False, "error": "end_failed"}
+    return {"ok": True, "run_id": body.run_id}

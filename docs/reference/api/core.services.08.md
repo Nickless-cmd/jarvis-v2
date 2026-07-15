@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cross_session_threads.py`
+_Cross-Session Threads — sustained thought lines across sessions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/cross_session_threads.py#L26) |
+| function | `_load` | `()` | — | [src](../../../core/services/cross_session_threads.py#L31) |
+| function | `_save` | `(items)` | — | [src](../../../core/services/cross_session_threads.py#L45) |
+| function | `create_thread` | `(*, topic, synopsis=…, status=…, opened_in_session=…)` | — | [src](../../../core/services/cross_session_threads.py#L57) |
+| function | `pause_thread` | `(thread_id, *, note=…)` | — | [src](../../../core/services/cross_session_threads.py#L83) |
+| function | `resume_thread` | `(thread_id, *, new_synopsis=…)` | — | [src](../../../core/services/cross_session_threads.py#L96) |
+| function | `close_thread` | `(thread_id, *, reason=…)` | — | [src](../../../core/services/cross_session_threads.py#L112) |
+| function | `update_synopsis` | `(thread_id, new_synopsis)` | — | [src](../../../core/services/cross_session_threads.py#L125) |
+| function | `list_threads` | `(*, status=…)` | — | [src](../../../core/services/cross_session_threads.py#L136) |
+| function | `get_thread` | `(thread_id)` | — | [src](../../../core/services/cross_session_threads.py#L143) |
+| function | `build_cross_session_threads_surface` | `()` | — | [src](../../../core/services/cross_session_threads.py#L150) |
+| function | `_surface_summary` | `(counts)` | — | [src](../../../core/services/cross_session_threads.py#L189) |
+| function | `build_cross_session_threads_prompt_section` | `()` | Surface active + paused threads so Jarvis can resume them. | [src](../../../core/services/cross_session_threads.py#L202) |
+
 ## `core/services/cross_signal_analysis.py`
 _Cross-Signal Analysis — find patterns across cognitive signals._
 
@@ -539,21 +558,4 @@ _QR-device-pairing (mobile companion ↔ desktop). Kort-levende engangs-koder._
 | function | `create_pairing` | `(user_id, role=…, *, now=…)` | Opret en pairing-kode for en (autentificeret) bruger. Returnerer {code, expires_in}. | [src](../../../core/services/device_pairing.py#L30) |
 | function | `redeem` | `(code, *, now=…)` | Indløs en pairing-kode (engangs) → udsted friskt token. None hvis ukendt/udløbet. | [src](../../../core/services/device_pairing.py#L41) |
 | function | `status` | `(code, *, now=…)` | Status på en pairing-kode (til desktop-poll): redeemed | pending | expired. | [src](../../../core/services/device_pairing.py#L54) |
-
-## `core/services/device_presence.py`
-_In-memory device-presence pr. bruger. Efemær — genopbygges af klient-pings._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `DeviceState` | `` | — | [src](../../../core/services/device_presence.py#L40) |
-| function | `reset` | `()` | Kun til tests. | [src](../../../core/services/device_presence.py#L53) |
-| function | `record_ping` | `(user_id, device_key, platform, *, foreground, awake, network, interaction=…, location=…)` | — | [src](../../../core/services/device_presence.py#L59) |
-| function | `_sanitize_location` | `(location)` | Validér og normalisér en indkommen lokation. Returnerer None ved ugyldigt. | [src](../../../core/services/device_presence.py#L98) |
-| class | `RankedDevice` | `` | — | [src](../../../core/services/device_presence.py#L116) |
-| function | `_recency_weight` | `(now, last_interaction_at)` | — | [src](../../../core/services/device_presence.py#L123) |
-| function | `rank` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L130) |
-| function | `prune` | `(user_id=…)` | — | [src](../../../core/services/device_presence.py#L189) |
-| function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L202) |
-| function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L226) |
-| function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L246) |
 

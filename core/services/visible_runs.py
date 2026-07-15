@@ -6215,6 +6215,10 @@ def get_active_visible_run() -> dict[str, str] | None:
         "current_user_message_preview": str(active.get("current_user_message_preview") or ""),
         "capability_id": active.get("capability_id"),
         "cancelled": bool(active.get("cancelled")),
+        # C2b: session_id + origin lader desk/mobil afgøre takeover ("en anden session
+        # har overtaget samtalen") ved at sammenligne mod klientens egen session.
+        "session_id": str(active.get("session_id") or ""),
+        "origin": str(active.get("origin") or ""),
     }
 
 

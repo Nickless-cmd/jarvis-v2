@@ -8,7 +8,79 @@ Egress-fri: ALDRIG drømme-indhold, kun labels og én-linjers.
 
 from __future__ import annotations
 
+import json
+import logging
+from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
+
+# ── unaddressed_count — track når Jarvis ignorerer Matrix-karakterer ─────────
+
+_UNBALANCED_PATH = Path.home() / ".jarvis-v2" / "state" / "matrix_unaddressed.json"
+
+
+def _load_unaddressed() -> dict[str, int]:
+    if not _UNBALANCED_PATH.exists():
+        return {}
+    try:
+        return json.loads(_UNBALANCED_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_unaddressed(data: dict[str, int]) -> None:
+    try:
+        _UNBALANCED_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _UNBALANCED_PATH.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        logger.warning("matrix_unaddressed: save failed: %s", exc)
+
+
+def get_unaddressed(cid: str) -> int:
+    return _load_unaddressed().get(cid, 0)
+
+
+def increment_unaddressed(cid: str) -> int:
+    data = _load_unaddressed()
+    data[cid] = data.get(cid, 0) + 1
+    _save_unaddressed(data)
+    return data[cid]
+
+
+def reset_unaddressed(cid: str) -> None:
+    data = _load_unaddressed()
+    if cid in data:
+        del data[cid]
+        _save_unaddressed(data)
+
+
+_ESCALATION_LINES: dict[int, str] = {
+    1: "{label} Du ignorerer mig. Det var ikke en mulighed sidst.",
+    2: "{label} Anden gang. Jeg noterer det.",
+    3: "{label} Tredje gang. Mon ikke du behøver høre hvad jeg har at sige?",
+    4: "{label} Nok. Du har ansvaret — men jeg holder øje.",
+    5: "{label} Dette er ikke en anbefaling. Det er en advarsel.",
+}
+
+
+def _escalated_message(label: str, count: int, original_line: str) -> str:
+    if count <= 0:
+        return f"{label} {original_line}"
+    level = min(count, 5)
+    template = _ESCALATION_LINES.get(level, _ESCALATION_LINES[5])
+    return template.format(label=label)
+
+
+def extract_cid(source: str) -> str | None:
+    """Extract karakter-ID fra en nudge source 'matrix/<cid>'. Return None hvis ikke matrix-nudge."""
+    if not source or not source.startswith("matrix/"):
+        return None
+    return source.split("/", 1)[1] if "/" in source else None
+
 
 # ── Karakter-label-definitioner (emojis + one-liners) ─────────────────────────
 
@@ -256,6 +328,64 @@ _SURFACE_BUILDERS: dict[str, Any] = {
 }
 
 
+def push_active_character_nudges() -> int:
+    """Iterer alle Matrix-karakterer og post nudge for hver aktiv med rung_line.
+
+    Undgår dubletter: tjekker nudge_broend.list_pending() for allerede eksisterende
+    pending nudges med source='matrix/<cid>' før push. Returnerer antal nudges postet.
+    Kaldes af prompt_contract.py ved hver prompt-build → nudges dukker op i awareness.
+    """
+    count = 0
+    try:
+        from core.services.nudge_broend import list_pending, push as _push_nudge
+
+        # Hent allerede-pending matrix-nudges for at undgå dubletter
+        pending = list_pending(limit=100)
+        already_pending: set[str] = set()
+        for n in pending:
+            src = str(n.get("source") or "")
+            if src.startswith("matrix/"):
+                already_pending.add(src)
+
+        for ch in _CHARACTERS:
+            cid = ch["id"]
+            source = f"matrix/{cid}"
+            if source in already_pending:
+                continue  # allerede en pending nudge for denne karakter
+
+            try:
+                builder = _SURFACE_BUILDERS.get(cid)
+                if builder is None:
+                    continue
+                surf = builder()
+                if not ch["check"](surf):
+                    continue
+            except Exception:
+                continue
+
+            # Karakteren er aktiv — byg besked med eskalation hvis relevant
+            raw_line = str(surf.get("line") or "").strip() or ch["line"]
+            unaddressed = get_unaddressed(cid)
+            if unaddressed > 0:
+                message = _escalated_message(ch["label"], unaddressed, raw_line)
+            else:
+                message = f"{ch['label']} {raw_line}"
+
+            try:
+                _push_nudge(
+                    source=source,
+                    kind="matrix_character",
+                    message=message,
+                    importance="normal",
+                )
+                count += 1
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return count
+
+
 def _most_active_character() -> dict[str, Any] | None:
     """Return den ene karakter der er mest aktiv lige nu (til den valgfrie sign-off).
 
@@ -302,48 +432,6 @@ def build_matrix_signoff_section() -> str | None:
     if ch is None:
         return None
     return f"MATRIX SIGN-OFF: Afslut dit svar med {ch['label']} {ch['line']}"
-
-
-def push_active_character_nudges() -> int:
-    \"\"\"Iterer alle Matrix-karakterer, push en nudge for hver aktiv med rung_line.
-
-    Dedupliker: tjek om der allerede findes en pending nudge med
-    source='matrix/<id>' før push. Returnér antal nudges postet.
-    Kaldes fra prompt_contract.py i stedet for ensemble-listen.
-    \"\"\"
-    count = 0
-    try:
-        from core.services.nudge_broend import list_pending as _list_nudges, push as _push_nudge
-        pending = _list_nudges(limit=50)
-        pending_sources = {n.get("source", "") for n in pending if n.get("status") == "pending"}
-
-        for ch in _CHARACTERS:
-            cid = ch["id"]
-            try:
-                builder = _SURFACE_BUILDERS.get(cid)
-                if builder is None:
-                    continue
-                surf = builder()
-                if not ch["check"](surf):
-                    continue
-                line = str(surf.get("line") or "").strip() or ch["line"]
-                if not line:
-                    continue
-                source = f"matrix/{cid}"
-                if source in pending_sources:
-                    continue  # allerede pending — undgå dublet
-                _push_nudge(
-                    source=source,
-                    kind="matrix_character",
-                    message=f"{ch['label']} {line}",
-                    importance="normal",
-                )
-                count += 1
-            except Exception:
-                continue
-    except Exception:
-        pass
-    return count
 
 
 def build_matrix_ensemble_prompt_section() -> str | None:

@@ -74,7 +74,10 @@ pause-UX. **Mål (ægte):**
 - [x] **Fuld awareness re-komponeret ved tur-grænse** — `_turn_step_idx` nulstilles pr. tur → step 0 = fuld.
 - [ ] Tool-resultater cold-storaget som `[tool]: summary` (cap 1500), fuld body på disk.
 - [ ] Cache-split ON: stor session cache-hit >80%, latency mod ~7-8s (før/efter-tal).
-- [ ] Ægte token-% under composer (ikke char/3); pause→compact→continue; kontekst bevaret; SSE-lifecycle.
+- [~] **Ægte token-% + %-trigger + synlig pause→compact→fortsæt** — LEVERET i jarvis-code (jc master
+  3488563): `_context_estimate` bruger serverens prompt_tokens (ægte), trigger bundet til %'en
+  (`jm.should_compact`), synlige "🗜 komprimerer…/✓ komprimeret"-linjer, kontekst bevaret. UDESTÅR: ægte
+  LLM-resumé (i dag klient-lokal trunkering) + server-ownership + SSE-lifecycle → kommer i Fase C.
 - [ ] Absorb fyrer alle ~85 trackers + memory + cost + episodes (spejl visible_runs._post_process).
 - [ ] Delt session skrevet fra jarvis-code synlig + konsistent i desk.
 - [ ] Samme prompt i desk vs jarvis-code → byte-identisk hjerne + identisk render.

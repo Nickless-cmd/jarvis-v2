@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6251/12777 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6254/12780 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6251/12777 functions/methods documented (48%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 572 | 753 | 75% |
+| `apps.api.jarvis_api.routes` | 573 | 754 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 58 | 156 | 37% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,7 +24,7 @@ Generated from source. 6251/12777 functions/methods documented (48%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4128 | 8903 | 46% |
+| `core.services` | 4130 | 8905 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -488,9 +488,9 @@ Generated from source. 6251/12777 functions/methods documented (48%). The list b
 - `core/runtime/provider_router.py` :: `resolve_provider_router_target` (L254)
 - `core/runtime/provider_router.py` :: `select_main_agent_target` (L200)
 - `core/runtime/secrets.py` :: `mail_config` (L96)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L452)
-- `core/runtime/settings.py` :: `load_settings` (L548)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L971)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L453)
+- `core/runtime/settings.py` :: `load_settings` (L550)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L974)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)

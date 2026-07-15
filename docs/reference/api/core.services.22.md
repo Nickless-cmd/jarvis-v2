@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_model_types.py`
+_Value/result classes and typed exceptions for the visible model lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `VisibleModelResult` | `` | — | [src](../../../core/services/visible_model_types.py#L22) |
+| class | `VisibleModelDelta` | `` | — | [src](../../../core/services/visible_model_types.py#L44) |
+| class | `VisibleModelStreamDone` | `` | — | [src](../../../core/services/visible_model_types.py#L49) |
+| class | `VisibleModelToolCalls` | `` | — | [src](../../../core/services/visible_model_types.py#L54) |
+| class | `VisibleModelStreamCancelled` | `` | — | [src](../../../core/services/visible_model_types.py#L58) |
+| class | `VisibleModelRateLimited` | `` | Visible-lanens provider er rate-limited (429) eller returnerede en | [src](../../../core/services/visible_model_types.py#L62) |
+| method | `VisibleModelRateLimited.__init__` | `(self, *args, provider=…, model=…)` | — | [src](../../../core/services/visible_model_types.py#L69) |
+
 ## `core/services/visible_runs.py`
 
 | Kind | Name | Signature | Summary | Source |

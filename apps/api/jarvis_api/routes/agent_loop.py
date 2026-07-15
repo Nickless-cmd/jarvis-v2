@@ -1072,3 +1072,37 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
         "finish_reason": "", "result": full,
         "content": full, "done": not collected, "usage": {},
     })
+
+
+# ── Fase B (delt substrat): tur-absorb — fyr den fulde post-tur-hjerne for en
+# KLIENT-drevet tur. Klienten (jarvis-code/desk) driver loopet selv, men serveren
+# ejer hjernen; ved tur-slut POSTer klienten turen hertil så de ~85 trackers +
+# memory-postprocess + kognitive systemer fyrer — samme maskineri visible_runs
+# ._post_process kører for en server-drevet tur. Flag-gated, default OFF (no-op).
+class _AbsorbBody(BaseModel):
+    session_id: str = ""
+    run_id: str = ""
+    user_message: str = ""
+    assistant_response: str = ""
+    provider: str = ""
+    model: str = ""
+    user_id: str = ""
+
+
+@router.post("/v1/agent/turn-absorb", response_model=None)
+async def agent_turn_absorb(body: _AbsorbBody):
+    """Absorbér en klient-drevet tur i hjernen (post-process). Flag
+    agent_turn_absorb_enabled default OFF → no-op (returnerer skipped)."""
+    settings = _settings()
+    if not getattr(settings, "agent_turn_absorb_enabled", False):
+        return {"ok": False, "skipped": "flag_off"}
+    try:
+        from core.services.client_turn_absorb import absorb_client_turn
+        absorb_client_turn(
+            session_id=body.session_id, run_id=body.run_id,
+            user_message=body.user_message, assistant_response=body.assistant_response,
+            provider=body.provider, model=body.model, user_id=body.user_id)
+    except Exception:
+        logger.debug("agent/turn-absorb dispatch fejlede", exc_info=True)
+        return {"ok": False, "error": "absorb_failed"}
+    return {"ok": True, "run_id": body.run_id}

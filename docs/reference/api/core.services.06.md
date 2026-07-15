@@ -502,6 +502,14 @@ _Clarification classifier — score user-message ambiguity._
 | function | `build_clarification_classifier_surface` | `()` | Mission Control surface — does not call the classifier (would need a | [src](../../../core/services/clarification_classifier.py#L116) |
 | function | `_emit_classifier_event` | `(verdict, score)` | — | [src](../../../core/services/clarification_classifier.py#L128) |
 
+## `core/services/client_turn_absorb.py`
+_client_turn_absorb.py — fyr den fulde post-tur-hjerne for en KLIENT-drevet tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_do_absorb` | `(run, assistant_response, user_id)` | Synkron post-process-firing (testbar). Kører i user_context så memory/workspace | [src](../../../core/services/client_turn_absorb.py#L23) |
+| function | `absorb_client_turn` | `(*, session_id, run_id, user_message, assistant_response, provider=…, model=…, user_id=…, lane=…)` | Konstruér en VisibleRun fra klient-data og fyr post-process i en baggrundstråd | [src](../../../core/services/client_turn_absorb.py#L45) |
+
 ## `core/services/cluster_daemon.py`
 _Cluster-daemon primitive — one Central-governed daemon per FAMILY of nerves._
 
@@ -828,21 +836,4 @@ _Completion Satisfaction — "det er nok, jeg er tilfreds."_
 | function | `detect_completion_satisfaction` | `(*, task_outcomes, repetition_on_same_topic=…, user_mood=…)` | — | [src](../../../core/services/completion_satisfaction.py#L8) |
 | function | `build_completion_satisfaction_surface` | `()` | — | [src](../../../core/services/completion_satisfaction.py#L45) |
 | function | `_publish_completion_satisfaction_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/completion_satisfaction.py#L48) |
-
-## `core/services/composite_tools.py`
-_Composite tools — safe self-extension through composition only._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `propose` | `(*, name, description, input_schema, steps, created_by=…)` | Validate and store a proposal. Raises ValueError on invalid input. | [src](../../../core/services/composite_tools.py#L44) |
-| function | `approve` | `(name, *, approved_by=…)` | — | [src](../../../core/services/composite_tools.py#L115) |
-| function | `revoke` | `(name)` | — | [src](../../../core/services/composite_tools.py#L128) |
-| function | `delete` | `(name)` | — | [src](../../../core/services/composite_tools.py#L138) |
-| function | `get` | `(name)` | — | [src](../../../core/services/composite_tools.py#L148) |
-| function | `list_available` | `(*, status=…)` | — | [src](../../../core/services/composite_tools.py#L152) |
-| function | `invoke` | `(name, args)` | Execute an approved composite. Returns {status, steps, result}. | [src](../../../core/services/composite_tools.py#L156) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/composite_tools.py#L224) |
-| function | `_substitute` | `(value, context)` | — | [src](../../../core/services/composite_tools.py#L237) |
-| function | `_resolve_string` | `(s, context)` | Resolve {{...}} templates. | [src](../../../core/services/composite_tools.py#L247) |
-| function | `_lookup` | `(path, context)` | — | [src](../../../core/services/composite_tools.py#L267) |
 

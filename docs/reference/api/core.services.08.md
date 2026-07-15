@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cross_signal_analysis.py`
+_Cross-Signal Analysis — find patterns across cognitive signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `analyze_signal_patterns` | `(*, limit_items=…)` | Find cross-signal patterns from accumulated cognitive data. | [src](../../../core/services/cross_signal_analysis.py#L20) |
+| function | `build_cross_signal_analysis_surface` | `()` | — | [src](../../../core/services/cross_signal_analysis.py#L84) |
+
 ## `core/services/cross_user_share_guard.py`
 _Altid-aktiv deling-guard — stopper Jarvis før han deler info om en ANDEN bruger._
 
@@ -548,14 +556,4 @@ _In-memory device-presence pr. bruger. Efemær — genopbygges af klient-pings._
 | function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L202) |
 | function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L226) |
 | function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L246) |
-
-## `core/services/device_tokens.py`
-_Per-bruger FCM device-tokens. Egen tabel — rører ikke db.py's 33k linjer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/device_tokens.py#L11) |
-| function | `register` | `(user_id, token, platform=…)` | — | [src](../../../core/services/device_tokens.py#L28) |
-| function | `list_for_user` | `(user_id)` | — | [src](../../../core/services/device_tokens.py#L45) |
-| function | `delete` | `(token)` | — | [src](../../../core/services/device_tokens.py#L57) |
 

@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/composite_tools.py`
+_Composite tools — safe self-extension through composition only._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `propose` | `(*, name, description, input_schema, steps, created_by=…)` | Validate and store a proposal. Raises ValueError on invalid input. | [src](../../../core/services/composite_tools.py#L44) |
+| function | `approve` | `(name, *, approved_by=…)` | — | [src](../../../core/services/composite_tools.py#L115) |
+| function | `revoke` | `(name)` | — | [src](../../../core/services/composite_tools.py#L128) |
+| function | `delete` | `(name)` | — | [src](../../../core/services/composite_tools.py#L138) |
+| function | `get` | `(name)` | — | [src](../../../core/services/composite_tools.py#L148) |
+| function | `list_available` | `(*, status=…)` | — | [src](../../../core/services/composite_tools.py#L152) |
+| function | `invoke` | `(name, args)` | Execute an approved composite. Returns {status, steps, result}. | [src](../../../core/services/composite_tools.py#L156) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/composite_tools.py#L224) |
+| function | `_substitute` | `(value, context)` | — | [src](../../../core/services/composite_tools.py#L237) |
+| function | `_resolve_string` | `(s, context)` | Resolve {{...}} templates. | [src](../../../core/services/composite_tools.py#L247) |
+| function | `_lookup` | `(path, context)` | — | [src](../../../core/services/composite_tools.py#L267) |
+
 ## `core/services/computer_use_policy.py`
 _Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools._
 
@@ -623,12 +640,4 @@ _Cross-Session Threads — sustained thought lines across sessions._
 | function | `build_cross_session_threads_surface` | `()` | — | [src](../../../core/services/cross_session_threads.py#L150) |
 | function | `_surface_summary` | `(counts)` | — | [src](../../../core/services/cross_session_threads.py#L189) |
 | function | `build_cross_session_threads_prompt_section` | `()` | Surface active + paused threads so Jarvis can resume them. | [src](../../../core/services/cross_session_threads.py#L202) |
-
-## `core/services/cross_signal_analysis.py`
-_Cross-Signal Analysis — find patterns across cognitive signals._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `analyze_signal_patterns` | `(*, limit_items=…)` | Find cross-signal patterns from accumulated cognitive data. | [src](../../../core/services/cross_signal_analysis.py#L20) |
-| function | `build_cross_signal_analysis_surface` | `()` | — | [src](../../../core/services/cross_signal_analysis.py#L84) |
 

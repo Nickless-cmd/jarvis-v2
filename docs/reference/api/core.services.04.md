@@ -551,24 +551,24 @@ _Merovingian — den konservative ældste der tvinger Centralen til at forsvare 
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_merovingian.py#L43) |
-| function | `_enforced` | `()` | Shadow-først: enforcement er OFF indtil flag EKSPLICIT flippes efter shadow-eval. §8 forbliver | [src](../../../core/services/central_merovingian.py#L47) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_merovingian.py#L59) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_merovingian.py#L67) |
-| function | `generate_counter` | `(hyp)` | Generér en modhypotese SYMBOLSK (ingen LLM) fra notation/statement. Self-safe. | [src](../../../core/services/central_merovingian.py#L85) |
-| function | `_variable_of` | `(hyp)` | Stabil variabel-nøgle: source + family (så track-record slås op pr. konkret variabel). | [src](../../../core/services/central_merovingian.py#L115) |
-| function | `variable_track_record` | `(variable)` | Devil's advocate-data: hvordan er det gået SIDSTE gang samme variabel blev justeret? | [src](../../../core/services/central_merovingian.py#L130) |
-| function | `review` | `(hyp)` | Kernen: generér modhypotese + tjek track-record → approved | challenged. Registrerer en | [src](../../../core/services/central_merovingian.py#L159) |
-| function | `_count_challenges` | `(variable)` | — | [src](../../../core/services/central_merovingian.py#L187) |
-| function | `_record_challenge` | `(hyp_id, variable, counter, tr, status, cools_off)` | — | [src](../../../core/services/central_merovingian.py#L197) |
-| function | `resolve_challenge` | `(hyp_id, *, explanation)` | Centralen skriver en (interlanguage-)forklaring på HVORFOR modhypotesen er forkert → adoption | [src](../../../core/services/central_merovingian.py#L213) |
-| function | `is_adoption_blocked` | `(hyp_id)` | Enforcement-tjek: er adoption pt. blokeret af en aktiv, uforklaret cooling-off? I SHADOW-mode | [src](../../../core/services/central_merovingian.py#L234) |
-| function | `expire_cooling` | `()` | Cadence: udløb cooling-off-perioder hvis tiden er gået (status → expired). Self-safe. | [src](../../../core/services/central_merovingian.py#L252) |
-| function | `_maturing_hypotheses` | `(limit=…)` | — | [src](../../../core/services/central_merovingian.py#L270) |
-| function | `scan_and_challenge` | `(*, trigger=…, last_visible_at=…)` | Fase 1-cadence: scan modne hypoteser → generér+log modhypoteser (shadow: blokerer intet). | [src](../../../core/services/central_merovingian.py#L285) |
-| function | `_has_open_challenge` | `(hyp_id)` | — | [src](../../../core/services/central_merovingian.py#L307) |
-| function | `list_challenges` | `(*, active_only=…, limit=…)` | — | [src](../../../core/services/central_merovingian.py#L318) |
-| function | `build_merovingian_surface` | `()` | Central-CLI-view (den nye MC): aktive udfordringer + cooling-offs + følt linje. Self-safe. | [src](../../../core/services/central_merovingian.py#L330) |
+| function | `_now` | `()` | — | [src](../../../core/services/central_merovingian.py#L49) |
+| function | `_enforced` | `()` | Shadow-først: enforcement er OFF indtil flag EKSPLICIT flippes efter shadow-eval. §8 forbliver | [src](../../../core/services/central_merovingian.py#L53) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_merovingian.py#L65) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_merovingian.py#L73) |
+| function | `generate_counter` | `(hyp)` | Generér en modhypotese SYMBOLSK (ingen LLM) fra notation/statement. Self-safe. | [src](../../../core/services/central_merovingian.py#L91) |
+| function | `_variable_of` | `(hyp)` | Stabil variabel-nøgle: source + family (så track-record slås op pr. konkret variabel). | [src](../../../core/services/central_merovingian.py#L121) |
+| function | `variable_track_record` | `(variable)` | Devil's advocate-data: hvordan er det gået SIDSTE gang samme variabel blev justeret? | [src](../../../core/services/central_merovingian.py#L136) |
+| function | `review` | `(hyp)` | Kernen: generér modhypotese + tjek track-record → approved | challenged. Registrerer en | [src](../../../core/services/central_merovingian.py#L165) |
+| function | `_count_challenges` | `(variable)` | — | [src](../../../core/services/central_merovingian.py#L193) |
+| function | `_record_challenge` | `(hyp_id, variable, counter, tr, status, cools_off)` | — | [src](../../../core/services/central_merovingian.py#L203) |
+| function | `resolve_challenge` | `(hyp_id, *, explanation)` | Centralen skriver en (interlanguage-)forklaring på HVORFOR modhypotesen er forkert → adoption | [src](../../../core/services/central_merovingian.py#L219) |
+| function | `is_adoption_blocked` | `(hyp_id)` | Enforcement-tjek: er adoption pt. blokeret af en aktiv, uforklaret cooling-off? I SHADOW-mode | [src](../../../core/services/central_merovingian.py#L240) |
+| function | `expire_cooling` | `()` | Cadence: udløb cooling-off-perioder hvis tiden er gået (status → expired). Self-safe. | [src](../../../core/services/central_merovingian.py#L258) |
+| function | `_maturing_hypotheses` | `(limit=…)` | — | [src](../../../core/services/central_merovingian.py#L276) |
+| function | `scan_and_challenge` | `(*, trigger=…, last_visible_at=…)` | Fase 1-cadence: scan modne hypoteser → generér+log modhypoteser (shadow: blokerer intet). | [src](../../../core/services/central_merovingian.py#L291) |
+| function | `_has_open_challenge` | `(hyp_id)` | — | [src](../../../core/services/central_merovingian.py#L313) |
+| function | `list_challenges` | `(*, active_only=…, limit=…)` | — | [src](../../../core/services/central_merovingian.py#L324) |
+| function | `build_merovingian_surface` | `()` | Central-CLI-view (den nye MC): aktive udfordringer + cooling-offs + følt linje. Self-safe. | [src](../../../core/services/central_merovingian.py#L336) |
 
 ## `core/services/central_model_meta.py`
 _core/services/central_model_meta.py_

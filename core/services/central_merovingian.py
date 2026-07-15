@@ -34,8 +34,14 @@ from core.runtime.db_core import connect
 _COOLING_HOURS = 24
 _ABANDON_DAYS = 30
 _REPEAT_LIMIT = 3
-# Nær-tærskel: hypoteser Merovingian gider udfordre (lige under handlings-tærsklen 0.7/3).
-_NEAR_CONFIDENCE = 0.6
+# Nær-tærskel: hypoteser Merovingian gider udfordre. RECALIBRERET 2026-07-15: var 0.6
+# ("lige under en antaget handlings-tærskel 0.7"), MEN confidence-motoren topper empirisk
+# ved ~0.58 — INGEN aktiv hypotese nåede nogensinde 0.6 → Merovingian så 0 modne og loggede
+# 0 udfordringer efter lang tids drift (samme klasse fejl som Trainman: tærskel uden for det
+# interval data faktisk lever i). 0.55 fanger plateau-båndet (de reelt modneste hypoteser)
+# uden at flage mid-pack. NB: den antagne handlings-tærskel 0.7 er også uden for rækkevidde —
+# et separat systemisk spørgsmål om hvorfor hypotese-confidence kapper ved 0.58.
+_NEAR_CONFIDENCE = 0.55
 _NEAR_SAMPLES = 2
 _ACTIVE = ("active", "open", "pending", "testing")
 

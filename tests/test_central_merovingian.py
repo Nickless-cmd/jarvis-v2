@@ -65,6 +65,21 @@ def test_good_track_record_approves(db):
     assert tr["support"] is False
 
 
+def test_maturing_gate_within_reach_of_confidence_ceiling(db):
+    """Regression (2026-07-15): hypotese-confidence plateauer empirisk ved ~0.58, men
+    _NEAR_CONFIDENCE var 0.6 → Merovingian så ALDRIG en moden hypotese (maturing=0) og
+    loggede 0 udfordringer. Nær-tærsklen SKAL ligge inden for det interval hypoteser
+    faktisk når, ellers er hele scanneren død kode."""
+    assert m._NEAR_CONFIDENCE <= 0.58
+    c = sqlite3.connect(db)
+    c.execute("""INSERT INTO central_hypotheses (hyp_id, statement, prediction, confidence,
+        grounded_samples, status, source, provenance_json, notation_il)
+        VALUES (?,?,?,?,?,?,?,?,?)""",
+        ("ceil1", "s", "p", 0.58, 2, "active", "some_src", "{}", ""))
+    c.commit(); c.close()
+    assert "ceil1" in [h["hyp_id"] for h in m._maturing_hypotheses()]
+
+
 # ── review + cooling-off (shadow: logges, blokerer ikke) ──
 
 def test_review_challenges_and_records(db):

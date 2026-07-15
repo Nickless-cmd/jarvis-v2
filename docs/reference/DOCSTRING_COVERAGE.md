@@ -680,7 +680,7 @@ Generated from source. 6261/12792 functions/methods documented (48%). The list b
 - `core/services/central_lexicon.py` :: `operators` (L189)
 - `core/services/central_machines.py` :: `build_machines_surface` (L73)
 - `core/services/central_machines.py` :: `record_machines` (L77)
-- `core/services/central_merovingian.py` :: `list_challenges` (L318)
+- `core/services/central_merovingian.py` :: `list_challenges` (L324)
 - `core/services/central_mourning.py` :: `list_epitaphs` (L131)
 - `core/services/central_prompt_composer.py` :: `is_live_enabled` (L97)
 - `core/services/central_prompt_explore.py` :: `is_explore_live` (L54)

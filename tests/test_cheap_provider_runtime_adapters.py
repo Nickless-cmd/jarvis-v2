@@ -146,6 +146,22 @@ def test_zai_zhipu_free_glm_flash():
     assert is_routable_provider("zai") and "zai" in _OPENAI_COMPATIBLE_PROVIDERS
 
 
+def test_huggingface_router_free_tool_capable():
+    """15. jul: HF Router — Bjørns eksist. hf_-token. Stærke tool-capable modeller
+    (Llama-3.3-70B/Qwen2.5-72B/DeepSeek-V3). Credit-meteret men konto=canPay:False →
+    nul spend-risiko (402 v. tom credit). Konservativt daily_limit."""
+    from core.services.cheap_provider_runtime_adapters import (
+        CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_cost_class,
+        _OPENAI_COMPATIBLE_PROVIDERS)
+    h = CHEAP_PROVIDER_DEFAULTS["huggingface"]
+    assert h["auth_kind"] == "bearer"
+    assert h["protocol"] == "openai-chat"
+    assert h["base_url"] == "https://router.huggingface.co/v1"
+    assert h["daily_limit"] <= 50            # credit-meteret → konservativt loft
+    assert provider_cost_class("huggingface") == "free"
+    assert is_routable_provider("huggingface") and "huggingface" in _OPENAI_COMPATIBLE_PROVIDERS
+
+
 def test_require_credentials_still_raises_for_bearer_without_key(monkeypatch):
     """Guarden må kun gælde auth_kind=none. En bearer-provider uden nøgle skal stadig
     rejse auth-not-ready (ellers ville vi kalde en betalt/nøgle-provider uden auth)."""

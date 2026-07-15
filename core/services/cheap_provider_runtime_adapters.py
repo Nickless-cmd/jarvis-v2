@@ -358,6 +358,26 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["glm-4.5-flash"],
     },
+    # HuggingFace Router (15. jul, Bjørns eksisterende hf_-token fundet lokalt):
+    # OpenAI-compat `router.huggingface.co/v1`. STÆRK tool-capable (Llama-3.3-70B/
+    # Qwen2.5-72B/DeepSeek-V3 → tool_calls=1 verificeret). CREDIT-METERET: gratis
+    # månedlige credits, IKKE ubegrænset. Men konto = free + `canPay:False` (ingen
+    # betalingsmetode) → NUL spend-risiko: løber credits tør → 402 (floor håndterer).
+    # Derfor konservativt daily_limit så månedens credit ikke brændes på én dag.
+    # fineGrained-token m. Inference-Providers-scope. Nøgle gemt CT105 — ALDRIG repo.
+    "huggingface": {
+        "label": "HuggingFace Router",
+        "priority": 42,
+        "base_url": "https://router.huggingface.co/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 10,
+        "daily_limit": 40,
+        "cost_class": "free",
+        "static_models": ["meta-llama/Llama-3.3-70B-Instruct",
+                          "Qwen/Qwen2.5-72B-Instruct", "deepseek-ai/DeepSeek-V3"],
+    },
     # Copilot Pro (15. jul) — Bjørns betalte abonnement, delt i to efter multiplier:
     # copilot-free = 0x (inkluderet, nul premium-requests) → GRATIS, i cheap lane + pool.
     "copilot-free": {

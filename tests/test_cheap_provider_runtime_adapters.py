@@ -177,6 +177,20 @@ def test_reka_edge_conservative_cap():
     assert is_routable_provider("reka") and "reka" in _OPENAI_COMPATIBLE_PROVIDERS
 
 
+def test_bazaarlink_auto_free_sustained():
+    """15. jul: BazaarLink auto:free — perpetual gratis (6/6 kald cost=0, bestod den
+    SiliconFlow-hærdede vedvarende-test). Chat-stærk, tool-svag → cheap lane. cost=free."""
+    from core.services.cheap_provider_runtime_adapters import (
+        CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_cost_class,
+        _OPENAI_COMPATIBLE_PROVIDERS)
+    b = CHEAP_PROVIDER_DEFAULTS["bazaarlink"]
+    assert b["auth_kind"] == "bearer"
+    assert b["base_url"] == "https://bazaarlink.ai/api/v1"
+    assert b["static_models"] == ["auto:free"]        # kun den gratis auto-route
+    assert provider_cost_class("bazaarlink") == "free"
+    assert is_routable_provider("bazaarlink") and "bazaarlink" in _OPENAI_COMPATIBLE_PROVIDERS
+
+
 def test_require_credentials_still_raises_for_bearer_without_key(monkeypatch):
     """Guarden må kun gælde auth_kind=none. En bearer-provider uden nøgle skal stadig
     rejse auth-not-ready (ellers ville vi kalde en betalt/nøgle-provider uden auth)."""

@@ -396,6 +396,24 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["reka-edge-2603"],
     },
+    # BazaarLink (15. jul, Bjørn-nøgle): OpenAI-compat `bazaarlink.ai/api/v1`, bearer.
+    # `auto:free` = ÆGTE perpetual gratis — 6/6 vedvarende kald cost=0 (BESTOD den
+    # SiliconFlow-hærdede test: gratis BLIVER gratis, ingen trial-gate). Ærlig cost-
+    # rapportering (betalt deepseek-v4-flash rapporterede cost=1.9e-05). CHAT-stærk,
+    # TOOL-SVAG: med tools returnerer auto:free tom tekst → cheap lane/indre liv, ikke
+    # agent-arbejdshest (agent-lane falder over til tool-capable). Nøgle CT105 — ALDRIG repo.
+    "bazaarlink": {
+        "label": "BazaarLink",
+        "priority": 52,
+        "base_url": "https://bazaarlink.ai/api/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 20,
+        "daily_limit": 1000,
+        "cost_class": "free",
+        "static_models": ["auto:free"],
+    },
     # SiliconFlow AFVIST 15. jul: så gratis ud i et lille trial-vindue (~8 kald), men
     # hård-gater derefter til 403 code=30001 "account balance insufficient" på ALLE
     # kald (selv max_tokens=100, efter pause). Kræver rigtig betaling for vedvarende

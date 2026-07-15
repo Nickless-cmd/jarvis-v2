@@ -947,6 +947,28 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # cluster-daemon FAMILIE #10 (infra) — DEN SIDSTE familie: cache_maintenance +
+    # signal_decay + cost_optimization + ground_truth_registry + wakeup_cleanup +
+    # file_awareness + mail_checker + visual_memory foldet i ÉN Central-styret familie.
+    # Kører LIVE (prove-then-retire END STATE) → de 8 gamle daemons er PENSIONERET
+    # (default_enabled=False) → deres gamle tick-sites (signal_decay, mail_checker,
+    # visual_memory, wakeup_cleanup, cost_optimization i heartbeaten) no-op'er via
+    # is_enabled; cache_maintenance/ground_truth_registry/file_awareness VAR FORÆLDRELØSE
+    # (aldrig tikket) → familien giver dem deres første live-tick. INGEN LLM-medlem →
+    # ingen gated tier: alle otte kører i den UBETINGEDE tier og self-throttler (intern
+    # for cache/signal_decay, familie-cadence for resten, hver-tick for file_awareness).
+    # Per-medlem try/except → én fejlende maintenance-daemon blokerer aldrig de øvrige.
+    # Self-safe: crasher aldrig ind i heartbeaten.
+    if _dm.is_enabled("cluster_infra"):
+        try:
+            from core.services.cluster_daemon_families import tick_cluster_infra
+            _infra_cluster_result = _hb._daemon_tick_with_deadline(
+                "cluster_infra", tick_cluster_infra, deadline_seconds=40.0,
+            )
+            _dm.record_daemon_tick("cluster_infra", _infra_cluster_result or {})
+        except Exception:
+            pass
+
     # Creative drift daemon — spontaneous unexpected associations
     if _dm.is_enabled("creative_drift"):
         try:

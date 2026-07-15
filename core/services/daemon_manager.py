@@ -291,15 +291,18 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 60,
-        "description": "Archives and deletes stale signals older than 24h across all signal tables",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_infra overtager (non-LLM maintenance member; kører ubetinget hver familie-tick; self-throttler INTERNT via _last_tick_at+cadence). Signal-archive-cleanup BEVARET; heartbeat-kaldet er is_enabled-gatet → no-op.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_infra] Archives and deletes stale signals older than 24h across all signal tables",
     },
     "cache_maintenance": {
         "module": "core.services.cache_maintenance_daemon",
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 360,
-        "default_enabled": True,
-        "description": "6t cleanup af web_cache: sletter udløbne entries (web_search + web_scrape), logger cache-sammensætning",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_infra overtager (non-LLM maintenance member; VAR FORÆLDRELØS — registreret men aldrig tikket → familien giver den sit FØRSTE live-tick; kører ubetinget, self-throttler INTERNT 6t via _last_tick_at+cadence). web_cache-cleanup BEVARET.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_infra] 6t cleanup af web_cache: sletter udløbne entries (web_search + web_scrape), logger cache-sammensætning",
     },
     "tiktok_content": {
         "module": "core.services.tiktok_content_daemon",
@@ -333,7 +336,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_check_at",
         "reset_value": None,
         "default_cadence_minutes": 15,
-        "description": "Checks jarvis@srvlab.dk inbox for new emails and notifies via eventbus",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_infra overtager (non-LLM member, IMAP-poll; kører ubetinget hver familie-tick; self-throttler på 15min familie-cadence — havde ingen intern timer, kørte hver heartbeat). mail-events BEVARET; heartbeat-kaldet er is_enabled-gatet → no-op.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_infra] Checks jarvis@srvlab.dk inbox for new emails and notifies via eventbus",
     },
     "current_pull": {
         "module": "core.services.current_pull",
@@ -349,7 +354,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 360,
-        "description": "Lag 6: webcam snapshot + vision model room description (4x/day)",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_infra overtager (LOKAL vision-model = 0 API-tokens; kører ubetinget hver familie-tick; self-throttler på 360min familie-cadence — havde ingen intern timer, kørte hver heartbeat) så 4x/dag-cadence + webcam-capture-hit bevares. Lag-6-records BEVARET; heartbeat-kaldet er is_enabled-gatet → no-op.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_infra] Lag 6: webcam snapshot + vision model room description (4x/day)",
     },
     "task_worker": {
         "module": "core.services.task_worker",
@@ -419,8 +426,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 60,
-        "default_enabled": True,
-        "description": "Lag 3 (Lying Engine): 60min refresh af Ground Truth Registry — system_model, host, expression_count, commit_count, daemon_count",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_infra overtager (non-LLM member; VAR FORÆLDRELØS — registreret men aldrig tikket → familien giver den sit FØRSTE live-tick; kører ubetinget, self-throttler på 60min familie-cadence). LOAD-BEARING (Lying Engine, Lag 3): refresh_ground_truth-cachen som verify_system_claim/ground_truth_summary læser BEVARET.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_infra] Lag 3 (Lying Engine): 60min refresh af Ground Truth Registry — system_model, host, expression_count, commit_count, daemon_count",
     },
     "associative_recall": {
         "module": "core.services.associative_recall",
@@ -436,8 +444,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_unused_reset_marker",
         "reset_value": None,
         "default_cadence_minutes": 60,
-        "default_enabled": True,
-        "description": "A3: ryd consumed/cancelled/stale-fired wakeups ældre end hhv 7/7/24 dage — forhindrer wakeup-bloat",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_infra overtager (non-LLM maintenance member; kører ubetinget hver familie-tick; self-throttler på 60min familie-cadence — havde ingen intern timer, kørte hver heartbeat). wakeup-cleanup BEVARET; heartbeat-kaldet er is_enabled-gatet → no-op.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_infra] A3: ryd consumed/cancelled/stale-fired wakeups ældre end hhv 7/7/24 dage — forhindrer wakeup-bloat",
     },
     "memory_write_queue": {
         "module": "core.services.memory_write_queue",
@@ -462,8 +471,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 60,
-        "default_enabled": True,
-        "description": "D5: cost optimization — monitors daily/weekly LLM spend against budget, emits alerts at 80%+ utilization",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_infra overtager (non-LLM member; kører ubetinget hver familie-tick; self-throttler på 60min familie-cadence — havde ingen intern timer, kørte hver heartbeat). cost.*-events BEVARET; heartbeat-kaldet er is_enabled-gatet → no-op.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_infra] D5: cost optimization — monitors daily/weekly LLM spend against budget, emits alerts at 80%+ utilization",
     },
     "identity_sketch": {
         "module": "core.services.identity_sketch",
@@ -488,7 +498,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": None,
         "reset_value": None,
         "default_cadence_minutes": 5,
-        "description": "Somatisk fil-awareness: mærk når nogen piller i mine filer live",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_infra overtager (LOAD-BEARING, non-LLM; tick_file_awareness er en IDEMPOTENT watcher-ensure → kører ubetinget hver familie-tick, ingen throttle). VAR FORÆLDRELØS SOM TICK: tick_file_awareness blev aldrig kaldt nogetsteds (watcheren startede kun hvis anden sti kaldte start_file_awareness) → familien giver den en pålidelig per-tick ensure. file_awareness.change-events + get_recent_events-buffer BEVARET.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_infra] Somatisk fil-awareness: mærk når nogen piller i mine filer live",
     },
     "decision_review": {
         "module": "core.services.decision_review_daemon",
@@ -736,6 +748,36 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # signal_surface_router). heartbeaten gater på is_enabled, medlemmerne self-throttler.
         # Aldrig begge live.
         "description": "cluster-daemon FAMILIE #9 (projects) LIVE: task_worker (LOAD-BEARING, non-LLM, FØRST i ubetinget tier, budget=3, drænes hver tick uden throttle) + my_projects_watchdog (240min) + life_projects_reassessment (1440min/24t) + thought_action_proposal (fragment-dedup) foldet i ÉN familie; INGEN LLM-medlem (fail-open gate); erstatter de 4 pensionerede daemons; bevarer alle outputs (task-dræn, watchdog-genstarter, reassessment_due, thought_action_proposal.created/proposal-surface).",
+    },
+    "cluster_infra": {
+        "module": "core.services.cluster_daemon_families",
+        "reset_var": "_INFRA_FAMILY",
+        "reset_value": None,
+        "default_cadence_minutes": 2,
+        "default_enabled": True,
+        # Cluster-daemon-konsolidering, FAMILIE #10 (infra) — DEN SIDSTE familie:
+        # cache_maintenance + signal_decay + cost_optimization + ground_truth_registry
+        # + wakeup_cleanup + file_awareness + mail_checker + visual_memory foldet ind i
+        # ÉN Central-styret familie (i cluster_daemon_families.py). Kører LIVE (prove-
+        # then-retire END STATE) — de 8 gamle daemons er PENSIONERET (default_enabled=
+        # False, retired 2026-07-15). INGEN LLM-medlem: alle otte er regel/DB-drevne
+        # (visual_memory bruger en LOKAL vision-model = 0 API-tokens), så der er INGEN
+        # gated (LLM) tier — hver medlem kører i den UBETINGEDE tier og self-throttler
+        # på egen cadence; familiens ÉNE gate er fail-open. Self-throttle: cache_
+        # maintenance (6t) + signal_decay self-throttler INTERNT; file_awareness kører
+        # hver tick (idempotent watcher-ensure); wakeup_cleanup/cost_optimization/
+        # ground_truth_registry (60min), mail_checker (15min) og visual_memory (360min)
+        # self-throttler på familie-cadence (havde ingen intern timer). TRE var
+        # FORÆLDRELØSE (registreret men aldrig tikket): cache_maintenance,
+        # ground_truth_registry og file_awareness (som tick) — familien giver dem deres
+        # FØRSTE pålidelige live-tick. Per-medlem try/except: én fejlende
+        # maintenance-daemon blokerer ALDRIG de øvrige syv. De 5 gamle tick-sites
+        # (signal_decay, mail_checker, visual_memory, wakeup_cleanup, cost_optimization
+        # i heartbeaten) no-op'er via is_enabled. Bevarer alle outputs (web_cache-
+        # cleanup, signal-archive, cost.*-events, ground-truth-cache som Lying Engine
+        # læser, wakeup-cleanup, file_awareness.change-tamper-events, mail-events, Lag-6
+        # visual-records). Self-safe: crasher aldrig ind i heartbeaten. Aldrig begge live.
+        "description": "cluster-daemon FAMILIE #10 (infra) LIVE — SIDSTE familie: cache_maintenance + signal_decay + cost_optimization + ground_truth_registry + wakeup_cleanup + file_awareness + mail_checker + visual_memory foldet i ÉN familie; INGEN LLM-medlem (fail-open gate); alle 8 kører ubetinget og self-throttler (intern for cache/signal_decay, familie-cadence for resten, hver-tick for file_awareness); 3 var forældreløse (cache_maintenance/ground_truth_registry/file_awareness) → første live-tick; erstatter de 8 pensionerede daemons; bevarer alle outputs (cache/signal-cleanup, cost.*-events, ground-truth-cache, wakeup-cleanup, tamper-events, mail-events, Lag-6 visual-records).",
     },
 }
 

@@ -987,3 +987,315 @@ def tick_cluster_projects(snapshot: dict | None = None, *, shadow: bool | None =
     # Unconditional tier — task_worker FIRST — runs REGARDLESS of the gate above.
     _run_projects_unconditional(snap, result)
     return result
+
+
+# ===========================================================================
+# Family #10 — infra / maintenance (cache_maintenance + signal_decay +
+#   cost_optimization + ground_truth_registry + wakeup_cleanup + file_awareness +
+#   mail_checker + visual_memory) — THE LAST cluster-daemon family
+# ===========================================================================
+#
+# The INFRASTRUCTURE / MAINTENANCE family. Eight daemons that keep Jarvis'
+# machine, caches, budget-awareness, ground truth, mail and eyes healthy. Like
+# family #9 (projects) this family has NO LLM member — every member is
+# rules/DB-driven (visual_memory runs a LOCAL ollama vision model at 0 API tokens,
+# so it is a non-LLM-COST member too). There is therefore NO gated (LLM) tier:
+# every member runs in the UNCONDITIONAL tier and self-throttles on its OWN
+# cadence. The ONE family gate is fail-open (no gated member signals → it always
+# fires); the load-reduction is purely structural: ONE family tick + ONE registry
+# entry replacing eight (three of which were ORPHANED — registered but never
+# ticked anywhere).
+#
+#   * cache_maintenance — RULES, MAINTENANCE. 6h cleanup of ``web_cache``: deletes
+#     expired web_search/web_scrape entries + logs cache composition. Self-throttles
+#     INTERNALLY (``_last_tick_at`` + 6h ``_CADENCE_HOURS``) → run UNCONDITIONALLY
+#     every family tick. Was ORPHANED: registered (default_enabled=True) but NO tick
+#     site anywhere → the family gives it its FIRST live tick. Output: maintenance
+#     only (keeps the web_cache table from bloating).
+#
+#   * signal_decay — RULES, MAINTENANCE. Archives+deletes stale signals (>24h) across
+#     all signal tables and refreshes development-focus/goal/reflection/
+#     dream-hypothesis/witness runtime statuses. Self-throttles INTERNALLY
+#     (``_last_tick_at`` + ``_CADENCE_HOURS``) → run UNCONDITIONALLY. Had an
+#     is_enabled-gated heartbeat tick site (now retired → no-op). Output: maintenance
+#     (keeps the signal tables from unbounded growth).
+#
+#   * cost_optimization — RULES. Monitors daily/weekly LLM spend against budget,
+#     emits ``cost.daily_report`` / ``cost.budget_alert`` / ``cost.weekly_report``
+#     events at 80%+ utilization. Had NO internal timer (ran every heartbeat via its
+#     is_enabled-gated site) → the family gives it a 60-min self-throttle to keep its
+#     registry cadence. LOAD-BEARING: the cost.* events feed cost/budget observers.
+#
+#   * ground_truth_registry — RULES. 60-min refresh of the Ground-Truth Registry
+#     (system_model, host, expression_count, commit_count, daemon_count, gpu). Was
+#     ORPHANED: registered (default_enabled=True) but NO tick site anywhere → the
+#     family gives it its FIRST live tick. Had NO internal timer → 60-min family
+#     self-throttle. LOAD-BEARING (Lying Engine, Lag 3): refresh_ground_truth()
+#     updates the cache that verify_system_claim / verify_stats_claim /
+#     ground_truth_summary (claim_scanner) read to catch fabricated system facts.
+#
+#   * wakeup_cleanup — RULES, MAINTENANCE. Prunes consumed/cancelled/stale-fired
+#     wakeups older than 7/7/24 days (prevents wakeup-bloat). Had NO internal timer
+#     (ran every heartbeat via its is_enabled-gated site) → 60-min family
+#     self-throttle. Output: maintenance (keeps the wakeups table bounded).
+#
+#   * file_awareness — RULES, LOAD-BEARING. Somatic file-awareness: a watchdog
+#     thread that flags external edits to Jarvis' own code (tamper signal →
+#     ``file_awareness.change`` events; visible_inner_life reads get_recent_events).
+#     ``tick_file_awareness`` is an IDEMPOTENT watcher-ensure (starts the watcher if
+#     down, else reports status) → run UNCONDITIONALLY every family tick (cheap, no
+#     throttle). Was ORPHANED as a TICK: ``tick_file_awareness`` was never called
+#     anywhere (the watcher only started if some other path called
+#     start_file_awareness) → the family gives it a reliable per-tick ensure.
+#
+#   * mail_checker — RULES (IMAP poll, no LLM). Checks jarvis@srvlab.dk for new mail
+#     and publishes eventbus notifications for unseen messages. Had NO internal timer
+#     (ran every heartbeat via its is_enabled-gated site) → 15-min family
+#     self-throttle to keep its registry cadence and avoid per-heartbeat IMAP polls.
+#     LOAD-BEARING: the mail events drive Jarvis' inbox awareness.
+#
+#   * visual_memory — LOCAL-VISION (0 API tokens). Lag 6: webcam snapshot + local
+#     ollama vision-model room description (4x/day). Non-LLM-COST but expensive
+#     (webcam capture + local inference), and had NO internal timer (ran every
+#     heartbeat via its is_enabled-gated site) → 360-min family self-throttle to keep
+#     its "4x/day" cadence. LOAD-BEARING: the stored visual-memory records are Lag-6
+#     sensory memory.
+#
+# Self-safe throughout: a member error is captured into ``member_errors`` and never
+# propagated — one failing maintenance daemon NEVER blocks the other seven;
+# ``tick_cluster_infra`` never raises into the heartbeat.
+
+INFRA_FAMILY = "cluster_infra"
+
+
+# ---------------------------------------------------------------------------
+# Per-member self-throttle (for the members that had no internal cadence guard)
+# ---------------------------------------------------------------------------
+
+_INFRA_THROTTLE: dict[str, float] = {}
+
+
+def _infra_throttle_ready(key: str, minutes: float) -> bool:
+    """Return True (and stamp 'now') iff ``minutes`` have elapsed since the last
+    ready for ``key``. First call is always ready (last defaults to 0). Gives the
+    members that lacked an internal timer their own cadence self-throttle so folding
+    them into the every-tick family does not change how often they fire."""
+    now = time.time()
+    last = _INFRA_THROTTLE.get(key, 0.0)
+    if (now - last) >= float(minutes) * 60.0:
+        _INFRA_THROTTLE[key] = now
+        return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Shared snapshot — this family has NO LLM member and no shared inputs
+# ---------------------------------------------------------------------------
+
+
+def _collect_infra_snapshot() -> dict[str, Any]:
+    """Gather the infra family's shared snapshot once per tick.
+
+    This family has NO LLM member (no gate signals) and every member self-collects
+    inside its own tick, so there is nothing to gather here — the snapshot exists
+    only to keep the primitive's one-gate/Central-trace contract uniform with the
+    other families. Returns an empty dict; self-safe by construction.
+    """
+    return {}
+
+
+def build_infra_family() -> ClusterDaemon:
+    """Construct the infra/maintenance cluster-daemon (family #10), LIVE.
+
+    NO gated LLM member — all eight members are rules/DB-driven (visual_memory uses
+    a LOCAL vision model at 0 API tokens) and run in the UNCONDITIONAL tier via
+    ``tick_cluster_infra``. The ClusterDaemon is built with an EMPTY ``members`` list
+    (the gated tier): its one-gate call is therefore fail-open (no signals → always
+    fires) and exists only to keep the family's ONE-gate invariant + Central trace
+    continuous, mirroring the projects family (#9).
+    """
+    return ClusterDaemon(
+        family_name=INFRA_FAMILY,
+        cluster="cognition",
+        collect_snapshot=_collect_infra_snapshot,
+        members=[],  # no LLM member — every member is unconditional (see below)
+    )
+
+
+# Process-level singleton (keeps the family's Central trace continuous across
+# heartbeat ticks, mirroring the other families).
+_INFRA_FAMILY: ClusterDaemon | None = None
+
+
+def infra_family() -> ClusterDaemon:
+    global _INFRA_FAMILY
+    if _INFRA_FAMILY is None:
+        _INFRA_FAMILY = build_infra_family()
+    return _INFRA_FAMILY
+
+
+# ---------------------------------------------------------------------------
+# UNCONDITIONAL (non-LLM) member live dispatchers
+# ---------------------------------------------------------------------------
+
+
+def _infra_file_awareness_live(_snap: dict) -> dict[str, Any]:
+    """Ensure the file-awareness watcher thread is running (tamper detection).
+    IDEMPOTENT + cheap → runs every family tick (no throttle). Preserves its outputs
+    (the file_awareness.change events + the in-memory event buffer that
+    visible_inner_life reads via get_recent_events)."""
+    from core.services.file_awareness_daemon import tick_file_awareness
+    return tick_file_awareness()
+
+
+def _infra_cache_maintenance_live(_snap: dict) -> dict[str, Any]:
+    """6h web_cache cleanup. Rules-based, no LLM. Self-throttles INTERNALLY
+    (``_last_tick_at`` + 6h cadence), so the family calls it every tick and the
+    daemon itself decides whether to run. Was ORPHANED (no old tick site)."""
+    from core.services.cache_maintenance_daemon import tick_cache_maintenance_daemon
+    return tick_cache_maintenance_daemon()
+
+
+def _infra_signal_decay_live(_snap: dict) -> dict[str, Any]:
+    """Archive+delete stale signals + refresh signal runtime statuses. Rules-based,
+    no LLM. Self-throttles INTERNALLY (``_last_tick_at`` + cadence), so the family
+    calls it every tick and the daemon decides whether to run."""
+    from core.services.signal_decay_daemon import tick_signal_decay_daemon
+    return tick_signal_decay_daemon()
+
+
+def _infra_wakeup_cleanup_live(_snap: dict) -> dict[str, Any]:
+    """Prune stale consumed/cancelled/fired wakeups. Rules-based, no LLM. Self-
+    throttles on a 60-min family cadence (the daemon has no internal timer — it ran
+    every heartbeat via its old is_enabled-gated site)."""
+    if not _infra_throttle_ready("wakeup_cleanup", 60):
+        return {"status": "throttled", "cadence_minutes": 60}
+    from core.services.self_wakeup import tick_wakeup_cleanup
+    return tick_wakeup_cleanup()
+
+
+def _infra_cost_optimization_live(_snap: dict) -> dict[str, Any]:
+    """Monitor daily/weekly spend vs budget; emit cost.* events. Rules-based, no LLM.
+    Self-throttles on a 60-min family cadence (the daemon has no internal timer). The
+    daemon exposes its tick as ``tick()`` (not tick_cost_optimization_daemon)."""
+    if not _infra_throttle_ready("cost_optimization", 60):
+        return {"status": "throttled", "cadence_minutes": 60}
+    from core.services.cost_optimization_daemon import tick as _co_tick
+    return _co_tick()
+
+
+def _infra_ground_truth_live(_snap: dict) -> dict[str, Any]:
+    """Refresh the Ground-Truth Registry cache (Lying Engine, Lag 3). Rules-based, no
+    LLM. Self-throttles on a 60-min family cadence (the daemon has no internal timer).
+    Was ORPHANED (no old tick site) → first live tick. LOAD-BEARING: keeps the cache
+    that verify_system_claim / ground_truth_summary read fresh."""
+    if not _infra_throttle_ready("ground_truth_registry", 60):
+        return {"status": "throttled", "cadence_minutes": 60}
+    from core.services.ground_truth_registry import ground_truth_daemon_tick
+    return ground_truth_daemon_tick()
+
+
+def _infra_mail_checker_live(_snap: dict) -> dict[str, Any]:
+    """Poll IMAP for new mail; publish events for unseen messages. Rules-based, no
+    LLM. Self-throttles on a 15-min family cadence (the daemon has no internal timer —
+    it ran every heartbeat) to avoid a per-heartbeat IMAP poll."""
+    if not _infra_throttle_ready("mail_checker", 15):
+        return {"status": "throttled", "cadence_minutes": 15}
+    from core.services.mail_checker_daemon import tick_mail_checker_daemon
+    return tick_mail_checker_daemon()
+
+
+def _infra_visual_memory_live(_snap: dict) -> dict[str, Any]:
+    """Webcam snapshot + LOCAL ollama vision-model description (Lag 6, 0 API tokens).
+    Self-throttles on a 360-min family cadence (the daemon has no internal timer — it
+    ran every heartbeat) to keep its 4x/day cadence and avoid a per-heartbeat capture
+    + local-inference hit. LOAD-BEARING: the stored records are Lag-6 sensory memory."""
+    if not _infra_throttle_ready("visual_memory", 360):
+        return {"status": "throttled", "cadence_minutes": 360}
+    from core.services.visual_memory import tick_visual_memory_daemon
+    return tick_visual_memory_daemon()
+
+
+# (member_name, live_fn) in a stable order. file_awareness (cheap, load-bearing
+# tamper-ensure) FIRST; then the two internally-throttled maintenance members; then
+# the family-throttled ones. Each member's per-member try/except means a failing
+# maintenance daemon can NEVER block the others.
+_INFRA_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
+    ("file_awareness", _infra_file_awareness_live),
+    ("cache_maintenance", _infra_cache_maintenance_live),
+    ("signal_decay", _infra_signal_decay_live),
+    ("wakeup_cleanup", _infra_wakeup_cleanup_live),
+    ("cost_optimization", _infra_cost_optimization_live),
+    ("ground_truth_registry", _infra_ground_truth_live),
+    ("mail_checker", _infra_mail_checker_live),
+    ("visual_memory", _infra_visual_memory_live),
+)
+
+
+def _run_infra_unconditional(snap: dict, result: dict[str, Any]) -> None:
+    """Run every infra member UNCONDITIONALLY (this family has no LLM/gated tier),
+    self-safe. Each member self-throttles on its own cadence (internal timer for
+    cache_maintenance/signal_decay, family throttle for the rest, every-tick for
+    file_awareness); a member error is isolated into ``member_errors`` and NEVER
+    propagated (one failing maintenance daemon never blocks the others); a successful
+    run is recorded into ``members_ran``/``outputs``.
+    """
+    for name, fn in _INFRA_UNCONDITIONAL:
+        try:
+            out = fn(snap)
+            result["outputs"][name] = out
+            result["members_ran"].append(name)
+        except Exception as exc:
+            result["member_errors"][name] = f"{type(exc).__name__}: {exc}"
+
+
+def tick_cluster_infra(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
+    """Heartbeat entry-point for the infra/maintenance cluster-daemon family (#10).
+
+    Runs LIVE by default (``shadow=False``) — the prove-then-retire end state
+    replacing the cache_maintenance + signal_decay + cost_optimization +
+    ground_truth_registry + wakeup_cleanup + file_awareness + mail_checker +
+    visual_memory daemons. This family has NO LLM member: every member runs in the
+    UNCONDITIONAL tier and self-throttles on its own cadence.
+
+    Robustness is paramount (maintenance must keep flowing), so the unconditional
+    tier is run DEFENSIVELY — the (empty, fail-open) family gate tick is wrapped so
+    that even a catastrophic gate failure can never skip the maintenance members, and
+    each member is isolated behind its own try/except. Self-safe: NEVER raises into
+    the heartbeat.
+    """
+    run_live = False if shadow is None else bool(shadow)
+    try:
+        snap = _collect_infra_snapshot() if snapshot is None else snapshot
+    except Exception:
+        snap = {}
+
+    result: dict[str, Any] = {
+        "family": INFRA_FAMILY,
+        "shadow": run_live,
+        "gate_calls": 1,
+        "fired": False,
+        "members_ran": [],
+        "members_skipped": [],
+        "member_errors": {},
+        "outputs": {},
+    }
+
+    # The family's ONE gate tick (no gated members → fail-open) — kept only for the
+    # one-gate invariant + Central trace. Wrapped so it can NEVER block the members.
+    try:
+        gres = infra_family().tick(snap, shadow=run_live)
+        result["fired"] = bool(gres.get("fired"))
+        result["gate_calls"] = int(gres.get("gate_calls") or 1)
+        result["members_skipped"].extend(gres.get("members_skipped") or [])
+        for _mn in (gres.get("members_ran") or []):
+            if _mn not in result["members_ran"]:
+                result["members_ran"].append(_mn)
+        result["outputs"].update(gres.get("outputs") or {})
+        result["member_errors"].update(gres.get("member_errors") or {})
+    except Exception as exc:
+        result["member_errors"]["__gated__"] = f"{type(exc).__name__}: {exc}"
+
+    # Unconditional tier — runs REGARDLESS of the gate above.
+    _run_infra_unconditional(snap, result)
+    return result

@@ -756,3 +756,112 @@ def test_build_slot_pool_includes_static_models_providers(monkeypatch):
     monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_cost_class", lambda p: "paid" if p=="copilot-premium" else "free")
     provs2 = {s.provider for s in clb.build_slot_pool()}
     assert "copilot-premium" not in provs2  # betalt aldrig i balancer
+
+
+# --- §5.5 central_route hook (mirror af selection-siden; shadow→live) ---
+
+
+def test_central_route_hook_noop_when_flags_off(monkeypatch):
+    """Begge flag OFF → byte-identisk: intet central_route-kald, weighted-pick beholdes."""
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_central_route_shadow", lambda: False)
+    monkeypatch.setattr(clb, "_central_route_live", lambda: False)
+    called = []
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda **kw: called.append(kw) or {})
+    weighted = _slot(provider="groq", model="a")
+    pool = [weighted, _slot(provider="nebius", model="b")]
+    out = clb._maybe_central_route_slot(weighted, pool, set())
+    assert out is weighted
+    assert called == []          # OFF → central_route slet ikke kaldt
+
+
+def test_central_route_hook_live_applies_pick(monkeypatch):
+    """Live ON: central_route's pick vinder, når den mapper til en egnet slot."""
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_central_route_shadow", lambda: False)
+    monkeypatch.setattr(clb, "_central_route_live", lambda: True)
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda **kw: {"provider": "nebius", "model": "b", "is_floor": False})
+    weighted = _slot(provider="groq", model="a")
+    nebius = _slot(provider="nebius", model="b")
+    out = clb._maybe_central_route_slot(weighted, [weighted, nebius], set())
+    assert out is nebius
+
+
+def test_central_route_hook_live_floor_keeps_weighted(monkeypatch):
+    """Aldrig-tør: route giver floor → behold weighted-pick (route fjerner aldrig stemmen)."""
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_central_route_shadow", lambda: False)
+    monkeypatch.setattr(clb, "_central_route_live", lambda: True)
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda **kw: {"provider": "deepseek", "model": "x", "is_floor": True})
+    weighted = _slot(provider="groq", model="a")
+    out = clb._maybe_central_route_slot(weighted, [weighted], set())
+    assert out is weighted
+
+
+def test_central_route_hook_live_unmapped_keeps_weighted(monkeypatch):
+    """Route peger på noget der ikke er en egnet slot → behold weighted-pick."""
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_central_route_shadow", lambda: False)
+    monkeypatch.setattr(clb, "_central_route_live", lambda: True)
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda **kw: {"provider": "ghost", "model": "z", "is_floor": False})
+    weighted = _slot(provider="groq", model="a")
+    out = clb._maybe_central_route_slot(weighted, [weighted], set())
+    assert out is weighted
+
+
+def test_central_route_hook_shadow_records_divergence(monkeypatch):
+    """Shadow ON, live OFF: gammel sti BESLUTTER, divergens observeres til Central."""
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_central_route_shadow", lambda: True)
+    monkeypatch.setattr(clb, "_central_route_live", lambda: False)
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda **kw: {"provider": "nebius", "model": "b", "is_floor": False})
+    seen = []
+    monkeypatch.setattr(clb, "_observe_central",
+                        lambda nerve, payload: seen.append((nerve, payload)))
+    weighted = _slot(provider="groq", model="a")
+    nebius = _slot(provider="nebius", model="b")
+    out = clb._maybe_central_route_slot(weighted, [weighted, nebius], set())
+    assert out is weighted        # shadow-only → weighted beslutter
+    assert seen and seen[0][0] == "route_shadow"
+    assert seen[0][1]["new_provider"] == "nebius"
+
+
+def test_call_balanced_live_hook_floor_still_works(monkeypatch, tmp_path):
+    """Med central_route_live ON og en tom pool falder call_balanced stadig til floor —
+    aldrig-tør-garantien er urørt af hook'en."""
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    monkeypatch.setattr(clb, "_central_route_live", lambda: True)
+    monkeypatch.setattr(clb, "_central_route_shadow", lambda: False)
+    monkeypatch.setattr(clb, "build_slot_pool", lambda: [])
+
+    def fake_floor(*, message, lane, reason):
+        return {"status": "degraded", "provider": "floor", "model": "", "text": "",
+                "lane": lane, "is_floor": True}
+    monkeypatch.setattr("core.services.cheap_lane_floor.attempt_floor", fake_floor)
+    res = clb.call_balanced(prompt="hej", daemon_name="test")
+    assert res["provider"] == "floor"     # ingen RuntimeError, floor holdt
+
+
+def test_call_balanced_live_hook_routes_to_central_pick(monkeypatch, tmp_path):
+    """Live ON: call_balanced eksekverer central_route's valgte slot i stedet for weighted."""
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    monkeypatch.setattr(clb, "_central_route_live", lambda: True)
+    monkeypatch.setattr(clb, "_central_route_shadow", lambda: False)
+    pool = [_slot(provider="groq", model="a"), _slot(provider="nebius", model="b")]
+    monkeypatch.setattr(clb, "build_slot_pool", lambda: pool)
+    # weighted-random ville tage groq (index 0); central_route overruler til nebius
+    monkeypatch.setattr(clb, "_select_slot", lambda states, p, now: p[0] if p else None)
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda **kw: {"provider": "nebius", "model": "b", "is_floor": False})
+    monkeypatch.setattr(clb, "_call_provider_chat",
+                        lambda *, provider, model, **kw: {"text": f"reply from {provider}", "output_tokens": 3})
+    res = clb.call_balanced(prompt="hi", daemon_name="test")
+    assert res["status"] == "ok"
+    assert res["provider"] == "nebius"    # central_route's pick, ikke groq

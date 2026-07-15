@@ -19,7 +19,8 @@ _BUDGET_CHARS = 4000  # pr. response (Bjørn: ikke 2000 — Jarvis skal kunne l�
 _MAX_LIMIT = 100
 
 _READ_ACTIONS = {"status", "incidents", "trace", "cluster_health", "nerve_detail",
-                 "autonomy", "learning", "drift", "breakers", "instrument", "known_signals"}
+                 "autonomy", "learning", "drift", "breakers", "instrument", "known_signals",
+                 "provider_history"}
 _TOGGLE_ACTIONS = {"toggle_nerve", "toggle_cluster", "toggle_gate_enforce"}
 # Muterende skrive-actions — Jarvis' skrive-kanal til Centralen (§10). ALLE owner-gatet
 # (R2): kun ejeren (eller unbound legacy) må mutere control-planet. member/guest fail-closer.
@@ -98,6 +99,12 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
         incident_id = int((args or {}).get("incident_id") or 0)
     except Exception:
         incident_id = 0
+    provider = str((args or {}).get("provider") or "").strip()
+    try:
+        hours = int((args or {}).get("hours") or 24)
+    except Exception:
+        hours = 24
+    hours = min(max(hours, 1), 168)  # 1t..7d
 
     _all_actions = _READ_ACTIONS | _TOGGLE_ACTIONS | _WRITE_ACTIONS
     if not action:
@@ -300,6 +307,16 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
                 return _envelope("error", action, res, str(res.get("reason") or "afvist"),
                                  "central_switches", t0)
             return _envelope("ok", action, res, None, "central_switches", t0)
+
+        # ── provider_history (read): route/health-historik pr. provider ──
+        # §5.5 Fase B query-surface: `central_query provider_history --provider groq --hours 24`
+        # → fejlrate, latency-p50, oppetid, call-count fra cheap_provider_invocations.
+        if action == "provider_history":
+            if not provider:
+                return _envelope("error", action, None, "manglende 'provider'", "central_query", t0)
+            from core.services import central_route
+            data = central_route.provider_history(provider, hours=hours)
+            return _envelope("ok", action, data, None, "central_route", t0)
 
         # ── known_signals (read): promoverede signaler ───────────────────
         if action == "known_signals":

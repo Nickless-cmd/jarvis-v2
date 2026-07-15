@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-07-10 — 441 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-07-15 — 444 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -438,6 +438,9 @@
 | `operator_screen_size` | operator | no |
 | `operator_screenshot` | operator | no |
 | `operator_screenshot_window` | operator | no |
+| `operator_session_close` | operator | no |
+| `operator_session_open` | operator | no |
+| `operator_session_run` | operator | no |
 | `operator_speak` | operator | no |
 | `operator_unwatch_folder` | operator | no |
 | `operator_wakeup` | operator | no |

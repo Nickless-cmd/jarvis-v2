@@ -474,6 +474,93 @@ import time as _time
 logger = logging.getLogger("cheap_lane_balancer")
 
 
+# ---------------------------------------------------------------------------
+# central_route hook (spec §5.5) — mirror af selection-siden.
+# Foren de to gaflede cheap-subsystemer: når central_route_live er ON henter
+# BÅDE balancer og selection kandidat-rangeringen fra det Central-ejede
+# beslutnings-punkt (central_route). Byte-identisk med gammel sti når begge
+# flag er OFF (default). Aldrig-tør bevaret: routes der giver floor/ikke-mapbar
+# kandidat falder tilbage til den vægtede-tilfældige pick (og til sidst floor).
+# ---------------------------------------------------------------------------
+
+
+def _central_route_shadow() -> bool:
+    """Kør central_route-sammenligning (default OFF → nul overhead)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("central_route_shadow", False)
+    except Exception:
+        return False
+
+
+def _central_route_live() -> bool:
+    """Brug central_route's pick i stedet for den gamle sti (default OFF)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("central_route_live", False)
+    except Exception:
+        return False
+
+
+def _record_route_divergence(old: dict, new: dict) -> None:
+    """Shadow-sammenligning: log/observe når central_route ville vælge noget andet
+    end balancerens vægtede-tilfældige pick. Data til at beslutte hvornår vi flipper
+    til live. Mirror af selection._record_route_divergence."""
+    try:
+        old_p = (str(old.get("provider") or ""), str(old.get("model") or ""))
+        new_p = (str(new.get("provider") or ""), str(new.get("model") or ""))
+        if old_p != new_p:
+            logger.info("central_route shadow-divergens (balancer): gammel=%s ny=%s",
+                        old_p, new_p)
+            _observe_central("route_shadow", {"source": "cheap_lane_balancer",
+                                              "old_provider": old_p[0],
+                                              "new_provider": new_p[0]})
+    except Exception:
+        pass
+
+
+def _central_route_slot(
+    eligible_pool: list[BalancerSlot],
+    tried_slot_ids: set[str],
+) -> BalancerSlot | None:
+    """Spørg central_route om lane='cheap'-pick og map til en EGNET (untried) slot i
+    poolen. None hvis routen giver floor eller (provider, model) ikke findes som en
+    kandidat her — så bevarer vi aldrig-tør (kalderen falder til vægtet-random → floor)."""
+    try:
+        from core.services import central_route
+        r = central_route.route(lane="cheap")
+        if r.get("is_floor"):
+            return None
+        p, m = str(r.get("provider") or ""), str(r.get("model") or "")
+        for slot in eligible_pool:
+            if slot.provider == p and slot.model == m and slot.slot_id not in tried_slot_ids:
+                return slot
+    except Exception:
+        logger.debug("central_route: balancer-slot-map fejlede", exc_info=True)
+    return None
+
+
+def _maybe_central_route_slot(
+    weighted_slot: BalancerSlot | None,
+    eligible_pool: list[BalancerSlot],
+    tried_slot_ids: set[str],
+) -> BalancerSlot | None:
+    """Hook før slot bruges: shadow-compare (OFF → no-op) + live-apply. Aldrig-tør
+    bevaret — live-pick bruges kun når den mapper til en egnet slot, ellers beholdes
+    den vægtede-tilfældige pick."""
+    if not (_central_route_shadow() or _central_route_live()):
+        return weighted_slot
+    routed = _central_route_slot(eligible_pool, tried_slot_ids)
+    if _central_route_shadow() and weighted_slot is not None:
+        _record_route_divergence(
+            {"provider": weighted_slot.provider, "model": weighted_slot.model},
+            ({"provider": routed.provider, "model": routed.model} if routed else {}),
+        )
+    if _central_route_live() and routed is not None:
+        return routed
+    return weighted_slot
+
+
 def _call_provider_chat(
     *,
     provider: str,
@@ -556,6 +643,9 @@ def call_balanced(
 
         now = _time.time()
         slot = _select_slot(states, eligible_pool, now)
+        # central_route hook (§5.5): shadow-compare + live-apply. OFF → no-op.
+        # Aldrig-tør: routen kan kun bytte til en anden EGNET slot, aldrig fjerne den.
+        slot = _maybe_central_route_slot(slot, eligible_pool, tried_slot_ids)
         if slot is None:
             break
 

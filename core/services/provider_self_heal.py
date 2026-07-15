@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 
 _ESCALATE_THRESHOLD = 3
 
+# Self-throttle: 60min. Modul-level state (nulstilles af daemon_manager restart via
+# reset_var='_last_heal_at'). Heartbeat kalder tick hvert tick; daemonen no-op'er
+# indtil cadencen er elapsed.
+_last_heal_at = None  # datetime | None
+_CADENCE_MINUTES = 60
+
 
 def _notify_bjorn(message: str) -> None:
     """Eskalér via eksisterende notifikations-sti (Discord/ntfy)."""
@@ -55,6 +61,31 @@ def check_and_heal(*, down_providers: list[str]) -> bool:
                           "providers": down_providers})
         return True
     return False
+
+
+def _current_down_providers() -> list[str]:
+    """Providers der lige nu er uopnåelige (proaktiv ping). Self-safe → []."""
+    try:
+        from core.services.provider_health_check import health_check_all_providers
+        snap = health_check_all_providers()
+        return [str(p) for p in (snap.get("unreachable") or [])]
+    except Exception:
+        return []
+
+
+def tick_provider_self_heal_daemon() -> dict[str, object]:
+    """Fase C daemon-tick: 60min self-heal. Samler nede providers og eskalerer til Bjørn
+    hvis 3+ er nede samtidig. Self-throttler internt; self-safe (vælter aldrig heartbeaten).
+    Model-drift (404) håndteres reaktivt via handle_model_drift, ikke på denne timer."""
+    global _last_heal_at
+    from datetime import datetime, timedelta, UTC
+    now = datetime.now(UTC)
+    if _last_heal_at is not None and (now - _last_heal_at) < timedelta(minutes=_CADENCE_MINUTES):
+        return {"skipped": "cadence"}
+    _last_heal_at = now
+    down = _current_down_providers()
+    escalated = check_and_heal(down_providers=down)
+    return {"down_count": len(down), "escalated": escalated}
 
 
 def handle_model_drift(*, provider: str, model: str, status_code: int) -> bool:

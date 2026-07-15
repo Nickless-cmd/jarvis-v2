@@ -8,6 +8,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Self-throttle: dagligt scan. Modul-level state (nulstilles af daemon_manager restart
+# via reset_var='_last_discovery_at') — heartbeat kalder tick hvert tick, daemonen
+# no-op'er indtil cadencen er elapsed.
+_last_discovery_at = None  # datetime | None
+_CADENCE_MINUTES = 1440
+
 
 def _list_remote_models(provider: str) -> list[str]:
     """Modeller providerens /models-endpoint rapporterer. [] ved fejl."""
@@ -58,6 +64,37 @@ def _add_to_router(provider: str, model: str) -> None:
          "updated_at": datetime.now(UTC).isoformat()})
     PROVIDER_ROUTER_FILE.write_text(json.dumps(reg, indent=2, ensure_ascii=False),
                                     encoding="utf-8")
+
+
+def _configured_providers() -> list[str]:
+    """Alle providers i provider_router.json (til daglig re-scan). [] ved fejl."""
+    try:
+        from core.runtime.provider_router import load_provider_router_registry
+        reg = load_provider_router_registry()
+        return sorted({str(p.get("provider") or "").strip()
+                       for p in (reg.get("providers") or []) if p.get("provider")})
+    except Exception:
+        return []
+
+
+def tick_provider_autodiscovery_daemon() -> dict[str, object]:
+    """Fase C daemon-tick: dagligt scan af alle providers' /models → nye modeller til
+    pending_models-staging. Self-throttler internt (1440min). Auto-adder ALDRIG (governed).
+    Self-safe: en enkelt providers scan-fejl vælter ikke tick'et."""
+    global _last_discovery_at
+    from datetime import datetime, timedelta, UTC
+    now = datetime.now(UTC)
+    if _last_discovery_at is not None and (now - _last_discovery_at) < timedelta(minutes=_CADENCE_MINUTES):
+        return {"skipped": "cadence"}
+    _last_discovery_at = now
+    providers = _configured_providers()
+    staged = 0
+    for p in providers:
+        try:
+            staged += len(discover_provider(p))
+        except Exception:
+            logger.debug("autodiscovery-scan fejlede for %s", p, exc_info=True)
+    return {"providers_scanned": len(providers), "staged": staged}
 
 
 def discover_provider(provider: str) -> list[str]:

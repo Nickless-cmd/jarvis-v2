@@ -2161,6 +2161,31 @@ def _run_heartbeat_tick_locked(
         )
     except Exception:
         pass
+    # Provider auto-discovery (spec §5.5 Fase C) — dagligt /models-scan → pending_models-
+    # staging. Self-throttler internt (1440min); default_enabled=False (governed — stager kun,
+    # promotion manuel). Deadline-guard: scanner alle providers via /models (netværk).
+    if _dm.is_enabled("provider_autodiscovery"):
+        try:
+            from core.services.provider_autodiscovery import tick_provider_autodiscovery_daemon
+            _pad_result = _daemon_tick_with_deadline(
+                "provider_autodiscovery", tick_provider_autodiscovery_daemon,
+                deadline_seconds=30.0,
+            )
+            _dm.record_daemon_tick("provider_autodiscovery", _pad_result or {})
+        except Exception:
+            pass
+    # Provider self-heal (spec §5.5 Fase C) — 60min: 3+ providers nede samtidig → eskalér til
+    # Bjørn. Self-throttler internt; default_enabled=True (sikkert — eskalerer/de-eskalerer kun).
+    if _dm.is_enabled("provider_self_heal"):
+        try:
+            from core.services.provider_self_heal import tick_provider_self_heal_daemon
+            _psh_result = _daemon_tick_with_deadline(
+                "provider_self_heal", tick_provider_self_heal_daemon,
+                deadline_seconds=20.0,
+            )
+            _dm.record_daemon_tick("provider_self_heal", _psh_result or {})
+        except Exception:
+            pass
     try:
         from core.services.daemon_memory_safeguard import tick_memory_safeguard_daemon
         tick_memory_safeguard_daemon()

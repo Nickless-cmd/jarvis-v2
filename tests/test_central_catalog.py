@@ -20,6 +20,18 @@ def test_validate_is_green():
     assert cat.validate() == []          # ingen ugyldige felter
 
 
+def test_central_route_registered_in_spine():
+    """Spec §5.5: central_route (unified router) SKAL være synlig for Centralen som en
+    system-cluster nerve, ellers kan Centralen ikke korrelere routing-beslutninger."""
+    names = {n.name for n in cat.CATALOG}
+    assert "central_route" in names
+    assert cat.nerve_cluster("central_route") == "system"
+    # Ikke en blokerende sikkerheds-gate — kognitiv observe-nerve.
+    assert cat.is_security_nerve("central_route") is False
+    assert cat.nerve_klass("central_route") is GateClass.COGNITIVE
+    assert "central_route.py" in cat.nerve_location("central_route")
+
+
 def test_security_clusters_marked_security():
     for spec in cat.CATALOG:
         if spec.cluster in ("auth", "privacy"):

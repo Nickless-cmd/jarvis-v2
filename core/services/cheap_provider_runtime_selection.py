@@ -347,6 +347,46 @@ def _maybe_shadow_compare(old_target: dict) -> None:
         pass
 
 
+def _maybe_central_route_live(
+    old_target: dict,
+    candidates: list[dict[str, object]],
+    kind: str,
+    skip_providers: frozenset[str],
+) -> dict[str, object]:
+    """Task 9 live: når central_route_live er ON henter selection sit pick fra det
+    Central-ejede beslutnings-punkt (så BÅDE balancer og selection deler ét beslutnings-
+    punkt). OFF → returnér old_target uændret (byte-identisk). Aldrig-tør bevaret: hvis
+    routen giver floor eller en (provider, model) vi ikke kan mappe til en sund kandidat,
+    beholdes old_target (og execute_cheap_lane_via_pool har stadig floor under sig)."""
+    if not _central_route_live():
+        return old_target
+    try:
+        from core.services import central_route
+        r = central_route.route(lane="cheap", task={"kind": kind}, exclude=skip_providers)
+        if r.get("is_floor"):
+            return old_target
+        p, m = str(r.get("provider") or ""), str(r.get("model") or "")
+        for c in candidates:
+            if str(c.get("provider") or "") != p or str(c.get("model") or "") != m:
+                continue
+            if not bool(c.get("credentials_ready")):
+                return old_target
+            if _candidate_quota_snapshot(c)["blocked"]:
+                return old_target
+            adaptive = _candidate_adaptive_snapshot(c)
+            return {
+                **c,
+                "effective_priority": adaptive["effective_priority"],
+                "adaptive_penalty": adaptive["adaptive_penalty"],
+                "selection_reason": f"central-route-live:{kind}",
+                "task_kind": kind,
+                "blocked_candidates": old_target.get("blocked_candidates", []),
+            }
+    except Exception:
+        pass
+    return old_target
+
+
 def select_cheap_lane_target(
     *,
     skip_providers: frozenset[str] = frozenset(),
@@ -422,7 +462,8 @@ def select_cheap_lane_target(
             "blocked_candidates": blocked,
         }
         _maybe_shadow_compare(_target)  # Task 9: shadow-sammenligning (OFF → no-op)
-        return _target
+        # Task 9 live: lad central_route vælge blandt de samme kandidater når live er ON.
+        return _maybe_central_route_live(_target, candidates, kind, skip_providers)
     return {
         "active": False,
         "lane": "cheap",

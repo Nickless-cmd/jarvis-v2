@@ -131,6 +131,59 @@ def test_retired_daemons_default_disabled(tmp_path):
             assert daemon_manager.is_enabled(name) is False, name
 
 
+def test_provider_daemons_registered_with_correct_cadence(tmp_path):
+    """Spec §5.5 Fase C: provider_autodiscovery + provider_self_heal skal være registreret,
+    ellers er record_daemon_tick en no-op og cadencen blind."""
+    from core.services import daemon_manager
+    names = daemon_manager.get_daemon_names()
+    assert "provider_autodiscovery" in names
+    assert "provider_self_heal" in names
+    # autodiscovery: dagligt (1440min), governed → default OFF (stager pending, manuel promotion)
+    assert daemon_manager._REGISTRY["provider_autodiscovery"]["default_cadence_minutes"] == 1440
+    assert daemon_manager._REGISTRY["provider_autodiscovery"].get("default_enabled") is False
+    # self_heal: 60min, sikkert (kun eskalering/de-eskalering) → default ON
+    assert daemon_manager._REGISTRY["provider_self_heal"]["default_cadence_minutes"] == 60
+    assert daemon_manager._REGISTRY["provider_self_heal"].get("default_enabled") is True
+    with patch.object(daemon_manager, "_state_file", return_value=tmp_path / "DAEMON_STATE.json"):
+        assert daemon_manager.is_enabled("provider_self_heal") is True
+        assert daemon_manager.is_enabled("provider_autodiscovery") is False
+        assert daemon_manager.get_effective_cadence("provider_autodiscovery") == 1440
+        assert daemon_manager.get_effective_cadence("provider_self_heal") == 60
+
+
+def test_provider_daemon_ticks_self_gate_cadence():
+    """Tick-funktionerne self-throttler: andet kald i træk skippes på cadence."""
+    from core.services import provider_autodiscovery as pad
+    from core.services import provider_self_heal as psh
+    pad._last_discovery_at = None
+    psh._last_heal_at = None
+    # autodiscovery: første kald scanner (ingen providers-registry i test → 0), andet skippes
+    r1 = pad.tick_provider_autodiscovery_daemon()
+    assert r1.get("skipped") != "cadence"
+    r2 = pad.tick_provider_autodiscovery_daemon()
+    assert r2.get("skipped") == "cadence"
+    # self_heal: undgå netværks-ping ved at stubbe down-providers
+    psh._current_down_providers = lambda: []
+    h1 = psh.tick_provider_self_heal_daemon()
+    assert h1.get("skipped") != "cadence"
+    h2 = psh.tick_provider_self_heal_daemon()
+    assert h2.get("skipped") == "cadence"
+
+
+def test_provider_self_heal_escalates_on_three_down(monkeypatch):
+    """3+ providers nede samtidig → eskalering fyrer via tick'et."""
+    from core.services import provider_self_heal as psh
+    psh._last_heal_at = None
+    monkeypatch.setattr(psh, "_current_down_providers", lambda: ["groq", "nebius", "together"])
+    sent = []
+    monkeypatch.setattr(psh, "_notify_bjorn", lambda msg: sent.append(msg))
+    monkeypatch.setattr(psh, "_observe_central", lambda payload: None)
+    res = psh.tick_provider_self_heal_daemon()
+    assert res["down_count"] == 3
+    assert res["escalated"] is True
+    assert sent  # Bjørn notified
+
+
 def test_unknown_daemon_control_raises(tmp_path):
     import pytest
     from core.services import daemon_manager

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6164/12638 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6174/12648 functions/methods documented (48%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6164/12638 functions/methods documented (48%). The list b
 | `core.memory` | 44 | 123 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4050 | 8778 | 46% |
+| `core.services` | 4060 | 8788 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 112 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -654,10 +654,10 @@ Generated from source. 6164/12638 functions/methods documented (48%). The list b
 - `core/services/central_body_mood_feel.py` :: `get_embodied_reading` (L236)
 - `core/services/central_body_mood_feel.py` :: `get_mood_reading` (L240)
 - `core/services/central_body_mood_feel.py` :: `get_proprioception_reading` (L232)
-- `core/services/central_catalog.py` :: `by_cluster` (L528)
-- `core/services/central_catalog.py` :: `clusters` (L509)
-- `core/services/central_catalog.py` :: `nerve_cluster` (L480)
-- `core/services/central_catalog.py` :: `security_clusters` (L524)
+- `core/services/central_catalog.py` :: `by_cluster` (L536)
+- `core/services/central_catalog.py` :: `clusters` (L517)
+- `core/services/central_catalog.py` :: `nerve_cluster` (L488)
+- `core/services/central_catalog.py` :: `security_clusters` (L532)
 - `core/services/central_convene_judge.py` :: `current_mode` (L71)
 - `core/services/central_core.py` :: `Central.register` (L271)
 - `core/services/central_core.py` :: `central` (L281)
@@ -727,8 +727,8 @@ Generated from source. 6164/12638 functions/methods documented (48%). The list b
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L499)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L489)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L77)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L435)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L676)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L476)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L717)
 - `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L51)
 - `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L55)
 - `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L169)
@@ -829,8 +829,8 @@ Generated from source. 6164/12638 functions/methods documented (48%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `maybe_register_from_text` (L53)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L15)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L469)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L516)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L489)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L536)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L266)
@@ -991,7 +991,7 @@ Generated from source. 6164/12638 functions/methods documented (48%). The list b
 - `core/services/habits_pipeline.py` :: `reject_suggestion` (L350)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L451)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2187)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2212)
 - `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L317)
 - `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1177)
 - `core/services/heartbeat_runtime.py` :: `start_heartbeat_scheduler` (L245)

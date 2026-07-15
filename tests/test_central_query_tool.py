@@ -138,3 +138,24 @@ def test_write_action_validation_for_owner():
     finally:
         from core.identity import workspace_context as wc
         wc.set_context(user_id="", role="", workspace_name="default")
+
+
+def test_provider_history_surface(monkeypatch):
+    """§5.5 Fase B query-surface: central_query provider_history → central_route.provider_history."""
+    import core.services.central_route as cr
+    monkeypatch.setattr(cr, "provider_history",
+                        lambda provider, hours=24: {"provider": provider, "hours": hours,
+                                                    "calls": 5, "error_rate": 0.2,
+                                                    "latency_p50_ms": 120, "uptime_pct": 80.0})
+    r = q({"action": "provider_history", "provider": "groq", "hours": 12})
+    _assert_envelope(r)
+    assert r["status"] == "ok"
+    assert r["data"]["provider"] == "groq" and r["data"]["hours"] == 12
+    assert r["data"]["error_rate"] == 0.2
+    assert r["meta"]["source"] == "central_route"
+
+
+def test_provider_history_requires_provider():
+    r = q({"action": "provider_history"})
+    _assert_envelope(r)
+    assert r["status"] == "error" and "provider" in r["error"]

@@ -449,6 +449,26 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # 30s-scheduler) → 500-ring dækker ~25t = ét fuldt 24t θ-vindue uanset idle.
         "description": "event-trigger SHADOW-meter (observe-only): registrerer hvad den event-drevne trigger VILLE dispatche, til θ-kalibrering. Fyrer aldrig LLM/råd.",
     },
+    "provider_autodiscovery": {
+        "module": "core.services.provider_autodiscovery",
+        "reset_var": "_last_discovery_at",
+        "reset_value": None,
+        "default_cadence_minutes": 1440,
+        # Governed (spec §5.5 Fase C): stager kun nye modeller i pending_models — promotion
+        # til routbar pool er MANUEL (smoke + gratis + score-gate). Default OFF; owner tænder.
+        "default_enabled": False,
+        "description": "Fase C: dagligt /models-scan af alle providers → nye modeller til pending_models-staging (ALDRIG auto-routbar; promotion manuel/gated)",
+    },
+    "provider_self_heal": {
+        "module": "core.services.provider_self_heal",
+        "reset_var": "_last_heal_at",
+        "reset_value": None,
+        "default_cadence_minutes": 60,
+        # Sikkert at auto-køre (spec §5.5 Fase C): eskalerer kun (3+ providers nede → Discord)
+        # og fjerner 404-modeller reaktivt (de-eskalering). Ingen addition. Default ON.
+        "default_enabled": True,
+        "description": "Fase C: 60min self-heal — 3+ providers nede samtidig → eskalér til Bjørn (Discord); model-drift (404) fjernes reaktivt",
+    },
     "cluster_somatic": {
         "module": "core.services.cluster_daemon",
         "reset_var": "_SOMATIC_FAMILY",

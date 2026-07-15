@@ -296,6 +296,14 @@ CATALOG: tuple[NerveSpec, ...] = (
     # ALDRIG destruktiv — flagger + foreslår, retter ikke config selv (auto-config = senere fase).
     NerveSpec("provider_health", "system", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/provider_health_check.py:observe_and_flag (proaktiv ping+drift+dry → flag)"),
+    # central_route (spec 2026-07-14 §5.5): Central-ejet unified router — ÉT beslutnings-punkt
+    # for ALLE lanes (agent/cheap/coding/local). Foren de to gaflede cheap-subsystemer
+    # (balancer/selection) til én kandidat-rangering. Aldrig-tør-invariant (floor-fallback,
+    # rejser ALDRIG) + proaktiv kvote-rotation (headroom ≥80% de-vægt / ≥95% skip). Shadow→live
+    # via central_route_live. Observerer route_shadow-divergens; provider_history-query-surface
+    # (central_query action=provider_history). IKKE en blokerende gate (ingen central().decide).
+    NerveSpec("central_route", "system", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/central_route.py:route (unified router; provider_history query-surface)"),
     NerveSpec("provider_rate_limited", "stream", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/visible_model.py — VISIBLE-lane 429 (copilot VisibleModelRateLimited + deepseek/glm openai-compat); FIRST-pass var blind"),
     NerveSpec("provider_error", "stream", GateClass.COGNITIVE, "inline", "instrument",

@@ -378,6 +378,24 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": ["meta-llama/Llama-3.3-70B-Instruct",
                           "Qwen/Qwen2.5-72B-Instruct", "deepseek-ai/DeepSeek-V3"],
     },
+    # Reka (15. jul, Bjørn-nøgle): OpenAI-compat `api.reka.ai/v1`, bearer. reka-edge-2603
+    # = ren tool-capable (tool_calls=1 verificeret; reka-flash-3 narrerer <reasoning>).
+    # NB: IKKE $0 — $0.10/1M usage-based, kører på gratis trial-credits. Ingen billing-
+    # API at verificere kort → Bjørn BEKRÆFTEDE ingen betalingsmetode → sikkert (ved tom
+    # credit → 402, floor håndterer). Konservativt daily_limit så trial-credit ikke
+    # brændes. Nøgle gemt CT105 — ALDRIG repo.
+    "reka": {
+        "label": "Reka",
+        "priority": 50,
+        "base_url": "https://api.reka.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 10,
+        "daily_limit": 40,
+        "cost_class": "free",
+        "static_models": ["reka-edge-2603"],
+    },
     # Copilot Pro (15. jul) — Bjørns betalte abonnement, delt i to efter multiplier:
     # copilot-free = 0x (inkluderet, nul premium-requests) → GRATIS, i cheap lane + pool.
     "copilot-free": {

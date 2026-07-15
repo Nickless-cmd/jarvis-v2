@@ -162,6 +162,21 @@ def test_huggingface_router_free_tool_capable():
     assert is_routable_provider("huggingface") and "huggingface" in _OPENAI_COMPATIBLE_PROVIDERS
 
 
+def test_reka_edge_conservative_cap():
+    """15. jul: Reka — reka-edge-2603 tool-capable. Usage-based ($0.10/1M) på gratis
+    trial-credits, Bjørn bekræftede ingen kort → konservativt daily_limit."""
+    from core.services.cheap_provider_runtime_adapters import (
+        CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_cost_class,
+        _OPENAI_COMPATIBLE_PROVIDERS)
+    r = CHEAP_PROVIDER_DEFAULTS["reka"]
+    assert r["auth_kind"] == "bearer"
+    assert r["base_url"] == "https://api.reka.ai/v1"
+    assert r["static_models"] == ["reka-edge-2603"]   # den rene tool-capable (ikke flash-3-reasoner)
+    assert r["daily_limit"] <= 50                      # trial-credit → konservativt
+    assert provider_cost_class("reka") == "free"
+    assert is_routable_provider("reka") and "reka" in _OPENAI_COMPATIBLE_PROVIDERS
+
+
 def test_require_credentials_still_raises_for_bearer_without_key(monkeypatch):
     """Guarden må kun gælde auth_kind=none. En bearer-provider uden nøgle skal stadig
     rejse auth-not-ready (ellers ville vi kalde en betalt/nøgle-provider uden auth)."""

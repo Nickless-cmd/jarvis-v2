@@ -69,8 +69,9 @@ pause-UX. **Mål (ægte):**
 ---
 
 ## E. Acceptance-checkliste (før en fase kaldes "færdig")
-- [ ] Agentiske runder sender lean prompt (målt: awareness-blok IKKE i round-2+ payload).
-- [ ] Fuld awareness re-komponeret ved tur-grænse (målt: til stede i tur-start-prompt).
+- [x] **Agentiske runder sender lean prompt** — LEVERET i jarvis-code (jc master 4fa5aab): `run_one_step`
+  (delt substrat) → step 0 fuld kontekst, runder 2+ `identity`. Flag `lean_per_round` default True. 7 tests.
+- [x] **Fuld awareness re-komponeret ved tur-grænse** — `_turn_step_idx` nulstilles pr. tur → step 0 = fuld.
 - [ ] Tool-resultater cold-storaget som `[tool]: summary` (cap 1500), fuld body på disk.
 - [ ] Cache-split ON: stor session cache-hit >80%, latency mod ~7-8s (før/efter-tal).
 - [ ] Ægte token-% under composer (ikke char/3); pause→compact→continue; kontekst bevaret; SSE-lifecycle.

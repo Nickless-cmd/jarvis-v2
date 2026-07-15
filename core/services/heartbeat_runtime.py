@@ -2147,13 +2147,18 @@ def _run_heartbeat_tick_locked(
         )
     except Exception:
         pass
-    try:
-        from core.services.narrative_summary_daemon import tick_narrative_summary_daemon
-        _daemon_tick_with_deadline(
-            "narrative_summary", tick_narrative_summary_daemon, deadline_seconds=20.0,
-        )
-    except Exception:
-        pass
+    # narrative_summary PENSIONERET 2026-07-15 → cluster_narrative overtager
+    # (medlem, self-throttler 15min). is_enabled-gate gør denne tick-blok til
+    # no-op når daemonen er retired; falder tilbage til at køre hvis nogen
+    # eksplicit gen-aktiverer den (aldrig begge live via default).
+    if _dm.is_enabled("narrative_summary"):
+        try:
+            from core.services.narrative_summary_daemon import tick_narrative_summary_daemon
+            _daemon_tick_with_deadline(
+                "narrative_summary", tick_narrative_summary_daemon, deadline_seconds=20.0,
+            )
+        except Exception:
+            pass
     try:
         from core.services.pattern_counterfactual_daemon import tick_pattern_counterfactual_daemon
         _daemon_tick_with_deadline(

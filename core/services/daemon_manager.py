@@ -123,7 +123,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_narrative_at",
         "reset_value": None,
         "default_cadence_minutes": 1440,
-        "description": "Daily LLM-generated self-reflection on development",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_narrative overtager (samme daglige generering; medlem self-throttler 24t)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_narrative] Daily LLM-generated self-reflection on development",
     },
     "absence": {
         "module": "core.services.absence_daemon",
@@ -185,7 +187,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 1440,
-        "description": "24t identity-drift detektor — sammenligner SOUL/IDENTITY/USER/STANDING_ORDERS mod sidste snapshot, fyrer identity.drift_detected ved uautoriserede ændringer",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_narrative overtager (medlem self-throttler 24t; snapshot-output BEVARET). Var orphan (ingen tick-site før) → familien giver den nu en live tick.
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_narrative] 24t identity-drift detektor — sammenligner SOUL/IDENTITY/USER/STANDING_ORDERS mod sidste snapshot, fyrer identity.drift_detected ved uautoriserede ændringer",
     },
     "causal_inference": {
         "module": "core.services.causal_inference_daemon",
@@ -199,7 +203,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 15,
-        "description": "Phase 2.5 of causal graph — every 15 min, asks cheap LLM to summarise the most recent backward causal chain into a 1-2 sentence Danish narrative; persists as narrative.summary event",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_narrative overtager (medlem self-throttler 15min; narrative.summary-output BEVARET)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_narrative] Phase 2.5 of causal graph — every 15 min, asks cheap LLM to summarise the most recent backward causal chain into a 1-2 sentence Danish narrative; persists as narrative.summary event",
     },
     "pattern_counterfactual": {
         "module": "core.services.pattern_counterfactual_daemon",
@@ -344,10 +350,12 @@ _REGISTRY: dict[str, dict[str, Any]] = {
     },
     "consolidation_judge": {
         "module": "core.services.consolidation_judge_daemon",
-        "reset_var": "_last_judge_at",
+        "reset_var": "_last_judgment_at",
         "reset_value": None,
         "default_cadence_minutes": 1440,
-        "description": "Natlig revision: samler dagens data og tvinger stillingtagen til 3-5 konkrete valg (accept/reject/defer)",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_narrative overtager (medlem self-throttler 24t)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_narrative] Natlig revision: samler dagens data og tvinger stillingtagen til 3-5 konkrete valg (accept/reject/defer)",
     },
     "memory_safeguard": {
         "module": "core.services.daemon_memory_safeguard",
@@ -425,8 +433,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": None,
         "reset_value": None,
         "default_cadence_minutes": 360,
-        "default_enabled": True,
-        "description": "Memory Phase 2: refresh identity sketch every 6h (auto trigger). Skips if fresh; regenerates from live signals if stale.",
+        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_narrative overtager (medlem self-throttler 6h staleness; identity_sketch.json-output BEVARET)
+        "retired": "2026-07-15",
+        "description": "[PENSIONERET → cluster_narrative] Memory Phase 2: refresh identity sketch every 6h (auto trigger). Skips if fresh; regenerates from live signals if stale.",
     },
     "communication_guard": {
         "module": "core.services.communication_guard_daemon",
@@ -539,6 +548,26 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # surprise/conflict-cachen er load-bearing for cluster_innervoice, og
         # longing ingest'er stadig i pressure-accumulatoren. Aldrig begge live.
         "description": "cluster-daemon FAMILIE #3 (affect) LIVE: surprise+conflict+desire (gated LLM) + longing_signal+emotion_repair_bridge (non-LLM, ubetinget) under ÉN event-gate; erstatter de 5 pensionerede daemons; bevarer alle outputs (surprise/conflict-cache, longing-pressure).",
+    },
+    "cluster_narrative": {
+        "module": "core.services.cluster_daemon",
+        "reset_var": "_NARRATIVE_FAMILY",
+        "reset_value": None,
+        "default_cadence_minutes": 1440,
+        "default_enabled": True,
+        # Cluster-daemon-konsolidering (spec 2026-07-14), FAMILIE #4 (narrative/
+        # self-history): development_narrative + narrative_summary + identity_drift
+        # + identity_sketch + consolidation_judge foldet ind i ÉN Central-styret
+        # familie. Kører LIVE (prove-then-retire END STATE) — de 5 gamle daemons er
+        # PENSIONERET (default_enabled=False, retired 2026-07-15). KEY DIFFERENCE
+        # fra familie #2/#3: TIME-BASED (ikke event-drevet) — INGEN
+        # should_generative_fire event-gate. Bjørn: "nogen er nød til at forblive
+        # på tid for hans indre liv". Hvert medlem kører UBETINGET hver familie-tick
+        # og self-throttler på sin EGEN cadence (24t/15min/24t/6h/24t), så output +
+        # daglig rytme bevares. default_cadence_minutes=1440 markerer den
+        # dominerende daglige rytme (dokumentation; heartbeaten gater på is_enabled,
+        # ikke cadence — medlemmerne self-throttler). Aldrig begge live.
+        "description": "cluster-daemon FAMILIE #4 (narrative/self-history) LIVE, TIME-BASED (ingen event-gate): development_narrative+narrative_summary+identity_drift+identity_sketch+consolidation_judge; hvert medlem self-throttler på egen cadence; erstatter de 5 pensionerede daemons; bevarer alle outputs (development-narrative log, identity_drift snapshot).",
     },
 }
 

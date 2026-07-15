@@ -771,6 +771,37 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Cluster-daemon FAMILIE #4 — narrative/self-history (LIVE, prove-then-retire).
+    # development_narrative+narrative_summary+identity_drift+identity_sketch+
+    # consolidation_judge foldet ind i ÉN Central-styret familie. KEY DIFFERENCE
+    # fra #2/#3: TIME-BASED — INGEN event-gate. Hvert medlem kører ubetinget hver
+    # tick og self-throttler på sin egen cadence (24t/15min/24t/6h/24t), så
+    # development-narrative-loggen og identity_drift-snapshottet bevares på deres
+    # daglige rytme. De 5 gamle daemons er PENSIONERET (default_enabled=False) →
+    # deres tick-blokke (development_narrative/identity_sketch/consolidation_judge
+    # her, narrative_summary i heartbeat_runtime) no-op'er via is_enabled;
+    # identity_drift havde ingen tick-site før (orphan) → familien giver den nu en
+    # live tick. Bred deadline: på døgn-grænsen kan flere medlemmer fyre ét
+    # LLM-kald hver i samme tick. Self-safe: crasher aldrig heartbeaten.
+    if _dm.is_enabled("cluster_narrative"):
+        try:
+            from core.services.cluster_daemon import tick_cluster_narrative
+            _narr_cluster_result = _hb._daemon_tick_with_deadline(
+                "cluster_narrative", tick_cluster_narrative, deadline_seconds=40.0,
+            )
+            _dm.record_daemon_tick("cluster_narrative", _narr_cluster_result or {})
+            # Surface the freshly-produced development narrative into the trace, as
+            # the retired development_narrative daemon's own tick block used to.
+            try:
+                from core.services.development_narrative_daemon import get_latest_development_narrative
+                _narr_dev = get_latest_development_narrative()
+                if _narr_dev:
+                    inputs_present.append(f"udviklings-narrativ: {_narr_dev[:80]}")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     # Creative drift daemon — spontaneous unexpected associations
     if _dm.is_enabled("creative_drift"):
         try:

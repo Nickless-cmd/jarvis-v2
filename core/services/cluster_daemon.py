@@ -1094,3 +1094,217 @@ def tick_cluster_affect(snapshot: dict | None = None, *, shadow: bool | None = N
             "members_ran": [],
             "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
         }
+
+
+# ---------------------------------------------------------------------------
+# Family #4 — narrative / self-history (development_narrative + narrative_summary
+#             + identity_drift + identity_sketch + consolidation_judge)
+# ---------------------------------------------------------------------------
+#
+# The DAILY-TIMER family. KEY DIFFERENCE from families #2/#3: these are
+# TIME-BASED self-narrative / identity-snapshot daemons, NOT high-frequency
+# event daemons. Bjørn: "nogen er nød til at forblive på tid for hans indre liv"
+# — self-history and identity snapshots are inner-life RHYTHM, so they stay on
+# their timers. There is therefore NO ``should_generative_fire`` event-gate here:
+# folding them into a family does NOT change their gating. The consolidation is
+# purely structural — ONE family tick + ONE registry entry replacing 5.
+#
+# Every member is the UNCONDITIONAL tier (mirrors the affect family's non-LLM
+# members): each family tick calls the old daemon's ``tick_*`` function (no args),
+# and each function self-throttles internally via its OWN cadence gate, so both
+# its OUTPUT and its daily/periodic rhythm are preserved untouched:
+#
+#   * development_narrative → tick_development_narrative_daemon (24h self-throttle)
+#         → _cached_narrative + private_brain "development-narrative" record +
+#           development_narrative.generated event. LOAD-BEARING:
+#           get_latest_development_narrative() feeds the heartbeat influence trace
+#           and build_development_narrative_surface() feeds Mission Control.
+#   * narrative_summary     → tick_narrative_summary_daemon (15-min self-throttle)
+#         → narrative.summary events (the causal_narrative prompt section renders
+#           them). Keeps its own internal event-gate guard on the anchor delta.
+#   * identity_drift        → tick_identity_drift_daemon (24h self-throttle)
+#         → prompt_evolution snapshots + identity.drift_detected event.
+#           LOAD-BEARING: the snapshot + build_identity_drift_surface() are read by
+#           central_soul_digest and visible_inner_life. (Previously ORPHANED — it
+#           was registered but never ticked; the family gives it a live tick site.)
+#   * identity_sketch       → tick_identity_sketch_daemon (6h staleness self-check)
+#         → state/identity_sketch.json (used in prompt assembly for continuity).
+#   * consolidation_judge   → tick_consolidation_judge_daemon (24h self-throttle)
+#         → private_brain judgment record + decision/goal enforcement +
+#           consolidation_judge.completed event.
+#
+# Self-safe throughout: a member error is captured, never propagated; the tick
+# never raises into the heartbeat.
+
+NARRATIVE_FAMILY = "cluster_narrative"
+
+
+def _narrative_no_signals(_snap: dict) -> dict[str, float]:
+    """No gate signals — this family is TIME-BASED, not event-gated. Declaring
+    ``{}`` guarantees ``should_generative_fire`` is never consulted for it."""
+    return {}
+
+
+# ── member live dispatchers (call the old daemon's self-throttling tick) ─────
+
+
+def _narrative_development_live(_snap: dict) -> dict[str, Any]:
+    from core.services.development_narrative_daemon import tick_development_narrative_daemon
+    return tick_development_narrative_daemon()
+
+
+def _narrative_summary_live(_snap: dict) -> dict[str, Any]:
+    from core.services.narrative_summary_daemon import tick_narrative_summary_daemon
+    return tick_narrative_summary_daemon()
+
+
+def _narrative_identity_drift_live(_snap: dict) -> dict[str, Any]:
+    from core.services.identity_drift_daemon import tick_identity_drift_daemon
+    return tick_identity_drift_daemon()
+
+
+def _narrative_identity_sketch_live(_snap: dict) -> dict[str, Any]:
+    from core.services.identity_sketch import tick_identity_sketch_daemon
+    return tick_identity_sketch_daemon()
+
+
+def _narrative_consolidation_judge_live(_snap: dict) -> dict[str, Any]:
+    from core.services.consolidation_judge_daemon import tick_consolidation_judge_daemon
+    return tick_consolidation_judge_daemon()
+
+
+def build_narrative_family() -> ClusterDaemon:
+    """Construct the narrative/self-history cluster-daemon (family #4), LIVE.
+
+    Five TIME-BASED members, NO event-gate. Each member dispatches to the old
+    daemon's self-throttling ``tick_*`` (no args) so every load-bearing output —
+    the development narrative log and the identity_drift snapshot in particular —
+    keeps flowing to its existing consumers on its own daily/periodic rhythm.
+    """
+    return ClusterDaemon(
+        family_name=NARRATIVE_FAMILY,
+        cluster="cognition",
+        collect_snapshot=None,  # each member self-collects inside its own tick
+        members=[
+            ClusterMember(
+                name="development_narrative",
+                signals=_narrative_no_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.development_narrative_daemon", "build_development_narrative_surface"),
+                    ("latest_narrative", "last_generated_at"),
+                ),
+                live=_narrative_development_live,
+            ),
+            ClusterMember(
+                name="narrative_summary",
+                signals=_narrative_no_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.narrative_summary_daemon", "build_narrative_summary_surface"),
+                    ("latest_summary",),
+                ),
+                live=_narrative_summary_live,
+            ),
+            ClusterMember(
+                name="identity_drift",
+                signals=_narrative_no_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.identity_drift_daemon", "build_identity_drift_surface"),
+                    ("last_tick_at",),
+                ),
+                live=_narrative_identity_drift_live,
+            ),
+            ClusterMember(
+                name="identity_sketch",
+                signals=_narrative_no_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.identity_sketch", "identity_sketch_surface"),
+                    ("state", "updated_at"),
+                ),
+                live=_narrative_identity_sketch_live,
+            ),
+            ClusterMember(
+                name="consolidation_judge",
+                signals=_narrative_no_signals,
+                observe=_iv_surface_observe(
+                    ("core.services.consolidation_judge_daemon", "build_consolidation_judge_surface"),
+                    ("last_judgment_at",),
+                ),
+                live=_narrative_consolidation_judge_live,
+            ),
+        ],
+    )
+
+
+# Process-level singleton (keeps the family's Central trace continuous across
+# heartbeat ticks, mirroring the other families).
+_NARRATIVE_FAMILY: ClusterDaemon | None = None
+
+
+def narrative_family() -> ClusterDaemon:
+    global _NARRATIVE_FAMILY
+    if _NARRATIVE_FAMILY is None:
+        _NARRATIVE_FAMILY = build_narrative_family()
+    return _NARRATIVE_FAMILY
+
+
+def _run_narrative_members(snap: dict, result: dict[str, Any]) -> None:
+    """Run every narrative member UNCONDITIONALLY (no event-gate — time-based),
+    self-safe. Mirrors the affect family's unconditional non-LLM member runner.
+
+    Each member's old ``tick_*`` self-throttles on its own cadence, so calling it
+    every heartbeat is cheap when the cadence has not elapsed (an early datetime
+    check) and produces its output on schedule. A member error is isolated into
+    ``member_errors`` and never propagated; a successful run is recorded into
+    ``members_ran``/``outputs``.
+    """
+    for m in narrative_family().members:
+        try:
+            out = (m.live or m.observe)(snap)
+            result["outputs"][m.name] = out
+            result["members_ran"].append(m.name)
+        except Exception as exc:
+            result["member_errors"][m.name] = f"{type(exc).__name__}: {exc}"
+
+
+def tick_cluster_narrative(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
+    """Heartbeat entry-point for the narrative cluster-daemon family (#4).
+
+    Runs LIVE — this family IS the prove-then-retire end state replacing the 5
+    old self-narrative daemons. It is TIME-BASED, not event-gated: there is NO
+    ``should_generative_fire`` call (``gate_calls`` is 0). Every member runs
+    UNCONDITIONALLY each tick and self-throttles on its own internal cadence
+    (24h / 15min / 24h / 6h / 24h), so its output and daily rhythm are preserved.
+
+    The ``shadow`` parameter is accepted for signature parity with the other
+    families but is a no-op — a time-based snapshot family has no observe-only
+    mode to fall back to.
+
+    Self-safe: returns a minimal result on catastrophic failure and NEVER raises
+    into the heartbeat.
+    """
+    try:
+        snap = snapshot if snapshot is not None else {}
+        result: dict[str, Any] = {
+            "family": NARRATIVE_FAMILY,
+            "shadow": False,
+            "gate_calls": 0,  # TIME-BASED family — no event-gate, by design
+            "fired": True,    # always runs; members self-throttle on their own cadence
+            "members_ran": [],
+            "members_skipped": [],
+            "member_errors": {},
+            "outputs": {},
+        }
+        _run_narrative_members(snap, result)
+        try:
+            narrative_family()._report_to_central(result, False)
+        except Exception:
+            pass
+        return result
+    except Exception as exc:  # never crash the heartbeat
+        return {
+            "family": NARRATIVE_FAMILY,
+            "fired": False,
+            "gate_calls": 0,
+            "members_ran": [],
+            "member_errors": {"__entry__": f"{type(exc).__name__}: {exc}"},
+        }

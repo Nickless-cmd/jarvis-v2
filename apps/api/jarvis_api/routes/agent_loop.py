@@ -1109,8 +1109,14 @@ async def agent_turn_absorb(body: _AbsorbBody):
     settings = _settings()
     if not getattr(settings, "agent_turn_absorb_enabled", False):
         return {"ok": False, "skipped": "flag_off"}
+    persisted = False
     try:
-        from core.services.client_turn_absorb import absorb_client_turn
+        from core.services.client_turn_absorb import absorb_client_turn, persist_client_turn
+        # Fase C1: persistér turen SYNKRONT til den delte server-session (→ synlig i
+        # desk/web/mobil) FØR baggrunds-hjernen — kun for ægte chat-<hex>-sessioner.
+        persisted = persist_client_turn(
+            session_id=body.session_id, user_message=body.user_message,
+            assistant_response=body.assistant_response, user_id=body.user_id)
         absorb_client_turn(
             session_id=body.session_id, run_id=body.run_id,
             user_message=body.user_message, assistant_response=body.assistant_response,
@@ -1118,4 +1124,4 @@ async def agent_turn_absorb(body: _AbsorbBody):
     except Exception:
         logger.debug("agent/turn-absorb dispatch fejlede", exc_info=True)
         return {"ok": False, "error": "absorb_failed"}
-    return {"ok": True, "run_id": body.run_id}
+    return {"ok": True, "run_id": body.run_id, "persisted": persisted}

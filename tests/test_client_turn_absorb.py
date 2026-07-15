@@ -73,6 +73,45 @@ def test_settings_flag_default_false():
     assert load_settings().agent_turn_absorb_enabled is False
 
 
+# --- Fase C1: persist_client_turn (delte sessioner) -------------------------
+
+
+def test_persist_skips_local_uuid_session(monkeypatch):
+    called = []
+    monkeypatch.setattr("core.services.chat_sessions.append_chat_message",
+                        lambda **kw: called.append(kw))
+    ok = cta.persist_client_turn(session_id="a1b2c3d4-uuid", user_message="u",
+                                 assistant_response="a")
+    assert ok is False
+    assert called == []  # lokal uuid → ingen orphan-rækker
+
+
+def test_persist_appends_user_then_assistant_for_server_session(monkeypatch):
+    called = []
+    monkeypatch.setattr("core.services.chat_sessions.append_chat_message",
+                        lambda **kw: called.append((kw["role"], kw["content"], kw.get("user_id"))))
+    ok = cta.persist_client_turn(session_id="chat-abc123", user_message="hej",
+                                 assistant_response="svar", user_id="")
+    assert ok is True
+    assert [(r, c) for r, c, _ in called] == [("user", "hej"), ("assistant", "svar")]
+
+
+def test_endpoint_returns_persisted_flag_on(monkeypatch):
+    from apps.api.jarvis_api.routes import agent_loop as al
+    monkeypatch.setattr(al, "_settings",
+                        lambda: SimpleNamespace(agent_turn_absorb_enabled=True))
+    appended = []
+    monkeypatch.setattr("core.services.chat_sessions.append_chat_message",
+                        lambda **kw: appended.append(kw["role"]))
+    monkeypatch.setattr("core.services.client_turn_absorb.absorb_client_turn",
+                        lambda **kw: None)
+    body = al._AbsorbBody(session_id="chat-xyz", run_id="r", user_message="u",
+                          assistant_response="a")
+    r = asyncio.run(al.agent_turn_absorb(body))
+    assert r["ok"] is True and r["persisted"] is True
+    assert appended == ["user", "assistant"]
+
+
 def test_endpoint_flag_off_is_noop():
     from apps.api.jarvis_api.routes import agent_loop as al
     body = al._AbsorbBody(session_id="s", run_id="r", assistant_response="a")

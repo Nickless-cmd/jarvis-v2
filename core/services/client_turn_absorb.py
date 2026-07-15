@@ -42,6 +42,30 @@ def _do_absorb(run: Any, assistant_response: str, user_id: str) -> None:
                 logger.debug("client_turn_absorb: %s fejlede", label, exc_info=True)
 
 
+def persist_client_turn(*, session_id: str, user_message: str, assistant_response: str,
+                        user_id: str = "") -> bool:
+    """Fase C1 (delte sessioner): persistér en KLIENT-drevet turs beskeder til den DELTE
+    server-session, så turen bliver synlig i desk/web/mobil (cross-surface kontinuitet).
+    Kun for ægte server-sessioner (`chat-<hex>`) — lokale uuid-sessioner springes over
+    (undgår orphan chat_messages-rækker uden en chat_sessions-ejer). Synkron (så turen
+    ER persisteret før klienten fortsætter). Self-safe → False ved fejl/ikke-server-session."""
+    sid = str(session_id or "")
+    if not sid.startswith("chat-"):
+        return False
+    try:
+        from core.services.chat_sessions import append_chat_message
+        uid = str(user_id or "") or None
+        if user_message:
+            append_chat_message(session_id=sid, role="user", content=str(user_message), user_id=uid)
+        if assistant_response:
+            append_chat_message(session_id=sid, role="assistant",
+                                content=str(assistant_response), user_id=uid)
+        return True
+    except Exception:
+        logger.debug("persist_client_turn fejlede", exc_info=True)
+        return False
+
+
 def absorb_client_turn(*, session_id: str, run_id: str, user_message: str,
                        assistant_response: str, provider: str = "", model: str = "",
                        user_id: str = "", lane: str = "agent") -> None:

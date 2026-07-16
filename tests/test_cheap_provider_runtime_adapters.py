@@ -62,6 +62,23 @@ def test_aionlabs_present_free_and_openai_compat():
     assert all(m.startswith("aion-labs/") for m in cfg["static_models"])
 
 
+def test_freetheai_is_agent_pool_reserve_not_cheap_firehose():
+    """FreeTheAi (16. jul): 3 unikke frontier-modeller, MEN daglig Discord-checkin +
+    concurrency=1 → KUN agent-pool-reserve. cost_class=paid (routing-gate, ikke billing —
+    gratis) holder den ude af den gratis cheap-firehose men i agent-poolen via allow_paid.
+    routable=True (ellers ryger den ud af BEGGE pools). Lav prioritet = bund-reserve."""
+    from core.services.cheap_provider_runtime_adapters import (
+        is_routable_provider, provider_cost_class,
+    )
+    cfg = CHEAP_PROVIDER_DEFAULTS["freetheai"]
+    assert cfg["base_url"] == "https://api.freetheai.xyz/v1"
+    assert cfg["protocol"] == "openai-chat" and cfg["auth_kind"] == "bearer"
+    assert provider_cost_class("freetheai") == "paid"   # → ude af cheap lane, i agent-pool
+    assert is_routable_provider("freetheai") is True     # → med i agent-pool-kandidater
+    assert int(cfg["priority"]) >= 80                    # bund-reserve
+    assert "bbl/gpt-5.5-mini" in cfg["static_models"]
+
+
 def test_deepseek_not_routable_but_free_providers_are():
     """Bjørn 14. jul: deepseek (betalt) skal UD af routbar cheap-pool; gratis ind."""
     from core.services.cheap_provider_runtime_adapters import is_routable_provider

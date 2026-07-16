@@ -482,6 +482,33 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": ["aion-labs/aion-2.0", "aion-labs/aion-3.0-mini",
                           "aion-labs/aion-2.5"],
     },
+    # FreeTheAi (16. jul, Bjørn-nøgle `sta_…`): OpenAI-compat gateway `api.freetheai.xyz/v1`,
+    # ~54 modeller. Live-verificeret PONG på bbl/gpt-5.5-mini, bbl/grok-4.1-fast-non-reasoning,
+    # olm/deepseek-v4-pro — 3 frontier-modeller vi IKKE har rent ellers. Resten er redundant
+    # (kai/=kilo, opc/=opencode, glm/=zai, bbl/gemini=vores) eller ikke-chat (billede/lyd/TTS).
+    #
+    # TO hårde constraints → KUN agent-pool-reserve, ALDRIG den parallelle cheap-firehose:
+    #   (1) DAGLIG Discord-`/checkin` låser HELE nøglen (ingen HTTP-endpoint → kan ikke auto-
+    #       matiseres rent; Bjørn kører checkin manuelt). Down hver UTC-midnat til checkin.
+    #   (2) concurrency=1 + 10 rpm → serialiseres; ubrugelig som parallel arbejdshest.
+    # cost_class="paid" her = ROUTING-GATE, IKKE en billing-påstand (den er GRATIS, reel
+    # cost=0). Det holder den ude af cheap lane (paid ekskluderes, L~413) + ude af zero-row
+    # self-heal (gates free-only), men i agent-poolen via central_route(allow_paid=True).
+    # priority 90 = bunden af agent-poolen: reserve, valgt kun når hoved-pool er tynd (Bjørn:
+    # "aktivér hvis han løber tør for agenter"). Nøgle CT105 auth-profil — ALDRIG i repo.
+    "freetheai": {
+        "label": "FreeTheAi (Discord daily-checkin, agent-reserve)",
+        "priority": 90,
+        "base_url": "https://api.freetheai.xyz/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 10,
+        "daily_limit": 300,
+        "cost_class": "paid",  # routing-gate, ikke billing — se blok ovenfor
+        "static_models": ["bbl/gpt-5.5-mini", "bbl/grok-4.1-fast-non-reasoning",
+                          "olm/deepseek-v4-pro"],
+    },
 }
 
 # Gen-udled openai-compat-sættet FRA protocol (15. jul) — den hardkodede liste

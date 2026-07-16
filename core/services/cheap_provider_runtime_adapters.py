@@ -1480,6 +1480,8 @@ def _http_json(
         body_text = exc.read().decode("utf-8", errors="replace")
         retry_after = int(exc.headers.get("Retry-After", "0") or 0)
         code = _classify_http_error(provider=provider, status_code=exc.code, body=body_text)
+        if code == "checkin-required":
+            _notify_checkin_required(provider)
         raise CheapProviderError(
             provider=provider,
             code=code,
@@ -1533,6 +1535,8 @@ def _http_json_httpx(
             status_code=exc.response.status_code,
             body=body_text,
         )
+        if code == "checkin-required":
+            _notify_checkin_required(provider)
         raise CheapProviderError(
             provider=provider,
             code=code,
@@ -1556,6 +1560,11 @@ def _http_json_httpx(
 
 def _classify_http_error(*, provider: str, status_code: int, body: str) -> str:
     lowered = str(body or "").lower()
+    # FreeTheAi-checkin-gate (16.jul): nøglen låses HELT hver UTC-dag indtil Bjørn kører
+    # Discord-/checkin. Body-baseret (uafhængig af status-kode) så vi altid fanger den →
+    # distinkt kode så dispatch-stien kan nudge Jarvis (han beder Bjørn om /checkin).
+    if "daily_checkin_required" in lowered or "check-in required" in lowered or "checkin required" in lowered:
+        return "checkin-required"
     if status_code == 402:
         return "credits-exhausted"
     if status_code == 404:
@@ -1587,7 +1596,33 @@ def _default_failure_cooldown_seconds(code: str) -> int:
         return 1800
     if normalized in {"model-not-found", "model-unavailable"}:
         return 900
+    if normalized == "checkin-required":
+        # Låst til næste Discord-/checkin (per UTC-dag). 30 min → self-heal genopliver
+        # den auto ~30 min efter Bjørn har checket ind, uden at hamre imens.
+        return 1800
     return 300
+
+
+def _notify_checkin_required(provider: str) -> None:
+    """Læg en nudge i Jarvis' awareness når en checkin-gated provider (FreeTheAi) er låst,
+    så HAN kan huske at bede Bjørn køre /checkin. Dedup pr. UTC-dag (én nudge/dag, uanset
+    hvor mange kald/self-heal-probes der rammer låsen). Self-safe — aldrig crash i dispatch."""
+    try:
+        from datetime import UTC, datetime
+        from core.services import nudge_broend
+        today = datetime.now(UTC).date().isoformat()
+        src = f"{provider}_checkin"
+        for n in nudge_broend.list_pending(limit=50):
+            if n.get("source") == src and str(n.get("created_at") or "").startswith(today):
+                return  # allerede nudget i dag
+        nudge_broend.push(
+            source=src, kind="provider_checkin", importance="normal",
+            message=(f"{provider} er låst i dag — den kræver Bjørns daglige Discord-/checkin. "
+                     f"Hvis du får brug for dens modeller (gpt-5.5-mini/grok-4.1-fast/"
+                     f"deepseek-v4-pro), så bed Bjørn køre /checkin på deres server."),
+        )
+    except Exception:
+        logger.debug("checkin-nudge fejlede", exc_info=True)
 
 
 def _extract_openai_compatible_text(*, provider: str, data: dict[str, object]) -> str:

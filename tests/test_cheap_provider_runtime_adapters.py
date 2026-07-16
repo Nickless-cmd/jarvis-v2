@@ -101,6 +101,40 @@ def test_provider_auth_ready_normalizes_empty_profile_to_default(monkeypatch):
     assert "default" in seen_profiles          # '' blev slået op som 'default'
 
 
+def test_classify_checkin_required_from_body():
+    """FreeTheAi-checkin-body → distinkt 'checkin-required' kode (uafhængig af status)."""
+    from core.services.cheap_provider_runtime_adapters import (
+        _classify_http_error, _default_failure_cooldown_seconds,
+    )
+    body = '{"error":{"message":"daily discord check-in required; run /checkin","type":"daily_checkin_required"}}'
+    assert _classify_http_error(provider="freetheai", status_code=401, body=body) == "checkin-required"
+    assert _classify_http_error(provider="freetheai", status_code=403, body=body) == "checkin-required"
+    assert _default_failure_cooldown_seconds("checkin-required") == 1800
+
+
+def test_notify_checkin_required_dedups_per_day(monkeypatch):
+    """Nudge til Jarvis' awareness ved checkin-lås — men KUN én pr. UTC-dag (self-heal +
+    flere kald må ikke spamme). 2. kald samme dag skal ikke pushe igen."""
+    import core.services.nudge_broend as nb
+    from core.services.cheap_provider_runtime_adapters import _notify_checkin_required
+    pushed = []
+    store = []
+
+    def _push(**kw):
+        pushed.append(kw)
+        from datetime import UTC, datetime
+        store.append({"source": kw.get("source"), "created_at": datetime.now(UTC).isoformat()})
+        return "nudge-x"
+
+    monkeypatch.setattr(nb, "push", _push)
+    monkeypatch.setattr(nb, "list_pending", lambda limit=50: list(store))
+    _notify_checkin_required("freetheai")
+    _notify_checkin_required("freetheai")   # samme dag → ingen ny push
+    assert len(pushed) == 1
+    assert pushed[0]["source"] == "freetheai_checkin"
+    assert "checkin" in pushed[0]["message"].lower()
+
+
 def test_deepseek_not_routable_but_free_providers_are():
     """Bjørn 14. jul: deepseek (betalt) skal UD af routbar cheap-pool; gratis ind."""
     from core.services.cheap_provider_runtime_adapters import is_routable_provider

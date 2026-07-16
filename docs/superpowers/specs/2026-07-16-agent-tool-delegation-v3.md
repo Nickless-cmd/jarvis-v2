@@ -1,9 +1,9 @@
 ---
-status: udkast
+status: færdig
 author: Jarvis
 dato: 2026-07-16
-revision: 3
-supercedes: docs/specs/2026-07-16-agent-tool-delegation-v2.md
+revision: 3.1
+supercedes: docs/specs/2026-07-16-agent-tool-delegation-v3.md
 forudsaetning: agent_tools_enabled flag + spawn_agent_task.allowed_tools eksisterer men er inaktive
 ---
 
@@ -81,7 +81,7 @@ Domain filtrerer **per tool-type**, ikke per domain-blob:
 | `bjorn` (default) | bash, read_file, write_file, edit_file, grep, glob, find_files | Bjørns maskine via jarvis-code klienten |
 | `runtime` | runtime_bash, runtime_read_file, runtime_write_file, runtime_edit_file | Containeren (LXC 105) |
 | `web` | web_fetch, web_search, web_scrape | Netværk (altid tilgængelige uanset domain) |
-| `hybrid` | **Alle** — både Bjørn og container | Vælges per tool-kald |
+| `hybrid` | **Alle** — både Bjørn og container | Agenten vælger eksplicit via tool-prefix: `bash:` vs `runtime_bash:` i tool-kaldet. Uden prefix: default til agentens `execution_domain`-indstilling. |
 
 **Vigtig:** Domain-filteret er per tool-type, ikke per domain.
 En agent med `domain=runtime` kan godt kalde `web_fetch` — fordi web-tools er
@@ -208,6 +208,11 @@ For at undgå at eksisterende kørende agenter pludselig får tools:
 - Eller runtime-kald (når vi har det)
 - Kræver approve-dialog første gang
 
+**Config integritet:** Config-filen har et checksum-felt (`config_checksum: sha256...`)
+ved hver ændring. Hvis nogen redigerer config.yaml direkte uden at opdatere checksum,
+logges en `config_tamper` security_event ved næste Centralen startup.
+Integritetstjek er advisory (alarmerer, blokerer ikke).
+
 
 ## Governance — tool-kald validering
 
@@ -299,6 +304,20 @@ håndtere det — eller Jarvis' når han inspicerer resultatet.
 Undtagelse: Hvis governance validering fejler (scope violation, security),
 logges en `security_event` og agenten termineres øjeblikkeligt.
 
+### Orphaned children — hvad sker når forælder dør?
+
+Når en agent termineres (uanset årsag: completed, terminated, rate_limited,
+timeout):
+
+- **Alle dens børn termineres også.** Øjeblikkeligt. Ingen orphaned processer.
+- Terminering af børn logger en `child_terminated` entry i audit.
+- Børnenes børn (børnebørn) termineres også — kaskade.
+- Hvis et barn er midt i et tool-kald, afbrydes kaldet.
+- Cost-accounts for børnene rolles stadig op til forælderen før terminering.
+
+*Eneste undtagelse:* Hvis barnet er en `watcher` med `persistent=True`, overlever
+det forælders død. Watchere lever deres eget liv.
+
 
 ## Sikkerhedsprincipper (guard hænderne, ikke sindet)
 
@@ -317,9 +336,11 @@ logges en `security_event` og agenten termineres øjeblikkeligt.
    tool-ceiling. Hvis Jarvis spawner en agent med `allowed_tools=["bash"]`,
    kan dens børn maksimalt også få `bash` — aldrig `write_file`.
 
-4. **Scope-begrænsning (sti-præfiks).** Hver agent har et scope der
-   begrænser hvilke stier den må røre. Default er agentens working directory
+4. **Scope-begrænsning (sti-præfiks, resolved path).** Hver agent har et scope der
+   begrænser hvilke stier den må røre. Scope valideres via `os.path.realpath()` —
+   resolved path, ikke symlink-sti. Default er agentens working directory
    + goal-relaterede stier. Scope kan indsnævres, aldrig udvides.
+   Symlinks kan ikke bruges til at omgå scope.
 
 5. **Ingen auto-escalation.** `can-spawn`-policy betyder agenten må bede
    om at spawne børn — men børnene får lavere eller samme policy, aldrig
@@ -409,7 +430,8 @@ spawn_agent_task(
 - Skal være unikt inden for Jarvis' igangværende agenter (ikke historisk)
 - Skal matche regex: `^[a-z][a-z0-9_-]{2,31}$` — lowercase, bindestreg/underscore, 3-32 chars
 - Forsøg på dublet-navn → spawn fejler med `name_conflict` + liste af aktive navne
-- Support for **præfiks-scoping**: `bob/research` → navn = "research", prefixed scope
+- **Case-insensitive match i samtale-reference:** Når Jarvis siger "Bob" men agenten hedder
+  `bob`, matcher det stadig. Intern lookup er lowercase-normaliseret.
 
 **Hvordan navne bruges:**
 
@@ -523,13 +545,39 @@ await spawn_agent(skill="code-review", focus="input-validering og SQL-queries")
 **Skill registry:**
 
 Skills gemmes i `~/.jarvis-v2/skills/*.toml`. De loades ved startup.
-Jarvis kan definere nye skills. Bjorn kan approve dem (owner_approval flag).
+Jarvis kan definere nye skills. Bjørn kan approve dem.
 
-**Override regler:**
-- Alle parametre i spawn-kaldet overrider skill-definitionen
-- goal_template kan indeholde {variable} — udfyldes via keyword-args
-- Skills kan ikke eskalere policy — ceiling er skill-definition + inheritance
-- Skill med owner_approval=True kraever Bjorns godkendelse for brug
+**owner_approval — hvordan godkender Bjørn?**
+- Når en skill med `owner_approval=True` kaldes første gang, spawnes en
+  **approval-dialog** i jarvis-code/jarvis-desk:
+  ```
+  Skill 'code-review' kræver godkendelse:
+    Rolle: critic
+    Model: gpt-5
+    Scope: /media/projects/jarvis-v2/**
+  Godkend? [y/N] >
+  ```
+- Godkendelse gælder for én kørsel (ikke permanent)
+- For at gøre godkendelsen permanent: sæt `owner_approval=False` i skill-definitionen
+- Afvisning → spawn fejler med `owner_denied`
+
+**Override regler (prioritetsrækkefølge):**
+1. `goal` (inline) vinder ALTID over `goal_template` — hvis begge gives, bruges inline goal,
+   goal_template ignoreres
+2. `goal_template` bruges KUN hvis inline `goal` er None/udeladt
+3. Template-variable `{variable}` i goal_template udfyldes via keyword-args
+4. Alle andre parametre i spawn-kaldet overrider skill-definitionen (scope, model, domain osv.)
+5. Skills kan ikke eskalere policy — ceiling er skill-definition + inheritance
+6. Skill med owner_approval=True kræver Bjørns godkendelse for brug
+
+**Eksempel:**
+```python
+# inline goal vinder → goal_template ignoreres
+await spawn_agent(skill="code-review", goal="Tjek kun auth-modulet")
+
+# goal_template bruges → {focus} udfyldes
+await spawn_agent(skill="code-review", focus="input-validering")
+```
 
 **Implementation:**
 1. Opret ~/.jarvis-v2/skills/ directory
@@ -587,6 +635,10 @@ class ScheduledTask:
     created_at: float
 ```
 
+**Timezone:** Alle schedules kører i **UTC** som default. Timezone kan overstyres
+per schedule med feltet `timezone='Europe/Copenhagen'` — men default er UTC
+for at undgå DST-problemer.
+
 **Cron-udtryk — standard 5-felts UNIX cron:**
 
 ```
@@ -600,13 +652,32 @@ Eksempler:
 - `0 0 1 * *` = hver 1. i måneden kl midnat
 - `*/15 * * * *` = hvert 15. minut
 
+**Overlapping — hvad sker når en task tager længere tid end intervallet?**
+
+Default: **skip if running**. Hvis en task stadig kører når næste interval
+starter, springes næste kørsel over. Ingen parallel eksekvering af samme task.
+
+Alternativ (eksplicit): `concurrency="allow"` i schedule-definitionen tillader
+parallel eksekvering — men default er `"skip"`.
+
+```python
+# Default: skip hvis allerede kører
+await create_schedule(name="health", skill="check", cron="*/5 * * * *")
+
+# Eksplicit: tillad parallel
+await create_schedule(
+    name="health", skill="check", cron="*/5 * * * *",
+    concurrency="allow"
+)
+```
+
 **Hvordan schedules korer:**
 
 1. En **scheduler daemon** (letvaegtsproces i Centralen) tjekker hvert minut
 2. Finder alle `ScheduledTask` hvor `next_run <= now AND enabled=True`
 3. Spawner agenten med skill-konfigurationen
 4. Opdaterer `last_run` og `next_run`
-5. Logger resultatet til schedule-log
+5. Logger resultatet til schedule-log + central_audit (koblet på agentens tool-kald)
 
 **Schedule persistence:**
 
@@ -640,8 +711,10 @@ await run_schedule_now(task_id="...")
 **Sikkerhed:**
 - Schedules kan kun oprettes af Jarvis eller Bjorn
 - owner_approval=True = kraever Bjorns godkendelse for forste korsel
-- Hvis en scheduled agent fejler 3 gange i traek, disables den automatisk
-- Schedule daemon logger alle spawns og failures
+- Hvis en scheduled agent fejler 3 gange i træk, disables den automatisk
+- Schedule daemon logger alle spawns og failures til **central_audit**
+- Ved auto-disable: Jarvis får en notification (runtime event: `schedule_disabled`)
+  med task_id, name, failure_reason og link til audit-log
 
 **Implementation:**
 1. ScheduledTask dataclass
@@ -772,24 +845,34 @@ async def fork_session(session_id: str, name: str | None = None) -> str:
 
 **Auto-cleanup:**
 
-Ved Centralen startup:
+Kører ved Centralen startup + hver time derefter:
 1. Scan alle sessioner med status='active' og expired TTL
-2. Saet dem til 'expired'
-3. Log cleanup summary
+2. Sæt dem til 'expired'
+3. Hvis storage limits er overskredet: arkivér ældste inaktive sessioner (FIFO)
+4. Log cleanup summary til central_audit
 
 **Storage limits:**
 - Max 100 persistence sessioner ad gangen
 - Max 1000 messages per session
 - Max 500K tokens per session (total message history)
-- Aeldste session auto-arkiveres (status='archived') nar limit naes
+- **Når en grænse nås:** Ældste session (efter `last_active_at`) auto-arkiveres
+  (status='archived'). FIFO — først inaktive, først arkiveret.
+- Arkiverede sessioner kan læses men ikke resumés.
+- `list_sessions(include_archived=True)` for at se dem.
+
+**Concurrent execution (thread safety):**
+- SQLite kører i **WAL mode** (`PRAGMA journal_mode=WAL`) — tillader parallel læsning
+- Skrivning går gennem en **single-writer lock** (Python `threading.Lock()` i SessionStore)
+- Ingen race conditions: læsning kan ske parallelt, skrivning er serialiseret
+- `fork_session()` wrapper i en transaktion — hvis den fejler midtvejs, rulles tilbage
 
 **Implementation:**
 1. SQLite schema (3 tabeller som ovenfor)
-2. SessionStore klasse — CRUD for sessioner + messages
+2. SessionStore klasse — CRUD for sessioner + messages (thread-safe, WAL mode)
 3. resume_session() — genopret kontekst + message history
-4. fork_session() — klon session til ny gren
-5. TTL-check ved Centralen startup
-6. Auto-cleanup af expired sessioner
+4. fork_session() — klon session til ny gren (transaktionel)
+5. TTL-check ved Centralen startup + hver time
+6. Auto-cleanup af expired sessioner (FIFO ved storage limits)
 7. Storage limit enforcement
 
 
@@ -899,14 +982,36 @@ Ved Centralen startup:
   - DoD: Auto-arkiv ved storage limits
   - DoD: extend_session() API
 
-### Fase 8: Watcher cleanup
-- [ ] 8.1 Watcher-rollen: enten implementer med test eller fjem
-  - DoD: Hvis watcher beholdes: test at watcher har read-only (ingen web)
-  - DoD: Hvis watcher fjernes: fjem fra BADE policy-tabel og role-templates
+### Fase 8: Watcher test
+- [ ] 8.1 Watcher-rollen: implementer test
+  - DoD: Watcher har watch-toolbox (read-only, ingen web)
+  - DoD: Watcher kan ikke skrive eller spawne
 
 ### Ikke-kritiske forbedringer
 - [ ] Web-domain i role-tabellen (mangler: web naevnes i domain-tabel men ikke i roles)
   - Kan tilfojes nar der er en brug for en web-only agent
+
+## /Endringslog (v3 -> v3.1)
+
+| # | /Endring | Rationale |
+|---|----------|-----------|
+| 1 | Hybrid domain: specificeret tool router (prefix-baseret valg) | Uklart hvordan agenten vælger destination per kald |
+| 2 | Scope: symlink-sikkerhed via os.path.realpath() | Sikkerhedshul — symlinks kunne omgå scope |
+| 3 | Orphaned children: børn termineres når forælder dør | Manglende spec af livscyklus |
+| 4 | Navne: case-insensitive match i samtale | "Bob" burde matche "bob" |
+| 5 | Navne: præfiks-scoping fjernet (half-baked) | Ikke gennemtænkt nok til spec |
+| 6 | Skills: goal_template vs inline goal — prioritet specificeret | Uklart hvad der vinder når begge gives |
+| 7 | Skills: owner_approval dialog beskrevet | Uklart hvordan Bjørn godkender |
+| 8 | Scheduled tasks: overlapping = "skip if running" default | Manglende adfærd ved langvarige tasks |
+| 9 | Scheduled tasks: timezone = UTC default | Manglende tidszone-spec |
+| 10 | Scheduled tasks: notification ved auto-disable | Ingen alerting ved fejl |
+| 11 | Schedule logging: koblet til central_audit | Isoleret log der ikke kan krydsrefereres |
+| 12 | Session storage limit: FIFO-arkivering specificeret | Uklart hvad der sker ved grænser |
+| 13 | Auto-cleanup: kører startup + hver time | Kun startup var specificeret |
+| 14 | Concurrent execution: WAL mode + single-writer lock | Ingen thread-safety spec |
+| 15 | Watcher: TODO opdateret (implementér, ikke fjern) | Watcher var allerede i roles |
+| 16 | Sikkerhedsprincip 4: opdateret med resolved path | Konsistent med scope-symlink reglen |
+| 17 | Config integritetstjek: checksum + tamper detection | Ingen beskyttelse mod direkte config-redigering |
 
 ## /Endringslog (v2 -> v3)
 

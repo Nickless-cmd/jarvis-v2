@@ -297,7 +297,10 @@ def _build_structured_transcript_messages(
         raw_content = str(item.get("content") or "")
         if raw_role == "tool":
             _mid = int(item.get("id", 0) or 0)
-            if _cold_on and _mid and _mid < _cold_floor:
+            # cold = id <= floor (warm = id > floor) — matches the lifecycle
+            # module's accounting convention (compute_new_floor: warm=id>floor,
+            # _candidate_by_tokens returns the ceiling-crossing id as cold).
+            if _cold_on and _mid and _mid <= _cold_floor:
                 content = render_tool_result_for_prompt(
                     raw_content, expand=False, stub=True,
                 )

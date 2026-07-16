@@ -68,3 +68,16 @@ def test_flag_off_is_unchanged(monkeypatch):
     out = ts._build_structured_transcript_messages("s1", limit=60, include=True)
     blob = "\n".join(m["content"] for m in out)
     assert STUB_MARK not in blob  # no stubs when flag off
+
+
+def test_tool_exactly_at_floor_is_cold(monkeypatch):
+    # Renderer/accounting alignment (C1): a tool-result whose id == cold_floor
+    # must be COLD. The lifecycle module counts warm = id > floor, so the
+    # ceiling-crossing id (== floor) is accounted cold; the renderer must agree
+    # (cold = id <= floor), else warm tokens exceed the ceiling by one result.
+    _patch(monkeypatch, _hist(), floor=6)  # tool id 6 sits exactly at floor
+    out = ts._build_structured_transcript_messages("s1", limit=60, include=True)
+    blob = "\n".join(m["content"] for m in out)
+    # ids 3 and 6 are cold (<=6); id 9 is warm (>6)
+    assert blob.count(STUB_MARK) == 2
+    assert "tool-result-3" in blob and "tool-result-6" in blob

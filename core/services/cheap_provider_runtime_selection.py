@@ -287,7 +287,22 @@ def smoke_cheap_lane(
 #                         deliberation, agent reasoning, anywhere quality
 #                         matters and we'd rather fail than degrade.
 
-_PUBLIC_PROXY_PROVIDERS = ("ollamafreeapi", "arko", "opencode")
+# Anonymous / keyless free aggregators are "public proxies": last-resort,
+# backup-tier providers whose free routes are shared, unauthenticated and (per
+# their own provider docstrings) may log prompts to training. They must never
+# outrank credentialed free providers on default work, and must be dropped for
+# "important" work. kilo/ovhcloud/pollinations were added (2026-07-14/15) as
+# auth_kind="none" backups but were missing from this list, so they leaked into
+# default selection ahead of Groq/Mistral and were never excluded from the
+# important tier.
+_PUBLIC_PROXY_PROVIDERS = (
+    "ollamafreeapi",
+    "arko",
+    "opencode",
+    "kilo",
+    "ovhcloud",
+    "pollinations",
+)
 
 # Round-robin counter so consecutive background calls spread across the
 # public-proxy providers rather than draining one. Module-level + thread-
@@ -450,6 +465,16 @@ def select_cheap_lane_target(
     # For "important" calls, drop public proxies entirely.
     if kind == "important":
         candidates = [c for c in candidates if not _is_public_proxy(c.get("provider", ""))]
+
+    # For "default" calls, honour the documented contract ("paid first, public
+    # as fallback"): keep credentialed / non-public-proxy providers ahead of the
+    # anonymous public proxies, which serve only as graceful last resort.
+    # Candidates arrive already priority-sorted, so a stable split preserves the
+    # relative order within each group (quota / adaptive state still matters).
+    if kind == "default" and candidates:
+        non_public = [c for c in candidates if not _is_public_proxy(c.get("provider", ""))]
+        public = [c for c in candidates if _is_public_proxy(c.get("provider", ""))]
+        candidates = non_public + public
 
     # For "background" calls, reorder so public proxies come first and rotate
     # which one is preferred this call.

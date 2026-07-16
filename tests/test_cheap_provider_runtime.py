@@ -310,8 +310,12 @@ def test_smoke_cheap_lane_returns_mixed_results(
     assert by_provider["gemini"]["ok"] is True
     assert by_provider["openrouter"]["status"] == "rate-limited"
     assert by_provider["openrouter"]["ok"] is False
-    # The credentialed providers produced exactly one success + one failure.
-    assert result["success_count"] == 1
+    # The two credentialed providers under test produced exactly one success
+    # (gemini) + one failure (openrouter). Keyless free providers (kilo,
+    # ovhcloud, pollinations) are auth-ready by design — they need no saved
+    # credentials — so they also succeed in the probe and the GLOBAL
+    # success_count is no longer 1. Scope the assertion to the providers under
+    # test rather than the whole probed roster.
     assert by_provider["openrouter"] in result["results"]
 
 

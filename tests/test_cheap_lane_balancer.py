@@ -191,8 +191,8 @@ def _slot(provider="groq", model="m", rpm_limit=None, daily_limit=None, is_publi
     from core.services.cheap_lane_balancer import BalancerSlot
     return BalancerSlot(
         provider=provider, model=model, auth_profile="default",
-        base_url="", rpm_limit=rpm, daily_limit=daily,
-        is_public_proxy=proxy,
+        base_url="", rpm_limit=rpm_limit, daily_limit=daily_limit,
+        is_public_proxy=is_public_proxy,
     )
 
 

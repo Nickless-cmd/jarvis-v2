@@ -524,6 +524,18 @@ def _central_route_live() -> bool:
         return False
 
 
+def _flag_multiprofile() -> bool:
+    """Byg én slot pr. (provider, klar auth-profil) i stedet for kun entry-profilen.
+
+    Default OFF → uændret adfærd (én slot pr. model med entry'ens auth_profile).
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("cheap_pool_multiprofile_enabled", False)
+    except Exception:
+        return False
+
+
 def _record_route_divergence(old: dict, new: dict) -> None:
     """Shadow-sammenligning: log/observe når central_route ville vælge noget andet
     end balancerens vægtede-tilfældige pick. Data til at beslutte hvornår vi flipper
@@ -880,8 +892,6 @@ def build_slot_pool() -> list[BalancerSlot]:
             continue
         if provider in _EXCLUDED_PROVIDERS:
             continue
-        if not _credentials_ready(provider, auth_profile):
-            continue
         # Routable + cost-filter: betalte providers (deepseek routable=False; copilot-
         # premium cost_class=paid) holdes UDE af balanceren/inderlivet — de må ALDRIG
         # brænde premium-kvote. Kun gratis. Betalt kun via central_route(allow_paid).
@@ -890,6 +900,29 @@ def build_slot_pool() -> list[BalancerSlot]:
         if not is_routable_provider(provider) or provider_cost_class(provider) == "paid":
             continue
         meta = _provider_metadata(provider)
+        # Multiprofil (flag ON): én slot pr. klar auth-profil for provideren.
+        # Flag OFF (default): uændret — kun entry'ens egen auth_profile.
+        if _flag_multiprofile():
+            from core.services.auth_profile_scan import ready_profiles_for
+            for prof in ready_profiles_for(provider):
+                if not _credentials_ready(provider, prof):
+                    continue
+                sid = f"{provider}::{model}::{prof or 'default'}"
+                if any(s.slot_id == sid for s in slots):
+                    continue
+                slots.append(BalancerSlot(
+                    provider=provider,
+                    model=model,
+                    auth_profile=prof,
+                    base_url=str(meta.get("base_url") or ""),
+                    rpm_limit=meta.get("rpm_limit"),
+                    daily_limit=meta.get("daily_limit"),
+                    is_public_proxy=provider in _PUBLIC_PROXIES,
+                ))
+            continue
+        # --- OFF-sti: uændret adfærd ---
+        if not _credentials_ready(provider, auth_profile):
+            continue
         slot = BalancerSlot(
             provider=provider,
             model=model,
@@ -921,20 +954,26 @@ def build_slot_pool() -> list[BalancerSlot]:
                 or not is_routable_provider(provider)
                 or provider_cost_class(provider) == "paid"):  # betalt aldrig i balancer
             continue
-        auth_profile = prov_profiles.get(provider) or "default"
-        if not _credentials_ready(provider, auth_profile):
-            continue
-        for model in static_models:
-            sid = f"{provider}::{model}::{auth_profile or 'default'}"
-            if sid in seen:
+        # Multiprofil (flag ON): iterér klare auth-profiler; OFF: kun entry-profilen.
+        if _flag_multiprofile():
+            from core.services.auth_profile_scan import ready_profiles_for
+            static_profiles = ready_profiles_for(provider)
+        else:
+            static_profiles = [prov_profiles.get(provider) or "default"]
+        for auth_profile in static_profiles:
+            if not _credentials_ready(provider, auth_profile):
                 continue
-            seen.add(sid)
-            slots.append(BalancerSlot(
-                provider=provider, model=str(model), auth_profile=auth_profile,
-                base_url=str(cfg.get("base_url") or ""),
-                rpm_limit=cfg.get("rpm_limit"), daily_limit=cfg.get("daily_limit"),
-                is_public_proxy=provider in _PUBLIC_PROXIES,
-            ))
+            for model in static_models:
+                sid = f"{provider}::{model}::{auth_profile or 'default'}"
+                if sid in seen:
+                    continue
+                seen.add(sid)
+                slots.append(BalancerSlot(
+                    provider=provider, model=str(model), auth_profile=auth_profile,
+                    base_url=str(cfg.get("base_url") or ""),
+                    rpm_limit=cfg.get("rpm_limit"), daily_limit=cfg.get("daily_limit"),
+                    is_public_proxy=provider in _PUBLIC_PROXIES,
+                ))
     return slots
 
 

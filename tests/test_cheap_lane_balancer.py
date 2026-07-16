@@ -932,3 +932,29 @@ def test_daily_used_from_db_per_profile(isolated_runtime):
     assert bal._daily_used_from_db("groq", "default") == 3
     assert bal._daily_used_from_db("groq", "account2") == 1
     assert bal._daily_used_from_db("groq") == 4   # no profile => all (backward compat)
+
+
+def test_build_slot_pool_multiprofile_when_flag_on(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_router_enabled_models", lambda: [
+        {"provider": "groq", "model": "llama-x", "enabled": True,
+         "lane": "cheap", "auth_profile": "default"}])
+    monkeypatch.setattr(
+        "core.services.auth_profile_scan.ready_profiles_for",
+        lambda provider: ["default", "account2"] if provider == "groq" else ["default"])
+    monkeypatch.setattr(bal, "_credentials_ready", lambda p, a: True)
+    monkeypatch.setattr(bal, "_flag_multiprofile", lambda: True)
+    ids = {s.slot_id for s in bal.build_slot_pool()}
+    assert "groq::llama-x::default" in ids
+    assert "groq::llama-x::account2" in ids
+
+
+def test_build_slot_pool_single_profile_when_flag_off(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_router_enabled_models", lambda: [
+        {"provider": "groq", "model": "llama-x", "enabled": True,
+         "lane": "cheap", "auth_profile": "default"}])
+    monkeypatch.setattr(bal, "_credentials_ready", lambda p, a: True)
+    monkeypatch.setattr(bal, "_flag_multiprofile", lambda: False)
+    ids = {s.slot_id for s in bal.build_slot_pool()}
+    assert "groq::llama-x::account2" not in ids

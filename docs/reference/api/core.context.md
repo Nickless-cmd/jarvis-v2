@@ -75,4 +75,7 @@ _Tool-result lifecycle (visible-lane). Spec 2026-07-16._
 |---|---|---|---|---|
 | function | `user_message_ids` | `(messages)` | Ids for role=='user' messages, ascending (= run boundaries). | [src](../../../core/context/tool_result_lifecycle.py#L11) |
 | function | `estimate_tool_tokens` | `(messages)` | Sum of tool-result tokens (heuristic len//4). Only role=='tool'. | [src](../../../core/context/tool_result_lifecycle.py#L23) |
+| function | `_candidate_by_runs` | `(user_ids, run_window)` | Floor so exactly the last `run_window` user-turns stay warm. | [src](../../../core/context/tool_result_lifecycle.py#L32) |
+| function | `_candidate_by_tokens` | `(messages, token_ceiling)` | Floor so warm tool-tokens <= ceiling. Walks newest->oldest. | [src](../../../core/context/tool_result_lifecycle.py#L40) |
+| function | `compute_new_floor` | `(messages, *, current_floor, run_window, token_ceiling, hysteresis)` | New cold_floor. Monotonic (>= current_floor). 0 = nothing cold yet. | [src](../../../core/context/tool_result_lifecycle.py#L53) |
 

@@ -224,6 +224,7 @@ def record_cheap_provider_invocation(
     input_tokens: int = 0,
     output_tokens: int = 0,
     cost_usd: float = 0.0,
+    auth_profile: str = "",
 ) -> dict[str, object]:
     now = _now_iso()
     with connect() as conn:
@@ -242,18 +243,26 @@ def record_cheap_provider_invocation(
                 input_tokens INTEGER NOT NULL DEFAULT 0,
                 output_tokens INTEGER NOT NULL DEFAULT 0,
                 cost_usd REAL NOT NULL DEFAULT 0,
+                auth_profile TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL
             )
             """
         )
+        try:
+            conn.execute(
+                "ALTER TABLE cheap_provider_invocations "
+                "ADD COLUMN auth_profile TEXT NOT NULL DEFAULT ''"
+            )
+        except Exception:
+            pass
         cursor = conn.execute(
             """
             INSERT INTO cheap_provider_invocations (
                 lane, provider, model, status, error_code, error_message,
                 retry_after_seconds, latency_ms, input_tokens, output_tokens,
-                cost_usd, created_at
+                cost_usd, auth_profile, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 lane,
@@ -267,6 +276,7 @@ def record_cheap_provider_invocation(
                 int(input_tokens),
                 int(output_tokens),
                 float(cost_usd),
+                auth_profile,
                 now,
             ),
         )
@@ -285,6 +295,7 @@ def record_cheap_provider_invocation(
         "input_tokens": int(input_tokens),
         "output_tokens": int(output_tokens),
         "cost_usd": float(cost_usd),
+        "auth_profile": auth_profile,
         "created_at": now,
     }
 
@@ -295,6 +306,7 @@ def count_cheap_provider_invocations(
     lane: str = "cheap",
     since: str,
     status: str | None = None,
+    auth_profile: str = "",
 ) -> int:
     query = [
         "SELECT COUNT(*) AS count FROM cheap_provider_invocations",
@@ -304,6 +316,9 @@ def count_cheap_provider_invocations(
     if status is not None:
         query.append("AND status = ?")
         params.append(status)
+    if auth_profile:
+        query.append("AND auth_profile = ?")
+        params.append(auth_profile)
     with connect() as conn:
         conn.execute(
             """
@@ -320,10 +335,18 @@ def count_cheap_provider_invocations(
                 input_tokens INTEGER NOT NULL DEFAULT 0,
                 output_tokens INTEGER NOT NULL DEFAULT 0,
                 cost_usd REAL NOT NULL DEFAULT 0,
+                auth_profile TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL
             )
             """
         )
+        try:
+            conn.execute(
+                "ALTER TABLE cheap_provider_invocations "
+                "ADD COLUMN auth_profile TEXT NOT NULL DEFAULT ''"
+            )
+        except Exception:
+            pass
         row = conn.execute("\n".join(query), tuple(params)).fetchone()
     return int(row["count"]) if row else 0
 

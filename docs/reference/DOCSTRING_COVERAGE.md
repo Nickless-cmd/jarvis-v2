@@ -314,7 +314,7 @@ Generated from source. 6269/12806 functions/methods documented (48%). The list b
 - `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L456)
 - `core/runtime/db_capability_approval.py` :: `recent_capability_approval_requests` (L27)
 - `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L153)
-- `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L292)
+- `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L303)
 - `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L106)
 - `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L162)
 - `core/runtime/db_cheap_provider.py` :: `record_cheap_provider_invocation` (L214)

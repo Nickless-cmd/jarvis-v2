@@ -946,12 +946,15 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
             pass
 
     settings = load_settings()
-    # Tråd 1-konsument: autonome runs honorerer lært routing-præference OG eksplorations-armen
-    # (sampler occasionelt en alternativ model for at skabe kontrast — begge bag flag, default OFF).
-    from core.services.central_router_adapt import resolve_visible_model as _resolve_vm
-    _auto_provider, _auto_model = _resolve_vm(
-        provider_override="", model_override="", autonomous=True,
-        default_provider=settings.visible_model_provider, default_model=settings.visible_model_name)
+    # Bjørn-regel (2026-07-16): den BETALTE deepseek.com-API er KUN til visible lane.
+    # Autonome/baggrunds-runs kører på baggrunds-modellen (default ollama/
+    # deepseek-v4-flash:cloud). resolve_autonomous_model honorerer stadig lært præference
+    # + eksplorations-armen OVENPÅ baggrunds-basen, men hard-guarder mod at lande på den
+    # betalte deepseek-provider (lukkede også HTTP-400 ':cloud'-tag-til-deepseek.com-lækken).
+    from core.services.central_router_adapt import resolve_autonomous_model as _resolve_auto
+    _auto_provider, _auto_model = _resolve_auto(
+        autonomous_provider=settings.autonomous_model_provider,
+        autonomous_model=settings.autonomous_model_name)
     run = VisibleRun(
         run_id=f"autonomous-{uuid4().hex}",
         lane=settings.primary_model_lane,

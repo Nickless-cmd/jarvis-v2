@@ -266,14 +266,35 @@ def _eval_condition(cond: dict[str, Any], runtime_state: dict[str, Any]) -> tupl
             procs = list_processes(include_stopped=True).get("processes", []) or []
         except Exception as exc:
             return False, f"process_died: list failed: {exc}"
+        found = None
         for p in procs:
             if p.get("name") == name:
-                status = str(p.get("status") or "")
-                if status in {"exited", "lost"}:
-                    return True, f"process '{name}' status={status} (exit_code={p.get('exit_code')})"
-                return False, ""
-        # Process not in registry — could mean it was removed; treat as died
-        return True, f"process '{name}' not in supervisor registry"
+                found = p
+                break
+        if found is not None and str(found.get("status") or "") not in {"exited", "lost"}:
+            is_dead, status_desc = False, str(found.get("status") or "")
+        elif found is not None:
+            is_dead = True
+            status_desc = f"status={found.get('status')} (exit_code={found.get('exit_code')})"
+        else:
+            # Not in registry — could mean removed; treat as died.
+            is_dead, status_desc = True, "not in supervisor registry"
+        # EDGE-trigger (fix 2026-07-16): "died" er en OVERGANG, ikke en tilstand.
+        # Den gamle level-check returnerede True HVER evaluering mens processen var
+        # død → fyrede on_match hver cooldown i det uendelige (jarvis_bare: 597×,
+        # dealwork-worker: 3349×, grid-bot: 954× — en tilbagevendende runaway-fælde
+        # der druknede ollama-cloud-kvoten via self_wakeup→autonome runs). Nu:
+        # fyr KUN på levende→død (eller første observation af død), og re-arm først
+        # når processen ses levende igen. jf. log_pattern/state_field_change der
+        # allerede bruger runtime_state til edge-detektion.
+        if not is_dead:
+            runtime_state["fired_for_death"] = False
+            runtime_state["seen_alive"] = True
+            return False, ""
+        if runtime_state.get("fired_for_death"):
+            return False, ""  # allerede alarmeret for denne død-periode
+        runtime_state["fired_for_death"] = True
+        return True, f"process '{name}' died — {status_desc}"
 
     if kind == "log_pattern":
         name = str(cond.get("process_name") or "").strip()

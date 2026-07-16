@@ -132,3 +132,36 @@ def test_resolver_never_deep_tier(isolated_runtime):
     ra._kv_set(ra._PREF_KEY, {"visible": {"model": "openai/o1-reasoning", "strength": 0.9}})
     p, m = ra.resolve_visible_model(default_provider="glm", default_model="glm-5.2:cloud")
     assert (p, m) == ("glm", "glm-5.2:cloud")
+
+
+# ── AUTONOM/BAGGRUNDS-model (Bjørn-regel: betalt deepseek KUN i visible lane) ──────────
+def test_autonomous_default_is_ollama_cloud(isolated_runtime):
+    """Tom baggrunds-config → default ollama/deepseek-v4-flash:cloud (aldrig betalt deepseek)."""
+    p, m = ra.resolve_autonomous_model()
+    assert (p, m) == ("ollama", "deepseek-v4-flash:cloud")
+
+
+def test_autonomous_honors_configured_background_model(isolated_runtime):
+    """Config-overstyring respekteres (uden kode-deploy)."""
+    p, m = ra.resolve_autonomous_model(autonomous_provider="ollama", autonomous_model="glm-5.1:cloud")
+    assert (p, m) == ("ollama", "glm-5.1:cloud")
+
+
+def test_autonomous_hard_guard_blocks_paid_deepseek(isolated_runtime):
+    """HARD GUARD: en lært 'deepseek' visible-præference må ALDRIG lække til baggrund."""
+    ra._kv_set(ra._LIVE_FLAG, True)
+    ra._kv_set(ra._PREF_KEY, {"visible": {"model": "deepseek/deepseek-v4-flash", "strength": 0.9}})
+    p, m = ra.resolve_autonomous_model(
+        autonomous_provider="ollama", autonomous_model="deepseek-v4-flash:cloud")
+    assert p == "ollama" and p != ra._PAID_DEEPSEEK_PROVIDER
+    assert (p, m) == ("ollama", "deepseek-v4-flash:cloud")
+
+
+def test_autonomous_guard_survives_explore_returning_deepseek(isolated_runtime, monkeypatch):
+    """Selv hvis eksplorations-armen returnerer en 'deepseek/…:cloud'-kandidat (kilden til
+    HTTP-400-lækken) → klemmes tilbage til baggrunds-basen, aldrig deepseek.com."""
+    monkeypatch.setattr(ra, "resolve_visible_model",
+                        lambda **kw: ("deepseek", "deepseek-v4-flash:cloud"))
+    p, m = ra.resolve_autonomous_model(
+        autonomous_provider="ollama", autonomous_model="deepseek-v4-flash:cloud")
+    assert (p, m) == ("ollama", "deepseek-v4-flash:cloud")

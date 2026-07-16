@@ -248,15 +248,15 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
     except Exception:
         pass
     try:
-        completed, failed = _cheap_lane_stats(limit=40)
-        tot = completed + failed
+        completed, exhausted = _cheap_lane_stats(limit=40)
+        tot = completed + exhausted
         if tot >= _CHEAP_MIN_SAMPLE:
-            rate = failed / tot
+            rate = exhausted / tot
             if central_noise_filter.is_real_signal("cheap_lane_failover", rate > _CHEAP_FAIL_RATE):
                 flags.append(_raise_flag(
                     "cost", "cheap_lane", severity="error",
-                    message=f"Cheap-lane-failover {rate*100:.0f}% ({failed}/{tot}) — "
-                            f"gratis-provider-økologi degraderer (presser dyr lane)",
+                    message=f"Cheap-lane udtømt {rate*100:.0f}% ({exhausted}/{tot}) — den "
+                            f"kuraterede gratis-pool kunne ikke betjene (faldt til floor/rejste)",
                     importance="medium"))
     except Exception:
         pass
@@ -358,19 +358,26 @@ def _today_cost_usd() -> float | None:
 
 
 def _cheap_lane_stats(*, limit: int = 40) -> tuple[int, int]:
-    """(completed, failed) fra seneste cheap-lane-events på eventbussen (cross-proces)."""
-    completed = failed = 0
+    """(completed, exhausted) fra seneste cheap-lane-events på eventbussen (cross-proces).
+
+    2026-07-16 (fix): tidligere tællede vi `cheap_lane_provider_failed`/`_failed_over` som
+    "failure der presser dyr lane". Det var forkert: en failover er en SUND intra-gratis
+    retry (provider A fejler → B betjener stadig gratis) og pressede aldrig den dyre lane —
+    derfor false-alarmede metrikken 59-100% mens den faktiske cost var ~$1/dag. Den ÆGTE
+    "gratis-økologi degraderer"-tilstand er `cheap_lane_exhausted`: den kuraterede gratis-
+    pool kunne slet ikke betjene (faldt til floor eller rejste). Kun DET tælles nu."""
+    completed = exhausted = 0
     try:
         from core.eventbus.bus import event_bus
         for r in event_bus.recent_by_family("runtime", limit=limit):
             k = r.get("kind") or ""
             if k == "runtime.cheap_lane_provider_completed":
                 completed += 1
-            elif k in ("runtime.cheap_lane_provider_failed", "runtime.cheap_lane_provider_failed_over"):
-                failed += 1
+            elif k == "runtime.cheap_lane_exhausted":
+                exhausted += 1
     except Exception:
         pass
-    return completed, failed
+    return completed, exhausted
 
 
 def _tool_outcome_counts(*, limit: int = 40) -> tuple[int, int]:

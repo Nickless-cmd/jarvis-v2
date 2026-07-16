@@ -486,6 +486,14 @@ def execute_cheap_lane_via_pool(
     )
     if not bool(target.get("active", True)) or not str(target.get("provider") or "").strip():
         # Spec Fund 4: aldrig rejse ved tom pool — fald til garanteret bund.
+        # ÆGTE degraderings-signal (2026-07-16): den kuraterede gratis-pool kunne ikke
+        # betjene → faldt til floor. Dette (ikke sunde intra-gratis failovers) er hvad
+        # 'gratis-økologi degraderer' skal måle.
+        event_bus.publish(
+            "runtime.cheap_lane_exhausted",
+            {"from_provider": "", "from_model": "", "reason": "no-healthy-provider",
+             "resolution": "floor"},
+        )
         from core.services.cheap_lane_floor import attempt_floor
         return attempt_floor(message=message, lane=lane, reason="no-healthy-provider")
 
@@ -528,6 +536,12 @@ def execute_cheap_lane_via_pool(
             return execute_cheap_lane_via_pool(
                 message=message, skip_providers=skip_providers | {provider}, lane=lane,
             )
+        # Ingen gratis-fallback tilbage → poolen er UDTØMT (ægte degraderings-signal).
+        event_bus.publish(
+            "runtime.cheap_lane_exhausted",
+            {"from_provider": provider, "from_model": model, "reason": exc.code,
+             "resolution": "raise"},
+        )
         raise RuntimeError(f"{provider} cheap lane failed: {exc.code}: {exc.message}")
 
     output_tokens = int(result.get("output_tokens") or _estimate_tokens(result["text"]))

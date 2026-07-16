@@ -414,7 +414,11 @@ _PROVIDER_FAILOVER_ENV = "JARVIS_PROVIDER_FAILOVER"
 
 # Den dokumenterede pålidelige fallback (reference_glm52_ttft_cancel: deepseek-
 # v4-flash:cloud, TTFT 11-17s). Ét sted så failover-målet er entydigt.
-_FAILOVER_FALLBACK_PROVIDER = "deepseek"
+# Fix 2026-07-16: provideren var 'deepseek' (betalt) MED et ':cloud'-modelnavn —
+# deepseek.com afviser ':cloud'-tag'et (HTTP 400), og baggrunds-failover til betalt
+# deepseek bryder Bjørn-reglen (betalt deepseek KUN i visible lane). deepseek-v4-flash
+# :cloud er en OLLAMA-cloud-model → provideren skal være 'ollama' (gratis + gyldigt tag).
+_FAILOVER_FALLBACK_PROVIDER = "ollama"
 _FAILOVER_FALLBACK_MODEL = "deepseek-v4-flash:cloud"
 
 

@@ -183,10 +183,27 @@ def test_cheap_lane_failover_flags(wired, monkeypatch):
 
 def test_cheap_lane_healthy_no_flag(wired, monkeypatch):
     central, incidents, notifs = wired
-    monkeypatch.setattr(cw, "_cheap_lane_stats", lambda limit=40: (9, 1))  # 10% fejl
+    monkeypatch.setattr(cw, "_cheap_lane_stats", lambda limit=40: (9, 1))  # 10% udtømt
     cw.run_watch_tick()
     cw.run_watch_tick()
     assert not any(inc["nerve"] == "cheap_lane" for inc in incidents)
+
+
+def test_cheap_lane_stats_ignores_healthy_failovers(monkeypatch):
+    """FIX (2026-07-16): sunde intra-gratis failovers tælles IKKE som udtømning —
+    kun 'cheap_lane_exhausted' (poolen kunne ikke betjene → floor/raise) tæller."""
+    events = [
+        {"kind": "runtime.cheap_lane_provider_completed"},
+        {"kind": "runtime.cheap_lane_provider_failed_over"},   # sund retry → IKKE talt
+        {"kind": "runtime.cheap_lane_provider_failed"},        # per-provider fejl → IKKE talt
+        {"kind": "runtime.cheap_lane_provider_failed_over"},   # sund retry → IKKE talt
+        {"kind": "runtime.cheap_lane_provider_completed"},
+        {"kind": "runtime.cheap_lane_exhausted"},              # ÆGTE udtømning → talt
+    ]
+    import core.eventbus.bus as bus
+    monkeypatch.setattr(bus.event_bus, "recent_by_family", lambda family, limit=40: events)
+    completed, exhausted = cw._cheap_lane_stats(limit=40)
+    assert (completed, exhausted) == (2, 1)   # 3 failovers/failed IGNORERET
 
 
 def test_cost_observed_each_tick(wired, monkeypatch):

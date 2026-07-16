@@ -26,6 +26,8 @@ def test_start_autonomous_run_publishes_persistent_audit_events(
             primary_model_lane="visible",
             visible_model_provider="test-provider",
             visible_model_name="test-model",
+            autonomous_model_provider="test-auto-provider",
+            autonomous_model_name="test-auto-model",
         ),
     )
 
@@ -75,6 +77,8 @@ def test_start_autonomous_run_publishes_interrupted_instead_of_completed(
             primary_model_lane="visible",
             visible_model_provider="test-provider",
             visible_model_name="test-model",
+            autonomous_model_provider="test-auto-provider",
+            autonomous_model_name="test-auto-model",
         ),
     )
 

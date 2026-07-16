@@ -274,6 +274,40 @@ def resolve_visible_model(*, provider_override: str = "", model_override: str = 
     return base_provider, base_model
 
 
+# ── AUTONOM/BAGGRUNDS-model — Bjørn-regel (2026-07-16) ────────────────────────────────
+# Den BETALTE deepseek.com-API må KUN bruges i visible lane. Autonome/baggrunds-runs
+# (wakeup, inderliv, autonome check-ins) kører på ollama (deepseek-v4-flash:cloud) —
+# ALDRIG den betalte deepseek-provider. Dette lukker to lækager på én gang:
+#   1) autonome runs defaultede før til settings.visible_model (= deepseek, betalt).
+#   2) eksplorations-armen kunne sample en 'deepseek'/':cloud'-kandidat → deepseek.com
+#      afviste ':cloud'-tag'et med HTTP 400 ("supported names are deepseek-v4-pro/flash").
+_PAID_DEEPSEEK_PROVIDER = "deepseek"
+_AUTONOMOUS_FALLBACK_PROVIDER = "ollama"
+_AUTONOMOUS_FALLBACK_MODEL = "deepseek-v4-flash:cloud"
+
+
+def resolve_autonomous_model(*, autonomous_provider: str = "",
+                             autonomous_model: str = "") -> tuple[str, str]:
+    """(provider, model) for et AUTONOMT/baggrunds-run.
+
+    Baggrunds-basen defaulter til ollama/deepseek-v4-flash:cloud (config-overstyrbar via
+    runtime.settings.autonomous_model_*). Honorerer stadig eksplorations-armen + lært
+    præference OVENPÅ basen — men HARD-GUARD: ethvert resultat der lander på den betalte
+    'deepseek'-provider klemmes tilbage til baggrunds-basen. Kaster ALDRIG — fail-safe."""
+    base_provider = (str(autonomous_provider or "").strip() or _AUTONOMOUS_FALLBACK_PROVIDER)
+    base_model = (str(autonomous_model or "").strip() or _AUTONOMOUS_FALLBACK_MODEL)
+    try:
+        p, m = resolve_visible_model(
+            default_provider=base_provider, default_model=base_model, autonomous=True,
+        )
+        # HARD GUARD: den betalte deepseek.com-API må aldrig ramme baggrunden.
+        if str(p or "").strip().lower() == _PAID_DEEPSEEK_PROVIDER:
+            return base_provider, base_model
+        return (str(p or "").strip() or base_provider), (str(m or "").strip() or base_model)
+    except Exception:
+        return base_provider, base_model
+
+
 def register_router_adapt_producer() -> None:
     """Registrér routing-præference-læreren som cadence-producer (~hvert 45 min). SHADOW medmindre flag."""
     from core.services.internal_cadence import ProducerSpec, register_producer

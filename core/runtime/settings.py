@@ -42,6 +42,11 @@ class RuntimeSettings:
     heartbeat_model_name: str = ""
     heartbeat_auth_profile: str = ""
     heartbeat_local_only: bool = False
+    # Autonom/baggrunds-model (wakeup, inderliv, autonome check-ins). Bjørn-regel
+    # (2026-07-16): den BETALTE deepseek.com-API er KUN til visible lane — baggrund
+    # kører på ollama (deepseek-v4-flash:cloud). Overstyrbar uden kode-deploy.
+    autonomous_model_provider: str = "ollama"
+    autonomous_model_name: str = "deepseek-v4-flash:cloud"
     relevance_model_name: str = "glm-5.1:cloud"
     # Associative recall thresholds
     recall_strong_threshold: float = 0.7
@@ -466,6 +471,8 @@ class RuntimeSettings:
             "visible_auth_profile": self.visible_auth_profile,
             "heartbeat_model_provider": self.heartbeat_model_provider,
             "heartbeat_model_name": self.heartbeat_model_name,
+            "autonomous_model_provider": self.autonomous_model_provider,
+            "autonomous_model_name": self.autonomous_model_name,
             "heartbeat_auth_profile": self.heartbeat_auth_profile,
             "heartbeat_local_only": self.heartbeat_local_only,
             "relevance_model_name": self.relevance_model_name,
@@ -611,6 +618,12 @@ def load_settings() -> RuntimeSettings:
         ),
         heartbeat_local_only=bool(
             data.get("heartbeat_local_only", defaults.heartbeat_local_only)
+        ),
+        autonomous_model_provider=str(
+            data.get("autonomous_model_provider", defaults.autonomous_model_provider)
+        ),
+        autonomous_model_name=str(
+            data.get("autonomous_model_name", defaults.autonomous_model_name)
         ),
         relevance_model_name=str(
             data.get("relevance_model_name", defaults.relevance_model_name)

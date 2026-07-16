@@ -319,6 +319,17 @@ def _central_route_live() -> bool:
         return False
 
 
+def _flag_multiprofile() -> bool:
+    """Task 6: yield én kandidat pr. (provider, klar auth-profil) i stedet for kun
+    registry-entry'ens profil. Default OFF → uændret adfærd (én kandidat pr. model
+    med entry'ens auth_profile)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("cheap_pool_multiprofile_enabled", False)
+    except Exception:
+        return False
+
+
 def _record_route_divergence(old: dict, new: dict) -> None:
     """Shadow-sammenligning: log/observe når central_route ville vælge noget andet
     end den gamle sti. Data til at beslutte hvornår vi flipper til live."""
@@ -790,6 +801,10 @@ def _configured_cheap_candidates(
     }
     candidates: list[dict[str, object]] = []
     seen: set[tuple[str, str]] = set()
+    emitted: set[tuple[str, str, str]] = set()
+    multiprofile = _flag_multiprofile()
+    if multiprofile:
+        from core.services.auth_profile_scan import ready_profiles_for
     for item in registry.get("models") or []:
         if not bool(item.get("enabled", True)):
             continue
@@ -811,28 +826,39 @@ def _configured_cheap_candidates(
         seen.add(key)
         provider_entry = provider_entries.get(provider, {})
         defaults = provider_runtime_defaults(provider)
-        auth_profile = str(provider_entry.get("auth_profile") or "").strip()
-        candidates.append(
-            {
-                "active": True,
-                "lane": "cheap",
-                "provider": provider,
-                "model": model,
-                "auth_profile": auth_profile,
-                "auth_mode": str(provider_entry.get("auth_mode") or "").strip(),
-                "base_url": str(provider_entry.get("base_url") or defaults.get("base_url") or "").strip(),
-                "credentials_ready": provider_auth_ready(
-                    provider=provider,
-                    auth_profile=auth_profile,
-                ),
-                "priority": int(defaults.get("priority") or 9999),
-                "rpm_limit": defaults.get("rpm_limit"),
-                "daily_limit": defaults.get("daily_limit"),
-                "daily_neurons": defaults.get("daily_neurons"),
-                "source": "provider-router-registry",
-                "updated_at": str(item.get("updated_at") or ""),
-            }
-        )
+        registry_profile = str(provider_entry.get("auth_profile") or "").strip()
+        # Multiprofil (flag ON): én kandidat pr. klar auth-profil for provideren.
+        # Flag OFF (default): uændret — kun registry-entry'ens egen auth_profile.
+        if multiprofile:
+            auth_profiles = list(ready_profiles_for(provider))
+        else:
+            auth_profiles = [registry_profile]
+        for auth_profile in auth_profiles:
+            triple = (provider, model, auth_profile)
+            if triple in emitted:
+                continue
+            emitted.add(triple)
+            candidates.append(
+                {
+                    "active": True,
+                    "lane": "cheap",
+                    "provider": provider,
+                    "model": model,
+                    "auth_profile": auth_profile,
+                    "auth_mode": str(provider_entry.get("auth_mode") or "").strip(),
+                    "base_url": str(provider_entry.get("base_url") or defaults.get("base_url") or "").strip(),
+                    "credentials_ready": provider_auth_ready(
+                        provider=provider,
+                        auth_profile=auth_profile,
+                    ),
+                    "priority": int(defaults.get("priority") or 9999),
+                    "rpm_limit": defaults.get("rpm_limit"),
+                    "daily_limit": defaults.get("daily_limit"),
+                    "daily_neurons": defaults.get("daily_neurons"),
+                    "source": "provider-router-registry",
+                    "updated_at": str(item.get("updated_at") or ""),
+                }
+            )
     # Phase D (2026-05-14): also inject models from provider defaults' static_models
     # for providers that have no explicit model entries in the registry.
     # This lets us remove redundant model entries for providers like opencode
@@ -842,7 +868,12 @@ def _configured_cheap_candidates(
         if not static_models:
             continue
         provider_entry = provider_entries.get(provider_name, {})
-        auth_profile = str(provider_entry.get("auth_profile") or "").strip()
+        registry_profile = str(provider_entry.get("auth_profile") or "").strip()
+        # Multiprofil (flag ON): iterér klare auth-profiler; OFF: kun entry-profilen.
+        if multiprofile:
+            static_profiles = list(ready_profiles_for(provider_name))
+        else:
+            static_profiles = [registry_profile]
         for sm in static_models:
             key = (provider_name, sm)
             if key in seen:
@@ -852,31 +883,36 @@ def _configured_cheap_candidates(
             if provider_name in ("ollamafreeapi", "arko") and not include_public_proxy:
                 continue
             seen.add(key)
-            candidates.append(
-                {
-                    "active": True,
-                    "lane": "cheap",
-                    "provider": provider_name,
-                    "model": sm,
-                    "auth_profile": auth_profile,
-                    "auth_mode": str(provider_entry.get("auth_mode") or "").strip(),
-                    "base_url": str(
-                        provider_entry.get("base_url")
-                        or provider_cfg.get("base_url")
-                        or ""
-                    ).strip(),
-                    "credentials_ready": provider_auth_ready(
-                        provider=provider_name,
-                        auth_profile=auth_profile,
-                    ),
-                    "priority": int(provider_cfg.get("priority") or 9999),
-                    "rpm_limit": provider_cfg.get("rpm_limit"),
-                    "daily_limit": provider_cfg.get("daily_limit"),
-                    "daily_neurons": provider_cfg.get("daily_neurons"),
-                    "source": "provider-defaults-static-models",
-                    "updated_at": "",
-                }
-            )
+            for auth_profile in static_profiles:
+                triple = (provider_name, sm, auth_profile)
+                if triple in emitted:
+                    continue
+                emitted.add(triple)
+                candidates.append(
+                    {
+                        "active": True,
+                        "lane": "cheap",
+                        "provider": provider_name,
+                        "model": sm,
+                        "auth_profile": auth_profile,
+                        "auth_mode": str(provider_entry.get("auth_mode") or "").strip(),
+                        "base_url": str(
+                            provider_entry.get("base_url")
+                            or provider_cfg.get("base_url")
+                            or ""
+                        ).strip(),
+                        "credentials_ready": provider_auth_ready(
+                            provider=provider_name,
+                            auth_profile=auth_profile,
+                        ),
+                        "priority": int(provider_cfg.get("priority") or 9999),
+                        "rpm_limit": provider_cfg.get("rpm_limit"),
+                        "daily_limit": provider_cfg.get("daily_limit"),
+                        "daily_neurons": provider_cfg.get("daily_neurons"),
+                        "source": "provider-defaults-static-models",
+                        "updated_at": "",
+                    }
+                )
     candidates.sort(
         key=lambda item: (
             _candidate_adaptive_snapshot(item)["effective_priority"],

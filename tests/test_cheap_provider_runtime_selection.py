@@ -64,3 +64,41 @@ def test_cheap_selection_excludes_paid(monkeypatch):
                         lambda p: "paid" if p == "copilot-premium" else "free")
     t = sel.select_cheap_lane_target(task_kind="default")
     assert t.get("provider") != "copilot-premium"   # betalt ekskluderet
+
+
+def _stub_groq_registry(monkeypatch, sel):
+    """Gør groq til en gyldig cheap-kandidat via provider-router-registry."""
+    registry = {
+        "providers": [
+            {"provider": "groq", "enabled": True, "auth_profile": "default",
+             "auth_mode": "api_key", "base_url": "https://groq.example"},
+        ],
+        "models": [
+            {"provider": "groq", "model": "llama-3-8b", "lane": "cheap",
+             "enabled": True, "updated_at": "2026-07-16"},
+        ],
+    }
+    monkeypatch.setattr(sel, "load_provider_router_registry", lambda: registry)
+    monkeypatch.setattr(sel, "provider_auth_ready", lambda **kw: True)
+    monkeypatch.setattr(sel, "provider_runtime_defaults",
+                        lambda p: {"base_url": "https://groq.example", "priority": 22})
+
+
+def test_candidates_multiprofile_when_flag_on(monkeypatch):
+    from core.services import cheap_provider_runtime_selection as sel
+    monkeypatch.setattr("core.services.auth_profile_scan.ready_profiles_for",
+                        lambda provider: ["default", "account2"] if provider == "groq" else ["default"])
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: True)
+    _stub_groq_registry(monkeypatch, sel)
+    profs = {c["auth_profile"] for c in sel._configured_cheap_candidates(include_public_proxy=True)
+             if c["provider"] == "groq"}
+    assert profs == {"default", "account2"}
+
+
+def test_candidates_single_profile_when_flag_off(monkeypatch):
+    from core.services import cheap_provider_runtime_selection as sel
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: False)
+    _stub_groq_registry(monkeypatch, sel)
+    profs = [c["auth_profile"] for c in sel._configured_cheap_candidates(include_public_proxy=True)
+             if c["provider"] == "groq"]
+    assert len(profs) == 1

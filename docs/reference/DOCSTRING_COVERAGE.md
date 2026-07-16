@@ -1677,7 +1677,7 @@ Generated from source. 6314/12858 functions/methods documented (49%). The list b
 - `core/services/tool_result_store.py` :: `cleanup_old_results` (L63)
 - `core/services/tool_result_store.py` :: `get_tool_result` (L47)
 - `core/services/tool_result_store.py` :: `parse_tool_result_reference` (L92)
-- `core/services/tool_result_store.py` :: `render_tool_result_for_prompt` (L108)
+- `core/services/tool_result_store.py` :: `render_tool_result_for_prompt` (L113)
 - `core/services/tool_result_store.py` :: `save_tool_result` (L22)
 - `core/services/tool_result_store.py` :: `summarize_result` (L15)
 - `core/services/tool_router_runtime.py` :: `start_tool_router_runtime` (L73)

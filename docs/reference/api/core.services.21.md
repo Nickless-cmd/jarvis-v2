@@ -103,10 +103,10 @@ _Provider-agnostic tool-result aging for the visible agentic loop._
 | function | `cleanup_old_results` | `(max_age_days=…)` | — | [src](../../../core/services/tool_result_store.py#L63) |
 | function | `build_tool_result_reference` | `(result_id, *, tool_name, summary)` | — | [src](../../../core/services/tool_result_store.py#L80) |
 | function | `parse_tool_result_reference` | `(content)` | — | [src](../../../core/services/tool_result_store.py#L92) |
-| function | `render_tool_result_for_prompt` | `(content, *, expand, max_chars=…)` | — | [src](../../../core/services/tool_result_store.py#L108) |
-| function | `_result_path` | `(result_id)` | — | [src](../../../core/services/tool_result_store.py#L138) |
-| function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L142) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L150) |
+| function | `render_tool_result_for_prompt` | `(content, *, expand, max_chars=…, stub=…)` | — | [src](../../../core/services/tool_result_store.py#L113) |
+| function | `_result_path` | `(result_id)` | — | [src](../../../core/services/tool_result_store.py#L163) |
+| function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L167) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L175) |
 
 ## `core/services/tool_router.py`
 _Per-turn tool selection._

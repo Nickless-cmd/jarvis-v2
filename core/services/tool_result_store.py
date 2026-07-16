@@ -99,9 +99,14 @@ def parse_tool_result_reference(content: str) -> dict[str, str] | None:
         return None
     lines = raw.splitlines()
     summary_line = lines[1].strip() if len(lines) > 1 else ""
+    # tool_name is derivable from the immutable reference string itself:
+    # build_tool_result_reference emits line 2 as "[{tool}]: {summary}".
+    tool_match = re.match(r"^\[(?P<tool>[^\]]+)\]:\s?(?P<rest>.*)$", summary_line)
+    tool_name = str(tool_match.group("tool")).strip() if tool_match else ""
     return {
         "result_id": result_id,
         "summary": summary_line,
+        "tool_name": tool_name,
     }
 
 
@@ -110,9 +115,29 @@ def render_tool_result_for_prompt(
     *,
     expand: bool,
     max_chars: int = 1200,
+    stub: bool = False,
 ) -> str:
     raw = str(content or "").strip()
     ref = parse_tool_result_reference(raw)
+
+    if stub and ref:
+        # COLD: pure function of the immutable reference string — NEVER disk.
+        # (the disk-load fallback changes byte-form when the 7-day reaper deletes
+        #  the JSON; the reference string in chat_messages.content is immutable.)
+        rid = ref["result_id"]
+        tool_name = str(ref.get("tool_name") or "tool").strip() or "tool"
+        summary = " ".join(str(ref.get("summary") or "").split()).strip()
+        # drop the "[tool]: " prefix that build_tool_result_reference prepends,
+        # so the snippet doesn't duplicate the tool name.
+        prefix = f"[{tool_name}]:"
+        if summary.startswith(prefix):
+            summary = summary[len(prefix):].strip()
+        snippet = summary[:40].rstrip()
+        if len(summary) > 40:
+            snippet += "…"
+        return (f"[tool_result:{rid} — {tool_name}: {snippet} "
+                f"(read_tool_result)]")
+
     if not ref:
         normalized = " ".join(raw.split()).strip()
         if len(normalized) <= max_chars:

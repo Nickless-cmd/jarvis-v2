@@ -245,6 +245,15 @@ _PENDING_APPROVALS: dict[str, dict] = dict(_load_approvals_state(_APPROVALS_STAT
 
 def _persist_pending_approvals() -> None:
     _save_approvals_state(_APPROVALS_STATE_KEY, _PENDING_APPROVALS)
+
+
+def _advance_tool_lifecycle(session_id: str) -> None:
+    """Run-end: advance tool-result cold_floor (spec 2026-07-16). Fault-tolerant."""
+    try:
+        from core.context.tool_result_lifecycle import evaluate_and_advance
+        evaluate_and_advance(session_id)
+    except Exception:
+        pass
 # Run control state — udskilt til visible_runs_sections/run_control_state.py
 # (Boy Scout before jarvis-brain-auto-inject added below). Re-exported
 # from here so existing monkeypatches in tests/test_visible_runs_approval_resolution.py
@@ -4566,6 +4575,9 @@ async def _stream_visible_run(
                 except Exception as _persist_exc:
                     # H5: svaret er vist live, men gemmes ikke → væk ved reload.
                     _observe_persist_failed(run, _persist_exc)
+
+                if _final_run_status == "completed":
+                    _advance_tool_lifecycle(run.session_id)
 
                 _set_orb_phase("idle")
                 # Phase E6: emit a per-turn changelog as its own SSE event

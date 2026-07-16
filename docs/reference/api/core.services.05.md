@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_mood_regulator.py`
+_Mood Regulator — samtale-drevet humørregulering._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `regulate` | `(kind, *, reason=…, detail=…)` | Regulér humøret baseret på en samtale-hændelse. | [src](../../../core/services/central_mood_regulator.py#L56) |
+| function | `regulate_auto` | `(*, event_kind, payload=…)` | Auto-regulering fra interne systemer (dissent, redpill, etc.). | [src](../../../core/services/central_mood_regulator.py#L115) |
+| function | `_apply_bump_direct` | `(delta, label)` | Kald mood_oscillatorens apply_bump direkte — synkron sti. | [src](../../../core/services/central_mood_regulator.py#L137) |
+| function | `_emit_mood_event` | `(payload)` | Publish a mood event to the eventbus under mood.<event>. | [src](../../../core/services/central_mood_regulator.py#L149) |
+| function | `_log_to_buffer` | `(kind, result)` | Keep a rolling buffer of recent mood regulations for MC. | [src](../../../core/services/central_mood_regulator.py#L165) |
+| function | `build_mood_regulator_surface` | `()` | Build MC surface for mood regulator. | [src](../../../core/services/central_mood_regulator.py#L177) |
+
 ## `core/services/central_morpheus.py`
 _Morpheus 🕶️ — potentiale-scanner (Matrix-ensemble, 2026-07-10)._
 
@@ -568,24 +580,4 @@ _central_terminal — en command-line ind i Den Intelligente Central (owner-term
 | function | `_q` | `(action, **kw)` | — | [src](../../../core/services/central_terminal.py#L35) |
 | function | `_fmt_envelope` | `(env)` | central_query-envelope → terminal-linjer (kompakt, læsbar). | [src](../../../core/services/central_terminal.py#L40) |
 | function | `run_command` | `(line)` | Parse + udfør én terminal-kommando. Returnerer {ok, command, lines}. Self-safe. | [src](../../../core/services/central_terminal.py#L76) |
-
-## `core/services/central_timeseries.py`
-_core/services/central_timeseries.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_timeseries.py#L46) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_timeseries.py#L55) |
-| function | `_durability_on` | `()` | Hot-path-durabilitet (auto-restore/persist i record/recent) er AKTIV i produktion, men | [src](../../../core/services/central_timeseries.py#L63) |
-| class | `Sample` | `` | — | [src](../../../core/services/central_timeseries.py#L71) |
-| function | `record` | `(cluster, nerve, value=…, *, meta=…)` | Tilføj ét sample til (cluster, nerve)'s serie. Best-effort, kaster aldrig. | [src](../../../core/services/central_timeseries.py#L77) |
-| function | `recent` | `(cluster, nerve, *, limit=…)` | Læs de seneste samples for én nerve (nyeste sidst). READ-ONLY. | [src](../../../core/services/central_timeseries.py#L108) |
-| function | `nerves` | `()` | Alle (cluster, nerve)-nøgler der har mindst ét sample. READ-ONLY. | [src](../../../core/services/central_timeseries.py#L125) |
-| function | `stats` | `()` | Samlet overblik: antal nerver + samples pr. nerve. READ-ONLY, til observabilitet. | [src](../../../core/services/central_timeseries.py#L134) |
-| function | `snapshot` | `(*, recent=…)` | Kompakt cross-proces-snapshot: pr. nerve seneste værdi(er) + count. Read-only, self-safe. | [src](../../../core/services/central_timeseries.py#L149) |
-| function | `persist_snapshot` | `()` | Flush de bounded per-nerve-serier til durabel kv, så nervesystemet OVERLEVER genstart. | [src](../../../core/services/central_timeseries.py#L173) |
-| function | `_load_durable` | `()` | Genindlæs det durable snapshot ind i _series (merge-append). Self-safe. | [src](../../../core/services/central_timeseries.py#L191) |
-| function | `_maybe_restore` | `()` | Restore-on-first-access (dobbelt-tjekket): genindlæs durabelt snapshot ÉN gang efter boot. | [src](../../../core/services/central_timeseries.py#L214) |
-| function | `_maybe_persist` | `()` | Throttlet flush i baggrundstråd (hot-path stalles ALDRIG af DB-skrivning). | [src](../../../core/services/central_timeseries.py#L228) |
-| function | `_reset_for_tests` | `()` | Testhjælper — ryd al state. Ikke til produktionsbrug. | [src](../../../core/services/central_timeseries.py#L241) |
 

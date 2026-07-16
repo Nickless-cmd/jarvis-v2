@@ -2,6 +2,12 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/bounded_workspace_write_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_bounded_workspace_write_execution_surface` | `()` | — | [src](../../../core/services/bounded_workspace_write_runtime.py#L7) |
+
 ## `core/services/bridge_presence.py`
 _Cross-proces bro-tilstedeværelse via shared_cache (samme mønster som central_xproc)._
 
@@ -582,14 +588,4 @@ _Dark-products digest — dark-LLM-programmet: wire mørke daemon-PRODUKTER ind 
 | function | `_first_count` | `(surface)` | Find en repræsentativ magnitude UDEN at afsløre indhold: længden af den | [src](../../../core/services/central_dark_products_digest.py#L35) |
 | function | `_reduce` | `(surface)` | KUN liveness+count. Ingen tekst. Self-safe. | [src](../../../core/services/central_dark_products_digest.py#L51) |
 | function | `build_dark_products_digest` | `()` | Samlet reduceret dark-products-digest. Kaster ALDRIG. | [src](../../../core/services/central_dark_products_digest.py#L60) |
-
-## `core/services/central_decentralization.py`
-_Decentral agency (shadow-skridt 1) — mål Centralens chokepoint-skat + find sikre kandidater._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_never_decentralize` | `(nerve)` | True hvis <nerve> ALDRIG må foreslås som decentraliserings-kandidat: katalog-SECURITY | [src](../../../core/services/central_decentralization.py#L30) |
-| function | `analyze_chokepoint` | `()` | Mål hvor meget af Centralens decide-load der er ren overhead, + sikre decentraliserings- | [src](../../../core/services/central_decentralization.py#L42) |
-| function | `_felt` | `(tax_pct, n_candidates)` | — | [src](../../../core/services/central_decentralization.py#L85) |
-| function | `record_chokepoint` | `()` | Observér chokepoint-skatten til Centralen (nerve system/decentralization) — den mærker | [src](../../../core/services/central_decentralization.py#L96) |
 

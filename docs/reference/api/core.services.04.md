@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_decentralization.py`
+_Decentral agency (shadow-skridt 1) — mål Centralens chokepoint-skat + find sikre kandidater._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_never_decentralize` | `(nerve)` | True hvis <nerve> ALDRIG må foreslås som decentraliserings-kandidat: katalog-SECURITY | [src](../../../core/services/central_decentralization.py#L30) |
+| function | `analyze_chokepoint` | `()` | Mål hvor meget af Centralens decide-load der er ren overhead, + sikre decentraliserings- | [src](../../../core/services/central_decentralization.py#L42) |
+| function | `_felt` | `(tax_pct, n_candidates)` | — | [src](../../../core/services/central_decentralization.py#L85) |
+| function | `record_chokepoint` | `()` | Observér chokepoint-skatten til Centralen (nerve system/decentralization) — den mærker | [src](../../../core/services/central_decentralization.py#L96) |
+
 ## `core/services/central_dejavu.py`
 _Déjà Vu — ufrivillig erindring._
 
@@ -616,16 +626,4 @@ _central_moltbook — Jarvis' Moltbook-tilstedeværelse som en governed Central-
 | function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_moltbook.py#L289) |
 | function | `register_moltbook_producer` | `()` | Registrér ~6t observe-cadence (ikke heartbeat). Self-safe. | [src](../../../core/services/central_moltbook.py#L299) |
 | function | `build_moltbook_surface` | `()` | Owner-view: sidste scan, ny-aktivitet, seneste tråde, credential-/switch-status. Self-safe. | [src](../../../core/services/central_moltbook.py#L314) |
-
-## `core/services/central_mood_regulator.py`
-_Mood Regulator — samtale-drevet humørregulering._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `regulate` | `(kind, *, reason=…, detail=…)` | Regulér humøret baseret på en samtale-hændelse. | [src](../../../core/services/central_mood_regulator.py#L56) |
-| function | `regulate_auto` | `(*, event_kind, payload=…)` | Auto-regulering fra interne systemer (dissent, redpill, etc.). | [src](../../../core/services/central_mood_regulator.py#L115) |
-| function | `_apply_bump_direct` | `(delta, label)` | Kald mood_oscillatorens apply_bump direkte — synkron sti. | [src](../../../core/services/central_mood_regulator.py#L137) |
-| function | `_emit_mood_event` | `(payload)` | Publish a mood event to the eventbus under mood.<event>. | [src](../../../core/services/central_mood_regulator.py#L149) |
-| function | `_log_to_buffer` | `(kind, result)` | Keep a rolling buffer of recent mood regulations for MC. | [src](../../../core/services/central_mood_regulator.py#L165) |
-| function | `build_mood_regulator_surface` | `()` | Build MC surface for mood regulator. | [src](../../../core/services/central_mood_regulator.py#L177) |
 

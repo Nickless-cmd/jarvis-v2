@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/communication_guard_daemon.py`
+_Communication guard daemon — vedligeholder TTL-rydning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_communication_guard_daemon` | `()` | Daemon tick: cleanup expired TTL triggers + log active count. | [src](../../../core/services/communication_guard_daemon.py#L18) |
+
 ## `core/services/compass_engine.py`
 _Compass Engine — weekly strategic bearing based on open loops and priorities._
 
@@ -611,20 +618,4 @@ _Creative Projects — multi-week persistent creative impulse._
 | function | `build_creative_projects_surface` | `()` | — | [src](../../../core/services/creative_projects.py#L140) |
 | function | `_surface_summary` | `(active, paused, dreaming, stale)` | — | [src](../../../core/services/creative_projects.py#L168) |
 | function | `build_creative_projects_prompt_section` | `()` | Surface active/dreaming projects so he can resume or carry them. | [src](../../../core/services/creative_projects.py#L188) |
-
-## `core/services/crisis_marker_detector.py`
-_Crisis marker detector — flag identity-forming friction moments._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_detect_sustained_failure` | `(events)` | ≥5 consecutive errors of the same tool. | [src](../../../core/services/crisis_marker_detector.py#L43) |
-| function | `_detect_unexpected_success` | `(events)` | Tick quality summary that jumped sharply. | [src](../../../core/services/crisis_marker_detector.py#L74) |
-| function | `_detect_existential_moment` | `(events)` | Explicit identity-formation statements in recent messages. | [src](../../../core/services/crisis_marker_detector.py#L95) |
-| function | `_detect_high_volatility` | `(events)` | Rapid mood shifts in recent personality snapshots. | [src](../../../core/services/crisis_marker_detector.py#L157) |
-| function | `_recent_events` | `(hours=…)` | — | [src](../../../core/services/crisis_marker_detector.py#L196) |
-| function | `scan_for_crisis_markers` | `()` | Run all detectors. Persist any new markers found. | [src](../../../core/services/crisis_marker_detector.py#L206) |
-| function | `list_crisis_markers` | `(*, days_back=…, limit=…)` | — | [src](../../../core/services/crisis_marker_detector.py#L270) |
-| function | `crisis_marker_section` | `()` | Awareness section showing recent crisis markers (last 7 days). | [src](../../../core/services/crisis_marker_detector.py#L283) |
-| function | `_exec_scan_crisis_markers` | `(args)` | — | [src](../../../core/services/crisis_marker_detector.py#L301) |
-| function | `_exec_list_crisis_markers` | `(args)` | — | [src](../../../core/services/crisis_marker_detector.py#L305) |
 

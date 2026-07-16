@@ -262,6 +262,17 @@ _Attention Contour — shape of attention._
 | function | `format_attention_for_prompt` | `()` | — | [src](../../../core/services/attention_contour.py#L17) |
 | function | `build_attention_contour_surface` | `()` | — | [src](../../../core/services/attention_contour.py#L20) |
 
+## `core/services/auth_profile_scan.py`
+_Shared scanner for multi-profile provider auth slots._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `clear_cache` | `()` | Drop all cached scan results (test helper / manual invalidation). | [src](../../../core/services/auth_profile_scan.py#L39) |
+| function | `_profiles_root` | `()` | Return the auth/profiles directory (honoring JARVIS_CONFIG_DIR). | [src](../../../core/services/auth_profile_scan.py#L44) |
+| function | `_is_keyless` | `(provider)` | True if the provider needs no per-profile credentials. | [src](../../../core/services/auth_profile_scan.py#L51) |
+| function | `_sort_default_first` | `(profiles)` | — | [src](../../../core/services/auth_profile_scan.py#L63) |
+| function | `ready_profiles_for` | `(provider)` | Return profiles with ready credentials for ``provider``. | [src](../../../core/services/auth_profile_scan.py#L68) |
+
 ## `core/services/auto_code_review.py`
 _Auto code-review heuristic for git-commit proposals._
 
@@ -614,10 +625,4 @@ _Boundary Awareness — "Where do I end?"_
 | function | `_trim_lines` | `(value)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L392) |
 | function | `_safe_int` | `(value)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L396) |
 | function | `_merge_unique` | `(primary, secondary)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L403) |
-
-## `core/services/bounded_workspace_write_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_bounded_workspace_write_execution_surface` | `()` | — | [src](../../../core/services/bounded_workspace_write_runtime.py#L7) |
 

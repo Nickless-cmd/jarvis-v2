@@ -223,16 +223,18 @@ _Transcript rendering + session compaction for prompts._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `chat_session_messages_since_last_compact` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L25) |
-| function | `recent_chat_session_messages` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L30) |
-| function | `recent_chat_session_messages_by_user_turns` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L35) |
-| function | `visible_session_continuity` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L40) |
-| function | `_visible_session_continuity_instruction` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L45) |
-| function | `_recent_transcript_section` | `(session_id, *, limit, include)` | Legacy flat-text fallback — used only when structured messages are not viable. | [src](../../../core/services/prompt_sections/transcript_sections.py#L100) |
-| function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L153) |
-| function | `_build_structured_transcript_messages` | `(session_id, *, limit, include)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L191) |
-| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L384) |
-| function | `_run_session_compaction` | `(session_id, keep_recent)` | Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det | [src](../../../core/services/prompt_sections/transcript_sections.py#L421) |
-| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L457) |
+| function | `_lifecycle_enabled` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L30) |
+| function | `_cold_floor_for` | `(session_id)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L38) |
+| function | `recent_chat_session_messages` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L46) |
+| function | `recent_chat_session_messages_by_user_turns` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L51) |
+| function | `visible_session_continuity` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L56) |
+| function | `_visible_session_continuity_instruction` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L61) |
+| function | `_recent_transcript_section` | `(session_id, *, limit, include)` | Legacy flat-text fallback — used only when structured messages are not viable. | [src](../../../core/services/prompt_sections/transcript_sections.py#L116) |
+| function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L169) |
+| function | `_build_structured_transcript_messages` | `(session_id, *, limit, include)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L207) |
+| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L414) |
+| function | `_run_session_compaction` | `(session_id, keep_recent)` | Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det | [src](../../../core/services/prompt_sections/transcript_sections.py#L451) |
+| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L487) |
 
 ## `core/services/prompt_sections/workspace_files.py`
 _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._

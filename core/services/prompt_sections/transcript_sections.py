@@ -27,6 +27,22 @@ def chat_session_messages_since_last_compact(*args, **kwargs):
     return _pc.chat_session_messages_since_last_compact(*args, **kwargs)
 
 
+def _lifecycle_enabled() -> bool:
+    try:
+        from core.runtime.settings import load_settings
+        return bool(getattr(load_settings(), "tool_result_lifecycle_enabled", False))
+    except Exception:
+        return False
+
+
+def _cold_floor_for(session_id: str) -> int:
+    try:
+        from core.context.tool_result_lifecycle import get_cold_floor
+        return get_cold_floor(session_id)
+    except Exception:
+        return 0
+
+
 def recent_chat_session_messages(*args, **kwargs):
     from core.services import prompt_contract as _pc
     return _pc.recent_chat_session_messages(*args, **kwargs)
@@ -261,6 +277,14 @@ def _build_structured_transcript_messages(
         _tool_hist_cap = int(getattr(_ld_trh(), "tool_result_history_max_chars", 1500))
     except Exception:
         _tool_hist_cap = 1500
+    # ── COLD-TIER (flag-gated): tool-results below the session's cold_floor
+    # render as a one-line stub (from the reference string only, never disk).
+    # Read ONCE per build so _cold_floor is constant through the loop → each
+    # historical tool item renders byte-identically turn-to-turn until the floor
+    # discretely advances at run-end (a different subsystem). Same cache-safety
+    # invariant as the warm path above.
+    _cold_on = _lifecycle_enabled()
+    _cold_floor = _cold_floor_for(session_id) if _cold_on else 0
     merged: list[dict[str, str]] = []
     for index, item in enumerate(window):
         raw_role = str(item.get("role") or "")
@@ -272,11 +296,17 @@ def _build_structured_transcript_messages(
         # gets normal whitespace normalization and the per-role cap below.
         raw_content = str(item.get("content") or "")
         if raw_role == "tool":
-            content = render_tool_result_for_prompt(
-                raw_content,
-                expand=False,            # stabil summary-form (fuldt på disk)
-                max_chars=_tool_hist_cap,  # recency-UAFHÆNGIGT fast budget
-            )
+            _mid = int(item.get("id", 0) or 0)
+            if _cold_on and _mid and _mid < _cold_floor:
+                content = render_tool_result_for_prompt(
+                    raw_content, expand=False, stub=True,
+                )
+            else:
+                content = render_tool_result_for_prompt(
+                    raw_content,
+                    expand=False,            # stabil summary-form (fuldt på disk)
+                    max_chars=_tool_hist_cap,  # recency-UAFHÆNGIGT fast budget
+                )
         else:
             content = " ".join(raw_content.split()).strip()
         if not content:

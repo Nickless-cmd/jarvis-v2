@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6314/12858 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6314/12860 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 6314/12858 functions/methods documented (49%). The list b
 | `core.runtime` | 553 | 1023 | 54% |
 | `core.services` | 4167 | 8949 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 62 | 112 | 55% |
+| `core.services.prompt_sections` | 62 | 114 | 54% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 11 | 23 | 47% |
 | `core.skills` | 0 | 0 | 0% |
@@ -1277,9 +1277,9 @@ Generated from source. 6314/12858 functions/methods documented (49%). The list b
 - `core/services/prompt_sections/dead_skills.py` :: `dead_skills_section` (L23)
 - `core/services/prompt_sections/pattern_counterfactuals.py` :: `invalidate_cache` (L94)
 - `core/services/prompt_sections/transcript_sections.py` :: `chat_session_messages_since_last_compact` (L25)
-- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L30)
-- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages_by_user_turns` (L35)
-- `core/services/prompt_sections/transcript_sections.py` :: `visible_session_continuity` (L40)
+- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L46)
+- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages_by_user_turns` (L51)
+- `core/services/prompt_sections/transcript_sections.py` :: `visible_session_continuity` (L56)
 - `core/services/proprioception_metrics.py` :: `build_proprioception_metrics_surface` (L138)
 - `core/services/proprioception_metrics.py` :: `recent_snapshots` (L134)
 - `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L207)

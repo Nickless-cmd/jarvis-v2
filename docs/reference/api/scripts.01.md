@@ -182,9 +182,9 @@ _Pre-commit hook: enforces test coverage for core/ code changes._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_is_covered` | `(path)` | Check if a file path falls under a directory we enforce tests for. | [src](../../../scripts/enforce_test_coverage.py#L153) |
-| function | `_expected_test_path` | `(staged_path, repo_root=…)` | Given a staged file path like 'core/services/foo.py', | [src](../../../scripts/enforce_test_coverage.py#L158) |
-| function | `main` | `(argv=…)` | Entry point.  Accept optional --repo-root to override REPO_ROOT. | [src](../../../scripts/enforce_test_coverage.py#L184) |
+| function | `_is_covered` | `(path)` | Check if a file path falls under a directory we enforce tests for. | [src](../../../scripts/enforce_test_coverage.py#L155) |
+| function | `_expected_test_path` | `(staged_path, repo_root=…)` | Given a staged file path like 'core/services/foo.py', | [src](../../../scripts/enforce_test_coverage.py#L160) |
+| function | `main` | `(argv=…)` | Entry point.  Accept optional --repo-root to override REPO_ROOT. | [src](../../../scripts/enforce_test_coverage.py#L186) |
 
 ## `scripts/god_file_map.py`
 _Read-only god-fil-kort: alle egne .py-filer ≥1500 linjer, karakteriseret (linjer, funktioner,_

@@ -56,6 +56,12 @@ class SlotState:
     total_calls: int = 0
     total_failures: int = 0
     last_success_at: Optional[float] = None
+    # Adaptive quota learning (Task 12) — behind cheap_pool_adaptive_quota_enabled.
+    # Learned real daily ceiling; only trusted after ≥2 corroborating genuine
+    # daily-quota 429s, floored at a fraction of the config limit. Reset daily.
+    daily_observed: Optional[int] = None
+    last_429_at: Optional[float] = None
+    quota_429_count: int = 0  # corroboration counter within the current day
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +158,9 @@ def _state_to_dict(state: SlotState) -> dict:
         "total_calls": state.total_calls,
         "total_failures": state.total_failures,
         "last_success_at": state.last_success_at,
+        "daily_observed": state.daily_observed,
+        "last_429_at": state.last_429_at,
+        "quota_429_count": state.quota_429_count,
     }
 
 
@@ -169,6 +178,9 @@ def _state_from_dict(d: dict) -> SlotState:
         total_calls=int(d.get("total_calls") or 0),
         total_failures=int(d.get("total_failures") or 0),
         last_success_at=d.get("last_success_at"),
+        daily_observed=(int(d["daily_observed"]) if d.get("daily_observed") is not None else None),
+        last_429_at=d.get("last_429_at"),
+        quota_429_count=int(d.get("quota_429_count") or 0),
     )
 
 
@@ -349,6 +361,38 @@ _DEFAULT_429_COOLDOWN_SECONDS = 3600
 _MIN_RELIABILITY_SAMPLES = 20
 _RELIABILITY_FLOOR = 0.05
 
+# Task 12: adaptive daily-quota learning. Learned ceiling is never allowed below
+# this fraction of the known config limit, so a single noisy 429 can't cripple a
+# slot to a near-zero ceiling.
+_DAILY_FLOOR_FRACTION = 0.5
+
+
+def _flag_adaptive_quota() -> bool:
+    """Learn real daily ceilings from genuine daily-quota 429s. Default OFF.
+
+    When False, _register_failure's adaptive-quota learning is skipped entirely
+    and the breaker/cooldown behavior is byte-identical to before Task 12.
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("cheap_pool_adaptive_quota_enabled", False)
+    except Exception:
+        return False
+
+
+def _maybe_daily_reset(state: SlotState, now: float) -> None:
+    """Reset per-day adaptive-quota learning at the UTC day boundary.
+
+    Only touches the learning fields (and stamps daily_window_start with the
+    current day). Called exclusively from the flag-gated path so that with the
+    flag OFF no state field is mutated relative to pre-Task-12 behavior.
+    """
+    today = _today_iso(now)
+    if state.daily_window_start != today:
+        state.daily_window_start = today
+        state.daily_observed = None
+        state.quota_429_count = 0
+
 
 def _register_failure(
     state: SlotState,
@@ -356,18 +400,45 @@ def _register_failure(
     *,
     retry_after_s: int = 0,
     now: float,
+    observed_used: Optional[int] = None,
+    config_daily: Optional[int] = None,
 ) -> None:
     """Update state after a failed call.
 
     429 with retry-after → use header verbatim, don't escalate breaker.
     429 without retry-after → 1h default cooldown.
     Other errors → escalate breaker after 3 consecutive failures.
+
+    Adaptive daily-quota learning (Task 12) runs only when
+    _flag_adaptive_quota() is True; otherwise this function is byte-identical to
+    its pre-Task-12 behavior. It learns state.daily_observed ONLY from genuine
+    daily-quota-exhausted 429s (error_kind mentions both "quota" and "daily" and
+    carries NO retry-after — a retry-after means rate/transient, not exhaustion),
+    requires ≥2 corroborating events, and floors the learned value at
+    _DAILY_FLOOR_FRACTION of config_daily.
     """
     state.consecutive_failures += 1
     state.last_failure_at = now
     state.total_failures += 1
     state.total_calls += 1   # FIX 15. jul: tæl ALLE forsøg (før: kun succes → fejl% kunne >100%)
     state.cooldown_reason = error_kind
+
+    if _flag_adaptive_quota():
+        _maybe_daily_reset(state, now)
+        kind = (error_kind or "").lower()
+        # Genuine daily exhaustion ONLY: mentions quota AND daily, and NO
+        # retry-after present (retry_after_s in (0, None)). A present retry-after
+        # → transient/rate limit → NOT a daily exhaustion → no learning.
+        is_daily_quota = ("quota" in kind and "daily" in kind and not retry_after_s)
+        if is_daily_quota:
+            state.quota_429_count += 1
+            state.last_429_at = now
+            if state.quota_429_count >= 2:  # corroboration required
+                floor = int((config_daily or 0) * _DAILY_FLOOR_FRACTION)
+                candidate = observed_used if observed_used is not None else (config_daily or 0)
+                current = state.daily_observed if state.daily_observed is not None else candidate
+                state.daily_observed = max(floor, min(current, candidate))
+        # Fall through: a quota 429 is still a failure → keep escalating below.
 
     if "429" in error_kind:
         if retry_after_s > 0:

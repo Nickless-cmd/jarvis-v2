@@ -1022,3 +1022,53 @@ def test_both_profiles_get_selected_over_many_draws():
         seen[picked.slot_id] += 1
     assert seen[sd.slot_id] > 0, "default slot starved"
     assert seen[sa.slot_id] > 0, "account2 slot starved"
+
+
+# ---------------------------------------------------------------------------
+# Task 12: SlotState learns daily_observed, safely (adaptive quota)
+# ---------------------------------------------------------------------------
+
+
+def test_transient_429_does_not_learn(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_flag_adaptive_quota", lambda: True)
+    st = bal.SlotState(slot_id="groq::x::default")
+    bal._register_failure(st, "429 rate limit", now=1000.0, retry_after_s=2)
+    assert st.daily_observed is None   # rate/transient -> no learning
+
+
+def test_learns_only_after_corroboration(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_flag_adaptive_quota", lambda: True)
+    st = bal.SlotState(slot_id="groq::x::default")
+    # config_daily=70 -> floor=35, below observed_used=40, so 40 is preserved
+    # (floor test below covers the noise-floor guard with config_daily=100).
+    bal._register_failure(st, "quota exhausted daily", now=1000.0, observed_used=40, config_daily=70)
+    assert st.daily_observed is None   # first event: not yet corroborated
+    bal._register_failure(st, "quota exhausted daily", now=1001.0, observed_used=40, config_daily=70)
+    assert st.daily_observed is not None and st.daily_observed <= 40
+
+
+def test_config_floor_not_undercut(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_flag_adaptive_quota", lambda: True)
+    st = bal.SlotState(slot_id="groq::x::default")
+    for _ in range(2):
+        bal._register_failure(st, "quota exhausted daily", now=1000.0, observed_used=1, config_daily=100)
+    assert st.daily_observed >= 50   # floored at 50% of config, not driven to ~1
+
+
+def test_flag_off_no_learning(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_flag_adaptive_quota", lambda: False)
+    st = bal.SlotState(slot_id="groq::x::default")
+    for _ in range(3):
+        bal._register_failure(st, "quota exhausted daily", now=1000.0, observed_used=1, config_daily=100)
+    assert st.daily_observed is None
+
+
+def test_persist_roundtrip_of_learned_fields():
+    from core.services import cheap_lane_balancer as bal
+    st = bal.SlotState(slot_id="groq::x::default"); st.daily_observed = 55; st.quota_429_count = 2
+    d = bal._state_to_dict(st); st2 = bal._state_from_dict(d)
+    assert st2.daily_observed == 55 and st2.quota_429_count == 2

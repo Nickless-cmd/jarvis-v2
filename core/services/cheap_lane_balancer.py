@@ -247,15 +247,19 @@ def _count_recent_calls(timestamps, now: float, window_seconds: int) -> int:
     return sum(1 for t in timestamps if t >= threshold)
 
 
-def _daily_used_from_db(provider: str) -> int:
+def _daily_used_from_db(provider: str, auth_profile: str = "") -> int:
     """Task 4 / Fund 5: daglig brug fra SQLite cheap_provider_invocations (samme kilde
-    som selection). Self-safe → 0 ved fejl (headroom bliver fuld, aldrig falsk-blokerende)."""
+    som selection). Self-safe → 0 ved fejl (headroom bliver fuld, aldrig falsk-blokerende).
+
+    auth_profile="" tæller alle profiler (bagudkompatibelt); en konkret profil
+    tæller kun invocations for netop den (provider, auth_profile)-kombination."""
     try:
         from datetime import datetime, timedelta, UTC
         from core.runtime.db_cheap_provider import count_cheap_provider_invocations
         since = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
         return int(count_cheap_provider_invocations(
-            provider=provider, lane="cheap", since=since) or 0)
+            provider=provider, lane="cheap", since=since,
+            auth_profile=auth_profile) or 0)
     except Exception:
         return 0
 
@@ -264,7 +268,7 @@ def _daily_headroom_for(slot: BalancerSlot) -> float:
     """Daily headroom fra SQLite frem for balancerens private JSON daily_use_count."""
     if not slot.daily_limit:
         return 1.0
-    used = _daily_used_from_db(slot.provider)
+    used = _daily_used_from_db(slot.provider, slot.auth_profile)
     return max(0.0, 1.0 - used / slot.daily_limit)
 
 

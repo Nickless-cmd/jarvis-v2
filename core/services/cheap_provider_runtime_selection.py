@@ -234,6 +234,7 @@ def smoke_cheap_lane(
         record_cheap_provider_invocation(
             provider=provider,
             model=model,
+            auth_profile=auth_profile,
             status="smoke-ok",
             latency_ms=latency_ms,
             input_tokens=input_tokens,
@@ -549,6 +550,7 @@ def execute_cheap_lane_via_pool(
     record_cheap_provider_invocation(
         provider=provider,
         model=model,
+        auth_profile=profile,
         status="completed",
         latency_ms=latency_ms,
         input_tokens=input_tokens,
@@ -1082,6 +1084,7 @@ def _register_provider_failure(
     record_cheap_provider_invocation(
         provider=provider,
         model=model,
+        auth_profile=auth_profile,
         status="failed",
         error_code=error.code,
         error_message=error.message,

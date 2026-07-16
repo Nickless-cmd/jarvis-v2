@@ -221,9 +221,9 @@ def test_weight_decreases_with_daily_usage(monkeypatch):
     s = _slot(rpm_limit=30, daily_limit=100)
     state = clb.SlotState(slot_id=s.slot_id)
     now = _time.time()
-    monkeypatch.setattr(clb, "_daily_used_from_db", lambda provider: 0)
+    monkeypatch.setattr(clb, "_daily_used_from_db", lambda provider, auth_profile="": 0)
     w_low = clb._compute_weight(s, state, now)
-    monkeypatch.setattr(clb, "_daily_used_from_db", lambda provider: 80)
+    monkeypatch.setattr(clb, "_daily_used_from_db", lambda provider, auth_profile="": 80)
     w_high = clb._compute_weight(s, state, now)
     assert w_low > w_high
 
@@ -725,7 +725,7 @@ def test_call_balanced_falls_to_floor_on_exhaustion(monkeypatch):
 def test_daily_headroom_reads_sqlite_invocations(monkeypatch):
     """Task 4 / Fund 5: daily-kvote fra SQLite, ikke privat JSON."""
     import core.services.cheap_lane_balancer as bal
-    monkeypatch.setattr(bal, "_daily_used_from_db", lambda provider: 90)
+    monkeypatch.setattr(bal, "_daily_used_from_db", lambda provider, auth_profile="": 90)
     slot = bal.BalancerSlot(provider="groq", model="x", auth_profile="", base_url="",
                             rpm_limit=None, daily_limit=100, is_public_proxy=False)
     assert abs(bal._daily_headroom_for(slot) - 0.1) < 1e-6
@@ -921,3 +921,14 @@ def test_slot_id_includes_auth_profile():
     assert a.slot_id != b.slot_id
     assert a.slot_id == "groq::x::default"
     assert b.slot_id == "groq::x::account2"
+
+
+def test_daily_used_from_db_per_profile(isolated_runtime):
+    from core.runtime.db_cheap_provider import record_cheap_provider_invocation as rec
+    from core.services import cheap_lane_balancer as bal
+    for _ in range(3):
+        rec(provider="groq", status="ok", auth_profile="default")
+    rec(provider="groq", status="ok", auth_profile="account2")
+    assert bal._daily_used_from_db("groq", "default") == 3
+    assert bal._daily_used_from_db("groq", "account2") == 1
+    assert bal._daily_used_from_db("groq") == 4   # no profile => all (backward compat)

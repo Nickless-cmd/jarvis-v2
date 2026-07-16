@@ -458,6 +458,8 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
                 duration_ms=int((time.monotonic() - _t0) * 1000),
                 tool_calls=int(result.get("tool_calls") or 0),
                 role=str(agent.get("role") or ""), run_id=str(run_id or ""),
+                provider=str(agent.get("provider") or ""),
+                model=str(agent.get("model") or ""),
             )
             _result_noted = True
             if _dispatch_status in ("blocked", "needs_context"):
@@ -551,6 +553,8 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
                     duration_ms=int((time.monotonic() - _t0) * 1000),
                     tool_calls=int(result.get("tool_calls") or 0),
                     role=str(agent.get("role") or ""), run_id=str(run_id or ""),
+                    provider=str(agent.get("provider") or ""),
+                    model=str(agent.get("model") or ""),
                     error=message[:160],
                 )
                 _result_noted = True

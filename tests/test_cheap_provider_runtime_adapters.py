@@ -135,6 +135,20 @@ def test_notify_checkin_required_dedups_per_day(monkeypatch):
     assert "checkin" in pushed[0]["message"].lower()
 
 
+def test_cohere_free_ongoing_low_daily_cap():
+    """Cohere (16.jul, research-vinder): vedvarende gratis (1000/md) via OpenAI-compat
+    endpoint. cost_class=free → cheap lane. daily_limit lavt (≤50) så månedskvoten ikke
+    brændes på én dag. Kun chat-modeller i static (ingen embed/vision)."""
+    from core.services.cheap_provider_runtime_adapters import provider_cost_class
+    cfg = CHEAP_PROVIDER_DEFAULTS["cohere"]
+    assert cfg["base_url"] == "https://api.cohere.ai/compatibility/v1"
+    assert cfg["protocol"] == "openai-chat" and cfg["auth_kind"] == "bearer"
+    assert provider_cost_class("cohere") == "free"
+    assert int(cfg["daily_limit"]) <= 50            # beskyt 1000/md-kvoten
+    assert "command-r7b-12-2024" in cfg["static_models"]
+    assert all("embed" not in m and "vision" not in m for m in cfg["static_models"])
+
+
 def test_deepseek_not_routable_but_free_providers_are():
     """Bjørn 14. jul: deepseek (betalt) skal UD af routbar cheap-pool; gratis ind."""
     from core.services.cheap_provider_runtime_adapters import is_routable_provider

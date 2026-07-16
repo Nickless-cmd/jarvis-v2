@@ -509,6 +509,26 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": ["bbl/gpt-5.5-mini", "bbl/grok-4.1-fast-non-reasoning",
                           "olm/deepseek-v4-pro"],
     },
+    # Cohere (16. jul, Bjørn trial-nøgle, research-sweep-vinder): OpenAI-compat endpoint
+    # `api.cohere.ai/compatibility/v1`, bearer. VEDVARENDE gratis (ikke engangs-trial):
+    # 1000 kald/MÅNED, 20 rpm, intet kort, US-hostet (intet privatlivs-problem). Trial-
+    # nøgle = evaluering/non-commercial (fint til Jarvis' interne brug). Live-verificeret
+    # PONG på command-r7b/command-a/command-r-plus. daily_limit=30 BESKYTTER månedskvoten
+    # (1000/md ≈ 33/dag) så en travl dag ikke brænder hele måneden. Lav prioritet = sjælden
+    # filler, ikke arbejdshest. Nøgle CT105 auth-profil — ALDRIG i repo.
+    "cohere": {
+        "label": "Cohere",
+        "priority": 60,
+        "base_url": "https://api.cohere.ai/compatibility/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 20,
+        "daily_limit": 30,
+        "cost_class": "free",
+        "static_models": ["command-r7b-12-2024", "command-a-03-2025",
+                          "command-r-plus-08-2024"],
+    },
 }
 
 # Gen-udled openai-compat-sættet FRA protocol (15. jul) — den hardkodede liste

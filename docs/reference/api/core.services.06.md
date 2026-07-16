@@ -265,6 +265,15 @@ _Aldrig-tør-bund for cheap lane (spec §5.5 Fund 4)._
 | function | `_execute_floor_target` | `(*, provider, model, message, lane)` | Kør ét bund-target gennem den eksisterende adapter. Kan rejse — indkapsles | [src](../../../core/services/cheap_lane_floor.py#L49) |
 | function | `attempt_floor` | `(*, message, lane, reason)` | Prøv bund-kæden i rækkefølge. Første ikke-tomme svar vinder. Hvis ALT | [src](../../../core/services/cheap_lane_floor.py#L69) |
 
+## `core/services/cheap_lane_selfheal.py`
+_cheap_lane_selfheal — cheap-lane maa ALDRIG stale eller doe (Bjoern 16.jul)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_stale_targets` | `(limit)` | (provider, model) for KONFIGUREREDE providere fanget i en terminal status uden aktiv | [src](../../../core/services/cheap_lane_selfheal.py#L32) |
+| function | `reprobe` | `(provider, model)` | Minimalt sundheds-probe. Healer state ved succes, saetter frisk cooldown ved fejl. | [src](../../../core/services/cheap_lane_selfheal.py#L66) |
+| function | `run_selfheal` | `(*, max_probes=…)` | Re-probe op til max_probes fastlaaste providere. Returnér {healed, still_down}. | [src](../../../core/services/cheap_lane_selfheal.py#L99) |
+
 ## `core/services/cheap_provider_runtime.py`
 
 _(no top-level classes or functions)_
@@ -827,13 +836,4 @@ _Communication guard daemon — vedligeholder TTL-rydning._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `tick_communication_guard_daemon` | `()` | Daemon tick: cleanup expired TTL triggers + log active count. | [src](../../../core/services/communication_guard_daemon.py#L18) |
-
-## `core/services/compass_engine.py`
-_Compass Engine — weekly strategic bearing based on open loops and priorities._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `maybe_update_compass` | `(*, open_loops=…, recent_decisions=…)` | Update compass if >3 days since last update. | [src](../../../core/services/compass_engine.py#L21) |
-| function | `build_compass_surface` | `()` | — | [src](../../../core/services/compass_engine.py#L65) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/compass_engine.py#L74) |
 

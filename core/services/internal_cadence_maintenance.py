@@ -93,6 +93,22 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
         depends_on=[],
     ))
 
+    # cheap-lane self-heal (16.jul): re-probe providere fanget i en terminal status
+    # (unsupported-provider/provider-error/...) uden cooldown → en siden-fikset provider
+    # kommer AUTOMATISK tilbage i poolen. "Cheap lane maa aldrig stale eller doe" (Bjoern).
+    def _run_cheap_lane_selfheal(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.cheap_lane_selfheal import run_selfheal
+        return run_selfheal(max_probes=6)
+
+    register_producer(ProducerSpec(
+        name="cheap_lane_selfheal",
+        cooldown_minutes=20,           # nok til at genoplive en fikset provider hurtigt
+        visible_grace_minutes=0,       # baggrunds-infra, altid
+        run_fn=_run_cheap_lane_selfheal,
+        priority=30,
+        depends_on=[],
+    ))
+
     def _run_life_projects_reassessment(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         # PENSIONERET 2026-07-15 — cluster_projects (familie #9) overtager
         # life_projects_reassessment som non-LLM medlem (1440min/24t self-throttle).

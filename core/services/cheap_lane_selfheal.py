@@ -20,25 +20,25 @@ from datetime import UTC, datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-# Statuser der IKKE auto-heler via cooldown → skal re-probes for at komme tilbage i poolen.
-_TERMINAL_STATUSES = frozenset({
-    "unsupported-provider", "provider-error", "provider-blocked",
-    "model-not-found", "model-unavailable", "unavailable",
-    "missing-provider", "auth-not-ready", "empty-response",
-})
+# Sunde statuser der IKKE skal re-probes. ALT andet uden aktiv cooldown regnes som "fast"
+# og re-probes — regelen er ikke en hvidliste af fejl-statuser (den vil altid være ufuldstaendig:
+# request-failed/auth-rejected/http-410/circuit-open/... kan alle saette sig fast), men det simple
+# invariant: "ikke sund + ingen aktiv cooldown = fast". Selv rate-limited/quota-exhausted kan
+# ende fast hvis cooldownen udloeb uden at status blev nulstillet (provideren blev aldrig gen-kaldt).
+_HEALTHY_STATUSES = frozenset({"ready", "ok"})
 _PROBE_MESSAGE = "ping"
 
 
 def _stale_targets(limit: int) -> list[tuple[str, str]]:
-    """(provider, model) for KONFIGUREREDE providere fanget i en terminal status uden aktiv
-    cooldown. Kun modeller der stadig er i providerens static_models (drop pensionerede)."""
+    """(provider, model) for KONFIGUREREDE providere der IKKE er sunde og IKKE har en aktiv
+    cooldown → fast, heler aldrig selv. Kun modeller stadig i static_models (drop pensionerede)."""
     out: list[tuple[str, str]] = []
     try:
         from core.runtime.db_cheap_provider import list_cheap_provider_runtime_states
         from core.services.cheap_provider_runtime_adapters import provider_runtime_defaults
         now = datetime.now(UTC)
         for st in list_cheap_provider_runtime_states(lane="cheap"):
-            if str(st.get("status") or "") not in _TERMINAL_STATUSES:
+            if str(st.get("status") or "ready") in _HEALTHY_STATUSES:
                 continue
             cd = str(st.get("cooldown_until") or "").strip()
             if cd:  # aktiv cooldown haandterer den allerede → spring over

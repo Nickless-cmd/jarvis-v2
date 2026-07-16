@@ -2,14 +2,16 @@
 from core.services import cheap_lane_selfheal as sh
 
 
-def test_stale_targets_picks_terminal_status_only(monkeypatch):
+def test_stale_targets_picks_any_unhealthy_without_cooldown(monkeypatch):
     states = [
         {"provider": "copilot-premium", "model": "claude-sonnet-5",
-         "status": "unsupported-provider", "cooldown_until": None},   # terminal → med
+         "status": "unsupported-provider", "cooldown_until": None},   # fast → med
         {"provider": "groq", "model": "llama",
-         "status": "rate-limited", "cooldown_until": None},           # cooldown-status → IKKE med
+         "status": "rate-limited", "cooldown_until": None},           # udloebet cooldown, fast → MED nu
         {"provider": "nvidia-nim", "model": "meta/llama",
-         "status": "ready", "cooldown_until": None},                  # ready → IKKE med
+         "status": "ready", "cooldown_until": None},                  # sund → IKKE med
+        {"provider": "legacy", "model": "m",
+         "status": "ok", "cooldown_until": None},                     # sund (ok) → IKKE med
         {"provider": "retired", "model": "x",
          "status": "provider-error", "cooldown_until": None},         # ikke konfigureret → skip
     ]
@@ -17,10 +19,11 @@ def test_stale_targets_picks_terminal_status_only(monkeypatch):
                         lambda lane="cheap": states)
     monkeypatch.setattr(
         "core.services.cheap_provider_runtime_adapters.provider_runtime_defaults",
-        lambda p: {"static_models": ["claude-sonnet-5"]} if p == "copilot-premium" else ({} if p == "retired" else {"static_models": []}))
+        lambda p: {} if p == "retired" else {"static_models": []})
     targets = sh._stale_targets(10)
     assert ("copilot-premium", "claude-sonnet-5") in targets
-    assert not any(p == "groq" or p == "nvidia-nim" or p == "retired" for p, _ in targets)
+    assert ("groq", "llama") in targets          # rate-limited u. cooldown fanges nu
+    assert not any(p in ("nvidia-nim", "legacy", "retired") for p, _ in targets)
 
 
 def test_stale_targets_skips_active_cooldown(monkeypatch):

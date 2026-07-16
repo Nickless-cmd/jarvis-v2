@@ -536,9 +536,9 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     # 90-dages udløb) → ENDELIG burst-kapacitet, ikke uendelig. daily_limit moderat så
     # kvoten ikke brændes på få dage. Kina-ejet (Singapore-hostet) — samme posture som zai
     # (også Kina) der allerede kører i cheap lane; ikke-følsom trafik.
-    # ⚠️ COST-RISIKO: når gratis-kvoten er brugt/udløbet BILLER Alibaba hvis der er en
-    # betalingsmetode på kontoen (ellers fejler kaldet = credits-exhausted, cooldown-sti).
-    # Bekræft INGEN betalingsmetode → så er der nul cost-risiko. Workspace-host = account-
+    # COST: INGEN betalingsmetode på kontoen (bekræftet Bjørn 16.jul) → nul cost-risiko;
+    # når gratis-kvoten er brugt/udløbet fejler kaldet pænt (credits-exhausted → cooldown →
+    # roterer ud), ingen regning. Workspace-host = account-
     # scopet endpoint (ikke en secret; ubrugelig uden nøglen). Nøgle CT105 — ALDRIG repo.
     "alibaba": {
         "label": "Alibaba Model Studio (SG)",

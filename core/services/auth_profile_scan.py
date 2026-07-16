@@ -13,6 +13,7 @@ to authenticate.
 from __future__ import annotations
 
 import os
+import re
 import time
 from pathlib import Path
 
@@ -29,6 +30,17 @@ except Exception:  # pragma: no cover - defensive fallback if import shape chang
 
 # Extra keyless providers not necessarily in _PUBLIC_PROXIES.
 _KEYLESS_EXTRA = frozenset({"pollinations", "ovhcloud"})
+
+# Only REAL account profiles become extra slots: "default" + "account2"/"account3"/…
+# Excludes backups (default.bak-*), single-provider/legacy profiles (groq, mistral,
+# gemini, …) and OAuth profiles (codex, copilot). Multi-profile means multiple
+# ACCOUNTS of the same providers — not per-provider or backup directories.
+_ACCOUNT_PROFILE_RE = re.compile(r"^(default|account\d+)$")
+
+
+def _is_account_profile(profile: str) -> bool:
+    """True only for real account profiles (default, account2, account3, …)."""
+    return bool(_ACCOUNT_PROFILE_RE.match(profile))
 
 # Per-provider cache: {provider: (expiry_epoch, [profiles])}. Populated lazily;
 # time.time() is only ever called inside functions, never at import.
@@ -90,6 +102,8 @@ def ready_profiles_for(provider: str) -> list[str]:
 
     for prof_dir in profile_dirs:
         profile = prof_dir.name
+        if not _is_account_profile(profile):
+            continue  # skip backups, single-provider, and OAuth profile dirs
         if not (prof_dir / "providers" / provider).is_dir():
             continue
         if provider_auth_ready(provider=provider, auth_profile=profile):

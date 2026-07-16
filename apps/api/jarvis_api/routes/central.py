@@ -122,6 +122,56 @@ async def central_agents(window: str = "today") -> dict:
     return await asyncio.to_thread(build_agents_surface, window=window)
 
 
+@router.post("/agents/{agent_id}/cancel")
+async def central_agent_cancel(agent_id: str, payload: dict | None = None) -> dict:
+    """Afbryd (abort) en kørende agent fra Central CLI Agents-fanen. Owner-only.
+    Kalder den eksisterende cancel-mekanisme (agent_runtime_spawn.cancel_agent).
+    Self-safe: en fejl vælter ikke routen — svarer 200 med status="error"."""
+    _require_owner()
+    note = str((payload or {}).get("note") or "")
+
+    def _cancel() -> dict:
+        from core.services.agent_runtime_spawn import cancel_agent
+        try:
+            res = cancel_agent(agent_id, note=note) or {}
+            out = dict(res)
+            out["agent_id"] = agent_id
+            out["action"] = "cancel"
+            out.setdefault("status", "cancelled")
+            return out
+        except Exception as exc:
+            return {"status": "error", "agent_id": agent_id,
+                    "action": "cancel", "detail": str(exc)}
+
+    return await asyncio.to_thread(_cancel)
+
+
+@router.post("/agents/{agent_id}/pause")
+async def central_agent_pause(agent_id: str) -> dict:
+    """Pausér en kørende agent fra Central CLI Agents-fanen. Owner-only.
+
+    NOTE: Der findes p.t. ingen mid-run suspend-primitiv, så "pause" mapper til
+    cancel_agent(note="paused via central") — agenten afbrydes med en note der
+    markerer at det var en pause. Skift kaldet her ud når en ægte suspend/resume-
+    primitiv (mid-run) findes. Self-safe: svarer 200 med status="error" ved fejl."""
+    _require_owner()
+
+    def _pause() -> dict:
+        from core.services.agent_runtime_spawn import cancel_agent
+        try:
+            res = cancel_agent(agent_id, note="paused via central") or {}
+            out = dict(res)
+            out["agent_id"] = agent_id
+            out["action"] = "pause"
+            out.setdefault("status", "cancelled")
+            return out
+        except Exception as exc:
+            return {"status": "error", "agent_id": agent_id,
+                    "action": "pause", "detail": str(exc)}
+
+    return await asyncio.to_thread(_pause)
+
+
 @router.get("/council")
 async def central_council(window: str = "today") -> dict:
     """Council-observabilitet (B3): convocations/deadlocks/roller/event-vs-ondemand-

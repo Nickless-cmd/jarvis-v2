@@ -12,11 +12,15 @@ def test_floor_result_is_typed_and_never_empty_shape():
     assert "text" in r  # nøglen findes altid (tom er ok)
 
 
-def test_default_floor_uses_v4_flash_not_dying_chat_alias():
-    """WS4 (spec 2026-07-13): default-bunden må IKKE bruge den døende
-    ``deepseek-chat``-alias (udfases 24. juli 2026) — den skal være
-    ``deepseek-v4-flash``."""
-    assert floor._DEFAULT_FLOOR == [("deepseek", "deepseek-v4-flash")]
+def test_default_floor_is_keyless_free_never_deepseek():
+    """Bjørn 16.jul: bunden må ALDRIG trække fra betalt deepseek-API — heller ikke som
+    nød-bund. Default-kæden skal være KEYLESS gratis-providere (cost_class=free), aldrig
+    deepseek/betalt. Sikrer at agent/cheap/inder-lanerne aldrig får en overraskelses-regning
+    når poolen er tom."""
+    from core.services.cheap_provider_runtime_adapters import provider_cost_class
+    assert all(p != "deepseek" for p, _ in floor._DEFAULT_FLOOR)
+    assert all(provider_cost_class(p) == "free" for p, _ in floor._DEFAULT_FLOOR)
+    assert ("pollinations", "openai") in floor._DEFAULT_FLOOR   # keyless primær
     # floor_targets() falder tilbage til default når config er tom
     import core.runtime.settings as settings_mod
 
@@ -26,7 +30,8 @@ def test_default_floor_uses_v4_flash_not_dying_chat_alias():
     orig = settings_mod.load_settings
     try:
         settings_mod.load_settings = lambda: _S()  # type: ignore[assignment]
-        assert floor.floor_targets() == [("deepseek", "deepseek-v4-flash")]
+        assert floor.floor_targets() == floor._DEFAULT_FLOOR
+        assert all(p != "deepseek" for p, _ in floor.floor_targets())
     finally:
         settings_mod.load_settings = orig  # type: ignore[assignment]
 

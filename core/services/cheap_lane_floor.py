@@ -12,10 +12,15 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Default-kæde: deepseek-v4-flash (altid-sund, betalt m. credit) → lokal ollama.
+# Default-kæde: KEYLESS gratis-providere (pollinations → ovhcloud). Bjørn 16.jul:
+# bunden må ALDRIG trække fra den betalte deepseek-API — heller ikke som nød-bund.
+# Agent/cheap/inder-lanerne router allerede til gratis-poolen først (central_route);
+# floor'en er kun sidste-udvej når HELE poolen er nede, og selv da skal den være GRATIS.
+# pollinations valgt som primær (keyless → ingen profil-afhængighed, altid-reachable,
+# live-verificeret PONG gennem floor-stien); ovhcloud som keyless backup. Hvis begge er
+# nede → typet degraderet svar (aldrig exception, aldrig en overraskelses-regning).
 # Overstyres af config-nøgle ``cheap_lane_floor_targets`` (liste af [provider, model]).
-# (WS4: den døende ``deepseek-chat``-alias udfases 24. juli 2026 → v4-flash.)
-_DEFAULT_FLOOR: list[tuple[str, str]] = [("deepseek", "deepseek-v4-flash")]
+_DEFAULT_FLOOR: list[tuple[str, str]] = [("pollinations", "openai"), ("ovhcloud", "Qwen3.5-9B")]
 
 
 def floor_targets() -> list[tuple[str, str]]:

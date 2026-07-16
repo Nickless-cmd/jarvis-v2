@@ -68,3 +68,11 @@ _Token estimation utilities — heuristic only, no tokenizer required._
 | function | `estimate_tokens` | `(text)` | Estimate token count from raw text. | [src](../../../core/context/token_estimate.py#L7) |
 | function | `estimate_messages_tokens` | `(messages)` | Estimate total tokens for a list of chat messages. | [src](../../../core/context/token_estimate.py#L12) |
 
+## `core/context/tool_result_lifecycle.py`
+_Tool-result lifecycle (visible-lane). Spec 2026-07-16._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `user_message_ids` | `(messages)` | Ids for role=='user' messages, ascending (= run boundaries). | [src](../../../core/context/tool_result_lifecycle.py#L11) |
+| function | `estimate_tool_tokens` | `(messages)` | Sum of tool-result tokens (heuristic len//4). Only role=='tool'. | [src](../../../core/context/tool_result_lifecycle.py#L23) |
+

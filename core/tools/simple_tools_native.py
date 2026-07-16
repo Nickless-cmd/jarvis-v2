@@ -30,6 +30,7 @@ from core.runtime.workspace_paths import shared_dir as _shared_dir
 # _tool_load_more_tools slår tool-navne op i det kanoniske katalog. Importeret
 # fra samme kilde som simple_tools (ingen dobbelt-sandhed).
 from core.tools.simple_tools_definitions import TOOL_DEFINITIONS  # noqa: F401
+from core.tools.simple_tools_web import _read_api_key  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

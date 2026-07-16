@@ -491,7 +491,7 @@ Generated from source. 6314/12858 functions/methods documented (49%). The list b
 - `core/runtime/secrets.py` :: `mail_config` (L96)
 - `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L466)
 - `core/runtime/settings.py` :: `load_settings` (L567)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L999)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1014)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)

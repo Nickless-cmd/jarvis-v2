@@ -595,6 +595,21 @@ def load_settings() -> RuntimeSettings:
         tool_result_render_chars_older=int(
             data.get("tool_result_render_chars_older", defaults.tool_result_render_chars_older)
         ),
+        tool_result_lifecycle_enabled=bool(
+            data.get("tool_result_lifecycle_enabled", defaults.tool_result_lifecycle_enabled)
+        ),
+        tool_warm_run_window=int(
+            data.get("tool_warm_run_window", defaults.tool_warm_run_window)
+        ),
+        tool_warm_token_ceiling=int(
+            data.get("tool_warm_token_ceiling", defaults.tool_warm_token_ceiling)
+        ),
+        tool_warm_hysteresis=float(
+            data.get("tool_warm_hysteresis", defaults.tool_warm_hysteresis)
+        ),
+        tool_run_hot_budget=int(
+            data.get("tool_run_hot_budget", defaults.tool_run_hot_budget)
+        ),
         r2_5_heed_rate_threshold=float(
             data.get("r2_5_heed_rate_threshold", defaults.r2_5_heed_rate_threshold)
         ),

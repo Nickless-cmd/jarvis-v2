@@ -126,3 +126,45 @@ def set_cold_floor(session_id: str, floor_id: int) -> None:
             "WHERE excluded.floor_id > tool_result_cold_floor.floor_id",
             (sid, int(floor_id), now),
         )
+
+
+def _load_session_messages(session_id: str) -> list[dict]:
+    """Growing-window messages WITH id (a later task adds id to the return dict)."""
+    from core.services.chat_sessions import chat_session_messages_since_last_compact
+    return chat_session_messages_since_last_compact(session_id)
+
+
+def _load_settings():
+    from core.runtime.settings import load_settings
+    return load_settings()
+
+
+def evaluate_and_advance(session_id: str, *, settings=None) -> int:
+    """Called at RUN-END (sole writer). Returns new cold_floor (0=none).
+
+    Fault-tolerant: must never raise into the run-completion path.
+    """
+    sid = (session_id or "").strip()
+    if not sid:
+        return 0
+    s = settings or _load_settings()
+    if not bool(getattr(s, "tool_result_lifecycle_enabled", False)):
+        return get_cold_floor(sid)
+    try:
+        messages = _load_session_messages(sid)
+        current = get_cold_floor(sid)
+        new_floor = compute_new_floor(
+            messages,
+            current_floor=current,
+            run_window=int(getattr(s, "tool_warm_run_window", 8)),
+            token_ceiling=int(getattr(s, "tool_warm_token_ceiling", 40000)),
+            hysteresis=float(getattr(s, "tool_warm_hysteresis", 0.25)),
+        )
+        if new_floor > current:
+            set_cold_floor(sid, new_floor)
+            print(f"[tool-lifecycle] cold_floor {current}->{new_floor} "
+                  f"session={sid[:20]}", flush=True)
+        return new_floor
+    except Exception as exc:
+        print(f"[tool-lifecycle] evaluate_and_advance error: {exc}", flush=True)
+        return get_cold_floor(sid)

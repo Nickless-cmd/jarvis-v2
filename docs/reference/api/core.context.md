@@ -81,4 +81,7 @@ _Tool-result lifecycle (visible-lane). Spec 2026-07-16._
 | function | `_ensure_table` | `(conn)` | — | [src](../../../core/context/tool_result_lifecycle.py#L88) |
 | function | `get_cold_floor` | `(session_id)` | — | [src](../../../core/context/tool_result_lifecycle.py#L96) |
 | function | `set_cold_floor` | `(session_id, floor_id)` | Monotonic: writes only if floor_id > existing. | [src](../../../core/context/tool_result_lifecycle.py#L113) |
+| function | `_load_session_messages` | `(session_id)` | Growing-window messages WITH id (a later task adds id to the return dict). | [src](../../../core/context/tool_result_lifecycle.py#L131) |
+| function | `_load_settings` | `()` | — | [src](../../../core/context/tool_result_lifecycle.py#L137) |
+| function | `evaluate_and_advance` | `(session_id, *, settings=…)` | Called at RUN-END (sole writer). Returns new cold_floor (0=none). | [src](../../../core/context/tool_result_lifecycle.py#L142) |
 

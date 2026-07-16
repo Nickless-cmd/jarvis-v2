@@ -1,5 +1,36 @@
+import pytest
+
 from core.runtime.settings import RuntimeSettings
 from core.context import tool_result_lifecycle as trl
+
+# These tests use fixed session-ids against the shared runtime DB. The cold_floor
+# table is monotonic + persistent, so residue from a prior run would break the
+# "starts at 0" assertions. Wipe the test session-ids around each test to keep
+# the suite hermetic (does not touch any other session's floor).
+_TEST_SIDS = ("sess-trl-test-1", "sess-trl-test-2",
+              "sess-trl-eval-1", "sess-trl-eval-2")
+
+
+@pytest.fixture(autouse=True)
+def _clean_cold_floor_rows():
+    def _wipe():
+        try:
+            from core.runtime.db import connect
+            with connect() as conn:
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS tool_result_cold_floor ("
+                    "session_id TEXT PRIMARY KEY, floor_id INTEGER NOT NULL, "
+                    "updated_at TEXT NOT NULL)"
+                )
+                conn.executemany(
+                    "DELETE FROM tool_result_cold_floor WHERE session_id = ?",
+                    [(s,) for s in _TEST_SIDS],
+                )
+        except Exception:
+            pass
+    _wipe()
+    yield
+    _wipe()
 
 
 def _msg(mid, role, content="x"):
@@ -78,3 +109,34 @@ def test_cold_floor_monotonic_write():
     trl.set_cold_floor(sid, 100)
     trl.set_cold_floor(sid, 50)
     assert trl.get_cold_floor(sid) == 100
+
+
+def test_evaluate_and_advance_moves_floor(monkeypatch):
+    sid = "sess-trl-eval-1"
+    msgs = [_msg(i, "user") for i in range(1, 13)]
+    monkeypatch.setattr(trl, "_load_session_messages", lambda s: msgs)
+
+    class _S:
+        tool_result_lifecycle_enabled = True
+        tool_warm_run_window = 8
+        tool_warm_token_ceiling = 40000
+        tool_warm_hysteresis = 0.25
+
+    new_floor = trl.evaluate_and_advance(sid, settings=_S())
+    assert new_floor > 0
+    assert trl.get_cold_floor(sid) == new_floor
+
+
+def test_evaluate_noop_when_disabled(monkeypatch):
+    sid = "sess-trl-eval-2"
+    msgs = [_msg(i, "user") for i in range(1, 13)]
+    monkeypatch.setattr(trl, "_load_session_messages", lambda s: msgs)
+
+    class _S:
+        tool_result_lifecycle_enabled = False
+        tool_warm_run_window = 8
+        tool_warm_token_ceiling = 40000
+        tool_warm_hysteresis = 0.25
+
+    assert trl.evaluate_and_advance(sid, settings=_S()) == 0
+    assert trl.get_cold_floor(sid) == 0

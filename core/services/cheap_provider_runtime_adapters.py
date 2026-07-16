@@ -529,6 +529,29 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": ["command-r7b-12-2024", "command-a-03-2025",
                           "command-r-plus-08-2024"],
     },
+    # Alibaba Cloud Model Studio (16. jul, Bjørns workspace, Singapore/ap-southeast-1):
+    # OpenAI-compat, bearer. Live-verificeret PONG: qwen-turbo/qwen-plus/qwen3.7-plus (97
+    # chat-modeller incl. glm-5.2/kimi-k2.7/deepseek-v4). glm-5.2=reasoning (tom v. tight
+    # cap) → udeladt. Free-tier = ENGANGS gratis token-kvote pr. model (~1M tok/model,
+    # 90-dages udløb) → ENDELIG burst-kapacitet, ikke uendelig. daily_limit moderat så
+    # kvoten ikke brændes på få dage. Kina-ejet (Singapore-hostet) — samme posture som zai
+    # (også Kina) der allerede kører i cheap lane; ikke-følsom trafik.
+    # ⚠️ COST-RISIKO: når gratis-kvoten er brugt/udløbet BILLER Alibaba hvis der er en
+    # betalingsmetode på kontoen (ellers fejler kaldet = credits-exhausted, cooldown-sti).
+    # Bekræft INGEN betalingsmetode → så er der nul cost-risiko. Workspace-host = account-
+    # scopet endpoint (ikke en secret; ubrugelig uden nøglen). Nøgle CT105 — ALDRIG repo.
+    "alibaba": {
+        "label": "Alibaba Model Studio (SG)",
+        "priority": 32,
+        "base_url": "https://ws-xmmuqa6plmcaheul.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 30,
+        "daily_limit": 500,
+        "cost_class": "free",
+        "static_models": ["qwen-turbo", "qwen-plus", "qwen3.7-plus"],
+    },
 }
 
 # Gen-udled openai-compat-sættet FRA protocol (15. jul) — den hardkodede liste

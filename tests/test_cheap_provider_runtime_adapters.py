@@ -149,6 +149,18 @@ def test_cohere_free_ongoing_low_daily_cap():
     assert all("embed" not in m and "vision" not in m for m in cfg["static_models"])
 
 
+def test_alibaba_modelstudio_free_singapore():
+    """Alibaba Model Studio (16.jul, Bjørns SG-workspace): OpenAI-compat, gratis token-kvote.
+    cost_class=free → cheap lane workhorse. Kun verificerede non-reasoning Qwen-chat-modeller
+    (glm-5.2=reasoning udeladt). Workspace-scopet Singapore-endpoint."""
+    from core.services.cheap_provider_runtime_adapters import provider_cost_class, is_routable_provider
+    cfg = CHEAP_PROVIDER_DEFAULTS["alibaba"]
+    assert "ap-southeast-1" in cfg["base_url"] and cfg["base_url"].endswith("/compatible-mode/v1")
+    assert cfg["protocol"] == "openai-chat" and cfg["auth_kind"] == "bearer"
+    assert provider_cost_class("alibaba") == "free" and is_routable_provider("alibaba") is True
+    assert cfg["static_models"] == ["qwen-turbo", "qwen-plus", "qwen3.7-plus"]
+
+
 def test_deepseek_not_routable_but_free_providers_are():
     """Bjørn 14. jul: deepseek (betalt) skal UD af routbar cheap-pool; gratis ind."""
     from core.services.cheap_provider_runtime_adapters import is_routable_provider

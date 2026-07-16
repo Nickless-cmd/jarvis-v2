@@ -193,13 +193,13 @@ _Central HUD — read-side rendering (``_PopulateMixin``)._
 | method | `_PopulateMixin._render_run_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L782) |
 | method | `_PopulateMixin._populate_approvals` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L827) |
 | method | `_PopulateMixin._populate_agents` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L863) |
-| method | `_PopulateMixin._render_agent_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L895) |
-| method | `_PopulateMixin._render_mind_self_panel` | `(self)` | Render Jarvis' reduced self as HIS presence in the Central — warm, | [src](../../../apps/central_cli/central_cli/hud_populate.py#L934) |
-| method | `_PopulateMixin._rel_age` | `(iso)` | ISO timestamp → short relative age (2s / 4m / 3t / 2d). '—' on failure. | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1158) |
-| method | `_PopulateMixin._fmt_value` | `(value)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1178) |
-| method | `_PopulateMixin._healer_flag_name` | `(self, healer)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1189) |
-| method | `_PopulateMixin._render_healing_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1192) |
-| method | `_PopulateMixin._render_placeholder_panel` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1230) |
+| method | `_PopulateMixin._render_agent_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L926) |
+| method | `_PopulateMixin._render_mind_self_panel` | `(self)` | Render Jarvis' reduced self as HIS presence in the Central — warm, | [src](../../../apps/central_cli/central_cli/hud_populate.py#L976) |
+| method | `_PopulateMixin._rel_age` | `(iso)` | ISO timestamp → short relative age (2s / 4m / 3t / 2d). '—' on failure. | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1200) |
+| method | `_PopulateMixin._fmt_value` | `(value)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1220) |
+| method | `_PopulateMixin._healer_flag_name` | `(self, healer)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1231) |
+| method | `_PopulateMixin._render_healing_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1234) |
+| method | `_PopulateMixin._render_placeholder_panel` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1272) |
 
 ## `apps/central_cli/central_cli/hud_theme.py`
 _Central HUD palette, status-maps and the ``_esc`` markup guard._

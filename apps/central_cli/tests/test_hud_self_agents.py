@@ -23,6 +23,24 @@ _AGENTS = {
     "count": 3,
 }
 
+_ROSTER = {
+    "roster": [
+        {"model_key": "anthropic/claude", "provider": "anthropic",
+         "model": "claude", "role": "visible", "status": "active",
+         "last_run_at": "2026-07-16T10:00:00+00:00",
+         "tokens_in": 100, "tokens_out": 200, "cost_usd": 0.05,
+         "current_activity": "svarer i chat", "tool_calls": 3},
+        {"model_key": "ollama/qwen", "provider": "ollama", "model": "qwen",
+         "role": "cheap", "status": "idle", "last_run_at": "",
+         "tokens_in": 10, "tokens_out": 5, "cost_usd": 0.0,
+         "current_activity": "", "tool_calls": 0},
+        {"model_key": "groq/llama", "provider": "groq", "model": "llama",
+         "role": "agent", "status": "inactive", "last_run_at": "",
+         "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0,
+         "current_activity": "", "tool_calls": 0},
+    ],
+}
+
 _SELF = {
     "self": {
         "living_executive": {
@@ -126,6 +144,47 @@ async def test_agents_tab_populates_table_rows():
         # selecting a row renders the agent detail in the side panel
         detail = str(app.query_one("#hud-detail").render())
         assert "researcher" in detail or "a1" in detail
+
+
+@pytest.mark.asyncio
+async def test_agents_tab_renders_model_roster_with_greyed_inactive():
+    """C1: the roster renders one fixed row per model; INACTIVE rows are greyed,
+    the ACTIVE row carries its ● marker + activity text."""
+    from central_cli.hud_theme import DIM, FGDIM
+    from rich.text import Text
+    from textual.widgets import DataTable
+
+    app = CentralHud(client=FakeClient(agents=_ROSTER), live=False)
+    async with app.run_test(size=(160, 40)):
+        app.show_tab("agents")
+        table = app.query_one("#nerve-table", DataTable)
+        assert table.row_count == 3
+
+        labels = [str(table.get_row_at(i)[0]) for i in range(3)]
+        assert any("claude" in l for l in labels)
+        assert any("qwen" in l for l in labels)
+        assert any("groq/llama" in l for l in labels)
+
+        # INACTIVE row (groq/llama): model cell uses the grey style.
+        inact = next(i for i in range(3)
+                     if "groq" in str(table.get_row_at(i)[0]))
+        cell = table.get_row_at(inact)[0]
+        assert isinstance(cell, Text)
+        assert cell.style in (DIM, FGDIM)
+        # status cell of the inactive row is greyed too
+        assert table.get_row_at(inact)[2].style in (DIM, FGDIM)
+
+        # ACTIVE row (claude): ● marker in status + activity text present.
+        act = next(i for i in range(3)
+                   if "claude" in str(table.get_row_at(i)[0]))
+        assert "●" in str(table.get_row_at(act)[2])
+        assert "svarer" in str(table.get_row_at(act)[3])
+
+        # detail panel for the active model shows model_key + cost fields
+        app._render_agent_detail(act)
+        detail = str(app.query_one("#hud-detail").render())
+        assert "anthropic/claude" in detail
+        assert "cost" in detail
 
 
 @pytest.mark.asyncio

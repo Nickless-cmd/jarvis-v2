@@ -79,6 +79,7 @@ _AFFECT = {
 _AGENT_STATUS = {
     "running": GREEN, "active": GREEN, "live": GREEN,
     "idle": DIM, "pending": DIM, "queued": DIM,
+    "inactive": DIM,
     "done": BLUE, "completed": BLUE, "finished": BLUE,
     "error": RED, "failed": RED, "dead": RED,
 }

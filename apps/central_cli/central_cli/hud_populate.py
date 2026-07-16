@@ -865,8 +865,9 @@ class _PopulateMixin:
             table = self.query_one("#nerve-table", DataTable)
         except Exception:
             return
-        self._reset_columns(table, ("agent", 24), ("rolle", 18),
-                            ("status", 14), ("tokens", 10))
+        self._reset_columns(table, ("model", 26), ("rolle", 12),
+                            ("status", 12), ("aktivitet", 22), ("last run", 9),
+                            ("tokens", 12), ("$", 9), ("tools", 6))
         if self._client is None:
             return
         try:
@@ -878,18 +879,48 @@ class _PopulateMixin:
             self._council = datasource.council(self._client)
         except Exception:
             self._council = []
+        n_active = sum(1 for r in rows if str(r.get("status", "")) == "active")
+        n_idle = sum(1 for r in rows if str(r.get("status", "")) == "idle")
+        n_inact = sum(1 for r in rows if str(r.get("status", "")) == "inactive")
         self._set_paneh(
-            f"[{CYAN}]AGENTS[/] [{FGDIM}]— {len(rows)} agenter · "
+            f"[{CYAN}]AGENTS[/] [{FGDIM}]— {len(rows)} modeller · "
+            f"{n_active} aktive · {n_idle} idle · {n_inact} inaktive · "
             f"{len(self._council)} råds-sessioner[/]"
         )
-        for r in rows:
-            status = str(r.get("status", ""))
-            color = _AGENT_STATUS.get(status, FG)
+        if not rows:
             table.add_row(
-                Text(str(r.get("agent_id", "")), style=FG),
-                Text(str(r.get("role", "")), style=FGDIM),
-                Text(f"● {status}" if status else "—", style=color),
-                Text(str(r.get("tokens_burned", 0)), style=FGDIM, justify="right"),
+                Text("— ingen modeller —", style=DIM),
+                Text(""), Text(""), Text(""), Text(""),
+                Text(""), Text(""), Text(""),
+            )
+            return
+        for r in rows:
+            status = str(r.get("status", "") or "")
+            inactive = status == "inactive"
+            # Whole INACTIVE row is greyed out; active/idle rows keep FG body.
+            body = DIM if inactive else FG
+            dim = DIM if inactive else FGDIM
+            scolor = DIM if inactive else _AGENT_STATUS.get(status, FG)
+            prov = str(r.get("provider", "") or "")
+            model = str(r.get("model", "") or "")
+            mk = str(r.get("model_key", "") or r.get("agent_id", "") or "")
+            label = f"{prov}/{model}" if (prov and model) else (model or mk or "—")
+            marker = "● " if status == "active" else ""
+            status_cell = f"{marker}{status}" if status else "—"
+            ti = int(r.get("tokens_in", 0) or 0)
+            to = int(r.get("tokens_out", 0) or 0)
+            cost = float(r.get("cost_usd", 0.0) or 0.0)
+            activity = str(r.get("activity", "") or "") or "—"
+            table.add_row(
+                Text(_esc(label), style=body),
+                Text(_esc(str(r.get("role", "") or "")), style=dim),
+                Text(_esc(status_cell), style=scolor),
+                Text(_esc(activity), style=dim),
+                Text(self._rel_age(r.get("last_run", "")), style=dim),
+                Text(f"{ti}/{to}", style=dim, justify="right"),
+                Text(f"${cost:.4f}", style=dim, justify="right"),
+                Text(str(int(r.get("tool_calls", 0) or 0)), style=dim,
+                     justify="right"),
             )
 
     def _render_agent_detail(self, row: int) -> None:
@@ -905,22 +936,33 @@ class _PopulateMixin:
         r = rows[row]
         status = str(r.get("status", "") or "—")
         color = _AGENT_STATUS.get(status, FG)
-        agent_id = r.get("agent_id", "")
+        model_key = str(r.get("model_key", "") or r.get("agent_id", "") or "")
         role = r.get("role", "")
+        ti = int(r.get("tokens_in", 0) or 0)
+        to = int(r.get("tokens_out", 0) or 0)
+        burned = int(r.get("tokens_burned", ti + to) or 0)
+        cost = float(r.get("cost_usd", 0.0) or 0.0)
         badge_bg = {GREEN: "#06251a", DIM: "#0f1824", BLUE: "#06202e",
                     RED: "#1f0d0d"}.get(color, "#06202e")
-        self._set_side_paneh(f"[{CYAN}]AGENT-DETALJE[/] [{DIM}]— {_esc(agent_id)}[/]")
+        self._set_side_paneh(f"[{CYAN}]AGENT-DETALJE[/] [{DIM}]— {_esc(model_key)}[/]")
         lines = [
             f"[{color} b on {badge_bg}] ● {_esc(status.upper())} [/]",
             "",
-            f"[{FG} b]{_esc(agent_id)}[/]",
-            f"[{FGDIM}]rolle[/]   [{FG}]{_esc(role)}[/]",
-            f"[{FGDIM}]tokens[/]  [{FG}]{_esc(r.get('tokens_burned', 0))}[/]",
+            f"[{FG} b]{_esc(model_key)}[/]",
+            f"[{FGDIM}]rolle[/]      [{FG}]{_esc(role)}[/]",
+            f"[{FGDIM}]aktivitet[/]  [{FG}]{_esc(str(r.get('activity', '') or '—'))}[/]",
+            f"[{FGDIM}]last run[/]   [{FG}]{_esc(self._rel_age(r.get('last_run', '')))}[/]",
+            f"[{FGDIM}]tokens[/]     [{FG}]{ti}/{to} ({burned})[/]",
+            f"[{FGDIM}]cost[/]       [{FG}]${cost:.4f}[/]",
+            f"[{FGDIM}]tools[/]      [{FG}]{_esc(int(r.get('tool_calls', 0) or 0))}[/]",
         ]
-        # any remaining fields on the raw agent dict (never fabricated)
+        # any remaining fields on the raw agent/roster dict (never fabricated)
         raw = r.get("raw") or {}
-        extra = [k for k in raw
-                 if k not in ("agent_id", "role", "status", "tokens_burned")]
+        _known = ("agent_id", "model_key", "provider", "model", "role", "status",
+                  "last_run_at", "last_run", "tokens_in", "tokens_out",
+                  "tokens_burned", "cost_usd", "current_activity", "activity",
+                  "tool_calls")
+        extra = [k for k in raw if k not in _known]
         if extra:
             lines += ["", f"[{FGDIM} b]FELTER[/]"]
             for k in extra:

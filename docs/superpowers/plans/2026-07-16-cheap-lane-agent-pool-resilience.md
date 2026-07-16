@@ -222,28 +222,80 @@ def test_build_slot_pool_includes_account2(monkeypatch):
 
 ---
 
-## Fase P2 — account2 = fallback-tier, IKKE round-robin (B1 — løser konflikten)
+## Fase P2 — Egress-adskillelse: account2 = ÆGTE parallel-tier via proxy (B1 løst af IP-adskillelse)
 
-### Task 8: profil-tier vægter account2 under default
-**Files:** Modify `core/services/cheap_lane_balancer.py::_compute_weight` (L294) + selection-vægt; Test begge
-- [ ] **Step 1:** Test `test_account2_is_lower_tier`:
+**Kontekst (bevist + hærdet 16.jul, se [[reference_expressvpn_egress_gateway]]):** to hærdede,
+reboot-persistente egress-containere giver account2 en ANDEN egress-IP end default → B1's ban-risiko
+(samme IP + skiftevis konti på samme provider) er VÆK → account2 kan round-robines LIGEVÆRDIGT med
+default (~2× kapacitet), ikke kun lav-vægtet fallback. Egress-stier: **ct106 `http://10.0.0.45:8888`
+= ExpressVPN** for 12 providers; **ct107 `http://10.0.0.46:8888` = HE-IPv6** for KUN groq (Cloudflare
+blokerer groq-VPN-IP, men accepterer HE-IPv6). Alle 13 account2-providers dækket, egress-accept
+empirisk bevist.
+
+### Task 8: BalancerSlot.egress + egress-resolution
+**Files:** Modify `core/services/cheap_lane_balancer.py` (BalancerSlot) + ny `core/services/egress_routing.py`; Test `tests/test_egress_routing.py`
+- [ ] **Step 1:** Test `test_resolve_egress`:
 ```python
-def test_account2_weight_below_default(now=1000.0):
-    slot_d = _slot("groq","x","default"); slot_a = _slot("groq","x","account2")
-    st = SlotState(slot_id="")  # sund, tom
-    wd = bal._compute_weight(slot_d, st, now); wa = bal._compute_weight(slot_a, st, now)
-    assert wd > wa > 0   # account2 vælges KUN når default-headroom falder
+def test_resolve_egress():
+    from core.services.egress_routing import resolve_egress
+    assert resolve_egress("cohere", "default") == "home"
+    assert resolve_egress("cohere", "account2") == "vpn"
+    assert resolve_egress("groq", "account2") == "he6"   # groq-undtagelse (VPN blokeret)
+    assert resolve_egress("groq", "default") == "home"
 ```
-- [ ] **Step 2:** FAIL (ingen tier-vægt i dag).
-- [ ] **Step 3:** Tilføj `_profile_tier(auth_profile) -> int` (default=0, øvrige=1,2… i sorteret
-  rækkefølge) og en multiplikator `_TIER_WEIGHT = {0: 1.0, 1: 0.25, 2: 0.1}` (account2 kun ~25%
-  vægt → rammes reelt først når default-slots er cooldown/udtømt). Gang ind i `_compute_weight`.
-  **B1-værn:** dette erstatter gammel WS6-RR mellem default+account2 — de er IKKE ligeværdige,
-  account2 er et sikkerhedsnet, ikke en parallel-konto.
+- [ ] **Step 2:** FAIL (modul findes ikke).
+- [ ] **Step 3:** Ny `egress_routing.py`: `EGRESS_ROUTES` config (per-provider override; groq→he6),
+  `PROXY_ENDPOINTS = {"vpn":"http://10.0.0.45:8888","he6":"http://10.0.0.46:8888","home":None}`
+  (læs fra runtime-config m. disse som default). `resolve_egress(provider, auth_profile)`: default-
+  profil → "home"; ikke-default (account2, account3…) → per-provider override el. "vpn". Tilføj
+  `egress: str = "home"` felt til `BalancerSlot` (sat i build_slot_pool/candidates via resolve_egress).
 - [ ] **Step 4:** PASS.
-- [ ] **Step 5:** Test `test_rr_only_across_different_providers`: RR/tie-break gælder KUN slots med
-  forskellig provider i samme tier (groq:default vs mistral:default), ALDRIG groq:default vs
-  groq:account2. Commit.
+- [ ] **Step 5:** Commit.
+
+### Task 8b: executor router pr. egress (proxy-injektion + leak-værn)
+**Files:** Modify `core/services/cheap_provider_runtime_selection.py` (`_execute_provider_chat`) + balancer-kald; Test `tests/test_cheap_provider_runtime_selection.py`
+- [ ] **Step 1:** Test `test_executor_sets_proxy_per_egress`:
+```python
+def test_proxy_injection(monkeypatch):
+    from core.services import egress_routing as er
+    seen = {}
+    monkeypatch.setattr(mod, "_http_provider_call", lambda **k: seen.update(k) or {"text":"ok"})
+    mod._execute_provider_chat(provider="cohere", model="m", auth_profile="account2",
+                               egress="vpn", message="hej")
+    assert seen["proxies"]["https"] == "http://10.0.0.45:8888"
+def test_home_egress_no_proxy(monkeypatch):
+    ... egress="home" -> seen.get("proxies") is None
+def test_leak_guard(): # egress=vpn men proxy-endpoint mangler -> raise, ALDRIG hjemme-IP
+    import pytest
+    with pytest.raises(RuntimeError): mod._resolve_proxy("vpn", endpoints={})
+```
+- [ ] **Step 2:** FAIL.
+- [ ] **Step 3:** Executor slår `PROXY_ENDPOINTS[slot.egress]` op og sætter `proxies={"https":ep,"http":ep}`
+  på HTTP-kaldet når egress != "home". **Leak-værn (Fund #6-analog):** hvis egress ∈ {vpn,he6} men
+  endpoint mangler/tom → `raise RuntimeError` (aldrig fald til hjemme-IP med account2 — det ville
+  korrelere kontiene). Gate bag `cheap_pool_multiprofile_enabled`.
+- [ ] **Step 4:** PASS.
+- [ ] **Step 5:** Selvhelbred: proxy-endpoint uNåelig (ConnectionError) → registrér som slot-failure
+  (cooldown), IKKE crash; account2-slot falder ud, default fortsætter. Test. Commit.
+
+### Task 8c: account2 = ligeværdig parallel RR-tier
+**Files:** Modify `_compute_weight` (L294) + `_select_slot` (L457); Test `tests/test_cheap_lane_balancer.py`
+- [ ] **Step 1:** Test `test_account2_equal_weight_rr`:
+```python
+def test_account2_parallel_rr(now=1000.0):
+    sd = _slot("groq","x","default","home"); sa = _slot("groq","x","account2","he6")
+    st = SlotState(slot_id="")
+    # ligeværdig vægt (egress-adskillelse fjerner B1-risiko) → begge vælges over tid
+    assert bal._compute_weight(sd, st, now) == bal._compute_weight(sa, st, now) > 0
+```
+- [ ] **Step 2:** FAIL hvis nogen tier-nedvægtning af account2 findes.
+- [ ] **Step 3:** account2-slots får SAMME vægt-tier som default (INGEN `_TIER_WEIGHT`-nedvægtning —
+  den gamle B1-fallback-idé udgår, egress-adskillelsen gør parallel kørsel sikker). RR/tie-break
+  spreder mellem default+account2 på samme provider for jævn kvote-brug. **Bevar** leak-værnet fra
+  Task 9 som den eneste sikkerhedsmekanisme.
+- [ ] **Step 4:** PASS.
+- [ ] **Step 5:** Test `test_account2_falls_out_if_proxy_down` (proxy nede → account2-slot cooldown,
+  default bærer alene). Commit.
 
 ---
 
@@ -446,5 +498,7 @@ rygrad (P3), hårdt loft (P4), subtil læring sidst (P5), shadow-verifikation (P
 Rådets 10 fund adresseret: #1(P0 T1-3), #2(B2 i T6), #3(P0 T2-3 SQLite), #4(P5 T12 sikret læring),
 #5(P4 T11 rate-cap), #6(P3 T9-10 run.autonomous-gate+assertion), #7(T9 begge exit-former+max_depth),
 #8(seam pinned T10), #9(P6 T15 flag-gating), #10(WS5 droppet→T17 verifikation). B1-konflikt
-(account2-RR) løst i P2 T8. Visible-lane-urørthed testet i T9(assertion)+T16(5).
+LØST af egress-adskillelse (P2 T8-8c: bevist+hærdet VPN/IPv6-proxies → account2=ægte parallel-tier,
+ikke fallback; leak-værn = eneste sikkerhedsmekanisme). Visible-lane-urørthed testet i
+T9(assertion)+T16(5). Egress-infra: [[reference_expressvpn_egress_gateway]] (ct106 VPN, ct107 IPv6).
 ```

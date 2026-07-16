@@ -330,6 +330,28 @@ def _flag_multiprofile() -> bool:
         return False
 
 
+def _resolve_proxy(egress: str, endpoints: dict | None = None) -> str | None:
+    """Task 8b: map an egress ('home'|'vpn'|'he6') to its proxy endpoint URL.
+
+    home (or falsy) -> None (no proxy, home IP). A non-home egress with no
+    configured endpoint is a HARD leak guard: we refuse rather than silently
+    fall back to the home IP (that would correlate account2 with default and
+    re-introduce the multi-account ban risk this whole routing exists to avoid).
+    """
+    if not egress or egress == "home":
+        return None
+    if endpoints is None:
+        from core.services.egress_routing import proxy_endpoints
+        endpoints = proxy_endpoints()
+    ep = endpoints.get(egress)
+    if not ep:
+        raise RuntimeError(
+            f"egress {egress!r} har ingen proxy-endpoint — "
+            "nægter at sende account2 over hjemme-IP"
+        )
+    return ep
+
+
 def _record_route_divergence(old: dict, new: dict) -> None:
     """Shadow-sammenligning: log/observe når central_route ville vælge noget andet
     end den gamle sti. Data til at beslutte hvornår vi flipper til live."""

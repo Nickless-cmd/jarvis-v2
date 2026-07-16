@@ -750,6 +750,25 @@ def _flatten_messages_to_text(messages: list[dict] | None) -> str:
     return "\n\n".join(parts)
 
 
+def _resolve_egress_proxy(*, provider: str, auth_profile: str) -> str | None:
+    """Task 8b: resolve the egress proxy URL for a (provider, auth_profile) slot.
+
+    Gated behind the ``cheap_pool_multiprofile_enabled`` flag: flag OFF -> always
+    None (no proxy, unchanged home-IP behavior). Flag ON -> map the slot's egress
+    to its proxy; the leak guard inside ``_resolve_proxy`` raises if a non-home
+    egress has no configured endpoint (never silently uses the home IP).
+
+    Symbols are resolved through the selection module at call time so tests that
+    monkeypatch ``_flag_multiprofile`` / ``_resolve_proxy`` there take effect.
+    """
+    from core.services import cheap_provider_runtime_selection as _sel
+    if not _sel._flag_multiprofile():
+        return None
+    from core.services.egress_routing import resolve_egress
+    egress = resolve_egress(provider, auth_profile)
+    return _sel._resolve_proxy(egress)
+
+
 def _execute_provider_chat(
     *,
     provider: str,
@@ -898,12 +917,21 @@ def _execute_openai_compatible_chat(
     _mname = str(model).split("/")[-1]
     if any(_mname.startswith(p) for p in ("gpt-5", "o1", "o3", "o4")) and "max_tokens" in payload:
         payload["max_completion_tokens"] = payload.pop("max_tokens")
+    # Task 8b: account2 egress-proxy. Gated behind the multiprofile flag — when
+    # OFF, proxy stays None (unchanged, home-IP behavior). When ON, a non-default
+    # profile is routed through its egress proxy; _resolve_proxy hard-raises on a
+    # missing endpoint rather than leaking account2 over the home IP.
+    proxy = _resolve_egress_proxy(provider=provider, auth_profile=auth_profile)
+    # Only thread the proxy kwarg when a proxy is actually resolved, so the
+    # flag-OFF / home-egress path stays byte-identical to the pre-8b signature.
+    _proxy_kw = {"proxy": proxy} if proxy else {}
     if provider == "groq":
         data, _headers = _f._http_json_httpx(
             f"{root}/chat/completions",
             payload=payload,
             headers=headers,
             provider=provider,
+            **_proxy_kw,
         )
     else:
         data, _headers = _f._http_json(
@@ -911,6 +939,7 @@ def _execute_openai_compatible_chat(
             payload=payload,
             headers=headers,
             provider=provider,
+            **_proxy_kw,
         )
     _first_choice = (data.get("choices") or [{}])[0] or {}
     first_msg = _first_choice.get("message") or {}
@@ -1500,6 +1529,7 @@ def _http_json(
     method: str = "POST",
     payload: dict[str, object] | None = None,
     headers: dict[str, str] | None = None,
+    proxy: str | None = None,
 ) -> tuple[dict[str, object], dict[str, str]]:
     request_headers = {
         "Accept": "application/json",
@@ -1514,8 +1544,17 @@ def _http_json(
         headers=request_headers,
         method=method,
     )
+    # Task 8b: account2 egress-proxy. When set, route this single request through
+    # the proxy (http+https) via a dedicated opener; None -> direct (home IP).
+    _opener = (
+        urllib_request.build_opener(
+            urllib_request.ProxyHandler({"http": proxy, "https": proxy})
+        ).open
+        if proxy
+        else urllib_request.urlopen
+    )
     try:
-        with urllib_request.urlopen(req, timeout=_DEFAULT_TIMEOUT_SECONDS) as response:
+        with _opener(req, timeout=_DEFAULT_TIMEOUT_SECONDS) as response:
             raw_headers = {key.lower(): value for key, value in response.headers.items()}
             data = json.loads(response.read().decode("utf-8"))
         return data, raw_headers
@@ -1552,6 +1591,7 @@ def _http_json_httpx(
     provider: str,
     payload: dict[str, object] | None = None,
     headers: dict[str, str] | None = None,
+    proxy: str | None = None,
 ) -> tuple[dict[str, object], dict[str, str]]:
     request_headers = {
         "Accept": "application/json",
@@ -1559,8 +1599,16 @@ def _http_json_httpx(
         "User-Agent": "jarvis-v2/cheap-lane",
         **(headers or {}),
     }
+    # Task 8b: account2 egress-proxy (httpx 0.28 kwarg is `proxy=`, not `proxies=`).
+    # None -> direct (home IP).
+    _client_kwargs: dict[str, object] = {
+        "timeout": _DEFAULT_TIMEOUT_SECONDS,
+        "follow_redirects": True,
+    }
+    if proxy:
+        _client_kwargs["proxy"] = proxy
     try:
-        with httpx.Client(timeout=_DEFAULT_TIMEOUT_SECONDS, follow_redirects=True) as client:
+        with httpx.Client(**_client_kwargs) as client:
             response = client.post(
                 url,
                 json=payload,

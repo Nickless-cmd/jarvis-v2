@@ -102,3 +102,80 @@ def test_candidates_single_profile_when_flag_off(monkeypatch):
     profs = [c["auth_profile"] for c in sel._configured_cheap_candidates(include_public_proxy=True)
              if c["provider"] == "groq"]
     assert len(profs) == 1
+
+
+# ---------------------------------------------------------------------------
+# Task 8b: inject proxy per egress + leak guard
+# ---------------------------------------------------------------------------
+def test_resolve_proxy_home_is_none():
+    from core.services import cheap_provider_runtime_selection as sel
+    assert sel._resolve_proxy("home") is None
+    assert sel._resolve_proxy("") is None
+
+
+def test_resolve_proxy_vpn_endpoint():
+    from core.services import cheap_provider_runtime_selection as sel
+    assert sel._resolve_proxy("vpn", {"vpn": "http://10.0.0.45:8888"}) == "http://10.0.0.45:8888"
+
+
+def test_resolve_proxy_leak_guard_raises():
+    from core.services import cheap_provider_runtime_selection as sel
+    import pytest
+    with pytest.raises(RuntimeError):
+        sel._resolve_proxy("vpn", {})   # non-home egress but no endpoint -> refuse
+
+
+def _stub_openai_compat_http(monkeypatch):
+    """Stub the credential + defaults + HTTP seam on the facade so
+    _execute_openai_compatible_chat runs offline and we can capture the proxy
+    passed to the lowest-level HTTP call. Returns the captured-kwargs dict."""
+    from core.services import cheap_provider_runtime as facade
+    captured: dict = {}
+
+    def fake_http_json(url, *, provider, proxy=None, **kw):
+        captured["proxy"] = proxy
+        captured["url"] = url
+        return ({"choices": [{"message": {"content": "ok"}}], "usage": {}}, {})
+
+    monkeypatch.setattr(facade, "_require_credentials",
+                        lambda *, profile, provider: {"api_key": "k"})
+    monkeypatch.setattr(facade, "provider_runtime_defaults",
+                        lambda provider: {"base_url": "https://api.cohere.ai/compatibility/v1"})
+    monkeypatch.setattr(facade, "_http_json", fake_http_json)
+    return captured
+
+
+def test_executor_sets_proxy_for_account2(monkeypatch):
+    # flag ON + account2 (cohere -> egress vpn) -> proxy == vpn endpoint.
+    from core.services import cheap_provider_runtime_selection as sel
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: True)
+    captured = _stub_openai_compat_http(monkeypatch)
+    sel._execute_provider_chat(
+        provider="cohere", model="command", auth_profile="account2",
+        base_url="https://api.cohere.ai/compatibility/v1", message="hi",
+    )
+    assert captured["proxy"] == "http://10.0.0.45:8888"
+
+
+def test_executor_no_proxy_for_default(monkeypatch):
+    # flag ON but auth_profile=default -> egress home -> no proxy.
+    from core.services import cheap_provider_runtime_selection as sel
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: True)
+    captured = _stub_openai_compat_http(monkeypatch)
+    sel._execute_provider_chat(
+        provider="cohere", model="command", auth_profile="default",
+        base_url="https://api.cohere.ai/compatibility/v1", message="hi",
+    )
+    assert captured["proxy"] is None
+
+
+def test_executor_no_proxy_when_flag_off(monkeypatch):
+    # flag OFF -> proxy path never engages even for account2 (unchanged behavior).
+    from core.services import cheap_provider_runtime_selection as sel
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: False)
+    captured = _stub_openai_compat_http(monkeypatch)
+    sel._execute_provider_chat(
+        provider="cohere", model="command", auth_profile="account2",
+        base_url="https://api.cohere.ai/compatibility/v1", message="hi",
+    )
+    assert captured["proxy"] is None

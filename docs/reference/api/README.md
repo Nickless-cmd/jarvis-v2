@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12813 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12815 functions/methods, 48% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,20 +35,20 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12813 functions/
 - [`core.services.06`](core.services.06.md) — `central_timeseries` … `communication_guard`
 - [`core.services.07`](core.services.07.md) — `communication_guard_daemon` … `creative_projects`
 - [`core.services.08`](core.services.08.md) — `crisis_marker_detector` … `development_sense`
-- [`core.services.09`](core.services.09.md) — `developmental_valence` … `emotion_repair_bridge_daemon`
-- [`core.services.10`](core.services.10.md) — `emotion_tagging` … `gate_execution`
-- [`core.services.11`](core.services.11.md) — `gate_kernel` … `hollow_promise_guard`
-- [`core.services.12`](core.services.12.md) — `identity_canon` … `layer_tension_daemon`
-- [`core.services.13`](core.services.13.md) — `learning_pipeline_orchestrator` … `meta_reflection_daemon`
-- [`core.services.14`](core.services.14.md) — `metabolism_state_signal_tracking` … `override_store`
-- [`core.services.15`](core.services.15.md) — `paradox_tracker` … `prompt_evolution`
-- [`core.services.16`](core.services.16.md) — `prompt_evolution_runtime` … `relation_dynamics`
-- [`core.services.17`](core.services.17.md) — `relation_map` … `rupture_repair`
-- [`core.services.18`](core.services.18.md) — `scheduled_job_windows` … `session_inbox`
-- [`core.services.19`](core.services.19.md) — `session_milestones` … `stream_failure_kind`
-- [`core.services.20`](core.services.20.md) — `stream_sentinel` … `tool_intent_runtime`
-- [`core.services.21`](core.services.21.md) — `tool_observer` … `visible_model_observe`
-- [`core.services.22`](core.services.22.md) — `visible_model_ollama` … `world_model_signal_tracking`
+- [`core.services.09`](core.services.09.md) — `developmental_valence` … `emotion_concepts_positive_triggers`
+- [`core.services.10`](core.services.10.md) — `emotion_repair_bridge_daemon` … `gate_eval`
+- [`core.services.11`](core.services.11.md) — `gate_execution` … `hf_connector`
+- [`core.services.12`](core.services.12.md) — `hollow_promise_guard` … `keyring_store`
+- [`core.services.13`](core.services.13.md) — `layer_tension_daemon` … `meta_learning_retrospective`
+- [`core.services.14`](core.services.14.md) — `meta_reflection_daemon` … `override_command`
+- [`core.services.15`](core.services.15.md) — `override_store` … `prompt_contract`
+- [`core.services.16`](core.services.16.md) — `prompt_evolution` … `relation_continuity_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `relation_dynamics` … `runtime_tasks`
+- [`core.services.18`](core.services.18.md) — `rupture_repair` … `session_distillation`
+- [`core.services.19`](core.services.19.md) — `session_inbox` … `stream_degeneration`
+- [`core.services.20`](core.services.20.md) — `stream_failure_kind` … `tool_intent_approval_runtime`
+- [`core.services.21`](core.services.21.md) — `tool_intent_runtime` … `visible_model_adapters`
+- [`core.services.22`](core.services.22.md) — `visible_model_observe` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

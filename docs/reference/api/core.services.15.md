@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/override_store.py`
+_Owner-override-session-store — DB-backed, cross-proces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_key` | `(session_id)` | — | [src](../../../core/services/override_store.py#L31) |
+| function | `_now` | `(now)` | — | [src](../../../core/services/override_store.py#L35) |
+| function | `grant` | `(session_id, *, level=…, now=…)` | Aktivér owner-override for en session. Returnér record. | [src](../../../core/services/override_store.py#L39) |
+| function | `_read` | `(session_id)` | — | [src](../../../core/services/override_store.py#L59) |
+| function | `is_active` | `(session_id, *, now=…)` | True hvis sessionen har en aktiv (ikke-udløbet) override. | [src](../../../core/services/override_store.py#L64) |
+| function | `level` | `(session_id, *, now=…)` | Override-niveau hvis aktiv, ellers None. | [src](../../../core/services/override_store.py#L72) |
+| function | `touch` | `(session_id, *, now=…)` | Forny en AKTIV override til +5 min ved aktivitet. False hvis udløbet/fraværende. | [src](../../../core/services/override_store.py#L80) |
+| function | `revoke` | `(session_id)` | Deaktivér override (sæt udløbet — runtime_state har ingen delete). | [src](../../../core/services/override_store.py#L97) |
+
 ## `core/services/paradox_tracker.py`
 _Paradox Tracker — detects active tensions in Jarvis' operation._
 
@@ -714,17 +728,4 @@ _Promise-ledger (Bjørn-gate) — 16. jun 2026._
 | function | `_should_include_transcript` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4312) |
 | function | `_should_include_continuity` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4331) |
 | function | `prompt_mode_loader_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4344) |
-
-## `core/services/prompt_evolution.py`
-_Prompt evolution — versioning + rollback safety net for workspace prompts._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/prompt_evolution.py#L41) |
-| function | `_ensure_table` | `()` | Create workspace_prompt_versions table if missing. Idempotent. | [src](../../../core/services/prompt_evolution.py#L45) |
-| function | `snapshot_workspace_file` | `(*, filename, content, reason=…, workspace_id=…, created_by=…)` | Persist a snapshot of a workspace file. | [src](../../../core/services/prompt_evolution.py#L70) |
-| function | `list_prompt_history` | `(*, filename, limit=…)` | Return recent versions of a file, newest first. Excludes content | [src](../../../core/services/prompt_evolution.py#L145) |
-| function | `get_version` | `(*, version_id)` | Fetch a specific version including full content. | [src](../../../core/services/prompt_evolution.py#L171) |
-| function | `rollback_to_version` | `(*, workspace_dir, filename, version_id, snapshot_current_first=…)` | Restore a workspace file to a specific historical version. | [src](../../../core/services/prompt_evolution.py#L190) |
-| function | `recommend_rollback_after_change` | `(*, filename, hours=…)` | Score recent telemetry to assess whether the most recent change to | [src](../../../core/services/prompt_evolution.py#L248) |
 

@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from core.services.egress_routing import resolve_egress
+
 
 @dataclass(frozen=True)
 class BalancerSlot:
@@ -25,6 +27,7 @@ class BalancerSlot:
     rpm_limit: Optional[int]
     daily_limit: Optional[int]
     is_public_proxy: bool
+    egress: str = "home"
 
     @property
     def slot_id(self) -> str:
@@ -918,6 +921,7 @@ def build_slot_pool() -> list[BalancerSlot]:
                     rpm_limit=meta.get("rpm_limit"),
                     daily_limit=meta.get("daily_limit"),
                     is_public_proxy=provider in _PUBLIC_PROXIES,
+                    egress=resolve_egress(provider, prof),
                 ))
             continue
         # --- OFF-sti: uændret adfærd ---
@@ -931,6 +935,7 @@ def build_slot_pool() -> list[BalancerSlot]:
             rpm_limit=meta.get("rpm_limit"),
             daily_limit=meta.get("daily_limit"),
             is_public_proxy=provider in _PUBLIC_PROXIES,
+            egress=resolve_egress(provider, auth_profile),
         )
         slots.append(slot)
 
@@ -973,6 +978,7 @@ def build_slot_pool() -> list[BalancerSlot]:
                     base_url=str(cfg.get("base_url") or ""),
                     rpm_limit=cfg.get("rpm_limit"), daily_limit=cfg.get("daily_limit"),
                     is_public_proxy=provider in _PUBLIC_PROXIES,
+                    egress=resolve_egress(provider, auth_profile),
                 ))
     return slots
 

@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_execution.py`
+_Execution-cluster gate 🔒 — én graderet SECURITY-gate for ALLE tool-eksekverings-_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_red` | `(nerve, reason, classification)` | — | [src](../../../core/services/gate_execution.py#L42) |
+| function | `_yellow` | `(nerve, classification)` | — | [src](../../../core/services/gate_execution.py#L47) |
+| function | `_green` | `(nerve, classification)` | — | [src](../../../core/services/gate_execution.py#L52) |
+| function | `execution_gate` | `(ctx)` | Én SECURITY-gate, dispatch på ctx['action']. Returnér ét graderet Verdict. | [src](../../../core/services/gate_execution.py#L58) |
+| class | `ExecCheck` | `` | — | [src](../../../core/services/gate_execution.py#L159) |
+| function | `_to_check` | `(v)` | — | [src](../../../core/services/gate_execution.py#L166) |
+| function | `_decide` | `(nerve, ctx)` | Route gennem Den Intelligente Central (SECURITY). Defense-in-depth: hvis central- | [src](../../../core/services/gate_execution.py#L182) |
+| function | `check_command` | `(command, session_id=…, *, blocked_only=…)` | — | [src](../../../core/services/gate_execution.py#L211) |
+| function | `check_file` | `(path, session_id=…, *, kind=…, blocked_only=…)` | — | [src](../../../core/services/gate_execution.py#L218) |
+| function | `check_workspace_trust` | `(tool_name)` | — | [src](../../../core/services/gate_execution.py#L225) |
+| function | `check_operator` | `(path, session_id=…, *, file_exists=…)` | — | [src](../../../core/services/gate_execution.py#L230) |
+| function | `check_upload` | `(path, *, block_on_unavailable=…)` | Malware-scan en uploadet fil GENNEM Centralen (SECURITY). .allowed=False ⇔ infected/ | [src](../../../core/services/gate_execution.py#L237) |
+
 ## `core/services/gate_kernel.py`
 _GateKernel — central orchestrator for alle gates (spec 2026-06-21)._
 
@@ -565,13 +583,4 @@ _Hugging Face-connector — søg modeller/datasets via Hub API._
 | function | `_get` | `(path, params=…)` | — | [src](../../../core/services/hf_connector.py#L52) |
 | function | `search_models` | `(query, *, limit=…)` | — | [src](../../../core/services/hf_connector.py#L67) |
 | function | `model_info` | `(model_id)` | — | [src](../../../core/services/hf_connector.py#L85) |
-
-## `core/services/hollow_promise_guard.py`
-_Hollow-promise guard (4. jul) — fang "lovede handling, kaldte intet værktøj"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_promise_of_action` | `(text)` | True hvis `text` lover at assistenten tager en handling imminent. Self-safe. | [src](../../../core/services/hollow_promise_guard.py#L54) |
-| function | `is_hollow_promise` | `(final_text, total_tool_calls, user_message=…, nudged_already=…)` | Tom løfte = lovede handling + NUL tool-kald hele runnet + ikke allerede nudget. | [src](../../../core/services/hollow_promise_guard.py#L69) |
-| function | `hollow_promise_guard_enabled` | `()` | Default TRUE (Bjørn bad om værnet 4. jul). Env `JARVIS_HOLLOW_PROMISE_GUARD` vinder; | [src](../../../core/services/hollow_promise_guard.py#L92) |
 

@@ -958,3 +958,19 @@ def test_build_slot_pool_single_profile_when_flag_off(monkeypatch):
     monkeypatch.setattr(bal, "_flag_multiprofile", lambda: False)
     ids = {s.slot_id for s in bal.build_slot_pool()}
     assert "groq::llama-x::account2" not in ids
+
+
+def test_built_slots_carry_egress(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_router_enabled_models", lambda: [
+        {"provider": "groq", "model": "llama-x", "enabled": True,
+         "lane": "cheap", "auth_profile": "default"}])
+    monkeypatch.setattr(
+        "core.services.auth_profile_scan.ready_profiles_for",
+        lambda provider: ["default", "account2"] if provider == "groq" else ["default"])
+    monkeypatch.setattr(bal, "_credentials_ready", lambda p, a: True)
+    monkeypatch.setattr(bal, "_flag_multiprofile", lambda: True)
+    slots = {s.slot_id: s for s in bal.build_slot_pool()}
+    # default profile -> home; account2 groq -> he6 (Cloudflare-blocked VPN IP)
+    assert slots["groq::llama-x::default"].egress == "home"
+    assert slots["groq::llama-x::account2"].egress == "he6"

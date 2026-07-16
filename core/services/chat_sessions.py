@@ -618,7 +618,7 @@ def chat_session_messages_since_last_compact(
             since_id = int(marker_row["id"])
             rows = conn.execute(
                 """
-                SELECT role, content, created_at, user_id, reasoning_content
+                SELECT id, role, content, created_at, user_id, reasoning_content
                 FROM chat_messages
                 WHERE session_id = ? AND role != 'compact_marker' AND id > ?
                 ORDER BY id ASC LIMIT ?
@@ -628,7 +628,7 @@ def chat_session_messages_since_last_compact(
         else:
             rows = conn.execute(
                 """
-                SELECT role, content, created_at, user_id, reasoning_content
+                SELECT id, role, content, created_at, user_id, reasoning_content
                 FROM chat_messages
                 WHERE session_id = ? AND role != 'compact_marker'
                 ORDER BY id ASC LIMIT ?
@@ -637,6 +637,7 @@ def chat_session_messages_since_last_compact(
             ).fetchall()
     return [
         {
+            "id": int(row["id"]),
             "role": str(row["role"]),
             "content": str(row["content"]),
             "created_at": str(row["created_at"]),

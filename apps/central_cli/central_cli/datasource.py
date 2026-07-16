@@ -453,8 +453,12 @@ def incident_detail(client: Any, incident: dict) -> dict:
 def agents(client: Any) -> list:
     """Agent roster from /central/agents, shaped for the Agents view.
 
+    Prefers the new ``roster`` surface (per-model rows with provider/model/
+    tokens/cost/activity). Falls back to the legacy ``agents`` shape when
+    ``roster`` is absent/empty, so older backends keep working unchanged.
+
     Self-safe: any error → empty list. Each row carries id/role/status/tokens
-    plus the raw agent dict passed through for the side-panel detail.
+    plus the raw agent/roster dict passed through for the side-panel detail.
     """
     try:
         data = client.get_json("/central/agents")
@@ -463,6 +467,33 @@ def agents(client: Any) -> list:
     if not isinstance(data, dict):
         return []
     out = []
+    roster = data.get("roster")
+    if roster:
+        for a in roster:
+            if not isinstance(a, dict):
+                continue
+            model_key = str(a.get("model_key", "") or "")
+            tokens_in = int(a.get("tokens_in", 0) or 0)
+            tokens_out = int(a.get("tokens_out", 0) or 0)
+            out.append({
+                # keep legacy id/role/status/tokens_burned keys populated so the
+                # Agents table renders roster rows with the same column contract.
+                "agent_id": model_key,
+                "model_key": model_key,
+                "provider": str(a.get("provider", "") or ""),
+                "model": str(a.get("model", "") or ""),
+                "role": str(a.get("role", "") or ""),
+                "status": str(a.get("status", "") or ""),
+                "last_run": str(a.get("last_run_at", "") or ""),
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
+                "tokens_burned": tokens_in + tokens_out,
+                "cost_usd": float(a.get("cost_usd", 0.0) or 0.0),
+                "activity": str(a.get("current_activity", "") or ""),
+                "tool_calls": int(a.get("tool_calls", 0) or 0),
+                "raw": a,
+            })
+        return out
     for a in data.get("agents") or []:
         if not isinstance(a, dict):
             continue
@@ -474,6 +505,51 @@ def agents(client: Any) -> list:
             "raw": a,
         })
     return out
+
+
+def balancer(client: Any) -> dict:
+    """Cheap-lane balancer snapshot from /mc/cheap-balancer-state.
+
+    Returns ``{"header": <aggregate dict>, "rows": [<per-slot row dicts>]}``.
+    Each row is shaped for the Balancer table (id/provider/model/profile/egress
+    /status/weight/headroom/usage/limits/health) with the raw slot passed
+    through for the side-panel detail.
+
+    Self-safe: any error / bad shape → ``{"header": {}, "rows": []}``.
+    """
+    try:
+        data = client.get_json("/mc/cheap-balancer-state")
+    except Exception:
+        return {"header": {}, "rows": []}
+    if not isinstance(data, dict):
+        return {"header": {}, "rows": []}
+    header = data.get("header")
+    if not isinstance(header, dict):
+        header = {}
+    rows = []
+    for s in data.get("slots") or []:
+        if not isinstance(s, dict):
+            continue
+        rows.append({
+            "slot_id": str(s.get("slot_id", "") or ""),
+            "provider": str(s.get("provider", "") or ""),
+            "model": str(s.get("model", "") or ""),
+            "auth_profile": str(s.get("auth_profile", "") or ""),
+            "egress": str(s.get("egress", "") or ""),
+            "status": str(s.get("status", "") or ""),
+            "weight": float(s.get("weight", 0.0) or 0.0),
+            "daily_headroom": float(s.get("daily_headroom", 0.0) or 0.0),
+            "daily_used": int(s.get("daily_used", 0) or 0),
+            "daily_limit": int(s.get("daily_limit", 0) or 0),
+            "rpm_used": int(s.get("rpm_used", 0) or 0),
+            "rpm_limit": int(s.get("rpm_limit", 0) or 0),
+            "last_success_at": str(s.get("last_success_at", "") or ""),
+            "success_rate": float(s.get("success_rate", 0.0) or 0.0),
+            "daily_observed": bool(s.get("daily_observed", False)),
+            "stale": bool(s.get("stale", False)),
+            "raw": s,
+        })
+    return {"header": header, "rows": rows}
 
 
 def self_snapshot(client: Any) -> dict:

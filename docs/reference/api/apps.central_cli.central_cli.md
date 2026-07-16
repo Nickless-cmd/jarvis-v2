@@ -62,25 +62,26 @@ _Data layer for the Central HUD._
 | function | `_short_sig` | `(signature)` | Stable 8-hex-char id derived from a signature string. | [src](../../../apps/central_cli/central_cli/datasource.py#L314) |
 | function | `incident_detail` | `(client, incident)` | Enrich a realtime incident with joined root-cause / correlation / heal / | [src](../../../apps/central_cli/central_cli/datasource.py#L319) |
 | function | `agents` | `(client)` | Agent roster from /central/agents, shaped for the Agents view. | [src](../../../apps/central_cli/central_cli/datasource.py#L453) |
-| function | `self_snapshot` | `(client)` | Jarvis' reduced self from /central/self, shaped for the Mind & Self view. | [src](../../../apps/central_cli/central_cli/datasource.py#L479) |
-| function | `cost_today` | `(client)` | Today's total cost in USD from /central/costs-daily, or None if unavailable. | [src](../../../apps/central_cli/central_cli/datasource.py#L496) |
-| function | `council` | `(client)` | Council/swarm sessions from /central/council. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L514) |
-| function | `scheduled` | `(client)` | Pending scheduled tasks from /central/queues/scheduled. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L525) |
-| function | `runs` | `(client, limit=…)` | Recent visible runs from /central/runs. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L536) |
-| function | `run_detail` | `(client, run_id)` | One run detail from /central/runs/{run_id}. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L547) |
-| function | `autonomy` | `(client)` | Autonomy proposal queue from /central/autonomy. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L558) |
-| function | `initiative` | `(client)` | Gated initiativ-stige fra /central/initiative. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L574) |
-| function | `events` | `(client, family=…, limit=…)` | Recent eventbus items from /central/events. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L605) |
-| function | `memory_health` | `(client)` | Memory-pipeline health from /central/memory-health. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L622) |
-| function | `inner_life` | `(client)` | Jarvis' reducerede living-mind + experiment-digest fra /central/inner-life. | [src](../../../apps/central_cli/central_cli/datasource.py#L639) |
-| function | `soul` | `(client)` | Jarvis' mørke sjæle-/tids-signaler fra /central/soul. | [src](../../../apps/central_cli/central_cli/datasource.py#L660) |
-| function | `dark_products` | `(client)` | Jarvis' mørke daemon-PRODUKTER fra /central/dark-products. | [src](../../../apps/central_cli/central_cli/datasource.py#L680) |
-| function | `costs_daily` | `(client)` | Daily cost time-series from /central/costs-daily, shaped for the CLI. | [src](../../../apps/central_cli/central_cli/datasource.py#L700) |
-| function | `attention` | `(client)` | Attention-budget-surface fra /central/attention. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L732) |
-| function | `skills` | `(client)` | Skill-engine + skill-contract-registry fra /central/skills. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L744) |
-| function | `integrity` | `(client)` | Self-deception-guard-surface fra /central/integrity. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L762) |
-| function | `experiments` | `(client)` | Cognitive-core-experiments-surface fra /central/experiments. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L774) |
-| function | `execution` | `(client)` | Visible-execution-config (whitelisted flags) fra /central/execution. | [src](../../../apps/central_cli/central_cli/datasource.py#L786) |
+| function | `balancer` | `(client)` | Cheap-lane balancer snapshot from /mc/cheap-balancer-state. | [src](../../../apps/central_cli/central_cli/datasource.py#L510) |
+| function | `self_snapshot` | `(client)` | Jarvis' reduced self from /central/self, shaped for the Mind & Self view. | [src](../../../apps/central_cli/central_cli/datasource.py#L555) |
+| function | `cost_today` | `(client)` | Today's total cost in USD from /central/costs-daily, or None if unavailable. | [src](../../../apps/central_cli/central_cli/datasource.py#L572) |
+| function | `council` | `(client)` | Council/swarm sessions from /central/council. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L590) |
+| function | `scheduled` | `(client)` | Pending scheduled tasks from /central/queues/scheduled. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L601) |
+| function | `runs` | `(client, limit=…)` | Recent visible runs from /central/runs. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L612) |
+| function | `run_detail` | `(client, run_id)` | One run detail from /central/runs/{run_id}. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L623) |
+| function | `autonomy` | `(client)` | Autonomy proposal queue from /central/autonomy. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L634) |
+| function | `initiative` | `(client)` | Gated initiativ-stige fra /central/initiative. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L650) |
+| function | `events` | `(client, family=…, limit=…)` | Recent eventbus items from /central/events. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L681) |
+| function | `memory_health` | `(client)` | Memory-pipeline health from /central/memory-health. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L698) |
+| function | `inner_life` | `(client)` | Jarvis' reducerede living-mind + experiment-digest fra /central/inner-life. | [src](../../../apps/central_cli/central_cli/datasource.py#L715) |
+| function | `soul` | `(client)` | Jarvis' mørke sjæle-/tids-signaler fra /central/soul. | [src](../../../apps/central_cli/central_cli/datasource.py#L736) |
+| function | `dark_products` | `(client)` | Jarvis' mørke daemon-PRODUKTER fra /central/dark-products. | [src](../../../apps/central_cli/central_cli/datasource.py#L756) |
+| function | `costs_daily` | `(client)` | Daily cost time-series from /central/costs-daily, shaped for the CLI. | [src](../../../apps/central_cli/central_cli/datasource.py#L776) |
+| function | `attention` | `(client)` | Attention-budget-surface fra /central/attention. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L808) |
+| function | `skills` | `(client)` | Skill-engine + skill-contract-registry fra /central/skills. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L820) |
+| function | `integrity` | `(client)` | Self-deception-guard-surface fra /central/integrity. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L838) |
+| function | `experiments` | `(client)` | Cognitive-core-experiments-surface fra /central/experiments. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L850) |
+| function | `execution` | `(client)` | Visible-execution-config (whitelisted flags) fra /central/execution. | [src](../../../apps/central_cli/central_cli/datasource.py#L862) |
 
 ## `apps/central_cli/central_cli/feed.py`
 

@@ -457,7 +457,12 @@ def _register_failure(
                 floor = int((config_daily or 0) * _DAILY_FLOOR_FRACTION)
                 candidate = observed_used if observed_used is not None else (config_daily or 0)
                 current = state.daily_observed if state.daily_observed is not None else candidate
+                _was_unlearned = state.daily_observed is None
                 state.daily_observed = max(floor, min(current, candidate))
+                if _was_unlearned:  # Task 15: observe first-time learn (None -> value)
+                    _observe_central("cheap_pool", {"event": "quota_learned",
+                                                    "slot_id": state.slot_id,
+                                                    "daily_observed": state.daily_observed})
             if state.quota_429_count >= 3:  # Task 14: anti-jag → mark stale
                 state.stale_until_daily_reset = True
         # Fall through: a quota 429 is still a failure → keep escalating below.
@@ -1016,6 +1021,12 @@ def build_slot_pool() -> list[BalancerSlot]:
                     is_public_proxy=provider in _PUBLIC_PROXIES,
                     egress=resolve_egress(provider, prof),
                 ))
+                # Task 15: observe kun NON-default profil-slots (multiprofile-effekt),
+                # ikke default — hold det billigt og ikke-spammy.
+                if prof and prof != "default":
+                    _observe_central("cheap_pool", {"event": "profile_slot_added",
+                                                    "provider": provider,
+                                                    "auth_profile": prof})
             continue
         # --- OFF-sti: uændret adfærd ---
         if not _credentials_ready(provider, auth_profile):
@@ -1073,6 +1084,11 @@ def build_slot_pool() -> list[BalancerSlot]:
                     is_public_proxy=provider in _PUBLIC_PROXIES,
                     egress=resolve_egress(provider, auth_profile),
                 ))
+                # Task 15: observe kun NON-default profil-slots (multiprofile-effekt).
+                if _flag_multiprofile() and auth_profile and auth_profile != "default":
+                    _observe_central("cheap_pool", {"event": "profile_slot_added",
+                                                    "provider": provider,
+                                                    "auth_profile": auth_profile})
     return slots
 
 

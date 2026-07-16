@@ -31,6 +31,16 @@ def _rate_cap_enabled() -> bool:
     return get_runtime_state_bool(_RATE_CAP_FLAG, False)
 
 
+def _observe_central(payload: dict) -> None:
+    """Task 15: let observabilitet på ON-stien → Centralens system/cheap_pool.
+    Self-safe — må ALDRIG bryde den autonome fallback-routing."""
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "system", "nerve": "cheap_pool", **payload})
+    except Exception:
+        pass
+
+
 def run_non_visible_with_fallback(
     *,
     message: str,
@@ -57,6 +67,7 @@ def run_non_visible_with_fallback(
         # 3a) Hårdt globalt loft FORAN poolen. Uafhængigt af slot-health, så
         #     en runaway ikke kan forstærkes gennem multi-profile + fallback.
         if _rate_cap_enabled() and not non_visible_rate_cap.allow():
+            _observe_central({"event": "rate_capped", "lane": "autonomous"})
             return attempt_floor(
                 message=message,
                 lane="autonomous",
@@ -64,6 +75,7 @@ def run_non_visible_with_fallback(
             )
 
         # 3b) Med flag: fald til den gratis pool. Håndtér BEGGE exit-shapes.
+        _observe_central({"event": "non_visible_fallback_fired", "lane": "autonomous"})
         try:
             result = execute_cheap_lane_via_pool(
                 message=message,

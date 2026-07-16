@@ -60,17 +60,30 @@ gang). Vi genbruger mønstret.
 |------|-----------|-----------|------------------|
 | **HOT** (fuld) | Nuværende turs tool-results | Fuldt output (followup-exchanges) | Uændret |
 | **WARM** (summary) | `id ≥ cold_floor`, ikke nuværende tur | Fast summary-budget (dagens `expand=False`, cap 1500) | Uændret rendering |
-| **COLD** (stub) | `id < cold_floor` | Én linje: `[tool_result:id — <tool>: ~N linjer, brug read_tool_result]` | **Ny** |
+| **COLD** (stub) | `id < cold_floor` | Én linje afledt af transcript-referencen: `[tool_result:id — <tool>: <kort summary-uddrag>… read_tool_result]` | **Ny** |
 
-Token-gevinsten kommer fra COLD: ~15 tegn i stedet for ~430. Med 80% af 1770 results i cold
-≈ ~150k tok sparet, uden permanent tab (fuldt på disk, rehydratbart).
+Token-gevinsten kommer fra COLD: ~30 tegn i stedet for ~430. Med 80% af 1770 results i cold
+≈ ~140k tok sparet, uden permanent tab (fuldt på disk, rehydratbart i retentions-vinduet).
+
+**Stub-stabilitets-krav (kritisk):** stub'en skal være en **ren funktion af den immutable
+reference-streng** i transcript-rækken (`parse_tool_result_reference` → `result_id`,
+tool-navn, indlejret `summary`). Den må **ikke** læse disk-filen og må **ikke** indeholde
+noget tidsafhængigt (ingen "~N linjer" fra disk, ingen "X ture siden"). Grund: render-koden
+falder i dag tilbage til en *anden* byte-form når disk-filen er væk (`tool_result_store.py`
+L122-125 vs L133-135). Læste stub'en disk, ville dens bytes ændre sig præcis når
+`cleanup_old_results` sletter filen (dag 7) → cache-break. Reference-strengen i
+`chat_messages.content` er derimod uforanderlig → byte-stabil for evigt.
 
 ## 5. `cold_floor`-pointeren (pruning)
 
 - **Lagring:** persisteret pr. session. Genbrug markør-mekanikken — en let række (ny rolle
   `tool_cold_floor` i `chat_messages`, eller en kolonne på `chat_sessions`; besluttes i
   planen efter mindste-indgreb-princip). Værdien er et message-`id`.
-- **Advance-trigger** (evalueres ved run-slut + defensivt ved prompt-build):
+- **Én skriver:** `cold_floor` rykkes **udelukkende ved run-slut** (`visible_runs`), aldrig
+  ved prompt-build. Prompt-build **læser kun** den persisterede værdi. Dette fjerner races
+  når desk+mobil mirrorer samme session (flere samtidige prompt-builds), og gør advance til
+  ét veldefineret diskret event.
+- **Advance-trigger** (evalueres ved run-slut):
   Beregn warm-sættets omfang (alt med `id ≥` nuværende `cold_floor`, ekskl. nuværende tur):
   - `runs_i_warm` = antal bruger-besked-grænser i warm-sættet
   - `tokens_i_warm` = sum af warm tool-result-summary-tokens
@@ -99,14 +112,14 @@ Token-gevinsten kommer fra COLD: ~15 tegn i stedet for ~430. Med 80% af 1770 res
 - Ved run-slut forlader runnets results "nuværende tur" → bliver WARM automatisk (eksisterende
   adfærd).
 - Run-slut er det naturlige diskrete epoke-event: evaluér `cold_floor`-advance **én gang**
-  her (sektion 5). Prompt-build-evalueringen er kun et defensivt sikkerhedsnet.
+  her (sektion 5). Det er det eneste sted advance sker.
 
 ## 8. Moduler / hvor koden bor
 
 | Fil | Ændring |
 |-----|---------|
 | `core/context/tool_result_lifecycle.py` (**ny**) | Pointer-lagring, advance-beregning (hybrid+hysterese), run-grænse-udledning, within-run-budget-logik. Holder transcript-filen lean. |
-| `core/services/tool_result_store.py` | `render_tool_result_for_prompt(..., stub=False)` — ny stub-gren (én linje m. tool-navn + linje-estimat + reference). |
+| `core/services/tool_result_store.py` | `render_tool_result_for_prompt(..., stub=False)` — ny stub-gren afledt UDELUKKENDE af `parse_tool_result_reference(content)` (id + tool-navn + indlejret summary-uddrag). Læser IKKE disk. |
 | `core/services/prompt_sections/transcript_sections.py` | I den eksisterende render-løkke (~L259-279): 3. gren — hvis `id < cold_floor` og flag on → stub-render. Ellers uændret warm. |
 | `core/services/visible_runs.py` | Ved run-slut: kald `tool_result_lifecycle.evaluate_and_advance(session_id)`. |
 | Settings (`RuntimeSettings`) | Nye felter (sektion 9). |
@@ -142,6 +155,19 @@ Token-gevinsten kommer fra COLD: ~15 tegn i stedet for ~430. Med 80% af 1770 res
 - 1M-samtale-vinduet / `context_compact_threshold_tokens`.
 - Agent-lane.
 - Selve samtale-teksten — kun tool-result-volumen styres.
+
+## 11b. Kendte grænser
+
+- **Rehydrering er bundet til 7-dages retention.** `cleanup_old_results(max_age_days=7)`
+  sletter tool-result-JSON'er ældre end 7 dage. Efter det kan `read_tool_result` ikke
+  rehydrere et cold-resultat — men det er **allerede sandt i dag** for enhver historisk
+  result-reference; vores design gør det ikke værre. Stub'en degraderer pænt (den viser
+  stadig det indlejrede summary-uddrag fra reference-strengen, uafhængigt af disk). At
+  udvide retention eller skåne aktivt-refererede filer er en **mulig follow-up, uden for
+  denne runde.**
+- **Eksisterende latent byte-skift ved disk-sletning** (WARM-render skifter form når filen
+  forsvinder, `render_tool_result_for_prompt` L122 vs L133) er ikke introduceret af os og
+  ikke i scope; vores stub undgår det bevidst ved kun at læse reference-strengen.
 
 ## 12. Succeskriterier
 

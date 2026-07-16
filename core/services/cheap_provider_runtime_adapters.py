@@ -375,8 +375,14 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "rpm_limit": 10,
         "daily_limit": 40,
         "cost_class": "free",
+        # 16. jul: udvidet fra 3→7 (Bjørn). Router har 123 modeller; disse er live-
+        # verificeret PONG + non-reasoning (reasoning-modeller som Qwen3-32B brænder
+        # token på tanke → tom content ved tight cap). DeepSeek-V4-Flash udeladt =
+        # credits opbrugt på den route (HF er credit-meteret → daily=40 beskytter).
         "static_models": ["meta-llama/Llama-3.3-70B-Instruct",
-                          "Qwen/Qwen2.5-72B-Instruct", "deepseek-ai/DeepSeek-V3"],
+                          "Qwen/Qwen2.5-72B-Instruct", "deepseek-ai/DeepSeek-V3",
+                          "openai/gpt-oss-20b", "Qwen/Qwen2.5-Coder-32B-Instruct",
+                          "microsoft/phi-4", "google/gemma-3-27b-it"],
     },
     # Reka (15. jul, Bjørn-nøgle): OpenAI-compat `api.reka.ai/v1`, bearer. reka-edge-2603
     # = ren tool-capable (tool_calls=1 verificeret; reka-flash-3 narrerer <reasoning>).

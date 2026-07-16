@@ -20,6 +20,9 @@ def test_stale_targets_picks_any_unhealthy_without_cooldown(monkeypatch):
     monkeypatch.setattr(
         "core.services.cheap_provider_runtime_adapters.provider_runtime_defaults",
         lambda p: {} if p == "retired" else {"static_models": []})
+    # zero-row-loopet skal ikke bidrage her → tomt katalog
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_adapters.CHEAP_PROVIDER_DEFAULTS", {})
     targets = sh._stale_targets(10)
     assert ("copilot-premium", "claude-sonnet-5") in targets
     assert ("groq", "llama") in targets          # rate-limited u. cooldown fanges nu
@@ -34,7 +37,46 @@ def test_stale_targets_skips_active_cooldown(monkeypatch):
                                                "status": "provider-error", "cooldown_until": future}])
     monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_runtime_defaults",
                         lambda p: {"static_models": ["m"]})
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime_adapters.CHEAP_PROVIDER_DEFAULTS", {})
     assert sh._stale_targets(10) == []   # aktiv cooldown haandterer den
+
+
+def test_stale_targets_probes_zero_row_configured_providers(monkeypatch):
+    """Zero-row-fælde (16.jul, HF): en konfigureret+routbar+gratis provider UDEN nogen
+    state-row er usynlig for selektoren OG for state-row-loopet → sidder fast på 0 rows
+    for evigt (aldrig valgt → aldrig probet → aldrig en row). Self-heal skal probe dens
+    static_models ind, ellers 'stale' den for altid."""
+    monkeypatch.setattr("core.runtime.db_cheap_provider.list_cheap_provider_runtime_states",
+                        lambda lane="cheap": [])                      # INGEN rows
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.CHEAP_PROVIDER_DEFAULTS",
+                        {"huggingface": {"static_models": ["m1", "m2"]}})
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_cost_class",
+                        lambda p: "free")
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.is_routable_provider",
+                        lambda p: True)
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_runtime_defaults",
+                        lambda p: {"static_models": ["m1", "m2"]})
+    targets = sh._stale_targets(10)
+    assert ("huggingface", "m1") in targets and ("huggingface", "m2") in targets
+
+
+def test_stale_targets_skips_zero_row_paid_and_nonroutable(monkeypatch):
+    """Zero-row-probing gælder KUN cheap-kandidater (gratis+routbar). En betalt
+    (copilot-premium) eller ude-af-pool (deepseek) provider uden row skal IKKE seedes
+    ind i cheap-lane af self-heal."""
+    monkeypatch.setattr("core.runtime.db_cheap_provider.list_cheap_provider_runtime_states",
+                        lambda lane="cheap": [])
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.CHEAP_PROVIDER_DEFAULTS",
+                        {"copilot-premium": {"static_models": ["x"]},
+                         "deepseek": {"static_models": ["y"]}})
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_cost_class",
+                        lambda p: "paid" if p == "copilot-premium" else "free")
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.is_routable_provider",
+                        lambda p: p != "deepseek")
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_runtime_defaults",
+                        lambda p: {"static_models": ["x"] if p == "copilot-premium" else ["y"]})
+    assert sh._stale_targets(10) == []
 
 
 def test_reprobe_heals_on_success(monkeypatch):

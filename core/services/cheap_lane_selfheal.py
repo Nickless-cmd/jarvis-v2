@@ -30,14 +30,32 @@ _PROBE_MESSAGE = "ping"
 
 
 def _stale_targets(limit: int) -> list[tuple[str, str]]:
-    """(provider, model) for KONFIGUREREDE providere der IKKE er sunde og IKKE har en aktiv
-    cooldown → fast, heler aldrig selv. Kun modeller stadig i static_models (drop pensionerede)."""
+    """(provider, model) der skal re-probes. To kilder:
+
+    1. State-row fast: KONFIGURERET provider der IKKE er sund og IKKE har aktiv cooldown
+       → heler aldrig selv (router skipper → gen-kaldes aldrig → status fast).
+    2. Zero-row (16.jul, HF-fælde): konfigureret+routbar+gratis provider UDEN nogen
+       state-row overhovedet. Usynlig for selektoren (0 ready models) OG for kilde 1
+       (loopet nedenfor itererer kun EKSISTERENDE rows). Resultat: aldrig valgt → aldrig
+       probet → aldrig en row → stale for evigt. Vi probe dens static_models ind.
+
+    Kun modeller stadig i static_models (drop pensionerede)."""
     out: list[tuple[str, str]] = []
     try:
         from core.runtime.db_cheap_provider import list_cheap_provider_runtime_states
-        from core.services.cheap_provider_runtime_adapters import provider_runtime_defaults
+        from core.services.cheap_provider_runtime_adapters import (
+            CHEAP_PROVIDER_DEFAULTS,
+            is_routable_provider,
+            provider_cost_class,
+            provider_runtime_defaults,
+        )
         now = datetime.now(UTC)
+        seen: set[tuple[str, str]] = set()
+        # --- Kilde 1: eksisterende state-rows der er fast ---
         for st in list_cheap_provider_runtime_states(lane="cheap"):
+            provider = str(st.get("provider") or "")
+            model = str(st.get("model") or "")
+            seen.add((provider, model))
             if str(st.get("status") or "ready") in _HEALTHY_STATUSES:
                 continue
             cd = str(st.get("cooldown_until") or "").strip()
@@ -47,8 +65,6 @@ def _stale_targets(limit: int) -> list[tuple[str, str]]:
                         continue
                 except ValueError:
                     pass
-            provider = str(st.get("provider") or "")
-            model = str(st.get("model") or "")
             defaults = provider_runtime_defaults(provider)
             if not defaults:  # ikke laengere konfigureret
                 continue
@@ -57,7 +73,18 @@ def _stale_targets(limit: int) -> list[tuple[str, str]]:
                 continue
             out.append((provider, model))
             if len(out) >= limit:
-                break
+                return out
+        # --- Kilde 2: zero-row cheap-kandidater (gratis+routbar, aldrig probet ind) ---
+        for provider, cfg in CHEAP_PROVIDER_DEFAULTS.items():
+            if provider_cost_class(provider) != "free" or not is_routable_provider(provider):
+                continue
+            for model in (cfg.get("static_models") or []):
+                if (provider, model) in seen:
+                    continue
+                out.append((provider, model))
+                seen.add((provider, model))
+                if len(out) >= limit:
+                    return out
     except Exception:
         logger.debug("cheap_lane_selfheal: _stale_targets fejlede", exc_info=True)
     return out

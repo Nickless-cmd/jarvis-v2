@@ -593,7 +593,15 @@ def build_visible_chat_prompt_assembly(
                 _elapsed = int((_t_mod.monotonic() - _t) * 1000)
                 with _phase_timings_lock:
                     _phase_timings[_name] = _elapsed
-        return executor.submit(_wrapped)
+        # KRITISK (16.jul): kopiér caller'ens contextvars ind i worker-tråden. UDEN dette
+        # ser phase-workerne (recall/memory/awareness) en TOM context → current_user_id()
+        # er tom → recall-kilden 'workspace' (workspace_dir() → current_user_id()) fejler
+        # lydløst og Jarvis' persistente workspace-hukommelse udelades. Ramte ALLE lanes
+        # (desk+code+indre liv). copy_context() fanger konteksten på submit-tidspunktet
+        # (inde i kaldernes user_context) og ctx.run kører _wrapped i den.
+        import contextvars as _cv
+        _ctx = _cv.copy_context()
+        return executor.submit(_ctx.run, _wrapped)
 
     def _timed_result(_future, _name: str, *, default=None, max_s: float | None = None):
         """Resolve a future MED hård deadline (Bjørn 2026-06-23, CUT-OFF-RODEN).
@@ -1567,11 +1575,16 @@ def build_visible_chat_prompt_assembly(
             # session). Var den ENESTE uncappede recall i q3 (multi_signal har
             # allerede 4s-cap). Samme tråd-deadline-mønster; synlig i Centralen.
             import threading as _thr_rba
+            import contextvars as _cv_rba
             _rba_box: dict = {}
+            # Kopiér caller-context (user_context → current_user_id) ind i den rå tråd, ellers
+            # fejler recall-kilden 'workspace' lydløst (16.jul). copy_context fanges HER (inde i
+            # kaldernes user_context) og køres via ctx.run i tråden.
+            _rba_ctx = _cv_rba.copy_context()
 
             def _do_rba() -> None:
                 try:
-                    _rba_box["v"] = recall_before_act_summary(query=user_message)
+                    _rba_box["v"] = _rba_ctx.run(recall_before_act_summary, query=user_message)
                 except Exception:
                     pass
 

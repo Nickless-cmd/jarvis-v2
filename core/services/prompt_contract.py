@@ -2350,11 +2350,17 @@ def build_visible_chat_prompt_assembly(
     # prompten — kostede 90%+ af cachen pr. tur (8% hit rate observeret).
     # Tail-anchored bevarer dem synligt for modellen ("vitalt indre liv")
     # uden at sabotere cache for de stable sections før dem.
+    # 2026-07-16 (cache-fix, målt): _dyn_tail initialiseres HER — før de fem
+    # "tail-anchored"-labelede sektioner. Tidligere lå init'en NEDENFOR dem, så de
+    # (med live decimal-metrikker: Tick-kvalitet/Vækstpuls) endte i HOVEDET og bustede
+    # DeepSeek prefix-cachen (visible 35.9% hit, byte-diff: første divergens = tick-metrik).
+    # Nu ægte i halen → historik-cachen bevares → mål ~90% som agent-lanen.
+    _dyn_tail: list[str] = []
     try:
         from core.services.self_model_predictive import predictive_self_model_section
         _empirical_self = predictive_self_model_section()
         if _empirical_self:
-            parts.append(_empirical_self)
+            _dyn_tail.append(_empirical_self)
             derived_inputs.append("predictive self-model empirical (tail-anchored)")
     except Exception:
         pass
@@ -2362,7 +2368,7 @@ def build_visible_chat_prompt_assembly(
         from core.services.agent_self_evaluation import self_evaluation_section
         _self_eval = self_evaluation_section()
         if _self_eval:
-            parts.append(_self_eval)
+            _dyn_tail.append(_self_eval)
             derived_inputs.append("self-evaluation summary (tail-anchored)")
     except Exception:
         pass
@@ -2370,7 +2376,7 @@ def build_visible_chat_prompt_assembly(
         from core.services.development_sense import development_sense_section
         _dev_sense = development_sense_section()
         if _dev_sense:
-            parts.append(_dev_sense)
+            _dyn_tail.append(_dev_sense)
             derived_inputs.append("developmental sense (tail-anchored)")
     except Exception:
         pass
@@ -2383,7 +2389,7 @@ def build_visible_chat_prompt_assembly(
         from core.services.communication_guard import prompt_section as _cg_section
         _guard = _cg_section()
         if _guard:
-            parts.append(_guard)
+            _dyn_tail.append(_guard)
             derived_inputs.append("communication guard (tail-anchored)")
     except Exception:
         pass
@@ -2391,7 +2397,7 @@ def build_visible_chat_prompt_assembly(
     # Tool-output hygiejne (A1 i v2-stream Phase 2): deepseek-flash har en
     # tendens til at papegøje det rå tool-resultat-format ([read_file]: …)
     # ind i sit synlige svar. Det er kun til modellens egne øjne.
-    parts.append(
+    _dyn_tail.append(
         "🔧 TOOL-OUTPUT: Resultater fra værktøjer (fx '[read_file]: …', rå "
         "fil-dumps, JSON) er KUN til dig. Gengiv dem ALDRIG ordret i dit svar — "
         "referer til indholdet med dine egne ord."
@@ -2405,7 +2411,8 @@ def build_visible_chat_prompt_assembly(
     # stabil cachebar prefix; kun den nye tur er en miss.
     #   Indhold (alt dynamisk): finitude/Sessions-alder, wakeup-digest (events),
     #   kausal-mønstre/counterfactuals/subagent/rum-entiteter, og time_pin.
-    _dyn_tail: list[str] = []
+    # _dyn_tail er allerede initialiseret ovenfor (før de fem tail-anchored sektioner,
+    # 2026-07-16 cache-fix) — må IKKE re-initialiseres her, ellers tabes de appends.
     # 2026-06-22 (Jarvis' egen review): han skal møde SIG SELV først. [INDRE LIV]
     # øverst sætter tonen for hvordan han læser alt det andet — han taler FRA sin
     # tilstand, ikke fra recall. Memory/brain-recall flyttet ned under awareness

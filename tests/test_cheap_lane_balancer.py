@@ -1106,3 +1106,47 @@ def test_flag_off_ignores_learned_ceiling(monkeypatch):
     st = bal.SlotState(slot_id=slot.slot_id); st.daily_observed = 40
     # flag off -> learned ceiling ignored -> config 100 -> headroom 0.6
     assert abs(bal._daily_headroom_for(slot, st) - 0.6) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# Task 14: anti-jag stale marking
+# ---------------------------------------------------------------------------
+
+
+def _q(st, bal, now):
+    bal._register_failure(st, "quota exhausted daily", now=now, observed_used=10, config_daily=100)
+
+
+def test_three_quota_failures_mark_stale(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_flag_adaptive_quota", lambda: True)
+    st = bal.SlotState(slot_id="groq::x::default")
+    _q(st, bal, 1000.0); _q(st, bal, 1001.0)
+    assert st.stale_until_daily_reset is False   # 2 not enough
+    _q(st, bal, 1002.0)
+    assert st.stale_until_daily_reset is True     # 3 -> stale
+
+
+def test_stale_slot_has_zero_weight(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_flag_adaptive_quota", lambda: True)
+    slot = bal.BalancerSlot(provider="groq", model="x", auth_profile="default",
+                            base_url="", rpm_limit=None, daily_limit=None, is_public_proxy=False)
+    st = bal.SlotState(slot_id=slot.slot_id); st.stale_until_daily_reset = True
+    assert bal._compute_weight(slot, st, 1000.0) == 0.0
+
+
+def test_flag_off_ignores_stale(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_flag_adaptive_quota", lambda: False)
+    slot = bal.BalancerSlot(provider="groq", model="x", auth_profile="default",
+                            base_url="", rpm_limit=None, daily_limit=None, is_public_proxy=False)
+    st = bal.SlotState(slot_id=slot.slot_id); st.stale_until_daily_reset = True
+    assert bal._compute_weight(slot, st, 1000.0) > 0.0   # flag off -> field ignored, slot healthy
+
+
+def test_stale_persist_roundtrip():
+    from core.services import cheap_lane_balancer as bal
+    st = bal.SlotState(slot_id="groq::x::default"); st.stale_until_daily_reset = True
+    st2 = bal._state_from_dict(bal._state_to_dict(st))
+    assert st2.stale_until_daily_reset is True

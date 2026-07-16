@@ -62,6 +62,9 @@ class SlotState:
     daily_observed: Optional[int] = None
     last_429_at: Optional[float] = None
     quota_429_count: int = 0  # corroboration counter within the current day
+    # Task 14: anti-jag — set True after ≥3 genuine daily-quota 429s in the
+    # current day → weight 0 (skip) until the daily reset. Behind the same flag.
+    stale_until_daily_reset: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +164,7 @@ def _state_to_dict(state: SlotState) -> dict:
         "daily_observed": state.daily_observed,
         "last_429_at": state.last_429_at,
         "quota_429_count": state.quota_429_count,
+        "stale_until_daily_reset": state.stale_until_daily_reset,
     }
 
 
@@ -181,6 +185,7 @@ def _state_from_dict(d: dict) -> SlotState:
         daily_observed=(int(d["daily_observed"]) if d.get("daily_observed") is not None else None),
         last_429_at=d.get("last_429_at"),
         quota_429_count=int(d.get("quota_429_count") or 0),
+        stale_until_daily_reset=bool(d.get("stale_until_daily_reset", False)),
     )
 
 
@@ -327,6 +332,11 @@ def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
         return 0.0
     if state.cooldown_until and now < state.cooldown_until:
         return 0.0
+    # Task 14: anti-jag — a slot flagged stale (≥3 daily-quota 429s today) is
+    # skipped until the daily reset. Only when the adaptive flag is ON; with the
+    # flag OFF the field is ignored entirely (byte-identical to before).
+    if _flag_adaptive_quota() and state.stale_until_daily_reset:
+        return 0.0
 
     base = 1.0
     if slot.rpm_limit:
@@ -401,6 +411,7 @@ def _maybe_daily_reset(state: SlotState, now: float) -> None:
         state.daily_window_start = today
         state.daily_observed = None
         state.quota_429_count = 0
+        state.stale_until_daily_reset = False  # Task 14: re-learn next day
 
 
 def _register_failure(
@@ -447,6 +458,8 @@ def _register_failure(
                 candidate = observed_used if observed_used is not None else (config_daily or 0)
                 current = state.daily_observed if state.daily_observed is not None else candidate
                 state.daily_observed = max(floor, min(current, candidate))
+            if state.quota_429_count >= 3:  # Task 14: anti-jag → mark stale
+                state.stale_until_daily_reset = True
         # Fall through: a quota 429 is still a failure → keep escalating below.
 
     if "429" in error_kind:

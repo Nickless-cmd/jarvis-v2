@@ -974,3 +974,51 @@ def test_built_slots_carry_egress(monkeypatch):
     # default profile -> home; account2 groq -> he6 (Cloudflare-blocked VPN IP)
     assert slots["groq::llama-x::default"].egress == "home"
     assert slots["groq::llama-x::account2"].egress == "he6"
+
+
+# ---------------------------------------------------------------------------
+# Task 8c: account2 = equal parallel tier (egress-separated), NOT a lower-priority
+# fallback. _compute_weight must NOT down-weight by auth_profile, and weighted-random
+# selection must reach BOTH default and account2 slots (neither starved).
+# ---------------------------------------------------------------------------
+
+
+def _profile_slot(provider, model, profile, egress="home"):
+    from core.services.cheap_lane_balancer import BalancerSlot
+    return BalancerSlot(provider=provider, model=model, auth_profile=profile,
+                        base_url="", rpm_limit=None, daily_limit=None,
+                        is_public_proxy=False, egress=egress)
+
+
+def test_account2_equal_weight_to_default():
+    from core.services import cheap_lane_balancer as bal
+    now = 1000.0
+    sd = _profile_slot("groq", "x", "default", "home")
+    sa = _profile_slot("groq", "x", "account2", "he6")
+    st_d = bal.SlotState(slot_id=sd.slot_id)
+    st_a = bal.SlotState(slot_id=sa.slot_id)
+    assert bal._compute_weight(sd, st_d, now) == bal._compute_weight(sa, st_a, now) > 0
+
+
+def test_both_profiles_get_selected_over_many_draws():
+    # Two equal-weight slots (default + account2). Weighted-random _select_slot must
+    # pick BOTH across many draws; neither is starved. _select_slot uses the module
+    # `random`, so seed it for determinism.
+    import random
+    from core.services import cheap_lane_balancer as bal
+    sd = _profile_slot("groq", "x", "default", "home")
+    sa = _profile_slot("groq", "x", "account2", "he6")
+    pool = [sd, sa]
+    states = {
+        sd.slot_id: bal.SlotState(slot_id=sd.slot_id),
+        sa.slot_id: bal.SlotState(slot_id=sa.slot_id),
+    }
+    now = 1000.0
+    random.seed(12345)
+    seen = Counter()
+    for _ in range(200):
+        picked = bal._select_slot(states, pool, now)
+        assert picked is not None
+        seen[picked.slot_id] += 1
+    assert seen[sd.slot_id] > 0, "default slot starved"
+    assert seen[sa.slot_id] > 0, "account2 slot starved"

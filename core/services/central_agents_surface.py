@@ -149,6 +149,7 @@ def build_agents_surface(*, window: str = "today") -> dict:
         dispatches = _dispatch_signal(_agents_trace())
     except Exception:
         dispatches = {"total": 0, "by_status": {}, "recent": []}
+    roster = _roster()
     return {
         "windows": windows,
         "lane_breakdown": breakdown,
@@ -156,9 +157,23 @@ def build_agents_surface(*, window: str = "today") -> dict:
         "dispatches": {"total": dispatches["total"],
                        "by_status": dispatches["by_status"]},
         "recent": dispatches["recent"],
+        "roster": roster,
         "note": "costs lane in (agent,council); dispatch-status fra agents-cluster-trace.",
         "generated_at": datetime.now(UTC).isoformat(),
     }
+
+
+def _roster() -> list[dict]:
+    """Full model roster (every pool model as a row) fra core.services.agents.
+
+    Self-safe: en roster-fejl må ALDRIG vælte /central/agents — falder tilbage til
+    [] så den øvrige surface altid svarer. CLI'en konsumerer denne nøgle."""
+    try:
+        from core.services.agents import agents_summary
+        roster = agents_summary().get("roster", [])
+        return roster if isinstance(roster, list) else []
+    except Exception:
+        return []
 
 
 def build_council_surface(*, window: str = "today") -> dict:

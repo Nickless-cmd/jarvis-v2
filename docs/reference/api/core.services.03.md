@@ -302,7 +302,8 @@ _Central agents-/council-surface (B3, 13. jul 2026) — gør de nye agent-/counc
 | function | `_agents_trace` | `()` | De seneste agents-cluster trace-records (nyeste sidst). Self-safe. | [src](../../../core/services/central_agents_surface.py#L88) |
 | function | `_dispatch_signal` | `(records)` | Per-status + recent fra agent_result/agent_blocked/agent_error-events. | [src](../../../core/services/central_agents_surface.py#L98) |
 | function | `build_agents_surface` | `(*, window=…)` | Agent-observabilitet til /central/agents + `jc agents`. | [src](../../../core/services/central_agents_surface.py#L131) |
-| function | `build_council_surface` | `(*, window=…)` | Council-observabilitet til /central/council + `jc council`. | [src](../../../core/services/central_agents_surface.py#L164) |
+| function | `_roster` | `()` | Full model roster (every pool model as a row) fra core.services.agents. | [src](../../../core/services/central_agents_surface.py#L166) |
+| function | `build_council_surface` | `(*, window=…)` | Council-observabilitet til /central/council + `jc council`. | [src](../../../core/services/central_agents_surface.py#L179) |
 
 ## `core/services/central_analyst.py`
 _The Analyst — observatør-effekten._

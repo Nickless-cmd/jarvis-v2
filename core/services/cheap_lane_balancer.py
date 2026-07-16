@@ -366,6 +366,27 @@ def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
     return max(0.0, base * health * preference * reliability)
 
 
+def _slot_status(slot: BalancerSlot, state: SlotState, now: float) -> str:
+    """Single derived status string for a slot, most-severe-wins.
+
+    Severity order (high→low): disabled > cooldown > stale > breaker > healthy.
+    - "disabled": manually_disabled
+    - "cooldown": cooldown_until is in the future
+    - "stale":    stale_until_daily_reset (anti-jag, ≥3 daily-quota 429s today)
+    - "breaker":  breaker_level > 0
+    - "healthy":  none of the above
+    """
+    if state.manually_disabled:
+        return "disabled"
+    if state.cooldown_until and now < state.cooldown_until:
+        return "cooldown"
+    if state.stale_until_daily_reset:
+        return "stale"
+    if state.breaker_level > 0:
+        return "breaker"
+    return "healthy"
+
+
 # ---------------------------------------------------------------------------
 # Failure / success handling — circuit breaker
 # ---------------------------------------------------------------------------
@@ -1168,38 +1189,79 @@ def balancer_snapshot() -> dict:
         if slot.daily_limit and state.daily_window_start == _today_iso(now):
             headroom_pct = max(0.0, 100.0 * (1.0 - state.daily_use_count / slot.daily_limit))
 
+        rpm_used = _count_recent_calls(state.recent_call_timestamps, now, 60)
+        status = _slot_status(slot, state, now)
+        # success_rate: fraction of successful calls; None when no calls yet
+        # (no data to report a rate). Callers treat None as "unknown", not 0/1.
+        success_rate = (
+            (state.total_calls - state.total_failures) / state.total_calls
+            if state.total_calls > 0 else None
+        )
+        cooldown_until_iso = (
+            datetime.fromtimestamp(state.cooldown_until, tz=timezone.utc).isoformat()
+            if state.cooldown_until else None
+        )
+        last_success_iso = (
+            datetime.fromtimestamp(state.last_success_at, tz=timezone.utc).isoformat()
+            if state.last_success_at else None
+        )
+
         slot_payloads.append({
             "slot_id": slot.slot_id,
             "provider": slot.provider,
             "model": slot.model,
+            "auth_profile": slot.auth_profile or "default",
+            "egress": slot.egress,
+            "status": status,
             "is_public_proxy": slot.is_public_proxy,
             "rpm_limit": slot.rpm_limit,
             "daily_limit": slot.daily_limit,
-            "rpm_used_now": _count_recent_calls(state.recent_call_timestamps, now, 60),
+            # New canonical names (Task A2) + legacy aliases kept for existing consumers.
+            "rpm_used": rpm_used,
+            "rpm_used_now": rpm_used,
+            "daily_used": _daily_used_from_db(slot.provider, slot.auth_profile),
             "daily_used_today": state.daily_use_count,
+            "daily_headroom": round(_daily_headroom_for(slot, state), 4),
             "headroom_pct": round(headroom_pct, 2),
+            "weight": round(weight, 4),
             "current_weight": round(weight, 4),
-            "cooldown_until": (
-                datetime.fromtimestamp(state.cooldown_until, tz=timezone.utc).isoformat()
-                if state.cooldown_until else None
-            ),
+            "cooldown_until": cooldown_until_iso,
             "cooldown_reason": state.cooldown_reason,
             "breaker_level": state.breaker_level,
             "consecutive_failures": state.consecutive_failures,
             "manually_disabled": state.manually_disabled,
             "total_calls": state.total_calls,
             "total_failures": state.total_failures,
-            "success_rate": (
-                (state.total_calls - state.total_failures) / state.total_calls
-                if state.total_calls > 0 else None
-            ),
-            "last_success_at": (
-                datetime.fromtimestamp(state.last_success_at, tz=timezone.utc).isoformat()
-                if state.last_success_at else None
-            ),
+            "success_rate": success_rate,
+            "last_success_at": last_success_iso,
+            "daily_observed": state.daily_observed,
+            "stale": bool(state.stale_until_daily_reset),
         })
 
-    slot_payloads.sort(key=lambda s: s["current_weight"] or 0, reverse=True)
+    slot_payloads.sort(key=lambda s: s["weight"] or 0, reverse=True)
+
+    # --- Header aggregate (Task A2) ---
+    by_profile: dict[str, int] = {}
+    by_egress: dict[str, int] = {}
+    status_counts: dict[str, int] = {}
+    providers: set[str] = set()
+    for s in slot_payloads:
+        by_profile[s["auth_profile"]] = by_profile.get(s["auth_profile"], 0) + 1
+        by_egress[s["egress"]] = by_egress.get(s["egress"], 0) + 1
+        status_counts[s["status"]] = status_counts.get(s["status"], 0) + 1
+        providers.add(s["provider"])
+
+    header = {
+        "total_slots": len(slot_payloads),
+        "healthy": status_counts.get("healthy", 0),
+        "cooldown": status_counts.get("cooldown", 0),
+        "disabled": status_counts.get("disabled", 0),
+        "stale": status_counts.get("stale", 0),
+        "breaker": status_counts.get("breaker", 0),
+        "by_profile": by_profile,
+        "by_egress": by_egress,
+        "providers": len(providers),
+    }
 
     return {
         "enabled": _is_enabled(),
@@ -1207,6 +1269,7 @@ def balancer_snapshot() -> dict:
         "eligible_now": eligible,
         "blocked_now": blocked,
         "saved_at": datetime.now(timezone.utc).isoformat(),
+        "header": header,
         "slots": slot_payloads,
         "recent_calls": recent_calls(),
     }

@@ -1150,3 +1150,123 @@ def test_stale_persist_roundtrip():
     st = bal.SlotState(slot_id="groq::x::default"); st.stale_until_daily_reset = True
     st2 = bal._state_from_dict(bal._state_to_dict(st))
     assert st2.stale_until_daily_reset is True
+
+
+# --- Task A2: enriched balancer_snapshot (egress, status, header) ---
+
+
+def _slot_egress(provider="groq", model="m", egress="home", is_public_proxy=False):
+    from core.services.cheap_lane_balancer import BalancerSlot
+    return BalancerSlot(
+        provider=provider, model=model, auth_profile="default",
+        base_url="", rpm_limit=None, daily_limit=None,
+        is_public_proxy=is_public_proxy, egress=egress,
+    )
+
+
+def test_slot_status_severity_order():
+    from core.services import cheap_lane_balancer as bal
+    now = 1000.0
+    slot = bal.BalancerSlot(provider="groq", model="m", auth_profile="default",
+                            base_url="", rpm_limit=None, daily_limit=None,
+                            is_public_proxy=False)
+
+    # healthy
+    st = bal.SlotState(slot_id=slot.slot_id)
+    assert bal._slot_status(slot, st, now) == "healthy"
+
+    # breaker
+    st = bal.SlotState(slot_id=slot.slot_id, breaker_level=2)
+    assert bal._slot_status(slot, st, now) == "breaker"
+
+    # stale outranks breaker
+    st = bal.SlotState(slot_id=slot.slot_id, breaker_level=2)
+    st.stale_until_daily_reset = True
+    assert bal._slot_status(slot, st, now) == "stale"
+
+    # cooldown outranks stale + breaker
+    st = bal.SlotState(slot_id=slot.slot_id, breaker_level=2,
+                       cooldown_until=now + 60)
+    st.stale_until_daily_reset = True
+    assert bal._slot_status(slot, st, now) == "cooldown"
+
+    # a past cooldown does NOT count
+    st = bal.SlotState(slot_id=slot.slot_id, cooldown_until=now - 60)
+    assert bal._slot_status(slot, st, now) == "healthy"
+
+    # disabled outranks everything
+    st = bal.SlotState(slot_id=slot.slot_id, breaker_level=3,
+                       cooldown_until=now + 60, manually_disabled=True)
+    st.stale_until_daily_reset = True
+    assert bal._slot_status(slot, st, now) == "disabled"
+
+
+def test_balancer_snapshot_has_egress_status_and_header(monkeypatch, tmp_path):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_state_path", lambda: tmp_path / "s.json")
+    monkeypatch.setattr(
+        bal, "build_slot_pool",
+        lambda: [
+            _slot_egress(provider="groq", model="m1", egress="home"),
+            _slot_egress(provider="cerebras", model="m2", egress="vpn"),
+            _slot_egress(provider="ollamafreeapi", model="m3", egress="he6",
+                         is_public_proxy=True),
+        ],
+    )
+    snap = bal.balancer_snapshot()
+
+    # header aggregate
+    assert "header" in snap
+    h = snap["header"]
+    for k in ("total_slots", "healthy", "cooldown", "disabled",
+              "by_egress", "by_profile", "providers"):
+        assert k in h
+    assert h["total_slots"] == 3
+    assert h["providers"] == 3
+    assert h["by_egress"] == {"home": 1, "vpn": 1, "he6": 1}
+    assert h["by_profile"] == {"default": 3}
+
+    # existing top-level keys preserved (backward compat)
+    for k in ("enabled", "pool_size", "eligible_now", "blocked_now",
+              "saved_at", "slots", "recent_calls"):
+        assert k in snap
+
+    # per-slot fields
+    slots = snap["slots"]
+    assert slots
+    for s in slots:
+        for k in ("slot_id", "provider", "model", "auth_profile", "egress",
+                  "status", "weight", "daily_headroom", "daily_used",
+                  "daily_limit", "rpm_used", "rpm_limit", "breaker_level",
+                  "cooldown_until", "cooldown_reason", "last_success_at",
+                  "total_calls", "total_failures", "success_rate",
+                  "daily_observed", "stale"):
+            assert k in s, f"missing {k}"
+    egresses = {s["egress"] for s in slots}
+    assert egresses == {"home", "vpn", "he6"}
+    assert all(s["status"] == "healthy" for s in slots)
+
+
+def test_balancer_snapshot_header_counts_status(monkeypatch, tmp_path):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_state_path", lambda: tmp_path / "s.json")
+    monkeypatch.setattr(
+        bal, "build_slot_pool",
+        lambda: [
+            _slot_egress(provider="groq", model="ok", egress="home"),
+            _slot_egress(provider="groq", model="cold", egress="home"),
+            _slot_egress(provider="groq", model="off", egress="home"),
+        ],
+    )
+    bal._save_state({
+        "groq::cold::default": bal.SlotState(
+            slot_id="groq::cold::default", cooldown_until=_time.time() + 600),
+        "groq::off::default": bal.SlotState(
+            slot_id="groq::off::default", manually_disabled=True),
+    })
+    snap = bal.balancer_snapshot()
+    h = snap["header"]
+    assert h["total_slots"] == 3
+    assert h["healthy"] == 1
+    assert h["cooldown"] == 1
+    assert h["disabled"] == 1

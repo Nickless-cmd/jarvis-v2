@@ -386,6 +386,10 @@ class _ActionMixin:
     def _write_desc(self, kind: str, payload: dict) -> str:
         if kind == "governance":
             return f"{payload.get('key')}={self._fmt_value(payload.get('value'))}"
+        if kind == "agent_abort":
+            return f"afbryd agent {payload.get('label')}"
+        if kind == "slot_disable":
+            return f"deaktivér slot {payload.get('label')}"
         return f"{payload.get('name')}={'on' if payload.get('enabled') else 'off'}"
 
     def _handle_write_response(self, kind: str, payload: dict, resp: Any) -> None:
@@ -421,6 +425,19 @@ class _ActionMixin:
         if self._pending_write is None:
             return
         kind, payload = self._pending_write
+        # Generic "POST to a path" confirms (agent abort / slot disable): these
+        # don't ride the governance/healer key+value contract — they carry the
+        # full path + body and just fire once confirmed.
+        if kind in ("agent_abort", "slot_disable"):
+            self._pending_write = None
+            label = str(payload.get("label", "") or "")
+            ok_msg = (f"agent afbrudt: {label}" if kind == "agent_abort"
+                      else f"slot deaktiveret: {label}")
+            fail = ("afbryd fejlede" if kind == "agent_abort"
+                    else "deaktivér fejlede")
+            self._post_action(payload["path"], payload.get("body") or {},
+                              ok_msg, fail)
+            return
         confirmed = dict(payload)
         confirmed["confirm"] = True
         try:
@@ -442,6 +459,141 @@ class _ActionMixin:
             return
         self._pending_write = None
         self._flash(f"[{DIM}]— afbrudt —[/]")
+
+    # -- Agent / balancer row actions --------------------------------------
+    def _selected_row(self, rows: list) -> dict | None:
+        """The row dict under the cursor for the active table-tab, or None."""
+        if not rows:
+            return None
+        idx = 0
+        t = self._table()
+        if t is not None:
+            try:
+                idx = int(t.cursor_row or 0)
+            except Exception:
+                idx = 0
+        if 0 <= idx < len(rows):
+            return rows[idx]
+        return None
+
+    def _post_action(self, path: str, body: dict, ok_msg: str,
+                     fail: str) -> None:
+        """POST + surface feedback in the feed, then refresh. Self-safe."""
+        try:
+            resp = self._client.post_json(path, body or {})
+        except Exception as exc:
+            self._flash(f"[{RED}]✖ {fail}: {_esc(str(exc))[:80]}[/]")
+            return
+        ok = isinstance(resp, dict) and (resp.get("ok")
+                                         or resp.get("status") == "ok")
+        if ok:
+            self._flash(f"[{GREEN}]✓ {_esc(ok_msg)}[/]")
+        else:
+            err = (resp or {}).get("error") if isinstance(resp, dict) else resp
+            self._flash(f"[{RED}]✖ {fail}: {_esc(str(err))[:80]}[/]")
+        self.refresh_data()
+
+    def action_agent_pause(self) -> None:
+        """`p` on the Agents tab: pause the selected agent (only if active)."""
+        if self.active_tab != "agents":
+            return
+        row = self._selected_row(self._agent_rows or [])
+        if row is None:
+            self._flash(f"[{DIM}]— ingen agent valgt —[/]")
+            return
+        if str(row.get("status", "") or "").lower() != "active":
+            self._flash(f"[{AMBER}]— kun aktive agenter kan pauses —[/]")
+            return
+        aid = str(row.get("agent_id", "") or "")
+        if not aid:
+            self._flash(f"[{DIM}]— agent mangler id —[/]")
+            return
+        self._post_action(f"/central/agents/{aid}/pause", {},
+                          f"agent pauset: {aid}", "pause fejlede")
+
+    def action_agent_abort(self) -> None:
+        """`x` on the Agents tab: DANGEROUS — arm y/n confirm, then cancel."""
+        if self.active_tab != "agents":
+            return
+        row = self._selected_row(self._agent_rows or [])
+        if row is None:
+            self._flash(f"[{DIM}]— ingen agent valgt —[/]")
+            return
+        aid = str(row.get("agent_id", "") or "")
+        if not aid:
+            self._flash(f"[{DIM}]— agent mangler id —[/]")
+            return
+        payload = {"path": f"/central/agents/{aid}/cancel", "body": {},
+                   "label": aid}
+        self._pending_write = ("agent_abort", payload)
+        self._flash(
+            f"[{AMBER} b]⚠ bekræft {self._write_desc('agent_abort', payload)}? "
+            f"y/n[/]"
+        )
+
+    def action_slot_reset(self) -> None:
+        """`r` on the Balancer tab: reset the selected slot."""
+        if self.active_tab != "balancer":
+            return
+        sid = self._selected_slot_id()
+        if sid is None:
+            return
+        self._post_action(f"/mc/cheap-balancer/slot/{sid}/reset", {},
+                          f"slot reset: {sid}", "reset fejlede")
+
+    def action_slot_enable(self) -> None:
+        """`e` on the Balancer tab: enable the selected slot."""
+        if self.active_tab != "balancer":
+            return
+        sid = self._selected_slot_id()
+        if sid is None:
+            return
+        self._post_action(f"/mc/cheap-balancer/slot/{sid}/enable", {},
+                          f"slot aktiveret: {sid}", "aktivér fejlede")
+
+    def action_slot_disable(self) -> None:
+        """`d` on the Balancer tab: DANGEROUS — arm y/n confirm, then disable."""
+        if self.active_tab != "balancer":
+            return
+        sid = self._selected_slot_id()
+        if sid is None:
+            return
+        payload = {"path": f"/mc/cheap-balancer/slot/{sid}/disable", "body": {},
+                   "label": sid}
+        self._pending_write = ("slot_disable", payload)
+        self._flash(
+            f"[{AMBER} b]⚠ bekræft {self._write_desc('slot_disable', payload)}? "
+            f"y/n[/]"
+        )
+
+    def _selected_slot_id(self) -> str | None:
+        row = self._selected_row(self._balancer_rows or [])
+        if row is None:
+            self._flash(f"[{DIM}]— ingen slot valgt —[/]")
+            return None
+        sid = str(row.get("slot_id", "") or "")
+        if not sid:
+            self._flash(f"[{DIM}]— slot mangler id —[/]")
+            return None
+        return sid
+
+    def check_action(self, action: str, parameters: tuple) -> bool | None:
+        """Gate the single-letter row actions so they never steal a keystroke:
+        disabled while the command line has text (letter types normally) and
+        outside the tab they belong to. Everything else stays enabled."""
+        agent_acts = ("agent_pause", "agent_abort")
+        slot_acts = ("slot_reset", "slot_disable", "slot_enable")
+        if action in agent_acts or action in slot_acts:
+            try:
+                if self.query_one("#hud-cmd-input", Input).value:
+                    return False
+            except Exception:
+                pass
+            if action in agent_acts and self.active_tab != "agents":
+                return False
+            if action in slot_acts and self.active_tab != "balancer":
+                return False
+        return True
 
     def _flash(self, markup: str) -> None:
         from central_cli.hud import _TABLE_TABS

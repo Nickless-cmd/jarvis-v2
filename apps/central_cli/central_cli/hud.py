@@ -224,6 +224,14 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         Binding("f10", "show('users')", show=False, priority=True),
         Binding("f11", "show('excess')", show=False, priority=True),
         Binding("f12", "show('decentral')", show=False, priority=True),
+        # Row-level actions — single letters, gated by check_action() so they
+        # only fire on an EMPTY command line (else the letter types normally)
+        # and only on the tab they belong to. p/x = agents, r/d/e = balancer.
+        Binding("p", "agent_pause", "Pause agent", show=False, priority=True),
+        Binding("x", "agent_abort", "Afbryd agent", show=False, priority=True),
+        Binding("r", "slot_reset", "Reset slot", show=False, priority=True),
+        Binding("d", "slot_disable", "Deaktivér slot", show=False, priority=True),
+        Binding("e", "slot_enable", "Aktivér slot", show=False, priority=True),
     ]
 
     def __init__(self, *, client: Any = None, live: bool = True) -> None:

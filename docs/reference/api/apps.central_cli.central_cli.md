@@ -100,20 +100,20 @@ _Central HUD — J.A.R.V.I.S-style Textual UI, built 1:1 to the mockup._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `CentralHud` | `` | The Central HUD app shell (mockup-faithful). | [src](../../../apps/central_cli/central_cli/hud.py#L82) |
-| method | `CentralHud.__init__` | `(self, *, client=…, live=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L229) |
-| method | `CentralHud.compose` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L264) |
-| method | `CentralHud.on_mount` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L289) |
-| method | `CentralHud._prime` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L307) |
-| method | `CentralHud._tick_pulse` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L335) |
-| method | `CentralHud._keep_focus` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L339) |
-| method | `CentralHud.show_tab` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L347) |
-| method | `CentralHud._apply_tab_visibility` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L353) |
-| method | `CentralHud._populate_active_tab` | `(self, force=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L365) |
-| method | `CentralHud.refresh_data` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L454) |
-| method | `CentralHud._render_header` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L486) |
-| method | `CentralHud._render_tabs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L520) |
-| method | `CentralHud._render_cmd` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L531) |
-| function | `run_hud` | `(ns)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L549) |
+| method | `CentralHud.__init__` | `(self, *, client=…, live=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L237) |
+| method | `CentralHud.compose` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L272) |
+| method | `CentralHud.on_mount` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L297) |
+| method | `CentralHud._prime` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L315) |
+| method | `CentralHud._tick_pulse` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L343) |
+| method | `CentralHud._keep_focus` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L347) |
+| method | `CentralHud.show_tab` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L355) |
+| method | `CentralHud._apply_tab_visibility` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L361) |
+| method | `CentralHud._populate_active_tab` | `(self, force=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L373) |
+| method | `CentralHud.refresh_data` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L462) |
+| method | `CentralHud._render_header` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L494) |
+| method | `CentralHud._render_tabs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L528) |
+| method | `CentralHud._render_cmd` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L539) |
+| function | `run_hud` | `(ns)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L557) |
 
 ## `apps/central_cli/central_cli/hud_actions.py`
 _Central HUD — action handlers + command/write layer (``_ActionMixin``)._
@@ -152,12 +152,21 @@ _Central HUD — action handlers + command/write layer (``_ActionMixin``)._
 | method | `_ActionMixin._set_healer` | `(self, name, enabled)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L372) |
 | method | `_ActionMixin._write_path` | `(self, kind)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L382) |
 | method | `_ActionMixin._write_desc` | `(self, kind, payload)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L386) |
-| method | `_ActionMixin._handle_write_response` | `(self, kind, payload, resp)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L391) |
-| method | `_ActionMixin._confirm_line` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L405) |
-| method | `_ActionMixin.action_toggle` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L411) |
-| method | `_ActionMixin.action_confirm_yes` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L420) |
-| method | `_ActionMixin.action_confirm_no` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L440) |
-| method | `_ActionMixin._flash` | `(self, markup)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L446) |
+| method | `_ActionMixin._handle_write_response` | `(self, kind, payload, resp)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L395) |
+| method | `_ActionMixin._confirm_line` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L409) |
+| method | `_ActionMixin.action_toggle` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L415) |
+| method | `_ActionMixin.action_confirm_yes` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L424) |
+| method | `_ActionMixin.action_confirm_no` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L457) |
+| method | `_ActionMixin._selected_row` | `(self, rows)` | The row dict under the cursor for the active table-tab, or None. | [src](../../../apps/central_cli/central_cli/hud_actions.py#L464) |
+| method | `_ActionMixin._post_action` | `(self, path, body, ok_msg, fail)` | POST + surface feedback in the feed, then refresh. Self-safe. | [src](../../../apps/central_cli/central_cli/hud_actions.py#L479) |
+| method | `_ActionMixin.action_agent_pause` | `(self)` | `p` on the Agents tab: pause the selected agent (only if active). | [src](../../../apps/central_cli/central_cli/hud_actions.py#L496) |
+| method | `_ActionMixin.action_agent_abort` | `(self)` | `x` on the Agents tab: DANGEROUS — arm y/n confirm, then cancel. | [src](../../../apps/central_cli/central_cli/hud_actions.py#L514) |
+| method | `_ActionMixin.action_slot_reset` | `(self)` | `r` on the Balancer tab: reset the selected slot. | [src](../../../apps/central_cli/central_cli/hud_actions.py#L534) |
+| method | `_ActionMixin.action_slot_enable` | `(self)` | `e` on the Balancer tab: enable the selected slot. | [src](../../../apps/central_cli/central_cli/hud_actions.py#L544) |
+| method | `_ActionMixin.action_slot_disable` | `(self)` | `d` on the Balancer tab: DANGEROUS — arm y/n confirm, then disable. | [src](../../../apps/central_cli/central_cli/hud_actions.py#L554) |
+| method | `_ActionMixin._selected_slot_id` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L569) |
+| method | `_ActionMixin.check_action` | `(self, action, parameters)` | Gate the single-letter row actions so they never steal a keystroke: | [src](../../../apps/central_cli/central_cli/hud_actions.py#L580) |
+| method | `_ActionMixin._flash` | `(self, markup)` | — | [src](../../../apps/central_cli/central_cli/hud_actions.py#L598) |
 
 ## `apps/central_cli/central_cli/hud_populate.py`
 _Central HUD — read-side rendering (``_PopulateMixin``)._

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6298/12838 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6306/12847 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -10,7 +10,7 @@ Generated from source. 6298/12838 functions/methods documented (49%). The list b
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
 | `apps.api.jarvis_api.routes` | 578 | 764 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
-| `apps.central_cli.central_cli` | 59 | 159 | 37% |
+| `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
 | `core.auth` | 3 | 48 | 6% |
 | `core.browser` | 11 | 13 | 84% |
@@ -111,11 +111,11 @@ Generated from source. 6298/12838 functions/methods documented (49%). The list b
 - `apps/central_cli/central_cli/feed.py` :: `FeedBuffer.add` (L34)
 - `apps/central_cli/central_cli/feed.py` :: `FeedBuffer.recent` (L37)
 - `apps/central_cli/central_cli/feed.py` :: `feed_line_from_event` (L19)
-- `apps/central_cli/central_cli/hud.py` :: `CentralHud.compose` (L264)
-- `apps/central_cli/central_cli/hud.py` :: `CentralHud.on_mount` (L289)
-- `apps/central_cli/central_cli/hud.py` :: `CentralHud.refresh_data` (L454)
-- `apps/central_cli/central_cli/hud.py` :: `CentralHud.show_tab` (L347)
-- `apps/central_cli/central_cli/hud.py` :: `run_hud` (L549)
+- `apps/central_cli/central_cli/hud.py` :: `CentralHud.compose` (L272)
+- `apps/central_cli/central_cli/hud.py` :: `CentralHud.on_mount` (L297)
+- `apps/central_cli/central_cli/hud.py` :: `CentralHud.refresh_data` (L462)
+- `apps/central_cli/central_cli/hud.py` :: `CentralHud.show_tab` (L355)
+- `apps/central_cli/central_cli/hud.py` :: `run_hud` (L557)
 - `apps/central_cli/central_cli/main.py` :: `build_arg_parser` (L8)
 - `apps/central_cli/central_cli/main.py` :: `main` (L20)
 - `apps/central_cli/central_cli/renderer.py` :: `render_generic` (L27)

@@ -43,6 +43,25 @@ def test_aihubmix_static_models_are_free_only():
     assert "auto" not in models
 
 
+def test_aionlabs_present_free_and_openai_compat():
+    """AionLabs (16. jul, free-tier): OpenAI-compat bearer, cost_class=free → i cheap lane,
+    routbar, og auto-tilføjet openai-compat-sættet (protocol=openai-chat). Modeller er de
+    live-verificerede aion-labs/*- id'er (fuld slug, som /models returnerer)."""
+    from core.services.cheap_provider_runtime_adapters import (
+        _OPENAI_COMPATIBLE_PROVIDERS,
+        is_routable_provider,
+        provider_cost_class,
+    )
+    cfg = CHEAP_PROVIDER_DEFAULTS["aionlabs"]
+    assert cfg["base_url"] == "https://api.aionlabs.ai/v1"
+    assert cfg["auth_kind"] == "bearer" and cfg["protocol"] == "openai-chat"
+    assert provider_cost_class("aionlabs") == "free"
+    assert is_routable_provider("aionlabs") is True
+    assert "aionlabs" in _OPENAI_COMPATIBLE_PROVIDERS
+    assert "aion-labs/aion-2.0" in cfg["static_models"]
+    assert all(m.startswith("aion-labs/") for m in cfg["static_models"])
+
+
 def test_deepseek_not_routable_but_free_providers_are():
     """Bjørn 14. jul: deepseek (betalt) skal UD af routbar cheap-pool; gratis ind."""
     from core.services.cheap_provider_runtime_adapters import is_routable_provider

@@ -454,6 +454,28 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": ["claude-sonnet-5", "claude-sonnet-4.6", "gpt-5.4",
                           "gemini-3.1-pro-preview"],
     },
+    # AionLabs (16. jul, Bjørn-nøgle, free-tier konto): OpenAI-compat `api.aionlabs.ai/v1`,
+    # bearer. Live-verificeret — /models svarer, chat-kald returnerede content="PONG" på
+    # aion-2.0/2.5/3.0-mini. Modellerne er DeepSeek-V3.2/GLM-varianter TUNET til immersivt
+    # roleplay/storytelling (reasoning:true, is_moderated:false, "mature/darker themes") —
+    # IKKE rene assistent-modeller. De følger simple instrukser fint, men reasoning brænder
+    # token på tanke → tight-cap-jobs kan give tom content (som cerebras/reka). Derfor
+    # moderat prioritet: supplerende pool-medlem, ikke arbejdshest. Free-tier = kører på
+    # gratis credits (pricing IKKE $0), så konservativ daily så credits ikke brændes.
+    # Nøgle gemt CT105 auth-profil (default/providers/aionlabs) — ALDRIG i repo.
+    "aionlabs": {
+        "label": "AionLabs",
+        "priority": 58,
+        "base_url": "https://api.aionlabs.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 15,
+        "daily_limit": 100,
+        "cost_class": "free",
+        "static_models": ["aion-labs/aion-2.0", "aion-labs/aion-3.0-mini",
+                          "aion-labs/aion-2.5"],
+    },
 }
 
 # Gen-udled openai-compat-sættet FRA protocol (15. jul) — den hardkodede liste

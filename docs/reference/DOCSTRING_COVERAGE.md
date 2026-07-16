@@ -725,7 +725,7 @@ Generated from source. 6267/12804 functions/methods documented (48%). The list b
 - `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L811)
 - `core/services/chat_sessions.py` :: `rename_chat_session` (L836)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L30)
-- `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L609)
+- `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L613)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L573)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L554)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L544)

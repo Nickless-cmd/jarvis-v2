@@ -572,7 +572,13 @@ def is_routable_provider(provider: str) -> bool:
 
 def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
     normalized_provider = str(provider or "").strip()
-    profile = str(auth_profile or "").strip()
+    # Tom profil → "default" (16.jul): candidate-byggeren giver auth_profile='' for providere
+    # der ikke er i provider-router-registret (kun i CHEAP_PROVIDER_DEFAULTS static_models,
+    # jf. Phase D). _require_credentials normaliserer ALLEREDE ''→'default' ved dispatch, så
+    # readiness SKAL gøre det samme — ellers markeres en fungerende provider (nøgle under
+    # 'default') som ikke-klar og vælges aldrig. Ingen default-nøgle → get_provider_credentials
+    # returnerer None → stadig False. Rent additivt.
+    profile = (str(auth_profile or "").strip()) or "default"
     if normalized_provider not in CHEAP_PROVIDER_DEFAULTS:
         return False
     if normalized_provider == "ollamafreeapi":
@@ -593,8 +599,6 @@ def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
             return bool(token)
         except Exception:
             return False
-    if not profile:
-        return False
     credentials = get_provider_credentials(profile=profile, provider=normalized_provider)
     if not credentials:
         return False

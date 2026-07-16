@@ -79,6 +79,28 @@ def test_freetheai_is_agent_pool_reserve_not_cheap_firehose():
     assert "bbl/gpt-5.5-mini" in cfg["static_models"]
 
 
+def test_provider_auth_ready_normalizes_empty_profile_to_default(monkeypatch):
+    """Rod-årsag (16.jul): candidate-byggeren giver auth_profile='' for providere UDEN en
+    provider-router-registry-entry (aionlabs/huggingface/freetheai). provider_auth_ready('')
+    returnerede hårdt False → credentials_ready=False → selektoren valgte dem ALDRIG, selvom
+    nøglen lå under 'default' og dispatch (_require_credentials) normaliserer ''→'default'.
+    Fix: readiness normaliserer OGSÅ ''→'default' så den matcher dispatch-virkeligheden."""
+    import core.services.cheap_provider_runtime_adapters as mod
+    seen_profiles = []
+
+    def _fake_get(*, profile, provider):
+        seen_profiles.append(profile)
+        return {"api_key": "k"} if profile == "default" else None
+
+    monkeypatch.setattr(mod, "get_provider_credentials", _fake_get)
+    monkeypatch.setattr(mod, "provider_has_real_credentials",
+                        lambda *, profile, provider: profile == "default")
+    # cerebras = bearer openai-chat provider i defaults
+    assert mod.provider_auth_ready(provider="cerebras", auth_profile="") is True
+    assert mod.provider_auth_ready(provider="cerebras", auth_profile="default") is True
+    assert "default" in seen_profiles          # '' blev slået op som 'default'
+
+
 def test_deepseek_not_routable_but_free_providers_are():
     """Bjørn 14. jul: deepseek (betalt) skal UD af routbar cheap-pool; gratis ind."""
     from core.services.cheap_provider_runtime_adapters import is_routable_provider

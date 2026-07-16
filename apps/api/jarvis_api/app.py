@@ -502,7 +502,14 @@ def create_app() -> FastAPI:
                 pass
         logger.info("jarvis api shutdown complete")
 
-    app = FastAPI(title="Jarvis V2 API", lifespan=lifespan)
+    # Sikkerhed (Bjørn 16.jul): slå Swagger/ReDoc/OpenAPI-schema HELT fra i produktion.
+    # api.srvlab.dk er offentligt eksponeret (pfSense→Caddy); alle rigtige endpoints er
+    # auth-gatede (401), men /docs + /openapi.json var offentligt læsbare og gav enhver
+    # angriber hele API-kortet. Owner-gating er IKKE vejen her — vi fjerner dem fra fladen
+    # helt. Docs-generatorerne læser fra source (ikke HTTP), så de er upåvirkede; behøver
+    # nogen schema in-process kan de kalde app.openapi() direkte.
+    app = FastAPI(title="Jarvis V2 API", lifespan=lifespan,
+                  docs_url=None, redoc_url=None, openapi_url=None)
 
     # CORS for desktop-apps (jarvis-desk, JarvisX) der konsumerer SSE
     # endpoints fra ikke-samme origin. Tilføjet 2026-06-10 fordi jarvis-desk's

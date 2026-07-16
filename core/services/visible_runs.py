@@ -202,6 +202,10 @@ from core.services.visible_model import (
     execute_visible_model,
     stream_visible_model,
 )
+# Task 10: autonom (heartbeat) fallback til den GRATIS cheap-lane pool når en
+# model-stream fejler. Importeres på modul-niveau så testen kan monkeypatche
+# core.services.visible_runs.run_non_visible_with_fallback direkte.
+from core.services.non_visible_fallback import run_non_visible_with_fallback
 from core.memory.private_layer_pipeline import write_private_terminal_layers
 from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
@@ -1627,6 +1631,22 @@ async def _stream_visible_run(
                 yield failure_chunk
             return
         except Exception as exc:
+            # ── Autonom-fallback (Task 10) ────────────────────────────────────
+            # KUN autonome (heartbeat-udløste, ingen bruger) runs: en fejlet
+            # first-pass model-stream faldes igennem til den GRATIS cheap-lane
+            # pool, så den autonome loop ikke knækker. Synlige (bruger-
+            # tilstedeværende) runs rører ALDRIG dette — _maybe_fallback_for_
+            # autonomous returnerer None for dem, og exception propagerer
+            # PRÆCIS som før (uændret adfærd). Selve pool-gaten sidder i
+            # helperens eget flag (non_visible_ollama_fallback_enabled, default
+            # OFF): flag OFF → helper re-raiser → vi får None → dagens adfærd.
+            _auto_fb = _maybe_fallback_for_autonomous(run, exc)
+            if _auto_fb is not None:
+                _final_run_status = "completed"
+                _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
+                for _fb_chunk in _complete_visible_run_from_fallback(run, _auto_fb):
+                    yield _fb_chunk
+                return
             from core.services.visible_runs_error_messaging import (
                 friendly_provider_error_message,
             )
@@ -6014,6 +6034,108 @@ def _parse_tc_args(tc: dict) -> dict:
         except Exception:
             return {}
     return dict(raw) if isinstance(raw, dict) else {}
+
+
+def _maybe_fallback_for_autonomous(
+    run: VisibleRun, exc: BaseException,
+) -> dict[str, object] | None:
+    """Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen?
+
+    Returnerer fallback-dict'en (med `text`/`lane`/`provider`) NÅR runet er
+    autonomt OG poolen leverede indhold. Returnerer None når runet skal fejle
+    som i dag — hvilket betyder at kaldstedet kører sin uændrede fejl-sti.
+
+    Invarianter:
+      * `run.autonomous is True` er den ENESTE indgangsbetingelse. Synlige
+        (bruger-tilstedeværende) runs → øjeblikkelig None → de rører ALDRIG
+        fallback'en, og deres exception propagerer præcis som før.
+      * Pool-gaten sidder i helperens eget flag (default OFF). Vi sender et
+        `primary_call` der straks re-raiser den allerede-fangede `exc`:
+          - flag OFF → helper re-raiser exc → vi fanger og returnerer None
+            (dagens adfærd, også for autonome runs);
+          - flag ON  → helper går direkte til sin cheap-pool-arm (primær er
+            "allerede prøvet" — ollama-streamen fejlede jo her).
+    """
+    if not run.autonomous:
+        return None
+
+    def _primary_reraise() -> dict[str, object]:
+        # Ollama-streamen fejlede allerede her; primær er "allerede prøvet".
+        # Re-raise → helper går straks til cheap-pool-arm (flag ON) eller
+        # re-raiser videre (flag OFF).
+        raise exc
+
+    try:
+        result = run_non_visible_with_fallback(
+            message=run.user_message,
+            primary_call=_primary_reraise,
+            run_is_autonomous=True,
+            task_kind="autonomous",
+        )
+    except Exception:
+        # Flag OFF (helper re-raiste), eller pool udtømt uden floor → fejl som
+        # i dag. Kaldstedet kører sin normale fejl-sti.
+        return None
+
+    return result if isinstance(result, dict) else None
+
+
+def _complete_visible_run_from_fallback(
+    run: VisibleRun, fallback: dict[str, object],
+) -> AsyncIterator[str]:
+    """Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev
+    reddet af den gratis cheap-lane pool. Emitterer pool-teksten som ét (ikke-
+    streamet) delta + et completed/done-par. Bruges ALDRIG for synlige runs
+    (de når aldrig fallback'en). Pointen: runet FULDFØRER med indhold i stedet
+    for at fejle."""
+    controller = get_visible_run_controller(run.run_id)
+    finished_at = datetime.now(UTC).isoformat()
+    text = str(fallback.get("text") or "")
+    lane = str(fallback.get("lane") or "")
+    provider = str(fallback.get("provider") or "")
+    _update_visible_execution_trace(
+        run,
+        {
+            "final_status": "completed",
+            "provider_first_pass_status": "autonomous_fallback_pool",
+            "provider_error_summary": (
+                f"autonomous-fallback:{lane or 'pool'}:{provider or '?'}"
+            ),
+        },
+    )
+    _persist_session_assistant_message(run, text)
+    set_last_visible_run_outcome(
+        run, status="completed", text_preview=text[:140],
+    )
+    _set_orb_phase("idle")
+    yield _sse("trace", _visible_trace_payload(run))
+    if text:
+        yield _sse(
+            "delta",
+            {"type": "delta", "run_id": run.run_id, "delta": text},
+        )
+    event_bus.publish(
+        "runtime.visible_run_completed",
+        {
+            "run_id": run.run_id,
+            "lane": run.lane,
+            "provider": provider or run.provider,
+            "model": run.model,
+            "status": "completed",
+            "started_at": controller.started_at if controller else None,
+            "finished_at": finished_at,
+            "cost_usd": 0.0,
+            "autonomous_fallback": True,
+        },
+    )
+    yield _sse(
+        "done",
+        {
+            "type": "done",
+            "run_id": run.run_id,
+            "status": "completed",
+        },
+    )
 
 
 def _fail_visible_run(

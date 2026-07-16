@@ -358,3 +358,122 @@ class TestTrackerCascadeFix:
         # den ene legitime return (session_id-guard) skal bestå
         body = self._fn_source()
         assert "if not run.session_id:\n        return" in body
+
+
+class TestAutonomousStreamFallback:
+    """Task 10: en fejlet AUTONOM (heartbeat) model-stream faldes igennem til
+    den GRATIS cheap-lane pool så den autonome loop ikke knækker. Synlige
+    (bruger-tilstedeværende) runs rører ALDRIG fallback'en."""
+
+    def _autonomous_run(self):
+        return visible_runs.VisibleRun(
+            run_id="auto-1",
+            lane="autonomous",
+            provider="ollama",
+            model="qwen3:8b",
+            user_message="beat",
+            session_id="sess-auto",
+            autonomous=True,
+        )
+
+    def _visible_run(self):
+        return visible_runs.VisibleRun(
+            run_id="vis-1",
+            lane="primary",
+            provider="deepseek",
+            model="deepseek-chat",
+            user_message="hej",
+            session_id="sess-vis",
+            autonomous=False,
+        )
+
+    def test_autonomous_stream_failure_falls_to_pool(self, monkeypatch):
+        """Autonomt run, stream rejser → helper leverer pool-dict (indhold),
+        beslutnings-seam returnerer den (status vil blive 'completed')."""
+        pool_dict = {"text": "pool-answer", "lane": "cheap", "provider": "groq"}
+
+        def fake_fallback(*, message, primary_call, run_is_autonomous, task_kind):
+            # Bevis: seam kalder faktisk helperen med de rigtige args.
+            assert run_is_autonomous is True
+            assert task_kind == "autonomous"
+            assert message == "beat"
+            return pool_dict
+
+        monkeypatch.setattr(
+            visible_runs, "run_non_visible_with_fallback", fake_fallback,
+        )
+        run = self._autonomous_run()
+        result = visible_runs._maybe_fallback_for_autonomous(
+            run, RuntimeError("ollama boom"),
+        )
+        assert result == pool_dict
+
+    def test_visible_run_never_uses_fallback(self, monkeypatch):
+        """Synligt run (autonomous=False): fallback må ALDRIG kaldes, og
+        beslutnings-seam returnerer None så exception propagerer som i dag."""
+        called = {"hit": False}
+
+        def sentinel_fallback(**_kw):
+            called["hit"] = True
+            raise AssertionError("fallback må ALDRIG ramme synlige runs")
+
+        monkeypatch.setattr(
+            visible_runs, "run_non_visible_with_fallback", sentinel_fallback,
+        )
+        run = self._visible_run()
+        result = visible_runs._maybe_fallback_for_autonomous(
+            run, RuntimeError("provider down"),
+        )
+        assert result is None
+        assert called["hit"] is False
+
+    def test_autonomous_flag_off_reraises_returns_none(self, monkeypatch):
+        """Flag OFF: helperen re-raiser den fangede exc → seam får None →
+        kaldstedet kører sin uændrede fejl-sti (også for autonome runs)."""
+        def reraising_fallback(*, message, primary_call, run_is_autonomous, task_kind):
+            # Efterligner helperens flag-OFF-gren: kald primary_call som re-raiser.
+            return primary_call()
+
+        monkeypatch.setattr(
+            visible_runs, "run_non_visible_with_fallback", reraising_fallback,
+        )
+        run = self._autonomous_run()
+        result = visible_runs._maybe_fallback_for_autonomous(
+            run, RuntimeError("stream failed"),
+        )
+        assert result is None
+
+    def test_completion_generator_emits_completed_with_pool_text(self, monkeypatch):
+        """_complete_visible_run_from_fallback emitterer pool-teksten som delta
+        og et done-event med status 'completed' (ikke 'failed')."""
+        # Isolér fra DB/bus-sideeffekter — vi tester kun SSE-outputtet.
+        monkeypatch.setattr(
+            visible_runs, "_persist_session_assistant_message",
+            lambda *a, **k: None,
+        )
+        monkeypatch.setattr(
+            visible_runs, "set_last_visible_run_outcome", lambda *a, **k: None,
+        )
+        monkeypatch.setattr(
+            visible_runs, "_update_visible_execution_trace", lambda *a, **k: None,
+        )
+        monkeypatch.setattr(
+            visible_runs, "_visible_trace_payload", lambda run: {"run_id": run.run_id},
+        )
+        monkeypatch.setattr(
+            visible_runs, "get_visible_run_controller", lambda rid: None,
+        )
+        monkeypatch.setattr(
+            visible_runs.event_bus, "publish", lambda *a, **k: None,
+        )
+
+        run = self._autonomous_run()
+        fb = {"text": "pool-answer", "lane": "cheap", "provider": "groq"}
+
+        # Sync-generator (samme form som _fail_visible_run), konsumeres med
+        # et plain 'for' på kaldstedet.
+        chunks = list(visible_runs._complete_visible_run_from_fallback(run, fb))
+        blob = "".join(chunks)
+        assert "pool-answer" in blob          # pool-indhold nået consumeren
+        assert '"status": "completed"' in blob  # terminal = completed, ikke failed
+        assert '"status": "failed"' not in blob

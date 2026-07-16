@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12821 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12825 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -40,15 +40,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12821 functions/
 - [`core.services.11`](core.services.11.md) — `gate_execution` … `hf_connector`
 - [`core.services.12`](core.services.12.md) — `hollow_promise_guard` … `keyring_store`
 - [`core.services.13`](core.services.13.md) — `layer_tension_daemon` … `meta_learning_retrospective`
-- [`core.services.14`](core.services.14.md) — `meta_reflection_daemon` … `outreach_composer`
-- [`core.services.15`](core.services.15.md) — `override_command` … `promise_ledger`
-- [`core.services.16`](core.services.16.md) — `prompt_contract` … `regulation_homeostasis_signal_tracking`
-- [`core.services.17`](core.services.17.md) — `relation_continuity_signal_tracking` … `runtime_surface_cache`
-- [`core.services.18`](core.services.18.md) — `runtime_tasks` … `session_continuity`
-- [`core.services.19`](core.services.19.md) — `session_distillation` … `state_flag_store`
-- [`core.services.20`](core.services.20.md) — `stream_degeneration` … `tool_embeddings`
-- [`core.services.21`](core.services.21.md) — `tool_intent_approval_runtime` … `visible_model`
-- [`core.services.22`](core.services.22.md) — `visible_model_adapters` … `world_model_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `meta_reflection_daemon` … `outcome_learning`
+- [`core.services.15`](core.services.15.md) — `outreach_composer` … `producer_novelty`
+- [`core.services.16`](core.services.16.md) — `promise_ledger` … `regret_engine`
+- [`core.services.17`](core.services.17.md) — `regulation_homeostasis_signal_tracking` … `runtime_self_model_surfaces`
+- [`core.services.18`](core.services.18.md) — `runtime_surface_cache` … `session_boot_reconciler`
+- [`core.services.19`](core.services.19.md) — `session_continuity` … `standing_orders_registry`
+- [`core.services.20`](core.services.20.md) — `state_flag_store` … `tool_concurrency`
+- [`core.services.21`](core.services.21.md) — `tool_embeddings` … `visible_inner_life`
+- [`core.services.22`](core.services.22.md) — `visible_model` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

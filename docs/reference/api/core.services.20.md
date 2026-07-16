@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/state_flag_store.py`
+_State-flag store (leak-kandidat #1, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/state_flag_store.py#L22) |
+| function | `_key` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L26) |
+| function | `_load` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L30) |
+| function | `_save` | `(user_id, flags)` | — | [src](../../../core/services/state_flag_store.py#L39) |
+| function | `_prune` | `(flags)` | Fjern udløbne flag. Returnerer den rensede dict (muterer input). | [src](../../../core/services/state_flag_store.py#L43) |
+| function | `set_flag` | `(key, value, *, ttl_minutes=…, user_id=…)` | Sæt/opdatér et flag. ttl_minutes=None/0 → intet udløb. Returnerer den lagrede | [src](../../../core/services/state_flag_store.py#L53) |
+| function | `get_flag` | `(key, *, user_id=…)` | Læs et flag (prune udløbne først). None hvis ukendt/udløbet. | [src](../../../core/services/state_flag_store.py#L70) |
+| function | `clear_flag` | `(key, *, user_id=…)` | Fjern et flag. True hvis det fandtes. | [src](../../../core/services/state_flag_store.py#L81) |
+| function | `list_flags` | `(*, user_id=…)` | Alle aktive (ikke-udløbne) flag. | [src](../../../core/services/state_flag_store.py#L94) |
+
 ## `core/services/stream_degeneration.py`
 _Degenerations-guard — fang model-repetitions-løkker i streaming-laget._
 
@@ -608,20 +623,4 @@ _Tool-concurrency policy (harness Part C)._
 | function | `concurrency_mode` | `()` | Current mode: 'off' | 'on'. Default 'off'. Env wins over config. Self-safe. | [src](../../../core/services/tool_concurrency.py#L42) |
 | function | `_call_name` | `(tc)` | — | [src](../../../core/services/tool_concurrency.py#L57) |
 | function | `is_parallelizable` | `(tool_calls, *, mode)` | True iff mode=='on' AND >=2 calls AND every call name is in the allowlist. | [src](../../../core/services/tool_concurrency.py#L62) |
-
-## `core/services/tool_embeddings.py`
-_Tool description embedding cache._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_connect` | `()` | — | [src](../../../core/services/tool_embeddings.py#L28) |
-| function | `_pack` | `(vec)` | — | [src](../../../core/services/tool_embeddings.py#L42) |
-| function | `_unpack` | `(blob)` | — | [src](../../../core/services/tool_embeddings.py#L46) |
-| function | `_hash_desc` | `(desc)` | — | [src](../../../core/services/tool_embeddings.py#L51) |
-| function | `_compute_embedding` | `(text)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L55) |
-| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L71) |
-| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L91) |
-| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L97) |
-| function | `top_k_similar` | `(query, k=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L108) |
-| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L121) |
 

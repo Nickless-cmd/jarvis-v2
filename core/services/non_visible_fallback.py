@@ -13,15 +13,22 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from core.runtime.db_core import get_runtime_state_bool
+from core.services import non_visible_rate_cap
 from core.services.cheap_lane_floor import attempt_floor
 from core.services.cheap_provider_runtime_selection import execute_cheap_lane_via_pool
 
 _FALLBACK_FLAG = "non_visible_ollama_fallback_enabled"
+_RATE_CAP_FLAG = "non_visible_rate_cap_enabled"
 
 
 def _fallback_enabled() -> bool:
     """Læs feature-flag; default False. Monkeypatchbar i tests."""
     return get_runtime_state_bool(_FALLBACK_FLAG, False)
+
+
+def _rate_cap_enabled() -> bool:
+    """Læs rate-cap feature-flag; default False. Monkeypatchbar i tests."""
+    return get_runtime_state_bool(_RATE_CAP_FLAG, False)
 
 
 def run_non_visible_with_fallback(
@@ -46,6 +53,15 @@ def run_non_visible_with_fallback(
         # 3) Uden flag: uændret adfærd — re-raise original exception.
         if not _fallback_enabled():
             raise
+
+        # 3a) Hårdt globalt loft FORAN poolen. Uafhængigt af slot-health, så
+        #     en runaway ikke kan forstærkes gennem multi-profile + fallback.
+        if _rate_cap_enabled() and not non_visible_rate_cap.allow():
+            return attempt_floor(
+                message=message,
+                lane="autonomous",
+                reason="rate-capped",
+            )
 
         # 3b) Med flag: fald til den gratis pool. Håndtér BEGGE exit-shapes.
         try:

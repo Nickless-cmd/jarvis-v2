@@ -345,8 +345,9 @@ _Non-visible (autonomous) LLM fallback chain._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_fallback_enabled` | `()` | Læs feature-flag; default False. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_fallback.py#L22) |
-| function | `run_non_visible_with_fallback` | `(*, message, primary_call, run_is_autonomous, task_kind=…)` | Prøv primary_call() (ollama). Ved fejl: fald til den gratis cheap-lane | [src](../../../core/services/non_visible_fallback.py#L27) |
+| function | `_fallback_enabled` | `()` | Læs feature-flag; default False. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_fallback.py#L24) |
+| function | `_rate_cap_enabled` | `()` | Læs rate-cap feature-flag; default False. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_fallback.py#L29) |
+| function | `run_non_visible_with_fallback` | `(*, message, primary_call, run_is_autonomous, task_kind=…)` | Prøv primary_call() (ollama). Ved fejl: fald til den gratis cheap-lane | [src](../../../core/services/non_visible_fallback.py#L34) |
 
 ## `core/services/non_visible_lane_execution.py`
 
@@ -385,6 +386,15 @@ _Non-visible (autonomous) LLM fallback chain._
 | function | `_extract_github_copilot_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1192) |
 | function | `fetch_github_copilot_models` | `(*, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1204) |
 | function | `_estimate_tokens` | `(text)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1231) |
+
+## `core/services/non_visible_rate_cap.py`
+_Global leaky-bucket rate cap FORAN den non-visible cheap-lane pool._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | Wall-clock i sekunder. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_rate_cap.py#L34) |
+| function | `reset` | `()` | Nulstil alle buckets (til tests + boot). | [src](../../../core/services/non_visible_rate_cap.py#L39) |
+| function | `allow` | `(tokens=…)` | Forbrug 1 request + `tokens` tokens hvis begge buckets har plads; ellers | [src](../../../core/services/non_visible_rate_cap.py#L49) |
 
 ## `core/services/notes_connector.py`
 _Huskesedler-connector (lokal) — simple per-bruger notater._
@@ -635,20 +645,4 @@ _Outcome Learning — record observations, let old evidence decay._
 | function | `build_outcome_learning_surface` | `()` | — | [src](../../../core/services/outcome_learning.py#L189) |
 | function | `_summary_line` | `(count, total, top)` | — | [src](../../../core/services/outcome_learning.py#L213) |
 | function | `_emit_outcome_learning_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/outcome_learning.py#L225) |
-
-## `core/services/outreach_composer.py`
-_Outreach composer — Spor-1 of generative autonomy._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_runtime_db_path` | `()` | — | [src](../../../core/services/outreach_composer.py#L47) |
-| function | `_hours_since` | `(iso_ts)` | — | [src](../../../core/services/outreach_composer.py#L51) |
-| function | `_last_outreach_timestamp` | `()` | Most recent impulse.outreach.sent event timestamp. | [src](../../../core/services/outreach_composer.py#L63) |
-| function | `_last_user_message_context` | `()` | Gather (preview, hours_since, channel_hint) from latest user turn. | [src](../../../core/services/outreach_composer.py#L81) |
-| function | `_gather_signal_context` | `()` | Top-3 pressures + bearing + affect, for the outreach prompt. | [src](../../../core/services/outreach_composer.py#L113) |
-| function | `_build_outreach_prompt` | `(*, direction, topic, strength, user_ctx, signal_ctx)` | Build the prompt that asks Jarvis-the-LLM to write the message. | [src](../../../core/services/outreach_composer.py#L162) |
-| function | `_call_visible_model` | `(prompt, *, timeout=…)` | Call the visible-lane model (Ollama / GLM cloud) for the message text. | [src](../../../core/services/outreach_composer.py#L199) |
-| function | `_send_message` | `(text, *, channel)` | Send the composed message via the USER's reach_out-kanalvalg (notification_router). | [src](../../../core/services/outreach_composer.py#L246) |
-| function | `_decay_longing_after_outreach` | `(reduction=…)` | When Jarvis has reached out, the longing pressure should drop. | [src](../../../core/services/outreach_composer.py#L282) |
-| function | `compose_and_send_outreach` | `(*, direction, topic, strength)` | Spor-1 entry point. Compose a coherent message and send it. | [src](../../../core/services/outreach_composer.py#L299) |
 

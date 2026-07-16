@@ -99,21 +99,21 @@ _Central HUD — J.A.R.V.I.S-style Textual UI, built 1:1 to the mockup._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `CentralHud` | `` | The Central HUD app shell (mockup-faithful). | [src](../../../apps/central_cli/central_cli/hud.py#L81) |
-| method | `CentralHud.__init__` | `(self, *, client=…, live=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L227) |
-| method | `CentralHud.compose` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L261) |
-| method | `CentralHud.on_mount` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L286) |
-| method | `CentralHud._prime` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L304) |
-| method | `CentralHud._tick_pulse` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L332) |
-| method | `CentralHud._keep_focus` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L336) |
-| method | `CentralHud.show_tab` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L344) |
-| method | `CentralHud._apply_tab_visibility` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L350) |
-| method | `CentralHud._populate_active_tab` | `(self, force=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L362) |
-| method | `CentralHud.refresh_data` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L448) |
-| method | `CentralHud._render_header` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L480) |
-| method | `CentralHud._render_tabs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L514) |
-| method | `CentralHud._render_cmd` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L525) |
-| function | `run_hud` | `(ns)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L543) |
+| class | `CentralHud` | `` | The Central HUD app shell (mockup-faithful). | [src](../../../apps/central_cli/central_cli/hud.py#L82) |
+| method | `CentralHud.__init__` | `(self, *, client=…, live=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L229) |
+| method | `CentralHud.compose` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L264) |
+| method | `CentralHud.on_mount` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L289) |
+| method | `CentralHud._prime` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L307) |
+| method | `CentralHud._tick_pulse` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L335) |
+| method | `CentralHud._keep_focus` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L339) |
+| method | `CentralHud.show_tab` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L347) |
+| method | `CentralHud._apply_tab_visibility` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L353) |
+| method | `CentralHud._populate_active_tab` | `(self, force=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L365) |
+| method | `CentralHud.refresh_data` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L454) |
+| method | `CentralHud._render_header` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L486) |
+| method | `CentralHud._render_tabs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L520) |
+| method | `CentralHud._render_cmd` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L531) |
+| function | `run_hud` | `(ns)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L549) |
 
 ## `apps/central_cli/central_cli/hud_actions.py`
 _Central HUD — action handlers + command/write layer (``_ActionMixin``)._
@@ -183,23 +183,25 @@ _Central HUD — read-side rendering (``_PopulateMixin``)._
 | method | `_PopulateMixin._populate_anomalies` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L379) |
 | method | `_PopulateMixin._render_anomaly_detail` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L405) |
 | method | `_PopulateMixin._render_row_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L450) |
-| method | `_PopulateMixin._render_nerve_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L469) |
-| method | `_PopulateMixin._render_cluster_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L501) |
-| method | `_PopulateMixin._render_gov_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L530) |
-| method | `_PopulateMixin._render_overview_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L564) |
-| method | `_PopulateMixin._render_diagnostics_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L657) |
-| method | `_PopulateMixin._populate_governance` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L718) |
-| method | `_PopulateMixin._populate_runs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L743) |
-| method | `_PopulateMixin._render_run_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L782) |
-| method | `_PopulateMixin._populate_approvals` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L827) |
-| method | `_PopulateMixin._populate_agents` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L863) |
-| method | `_PopulateMixin._render_agent_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L926) |
-| method | `_PopulateMixin._render_mind_self_panel` | `(self)` | Render Jarvis' reduced self as HIS presence in the Central — warm, | [src](../../../apps/central_cli/central_cli/hud_populate.py#L976) |
-| method | `_PopulateMixin._rel_age` | `(iso)` | ISO timestamp → short relative age (2s / 4m / 3t / 2d). '—' on failure. | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1200) |
-| method | `_PopulateMixin._fmt_value` | `(value)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1220) |
-| method | `_PopulateMixin._healer_flag_name` | `(self, healer)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1231) |
-| method | `_PopulateMixin._render_healing_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1234) |
-| method | `_PopulateMixin._render_placeholder_panel` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1272) |
+| method | `_PopulateMixin._render_nerve_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L471) |
+| method | `_PopulateMixin._render_cluster_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L503) |
+| method | `_PopulateMixin._render_gov_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L532) |
+| method | `_PopulateMixin._render_overview_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L566) |
+| method | `_PopulateMixin._render_diagnostics_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L659) |
+| method | `_PopulateMixin._populate_governance` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L720) |
+| method | `_PopulateMixin._populate_runs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L745) |
+| method | `_PopulateMixin._render_run_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L784) |
+| method | `_PopulateMixin._populate_approvals` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L829) |
+| method | `_PopulateMixin._populate_agents` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L865) |
+| method | `_PopulateMixin._render_agent_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L928) |
+| method | `_PopulateMixin._populate_balancer` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L989) |
+| method | `_PopulateMixin._render_balancer_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1060) |
+| method | `_PopulateMixin._render_mind_self_panel` | `(self)` | Render Jarvis' reduced self as HIS presence in the Central — warm, | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1126) |
+| method | `_PopulateMixin._rel_age` | `(iso)` | ISO timestamp → short relative age (2s / 4m / 3t / 2d). '—' on failure. | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1350) |
+| method | `_PopulateMixin._fmt_value` | `(value)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1370) |
+| method | `_PopulateMixin._healer_flag_name` | `(self, healer)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1381) |
+| method | `_PopulateMixin._render_healing_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1384) |
+| method | `_PopulateMixin._render_placeholder_panel` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1422) |
 
 ## `apps/central_cli/central_cli/hud_theme.py`
 _Central HUD palette, status-maps and the ``_esc`` markup guard._

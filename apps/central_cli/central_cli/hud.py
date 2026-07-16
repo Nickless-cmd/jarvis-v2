@@ -53,6 +53,7 @@ _TABS: list[tuple[str, str, bool]] = [
     ("runs", "Runs", False),
     ("approvals", "Approvals", False),
     ("agents", "Agents", False),
+    ("balancer", "Balancer", False),
     ("connections", "Connections", True),
     ("users", "Users", True),
     ("excess", "Excess", True),
@@ -67,7 +68,7 @@ _TABS: list[tuple[str, str, bool]] = [
 # (its populate/detail logic is unchanged) and folds into the incidents tab as a
 # sub-view — so no anomaly functionality is lost.
 _TABLE_TABS = {"nerves", "clusters", "incidents", "anomalies", "governance",
-               "agents", "runs", "approvals",
+               "agents", "balancer", "runs", "approvals",
                "connections", "users", "excess", "decentral"}
 # Panel-backed tabs (single full-width panel). "runs"/"approvals" are now wired
 # as real table-tabs (scheduled/autonomy), so they no longer live here.
@@ -216,12 +217,13 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         Binding("f5", "show('runs')", show=False, priority=True),
         Binding("f6", "show('approvals')", show=False, priority=True),
         Binding("f7", "show('agents')", show=False, priority=True),
-        # 6. jul: F-taster matcher nav-numrene (14 faner nu; F1-F12 = de første 12, resten via Tab).
-        Binding("f8", "show('connections')", show=False, priority=True),
-        Binding("f9", "show('users')", show=False, priority=True),
-        Binding("f10", "show('excess')", show=False, priority=True),
-        Binding("f11", "show('decentral')", show=False, priority=True),
-        Binding("f12", "show('mind')", show=False, priority=True),
+        # 13. jul: Balancer-fane indsat efter agents → F8 = balancer, resten skubbet
+        # én ned (15 faner nu; F1-F12 = de første 12, resten via Tab).
+        Binding("f8", "show('balancer')", show=False, priority=True),
+        Binding("f9", "show('connections')", show=False, priority=True),
+        Binding("f10", "show('users')", show=False, priority=True),
+        Binding("f11", "show('excess')", show=False, priority=True),
+        Binding("f12", "show('decentral')", show=False, priority=True),
     ]
 
     def __init__(self, *, client: Any = None, live: bool = True) -> None:
@@ -247,6 +249,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         self._nerve_rows: list = []
         self._cluster_rows: list = []
         self._agent_rows: list = []
+        self._balancer_rows: list = []
         self._run_rows: list = []
         self._scheduled: list = []
         self._autonomy: dict = {}
@@ -402,6 +405,9 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
             elif name == "agents":
                 self._populate_agents()
                 self._refresh_detail_for_current()
+            elif name == "balancer":
+                self._populate_balancer()
+                self._refresh_detail_for_current()
             elif name == "connections":
                 self._populate_connections()
             elif name == "users":
@@ -439,7 +445,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                         pass
                     # detaljen skal følge den gendannede markør (ikke row 0 fra populate)
                     if name in ("nerves", "clusters", "incidents", "anomalies",
-                                "governance", "agents", "runs"):
+                                "governance", "agents", "balancer", "runs"):
                         self._refresh_detail_for_current()
         except Exception:
             return

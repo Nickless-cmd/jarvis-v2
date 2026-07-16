@@ -463,6 +463,8 @@ class _PopulateMixin:
             self._render_gov_detail(row)
         elif t == "agents":
             self._render_agent_detail(row)
+        elif t == "balancer":
+            self._render_balancer_detail(row)
         elif t == "runs":
             self._render_run_detail(row)
 
@@ -962,6 +964,154 @@ class _PopulateMixin:
                   "last_run_at", "last_run", "tokens_in", "tokens_out",
                   "tokens_burned", "cost_usd", "current_activity", "activity",
                   "tool_calls")
+        extra = [k for k in raw if k not in _known]
+        if extra:
+            lines += ["", f"[{FGDIM} b]FELTER[/]"]
+            for k in extra:
+                v = str(raw.get(k))
+                if len(v) > 60:
+                    v = v[:59] + "…"
+                lines.append(f"[{FGDIM}]{_esc(k)}[/]  [{FG}]{_esc(v)}[/]")
+        panel.update(Text.from_markup("\n".join(lines)))
+
+    # -- Balancer (cheap-lane / load-balancer pool) ------------------------
+    # local status→color map (healthy=green, cooldown=amber, breaker=red,
+    # stale/disabled=grey) — kept local so the balancer view owns its severity.
+    _BAL_STATUS = {
+        "healthy": GREEN, "ok": GREEN, "active": GREEN, "live": GREEN,
+        "cooldown": AMBER, "throttled": AMBER, "degraded": AMBER, "warn": AMBER,
+        "breaker": RED, "open": RED, "error": RED, "failed": RED, "down": RED,
+        "stale": DIM, "disabled": DIM, "idle": DIM, "off": DIM,
+    }
+    # egress lane→color (home=green, vpn=blue, he6=amber tunnel)
+    _BAL_EGRESS = {"home": GREEN, "vpn": BLUE, "he6": AMBER}
+
+    def _populate_balancer(self) -> None:
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(table, ("provider", 14), ("model", 22),
+                            ("profil", 10), ("egress", 8), ("status", 11),
+                            ("weight", 7), ("headroom", 9), ("rpm", 8),
+                            ("last run", 9), ("succ%", 6))
+        if self._client is None:
+            return
+        try:
+            result = datasource.balancer(self._client)
+        except Exception:
+            result = {"header": {}, "rows": []}
+        header = result.get("header") or {}
+        rows = result.get("rows") or []
+        self._balancer_rows = rows
+        total = int(header.get("total_slots", len(rows)) or 0)
+        healthy = int(header.get("healthy", 0) or 0)
+        cooldown = int(header.get("cooldown", 0) or 0)
+        breaker = int(header.get("breaker", 0) or 0)
+        stale = int(header.get("stale", 0) or 0)
+        disabled = int(header.get("disabled", 0) or 0)
+        profiles = "/".join(str(k) for k in (header.get("by_profile") or {})) or "—"
+        egresses = "/".join(str(k) for k in (header.get("by_egress") or {})) or "—"
+        self._set_paneh(
+            f"[{CYAN}]BALANCER[/] [{FGDIM}]— {total} slots · [/]"
+            f"[{GREEN}]{healthy} healthy[/] [{FGDIM}]· [/]"
+            f"[{AMBER}]{cooldown} cooldown[/] [{FGDIM}]· "
+            f"{breaker} breaker · {stale} stale · {disabled} disabled · "
+            f"profil {_esc(profiles)} · egress {_esc(egresses)}[/]"
+        )
+        if not rows:
+            table.add_row(
+                Text("— ingen slots —", style=DIM),
+                Text(""), Text(""), Text(""), Text(""),
+                Text(""), Text(""), Text(""), Text(""), Text(""),
+            )
+            return
+        for r in rows:
+            status = str(r.get("status", "") or "")
+            is_stale = bool(r.get("stale"))
+            grey = is_stale or status.lower() in ("stale", "disabled", "idle", "off")
+            body = DIM if grey else FG
+            dim = DIM if grey else FGDIM
+            scolor = DIM if grey else self._BAL_STATUS.get(status.lower(), AMBER)
+            egr = str(r.get("egress", "") or "")
+            ecolor = DIM if grey else self._BAL_EGRESS.get(egr.lower(), FGDIM)
+            marker = "● " if status.lower() in ("healthy", "ok", "active", "live") else ""
+            status_cell = f"{marker}{status}" if status else "—"
+            weight = float(r.get("weight", 0.0) or 0.0)
+            headroom = float(r.get("daily_headroom", 0.0) or 0.0)
+            hr_cell = (f"{headroom:.0%}" if 0.0 <= headroom <= 1.0
+                       else f"{headroom:g}")
+            rpm = f"{int(r.get('rpm_used', 0) or 0)}/{int(r.get('rpm_limit', 0) or 0)}"
+            sr = float(r.get("success_rate", 0.0) or 0.0)
+            sr_cell = f"{sr * 100:.0f}%" if sr <= 1.0 else f"{sr:.0f}%"
+            table.add_row(
+                Text(_esc(str(r.get("provider", "") or "—")), style=body),
+                Text(_esc(str(r.get("model", "") or "—")), style=body),
+                Text(_esc(str(r.get("auth_profile", "") or "—")), style=dim),
+                Text(_esc(egr or "—"), style=ecolor),
+                Text(_esc(status_cell), style=scolor),
+                Text(f"{weight:.2f}", style=dim, justify="right"),
+                Text(hr_cell, style=dim, justify="right"),
+                Text(rpm, style=dim, justify="right"),
+                Text(self._rel_age(r.get("last_success_at", "")), style=dim),
+                Text(sr_cell, style=dim, justify="right"),
+            )
+
+    def _render_balancer_detail(self, row: int) -> None:
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        rows = self._balancer_rows or []
+        if not (0 <= row < len(rows)):
+            self._set_side_paneh(f"[{CYAN}]SLOT-DETALJE[/] [{DIM}]— —[/]")
+            panel.update(Text.from_markup(f"[{GREEN} b]◈ INGEN SLOTS[/]"))
+            return
+        r = rows[row]
+        raw = r.get("raw") or {}
+        status = str(r.get("status", "") or "—")
+        is_stale = bool(r.get("stale"))
+        color = (DIM if is_stale
+                 else self._BAL_STATUS.get(status.lower(), AMBER))
+        slot_id = str(r.get("slot_id", "") or "—")
+        badge_bg = {GREEN: "#06251a", DIM: "#0f1824", BLUE: "#06202e",
+                    AMBER: "#2a1f05", RED: "#1f0d0d"}.get(color, "#06202e")
+        weight = float(r.get("weight", 0.0) or 0.0)
+        headroom = float(r.get("daily_headroom", 0.0) or 0.0)
+        sr = float(r.get("success_rate", 0.0) or 0.0)
+        sr_txt = f"{sr * 100:.0f}%" if sr <= 1.0 else f"{sr:.0f}%"
+        self._set_side_paneh(f"[{CYAN}]SLOT-DETALJE[/] [{DIM}]— {_esc(slot_id)}[/]")
+        lines = [
+            f"[{color} b on {badge_bg}] ● {_esc(status.upper())} [/]",
+            "",
+            f"[{FG} b]{_esc(str(r.get('provider', '') or '—'))}/"
+            f"{_esc(str(r.get('model', '') or '—'))}[/]",
+            f"[{FGDIM}]slot_id[/]    [{FG}]{_esc(slot_id)}[/]",
+            f"[{FGDIM}]profil[/]     [{FG}]{_esc(str(r.get('auth_profile', '') or '—'))}[/]",
+            f"[{FGDIM}]egress[/]     [{FG}]{_esc(str(r.get('egress', '') or '—'))}[/]",
+            f"[{FGDIM}]weight[/]     [{FG}]{weight:.3f}[/]",
+            f"[{FGDIM}]headroom[/]   [{FG}]{headroom:g}[/]",
+            f"[{FGDIM}]daily[/]      [{FG}]{int(r.get('daily_used', 0) or 0)}"
+            f"/{int(r.get('daily_limit', 0) or 0)}[/]",
+            f"[{FGDIM}]rpm[/]        [{FG}]{int(r.get('rpm_used', 0) or 0)}"
+            f"/{int(r.get('rpm_limit', 0) or 0)}[/]",
+            f"[{FGDIM}]last run[/]   [{FG}]{_esc(self._rel_age(r.get('last_success_at', '')))}[/]",
+            f"[{FGDIM}]success[/]    [{FG}]{sr_txt}[/]",
+            f"[{FGDIM}]observed[/]   [{FG}]{bool(r.get('daily_observed'))}[/]",
+            f"[{FGDIM}]stale[/]      [{FG}]{is_stale}[/]",
+        ]
+        # breaker / cooldown_until surfaced from the raw slot when present.
+        if "breaker" in raw:
+            lines.append(f"[{FGDIM}]breaker[/]    [{FG}]{_esc(str(raw.get('breaker')))}[/]")
+        if raw.get("cooldown_until"):
+            lines.append(
+                f"[{FGDIM}]cooldown[/]   [{FG}]{_esc(str(raw.get('cooldown_until')))}[/]")
+        # any remaining raw fields (never fabricated)
+        _known = ("slot_id", "provider", "model", "auth_profile", "egress",
+                  "status", "weight", "daily_headroom", "daily_used",
+                  "daily_limit", "rpm_used", "rpm_limit", "last_success_at",
+                  "success_rate", "daily_observed", "stale", "breaker",
+                  "cooldown_until")
         extra = [k for k in raw if k not in _known]
         if extra:
             lines += ["", f"[{FGDIM} b]FELTER[/]"]

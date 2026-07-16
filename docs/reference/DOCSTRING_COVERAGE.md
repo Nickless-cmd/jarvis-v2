@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6311/12852 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6312/12855 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -17,7 +17,7 @@ Generated from source. 6311/12852 functions/methods documented (49%). The list b
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
 | `core.coding_lane` | 9 | 10 | 90% |
-| `core.context` | 33 | 36 | 91% |
+| `core.context` | 34 | 39 | 87% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 7 | 21 | 33% |
 | `core.identity` | 63 | 154 | 40% |
@@ -39,7 +39,7 @@ Generated from source. 6311/12852 functions/methods documented (49%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1842)
+## Undocumented public functions (1843)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -222,6 +222,7 @@ Generated from source. 6311/12852 functions/methods documented (49%). The list b
 - `core/cli/visible_output.py` :: `normalize_visible_work_units` (L136)
 - `core/cli/visible_output.py` :: `visible_execution_section` (L4)
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
+- `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L96)
 - `core/costing/ledger.py` :: `recent_costs` (L105)
 - `core/costing/ledger.py` :: `telemetry_summary` (L85)
 - `core/eventbus/bus.py` :: `EventBus.recent` (L143)

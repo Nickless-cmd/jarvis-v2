@@ -78,4 +78,7 @@ _Tool-result lifecycle (visible-lane). Spec 2026-07-16._
 | function | `_candidate_by_runs` | `(user_ids, run_window)` | Floor so exactly the last `run_window` user-turns stay warm. | [src](../../../core/context/tool_result_lifecycle.py#L32) |
 | function | `_candidate_by_tokens` | `(messages, token_ceiling)` | Floor so warm tool-tokens <= ceiling. Walks newest->oldest. | [src](../../../core/context/tool_result_lifecycle.py#L40) |
 | function | `compute_new_floor` | `(messages, *, current_floor, run_window, token_ceiling, hysteresis)` | New cold_floor. Monotonic (>= current_floor). 0 = nothing cold yet. | [src](../../../core/context/tool_result_lifecycle.py#L53) |
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/context/tool_result_lifecycle.py#L88) |
+| function | `get_cold_floor` | `(session_id)` | — | [src](../../../core/context/tool_result_lifecycle.py#L96) |
+| function | `set_cold_floor` | `(session_id, floor_id)` | Monotonic: writes only if floor_id > existing. | [src](../../../core/context/tool_result_lifecycle.py#L113) |
 

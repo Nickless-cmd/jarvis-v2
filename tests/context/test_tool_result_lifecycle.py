@@ -62,3 +62,19 @@ def test_monotonic_never_retreats():
     assert trl.compute_new_floor(
         msgs, current_floor=100, run_window=8,
         token_ceiling=40000, hysteresis=0.25) == 100
+
+
+def test_cold_floor_storage_roundtrip():
+    sid = "sess-trl-test-1"
+    assert trl.get_cold_floor(sid) == 0
+    trl.set_cold_floor(sid, 42)
+    assert trl.get_cold_floor(sid) == 42
+    trl.set_cold_floor(sid, 100)
+    assert trl.get_cold_floor(sid) == 100
+
+
+def test_cold_floor_monotonic_write():
+    sid = "sess-trl-test-2"
+    trl.set_cold_floor(sid, 100)
+    trl.set_cold_floor(sid, 50)
+    assert trl.get_cold_floor(sid) == 100

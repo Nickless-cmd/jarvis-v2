@@ -78,3 +78,51 @@ def compute_new_floor(
     cand_runs = _candidate_by_runs(all_user_ids, run_window)
     cand_tokens = _candidate_by_tokens(messages, token_ceiling)
     return max(current_floor, cand_runs, cand_tokens)
+
+
+from core.runtime.db import connect
+
+_TABLE = "tool_result_cold_floor"
+
+
+def _ensure_table(conn) -> None:
+    conn.execute(
+        f"CREATE TABLE IF NOT EXISTS {_TABLE} ("
+        "session_id TEXT PRIMARY KEY, floor_id INTEGER NOT NULL, "
+        "updated_at TEXT NOT NULL)"
+    )
+
+
+def get_cold_floor(session_id: str) -> int:
+    sid = (session_id or "").strip()
+    if not sid:
+        return 0
+    with connect() as conn:
+        _ensure_table(conn)
+        row = conn.execute(
+            f"SELECT floor_id FROM {_TABLE} WHERE session_id = ?", (sid,)
+        ).fetchone()
+    if row is None:
+        return 0
+    try:
+        return int(row["floor_id"])
+    except (KeyError, TypeError, ValueError):
+        return int(row[0])
+
+
+def set_cold_floor(session_id: str, floor_id: int) -> None:
+    """Monotonic: writes only if floor_id > existing."""
+    sid = (session_id or "").strip()
+    if not sid:
+        return
+    from datetime import datetime, UTC
+    now = datetime.now(UTC).isoformat()
+    with connect() as conn:
+        _ensure_table(conn)
+        conn.execute(
+            f"INSERT INTO {_TABLE} (session_id, floor_id, updated_at) "
+            "VALUES (?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET "
+            "floor_id = excluded.floor_id, updated_at = excluded.updated_at "
+            "WHERE excluded.floor_id > tool_result_cold_floor.floor_id",
+            (sid, int(floor_id), now),
+        )

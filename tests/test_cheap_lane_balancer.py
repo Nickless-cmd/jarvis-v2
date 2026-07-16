@@ -11,7 +11,7 @@ def test_balancer_slot_has_slot_id():
         auth_profile="default", base_url="https://api.groq.com/openai/v1",
         rpm_limit=30, daily_limit=10000, is_public_proxy=False,
     )
-    assert s.slot_id == "groq::llama-3.1-8b-instant"
+    assert s.slot_id == "groq::llama-3.1-8b-instant::default"
 
 
 def test_balancer_slot_is_frozen():
@@ -91,10 +91,10 @@ def test_pool_marks_public_proxies_correctly(monkeypatch):
 
     pool = clb.build_slot_pool()
     by_id = {s.slot_id: s for s in pool}
-    assert by_id["ollamafreeapi::gpt-oss:20b"].is_public_proxy is True
-    assert by_id["opencode::minimax-m2.5-free"].is_public_proxy is True
-    assert by_id["arko::jarvis-cheap-lane"].is_public_proxy is True
-    assert by_id["groq::llama-3.1-8b-instant"].is_public_proxy is False
+    assert by_id["ollamafreeapi::gpt-oss:20b::default"].is_public_proxy is True
+    assert by_id["opencode::minimax-m2.5-free::default"].is_public_proxy is True
+    assert by_id["arko::jarvis-cheap-lane::default"].is_public_proxy is True
+    assert by_id["groq::llama-3.1-8b-instant::default"].is_public_proxy is False
 
 
 def test_pool_skips_disabled_models(monkeypatch):
@@ -285,7 +285,7 @@ def test_select_slot_picks_only_eligible():
         )
     chosen = _select_slot(states, pool, _time.time())
     assert chosen is not None
-    assert chosen.slot_id == "p7::m7"
+    assert chosen.slot_id == "p7::m7::default"
 
 
 def test_weighted_random_distribution_respects_weights():
@@ -588,8 +588,8 @@ def test_snapshot_returns_pool_metadata(monkeypatch, tmp_path):
     assert isinstance(snap["slots"], list)
     assert len(snap["slots"]) == 2
     slot_ids = {s["slot_id"] for s in snap["slots"]}
-    assert "groq::m1" in slot_ids
-    assert "ollamafreeapi::x" in slot_ids
+    assert "groq::m1::default" in slot_ids
+    assert "ollamafreeapi::x::default" in slot_ids
 
 
 def test_snapshot_marks_blocked_slots(monkeypatch, tmp_path):
@@ -599,8 +599,8 @@ def test_snapshot_marks_blocked_slots(monkeypatch, tmp_path):
         clb, "build_slot_pool",
         lambda: [_slot(provider="groq", model="m")],
     )
-    state = clb.SlotState(slot_id="groq::m", cooldown_until=_time.time() + 600)
-    clb._save_state({"groq::m": state})
+    state = clb.SlotState(slot_id="groq::m::default", cooldown_until=_time.time() + 600)
+    clb._save_state({"groq::m::default": state})
     snap = clb.balancer_snapshot()
     assert snap["blocked_now"] == 1
     assert snap["eligible_now"] == 0
@@ -652,13 +652,14 @@ def test_register_provider_wide_failure_cools_all_provider_slots(tmp_path, monke
     )
     assert affected == 3
     # All 3 ollamafreeapi slots have cooldown
-    for sid in ("ollamafreeapi::m1", "ollamafreeapi::m2", "ollamafreeapi::m3"):
+    for sid in ("ollamafreeapi::m1::default", "ollamafreeapi::m2::default",
+                "ollamafreeapi::m3::default"):
         st = states[sid]
         assert st.cooldown_until == 1000.0 + 600  # default cooldown
         assert "provider-wide" in st.cooldown_reason
         assert "dns-down" in st.cooldown_reason
     # groq is NOT touched
-    assert "groq::g1" not in states or states["groq::g1"].cooldown_until is None
+    assert "groq::g1::default" not in states or states["groq::g1::default"].cooldown_until is None
 
 
 def test_call_balanced_dns_failure_excludes_whole_provider(monkeypatch, tmp_path):
@@ -909,3 +910,14 @@ def test_reliability_not_penalized_below_min_samples():
     noisy = SlotState(slot_id="p::m",
                       total_calls=_MIN_RELIABILITY_SAMPLES - 1, total_failures=_MIN_RELIABILITY_SAMPLES - 1)
     assert _compute_weight(slot, noisy, now=1000.0) == _compute_weight(slot, fresh, now=1000.0)
+
+
+def test_slot_id_includes_auth_profile():
+    from core.services.cheap_lane_balancer import BalancerSlot
+    a = BalancerSlot(provider="groq", model="x", auth_profile="default",
+                     base_url="", rpm_limit=None, daily_limit=None, is_public_proxy=False)
+    b = BalancerSlot(provider="groq", model="x", auth_profile="account2",
+                     base_url="", rpm_limit=None, daily_limit=None, is_public_proxy=False)
+    assert a.slot_id != b.slot_id
+    assert a.slot_id == "groq::x::default"
+    assert b.slot_id == "groq::x::account2"

@@ -28,7 +28,7 @@ class BalancerSlot:
 
     @property
     def slot_id(self) -> str:
-        return f"{self.provider}::{self.model}"
+        return f"{self.provider}::{self.model}::{self.auth_profile or 'default'}"
 
 
 @dataclass
@@ -921,7 +921,7 @@ def build_slot_pool() -> list[BalancerSlot]:
         if not _credentials_ready(provider, auth_profile):
             continue
         for model in static_models:
-            sid = f"{provider}::{model}"
+            sid = f"{provider}::{model}::{auth_profile or 'default'}"
             if sid in seen:
                 continue
             seen.add(sid)

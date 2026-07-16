@@ -279,12 +279,20 @@ def _daily_used_from_db(provider: str, auth_profile: str = "") -> int:
         return 0
 
 
-def _daily_headroom_for(slot: BalancerSlot) -> float:
-    """Daily headroom fra SQLite frem for balancerens private JSON daily_use_count."""
-    if not slot.daily_limit:
+def _daily_headroom_for(slot: BalancerSlot, state: "SlotState | None" = None) -> float:
+    """Daily headroom fra SQLite frem for balancerens private JSON daily_use_count.
+
+    Task 13: når den lærte loft (state.daily_observed) er kendt OG flaget er ON,
+    bruges min(config daily_limit, daily_observed) som effektivt loft → en slot på/over
+    sit lærte loft får headroom 0.0 (→ weight 0 → skippes UDEN try-and-fail round-trip).
+    state=None (default) bevarer den rene config-loft-adfærd for andre callers."""
+    limit = slot.daily_limit
+    if limit and state is not None and _flag_adaptive_quota() and state.daily_observed is not None:
+        limit = min(limit, state.daily_observed)
+    if not limit:
         return 1.0
     used = _daily_used_from_db(slot.provider, slot.auth_profile)
-    return max(0.0, 1.0 - used / slot.daily_limit)
+    return max(0.0, 1.0 - used / limit)
 
 
 def _observe_central(nerve: str, payload: dict) -> None:
@@ -327,7 +335,8 @@ def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
         base *= rpm_headroom
     if slot.daily_limit:
         # Fund 5: daily headroom fra SQLite (én sandhed), ikke privat JSON daily_use_count.
-        base *= _daily_headroom_for(slot)
+        # Task 13: giv state med → predictive skip mod lært loft (min(config, daily_observed)).
+        base *= _daily_headroom_for(slot, state)
 
     health = _BREAKER_HEALTH.get(state.breaker_level, 0.05)
     preference = _PROXY_BOOST if slot.is_public_proxy else 1.0

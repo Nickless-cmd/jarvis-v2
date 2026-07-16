@@ -1072,3 +1072,37 @@ def test_persist_roundtrip_of_learned_fields():
     st = bal.SlotState(slot_id="groq::x::default"); st.daily_observed = 55; st.quota_429_count = 2
     d = bal._state_to_dict(st); st2 = bal._state_from_dict(d)
     assert st2.daily_observed == 55 and st2.quota_429_count == 2
+
+
+def test_predictive_skip_when_at_learned_ceiling(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_flag_adaptive_quota", lambda: True)
+    # config allows 100/day, but we've learned the real ceiling is 40, and 40 already used
+    monkeypatch.setattr(bal, "_daily_used_from_db", lambda provider, auth_profile="": 40)
+    slot = bal.BalancerSlot(provider="groq", model="x", auth_profile="account2",
+                            base_url="", rpm_limit=None, daily_limit=100, is_public_proxy=False)
+    st = bal.SlotState(slot_id=slot.slot_id); st.daily_observed = 40
+    assert bal._daily_headroom_for(slot, st) == 0.0          # no headroom vs learned ceiling
+    assert bal._compute_weight(slot, st, 1000.0) == 0.0      # -> skipped, no try-and-fail
+
+
+def test_config_headroom_when_no_learned_ceiling(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_flag_adaptive_quota", lambda: True)
+    monkeypatch.setattr(bal, "_daily_used_from_db", lambda provider, auth_profile="": 40)
+    slot = bal.BalancerSlot(provider="groq", model="x", auth_profile="account2",
+                            base_url="", rpm_limit=None, daily_limit=100, is_public_proxy=False)
+    st = bal.SlotState(slot_id=slot.slot_id)  # daily_observed is None
+    # falls back to config limit 100: 40/100 used -> headroom 0.6
+    assert abs(bal._daily_headroom_for(slot, st) - 0.6) < 1e-9
+
+
+def test_flag_off_ignores_learned_ceiling(monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    monkeypatch.setattr(bal, "_flag_adaptive_quota", lambda: False)
+    monkeypatch.setattr(bal, "_daily_used_from_db", lambda provider, auth_profile="": 40)
+    slot = bal.BalancerSlot(provider="groq", model="x", auth_profile="account2",
+                            base_url="", rpm_limit=None, daily_limit=100, is_public_proxy=False)
+    st = bal.SlotState(slot_id=slot.slot_id); st.daily_observed = 40
+    # flag off -> learned ceiling ignored -> config 100 -> headroom 0.6
+    assert abs(bal._daily_headroom_for(slot, st) - 0.6) < 1e-9

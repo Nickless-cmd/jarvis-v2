@@ -80,17 +80,17 @@ _Client-owned agent loop: /v1/agent/step._
 | function | `tools_execute` | `(body)` | Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L612) |
 | function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L742) |
 | function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L759) |
-| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools, session_id=…, user_id=…, extra_body=…, reasoning_replay_enabled=…, cache_contract_enabled=…, prefix_sha=…, prefix_len=…, follow_tee=…)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1026) |
-| class | `_AbsorbBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1157) |
-| function | `agent_turn_absorb` | `(body)` | Absorbér en klient-drevet tur i hjernen (post-process). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1168) |
-| class | `_TurnLiveBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1197) |
-| function | `_live_follow_active` | `(settings, session_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1212) |
-| function | `_follow_publish_line` | `(session_id, line)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1217) |
-| function | `_follow_begin_frames` | `(session_id, run_id, provider, model)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1225) |
-| function | `_follow_delta_frame` | `(session_id, text)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1237) |
-| function | `_follow_end_frames` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1246) |
-| function | `agent_turn_begin` | `(body)` | Registrér en klient-drevet tur som live (aktivt visible run + run_follow). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1259) |
-| function | `agent_turn_end` | `(body)` | Ryd live-tilstanden for en klient-drevet tur (altid safe at kalde). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1282) |
+| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools, session_id=…, user_id=…, extra_body=…, reasoning_replay_enabled=…, cache_contract_enabled=…, prefix_sha=…, prefix_len=…, follow_tee=…)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1033) |
+| class | `_AbsorbBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1169) |
+| function | `agent_turn_absorb` | `(body)` | Absorbér en klient-drevet tur i hjernen (post-process). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1180) |
+| class | `_TurnLiveBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1209) |
+| function | `_live_follow_active` | `(settings, session_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1224) |
+| function | `_follow_publish_line` | `(session_id, line)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1229) |
+| function | `_follow_begin_frames` | `(session_id, run_id, provider, model)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1237) |
+| function | `_follow_delta_frame` | `(session_id, text)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1249) |
+| function | `_follow_end_frames` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1258) |
+| function | `agent_turn_begin` | `(body)` | Registrér en klient-drevet tur som live (aktivt visible run + run_follow). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1271) |
+| function | `agent_turn_end` | `(body)` | Ryd live-tilstanden for en klient-drevet tur (altid safe at kalde). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1294) |
 
 ## `apps/api/jarvis_api/routes/agentic_guards.py`
 _MC endpoint for agentic-loop guard observability._

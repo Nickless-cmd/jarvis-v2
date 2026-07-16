@@ -952,10 +952,17 @@ async def agent_step(request: Request):
     status = "ok" if (content or tool_calls) else "empty"
 
     if _flag("jc_agent_observability"):
+        # Cache-rapporterings-fix (2026-07-16): agent-lanen glemte at videregive
+        # deepseek's prompt-cache-split til record_cost → dashboardet viste 0% cache
+        # for jarvis-code selvom deepseek CACHER kraftigt (cost bekræfter det). Læs
+        # begge nøgle-varianter (normaliseret + deepseek-rå) som visible-lanen gør.
+        _ch = int(raw.get("cache_hit_tokens") or raw.get("prompt_cache_hit_tokens") or 0)
+        _cm = int(raw.get("cache_miss_tokens") or raw.get("prompt_cache_miss_tokens") or 0)
         try:
             record_cost(lane="agent", provider=provider, model=model,
                         input_tokens=tokens_in, output_tokens=tokens_out,
-                        cost_usd=cost_usd, user_id=user_id)
+                        cost_usd=cost_usd, user_id=user_id,
+                        cache_hit_tokens=_ch, cache_miss_tokens=_cm)
         except Exception:
             logger.debug("agent/step record_cost fejlede", exc_info=True)
         _emit_agent_nerve(
@@ -1078,10 +1085,15 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                 _fr = str(ev.get("finish_reason") or "")
                 _status = "ok" if (_content or collected) else "empty"
                 if _flag("jc_agent_observability"):
+                    # Cache-rapporterings-fix (2026-07-16): videregiv deepseek's
+                    # prompt-cache-split (stream-path — den jarvis-code bruger).
+                    _sch = int(ev.get("cache_hit_tokens") or ev.get("prompt_cache_hit_tokens") or 0)
+                    _scm = int(ev.get("cache_miss_tokens") or ev.get("prompt_cache_miss_tokens") or 0)
                     try:
                         record_cost(lane="agent", provider=provider, model=model,
                                     input_tokens=_tin, output_tokens=_tout,
-                                    cost_usd=_cost, user_id=user_id)
+                                    cost_usd=_cost, user_id=user_id,
+                                    cache_hit_tokens=_sch, cache_miss_tokens=_scm)
                     except Exception:
                         logger.debug("agent/step stream record_cost fejlede", exc_info=True)
                     _emit_agent_nerve(

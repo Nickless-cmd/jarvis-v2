@@ -388,7 +388,15 @@ def _full_context(user_message: str, name: str = "default") -> str:
     caches for forskellige workspaces aldrig blander sig). Self-safe → '' (falder til identity)."""
     import hashlib
     import time as _t
-    key = hashlib.sha256((f"{name}\x00{user_message or ''}").encode("utf-8")).hexdigest()[:16]
+    # Cache-nøgle inkluderer current_user_id() så en brugers scopede recall aldrig
+    # serveres til en anden (assembly'en bygges nu inde i user_context — recall er per-bruger).
+    try:
+        from core.identity.workspace_context import current_user_id as _cuid
+        _uid_key = _cuid() or ""
+    except Exception:
+        _uid_key = ""
+    key = hashlib.sha256(
+        (f"{_uid_key}\x00{name}\x00{user_message or ''}").encode("utf-8")).hexdigest()[:16]
     now = _t.monotonic()
     hit = _FULL_CTX_CACHE.get(key)
     if hit and hit[1] > now:
@@ -875,9 +883,17 @@ async def agent_step(request: Request):
             logger.debug("agent/step thinking_mode-mapping fejlede", exc_info=True)
 
     # System-prompt (tiered context) foran + klientens samtale (inkl. tool-resultater).
+    # KRITISK (16.jul): byg prompt-assembly'en INDE i ejerens user_context. recall-motorens
+    # 'workspace'-kilde kalder workspace_dir() → current_user_id() (context-var). agent_step
+    # udledte user_id (L769) men installerede den ALDRIG i context'en → workspace_dir() fejlede
+    # → workspace-recall (Jarvis' persistente hukommelse) blev lydløst udeladt. KUN i jarvis-code
+    # (desk kører altid inde i sin auth-context) → "kan ikke huske"-symptomet. Nu scoper recall
+    # korrekt. Tom user_id (member u. id) → 'public'-workspace-fallback (uændret adfærd).
+    from core.identity.workspace_context import user_context
+    with user_context(discord_id=user_id or ""):
+        _system_prompt_text = _build_system_prompt(context, _last_user, _ws_name, env=env)
     chat_messages: list[dict[str, Any]] = [
-        {"role": "system",
-         "content": _build_system_prompt(context, _last_user, _ws_name, env=env)}]
+        {"role": "system", "content": _system_prompt_text}]
     chat_messages.extend(client_messages)
     # Fase A1: flyt den volatile assembly-hale bag samtalen (cache-stabilt prefix).
     # Flag default OFF → chat_messages uændret (byte-identisk med i dag).
@@ -892,7 +908,8 @@ async def agent_step(request: Request):
     if settings.agent_step_cache_contract_enabled:
         try:
             from core.services.cache_telemetry import prefix_signature
-            _head = _build_system_prompt(context, _last_user, _ws_name, env=None)
+            with user_context(discord_id=user_id or ""):
+                _head = _build_system_prompt(context, _last_user, _ws_name, env=None)
             _prefix_sha, _prefix_len = prefix_signature(_head, tools)
         except Exception:
             logger.debug("agent/step prefix_signature fejlede", exc_info=True)

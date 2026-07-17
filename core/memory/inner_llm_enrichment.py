@@ -91,22 +91,28 @@ def _sanitize_private_layer_text(text: str, *, max_len: int = 200) -> str:
 
 
 def _resolve_enrichment_target() -> dict[str, object] | None:
-    """Resolve Groq-first primary target for inner enrichment."""
+    """Resolve the PRIMARY target for inner enrichment.
+
+    Cost-policy (2026-07-17, Bjørn): inner-voice/memory-enrichment must NOT burn the
+    paid deepseek-API. The inner_enrichment registry lane points at paid deepseek, so
+    we resolve the `local` (ollama-cloud, free) lane as primary here instead — with
+    the free synthetic-Groq target below as fallback. Never paid deepseek. The daemon
+    quality-lane (daemon_llm.py) keeps its own inner_enrichment resolve untouched."""
     try:
-        target = resolve_provider_router_target(lane="inner_enrichment")
+        target = resolve_provider_router_target(lane="local")
     except Exception:
         logger.warning(
-            "inner-llm-enrichment: failed to resolve inner_enrichment lane target"
+            "inner-llm-enrichment: failed to resolve local (ollama) lane target"
         )
         target = None
 
     if target and bool(target.get("active")):
         provider = str(target.get("provider") or "").strip()
         model = str(target.get("model") or "").strip()
-        if provider and model:
+        if provider == "ollama" and model:
             return {
                 **target,
-                "resolved_lane": "inner_enrichment",
+                "resolved_lane": "local",
             }
 
     synthetic = _synthetic_groq_target()

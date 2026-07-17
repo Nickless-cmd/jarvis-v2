@@ -15,26 +15,26 @@ _Async LLM enrichment for private memory pipeline layers._
 | function | `_sanitize_private_growth_note_enrichment` | `(text)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L46) |
 | function | `_sanitize_inner_voice_enrichment` | `(text)` | Reuse inner-voice sanitization before writing enriched voice lines. | [src](../../../core/memory/inner_llm_enrichment.py#L60) |
 | function | `_sanitize_private_layer_text` | `(text, *, max_len=…)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L70) |
-| function | `_resolve_enrichment_target` | `()` | Resolve Groq-first primary target for inner enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L93) |
-| function | `_resolve_ollama_fallback_target` | `()` | — | [src](../../../core/memory/inner_llm_enrichment.py#L118) |
-| function | `_synthetic_groq_target` | `()` | — | [src](../../../core/memory/inner_llm_enrichment.py#L136) |
-| function | `_build_inner_note_prompt` | `(payload, chat_context)` | Return (system_prompt, user_message) for inner note enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L175) |
-| function | `_build_growth_note_prompt` | `(payload, chat_context)` | Return (system_prompt, user_message) for growth note enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L197) |
-| function | `_build_inner_voice_prompt` | `(payload, chat_context)` | Return (system_prompt, user_message) for inner voice enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L219) |
-| function | `_resolve_auth_header` | `(target)` | Build auth headers from provider router target. | [src](../../../core/memory/inner_llm_enrichment.py#L244) |
-| function | `_resolve_cheap_cloud_fallback_targets` | `()` | Return non-Ollama cheap providers from the registry as fallback candidates. | [src](../../../core/memory/inner_llm_enrichment.py#L286) |
-| function | `_response_cache_enabled` | `()` | Er den tabsfri prompt-hash-cache aktiv? Default TRUE (reduceret adfærd). | [src](../../../core/memory/inner_llm_enrichment.py#L327) |
-| function | `_response_cache_key` | `(system_prompt, user_message)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L336) |
-| function | `_response_cache_get` | `(key)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L342) |
-| function | `_response_cache_put` | `(key, text)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L355) |
-| function | `call_cheap_llm` | `(system_prompt, user_message)` | Public alias for _call_cheap_llm so other services can reuse it. | [src](../../../core/memory/inner_llm_enrichment.py#L367) |
-| function | `_call_cheap_llm` | `(system_prompt, user_message)` | Call Groq-first LLM with local Ollama fallback. | [src](../../../core/memory/inner_llm_enrichment.py#L376) |
-| function | `_build_inner_llm_body` | `(*, provider, model, system_prompt, user_message)` | Build the openai-compat chat-completion body for inner enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L485) |
-| function | `_call_remote_chat` | `(*, target, system_prompt, user_message, timeout)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L525) |
-| function | `_call_ollama_chat` | `(*, model, base_url, system_prompt, user_message, timeout)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L603) |
-| function | `_observe_enrichment` | `(*, enriched, reused, failed)` | Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN antal lag | [src](../../../core/memory/inner_llm_enrichment.py#L673) |
-| function | `_enrich_worker` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Sequentially enrich 3 layers via cheap LLM, updating DB in-place. | [src](../../../core/memory/inner_llm_enrichment.py#L688) |
-| function | `enrich_private_layers_async` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Fire-and-forget: spawn daemon thread to enrich private layer payloads via LLM. | [src](../../../core/memory/inner_llm_enrichment.py#L807) |
+| function | `_resolve_enrichment_target` | `()` | Resolve the PRIMARY target for inner enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L93) |
+| function | `_resolve_ollama_fallback_target` | `()` | — | [src](../../../core/memory/inner_llm_enrichment.py#L124) |
+| function | `_synthetic_groq_target` | `()` | — | [src](../../../core/memory/inner_llm_enrichment.py#L142) |
+| function | `_build_inner_note_prompt` | `(payload, chat_context)` | Return (system_prompt, user_message) for inner note enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L181) |
+| function | `_build_growth_note_prompt` | `(payload, chat_context)` | Return (system_prompt, user_message) for growth note enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L203) |
+| function | `_build_inner_voice_prompt` | `(payload, chat_context)` | Return (system_prompt, user_message) for inner voice enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L225) |
+| function | `_resolve_auth_header` | `(target)` | Build auth headers from provider router target. | [src](../../../core/memory/inner_llm_enrichment.py#L250) |
+| function | `_resolve_cheap_cloud_fallback_targets` | `()` | Return non-Ollama cheap providers from the registry as fallback candidates. | [src](../../../core/memory/inner_llm_enrichment.py#L292) |
+| function | `_response_cache_enabled` | `()` | Er den tabsfri prompt-hash-cache aktiv? Default TRUE (reduceret adfærd). | [src](../../../core/memory/inner_llm_enrichment.py#L333) |
+| function | `_response_cache_key` | `(system_prompt, user_message)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L342) |
+| function | `_response_cache_get` | `(key)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L348) |
+| function | `_response_cache_put` | `(key, text)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L361) |
+| function | `call_cheap_llm` | `(system_prompt, user_message)` | Public alias for _call_cheap_llm so other services can reuse it. | [src](../../../core/memory/inner_llm_enrichment.py#L373) |
+| function | `_call_cheap_llm` | `(system_prompt, user_message)` | Call Groq-first LLM with local Ollama fallback. | [src](../../../core/memory/inner_llm_enrichment.py#L382) |
+| function | `_build_inner_llm_body` | `(*, provider, model, system_prompt, user_message)` | Build the openai-compat chat-completion body for inner enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L491) |
+| function | `_call_remote_chat` | `(*, target, system_prompt, user_message, timeout)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L531) |
+| function | `_call_ollama_chat` | `(*, model, base_url, system_prompt, user_message, timeout)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L609) |
+| function | `_observe_enrichment` | `(*, enriched, reused, failed)` | Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN antal lag | [src](../../../core/memory/inner_llm_enrichment.py#L679) |
+| function | `_enrich_worker` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Sequentially enrich 3 layers via cheap LLM, updating DB in-place. | [src](../../../core/memory/inner_llm_enrichment.py#L694) |
+| function | `enrich_private_layers_async` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Fire-and-forget: spawn daemon thread to enrich private layer payloads via LLM. | [src](../../../core/memory/inner_llm_enrichment.py#L813) |
 
 ## `core/memory/memory_size_guard.py`
 _MEMORY.md størrelses-værn (spec C, 2026-07-10)._

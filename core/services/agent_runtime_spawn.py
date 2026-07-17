@@ -18,6 +18,7 @@ from uuid import uuid4
 
 from core.services.agent_runtime_base import (
     AGENT_ROLE_TEMPLATES,
+    MAX_AGENT_TURNS,
     MAX_CONCURRENT_AGENTS,
     MAX_SPAWN_DEPTH,
     RETRY_BASE_SECONDS,
@@ -99,6 +100,7 @@ def spawn_agent_task(
     persistent: bool = False,
     ttl_seconds: int = 0,
     budget_tokens: int = 0,
+    max_turns: int = 0,
     context: dict[str, object] | None = None,
     result_contract: dict[str, object] | None = None,
     execution_mode: str = "solo-task",
@@ -108,6 +110,8 @@ def spawn_agent_task(
     model: str = "",
 ) -> dict[str, object]:
     _check_spawn_limits()
+    if max_turns <= 0:
+        max_turns = MAX_AGENT_TURNS
     spawn_depth = _spawn_depth_for(str(parent_agent_id or ""))
     if spawn_depth > MAX_SPAWN_DEPTH:
         raise ValueError(
@@ -215,6 +219,7 @@ def spawn_agent_task(
         ttl_seconds=ttl_seconds,
         next_wake_at=next_wake_at,
         budget_tokens=budget_tokens,
+        max_turns=max_turns,
         context_json=json.dumps(context),
         result_contract_json=json.dumps(result_contract),
     )
@@ -362,6 +367,17 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
     agent = get_agent_registry_entry(agent_id)
     if agent is None:
         raise RuntimeError(f"unknown agent: {agent_id}")
+    # maxTurns check: skip execution if agent has exhausted its turn budget
+    max_turns = int(agent.get("max_turns") or 0)
+    turns_completed = int(agent.get("turns_completed") or 0)
+    if max_turns > 0 and turns_completed >= max_turns:
+        update_agent_registry_entry(
+            agent_id,
+            status="completed",
+            completed_at=_now_iso(),
+            last_error=f"max_turns exhausted: {turns_completed}/{max_turns}",
+        )
+        return build_agent_detail_surface(agent_id) or {"agent_id": agent_id, "status": "completed", "note": "max_turns exhausted"}
     resolved_thread_id = thread_id or _agent_thread_id(agent_id)
     messages = list_agent_messages(agent_id=agent_id, thread_id=resolved_thread_id, limit=40)
     prompt = _build_agent_prompt(
@@ -480,10 +496,13 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             agent_id,
             status="scheduled" if bool(agent.get("persistent")) and str(agent.get("next_wake_at") or "") else "completed",
             tokens_burned_delta=tokens_used,
+            turns_completed_delta=1,
             completed_at=_now_iso(),
         )
         # Budget enforcement: expire if over token budget
         _check_budget_and_expire(agent_id, tokens_used=tokens_used)
+        # maxTurns enforcement: expire if turn limit reached
+        _check_max_turns_and_expire(agent_id)
         # Persist outcome to AGENT_OUTCOMES.md for self-model continuity
         try:
             from core.services.agent_outcomes_log import append_agent_outcome
@@ -942,6 +961,36 @@ def _check_budget_and_expire(agent_id: str, *, tokens_used: int) -> bool:
             content=f"Agent expired: token budget exhausted ({burned}/{budget})",
         )
         logger.info("agent %s expired: budget exhausted %d/%d", agent_id, burned, budget)
+        return True
+    return False
+
+
+def _check_max_turns_and_expire(agent_id: str) -> bool:
+    """Expire agent if it has reached its max_turns limit. Returns True if expired."""
+    agent = get_agent_registry_entry(agent_id)
+    if agent is None:
+        return False
+    max_turns = int(agent.get("max_turns") or 0)
+    if max_turns <= 0:
+        return False
+    completed = int(agent.get("turns_completed") or 0)
+    if completed >= max_turns:
+        update_agent_registry_entry(
+            agent_id,
+            status="expired",
+            expired_at=_now_iso(),
+            last_error=f"max_turns reached: {completed}/{max_turns}",
+        )
+        create_agent_message(
+            message_id=f"agent-msg-{uuid4().hex}",
+            thread_id=_agent_thread_id(agent_id),
+            agent_id=agent_id,
+            direction="runtime->agent",
+            role="system",
+            kind="max-turns-reached",
+            content=f"Agent expired: max turns reached ({completed}/{max_turns})",
+        )
+        logger.info("agent %s expired: max_turns %d/%d", agent_id, completed, max_turns)
         return True
     return False
 

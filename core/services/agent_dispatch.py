@@ -20,11 +20,11 @@ import re
 # §19.4 dispatch-flow. parallel=True → kan køre samtidigt; planner/synthesizer er
 # barrierer (afhænger af forrige lag).
 ROLE_PLAN: tuple[dict[str, object], ...] = (
-    {"role": "researcher", "parallel": True},
-    {"role": "planner", "parallel": False},
-    {"role": "executor", "parallel": True},
-    {"role": "critic", "parallel": True},
-    {"role": "synthesizer", "parallel": False},
+    {"role": "researcher", "parallel": True, "max_turns": 4},
+    {"role": "planner", "parallel": False, "max_turns": 2},
+    {"role": "executor", "parallel": True, "max_turns": 8},
+    {"role": "critic", "parallel": True, "max_turns": 3},
+    {"role": "synthesizer", "parallel": False, "max_turns": 2},
 )
 
 _COMPLEXITY_KEYWORDS = (
@@ -55,7 +55,7 @@ def decide_dispatch(task: str, *, force: bool | None = None) -> dict:
 
 def plan_dispatch(task: str, *, executor_count: int = 1) -> list[dict]:
     """Byg rolle-planen for en dispatch (§19.3/§19.4). `executor_count` executors
-    deler implementeringen parallelt."""
+    deler implementeringen parallelt. Hver rolle får sin `max_turns` fra ROLE_PLAN."""
     n_exec = max(1, int(executor_count))
     plan: list[dict] = []
     for step in ROLE_PLAN:
@@ -66,6 +66,7 @@ def plan_dispatch(task: str, *, executor_count: int = 1) -> list[dict]:
                 "role": step["role"],
                 "goal": f"{step['role']} for: {task}{suffix}",
                 "parallel": step["parallel"],
+                "max_turns": step.get("max_turns", 5),
             })
     return plan
 
@@ -122,8 +123,9 @@ def dispatch_code_mode_task(task: str, *, inline: bool | None = None,
         from core.services.agent_runtime import spawn_agent_task
         for step in plan:
             try:
+                max_turns = int(step.get("max_turns") or 5)
                 res = spawn_agent_task(role=str(step["role"]), goal=str(step["goal"]),
-                                       auto_execute=True)
+                                       auto_execute=True, max_turns=max_turns)
                 spawned.append({"role": step["role"], "agent_id": res.get("agent_id")})
             except Exception as exc:
                 spawned.append({"role": step["role"], "error": str(exc)})

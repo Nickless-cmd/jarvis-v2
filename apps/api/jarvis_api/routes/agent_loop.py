@@ -945,11 +945,21 @@ async def agent_step(request: Request):
     # Fase 5 Task 19 (flag-gated, default OFF): only engages when native
     # tool_calls is empty — the native path is otherwise untouched.
     content, tool_calls = _apply_xml_toolcall_fallback(content, tool_calls)
+    # I1-heal (mirror visible lane): surface reasoning_content instead of a silent
+    # empty finish when a thinking-model put its whole answer in the thinking channel.
+    if not content and not tool_calls:
+        _reason = str(raw.get("reasoning_content") or "").strip()
+        if _reason:
+            content = _reason
     tokens_in = int(raw.get("input_tokens") or 0)
     tokens_out = int(raw.get("output_tokens") or 0)
     cost_usd = float(raw.get("cost_usd") or 0.0)
     finish_reason = str(raw.get("finish_reason") or "")
     status = "ok" if (content or tool_calls) else "empty"
+    if status == "empty":
+        # Visible note instead of silence; status stays "empty" for telemetry.
+        content = ("⟨Jeg fik ikke formuleret et svar den gang — "
+                   "spørg mig gerne igen.⟩")
 
     if _flag("jc_agent_observability"):
         # Cache-rapporterings-fix (2026-07-16): agent-lanen glemte at videregive
@@ -1079,11 +1089,24 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                 _content, collected = _apply_xml_toolcall_fallback(_content, collected)
                 if collected:
                     yield _sse("tool_calls", {"tool_calls": collected})
+                # I1-heal (mirror visible lane, visible_runs.py:4382): a thinking-model
+                # turn whose whole answer landed in reasoning_content is NOT a silent
+                # cut-off — surface the reasoning as the answer instead of finishing empty.
+                if not _content and not collected:
+                    _reason = str(ev.get("reasoning_content") or "").strip()
+                    if _reason:
+                        _content = _reason
                 _tin = int(ev.get("input_tokens") or 0)
                 _tout = int(ev.get("output_tokens") or 0)
                 _cost = float(ev.get("cost_usd") or 0.0)
                 _fr = str(ev.get("finish_reason") or "")
                 _status = "ok" if (_content or collected) else "empty"
+                if _status == "empty":
+                    # Don't hand the client an empty 'done' (= silent cut-off). Keep
+                    # _status="empty" so Central telemetry still records the recurrence,
+                    # but give the user a visible note instead of nothing.
+                    _content = ("⟨Jeg fik ikke formuleret et svar den gang — "
+                                "spørg mig gerne igen.⟩")
                 if _flag("jc_agent_observability"):
                     # Cache-rapporterings-fix (2026-07-16): videregiv deepseek's
                     # prompt-cache-split (stream-path — den jarvis-code bruger).

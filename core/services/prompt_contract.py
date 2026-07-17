@@ -1974,8 +1974,11 @@ def build_visible_chat_prompt_assembly(
 
     mutation_section = _self_mutation_lineage_section()
     if mutation_section:
-        parts.append(mutation_section)
-        derived_inputs.append("self mutation lineage")
+        # CACHE-FIX (2026-07-17): the timestamped self-change list churns every time
+        # an edit/write is staged → it sat in the cacheable HEAD (offset ~83%) and
+        # busted the whole history downstream. Tail-anchor it (after the sentinel),
+        # same discipline as 030ad902.
+        _tail_add("self mutation lineage", mutation_section)
 
     _mark("before_relevance_resolve")
     # Resolve relevance — blocks until the bounded NL prompt relevance call
@@ -2035,15 +2038,19 @@ def build_visible_chat_prompt_assembly(
         # from MEMORY.md so reboot/session boundaries do not drop recent work.
         daily_lines = _recent_daily_memory_lines(limit=8 if compact else 12)
         if daily_lines:
-            parts.append(
+            # CACHE-FIX (2026-07-17): the daily file is appended ~130×/day (every
+            # run-end incl. autonomous heartbeat/dream/wakeup runs) → the newest-N
+            # window shifted between the owner's composer turns → the biggest visible
+            # cache-buster (busted head+history, ~36% vs agent's 92%). Tail-anchor it.
+            _tail_add(
+                "daily memory sidecar",
                 "\n".join(
                     [
                         "Recent daily notes (memory/daily, newest 7-day window):",
                         *[f"  {line}" for line in daily_lines],
                     ]
-                )
+                ),
             )
-            derived_inputs.append("daily memory sidecar")
 
         recall_bundle = _timed_result(future_recall_bundle, "recall_bundle")
         if recall_bundle:

@@ -95,7 +95,16 @@ def _role_needs_tools(role: str) -> bool:
 # role/scope + approval gates, so an agent can never bypass approvals for
 # risky actions.
 AGENT_TOOLS_FLAG_KEY = "agent_tools_enabled"
-_AGENT_TOOL_LOOP_MAX_ROUNDS = 4  # tool round-trips per agent turn
+_AGENT_TOOL_LOOP_MAX_ROUNDS = 8  # tool round-trips per agent turn
+
+# Final user turn shown when the round budget is exhausted mid-tool-use, so the
+# agent turns its research into a real answer instead of being cut off with an
+# empty/preamble result (mirrors the jarvis-code client dispatch fix).
+_AGENT_SYNTHESIS_DIRECTIVE = (
+    "[TOOL-RUNDER OPBRUGT] Du har brugt dine værktøjs-runder. Giv NU dit endelige "
+    "svar udelukkende baseret på det du allerede har fundet og lavet — opsummér "
+    "resultatet konkret og brugbart. Kald IKKE flere værktøjer."
+)
 
 
 def agent_tools_enabled() -> bool:
@@ -241,6 +250,7 @@ def _run_agent_tool_loop(
     final_text = ""
     rounds = 0
     error_str = ""
+    tool_calls: list = []  # last round's tool_calls; truthy ⟺ exhausted mid-tool-use
     # Bracket the whole model/tool loop so duration reflects real work even on
     # the failure path.
     _t0 = time.monotonic()
@@ -298,6 +308,28 @@ def _run_agent_tool_loop(
                 pass
     except Exception as exc:  # model/loop failure — never a fake success
         error_str = str(exc)[:400]
+
+    # Round budget exhausted mid-tool-use: the last tool results are in
+    # `messages` but the model never got to answer from them. Do ONE final
+    # tools-disabled synthesis call so the agent produces a usable result
+    # instead of an empty/preamble BLOCKED (mirrors the client dispatch fix).
+    # Bounded + guarded — a failure here degrades to the pre-synthesis text.
+    if not error_str and rounds >= _AGENT_TOOL_LOOP_MAX_ROUNDS and tool_calls:
+        try:
+            messages.append({"role": "user", "content": _AGENT_SYNTHESIS_DIRECTIVE})
+            synth = _facade().execute_with_role_or_fallback(
+                provider=provider, model=model, requires_tools=False,
+                messages=messages, tools=[], lane="agent",
+            )
+            total_input += int(synth.get("input_tokens") or 0)
+            total_output += int(synth.get("output_tokens") or 0)
+            total_cost += float(synth.get("cost_usd") or 0.0)
+            _synth_text = str(synth.get("text") or "").strip()
+            if _synth_text:
+                final_text = _synth_text
+        except Exception:
+            pass
+
     duration_ms = int((time.monotonic() - _t0) * 1000)
 
     # Derive the true terminal status instead of hardcoding "completed":

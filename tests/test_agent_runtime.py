@@ -194,6 +194,41 @@ def test_run_agent_tool_loop_no_tools_falls_back_to_text(monkeypatch):
     assert "tools" not in seen
 
 
+def test_run_agent_tool_loop_synthesizes_at_round_cap(monkeypatch):
+    """An agent that keeps calling tools until the round cap must get ONE final
+    tools-disabled synthesis turn — not be cut off with an empty BLOCKED."""
+    calls = {"n": 0}
+
+    def _fake_role(**kwargs):
+        calls["n"] += 1
+        # The forced-synthesis call: tools disabled, transcript passed as messages.
+        if kwargs.get("requires_tools") is False and kwargs.get("tools") == []:
+            assert "TOOL-RUNDER OPBRUGT" in kwargs["messages"][-1]["content"]
+            return {"text": "Synthesised: found and fixed the bug.", "tool_calls": [],
+                    "input_tokens": 2, "output_tokens": 5, "cost_usd": 0.0}
+        # Research rounds: always request another tool (never finishes on its own).
+        return {"text": "", "tool_calls": [
+            {"id": f"c{calls['n']}", "function": {"name": "read_file", "arguments": "{}"}}],
+            "input_tokens": 5, "output_tokens": 2, "cost_usd": 0.0}
+
+    monkeypatch.setattr(ar, "execute_with_role_or_fallback", _fake_role)
+    monkeypatch.setattr(
+        ar, "_build_agent_tools_payload",
+        lambda allowed: [{"type": "function", "function": {"name": "read_file"}}],
+    )
+    monkeypatch.setattr(
+        "core.tools.simple_tools.execute_tool",
+        lambda name, arguments: {"status": "ok"}, raising=False,
+    )
+    agent = {"agent_id": "a", "provider": "deepseek", "model": "x",
+             "allowed_tools_json": '["read_file"]'}
+    result = ar._run_agent_tool_loop(agent=agent, prompt="research and write",
+                                     requires_tools=True)
+    # Cut off mid-tool-use → synthesised a real answer instead of empty/BLOCKED.
+    assert result["text"] == "Synthesised: found and fixed the bug."
+    assert result["tool_rounds"] == ar._AGENT_TOOL_LOOP_MAX_ROUNDS
+
+
 # ── Axis 5: council/swarm lifecycle + landing ──────────────────────────────
 
 

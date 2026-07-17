@@ -900,6 +900,36 @@ def _observe_autonomous_run(*, run, session_id: str, outcome: str,
         })
     except Exception:
         pass
+    # Selv-awareness: Jarvis er ellers BLIND for sine egne autonome runs medmindre
+    # han aktivt leder. Drop en nudge i brønden (→ outbound_nudges → hans prompt-
+    # awareness) så han bliver bevidst når et run slutter — hvad det gjorde, status,
+    # fejl-id (run_id) og en review-invitation. Fejl/afbrud ALTID; completed kun når
+    # der faktisk skete noget (frames>0), så trivielle ticks ikke oversvømmer brønden.
+    try:
+        from core.services import nudge_broend
+        _focus = str(getattr(run, "user_message", "") or "")[:160]
+        _rid = str(getattr(run, "run_id", "") or "")
+        _push = True
+        if outcome == "completed" and int(frames or 0) > 0:
+            _msg = f"Autonom run ✓ færdig: {_focus} — vil du reviewe? (run {_rid})"
+            _imp = "normal"
+        elif outcome == "failed":
+            _msg = (f"Autonom run ✗ FEJLET [err_id={_rid}]: {_focus} — "
+                    f"{str(error or 'ukendt fejl')[:120]} — reviewe?")
+            _imp = "high"
+        elif outcome in ("interrupted", "looped", "burned"):
+            _msg = f"Autonom run ⏸ {outcome} [id={_rid}]: {_focus} — reviewe?"
+            _imp = "high"
+        else:
+            _push = False  # trivielt/tomt completed-tick → ingen nudge
+        if _push:
+            nudge_broend.push(
+                source="autonomous_run", kind="autonomous_run",
+                message=_msg, importance=_imp,
+                raw_payload={"run_id": _rid, "outcome": outcome,
+                             "frames": int(frames or 0), "error": str(error or "")[:200]})
+    except Exception:
+        pass
     # #3 supervision: vurdér runnet (korrelér + fang løgn/loop/forbindelsesfejl) + flag.
     try:
         from core.services.autonomous_supervisor import supervise

@@ -14,6 +14,12 @@ from core.runtime.db import connect
 logger = logging.getLogger(__name__)
 
 _WRITER_QUEUE_MAXSIZE = 10_000
+# Batch up to this many already-queued events into ONE SQLite transaction. Under a
+# burst (heartbeat storm / busy agentic loop) this collapses hundreds of per-event
+# commits into a handful → far fewer WAL write-lock acquisitions → API chat/cost
+# writes stop busy-waiting up to busy_timeout (5s) behind the event-writer. At low
+# volume the drain finds the queue empty and writes a single event (no added latency).
+_WRITER_BATCH_MAX = 128
 _FLUSH_POLL_SECS = 0.001
 _WRITER_SHUTDOWN_TIMEOUT = 5.0
 
@@ -233,76 +239,100 @@ class EventBus:
             if item is None:  # poison pill
                 break
 
+            # Drain any co-queued events into ONE batch/transaction. FIFO preserved.
+            batch: list[dict[str, Any]] = [item]
+            poison = False
+            while len(batch) < _WRITER_BATCH_MAX:
+                try:
+                    nxt = self._writer_queue.get_nowait()
+                except queue.Empty:
+                    break
+                if nxt is None:
+                    poison = True
+                    break
+                batch.append(nxt)
+
             try:
-                self._write_event(item)
+                self._write_events_batch(batch)
             except sqlite3.OperationalError as exc:
                 # Rygraden: DB-lås trods busy_timeout (fx lang checkpoint) → ét retry efter
                 # kort pause før vi opgiver. Undgår at tabe events på kortvarig kontention.
                 time.sleep(0.2)
                 try:
-                    self._write_event(item)
+                    self._write_events_batch(batch)
                 except Exception:
                     logger.warning(
-                        "eventbus-writer: dropped event efter retry kind=%s (%s)",
-                        item.get("kind", "?"), exc,
+                        "eventbus-writer: dropped %d events efter retry (%s)",
+                        len(batch), exc,
                     )
             except Exception:
                 logger.exception(
-                    "eventbus-writer: failed to write event kind=%s",
-                    item.get("kind", "?"),
+                    "eventbus-writer: failed to write batch of %d events", len(batch),
                 )
             finally:
                 # Always advance the sequence so flush() doesn't deadlock.
-                seq = item.get("seq", -1)
+                max_seq = max((it.get("seq", -1) for it in batch), default=-1)
                 with self._seq_lock:
-                    if seq >= self._write_seq:
-                        self._write_seq = seq
+                    if max_seq >= self._write_seq:
+                        self._write_seq = max_seq
+
+            if poison:
+                break
 
     def _write_event(self, item: dict[str, Any]) -> None:
-        kind = item["kind"]
-        payload_json = item["payload_json"]
-        created_at = item["created_at"]
-        caused_by = item.get("caused_by")
-        edge_kind = item.get("edge_kind", "triggered")
+        """Backward-compat single-event wrapper (tests/callers)."""
+        self._write_events_batch([item])
 
+    def _write_events_batch(self, batch: list[dict[str, Any]]) -> None:
+        """Write a FIFO batch of events in ONE transaction (single commit), then
+        notify subscribers per-event after commit. Collapses N commits into 1 →
+        fewer WAL write-lock acquisitions under bursts."""
+        if not batch:
+            return
+        written: list[tuple[dict[str, Any], int]] = []
         with connect() as conn:
-            cursor = conn.execute(
-                """
-                INSERT INTO events (kind, payload_json, created_at)
-                VALUES (?, ?, ?)
-                """,
-                (kind, payload_json, created_at),
-            )
-            event_id = int(cursor.lastrowid)
+            for item in batch:
+                cursor = conn.execute(
+                    """
+                    INSERT INTO events (kind, payload_json, created_at)
+                    VALUES (?, ?, ?)
+                    """,
+                    (item["kind"], item["payload_json"], item["created_at"]),
+                )
+                event_id = int(cursor.lastrowid)
 
-            # Write causal edges. Best-effort — never let edge-write
-            # break event publication.
-            if caused_by is not None:
-                parents = caused_by if isinstance(caused_by, list) else [caused_by]
-                for pid in parents:
-                    try:
-                        conn.execute(
-                            """
-                            INSERT OR IGNORE INTO causal_edges
-                            (child_event_id, parent_event_id, edge_kind,
-                             confidence, source, created_at, reasoning)
-                            VALUES (?, ?, ?, 1.0, 'explicit', ?, '')
-                            """,
-                            (event_id, int(pid), edge_kind, created_at),
-                        )
-                    except Exception:
-                        pass
-            conn.commit()
+                # Write causal edges. Best-effort — never let edge-write
+                # break event publication.
+                caused_by = item.get("caused_by")
+                if caused_by is not None:
+                    edge_kind = item.get("edge_kind", "triggered")
+                    parents = caused_by if isinstance(caused_by, list) else [caused_by]
+                    for pid in parents:
+                        try:
+                            conn.execute(
+                                """
+                                INSERT OR IGNORE INTO causal_edges
+                                (child_event_id, parent_event_id, edge_kind,
+                                 confidence, source, created_at, reasoning)
+                                VALUES (?, ?, ?, 1.0, 'explicit', ?, '')
+                                """,
+                                (event_id, int(pid), edge_kind, item["created_at"]),
+                            )
+                        except Exception:
+                            pass
+                written.append((item, event_id))
+            conn.commit()  # ONE commit for the whole batch
 
         # Notify subscribers *after* the write is committed so their
         # on-read queries see the event.  put_nowait is non-blocking.
-        serialized = self._serialize_event(
-            event_id=event_id,
-            event_kind=kind,
-            event_payload=item["payload"],
-            created_at=created_at,
-        )
-        self._notify_subscribers(serialized)
+        for item, event_id in written:
+            serialized = self._serialize_event(
+                event_id=event_id,
+                event_kind=item["kind"],
+                event_payload=item["payload"],
+                created_at=item["created_at"],
+            )
+            self._notify_subscribers(serialized)
 
     # ---- Internal helpers ---------------------------------------------
 

@@ -396,9 +396,11 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             agent_id,
             status="completed",
             completed_at=_now_iso(),
-            last_error=f"max_turns exhausted: {turns_completed}/{max_turns}",
         )
-        return build_agent_detail_surface(agent_id) or {"agent_id": agent_id, "status": "completed", "note": "max_turns exhausted"}
+        surface = build_agent_detail_surface(agent_id) or {"agent_id": agent_id}
+        surface["status"] = "completed"
+        surface["note"] = f"max_turns exhausted: {turns_completed}/{max_turns}"
+        return surface
     resolved_thread_id = thread_id or _agent_thread_id(agent_id)
     messages = list_agent_messages(agent_id=agent_id, thread_id=resolved_thread_id, limit=40)
     prompt = _build_agent_prompt(

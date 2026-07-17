@@ -15,6 +15,14 @@ from core.runtime.db_core import connect, _now_iso
 
 
 def _ensure_agent_runtime_tables(conn: sqlite3.Connection) -> None:
+    # Migrations for columns added after initial schema
+    for col, col_type in [("max_turns", "INTEGER NOT NULL DEFAULT 0"),
+                          ("turns_completed", "INTEGER NOT NULL DEFAULT 0")]:
+        try:
+            conn.execute(f"ALTER TABLE agent_registry ADD COLUMN {col} {col_type}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
+
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS agent_registry (
@@ -43,6 +51,8 @@ def _ensure_agent_runtime_tables(conn: sqlite3.Connection) -> None:
             last_error TEXT NOT NULL DEFAULT '',
             context_json TEXT NOT NULL DEFAULT '{}',
             result_contract_json TEXT NOT NULL DEFAULT '{}',
+            max_turns INTEGER NOT NULL DEFAULT 0,
+            turns_completed INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             completed_at TEXT NOT NULL DEFAULT '',
@@ -202,6 +212,8 @@ def create_agent_registry_entry(
     next_wake_at: str = "",
     budget_tokens: int = 0,
     tokens_burned: int = 0,
+    max_turns: int = 0,
+    turns_completed: int = 0,
     failure_count: int = 0,
     last_error: str = "",
     context_json: str = "{}",
@@ -221,10 +233,11 @@ def create_agent_registry_entry(
                 agent_id, parent_agent_id, owner_agent_id, council_id, kind, role, goal,
                 status, lane, provider, model, system_prompt, system_prompt_version,
                 tool_policy, allowed_tools_json, persistent, ttl_seconds, schedule_json,
-                next_wake_at, budget_tokens, tokens_burned, failure_count, last_error,
+                next_wake_at, budget_tokens, tokens_burned, max_turns, turns_completed,
+                failure_count, last_error,
                 context_json, result_contract_json, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 agent_id,
@@ -248,6 +261,8 @@ def create_agent_registry_entry(
                 next_wake_at,
                 int(budget_tokens),
                 int(tokens_burned),
+                int(max_turns),
+                int(turns_completed),
                 int(failure_count),
                 last_error,
                 context_json,
@@ -280,6 +295,8 @@ def update_agent_registry_entry(
     next_wake_at: str | None = None,
     schedule_json: str | None = None,
     tokens_burned_delta: int = 0,
+    max_turns: int | None = None,
+    turns_completed_delta: int = 0,
     failure_increment: int = 0,
     last_error: str | None = None,
     completed_at: str | None = None,
@@ -305,6 +322,12 @@ def update_agent_registry_entry(
     if tokens_burned_delta:
         fields.append("tokens_burned = tokens_burned + ?")
         values.append(int(tokens_burned_delta))
+    if max_turns is not None:
+        fields.append("max_turns = ?")
+        values.append(int(max_turns))
+    if turns_completed_delta:
+        fields.append("turns_completed = turns_completed + ?")
+        values.append(int(turns_completed_delta))
     if failure_increment:
         fields.append("failure_count = failure_count + ?")
         values.append(int(failure_increment))
@@ -1031,6 +1054,8 @@ def _agent_registry_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         "next_wake_at": str(row["next_wake_at"]),
         "budget_tokens": int(row["budget_tokens"]),
         "tokens_burned": int(row["tokens_burned"]),
+        "max_turns": int(row["max_turns"]),
+        "turns_completed": int(row["turns_completed"]),
         "failure_count": int(row["failure_count"]),
         "last_error": str(row["last_error"]),
         "context_json": str(row["context_json"]),

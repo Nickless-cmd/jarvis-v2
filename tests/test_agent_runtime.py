@@ -257,3 +257,60 @@ def test_augment_council_surface_stamps_contract_fields(monkeypatch):
     # initiative is always a string, never None.
     out2 = ar._augment_council_surface("c9", conclusion="C")
     assert out2["initiative"] == ""
+
+
+# ── maxTurns per subagent ──────────────────────────────────────────────────
+
+
+def test_check_max_turns_and_expire_noop_when_no_limit():
+    """max_turns=0 means unlimited — never expires."""
+    result = ar._check_max_turns_and_expire("no-such-agent")
+    assert result is False
+
+
+def test_check_max_turns_and_expire_noop_when_below_limit(isolated_runtime):
+    agent_id = "agent-maxturns-ok"
+    ar.create_agent_registry_entry(agent_id=agent_id, role="researcher", goal="test")
+    # turns_completed=0, max_turns=5 → below limit
+    ar.update_agent_registry_entry(agent_id, max_turns=5)
+    assert ar._check_max_turns_and_expire(agent_id) is False
+    entry = ar.get_agent_registry_entry(agent_id)
+    assert entry is not None
+    assert entry["status"] != "expired"
+
+
+def test_check_max_turns_and_expire_expires_when_limit_reached(isolated_runtime):
+    agent_id = "agent-maxturns-limit"
+    ar.create_agent_registry_entry(agent_id=agent_id, role="researcher", goal="test")
+    ar.update_agent_registry_entry(agent_id, max_turns=3, turns_completed_delta=3)
+    assert ar._check_max_turns_and_expire(agent_id) is True
+    entry = ar.get_agent_registry_entry(agent_id)
+    assert entry is not None
+    assert entry["status"] == "expired"
+    assert "max_turns" in entry["last_error"]
+
+
+def test_check_max_turns_and_expire_expires_when_over_limit(isolated_runtime):
+    """turns_completed > max_turns should also trigger expiry."""
+    agent_id = "agent-maxturns-over"
+    ar.create_agent_registry_entry(agent_id=agent_id, role="researcher", goal="test")
+    ar.update_agent_registry_entry(agent_id, max_turns=2, turns_completed_delta=5)
+    assert ar._check_max_turns_and_expire(agent_id) is True
+    entry = ar.get_agent_registry_entry(agent_id)
+    assert entry is not None
+    assert entry["status"] == "expired"
+
+
+def test_execute_agent_task_skips_when_max_turns_exhausted(isolated_runtime, monkeypatch):
+    """execute_agent_task should return immediately without calling the model
+    when max_turns is already reached."""
+    agent_id = "agent-maxskips"
+    ar.create_agent_registry_entry(agent_id=agent_id, role="researcher", goal="test")
+    ar.update_agent_registry_entry(agent_id, max_turns=1, turns_completed_delta=1)
+    # If execute_agent_task called the model, this would fail. It should instead
+    # detect max_turns exhausted and return early.
+    def _boom(*a, **k):
+        raise RuntimeError("model should not be called")
+    monkeypatch.setattr(ar, "execute_with_role_or_fallback", _boom)
+    result = ar.execute_agent_task(agent_id=agent_id)
+    assert result.get("status") == "completed" or result.get("note") == "max_turns exhausted"

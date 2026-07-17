@@ -60,6 +60,7 @@ from core.services.agent_runtime_spawn import (  # noqa: F401
     _agent_thread_id,
     _build_agent_prompt,
     _check_budget_and_expire,
+    _check_max_turns_and_expire,
     _check_spawn_limits,
     _council_thread_id,
     _format_messages,

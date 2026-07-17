@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12869 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12887 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -27,28 +27,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12869 functions/
 - [`core.plugins`](core.plugins.md)
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_runtime_browser`
 - [`core.runtime.02`](core.runtime.02.md) — `db_runtime_chronicle` … `workspace_paths`
-- [`core.services.01`](core.services.01.md) — `__init__` … `ambient_sound_daemon`
-- [`core.services.02`](core.services.02.md) — `anthropic_identity` … `bounded_repo_tools_runtime`
-- [`core.services.03`](core.services.03.md) — `bounded_workspace_write_runtime` … `central_dark_products_digest`
-- [`core.services.04`](core.services.04.md) — `central_decentralization` … `central_moltbook`
-- [`core.services.05`](core.services.05.md) — `central_mood_regulator` … `central_terminal`
-- [`core.services.06`](core.services.06.md) — `central_timeseries` … `communication_guard`
-- [`core.services.07`](core.services.07.md) — `communication_guard_daemon` … `creative_projects`
-- [`core.services.08`](core.services.08.md) — `crisis_marker_detector` … `development_sense`
-- [`core.services.09`](core.services.09.md) — `developmental_valence` … `emotion_concepts_positive_triggers`
-- [`core.services.10`](core.services.10.md) — `emotion_repair_bridge_daemon` … `gate_enforcement`
-- [`core.services.11`](core.services.11.md) — `gate_eval` … `heartbeat_runtime_providers`
-- [`core.services.12`](core.services.12.md) — `hf_connector` … `jobs_engine`
-- [`core.services.13`](core.services.13.md) — `keyring_store` … `meta_learning_hypotheses`
-- [`core.services.14`](core.services.14.md) — `meta_learning_retrospective` … `outbound_nudges`
-- [`core.services.15`](core.services.15.md) — `outcome_learning` … `process_watcher`
-- [`core.services.16`](core.services.16.md) — `producer_novelty` … `reflective_critic_tracking`
-- [`core.services.17`](core.services.17.md) — `regret_engine` … `runtime_self_model_state`
-- [`core.services.18`](core.services.18.md) — `runtime_self_model_surfaces` … `sensory_perception_bridge`
-- [`core.services.19`](core.services.19.md) — `session_boot_reconciler` … `staged_edits`
-- [`core.services.20`](core.services.20.md) — `standing_orders_registry` … `tool_chip_payload`
-- [`core.services.21`](core.services.21.md) — `tool_concurrency` … `visible_followup_lean`
-- [`core.services.22`](core.services.22.md) — `visible_inner_life` … `world_model_signal_tracking`
+- [`core.services.01`](core.services.01.md) — `__init__` … `ambient_presence`
+- [`core.services.02`](core.services.02.md) — `ambient_sound_daemon` … `bounded_mutation_intent_runtime`
+- [`core.services.03`](core.services.03.md) — `bounded_repo_tools_runtime` … `central_coverage_action`
+- [`core.services.04`](core.services.04.md) — `central_dark_products_digest` … `central_model_meta`
+- [`core.services.05`](core.services.05.md) — `central_moltbook` … `central_switches`
+- [`core.services.06`](core.services.06.md) — `central_terminal` … `commit_gate_arbiter`
+- [`core.services.07`](core.services.07.md) — `communication_guard` … `creative_journal_runtime`
+- [`core.services.08`](core.services.08.md) — `creative_projects` … `development_narrative_daemon`
+- [`core.services.09`](core.services.09.md) — `development_sense` … `emotion_concepts_channel_triggers`
+- [`core.services.10`](core.services.10.md) — `emotion_concepts_positive_triggers` … `gate_commit`
+- [`core.services.11`](core.services.11.md) — `gate_enforcement` … `heartbeat_runtime_influence`
+- [`core.services.12`](core.services.12.md) — `heartbeat_runtime_providers` … `jc_tool_telemetry`
+- [`core.services.13`](core.services.13.md) — `jobs_engine` … `meta_learning_aggregator`
+- [`core.services.14`](core.services.14.md) — `meta_learning_hypotheses` … `orb_phase`
+- [`core.services.15`](core.services.15.md) — `outbound_nudges` … `process_supervisor`
+- [`core.services.16`](core.services.16.md) — `process_watcher` … `reflection_to_plan`
+- [`core.services.17`](core.services.17.md) — `reflective_critic_tracking` … `runtime_self_model_identity`
+- [`core.services.18`](core.services.18.md) — `runtime_self_model_state` … `sensory_archive`
+- [`core.services.19`](core.services.19.md) — `sensory_perception_bridge` … `spatial_entity_ledger`
+- [`core.services.20`](core.services.20.md) — `staged_edits` … `tool_catalog`
+- [`core.services.21`](core.services.21.md) — `tool_chip_payload` … `visible_followup_events`
+- [`core.services.22`](core.services.22.md) — `visible_followup_lean` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

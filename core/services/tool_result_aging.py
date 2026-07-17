@@ -27,6 +27,24 @@ _CLEAR_PREFIX = "[tool-resultat ryddet"
 _MODE_ENV = "JARVIS_TOOL_RESULT_AGING_MODE"
 _VALID_MODES = ("off", "shadow", "active")
 
+# Safety-valve: aging only fires when a run's full (non-aged) tool-content
+# exceeds this many tokens. Because a single batch-age drops the full portion
+# well below the trigger, aging then stays dormant for many rounds → it is
+# STEPPED, not per-round → the append-only intra-run prefix cache is preserved
+# between the rare, discrete jumps (same discipline as the cross-run cold_floor).
+_AGING_TRIGGER_TOKENS_DEFAULT = 120_000
+
+
+def aging_trigger_tokens() -> int:
+    """Configured full-content token trigger for aging. Default 120k. Self-safe."""
+    try:
+        from core.runtime.settings import load_settings
+        v = int(load_settings().extra.get(
+            "tool_aging_trigger_tokens", _AGING_TRIGGER_TOKENS_DEFAULT))
+        return max(0, v)
+    except Exception:
+        return _AGING_TRIGGER_TOKENS_DEFAULT
+
 
 def tool_result_aging_mode() -> str:
     """Current aging mode: 'off' | 'shadow' | 'active'. Default 'shadow'.
@@ -61,6 +79,7 @@ def age_tool_results(
     strength: str,
     round_index: int,
     compress_fn: Callable[[str], str] | None = None,
+    trigger_tokens: int = 0,
 ) -> tuple[list[ToolExchange], dict]:
     """Age tool-result content on exchanges older than the ``keep_full`` most recent.
 
@@ -77,6 +96,21 @@ def age_tool_results(
             return exchanges, metrics
         if len(exchanges) <= keep_full:
             return exchanges, metrics
+
+        # Safety-valve gate: only age when the full (non-aged) tool-content of the
+        # whole run exceeds the trigger. Stepped, not per-round → preserves the
+        # append-only intra-run cache until a run genuinely balloons. trigger=0
+        # disables the gate (legacy / test behavior).
+        if trigger_tokens > 0:
+            full_tokens = sum(
+                len(str(tr.content or "")) // 4
+                for ex in exchanges
+                for tr in ex.results
+                if not _is_already_aged(str(tr.content or ""))
+            )
+            metrics["full_tokens"] = full_tokens
+            if full_tokens < trigger_tokens:
+                return exchanges, metrics
 
         cut = len(exchanges) - keep_full
         old = exchanges[:cut]

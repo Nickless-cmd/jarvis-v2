@@ -4290,7 +4290,8 @@ async def _stream_visible_run(
                     # _followup_exchanges is a no-op in shadow (same object).
                     try:
                         from core.services.tool_result_aging import (
-                            age_tool_results, tool_result_aging_mode)
+                            age_tool_results, tool_result_aging_mode,
+                            aging_trigger_tokens)
                         from core.services.model_trust import model_strength
                         _age_mode = tool_result_aging_mode()
                         if _age_mode != "off":
@@ -4300,6 +4301,7 @@ async def _stream_visible_run(
                                 strength=model_strength(getattr(run, "model", "") or ""),
                                 round_index=_agentic_round,
                                 compress_fn=_compact_llm_for_run,
+                                trigger_tokens=aging_trigger_tokens(),
                             )
                             _followup_exchanges = _aged_ex
                             if _age_metrics.get("aged_exchanges"):

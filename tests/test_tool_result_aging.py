@@ -101,3 +101,37 @@ def test_mode_helper_defaults_shadow(monkeypatch):
 def test_mode_helper_env_wins(monkeypatch):
     monkeypatch.setenv("JARVIS_TOOL_RESULT_AGING_MODE", "active")
     assert tool_result_aging_mode() == "active"
+
+
+# ── Safety-valve: token-trigger makes aging STEPPED, not per-round (2026-07-17) ──
+
+def test_trigger_tokens_gate_blocks_small_runs():
+    # 8 exchanges of 500 chars ≈ 1000 tok, well under a 120k trigger → NO aging.
+    # This preserves the append-only intra-run cache for the common case.
+    ex = _exchanges(8, content="x" * 500)
+    out, m = age_tool_results(ex, mode="active", strength="strong",
+                              round_index=7, trigger_tokens=120_000)
+    assert out is ex and m["changed"] is False
+
+
+def test_trigger_tokens_gate_fires_when_over_budget():
+    # 8 exchanges of 80k chars = 640k chars ≈ 160k tok > 120k trigger → aging fires.
+    ex = _exchanges(8, content="x" * 80_000)
+    out, m = age_tool_results(ex, mode="active", strength="strong",
+                              round_index=7, trigger_tokens=120_000)
+    assert m["changed"] is True and m["aged_exchanges"] == 3
+
+
+def test_trigger_zero_preserves_legacy_behavior():
+    # trigger_tokens=0 (default) → no token gate → ages exactly as before.
+    ex = _exchanges(8, content="y" * 500)
+    out, m = age_tool_results(ex, mode="active", strength="strong",
+                              round_index=7, trigger_tokens=0)
+    assert m["changed"] is True and m["aged_exchanges"] == 3
+
+
+def test_trigger_helper_default(monkeypatch):
+    from core.services.tool_result_aging import aging_trigger_tokens
+    monkeypatch.setattr("core.runtime.settings.load_settings",
+                        lambda: type("S", (), {"extra": {}})())
+    assert aging_trigger_tokens() == 120_000

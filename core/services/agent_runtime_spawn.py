@@ -223,6 +223,27 @@ def spawn_agent_task(
         context_json=json.dumps(context),
         result_contract_json=json.dumps(result_contract),
     )
+    # Per-agent transcript: metadata sidecar + lifecycle event + sidechain
+    try:
+        from core.services.agent_transcript import write_meta, write_lifecycle, write_sidechain
+        write_meta(agent_id, {
+            "agent_id": agent_id,
+            "role": role,
+            "goal": goal,
+            "parent_agent_id": parent_agent_id,
+            "provider": provider,
+            "model": model,
+            "tool_policy": tool_policy,
+            "allowed_tools": allowed_tools,
+            "persistent": persistent,
+            "ttl_seconds": ttl_seconds,
+            "max_turns": max_turns,
+            "execution_mode": execution_mode,
+        })
+        write_lifecycle(agent_id, "spawned", note=f"role={role}")
+        write_sidechain(agent_id, role, goal)
+    except Exception:
+        pass  # transcript er non-critical
     create_agent_message(
         message_id=f"agent-msg-{uuid4().hex}",
         thread_id=thread_id,
@@ -399,6 +420,13 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
         input_payload_json=json.dumps({"prompt": prompt}),
         started_at=_now_iso(),
     )
+    # Per-agent transcript: log prompt before model call
+    try:
+        from core.services.agent_transcript import write_prompt, write_lifecycle
+        write_prompt(agent_id, prompt, run_id=run_id)
+        write_lifecycle(agent_id, "started", note=f"run_id={run_id}")
+    except Exception:
+        pass
     result: dict[str, object] = {}  # A4: readable on the failure seam too
     _t0 = time.monotonic()
     _result_noted = False  # agent_result skal fyre PRÆCIS én gang pr. dispatch
@@ -451,6 +479,14 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             kind="result",
             content=text,
         )
+        # Per-agent transcript: log result
+        try:
+            from core.services.agent_transcript import write_result
+            write_result(agent_id, text, run_id=run_id,
+                         input_tokens=input_tokens, output_tokens=output_tokens,
+                         cost_usd=float(result.get("cost_usd") or 0.0))
+        except Exception:
+            pass
         update_agent_run(
             run_id,
             status="completed",
@@ -522,6 +558,12 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
                 name=str(agent.get("name") or agent_id),
                 text=text,
             )
+        # Per-agent transcript: log completion
+        try:
+            from core.services.agent_transcript import write_lifecycle
+            write_lifecycle(agent_id, "completed", note=f"tokens={input_tokens + output_tokens}")
+        except Exception:
+            pass
     except Exception as exc:
         message = str(exc)
         create_agent_message(
@@ -534,6 +576,13 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             kind="failure",
             content=message,
         )
+        # Per-agent transcript: log failure
+        try:
+            from core.services.agent_transcript import write_failure, write_lifecycle
+            write_failure(agent_id, message, run_id=run_id)
+            write_lifecycle(agent_id, "failed", note=message[:200])
+        except Exception:
+            pass
         update_agent_run(
             run_id,
             status="failed",

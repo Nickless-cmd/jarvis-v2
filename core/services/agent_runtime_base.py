@@ -28,6 +28,7 @@ MAX_SWARM_WORKERS = 8
 MAX_SPAWN_DEPTH = 4  # max recursive spawn chain length
 MAX_COUNCIL_MEMBERS = 6
 MAX_OFFSPRING_DEPTH = 3
+MAX_AGENT_TURNS = 20         # default max turns per agent lifetime
 RETRY_BASE_SECONDS = 60      # doubles per failure, capped at 1 h
 
 from core.eventbus.bus import event_bus
@@ -267,13 +268,24 @@ def _run_agent_tool_loop(
                 "tool_calls": tool_calls,
             })
             for tc in tool_calls:
-                tool_out = _execute_agent_tool_call(tc, agent_id=str(agent.get("agent_id") or ""))
+                _aid = str(agent.get("agent_id") or "")
+                _tc_id = str(tc.get("id") or "")
+                tool_out = _execute_agent_tool_call(tc, agent_id=_aid)
                 total_tool_calls += 1
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": str(tc.get("id") or ""),
+                    "tool_call_id": _tc_id,
                     "content": tool_out,
                 })
+                # Per-agent transcript: log tool call + result
+                try:
+                    from core.services.agent_transcript import write_tool_call, write_tool_result
+                    write_tool_call(_aid, _tc_id,
+                                    name=str((tc.get("function") or {}).get("name") or ""),
+                                    arguments=dict(tc.get("function", {}).get("arguments", {}) if isinstance(tc.get("function", {}).get("arguments"), dict) else {}))
+                    write_tool_result(_aid, _tc_id, str(tool_out or "")[:2000])
+                except Exception:
+                    pass
             try:
                 event_bus.publish("agent.tool_round", {
                     "agent_id": str(agent.get("agent_id") or ""),

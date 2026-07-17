@@ -839,9 +839,13 @@ async def agent_step(request: Request):
     if _is_agent_pool:
         try:
             from core.services.agent_pool_router import route_agent_task
-            _sub_kind = str(body.get("subagent_type") or "").strip() or "coding"
-            # explore/search = gratis arbejdskraft; øvrige må eskalere til betalt premium.
-            _allow_paid = _sub_kind.lower() not in ("explorer", "explore", "search", "general")
+            _sub_kind = str(body.get("subagent_type") or "").strip() or "explorer"
+            # Default GRATIS arbejdskraft; kun EKSPLICITTE kode-skrive-typer må
+            # eskalere til betalt premium (rigtige kode-opgaver). Alt andet
+            # (explore/research/plan/general) = gratis pool.
+            _allow_paid = _sub_kind.lower() in (
+                "coder", "coding", "implementer", "implement", "builder",
+                "build", "fix", "refactor", "editor")
             r = route_agent_task(kind=_sub_kind, allow_paid=_allow_paid)
             provider, model = str(r.get("provider") or ""), str(r.get("model") or "")
         except Exception:

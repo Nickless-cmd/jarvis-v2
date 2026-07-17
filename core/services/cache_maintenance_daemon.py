@@ -75,12 +75,23 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
                 ).fetchall()
                 composition = {r["ttl_policy"]: r["cnt"] for r in rows}
 
+        # Events-table retention: bound the unbounded telemetry table (large table
+        # → slower INSERTs → longer WAL write-lock holds → API latency spikes).
+        # Batched + capped → gradual, never a long lock. Best-effort.
+        events_pruned = 0
+        try:
+            from core.services.events_retention import prune_old_events
+            events_pruned = int(prune_old_events().get("deleted", 0) or 0)
+        except Exception:
+            pass
+
         result = {
             "deleted": deleted,
             "count_before": count_before,
             "count_after": count_after,
             "expired_before": expired_before,
             "composition": composition,
+            "events_pruned": events_pruned,
         }
     except Exception as exc:
         result = {"maintained": False, "error": str(exc)[:200]}

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12864 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12866 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -36,19 +36,19 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12864 functions/
 - [`core.services.07`](core.services.07.md) — `communication_guard_daemon` … `creative_projects`
 - [`core.services.08`](core.services.08.md) — `crisis_marker_detector` … `development_sense`
 - [`core.services.09`](core.services.09.md) — `developmental_valence` … `emotion_concepts_positive_triggers`
-- [`core.services.10`](core.services.10.md) — `emotion_repair_bridge_daemon` … `gate_eval`
-- [`core.services.11`](core.services.11.md) — `gate_execution` … `hf_connector`
-- [`core.services.12`](core.services.12.md) — `hollow_promise_guard` … `keyring_store`
-- [`core.services.13`](core.services.13.md) — `layer_tension_daemon` … `meta_learning_retrospective`
-- [`core.services.14`](core.services.14.md) — `meta_reflection_daemon` … `outcome_learning`
-- [`core.services.15`](core.services.15.md) — `outreach_composer` … `producer_novelty`
-- [`core.services.16`](core.services.16.md) — `promise_ledger` … `regret_engine`
-- [`core.services.17`](core.services.17.md) — `regulation_homeostasis_signal_tracking` … `runtime_self_model_surfaces`
-- [`core.services.18`](core.services.18.md) — `runtime_surface_cache` … `session_boot_reconciler`
-- [`core.services.19`](core.services.19.md) — `session_continuity` … `standing_orders_registry`
-- [`core.services.20`](core.services.20.md) — `state_flag_store` … `tool_concurrency`
-- [`core.services.21`](core.services.21.md) — `tool_embeddings` … `visible_inner_life`
-- [`core.services.22`](core.services.22.md) — `visible_model` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `emotion_repair_bridge_daemon` … `gate_enforcement`
+- [`core.services.11`](core.services.11.md) — `gate_eval` … `heartbeat_runtime_providers`
+- [`core.services.12`](core.services.12.md) — `hf_connector` … `jobs_engine`
+- [`core.services.13`](core.services.13.md) — `keyring_store` … `meta_learning_hypotheses`
+- [`core.services.14`](core.services.14.md) — `meta_learning_retrospective` … `outbound_nudges`
+- [`core.services.15`](core.services.15.md) — `outcome_learning` … `process_watcher`
+- [`core.services.16`](core.services.16.md) — `producer_novelty` … `reflective_critic_tracking`
+- [`core.services.17`](core.services.17.md) — `regret_engine` … `runtime_self_model_state`
+- [`core.services.18`](core.services.18.md) — `runtime_self_model_surfaces` … `sensory_perception_bridge`
+- [`core.services.19`](core.services.19.md) — `session_boot_reconciler` … `staged_edits`
+- [`core.services.20`](core.services.20.md) — `standing_orders_registry` … `tool_chip_payload`
+- [`core.services.21`](core.services.21.md) — `tool_concurrency` … `visible_followup_lean`
+- [`core.services.22`](core.services.22.md) — `visible_inner_life` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

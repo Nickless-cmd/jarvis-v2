@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6320/12866 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6322/12868 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6320/12866 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4171 | 8954 | 46% |
+| `core.services` | 4173 | 8956 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 62 | 114 | 54% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -632,8 +632,8 @@ Generated from source. 6320/12866 functions/methods documented (49%). The list b
 - `core/services/bounded_mutation_intent_runtime.py` :: `build_bounded_mutation_intent_surface` (L25)
 - `core/services/bounded_repo_tools_runtime.py` :: `build_bounded_repo_tool_execution_surface` (L14)
 - `core/services/bounded_workspace_write_runtime.py` :: `build_bounded_workspace_write_execution_surface` (L7)
-- `core/services/cache_maintenance_daemon.py` :: `build_cache_maintenance_surface` (L126)
-- `core/services/cache_maintenance_daemon.py` :: `get_cache_maintenance_stats` (L119)
+- `core/services/cache_maintenance_daemon.py` :: `build_cache_maintenance_surface` (L131)
+- `core/services/cache_maintenance_daemon.py` :: `get_cache_maintenance_stats` (L124)
 - `core/services/calm_anchor.py` :: `build_calm_anchor_surface` (L215)
 - `core/services/candidate_tracking.py` :: `auto_apply_safe_memory_md_candidates_for_visible_turn` (L290)
 - `core/services/candidate_tracking.py` :: `auto_apply_safe_user_md_candidates_for_visible_turn` (L281)

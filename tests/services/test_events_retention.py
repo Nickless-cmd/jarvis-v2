@@ -64,3 +64,16 @@ def test_self_safe_returns_dict(isolated_runtime):
     _ensure_events_table()
     res = prune_old_events(max_age_days=9999)  # cutoff far in past → deletes nothing
     assert isinstance(res, dict) and "deleted" in res and res["deleted"] == 0
+
+
+def test_prune_table_by_age_rejects_bad_identifier(isolated_runtime):
+    from core.services.events_retention import prune_table_by_age
+    res = prune_table_by_age("events; DROP TABLE events", "created_at", max_age_days=1)
+    assert res["deleted"] == 0 and res.get("error") == "invalid identifier"
+
+
+def test_prune_telemetry_tables_self_safe(isolated_runtime):
+    # Missing telemetry tables in the fresh DB → each entry errors softly, no raise.
+    from core.services.events_retention import prune_telemetry_tables
+    res = prune_telemetry_tables()
+    assert isinstance(res, dict) and "daemon_output_log" in res

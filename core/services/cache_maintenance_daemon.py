@@ -79,9 +79,13 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         # → slower INSERTs → longer WAL write-lock holds → API latency spikes).
         # Batched + capped → gradual, never a long lock. Best-effort.
         events_pruned = 0
+        telemetry_pruned: dict[str, object] = {}
         try:
-            from core.services.events_retention import prune_old_events
+            from core.services.events_retention import (
+                prune_old_events, prune_telemetry_tables,
+            )
             events_pruned = int(prune_old_events().get("deleted", 0) or 0)
+            telemetry_pruned = prune_telemetry_tables()
         except Exception:
             pass
 
@@ -92,6 +96,7 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             "expired_before": expired_before,
             "composition": composition,
             "events_pruned": events_pruned,
+            "telemetry_pruned": telemetry_pruned,
         }
     except Exception as exc:
         result = {"maintained": False, "error": str(exc)[:200]}

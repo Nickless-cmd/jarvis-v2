@@ -275,6 +275,8 @@ _Events-table retention — bound the unbounded ``events`` telemetry table._
 |---|---|---|---|---|
 | function | `_retention_days` | `()` | — | [src](../../../core/services/events_retention.py#L24) |
 | function | `prune_old_events` | `(*, max_age_days=…, max_delete=…, batch_size=…)` | Delete events older than ``max_age_days`` in batches. Returns {"deleted": N}. | [src](../../../core/services/events_retention.py#L33) |
+| function | `prune_table_by_age` | `(table, ts_column, *, max_age_days, max_delete=…, batch_size=…)` | Delete rows from ``table`` where ``ts_column`` < cutoff, in small capped | [src](../../../core/services/events_retention.py#L50) |
+| function | `prune_telemetry_tables` | `()` | Age-prune the safe telemetry tables. Self-safe. Returns per-table deleted counts. | [src](../../../core/services/events_retention.py#L99) |
 
 ## `core/services/executive_contradiction_signal_tracking.py`
 

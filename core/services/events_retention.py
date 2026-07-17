@@ -41,7 +41,28 @@ def prune_old_events(
     Batched (one commit per ``batch_size`` rows) so no single long lock; capped at
     ``max_delete`` per call so a huge backlog drains gradually. Self-safe."""
     days = int(max_age_days) if max_age_days is not None else _retention_days()
-    cutoff = (datetime.now(UTC) - timedelta(days=max(1, days))).isoformat()
+    return prune_table_by_age(
+        "events", "created_at", max_age_days=days,
+        max_delete=max_delete, batch_size=batch_size,
+    )
+
+
+def prune_table_by_age(
+    table: str,
+    ts_column: str,
+    *,
+    max_age_days: int,
+    max_delete: int = _DEFAULT_MAX_DELETE,
+    batch_size: int = _DEFAULT_BATCH_SIZE,
+) -> dict[str, object]:
+    """Delete rows from ``table`` where ``ts_column`` < cutoff, in small capped
+    batches (one commit each → short locks). ``table``/``ts_column`` are validated
+    against an identifier allowlist to keep the f-string SQL injection-safe. Self-safe."""
+    import re
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table) or \
+       not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", ts_column):
+        return {"deleted": 0, "error": "invalid identifier", "table": table}
+    cutoff = (datetime.now(UTC) - timedelta(days=max(1, int(max_age_days)))).isoformat()
     total = 0
     try:
         from core.runtime.db import connect
@@ -49,8 +70,9 @@ def prune_old_events(
             take = min(batch_size, max_delete - total)
             with connect() as conn:
                 cur = conn.execute(
-                    "DELETE FROM events WHERE id IN "
-                    "(SELECT id FROM events WHERE created_at < ? ORDER BY id ASC LIMIT ?)",
+                    f"DELETE FROM {table} WHERE rowid IN "
+                    f"(SELECT rowid FROM {table} WHERE {ts_column} < ? "
+                    f"ORDER BY rowid ASC LIMIT ?)",
                     (cutoff, take),
                 )
                 n = cur.rowcount or 0
@@ -59,5 +81,27 @@ def prune_old_events(
                 break
             total += n
     except Exception as exc:
-        return {"deleted": total, "error": str(exc)[:200], "cutoff": cutoff}
-    return {"deleted": total, "cutoff": cutoff, "retention_days": days}
+        return {"deleted": total, "error": str(exc)[:200], "table": table}
+    return {"deleted": total, "table": table, "retention_days": int(max_age_days)}
+
+
+# Pure-telemetry tables safe to age-prune (logs/metrics, no cognitive value).
+# (table, ts_column, retention_days). Load-bearing memory/identity/learning tables
+# are DELIBERATELY excluded — they are pruned only on explicit owner decision.
+_TELEMETRY_RETENTION: tuple[tuple[str, str, int], ...] = (
+    ("daemon_output_log", "created_at", 21),
+    ("cheap_provider_invocations", "created_at", 21),
+    ("tool_router_decisions", "created_at", 45),
+    ("reasoning_conclusions", "created_at", 45),
+)
+
+
+def prune_telemetry_tables() -> dict[str, object]:
+    """Age-prune the safe telemetry tables. Self-safe. Returns per-table deleted counts."""
+    out: dict[str, object] = {}
+    for table, ts_col, days in _TELEMETRY_RETENTION:
+        try:
+            out[table] = prune_table_by_age(table, ts_col, max_age_days=days).get("deleted", 0)
+        except Exception as exc:
+            out[table] = f"err:{str(exc)[:60]}"
+    return out

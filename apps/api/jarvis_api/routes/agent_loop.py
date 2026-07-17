@@ -830,11 +830,28 @@ async def agent_step(request: Request):
     # så member-lås/owner-frihed er BIT-for-BIT samme politik som desk.
     _prov_req = str(body.get("provider") or "").strip()
     _model_req = str(body.get("model") or "").strip()
-    try:
-        from apps.api.jarvis_api.routes.chat import _resolve_visible_target
-        provider, model = _resolve_visible_target(user_id or None, _prov_req, _model_req)
-    except Exception:
-        provider, model = "", ""
+    # Agent-drevne steps (subagenter dispatchet via task/explore) SKAL trække fra
+    # agent-poolen (gratis arbejdskraft + betalte modeller til rigtige kode-opgaver),
+    # ALDRIG owner-deepseek. Owner-chatten (Bjørn↔Jarvis) forbliver på sin egen model.
+    # Gated på agent_pool_router_enabled; graceful fallback til owner-model.
+    provider = model = ""
+    _is_agent_pool = bool(body.get("agent_pool")) and _flag("agent_pool_router_enabled")
+    if _is_agent_pool:
+        try:
+            from core.services.agent_pool_router import route_agent_task
+            _sub_kind = str(body.get("subagent_type") or "").strip() or "coding"
+            # explore/search = gratis arbejdskraft; øvrige må eskalere til betalt premium.
+            _allow_paid = _sub_kind.lower() not in ("explorer", "explore", "search", "general")
+            r = route_agent_task(kind=_sub_kind, allow_paid=_allow_paid)
+            provider, model = str(r.get("provider") or ""), str(r.get("model") or "")
+        except Exception:
+            logger.debug("agent_step: agent_pool routing fejlede — falder til owner-model", exc_info=True)
+    if not provider or not model:
+        try:
+            from apps.api.jarvis_api.routes.chat import _resolve_visible_target
+            provider, model = _resolve_visible_target(user_id or None, _prov_req, _model_req)
+        except Exception:
+            provider, model = "", ""
     if not provider or not model:
         provider, model = "deepseek", "deepseek-v4-flash"  # jarvis-code chat-default (owner)
 

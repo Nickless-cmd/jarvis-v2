@@ -158,7 +158,8 @@ def run_network_health_tick(*, trigger: str = "cadence", last_visible_at: str = 
             record_central_incident(
                 cluster="network", nerve="health", kind="network_degraded", severity="error",
                 message=(f"Netværks-helbred RØDT: {reason}. "
-                         f"api_ok={api_ok} latency={api_ms}ms hosts_down={down or 'ingen'}"))
+                         f"api_ok={api_ok} latency={api_ms}ms hosts_down={down or 'ingen'}"),
+                dedup=True)  # flappende latens-spikes → bump, ikke floder
         except Exception:
             pass
 

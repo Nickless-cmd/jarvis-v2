@@ -50,10 +50,20 @@ def record_central_incident(
     message: str = "",
     run_id: str = "",
     session_id: str = "",
+    dedup: bool = False,
 ) -> int | None:
-    """Persistér én incident. Returnerer row-id (eller None ved fejl). Selv-sikker."""
+    """Persistér én incident. Returnerer row-id (eller None ved fejl/dedup). Selv-sikker.
+
+    dedup=True: hvis en åben incident for (cluster, nerve) allerede findes, BUMP den
+    (gentaget ×N via bump_open_incident) i stedet for at indsætte en dublet. Til
+    flappende/gentagne tilstande (netværks-latens, cheap-lane-failover, run-loops) der
+    ellers oversvømmer panelet med snesevis af identiske rækker. Returnerer None ved bump.
+    Default False bevarer distinkte rækker (fx config_drift-batch)."""
     try:
         sev = severity if severity in _SEVERITIES else "error"
+        if dedup and bump_open_incident(
+                cluster=cluster, nerve=nerve, run_id=run_id, session_id=session_id):
+            return None
         with connect() as conn:
             _ensure_central_incidents_table(conn)
             cur = conn.execute(

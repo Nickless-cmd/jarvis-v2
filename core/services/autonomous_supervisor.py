@@ -73,6 +73,7 @@ def supervise(run_id: str, outcome: str, error: str = "") -> dict[str, Any]:
                 message=(f"autonomt run {rid}: {verdict}"
                          + (f" (knæk: {bp.get('cluster')}/{bp.get('nerve')})" if bp else "")
                          + (f" — {err[:120]}" if err else "")),
+                dedup=True,  # gentagne run-fejl/loops → bump én levende incident
             )
         except Exception:
             pass

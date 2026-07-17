@@ -47,6 +47,31 @@ def test_resolve_central_incidents_batch(isolated_runtime):
     assert any(r["nerve"] == "x" for r in unresolved)
 
 
+def test_record_dedup_bumps_open_instead_of_duplicate(isolated_runtime):
+    from core.runtime.db_central_incidents import (
+        record_central_incident, list_central_incidents,
+    )
+    a = record_central_incident(cluster="netX", nerve="healthX", kind="network_degraded",
+                                message="latens 900ms", dedup=True)
+    assert a is not None  # første → ægte række
+    b = record_central_incident(cluster="netX", nerve="healthX", kind="network_degraded",
+                                message="latens 4000ms", dedup=True)
+    assert b is None  # bumpede den åbne → ingen ny række
+    open_inc = [i for i in list_central_incidents(unresolved_only=True, limit=500)
+                if i["cluster"] == "netX" and i["nerve"] == "healthX"]
+    assert len(open_inc) == 1
+    assert "gentaget ×2" in open_inc[0]["message"]
+
+
+def test_record_dedup_false_preserves_distinct_rows(isolated_runtime):
+    from core.runtime.db_central_incidents import (
+        record_central_incident, list_central_incidents,
+    )
+    a = record_central_incident(cluster="netY", nerve="healthY", kind="k", message="1")
+    b = record_central_incident(cluster="netY", nerve="healthY", kind="k", message="2")
+    assert a is not None and b is not None and a != b  # default: distinkte rækker bevaret
+
+
 def test_has_unresolved_message_dedup(isolated_runtime):
     from core.runtime.db_central_incidents import (
         record_central_incident, has_unresolved_message, resolve_central_incidents,

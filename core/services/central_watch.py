@@ -84,7 +84,8 @@ def _raise_flag(cluster: str, nerve: str, *, severity: str, message: str,
         try:
             from core.runtime.db_central_incidents import record_central_incident
             record_central_incident(cluster=cluster, nerve=nerve, kind="flag",
-                                    severity=severity, message=message[:400])
+                                    severity=severity, message=message[:400],
+                                    dedup=True)  # gentagne flags (failover/tool-fejl) → bump
             out["incident"] = True
         except Exception:
             pass

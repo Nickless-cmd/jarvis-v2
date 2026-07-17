@@ -93,6 +93,12 @@ _TELEMETRY_RETENTION: tuple[tuple[str, str, int], ...] = (
     ("cheap_provider_invocations", "created_at", 21),
     ("tool_router_decisions", "created_at", 45),
     ("reasoning_conclusions", "created_at", 45),
+    # Recency-bounded readers (verified 2026-07-17): each reads only recent/by-id
+    # rows (ORDER BY ... LIMIT, WHERE id=?, WHERE status IN proposed/applied), never
+    # aggregates full history → rows older than 60d have no effect on learning.
+    ("runtime_action_outcomes", "recorded_at", 60),
+    ("runtime_contract_candidates", "created_at", 60),
+    ("behavioral_decision_reviews", "created_at", 60),
 )
 
 

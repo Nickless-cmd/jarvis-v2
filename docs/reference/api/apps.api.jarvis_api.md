@@ -32,16 +32,16 @@ _Jarvis MCP server — exposes memory, identity, state, and chat via Streamable 
 | function | `resource_chat_session` | `(session_id)` | A specific Jarvis chat session with all messages. | [src](../../../apps/api/jarvis_api/mcp_server.py#L233) |
 | function | `_get_or_create_mcp_session` | `()` | Return or create a persistent MCP chat session. | [src](../../../apps/api/jarvis_api/mcp_server.py#L248) |
 | function | `jarvis_central_status` | `()` | Central-helbred: status (green/yellow/red), uløste flag/incidents, degrading-clusters, | [src](../../../apps/api/jarvis_api/mcp_server.py#L271) |
-| function | `jarvis_central_diagnostics` | `()` | Fuld central-diagnostik: uløste incidents (fuld besked), anomalier, root-causes, | [src](../../../apps/api/jarvis_api/mcp_server.py#L296) |
-| function | `jarvis_central_timeseries` | `()` | Per-nerve tidsserie MERGET på tværs af processer (runtime+api). Lukker cross-proces- | [src](../../../apps/api/jarvis_api/mcp_server.py#L317) |
-| function | `jarvis_central_nerve` | `(nerve)` | Seneste observationer/beslutninger for én central-nerve (fx central_meta, lifecycle, | [src](../../../apps/api/jarvis_api/mcp_server.py#L333) |
-| function | `jarvis_central_resolve` | `()` | Luk (resolve) alle uløste central-flag/incidents. Rydder tavlen efter review. | [src](../../../apps/api/jarvis_api/mcp_server.py#L352) |
-| function | `jarvis_memory_search` | `(query, limit=…)` | Søg Jarvis' sansninger/hukommelse (sensory memory) semantisk. Sparer at grave manuelt. | [src](../../../apps/api/jarvis_api/mcp_server.py#L371) |
-| function | `jarvis_central_command` | `(line)` | FULD central-terminal (write): status/incidents/trace/nerve/toggle/resolve/scan/providers. | [src](../../../apps/api/jarvis_api/mcp_server.py#L385) |
-| function | `jarvis_central_shadow` | `()` | M1 skygge-lag: hvad Centralen VILLE gøre (reaktioner fra lærings-forslag) + prædiktioner | [src](../../../apps/api/jarvis_api/mcp_server.py#L400) |
-| function | `jarvis_chat_search` | `(query, limit=…)` | Søg Jarvis' chat-historik (samtaler med Bjørn) på tekst. Sparer manuel DB-gravning. | [src](../../../apps/api/jarvis_api/mcp_server.py#L416) |
-| function | `_safe_dict` | `(obj)` | Convert a DB record to a JSON-safe dict. | [src](../../../apps/api/jarvis_api/mcp_server.py#L437) |
-| function | `create_mcp_app` | `()` | Create the ASGI app for mounting in FastAPI. | [src](../../../apps/api/jarvis_api/mcp_server.py#L451) |
+| function | `jarvis_central_diagnostics` | `()` | Fuld central-diagnostik: uløste incidents (fuld besked), anomalier, root-causes, | [src](../../../apps/api/jarvis_api/mcp_server.py#L297) |
+| function | `jarvis_central_timeseries` | `()` | Per-nerve tidsserie MERGET på tværs af processer (runtime+api). Lukker cross-proces- | [src](../../../apps/api/jarvis_api/mcp_server.py#L318) |
+| function | `jarvis_central_nerve` | `(nerve)` | Seneste observationer/beslutninger for én central-nerve (fx central_meta, lifecycle, | [src](../../../apps/api/jarvis_api/mcp_server.py#L334) |
+| function | `jarvis_central_resolve` | `()` | Luk (resolve) alle uløste central-flag/incidents. Rydder tavlen efter review. | [src](../../../apps/api/jarvis_api/mcp_server.py#L353) |
+| function | `jarvis_memory_search` | `(query, limit=…)` | Søg Jarvis' sansninger/hukommelse (sensory memory) semantisk. Sparer at grave manuelt. | [src](../../../apps/api/jarvis_api/mcp_server.py#L372) |
+| function | `jarvis_central_command` | `(line)` | FULD central-terminal (write): status/incidents/trace/nerve/toggle/resolve/scan/providers. | [src](../../../apps/api/jarvis_api/mcp_server.py#L386) |
+| function | `jarvis_central_shadow` | `()` | M1 skygge-lag: hvad Centralen VILLE gøre (reaktioner fra lærings-forslag) + prædiktioner | [src](../../../apps/api/jarvis_api/mcp_server.py#L401) |
+| function | `jarvis_chat_search` | `(query, limit=…)` | Søg Jarvis' chat-historik (samtaler med Bjørn) på tekst. Sparer manuel DB-gravning. | [src](../../../apps/api/jarvis_api/mcp_server.py#L417) |
+| function | `_safe_dict` | `(obj)` | Convert a DB record to a JSON-safe dict. | [src](../../../apps/api/jarvis_api/mcp_server.py#L438) |
+| function | `create_mcp_app` | `()` | Create the ASGI app for mounting in FastAPI. | [src](../../../apps/api/jarvis_api/mcp_server.py#L452) |
 
 ## `apps/api/jarvis_api/sse_v2_events.py`
 _SSE v2 event-dataclasses — Anthropic-style streaming protocol._

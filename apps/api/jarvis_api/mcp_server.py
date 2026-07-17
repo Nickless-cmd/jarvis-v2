@@ -285,6 +285,7 @@ def jarvis_central_status() -> str:
                 for i in (snap.get("incidents") or [])
             ],
             "anomaly_counts": (snap.get("anomalies") or {}).get("counts"),
+            "runtime_liveness": snap.get("runtime_liveness"),
         }
     except Exception as exc:
         out = {"error": str(exc)}

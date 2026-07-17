@@ -39,6 +39,38 @@ def _status_from(diag: dict, incidents: list, open_breakers: list, drift: dict,
     return "green"
 
 
+def runtime_liveness() -> dict[str, Any]:
+    """Sandfærdig runtime-topologi + heartbeat-friskhed.
+
+    Modvirker at Jarvis OPFINDER 'jarvis-heartbeat'/'jarvis-central' som døde
+    systemd-services i sin status: de findes IKKE som units — de er tråde inde i
+    jarvis-runtime (hvis unit-beskrivelse er 'runtime owner (heartbeat, schedulers,
+    bridges)'). Kun jarvis-api og jarvis-runtime er systemd-units. Self-safe."""
+    info: dict[str, Any] = {
+        "systemd_services": ["jarvis-api", "jarvis-runtime"],
+        "note": ("heartbeat, schedulers og bridges kører INDE i jarvis-runtime — "
+                 "de er IKKE separate systemd-services. Rapportér dem aldrig som "
+                 "'inactive services'; tjek heartbeat_alive i stedet."),
+        "heartbeat_last_tick_age_seconds": None,
+        "heartbeat_alive": None,
+    }
+    try:
+        from datetime import datetime, UTC
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT MAX(created_at) mx FROM events WHERE kind LIKE 'heartbeat.%'"
+            ).fetchone()
+        mx = (row["mx"] if row else None) or (row[0] if row else None)
+        if mx:
+            age = (datetime.now(UTC) - datetime.fromisoformat(str(mx))).total_seconds()
+            info["heartbeat_last_tick_age_seconds"] = round(age, 1)
+            info["heartbeat_alive"] = age < 300
+    except Exception:
+        pass
+    return info
+
+
 def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
     """Ét snapshot af Centralens live-tilstand. Self-safe (delvise data ved fejl)."""
     snap: dict[str, Any] = {
@@ -172,6 +204,7 @@ def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
     except Exception:
         snap["clusters"] = []
 
+    snap["runtime_liveness"] = runtime_liveness()
     snap["status"] = _status_from(diag, incidents, snap["open_breakers"], drift, degrading,
                                   snap.get("anomalies", {}).get("counts", {}),
                                   snap.get("processes", []))

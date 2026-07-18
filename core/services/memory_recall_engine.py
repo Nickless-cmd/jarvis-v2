@@ -739,26 +739,13 @@ def multi_signal_recall(
     weights = _SOURCE_WEIGHTS_DEFAULT
 
     # 1. Gather records from all sources (same as unified_recall)
-    import time as _t_diag  # TEMP-DIAG: sub-step timing for multi_signal_recall
-    _td: dict[str, int] = {}
-    _tk = _t_diag.monotonic()
-
-    def _lap(_name: str) -> None:
-        nonlocal _tk
-        _now = _t_diag.monotonic()
-        _td[_name] = int((_now - _tk) * 1000)
-        _tk = _now
-
     all_results: list[dict[str, Any]] = []
     if "workspace" in enabled:
         all_results.extend(_gather_workspace(query, limit_per_source))
-        _lap("workspace")
     if "chronicle" in enabled:
         all_results.extend(_gather_chronicle(query, limit_per_source))
-        _lap("chronicle")
     if "private_brain" in enabled:
         all_results.extend(_gather_private_brain(query, limit_per_source))
-        _lap("private_brain")
 
     if not all_results:
         return {
@@ -782,7 +769,6 @@ def multi_signal_recall(
 
     # 3. Multi-signal fusion scoring
     all_results = _compute_multi_signal_scores(query, all_results)
-    _lap("fusion_score")
 
     # 4. Candidate penalty (legacy)
     for r in all_results:
@@ -837,12 +823,6 @@ def multi_signal_recall(
         all_results = [r for r in all_results if r.get("multi_signal_score", 0.0) >= min_score]
     all_results.sort(key=lambda r: r.get("multi_signal_score", 0.0), reverse=True)
     top = all_results[:total_limit]
-
-    _lap("mood_temporal_sort")  # TEMP-DIAG
-    if sum(_td.values()) > 500:
-        import sys as _sys_diag
-        print("multi-recall-timing " + " ".join(f"{k}={v}" for k, v in _td.items()),
-              file=_sys_diag.stderr, flush=True)
 
     # Fase 3 (§23.3 #4): fodr Centralen med recall-KVALITET — KUN scalar-metadata, aldrig
     # indhold. private_brain_share er load-bearing (ser om deprioriteringen af selv-genereret

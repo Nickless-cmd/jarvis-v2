@@ -251,17 +251,30 @@ _STRUCTURED_TEMPLATE = (
 )
 
 
+def _cap_transcript(transcript: str, max_chars: int) -> str:
+    """Cap the rendered transcript so a (free/cheap) summariser model isn't handed a huge
+    prompt — keeps the HEAD (primary intent, early decisions) and the TAIL (current work)
+    with the middle elided. 0/negative = no cap."""
+    t = str(transcript or "")
+    if max_chars <= 0 or len(t) <= max_chars:
+        return t
+    half = max_chars // 2
+    return t[:half] + "\n\n[… midterste del af historikken udeladt for at holde summary-inputtet håndterbart …]\n\n" + t[-half:]
+
+
 def build_structured_summary_prompt(
     old_messages: list[dict[str, Any]], *, focus: Optional[str] = None,
-    ground_truth: Optional[str] = None,
+    ground_truth: Optional[str] = None, max_transcript_chars: int = 0,
 ) -> str:
     """Structured, thread-preserving summary prompt over the OLD messages.
 
     `focus` — optional steer from manual /compact (e.g. 'behold API-kontrakten vi lige lavede').
     `ground_truth` — optional VERIFIED-facts block (git HEAD, key files, owner facts) injected
     before the transcript so the summariser anchors on truth instead of inventing (the
-    'kryptograf' hallucination the live-test caught)."""
-    transcript = render_transcript_for_summary(old_messages)
+    'kryptograf' hallucination the live-test caught).
+    `max_transcript_chars` — cap the rendered transcript (head+tail kept) so a cheap summariser
+    isn't handed a huge input that hangs; 0 = unbounded."""
+    transcript = _cap_transcript(render_transcript_for_summary(old_messages), max_transcript_chars)
     focus_clause = f" FOKUS især på: {focus.strip()}." if focus and focus.strip() else ""
     gt = (str(ground_truth).strip() + "\n\n") if ground_truth and str(ground_truth).strip() else ""
     return _STRUCTURED_TEMPLATE.format(focus=focus_clause, ground_truth=gt, transcript=transcript)

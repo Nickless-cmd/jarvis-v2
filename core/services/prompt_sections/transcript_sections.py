@@ -486,9 +486,30 @@ def _make_structured_summariser(focus: str | None = None, *, session_id: str | N
 
     def _summarise(old_msgs: list[dict]) -> str:
         folded, _ = fold_old_tool_results(old_msgs, keep=0)  # prose for the summariser
-        prompt = build_structured_summary_prompt(folded, focus=focus, ground_truth=_gt)
-        # 2500 tokens: headroom so a thinking-model's scratchpad doesn't eat the summary.
-        raw = str(call_compact_llm(prompt, max_tokens=2500) or "")
+        # Cap input (head+tail) so a free/cheap model isn't handed ~69k tokens → hangs.
+        prompt = build_structured_summary_prompt(
+            folded, focus=focus, ground_truth=_gt, max_transcript_chars=60_000,
+        )
+        # HARD timeout (2026-07-18 hang-fix): the cheap-lane call has no internal timeout,
+        # so a slow/dead free provider could hang compaction for MINUTES. Bound it in a
+        # worker future; on timeout → deterministic mechanical fallback below. Zombie provider
+        # thread may linger, but the user-visible compaction is bounded.
+        import concurrent.futures as _cf
+        raw = ""
+        try:
+            with _cf.ThreadPoolExecutor(max_workers=1) as _ex:
+                _fut = _ex.submit(call_compact_llm, prompt, max_tokens=2500)
+                raw = str(_fut.result(timeout=45) or "")
+        except _cf.TimeoutError:
+            import logging as _lg
+            _lg.getLogger(__name__).warning(
+                "compaction summary timed out (>45s, slow cheap-lane) — mechanical fallback"
+            )
+            raw = ""
+        except Exception as _exc:
+            import logging as _lg
+            _lg.getLogger(__name__).warning("compaction summary raised (%s) — fallback", _exc)
+            raw = ""
         text = extract_summary(raw)  # strip <thinking>, pull <summary>…</summary>
         if summary_looks_valid(text):
             return text

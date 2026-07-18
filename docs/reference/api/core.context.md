@@ -64,9 +64,10 @@ _Model-aware, round-atomic compaction policy (PURE — no DB, no clock, no LLM).
 | function | `_is_stub` | `(content)` | — | [src](../../../core/context/compaction_policy.py#L176) |
 | function | `fold_old_tool_results` | `(messages, keep=…)` | Fold every tool_result (role=="tool") OLDER than the newest `keep` into a short stub, | [src](../../../core/context/compaction_policy.py#L181) |
 | function | `render_transcript_for_summary` | `(messages)` | Flatten messages to a text transcript for the summarizer. tool_use/tool_result | [src](../../../core/context/compaction_policy.py#L208) |
-| function | `build_structured_summary_prompt` | `(old_messages, *, focus=…, ground_truth=…)` | Structured, thread-preserving summary prompt over the OLD messages. | [src](../../../core/context/compaction_policy.py#L254) |
-| function | `extract_summary` | `(raw)` | Pull the usable summary out of a raw model response: drop any <thinking> scratchpad, | [src](../../../core/context/compaction_policy.py#L285) |
-| function | `summary_looks_valid` | `(summary_text, *, min_chars=…)` | Quality gate on the EXTRACTED summary. Rejects empty/too-short, the mechanical-fallback | [src](../../../core/context/compaction_policy.py#L296) |
+| function | `_cap_transcript` | `(transcript, max_chars)` | Cap the rendered transcript so a (free/cheap) summariser model isn't handed a huge | [src](../../../core/context/compaction_policy.py#L254) |
+| function | `build_structured_summary_prompt` | `(old_messages, *, focus=…, ground_truth=…, max_transcript_chars=…)` | Structured, thread-preserving summary prompt over the OLD messages. | [src](../../../core/context/compaction_policy.py#L265) |
+| function | `extract_summary` | `(raw)` | Pull the usable summary out of a raw model response: drop any <thinking> scratchpad, | [src](../../../core/context/compaction_policy.py#L298) |
+| function | `summary_looks_valid` | `(summary_text, *, min_chars=…)` | Quality gate on the EXTRACTED summary. Rejects empty/too-short, the mechanical-fallback | [src](../../../core/context/compaction_policy.py#L309) |
 
 ## `core/context/session_compact.py`
 _Session-level context compaction._

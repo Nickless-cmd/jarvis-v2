@@ -250,6 +250,26 @@ def test_structured_prompt_contains_sections_and_focus():
     assert "ANTI-OPFINDELSE" in p  # anti-hallucination guard (live-test fix)
 
 
+def test_transcript_cap_keeps_head_and_tail():
+    from core.context.compaction_policy import _cap_transcript
+    t = "HEAD" + ("x" * 5000) + "TAIL"
+    out = _cap_transcript(t, max_chars=200)
+    assert out.startswith("HEAD")
+    assert out.rstrip().endswith("TAIL")
+    assert "udeladt" in out
+    assert len(out) < len(t)
+    # under the cap → unchanged
+    assert _cap_transcript("short", max_chars=200) == "short"
+    assert _cap_transcript("anything", max_chars=0) == "anything"  # 0 = unbounded
+
+
+def test_structured_prompt_respects_transcript_cap():
+    big = [{"role": "user", "content": "x" * 40000}]
+    p = build_structured_summary_prompt(big, max_transcript_chars=5000)
+    assert "udeladt" in p  # middle elided
+    assert len(p) < 20000
+
+
 def test_structured_prompt_injects_ground_truth():
     gt = "=== GROUND TRUTH ===\nCurrent git HEAD: abc123\n=== END ==="
     p = build_structured_summary_prompt(

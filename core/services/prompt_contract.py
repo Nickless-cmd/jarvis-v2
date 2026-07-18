@@ -2069,6 +2069,7 @@ def build_visible_chat_prompt_assembly(
             _dyn_memory_recall.append(recall_bundle)
             derived_inputs.append("bounded memory recall bundle (user-msg tail)")
 
+    _mark("hr1_after_mem_recall_daily")  # TEMP-DIAG: nail heavy-resolves 8-9s spike
     if relevance.include_guidance:
         for filename in ("TOOLS.md", "SKILLS.md"):
             section = _workspace_guidance_section(
@@ -2089,6 +2090,7 @@ def build_visible_chat_prompt_assembly(
                 _tail_add(f"{filename} guidance", section)
                 conditional_files.append(filename)
 
+    _mark("hr2_after_guidance")  # TEMP-DIAG
     # --- Budget-controlled runtime sections ---
     # Workspace files (SOUL, IDENTITY, memory, rules, transcript) are
     # assembled above outside budget control — they are foundational.
@@ -2118,6 +2120,7 @@ def build_visible_chat_prompt_assembly(
         session_id=session_id,
     )
     support_content = "\n\n".join(support_raw) if support_raw else None
+    _mark("hr3_after_support")  # TEMP-DIAG
 
     bridge_content = None  # spec 2026-07-05: altid None på visible-lane
 
@@ -2135,6 +2138,7 @@ def build_visible_chat_prompt_assembly(
         limit=50 if compact else 60,
         include=relevance.include_transcript,
     ) if not structured_transcript else None
+    _mark("hr4_after_transcript")  # TEMP-DIAG
 
     # --- Cognitive State (accumulated personality, bearing, taste, rhythm) ---
     # Submitted as a future at function entry; resolve here.
@@ -2291,6 +2295,10 @@ def build_visible_chat_prompt_assembly(
         "seg_q3_done",
         "before_relevance_resolve",
         "after_relevance_resolve",
+        "hr1_after_mem_recall_daily",  # TEMP-DIAG
+        "hr2_after_guidance",          # TEMP-DIAG
+        "hr3_after_support",           # TEMP-DIAG
+        "hr4_after_transcript",        # TEMP-DIAG
         "before_heavy_resolves",
         "after_heavy_resolves",
         "after_assembly_complete",

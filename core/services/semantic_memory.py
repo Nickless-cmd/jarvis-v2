@@ -121,6 +121,34 @@ def _embed_ollama(text: str) -> np.ndarray | None:
         return None
 
 
+def _embed_ollama_batch(texts: list[str]) -> list["np.ndarray | None"]:
+    """Batch-embed via ollamas /api/embed (ÉT round-trip for hele listen i stedet
+    for N). Semantisk identisk med N× _embed_ollama — samme model, samme vektorer.
+    Returnerer en liste PARALLEL med `texts` (None pr. fejlet tekst). Falder tilbage
+    til per-tekst _embed_ollama hvis batch-endpointet mangler (ældre ollama) eller
+    fejler, så korrektheden aldrig afhænger af batch-supporten. Self-safe."""
+    if not texts:
+        return []
+    try:
+        import httpx
+        resp = httpx.post(
+            f"{_ollama_base_url()}/api/embed",
+            json={"model": _EMBED_MODEL, "input": list(texts)},
+            timeout=30,
+        )
+        if resp.status_code == 200:
+            embs = resp.json().get("embeddings")
+            if isinstance(embs, list) and len(embs) == len(texts):
+                return [np.array(e, dtype=np.float32) if e else None for e in embs]
+            logger.debug("semantic_memory: batch embed gav %s vektorer for %s tekster",
+                         len(embs or []), len(texts))
+        else:
+            logger.debug("semantic_memory: batch embed HTTP %s", resp.status_code)
+    except Exception as exc:
+        logger.debug("semantic_memory: batch embed fejlede, falder til per-tekst: %s", exc)
+    return [_embed_ollama(t) for t in texts]
+
+
 # ---------------------------------------------------------------------------
 # Encoding helpers
 # ---------------------------------------------------------------------------

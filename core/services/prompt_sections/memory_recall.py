@@ -89,14 +89,16 @@ def _semantic_dedup_lines(lines: list[str], threshold: float = _CROSS_DEDUP_THRE
         return lines
     try:
         import numpy as np
-        from core.services.jarvis_brain import _embed_text
+        from core.services.jarvis_brain import _embed_texts
     except Exception:
         return lines
+    # ÉT batch-kald for alle linjer i stedet for N serielle embed-round-trips.
+    # Rækkefølge + dedup-logik uændret → deterministisk (prompt-cache-sikkert).
+    vecs = _embed_texts(lines)
     kept: list[str] = []
     kept_vecs: list[object] = []
-    for ln in lines:
+    for ln, v in zip(lines, vecs):
         try:
-            v = _embed_text(ln)
             vn = float(np.linalg.norm(v)) or 1e-9
         except Exception:
             kept.append(ln)
@@ -122,7 +124,7 @@ def _is_semantic_dup_of_memory(text: str, user_id: str = "") -> bool:
     nøgleord (typisk 0-3 linjer), ikke alle ~500 → ingen latency-eksplosion."""
     try:
         import numpy as np
-        from core.services.jarvis_brain import _embed_text
+        from core.services.jarvis_brain import _embed_texts
         lines = _memory_md_lines(user_id)
         if not lines:
             return False
@@ -133,13 +135,13 @@ def _is_semantic_dup_of_memory(text: str, user_id: str = "") -> bool:
         candidates = [ln for ln in lines if len(kw & _keywords(ln)) >= 2]
         if not candidates:
             return False
-        qv = _embed_text(text)
+        # ÉT batch-kald: kandidaten + de (≤12) MEMORY.md-linjer i stedet for 1+N
+        # serielle embed-round-trips. Hård loft på 12 bevaret. Samme tærskel-logik.
+        candidates = candidates[:12]
+        vecs = _embed_texts([text] + candidates)
+        qv = vecs[0]
         qn = float(np.linalg.norm(qv)) or 1e-9
-        for ln in candidates[:12]:          # hård loft: aldrig mere end 12 embeddings
-            try:
-                v = _embed_text(ln)
-            except Exception:
-                continue
+        for v in vecs[1:]:
             d = qn * (float(np.linalg.norm(v)) or 1e-9)
             if float(np.dot(qv, v) / d) >= _SEMANTIC_DUP_THRESHOLD:
                 return True

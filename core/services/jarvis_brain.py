@@ -562,6 +562,23 @@ def _embed_text(text: str) -> np.ndarray:
     return v.astype(np.float32, copy=False)
 
 
+def _embed_texts(texts: list[str]) -> list[np.ndarray]:
+    """Batch-variant af _embed_text: ÉT ollama round-trip for hele listen (via
+    semantic_memory._embed_ollama_batch) i stedet for N serielle kald. Samme
+    768-dim float32-kontrakt og zero-vektor-fallback pr. tekst som _embed_text,
+    rækkefølge bevaret → resultater er identiske med [_embed_text(t) for t in texts]."""
+    from core.services.semantic_memory import _embed_ollama_batch
+    out: list[np.ndarray] = []
+    for v in _embed_ollama_batch(list(texts)):
+        if v is None:
+            out.append(np.zeros(768, dtype=np.float32))
+        elif not isinstance(v, np.ndarray):
+            out.append(np.asarray(v, dtype=np.float32))
+        else:
+            out.append(v.astype(np.float32, copy=False))
+    return out
+
+
 def _embedding_to_blob(v: np.ndarray) -> bytes:
     return v.astype(np.float32, copy=False).tobytes()
 

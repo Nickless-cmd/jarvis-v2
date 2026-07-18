@@ -554,6 +554,27 @@ _ASSEMBLY_TURN_CACHE: dict = {}
 _ASSEMBLY_TURN_TTL_S = 45.0
 
 
+def _latest_user_msg_id(session_id: str | None) -> int:
+    """Cheap indexed lookup of the newest USER message id for the session. It's the SAME
+    for round 0 and the post-tool rebuild of one turn (tool_calls are assistant/tool rows,
+    not user rows) → intra-turn reuse hits. A NEW user message (even identical text like
+    'ja') gets a new id → a new cache key → NO stale cross-turn reuse. Returns 0 on any
+    error (caller then skips the cache and builds fresh — never serve stale)."""
+    sid = (session_id or "").strip()
+    if not sid:
+        return 0
+    try:
+        from core.services.chat_sessions import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT MAX(id) AS m FROM chat_messages WHERE session_id = ? AND role = 'user'",
+                (sid,),
+            ).fetchone()
+        return int(row["m"]) if row and row["m"] is not None else 0
+    except Exception:
+        return 0
+
+
 def build_visible_chat_prompt_assembly(
     *,
     provider: str,
@@ -564,9 +585,18 @@ def build_visible_chat_prompt_assembly(
     runtime_self_report_context: dict[str, object] | None = None,
 ) -> PromptAssembly:
     """Turn-scoped cached wrapper — see _ASSEMBLY_TURN_CACHE. Reuses round 0's assembly for
-    the post-tool rebuild so a tool turn assembles ONCE, not twice."""
+    the post-tool rebuild so a tool turn assembles ONCE, not twice. Keyed on the newest USER
+    message id (NOT the text) so a repeated short reply never reuses a stale assembly."""
     import time as _t_cache
-    _key = (str(session_id or ""), user_message or "", provider, model, name)
+    _luid = _latest_user_msg_id(session_id)
+    if _luid <= 0:
+        # No safe turn-key → build fresh (never risk a stale cross-turn assembly).
+        return _build_visible_chat_prompt_assembly_impl(
+            provider=provider, model=model, user_message=user_message,
+            session_id=session_id, name=name,
+            runtime_self_report_context=runtime_self_report_context,
+        )
+    _key = (str(session_id or ""), _luid, provider, model, name)
     _now = _t_cache.monotonic()
     _hit = _ASSEMBLY_TURN_CACHE.get(_key)
     if _hit is not None and (_now - _hit[0]) < _ASSEMBLY_TURN_TTL_S:

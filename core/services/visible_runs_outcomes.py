@@ -374,13 +374,21 @@ def set_last_visible_run_outcome(
             _guarantee_visible_outcome(run)
     except Exception:
         pass
-    _persist_visible_run_outcome(
-        run,
-        status=status,
-        finished_at=finished_at,
-        text_preview=text_preview,
-        error=error,
-    )
+    # 2026-07-18 (hang-fix, målt): _persist_visible_run_outcome gør 3 DB-INSERTs under ÉT
+    # write-lock. Under WAL-contention (2,7GB events-tabel + samtidige daemon/heartbeat/
+    # inner-voice-writes) blokerede det 1-15s SYNKRONT lige efter svaret, FØR stream-luk →
+    # "jarvis→tool→svar→hänger" (turn-trace: finalize-enter→after-outcome = 15,16s). Den
+    # load-bearing del (in-memory _LAST_VISIBLE_RUN_OUTCOME + empty-completion-guard) er
+    # ALLEREDE kørt synkront ovenfor; DB-projektionen (MC-dashboard/visible_runs) behøver
+    # ikke blokere svaret. Kør den i en daemon-tråd så streamen lukker med det samme.
+    import threading as _t_outcome
+    _t_outcome.Thread(
+        target=_persist_visible_run_outcome,
+        args=(run,),
+        kwargs=dict(status=status, finished_at=finished_at,
+                    text_preview=text_preview, error=error),
+        name=f"outcome-persist-{str(run.run_id)[:10]}", daemon=True,
+    ).start()
 
 
 def _persist_visible_run_outcome(

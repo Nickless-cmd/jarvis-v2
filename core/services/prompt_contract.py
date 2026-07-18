@@ -3835,7 +3835,13 @@ def _visible_support_signal_sections(
         _proactive_outbound_section,
         _substrate_section,
     ):
+        import time as _t_diag  # TEMP-DIAG: nail which support-builder blocks 8.8s
+        _t_b = _t_diag.monotonic()
         section = builder()
+        _b_ms = int((_t_diag.monotonic() - _t_b) * 1000)
+        if _b_ms > 1000:
+            _bn = getattr(builder, "__name__", "<lambda:substrate>")
+            print(f"support-builder-slow name={_bn} ms={_b_ms}")
         if section:
             sections.append(section)
     return sections

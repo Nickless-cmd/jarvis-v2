@@ -269,6 +269,13 @@ _ASSEMBLY_BUDGET_S = 12.0
 # ish, "" hvis aldrig bygget) → et koldt vindue kan aldrig koste mere end dette pr. svar.
 _COGNITIVE_STATE_BUILD_CAP_S = 2.5
 
+# 2026-07-18 (hang-fix): embedding/recall-resolves i assembly-hot-path var UCAPPEDE —
+# målt trace viste `embed batch +28306ms` / `recall_bundle +28635ms` når ollama var
+# proppet (inner-voice-shadow + cheap-lane + daemons maser samtidig). Ét langsomt embed-
+# kald frøs HELE turen i ~30s. Cap dem: mister recall/memory for DEN tur (additivt,
+# guardet → sektion udelades) frem for at fryse svaret. Fald til baggrunds-cache hvor muligt.
+_HOT_RESOLVE_CAP_S = 4.0
+
 
 def _phase_timeout(elapsed: float, *, max_s: float | None = None) -> float:
     """Deadline for én phase-future: cappet mod resten af det globale assembly-budget,
@@ -2040,7 +2047,10 @@ def build_visible_chat_prompt_assembly(
     # line=None på visible-lanen (full-support-mode) → submit+resolve var ren spild.
 
     if relevance.include_memory:
-        memory_selection = _timed_result(future_memory_selection, "memory_selection")
+        memory_selection = _timed_result(
+            future_memory_selection, "memory_selection",
+            max_s=_HOT_RESOLVE_CAP_S, default=None,
+        )
         if memory_selection:
             # Per-besked-adaptivt → flyttes til bruger-beskeden (lever #4 cache-fix),
             # IKKE parts.append her midt i prompten.
@@ -2075,7 +2085,10 @@ def build_visible_chat_prompt_assembly(
                 ),
             )
 
-        recall_bundle = _timed_result(future_recall_bundle, "recall_bundle")
+        recall_bundle = _timed_result(
+            future_recall_bundle, "recall_bundle",
+            max_s=_HOT_RESOLVE_CAP_S, default=None,
+        )
         if recall_bundle:
             # 2026-06-13 (lever #4): flyttet HELT ud af system-beskeden til
             # bruger-beskeden (var i awareness-tail, men awareness rendres stadig
@@ -2171,7 +2184,10 @@ def build_visible_chat_prompt_assembly(
     # quality). Without this Jarvis confabulates pessimistic answers when
     # asked introspective questions in chat — claims 0% adherence when DB
     # shows 60%, claims stale goals when none are stale, etc.
-    self_state_content = _timed_result(future_self_state, "self_state")
+    self_state_content = _timed_result(
+        future_self_state, "self_state",
+        max_s=_HOT_RESOLVE_CAP_S, default=None,
+    )
     _mark("after_heavy_resolves")
     # 2026-05-22 (Claude): defer cognitive_state + self_state to tail.
     # Live cache diff round-2 found COGNITIVE STATE block at byte ~14,936

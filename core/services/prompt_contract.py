@@ -2920,12 +2920,35 @@ def build_prompt_relevance_decision(
     heuristic_guidance_relevant = _should_include_guidance(text)
     heuristic_transcript_relevant = _should_include_transcript(text)
     heuristic_continuity_relevant = _should_include_continuity(text)
-    backend_attempt = _bounded_nl_relevance_backend(
-        text=text,
-        mode=mode,
-        compact=compact,
-        name=name,
-    )
+    # 2026-07-18: on the visible lane (non-compact) memory/transcript/continuity/
+    # support are all FORCED True below regardless of the NL backend — the only
+    # field the ~1s deepseek relevance round-trip would change is include_guidance,
+    # which has a heuristic (_should_include_guidance). Skip the blocking hot-path
+    # call there (heuristic-only) → removes a per-turn LLM round-trip from the
+    # assembly critical path. Awareness-neutral for memory/transcript/continuity/
+    # support; guidance falls back to the heuristic. Flag-gated for rollback.
+    _skip_nl = False
+    try:
+        from core.runtime.settings import load_settings as _ls
+        _skip_nl = (
+            mode == "visible_chat" and not compact
+            and bool(getattr(_ls(), "relevance_skip_nl_on_visible", True))
+        )
+    except Exception:
+        _skip_nl = (mode == "visible_chat" and not compact)
+    if _skip_nl:
+        from core.services.prompt_relevance_backend import BoundedPromptRelevanceAttempt
+        backend_attempt = BoundedPromptRelevanceAttempt(
+            attempted=False, success=False, backend="skipped-visible-hotpath",
+            provider=None, model=None, status="skipped-visible-hotpath", result=None,
+        )
+    else:
+        backend_attempt = _bounded_nl_relevance_backend(
+            text=text,
+            mode=mode,
+            compact=compact,
+            name=name,
+        )
     nl_relevance = backend_attempt.result if backend_attempt.success else None
 
     memory_relevant = heuristic_memory_relevant or bool(

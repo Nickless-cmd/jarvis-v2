@@ -375,7 +375,49 @@ def _select_affordances(
 # ---------------------------------------------------------------------------
 
 
+import threading as _frame_threading
+
+_FRAME_CACHE: dict[str, tuple[float, dict[str, object]]] = {}
+_FRAME_CACHE_LOCK = _frame_threading.Lock()
+_FRAME_CACHE_TTL_S = 45.0  # frame is message-independent; rebuilt on daemon cadence
+
+
 def build_cognitive_frame(
+    *,
+    self_knowledge: dict[str, object] | None = None,
+    heartbeat_state: dict[str, object] | None = None,
+) -> dict[str, object]:
+    """Build the current bounded cognitive frame (short-TTL cached).
+
+    2026-07-18: the frame is ~35 sequential runtime-surface DB reads (~1.5s,
+    measured — the single biggest per-turn assembly cost). It takes NO
+    user_message, so it is identical across turns until the underlying signal
+    tables change on daemon cadence. Cache it per-user for _FRAME_CACHE_TTL_S so
+    it is not rebuilt on every visible turn. Awareness-neutral — identical frame
+    content. Callers that pass explicit self_knowledge/heartbeat_state (heartbeat
+    path) bypass the cache and always build fresh.
+    """
+    if self_knowledge is not None or heartbeat_state is not None:
+        return _build_cognitive_frame_uncached(
+            self_knowledge=self_knowledge, heartbeat_state=heartbeat_state,
+        )
+    import time as _t_fr
+    try:
+        from core.identity.workspace_context import current_user_id
+        _uid = current_user_id() or "default"
+    except Exception:
+        _uid = "default"
+    with _FRAME_CACHE_LOCK:
+        _ent = _FRAME_CACHE.get(_uid)
+        if _ent is not None and _ent[0] > _t_fr.monotonic():
+            return _ent[1]
+    _result = _build_cognitive_frame_uncached()
+    with _FRAME_CACHE_LOCK:
+        _FRAME_CACHE[_uid] = (_t_fr.monotonic() + _FRAME_CACHE_TTL_S, _result)
+    return _result
+
+
+def _build_cognitive_frame_uncached(
     *,
     self_knowledge: dict[str, object] | None = None,
     heartbeat_state: dict[str, object] | None = None,

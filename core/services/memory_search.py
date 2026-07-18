@@ -22,6 +22,12 @@ _INDEX_LOCK = threading.Lock()
 _EMBED_MODEL = "nomic-embed-text"
 _OLLAMA_BASE = "http://localhost:11434"
 
+# In-memory cache of the unpickled index, per-workspace (keyed by .pkl path).
+# Avoids re-unpickling the on-disk index (multi-MB) on every search_memory call.
+# Guarded by _INDEX_LOCK (all reads/writes happen inside _load_or_build_index,
+# which search_memory only calls while holding _INDEX_LOCK).
+_MEM_INDEX: dict[str, dict] = {}
+
 
 class Chunk(NamedTuple):
     text: str
@@ -262,14 +268,28 @@ def _load_or_build_index() -> tuple[list[Chunk], np.ndarray | None, dict[str, fl
       - FORÆLDET cache → server den STRAKS + genopbyg i baggrunden (let-forældet ≫ hængende).
       - ingen/brudt cache → chunk filerne hurtigt (ingen embed) → embeddings=None → tfidf-fallback,
         og embed i baggrunden.
-    Kun-fil-mtime-ændring invaliderer ikke længere søgningen synkront (den var roden til hanget)."""
+    Kun-fil-mtime-ændring invaliderer ikke længere søgningen synkront (den var roden til hanget).
+
+    2026-07-18: det unpicklede indeks holdes nu i memory (per-workspace, nøglet på .pkl-
+    filens mtime). FØR: hvert search_memory-kald `pickle.load`'ede HELE indekset fra disk
+    (Bjørns var 4,6 MB) under _INDEX_LOCK → samtidige ture serialiserede på ~2-3s unpickle
+    pr. tur = den næststørste synlige svartid-post efter experience-embedderen. Nu unpickles
+    kun når .pkl'en faktisk skifter (mtime); ellers genbruges den in-memory-kopi. Awareness-
+    neutralt (identisk indhold/resultat)."""
     files = _memory_files()
     current_mtimes = {str(f): _file_mtime(f) for f in files}
     cache = _cache_path()
     if cache.exists():
         try:
-            with open(cache, "rb") as fh:
-                cached = pickle.load(fh)
+            key = str(cache)
+            pkl_mtime = _file_mtime(cache)
+            mem = _MEM_INDEX.get(key)
+            if mem is not None and mem.get("pkl_mtime") == pkl_mtime:
+                cached = mem["data"]  # in-memory hit — ingen disk-unpickle
+            else:
+                with open(cache, "rb") as fh:
+                    cached = pickle.load(fh)
+                _MEM_INDEX[key] = {"pkl_mtime": pkl_mtime, "data": cached}
             if cached.get("mtimes") == current_mtimes and cached.get("model") == _EMBED_MODEL:
                 return cached["chunks"], cached.get("embeddings"), current_mtimes
             # Forældet → server den gamle index straks, genopbyg async.

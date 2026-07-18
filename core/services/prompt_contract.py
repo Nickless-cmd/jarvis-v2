@@ -542,7 +542,47 @@ def _device_presence_line(user_id: str) -> str:
         return ""
 
 
+# Turn-scoped assembly cache (2026-07-18, post-tool-hang fix). A tool turn assembles the
+# FULL ~5s prompt TWICE: round 0 (prompt_assembly) + again after tools
+# (prompt_assembly_postool → _build_visible_input) purely to rebuild base_messages. Both
+# calls share (session_id, user_message, provider, model), the awareness is stable within
+# the seconds between them, and the cached PRE-tool assembly IS exactly what base_messages
+# must be. Reuse it → the post-tool re-assembly drops from ~5s to <1ms. TTL covers a
+# multi-round turn; a cross-turn collision needs the SAME message text in the SAME session
+# within the TTL (rare, self-correcting). Keyed lookups only; never load-bearing.
+_ASSEMBLY_TURN_CACHE: dict = {}
+_ASSEMBLY_TURN_TTL_S = 45.0
+
+
 def build_visible_chat_prompt_assembly(
+    *,
+    provider: str,
+    model: str,
+    user_message: str,
+    session_id: str | None = None,
+    name: str = "default",
+    runtime_self_report_context: dict[str, object] | None = None,
+) -> PromptAssembly:
+    """Turn-scoped cached wrapper — see _ASSEMBLY_TURN_CACHE. Reuses round 0's assembly for
+    the post-tool rebuild so a tool turn assembles ONCE, not twice."""
+    import time as _t_cache
+    _key = (str(session_id or ""), user_message or "", provider, model, name)
+    _now = _t_cache.monotonic()
+    _hit = _ASSEMBLY_TURN_CACHE.get(_key)
+    if _hit is not None and (_now - _hit[0]) < _ASSEMBLY_TURN_TTL_S:
+        return _hit[1]
+    _res = _build_visible_chat_prompt_assembly_impl(
+        provider=provider, model=model, user_message=user_message,
+        session_id=session_id, name=name,
+        runtime_self_report_context=runtime_self_report_context,
+    )
+    if len(_ASSEMBLY_TURN_CACHE) > 64:
+        _ASSEMBLY_TURN_CACHE.clear()
+    _ASSEMBLY_TURN_CACHE[_key] = (_now, _res)
+    return _res
+
+
+def _build_visible_chat_prompt_assembly_impl(
     *,
     provider: str,
     model: str,

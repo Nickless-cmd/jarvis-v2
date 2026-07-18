@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6361/12914 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6362/12915 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6361/12914 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4197 | 8985 | 46% |
+| `core.services` | 4198 | 8986 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 65 | 117 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -39,7 +39,7 @@ Generated from source. 6361/12914 functions/methods documented (49%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1844)
+## Undocumented public functions (1843)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1250,14 +1250,13 @@ Generated from source. 6361/12914 functions/methods documented (49%). The list b
 - `core/services/process_watcher.py` :: `set_watch_enabled` (L239)
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2801)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2649)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L2938)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2841)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2689)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L2978)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L147)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L95)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L122)
-- `core/services/prompt_contract.py` :: `build_visible_chat_prompt_assembly` (L545)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4440)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4480)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)

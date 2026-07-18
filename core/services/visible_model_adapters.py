@@ -332,6 +332,12 @@ def _stream_openai_compatible_model(
     )
 
     try:
+        from core.services import turn_trace as _tt
+        _tt.mark("prompt_leaves", f"{provider}/{model} → provider")
+        _tt.dump(f"prompt_leaves {provider}/{model}")
+    except Exception:
+        pass
+    try:
         for ev in _iter_openai_compatible_chat_events(
             provider=provider,
             model=model,

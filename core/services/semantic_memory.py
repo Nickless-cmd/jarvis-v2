@@ -112,11 +112,22 @@ _EMBED_CACHE_LOCK = _threading.Lock()
 _EMBED_CACHE_MAX = 256
 
 
+def _tt_embed(label: str, dur_ms: int) -> None:
+    try:
+        from core.services import turn_trace as _tt
+        _tt.mark("embed", label, dur_ms)
+    except Exception:
+        pass
+
+
 def _embed_ollama(text: str) -> np.ndarray | None:
     with _EMBED_CACHE_LOCK:
         cached = _EMBED_CACHE.get(text)
     if cached is not None:
+        _tt_embed("single cached", 0)
         return cached
+    import time as _t_e
+    _t0_e = _t_e.monotonic()
     try:
         import httpx
         resp = httpx.post(
@@ -136,6 +147,7 @@ def _embed_ollama(text: str) -> np.ndarray | None:
                 for _k in list(_EMBED_CACHE)[: _EMBED_CACHE_MAX // 2]:
                     _EMBED_CACHE.pop(_k, None)
             _EMBED_CACHE[text] = v
+        _tt_embed("single", int((_t_e.monotonic() - _t0_e) * 1000))
         return v
     except Exception as exc:
         logger.debug("semantic_memory: embed failed: %s", exc)
@@ -150,6 +162,8 @@ def _embed_ollama_batch(texts: list[str]) -> list["np.ndarray | None"]:
     fejler, så korrektheden aldrig afhænger af batch-supporten. Self-safe."""
     if not texts:
         return []
+    import time as _t_e
+    _t0_e = _t_e.monotonic()
     try:
         import httpx
         resp = httpx.post(
@@ -160,6 +174,7 @@ def _embed_ollama_batch(texts: list[str]) -> list["np.ndarray | None"]:
         if resp.status_code == 200:
             embs = resp.json().get("embeddings")
             if isinstance(embs, list) and len(embs) == len(texts):
+                _tt_embed(f"batch n={len(texts)}", int((_t_e.monotonic() - _t0_e) * 1000))
                 return [np.array(e, dtype=np.float32) if e else None for e in embs]
             logger.debug("semantic_memory: batch embed gav %s vektorer for %s tekster",
                          len(embs or []), len(texts))

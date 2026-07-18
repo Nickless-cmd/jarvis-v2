@@ -571,6 +571,13 @@ def build_visible_chat_prompt_assembly(
     import time as _t_mod
     import sys as _sys_mod
     _t_assembly_start = _t_mod.monotonic()
+    try:
+        from core.services import turn_trace as _tt
+        if session_id != "__prewarm__":
+            _tt.start(f"assembly {provider}/{model}")
+            _tt.mark("assembly_start", f"{provider}/{model}")
+    except Exception:
+        _tt = None
     _phase_timings: dict[str, int] = {}
     import threading as _threading_mod
     _phase_timings_lock = _threading_mod.Lock()
@@ -593,6 +600,8 @@ def build_visible_chat_prompt_assembly(
                 _elapsed = int((_t_mod.monotonic() - _t) * 1000)
                 with _phase_timings_lock:
                     _phase_timings[_name] = _elapsed
+                if _tt is not None:
+                    _tt.mark("section", f"future:{_name}", _elapsed)
         # KRITISK (16.jul): kopiér caller'ens contextvars ind i worker-tråden. UDEN dette
         # ser phase-workerne (recall/memory/awareness) en TOM context → current_user_id()
         # er tom → recall-kilden 'workspace' (workspace_dir() → current_user_id()) fejler
@@ -991,6 +1000,8 @@ def build_visible_chat_prompt_assembly(
         _elapsed_ms = int((_now - _last_awareness_t[0]) * 1000)
         _awareness_call_times.append((_elapsed_ms, label))
         _last_awareness_t[0] = _now
+        if _tt is not None and _elapsed_ms > 5:
+            _tt.mark("section", label, _elapsed_ms)
         # Prompt-cluster: live on/off pr. sektion (override vinder over hardcoded blacklist).
         if not _prompt_observer.section_enabled(
                 label, blacklisted=label in _DIAGNOSTIC_NOISE_LABELS,
@@ -2280,6 +2291,8 @@ def build_visible_chat_prompt_assembly(
 
     _mark("after_assembly_complete")
     _total_ms = int((_t_mod.monotonic() - _t_assembly_start) * 1000)
+    if _tt is not None:
+        _tt.mark("assembly_end", "assembly complete", _total_ms)
     _phases_str = " ".join(f"{k}_ms={v}" for k, v in sorted(_phase_timings.items()))
     # Compute sync-gap deltas between consecutive landmarks (work that the
     # main thread did while parallel futures ran). _sync_landmarks keys

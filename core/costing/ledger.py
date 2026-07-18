@@ -31,6 +31,27 @@ def record_cost(
     """
     if provider == "deepseek" and model in ("deepseek-chat", "deepseek-reasoner"):
         model = "deepseek-v4-flash"
+    try:
+        from core.services import turn_trace as _tt
+        if _tt.active():
+            import sys as _s
+            _caller = "?"
+            f = _s._getframe(1)
+            _plumb = ("ledger.py", "central_route.py", "central_llm_egress.py",
+                      "cheap_provider_runtime_adapters.py", "cheap_provider_runtime_streaming.py",
+                      "central_router_adapt.py", "llm_pricing.py", "cheap_lane_router.py",
+                      "cheap_provider_runtime_selection.py")
+            for _ in range(25):
+                if f is None:
+                    break
+                fn = f.f_code.co_filename.rsplit("/", 1)[-1]
+                if fn not in _plumb and not fn.startswith("<"):
+                    _caller = f"{fn}:{f.f_code.co_name}"
+                    break
+                f = f.f_back
+            _tt.mark("llm", f"{lane}/{provider}/{model} <- {_caller}")
+    except Exception:
+        pass
     # WS2 (13. jul): DeepSeek returnerer tokens men IKKE pris → cost_usd lander som 0.
     # Beregn den fra pris-tabellen ved skrivning når kalderen ikke gav en ægte pris.
     if float(cost_usd) <= 0.0:

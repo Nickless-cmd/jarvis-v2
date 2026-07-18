@@ -2565,33 +2565,9 @@ def build_visible_chat_prompt_assembly(
             derived_inputs.append("matrix sign-off instruction (tail)")
     except Exception:
         pass
-    # 2026-07-18 CACHE FIX (root of visible cache 98%→73% + variable deepseek TTFT):
-    # the volatile dynamic tail (finitude/Sessions-alder, time-pin, matrix nudges,
-    # behavioral anchors, memory-recall) previously sat in the SYSTEM message BEFORE
-    # the history messages. deepseek caches the token PREFIX, so the tail's per-turn
-    # mutation (measured: "Sessions-alder: Vi har talt i N timer" toggles at ~92.8%
-    # of the system prompt) broke the cache for the system tail AND all history after
-    # it. Place the tail on the LAST user message instead (after history) so
-    # [stable system + append-only history] is one cacheable prefix and only the final
-    # user turn is volatile — which is exactly what this tail was always meant to be
-    # ("user-msg tail / lige før Jarvis' svar"). Awareness-neutral: identical content,
-    # rendered right before Jarvis' answer. Fallback to the old system-tail placement
-    # when there is no structured transcript (non-deepseek / degraded paths).
     if _dyn_tail:
-        _dyn_tail_text = "\n\n".join(part for part in _dyn_tail if part).strip()
-        _tail_placed = False
-        if structured_transcript and _dyn_tail_text:
-            for _m in reversed(structured_transcript):
-                if _m.get("role") == "user":
-                    _m["content"] = (
-                        str(_m.get("content") or "").rstrip()
-                        + "\n\n" + DYNAMIC_TAIL_SENTINEL + "\n\n" + _dyn_tail_text
-                    )
-                    _tail_placed = True
-                    break
-        if not _tail_placed:
-            parts.append(DYNAMIC_TAIL_SENTINEL)
-            parts.extend(_dyn_tail)
+        parts.append(DYNAMIC_TAIL_SENTINEL)
+        parts.extend(_dyn_tail)
 
     _assembled_text = "\n\n".join(part for part in parts if part).strip()
     _total_chars = len(_assembled_text)
@@ -2623,6 +2599,24 @@ def build_visible_chat_prompt_assembly(
         file=_sys_mod.stderr,
         flush=True,
     )
+
+    # TEMP-DIAG: gated system-prompt dump (touch /tmp/jarvis-prompt-dump), rotates
+    # latest→prev so two consecutive assemblies can be diffed to find what MUTATES
+    # in the deepseek-cached prefix (cache 98%→73%). Fires for ALL visible paths.
+    try:
+        import os as _os_pd2
+        if _os_pd2.path.exists("/tmp/jarvis-prompt-dump"):
+            _dd2 = "/tmp/jarvis-prompt-dumps"
+            _os_pd2.makedirs(_dd2, exist_ok=True)
+            if _os_pd2.path.exists(_dd2 + "/sys_latest.txt"):
+                try:
+                    _os_pd2.replace(_dd2 + "/sys_latest.txt", _dd2 + "/sys_prev.txt")
+                except Exception:
+                    pass
+            with open(_dd2 + "/sys_latest.txt", "w", encoding="utf-8") as _fh_pd2:
+                _fh_pd2.write(_assembled_text)
+    except Exception:
+        pass
 
     return PromptAssembly(
         mode="visible_chat",

@@ -331,6 +331,26 @@ def _stream_openai_compatible_model(
         workspace_id="default",
     )
 
+    # TEMP-DIAG: gated full-prompt dump (touch /tmp/jarvis-prompt-dump). Rotates
+    # latest.json → prev.json so two consecutive real turns can be diffed to find
+    # what MUTATES in the deepseek-cached prefix (cache dropped 98%→73%).
+    try:
+        import os as _os_pd
+        if _os_pd.path.exists("/tmp/jarvis-prompt-dump"):
+            import json as _json_pd
+            _dd = "/tmp/jarvis-prompt-dumps"
+            _os_pd.makedirs(_dd, exist_ok=True)
+            if _os_pd.path.exists(_dd + "/latest.json"):
+                try:
+                    _os_pd.replace(_dd + "/latest.json", _dd + "/prev.json")
+                except Exception:
+                    pass
+            with open(_dd + "/latest.json", "w", encoding="utf-8") as _fh_pd:
+                _json_pd.dump({"provider": provider, "model": model,
+                               "messages": chat_messages}, _fh_pd,
+                              indent=2, ensure_ascii=False)
+    except Exception:
+        pass
     try:
         from core.services import turn_trace as _tt
         _tt.mark("prompt_leaves", f"{provider}/{model} → provider (SSE)")
@@ -488,6 +508,23 @@ def _run_openai_compatible_visible(
         base_top_p=None,
         workspace_id="default",
     )
+    try:
+        import os as _os_pd
+        if _os_pd.path.exists("/tmp/jarvis-prompt-dump"):
+            import json as _json_pd
+            _dd = "/tmp/jarvis-prompt-dumps"
+            _os_pd.makedirs(_dd, exist_ok=True)
+            if _os_pd.path.exists(_dd + "/latest.json"):
+                try:
+                    _os_pd.replace(_dd + "/latest.json", _dd + "/prev.json")
+                except Exception:
+                    pass
+            with open(_dd + "/latest.json", "w", encoding="utf-8") as _fh_pd:
+                _json_pd.dump({"provider": provider, "model": model,
+                               "messages": chat_messages}, _fh_pd,
+                              indent=2, ensure_ascii=False)
+    except Exception:
+        pass
     try:
         from core.services import turn_trace as _tt
         _tt.mark("prompt_leaves", f"{provider}/{model} → provider (execute, {_prompt_chars} chars)")

@@ -333,10 +333,10 @@ def _stream_openai_compatible_model(
 
     try:
         from core.services import turn_trace as _tt
-        _tt.mark("prompt_leaves", f"{provider}/{model} → provider")
-        _tt.dump(f"prompt_leaves {provider}/{model}")
+        _tt.mark("prompt_leaves", f"{provider}/{model} → provider (SSE)")
     except Exception:
-        pass
+        _tt = None
+    _tt_first_tok = True
     try:
         for ev in _iter_openai_compatible_chat_events(
             provider=provider,
@@ -354,6 +354,9 @@ def _stream_openai_compatible_model(
             if kind == "delta":
                 delta = str(ev.get("text") or "")
                 if delta:
+                    if _tt_first_tok and _tt is not None:
+                        _tt.mark("deepseek_first_token", f"{provider}/{model}")
+                        _tt_first_tok = False
                     yield VisibleModelDelta(delta=delta)
             elif kind == "tool_call":
                 tc = {
@@ -366,6 +369,8 @@ def _stream_openai_compatible_model(
                 }
                 collected_tool_calls.append(tc)
             elif kind == "done":
+                if _tt is not None:
+                    _tt.mark("deepseek_done", f"{provider}/{model} stream done")
                 if collected_tool_calls:
                     yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
                 full_text = str(ev.get("full_text") or "")

@@ -113,6 +113,16 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
 
     from core.identity.workspace_context import current_user_id
     _uid = current_user_id() or None
+    # END-TO-END TURN TRACE (gated: touch /tmp/jarvis-turn-trace). Marks the moment
+    # jarvis-desk's send is registered by the visible lane — the true start of the
+    # route. Full timeline (request_in → assembly → prompt_leaves → deepseek
+    # first_token/done → response_landed) dumps to /tmp/jarvis-turn-trace-dumps.
+    try:
+        from core.services import turn_trace as _tt_route
+        _tt_route.start(f"desk send session={session_id[:12]} len={len(effective_message)}")
+        _tt_route.mark("request_in", "chat_stream_v2 (desk send registered)")
+    except Exception:
+        pass
     append_chat_message(
         session_id=session_id,
         role="user",
@@ -407,14 +417,28 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             begin_follow(session_id, "")
         except Exception:
             pass
+        _tt_first = True
         try:
             async for frame in v2_stream:
+                if _tt_first:
+                    try:
+                        from core.services import turn_trace as _tt_r
+                        _tt_r.mark("first_frame", "first v2 frame → client")
+                    except Exception:
+                        pass
+                    _tt_first = False
                 try:
                     publish_follow_frame(session_id, frame)
                 except Exception:
                     pass
                 yield frame
         finally:
+            try:
+                from core.services import turn_trace as _tt_r2
+                _tt_r2.mark("response_landed", "stream complete → client")
+                _tt_r2.dump("desk turn complete")
+            except Exception:
+                pass
             try:
                 end_follow(session_id)
             except Exception:

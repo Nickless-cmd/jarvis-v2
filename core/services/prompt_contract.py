@@ -574,7 +574,11 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services import turn_trace as _tt
         if session_id != "__prewarm__":
-            _tt.start(f"assembly {provider}/{model}")
+            # Route (chat_stream_v2) starts the trace at request_in for desk turns;
+            # don't reset it here (would lose request_in). Only start standalone
+            # (MCP execute / heartbeat) where no route started one.
+            if not _tt.active():
+                _tt.start(f"assembly {provider}/{model}")
             _tt.mark("assembly_start", f"{provider}/{model}")
     except Exception:
         _tt = None

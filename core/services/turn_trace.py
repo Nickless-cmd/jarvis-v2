@@ -56,16 +56,22 @@ def start(label: str = "") -> None:
 
 
 def mark(kind: str, label: str = "", dur_ms: int | None = None) -> None:
-    """Tilføj ét event. No-op når slukket (billig: to list-reads)."""
+    """Tilføj ét event + print en LIVE-linje til stderr (så ruten kan følges i
+    realtid via `journalctl -fu jarvis-api | grep TURN-LIVE`). No-op når slukket."""
     if not _on[0] or _t0[0] is None:
         return
     try:
         off = int((time.monotonic() - _t0[0]) * 1000)
+        th = threading.current_thread().name
         with _lock:
             _events.append({
                 "off_ms": off, "kind": kind, "label": str(label)[:100],
-                "dur_ms": dur_ms, "thread": threading.current_thread().name,
+                "dur_ms": dur_ms, "thread": th,
             })
+        import sys as _s
+        _d = f" +{dur_ms}ms" if dur_ms is not None else ""
+        print(f"TURN-LIVE @{off:>6}ms  {kind:<14} {str(label)[:60]}{_d}  [{th}]",
+              file=_s.stderr, flush=True)
     except Exception:
         pass
 

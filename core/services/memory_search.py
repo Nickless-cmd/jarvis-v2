@@ -98,8 +98,6 @@ def _embed_ollama(texts: list[str]) -> np.ndarray | None:
     tilbage til per-tekst-loopet hvis batch-endpointet mangler (ældre ollama)."""
     if not texts:
         return None
-    import time as _t_tr  # TEMP-DIAG
-    _t0_tr = _t_tr.monotonic()
     try:
         import httpx
         resp = httpx.post(
@@ -110,12 +108,6 @@ def _embed_ollama(texts: list[str]) -> np.ndarray | None:
         if resp.status_code == 200:
             embs = resp.json().get("embeddings")
             if isinstance(embs, list) and len(embs) == len(texts) and embs:
-                try:
-                    from core.services.semantic_memory import _embed_trace
-                    _embed_trace("ms-batch", len(texts),
-                                 int((_t_tr.monotonic() - _t0_tr) * 1000))  # TEMP-DIAG
-                except Exception:
-                    pass
                 return np.array(embs, dtype=np.float32)
         logger.debug("memory_search: batch embed uventet svar (%s) — falder til per-tekst",
                      resp.status_code)

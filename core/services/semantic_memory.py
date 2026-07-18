@@ -112,27 +112,11 @@ _EMBED_CACHE_LOCK = _threading.Lock()
 _EMBED_CACHE_MAX = 256
 
 
-def _embed_trace(impl: str, n: int, ms: int, cached: bool = False) -> None:  # TEMP-DIAG
-    """Log every ollama embed call with caller + thread, to map per-turn embed load."""
-    try:
-        import sys as _s, threading as _th
-        f = _s._getframe(2)
-        caller = f"{f.f_code.co_filename.rsplit('/', 1)[-1]}:{f.f_code.co_name}:{f.f_lineno}"
-        print(f"EMBED-TRACE impl={impl} n={n} ms={ms} cached={cached} "
-              f"thread={_th.current_thread().name} caller={caller}",
-              file=_s.stderr, flush=True)
-    except Exception:
-        pass
-
-
 def _embed_ollama(text: str) -> np.ndarray | None:
-    import time as _t_tr  # TEMP-DIAG
     with _EMBED_CACHE_LOCK:
         cached = _EMBED_CACHE.get(text)
     if cached is not None:
-        _embed_trace("single", 1, 0, cached=True)
         return cached
-    _t0_tr = _t_tr.monotonic()
     try:
         import httpx
         resp = httpx.post(
@@ -152,7 +136,6 @@ def _embed_ollama(text: str) -> np.ndarray | None:
                 for _k in list(_EMBED_CACHE)[: _EMBED_CACHE_MAX // 2]:
                     _EMBED_CACHE.pop(_k, None)
             _EMBED_CACHE[text] = v
-        _embed_trace("single", 1, int((_t_tr.monotonic() - _t0_tr) * 1000))  # TEMP-DIAG
         return v
     except Exception as exc:
         logger.debug("semantic_memory: embed failed: %s", exc)
@@ -167,8 +150,6 @@ def _embed_ollama_batch(texts: list[str]) -> list["np.ndarray | None"]:
     fejler, så korrektheden aldrig afhænger af batch-supporten. Self-safe."""
     if not texts:
         return []
-    import time as _t_tr  # TEMP-DIAG
-    _t0_tr = _t_tr.monotonic()
     try:
         import httpx
         resp = httpx.post(
@@ -177,7 +158,6 @@ def _embed_ollama_batch(texts: list[str]) -> list["np.ndarray | None"]:
             timeout=30,
         )
         if resp.status_code == 200:
-            _embed_trace("batch", len(texts), int((_t_tr.monotonic() - _t0_tr) * 1000))  # TEMP-DIAG
             embs = resp.json().get("embeddings")
             if isinstance(embs, list) and len(embs) == len(texts):
                 return [np.array(e, dtype=np.float32) if e else None for e in embs]

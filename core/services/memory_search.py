@@ -83,7 +83,31 @@ def _chunk_markdown(text: str, source: str) -> list[Chunk]:
 
 
 def _embed_ollama(texts: list[str]) -> np.ndarray | None:
-    """Embed a list of texts via Ollama. Returns (N, D) array or None on failure."""
+    """Embed a list of texts via Ollama. Returns (N, D) array or None on failure.
+
+    Batch-kald (/api/embed, ÉT round-trip for hele listen) i stedet for N serielle
+    /api/embeddings-kald. Dette var den STØRSTE assembly-hotspot: recall-søgningen
+    embeddede memory-korpusset 85-229× ét ad gangen (~1,8s på idle GPU, kø'er under
+    load). Vektorerne er identiske med per-tekst (cosine 1.0, verificeret). Falder
+    tilbage til per-tekst-loopet hvis batch-endpointet mangler (ældre ollama)."""
+    if not texts:
+        return None
+    try:
+        import httpx
+        resp = httpx.post(
+            f"{_OLLAMA_BASE}/api/embed",
+            json={"model": _EMBED_MODEL, "input": list(texts)},
+            timeout=30,
+        )
+        if resp.status_code == 200:
+            embs = resp.json().get("embeddings")
+            if isinstance(embs, list) and len(embs) == len(texts) and embs:
+                return np.array(embs, dtype=np.float32)
+        logger.debug("memory_search: batch embed uventet svar (%s) — falder til per-tekst",
+                     resp.status_code)
+    except Exception as exc:
+        logger.debug("memory_search: batch embed fejlede — falder til per-tekst: %s", exc)
+    # Fallback: per-tekst (bevarer korrekthed hvis batch-endpointet ikke virker).
     try:
         import httpx
         embeddings = []

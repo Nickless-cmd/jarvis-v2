@@ -294,6 +294,16 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                             saw_stop = True
                         yield f
                         _last_emit = _xt.monotonic()
+                    if saw_stop:
+                        # POST-SVAR-HÆNG-FIX (2026-07-18): message_stop ER klientens
+                        # terminal. Luk streamen NU i stedet for at vente på mark_done —
+                        # run-generatoren kører memory-absorb/cognitive post-processing
+                        # EFTER message_stop men før mark_done, så at vente lod streamen
+                        # hænge X sek efter teksten var landet. Post-processing fortsætter
+                        # i baggrunden (detached run); klienten er færdig ved terminal.
+                        # mark_consumed → andre overflader re-pusher ikke.
+                        rel.mark_consumed(run_id)
+                        break
                     if done:
                         # TERMINAL-GARANTI (Bjørn 29. jun, stream_stall-roden): runnet er
                         # 'done', men hvis INGEN message_stop-frame nåede relayet (glm-5.2

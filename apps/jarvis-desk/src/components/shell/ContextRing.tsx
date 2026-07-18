@@ -9,12 +9,15 @@ export function ContextRing({
   compactAt,
   size = 18,
   modelLabel,
+  onManualCompact,
 }: {
   tokens: number
   compactAt: number
   size?: number
   /** Navnet på den valgte model — vises i tooltip så ringen er gennemsigtig. */
   modelLabel?: string
+  /** Når sat: ringen bliver en knap der udløser manuel compaction (Claude-Code /compact). */
+  onManualCompact?: () => void
 }) {
   if (!compactAt || compactAt <= 0) return null
   const safeTokens = Math.max(0, tokens)
@@ -32,13 +35,20 @@ export function ContextRing({
 
   const kTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`)
 
+  const baseTitle = `${modelLabel ? modelLabel + ' · ' : ''}` + (safeTokens > 0
+    ? `Kontekst: ${pct}% (${kTokens(safeTokens)} / ${kTokens(compactAt)} loft)`
+    : `Kontekst: tom (loft ${kTokens(compactAt)})`)
+  const title = onManualCompact ? `${baseTitle} · klik for at komprimere nu` : baseTitle
   return (
     <span
-      className={`context-ring ${atCompact ? 'at-compact' : ''}`}
-      title={`${modelLabel ? modelLabel + ' · ' : ''}` + (safeTokens > 0
-        ? `Kontekst: ${pct}% (${kTokens(safeTokens)} / ${kTokens(compactAt)} loft)`
-        : `Kontekst: tom (loft ${kTokens(compactAt)})`)}
-      aria-label={`Kontekst ${pct} procent fyldt`}
+      className={`context-ring ${atCompact ? 'at-compact' : ''} ${onManualCompact ? 'clickable' : ''}`}
+      title={title}
+      aria-label={onManualCompact ? `Komprimér kontekst nu (${pct} procent fyldt)` : `Kontekst ${pct} procent fyldt`}
+      role={onManualCompact ? 'button' : undefined}
+      tabIndex={onManualCompact ? 0 : undefined}
+      style={onManualCompact ? { cursor: 'pointer' } : undefined}
+      onClick={onManualCompact}
+      onKeyDown={onManualCompact ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onManualCompact() } } : undefined}
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--bg-4)" strokeWidth={stroke} />

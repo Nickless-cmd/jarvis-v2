@@ -156,12 +156,12 @@ _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._
 | function | `_memory_md_lines` | `(user_id=…)` | Cached MEMORY.md-LINJER (kun tekst, ingen embedding → nul cold-start-cost). | [src](../../../core/services/prompt_sections/memory_recall.py#L58) |
 | function | `_keywords` | `(text)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L76) |
 | function | `_semantic_dedup_lines` | `(lines, threshold=…)` | Drop linjer der semantisk dublerer en TIDLIGERE beholdt linje (samme budskab, | [src](../../../core/services/prompt_sections/memory_recall.py#L84) |
-| function | `_is_semantic_dup_of_memory` | `(text, user_id=…)` | True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd). | [src](../../../core/services/prompt_sections/memory_recall.py#L119) |
-| function | `_visible_memory_recall_bundle_section` | `(*, session_id, user_message, compact)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L151) |
-| function | `_private_brain_recall_lines` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L182) |
-| function | `_recent_tool_recall_lines` | `(session_id, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L209) |
-| function | `_memory_candidate_recall_lines` | `(*, limit, session_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L245) |
-| function | `_clip_line` | `(value, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L305) |
+| function | `_is_semantic_dup_of_memory` | `(text, user_id=…)` | True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd). | [src](../../../core/services/prompt_sections/memory_recall.py#L121) |
+| function | `_visible_memory_recall_bundle_section` | `(*, session_id, user_message, compact)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L153) |
+| function | `_private_brain_recall_lines` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L184) |
+| function | `_recent_tool_recall_lines` | `(session_id, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L211) |
+| function | `_memory_candidate_recall_lines` | `(*, limit, session_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L247) |
+| function | `_clip_line` | `(value, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L307) |
 
 ## `core/services/prompt_sections/memory_scoring.py`
 _core/services/prompt_sections/memory_scoring.py_
@@ -189,6 +189,13 @@ _Plan-revision pattern analyzer._
 |---|---|---|---|---|
 | function | `_bucket` | `(reason)` | — | [src](../../../core/services/prompt_sections/plan_revision_patterns.py#L36) |
 | function | `plan_revision_patterns_section` | `()` | Surface recurring revision-reason patterns if any cluster ≥ N. | [src](../../../core/services/prompt_sections/plan_revision_patterns.py#L44) |
+
+## `core/services/prompt_sections/pool_status_section.py`
+_Pool-status prompt-sektion — så Jarvis ALTID kender forskellen på de to_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `pool_status_line` | `()` | Kompakt to-linjers status af de to pools. Self-safe: enhver datakilde-fejl | [src](../../../core/services/prompt_sections/pool_status_section.py#L12) |
 
 ## `core/services/prompt_sections/rule_conclusions.py`
 _Rule-engine conclusions — symbolic reasoning surfaced to the LLM._
@@ -233,8 +240,10 @@ _Transcript rendering + session compaction for prompts._
 | function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L169) |
 | function | `_build_structured_transcript_messages` | `(session_id, *, limit, include)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L207) |
 | function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L417) |
-| function | `_run_session_compaction` | `(session_id, keep_recent)` | Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det | [src](../../../core/services/prompt_sections/transcript_sections.py#L454) |
-| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L490) |
+| function | `_ground_truth_for` | `(session_id)` | Best-effort VERIFIED-facts block (git HEAD, recent commits, key files) for the session, | [src](../../../core/services/prompt_sections/transcript_sections.py#L454) |
+| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | Build a summarise_fn(old_messages)->str for compact_session_history. | [src](../../../core/services/prompt_sections/transcript_sections.py#L466) |
+| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det | [src](../../../core/services/prompt_sections/transcript_sections.py#L509) |
+| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L549) |
 
 ## `core/services/prompt_sections/workspace_files.py`
 _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._

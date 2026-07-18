@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6338/12887 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6359/12912 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 578 | 764 | 75% |
+| `apps.api.jarvis_api.routes` | 579 | 765 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -17,16 +17,16 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
 | `core.coding_lane` | 9 | 10 | 90% |
-| `core.context` | 36 | 42 | 85% |
+| `core.context` | 45 | 53 | 84% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 9 | 22 | 40% |
 | `core.identity` | 63 | 154 | 40% |
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4189 | 8975 | 46% |
+| `core.services` | 4197 | 8985 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 62 | 114 | 54% |
+| `core.services.prompt_sections` | 65 | 117 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 11 | 23 | 47% |
 | `core.skills` | 0 | 0 | 0% |
@@ -39,7 +39,7 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1843)
+## Undocumented public functions (1844)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -223,8 +223,8 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 - `core/cli/visible_output.py` :: `visible_execution_section` (L4)
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L96)
-- `core/costing/ledger.py` :: `recent_costs` (L105)
-- `core/costing/ledger.py` :: `telemetry_summary` (L85)
+- `core/costing/ledger.py` :: `recent_costs` (L126)
+- `core/costing/ledger.py` :: `telemetry_summary` (L106)
 - `core/eventbus/bus.py` :: `EventBus.recent` (L149)
 - `core/eventbus/bus.py` :: `EventBus.recent_by_family` (L170)
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L195)
@@ -489,9 +489,9 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 - `core/runtime/provider_router.py` :: `resolve_provider_router_target` (L254)
 - `core/runtime/provider_router.py` :: `select_main_agent_target` (L200)
 - `core/runtime/secrets.py` :: `mail_config` (L96)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L466)
-- `core/runtime/settings.py` :: `load_settings` (L567)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1014)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L477)
+- `core/runtime/settings.py` :: `load_settings` (L581)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1031)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)
@@ -726,10 +726,10 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 - `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L812)
 - `core/services/chat_sessions.py` :: `rename_chat_session` (L837)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
-- `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L656)
-- `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L616)
-- `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L597)
-- `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L587)
+- `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L659)
+- `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L619)
+- `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L600)
+- `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L590)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L77)
 - `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L535)
 - `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L791)
@@ -1250,14 +1250,14 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 - `core/services/process_watcher.py` :: `set_watch_enabled` (L239)
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2742)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2590)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L2879)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2785)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2633)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L2922)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L147)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L95)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L122)
 - `core/services/prompt_contract.py` :: `build_visible_chat_prompt_assembly` (L538)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4358)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4424)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
@@ -1514,7 +1514,7 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
-- `core/services/semantic_memory.py` :: `get_stats` (L355)
+- `core/services/semantic_memory.py` :: `get_stats` (L419)
 - `core/services/sensory_archive.py` :: `count` (L209)
 - `core/services/sensory_archive.py` :: `get` (L205)
 - `core/services/sensory_archive.py` :: `list_recent` (L184)
@@ -1701,6 +1701,7 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 - `core/services/trading/grid_bot.py` :: `GridState.to_dict` (L74)
 - `core/services/truth_gate_v2.py` :: `classify_severity` (L154)
 - `core/services/turn_changelog.py` :: `build_turn_changelog` (L67)
+- `core/services/turn_trace.py` :: `active` (L36)
 - `core/services/user_md_update_proposal_tracking.py` :: `build_runtime_user_md_update_proposal_surface` (L73)
 - `core/services/user_md_update_proposal_tracking.py` :: `refresh_runtime_user_md_update_proposal_statuses` (L42)
 - `core/services/user_md_update_proposal_tracking.py` :: `track_runtime_user_md_update_proposals_for_visible_turn` (L20)
@@ -1721,7 +1722,7 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 - `core/services/visible_model.py` :: `available_provider_models` (L170)
 - `core/services/visible_model.py` :: `execute_visible_model` (L262)
 - `core/services/visible_model.py` :: `stream_visible_model` (L321)
-- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L513)
+- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L567)
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
 - `core/services/visible_model_prompt.py` :: `visible_session_continuity_summary` (L346)
@@ -1729,20 +1730,20 @@ Generated from source. 6338/12887 functions/methods documented (49%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L500)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L497)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L507)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6316)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6341)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6545)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6554)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6541)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6312)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6454)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6506)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6423)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6364)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6396)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6282)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6564)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6327)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6346)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6371)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6575)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6584)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6571)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6342)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6484)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6536)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6453)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6394)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6426)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6312)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6594)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6357)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L333)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)

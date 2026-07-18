@@ -355,13 +355,14 @@ _Experience-episode collector + retrieval — embedding-based learning substrate
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_get_chroma_path` | `()` | — | [src](../../../core/services/experience_episodes.py#L53) |
-| function | `_get_embed_model` | `()` | — | [src](../../../core/services/experience_episodes.py#L62) |
-| function | `_get_collection` | `()` | — | [src](../../../core/services/experience_episodes.py#L73) |
-| function | `build_context_text` | `(*, intent, active_loops=…, last_tools=…, session_phase=…)` | Render the structured situation into the text we embed. | [src](../../../core/services/experience_episodes.py#L93) |
-| function | `record_episode` | `(*, session_id, turn_id, intent, active_loops=…, last_tools=…, session_phase=…, tool_sequence=…, outcome_signals=…, user_corrected=…)` | Persist one episode to DB + chroma. Returns episode_id on success. | [src](../../../core/services/experience_episodes.py#L123) |
-| function | `retrieve_similar` | `(*, intent, active_loops=…, last_tools=…, session_phase=…, k=…)` | Return up to K nearest-neighbour past episodes for the current shape. | [src](../../../core/services/experience_episodes.py#L213) |
-| function | `format_episode_for_prompt` | `(ep, *, max_chars=…)` | Compact substrate line describing one retrieved episode. | [src](../../../core/services/experience_episodes.py#L338) |
+| function | `_embed_one` | `(text)` | Embed one text via the shared ollama-nomic embedder → 768-dim list[float]. | [src](../../../core/services/experience_episodes.py#L59) |
+| function | `_get_chroma_path` | `()` | — | [src](../../../core/services/experience_episodes.py#L67) |
+| function | `_get_collection` | `()` | — | [src](../../../core/services/experience_episodes.py#L76) |
+| function | `build_context_text` | `(*, intent, active_loops=…, last_tools=…, session_phase=…)` | Render the structured situation into the text we embed. | [src](../../../core/services/experience_episodes.py#L96) |
+| function | `record_episode` | `(*, session_id, turn_id, intent, active_loops=…, last_tools=…, session_phase=…, tool_sequence=…, outcome_signals=…, user_corrected=…)` | Persist one episode to DB + chroma. Returns episode_id on success. | [src](../../../core/services/experience_episodes.py#L126) |
+| function | `retrieve_similar` | `(*, intent, active_loops=…, last_tools=…, session_phase=…, k=…)` | Return up to K nearest-neighbour past episodes for the current shape. | [src](../../../core/services/experience_episodes.py#L215) |
+| function | `format_episode_for_prompt` | `(ep, *, max_chars=…)` | Compact substrate line describing one retrieved episode. | [src](../../../core/services/experience_episodes.py#L339) |
+| function | `reindex_experience_chroma` | `(*, batch=…)` | Drop + rebuild the chroma collection from the experience_episodes DB rows, | [src](../../../core/services/experience_episodes.py#L384) |
 
 ## `core/services/experience_substrate.py`
 _Experience substrate — embedding-retrieval learning layer._

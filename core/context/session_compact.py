@@ -26,15 +26,21 @@ def compact_session_history(
     session_id: str,
     *,
     keep_recent: int = 20,
+    keep_recent_tokens: int | None = None,
     summarise_fn: Callable[[list[dict]], str],
     git_sha: str = "",
 ) -> CompactResult | None:
     """Compact old session history for session_id.
 
-    Fetches all messages, splits at (total - keep_recent), summarises the
-    old slice via summarise_fn, stores a compact_marker in DB, and returns
-    a CompactResult. Returns None if there are not enough messages to compact
-    (i.e. total <= keep_recent).
+    Fetches all messages, splits into (old, kept_tail), summarises the old slice via
+    summarise_fn, stores a compact_marker in DB, and returns a CompactResult. Returns
+    None if there is nothing worth compacting.
+
+    Split strategy:
+      - `keep_recent_tokens` given → ROUND-ATOMIC selection (never splits a
+        tool_use/tool_result pair, always keeps the live/last round), keeping recent whole
+        rounds up to that token budget (2026-07-18 live-compaction spec).
+      - else → legacy count-split at (total - keep_recent). Kept for backward compat.
 
     If git_sha is provided, it's stored with the marker for freshness checks
     (Lag B — ground-truth grounding).
@@ -55,10 +61,20 @@ def compact_session_history(
         logger.debug("session_compact: self-heal skipped (%s)", exc)
 
     messages = _get_all_session_messages(session_id)
-    if len(messages) <= keep_recent:
-        return None
 
-    old_messages = messages[: len(messages) - keep_recent]
+    _kept: list[dict] = []
+    if keep_recent_tokens is not None:
+        # Round-atomic, token-budgeted (never splits a tool pair, keeps the live round).
+        from core.context.compaction_policy import select_for_compaction
+        old_messages, _kept = select_for_compaction(
+            messages, keep_recent_tokens=int(keep_recent_tokens)
+        )
+        if not old_messages:
+            return None
+    else:
+        if len(messages) <= keep_recent:
+            return None
+        old_messages = messages[: len(messages) - keep_recent]
     freed_chars = sum(len(m.get("content") or "") for m in old_messages)
     freed_tokens = estimate_tokens("x" * freed_chars)
 
@@ -71,7 +87,26 @@ def compact_session_history(
 
     summary_text = summarise_fn(old_messages)
 
-    marker_id = _store_marker(session_id, summary_text, git_sha=git_sha)
+    # Tail-preservation (2026-07-18): the compact_marker is appended at the END of the
+    # session, so messages BEFORE it (incl. the kept recent rounds) are no longer sent.
+    # To keep the recent exchange VERBATIM after compaction (Codex/Cline "summary + recent
+    # tail" model — avoids post-compaction thread loss), the kept rounds are embedded in the
+    # marker blob itself, right after the summary. The prepended marker then carries both.
+    marker_content = summary_text
+    if _kept:
+        try:
+            from core.context.compaction_policy import render_transcript_for_summary
+            tail = render_transcript_for_summary(_kept)
+            if tail.strip():
+                marker_content = (
+                    summary_text
+                    + "\n\n## Seneste udveksling (ordret bevaret siden compaction):\n"
+                    + tail
+                )
+        except Exception as exc:
+            logger.debug("session_compact: tail-embed skipped (%s)", exc)
+
+    marker_id = _store_marker(session_id, marker_content, git_sha=git_sha)
 
     # Lag C: post-compact validation — check for hallucinated claims
     validation: dict | None = None

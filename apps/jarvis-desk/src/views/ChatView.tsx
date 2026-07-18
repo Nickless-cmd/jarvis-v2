@@ -12,7 +12,7 @@ import { VoiceConversation } from '../components/chat/VoiceConversation'
 import { usePermission } from '../hooks/usePermission'
 import { useOnline } from '../hooks/useOnline'
 import { readModelPrefs } from '../lib/composerPrefs'
-import { getContextInfo, getContextUsage, getSessionMilestones, getActiveRuns, followRun } from '../lib/api'
+import { getContextInfo, getContextUsage, getSessionMilestones, getActiveRuns, followRun, compactNow } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -368,7 +368,23 @@ export function ChatView({
   // Deterministisk — ikke nudge.
   const online = useOnline()
   const [queued, setQueued] = useState<{ text: string; opts: ComposerSendOpts } | null>(null)
+  // Manuel compaction (Claude-Code-stil /compact). Udløser samme motor NU. Valgfri fokus:
+  // "/compact behold API-kontrakten vi lige lavede".
+  const triggerManualCompact = async (focus: string) => {
+    if (!settings || !sessionId) return
+    setCompacting(true)  // optimistisk → liveness-linjen + composer-pausen tænder straks
+    try {
+      await compactNow({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }, sessionId, focus)
+    } catch { /* pollen forliger tilstanden */ }
+  }
+
   const handleSend = (text: string, opts: ComposerSendOpts) => {
+    const t = text.trim()
+    if (/^\/compact(\s|$)/i.test(t)) {
+      const focus = t.replace(/^\/compact\s*/i, '').trim()
+      void triggerManualCompact(focus)
+      return  // kommando, ikke en chat-besked
+    }
     if (streaming || !online) setQueued({ text, opts })
     else void doSend(text, opts)
   }
@@ -443,6 +459,7 @@ export function ChatView({
         contextTokens={contextTokens}
         compactAt={compactAt}
         compacting={compacting}
+        onManualCompact={() => void triggerManualCompact('')}
         isOwner={auth?.role === 'owner'}
         onOpenPrivacy={onOpenPrivacy}
       />

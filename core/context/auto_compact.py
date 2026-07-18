@@ -31,8 +31,22 @@ def _compaction_threshold(*, provider: str, model: str, flat_fallback: int) -> i
 
 def maybe_auto_compact_session(session_id: str, *, provider: str = "", model: str = "") -> bool:
     """Check session token count and compact if above threshold. Returns True if compacted.
-    Threshold is model-window-aware when provider/model are given, else the flat fallback."""
-    try:
+    Threshold is model-window-aware when provider/model are given, else the flat fallback.
+
+    SUPERSEDED (2026-07-18, live-compaction spec): the SINGLE source of truth for visible-
+    lane compaction is now the BACKGROUND attention-budget path
+    (transcript_sections._maybe_auto_compact_session → _run_session_compaction), which:
+      - triggers on an absolute 35k attention budget (not window×0.70 ≈ 700k that never fired),
+      - runs off the hot-path (non-blocking — Bjørn's 2026-06-23 principle),
+      - sets `_compact_inflight` so the desk liveness indicator lights up (desk polls that,
+        it does NOT consume this function's SSE event),
+      - and produces the structured, round-atomic 2-stage summary.
+    This synchronous pre-run path is therefore disabled to avoid a second, competing,
+    blocking compactor writing its own marker with a different prompt. The body below is
+    kept (dormant) for reference / possible revival as a synchronous emergency backstop.
+    """
+    return False
+    try:  # noqa: unreachable — dormant legacy body, see docstring
         from core.runtime.settings import load_settings
         from core.context.token_estimate import estimate_tokens
         from core.services.chat_sessions import recent_chat_session_messages

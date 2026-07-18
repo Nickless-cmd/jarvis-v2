@@ -1065,8 +1065,10 @@ async def chat_context_info() -> dict:
     selv tælleren (usage.input + cache fra streamen)."""
     from core.runtime.settings import load_settings
     s = load_settings()
+    # 2026-07-18: ringen måler nu mod ATTENTION-budgettet (den PRIMÆRE trigger), så den
+    # rammer ~100% netop når compaction fyrer — ikke mod de gamle 130k som aldrig blev nået.
     return {
-        "compact_at": int(s.context_compact_threshold_tokens or 0),
+        "compact_at": int(getattr(s, "context_attention_budget_tokens", 35_000) or 35_000),
         "run_compact_at": int(s.context_run_compact_threshold_tokens or 0),
     }
 
@@ -1089,7 +1091,9 @@ async def chat_context_usage(
 
     from core.runtime.settings import load_settings
     s = load_settings()
-    compact_at = int(s.context_compact_threshold_tokens or 0)
+    # Ringen måler mod attention-budgettet (primær trigger, 2026-07-18) → falder når
+    # baggrunds-compaction fyrer ved 35k, i stedet for at snige mod de gamle 130k.
+    compact_at = int(getattr(s, "context_attention_budget_tokens", 35_000) or 35_000)
 
     tokens = 0
     compacted = False
@@ -1109,13 +1113,15 @@ async def chat_context_usage(
         except Exception:
             compacted = False
 
-    effective = compact_at
+    # Model-BEVIDST: det AKTIVE models reelle vindue (glm-5.1 256k / glm-5.2·flash 1M).
+    model_window = 0
     if provider or model:
         try:
-            from core.services.model_context import effective_context_limit
-            effective = int(effective_context_limit(provider, model, compact_at) or compact_at)
+            from core.services.model_context import model_context_window
+            model_window = int(model_context_window(provider, model) or 0)
         except Exception:
-            effective = compact_at
+            model_window = 0
+    effective = min(model_window, compact_at) if model_window > 0 else compact_at
 
     compacting = False
     try:
@@ -1128,9 +1134,57 @@ async def chat_context_usage(
         "tokens": tokens,
         "compact_at": compact_at,
         "effective": effective,
+        "model_window": model_window,
         "compacting": compacting,
         "compacted": compacted,
     }
+
+
+class _CompactNowBody(BaseModel):
+    session_id: str
+    focus: str = ""
+
+
+@router.post("/compact-now")
+async def chat_compact_now(body: _CompactNowBody) -> dict:
+    """Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som
+    auto-triggeren — round-atomisk 2-trins struktureret summary — men NU, uanset om
+    attention-budgettet er nået. Valgfri `focus` styrer hvad summary'en prioriterer.
+    Sætter `_compact_inflight` så desk-liveness-linjen tænder. Non-blocking: returnerer straks.
+    """
+    import threading as _t
+
+    session_id = (body.session_id or "").strip()
+    focus = (body.focus or "").strip() or None
+    if not session_id:
+        return {"started": False, "reason": "missing session_id"}
+
+    from core.services import prompt_contract as _pc
+    from core.runtime.settings import load_settings
+    s = load_settings()
+    low_water = int(getattr(s, "context_attention_low_water_tokens", 15_000) or 15_000)
+    keep_recent = int(getattr(s, "context_keep_recent", 20) or 20)
+
+    lock = getattr(_pc, "_compact_inflight_lock", None)
+    inflight = getattr(_pc, "_compact_inflight", None)
+    if lock is None or inflight is None:
+        return {"started": False, "reason": "compaction unavailable"}
+    with lock:
+        if session_id in inflight:
+            return {"started": False, "reason": "already compacting"}
+        inflight.add(session_id)
+    try:
+        _t.Thread(
+            target=_pc._run_session_compaction,
+            args=(session_id, keep_recent),
+            kwargs={"low_water_tokens": low_water, "focus": focus},
+            name=f"compact-manual-{session_id[:10]}", daemon=True,
+        ).start()
+    except Exception as exc:
+        with lock:
+            inflight.discard(session_id)
+        return {"started": False, "reason": f"spawn failed: {exc}"}
+    return {"started": True, "reason": "manual", "focus": focus or ""}
 
 
 @router.get("/session-milestones")

@@ -138,10 +138,10 @@ _Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `model_context_window` | `(provider, model)` | Bedste bud på modellens context-vindue (tokens). 0 = ukendt. | [src](../../../core/services/model_context.py#L29) |
-| function | `effective_context_limit` | `(provider, model, compact_threshold)` | Det første loft der rammer: min(modellens vindue, autocompact-tærskel). | [src](../../../core/services/model_context.py#L46) |
-| function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L61) |
-| function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L65) |
+| function | `model_context_window` | `(provider, model)` | Bedste bud på modellens context-vindue (tokens). 0 = ukendt. | [src](../../../core/services/model_context.py#L33) |
+| function | `effective_context_limit` | `(provider, model, compact_threshold)` | Det første loft der rammer: min(modellens vindue, autocompact-tærskel). | [src](../../../core/services/model_context.py#L50) |
+| function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L65) |
+| function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L69) |
 
 ## `core/services/model_trust.py`
 _Central-governed EARNED model-trust (harness refactor Part 1 foundation)._

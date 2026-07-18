@@ -526,24 +526,24 @@ _Semantic memory search — embeddings-based search over Jarvis's workspace memo
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `Chunk` | `` | — | [src](../../../core/services/memory_search.py#L26) |
-| function | `_workspace_dir` | `()` | — | [src](../../../core/services/memory_search.py#L32) |
-| function | `_memory_files` | `()` | — | [src](../../../core/services/memory_search.py#L37) |
-| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/memory_search.py#L52) |
-| function | `_chunk_markdown` | `(text, source)` | Split markdown into chunks, tracking the nearest heading. | [src](../../../core/services/memory_search.py#L59) |
-| function | `_embed_ollama` | `(texts)` | Embed a list of texts via Ollama. Returns (N, D) array or None on failure. | [src](../../../core/services/memory_search.py#L85) |
-| function | `_embed_single` | `(text)` | — | [src](../../../core/services/memory_search.py#L108) |
-| function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L113) |
-| function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L121) |
-| function | `_cache_path` | `()` | — | [src](../../../core/services/memory_search.py#L152) |
-| function | `_chunk_all_files` | `(files)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L160) |
-| function | `_build_and_cache_index` | `(files, current_mtimes)` | Byg indeks fra bunden (chunk + embed ALLE chunks) og skriv cache. LANGSOM (embedding). | [src](../../../core/services/memory_search.py#L177) |
-| function | `_schedule_background_rebuild` | `(files, current_mtimes)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L199) |
-| function | `_load_or_build_index` | `()` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L228) |
-| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L255) |
-| function | `search_memory` | `(query, *, limit=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L274) |
-| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L332) |
-| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L341) |
+| class | `Chunk` | `` | — | [src](../../../core/services/memory_search.py#L32) |
+| function | `_workspace_dir` | `()` | — | [src](../../../core/services/memory_search.py#L38) |
+| function | `_memory_files` | `()` | — | [src](../../../core/services/memory_search.py#L43) |
+| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/memory_search.py#L58) |
+| function | `_chunk_markdown` | `(text, source)` | Split markdown into chunks, tracking the nearest heading. | [src](../../../core/services/memory_search.py#L65) |
+| function | `_embed_ollama` | `(texts)` | Embed a list of texts via Ollama. Returns (N, D) array or None on failure. | [src](../../../core/services/memory_search.py#L91) |
+| function | `_embed_single` | `(text)` | — | [src](../../../core/services/memory_search.py#L146) |
+| function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L158) |
+| function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L166) |
+| function | `_cache_path` | `()` | — | [src](../../../core/services/memory_search.py#L197) |
+| function | `_chunk_all_files` | `(files)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L205) |
+| function | `_build_and_cache_index` | `(files, current_mtimes)` | Byg indeks fra bunden (chunk + embed ALLE chunks) og skriv cache. LANGSOM (embedding). | [src](../../../core/services/memory_search.py#L222) |
+| function | `_schedule_background_rebuild` | `(files, current_mtimes)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L244) |
+| function | `_load_or_build_index` | `()` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L273) |
+| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L314) |
+| function | `search_memory` | `(query, *, limit=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L333) |
+| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L391) |
+| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L400) |
 
 ## `core/services/memory_tattoos.py`
 _Memory Tattoos — emotional marks._

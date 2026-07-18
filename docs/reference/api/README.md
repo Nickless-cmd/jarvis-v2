@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12887 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12912 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -47,8 +47,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12887 functions/
 - [`core.services.18`](core.services.18.md) — `runtime_self_model_state` … `sensory_archive`
 - [`core.services.19`](core.services.19.md) — `sensory_perception_bridge` … `spatial_entity_ledger`
 - [`core.services.20`](core.services.20.md) — `staged_edits` … `tool_catalog`
-- [`core.services.21`](core.services.21.md) — `tool_chip_payload` … `visible_followup_events`
-- [`core.services.22`](core.services.22.md) — `visible_followup_lean` … `world_model_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `tool_chip_payload` … `visible_followup_adapters`
+- [`core.services.22`](core.services.22.md) — `visible_followup_events` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -227,6 +227,19 @@ export async function deleteSession(config: ApiConfig, sessionId: string): Promi
   await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
 }
 
+/** Manuel compaction (Claude-Code-stil /compact). Udløser den samme baggrunds-motor NU,
+ *  uanset attention-budget. `focus` styrer valgfrit hvad summary'en prioriterer. */
+export async function compactNow(
+  config: ApiConfig,
+  sessionId: string,
+  focus = '',
+): Promise<{ started: boolean; reason: string; focus?: string }> {
+  return apiFetch(config, '/chat/compact-now', {
+    method: 'POST',
+    body: { session_id: sessionId, focus },
+  })
+}
+
 /** Upload en fil (drag/drop eller fil-vælger) → returnerer attachment_id.
  *  Serveren kræver session_id (Form-felt) og validerer at sessionen findes. */
 export async function uploadAttachment(

@@ -311,6 +311,17 @@ class RuntimeSettings:
     context_compact_threshold_fraction: float = 0.65
     context_run_compact_threshold_tokens: int = 240_000
     context_keep_recent: int = 20
+    # ── Opmærksomheds-budget (2026-07-18, live-compaction spec) ──────────────
+    # PRIMÆR compaction-trigger. BEVIDST model-UAFHÆNGIG: en 1M-model bliver ikke
+    # mindre forvirret af 200k historik — opmærksomhed dør længe før vinduet. Vi
+    # sigter mod et lille arbejdsvindue for svarkvalitet, ikke for at passe i vinduet.
+    # Compact NÅR transcript-tokens ≥ budget; compact NED til low-water.
+    context_attention_budget_tokens: int = 35_000     # high-water: trigger her
+    context_attention_low_water_tokens: int = 15_000  # compact ned til ~dette
+    # Model-BEVIDST sikkerhedsloft (backstop). Hvis transcript på trods af budgettet
+    # nærmer sig det AKTIVE models reelle vindue (glm-5.1 256k / glm-5.2·deepseek 1M),
+    # tving compaction. Skalerer med modellen; fanger kun ekstreme tilfælde.
+    context_compact_safety_fraction: float = 0.85
     # ── Tool-result history-rendering (2026-06-30, cache-fix) ────────────────
     # Historiske tool-results renderes med ÉT fast tegn-budget, recency-UAFHÆNGIGT.
     # Før: seneste 20 fik 4000 tegn (fuldt resultat), ældre 1200 (summary) — så et
@@ -494,6 +505,9 @@ class RuntimeSettings:
             "context_compact_threshold_tokens": self.context_compact_threshold_tokens,
             "context_run_compact_threshold_tokens": self.context_run_compact_threshold_tokens,
             "context_keep_recent": self.context_keep_recent,
+            "context_attention_budget_tokens": self.context_attention_budget_tokens,
+            "context_attention_low_water_tokens": self.context_attention_low_water_tokens,
+            "context_compact_safety_fraction": self.context_compact_safety_fraction,
             "server_authoritative_runs": self.server_authoritative_runs,
             "device_awareness_enabled": self.device_awareness_enabled,
             "context_keep_recent_pairs": self.context_keep_recent_pairs,
@@ -944,6 +958,9 @@ def load_settings() -> RuntimeSettings:
         context_compact_threshold_tokens=int(data.get("context_compact_threshold_tokens", defaults.context_compact_threshold_tokens)),
         context_run_compact_threshold_tokens=int(data.get("context_run_compact_threshold_tokens", defaults.context_run_compact_threshold_tokens)),
         context_keep_recent=int(data.get("context_keep_recent", defaults.context_keep_recent)),
+        context_attention_budget_tokens=int(data.get("context_attention_budget_tokens", defaults.context_attention_budget_tokens)),
+        context_attention_low_water_tokens=int(data.get("context_attention_low_water_tokens", defaults.context_attention_low_water_tokens)),
+        context_compact_safety_fraction=float(data.get("context_compact_safety_fraction", defaults.context_compact_safety_fraction)),
         server_authoritative_runs=bool(data.get("server_authoritative_runs", defaults.server_authoritative_runs)),
         device_awareness_enabled=bool(data.get("device_awareness_enabled", defaults.device_awareness_enabled)),
         context_keep_recent_pairs=int(data.get("context_keep_recent_pairs", defaults.context_keep_recent_pairs)),

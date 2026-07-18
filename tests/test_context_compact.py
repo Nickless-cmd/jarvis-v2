@@ -214,6 +214,76 @@ def test_compact_session_history_compresses_only_old_messages(monkeypatch):
     assert len(captured_input["msgs"]) == 5
 
 
+def test_compact_session_history_round_atomic_path_never_splits_tool_pair(monkeypatch):
+    """New 2026-07-18 keep_recent_tokens path: round-atomic. A tool_use and its tool_result
+    must never end up on opposite sides of the compaction boundary."""
+    from core.context import session_compact
+    captured = {}
+
+    # 5 rounds; round 2 contains a tool_use + tool_result pair.
+    messages = []
+    for k in range(5):
+        messages.append({"role": "user", "content": f"u{k} " + "x" * 400})
+        if k == 2:
+            messages.append({"role": "assistant", "content": "", "tool_calls": [{"name": "bash"}]})
+            messages.append({"role": "tool", "name": "bash", "content": "RESULT " + "y" * 400})
+        messages.append({"role": "assistant", "content": f"a{k} " + "z" * 400})
+
+    monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: messages)
+    monkeypatch.setattr(session_compact, "_store_marker", lambda sid, text, git_sha="": "m")
+
+    def _cap(msgs):
+        captured["old"] = msgs
+        return "Summary of old rounds"
+
+    result = session_compact.compact_session_history(
+        "s", keep_recent_tokens=1_000, summarise_fn=_cap,
+    )
+    assert result is not None
+    old = captured["old"]
+    has_call = any(m.get("tool_calls") for m in old)
+    has_result = any(m.get("role") == "tool" for m in old)
+    # Either BOTH the call and its result are in the summarized old slice, or NEITHER —
+    # never one without the other (that would orphan the pair in the sent payload).
+    assert has_call == has_result
+
+
+def test_round_atomic_marker_embeds_recent_tail_verbatim(monkeypatch):
+    """Tail-preservation: the kept recent rounds must be embedded VERBATIM in the marker blob
+    (Codex/Cline summary+tail) so the thread survives the append-at-end marker."""
+    from core.context import session_compact
+    stored = {}
+
+    messages = []
+    for k in range(6):
+        messages.append({"role": "user", "content": f"BRUGERTEKST-{k} " + "x" * 300})
+        messages.append({"role": "assistant", "content": f"SVAR-{k} " + "z" * 300})
+
+    monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: messages)
+    monkeypatch.setattr(session_compact, "_store_marker",
+                        lambda sid, text, git_sha="": stored.update(content=text) or "m")
+    # keep last ~200 tokens → keeps roughly the last round verbatim, summarizes the rest.
+    session_compact.compact_session_history(
+        "s", keep_recent_tokens=200, summarise_fn=lambda m: "SUMMARY-OF-OLD",
+    )
+    content = stored["content"]
+    assert content.startswith("SUMMARY-OF-OLD")
+    assert "Seneste udveksling" in content
+    # The most recent user text must appear VERBATIM in the marker (not lost/summarized).
+    assert "BRUGERTEKST-5" in content
+
+
+def test_compact_session_history_round_atomic_returns_none_when_only_one_round(monkeypatch):
+    from core.context import session_compact
+    messages = [{"role": "user", "content": "hej"}, {"role": "assistant", "content": "hi"}]
+    monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: messages)
+    monkeypatch.setattr(session_compact, "_store_marker", lambda sid, text, git_sha="": "m")
+    result = session_compact.compact_session_history(
+        "s", keep_recent_tokens=10, summarise_fn=lambda m: "x",
+    )
+    assert result is None  # nothing old enough to compact
+
+
 # ── Task 7: session compact wiring ────────────────────────────────────────
 
 def test_build_transcript_prepends_compact_marker_when_present(monkeypatch):
@@ -686,13 +756,15 @@ def test_auto_compact_is_async_and_deduped(monkeypatch):
     import core.services.prompt_contract as pc
 
     class _S:
-        context_compact_threshold_tokens = 100
+        context_attention_budget_tokens = 100  # attention-budget trigger (2026-07-18)
+        context_attention_low_water_tokens = 15_000
+        context_compact_safety_fraction = 0.85
         context_keep_recent = 20
 
     started = []
     monkeypatch.setattr(pc, "_run_session_compaction",
-                        lambda sid, kr: started.append(sid))
-    # Stor besked → over tærskel (100 tokens)
+                        lambda sid, kr, **kw: started.append(sid))
+    # Stor besked → over attention-budget (100 tokens)
     msgs = [{"role": "user", "content": "x" * 5000}]
     pc._compact_inflight.discard("s1")
     pc._maybe_auto_compact_session("s1", msgs, _S())
@@ -709,11 +781,13 @@ def test_auto_compact_skips_below_threshold(monkeypatch):
     import core.services.prompt_contract as pc
 
     class _S:
-        context_compact_threshold_tokens = 1_000_000
+        context_attention_budget_tokens = 1_000_000  # very high → never triggers
+        context_attention_low_water_tokens = 15_000
+        context_compact_safety_fraction = 0.85
         context_keep_recent = 20
 
     called = []
-    monkeypatch.setattr(pc, "_run_session_compaction", lambda sid, kr: called.append(sid))
+    monkeypatch.setattr(pc, "_run_session_compaction", lambda sid, kr, **kw: called.append(sid))
     pc._maybe_auto_compact_session("s2", [{"role": "user", "content": "kort"}], _S())
     import time; time.sleep(0.05)
     assert called == []  # under tærskel → ingen compaction

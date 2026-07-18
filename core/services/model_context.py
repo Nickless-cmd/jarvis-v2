@@ -16,6 +16,10 @@ _MODEL_CONTEXT_WINDOWS: tuple[tuple[str, int], ...] = (
     ("flash", 1_000_000),       # deepseek-v4-flash (1M)
     ("deepseek", 128_000),
     ("gemini", 1_000_000),
+    # GLM: version-specifikke vinduer FØR den generiske glm-fallback (substring-match
+    # returnerer FØRSTE træf). glm-5.2 = 1M (som deepseek-flash), glm-5.1 = 256k.
+    ("glm-5.2", 1_000_000), ("glm5.2", 1_000_000),
+    ("glm-5.1", 256_000), ("glm5.1", 256_000),
     ("glm", 200_000),
     ("opus", 200_000), ("sonnet", 200_000), ("haiku", 200_000), ("claude", 200_000),
     ("gpt-4o", 128_000),

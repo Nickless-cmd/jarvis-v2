@@ -11,11 +11,11 @@ _(no top-level classes or functions)_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `record_cost` | `(*, lane, provider, model, input_tokens=…, output_tokens=…, cost_usd=…, cache_hit_tokens=…, cache_miss_tokens=…, user_id=…)` | Insert a row into the costs ledger. | [src](../../../core/costing/ledger.py#L9) |
-| function | `telemetry_summary` | `()` | — | [src](../../../core/costing/ledger.py#L85) |
-| function | `recent_costs` | `(limit=…)` | — | [src](../../../core/costing/ledger.py#L105) |
-| function | `daily_cost_summary` | `()` | Cost per day for the last 30 days, broken down by lane. | [src](../../../core/costing/ledger.py#L134) |
-| function | `weekly_cost_summary` | `()` | Cost per ISO week for all time. | [src](../../../core/costing/ledger.py#L163) |
-| function | `today_cost` | `()` | Total cost in USD for today (UTC). | [src](../../../core/costing/ledger.py#L191) |
-| function | `this_week_cost` | `()` | Total cost in USD for this ISO week. | [src](../../../core/costing/ledger.py#L204) |
-| function | `estimate_savings_if_cheap` | `(*, days=…)` | Estimate how much would be saved by routing primary-lane calls to cheap lane. | [src](../../../core/costing/ledger.py#L217) |
+| function | `telemetry_summary` | `()` | — | [src](../../../core/costing/ledger.py#L106) |
+| function | `recent_costs` | `(limit=…)` | — | [src](../../../core/costing/ledger.py#L126) |
+| function | `daily_cost_summary` | `()` | Cost per day for the last 30 days, broken down by lane. | [src](../../../core/costing/ledger.py#L155) |
+| function | `weekly_cost_summary` | `()` | Cost per ISO week for all time. | [src](../../../core/costing/ledger.py#L184) |
+| function | `today_cost` | `()` | Total cost in USD for today (UTC). | [src](../../../core/costing/ledger.py#L212) |
+| function | `this_week_cost` | `()` | Total cost in USD for this ISO week. | [src](../../../core/costing/ledger.py#L225) |
+| function | `estimate_savings_if_cheap` | `(*, days=…)` | Estimate how much would be saved by routing primary-lane calls to cheap lane. | [src](../../../core/costing/ledger.py#L238) |
 

@@ -80,17 +80,17 @@ _Client-owned agent loop: /v1/agent/step._
 | function | `tools_execute` | `(body)` | Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L612) |
 | function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L742) |
 | function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L759) |
-| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools, session_id=…, user_id=…, extra_body=…, reasoning_replay_enabled=…, cache_contract_enabled=…, prefix_sha=…, prefix_len=…, follow_tee=…)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1043) |
-| class | `_AbsorbBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1192) |
-| function | `agent_turn_absorb` | `(body)` | Absorbér en klient-drevet tur i hjernen (post-process). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1203) |
-| class | `_TurnLiveBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1232) |
-| function | `_live_follow_active` | `(settings, session_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1247) |
-| function | `_follow_publish_line` | `(session_id, line)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1252) |
-| function | `_follow_begin_frames` | `(session_id, run_id, provider, model)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1260) |
-| function | `_follow_delta_frame` | `(session_id, text)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1272) |
-| function | `_follow_end_frames` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1281) |
-| function | `agent_turn_begin` | `(body)` | Registrér en klient-drevet tur som live (aktivt visible run + run_follow). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1294) |
-| function | `agent_turn_end` | `(body)` | Ryd live-tilstanden for en klient-drevet tur (altid safe at kalde). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1317) |
+| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools, session_id=…, user_id=…, extra_body=…, reasoning_replay_enabled=…, cache_contract_enabled=…, prefix_sha=…, prefix_len=…, follow_tee=…)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1064) |
+| class | `_AbsorbBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1213) |
+| function | `agent_turn_absorb` | `(body)` | Absorbér en klient-drevet tur i hjernen (post-process). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1224) |
+| class | `_TurnLiveBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1253) |
+| function | `_live_follow_active` | `(settings, session_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1268) |
+| function | `_follow_publish_line` | `(session_id, line)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1273) |
+| function | `_follow_begin_frames` | `(session_id, run_id, provider, model)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1281) |
+| function | `_follow_delta_frame` | `(session_id, text)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1293) |
+| function | `_follow_end_frames` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1302) |
+| function | `agent_turn_begin` | `(body)` | Registrér en klient-drevet tur som live (aktivt visible run + run_follow). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1315) |
+| function | `agent_turn_end` | `(body)` | Ryd live-tilstanden for en klient-drevet tur (altid safe at kalde). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1338) |
 
 ## `apps/api/jarvis_api/routes/agentic_guards.py`
 _MC endpoint for agentic-loop guard observability._
@@ -467,19 +467,21 @@ _Central 'users' route — hvornår var hver bruger sidst aktiv, og hvordan (own
 | function | `chat_session_live` | `(session_id)` | Attach til sessionens aktive run fra offset 0 (cross-device + foreground- | [src](../../../apps/api/jarvis_api/routes/chat.py#L953) |
 | function | `chat_session_follow` | `(session_id)` | Token-stream det aktive autonome run i sessionen (desk-pickup af wakeup). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1013) |
 | function | `chat_context_info` | `()` | Kontekst-tærskler til composer-ringen (#9). Kun ægte config-tal: | [src](../../../apps/api/jarvis_api/routes/chat.py#L1062) |
-| function | `chat_context_usage` | `(session_id=…, provider=…, model=…)` | ÆGTE kontekst-fyld for en session — backend-autoritativt. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1075) |
-| function | `chat_session_milestones` | `(session_id=…)` | Milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter. Segmenterer | [src](../../../apps/api/jarvis_api/routes/chat.py#L1137) |
-| function | `chat_model_context` | `(provider=…, model=…)` | Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1154) |
-| function | `chat_create_session` | `(request)` | Opret en ny chat-session (valgfrit bundet til et code-mode workspace). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1168) |
-| function | `chat_session` | `(session_id)` | Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1179) |
-| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1188) |
-| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1198) |
-| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1206) |
-| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1374) |
-| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1393) |
-| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1407) |
-| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1420) |
-| function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L1434) |
+| function | `chat_context_usage` | `(session_id=…, provider=…, model=…)` | ÆGTE kontekst-fyld for en session — backend-autoritativt. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1077) |
+| class | `_CompactNowBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1143) |
+| function | `chat_compact_now` | `(body)` | Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som | [src](../../../apps/api/jarvis_api/routes/chat.py#L1149) |
+| function | `chat_session_milestones` | `(session_id=…)` | Milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter. Segmenterer | [src](../../../apps/api/jarvis_api/routes/chat.py#L1191) |
+| function | `chat_model_context` | `(provider=…, model=…)` | Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1208) |
+| function | `chat_create_session` | `(request)` | Opret en ny chat-session (valgfrit bundet til et code-mode workspace). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1222) |
+| function | `chat_session` | `(session_id)` | Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1233) |
+| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1242) |
+| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1252) |
+| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1260) |
+| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1428) |
+| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1447) |
+| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1461) |
+| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1474) |
+| function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L1488) |
 
 ## `apps/api/jarvis_api/routes/chat_stream_v2.py`
 _POST /chat/stream/v2 — Anthropic-style SSE protokol._

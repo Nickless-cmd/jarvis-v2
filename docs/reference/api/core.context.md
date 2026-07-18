@@ -50,15 +50,33 @@ _Thin wrapper for compact summarisation._
 | function | `_call_heartbeat_llm_simple` | `(prompt, max_tokens)` | — | [src](../../../core/context/compact_llm.py#L31) |
 | function | `call_compact_llm` | `(prompt, *, max_tokens=…)` | Summarise prompt. Tries non-Groq cheap providers first, Groq as fallback. | [src](../../../core/context/compact_llm.py#L36) |
 
+## `core/context/compaction_policy.py`
+_Model-aware, round-atomic compaction policy (PURE — no DB, no clock, no LLM)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `CompactionDecision` | `` | — | [src](../../../core/context/compaction_policy.py#L38) |
+| function | `compaction_decision` | `(transcript_tokens, *, provider, model, attention_budget, low_water, safety_fraction, model_window_fn)` | Decide whether to compact, model-aware. | [src](../../../core/context/compaction_policy.py#L47) |
+| function | `group_rounds` | `(messages)` | A round = a user message + everything up to (not including) the next user message. | [src](../../../core/context/compaction_policy.py#L97) |
+| function | `round_is_open` | `(round_msgs)` | True when the round ends with tool_calls whose results haven't all arrived — | [src](../../../core/context/compaction_policy.py#L114) |
+| function | `_msg_tokens` | `(m)` | — | [src](../../../core/context/compaction_policy.py#L127) |
+| function | `select_for_compaction` | `(messages, *, keep_recent_tokens)` | Split messages into (old_to_summarize, kept_tail), ROUND-ATOMIC. | [src](../../../core/context/compaction_policy.py#L134) |
+| function | `_is_stub` | `(content)` | — | [src](../../../core/context/compaction_policy.py#L176) |
+| function | `fold_old_tool_results` | `(messages, keep=…)` | Fold every tool_result (role=="tool") OLDER than the newest `keep` into a short stub, | [src](../../../core/context/compaction_policy.py#L181) |
+| function | `render_transcript_for_summary` | `(messages)` | Flatten messages to a text transcript for the summarizer. tool_use/tool_result | [src](../../../core/context/compaction_policy.py#L208) |
+| function | `build_structured_summary_prompt` | `(old_messages, *, focus=…, ground_truth=…)` | Structured, thread-preserving summary prompt over the OLD messages. | [src](../../../core/context/compaction_policy.py#L254) |
+| function | `extract_summary` | `(raw)` | Pull the usable summary out of a raw model response: drop any <thinking> scratchpad, | [src](../../../core/context/compaction_policy.py#L285) |
+| function | `summary_looks_valid` | `(summary_text, *, min_chars=…)` | Quality gate on the EXTRACTED summary. Rejects empty/too-short, the mechanical-fallback | [src](../../../core/context/compaction_policy.py#L296) |
+
 ## `core/context/session_compact.py`
 _Session-level context compaction._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `CompactResult` | `` | — | [src](../../../core/context/session_compact.py#L18) |
-| function | `compact_session_history` | `(session_id, *, keep_recent=…, summarise_fn, git_sha=…)` | Compact old session history for session_id. | [src](../../../core/context/session_compact.py#L25) |
-| function | `_get_all_session_messages` | `(session_id)` | — | [src](../../../core/context/session_compact.py#L111) |
-| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L116) |
+| function | `compact_session_history` | `(session_id, *, keep_recent=…, keep_recent_tokens=…, summarise_fn, git_sha=…)` | Compact old session history for session_id. | [src](../../../core/context/session_compact.py#L25) |
+| function | `_get_all_session_messages` | `(session_id)` | — | [src](../../../core/context/session_compact.py#L146) |
+| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L151) |
 
 ## `core/context/token_estimate.py`
 _Token estimation utilities — heuristic only, no tokenizer required._

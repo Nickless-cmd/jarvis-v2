@@ -451,24 +451,83 @@ _compact_inflight: set[str] = set()
 
 _compact_inflight_lock = _threading_mod.Lock()
 
-def _run_session_compaction(session_id: str, keep_recent: int) -> None:
-    """Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det
-    eksisterende session_compact-system. Self-safe."""
+def _ground_truth_for(session_id: str) -> str:
+    """Best-effort VERIFIED-facts block (git HEAD, recent commits, key files) for the session,
+    anchoring the summariser against invention. Self-safe → '' on any error."""
     try:
-        from core.context.compact_llm import call_compact_llm
+        from core.context.compact_ground_truth import (
+            collect_compact_ground_truth, format_ground_truth_block,
+        )
+        return format_ground_truth_block(collect_compact_ground_truth(session_id))
+    except Exception:
+        return ""
+
+
+def _make_structured_summariser(focus: str | None = None, *, session_id: str | None = None):
+    """Build a summarise_fn(old_messages)->str for compact_session_history.
+
+    2-stage + fault-tolerant (2026-07-18 live-compaction spec):
+      Stage-A: fold OLD tool-results to stubs so the (cheap) summariser sees prose, not raw
+               tool dumps — mitigates cheap-model degradation on tool-heavy history.
+      Stage-B: structured, thread-preserving 9-section summary via the cheap lane
+               (call_compact_llm — non-Groq cheap providers first).
+      Quality gate: if the LLM summary is empty/too-short/broken, fall back to a
+               deterministic mechanical join so compaction NEVER produces an empty marker
+               (store_compact_marker rejects empty) and never hard-fails the turn."""
+    from core.context.compact_llm import call_compact_llm
+    from core.context.compaction_policy import (
+        build_structured_summary_prompt,
+        extract_summary,
+        fold_old_tool_results,
+        summary_looks_valid,
+    )
+
+    _gt = _ground_truth_for(session_id) if session_id else ""
+
+    def _summarise(old_msgs: list[dict]) -> str:
+        folded, _ = fold_old_tool_results(old_msgs, keep=0)  # prose for the summariser
+        prompt = build_structured_summary_prompt(folded, focus=focus, ground_truth=_gt)
+        # 2500 tokens: headroom so a thinking-model's scratchpad doesn't eat the summary.
+        raw = str(call_compact_llm(prompt, max_tokens=2500) or "")
+        text = extract_summary(raw)  # strip <thinking>, pull <summary>…</summary>
+        if summary_looks_valid(text):
+            return text
+        # Deterministic fallback — mechanical, never empty (thread still traceable via
+        # the raw messages kept under the marker in the DB).
+        parts = [
+            f"[{m.get('role', '?')}] {str(m.get('content') or '')[:200]}"
+            for m in old_msgs
+        ]
+        return (
+            "<summary>[Automatisk mekanisk sammenfatning — summariser-model gav intet brugbart. "
+            "Rå beskeder bevaret i sessionen.]\n" + "\n".join(parts)[:6000] + "</summary>"
+        )
+
+    return _summarise
+
+
+def _run_session_compaction(
+    session_id: str,
+    keep_recent: int,
+    *,
+    low_water_tokens: int = 15_000,
+    focus: str | None = None,
+) -> None:
+    """Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det
+    eksisterende session_compact-system. Round-atomisk + struktureret 2-trins. Self-safe."""
+    try:
         from core.context.session_compact import compact_session_history
         import logging as _log
         _log.getLogger(__name__).info(
-            "prompt_contract: auto-compact (baggrund) for session %s", session_id
+            "prompt_contract: auto-compact (baggrund) for session %s (low_water=%d)",
+            session_id, low_water_tokens,
         )
+        # Kept tail budget: lidt under low-water så summary + tail ≈ low-water.
+        _tail_budget = max(int(low_water_tokens * 0.8), 4_000)
         result = compact_session_history(
             session_id,
-            keep_recent=keep_recent,
-            summarise_fn=lambda msgs: call_compact_llm(
-                "Komprimér denne dialog til max 400 ord. Bevar fakta, beslutninger og kontekst:\n\n"
-                + "\n".join(f"{m['role']}: {m.get('content', '')}" for m in msgs),
-                max_tokens=500,
-            ),
+            keep_recent_tokens=_tail_budget,
+            summarise_fn=_make_structured_summariser(focus, session_id=session_id),
         )
         if result is not None:
             try:
@@ -500,29 +559,28 @@ def _maybe_auto_compact_session(
     beskytter den), og den NÆSTE tur nyder godt af det skrevne compact_marker.
     """
     from core.context.token_estimate import estimate_messages_tokens
-    # Model-BEVIDST tærskel (2026-06-30): fraction × det konfigurerede visible-
-    # models kontekstvindue, så v4-flash (1M) ikke compacter ved 13% (for tidligt
-    # cache-reset). Fallback til den flade værdi hvis opslag fejler / fraction ≤0.
-    _compact_threshold = int(getattr(settings, "context_compact_threshold_tokens", 130_000) or 130_000)
-    try:
-        _frac = float(getattr(settings, "context_compact_threshold_fraction", 0.0) or 0.0)
-        if _frac > 0:
-            from core.services.model_context import model_context_window
-            _win = int(model_context_window(
-                str(getattr(settings, "visible_model_provider", "") or ""),
-                str(getattr(settings, "visible_model_name", "") or ""),
-            ))
-            if _win > 0:
-                # max(): fraktionen må kun HÆVE tærsklen for store-vindue-modeller
-                # (v4-flash 1M → 650k), ALDRIG sænke under den flade værdi (en model
-                # der i mappingen falder til et lille vindue, fx v4-pro→128k, holder
-                # de 130k frem for at compacte for aggressivt).
-                _compact_threshold = max(_compact_threshold, int(_frac * _win))
-    except Exception:
-        pass
-    if estimate_messages_tokens(current_messages) < _compact_threshold:
+    from core.context.compaction_policy import compaction_decision
+    from core.services.model_context import model_context_window
+
+    # Model-BEVIDST beslutning (2026-07-18 live-compaction spec):
+    #  PRIMÆR   = absolut opmærksomheds-budget (35k), model-UAFHÆNGIG → holder Jarvis skarp
+    #             selv på deepseek-flash's 1M-vindue (den gamle max(130k, frac×1M)=650k fyrede
+    #             ALDRIG → hele historikken blev sendt hver tur).
+    #  SIKKERHED = model-vindue × safety_fraction (backstop; skalerer glm-5.1 256k / flash 1M).
+    _budget = int(getattr(settings, "context_attention_budget_tokens", 35_000) or 35_000)
+    _low = int(getattr(settings, "context_attention_low_water_tokens", 15_000) or 15_000)
+    _safety = float(getattr(settings, "context_compact_safety_fraction", 0.85) or 0.85)
+    decision = compaction_decision(
+        estimate_messages_tokens(current_messages),
+        provider=str(getattr(settings, "visible_model_provider", "") or ""),
+        model=str(getattr(settings, "visible_model_name", "") or ""),
+        attention_budget=_budget,
+        low_water=_low,
+        safety_fraction=_safety,
+        model_window_fn=model_context_window,
+    )
+    if not decision.should_compact:
         return
-    keep_recent = int(getattr(settings, "context_keep_recent", 20) or 20)
     with _compact_inflight_lock:
         if session_id in _compact_inflight:
             return
@@ -533,7 +591,9 @@ def _maybe_auto_compact_session(
         # kalder patchen. Bare-navn ville ramme dette moduls global.
         from core.services import prompt_contract as _pc
         _threading_mod.Thread(
-            target=_pc._run_session_compaction, args=(session_id, keep_recent),
+            target=_pc._run_session_compaction,
+            args=(session_id, int(getattr(settings, "context_keep_recent", 20) or 20)),
+            kwargs={"low_water_tokens": decision.low_water_target},
             name=f"compact-{str(session_id)[:12]}", daemon=True,
         ).start()
     except Exception:

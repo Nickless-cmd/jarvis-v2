@@ -106,6 +106,7 @@ export function Composer({
   contextTokens = 0,
   compactAt = 0,
   compacting = false,
+  onManualCompact,
   isOwner = false,
   onOpenPrivacy,
 }: {
@@ -127,6 +128,8 @@ export function Composer({
   compactAt?: number
   /** Compaction kører lige nu → composeren pauses (som i Claude Code) indtil den er færdig. */
   compacting?: boolean
+  /** Sat → context-ringen bliver en knap der udløser manuel compaction (Claude-Code /compact). */
+  onManualCompact?: () => void
   /** Owner ser provider-vælger + dynamisk model-liste; member ser kun Standard/Pro. */
   isOwner?: boolean
 }) {
@@ -433,7 +436,7 @@ export function Composer({
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
       {ringDenominator > 0 && (
         <div className="composer-ring-corner">
-          <ContextRing tokens={contextTokens} compactAt={ringDenominator} modelLabel={currentModelLabel} />
+          <ContextRing tokens={contextTokens} compactAt={ringDenominator} modelLabel={currentModelLabel} onManualCompact={compacting ? undefined : onManualCompact} />
         </div>
       )}
       {attachments.length > 0 && (

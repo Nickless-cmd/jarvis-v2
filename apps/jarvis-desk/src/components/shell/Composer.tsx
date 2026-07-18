@@ -104,6 +104,7 @@ export function Composer({
   getSessionId,
   showPermissions = true,
   contextTokens = 0,
+  overheadTokens = 0,
   compactAt = 0,
   compacting = false,
   onManualCompact,
@@ -125,6 +126,8 @@ export function Composer({
   /** Context-ring (#9): tokens i konteksten + autocompact-tærskel. Ringen vises
    *  altid når compactAt > 0 (tom ved 0 tokens). */
   contextTokens?: number
+  /** System-overhead (stabil prefix) — til tooltip'ens ægte total-tal. */
+  overheadTokens?: number
   compactAt?: number
   /** Compaction kører lige nu → composeren pauses (som i Claude Code) indtil den er færdig. */
   compacting?: boolean
@@ -436,7 +439,7 @@ export function Composer({
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
       {ringDenominator > 0 && (
         <div className="composer-ring-corner">
-          <ContextRing tokens={contextTokens} compactAt={ringDenominator} modelLabel={currentModelLabel} onManualCompact={compacting ? undefined : onManualCompact} />
+          <ContextRing tokens={contextTokens} compactAt={ringDenominator} overheadTokens={overheadTokens} modelLabel={currentModelLabel} onManualCompact={compacting ? undefined : onManualCompact} />
         </div>
       )}
       {attachments.length > 0 && (

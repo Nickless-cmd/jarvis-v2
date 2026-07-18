@@ -1095,6 +1095,11 @@ async def chat_context_usage(
     # baggrunds-compaction fyrer ved 35k, i stedet for at snige mod de gamle 130k.
     compact_at = int(getattr(s, "context_attention_budget_tokens", 35_000) or 35_000)
 
+    # System-overhead (stabil prefix: SOUL/IDENTITY/USER/regler/tools) — det FASTE der
+    # sendes til modellen udover samtalen. Til tooltip'ens ÆGTE total-tal. Memoiseret
+    # (skifter kun ved workspace-edit), self-safe → 0.
+    overhead_tokens = await asyncio.to_thread(_system_overhead_tokens, provider, model, session_id)
+
     tokens = 0
     compacted = False
     if session_id:
@@ -1135,9 +1140,44 @@ async def chat_context_usage(
         "compact_at": compact_at,
         "effective": effective,
         "model_window": model_window,
+        "overhead_tokens": overhead_tokens,
         "compacting": compacting,
         "compacted": compacted,
     }
+
+
+# System-overhead-cache (stabil prefix ændrer sig kun ved workspace-edit → 60s TTL nok).
+_overhead_cache: dict[tuple, tuple[float, int]] = {}
+
+
+def _system_overhead_tokens(provider: str, model: str, session_id: str) -> int:
+    """Estimér tokens i den STABILE system-prefix (identitet + regler + tool-katalog) — det
+    faste overhead udover samtalen. Memoiseret pr. (provider, model). Self-safe → 0."""
+    import time as _t
+    key = (str(provider or ""), str(model or ""))
+    now = _t.monotonic()
+    hit = _overhead_cache.get(key)
+    if hit and (now - hit[0]) < 60:
+        return hit[1]
+    try:
+        from core.services.prompt_contract import build_visible_stable_prefix
+        from core.context.token_estimate import estimate_tokens
+        name = "default"
+        try:
+            from core.services.chat_sessions import get_session_owner
+            from core.identity.users import find_user_by_discord_id
+            oid = get_session_owner(session_id) or "" if session_id else ""
+            u = find_user_by_discord_id(oid) if oid else None
+            if u and getattr(u, "workspace", ""):
+                name = u.workspace
+        except Exception:
+            pass
+        prefix = build_visible_stable_prefix(provider=provider, model=model, name=name)
+        val = int(estimate_tokens(prefix))
+        _overhead_cache[key] = (now, val)
+        return val
+    except Exception:
+        return 0
 
 
 class _CompactNowBody(BaseModel):

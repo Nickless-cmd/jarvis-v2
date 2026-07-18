@@ -9,6 +9,7 @@ export function ContextRing({
   compactAt,
   size = 18,
   modelLabel,
+  overheadTokens = 0,
   onManualCompact,
 }: {
   tokens: number
@@ -16,6 +17,8 @@ export function ContextRing({
   size?: number
   /** Navnet på den valgte model — vises i tooltip så ringen er gennemsigtig. */
   modelLabel?: string
+  /** System-overhead (stabil prefix) — til tooltip'ens ægte total-tal. */
+  overheadTokens?: number
   /** Når sat: ringen bliver en knap der udløser manuel compaction (Claude-Code /compact). */
   onManualCompact?: () => void
 }) {
@@ -35,9 +38,17 @@ export function ContextRing({
 
   const kTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`)
 
-  const baseTitle = `${modelLabel ? modelLabel + ' · ' : ''}` + (safeTokens > 0
-    ? `Kontekst: ${pct}% (${kTokens(safeTokens)} / ${kTokens(compactAt)} loft)`
-    : `Kontekst: tom (loft ${kTokens(compactAt)})`)
+  // Ringen fyldes = samtale-transcript siden compaction / attention-budget (afstand til
+  // næste auto-compact). Tooltip'en viser DET ÆGTE total-tal (system-overhead + samtale)
+  // — det faktiske der sendes til modellen — så ringen ikke skjuler det faste overhead.
+  const realTotal = Math.max(0, overheadTokens) + safeTokens
+  const gauge = safeTokens > 0
+    ? `${pct}% til compaction (${kTokens(safeTokens)} samtale / ${kTokens(compactAt)})`
+    : `tom (compaction ved ${kTokens(compactAt)})`
+  const totalPart = overheadTokens > 0
+    ? ` · ~${kTokens(realTotal)} total til model: system ${kTokens(overheadTokens)} + samtale ${kTokens(safeTokens)}`
+    : ''
+  const baseTitle = `${modelLabel ? modelLabel + ' · ' : ''}${gauge}${totalPart}`
   const title = onManualCompact ? `${baseTitle} · klik for at komprimere nu` : baseTitle
   return (
     <span

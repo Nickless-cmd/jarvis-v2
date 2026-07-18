@@ -665,7 +665,7 @@ export async function getSessionMilestones(
  *  baggrunds-compaction kører nu (til liveness-indikatoren). */
 export async function getContextUsage(
   config: ApiConfig, sessionId: string, provider = '', model = '',
-): Promise<{ tokens: number; compact_at: number; effective: number; compacting: boolean; compacted: boolean }> {
+): Promise<{ tokens: number; compact_at: number; effective: number; model_window: number; overhead_tokens: number; compacting: boolean; compacted: boolean }> {
   const qs = new URLSearchParams({ session_id: sessionId, provider, model }).toString()
   return apiFetch(config, `/chat/context-usage?${qs}`)
 }

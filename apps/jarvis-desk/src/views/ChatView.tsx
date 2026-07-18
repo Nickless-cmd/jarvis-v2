@@ -100,13 +100,14 @@ export function ChatView({
   // mod loftet, falder når den fyrer). Re-poll ved session-skift + når stream-status skifter
   // (tur-grænser) + langsom interval.
   const [contextTokens, setContextTokens] = useState(0)
+  const [overheadTokens, setOverheadTokens] = useState(0)
   const [compacting, setCompacting] = useState(false)
   useEffect(() => {
     if (!settings || !sessionId) { setContextTokens(0); setCompacting(false); return }
     let alive = true
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     const poll = () => getContextUsage(cfg, sessionId)
-      .then((r) => { if (alive) { setContextTokens(r.tokens || 0); setCompacting(!!r.compacting) } })
+      .then((r) => { if (alive) { setContextTokens(r.tokens || 0); setOverheadTokens(r.overhead_tokens || 0); setCompacting(!!r.compacting) } })
       .catch(() => { /* behold sidste kendte ved netværksfejl */ })
     poll()
     const id = setInterval(poll, compacting ? 1200 : 6000)
@@ -457,6 +458,7 @@ export function ChatView({
         getSessionId={ensureSessionId}
         showPermissions={false}
         contextTokens={contextTokens}
+        overheadTokens={overheadTokens}
         compactAt={compactAt}
         compacting={compacting}
         onManualCompact={() => void triggerManualCompact('')}

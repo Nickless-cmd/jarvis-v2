@@ -284,6 +284,12 @@ def resolve_visible_model(*, provider_override: str = "", model_override: str = 
 _PAID_DEEPSEEK_PROVIDER = "deepseek"
 _AUTONOMOUS_FALLBACK_PROVIDER = "ollama"
 _AUTONOMOUS_FALLBACK_MODEL = "deepseek-v4-flash:cloud"
+# Code-tuned models degenerate on the autonomous lane's reflective/journaling work:
+# they spiral into read-tool loops and never synthesise text (4/4 looped autonomous
+# runs in the week to 2026-07-18 were kimi-k2.7-code:cloud → gate_loop RED → dead run).
+# Substring match against the resolved model, lowercased. Same spirit as the paid-
+# deepseek HARD GUARD below: never let one of these be the autonomous preference.
+_AUTONOMOUS_MODEL_BLOCKLIST = ("kimi-k2.7-code", "-code:")
 
 
 def resolve_autonomous_model(*, autonomous_provider: str = "",
@@ -302,6 +308,11 @@ def resolve_autonomous_model(*, autonomous_provider: str = "",
         )
         # HARD GUARD: den betalte deepseek.com-API må aldrig ramme baggrunden.
         if str(p or "").strip().lower() == _PAID_DEEPSEEK_PROVIDER:
+            return base_provider, base_model
+        # HARD GUARD: kode-modeller looper på autonome refleksive opgaver (se
+        # _AUTONOMOUS_MODEL_BLOCKLIST) → klem tilbage til den pålidelige base.
+        _ml = str(m or "").strip().lower()
+        if any(bad in _ml for bad in _AUTONOMOUS_MODEL_BLOCKLIST):
             return base_provider, base_model
         return (str(p or "").strip() or base_provider), (str(m or "").strip() or base_model)
     except Exception:

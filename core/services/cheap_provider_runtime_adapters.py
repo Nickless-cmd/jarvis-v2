@@ -348,7 +348,10 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     # Nøgle (id.secret) gemt i CT105 auth-store — ALDRIG i repo.
     "zai": {
         "label": "Z.ai (Zhipu GLM)",
-        "priority": 45,
+        # Deprioriteret 2026-07-18: ~92% "read operation timed out" over 24t (604 kald,
+        # 555 fejl). Timeouts koster fuld failover-ventetid, så den skal bagerst i feltet
+        # (registrets hidtil laveste var 95) — stadig tilgængelig som absolut sidste udvej.
+        "priority": 96,
         "base_url": "https://api.z.ai/api/paas/v4",
         "auth_kind": "bearer",
         "protocol": "openai-chat",

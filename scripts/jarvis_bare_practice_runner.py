@@ -316,6 +316,18 @@ def _run_loop(args: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    # DISABLED by owner (Bjørn) 2026-07-18. The Phase 4 jarvis_bare experiment is
+    # over; this runner kept being auto-restarted (self-set recurring tasks +
+    # burned ollama-cloud quota) so it is now a hard no-op. It exits immediately
+    # without running a tick or a loop. To re-enable, delete this guard block.
+    import sys as _sys
+    print(
+        "[jarvis_bare_practice_runner] DISABLED by owner — exiting without running "
+        "(no tick, no loop, no model calls).",
+        file=_sys.stderr,
+    )
+    _sys.exit(0)
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s [jarvis_bare] %(message)s",

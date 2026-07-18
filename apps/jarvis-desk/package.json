@@ -2,7 +2,7 @@
   "name": "jarvis-desktop",
   "productName": "J.A.R.V.I.S.",
   "private": true,
-  "version": "0.3.36",
+  "version": "0.3.37",
   "description": "J.A.R.V.I.S. — Calm, robust desktop app. Built on /chat/stream/v2 Anthropic-style protocol.",
   "homepage": "https://github.com/Nickless-cmd/jarvis-v2",
   "main": "dist-electron/main.js",

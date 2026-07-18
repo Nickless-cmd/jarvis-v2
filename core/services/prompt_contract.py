@@ -685,6 +685,40 @@ def build_visible_chat_prompt_assembly(
         runtime_self_report_context=runtime_self_report_context or {},
     )
 
+    # 2026-07-18 Part B (contention): pre-warm the user_message embedding ONCE,
+    # uncontended, so the recall paths below (multi_signal, memory_selection,
+    # recall_bundle) hit the semantic_memory embed-cache instead of racing ollama
+    # with N simultaneous embeds of the same text — that race inflated multi_signal
+    # from ~90ms of work to ~2.1s of wall-clock under load. ~130ms once, self-safe.
+    _uq = (user_message or "").strip()
+    if len(_uq) >= 8:
+        try:
+            from core.services.semantic_memory import _embed_ollama as _prewarm_embed
+            _prewarm_embed(_uq)
+        except Exception:
+            pass
+
+    # 2026-07-18 Part A (parallelize): the three heaviest seg_q3 sections ran
+    # SEQUENTIALLY on the main thread (multi_signal ~2.1s + session_continuity ~1s +
+    # indre_liv ~0.6s = the assembly floor). Submit them as futures HERE so they
+    # overlap the ~17 light main-thread sections' build; resolve at their
+    # _awareness_add sites below. Awareness-neutral — identical sections, concurrent.
+    def _safe_inner_life_section():
+        from core.services.visible_inner_life import build_inner_life_section
+        return build_inner_life_section()
+
+    def _safe_multi_signal_section():
+        if len(_uq) >= 8:
+            from core.services.memory_recall_engine import multi_signal_recall_section
+            return multi_signal_recall_section(user_message)
+        return None
+
+    future_inner_life = _measured_submit("inner_life_section", _safe_inner_life_section)
+    future_multi_signal = _measured_submit("multi_signal_section", _safe_multi_signal_section)
+    future_session_continuity = _measured_submit(
+        "session_continuity_section", _visible_session_continuity_instruction,
+    )
+
     # Sync-gap instrumentation: capture timestamps at key landmarks so we can
     # see where the synchronous work between parallel submits and final
     # assembly is spent. Added 2026-05-12 to find the ~16s unaccounted gap.
@@ -1062,8 +1096,8 @@ def build_visible_chat_prompt_assembly(
     # voice, inner-signal network, self-model. Own "indre" category, exempt
     # from the diagnostic awareness budget below so it is never evicted.
     try:
-        from core.services.visible_inner_life import build_inner_life_section
-        _awareness_add(1, "indre liv", build_inner_life_section())
+        _awareness_add(1, "indre liv",
+                       _timed_result(future_inner_life, "inner_life_section"))
     except Exception as _e:
         _sec_err("indre liv", _e)
     try:
@@ -1632,10 +1666,9 @@ def build_visible_chat_prompt_assembly(
     # BM25 + entity + embedding fusion. Lower priority than
     # recall-before-act since this is "wider net", not user-message-specific.
     try:
-        from core.services.memory_recall_engine import multi_signal_recall_section
         if user_message and len(user_message.strip()) >= 8:
             _awareness_add(28, "multi-signal recall (BM25+entity+embedding)",
-                           multi_signal_recall_section(user_message) or None)
+                           _timed_result(future_multi_signal, "multi_signal_section") or None)
     except Exception as _e:
         _sec_err("multi-signal recall (BM25+entity+embedding)", _e)
     # Phase 1 — proactive auto-compact at 70% threshold (best-effort, cooldown-protected)
@@ -2108,7 +2141,7 @@ def build_visible_chat_prompt_assembly(
     budget_profile = "visible_compact" if compact else "visible_full"
 
     continuity_content = (
-        _visible_session_continuity_instruction()
+        _timed_result(future_session_continuity, "session_continuity_section")
         if relevance.include_continuity
         else None
     )

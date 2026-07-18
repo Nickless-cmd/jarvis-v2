@@ -6,6 +6,34 @@ from typing import Any
 from core.runtime.db import connect
 
 
+_TRACE_PLUMBING = (  # TEMP-DIAG: frames to skip when finding the real caller
+    "ledger.py", "central_route.py", "central_llm_egress.py",
+    "cheap_provider_runtime_adapters.py", "cheap_provider_runtime_streaming.py",
+    "central_router_adapt.py", "llm_pricing.py", "cheap_lane_router.py",
+)
+
+
+def _trace_llm_caller(lane: str, provider: str, model: str) -> None:  # TEMP-DIAG
+    """Walk the stack past plumbing to find the daemon/service that issued this LLM call."""
+    try:
+        import sys as _s
+        caller = "?"
+        f = _s._getframe(2)
+        for _ in range(25):
+            if f is None:
+                break
+            fn = f.f_code.co_filename.rsplit("/", 1)[-1]
+            if fn not in _TRACE_PLUMBING and not fn.startswith("<"):
+                caller = f"{fn}:{f.f_code.co_name}"
+                break
+            f = f.f_back
+        import threading as _th
+        print(f"LLM-CALLER daemon={caller} lane={lane} provider={provider} model={model} "
+              f"thread={_th.current_thread().name}", file=_s.stderr, flush=True)
+    except Exception:
+        pass
+
+
 def record_cost(
     *,
     lane: str,
@@ -31,6 +59,7 @@ def record_cost(
     """
     if provider == "deepseek" and model in ("deepseek-chat", "deepseek-reasoner"):
         model = "deepseek-v4-flash"
+    _trace_llm_caller(lane, provider, model)  # TEMP-DIAG: daemon→LLM-call attribution
     # WS2 (13. jul): DeepSeek returnerer tokens men IKKE pris → cost_usd lander som 0.
     # Beregn den fra pris-tabellen ved skrivning når kalderen ikke gav en ægte pris.
     if float(cost_usd) <= 0.0:

@@ -89,6 +89,28 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         except Exception:
             pass
 
+        # WAL checkpoint: passive checkpoints get starved by long-running readers,
+        # so the WAL grows unbounded (12+ MB observed) → write-lock contention →
+        # visible-lane stalls. Retention above just freed pages; TRUNCATE folds the
+        # WAL back into the main DB and resets it to 0. Best-effort on its own
+        # connection so a checkpoint failure never aborts the tick.
+        wal_checkpoint: dict[str, object] = {}
+        try:
+            from core.runtime.db import connect as _ckpt_connect
+            with _ckpt_connect() as ckpt_conn:
+                row = ckpt_conn.execute(
+                    "PRAGMA wal_checkpoint(TRUNCATE)"
+                ).fetchone()
+                if row is not None:
+                    # (busy, log_frames, checkpointed_frames)
+                    wal_checkpoint = {
+                        "busy": row[0],
+                        "wal_frames": row[1],
+                        "checkpointed": row[2],
+                    }
+        except Exception as exc:
+            wal_checkpoint = {"error": str(exc)[:120]}
+
         result = {
             "deleted": deleted,
             "count_before": count_before,
@@ -97,6 +119,7 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             "composition": composition,
             "events_pruned": events_pruned,
             "telemetry_pruned": telemetry_pruned,
+            "wal_checkpoint": wal_checkpoint,
         }
     except Exception as exc:
         result = {"maintained": False, "error": str(exc)[:200]}

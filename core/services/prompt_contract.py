@@ -555,13 +555,6 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
-    # TEMP stall-probe (2026-07-18): process-wide sampler → nail hvad assembly-tiden
-    # faktisk er (CPU/GIL vs ollama-I/O vs DB-lås). Idempotent, self-safe. FJERNES.
-    try:
-        from core.services._assembly_stall_probe import ensure_started as _stall_probe_start
-        _stall_probe_start()
-    except Exception:
-        pass
     compact = provider == "ollama"
     workspace_dir = ensure_default_workspace(name=name)
     parts: list[str] = []

@@ -2600,6 +2600,24 @@ def build_visible_chat_prompt_assembly(
         flush=True,
     )
 
+    # TEMP-DIAG: gated system-prompt dump (touch /tmp/jarvis-prompt-dump), rotates
+    # latest→prev so two consecutive assemblies can be diffed to find what MUTATES
+    # in the deepseek-cached prefix (cache 98%→73%). Fires for ALL visible paths.
+    try:
+        import os as _os_pd2
+        if _os_pd2.path.exists("/tmp/jarvis-prompt-dump"):
+            _dd2 = "/tmp/jarvis-prompt-dumps"
+            _os_pd2.makedirs(_dd2, exist_ok=True)
+            if _os_pd2.path.exists(_dd2 + "/sys_latest.txt"):
+                try:
+                    _os_pd2.replace(_dd2 + "/sys_latest.txt", _dd2 + "/sys_prev.txt")
+                except Exception:
+                    pass
+            with open(_dd2 + "/sys_latest.txt", "w", encoding="utf-8") as _fh_pd2:
+                _fh_pd2.write(_assembled_text)
+    except Exception:
+        pass
+
     return PromptAssembly(
         mode="visible_chat",
         text=_assembled_text,

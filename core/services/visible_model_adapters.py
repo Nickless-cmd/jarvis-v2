@@ -483,6 +483,12 @@ def _run_openai_compatible_visible(
         base_top_p=None,
         workspace_id="default",
     )
+    try:
+        from core.services import turn_trace as _tt
+        _tt.mark("prompt_leaves", f"{provider}/{model} → provider (execute, {_prompt_chars} chars)")
+        _tt.dump(f"prompt_leaves {provider}/{model} (execute)")
+    except Exception:
+        pass
     raw = _execute_openai_compatible_chat(
         provider=provider,
         model=model,

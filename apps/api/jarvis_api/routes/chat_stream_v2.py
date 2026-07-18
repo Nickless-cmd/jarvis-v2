@@ -309,28 +309,35 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                         rel.mark_consumed(run_id)  # saa runnet til ende -> undertryk push
                         break
                     if frames:
+                        # Frames FLYDER → poll hurtigt (15ms) så tokens/tool-frames når
+                        # klienten ét-for-ét i stedet for 80ms-klumper. Fluid streaming.
+                        # Kun aktiv mens der reelt strømmer content (få sekunder pr. tur),
+                        # så CPU-omkostningen er forsvindende. Idle-stien bevarer 80ms.
                         empty = 0
-                    else:
-                        empty += 1
-                        # Klient-keepalive ping i content-gap (se _PING_GAP_S ovenfor).
-                        if (_xt.monotonic() - _last_emit) >= _PING_GAP_S:
-                            yield _Ping().to_sse_line()
-                            _last_emit = _xt.monotonic()
-                        if empty > 300 and rel.is_live(run_id):
-                            # ROD (Bjørn 29. jun, instrumenterings-bevist): glm-5.2's tænke/assembly-
-                            # fase producerer ~ingen relay-frames i ~24s (ping-starvation) →
-                            # give-up'en fyrede MENS runnet stadig var LIVE → syntetisk
-                            # message_stop → desk's stream døde ved 24s → /live (mobil)
-                            # overtog → ALT content (kom efter 24s) gik til mobil. Giv KUN op
-                            # hvis runnet er ÆGTE dødt (ikke is_live); ellers bliv ved at vente.
-                            empty = 0
-                        elif empty > 300:  # ~24s tavst OG run ikke længere live → giv op
-                            # H1/G6: aldrig bare break — emit syntetisk terminal-frame
-                            # så klienten forlader 'working', + fyr subscriber_timeout-nerve.
-                            yield rel.synthetic_terminal_frame(
-                                run_id, session_id, reason="relay_subscriber_idle"
-                            )
-                            break
+                        await _a.sleep(0.015)
+                        continue
+                    empty += 1
+                    # Klient-keepalive ping i content-gap (se _PING_GAP_S ovenfor).
+                    if (_xt.monotonic() - _last_emit) >= _PING_GAP_S:
+                        yield _Ping().to_sse_line()
+                        _last_emit = _xt.monotonic()
+                    if empty > 300 and rel.is_live(run_id):
+                        # ROD (Bjørn 29. jun, instrumenterings-bevist): glm-5.2's tænke/assembly-
+                        # fase producerer ~ingen relay-frames i ~24s (ping-starvation) →
+                        # give-up'en fyrede MENS runnet stadig var LIVE → syntetisk
+                        # message_stop → desk's stream døde ved 24s → /live (mobil)
+                        # overtog → ALT content (kom efter 24s) gik til mobil. Giv KUN op
+                        # hvis runnet er ÆGTE dødt (ikke is_live); ellers bliv ved at vente.
+                        empty = 0
+                    elif empty > 300:  # ~24s tavst OG run ikke længere live → giv op
+                        # H1/G6: aldrig bare break — emit syntetisk terminal-frame
+                        # så klienten forlader 'working', + fyr subscriber_timeout-nerve.
+                        yield rel.synthetic_terminal_frame(
+                            run_id, session_id, reason="relay_subscriber_idle"
+                        )
+                        break
+                    # Idle → langsom poll: sparer CPU + holder ping/timeout-kadencen
+                    # (empty>300 ≈ 24s uændret, da kun tomme polls tæller ved 80ms).
                     await _a.sleep(0.08)
             finally:
                 rel.subscriber_closed(run_id)

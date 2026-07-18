@@ -106,8 +106,15 @@ def _embed_ollama(texts: list[str]) -> np.ndarray | None:
 
 
 def _embed_single(text: str) -> np.ndarray | None:
-    result = _embed_ollama([text])
-    return result[0] if result is not None else None
+    # Delegér til semantic_memory's CACHEDE embedder, så query-embeddet deles med
+    # search_brain/private_brain (samme tekst embeddes ellers 4-5× pr. assembly).
+    # Samme model/endpoint/output-form; falder tilbage til lokal impl ved fejl.
+    try:
+        from core.services.semantic_memory import _embed_ollama as _shared_embed
+        return _shared_embed(text)
+    except Exception:
+        result = _embed_ollama([text])
+        return result[0] if result is not None else None
 
 
 def _cosine_sim(query_vec: np.ndarray, matrix: np.ndarray) -> np.ndarray:

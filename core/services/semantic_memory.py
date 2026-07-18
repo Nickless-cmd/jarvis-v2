@@ -101,7 +101,22 @@ def _ollama_base_url() -> str:
     return "http://127.0.0.1:11434"
 
 
+# Proces-lokal embed-cache (text -> vektor). Embeddings er DETERMINISTISKE (samme
+# tekst → cosine 1.0 identisk vektor), så caching er 100% sikkert — ingen staleness.
+# Formål: den SAMME søgetekst embeddes 4-5× pr. prompt-assembly på tværs af recall-
+# subsystemer (search_brain, search_memory, private_brain); cachen kollapser dem til
+# ét ollama-kald. Bundet (FIFO-halvtøm ved loft), tråd-sikker. Ryddes ved genstart.
+import threading as _threading
+_EMBED_CACHE: dict[str, "np.ndarray"] = {}
+_EMBED_CACHE_LOCK = _threading.Lock()
+_EMBED_CACHE_MAX = 256
+
+
 def _embed_ollama(text: str) -> np.ndarray | None:
+    with _EMBED_CACHE_LOCK:
+        cached = _EMBED_CACHE.get(text)
+    if cached is not None:
+        return cached
     try:
         import httpx
         resp = httpx.post(
@@ -115,7 +130,13 @@ def _embed_ollama(text: str) -> np.ndarray | None:
         emb = resp.json().get("embedding")
         if not emb:
             return None
-        return np.array(emb, dtype=np.float32)
+        v = np.array(emb, dtype=np.float32)
+        with _EMBED_CACHE_LOCK:
+            if len(_EMBED_CACHE) >= _EMBED_CACHE_MAX:
+                for _k in list(_EMBED_CACHE)[: _EMBED_CACHE_MAX // 2]:
+                    _EMBED_CACHE.pop(_k, None)
+            _EMBED_CACHE[text] = v
+        return v
     except Exception as exc:
         logger.debug("semantic_memory: embed failed: %s", exc)
         return None

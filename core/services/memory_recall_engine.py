@@ -840,7 +840,9 @@ def multi_signal_recall(
 
     _lap("mood_temporal_sort")  # TEMP-DIAG
     if sum(_td.values()) > 500:
-        print("multi-recall-timing " + " ".join(f"{k}={v}" for k, v in _td.items()))
+        import sys as _sys_diag
+        print("multi-recall-timing " + " ".join(f"{k}={v}" for k, v in _td.items()),
+              file=_sys_diag.stderr, flush=True)
 
     # Fase 3 (§23.3 #4): fodr Centralen med recall-KVALITET — KUN scalar-metadata, aldrig
     # indhold. private_brain_share er load-bearing (ser om deprioriteringen af selv-genereret

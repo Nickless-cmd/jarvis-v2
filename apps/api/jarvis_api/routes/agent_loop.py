@@ -772,6 +772,25 @@ async def agent_step(request: Request):
     stream = bool(body.get("stream", False))
     context = str(body.get("context") or "identity").lower()
     session_id = str(body.get("session_id") or "")
+    # TEMP DIAG (2026-07-18, deepseek-cache-jagt): log klientens messages[]-form pr.
+    # tur — antal, roller, total-tegn, SHA af prefix (alt undtagen sidste besked) +
+    # SHA af hver besked. Så kan vi se om prefixet er cache-stabilt/voksende eller
+    # omskrives tur-til-tur. FJERNES efter diagnosen. Self-safe, ren observation.
+    try:
+        import hashlib as _hl
+        _cm = client_messages if isinstance(client_messages, list) else []
+        def _sha(s: str) -> str:
+            return _hl.sha256(str(s).encode("utf-8", "replace")).hexdigest()[:10]
+        _roles = [str((m or {}).get("role") or "?")[:4] for m in _cm]
+        _lens = [len(str((m or {}).get("content") or "")) for m in _cm]
+        _prefix = "\x00".join(str((m or {}).get("content") or "") for m in _cm[:-1])
+        _per_msg = ",".join(f"{r}:{_sha(str((m or {}).get('content') or ''))}"
+                            for r, m in zip(_roles, _cm))
+        print(f"[agent/step-DIAG] session={session_id[:16]} ctx={context} "
+              f"n={len(_cm)} total_chars={sum(_lens)} roles={_roles} "
+              f"prefix_sha={_sha(_prefix)} per_msg_sha=[{_per_msg}]", flush=True)
+    except Exception:
+        pass
     # Owner-scoping: jarvis-code sender ofte tomt user_id → udled ejerens id så
     # memory/workspace-recall i assembly'en (og forwarded memory-tools) scoper rigtigt.
     user_id = _owner_scoped_user_id(body.get("user_id"), _resolve_role())

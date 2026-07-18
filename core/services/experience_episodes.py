@@ -38,16 +38,30 @@ logger = logging.getLogger(__name__)
 # Lazy singletons — embedding model + chroma client
 # ───────────────────────────────────────────────────────────────────────
 
-_EMBED_MODEL = None
-_EMBED_LOCK = threading.Lock()
 _CHROMA_CLIENT = None
 _CHROMA_COLLECTION = None
 _CHROMA_LOCK = threading.Lock()
 
-# all-MiniLM-L6-v2 = 384-dim, ~80MB, fast on CPU. Same model the existing
-# associative_recall path uses, so we share weights if it's already loaded.
-_EMBED_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+# 2026-07-18: embedder unified onto the shared ollama-nomic GPU embedder
+# (_embed_texts → semantic_memory._embed_ollama_batch). Previously this path
+# loaded a SEPARATE sentence-transformers/all-MiniLM CPU model and ran a torch
+# encode SYNCHRONOUSLY inside the visible prompt-assembly (builder #17 of the
+# support-signals loop). Under concurrent turns the CPU encode ballooned from
+# ~150ms → 6-9s (measured 2026-07-18) — the single biggest visible response-
+# time spike. nomic runs on the pinned GPU (GIL-released, batched, cached), so
+# retrieval is now stable ~100-150ms with one embedding stack across the system.
+# Vectors are 768-dim (was 384) → the chroma collection must be re-indexed:
+# see reindex_experience_chroma().
+_EMBED_DIM = 768
 _COLLECTION_NAME = "experience_episodes"
+
+
+def _embed_one(text: str) -> list[float]:
+    """Embed one text via the shared ollama-nomic embedder → 768-dim list[float].
+    Self-safe: on failure _embed_texts yields a zero-vector (never raises)."""
+    from core.services.jarvis_brain import _embed_texts
+
+    return _embed_texts([text])[0].tolist()
 
 
 def _get_chroma_path() -> Path:
@@ -57,17 +71,6 @@ def _get_chroma_path() -> Path:
     path = workspace / "runtime" / "experience_chroma"
     path.mkdir(parents=True, exist_ok=True)
     return path
-
-
-def _get_embed_model():
-    global _EMBED_MODEL
-    if _EMBED_MODEL is not None:
-        return _EMBED_MODEL
-    with _EMBED_LOCK:
-        if _EMBED_MODEL is None:
-            from sentence_transformers import SentenceTransformer
-            _EMBED_MODEL = SentenceTransformer(_EMBED_MODEL_NAME)
-    return _EMBED_MODEL
 
 
 def _get_collection():
@@ -180,8 +183,7 @@ def record_episode(
         # Embed + insert into chroma. Done after DB commit so the row is
         # durable even if embedding fails (chroma can be rebuilt later).
         try:
-            model = _get_embed_model()
-            embedding = model.encode([context_text], normalize_embeddings=True)[0].tolist()
+            embedding = _embed_one(context_text)
             collection = _get_collection()
             collection.upsert(
                 ids=[episode_id],
@@ -234,8 +236,7 @@ def retrieve_similar(
             last_tools=last_tools,
             session_phase=session_phase,
         )
-        model = _get_embed_model()
-        q_emb = model.encode([query_text], normalize_embeddings=True)[0].tolist()
+        q_emb = _embed_one(query_text)
         collection = _get_collection()
         # k_eff: don't ask for more than the collection has
         try:
@@ -373,5 +374,70 @@ def format_episode_for_prompt(ep: dict[str, Any], *, max_chars: int = 200) -> st
         f"tools=[{tools_str}] → {outcome_str}"
     )
     return line[:max_chars]
+
+
+# ───────────────────────────────────────────────────────────────────────
+# Migration — rebuild the chroma collection with the nomic (768-dim) embedder
+# ───────────────────────────────────────────────────────────────────────
+
+
+def reindex_experience_chroma(*, batch: int = 128) -> int:
+    """Drop + rebuild the chroma collection from the experience_episodes DB rows,
+    re-embedding every context_text with the shared nomic embedder (768-dim).
+
+    One-time migration off the old 384-dim all-MiniLM CPU vectors. Run with the
+    API stopped (single writer). Returns the number of episodes indexed.
+    """
+    global _CHROMA_CLIENT, _CHROMA_COLLECTION
+
+    from core.runtime.db import connect
+
+    with connect() as c:
+        rows = c.execute(
+            "SELECT episode_id, context_text, session_id, turn_id, "
+            "session_phase, user_corrected, tool_sequence_json, created_at "
+            "FROM experience_episodes ORDER BY created_at"
+        ).fetchall()
+
+    with _CHROMA_LOCK:
+        import chromadb
+
+        client = chromadb.PersistentClient(path=str(_get_chroma_path()))
+        try:
+            client.delete_collection(_COLLECTION_NAME)
+        except Exception:
+            pass  # not present yet — fine
+        collection = client.get_or_create_collection(
+            name=_COLLECTION_NAME, metadata={"hnsw:space": "cosine"},
+        )
+        _CHROMA_CLIENT = client
+        _CHROMA_COLLECTION = collection
+
+    total = 0
+    for i in range(0, len(rows), batch):
+        chunk = rows[i:i + batch]
+        texts = [str(r["context_text"] or "") for r in chunk]
+        from core.services.jarvis_brain import _embed_texts
+
+        vecs = [v.tolist() for v in _embed_texts(texts)]
+        collection.upsert(
+            ids=[str(r["episode_id"]) for r in chunk],
+            embeddings=vecs,
+            documents=texts,
+            metadatas=[{
+                "session_id": str(r["session_id"] or ""),
+                "turn_id": str(r["turn_id"] or ""),
+                "session_phase": str(r["session_phase"] or ""),
+                "user_corrected": bool(r["user_corrected"]),
+                "tool_sequence": ", ".join(
+                    json.loads(r["tool_sequence_json"] or "[]")
+                )[:200],
+                "created_at": str(r["created_at"] or ""),
+            } for r in chunk],
+        )
+        total += len(chunk)
+        logger.info("reindex_experience_chroma: %d/%d", total, len(rows))
+
+    return total
 
 

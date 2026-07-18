@@ -25,7 +25,7 @@ import { MessageRail, railLabel } from '../components/chat/MessageRail'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
-import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getActiveRuns, followRun } from '../lib/api'
+import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRuns, followRun } from '../lib/api'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
 
 // Navngivne server-roots (matcher backend _allowed_roots). Owner: hele kodebasen
@@ -78,6 +78,13 @@ export function CodeView({
   const [highlightPath, setHighlightPath] = useState<string>('') // Jarvis-styret highlight
   const [trusted, setTrusted] = useState<boolean | null>(null)
   const [compactAt, setCompactAt] = useState(0)
+  // Context-ring: BACKEND-AUTORITATIVT transcript-fyld siden sidste compact (samme som chat).
+  // FØR (bug): ringen blev fodret af stream.usage.input+cacheHit = HELE prompten INKL.
+  // system-prompten → "skøjtede" og talte system-prompten med. Nu poller vi det ægte
+  // transcript-tal (falder når compaction fyrer) + overhead til tooltip + compacting-status.
+  const [contextTokens, setContextTokens] = useState(0)
+  const [overheadTokens, setOverheadTokens] = useState(0)
+  const [compacting, setCompacting] = useState(false)
   const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
   // Miljø-felt: toggle som panel-ikonerne. null = auto (vis ved fuld skærm / bredt
   // vindue, skjul når smalt så det ikke dækker chatten). Bruger kan overstyre.
@@ -254,6 +261,36 @@ export function CodeView({
     getContextInfo(config).then((r) => setCompactAt(r.compact_at)).catch(() => setCompactAt(0))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config?.apiBaseUrl, config?.authToken])
+
+  // Backend-autoritativt transcript-fyld + overhead + compacting-status (samme som ChatView).
+  useEffect(() => {
+    if (!config || !sessionId) { setContextTokens(0); setOverheadTokens(0); setCompacting(false); return }
+    let alive = true
+    const poll = () => getContextUsage(config, sessionId)
+      .then((r) => { if (alive) { setContextTokens(r.tokens || 0); setOverheadTokens(r.overhead_tokens || 0); setCompacting(!!r.compacting) } })
+      .catch(() => { /* behold sidste kendte */ })
+    poll()
+    const id = setInterval(poll, compacting ? 1200 : 6000)
+    return () => { alive = false; clearInterval(id) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config?.apiBaseUrl, config?.authToken, sessionId, stream.status, compacting])
+
+  // Manuel compaction (Claude-Code /compact). Udløser samme motor NU.
+  const triggerManualCompact = async (focus: string) => {
+    if (!config || !sessionId) return
+    setCompacting(true)  // optimistisk → liveness-pausen tænder straks
+    try { await compactNow(config, sessionId, focus) } catch { /* pollen forliger */ }
+  }
+
+  // Opfang /compact FØR den sendes som en normal besked (ellers "tænker" modellen bare).
+  const handleSend = (text: string, opts: ComposerSendOpts) => {
+    const t = text.trim()
+    if (/^\/compact(\s|$)/i.test(t)) {
+      void triggerManualCompact(t.replace(/^\/compact\s*/i, '').trim())
+      return
+    }
+    void doSend(text, opts)
+  }
 
   // Persistér workspace-valget ved enhver ændring.
   useEffect(() => {
@@ -559,15 +596,18 @@ export function CodeView({
   const composer = (
     <Composer
       streaming={stream.status === 'working'}
-      onSend={(t, o) => void doSend(t, o)}
+      onSend={handleSend}
       onStop={() => void stream.abort()}
       model="deepseek-flash"
       thinking="think"
       config={config}
       getSessionId={async () => sessionId ?? (await sessions.create('Kode-session')).id}
       showPermissions={true}
-      contextTokens={stream.usage.input + stream.usage.cacheHit}
+      contextTokens={contextTokens}
+      overheadTokens={overheadTokens}
       compactAt={compactAt}
+      compacting={compacting}
+      onManualCompact={() => void triggerManualCompact('')}
       isOwner={isOwner}
       onOpenPrivacy={onOpenPrivacy}
     />

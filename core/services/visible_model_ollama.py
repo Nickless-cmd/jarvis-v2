@@ -39,6 +39,7 @@ from core.services.visible_model_types import (
 from core.services.visible_model_observe import (
     _observe_content_empty_thinking_fallback,
     _observe_malformed_stream_payload,
+    _observe_visible_prefill,
     _observe_visible_provider_error,
     _strip_thinking_delimiters,
 )
@@ -386,6 +387,11 @@ def _stream_ollama_model(
     )
     watchdog.start()
 
+    # Prefill-cache-observabilitet (blind-spot-luk): mål tid fra request→første
+    # content-token. Hurtig prefill på en stor prompt ⇒ upstream KV-prefix-cache.
+    _t_prefill_start = _wd_time.monotonic()
+    _t_first_content: dict[str, float] = {}
+
     try:
         try:
             response_cm = _facade_vm.urllib_request.urlopen(req, timeout=INTER_BYTE_BUDGET_S)
@@ -444,6 +450,8 @@ def _stream_ollama_model(
 
                 delta = str(msg.get("content") or "")
                 if delta:
+                    if "ts" not in _t_first_content:
+                        _t_first_content["ts"] = _wd_time.monotonic()
                     terminal_response = delta
                     parts.append(delta)
                     yield VisibleModelDelta(delta=delta)
@@ -454,6 +462,10 @@ def _stream_ollama_model(
                 # (ellers mister modellen kontinuitet → tool-spam → tabt svar).
                 think = str(msg.get("thinking") or "")
                 if think:
+                    if "ts" not in _t_first_content:
+                        # reasoning-modeller streamer thinking FØR content — det er
+                        # stadig efter prefill, så det er et gyldigt første-token-mål.
+                        _t_first_content["ts"] = _wd_time.monotonic()
                     reasoning_parts.append(think)
 
                 tool_calls = msg.get("tool_calls") or []
@@ -494,6 +506,14 @@ def _stream_ollama_model(
         stream_finished.set()
         if controller is not None:
             controller.clear_stream()
+
+    # Prefill-cache-signal (inferred, ollama-only) → Centralen. Self-safe.
+    if "ts" in _t_first_content:
+        _observe_visible_prefill(
+            "ollama", model,
+            prompt_tokens=int(prompt_eval_count or 0),
+            prefill_ms=int((_t_first_content["ts"] - _t_prefill_start) * 1000),
+        )
 
     text = "".join(parts).strip()
     if not text:

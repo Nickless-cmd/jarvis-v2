@@ -8,6 +8,44 @@ Re-exported verbatim from ``core.services.visible_model``.
 from __future__ import annotations
 
 
+def _observe_visible_prefill(
+    provider: str, model: str, *, prompt_tokens: int, prefill_ms: int,
+) -> None:
+    """Gør ollama-lanens PREFILL-cache MÅLBAR (2026-07-19, blind-spot-luk).
+
+    ollama-cloud eksponerer IKKE cache-tokens i /api/chat's usage (kun
+    prompt_eval_count) → costs.cache_hit_tokens=0 for ALLE ollama-visible-ture,
+    selvom upstream (kimi/deepseek:cloud) reelt CACHER KV-prefixet (bevist:
+    TTFT 2.1s→0.9s på identisk 42k-prefix). Vi kan ikke aflæse cachen fra
+    svaret, så vi UDLEDER den fra prefill-hastigheden: en stor prompt der
+    prefiller hurtigt = prefix genbrugt. DeepSeek's DIREKTE API rører vi ikke
+    (den rapporterer eksakt cache) — dette er KUN for ollama, og signalet er
+    LABELED 'inferred' så det aldrig forveksles med eksakte tal. Self-safe.
+    """
+    try:
+        if prompt_tokens < 1 or prefill_ms < 1:
+            return
+        tok_per_s = int(prompt_tokens / (prefill_ms / 1000.0))
+        # Heuristik (dokumenteret): ingen model prefiller ~25k+ tok/s koldt —
+        # så høj throughput på en stor prompt ⇒ prefixet blev cachet upstream.
+        # Små prompts (<4k) er uinteressante (prefill-tid domineres af overhead).
+        cache_likely = bool(prompt_tokens >= 4000 and tok_per_s >= 25000)
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "stream",
+            "nerve": "visible_prefill_cache",
+            "lane": "visible", "provider": str(provider or ""),
+            "model": str(model or ""),
+            "prompt_tokens": int(prompt_tokens),
+            "prefill_ms": int(prefill_ms),
+            "prefill_tok_per_s": tok_per_s,
+            "cache_inferred": cache_likely,
+            "source": "inferred",  # ALDRIG eksakt — udledt af prefill-hastighed
+        })
+    except Exception:
+        pass
+
+
 def _observe_visible_provider_error(provider: str, model: str, status_code: int,
                                     detail: str) -> None:
     """Gør en VISIBLE-lane provider-fejl synlig i Centralen (stream-cluster). Self-safe.

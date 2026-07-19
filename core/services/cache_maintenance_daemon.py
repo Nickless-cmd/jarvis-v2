@@ -80,12 +80,14 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         # Batched + capped → gradual, never a long lock. Best-effort.
         events_pruned = 0
         telemetry_pruned: dict[str, object] = {}
+        versioned_pruned: dict[str, object] = {}
         try:
             from core.services.events_retention import (
-                prune_old_events, prune_telemetry_tables,
+                prune_old_events, prune_telemetry_tables, prune_versioned_tables,
             )
             events_pruned = int(prune_old_events().get("deleted", 0) or 0)
             telemetry_pruned = prune_telemetry_tables()
+            versioned_pruned = prune_versioned_tables()
         except Exception:
             pass
 
@@ -119,6 +121,7 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             "composition": composition,
             "events_pruned": events_pruned,
             "telemetry_pruned": telemetry_pruned,
+            "versioned_pruned": versioned_pruned,
             "wal_checkpoint": wal_checkpoint,
         }
     except Exception as exc:

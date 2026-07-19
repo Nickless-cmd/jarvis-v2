@@ -111,3 +111,73 @@ def prune_telemetry_tables() -> dict[str, object]:
         except Exception as exc:
             out[table] = f"err:{str(exc)[:60]}"
     return out
+
+
+# Versioned cognitive snapshot tables: one append-only row per version of a SINGLE
+# evolving entity (relationship texture, personality vector). ``texture_id``/
+# ``vector_id`` are unique-per-row; ``version`` is a monotonic global counter. The
+# tables grew ~550 rows/day since April (49k/24k rows) but every reader uses only
+# ORDER BY version DESC LIMIT 1..20 (db_cognitive.py) — never old versions. Keeping
+# the latest N versions preserves current state + recent evolution history with a
+# 50× reader margin. Owner-approved keep-latest (Bjørn 2026-07-19). (table, version_col, keep_latest).
+_VERSIONED_RETENTION: tuple[tuple[str, str, int], ...] = (
+    ("cognitive_relationship_textures", "version", 1000),
+    ("cognitive_personality_vectors", "version", 1000),
+)
+
+
+def prune_versioned_table(
+    table: str,
+    version_col: str,
+    *,
+    keep_latest: int,
+    max_delete: int = _DEFAULT_MAX_DELETE,
+    batch_size: int = _DEFAULT_BATCH_SIZE,
+) -> dict[str, object]:
+    """Delete all but the newest ``keep_latest`` versions from a versioned snapshot
+    table. Deletes rows where ``version_col`` <= (max_version - keep_latest), in small
+    capped batches (one commit each → short locks). Identifiers are allowlist-validated.
+    Self-safe: never raises, never touches the current (max-version) row."""
+    import re
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table) or \
+       not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", version_col):
+        return {"deleted": 0, "error": "invalid identifier", "table": table}
+    total = 0
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(f"SELECT MAX({version_col}) AS m FROM {table}").fetchone()
+        maxv = row[0] if row is not None else None
+        if maxv is None:
+            return {"deleted": 0, "table": table}
+        threshold = int(maxv) - int(max(1, keep_latest))
+        if threshold <= 0:
+            return {"deleted": 0, "table": table, "keep_latest": keep_latest}
+        while total < max_delete:
+            take = min(batch_size, max_delete - total)
+            with connect() as conn:
+                cur = conn.execute(
+                    f"DELETE FROM {table} WHERE rowid IN "
+                    f"(SELECT rowid FROM {table} WHERE {version_col} <= ? "
+                    f"ORDER BY rowid ASC LIMIT ?)",
+                    (threshold, take),
+                )
+                n = cur.rowcount or 0
+                conn.commit()
+            if n <= 0:
+                break
+            total += n
+    except Exception as exc:
+        return {"deleted": total, "error": str(exc)[:200], "table": table}
+    return {"deleted": total, "table": table, "keep_latest": int(keep_latest)}
+
+
+def prune_versioned_tables() -> dict[str, object]:
+    """Keep-latest-N prune the versioned cognitive snapshot tables. Self-safe."""
+    out: dict[str, object] = {}
+    for table, vcol, keep in _VERSIONED_RETENTION:
+        try:
+            out[table] = prune_versioned_table(table, vcol, keep_latest=keep).get("deleted", 0)
+        except Exception as exc:
+            out[table] = f"err:{str(exc)[:60]}"
+    return out

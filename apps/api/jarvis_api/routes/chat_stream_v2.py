@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from apps.api.jarvis_api.routes.chat import ChatStreamRequest
 from core.runtime.settings import load_settings
@@ -22,6 +23,32 @@ from core.services.visible_runs import start_visible_run
 from core.services.visible_runs_sse_v2 import translate_to_v2
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+# ── Path B: local-tool-result submission ─────────────────────────────────────
+# The server owns the code-lane transcript and pauses the run at a tool_call; the
+# local jarvis-code client executes it and POSTs the result here, correlated by
+# call_id. Resolves the waiting run via local_tool_broker. See that module + Path B.
+class _ToolResultItem(BaseModel):
+    call_id: str
+    content: str = ""
+    is_error: bool = False
+
+
+class _ToolResultsBody(BaseModel):
+    session_id: str
+    results: list[_ToolResultItem]
+
+
+@router.post("/tool_results")
+async def chat_tool_results(body: _ToolResultsBody) -> dict:
+    """Client submits locally-executed tool results; resolve the paused visible run."""
+    from core.services import local_tool_broker
+    resolved = 0
+    for item in body.results:
+        if local_tool_broker.resolve(item.call_id, item.content, is_error=item.is_error):
+            resolved += 1
+    return {"resolved": resolved, "total": len(body.results), "session_id": body.session_id}
 
 
 def maybe_handle_override(text: str, session_id: str) -> dict | None:

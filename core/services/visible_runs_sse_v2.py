@@ -509,6 +509,16 @@ async def translate_to_v2(
                     # v2 har sin egen ping — skip legacy heartbeats
                     continue
 
+                elif event_name == "tool_call":
+                    # Path B (local_tool_exec): serveren ejer transcript'et men
+                    # eksekverer IKKE tool'et — den registrerer kaldet hos brokeren
+                    # og sender det som et FØRSTE-KLASSES tool_call-event til klienten
+                    # (jarvis-code), som kører det lokalt og POSTer resultatet tilbage
+                    # til /chat/tool_results. Payload bærer allerede den fulde form
+                    # {type, run_id, session_id, call_id, name, arguments}.
+                    await _emit_message_start_if_needed()
+                    await queue.put(_sse_format("tool_call", payload))
+
                 else:
                     # working_step, capability, approval_request,
                     # steer_received, turn_changelog, eller ukendt →

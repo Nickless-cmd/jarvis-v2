@@ -219,3 +219,76 @@ def _execute_simple_tool_calls(
     except Exception:
         pass
     return results
+
+
+def _execute_local_tool_calls(
+    tool_calls: list[dict],
+    *,
+    force: bool = False,
+    run_id: str | None = None,
+    session_id: str | None = None,
+    user_message: str = "",
+) -> list[dict[str, object]]:
+    """Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run.
+
+    Byte-identical 5-key result shape as ``_execute_simple_tool_calls`` (tool_name,
+    arguments, result, result_text, status). Reuses ``_prepare_call`` / ``_finalize_call``
+    verbatim; ONLY the invocation step differs — instead of calling simple_tools
+    server-side, it waits on ``local_tool_broker`` for the jarvis-code client to run the
+    tool locally and POST the result back to ``/chat/tool_results``.
+
+    Contract with the caller (``run_tool_batch``): every tool_call has already been
+    ``local_tool_broker.register(...)``'d and emitted to the client BEFORE this runs, so
+    the ``collect_results`` wait here is race-safe (register precedes wait).
+
+    Phase-1 prep (dedup/cache/commit-gate) is identical to the server path. Only calls
+    whose prep returns kind=="run" are collected from the broker; short-circuit results
+    (dedup/cache/gate) fold in with no client roundtrip.
+    """
+    from core.services.visible_runs import get_visible_run_controller, _MAX_CAPABILITIES_PER_TURN
+    from core.tools.simple_tools import format_tool_result_for_model
+    from core.services import local_tool_broker
+
+    results: list[dict[str, object]] = []
+    controller = get_visible_run_controller(run_id) if run_id else None
+    calls = tool_calls[:_MAX_CAPABILITIES_PER_TURN]
+    round_seen: set[str] = set()
+
+    # Phase 1: prep every call (single-thread, in order). Gather run-calls' call_ids
+    # so the broker wait happens as one batch (client runs them concurrently).
+    plan: list[tuple[str, object, str]] = []  # (kind, payload, call_id)
+    run_call_ids: list[str] = []
+    for tc in calls:
+        call_id = str(tc.get("id") or "")
+        kind, payload = _prepare_call(
+            tc, force=force, run_id=run_id, session_id=session_id,
+            user_message=user_message, controller=controller, round_seen=round_seen)
+        plan.append((kind, payload, call_id))
+        if kind == "run":
+            run_call_ids.append(call_id)
+
+    collected: dict[str, tuple[str | None, bool]] = {}
+    if run_call_ids:
+        collected = local_tool_broker.collect_results(run_call_ids)
+
+    for kind, payload, call_id in plan:
+        if kind == "skip":
+            continue
+        if kind == "result":
+            results.append(payload)
+            continue
+        # kind == "run": fold in the client's local result via the broker.
+        result_text, is_error = collected.get(call_id, (None, True))
+        if is_error or result_text is None:
+            # Timeout / unknown / client-reported error. format_tool_result_for_model
+            # reads the "error" key for status=="error"; surface the client's message
+            # (or a typed timeout placeholder) there so the model sees the real cause.
+            raw: dict = {"status": "error",
+                         "error": result_text or "[local tool timeout: no client result]"}
+        else:
+            # Success: the client's verbatim output text. format_tool_result_for_model
+            # reads the "text" key for a non-error status → renders it as-is.
+            raw = {"status": "ok", "text": result_text}
+        results.append(_finalize_call(payload, raw, controller=controller,
+                                      exec_fmt=format_tool_result_for_model))
+    return results

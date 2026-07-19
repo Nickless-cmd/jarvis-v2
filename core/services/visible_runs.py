@@ -472,6 +472,8 @@ class VisibleRun:
     autonomous: bool = False  # True = heartbeat-triggered, no user present
     trust_all: bool = False   # True = auto-approve all tool calls without prompting
     thinking_mode: str = "think"  # "fast" | "think" | "deep" — for reasoning models
+    local_tool_exec: bool = False  # Path B: emit tool_call to client + wait on broker
+                                   # instead of running tools server-side (default OFF).
 
 
 @dataclass(slots=True)
@@ -643,6 +645,7 @@ def start_visible_run(
     tool_scope: str = "",
     provider_override: str = "",
     model_override: str = "",
+    local_tool_exec: bool = False,
 ) -> AsyncIterator[str]:
     """Begin a visible run.
 
@@ -879,6 +882,7 @@ def start_visible_run(
         session_id=normalized_session_id,
         trust_all=(approval_mode == "trust"),
         thinking_mode=_resolved_thinking,
+        local_tool_exec=bool(local_tool_exec),
     )
     return _stream_visible_run(run, force_user_id=force_user_id, tool_scope=tool_scope)
 
@@ -1861,116 +1865,24 @@ async def _stream_visible_run(
                 "step": 0,
                 "status": "done",
             })
-            # Announce each tool before execution so the user sees activity
-            for _tc in _collected_native_tool_calls:
-                _tc_name = str((_tc.get("function") or {}).get("name") or _tc.get("name") or "")
-                if _tc_name:
-                    _step_counter += 1
-                    _tc_args = _parse_tc_args(_tc)
-                    yield _sse("working_step", {
-                        "type": "working_step",
-                        "run_id": run.run_id,
-                        "action": _tc_name,
-                        "detail": _tool_label(_tc_name, _tc_args),
-                        "step": _step_counter,
-                        "status": "running",
-                    })
-
-            # CRITICAL: loop.run_in_executor does NOT propagate ContextVars
-            # to the worker thread by default. Without ctx.run wrapping,
-            # current_user_id() inside _execute_simple_tool_calls returns
-            # "" → operator-tool _runtime_user_id stamping fails → tools
-            # fall back to owner_user_id (owner) via _operator_user_id chain.
-            # Result observed live 2026-05-28: another user asked Jarvis to open
-            # his browser; Jarvis dispatched operator_launch_app to the owner's
-            # bridge (Linux), opened google-chrome on the owner's desktop with
-            # PID on the owner's machine, even though the chat session, user_id
-            # attribution, and visible_run context were all correctly the other user.
-            # Re-assert tool-scope before snapshotting the context. The scope
-            # CtxVar set at generator entry (set_tool_scope, line ~927) does NOT
-            # reliably survive to this point across the async-generator/executor
-            # boundary — role/user_id do, scope does not. Observed live
-            # 2026-06-21: Mikkel (member) in code mode → execute_tool's role-gate
-            # saw role='member' but scope='' → operator_* denied with
-            # tool_not_permitted, even though the tools were OFFERED in code
-            # scope. Re-asserting from the known run scope makes copy_context()
-            # capture it so execute_tool's gate (simple_tools.execute_tool) sees
-            # the correct scope.
-            if tool_scope:
-                try:
-                    from core.tools.tool_scoping import set_tool_scope as _reassert_scope
-                    _reassert_scope(tool_scope)
-                except Exception:
-                    pass
-            # Re-assertér session_id i konteksten FØR copy_context, så execute_tool's
-            # effective_role() i executor-tråden kan slå owner-override op.
-            # current_session_id() tabes ellers over executor-grænsen → override
-            # usynlig → operator-tools afvist med tool_not_permitted TRODS en aktiv
-            # override (rod-årsag til "3-4 kald så blok", Bjørn 2026-06-21). Mirrorer
-            # scope-re-asserten ovenfor; rører IKKE base-rollen (privatlivs-carve-out
-            # §6.5 intakt: override forbliver en elevering, ikke en native owner).
-            try:
-                from core.identity.workspace_context import set_session_id as _set_sid
-                if getattr(run, "session_id", ""):
-                    _set_sid(run.session_id)
-            except Exception:
-                pass
-            # Forny owner-override (hvis aktiv) fra RUN-konteksten — her er
-            # run.session_id pålideligt. effective_role()'s egen touch() kører i den
-            # lossy executor-kontekst og fornyer IKKE pålideligt (ved owner-uid-flip
-            # short-circuit'er den endda før touch). Uden dette udløber 90s-start-
-            # vinduet midt i en lang operator-sekvens → operator-tools låses med
-            # tool_not_permitted efter 3-4 kald ("3-4 så blok", Bjørn 2026-06-21).
-            try:
-                from core.services import override_store as _ovs
-                if getattr(run, "session_id", "") and _ovs.is_active(run.session_id):
-                    _ovs.touch(run.session_id)
-            except Exception:
-                pass
-            import contextvars as _ctxvars
-            _ctx_for_exec = _ctxvars.copy_context()
-            # ── KEEPALIVE UNDER FIRST-PASS TOOL-EXEC (Bjørn 4. jul — CancelledError-roden) ──
-            # ROD (bevist via [CUTOFF-TRACE] stage=native_tool_exec): denne first-pass
-            # tool-eksekvering var det ENESTE lange await UDEN heartbeat (first-pass-stream
-            # + agentisk tool-exec har begge keepalive). Tool-kald + det efterfølgende
-            # _build_visible_input (6-33s) gav 6-40s TAVS SSE → klient/proxy/Starlette så
-            # forbindelsen som død → cancellede run-generatoren → CancelledError midt-flugt
-            # → runnet forladt (nu 'interrupted' i stedet for survival, men stadig et tabt
-            # svar). Fix: shield tool-tasken + emit heartbeat hvert 5s så streamen holdes
-            # i live gennem hele det tavse vindue. shield → en spuriøs cancel dræber ikke
-            # selve tool-arbejdet. Spejler den agentiske tool-exec-pumpe (~linje 3332).
-            async def _await_first_pass_tools() -> list[dict]:
-                return await loop.run_in_executor(
-                    None,
-                    lambda: _ctx_for_exec.run(
-                        _execute_simple_tool_calls,
-                        _collected_native_tool_calls,
-                        force=run.autonomous,
-                        run_id=run.run_id,
-                        session_id=run.session_id,
-                        user_message=run.user_message,
-                    ),
-                )
-            _fp_tool_task = asyncio.ensure_future(_await_first_pass_tools())
-            _fp_tool_start = time.monotonic()
-            _fp_tool_beats = 0
-            while not _fp_tool_task.done():
-                try:
-                    await asyncio.wait_for(asyncio.shield(_fp_tool_task), timeout=5.0)
-                except asyncio.TimeoutError:
-                    _fp_tool_beats += 1
-                    try:
-                        touch_active_visible_run(run.run_id)
-                    except Exception:
-                        pass
-                    yield _sse("heartbeat", {
-                        "type": "heartbeat",
-                        "run_id": run.run_id,
-                        "phase": "first_pass_tools",
-                        "elapsed_s": int(time.monotonic() - _fp_tool_start),
-                        "beat": _fp_tool_beats,
-                    })
-            simple_results = await _fp_tool_task
+            # ── Announce → execute → heartbeat pump (extracted to visible_tool_exec,
+            #    Boy-Scout 2026-07-19). Announces each tool as a working_step, re-asserts
+            #    the load-bearing ContextVars (scope/session_id/override) VERBATIM before
+            #    copy_context, runs the batch in a worker thread with a 5s keepalive
+            #    heartbeat, and — when run.local_tool_exec — registers each call with the
+            #    broker + emits a first-class tool_call so the jarvis-code client runs it.
+            _fp_batch_out: dict = {}
+            async for _frame in run_tool_batch(
+                _collected_native_tool_calls,
+                run=run, loop=loop, tool_scope=tool_scope,
+                step_counter=_step_counter,
+                heartbeat_interval_s=5.0,
+                heartbeat_phase="first_pass_tools",
+                out=_fp_batch_out,
+            ):
+                yield _frame
+            simple_results = _fp_batch_out["results"]
+            _step_counter = _fp_batch_out["step_counter"]
 
             # Detect first-pass load_more_tools so the agentic loop can include
             # the requested tools in its next round.
@@ -3775,20 +3687,6 @@ async def _stream_visible_run(
                         _tool_pause_active = False  # model produced text, lift the pause
 
                     # ── Execute tools for this agentic round ───────────────────────
-                    for _a_tc in _a_tool_calls:
-                        _a_tc_name = str((_a_tc.get("function") or {}).get("name") or _a_tc.get("name") or "")
-                        if _a_tc_name:
-                            _step_counter += 1
-                            _a_tc_args = _parse_tc_args(_a_tc)
-                            yield _sse("working_step", {
-                                "type": "working_step",
-                                "run_id": run.run_id,
-                                "action": _a_tc_name,
-                                "detail": _tool_label(_a_tc_name, _a_tc_args),
-                                "step": _step_counter,
-                                "status": "running",
-                            })
-
                     _a_exec_start = time.monotonic()
                     logger.info(
                         "agentic-tools-execute-start run_id=%s round=%d tool_count=%d names=%s",
@@ -3796,54 +3694,6 @@ async def _stream_visible_run(
                         [str((tc.get("function") or {}).get("name") or tc.get("name") or "?")
                          for tc in _a_tool_calls][:6],
                     )
-                    # 2026-06-08: _execute_simple_tool_calls is fully sync and
-                    # blocks on cf_fut.result() inside _run_operator_async for
-                    # up to the per-tool timeout (45-60s). When called directly
-                    # here from this async generator, a single hanging tool
-                    # (e.g. operator_screenshot stuck in Electron's
-                    # desktopCapturer.getSources) freezes main_loop — bridge
-                    # dispatch coroutines for the *next* batch can't even
-                    # start (WORKER-SUBMITTED logged, no [bridge-dispatch]
-                    # START log). Mirror the first-pass call site at line
-                    # 1048 which already uses run_in_executor + ctx.run for
-                    # the same reason (cross-loop ContextVars propagation).
-                    import contextvars as _ctxvars
-                    # Re-assertér session_id + scope + forny override FØR copy_context
-                    # — ELLERS er sid/scope TOMME i denne agentiske-loop-executor (round
-                    # 2+) → execute_tool's effective_role() kan ikke se override'et →
-                    # operator-tools afvist med tool_not_permitted efter første runde
-                    # (GATE_DEBUG live på mors Mac: kald 6+ havde sid='' scope=''
-                    # override_active=False mens uid overlevede, Bjørn 2026-06-21).
-                    # Spejler første kald-site (~1360). Base-rolle urørt → §6.5 intakt.
-                    try:
-                        from core.identity.workspace_context import set_session_id as _set_sid2
-                        if getattr(run, "session_id", ""):
-                            _set_sid2(run.session_id)
-                    except Exception:
-                        pass
-                    if tool_scope:
-                        try:
-                            from core.tools.tool_scoping import set_tool_scope as _reassert_scope2
-                            _reassert_scope2(tool_scope)
-                        except Exception:
-                            pass
-                    try:
-                        from core.services import override_store as _ovs2
-                        if getattr(run, "session_id", "") and _ovs2.is_active(run.session_id):
-                            _ovs2.touch(run.session_id)
-                    except Exception:
-                        pass
-                    _ctx_for_agentic_exec = _ctxvars.copy_context()
-                    # 2026-06-10 (Claude, Bjørn live observation): tool-execution
-                    # kunne tage 45-60s og hele tiden var SSE-streamen stille,
-                    # hvilket fik proxies (cloudflare, JarvisX-watchdog etc.) til
-                    # at lukke forbindelsen — Jarvis svaret kom færdigt men nåede
-                    # aldrig klienten. Heartbeat hver 15s holder TCP-forbindelsen
-                    # i live OG giver Bjørn synligt signal at noget arbejder.
-                    # 2026-06-11 fix: loop.run_in_executor returnerer
-                    # en concurrent.futures.Future — asyncio.create_task
-                    # kræver en coroutine. Wrap derfor i en async helper
-                    # så vi får en task vi kan await/wait_for på.
                     # ── Reasoning interceptor: observe this round's reasoning between the model's
                     #    thought and its tool execution — the pre-action moment. Bounded (800ms) +
                     #    fail-open → can never block or break the loop. Only runs on rounds that call
@@ -3853,7 +3703,8 @@ async def _stream_visible_run(
                     #    ephemeral _ds_active (→ next round's exchange-text via _exchange_text()),
                     #    never _a_parts and never the cached prefix. Active RED additionally holds the
                     #    pending tool-calls (empties the list → executor runs zero tools) so the model
-                    #    re-reasons with the correction — never cancels/finalizes the run.
+                    #    re-reasons with the correction — never cancels/finalizes the run. Runs BEFORE
+                    #    run_tool_batch so a physical hold empties the batch the pump announces+runs.
                     try:
                         from core.services.reasoning_interceptor import (
                             intercept_round_async, should_hold_tool_call,
@@ -3879,47 +3730,28 @@ async def _stream_visible_run(
                         pass
 
                     _run_stage = f"agentic_tool_exec_r{_agentic_round + 1}"
-
-                    async def _await_executor() -> list[dict]:
-                        return await loop.run_in_executor(
-                            None,
-                            lambda: _ctx_for_agentic_exec.run(
-                                _execute_simple_tool_calls,
-                                _a_tool_calls,
-                                force=run.autonomous,
-                                run_id=run.run_id,
-                                session_id=run.session_id,
-                                user_message=run.user_message,
-                            ),
-                        )
-                    _tool_task = asyncio.create_task(_await_executor())
-                    _heartbeat_interval_s = 15.0
-                    _heartbeat_count = 0
-                    while not _tool_task.done():
-                        try:
-                            await asyncio.wait_for(
-                                asyncio.shield(_tool_task),
-                                timeout=_heartbeat_interval_s,
-                            )
-                        except asyncio.TimeoutError:
-                            # Tools still running — keep stream alive.
-                            _heartbeat_count += 1
-                            # Cross-proces liveness-heartbeat under lange tool-kald
-                            # (round-start touch'er ikke under en 60s tool-eksekvering).
-                            try:
-                                touch_active_visible_run(run.run_id)
-                            except Exception:
-                                pass
-                            _elapsed_s = int(time.monotonic() - _a_exec_start)
-                            yield _sse("heartbeat", {
-                                "type": "heartbeat",
-                                "run_id": run.run_id,
-                                "phase": "agentic_tools",
-                                "round": _agentic_round + 1,
-                                "elapsed_s": _elapsed_s,
-                                "beat": _heartbeat_count,
-                            })
-                    _a_results = await _tool_task
+                    # ── Announce → execute → heartbeat pump (extracted to visible_tool_exec,
+                    #    Boy-Scout 2026-07-19). Announces each tool as a working_step,
+                    #    re-asserts the load-bearing ContextVars (session_id/scope/override)
+                    #    VERBATIM before copy_context, runs the batch in a worker thread with a
+                    #    15s keepalive heartbeat, and — when run.local_tool_exec — registers
+                    #    each call with the broker + emits a first-class tool_call so the
+                    #    jarvis-code client runs it locally. exec_start pinned to _a_exec_start
+                    #    so the end-logger duration_ms below matches the pre-extraction block.
+                    _a_batch_out: dict = {}
+                    async for _frame in run_tool_batch(
+                        _a_tool_calls,
+                        run=run, loop=loop, tool_scope=tool_scope,
+                        step_counter=_step_counter,
+                        heartbeat_interval_s=15.0,
+                        heartbeat_phase="agentic_tools",
+                        heartbeat_extra={"round": _agentic_round + 1},
+                        out=_a_batch_out,
+                        exec_start=_a_exec_start,
+                    ):
+                        yield _frame
+                    _a_results = _a_batch_out["results"]
+                    _step_counter = _a_batch_out["step_counter"]
                     logger.info(
                         "agentic-tools-execute-end run_id=%s round=%d duration_ms=%d results=%d",
                         run.run_id, _agentic_round + 1,
@@ -5326,6 +5158,16 @@ async def _stream_visible_run(
         # synchronously before we yield control to post-processing.
         unregister_visible_run(run.run_id)
 
+        # Path B (local_tool_exec): fail any tool_calls still awaiting a client result
+        # so a dropped SSE / client disconnect can't leave the broker holding pending
+        # entries (and a resumed run unblocks with a typed error, never a hang).
+        try:
+            if getattr(run, "local_tool_exec", False) and getattr(run, "session_id", ""):
+                from core.services import local_tool_broker as _ltb_cancel
+                _ltb_cancel.cancel_session(run.session_id)
+        except Exception:
+            pass
+
         # ── RUNTIME-CUTOFF-ROD-FIX (Bjørn 4. jul) ──────────────────────────────
         # Nåede vi finally UDEN at have passeret et done-yield (_reached_finalization
         # stadig False) MEN status er stadig default'en 'completed'? Så blev runnet
@@ -5682,6 +5524,12 @@ def _native_tool_calls_to_capabilities(tool_calls: list[dict]) -> list[dict]:
 # module imports visible_runs lazily (inside the function), so this module-level
 # import does not create a cycle.
 from core.services.simple_tool_executor import _execute_simple_tool_calls  # noqa: E402,F401
+# Path B (local_tool_exec) executor — same 5-key result shape, but waits on the
+# local_tool_broker for the client's result instead of running the tool server-side.
+from core.services.simple_tool_executor import _execute_local_tool_calls  # noqa: E402,F401
+# Shared announce→execute→heartbeat pump (Boy-Scout extraction 2026-07-19). Imported
+# at module level; visible_tool_exec imports THIS module lazily → no cycle.
+from core.services.visible_tool_exec import run_tool_batch  # noqa: E402,F401
 
 
 def _run_grounded_capability_followup(

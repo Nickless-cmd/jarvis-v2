@@ -24,6 +24,7 @@ def start_user_run_detached(
     eff_provider: str = "",
     lane: str = "",
     run_id: str | None = None,
+    local_tool_exec: bool = False,
 ) -> str:
     """Start et server-autoritativt run. Returnerer run_id (klienten abonnerer
     via run_event_log gennem /chat/stream/v2 eller /chat/runs/{id}/subscribe)."""
@@ -49,6 +50,7 @@ def start_user_run_detached(
         tool_scope=tool_scope,
         provider_override=provider_override,
         model_override=model_override,
+        local_tool_exec=local_tool_exec,
     )
 
     def _in_thread() -> None:

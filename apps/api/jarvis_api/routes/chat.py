@@ -568,6 +568,11 @@ class ChatStreamRequest(BaseModel):
     # clampes til deepseek-v4-flash/pro:cloud ud fra om "pro" indgår.
     provider_choice: str = ""
     model: str = ""
+    # Path B (server-owned code-lane transcript, LOCAL tool execution). When true AND
+    # the run is in code scope, tool_calls are emitted to the jarvis-code client and
+    # executed there (via the local_tool_broker) instead of server-side. Default OFF →
+    # byte-identical to existing clients.
+    local_tool_exec: bool = False
 
 
 def _resolve_visible_target(uid: str | None, provider_choice: str, model: str) -> tuple[str, str]:

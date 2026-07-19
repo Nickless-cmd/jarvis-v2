@@ -236,6 +236,10 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     # (rolle-filter gælder stadig).
     _m = (request.mode or "").strip().lower()
     _tool_scope = "chat" if _m == "chat" else "code" if _m == "code" else ""
+    # Path B (server-owned transcript, LOCAL tool execution): only honoured in code
+    # scope — the jarvis-code client is the one that runs the tools locally. Default
+    # OFF everywhere → existing clients are byte-identical.
+    _local_exec = bool(getattr(request, "local_tool_exec", False)) and _tool_scope == "code"
 
     # Persistér code-mode workspace-binding på sessionen, så run-enforcement
     # (trusted-folder gate i visible_runs) læser den AKTUELLE workspace — ikke en
@@ -298,6 +302,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             eff_model=_eff_model,
             eff_provider=_eff_provider,
             lane=settings.primary_model_lane,
+            local_tool_exec=_local_exec,
         )
         if _attached:
             print(
@@ -410,6 +415,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         tool_scope=_tool_scope,
         provider_override=_prov_override,
         model_override=_model_override,
+        local_tool_exec=_local_exec,
     )
 
     v2_stream = translate_to_v2(

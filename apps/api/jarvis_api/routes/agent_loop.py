@@ -989,7 +989,8 @@ async def agent_step(request: Request):
                          reasoning_replay_enabled=settings.agent_step_reasoning_replay_enabled,
                          cache_contract_enabled=settings.agent_step_cache_contract_enabled,
                          prefix_sha=_prefix_sha, prefix_len=_prefix_len,
-                         follow_tee=_live_follow_active(settings, session_id)),
+                         follow_tee=_live_follow_active(settings, session_id),
+                         volatile_block=_volatile_block),
             media_type="text/event-stream",
         )
 
@@ -1118,7 +1119,7 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                  reasoning_replay_enabled: bool = False,
                  cache_contract_enabled: bool = False,
                  prefix_sha: str = "", prefix_len: int = 0,
-                 follow_tee: bool = False):
+                 follow_tee: bool = False, volatile_block: str = ""):
     """Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau
     openai-compat SSE-iterator (rå messages+tools ind, delta/tool_call/done ud)."""
     from core.services.cheap_provider_runtime_streaming import (
@@ -1238,6 +1239,9 @@ def _stream_step(*, provider: str, model: str, auth_profile: str, base_url: str,
                 # Fase 4 Task 1 (flag-gated): off -> key absent, byte-identical to today.
                 if reasoning_replay_enabled:
                     _done_body["reasoning_content"] = str(ev.get("reasoning_content") or "")
+                # Option B: give the client the frozen volatile block to persist.
+                if volatile_block:
+                    _done_body["volatile_context"] = volatile_block
                 yield _sse("done", _done_body)
                 return
     except Exception as exc:

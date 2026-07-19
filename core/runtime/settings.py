@@ -468,6 +468,11 @@ class RuntimeSettings:
     agent_step_env_block_enabled: bool = False
     agent_step_cache_contract_enabled: bool = False
     agent_step_cache_split_enabled: bool = False
+    # Prepend-frozen volatile block (option B): server prepends the volatile
+    # assembly tail to the CURRENT user message (block first, user text last) and
+    # returns it as `volatile_context` so the client persists it → byte-identical
+    # replay next turn (no relocation). Default OFF. jarvis-code testbed only.
+    agent_step_volatile_prepend_enabled: bool = False
     agent_turn_absorb_enabled: bool = False
     agent_live_broadcast_enabled: bool = False
     agent_live_follow_tokens_enabled: bool = False
@@ -567,6 +572,7 @@ class RuntimeSettings:
             "agent_step_env_block_enabled": self.agent_step_env_block_enabled,
             "agent_step_cache_contract_enabled": self.agent_step_cache_contract_enabled,
             "agent_step_cache_split_enabled": self.agent_step_cache_split_enabled,
+            "agent_step_volatile_prepend_enabled": self.agent_step_volatile_prepend_enabled,
             "agent_turn_absorb_enabled": self.agent_turn_absorb_enabled,
             "agent_live_broadcast_enabled": self.agent_live_broadcast_enabled,
             "agent_live_follow_tokens_enabled": self.agent_live_follow_tokens_enabled,
@@ -1020,6 +1026,7 @@ def load_settings() -> RuntimeSettings:
         agent_step_env_block_enabled=bool(data.get("agent_step_env_block_enabled", defaults.agent_step_env_block_enabled)),
         agent_step_cache_contract_enabled=bool(data.get("agent_step_cache_contract_enabled", defaults.agent_step_cache_contract_enabled)),
         agent_step_cache_split_enabled=bool(data.get("agent_step_cache_split_enabled", defaults.agent_step_cache_split_enabled)),
+        agent_step_volatile_prepend_enabled=bool(data.get("agent_step_volatile_prepend_enabled", defaults.agent_step_volatile_prepend_enabled)),
         agent_turn_absorb_enabled=bool(data.get("agent_turn_absorb_enabled", defaults.agent_turn_absorb_enabled)),
         agent_live_broadcast_enabled=bool(data.get("agent_live_broadcast_enabled", defaults.agent_live_broadcast_enabled)),
         agent_live_follow_tokens_enabled=bool(data.get("agent_live_follow_tokens_enabled", defaults.agent_live_follow_tokens_enabled)),

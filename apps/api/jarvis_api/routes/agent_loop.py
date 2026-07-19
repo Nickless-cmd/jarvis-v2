@@ -498,6 +498,46 @@ def _apply_dynamic_tail_split(chat_messages: list[dict], enabled: bool) -> list[
     return out
 
 
+def _apply_volatile_prepend(chat_messages: list[dict]) -> tuple[list[dict], str]:
+    """Option B (frys-halen, 2026-07-19): klip system ved DYNAMIC_TAIL_SENTINEL og
+    PREPEND den volatile hale til den AKTUELLE (sidste) user-besked — blok FØRST,
+    brugerens ord SIDST (fokus bevaret: modellen ser konteksten og så spørgsmålet til
+    sidst). Returnerer (messages, volatile_block) så ruten kan sende blokken til klienten,
+    der PERSISTERER den ind i den gemte besked → byte-identisk replay næste tur.
+
+    KRITISK — modsat det reverterede efd35153/_apply_dynamic_tail_split: her relokeres
+    INTET. Tidligere user-beskeder røres aldrig (de bærer allerede deres egen frosne blok
+    fra klientens persist). Kun den nye, blokløse sidste-besked får en frisk blok. Det er
+    dét der holder deepseek prefix-cachen (append-only, aldrig omskriv-forrige).
+
+    Ingen sentinel / ingen user-besked → (uændret, "") — fail-open, aldrig tab."""
+    if not chat_messages:
+        return chat_messages, ""
+    from core.services.prompt_contract import DYNAMIC_TAIL_SENTINEL
+    sys_msg = chat_messages[0]
+    if sys_msg.get("role") != "system":
+        return chat_messages, ""
+    content = str(sys_msg.get("content") or "")
+    if DYNAMIC_TAIL_SENTINEL not in content:
+        return chat_messages, ""
+    head, _, tail = content.partition(DYNAMIC_TAIL_SENTINEL)
+    tail = tail.strip("\n")
+    out = [dict(m) for m in chat_messages]
+    if not tail:
+        out[0]["content"] = head
+        return out, ""
+    out[0]["content"] = head
+    last_user_idx = next((i for i in range(len(out) - 1, -1, -1)
+                          if out[i].get("role") == "user"), None)
+    if last_user_idx is None:
+        out[0]["content"] = head + tail  # fallback: behold i system (ingen user at hænge på)
+        return out, ""
+    out[last_user_idx] = dict(out[last_user_idx])
+    _orig = str(out[last_user_idx].get("content") or "")
+    out[last_user_idx]["content"] = tail + "\n\n" + _orig
+    return out, tail
+
+
 def _normalize_reasoning_for_provider(messages: list[dict], provider: str) -> list[dict]:
     """Fase 4 Task S: keep `reasoning_content` on assistant(+tool_calls) messages for
     providers that accept it on replay (deepseek); STRIP it for providers that 400 on
@@ -916,10 +956,16 @@ async def agent_step(request: Request):
     chat_messages: list[dict[str, Any]] = [
         {"role": "system", "content": _system_prompt_text}]
     chat_messages.extend(client_messages)
-    # Fase A1: flyt den volatile assembly-hale bag samtalen (cache-stabilt prefix).
-    # Flag default OFF → chat_messages uændret (byte-identisk med i dag).
-    chat_messages = _apply_dynamic_tail_split(
-        chat_messages, enabled=getattr(settings, "agent_step_cache_split_enabled", False))
+    # Option B (frys-halen): prepend volatil blok til aktuel user-besked + returnér den
+    # så klienten persisterer → byte-identisk replay (ingen relokering). Tager precedence
+    # over Fase A1-split når slået til. Begge default OFF → chat_messages uændret i dag.
+    _volatile_block = ""
+    if getattr(settings, "agent_step_volatile_prepend_enabled", False):
+        chat_messages, _volatile_block = _apply_volatile_prepend(chat_messages)
+    else:
+        # Fase A1: flyt den volatile assembly-hale bag samtalen (cache-stabilt prefix).
+        chat_messages = _apply_dynamic_tail_split(
+            chat_messages, enabled=getattr(settings, "agent_step_cache_split_enabled", False))
 
     # Fase 4 Task 4 (flag-gated): cache-prefix signature over the STABLE HEAD only
     # ([system-without-env] + tools) — computed with env=None regardless of the
@@ -1049,6 +1095,11 @@ async def agent_step(request: Request):
         "model": model,
         "usage": usage_body,
     }
+    # Option B: hand the client the exact volatile block used, so it persists it into
+    # the stored user message → byte-identical replay next turn. Empty when the flag is
+    # off or there was no tail → client leaves the message unchanged.
+    if _volatile_block:
+        response_body["volatile_context"] = _volatile_block
     # Fase 4 Task 1 (flag-gated): off -> key absent, byte-identical to today.
     if settings.agent_step_reasoning_replay_enabled:
         response_body["reasoning_content"] = str(raw.get("reasoning_content") or "")

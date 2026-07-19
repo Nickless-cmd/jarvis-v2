@@ -53,15 +53,32 @@ def register(call_id: str, *, session_id: str, name: str = "") -> _Pending:
     return p
 
 
-def wait(call_id: str, pending: _Pending, timeout: float = DEFAULT_TOOL_TIMEOUT_S) -> tuple[str | None, bool]:
-    """Block until the client resolves ``call_id`` or ``timeout`` elapses.
-    Returns (result, is_error). On timeout: (None, True). Always cleans up the entry."""
-    got = pending.event.wait(timeout)
+def wait(call_id: str, timeout: float = DEFAULT_TOOL_TIMEOUT_S) -> tuple[str | None, bool]:
+    """Block until the client resolves ``call_id`` (must be register()'d first) or
+    ``timeout`` elapses. Internal lookup so callers don't thread _Pending around.
+    Returns (result, is_error). On timeout / unknown id: (None, True). Cleans up."""
+    cid = str(call_id)
     with _lock:
-        _pending.pop(str(call_id), None)
+        p = _pending.get(cid)
+    if p is None:
+        return None, True
+    got = p.event.wait(timeout)
+    with _lock:
+        _pending.pop(cid, None)
     if not got:
         return None, True
-    return pending.result, pending.is_error
+    return p.result, p.is_error
+
+
+def collect_results(call_ids: list[str], timeout: float = DEFAULT_TOOL_TIMEOUT_S) -> dict[str, tuple[str | None, bool]]:
+    """Wait on several already-register()'d call_ids (one client turn's tool batch) and
+    return {call_id: (result, is_error)}. Waits sequentially but the client executes them
+    concurrently and posts as they finish, so wall-clock ≈ the slowest tool, not the sum.
+    Standalone (no visible_runs import) so it can run inside the run's executor thread."""
+    out: dict[str, tuple[str | None, bool]] = {}
+    for cid in call_ids:
+        out[str(cid)] = wait(str(cid), timeout=timeout)
+    return out
 
 
 def resolve(call_id: str, content: str, *, is_error: bool = False) -> bool:

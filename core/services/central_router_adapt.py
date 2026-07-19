@@ -257,6 +257,13 @@ def resolve_visible_model(*, provider_override: str = "", model_override: str = 
         # eksplicit override (fx member→ollama-clamp) er ukrænkelig — intet må røre den
         if str(provider_override or "").strip() or str(model_override or "").strip():
             return base_provider, base_model
+        # OWNER/MEMBER INTERAKTIV VISIBLE (autonomous=False): ALTID dit eksplicitte valg /
+        # config-default. Den LÆRTE routing-præference må ALDRIG overrule hvad brugeren valgte
+        # (/model i jarvis-code, composer i desk). Lært/adaptiv routing er indelukket til den
+        # autonome/dispatch-lane nedenfor. Bjørn 2026-07-19: din deepseek ≠ agent-pool ≠ cheap-lane
+        # — routeren lærte 'kimi-k2.7-code' fra blandet visible-trafik og påtvang den DINE ture.
+        if not autonomous:
+            return base_provider, base_model
         # (a) EKSPLORATION: kun autonome runs — sample occasionelt en alternativ model (skab kontrast)
         if autonomous:
             from core.services import central_router_explore as _explore

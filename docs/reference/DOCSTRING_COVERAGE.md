@@ -1513,7 +1513,7 @@ Generated from source. 6378/12932 functions/methods documented (49%). The list b
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
-- `core/services/semantic_memory.py` :: `get_stats` (L419)
+- `core/services/semantic_memory.py` :: `get_stats` (L432)
 - `core/services/sensory_archive.py` :: `count` (L209)
 - `core/services/sensory_archive.py` :: `get` (L205)
 - `core/services/sensory_archive.py` :: `list_recent` (L184)

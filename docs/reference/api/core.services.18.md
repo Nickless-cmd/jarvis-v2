@@ -861,19 +861,19 @@ _Semantic memory — unified embedding + cosine search across memory surfaces._
 | function | `register_source` | `(table, *, resolver, lister)` | Register a source table so backfill + search can map IDs to rows. | [src](../../../core/services/semantic_memory.py#L48) |
 | function | `_default_sources_registered` | `()` | Register sensory_memories + private_brain_records if not already. | [src](../../../core/services/semantic_memory.py#L59) |
 | function | `_ollama_base_url` | `()` | — | [src](../../../core/services/semantic_memory.py#L90) |
-| function | `_tt_embed` | `(label, dur_ms)` | — | [src](../../../core/services/semantic_memory.py#L115) |
-| function | `_embed_ollama` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L123) |
-| function | `_embed_ollama_batch` | `(texts)` | Batch-embed via ollamas /api/embed (ÉT round-trip for hele listen i stedet | [src](../../../core/services/semantic_memory.py#L157) |
-| function | `_encode_vector` | `(vec)` | — | [src](../../../core/services/semantic_memory.py#L192) |
-| function | `_decode_vector` | `(data)` | — | [src](../../../core/services/semantic_memory.py#L196) |
-| function | `_hash_content` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L200) |
-| function | `_prepare_text` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L204) |
-| function | `index_memory` | `(*, source_table, source_id, content, modality)` | Embed content and upsert. Returns True on success, False if embed fails | [src](../../../core/services/semantic_memory.py#L213) |
-| function | `search` | `(query, *, modalities=…, source_tables=…, limit=…, min_score=…)` | Return top-k memories by cosine similarity. | [src](../../../core/services/semantic_memory.py#L248) |
-| function | `_extract_content_for_row` | `(table, row)` | Return (content_text, modality) for a raw row from a known table. | [src](../../../core/services/semantic_memory.py#L312) |
-| function | `_row_id` | `(table, row)` | — | [src](../../../core/services/semantic_memory.py#L327) |
-| function | `backfill_all` | `(*, max_per_table=…)` | Embed every unindexed row across registered source tables. | [src](../../../core/services/semantic_memory.py#L335) |
-| function | `_content_hash_unchanged` | `(table, source_id, new_content)` | — | [src](../../../core/services/semantic_memory.py#L410) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/semantic_memory.py#L419) |
-| function | `build_semantic_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_memory.py#L432) |
+| function | `_tt_embed` | `(label, dur_ms)` | — | [src](../../../core/services/semantic_memory.py#L128) |
+| function | `_embed_ollama` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L136) |
+| function | `_embed_ollama_batch` | `(texts)` | Batch-embed via ollamas /api/embed (ÉT round-trip for hele listen i stedet | [src](../../../core/services/semantic_memory.py#L170) |
+| function | `_encode_vector` | `(vec)` | — | [src](../../../core/services/semantic_memory.py#L205) |
+| function | `_decode_vector` | `(data)` | — | [src](../../../core/services/semantic_memory.py#L209) |
+| function | `_hash_content` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L213) |
+| function | `_prepare_text` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L217) |
+| function | `index_memory` | `(*, source_table, source_id, content, modality)` | Embed content and upsert. Returns True on success, False if embed fails | [src](../../../core/services/semantic_memory.py#L226) |
+| function | `search` | `(query, *, modalities=…, source_tables=…, limit=…, min_score=…)` | Return top-k memories by cosine similarity. | [src](../../../core/services/semantic_memory.py#L261) |
+| function | `_extract_content_for_row` | `(table, row)` | Return (content_text, modality) for a raw row from a known table. | [src](../../../core/services/semantic_memory.py#L325) |
+| function | `_row_id` | `(table, row)` | — | [src](../../../core/services/semantic_memory.py#L340) |
+| function | `backfill_all` | `(*, max_per_table=…)` | Embed every unindexed row across registered source tables. | [src](../../../core/services/semantic_memory.py#L348) |
+| function | `_content_hash_unchanged` | `(table, source_id, new_content)` | — | [src](../../../core/services/semantic_memory.py#L423) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/semantic_memory.py#L432) |
+| function | `build_semantic_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_memory.py#L445) |
 

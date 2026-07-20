@@ -88,6 +88,19 @@ def _default_sources_registered() -> None:
 # ---------------------------------------------------------------------------
 
 def _ollama_base_url() -> str:
+    # DEDIKERET embed-host: recall/brain-embeds må IKKE konkurrere med det synlige svar
+    # om GPU-ollama'en (localhost). Embed-kaldet kø'ede 28-91s bag svaret → assembly-
+    # budgettet (~12s) droppede recall → "Jarvis kan ikke huske hvem han er". Peg
+    # embeddings mod den dedikerede CPU-ollama (llm-gateway 10.0.0.45) via runtime-key
+    # `embed_ollama_base_url`. SAMME model (nomic-embed-text) → samme vektor-rum → ingen
+    # reindex nødvendig for host-skiftet. Faldback: generel ollama-provider (GPU).
+    try:
+        from core.runtime.secrets import read_runtime_key
+        _embed_url = str(read_runtime_key("embed_ollama_base_url") or "").strip()
+        if _embed_url:
+            return _embed_url.rstrip("/")
+    except Exception:
+        pass
     try:
         from core.runtime.provider_router import load_provider_router_registry
         registry = load_provider_router_registry()

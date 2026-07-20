@@ -128,10 +128,19 @@ CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "operator_session_open", "operator_session_run", "operator_session_close",
 })
 
+# Local-exec-ONLY tools: har INGEN server-side executor og kan KUN køre klient-lokalt
+# i jarvis-code (Path B). `task` = nested subagent / explore (jc_agent_loop._execute_
+# task_tool). Modsat bash/operator_* (der også har en server/bro-executor) må disse
+# ALDRIG annonceres uden for et local_tool_exec-run — ellers kunne modellen kalde et
+# værktøj serveren ikke kan udføre. Annoncering gates på current_local_exec() nedenfor.
+LOCAL_EXEC_ONLY_TOOLS: frozenset[str] = frozenset({"task"})
+
 # §17: værktøjer der eksekverer LOKALT på brugerens maskine i code mode. Deres rå
 # resultat bliver på maskinen; kun summary krydser via bro_broker. bridge.ts bruger
 # dette til mode-aware routing (§17.6.1).
-LOCAL_EXECUTION_TOOLS: frozenset[str] = CODE_MODE_TOOLS_BASE | CODE_MODE_OWNER_EXTRA
+LOCAL_EXECUTION_TOOLS: frozenset[str] = (
+    CODE_MODE_TOOLS_BASE | CODE_MODE_OWNER_EXTRA | LOCAL_EXEC_ONLY_TOOLS
+)
 
 
 def is_local_execution_tool(name: str) -> bool:
@@ -224,7 +233,9 @@ def allowed_tool_names(
 
     if is_owner:
         if scope == "code":
-            result = (set(CODE_MODE_TOOLS_BASE) | CODE_MODE_OWNER_EXTRA) & names
+            result = (
+                set(CODE_MODE_TOOLS_BASE) | CODE_MODE_OWNER_EXTRA | LOCAL_EXEC_ONLY_TOOLS
+            ) & names
         elif scope == "chat":
             result = (set(CHAT_MODE_TOOLS_BASE) | CHAT_MODE_OWNER_EXTRA) & names
             # Bjørn 2026-07-01: owner skal kunne nå sin EGEN paret desktop fra mobil chat
@@ -241,6 +252,14 @@ def allowed_tool_names(
         mode = scope if scope in ("chat", "code", "cowork") else "cowork"
         perm = _perm_allowed(role=role, mode=mode)
         result = set(perm) & names
+
+    # Local-exec-only tools (`task`/explore) har ingen server-executor → må KUN
+    # præsenteres i et local_tool_exec-run (jarvis-code Path B). Uden for det (autonom,
+    # cowork-catch-all `result = names`, desk-container-code) fjernes de, så modellen
+    # aldrig ser et værktøj den ikke kan bruge. current_local_exec() sættes ved
+    # run-setup (visible_runs) — samme ContextVar som driver Path B-prompt-injektionen.
+    if not current_local_exec():
+        result = result - LOCAL_EXEC_ONLY_TOOLS
 
     return _apply_computer_use_policy(result)
 

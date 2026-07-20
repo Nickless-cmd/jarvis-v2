@@ -372,6 +372,43 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "task",
+            "description": (
+                "Dispatch a nested subagent for a bounded, well-scoped sub-task. "
+                "The subagent runs LOCALLY in jarvis-code with its own tool budget "
+                "and its own message history, and can never exceed your approval "
+                "mode; it returns only its final summary as the tool result, so "
+                "your own context stays clean. Use it to delegate focused "
+                "exploration or research — e.g. subagent_type='explorer' to search "
+                "the codebase — rather than doing it inline. Only available in "
+                "jarvis-code (client-local execution)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "description": "Short task label (3-5 words).",
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "description": "The full task/instructions for the subagent.",
+                    },
+                    "subagent_type": {
+                        "type": "string",
+                        "description": (
+                            "Kind of subagent: 'explorer' (read-only search/exploration) "
+                            "or 'general' (default). Optional."
+                        ),
+                    },
+                },
+                "required": ["description", "prompt"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "operator_screenshot",
             "description": (
                 "Capture a screenshot of the OPERATOR'S DESKTOP and save it to a "

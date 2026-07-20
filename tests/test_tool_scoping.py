@@ -233,3 +233,41 @@ class TestOwnerMobileBridgeGate:
         monkeypatch.setattr(ts, "_owner_has_live_bridge", lambda: True)
         allow = allowed_tool_names(role="member", scope="chat", all_names=ALL)
         assert "operator_bash" not in allow       # gaten er KUN for owner
+
+
+class TestLocalExecOnlyTools:
+    """`task`/explore-subagent har ingen server-executor → må KUN annonceres i et
+    local_tool_exec-run (jarvis-code Path B). Ellers kunne modellen kalde et værktøj
+    serveren ikke kan udføre. Regression-guard for Path B tool-advertisement."""
+
+    ALL_T = ALL + ["task"]
+
+    def _has_task(self, role, scope, local):
+        import core.tools.tool_scoping as ts
+        tok = ts.set_local_exec(local)
+        try:
+            return "task" in allowed_tool_names(role=role, scope=scope, all_names=self.ALL_T)
+        finally:
+            ts._local_exec_var.reset(tok)
+
+    def test_owner_code_local_exec_gets_task(self):
+        assert self._has_task("owner", "code", True) is True
+
+    def test_owner_code_without_local_exec_no_task(self):
+        # desk/container code-mode: ingen klient at forwarde til → task skjult
+        assert self._has_task("owner", "code", False) is False
+
+    def test_owner_chat_never_gets_task(self):
+        assert self._has_task("owner", "chat", True) is False
+
+    def test_owner_cowork_without_local_exec_no_task(self):
+        # autonom/cowork catch-all (result = names) må ikke lække task
+        assert self._has_task("owner", "", False) is False
+
+    def test_member_code_local_exec_no_task(self):
+        # subagent-dispatch er owner-only
+        assert self._has_task("member", "code", True) is False
+
+    def test_task_is_local_execution_tool(self):
+        from core.tools.tool_scoping import is_local_execution_tool
+        assert is_local_execution_tool("task") is True

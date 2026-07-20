@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12916 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12929 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -39,16 +39,16 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12916 functions/
 - [`core.services.10`](core.services.10.md) — `emotion_concepts_positive_triggers` … `gate_commit`
 - [`core.services.11`](core.services.11.md) — `gate_enforcement` … `heartbeat_runtime_influence`
 - [`core.services.12`](core.services.12.md) — `heartbeat_runtime_providers` … `jc_tool_telemetry`
-- [`core.services.13`](core.services.13.md) — `jobs_engine` … `meta_learning_aggregator`
-- [`core.services.14`](core.services.14.md) — `meta_learning_hypotheses` … `orb_phase`
-- [`core.services.15`](core.services.15.md) — `outbound_nudges` … `process_supervisor`
-- [`core.services.16`](core.services.16.md) — `process_watcher` … `reflection_to_plan`
-- [`core.services.17`](core.services.17.md) — `reflective_critic_tracking` … `runtime_self_model_identity`
-- [`core.services.18`](core.services.18.md) — `runtime_self_model_state` … `sensory_archive`
-- [`core.services.19`](core.services.19.md) — `sensory_perception_bridge` … `spatial_entity_ledger`
-- [`core.services.20`](core.services.20.md) — `staged_edits` … `tool_catalog`
-- [`core.services.21`](core.services.21.md) — `tool_chip_payload` … `visible_followup_adapters`
-- [`core.services.22`](core.services.22.md) — `visible_followup_events` … `world_model_signal_tracking`
+- [`core.services.13`](core.services.13.md) — `jobs_engine` … `meta_cognition_daemon`
+- [`core.services.14`](core.services.14.md) — `meta_learning_aggregator` … `operator_allowlist`
+- [`core.services.15`](core.services.15.md) — `orb_phase` … `procedure_bank_pipeline`
+- [`core.services.16`](core.services.16.md) — `process_supervisor` … `reflection_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `reflection_to_plan` … `runtime_self_model_builder`
+- [`core.services.18`](core.services.18.md) — `runtime_self_model_identity` … `semantic_memory`
+- [`core.services.19`](core.services.19.md) — `sensory_archive` … `spaced_repetition`
+- [`core.services.20`](core.services.20.md) — `spatial_entity_ledger` … `tiny_webchat_execution_pilot`
+- [`core.services.21`](core.services.21.md) — `tool_catalog` … `visible_followup`
+- [`core.services.22`](core.services.22.md) — `visible_followup_adapters` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

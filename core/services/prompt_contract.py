@@ -2522,6 +2522,22 @@ def _build_visible_chat_prompt_assembly_impl(
     )
     derived_inputs.append("tool-output hygiene (tail-anchored)")
 
+    # ── Narrations-kontrakt (ReAct-mønster): TÆNK-før-HANDL + syntese mellem runder.
+    # Kode/billig-modeller (deepseek/kimi/glm) emitter tool_calls TERST uden ledsagende
+    # prosa (ToolExchange.text er ofte tom) → Bjørn ser en runde starte uden at vide
+    # hvad Jarvis giver sig i kast med. Claude narrerer af sig selv; de andre skal
+    # KRÆVES det. Tail-anchored (før de tunge markører) → overlever lean-transformen
+    # så den gælder ALLE agentiske runder, og statisk → cache-sikker. (Reinforces per
+    # runde af den korte nudge på tool-resultaterne, se visible_followup.)
+    _dyn_tail.append(
+        "🎬 ARBEJDSGANG (gælder HVER runde): Før du kalder værktøjer, skriv FØRST "
+        "én kort sætning om hvad du er ved at gøre og hvorfor. Efter en runde med "
+        "tool-resultater: skriv én kort syntese af hvad du fandt og hvad det "
+        "betyder, FØR du starter næste runde. Kør ALDRIG en runde tavst — Bjørn "
+        "skal kunne følge din tankegang undervejs, ikke kun se slutresultatet."
+    )
+    derived_inputs.append("narration contract / ReAct (tail-anchored)")
+
     # ── Per-turn-dynamisk hale → flyttes til BRUGER-beskeden (2026-06-13, lever #3)
     # ALT der varierer fra turn til turn samles her, EFTER al stabil tekst, bag en
     # sentinel. _build_visible_input splitter på sentinel'en og flytter blokken ud

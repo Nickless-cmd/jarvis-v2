@@ -70,8 +70,8 @@ _Cache maintenance daemon — periodic cleanup of expired web cache entries._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `tick_cache_maintenance_daemon` | `()` | Run cache cleanup if cadence elapsed. Returns stats dict. | [src](../../../core/services/cache_maintenance_daemon.py#L33) |
-| function | `get_cache_maintenance_stats` | `()` | — | [src](../../../core/services/cache_maintenance_daemon.py#L124) |
-| function | `build_cache_maintenance_surface` | `()` | — | [src](../../../core/services/cache_maintenance_daemon.py#L131) |
+| function | `get_cache_maintenance_stats` | `()` | — | [src](../../../core/services/cache_maintenance_daemon.py#L150) |
+| function | `build_cache_maintenance_surface` | `()` | — | [src](../../../core/services/cache_maintenance_daemon.py#L157) |
 
 ## `core/services/cache_telemetry.py`
 _Per-request cache-telemetri for den synlige DeepSeek-lane (2026-06-30)._

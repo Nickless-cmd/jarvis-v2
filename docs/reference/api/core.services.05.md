@@ -340,9 +340,9 @@ _core/services/central_router_adapt.py_
 | function | `get_live_preference` | `(lane=…)` | KONSUMENT-API (til den fremtidige routing-wire): den LIVE præference for en lane, eller None. | [src](../../../core/services/central_router_adapt.py#L209) |
 | function | `_note_health_suppressed` | `(model_key)` | Best-effort: gør det synligt når en lært præference undertrykkes pga. dårlig recent-health. | [src](../../../core/services/central_router_adapt.py#L233) |
 | function | `resolve_visible_model` | `(*, provider_override=…, model_override=…, default_provider, default_model, autonomous=…)` | KONSUMENTEN (Tråd 1 live-wire): afgør (provider, model) for et visible-run. Centraliserer den | [src](../../../core/services/central_router_adapt.py#L245) |
-| function | `resolve_autonomous_model` | `(*, autonomous_provider=…, autonomous_model=…)` | (provider, model) for et AUTONOMT/baggrunds-run. | [src](../../../core/services/central_router_adapt.py#L295) |
-| function | `register_router_adapt_producer` | `()` | Registrér routing-præference-læreren som cadence-producer (~hvert 45 min). SHADOW medmindre flag. | [src](../../../core/services/central_router_adapt.py#L322) |
-| function | `build_router_adapt_surface` | `()` | Mission Control — read-only: foreslået (shadow) + live præference + status. | [src](../../../core/services/central_router_adapt.py#L334) |
+| function | `resolve_autonomous_model` | `(*, autonomous_provider=…, autonomous_model=…)` | (provider, model) for et AUTONOMT/baggrunds-run. | [src](../../../core/services/central_router_adapt.py#L302) |
+| function | `register_router_adapt_producer` | `()` | Registrér routing-præference-læreren som cadence-producer (~hvert 45 min). SHADOW medmindre flag. | [src](../../../core/services/central_router_adapt.py#L329) |
+| function | `build_router_adapt_surface` | `()` | Mission Control — read-only: foreslået (shadow) + live præference + status. | [src](../../../core/services/central_router_adapt.py#L341) |
 
 ## `core/services/central_router_explore.py`
 _core/services/central_router_explore.py_

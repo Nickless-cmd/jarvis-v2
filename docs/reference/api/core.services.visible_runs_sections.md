@@ -20,8 +20,8 @@ _Detached (request-uafhængig) bruger-run → server-autoritativt via run_event_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `start_user_run_detached` | `(*, message, session_id, approval_mode=…, thinking_mode=…, force_user_id=…, tool_scope=…, provider_override=…, model_override=…, eff_model=…, eff_provider=…, lane=…, run_id=…)` | Start et server-autoritativt run. Returnerer run_id (klienten abonnerer | [src](../../../core/services/visible_runs_sections/detached_run.py#L13) |
-| function | `start_or_attach_user_run` | `(*, message, session_id, nudge_enabled=…, **kw)` | Single-flight pr. session for server-autoritative runs. | [src](../../../core/services/visible_runs_sections/detached_run.py#L130) |
+| function | `start_user_run_detached` | `(*, message, session_id, approval_mode=…, thinking_mode=…, force_user_id=…, tool_scope=…, provider_override=…, model_override=…, eff_model=…, eff_provider=…, lane=…, run_id=…, local_tool_exec=…)` | Start et server-autoritativt run. Returnerer run_id (klienten abonnerer | [src](../../../core/services/visible_runs_sections/detached_run.py#L13) |
+| function | `start_or_attach_user_run` | `(*, message, session_id, nudge_enabled=…, **kw)` | Single-flight pr. session for server-autoritative runs. | [src](../../../core/services/visible_runs_sections/detached_run.py#L132) |
 
 ## `core/services/visible_runs_sections/run_control_state.py`
 _Visible-run control state — udskilt fra visible_runs.py (Boy Scout)._

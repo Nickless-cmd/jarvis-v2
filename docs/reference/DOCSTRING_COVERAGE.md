@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6363/12916 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6376/12929 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6363/12916 functions/methods documented (49%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 580 | 766 | 75% |
+| `apps.api.jarvis_api.routes` | 582 | 768 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,7 +24,7 @@ Generated from source. 6363/12916 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4199 | 8987 | 46% |
+| `core.services` | 4210 | 8998 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 65 | 117 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -489,9 +489,9 @@ Generated from source. 6363/12916 functions/methods documented (49%). The list b
 - `core/runtime/provider_router.py` :: `resolve_provider_router_target` (L254)
 - `core/runtime/provider_router.py` :: `select_main_agent_target` (L200)
 - `core/runtime/secrets.py` :: `mail_config` (L96)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L477)
-- `core/runtime/settings.py` :: `load_settings` (L581)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1031)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L482)
+- `core/runtime/settings.py` :: `load_settings` (L587)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1038)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)
@@ -632,8 +632,8 @@ Generated from source. 6363/12916 functions/methods documented (49%). The list b
 - `core/services/bounded_mutation_intent_runtime.py` :: `build_bounded_mutation_intent_surface` (L25)
 - `core/services/bounded_repo_tools_runtime.py` :: `build_bounded_repo_tool_execution_surface` (L14)
 - `core/services/bounded_workspace_write_runtime.py` :: `build_bounded_workspace_write_execution_surface` (L7)
-- `core/services/cache_maintenance_daemon.py` :: `build_cache_maintenance_surface` (L131)
-- `core/services/cache_maintenance_daemon.py` :: `get_cache_maintenance_stats` (L124)
+- `core/services/cache_maintenance_daemon.py` :: `build_cache_maintenance_surface` (L157)
+- `core/services/cache_maintenance_daemon.py` :: `get_cache_maintenance_stats` (L150)
 - `core/services/calm_anchor.py` :: `build_calm_anchor_surface` (L215)
 - `core/services/candidate_tracking.py` :: `auto_apply_safe_memory_md_candidates_for_visible_turn` (L290)
 - `core/services/candidate_tracking.py` :: `auto_apply_safe_user_md_candidates_for_visible_turn` (L281)
@@ -1250,13 +1250,13 @@ Generated from source. 6363/12916 functions/methods documented (49%). The list b
 - `core/services/process_watcher.py` :: `set_watch_enabled` (L239)
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2871)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2719)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3008)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2887)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2735)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3024)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L147)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L95)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L122)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4510)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4526)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
@@ -1725,24 +1725,24 @@ Generated from source. 6363/12916 functions/methods documented (49%). The list b
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
 - `core/services/visible_model_prompt.py` :: `visible_session_continuity_summary` (L346)
-- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L494)
-- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L500)
-- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L497)
-- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L507)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6346)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6371)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6575)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6584)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6571)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6342)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6484)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6536)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6453)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6394)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6426)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6312)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6594)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6357)
+- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L496)
+- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L502)
+- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L499)
+- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L509)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6208)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6233)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6437)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6446)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6433)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6204)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6346)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6398)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6315)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6256)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6288)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6174)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6456)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6219)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L333)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)

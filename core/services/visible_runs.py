@@ -2269,6 +2269,20 @@ async def _stream_visible_run(
                                 content=_content,
                             )
                         )
+                    # #2 Per-runde-nudge (ReAct "Observation → Thought"): append en KORT
+                    # statisk instruks til det SIDSTE tool-resultat, så modellen møder den
+                    # lige før den beslutter næste runde. Statisk + append-only → cache-
+                    # sikker; via _to_followup_results (delt af first-pass + ALLE agentiske
+                    # runder) rammer den alle providers ens. Reinforcer 🎬-kontrakten (#1).
+                    if out:
+                        _ln = out[-1]
+                        out[-1] = _vf.ToolResult(
+                            tool_call_id=_ln.tool_call_id,
+                            tool_name=_ln.tool_name,
+                            content=(_ln.content.rstrip() + "\n\n(⟳ Før du fortsætter: "
+                                     "skriv én kort sætning om hvad disse resultater "
+                                     "betyder og hvad du gør nu.)"),
+                        )
                     return out
 
                 _fp_followup_results = _to_followup_results(

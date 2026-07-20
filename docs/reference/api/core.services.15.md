@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/orb_phase.py`
+_Desktop orb phase — writes current Jarvis pipeline state to a temp file._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `set_phase` | `(phase)` | Write orb phase. Silently ignores any I/O errors. | [src](../../../core/services/orb_phase.py#L17) |
+
 ## `core/services/outbound_nudges.py`
 _Outbound nudge ledger — replaces direct daemon→user sends for Type A/C._
 
@@ -646,23 +653,4 @@ _Procedure Bank Pipeline — lærte rutiner der kan pin'es og matches._
 | function | `match_procedures_for_text` | `(text, *, limit=…)` | Find procedures whose trigger-string matches given text. | [src](../../../core/services/procedure_bank_pipeline.py#L201) |
 | function | `maybe_record_procedure_from_run` | `(*, session_id, tool_calls)` | LivingNeuron Fase B (surface-only): udled en NAVNGIVEN kandidat-procedure fra en kørsel der | [src](../../../core/services/procedure_bank_pipeline.py#L242) |
 | function | `build_procedure_bank_surface` | `()` | — | [src](../../../core/services/procedure_bank_pipeline.py#L275) |
-
-## `core/services/process_supervisor.py`
-_Process supervisor — track long-running background processes Jarvis spawns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/process_supervisor.py#L44) |
-| function | `_ensure_dirs` | `()` | — | [src](../../../core/services/process_supervisor.py#L48) |
-| function | `_safe_name` | `(name)` | Sanitize a process name for use in filenames. | [src](../../../core/services/process_supervisor.py#L52) |
-| function | `_load_registry` | `()` | — | [src](../../../core/services/process_supervisor.py#L58) |
-| function | `_save_registry` | `(reg)` | — | [src](../../../core/services/process_supervisor.py#L70) |
-| function | `_pid_alive` | `(pid)` | — | [src](../../../core/services/process_supervisor.py#L78) |
-| function | `_read_status` | `(entry)` | Snapshot of a registry entry's live status. | [src](../../../core/services/process_supervisor.py#L93) |
-| function | `spawn_process` | `(*, name, command, cwd=…, env=…, replace_if_running=…)` | Spawn a detached background process under supervision. | [src](../../../core/services/process_supervisor.py#L125) |
-| function | `list_processes` | `(*, include_stopped=…)` | — | [src](../../../core/services/process_supervisor.py#L219) |
-| function | `_stop_locked` | `(reg, name, grace)` | Caller must hold _LOCK. Stops the named process gracefully. | [src](../../../core/services/process_supervisor.py#L229) |
-| function | `stop_process` | `(name, *, grace=…)` | — | [src](../../../core/services/process_supervisor.py#L264) |
-| function | `tail_process_log` | `(name, *, lines=…)` | — | [src](../../../core/services/process_supervisor.py#L271) |
-| function | `remove_process` | `(name)` | Remove an entry from the registry. Refuses if still alive. | [src](../../../core/services/process_supervisor.py#L303) |
 

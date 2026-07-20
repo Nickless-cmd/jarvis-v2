@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_catalog.py`
+_Compact tool catalog for system prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L62) |
+| function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L76) |
+| function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L91) |
+| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L127) |
+| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L132) |
+
 ## `core/services/tool_chip_payload.py`
 _Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15)._
 
@@ -566,25 +577,4 @@ _Provider-neutral agentic follow-up dispatcher._
 | method | `fault_injection.__exit__` | `(self, *_exc)` | — | [src](../../../core/services/visible_followup.py#L578) |
 | function | `_maybe_inject_fault` | `(round_index)` | Prod-no-op hook: returnér en event-iterator hvis en injektion er aktiv, | [src](../../../core/services/visible_followup.py#L583) |
 | function | `_yield_injected_fault` | `(fault, round_index)` | Generér event-strømmen for en given injektion (test-only). | [src](../../../core/services/visible_followup.py#L616) |
-
-## `core/services/visible_followup_adapters.py`
-_Per-provider follow-up adapters (split from ``visible_followup.py``)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `OllamaFollowupAdapter` | `` | Follow-up via Ollama's ``/api/chat`` streaming NDJSON endpoint. | [src](../../../core/services/visible_followup_adapters.py#L52) |
-| method | `OllamaFollowupAdapter._normalize_tool_calls` | `(self, tool_calls)` | Replay tool_calls — men REPARÉR afkortede/malformede argument-strenge først. | [src](../../../core/services/visible_followup_adapters.py#L75) |
-| method | `OllamaFollowupAdapter._repair_arguments` | `(container)` | Hvis container['arguments'] er en STRENG der ikke er gyldig JSON → erstat med {}. | [src](../../../core/services/visible_followup_adapters.py#L101) |
-| method | `OllamaFollowupAdapter._compact_exchanges` | `(self, exchanges)` | Bound Ollama follow-up replay so long tool loops do not 400. | [src](../../../core/services/visible_followup_adapters.py#L126) |
-| method | `OllamaFollowupAdapter._serialize_exchanges` | `(self, exchanges)` | Replay exchanges as structured assistant + role=tool messages. | [src](../../../core/services/visible_followup_adapters.py#L164) |
-| method | `OllamaFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L201) |
-| class | `OpenAICompatFollowupAdapter` | `` | Follow-up via OpenAI-compatible ``/chat/completions`` SSE streams. | [src](../../../core/services/visible_followup_adapters.py#L503) |
-| method | `OpenAICompatFollowupAdapter.__init__` | `(self, *, provider_id)` | — | [src](../../../core/services/visible_followup_adapters.py#L513) |
-| method | `OpenAICompatFollowupAdapter._normalize_assistant_tool_calls` | `(self, tool_calls)` | Normalize assistant tool_calls to match the OpenAI chat-completions | [src](../../../core/services/visible_followup_adapters.py#L516) |
-| method | `OpenAICompatFollowupAdapter._build_request` | `(self, *, model, messages, tool_definitions, temperature=…, top_p=…, tool_choice=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L551) |
-| method | `OpenAICompatFollowupAdapter._serialize_exchanges` | `(self, exchanges)` | Turn accumulated exchanges into OpenAI-compat tool messages. | [src](../../../core/services/visible_followup_adapters.py#L669) |
-| method | `OpenAICompatFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…, tool_choice=…, run_id=…, autonomous=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L710) |
-| class | `CodexFollowupAdapter` | `` | Follow-up via the OpenAI Codex Responses API (chatgpt.com/backend-api). | [src](../../../core/services/visible_followup_adapters.py#L1015) |
-| method | `CodexFollowupAdapter._build_input` | `(self, base_messages, exchanges)` | — | [src](../../../core/services/visible_followup_adapters.py#L1029) |
-| method | `CodexFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L1062) |
 

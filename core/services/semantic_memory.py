@@ -36,6 +36,14 @@ _EMBED_MODEL = "nomic-embed-text"
 _MODEL_VERSION = f"ollama/{_EMBED_MODEL}/v1"
 _MAX_CONTENT_CHARS = 4000  # clip anything longer to keep embeddings stable
 
+# fastembed = SAMME model (nomic-embed-text-v1.5, 768-dim) men in-process ONNX i stedet
+# for HTTP→ollama. Målt cosine 1.0000 mod det eksisterende ollama-indeks på tværs af
+# dansk/engelsk/teknisk tekst → DROP-IN, ingen reindex, samme _MODEL_VERSION. Latens
+# 17-21ms vs 1411ms (~70-80x) OG intet netværk → recall kan ALDRIG mere droppes af
+# assembly-timeout'et (kerneårsagen til "kan ikke huske hvem han er"). Kill-switch:
+# runtime-key `embed_backend`="ollama" tvinger den gamle HTTP-sti.
+_FASTEMBED_MODEL = "nomic-ai/nomic-embed-text-v1.5"
+
 
 # ---------------------------------------------------------------------------
 # Resolvers — how we fetch full records back after a vector hit
@@ -133,6 +141,73 @@ def _tt_embed(label: str, dur_ms: int) -> None:
         pass
 
 
+# ---------------------------------------------------------------------------
+# fastembed backend (in-process ONNX) — primær sti; ollama-HTTP er fallback
+# ---------------------------------------------------------------------------
+
+_FASTEMBED = None            # TextEmbedding-instans (lazy) el. False hvis utilgængelig
+_FASTEMBED_LOCK = _threading.Lock()
+
+
+def _fastembed_enabled() -> bool:
+    """Kill-switch: runtime-key `embed_backend`="ollama" tvinger den gamle HTTP-sti."""
+    try:
+        from core.runtime.secrets import read_runtime_key
+        return str(read_runtime_key("embed_backend") or "fastembed").strip().lower() != "ollama"
+    except Exception:
+        return True
+
+
+def _get_fastembed():
+    """Lazy singleton. Returnerer TextEmbedding el. None (aldrig raise) → kaldere
+    falder rent tilbage til ollama-HTTP hvis import/load fejler eller er slået fra."""
+    global _FASTEMBED
+    if _FASTEMBED is not None:
+        return _FASTEMBED or None
+    if not _fastembed_enabled():
+        return None
+    with _FASTEMBED_LOCK:
+        if _FASTEMBED is not None:
+            return _FASTEMBED or None
+        try:
+            from fastembed import TextEmbedding
+            # threads eksplicit: LXC-containeren blokerer CPU-affinity → onnxruntime
+            # spammer pthread_setaffinity_np-fejl uden. Binder samtidig embed-CPU så
+            # den ikke griber alle runtime-processens kerner. Konfigurerbar (default 4).
+            _threads = 4
+            try:
+                from core.runtime.secrets import read_runtime_key
+                _t = str(read_runtime_key("embed_fastembed_threads") or "").strip()
+                if _t.isdigit() and int(_t) > 0:
+                    _threads = int(_t)
+            except Exception:
+                pass
+            _FASTEMBED = TextEmbedding(model_name=_FASTEMBED_MODEL, threads=_threads)
+            logger.info("semantic_memory: fastembed backend aktiv (%s, in-process, threads=%d)",
+                        _FASTEMBED_MODEL, _threads)
+        except Exception as exc:
+            logger.warning("semantic_memory: fastembed utilgængelig (%s) → falder til ollama-HTTP", exc)
+            _FASTEMBED = False
+        return _FASTEMBED or None
+
+
+def _embed_fastembed(texts: list[str]) -> list["np.ndarray | None"] | None:
+    """Embed hele listen in-process. Returnerer None (ikke en liste) hvis backenden
+    er utilgængelig, så kaldere kan falde til ollama; ellers en liste parallel med
+    `texts` af float32-vektorer. Diskriminativt målt cosine 1.0000 ≡ ollama-indeks."""
+    emb = _get_fastembed()
+    if emb is None or not texts:
+        return None if emb is None else []
+    try:
+        vecs = list(emb.embed(list(texts)))
+        if len(vecs) != len(texts):
+            return None
+        return [np.asarray(v, dtype=np.float32) for v in vecs]
+    except Exception as exc:
+        logger.debug("semantic_memory: fastembed embed fejlede (%s) → ollama-fallback", exc)
+        return None
+
+
 def _embed_ollama(text: str) -> np.ndarray | None:
     with _EMBED_CACHE_LOCK:
         cached = _EMBED_CACHE.get(text)
@@ -141,6 +216,20 @@ def _embed_ollama(text: str) -> np.ndarray | None:
         return cached
     import time as _t_e
     _t0_e = _t_e.monotonic()
+
+    # Primær: fastembed in-process (~17ms, intet netværk, kan ikke droppes af timeout).
+    fe = _embed_fastembed([text])
+    if fe and fe[0] is not None:
+        v = fe[0]
+        with _EMBED_CACHE_LOCK:
+            if len(_EMBED_CACHE) >= _EMBED_CACHE_MAX:
+                for _k in list(_EMBED_CACHE)[: _EMBED_CACHE_MAX // 2]:
+                    _EMBED_CACHE.pop(_k, None)
+            _EMBED_CACHE[text] = v
+        _tt_embed("single fastembed", int((_t_e.monotonic() - _t0_e) * 1000))
+        return v
+
+    # Fallback: ollama-HTTP (samme vektor-rum).
     try:
         import httpx
         resp = httpx.post(
@@ -160,7 +249,7 @@ def _embed_ollama(text: str) -> np.ndarray | None:
                 for _k in list(_EMBED_CACHE)[: _EMBED_CACHE_MAX // 2]:
                     _EMBED_CACHE.pop(_k, None)
             _EMBED_CACHE[text] = v
-        _tt_embed("single", int((_t_e.monotonic() - _t0_e) * 1000))
+        _tt_embed("single ollama", int((_t_e.monotonic() - _t0_e) * 1000))
         return v
     except Exception as exc:
         logger.debug("semantic_memory: embed failed: %s", exc)
@@ -177,6 +266,14 @@ def _embed_ollama_batch(texts: list[str]) -> list["np.ndarray | None"]:
         return []
     import time as _t_e
     _t0_e = _t_e.monotonic()
+
+    # Primær: fastembed in-process — ét ONNX-kald for hele listen, intet netværk.
+    fe = _embed_fastembed(list(texts))
+    if fe is not None and len(fe) == len(texts):
+        _tt_embed(f"batch fastembed n={len(texts)}", int((_t_e.monotonic() - _t0_e) * 1000))
+        return fe
+
+    # Fallback: ollamas batch-endpoint (samme vektor-rum).
     try:
         import httpx
         resp = httpx.post(

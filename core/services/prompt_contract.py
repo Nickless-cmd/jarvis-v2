@@ -2361,6 +2361,22 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception:
         pass
 
+    # jarvis-code Path B: tilføj surfaces EGEN 3-lags-toolbox-forklaring (native=Bjørns
+    # maskine / runtime_*=container / operator_*=bro). Desk-katalogen ovenfor forklarer
+    # desks model — samme tool-navn betyder noget ANDET her, så uden dette bliver Jarvis
+    # forvirret (Bjørn: sektionen om runtime_* manglede helt). Statisk + kun på jarvis-
+    # code-surfacen → cache-sikker pr. surface.
+    try:
+        from core.tools.tool_scoping import current_local_exec
+        if current_local_exec():
+            from core.tools.jc_tool_catalog import build_jc_catalog_text
+            _jc_text = build_jc_catalog_text()
+            if _jc_text:
+                parts.append(_jc_text)
+                derived_inputs.append("jarvis-code toolbox model (3-target)")
+    except Exception:
+        pass
+
     # Flush buffered awareness sections HERE — true tail position, after
     # all stable-content (workspace files, transcript, tool catalog).
     # Time Pin (appended below the assembled_text print block) is the

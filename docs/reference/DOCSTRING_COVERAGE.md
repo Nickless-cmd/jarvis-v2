@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6376/12929 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6378/12932 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -31,7 +31,7 @@ Generated from source. 6376/12929 functions/methods documented (49%). The list b
 | `core.services.visible_runs_sections` | 11 | 23 | 47% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 368 | 817 | 45% |
+| `core.tools` | 370 | 820 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -39,7 +39,7 @@ Generated from source. 6376/12929 functions/methods documented (49%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1843)
+## Undocumented public functions (1844)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1250,13 +1250,13 @@ Generated from source. 6376/12929 functions/methods documented (49%). The list b
 - `core/services/process_watcher.py` :: `set_watch_enabled` (L239)
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2887)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2735)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3024)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L2903)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2751)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3040)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L147)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L95)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L122)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4526)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4542)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
@@ -1729,20 +1729,20 @@ Generated from source. 6376/12929 functions/methods documented (49%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L502)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L499)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L509)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6208)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6233)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6437)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6446)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6433)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6204)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6346)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6398)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6315)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6256)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6288)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6174)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6456)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6219)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6215)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6240)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6444)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6453)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6440)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6211)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6353)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6405)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6322)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6263)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6295)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6181)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6463)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6226)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L333)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
@@ -1815,8 +1815,9 @@ Generated from source. 6376/12929 functions/methods documented (49%). The list b
 - `core/tools/team_tools.py` :: `exec_invite_to_team` (L109)
 - `core/tools/team_tools.py` :: `exec_list_teams` (L44)
 - `core/tools/tool_scoping.py` :: `reset_tool_scope` (L157)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L175)
 - `core/tools/tool_scoping.py` :: `set_tool_scope` (L153)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L162)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L180)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1864)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L549)

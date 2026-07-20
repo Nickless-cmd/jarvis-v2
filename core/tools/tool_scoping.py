@@ -158,6 +158,24 @@ def reset_tool_scope(token: contextvars.Token) -> None:
     _scope_var.reset(token)
 
 
+# --- Path B / jarvis-code-surface ContextVar (local_tool_exec) ---
+# Sat ved run-setup fra VisibleRun.local_tool_exec. True = jarvis-code kører tools
+# LOKALT (Path B) → prompten injicerer jarvis-codes egen 3-lags-toolbox-forklaring
+# (native=Bjørns maskine / runtime_*=container / operator_*=bro), IKKE desks katalog.
+_local_exec_var: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "jarvis_tool_local_exec", default=False,
+)
+
+
+def current_local_exec() -> bool:
+    """True når det aktive run er en jarvis-code Path B lokal-exec-tur."""
+    return bool(_local_exec_var.get())
+
+
+def set_local_exec(on: bool) -> contextvars.Token:
+    return _local_exec_var.set(bool(on))
+
+
 @contextmanager
 def tool_scope(scope: str) -> Iterator[None]:
     token = set_tool_scope(scope)

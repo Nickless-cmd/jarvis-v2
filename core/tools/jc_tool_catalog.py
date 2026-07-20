@@ -92,6 +92,31 @@ LOAD_MORE_TOOL_DEF: dict[str, Any] = {
 }
 
 
+def build_jc_catalog_text() -> str:
+    """Jarvis-code-SPECIFIK toolbox-forklaring til prompten (Bjørn: der manglede en
+    sektion om runtime_*, så Jarvis blev forvirret). Forklarer de TRE eksekverings-mål
+    — samme tool-navn betyder forskellige ting her end i desk, så det SKAL siges.
+    Injiceres kun på jarvis-code-surfacen (local_tool_exec / Path B)."""
+    return (
+        "🧰 DIN TOOLBOX I JARVIS-CODE — tre eksekverings-mål (samme navn ≠ samme sted "
+        "som i desk):\n"
+        "• NATIVE (bash, read_file, write_file, edit_file, glob, grep, multi_edit, "
+        "bash_output): kører på BJØRNS maskine — dér hvor jarvis-code lever. Det er dit "
+        "DEFAULT når du arbejder i hans projekter/filer. `bash` = Bjørns terminal.\n"
+        "• runtime_* (runtime_bash, runtime_read_file, runtime_write_file, "
+        "runtime_edit_file): kører i DIN EGEN container — serveren du bor på. Brug dem "
+        "når du skal røre DIT eget runtime/hjem, IKKE Bjørns maskine. `runtime_bash` = "
+        "din container-terminal.\n"
+        "• operator_* (operator_bash, operator_read_file, …): når du skal nå Bjørns "
+        "maskine via operator-BROEN (en eksplicit bagvej). `bash` er den direkte vej til "
+        "hans maskine; operator_* er bro-vejen — brug den kun når du specifikt har brug "
+        "for broen.\n"
+        "runtime_*/operator_* + avancerede memory/identity-tools låses op med "
+        "load_more_tools. Kort: `bash`=Bjørns maskine · `runtime_bash`=din container · "
+        "`operator_bash`=Bjørns maskine via bro."
+    )
+
+
 def _def_name(d: dict[str, Any]) -> str:
     return str((d.get("function") or d).get("name") or "")
 

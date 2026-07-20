@@ -1221,6 +1221,13 @@ async def _stream_visible_run(
             set_tool_scope(tool_scope)
         except Exception:
             pass
+    # jarvis-code Path B (local_tool_exec): sæt surface-flaget så prompten injicerer
+    # jarvis-codes egen 3-lags-toolbox-forklaring (native/runtime_*/operator_*).
+    try:
+        from core.tools.tool_scoping import set_local_exec
+        set_local_exec(bool(getattr(run, "local_tool_exec", False)))
+    except Exception:
+        pass
 
     # Bind session_id ind i konteksten (bevar role fra middleware/gateway) så
     # effective_role kan slå en aktiv TOTP-override op under tool-scoping.

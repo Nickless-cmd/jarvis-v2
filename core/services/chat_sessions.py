@@ -120,6 +120,23 @@ def _teams():
     return teams
 
 
+def most_recent_session_id() -> str:
+    """Lightweight: session_id of the most recently updated session.
+
+    Returns the raw session_id of the most recent session (ORDER BY updated_at
+    DESC, id DESC over all sessions) via ONE query — without the per-row
+    correlated subqueries + _session_summary/_preview_text formatting of every
+    session that list_chat_sessions() does. Note: _session_summary renames the
+    column to "id", so callers reading sessions[0]["session_id"] were silently
+    getting None; this returns the real id. Used on the hot assembly path.
+    """
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT session_id FROM chat_sessions ORDER BY updated_at DESC, id DESC LIMIT 1"
+        ).fetchone()
+    return str(row[0]) if row and row[0] else ""
+
+
 def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]:
     """List chat sessions, optionally filtered to one user.
 

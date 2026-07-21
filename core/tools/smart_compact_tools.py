@@ -40,12 +40,16 @@ _AUTO_COMPACT_TOKEN_THRESHOLD = 8000
 def _estimate_session_tokens() -> int:
     """Rough estimate of current session's token count."""
     try:
-        from core.services.chat_sessions import list_chat_sessions, recent_chat_session_messages
+        from core.services.chat_sessions import most_recent_session_id, recent_chat_session_messages
         from core.context.token_estimate import estimate_tokens
-        sessions = list_chat_sessions()
-        if not sessions:
+        # Hot-path fix: was list_chat_sessions() (formats EVERY session via
+        # _session_summary→_preview_text, ~3184 calls/assembly) then read
+        # sessions[0]["session_id"] — but _session_summary renames it to "id",
+        # so this ALWAYS got None → estimate always 0. most_recent_session_id()
+        # returns the real id via one light query → correct estimate, no N+1.
+        session_id = most_recent_session_id()
+        if not session_id:
             return 0
-        session_id = str(sessions[0].get("session_id") or "")
         messages = recent_chat_session_messages(session_id, limit=200)
         total_chars = sum(len(m.get("content") or "") for m in messages)
         return estimate_tokens("x" * total_chars)
@@ -70,15 +74,13 @@ def _exec_smart_compact(args: dict[str, Any]) -> dict[str, Any]:
         }
 
     try:
-        from core.services.chat_sessions import list_chat_sessions
+        from core.services.chat_sessions import most_recent_session_id
         from core.context.session_compact import compact_session_history
         from core.context.compact_llm import call_compact_llm
 
-        sessions = list_chat_sessions()
-        if not sessions:
+        session_id = most_recent_session_id()  # was list_chat_sessions()[0]["session_id"] (renamed to "id" → None bug)
+        if not session_id:
             return {"status": "ok", "freed_tokens": 0, "message": "Ingen aktiv session."}
-
-        session_id = str(sessions[0].get("session_id") or "")
 
         result = compact_session_history(
             session_id,

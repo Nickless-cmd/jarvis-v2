@@ -124,6 +124,18 @@ _Governed kill-switch for session-persistence boot-reconciler. Default OFF (shad
 | function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/session_persistence_flag.py#L18) |
 | function | `session_persistence_enabled` | `()` | True KUN når eksplicit slået til ('on'/'1'/'true'/'yes'). Usat eller | [src](../../../core/services/session_persistence_flag.py#L24) |
 
+## `core/services/session_prewarm.py`
+_Session-aware DeepSeek prefix cache warming (prewarm-on-return)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `session_prewarm_enabled` | `()` | Kill-switch via runtime-state (default True). Self-safe. | [src](../../../core/services/session_prewarm.py#L45) |
+| function | `_should_warm` | `(session_id)` | Throttle pr. session: skip hvis varmet < _COOLDOWN_S siden. | [src](../../../core/services/session_prewarm.py#L55) |
+| function | `_deepseek_key` | `()` | — | [src](../../../core/services/session_prewarm.py#L70) |
+| function | `_post_deepseek` | `(api_key, payload, *, timeout_s=…)` | Minimal POST til deepseek /chat/completions. Returnerer body-dict eller None. | [src](../../../core/services/session_prewarm.py#L79) |
+| function | `warm_session_prefix` | `(session_id, *, provider=…, model=…, user_id=…, role=…, workspace_name=…, force=…)` | Varm en sessions [system][historik]-prefix i DeepSeeks disk-cache. | [src](../../../core/services/session_prewarm.py#L98) |
+| function | `warm_session_prefix_async` | `(session_id, **kwargs)` | Fire-and-forget: kør warm_session_prefix i en daemon-tråd. Blokerer aldrig | [src](../../../core/services/session_prewarm.py#L241) |
+
 ## `core/services/session_topic_tracker.py`
 _Session topic tracker — real-time topic extraction and accumulation._
 
@@ -573,21 +585,4 @@ _Source-confidence gate (epistemisk gate, 2026-07-10)._
 | function | `_tool_names` | `(tools_used)` | — | [src](../../../core/services/source_confidence_gate.py#L38) |
 | function | `assess_source_confidence` | `(*, output_text, tools_used=…)` | Vurdér epistemisk kilde-konfidens for en tur. | [src](../../../core/services/source_confidence_gate.py#L47) |
 | function | `build_source_confidence_surface` | `(*, output_text=…, tools_used=…)` | Central-CLI: jc raw /central/source-confidence (senest vurderede tur, hvis givet). | [src](../../../core/services/source_confidence_gate.py#L88) |
-
-## `core/services/spaced_repetition.py`
-_Spaced Repetition — schedule reviews for things Jarvis learned._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/spaced_repetition.py#L39) |
-| function | `_load` | `()` | — | [src](../../../core/services/spaced_repetition.py#L43) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/spaced_repetition.py#L59) |
-| function | `schedule_reviews_on_completion` | `(*, topic, plan_id=…, intervals_days=…)` | Create review entries for a topic at expanding intervals. | [src](../../../core/services/spaced_repetition.py#L71) |
-| function | `list_due_reviews` | `(*, now=…, limit=…)` | — | [src](../../../core/services/spaced_repetition.py#L103) |
-| function | `complete_review` | `(review_id, *, score)` | Mark a review as completed with score in [0, 1], update profile. | [src](../../../core/services/spaced_repetition.py#L120) |
-| function | `_update_profile` | `(profile, score)` | — | [src](../../../core/services/spaced_repetition.py#L150) |
-| function | `get_profile` | `(topic)` | — | [src](../../../core/services/spaced_repetition.py#L170) |
-| function | `build_spaced_repetition_surface` | `()` | — | [src](../../../core/services/spaced_repetition.py#L174) |
-| function | `_summary_line` | `(due, profiles, avg_conf)` | — | [src](../../../core/services/spaced_repetition.py#L205) |
-| function | `build_spaced_repetition_prompt_section` | `()` | — | [src](../../../core/services/spaced_repetition.py#L214) |
 

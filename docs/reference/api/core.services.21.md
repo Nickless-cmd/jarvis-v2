@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tiny_webchat_execution_pilot.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `maybe_run_tiny_webchat_execution_pilot` | `(*, policy, heartbeat_tick_id, decision_summary, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L30) |
+| function | `build_runtime_webchat_execution_pilot_surface` | `(*, limit=…)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L150) |
+| function | `_build_execution_candidate` | `(*, heartbeat_tick_id, decision_summary, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L191) |
+| function | `_execution_focus` | `(*, question_gate, question_loop, question_pressure)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L325) |
+| function | `_normalize_focus_candidate` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L343) |
+| function | `_message_text` | `(*, focus, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L366) |
+| function | `_resolve_target_session_id` | `()` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L376) |
+| function | `_cooldown_state` | `(canonical_key)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L386) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L404) |
+| function | `_find_support_value` | `(summary, key, default)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L431) |
+| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L442) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L451) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L460) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L467) |
+
 ## `core/services/tool_catalog.py`
 _Compact tool catalog for system prompt._
 
@@ -556,25 +575,4 @@ _Adaptive veto gate — pre-execution hook that pauses tool calls when pushback 
 | function | `build_veto_gate_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/veto_gate.py#L761) |
 | function | `record_override` | `(tool_name, feeling)` | Record that the user overrode a veto for this (tool, feeling) pair. | [src](../../../core/services/veto_gate.py#L793) |
 | function | `_emit_veto_gate_event` | `(kind, payload=…)` | Emit a scoped event — defensive, never blocks caller. | [src](../../../core/services/veto_gate.py#L825) |
-
-## `core/services/visible_followup.py`
-_Provider-neutral agentic follow-up dispatcher._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `supported_followup_providers` | `()` | Provider ids with a working follow-up adapter. | [src](../../../core/services/visible_followup.py#L119) |
-| function | `stream_visible_followup` | `(*, provider, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…, tool_choice=…, run_id=…, autonomous=…)` | Dispatch to the provider's follow-up adapter; yield FollowupEvents. | [src](../../../core/services/visible_followup.py#L129) |
-| function | `synthesize_nonthinking_rescue` | `(*, provider, model, base_messages, exchanges)` | Sidste-udvejs synteseturn der OMGÅR DeepSeek #1453 (tom completion efter | [src](../../../core/services/visible_followup.py#L201) |
-| function | `synthesize_final_answer` | `(*, provider, model, base_messages, exchanges)` | HARNESS-FINALIZE lag 2b (Bjørn 4. jul, provider-AGNOSTISK): ét tool-FRIT | [src](../../../core/services/visible_followup.py#L284) |
-| function | `agentic_round_retry_enabled` | `()` | Er rund-niveau stream-retry (Fase 1) slået til? Default False. | [src](../../../core/services/visible_followup.py#L381) |
-| function | `provider_failover_enabled` | `()` | Er visible-lane provider-failover (Fase 3, spec §11.2) slået til? Default False. | [src](../../../core/services/visible_followup.py#L425) |
-| function | `pick_failover_target` | `(current_provider, current_model)` | Vælg en kendt-pålidelig fallback-provider for RESTEN af denne tur (S6/§11.2). | [src](../../../core/services/visible_followup.py#L444) |
-| function | `inject_fault` | `(shape, *, partial_deltas=…, drop_as_exception=…, http_status=…, fire_once=…, fail_times=…, recover_text=…)` | Registrér en fejl-injektion for NÆSTE ``stream_visible_followup``-kald. | [src](../../../core/services/visible_followup.py#L507) |
-| function | `clear_faults` | `()` | Fjern enhver aktiv injektion. Idempotent. TEST-ONLY. | [src](../../../core/services/visible_followup.py#L553) |
-| class | `fault_injection` | `` | Context-manager der registrerer en injektion + RYDDER den ved exit | [src](../../../core/services/visible_followup.py#L560) |
-| method | `fault_injection.__init__` | `(self, shape, **kwargs)` | — | [src](../../../core/services/visible_followup.py#L570) |
-| method | `fault_injection.__enter__` | `(self)` | — | [src](../../../core/services/visible_followup.py#L574) |
-| method | `fault_injection.__exit__` | `(self, *_exc)` | — | [src](../../../core/services/visible_followup.py#L578) |
-| function | `_maybe_inject_fault` | `(round_index)` | Prod-no-op hook: returnér en event-iterator hvis en injektion er aktiv, | [src](../../../core/services/visible_followup.py#L583) |
-| function | `_yield_injected_fault` | `(fault, round_index)` | Generér event-strømmen for en given injektion (test-only). | [src](../../../core/services/visible_followup.py#L616) |
 

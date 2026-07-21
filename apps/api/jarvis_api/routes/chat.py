@@ -1280,6 +1280,29 @@ async def chat_session(session_id: str) -> dict:
     session = get_chat_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
+    # Prewarm-on-return: at åbne en session = intent om at chatte. Varm dens
+    # DeepSeek-prefix nu (throttlet 45s, kun owner→deepseek) så den første besked
+    # efter en pause rammer cachen i stedet for cold prefill (~32k). Dækker ALLE
+    # klienter (desk, code-view, jarvis-code) uden per-klient-wiring. Self-safe,
+    # fire-and-forget. Composer-fokus dækker desuden "vend tilbage til åben session".
+    try:
+        from core.identity.workspace_context import (
+            current_user_id, current_role, effective_role, current_workspace_name,
+        )
+        try:
+            _role = effective_role() or current_role() or ""
+        except Exception:
+            _role = ""
+        if _role == "owner":
+            from core.services.session_prewarm import warm_session_prefix_async
+            warm_session_prefix_async(
+                session_id,
+                provider="deepseek", model="deepseek-v4-flash",
+                user_id=current_user_id() or "", role="owner",
+                workspace_name=current_workspace_name() or "bjorn",
+            )
+    except Exception:
+        pass
     return {"session": session}
 
 

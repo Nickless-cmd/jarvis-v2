@@ -51,6 +51,52 @@ async def chat_tool_results(body: _ToolResultsBody) -> dict:
     return {"resolved": resolved, "total": len(body.results), "session_id": body.session_id}
 
 
+# ── Prewarm-on-return: session-bevidst DeepSeek prefix-cache-varme ────────────
+# ROD (målt 2026-07-21): DeepSeeks prefix-cache af en sessions [system][historik]
+# udløber i pauser (~30-120 min) → første besked efter en pause prefiller hele
+# ~32k-prompten fra bunden (16-48% hit vs 86-88% varm) = de oplevede >10s. Både
+# desk (composer-fokus) og jarvis-code (input-fokus) kalder dette endpoint når
+# brugeren vender tilbage, så cachen er varm inden han trykker send. Fire-and-
+# forget: returnerer straks, warm kører i baggrundstråd. Se session_prewarm.
+class _WarmBody(BaseModel):
+    session_id: str
+    provider_choice: str = "deepseek"
+    model: str = "deepseek-v4-flash"
+    mode: str = ""
+
+
+@router.post("/warm")
+async def chat_warm(body: _WarmBody) -> dict:
+    """Varm den aktive sessions prefix i DeepSeeks cache (prewarm-on-return).
+
+    Auth-gatet som resten af /chat. Fanger den autentificerede kontekst NU (den
+    tabes i baggrundstråden) og fyrer warm_session_prefix_async. Returnerer straks
+    så klienten aldrig blokeres. Kun deepseek + eksisterende session varmes; alt
+    andet no-op'er lydløst (medlemmer på ollama har ingen prefix-cache at varme)."""
+    from core.identity.workspace_context import (
+        current_user_id, current_role, effective_role, current_workspace_name,
+    )
+    sid = str(body.session_id or "").strip()
+    if not sid:
+        return {"status": "skipped", "reason": "no-session"}
+    if get_chat_session(sid) is None:
+        return {"status": "skipped", "reason": "unknown-session"}
+    try:
+        _role = effective_role() or current_role() or "owner"
+    except Exception:
+        _role = "owner"
+    from core.services.session_prewarm import warm_session_prefix_async
+    warm_session_prefix_async(
+        sid,
+        provider=str(body.provider_choice or "deepseek"),
+        model=str(body.model or "deepseek-v4-flash"),
+        user_id=current_user_id() or "",
+        role=_role,
+        workspace_name=current_workspace_name() or "bjorn",
+    )
+    return {"status": "warming", "session_id": sid}
+
+
 def maybe_handle_override(text: str, session_id: str) -> dict | None:
     """Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` /
     `!revoke-override`. Wiret her ligesom discord/telegram-gatewayen — ellers

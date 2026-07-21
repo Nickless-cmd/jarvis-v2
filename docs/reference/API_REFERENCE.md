@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-07-18 from AST fallback — 519 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-07-21 from AST fallback — 521 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -473,6 +473,7 @@
 | POST | `/tool-intent/deny` |  | mission_control_runtime_config |
 | GET | `/tool-result/{result_id}` |  | jarvisx_sessions |
 | GET | `/tool-router-state` |  | tool_router |
+| POST | `/tool_results` |  | chat_stream_v2 |
 | GET | `/tools/inventory` |  | jarvisx_sessions |
 | GET | `/trading/state` |  | jarvisx_processes |
 | GET | `/trainman` |  | central_matrix |
@@ -504,6 +505,7 @@
 | PUT | `/visible-execution` |  | mission_control_runtime_config |
 | GET | `/visible-providers` |  | chat |
 | GET | `/voices` |  | tts |
+| POST | `/warm` |  | chat_stream_v2 |
 | GET | `/watcher-lineage` |  | mission_control_agents |
 | POST | `/webhook` |  | billing |
 | GET | `/white-rabbit` |  | central_matrix |

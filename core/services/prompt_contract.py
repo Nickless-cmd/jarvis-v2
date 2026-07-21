@@ -1720,11 +1720,20 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("multi-signal recall (BM25+entity+embedding)", _e)
     # Phase 1 — proactive auto-compact at 70% threshold (best-effort, cooldown-protected)
+    # Guard: ALDRIG compaction som bivirkning af en pre-warm-build (session_prewarm /
+    # assembly_prewarm sætter is_prewarm_active()). Ellers ville en cache-warm kunne
+    # trigge en rigtig compaction af brugerens session — forbudt (pollution).
     try:
-        from core.services.proactive_context_governor import auto_compact_if_needed
-        auto_compact_if_needed()  # silent — runs only if needed
+        from core.services.assembly_prewarm import is_prewarm_active as _is_prewarm
+        _prewarming = _is_prewarm()
     except Exception:
-        pass
+        _prewarming = False
+    if not _prewarming:
+        try:
+            from core.services.proactive_context_governor import auto_compact_if_needed
+            auto_compact_if_needed()  # silent — runs only if needed
+        except Exception:
+            pass
     try:
         from core.services.autonomous_goals import goals_prompt_section
         _awareness_add(35, "active autonomous goals", goals_prompt_section())

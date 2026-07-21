@@ -25,7 +25,7 @@ import { MessageRail, railLabel } from '../components/chat/MessageRail'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
-import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRuns, followRun } from '../lib/api'
+import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRuns, followRun, warmSession } from '../lib/api'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
 
 // Navngivne server-roots (matcher backend _allowed_roots). Owner: hele kodebasen
@@ -159,6 +159,19 @@ export function CodeView({
   // SAMME assistant-svar to gange → dublet i transcript. ChatView har haft denne
   // vagt; code-mode manglede den.
   const reconciledForRun = useRef<string | null>(null)
+  // Prewarm-on-return (jarvis-code): varm sessionens DeepSeek-prefix når code-view
+  // vises / vinduet får fokus igen, så første besked efter en pause rammer cachen
+  // i stedet for cold prefill (~32k). Server throttler 45s; best-effort. Samme fix
+  // som desk-chat. Se warmSession / session_prewarm.
+  useEffect(() => {
+    if (!settings || !sessionId) return
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    warmSession(cfg, sessionId)
+    const onFocus = () => { warmSession(cfg, sessionId) }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [settings, sessionId])
+
   // Anonym ref til at gemme FORRIGE sessionsId (så vi kan gemme dens stats ved skift).
   const prevSessionRef = useRef<string | null>(sessionId)
   useEffect(() => {

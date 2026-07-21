@@ -476,14 +476,14 @@ _Central 'users' route — hvornår var hver bruger sidst aktiv, og hvordan (own
 | function | `chat_model_context` | `(provider=…, model=…)` | Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1253) |
 | function | `chat_create_session` | `(request)` | Opret en ny chat-session (valgfrit bundet til et code-mode workspace). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1267) |
 | function | `chat_session` | `(session_id)` | Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1278) |
-| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1287) |
-| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1297) |
-| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1305) |
-| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1473) |
-| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1492) |
-| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1506) |
-| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1519) |
-| function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L1533) |
+| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1310) |
+| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1320) |
+| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1328) |
+| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1496) |
+| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1515) |
+| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1529) |
+| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1542) |
+| function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L1556) |
 
 ## `apps/api/jarvis_api/routes/chat_stream_v2.py`
 _POST /chat/stream/v2 — Anthropic-style SSE protokol._
@@ -493,9 +493,11 @@ _POST /chat/stream/v2 — Anthropic-style SSE protokol._
 | class | `_ToolResultItem` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L32) |
 | class | `_ToolResultsBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L38) |
 | function | `chat_tool_results` | `(body)` | Client submits locally-executed tool results; resolve the paused visible run. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L44) |
-| function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L54) |
-| function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L74) |
-| function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L107) |
+| class | `_WarmBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L61) |
+| function | `chat_warm` | `(body)` | Varm den aktive sessions prefix i DeepSeeks cache (prewarm-on-return). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L69) |
+| function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L100) |
+| function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L120) |
+| function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L153) |
 
 ## `apps/api/jarvis_api/routes/cheap_balancer.py`
 _Mission Control endpoints for cheap_lane_balancer telemetry + controls._

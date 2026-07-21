@@ -12,7 +12,7 @@ import { VoiceConversation } from '../components/chat/VoiceConversation'
 import { usePermission } from '../hooks/usePermission'
 import { useOnline } from '../hooks/useOnline'
 import { readModelPrefs } from '../lib/composerPrefs'
-import { getContextInfo, getContextUsage, getSessionMilestones, getActiveRuns, followRun, compactNow } from '../lib/api'
+import { getContextInfo, getContextUsage, getSessionMilestones, getActiveRuns, followRun, compactNow, warmSession } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -113,6 +113,20 @@ export function ChatView({
     const id = setInterval(poll, compacting ? 1200 : 6000)
     return () => { alive = false; clearInterval(id) }
   }, [settings, sessionId, stream.status, compacting])
+
+  // Prewarm-on-return: når vinduet får fokus igen (bruger vender tilbage efter en
+  // pause), varm sessionens DeepSeek-prefix så DEN FØRSTE besked rammer cachen i
+  // stedet for cold prefill (~32k tokens = de oplevede >10s). Serveren throttler
+  // 45s pr. session; best-effort/fire-and-forget. Session-åbning dækkes desuden
+  // server-side (GET /chat/sessions/{id}). Se warmSession / session_prewarm.
+  useEffect(() => {
+    if (!settings || !sessionId) return
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    warmSession(cfg, sessionId)  // varm straks når en session vises
+    const onFocus = () => { warmSession(cfg, sessionId) }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [settings, sessionId])
 
   // Saved rail = MILEPÆLE (kapitler), ikke ét anker pr. besked (Bjørn 2026-06-23). Backend
   // segmenterer samtalen i titlede kapitler (cheap-lane, cached). Vi poller ved session-skift

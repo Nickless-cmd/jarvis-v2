@@ -240,6 +240,31 @@ export async function compactNow(
   })
 }
 
+/** Prewarm-on-return: varm sessionens DeepSeek-prefix-cache når brugeren vender
+ *  tilbage (composer-fokus), så første besked efter en pause rammer cachen i stedet
+ *  for cold prefill (~32k tokens = de oplevede >10s). Fire-and-forget: aldrig await'et
+ *  på send-stien, fejl sluges (best-effort). Serveren throttler pr. session (45s) og
+ *  no-op'er for ikke-owner/ikke-deepseek. Gælder BÅDE chat- og code-view. */
+export async function warmSession(
+  config: ApiConfig,
+  sessionId: string,
+  opts: { provider?: string; model?: string } = {},
+): Promise<void> {
+  if (!sessionId) return
+  try {
+    await apiFetch(config, '/chat/warm', {
+      method: 'POST',
+      body: {
+        session_id: sessionId,
+        provider_choice: opts.provider || 'deepseek',
+        model: opts.model || 'deepseek-v4-flash',
+      },
+    })
+  } catch {
+    /* best-effort — en warm-fejl må aldrig påvirke chatten */
+  }
+}
+
 /** Upload en fil (drag/drop eller fil-vælger) → returnerer attachment_id.
  *  Serveren kræver session_id (Form-felt) og validerer at sessionen findes. */
 export async function uploadAttachment(

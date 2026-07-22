@@ -49,7 +49,7 @@ def _current_visible_window() -> int:
     glm-5.1 256k, opus/sonnet 200k, etc. (see model_context.model_context_window)."""
     try:
         from core.services.model_context import model_context_window
-        from core.services.provider_router import resolve_provider_router_target
+        from core.runtime.provider_router import resolve_provider_router_target
         t = resolve_provider_router_target(lane="visible")
         w = model_context_window(str(t.get("provider", "")), str(t.get("model", "")))
         if w and int(w) > 0:

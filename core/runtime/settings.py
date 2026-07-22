@@ -316,8 +316,12 @@ class RuntimeSettings:
     # mindre forvirret af 200k historik — opmærksomhed dør længe før vinduet. Vi
     # sigter mod et lille arbejdsvindue for svarkvalitet, ikke for at passe i vinduet.
     # Compact NÅR transcript-tokens ≥ budget; compact NED til low-water.
-    context_attention_budget_tokens: int = 35_000     # high-water: trigger her
-    context_attention_low_water_tokens: int = 15_000  # compact ned til ~dette
+    # 2026-07-23 (Bjørn): hævet 35k→80k + low-water 15k→35k. De 35k gav "glemmer 4
+    # beskeder tilbage" med lange beskeder; 80k holder ~2× mere historik og compacter
+    # blidere (ned til 35k, ikke 15k). Stadig langt fra 1M — bevidst lille arbejdsvindue
+    # for svarkvalitet, men rummeligt nok til at han ikke taber nær kontekst.
+    context_attention_budget_tokens: int = 80_000     # high-water: trigger her
+    context_attention_low_water_tokens: int = 35_000  # compact ned til ~dette
     # Model-BEVIDST sikkerhedsloft (backstop). Hvis transcript på trods af budgettet
     # nærmer sig det AKTIVE models reelle vindue (glm-5.1 256k / glm-5.2·deepseek 1M),
     # tving compaction. Skalerer med modellen; fanger kun ekstreme tilfælde.

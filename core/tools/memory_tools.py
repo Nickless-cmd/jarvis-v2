@@ -42,6 +42,22 @@ def _memory_md(user_id: str | None = None) -> Path:
     (alle brugeres memory blandet i shared).
     """
     uid = _resolve_memory_uid(user_id)
+    if not uid:
+        # 2026-07-22: no user context (autonomous / dream / heartbeat runs). Jarvis' OWN
+        # entity-level memories (dreams, inner-life) belong to the OWNER's workspace — his
+        # home identity — NOT shared/. shared/ is invisible to EVERY user's prompt (each
+        # reads their own workspace), so these were orphaned (236 entries found in shared,
+        # incl. all his dreams). Multi-user-safe: per-user tool writes resolve above via uid;
+        # only the entity-level no-context case falls here → owner. Resolve owner dynamically
+        # (never hardcode). Last-resort shared/ only if the owner cannot be resolved.
+        try:
+            from core.identity.users import get_owner
+            _owner = get_owner()
+            _oid = str(getattr(_owner, "discord_id", "") or "").strip() if _owner else ""
+            if _oid:
+                uid = _oid
+        except Exception:
+            pass
     if uid:
         try:
             return workspace_dir(uid) / "MEMORY.md"

@@ -419,13 +419,13 @@ _Memory duplicate-check and safe-write tools for MEMORY.md._
 |---|---|---|---|---|
 | function | `_resolve_memory_uid` | `(user_id=…)` | Hvilken brugers MEMORY.md skal vi røre. Best-effort: | [src](../../../core/tools/memory_tools.py#L11) |
 | function | `_memory_md` | `(user_id=…)` | Brugerens MEMORY.md (workspace) — IKKE shared. Fald tilbage til shared | [src](../../../core/tools/memory_tools.py#L36) |
-| function | `_read_memory` | `()` | — | [src](../../../core/tools/memory_tools.py#L53) |
-| function | `_parse_headings` | `(text)` | — | [src](../../../core/tools/memory_tools.py#L60) |
-| function | `_normalize` | `(heading)` | — | [src](../../../core/tools/memory_tools.py#L64) |
-| function | `_exec_memory_check_duplicate` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L68) |
-| function | `_exec_memory_upsert_section` | `(args)` | Write or update a section in MEMORY.md. Replaces existing section if heading matches. | [src](../../../core/tools/memory_tools.py#L105) |
-| function | `_exec_memory_list_headings` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L179) |
-| function | `_exec_memory_consolidate` | `(args)` | Find fuzzy-overlapping sections in MEMORY.md and propose/execute merges. | [src](../../../core/tools/memory_tools.py#L189) |
+| function | `_read_memory` | `()` | — | [src](../../../core/tools/memory_tools.py#L69) |
+| function | `_parse_headings` | `(text)` | — | [src](../../../core/tools/memory_tools.py#L76) |
+| function | `_normalize` | `(heading)` | — | [src](../../../core/tools/memory_tools.py#L80) |
+| function | `_exec_memory_check_duplicate` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L84) |
+| function | `_exec_memory_upsert_section` | `(args)` | Write or update a section in MEMORY.md. Replaces existing section if heading matches. | [src](../../../core/tools/memory_tools.py#L121) |
+| function | `_exec_memory_list_headings` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L195) |
+| function | `_exec_memory_consolidate` | `(args)` | Find fuzzy-overlapping sections in MEMORY.md and propose/execute merges. | [src](../../../core/tools/memory_tools.py#L205) |
 
 ## `core/tools/memory_topic_tools.py`
 _Kuraterede memory-topic-tools (spec 2026-07-10 Spec B)._

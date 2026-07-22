@@ -58,7 +58,7 @@ _LEAN_TAIL_START_MARKERS: tuple[str, ...] = (
 # Behavioral anchor (anti-fabrikation) ligger i halen → extraheres + re-appendes.
 # Match på prefiks (teksten efter kan variere let på tværs af versioner).
 _LEAN_KEEP_ROW_PREFIXES: tuple[str, ...] = (
-    "⚖️ FØR DU SVARER",
+    "⚖️ Before you answer",   # behavioral anchor (audit #3, 2026-07-22; was "⚖️ FØR DU SVARER")
 )
 
 

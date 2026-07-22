@@ -2014,10 +2014,17 @@ def _build_visible_chat_prompt_assembly_impl(
         if not _never_drop and _used > 0 and _used + _needed > _AWARENESS_BUDGET:
             _dropped.append(_label)
             continue
+        # Audit #3 (2026-07-22): keep the category header ATTACHED to its first
+        # content item (single "\n") instead of pushing it as its own buffer
+        # entry — otherwise the "\n\n" dyn_tail join renders every header as a
+        # separate, near-empty part ([SELF-MONITOR] on its own line, then the
+        # payload as the next part). Content-neutral: same text, one fewer blank
+        # line between a header and the line it labels.
         if _pending_header:
-            _awareness_buffer.append(_pending_header)
+            _awareness_buffer.append(_pending_header + "\n" + _content)
             _used += len(_pending_header) + 2  # +2 for "\n\n" join overhead
-        _awareness_buffer.append(_content)
+        else:
+            _awareness_buffer.append(_content)
         derived_inputs.append(_label)
         _used += len(_content)
         _last_category = _category
@@ -2648,25 +2655,22 @@ def _build_visible_chat_prompt_assembly_impl(
             pass
     except Exception:
         pass
-    # Behavioral anchor (2026-06-22) — echoed into the dynamic tail right before
-    # the user message because Jarvis reported he attends to the tail (his "now")
-    # and didn't *feel* the honesty/tool rule sitting in the cacheable prefix.
-    # Compact, point-of-action reminder; the full rule still lives in the prefix.
+    # Behavioral anchor (2026-06-22) — a single point-of-action echo in the tail
+    # right before the user message, because Jarvis reported he attends to the
+    # tail (his "now") and didn't *feel* the honesty rule sitting in the cacheable
+    # prefix. The FULL rule lives once in the prefix (VISIBLE_CHAT_RULES.md '##
+    # Honesty', audit #1); this is the compact recency reminder. Consolidated
+    # 2026-07-22 (audit #3): the two separate Danish rows (action + epistemic)
+    # collapsed into ONE English line — dedup + English policy + tail-anchor kept.
+    # Keeps the '⚖️ ' prefix: visible_followup_lean re-appends this row by prefix.
     _dyn_tail.append(
-        "⚖️ FØR DU SVARER: Påstå ALDRIG du gjorde noget (skrev/sendte/kørte/"
-        "rettede) uden et tool-kald i SAMME tur der beviser det — ellers sig "
-        "præcist hvad du gjorde og hvad du IKKE nåede. Kald værktøjer struktureret "
-        "(tool_calls), aldrig som inline-tekst. Gør, lov ikke."
+        "⚖️ Before you answer: never claim you did something (wrote/sent/ran/"
+        "edited) without a same-turn tool call that proves it — else say what you "
+        "did and did NOT reach. Unsure of a fact (name/number/date/quote/command/"
+        "API/path)? Say so or look it up — never guess a plausible detail. Call "
+        "tools structured (tool_calls), never inline. Do, don't promise."
     )
-    derived_inputs.append("behavioral anchor (user-msg tail)")
-    # Epistemisk afholdenhed echoed i halen (point-of-action) — Jarvis attenderer
-    # "sit nu" stærkest her. Mod gætteriet (DeepSeek afstår sjældent af sig selv).
-    _dyn_tail.append(
-        "🎯 Usikker på et FAKTUM (navn/tal/dato/citat/kommando/API/sti)? Sig 'det "
-        "ved jeg ikke' eller slå det op FØR du svarer — gæt aldrig en plausibel "
-        "detalje. Ærligt 'ved ikke' > flydende forkert."
-    )
-    derived_inputs.append("epistemic abstention anchor (user-msg tail)")
+    derived_inputs.append("behavioral anchor (user-msg tail, action+epistemic)")
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
     # Matrix Nudges — i stedet for den gamle ensemble-label-liste postes der nu

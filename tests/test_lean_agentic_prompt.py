@@ -40,8 +40,8 @@ _HEAVY_TAIL = "\n\n".join([
     "[CALIBRATION]\nTemperatur: fokuseret, lav small-talk.",
     "Finitude: session-alder 3t12m.",
     "[device-presence] S24 aktiv, desk følger med.",
-    "⚖️ FØR DU SVARER: Påstå ALDRIG du gjorde noget uden et tool-kald i "
-    "SAMME tur der beviser det. Gør, lov ikke.",
+    "⚖️ Before you answer: never claim you did something without a same-turn "
+    "tool call that proves it. Do, don't promise.",
     "[TIME PIN] 2026-06-29 14:32 CEST.",
 ])
 
@@ -101,8 +101,8 @@ def test_lean_keeps_original_task_and_history():
 def test_lean_keeps_load_bearing_anti_lie_row():
     base = _make_base_messages()
     lean, _ = vf.build_lean_base_messages(base)
-    # ⚖️ FØR DU SVARER (behavioral anchor) = load-bearing anti-lie row #1.
-    assert "⚖️ FØR DU SVARER" in lean[-1]["content"]
+    # ⚖️ Before you answer (behavioral anchor) = load-bearing anti-lie row #1.
+    assert "⚖️ Before you answer" in lean[-1]["content"]
 
 
 def test_lean_drops_heavy_awareness_markers():
@@ -262,7 +262,7 @@ def test_flag_on_round_two_plus_is_lean():
     assert result is not base  # transformeret
     assert "[INDRE LIV]" not in result[-1]["content"]
     assert _ORIGINAL_TASK in result[-1]["content"]
-    assert "⚖️ FØR DU SVARER" in result[-1]["content"]
+    assert "⚖️ Before you answer" in result[-1]["content"]
 
 
 # ── metrics shape ──

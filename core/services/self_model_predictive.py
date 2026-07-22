@@ -179,13 +179,13 @@ def _maybe_record_from_model(model: dict[str, Any]) -> None:
 def predictive_self_model_section() -> str:
     """Render predictive self-model as a prompt awareness section."""
     m = build_predictive_self_model(days=14)
-    lines: list[str] = ["Hvem du *empirisk* er (sidste 14 dage):"]
+    lines: list[str] = ["Who you *empirically* are (last 14 days):"]
 
     tq = m.get("tick_quality") or {}
     if tq:
         lines.append(
-            f"- Tick-kvalitet: {tq.get('avg')}/100 (n={tq.get('samples')}, "
-            f"trend: {tq.get('trend')}, sidste 5: {tq.get('last_5_avg')})"
+            f"- Tick quality: {tq.get('avg')}/100 (n={tq.get('samples')}, "
+            f"trend: {tq.get('trend')}, last 5: {tq.get('last_5_avg')})"
         )
 
     mood = m.get("mood_baseline") or {}
@@ -198,19 +198,19 @@ def predictive_self_model_section() -> str:
             stdev = info.get("stdev")
             if mean is None:
                 continue
-            stable = "stabil" if (stdev or 0) < 0.1 else "varierende"
+            stable = "stable" if (stdev or 0) < 0.1 else "varying"
             try:
                 salient.append(f"{dim}={float(mean):.2f} ({stable})")
             except (TypeError, ValueError):
                 continue
         if salient:
-            lines.append("- Stemnings-baseline: " + ", ".join(salient[:5]))
+            lines.append("- Mood baseline: " + ", ".join(salient[:5]))
 
     adh = m.get("adherence") or {}
     if isinstance(adh, dict) and adh.get("total"):
         rate = adh.get("adherence_rate")
         flag = adh.get("flag")
-        bit = f"- Beslutnings-adherence: {rate} ({adh.get('total')} forpligtelser)"
+        bit = f"- Decision adherence: {rate} ({adh.get('total')} commitments)"
         if flag:
             bit += f" ⚠ {flag}"
         lines.append(bit)
@@ -219,12 +219,12 @@ def predictive_self_model_section() -> str:
     if cf.get("count"):
         kinds = ", ".join(f"{k}:{v}" for k, v in (cf.get("by_kind") or {}).items())
         lines.append(
-            f"- Kriser sidste 30 dage: {cf.get('count')} ({cf.get('per_week')}/uge) — {kinds}"
+            f"- Crises last 30 days: {cf.get('count')} ({cf.get('per_week')}/week) — {kinds}"
         )
 
     pi = m.get("productive_idle_ratio_7d")
     if pi is not None:
-        lines.append(f"- Produktivt idle-forhold (7d): {pi}")
+        lines.append(f"- Productive idle ratio (7d): {pi}")
 
     if len(lines) == 1:
         return ""  # no signal yet

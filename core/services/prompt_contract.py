@@ -2611,19 +2611,16 @@ def _build_visible_chat_prompt_assembly_impl(
                 # crisis line here so the same phenomenon isn't reported twice.
                 _emp = "\n".join(
                     ln for ln in _emp.splitlines()
-                    if "Kriser sidste 30 dage" not in ln
+                    if "Crises last 30 days" not in ln
                 )
                 if _emp.strip():
                     _self_lines.append(_emp)
         except Exception:
             pass
-        try:
-            from core.services.development_sense import development_sense_section
-            _dev = development_sense_section()
-            if _dev:
-                _self_lines.append(_dev)
-        except Exception:
-            pass
+        # Growth pulse (development_sense) intentionally NOT shown here (audit #3,
+        # 2026-07-22): the same declining-growth signal is already carried by his
+        # felt self-narrative ("vækst-kompas peger mod visnen") in the felt-state
+        # block. One expression of it, his own — not a duplicated decline metric.
         try:
             from core.services.agent_self_evaluation import self_evaluation_section
             self_evaluation_section()  # side-effects only; duplicate text dropped

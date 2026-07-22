@@ -291,6 +291,46 @@ class TestHonestyRulesSection:
         assert _self_correction_nudges_section(compact=True) == ""
 
 
+class TestCompactCuratedIndex:
+    """Audit #2 (2026-07-22): curated memory index rendered compactly for the
+    prompt — 'title · slug', hooks + duplicated slug-URL dropped, zero topic loss."""
+
+    def test_drops_hook_and_link_syntax_keeps_title_and_slug(self):
+        from core.services.prompt_contract import _compact_curated_index
+        raw = (
+            "- [Idlen.io — status](curated/idlen-io-status.md) — Live:** ✅ SDK på npm\n"
+            "- [Small Victories](curated/small-victories.md) — 2026-04-10: første notif\n"
+        )
+        out = _compact_curated_index(raw)
+        assert out == (
+            "- Idlen.io — status · idlen-io-status\n"
+            "- Small Victories · small-victories"
+        )
+        # no leftover markdown-link noise or hook fragments
+        assert "curated/" not in out
+        assert ".md)" not in out
+        assert "Live:**" not in out
+
+    def test_smaller_than_input_and_preserves_line_count(self):
+        from core.services.prompt_contract import _compact_curated_index
+        raw = "\n".join(
+            f"- [Topic number {i} with a longish descriptive title]"
+            f"(curated/topic-number-{i}-with-a-longish-descriptive-title.md) "
+            f"— **broken markdown hook fragment number {i} cut off mid-sen"
+            for i in range(20)
+        )
+        out = _compact_curated_index(raw)
+        assert len(out.splitlines()) == 20          # zero topic loss
+        assert len(out) < len(raw)                   # strictly smaller
+
+    def test_non_matching_lines_pass_through(self):
+        from core.services.prompt_contract import _compact_curated_index
+        raw = "- plain line without link\n\n- [T](curated/t.md)"
+        out = _compact_curated_index(raw)
+        assert "- plain line without link" in out
+        assert "- T · t" in out
+
+
 class TestCachePrefixInvariant:
     """REGRESSIONSVAGT: warmer-prefixet (build_visible_stable_prefix) SKAL være
     et byte-identisk prefix af den fulde live-assembly — ellers divergerer

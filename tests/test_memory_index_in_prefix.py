@@ -17,8 +17,9 @@ def test_index_appears_in_stable_prefix_after_migration(isolated_runtime):
     from core.services.prompt_contract import build_visible_stable_prefix
     prefix = build_visible_stable_prefix(name="default")
     text = prefix if isinstance(prefix, str) else str(prefix)
-    assert "curated/alpha.md" in text          # index one-liner er med
-    assert "Alpha" in text
+    # Rendered compactly (audit #2, 2026-07-22): 'title · slug', no curated/*.md link.
+    assert "- Alpha · alpha" in text           # compact index one-liner er med
+    assert "curated/alpha.md" not in text      # verbose link-syntaks droppet
 
 
 def test_index_is_noop_before_migration(isolated_runtime):

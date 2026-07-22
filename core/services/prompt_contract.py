@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import threading as _threading_mod
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -362,9 +363,35 @@ def _honesty_rules_section(*, compact: bool) -> str:
     return ""
 
 
+_CURATED_LINE_RE = re.compile(r"^\s*-\s*\[(.+?)\]\(curated/(.+?)\.md\)(?:\s*—\s*(.*))?$")
+
+
+def _compact_curated_index(raw: str) -> str:
+    """Render the stored curated INDEX.md compactly for the prompt (audit #2,
+    2026-07-22). The store keeps '- [title](curated/slug.md) — hook' lines; the
+    hook is the topic body's first line at write-time, so it's usually broken
+    markdown (table headers, '**', mid-sentence) — pure noise in the prompt, and
+    the slug is duplicated inside the markdown link. We re-emit '- title · slug'
+    (title = the human hint, slug = the read_memory_topic key). ~48% smaller with
+    zero topic loss. Lines that don't match the pattern pass through unchanged."""
+    out: list[str] = []
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        m = _CURATED_LINE_RE.match(line)
+        if not m:
+            out.append(line.rstrip())
+            continue
+        title = (m.group(1) or "").strip()
+        slug = (m.group(2) or "").strip()
+        out.append(f"- {title} · {slug}" if title and title != slug else f"- {slug}")
+    return "\n".join(out)
+
+
 def _curated_memory_index_section(name: str = "default") -> str:
     """Kurateret memory-INDEX (spec 2026-07-10 Spec B): altid-loadet én-linjers for
-    den resolvede bruger. Kroppe læses on-demand via read_memory_topic.
+    den resolvede bruger. Kroppe læses on-demand via read_memory_topic. Rendered
+    kompakt via _compact_curated_index (audit #2) — 'title · slug', ingen hooks.
 
     Samlet i ÉN helper så build_visible_stable_prefix (warmer-cron) og
     build_visible_chat_prompt_assembly (live-run) er BYTE-IDENTISKE her — ellers
@@ -387,12 +414,12 @@ def _curated_memory_index_section(name: str = "default") -> str:
             has_topics = False
         if not has_topics:
             return ""
-        idx = read_topic_index(name=name).strip()
+        idx = _compact_curated_index(read_topic_index(name=name)).strip()
         if not idx:
             return ""
         return (
             "## Curated memory index\n"
-            "(One line per topic. Read a topic on demand with "
+            "(One line per topic as 'title · slug'. Read a topic on demand with "
             "read_memory_topic(slug).)\n\n" + idx
         )
     except Exception:

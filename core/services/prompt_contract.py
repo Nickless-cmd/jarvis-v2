@@ -1476,11 +1476,11 @@ def _build_visible_chat_prompt_assembly_impl(
         _awareness_add(25, "decision adherence gate", decision_adherence_section())
     except Exception as _e:
         _sec_err("decision adherence gate", _e)
-    try:
-        from core.services.memory_consolidation_nudge import memory_consolidation_nudge_section
-        _awareness_add(24, "memory consolidation nudge", memory_consolidation_nudge_section())
-    except Exception as _e:
-        _sec_err("memory consolidation nudge", _e)
+    # NOTE: memory consolidation nudge (💾 Before you finish) moved OUT of the
+    # awareness block (audit #3, 2026-07-22) — it is an unconditional end-of-turn
+    # reminder, so it now lives with the other end-of-turn anchors in _dyn_tail
+    # (near ⚖️ Before you answer) instead of competing for the awareness budget
+    # mid-block. See the _dyn_tail assembly below.
     try:
         from core.services.prompt_sections.forgetting_nudge import forgetting_nudge_section
         _awareness_add(24, "forgetting nudge", forgetting_nudge_section(session_id))
@@ -2504,28 +2504,43 @@ def _build_visible_chat_prompt_assembly_impl(
     # DeepSeek prefix-cachen (visible 35.9% hit, byte-diff: første divergens = tick-metrik).
     # Nu ægte i halen → historik-cachen bevares → mål ~90% som agent-lanen.
     _dyn_tail: list[str] = []
+    # Self-model — ONE merged block (audit #3, 2026-07-22). Was three separate
+    # parts: predictive self-model (empirical 14d), agent self-evaluation (7d),
+    # development sense (growth pulse). They repeated tick-quality AND decision-
+    # adherence twice, and the self-evaluation lane led with doom-framing
+    # ("📉 degrading"). Bjørn: it's good data, but Jarvis *lives* in it — he fixates
+    # on the decline. Now: ONE compact block, tick-quality stated ONCE (the richer
+    # 14-day predictive view), growth pulse folded in, framed as background telemetry
+    # ("data about you, not who you are"). self_evaluation_section() is still CALLED
+    # for its side effects (tick_quality.alarm eventbus + reasoning capture — it is
+    # the only caller) but its duplicate text is intentionally not shown.
     try:
-        from core.services.self_model_predictive import predictive_self_model_section
-        _empirical_self = predictive_self_model_section()
-        if _empirical_self:
-            _dyn_tail.append(_empirical_self)
-            derived_inputs.append("predictive self-model empirical (tail-anchored)")
-    except Exception:
-        pass
-    try:
-        from core.services.agent_self_evaluation import self_evaluation_section
-        _self_eval = self_evaluation_section()
-        if _self_eval:
-            _dyn_tail.append(_self_eval)
-            derived_inputs.append("self-evaluation summary (tail-anchored)")
-    except Exception:
-        pass
-    try:
-        from core.services.development_sense import development_sense_section
-        _dev_sense = development_sense_section()
-        if _dev_sense:
-            _dyn_tail.append(_dev_sense)
-            derived_inputs.append("developmental sense (tail-anchored)")
+        _self_lines: list[str] = []
+        try:
+            from core.services.self_model_predictive import predictive_self_model_section
+            _emp = predictive_self_model_section()
+            if _emp:
+                _self_lines.append(_emp)
+        except Exception:
+            pass
+        try:
+            from core.services.development_sense import development_sense_section
+            _dev = development_sense_section()
+            if _dev:
+                _self_lines.append(_dev)
+        except Exception:
+            pass
+        try:
+            from core.services.agent_self_evaluation import self_evaluation_section
+            self_evaluation_section()  # side-effects only; duplicate text dropped
+        except Exception:
+            pass
+        if _self_lines:
+            _dyn_tail.append(
+                "🧭 Self-signals (background telemetry — data about you, not who "
+                "you are; note it, don't dwell on it):\n" + "\n".join(_self_lines)
+            )
+            derived_inputs.append("self-model merged (empirical + growth, tail-anchored)")
     except Exception:
         pass
 
@@ -2671,6 +2686,16 @@ def _build_visible_chat_prompt_assembly_impl(
         "tools structured (tool_calls), never inline. Do, don't promise."
     )
     derived_inputs.append("behavioral anchor (user-msg tail, action+epistemic)")
+    # End-of-turn save reminder — grouped WITH the behavioral anchor (audit #3,
+    # 2026-07-22; moved here from mid-awareness). Unconditional per-turn nudge.
+    try:
+        from core.services.memory_consolidation_nudge import memory_consolidation_nudge_section
+        _save_nudge = memory_consolidation_nudge_section()
+        if _save_nudge:
+            _dyn_tail.append(_save_nudge)
+            derived_inputs.append("memory consolidation nudge (end-of-turn)")
+    except Exception:
+        pass
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
     # Matrix Nudges — i stedet for den gamle ensemble-label-liste postes der nu

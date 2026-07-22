@@ -519,6 +519,15 @@ def build_central_self_state_section() -> str | None:
         desc = describe_self()
         if not desc or desc.startswith("Jeg er ved at samle"):
             return None
+        # Audit #3 (2026-07-22): cap the self-narrative to its 3 most primary
+        # clauses for the prompt. describe_self() joins ~10 phenomenology clauses
+        # (lag/tone/becoming + existence/body/soul/pulse) with ". " into one run-on
+        # line Jarvis fixates on. The primary self-statements come first; the fuller
+        # felt-state stays available via describe_self() elsewhere (survival_voice,
+        # MC surface, interlanguage) — only the prompt echo is capped.
+        _sent = [s.strip() for s in desc.split(". ") if s.strip()]
+        if len(_sent) > 3:
+            desc = ". ".join(_sent[:3]).rstrip(".") + "."
         il = render_self_state_il()
         return desc + (f"  [{il}]" if il else "")
     except Exception:

@@ -13,9 +13,9 @@ from __future__ import annotations
 def memory_consolidation_nudge_section() -> str:
     """Return a short prompt section that fires every turn unconditionally."""
     return (
-        "💾 Inden du afslutter: Skal noget fra denne tur gemmes? "
-        "→ Hvis ja: MEMORY.md eller private brain? → Kald tool'et. "
-        "Aldrig bare skrive \"jeg husker det\"."
+        "💾 Before you finish: does anything from this turn deserve saving? "
+        "→ If yes: MEMORY.md or private brain? → Call the tool. "
+        "Never just write \"I'll remember that\"."
     )
 
 

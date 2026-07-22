@@ -52,14 +52,31 @@ def test_sliding_short_history_no_op():
 
 
 def test_pressure_levels():
-    with patch("core.services.context_window_manager._estimate_session_tokens", return_value=2000):
-        assert estimate_pressure()["level"] == "comfortable"
-    with patch("core.services.context_window_manager._estimate_session_tokens", return_value=10000):
-        assert estimate_pressure()["level"] == "elevated"
-    with patch("core.services.context_window_manager._estimate_session_tokens", return_value=20000):
-        assert estimate_pressure()["level"] == "high"
-    with patch("core.services.context_window_manager._estimate_session_tokens", return_value=30000):
-        assert estimate_pressure()["level"] == "critical"
+    # Window-scaled (2026-07-22): thresholds are a fraction of the actual model
+    # window. Pin the window to 1,000,000 (deepseek-flash) and frac=0.65 →
+    # target=650k, high=750k, critical=820k.
+    import core.services.context_window_manager as cwm
+    with patch.object(cwm, "_current_visible_window", return_value=1_000_000):
+        for tokens, level in [
+            (2_000, "comfortable"),   # 0.2% — nowhere near full, unlike the old 8k target
+            (700_000, "elevated"),    # ≥ 650k target
+            (760_000, "high"),        # ≥ 750k
+            (900_000, "critical"),    # ≥ 820k
+        ]:
+            with patch("core.services.context_window_manager._estimate_session_tokens", return_value=tokens):
+                assert estimate_pressure()["level"] == level, (tokens, level)
+
+
+def test_pressure_scales_to_window_not_fixed():
+    # Regression guard for the 2026-07-22 fix: a 1M-window model must NOT be
+    # "elevated"/compacting at a few thousand tokens (the old 8000 target bug).
+    import core.services.context_window_manager as cwm
+    with patch.object(cwm, "_current_visible_window", return_value=1_000_000):
+        with patch("core.services.context_window_manager._estimate_session_tokens", return_value=6_000):
+            p = estimate_pressure()
+        assert p["level"] == "comfortable"
+        assert p["target"] >= 500_000       # compaction point scaled to the window
+        assert p["window"] == 1_000_000
 
 
 def test_degradation_zero_when_no_signals():

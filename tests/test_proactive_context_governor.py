@@ -14,19 +14,21 @@ def test_should_auto_compact_below_threshold():
 
 
 def test_should_auto_compact_above_threshold():
+    # Window-scaled (2026-07-22): compaction fires when tokens REACH the target
+    # (the window-scaled compaction point), not at 70% of it.
     pcg._LAST_AUTO_COMPACT_TS = 0  # reset
     with patch("core.services.context_window_manager.estimate_pressure",
-               return_value={"estimated_tokens": 6000, "target": 8000}):
+               return_value={"estimated_tokens": 9000, "target": 8000, "window": 12000}):
         result = pcg.should_auto_compact()
     assert result["should_compact"] is True
-    assert result["percent"] >= 70
+    assert result["percent"] == 75  # 9000/12000 of the window
 
 
 def test_should_auto_compact_respects_cooldown():
     import time
     pcg._LAST_AUTO_COMPACT_TS = time.time()  # just compacted
     with patch("core.services.context_window_manager.estimate_pressure",
-               return_value={"estimated_tokens": 7000, "target": 8000}):
+               return_value={"estimated_tokens": 9000, "target": 8000, "window": 12000}):
         result = pcg.should_auto_compact()
     assert result["should_compact"] is False
     assert "cooldown" in result["reason"]

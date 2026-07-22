@@ -59,15 +59,23 @@ def should_auto_compact() -> dict[str, Any]:
         return {"should_compact": False, "reason": f"pressure check failed: {exc}"}
 
     tokens = int(pressure.get("estimated_tokens") or 0)
-    target = int(pressure.get("target") or 8000)
-    pct = (tokens / target * 100) if target > 0 else 0
+    # `target` is now the window-scaled compaction trigger point (≈75% of the
+    # model's actual context window — see context_window_manager). Compact when we
+    # REACH it, not at 70% of it: the old "70% of an 8000 target" fired at ~5600
+    # tokens = 0.5% of a 1M window and wiped recent history. Bjørn 2026-07-22.
+    window = int(pressure.get("window") or 0)
+    target = int(pressure.get("target") or 150_000)
+    pct_of_window = (tokens / window * 100) if window > 0 else 0
 
-    if pct < _AUTO_COMPACT_THRESHOLD_PCT:
+    if tokens < target:
         return {
             "should_compact": False,
-            "reason": f"only {pct:.0f}% of target ({tokens}/{target})",
+            "reason": (
+                f"{tokens}/{target} tokens "
+                f"({pct_of_window:.0f}% of {window or '?'}-tok window) — below compaction point"
+            ),
             "tokens": tokens,
-            "percent": round(pct, 1),
+            "percent": round(pct_of_window, 1),
         }
 
     now = time.time()
@@ -76,14 +84,17 @@ def should_auto_compact() -> dict[str, Any]:
             "should_compact": False,
             "reason": "auto-compact cooldown active",
             "tokens": tokens,
-            "percent": round(pct, 1),
+            "percent": round(pct_of_window, 1),
         }
 
     return {
         "should_compact": True,
-        "reason": f"context at {pct:.0f}% of target — proactive compaction",
+        "reason": (
+            f"context at {pct_of_window:.0f}% of the {window or '?'}-tok window "
+            f"({tokens} ≥ {target} compaction point) — proactive compaction"
+        ),
         "tokens": tokens,
-        "percent": round(pct, 1),
+        "percent": round(pct_of_window, 1),
     }
 
 

@@ -30,10 +30,61 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-# Token thresholds (rough — calibrate over time via instrumentation)
-_TOKEN_BUDGET_TARGET = 8000      # comfortable working size
-_TOKEN_PRESSURE_HIGH = 16000     # start nudging
-_TOKEN_PRESSURE_CRITICAL = 24000  # force action
+# Legacy fixed thresholds (pre-2026-07-22). Kept only as a floor/fallback when the
+# model window is unknown. The live thresholds now SCALE to the actual model context
+# window — see _window_scaled_thresholds(). The old fixed 8000/16000/24000 were
+# calibrated for small windows and compacted a 1M-window model at ~0.5% of capacity,
+# wiping recent history ("forgot 4 messages ago"). Bjørn 2026-07-22.
+_TOKEN_BUDGET_TARGET = 8000      # legacy fallback only
+_TOKEN_PRESSURE_HIGH = 16000     # legacy fallback only
+_TOKEN_PRESSURE_CRITICAL = 24000  # legacy fallback only
+
+_FALLBACK_WINDOW = 200_000        # assumed window when the model is unknown
+
+
+def _current_visible_window() -> int:
+    """Resolve the visible lane model's context window in tokens. Fallback 200k.
+
+    This is what compaction must scale to — deepseek-v4-flash and glm-5.2 are 1M,
+    glm-5.1 256k, opus/sonnet 200k, etc. (see model_context.model_context_window)."""
+    try:
+        from core.services.model_context import model_context_window
+        from core.services.provider_router import resolve_provider_router_target
+        t = resolve_provider_router_target(lane="visible")
+        w = model_context_window(str(t.get("provider", "")), str(t.get("model", "")))
+        if w and int(w) > 0:
+            return int(w)
+    except Exception:
+        pass
+    return _FALLBACK_WINDOW
+
+
+def _window_scaled_thresholds() -> dict[str, int]:
+    """Compaction target + pressure levels as a fraction of the ACTUAL model window.
+
+    target = compaction trigger point (default 75% of window, tunable via
+    settings.context_window_target_fraction). high/critical sit above it."""
+    window = _current_visible_window()
+    # Reuse the EXISTING window-fraction setting (context_compact_threshold_fraction,
+    # default 0.65) — one source of truth for "compact at X% of the model window".
+    # It already existed (2026-06-30) but only the DISABLED auto_compact path read it;
+    # the live deferred trigger ignored it and used the ancient fixed 8000. Now the
+    # live trigger reads it too.
+    try:
+        from core.runtime.settings import load_settings
+        frac = float(load_settings().context_compact_threshold_fraction or 0.65)
+    except Exception:
+        frac = 0.65
+    frac = min(max(frac, 0.30), 0.95)
+    target = int(window * frac)
+    high = int(window * min(frac + 0.10, 0.97))
+    critical = int(window * min(frac + 0.17, 0.98))
+    # Never below the legacy floor (protects tiny/unknown windows from over-eager
+    # compaction going the OTHER way — but for real 1M windows this never binds).
+    target = max(target, _TOKEN_BUDGET_TARGET)
+    high = max(high, _TOKEN_PRESSURE_HIGH)
+    critical = max(critical, _TOKEN_PRESSURE_CRITICAL)
+    return {"window": window, "target": target, "high": high, "critical": critical}
 
 
 def _estimate_session_tokens() -> int:
@@ -99,22 +150,27 @@ def apply_sliding(
 
 
 def estimate_pressure() -> dict[str, Any]:
-    """Read current session size + classify pressure level."""
+    """Read current session size + classify pressure level against the ACTUAL
+    model context window (window-scaled since 2026-07-22 — see
+    _window_scaled_thresholds). `target` is the compaction trigger point."""
     tokens = _estimate_session_tokens()
-    if tokens >= _TOKEN_PRESSURE_CRITICAL:
+    th = _window_scaled_thresholds()
+    target, high, critical = th["target"], th["high"], th["critical"]
+    if tokens >= critical:
         level = "critical"
-    elif tokens >= _TOKEN_PRESSURE_HIGH:
+    elif tokens >= high:
         level = "high"
-    elif tokens >= _TOKEN_BUDGET_TARGET:
+    elif tokens >= target:
         level = "elevated"
     else:
         level = "comfortable"
     return {
         "estimated_tokens": tokens,
         "level": level,
-        "target": _TOKEN_BUDGET_TARGET,
-        "high_threshold": _TOKEN_PRESSURE_HIGH,
-        "critical_threshold": _TOKEN_PRESSURE_CRITICAL,
+        "target": target,
+        "window": th["window"],
+        "high_threshold": high,
+        "critical_threshold": critical,
     }
 
 

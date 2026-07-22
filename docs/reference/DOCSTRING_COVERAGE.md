@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6392/12949 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6394/12951 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6392/12949 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4223 | 9014 | 46% |
+| `core.services` | 4225 | 9016 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 65 | 117 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1227,8 +1227,8 @@ Generated from source. 6392/12949 functions/methods documented (49%). The list b
 - `core/services/private_temporal_promotion_signal_tracking.py` :: `build_runtime_private_temporal_promotion_signal_surface` (L83)
 - `core/services/private_temporal_promotion_signal_tracking.py` :: `refresh_runtime_private_temporal_promotion_signal_statuses` (L52)
 - `core/services/private_temporal_promotion_signal_tracking.py` :: `track_runtime_private_temporal_promotion_signals_for_visible_turn` (L20)
-- `core/services/proactive_context_governor.py` :: `list_context_versions` (L290)
-- `core/services/proactive_context_governor.py` :: `recall_context_version` (L305)
+- `core/services/proactive_context_governor.py` :: `list_context_versions` (L301)
+- `core/services/proactive_context_governor.py` :: `recall_context_version` (L316)
 - `core/services/proactive_loop_lifecycle_tracking.py` :: `build_runtime_proactive_loop_lifecycle_surface` (L159)
 - `core/services/proactive_loop_lifecycle_tracking.py` :: `refresh_runtime_proactive_loop_lifecycle_signal_statuses` (L96)
 - `core/services/proactive_loop_lifecycle_tracking.py` :: `track_runtime_proactive_loop_lifecycle_signals_for_visible_turn` (L73)

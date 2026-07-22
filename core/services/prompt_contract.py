@@ -2579,7 +2579,15 @@ def _build_visible_chat_prompt_assembly_impl(
             from core.services.self_model_predictive import predictive_self_model_section
             _emp = predictive_self_model_section()
             if _emp:
-                _self_lines.append(_emp)
+                # Overlap removal (audit #3, 2026-07-22): crisis is already stated
+                # by [SELF-MONITOR] (7d, more recent/actionable). Drop the 30-day
+                # crisis line here so the same phenomenon isn't reported twice.
+                _emp = "\n".join(
+                    ln for ln in _emp.splitlines()
+                    if "Kriser sidste 30 dage" not in ln
+                )
+                if _emp.strip():
+                    _self_lines.append(_emp)
         except Exception:
             pass
         try:
@@ -2620,16 +2628,19 @@ def _build_visible_chat_prompt_assembly_impl(
         )
         _dyn_tail.extend(_awareness_buffer)
         derived_inputs.append("diagnostik-header (anti-narration, Jarvis-spec)")
-    # Memory/brain-recall EFTER awareness (Jarvis-review 2026-06-22): han taler
-    # fra sin tilstand, ikke fra recall — så recall hører hjemme her, ikke øverst.
+    # ── MEMORY group (audit #3, 2026-07-22): MEMORY.md + recall bundle together,
+    # right after the diagnostics. He speaks from his state, not from recall — so
+    # recall sits here, not at the top (Jarvis-review 2026-06-22).
     _dyn_tail.extend(_dyn_memory_recall)
-    if finitude_section:
-        _dyn_tail.append(finitude_section)
-        derived_inputs.append("finitude (user-msg tail)")
+    # ── OPERATIONAL group: per-turn dynamic ops (model-pools, subagent completions,
+    # recent self-changes, daily notes, background events) + device presence (below).
+    # Grouped here so operational context reads as one block, not scattered.
+    _dyn_tail.extend(_tail_dynamic)
     if _wakeup_digest_text:
         _dyn_tail.append(_wakeup_digest_text)
         derived_inputs.append("wakeup digest (user-msg tail)")
-    _dyn_tail.extend(_tail_dynamic)
+    # NOTE: finitude (EXISTENTIAL) moved to the END of the state zone — see below,
+    # after device presence, just before the Zone C action anchors.
     try:
         from core.identity.workspace_context import current_user_id as _cuid
         # uid SKAL matche det presence/routing er keyed under (session-ejeren).
@@ -2674,6 +2685,13 @@ def _build_visible_chat_prompt_assembly_impl(
             pass
     except Exception:
         pass
+    # ── EXISTENTIAL — finitude (age + looming-end). Moved to the END of the
+    # background-state zone (audit #3, 2026-07-22) so the state reads
+    # self → diagnostics → memory → operational → existence, then the action
+    # anchors. It's the quiet closing note before "before you answer".
+    if finitude_section:
+        _dyn_tail.append(finitude_section)
+        derived_inputs.append("finitude (existential, end of state zone)")
     # Behavioral anchor (2026-06-22) — a single point-of-action echo in the tail
     # right before the user message, because Jarvis reported he attends to the
     # tail (his "now") and didn't *feel* the honesty rule sitting in the cacheable

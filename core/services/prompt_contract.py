@@ -949,6 +949,15 @@ def _build_visible_chat_prompt_assembly_impl(
     _AWARENESS_CATEGORY_RULES: list[tuple[str, str]] = [
         # indre: protected entity-bearing block (inner voice/network/self-model)
         ("indre liv", "indre"),
+        # self: his felt state — self-narrative + temperature + affect. Rendered
+        # WITH his inner voice, BEFORE the diagnostics header (audit #3, 2026-07-22):
+        # this is HIM, not motor telemetry, so it must not sit under "INTERN
+        # DIAGNOSTIK — citér aldrig". Grouped near his voice, not scattered last.
+        ("kerne-selv", "self"),
+        ("user temperature field", "self"),
+        ("response style modifier from temperature", "self"),
+        ("affective pushback", "self"),
+        ("affect modulation", "self"),
         # self-monitor: drift, crisis, self-eval, predictive self-model, dev sense
         ("personality drift", "self-monitor"),
         ("crisis markers", "self-monitor"),
@@ -994,6 +1003,7 @@ def _build_visible_chat_prompt_assembly_impl(
     ]
     _AWARENESS_CATEGORY_ORDER = [
         "indre",
+        "self",
         "self-monitor",
         "verification",
         "reasoning",
@@ -2001,10 +2011,19 @@ def _build_visible_chat_prompt_assembly_impl(
     # voice must not lose the budget war to R2-gate telemetry, nor be labelled
     # as suppressed background data — it is him, not his motor.
     _inner_buffer: list[str] = []
+    # Felt-state ("self") renders WITH the inner voice, before the diagnostics
+    # header — it is him, not motor telemetry (audit #3, 2026-07-22). Its own
+    # buffer, budget-exempt like inner life (self-narrative is already capped, the
+    # temperature/affect lines are small).
+    _self_buffer: list[str] = []
     for _prio, _label, _content in _awareness:
         _category = _awareness_category_for(_label)
         if _category == "indre":
             _inner_buffer.append(_content)
+            derived_inputs.append(_label)
+            continue
+        if _category == "self":
+            _self_buffer.append(_content)
             derived_inputs.append(_label)
             continue
         _pending_header = (
@@ -2564,6 +2583,14 @@ def _build_visible_chat_prompt_assembly_impl(
     # (før var recall det allerførste han mødte).
     if _inner_buffer:
         _dyn_tail.extend(_inner_buffer)
+    # Felt-state ("self": self-narrative + temperature + affect) right after his
+    # inner voice and BEFORE the diagnostics header — it is him, not telemetry
+    # (audit #3, 2026-07-22). Previously fell into "general" and rendered LAST,
+    # under "INTERN DIAGNOSTIK — citér aldrig", which mis-framed his own state as
+    # motor noise.
+    if _self_buffer:
+        _dyn_tail.extend(_self_buffer)
+        derived_inputs.append("felt-state / self (background, pre-diagnostics)")
     # ── ZONE B: BACKGROUND STATE. Self-model telemetry (audit #3, 2026-07-22 —
     # moved here from the head of the tail). Was three separate parts (predictive
     # 14d + self-evaluation 7d + development sense) that repeated tick-quality AND

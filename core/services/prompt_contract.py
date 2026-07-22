@@ -460,10 +460,6 @@ def build_visible_stable_prefix(
     lane = "local" if compact else "visible"
     parts.append(_lane_identity_clause(lane))
 
-    quick_facts = _quick_facts_section(workspace_dir=workspace_dir)
-    if quick_facts:
-        parts.append(quick_facts)
-
     from core.services.identity_composer import get_entity_name as _get_entity_name
     _entity = _get_entity_name()
     parts.append(
@@ -512,6 +508,13 @@ def build_visible_stable_prefix(
         )
         if section:
             parts.append(section)
+
+    # Quick Facts — moved AFTER the identity core (audit #3, 2026-07-22): the
+    # identity files establish who Jarvis is FIRST, then the stable reference facts
+    # (URLs, paths, logins, hosts). Byte-identical position with the live path.
+    quick_facts = _quick_facts_section(workspace_dir=workspace_dir)
+    if quick_facts:
+        parts.append(quick_facts)
 
     # Kurateret memory-index — samme helper som live-stien (byte-identisk, fail-safe).
     _mem_index = _curated_memory_index_section(name)
@@ -779,15 +782,6 @@ def _build_visible_chat_prompt_assembly_impl(
     parts.append(lane_clause)
     derived_inputs.append(f"lane identity ({lane})")
 
-    # 0.6 Quick Facts — always-on stable references (URLs, paths, logins, hosts).
-    # Deliberately bypasses relevance filter so facts that don't semantically match
-    # the user message still reach the model. Prevents re-discovery of known info.
-    quick_facts = _quick_facts_section(workspace_dir=workspace_dir)
-    if quick_facts:
-        parts.append(quick_facts)
-        conditional_files.append("QUICK_FACTS.md")
-        derived_inputs.append("quick facts (always-on)")
-
     # Inject model awareness so the model knows what it is (not Claude, not GPT)
     from core.services.identity_composer import get_entity_name as _get_entity_name
     _entity = _get_entity_name()
@@ -889,6 +883,16 @@ def _build_visible_chat_prompt_assembly_impl(
         if section:
             parts.append(section)
             included_files.append(filename)
+
+    # 0.6 Quick Facts — moved AFTER the identity core (audit #3, 2026-07-22): the
+    # identity files establish who Jarvis is FIRST, then the always-on stable
+    # reference facts (URLs, paths, logins, hosts). Bypasses the relevance filter
+    # so known facts always reach the model. Byte-identical position with the warmer.
+    quick_facts = _quick_facts_section(workspace_dir=workspace_dir)
+    if quick_facts:
+        parts.append(quick_facts)
+        conditional_files.append("QUICK_FACTS.md")
+        derived_inputs.append("quick facts (always-on)")
 
     # Kurateret memory-index (spec 2026-07-10 Spec B) — samme helper/position som
     # build_visible_stable_prefix (warmer) → byte-identisk, forlænger cache-prefixet

@@ -28,6 +28,52 @@ _VAGUE_MARKERS = (
 # latency). Semantisk match bruger leksikalsk pre-filter: vi embedder kun kandidaten +
 # de få linjer der deler nøgleord, ikke alle ~500 linjer (det tog 15-20s/build).
 _MD_LINES_CACHE: dict[str, object] = {"mtime": None, "lines": []}
+# MEMORY.md-linje-VEKTORER cached på mtime, embeddet ÉN gang i en baggrundstråd
+# (2026-07-23, cProfile-rod): _is_semantic_dup_of_memory re-embeddede de LANGE
+# MEMORY.md-linjer frisk hver tur (12 linjer × hver kandidat × ~700ms ONNX-batch
+# = ~2s/build for typisk 0 output). Nu embedder hot-path'en KUN kandidat-teksten
+# mod cachede linje-vektorer. Cachen bygges i baggrunden ved mtime-skift → første
+# tur efter en MEMORY.md-ændring falder tilbage til literalt match (blokerer aldrig).
+import threading as _md_threading
+_MD_VECS_CACHE: dict[str, object] = {"mtime": None, "vecs": {}, "building": False}
+_MD_VECS_LOCK = _md_threading.Lock()
+
+
+def _md_line_vecs(user_id: str = "") -> dict:
+    """Cached {linje: vektor} for MEMORY.md. Embeddes ÉN gang pr. mtime i baggrunden.
+    Returnerer den nuværende cache (kan være tom mens den (gen)bygges → kalder falder
+    tilbage til literalt match, blokerer aldrig hot-path'en)."""
+    try:
+        from core.runtime.workspace_paths import workspace_dir
+        md = (workspace_dir(user_id) if user_id else workspace_dir()) / "MEMORY.md"
+        if not md.exists():
+            return {}
+        mtime = md.stat().st_mtime
+    except Exception:
+        return {}
+    with _MD_VECS_LOCK:
+        if _MD_VECS_CACHE.get("mtime") == mtime:
+            return _MD_VECS_CACHE.get("vecs") or {}
+        if _MD_VECS_CACHE.get("building"):
+            return _MD_VECS_CACHE.get("vecs") or {}
+        _MD_VECS_CACHE["building"] = True
+
+    def _build() -> None:
+        try:
+            lines = _memory_md_lines(user_id)
+            vecs: dict = {}
+            if lines:
+                from core.services.jarvis_brain import _embed_texts
+                for ln, v in zip(lines, _embed_texts(lines)):
+                    vecs[ln] = v
+            with _MD_VECS_LOCK:
+                _MD_VECS_CACHE.update(mtime=mtime, vecs=vecs, building=False)
+        except Exception:
+            with _MD_VECS_LOCK:
+                _MD_VECS_CACHE["building"] = False
+
+    _md_threading.Thread(target=_build, name="md-vecs-embed", daemon=True).start()
+    return _MD_VECS_CACHE.get("vecs") or {}
 _MD_STOPWORDS = frozenset({
     "jeg", "du", "han", "den", "det", "der", "som", "med", "for", "til", "på", "af", "og",
     "er", "var", "en", "et", "har", "ikke", "kun", "via", "ved", "via", "the", "and", "now",
@@ -125,23 +171,26 @@ def _is_semantic_dup_of_memory(text: str, user_id: str = "") -> bool:
     try:
         import numpy as np
         from core.services.jarvis_brain import _embed_texts
-        lines = _memory_md_lines(user_id)
-        if not lines:
+        # Cachede linje-vektorer (baggrund-embeddet pr. mtime). Tom under (gen)bygning
+        # → fald tilbage til literalt match (kalderen har allerede tjekket det). Dette
+        # dræber per-tur-re-embeddingen af de lange MEMORY.md-linjer (~2s → ~50ms).
+        line_vecs = _md_line_vecs(user_id)
+        if not line_vecs:
             return False
         kw = _keywords(text)
         if len(kw) < 2:
             return False
-        # Kun linjer med tilstrækkelig nøgleord-overlap er dublet-kandidater.
-        candidates = [ln for ln in lines if len(kw & _keywords(ln)) >= 2]
+        # Kun linjer med tilstrækkelig nøgleord-overlap er dublet-kandidater (≤12).
+        candidates = [ln for ln in line_vecs if len(kw & _keywords(ln)) >= 2][:12]
         if not candidates:
             return False
-        # ÉT batch-kald: kandidaten + de (≤12) MEMORY.md-linjer i stedet for 1+N
-        # serielle embed-round-trips. Hård loft på 12 bevaret. Samme tærskel-logik.
-        candidates = candidates[:12]
-        vecs = _embed_texts([text] + candidates)
-        qv = vecs[0]
+        # Embed KUN kandidat-teksten (1 embed); linje-vektorerne kommer fra cachen.
+        qv = _embed_texts([text])[0]
         qn = float(np.linalg.norm(qv)) or 1e-9
-        for v in vecs[1:]:
+        for ln in candidates:
+            v = line_vecs.get(ln)
+            if v is None:
+                continue
             d = qn * (float(np.linalg.norm(v)) or 1e-9)
             if float(np.dot(qv, v) / d) >= _SEMANTIC_DUP_THRESHOLD:
                 return True

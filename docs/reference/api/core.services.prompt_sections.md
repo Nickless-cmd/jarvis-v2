@@ -152,16 +152,17 @@ _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_resolve_user_id` | `(session_id=…)` | Resolve user_id eksplicit (recall-sektionerne kører UDEN current_user_id()-kontekst | [src](../../../core/services/prompt_sections/memory_recall.py#L41) |
-| function | `_memory_md_lines` | `(user_id=…)` | Cached MEMORY.md-LINJER (kun tekst, ingen embedding → nul cold-start-cost). | [src](../../../core/services/prompt_sections/memory_recall.py#L58) |
-| function | `_keywords` | `(text)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L76) |
-| function | `_semantic_dedup_lines` | `(lines, threshold=…)` | Drop linjer der semantisk dublerer en TIDLIGERE beholdt linje (samme budskab, | [src](../../../core/services/prompt_sections/memory_recall.py#L84) |
-| function | `_is_semantic_dup_of_memory` | `(text, user_id=…)` | True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd). | [src](../../../core/services/prompt_sections/memory_recall.py#L121) |
-| function | `_visible_memory_recall_bundle_section` | `(*, session_id, user_message, compact)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L153) |
-| function | `_private_brain_recall_lines` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L184) |
-| function | `_recent_tool_recall_lines` | `(session_id, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L211) |
-| function | `_memory_candidate_recall_lines` | `(*, limit, session_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L247) |
-| function | `_clip_line` | `(value, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L307) |
+| function | `_md_line_vecs` | `(user_id=…)` | Cached {linje: vektor} for MEMORY.md. Embeddes ÉN gang pr. mtime i baggrunden. | [src](../../../core/services/prompt_sections/memory_recall.py#L42) |
+| function | `_resolve_user_id` | `(session_id=…)` | Resolve user_id eksplicit (recall-sektionerne kører UDEN current_user_id()-kontekst | [src](../../../core/services/prompt_sections/memory_recall.py#L87) |
+| function | `_memory_md_lines` | `(user_id=…)` | Cached MEMORY.md-LINJER (kun tekst, ingen embedding → nul cold-start-cost). | [src](../../../core/services/prompt_sections/memory_recall.py#L104) |
+| function | `_keywords` | `(text)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L122) |
+| function | `_semantic_dedup_lines` | `(lines, threshold=…)` | Drop linjer der semantisk dublerer en TIDLIGERE beholdt linje (samme budskab, | [src](../../../core/services/prompt_sections/memory_recall.py#L130) |
+| function | `_is_semantic_dup_of_memory` | `(text, user_id=…)` | True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd). | [src](../../../core/services/prompt_sections/memory_recall.py#L167) |
+| function | `_visible_memory_recall_bundle_section` | `(*, session_id, user_message, compact)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L202) |
+| function | `_private_brain_recall_lines` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L233) |
+| function | `_recent_tool_recall_lines` | `(session_id, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L260) |
+| function | `_memory_candidate_recall_lines` | `(*, limit, session_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L296) |
+| function | `_clip_line` | `(value, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L356) |
 
 ## `core/services/prompt_sections/memory_scoring.py`
 _core/services/prompt_sections/memory_scoring.py_

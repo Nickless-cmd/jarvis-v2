@@ -378,3 +378,46 @@ class TestVisibleMemoryRecallBundleSection:
             )
             assert result is not None
             assert "bounded continuity support" in result
+
+
+def test_md_line_vecs_cached_and_semantic_dup_uses_cache(monkeypatch, tmp_path):
+    """Audit 2026-07-23: the semantic dedup must embed ONLY the candidate text against
+    cached MEMORY.md line vectors — not re-embed the (long) MEMORY.md lines every turn."""
+    import numpy as np
+    from core.services.prompt_sections import memory_recall as mr
+
+    calls = {"n": 0, "sizes": []}
+
+    def _fake_embed(texts):
+        calls["n"] += 1
+        calls["sizes"].append(len(texts))
+        # deterministic unit vectors; identical text → identical vector
+        out = []
+        for t in texts:
+            v = np.zeros(8, dtype=np.float32)
+            v[len(t) % 8] = 1.0
+            out.append(v)
+        return out
+
+    monkeypatch.setattr("core.services.jarvis_brain._embed_texts", _fake_embed)
+    # seed the vector cache directly (skip the background thread / real file)
+    lines = ["cluster priority auth loop scheduling fix landed today", "unrelated note about voice mic gain"]
+    mr._MD_VECS_CACHE.update(
+        mtime="test", building=False,
+        vecs={ln: _fake_embed([ln])[0] for ln in lines},
+    )
+    monkeypatch.setattr(mr, "_md_line_vecs", lambda user_id="": mr._MD_VECS_CACHE["vecs"])
+    calls["n"] = 0
+    calls["sizes"] = []
+    # a candidate that shares ≥2 keywords with a cached line
+    mr._is_semantic_dup_of_memory("cluster priority auth loop scheduling fix", "")
+    # exactly ONE embed call, of size 1 (only the candidate) — the corpus is cached
+    assert calls["n"] == 1
+    assert calls["sizes"] == [1]
+
+
+def test_md_line_vecs_empty_cache_falls_back(monkeypatch):
+    from core.services.prompt_sections import memory_recall as mr
+    monkeypatch.setattr(mr, "_md_line_vecs", lambda user_id="": {})
+    # empty cache → no crash, returns False (literal match handles it)
+    assert mr._is_semantic_dup_of_memory("some candidate text with words", "") is False

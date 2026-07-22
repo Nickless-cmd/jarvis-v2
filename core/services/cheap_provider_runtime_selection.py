@@ -539,6 +539,29 @@ def execute_cheap_lane_via_pool(
     task_kind: str = "default",
     lane: str = "cheap",
 ) -> dict[str, object]:
+    # KERNE-FORRANG (2026-07-22, bevist rod): dette er den NON-VISIBLE/baggrunds-lane.
+    # Mens en SYNLIG tur assembler/streamer, venter baggrunds-LLM-arbejde her — ellers
+    # sulter dets tråde den synlige turs SSE-læser via GIL-contention (målt: DeepSeek
+    # 621ms isoleret → 9052ms under baggrunds-tråde). ALLE callers er non-visible
+    # (non_visible_lane_execution / inner_voice_shadow / compact_llm / tool_tagger …)
+    # → den synlige tur kalder ALDRIG denne → nul deadlock-risiko. Bounded ~20s.
+    # CLAUDE.md: private/cheap lag udrangerer ALDRIG den beskyttede kerne. Flag-gatet.
+    try:
+        from core.runtime.db_core import get_runtime_state_value as _grs
+        _gate_on = _grs("cheap_lane_visible_gate", True)
+        _gate_on = True if _gate_on is None else bool(_gate_on)
+    except Exception:
+        _gate_on = True
+    if _gate_on:
+        try:
+            from core.services.visible_stream_gate import visible_streaming
+            import time as _tg
+            for _ in range(200):  # bounded ~20s safety cap
+                if not visible_streaming():
+                    break
+                _tg.sleep(0.1)
+        except Exception:
+            pass
     target = select_cheap_lane_target(
         skip_providers=skip_providers,
         task_kind=task_kind,

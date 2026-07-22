@@ -884,7 +884,29 @@ def start_visible_run(
         thinking_mode=_resolved_thinking,
         local_tool_exec=bool(local_tool_exec),
     )
-    return _stream_visible_run(run, force_user_id=force_user_id, tool_scope=tool_scope)
+    # KERNE-FORRANG (2026-07-22): markér den synlige tur som aktiv i HELE dens levetid
+    # (assembly + streaming) via en in-proces gate, så private baggrunds-LLM-lag
+    # (inner_voice_shadow m.fl.) udskyder deres arbejde og IKKE sulter denne turs
+    # SSE-læser via GIL-contention (bevist: DeepSeek 621ms isoleret → 9052ms under
+    # baggrunds-tråde). enter ved første iteration, exit i finally (også ved klient-
+    # drop/abort → GeneratorExit rammer finally). Se visible_stream_gate.
+    _inner_stream = _stream_visible_run(run, force_user_id=force_user_id, tool_scope=tool_scope)
+
+    async def _gated_visible_stream():
+        try:
+            from core.services.visible_stream_gate import enter_visible_stream, exit_visible_stream
+        except Exception:
+            async for _c in _inner_stream:
+                yield _c
+            return
+        enter_visible_stream()
+        try:
+            async for _c in _inner_stream:
+                yield _c
+        finally:
+            exit_visible_stream()
+
+    return _gated_visible_stream()
 
 
 def _observe_autonomous_run(*, run, session_id: str, outcome: str,
@@ -1506,6 +1528,19 @@ async def _stream_visible_run(
             _fp_t0 = _fptime.monotonic()
 
             def _pump_model_stream() -> None:
+                # RE-ASSERT tool-scope + local-exec (2026-07-22, MÅLT rod): ContextVars sat
+                # øverst i denne async-generator (~:1237) TABES her — async-generatorer bevarer
+                # ikke ContextVar-mutationer over yields (og/eller tråd-grænsen). Målt: scope=''
+                # ved tool-bygningen → get_tool_definitions() ser DEFAULT → ALLE 126 tools
+                # (17.751 tok = 56% af prompten) i stedet for code-scopets ~22. Re-sæt fra
+                # closuren så tool-bygningen ser det RIGTIGE scope. Se reference_tool_scope_ctxvar_lost.
+                try:
+                    from core.tools.tool_scoping import set_tool_scope as _sts_reassert, set_local_exec as _sle_reassert
+                    if tool_scope:
+                        _sts_reassert(tool_scope)
+                    _sle_reassert(bool(getattr(run, "local_tool_exec", False)))
+                except Exception:
+                    pass
                 try:
                     for item in stream_visible_model(
                         message=run.user_message,
@@ -1522,7 +1557,17 @@ async def _stream_visible_run(
                     loop.call_soon_threadsafe(queue.put_nowait, _sentinel)
 
             _run_stage = "first_pass_streaming"
-            thread_future = loop.run_in_executor(None, _pump_model_stream)
+            # KONTEKST-PROPAGATION (2026-07-22, målt rod): run_in_executor kopierer IKKE
+            # ContextVars til worker-tråden (py3.11). _pump_model_stream bygger tools via
+            # get_tool_definitions() som læser current_tool_scope() — uden kontekst ser den
+            # DEFAULT-scope "" → ALLE 126 tools (17.751 tok!) i stedet for code-scopets ~22.
+            # Målt på Bjørns rå jarvis-code-payload: tools = 56% af prompten pga dette.
+            # copy_context() fanger tool_scope/local_exec/workspace fra generatoren (sat @~1237)
+            # så tool-bygningen i worker-tråden ser det RIGTIGE scope. Samme mønster som
+            # prompt_contract's _measured_submit.
+            import contextvars as _cv_pump
+            _pump_ctx = _cv_pump.copy_context()
+            thread_future = loop.run_in_executor(None, lambda: _pump_ctx.run(_pump_model_stream))
 
             _fp_first = False
             _fp_beat = 0
@@ -2824,7 +2869,9 @@ async def _stream_visible_run(
                             len(_round_tool_definitions or []),
                             _round_tool_choice or "auto",
                         )
-                        loop.run_in_executor(None, _pump_agentic)
+                        import contextvars as _cv_ag
+                        _ag_ctx = _cv_ag.copy_context()
+                        loop.run_in_executor(None, lambda: _ag_ctx.run(_pump_agentic))
 
                         # Mid-stream steer support: poll the queue with a short
                         # timeout so we can also check for steers between chunks.

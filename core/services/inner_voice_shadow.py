@@ -292,6 +292,19 @@ def record_shadow(
     outputs side-by-side. Returns immediately so the caller (e.g.,
     heartbeat memory pipeline) never blocks.
     """
+    # KERNE-FORRANG (2026-07-22, bevist rod): udskyd dette private shadow-LLM-kald
+    # mens en SYNLIG tur assembler/streamer i denne proces. Ellers sulter de fire-and-
+    # forget-tråde den synlige turs SSE-læser via GIL-contention (målt: DeepSeek 621ms
+    # isoleret → 9052ms under 7 baggrunds-tråde). Shadow er observe-only ("ANVENDER
+    # ALDRIG") → at skippe er tabsfrit; laget fyrer igen næste cadence. CLAUDE.md:
+    # private lag må ALDRIG udrangere den beskyttede kerne. Fail-open.
+    try:
+        from core.services.visible_stream_gate import visible_streaming
+        if visible_streaming():
+            return
+    except Exception:
+        pass
+
     def _worker():
         try:
             prompt = prompt_builder(**inputs)

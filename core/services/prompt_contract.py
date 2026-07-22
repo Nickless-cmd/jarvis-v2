@@ -1730,8 +1730,12 @@ def _build_visible_chat_prompt_assembly_impl(
         _prewarming = False
     if not _prewarming:
         try:
-            from core.services.proactive_context_governor import auto_compact_if_needed
-            auto_compact_if_needed()  # silent — runs only if needed
+            # DEFERRED (2026-07-22, målt rod): auto_compact synkront her lavede et ~8s
+            # compact-LLM-kald PÅ den synlige turs kritiske sti (blokerede TTFT). Nu
+            # schedules den til at køre EFTER turen (baggrund, venter på visible_streaming
+            # er False) → denne tur venter ikke; næste tur nyder den mindre kontekst.
+            from core.services.proactive_context_governor import auto_compact_if_needed_deferred
+            auto_compact_if_needed_deferred()  # non-blocking; runs post-turn if needed
         except Exception:
             pass
     try:
@@ -3545,13 +3549,37 @@ def _select_relevant_memory_entries(
     workspace_dir: Path,
     mode: str = "visible_chat",
 ) -> MemorySectionSelection:
-    backend_attempt = _bounded_nl_memory_selection(
-        user_message=user_message,
-        entries=entries,
-        max_lines=max_lines,
-        workspace_dir=workspace_dir,
-        mode=mode,
-    )
+    # Skip the LLM re-ranking on the visible hot path (2026-07-22, 4-agent latency audit;
+    # mirrors the existing relevance_skip_nl_on_visible precedent). _bounded_nl_memory_selection
+    # is a ~1s deepseek call (up to the 4s _HOT_RESOLVE_CAP) that BLOCKS the assembly, while the
+    # heuristic scorer (~3µs, already the fallback below at "else") picks sensible lines.
+    # AWARENESS-NEUTRAL: memory is still injected; only the LLM's re-ranking of the last 8
+    # MEMORY.md lines is dropped. Flag-gated (memory_selection_skip_nl_on_visible, default True)
+    # → instant rollback if memory-selection quality regresses.
+    _skip_nl = False
+    if mode == "visible_chat":
+        # Live kill-switch (runtime-state, default True) — flip to False instantly if
+        # memory-selection quality regresses, no redeploy. Bjørn cares about memory quality
+        # (it's why selection was a MODEL not embeddings) → keep it reversible.
+        try:
+            from core.runtime.db_core import get_runtime_state_value as _grs_msel
+            _flag = _grs_msel("memory_selection_skip_nl_on_visible", True)
+            _skip_nl = True if _flag is None else bool(_flag)
+        except Exception:
+            _skip_nl = True
+    if _skip_nl:
+        backend_attempt = BoundedMemorySelectionAttempt(
+            attempted=False, success=False, backend="skipped-visible-hotpath",
+            provider=None, model=None, status="skipped-visible-hotpath", result=None,
+        )
+    else:
+        backend_attempt = _bounded_nl_memory_selection(
+            user_message=user_message,
+            entries=entries,
+            max_lines=max_lines,
+            workspace_dir=workspace_dir,
+            mode=mode,
+        )
     ordered: list[str]
     from core.services.workspace_crypto import read_text_for_path
     prompt_file_used = bool(

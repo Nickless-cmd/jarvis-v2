@@ -543,17 +543,18 @@ _Proactive context governor — auto-trigger compaction + sub-agent slicing._
 |---|---|---|---|---|
 | function | `should_auto_compact` | `()` | Decide whether prompt_contract should trigger compaction now. | [src](../../../core/services/proactive_context_governor.py#L50) |
 | function | `auto_compact_if_needed` | `()` | Run compaction if threshold crossed. Idempotent (cooldown protected). | [src](../../../core/services/proactive_context_governor.py#L90) |
-| function | `build_subagent_context_slice` | `(*, role, goal, max_chars=…)` | Compose a tailored context slice for a sub-agent based on goal. | [src](../../../core/services/proactive_context_governor.py#L131) |
-| function | `_load_versions` | `()` | — | [src](../../../core/services/proactive_context_governor.py#L188) |
-| function | `_save_versions` | `(versions)` | — | [src](../../../core/services/proactive_context_governor.py#L195) |
-| function | `save_context_version` | `(*, reason=…)` | Snapshot the current session state. Returns version_id. | [src](../../../core/services/proactive_context_governor.py#L199) |
-| function | `list_context_versions` | `(*, limit=…)` | — | [src](../../../core/services/proactive_context_governor.py#L237) |
-| function | `recall_context_version` | `(version_id)` | — | [src](../../../core/services/proactive_context_governor.py#L252) |
-| function | `_exec_should_auto_compact` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L263) |
-| function | `_exec_auto_compact_if_needed` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L267) |
-| function | `_exec_build_subagent_context` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L271) |
-| function | `_exec_list_context_versions` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L279) |
-| function | `_exec_recall_context_version` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L283) |
+| function | `auto_compact_if_needed_deferred` | `()` | Schedulér auto-compact til at køre EFTER den nuværende synlige tur (off critical | [src](../../../core/services/proactive_context_governor.py#L134) |
+| function | `build_subagent_context_slice` | `(*, role, goal, max_chars=…)` | Compose a tailored context slice for a sub-agent based on goal. | [src](../../../core/services/proactive_context_governor.py#L184) |
+| function | `_load_versions` | `()` | — | [src](../../../core/services/proactive_context_governor.py#L241) |
+| function | `_save_versions` | `(versions)` | — | [src](../../../core/services/proactive_context_governor.py#L248) |
+| function | `save_context_version` | `(*, reason=…)` | Snapshot the current session state. Returns version_id. | [src](../../../core/services/proactive_context_governor.py#L252) |
+| function | `list_context_versions` | `(*, limit=…)` | — | [src](../../../core/services/proactive_context_governor.py#L290) |
+| function | `recall_context_version` | `(version_id)` | — | [src](../../../core/services/proactive_context_governor.py#L305) |
+| function | `_exec_should_auto_compact` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L316) |
+| function | `_exec_auto_compact_if_needed` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L320) |
+| function | `_exec_build_subagent_context` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L324) |
+| function | `_exec_list_context_versions` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L332) |
+| function | `_exec_recall_context_version` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L336) |
 
 ## `core/services/proactive_loop_lifecycle_tracking.py`
 

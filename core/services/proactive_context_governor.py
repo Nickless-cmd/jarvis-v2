@@ -125,6 +125,59 @@ def auto_compact_if_needed() -> dict[str, Any]:
     }
 
 
+import threading as _threading
+
+_deferred_lock = _threading.Lock()
+_deferred_pending = False
+
+
+def auto_compact_if_needed_deferred() -> None:
+    """Schedulér auto-compact til at køre EFTER den nuværende synlige tur (off critical
+    path). ROD (2026-07-22, målt): auto_compact_if_needed() kaldt synkront i assemblyen
+    laver et ~8s compact-LLM-kald der blokerer den synlige turs TTFT. Fix: spawn en
+    baggrundstråd der venter til visible_streaming() er False (turen slut), og compacter
+    så — næste tur nyder godt af det, MEN denne tur venter ikke. Single-flight (kun én
+    deferred compaction ad gangen). Self-safe — kaster aldrig, blokerer aldrig."""
+    global _deferred_pending
+    try:
+        with _deferred_lock:
+            if _deferred_pending:
+                return
+            _deferred_pending = True
+    except Exception:
+        return
+
+    def _run() -> None:
+        global _deferred_pending
+        try:
+            import time as _t
+            try:
+                from core.services.visible_stream_gate import visible_streaming
+            except Exception:
+                visible_streaming = lambda: False  # noqa: E731
+            # Vent til den/de synlige tur(e) er færdige (bounded ~60s), så compaction
+            # ikke contender SSE-læseren. Compaction er cooldown-beskyttet og sjælden.
+            for _ in range(600):
+                if not visible_streaming():
+                    break
+                _t.sleep(0.1)
+            auto_compact_if_needed()
+        except Exception:
+            pass
+        finally:
+            try:
+                with _deferred_lock:
+                    _deferred_pending = False
+            except Exception:
+                pass
+
+    try:
+        _threading.Thread(target=_run, daemon=True, name="deferred-auto-compact").start()
+    except Exception:
+        with _deferred_lock:
+            _deferred_pending = False
+
+
 # ── Sub-agent context slicing ──────────────────────────────────────────
 
 

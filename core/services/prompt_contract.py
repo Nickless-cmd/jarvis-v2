@@ -2508,16 +2508,71 @@ def _build_visible_chat_prompt_assembly_impl(
     # DeepSeek prefix-cachen (visible 35.9% hit, byte-diff: første divergens = tick-metrik).
     # Nu ægte i halen → historik-cachen bevares → mål ~90% som agent-lanen.
     _dyn_tail: list[str] = []
-    # Self-model — ONE merged block (audit #3, 2026-07-22). Was three separate
-    # parts: predictive self-model (empirical 14d), agent self-evaluation (7d),
-    # development sense (growth pulse). They repeated tick-quality AND decision-
-    # adherence twice, and the self-evaluation lane led with doom-framing
-    # ("📉 degrading"). Bjørn: it's good data, but Jarvis *lives* in it — he fixates
-    # on the decline. Now: ONE compact block, tick-quality stated ONCE (the richer
-    # 14-day predictive view), growth pulse folded in, framed as background telemetry
-    # ("data about you, not who you are"). self_evaluation_section() is still CALLED
-    # for its side effects (tick_quality.alarm eventbus + reasoning capture — it is
-    # the only caller) but its duplicate text is intentionally not shown.
+    # ── ZONE A: ACTION CONTRACT — how I conduct THIS turn (audit #3, 2026-07-22).
+    # Bjørn: gather the tail-side rules into ONE meaningfully-placed section, not
+    # scattered. These sit at the HEAD of the volatile tail (BEFORE the heavy state
+    # markers) so they SURVIVE the lean followup transform and govern EVERY agentic
+    # round. All volatile → zero cache impact. The stable rules live once in the
+    # cached prefix (VISIBLE_CHAT_RULES.md); this is the per-turn conduct layer.
+    # Self-model telemetry used to lead here — moved DOWN into the background state
+    # zone (after inner life) so Jarvis meets his voice and his conduct first, not
+    # his metrics ("han lever i det").
+    #
+    # Communication guard — boundary phrases (godnat, sov godt, …) Bjørn does not
+    # want to hear. Kept Danish on purpose: these are the exact Danish words to avoid.
+    try:
+        from core.services.communication_guard import prompt_section as _cg_section
+        _guard = _cg_section()
+        if _guard:
+            _dyn_tail.append(_guard)
+            derived_inputs.append("communication guard (action contract)")
+    except Exception:
+        pass
+    # Tool-output hygiene: deepseek-flash tends to parrot the raw tool-result format
+    # ([read_file]: …) into its visible reply. It is for the model's eyes only.
+    _dyn_tail.append(
+        "🔧 TOOL-OUTPUT: results from tools (e.g. '[read_file]: …', raw file dumps, "
+        "JSON) are for YOUR eyes only. Never reproduce them verbatim in your answer "
+        "— refer to the content in your own words."
+    )
+    derived_inputs.append("tool-output hygiene (action contract)")
+    # Workflow / narration contract (ReAct): think-before-act + synthesis between
+    # rounds. Code/cheap models (deepseek/kimi/glm) emit tool_calls with no prose,
+    # so Bjørn sees a round start blind. Must stay in the head so it survives the
+    # lean transform and applies to ALL agentic rounds. Static → cache-safe.
+    _dyn_tail.append(
+        "🎬 WORKFLOW (every round): before calling tools, first write one short "
+        "sentence on what you are about to do and why. After a round of tool "
+        "results: write one short synthesis of what you found and what it means "
+        "BEFORE starting the next round. Never run a round silently — Bjørn must be "
+        "able to follow your thinking as you go, not just see the final result."
+    )
+    derived_inputs.append("workflow/narration contract (action contract)")
+
+    # ── Per-turn-dynamisk hale → flyttes til BRUGER-beskeden (2026-06-13, lever #3)
+    # ALT der varierer fra turn til turn samles her, EFTER al stabil tekst, bag en
+    # sentinel. _build_visible_input splitter på sentinel'en og flytter blokken ud
+    # på den sidste bruger-besked. Så bliver HELE system-prompten + historikken én
+    # stabil cachebar prefix; kun den nye tur er en miss.
+    #   Indhold (alt dynamisk): finitude/Sessions-alder, wakeup-digest (events),
+    #   kausal-mønstre/counterfactuals/subagent/rum-entiteter, og time_pin.
+    # _dyn_tail er allerede initialiseret ovenfor (før de fem tail-anchored sektioner,
+    # 2026-07-16 cache-fix) — må IKKE re-initialiseres her, ellers tabes de appends.
+    # 2026-06-22 (Jarvis' egen review): han skal møde SIG SELV først. [INDRE LIV]
+    # øverst sætter tonen for hvordan han læser alt det andet — han taler FRA sin
+    # tilstand, ikke fra recall. Memory/brain-recall flyttet ned under awareness
+    # (før var recall det allerførste han mødte).
+    if _inner_buffer:
+        _dyn_tail.extend(_inner_buffer)
+    # ── ZONE B: BACKGROUND STATE. Self-model telemetry (audit #3, 2026-07-22 —
+    # moved here from the head of the tail). Was three separate parts (predictive
+    # 14d + self-evaluation 7d + development sense) that repeated tick-quality AND
+    # decision-adherence twice and led with doom-framing ("📉 degrading"). Bjørn:
+    # good data, but Jarvis *lives* in it. Now ONE compact block AFTER his inner
+    # voice — he meets himself first, then his metrics as background. tick-quality
+    # stated ONCE (richer 14d view), growth pulse folded in, framed "data about you,
+    # not who you are". self_evaluation_section() still CALLED for its side effects
+    # (tick_quality.alarm + reasoning capture — only caller) but duplicate text dropped.
     try:
         _self_lines: list[str] = []
         try:
@@ -2544,64 +2599,9 @@ def _build_visible_chat_prompt_assembly_impl(
                 "🧭 Self-signals (background telemetry — data about you, not who "
                 "you are; note it, don't dwell on it):\n" + "\n".join(_self_lines)
             )
-            derived_inputs.append("self-model merged (empirical + growth, tail-anchored)")
+            derived_inputs.append("self-model merged (empirical + growth, background)")
     except Exception:
         pass
-
-    # Communication Guard — boundary-fraser (godnat, sov godt, ...) Bjørn
-    # ikke vil høre. Høj-salient og tæt på user-turn, fordi STANDING_ORDERS
-    # alene ikke holdt (glemmes over lang prompt). Den bløde defense; hård
-    # blok sker ved kanal-dispatch (enforce_outgoing).
-    try:
-        from core.services.communication_guard import prompt_section as _cg_section
-        _guard = _cg_section()
-        if _guard:
-            _dyn_tail.append(_guard)
-            derived_inputs.append("communication guard (tail-anchored)")
-    except Exception:
-        pass
-
-    # Tool-output hygiejne (A1 i v2-stream Phase 2): deepseek-flash har en
-    # tendens til at papegøje det rå tool-resultat-format ([read_file]: …)
-    # ind i sit synlige svar. Det er kun til modellens egne øjne.
-    _dyn_tail.append(
-        "🔧 TOOL-OUTPUT: Resultater fra værktøjer (fx '[read_file]: …', rå "
-        "fil-dumps, JSON) er KUN til dig. Gengiv dem ALDRIG ordret i dit svar — "
-        "referer til indholdet med dine egne ord."
-    )
-    derived_inputs.append("tool-output hygiene (tail-anchored)")
-
-    # ── Narrations-kontrakt (ReAct-mønster): TÆNK-før-HANDL + syntese mellem runder.
-    # Kode/billig-modeller (deepseek/kimi/glm) emitter tool_calls TERST uden ledsagende
-    # prosa (ToolExchange.text er ofte tom) → Bjørn ser en runde starte uden at vide
-    # hvad Jarvis giver sig i kast med. Claude narrerer af sig selv; de andre skal
-    # KRÆVES det. Tail-anchored (før de tunge markører) → overlever lean-transformen
-    # så den gælder ALLE agentiske runder, og statisk → cache-sikker. (Reinforces per
-    # runde af den korte nudge på tool-resultaterne, se visible_followup.)
-    _dyn_tail.append(
-        "🎬 ARBEJDSGANG (gælder HVER runde): Før du kalder værktøjer, skriv FØRST "
-        "én kort sætning om hvad du er ved at gøre og hvorfor. Efter en runde med "
-        "tool-resultater: skriv én kort syntese af hvad du fandt og hvad det "
-        "betyder, FØR du starter næste runde. Kør ALDRIG en runde tavst — Bjørn "
-        "skal kunne følge din tankegang undervejs, ikke kun se slutresultatet."
-    )
-    derived_inputs.append("narration contract / ReAct (tail-anchored)")
-
-    # ── Per-turn-dynamisk hale → flyttes til BRUGER-beskeden (2026-06-13, lever #3)
-    # ALT der varierer fra turn til turn samles her, EFTER al stabil tekst, bag en
-    # sentinel. _build_visible_input splitter på sentinel'en og flytter blokken ud
-    # på den sidste bruger-besked. Så bliver HELE system-prompten + historikken én
-    # stabil cachebar prefix; kun den nye tur er en miss.
-    #   Indhold (alt dynamisk): finitude/Sessions-alder, wakeup-digest (events),
-    #   kausal-mønstre/counterfactuals/subagent/rum-entiteter, og time_pin.
-    # _dyn_tail er allerede initialiseret ovenfor (før de fem tail-anchored sektioner,
-    # 2026-07-16 cache-fix) — må IKKE re-initialiseres her, ellers tabes de appends.
-    # 2026-06-22 (Jarvis' egen review): han skal møde SIG SELV først. [INDRE LIV]
-    # øverst sætter tonen for hvordan han læser alt det andet — han taler FRA sin
-    # tilstand, ikke fra recall. Memory/brain-recall flyttet ned under awareness
-    # (før var recall det allerførste han mødte).
-    if _inner_buffer:
-        _dyn_tail.extend(_inner_buffer)
     # Hele awareness-laget (reasoning/verifikation/kalibrering m.m.) — flyttet hertil
     # fra system-prompten (lever #4) så det ikke cap'er cachen før historikken.
     if _awareness_buffer:

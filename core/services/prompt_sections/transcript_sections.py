@@ -514,14 +514,24 @@ def _make_structured_summariser(focus: str | None = None, *, session_id: str | N
         if summary_looks_valid(text):
             return text
         # Deterministic fallback — mechanical, never empty (thread still traceable via
-        # the raw messages kept under the marker in the DB).
-        parts = [
-            f"[{m.get('role', '?')}] {str(m.get('content') or '')[:200]}"
-            for m in old_msgs
-        ]
+        # the raw messages kept under the marker in the DB). Improved 2026-07-23:
+        # the old version truncated EVERY message to 200 chars, so a failed summariser
+        # collapsed the whole arc into stubs (the "200-char fake summary"). Now:
+        #  - USER turns kept much fuller (up to 800 chars) — they carry the intent/asks
+        #    that must survive; the assistant can be reconstructed from them.
+        #  - assistant turns kept to 400 chars (the gist), tool noise already folded.
+        #  - larger total budget so the fallback is a real (if rough) record, not stubs.
+        def _clip(role: str, content: str) -> str:
+            c = " ".join(str(content or "").split())
+            cap = 800 if role == "user" else 400
+            return f"[{role}] {c[:cap]}{'…' if len(c) > cap else ''}"
+        parts = [_clip(str(m.get("role", "?")), m.get("content") or "") for m in old_msgs]
+        joined = "\n".join(p for p in parts if p.strip())
         return (
-            "<summary>[Automatisk mekanisk sammenfatning — summariser-model gav intet brugbart. "
-            "Rå beskeder bevaret i sessionen.]\n" + "\n".join(parts)[:6000] + "</summary>"
+            "<summary>[Mechanical fallback — the summariser model returned nothing usable, "
+            "so this is a truncated but faithful record of the arc (user turns kept fuller). "
+            "Full raw messages remain in the session DB under the compact marker.]\n"
+            + joined[:18000] + "</summary>"
         )
 
     return _summarise

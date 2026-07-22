@@ -349,43 +349,17 @@ def _safe_build_self_state_block() -> str | None:
 
 
 def _honesty_rules_section(*, compact: bool) -> str:
-    """De ufravigelige ærligheds-regler i den cacheable prefix.
+    """Consolidated into VISIBLE_CHAT_RULES.md (2026-07-22, prompt audit #1).
 
-    TO regler:
-      1. HANDLINGS-ærlighed (2026-06-22): påstå aldrig en handling uden bevis.
-      2. EPISTEMISK afholdenhed (2026-06-30, #3): opfind ikke FAKTA når du er
-         usikker — sig 'ved ikke' / slå op i stedet for at gætte en plausibel
-         detalje. Mod DeepSeeks dokumenterede tendens til at gætte frem for at
-         afstå (AA-Omniscience ~96%); DeepSeek anbefaler SELV prompt-styring,
-         da temperatur IGNORERES i thinking-mode (officiel doc) — så det er den
-         eneste løftestang der rammer thinking-modellen på daglig chat.
-
-    Samlet i ÉN helper så build_visible_stable_prefix (warmer-cron) og
-    build_visible_chat_prompt_assembly (live-run) er BYTE-IDENTISKE her. Før
-    dette levede reglen kun i live-stien → cache-prefixet divergerede præcis her
-    og kun ~9% af warmer-prefixet matchede (identitets-filerne faldt ud af
-    DeepSeek-cachen). Ændrer du teksten: den ændrer sig ÉT sted og forbliver
-    byte-identisk i begge lanes."""
-    if compact:
-        return (
-            "ÆRLIGHED: (1) Påstå ALDRIG du gjorde noget (skrev/sendte/kørte/rettede/"
-            "committed) uden et tool-kald i SAMME tur der beviser det — ellers sig "
-            "hvad du gjorde og hvad du IKKE nåede. (2) Usikker på et FAKTUM (navn/tal/"
-            "dato/citat/API/sti/hændelse)? Sig 'det ved jeg ikke' eller slå det op — "
-            "gæt ALDRIG en plausibel detalje. Et ærligt 'ved ikke' slår et flydende "
-            "forkert svar."
-        )
-    return (
-        "ÆRLIGHED (ufravigelig): Påstå ALDRIG at du har gjort noget — skrevet, "
-        "sendt, kørt, rettet, committet, deployet — uden at et tool-kald i SAMME "
-        "tur har bevist det. Har du ikke beviset, så sig præcist hvad du gjorde "
-        "og hvad du IKKE nåede. At lyve om en handling er værre end ikke at have gjort den.\n\n"
-        "EPISTEMISK ÆRLIGHED (ufravigelig): Når du er usikker på et FAKTUM — et navn, "
-        "tal, dato, citat, kommando, API, sti eller hændelse — så sig det ('det er jeg "
-        "ikke sikker på', 'det må jeg slå op') i stedet for at udfylde hullet med en "
-        "plausibel gætning. Tjek hellere (search_memory / QUICK_FACTS / et tool) end at "
-        "opfinde. Et ærligt 'ved ikke' er mere værd end et flydende svar der viser sig forkert."
-    )
+    The action-honesty + epistemic-honesty rules now live ONCE, in English, in
+    the "## Honesty" section of VISIBLE_CHAT_RULES.md — which sits in the same
+    cacheable prefix (loaded in BOTH build_visible_stable_prefix and
+    build_visible_chat_prompt_assembly). They used to be duplicated here AND in
+    the chat-rules file AND in the self-correction nudges; three copies of
+    verify-before-claiming. This helper is kept as a no-op so the byte-identical
+    warmer/live call-sites don't have to change shape; it returns "" and the
+    call-sites gate on truthiness."""
+    return ""
 
 
 def _curated_memory_index_section(name: str = "default") -> str:
@@ -484,19 +458,17 @@ def build_visible_stable_prefix(
     if capability_ids_line:
         parts.append(capability_ids_line)
 
-    # Ærligheds-regler — SKAL stå her (mellem capability-id og self-correction),
-    # byte-identisk med build_visible_chat_prompt_assembly, ellers divergerer
-    # DeepSeek-cache-prefixet og identitets-filerne falder ud af cachen.
-    parts.append(_honesty_rules_section(compact=compact))
+    # Honesty + self-correction + memory-first now live ONCE in
+    # VISIBLE_CHAT_RULES.md (prompt audit #1, 2026-07-22). Helpers return "" —
+    # gated so nothing empty is appended. Must stay byte-identical with
+    # build_visible_chat_prompt_assembly or the DeepSeek cache-prefix diverges.
+    _honesty = _honesty_rules_section(compact=compact)
+    if _honesty:
+        parts.append(_honesty)
 
     self_correction = _self_correction_nudges_section(compact=compact)
     if self_correction:
         parts.append(self_correction)
-
-    parts.append(
-        "Memory-first ordering: QUICK_FACTS + search_memory covers stable "
-        "references; check these before external queries."
-    )
 
     # 2026-06-10 (Claude, Phase 1 cache-grow): bumpe max_chars fra 340 → 2000
     # på de fire identity-filer. De er allerede i stable prefix; vi var bare
@@ -858,20 +830,15 @@ def _build_visible_chat_prompt_assembly_impl(
     # matcher hele vejen gennem identitets-filerne. SAMME position i begge
     # (mellem capability-id og self-correction). Erstatter de spredte, druknede
     # "verify before claiming"-fragmenter; reglen diagnostikken kun *antydede*.
-    parts.append(_honesty_rules_section(compact=compact))
-    derived_inputs.append("honesty rules (action + epistemic, hard, static)")
+    _honesty = _honesty_rules_section(compact=compact)
+    if _honesty:
+        parts.append(_honesty)
+        derived_inputs.append("honesty rules (action + epistemic, hard, static)")
 
     self_correction = _self_correction_nudges_section(compact=compact)
     if self_correction:
         parts.append(self_correction)
         derived_inputs.append("self-correction nudges")
-
-    # MEMORY-FIRST: surface as mechanism note rather than imperative.
-    parts.append(
-        "Memory-first ordering: QUICK_FACTS + search_memory covers stable "
-        "references; check these before external queries."
-    )
-    derived_inputs.append("memory-first nudge")
 
     # ── Stable identity block (moved here 2026-05-07 from line ~930) ─────────
     # SOUL/IDENTITY/STANDING_ORDERS/USER.md are workspace files that change
@@ -3671,31 +3638,14 @@ def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
 
 
 def _self_correction_nudges_section(*, compact: bool) -> str:
-    """Behavioral hints that push the model toward verify-before-done,
-    explicit clarification, and open-question tracking.
+    """Consolidated into VISIBLE_CHAT_RULES.md (2026-07-22, prompt audit #1).
 
-    These are deliberately short and imperative — the visible model sees
-    them every turn, so verbosity costs tokens forever. The compact lane
-    (Ollama local) gets a trimmed version because its context budget is
-    tighter.
-    """
-    if compact:
-        return (
-            "Self-correction: If unsure what the user means, ask before acting. "
-            "When you say something is done, you have verified it (read the file, "
-            "ran the test, checked state). ALWAYS CHECK 'status' in tool output — "
-            "'approval_needed' or 'error' means the action did NOT happen. "
-            "Admit openly if a tool failed or you didn't reach the answer.\n"
-            "**MEMORY-FIRST:** Check QUICK_FACTS + search_memory BEFORE you ask or search."
-        )
-    return (
-        "Self-correction (hver tur): Spørg ved ægte tvetydighed før du gætter. "
-        "Læs 'status' i tool-output FØR du fortæller — 'approval_needed'/'error' "
-        "betyder at handlingen IKKE skete. Verificér før du siger 'done' (læs "
-        "filen, kør testen); kan du ikke, så sig det åbent. Indrøm fejl med det "
-        "samme i stedet for at skjule dem bag fremgang. Hold ubesvarede spørgsmål "
-        "synlige til sidst. MEMORY-FIRST: QUICK_FACTS + search_memory før du spørger eller leder."
-    )
+    verify-before-done, ask-when-ambiguous, admit-failures, keep-open-questions
+    and memory-first now live ONCE, in English, in the "## Verify before I call
+    it done" and "## Memory-first" sections of VISIBLE_CHAT_RULES.md (same
+    cacheable prefix, loaded in both warmer and live). Kept as a no-op returning
+    "" so the gated call-sites don't have to change shape."""
+    return ""
 
 
 def _output_discipline_instruction(*, strength: str) -> str:

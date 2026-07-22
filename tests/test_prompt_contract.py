@@ -272,26 +272,23 @@ def test_transcript_full_fallback_when_never_compacted(monkeypatch):
 
 
 class TestHonestyRulesSection:
-    """Ærligheds-regler (handling + epistemisk afholdenhed, #3 2026-06-30)."""
+    """Ærligheds-regler (handling + epistemisk afholdenhed).
 
-    def test_full_lane_has_both_action_and_epistemic_rules(self):
-        from core.services.prompt_contract import _honesty_rules_section
-        out = _honesty_rules_section(compact=False)
-        # Handlings-ærlighed (eksisterende).
-        assert "Påstå ALDRIG" in out
-        assert "committet" in out
-        # Epistemisk afholdenhed (ny #3) — mod gætteriet.
-        assert "EPISTEMISK" in out
-        assert "FAKTUM" in out
-        assert "ved ikke" in out.lower()
+    Konsolideret 2026-07-22 (prompt audit #1): reglerne bor nu ÉN gang, på
+    engelsk, i VISIBLE_CHAT_RULES.md ('## Honesty'). De hardcodede helpere er
+    no-ops der returnerer "" så de gated call-sites ikke dropper noget tomt ind.
+    Selve reglens tilstedeværelse i det cachede prefix vogtes af
+    TestCachePrefixInvariant.test_honesty_rules_inside_the_shared_prefix."""
 
-    def test_compact_lane_is_shorter_but_covers_both(self):
-        from core.services.prompt_contract import _honesty_rules_section
-        full = _honesty_rules_section(compact=False)
-        compact = _honesty_rules_section(compact=True)
-        assert len(compact) < len(full)
-        assert "Påstå ALDRIG" in compact      # handling
-        assert "FAKTUM" in compact            # epistemisk
+    def test_helpers_are_noops_after_consolidation(self):
+        from core.services.prompt_contract import (
+            _honesty_rules_section,
+            _self_correction_nudges_section,
+        )
+        assert _honesty_rules_section(compact=False) == ""
+        assert _honesty_rules_section(compact=True) == ""
+        assert _self_correction_nudges_section(compact=False) == ""
+        assert _self_correction_nudges_section(compact=True) == ""
 
 
 class TestCachePrefixInvariant:
@@ -324,10 +321,13 @@ class TestCachePrefixInvariant:
         )
 
     def test_honesty_rules_inside_the_shared_prefix(self):
-        # Den epistemiske regel skal ligge i den DELTE (cachede) del — ikke kun
-        # i live-halen — så warmer-cron pre-varmer den.
+        # Ærligheds-reglen (handling + epistemisk) skal ligge i den DELTE (cachede)
+        # del — ikke kun i live-halen — så warmer-cron pre-varmer den. Efter
+        # konsolideringen (2026-07-22) leveres den via VISIBLE_CHAT_RULES.md
+        # ('## Honesty'), som ligger i samme cachede prefix. Markør på engelsk.
         warm, _ = self._build_both()
-        assert "EPISTEMISK" in warm
+        assert "never claim I did something" in warm  # action honesty
+        assert "unsure of a fact" in warm             # epistemic honesty
 
 
 class TestToolResultRenderingIsRecencyIndependent:

@@ -326,7 +326,13 @@ def _handle_agent_spawn_calls(
             spec = parsed.get("spawn_agent") or {}
             role = str(spec.get("role") or "researcher").strip()
             goal = str(spec.get("goal") or "").strip()
-            budget = min(int(spec.get("budget_tokens") or 1500), 4000)
+            # Budget-strangle-fix (2026-07-23, Bjørn "A"): default var 1500 tokens
+            # cap 4000 → agenten brændte budgettet på et par tool-kald og nåede
+            # ALDRIG at skrive et afsluttende svar → "completed" men tomt last_reply.
+            # 0 = ubegrænset (kun max_turns=20 som sikkerhedsnet, jf.
+            # _check_budget_and_expire). Kør til opgaven er løst, som Claudes egne
+            # agenter — respektér kun et EKSPLICIT budget hvis kalderen sætter et.
+            budget = int(spec.get("budget_tokens") or 0)
             if not goal:
                 continue
             child = spawn_agent_task(
@@ -354,9 +360,9 @@ def _handle_agent_spawn_calls(
 
 _SPAWN_TOOL_INSTRUCTION = """
 If you need to delegate a subtask to another agent, include exactly one JSON block in your response:
-{"spawn_agent": {"role": "<researcher|planner|critic|synthesizer|executor>", "goal": "<specific goal>", "budget_tokens": <500-4000>}}
+{"spawn_agent": {"role": "<researcher|planner|critic|synthesizer|executor>", "goal": "<specific, self-contained goal>"}}
 
-The spawned agent will run and its result will be returned to Jarvis. Use sparingly — only when the subtask genuinely benefits from isolation.
+The spawned agent runs to completion (bounded by a turn limit) and returns its written result to Jarvis — you do NOT need to set a token budget; omit it and let the agent finish its work. Give it a sharp, self-contained goal with enough context to act without you. Use sparingly — only when the subtask genuinely benefits from isolation.
 """.strip()
 
 

@@ -588,7 +588,15 @@ def _resolve_target() -> tuple[str, str]:
 def _openai_compat_credentials(provider: str) -> tuple[str, str]:
     """(auth_profile, base_url) for en openai-compatible provider (jf. visible-adapteren)."""
     base_url = ""
-    auth_profile = provider
+    # auth_profile-default-footgun (2026-07-23): en tom registry-auth_profile MÅ
+    # normaliseres til 'default' — IKKE til provider-navnet. Kandidat-byggeren
+    # (cheap_provider_runtime_selection) rapporterer credentials_ready ud fra profil
+    # 'default', men her faldt vi til provider-navnet → for providere hvis nøgle
+    # ligger under 'default' (fx bazaarlink: gyldig 54-tegns nøgle under 'default',
+    # INTET under 'bazaarlink') gav det "credentials missing for profile bazaarlink"
+    # → HVER explore-agent (routet til bazaarlink #1) døde på phantom-credential.
+    # Se reference_provider_auth_profile_default_footgun.
+    auth_profile = "default"
     try:
         from core.services.cheap_provider_runtime import provider_runtime_defaults
         base_url = str(provider_runtime_defaults(provider).get("base_url") or "")
@@ -598,7 +606,7 @@ def _openai_compat_credentials(provider: str) -> tuple[str, str]:
         from core.runtime.provider_router import load_provider_router_registry
         for p in load_provider_router_registry().get("providers") or []:
             if str(p.get("provider") or "") == provider:
-                auth_profile = str(p.get("auth_profile") or "").strip() or provider
+                auth_profile = str(p.get("auth_profile") or "").strip() or "default"
                 break
     except Exception:
         pass
@@ -876,16 +884,17 @@ async def agent_step(request: Request):
     # Gated på agent_pool_router_enabled; graceful fallback til owner-model.
     provider = model = ""
     _is_agent_pool = bool(body.get("agent_pool")) and _flag("agent_pool_router_enabled")
+    # Hoisted så pool-failover (nedenfor) kan re-route med exclude på exec-fejl.
+    _sub_kind = str(body.get("subagent_type") or "").strip() or "explorer"
+    # Default GRATIS arbejdskraft; kun EKSPLICITTE kode-skrive-typer må eskalere til
+    # betalt premium (rigtige kode-opgaver). Alt andet (explore/research/plan/general)
+    # = gratis pool.
+    _allow_paid = _sub_kind.lower() in (
+        "coder", "coding", "implementer", "implement", "builder",
+        "build", "fix", "refactor", "editor")
     if _is_agent_pool:
         try:
             from core.services.agent_pool_router import route_agent_task
-            _sub_kind = str(body.get("subagent_type") or "").strip() or "explorer"
-            # Default GRATIS arbejdskraft; kun EKSPLICITTE kode-skrive-typer må
-            # eskalere til betalt premium (rigtige kode-opgaver). Alt andet
-            # (explore/research/plan/general) = gratis pool.
-            _allow_paid = _sub_kind.lower() in (
-                "coder", "coding", "implementer", "implement", "builder",
-                "build", "fix", "refactor", "editor")
             r = route_agent_task(kind=_sub_kind, allow_paid=_allow_paid)
             provider, model = str(r.get("provider") or ""), str(r.get("model") or "")
         except Exception:
@@ -996,16 +1005,56 @@ async def agent_step(request: Request):
 
     import time as _time
     _t0 = _time.monotonic()
-    try:
-        raw = _execute_openai_compatible_chat(
-            provider=provider, model=model, auth_profile=auth_profile,
-            base_url=base_url, messages=chat_messages, tools=tools,
-            extra_body=extra_body,
-        )
-    except Exception as exc:
-        logger.exception("agent/step model-kald fejlede: %s", exc)
+    # ── Pool-failover (2026-07-23) ───────────────────────────────────────────
+    # Rod: hver explore-agent døde fordi routeren deterministisk valgte ÉN
+    # provider (bazaarlink #1) og en exec-fejl dér (phantom-credential, provider
+    # down, kvote) bare returnerede 502 → subagenten gav INTET svar, uden at prøve
+    # de 22 andre sunde gratis-modeller. For agent-pool-runs: fang exec-fejl og
+    # re-route med den fejlede provider ekskluderet, indtil én svarer (eller vi
+    # løber tør). Owner-chat (ikke agent_pool) beholder single-shot: den skal blive
+    # på Bjørns valgte model, ikke rotere. Se reference_agent_pool_vs_cheap_lane_routing.
+    raw = None
+    _last_exc: Exception | None = None
+    _excluded: set[str] = set()
+    _MAX_POOL_ATTEMPTS = 4
+    _attempt = 0
+    while True:
+        _attempt += 1
+        try:
+            raw = _execute_openai_compatible_chat(
+                provider=provider, model=model, auth_profile=auth_profile,
+                base_url=base_url, messages=chat_messages, tools=tools,
+                extra_body=extra_body,
+            )
+            break
+        except Exception as exc:
+            _last_exc = exc
+            logger.warning("agent/step model-kald fejlede (provider=%s model=%s forsøg=%d): %s",
+                           provider, model, _attempt, exc)
+            if not _is_agent_pool or _attempt >= _MAX_POOL_ATTEMPTS:
+                break
+            # Re-route: ekskludér den fejlede provider, tag næste pool-kandidat.
+            _excluded.add(provider)
+            try:
+                from core.services.agent_pool_router import route_agent_task
+                _r = route_agent_task(kind=_sub_kind, allow_paid=_allow_paid,
+                                      exclude=frozenset(_excluded))
+                _np, _nm = str(_r.get("provider") or ""), str(_r.get("model") or "")
+            except Exception:
+                _np = _nm = ""
+            if not _np or not _nm or _np in _excluded:
+                break  # poolen udtømt for denne tur → giv op med sidste fejl
+            if _np not in _OPENAI_COMPATIBLE_PROVIDERS:
+                _excluded.add(_np)
+                continue
+            provider, model = _np, _nm
+            auth_profile, base_url = _openai_compat_credentials(provider)
+            logger.info("agent/step pool-failover → provider=%s model=%s (ekskluderet: %s)",
+                        provider, model, sorted(_excluded))
+    if raw is None:
+        logger.exception("agent/step model-kald fejlede endeligt: %s", _last_exc)
         return JSONResponse(status_code=502, content={
-            "error": {"message": f"model-kald fejlede: {exc}", "type": "upstream_error"}})
+            "error": {"message": f"model-kald fejlede: {_last_exc}", "type": "upstream_error"}})
     _dur_ms = int((_time.monotonic() - _t0) * 1000)
 
     tool_calls = list(raw.get("tool_calls") or [])

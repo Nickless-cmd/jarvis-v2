@@ -86,6 +86,83 @@ def _source_addr_usable(addr: str) -> bool:
         return False
 
 
+_NAT64_FLAG_KEY = "egress_nat64_enabled"           # master switch, default OFF
+_NAT64_PROVIDERS_KEY = "egress_nat64_providers"     # comma-sep provider allowlist
+_NAT64_DNS_KEY = "egress_nat64_dns"                 # comma-sep DNS64 server addrs
+# nat64.net public DNS64 (anycast pool — London + Hetzner + more; round-robined,
+# so this is a distributed set of gateways, not a single SPOF).
+_NAT64_DEFAULT_DNS = "2a00:1098:2b::1,2a00:1098:2c::1,2a01:4f8:c2c:123f::1"
+_NAT64_CACHE_TTL_S = 300.0
+# host -> (synthetic_v6, monotonic_expiry)
+_nat64_cache: dict[str, tuple[str, float]] = {}
+
+
+def resolve_nat64(provider: str, auth_profile: str) -> bool:
+    """True if this (provider, auth_profile) slot should egress via NAT64 instead
+    of the VPN proxy — for account2 IPv4-only providers that have no native AAAA.
+
+    Gated by ``egress_nat64_enabled`` (default False → always False → unchanged, VPN
+    path). Only non-default (account2) profiles, and only providers on the
+    ``egress_nat64_providers`` allowlist. Self-safe: any error → False → VPN path.
+
+    NAT64 reaches an IPv4-only host over our native IPv6 by connecting to a
+    DNS64-synthesised address in nat64.net's prefix; nat64.net's gateway then
+    translates to IPv4. The caller MUST use only the synthesised v6 address (never
+    the host's real A record) so account2 can never leak over the home IPv4.
+    """
+    if (auth_profile or "default") == "default":
+        return False
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        if not bool(get_runtime_state_value(_NAT64_FLAG_KEY, False)):
+            return False
+        allow = str(get_runtime_state_value(_NAT64_PROVIDERS_KEY, "") or "")
+        return provider in {p.strip() for p in allow.split(",") if p.strip()}
+    except Exception:
+        return False
+
+
+def nat64_synthesize(host: str) -> str | None:
+    """Resolve ``host`` to a NAT64 synthetic IPv6 address via a DNS64 server.
+
+    Returns the synthetic v6 (embeds the host's IPv4 behind nat64.net's prefix) or
+    None on any failure — the caller then falls back to the VPN proxy, never the
+    home IP. Cached per-host for ``_NAT64_CACHE_TTL_S`` to avoid a DNS64 round-trip
+    on every request. Tries each DNS64 server in the pool; first AAAA wins.
+    """
+    if not host:
+        return None
+    try:
+        import time
+        now = time.monotonic()
+        hit = _nat64_cache.get(host)
+        if hit and hit[1] > now:
+            return hit[0]
+        try:
+            from core.runtime.db_core import get_runtime_state_value
+            dns_raw = str(get_runtime_state_value(_NAT64_DNS_KEY, "") or "")
+        except Exception:
+            dns_raw = ""
+        servers = [s.strip() for s in (dns_raw or _NAT64_DEFAULT_DNS).split(",") if s.strip()]
+        import dns.resolver  # dnspython
+        for srv in servers:
+            try:
+                r = dns.resolver.Resolver(configure=False)
+                r.nameservers = [srv]
+                r.lifetime = 4.0
+                ans = r.resolve(host, "AAAA")
+                for rec in ans:
+                    syn = str(rec)
+                    if ":" in syn:
+                        _nat64_cache[host] = (syn, now + _NAT64_CACHE_TTL_S)
+                        return syn
+            except Exception:
+                continue
+        return None
+    except Exception:
+        return None
+
+
 def proxy_endpoints() -> dict:
     """Return {egress: url|None}. Reads runtime config override if present, else
     the defaults. Self-safe: any error -> the hardcoded defaults."""

@@ -928,11 +928,39 @@ def _execute_openai_compatible_chat(
     # profile + provider on the allowlist, e.g. groq), bind the connection to a
     # native-IPv6 source address in our HE /64 INSTEAD of the he6 proxy hop. When
     # None (default), the existing multiprofile proxy path is byte-identical.
-    from core.services.egress_routing import resolve_v6bind_source as _rv6
+    from core.services.egress_routing import (
+        resolve_v6bind_source as _rv6,
+        resolve_nat64 as _rn64,
+        nat64_synthesize as _n64syn,
+    )
     _v6src = _rv6(provider, auth_profile)
-    proxy = None if _v6src else _resolve_egress_proxy(provider=provider, auth_profile=auth_profile)
+    # NAT64 (2026-07-23): account2 IPv4-only providers can egress over native IPv6
+    # to a DNS64-synthesised address (nat64.net translates to the provider's IPv4)
+    # instead of the VPN proxy. Only when the flag is on + provider allowlisted; and
+    # ONLY the synthetic v6 is ever used (never the real A record) so account2 can't
+    # leak over the home IP. If synthesis fails → _nat64_url stays None → the VPN
+    # proxy path below still runs (leak-safe fallback).
+    _nat64_url: str | None = None
+    _nat64_host: str | None = None
+    if not _v6src and _rn64(provider, auth_profile):
+        from urllib.parse import urlsplit, urlunsplit
+        _p = urlsplit(f"{root}/chat/completions")
+        _synth = _n64syn(_p.hostname or "")
+        if _synth:
+            _nl = f"[{_synth}]" + (f":{_p.port}" if _p.port else "")
+            _nat64_url = urlunsplit((_p.scheme, _nl, _p.path, _p.query, _p.fragment))
+            _nat64_host = _p.hostname
+    proxy = None if (_v6src or _nat64_url) else _resolve_egress_proxy(provider=provider, auth_profile=auth_profile)
     _proxy_kw = {"proxy": proxy} if proxy else {}
-    if _v6src:
+    if _nat64_url:
+        data, _headers = _f._http_json_httpx(
+            _nat64_url,
+            payload=payload,
+            headers=headers,
+            provider=provider,
+            nat64_sni=_nat64_host,
+        )
+    elif _v6src:
         # v6bind (any allowlisted account2 provider): route through httpx — it's the
         # only path that supports local_address source-binding — regardless of the
         # provider's usual urllib/httpx default. Same URL + payload; only egress changes.
@@ -1611,6 +1639,7 @@ def _http_json_httpx(
     headers: dict[str, str] | None = None,
     proxy: str | None = None,
     source_address: str | None = None,
+    nat64_sni: str | None = None,
 ) -> tuple[dict[str, object], dict[str, str]]:
     request_headers = {
         "Accept": "application/json",
@@ -1618,6 +1647,14 @@ def _http_json_httpx(
         "User-Agent": "jarvis-v2/cheap-lane",
         **(headers or {}),
     }
+    # NAT64 (2026-07-23): ``url`` already points at a DNS64-synthesised IPv6 literal
+    # so the connection egresses natively over IPv6 to nat64.net (which translates to
+    # the provider's IPv4). ``nat64_sni`` is the provider's real hostname — set it as
+    # the Host header AND the TLS SNI/verification name so the cert still validates
+    # against the hostname while we connect to the synthetic address. Leak-safe: we
+    # only ever reach the synthetic v6, never the host's real A record over home IPv4.
+    if nat64_sni:
+        request_headers["Host"] = nat64_sni
     # Task 8b: account2 egress-proxy (httpx 0.28 kwarg is `proxy=`, not `proxies=`).
     # None -> direct (home IP).
     _client_kwargs: dict[str, object] = {
@@ -1634,11 +1671,20 @@ def _http_json_httpx(
         _client_kwargs["proxy"] = proxy
     try:
         with httpx.Client(**_client_kwargs) as client:
-            response = client.post(
-                url,
-                json=payload,
-                headers=request_headers,
-            )
+            if nat64_sni:
+                # Connect to the synthetic-IP url, but drive TLS SNI + cert
+                # verification off the real hostname via the httpcore extension.
+                req = client.build_request(
+                    "POST", url, json=payload, headers=request_headers
+                )
+                req.extensions["sni_hostname"] = nat64_sni
+                response = client.send(req)
+            else:
+                response = client.post(
+                    url,
+                    json=payload,
+                    headers=request_headers,
+                )
             raw_headers = {key.lower(): value for key, value in response.headers.items()}
             response.raise_for_status()
             data = response.json()

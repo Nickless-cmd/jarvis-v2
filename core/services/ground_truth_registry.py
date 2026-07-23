@@ -63,7 +63,7 @@ INFRASTRUCTURE_FACTS: dict[str, dict[str, str]] = {
         # Legacy Jarvis runtime hosts (pre-2026-05-25 migration)
         "192.168.50.32": "Jarvis side-server (bs_jarvis, web root in ~/web/)",
         "192.168.50.36": "ChiefOne (Bjørn's desktop, NOT Jarvis runtime anymore)",
-        "10.0.0.46": "ChiefOne (Bjørn's desktop, NOT Jarvis runtime anymore — was primary pre-2026-05-25)",
+        "10.0.0.46": "FREED 2026-07-23 — was the he6 IPv6 egress proxy (croq-ipv6 LXC-107, tinyproxy:8888) for account2 groq; retired when groq moved to native v6bind source-binding on CT105",
         # Smart home
         "10.0.0.34": "Home Assistant host",
         # Hostname aliases (typo-tolerant)

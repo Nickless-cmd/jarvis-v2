@@ -651,7 +651,21 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception:
         pass
 
-    compact = provider == "ollama"
+    # `compact` = the trimmed prompt (halved identity files, shorter rules, fewer
+    # awareness sections, less history) meant for SMALL LOCAL models with a tight
+    # context/capability budget. Was `provider == "ollama"` (2026-07-23 fix) — which
+    # wrongly trimmed CAPABLE cloud-via-ollama models like glm-5.2:cloud / qwen3.5:cloud
+    # (full 1M-context, as capable as deepseek), so Jarvis was "less himself" there for
+    # no reason. Now: only genuinely small local ollama models get compact. Cloud models
+    # (":cloud") and large-window models get the FULL prompt like deepseek.
+    _model_l = (model or "").lower()
+    _is_cloud_model = ":cloud" in _model_l
+    try:
+        from core.services.model_context import model_context_window as _mcw
+        _win = int(_mcw(provider, model) or 0)
+    except Exception:
+        _win = 0
+    compact = (provider == "ollama") and not _is_cloud_model and (0 < _win < 200_000)
     workspace_dir = ensure_default_workspace(name=name)
     parts: list[str] = []
     included_files: list[str] = []

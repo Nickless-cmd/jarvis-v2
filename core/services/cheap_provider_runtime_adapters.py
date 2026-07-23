@@ -932,14 +932,24 @@ def _execute_openai_compatible_chat(
     _v6src = _rv6(provider, auth_profile)
     proxy = None if _v6src else _resolve_egress_proxy(provider=provider, auth_profile=auth_profile)
     _proxy_kw = {"proxy": proxy} if proxy else {}
-    if provider == "groq":
-        _egress_kw = {"source_address": _v6src} if _v6src else _proxy_kw
+    if _v6src:
+        # v6bind (any allowlisted account2 provider): route through httpx — it's the
+        # only path that supports local_address source-binding — regardless of the
+        # provider's usual urllib/httpx default. Same URL + payload; only egress changes.
         data, _headers = _f._http_json_httpx(
             f"{root}/chat/completions",
             payload=payload,
             headers=headers,
             provider=provider,
-            **_egress_kw,
+            source_address=_v6src,
+        )
+    elif provider == "groq":
+        data, _headers = _f._http_json_httpx(
+            f"{root}/chat/completions",
+            payload=payload,
+            headers=headers,
+            provider=provider,
+            **_proxy_kw,
         )
     else:
         data, _headers = _f._http_json(

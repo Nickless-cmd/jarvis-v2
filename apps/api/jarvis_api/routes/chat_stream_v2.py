@@ -25,6 +25,58 @@ from core.services.visible_runs_sse_v2 import translate_to_v2
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+# ── Ollama model-name resolution (2026-07-23) ────────────────────────────────
+# Clients (esp. the jarvis-code selector) may send a bare cloud-model name
+# ("glm-5.2") while ollama registers it with a tag ("glm-5.2:cloud"). A bare name
+# ollama doesn't know → "model not found" → no response. Resolve to the real tag.
+import time as _t_ollama
+_OLLAMA_TAGS_CACHE: dict = {"ts": 0.0, "tags": set()}
+_OLLAMA_TAGS_TTL_S = 120.0
+
+
+def _ollama_model_tags() -> set:
+    """Set of model names ollama currently serves. Cached 120s; fail-open (empty set)."""
+    now = _t_ollama.monotonic()
+    cached = _OLLAMA_TAGS_CACHE.get("tags") or set()
+    if cached and (now - float(_OLLAMA_TAGS_CACHE.get("ts") or 0)) < _OLLAMA_TAGS_TTL_S:
+        return cached
+    tags: set = set()
+    try:
+        import json as _json
+        import urllib.request as _u
+        base = "http://127.0.0.1:11434"
+        try:
+            _b = str(getattr(load_settings(), "embed_ollama_base_url", "") or "").strip()
+            if _b:
+                base = _b.rstrip("/")
+        except Exception:
+            pass
+        with _u.urlopen(base + "/api/tags", timeout=3) as _r:
+            data = _json.loads(_r.read())
+        tags = {str(m.get("name") or "").strip() for m in (data.get("models") or []) if m.get("name")}
+    except Exception:
+        pass
+    if tags:
+        _OLLAMA_TAGS_CACHE.update(ts=now, tags=tags)
+    return _OLLAMA_TAGS_CACHE.get("tags") or set()
+
+
+def _resolve_ollama_model_name(model: str) -> str:
+    """Resolve a (possibly bare) ollama model name to an actually-served tag.
+    'glm-5.2' → 'glm-5.2:cloud' when that variant exists. Fail-open: returns the
+    input unchanged if ollama is unreachable or no better match is found."""
+    m = (model or "").strip()
+    if not m:
+        return m
+    tags = _ollama_model_tags()
+    if not tags or m in tags:
+        return m
+    for _cand in (f"{m}:cloud", f"{m}:latest"):
+        if _cand in tags:
+            return _cand
+    return m
+
+
 # ── Path B: local-tool-result submission ─────────────────────────────────────
 # The server owns the code-lane transcript and pauses the run at a tool_call; the
 # local jarvis-code client executes it and POSTs the result here, correlated by
@@ -309,6 +361,14 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     )
     _eff_provider = _prov_override or settings.visible_model_provider
     _eff_model = _model_override or settings.visible_model_name
+    # Ollama model-name normalization (2026-07-23): the jarvis-code selector sends
+    # bare cloud names ("glm-5.2") but ollama registers cloud models with a ":cloud"
+    # tag ("glm-5.2:cloud"). A bare name → ollama "model 'glm-5.2' not found" → the
+    # code lane returns NO response. Resolve the bare name to the actual ollama tag
+    # (adds ":cloud"/":latest" when that variant exists). Cached; fail-open (unchanged
+    # if ollama can't be reached). Only touches the ollama provider.
+    if _eff_provider == "ollama":
+        _eff_model = _resolve_ollama_model_name(_eff_model)
     # Observability: hvad valgte klienten, og hvad resolver det til? Gør provider-
     # mismatch ("jeg kører ikke ollama") diagnosticerbar uden at gætte.
     print(

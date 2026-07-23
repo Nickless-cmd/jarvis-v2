@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6408/12964 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6408/12959 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6408/12964 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4236 | 9026 | 46% |
+| `core.services` | 4236 | 9021 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -743,9 +743,9 @@ Generated from source. 6408/12964 functions/methods documented (49%). The list b
 - `core/services/chronicle_consolidation_proposal_tracking.py` :: `build_runtime_chronicle_consolidation_proposal_surface` (L84)
 - `core/services/chronicle_consolidation_proposal_tracking.py` :: `refresh_runtime_chronicle_consolidation_proposal_statuses` (L53)
 - `core/services/chronicle_consolidation_proposal_tracking.py` :: `track_runtime_chronicle_consolidation_proposals_for_visible_turn` (L30)
-- `core/services/chronicle_consolidation_signal_tracking.py` :: `build_runtime_chronicle_consolidation_signal_surface` (L90)
-- `core/services/chronicle_consolidation_signal_tracking.py` :: `refresh_runtime_chronicle_consolidation_signal_statuses` (L59)
-- `core/services/chronicle_consolidation_signal_tracking.py` :: `track_runtime_chronicle_consolidation_signals_for_visible_turn` (L36)
+- `core/services/chronicle_consolidation_signal_tracking.py` :: `build_runtime_chronicle_consolidation_signal_surface` (L81)
+- `core/services/chronicle_consolidation_signal_tracking.py` :: `refresh_runtime_chronicle_consolidation_signal_statuses` (L77)
+- `core/services/chronicle_consolidation_signal_tracking.py` :: `track_runtime_chronicle_consolidation_signals_for_visible_turn` (L51)
 - `core/services/chronicle_engine.py` :: `build_chronicle_surface` (L236)
 - `core/services/chronicle_engine.py` :: `project_entry_to_markdown` (L483)
 - `core/services/clarification_classifier.py` :: `clarification_prompt_section` (L78)
@@ -1024,9 +1024,9 @@ Generated from source. 6408/12964 functions/methods documented (49%). The list b
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_prompt_section` (L42)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_surface` (L35)
 - `core/services/inner_dialectic_engine.py` :: `run_inner_dialectic` (L13)
-- `core/services/inner_visible_support_signal_tracking.py` :: `build_runtime_inner_visible_support_signal_surface` (L84)
-- `core/services/inner_visible_support_signal_tracking.py` :: `refresh_runtime_inner_visible_support_signal_statuses` (L53)
-- `core/services/inner_visible_support_signal_tracking.py` :: `track_runtime_inner_visible_support_signals_for_visible_turn` (L21)
+- `core/services/inner_visible_support_signal_tracking.py` :: `build_runtime_inner_visible_support_signal_surface` (L74)
+- `core/services/inner_visible_support_signal_tracking.py` :: `refresh_runtime_inner_visible_support_signal_statuses` (L70)
+- `core/services/inner_visible_support_signal_tracking.py` :: `track_runtime_inner_visible_support_signals_for_visible_turn` (L36)
 - `core/services/inner_voice_notifier.py` :: `get_inner_voice_notifier_state` (L276)
 - `core/services/inner_voice_notifier.py` :: `start_inner_voice_notifier` (L41)
 - `core/services/inner_voice_notifier.py` :: `stop_inner_voice_notifier` (L59)
@@ -1112,9 +1112,9 @@ Generated from source. 6408/12964 functions/methods documented (49%). The list b
 - `core/services/meta_learning_retrospective.py` :: `list_recent_memos` (L272)
 - `core/services/meta_reflection_daemon.py` :: `build_meta_reflection_surface` (L334)
 - `core/services/meta_reflection_daemon.py` :: `get_latest_meta_insight` (L330)
-- `core/services/metabolism_state_signal_tracking.py` :: `build_runtime_metabolism_state_signal_surface` (L79)
+- `core/services/metabolism_state_signal_tracking.py` :: `build_runtime_metabolism_state_signal_surface` (L52)
 - `core/services/metabolism_state_signal_tracking.py` :: `refresh_runtime_metabolism_state_signal_statuses` (L48)
-- `core/services/metabolism_state_signal_tracking.py` :: `track_runtime_metabolism_state_signals_for_visible_turn` (L25)
+- `core/services/metabolism_state_signal_tracking.py` :: `track_runtime_metabolism_state_signals_for_visible_turn` (L38)
 - `core/services/metacognition_signal_tracker.py` :: `stop_metacognition_tracker` (L359)
 - `core/services/metacognitive_integration.py` :: `build_metacognitive_integration_surface` (L494)
 - `core/services/mirror_engine.py` :: `build_mirror_surface` (L56)
@@ -1313,9 +1313,9 @@ Generated from source. 6408/12964 functions/methods documented (49%). The list b
 - `core/services/regulation_homeostasis_signal_tracking.py` :: `build_runtime_regulation_homeostasis_signal_surface` (L81)
 - `core/services/regulation_homeostasis_signal_tracking.py` :: `refresh_runtime_regulation_homeostasis_signal_statuses` (L77)
 - `core/services/regulation_homeostasis_signal_tracking.py` :: `track_runtime_regulation_homeostasis_signals_for_visible_turn` (L43)
-- `core/services/relation_continuity_signal_tracking.py` :: `build_runtime_relation_continuity_signal_surface` (L77)
-- `core/services/relation_continuity_signal_tracking.py` :: `refresh_runtime_relation_continuity_signal_statuses` (L46)
-- `core/services/relation_continuity_signal_tracking.py` :: `track_runtime_relation_continuity_signals_for_visible_turn` (L23)
+- `core/services/relation_continuity_signal_tracking.py` :: `build_runtime_relation_continuity_signal_surface` (L68)
+- `core/services/relation_continuity_signal_tracking.py` :: `refresh_runtime_relation_continuity_signal_statuses` (L64)
+- `core/services/relation_continuity_signal_tracking.py` :: `track_runtime_relation_continuity_signals_for_visible_turn` (L38)
 - `core/services/relation_dynamics.py` :: `build_relation_dynamics_surface` (L244)
 - `core/services/relation_dynamics.py` :: `get_relation_dynamics` (L223)
 - `core/services/relation_dynamics.py` :: `tick` (L236)
@@ -1478,9 +1478,9 @@ Generated from source. 6408/12964 functions/methods documented (49%). The list b
 - `core/services/self_model_signal_tracking.py` :: `build_runtime_self_model_signal_surface` (L153)
 - `core/services/self_model_signal_tracking.py` :: `refresh_runtime_self_model_signal_statuses` (L66)
 - `core/services/self_model_signal_tracking.py` :: `track_runtime_self_model_signals_for_visible_turn` (L26)
-- `core/services/self_narrative_continuity_signal_tracking.py` :: `build_runtime_self_narrative_continuity_signal_surface` (L78)
-- `core/services/self_narrative_continuity_signal_tracking.py` :: `refresh_runtime_self_narrative_continuity_signal_statuses` (L47)
-- `core/services/self_narrative_continuity_signal_tracking.py` :: `track_runtime_self_narrative_continuity_signals_for_visible_turn` (L24)
+- `core/services/self_narrative_continuity_signal_tracking.py` :: `build_runtime_self_narrative_continuity_signal_surface` (L68)
+- `core/services/self_narrative_continuity_signal_tracking.py` :: `refresh_runtime_self_narrative_continuity_signal_statuses` (L64)
+- `core/services/self_narrative_continuity_signal_tracking.py` :: `track_runtime_self_narrative_continuity_signals_for_visible_turn` (L38)
 - `core/services/self_narrative_self_model_review_bridge.py` :: `build_runtime_self_narrative_self_model_review_bridge_surface` (L13)
 - `core/services/self_repair_engine.py` :: `delete_pattern` (L305)
 - `core/services/self_repair_engine.py` :: `disable_pattern` (L301)

@@ -1,10 +1,21 @@
+"""Reflection signal tracking — migrated onto signal_tracking_framework.
+
+The public surface is unchanged (byte-identical behaviour): the three functions
+below now delegate the shared lifecycle scaffolding (persist / refresh-to-stale /
+surface bucketing / event publishing) to :mod:`signal_tracking_framework`, while
+the reflection-specific candidate derivation, domain-key mapping, and history
+labelling stay here — that is the part unique to reflection.
+
+Reflection is one of the *richest* variants (its ``.settled`` event, early-retire
+window, and ``{active,integrating,settled}`` status set are atypical); every one
+of those is expressed as an explicit field on the spec below so nothing leaks and
+nothing is lost.
+"""
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-from uuid import uuid4
-
-from core.eventbus.bus import event_bus
 from core.services.signal_noise_guard import is_noisy_signal_text
+from core.services import signal_tracking_framework as _stf
+from core.services.signal_tracking_framework import SignalTrackingSpec, make_candidate
 from core.runtime.db import (
     list_runtime_development_focuses,
     list_runtime_goal_signals,
@@ -21,101 +32,28 @@ _EARLY_RETIRE_DAYS = 2
 _REFRESH_SCAN_LIMIT = 3000
 
 
+# ── public surface (thin delegates; signatures unchanged) ─────────────────────
 def track_runtime_reflection_signals_for_visible_turn(
     *,
     session_id: str | None,
     run_id: str,
     user_message: str,
 ) -> dict[str, object]:
-    normalized_session_id = str(session_id or "").strip()
-    normalized_message = " ".join(str(user_message or "").split()).strip()
-
-    candidates = _extract_reflection_candidates()
-    items = _persist_reflection_signals(
-        signals=candidates,
-        session_id=normalized_session_id,
-        run_id=run_id,
+    return _stf.track_for_visible_turn(
+        _SPEC, session_id=session_id, run_id=run_id, user_message=user_message
     )
-    return {
-        "created": len([item for item in items if item.get("was_created")]),
-        "updated": len([item for item in items if item.get("was_updated")]),
-        "items": items,
-        "summary": (
-            f"Tracked {len(items)} bounded reflection signals."
-            if items
-            else f"No bounded reflection signal warranted tracking for '{normalized_message[:80]}'."
-            if normalized_message
-            else "No bounded reflection signal warranted tracking."
-        ),
-    }
 
 
 def refresh_runtime_reflection_signal_statuses() -> dict[str, int]:
-    now = datetime.now(UTC)
-    refreshed = 0
-    for item in list_runtime_reflection_signals(limit=_REFRESH_SCAN_LIMIT):
-        if str(item.get("status") or "") not in {"active", "integrating", "settled"}:
-            continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
-        if updated_at is None:
-            continue
-        retire_early = (
-            str(item.get("confidence") or "") == "low"
-            or int(item.get("support_count") or 0) <= 1
-            or is_noisy_signal_text(str(item.get("title") or "") + " " + str(item.get("summary") or ""))
-        )
-        stale_after = _EARLY_RETIRE_DAYS if retire_early else _STALE_AFTER_DAYS
-        if updated_at > now - timedelta(days=stale_after):
-            continue
-        refreshed_item = update_runtime_reflection_signal_status(
-            str(item.get("signal_id") or ""),
-            status="stale",
-            updated_at=now.isoformat(),
-            status_reason="Marked stale after bounded reflection inactivity window.",
-        )
-        if refreshed_item is None:
-            continue
-        refreshed += 1
-        event_bus.publish(
-            "reflection_signal.stale",
-            {
-                "signal_id": refreshed_item.get("signal_id"),
-                "signal_type": refreshed_item.get("signal_type"),
-                "status": refreshed_item.get("status"),
-                "summary": refreshed_item.get("summary"),
-                "status_reason": refreshed_item.get("status_reason"),
-            },
-        )
-    return {"stale_marked": refreshed}
+    return _stf.refresh_statuses(_SPEC)
 
 
 def build_runtime_reflection_signal_surface(*, limit: int = 8) -> dict[str, object]:
-    refresh_runtime_reflection_signal_statuses()
-    items = list_runtime_reflection_signals(limit=max(limit, 1))
-    active = [item for item in items if str(item.get("status") or "") == "active"]
-    integrating = [item for item in items if str(item.get("status") or "") == "integrating"]
-    settled = [item for item in items if str(item.get("status") or "") == "settled"]
-    stale = [item for item in items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in items if str(item.get("status") or "") == "superseded"]
-    ordered = [*active, *integrating, *settled, *stale, *superseded]
-    latest = next(iter(active or integrating or settled or stale or superseded), None)
-    return {
-        "active": bool(active or integrating or settled),
-        "items": ordered,
-        "recent_history": [_history_item_from_signal(item) for item in items[: min(max(limit, 1), 6)]],
-        "summary": {
-            "active_count": len(active),
-            "integrating_count": len(integrating),
-            "settled_count": len(settled),
-            "stale_count": len(stale),
-            "superseded_count": len(superseded),
-            "current_signal": str((latest or {}).get("title") or "No active reflection signal"),
-            "current_status": str((latest or {}).get("status") or "none"),
-        },
-    }
+    return _stf.build_surface(_SPEC, limit=limit)
 
 
-def _extract_reflection_candidates() -> list[dict[str, object]]:
+# ── reflection-specific candidate derivation (unique ~40%) ────────────────────
+def _extract_reflection_candidates(*_args, **_kwargs) -> list[dict[str, object]]:
     snapshots: dict[str, dict[str, object]] = {}
 
     for focus in list_runtime_development_focuses(limit=12):
@@ -216,6 +154,35 @@ def _extract_reflection_candidates() -> list[dict[str, object]]:
     return candidates[:4]
 
 
+def _build_candidate(
+    *,
+    domain_key: str,
+    signal_type: str,
+    status: str,
+    title: str,
+    summary: str,
+    rationale: str,
+    status_reason: str,
+    source_items: list[dict[str, object] | None],
+) -> dict[str, object]:
+    # canonical_key = "reflection-signal:{signal_type}:{domain_key}"; confidence
+    # high when >=3 source layers else medium — matches the original exactly.
+    return make_candidate(
+        _SPEC,
+        signal_type=signal_type,
+        discriminator=signal_type,
+        key=domain_key,
+        status=status,
+        title=title,
+        summary=summary,
+        rationale=rationale,
+        status_reason=status_reason,
+        source_items=source_items,
+        group_value=domain_key,
+    )
+
+
+# ── reflection-specific surface + refresh hooks ───────────────────────────────
 def _history_item_from_signal(item: dict[str, object]) -> dict[str, object]:
     status = str(item.get("status") or "unknown")
     return {
@@ -235,123 +202,55 @@ def _history_item_from_signal(item: dict[str, object]) -> dict[str, object]:
     }
 
 
-def _build_candidate(
-    *,
-    domain_key: str,
-    signal_type: str,
-    status: str,
-    title: str,
-    summary: str,
-    rationale: str,
-    status_reason: str,
-    source_items: list[dict[str, object] | None],
-) -> dict[str, object]:
-    items = [item for item in source_items if item]
-    support_count = max([int(item.get("support_count") or 1) for item in items], default=1)
-    session_count = max([int(item.get("session_count") or 1) for item in items], default=1)
-    confidence = "high" if len(items) >= 3 else "medium"
-    return {
-        "signal_type": signal_type,
-        "canonical_key": f"reflection-signal:{signal_type}:{domain_key}",
-        "domain_key": domain_key,
-        "status": status,
-        "title": title,
-        "summary": summary,
-        "rationale": rationale,
-        "source_kind": "multi-signal-runtime-derivation",
-        "confidence": confidence,
-        "evidence_summary": _merge_fragments(*[str(item.get("evidence_summary") or "") for item in items]),
-        "support_summary": _merge_fragments(*[str(item.get("support_summary") or "") for item in items]),
-        "support_count": support_count,
-        "session_count": session_count,
-        "status_reason": status_reason,
-    }
+def _reflection_early_retire(item: dict[str, object]) -> bool:
+    return (
+        str(item.get("confidence") or "") == "low"
+        or int(item.get("support_count") or 0) <= 1
+        or is_noisy_signal_text(str(item.get("title") or "") + " " + str(item.get("summary") or ""))
+    )
 
 
-def _persist_reflection_signals(
-    *,
-    signals: list[dict[str, object]],
-    session_id: str,
-    run_id: str,
-) -> list[dict[str, object]]:
-    now = datetime.now(UTC).isoformat()
-    persisted: list[dict[str, object]] = []
-    for signal in signals:
-        persisted_item = upsert_runtime_reflection_signal(
-            signal_id=f"reflection-{uuid4().hex}",
-            signal_type=str(signal.get("signal_type") or "reflection-signal"),
-            canonical_key=str(signal.get("canonical_key") or ""),
-            status=str(signal.get("status") or "active"),
-            title=str(signal.get("title") or ""),
-            summary=str(signal.get("summary") or ""),
-            rationale=str(signal.get("rationale") or ""),
-            source_kind=str(signal.get("source_kind") or "runtime-derived-support"),
-            confidence=str(signal.get("confidence") or "low"),
-            evidence_summary=str(signal.get("evidence_summary") or ""),
-            support_summary=str(signal.get("support_summary") or ""),
-            support_count=int(signal.get("support_count") or 1),
-            session_count=int(signal.get("session_count") or 1),
-            created_at=now,
-            updated_at=now,
-            status_reason=str(signal.get("status_reason") or ""),
-            run_id=run_id,
-            session_id=session_id,
-        )
-        domain_key = str(signal.get("domain_key") or "")
-        superseded_count = 0
-        if domain_key:
-            superseded_count = supersede_runtime_reflection_signals_for_domain(
-                domain_key=domain_key,
-                exclude_signal_id=str(persisted_item.get("signal_id") or ""),
-                updated_at=now,
-                status_reason=f"Superseded by newer bounded reflection signal {persisted_item.get('signal_id')}.",
-            )
-        if superseded_count > 0:
-            event_bus.publish(
-                "reflection_signal.superseded",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "canonical_key": persisted_item.get("canonical_key"),
-                    "superseded_count": superseded_count,
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        if persisted_item.get("was_created"):
-            event_bus.publish(
-                "reflection_signal.created",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "status": persisted_item.get("status"),
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        elif persisted_item.get("was_updated"):
-            event_bus.publish(
-                "reflection_signal.updated",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "status": persisted_item.get("status"),
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        if persisted_item.get("was_created") or persisted_item.get("was_updated"):
-            if str(persisted_item.get("status") or "") == "settled":
-                event_bus.publish(
-                    "reflection_signal.settled",
-                    {
-                        "signal_id": persisted_item.get("signal_id"),
-                        "signal_type": persisted_item.get("signal_type"),
-                        "status": persisted_item.get("status"),
-                        "summary": persisted_item.get("summary"),
-                    },
-                )
-        persisted.append(persisted_item)
-    return persisted
+def _reflection_track_summary(items: list[dict[str, object]], message: str) -> str:
+    if items:
+        return f"Tracked {len(items)} bounded reflection signals."
+    if message:
+        return f"No bounded reflection signal warranted tracking for '{message[:80]}'."
+    return "No bounded reflection signal warranted tracking."
 
 
+# ── spec: every reflection-specific knob made explicit ────────────────────────
+_SPEC = SignalTrackingSpec(
+    name="reflection",
+    slug="reflection-signal",
+    signal_id_prefix="reflection",
+    event_prefix="reflection_signal",
+    default_signal_type="reflection-signal",
+    list_fn=list_runtime_reflection_signals,
+    upsert_fn=upsert_runtime_reflection_signal,
+    update_status_fn=update_runtime_reflection_signal_status,
+    supersede_fn=supersede_runtime_reflection_signals_for_domain,
+    supersede_group_field="domain_key",
+    supersede_group_kw="domain_key",
+    extract_fn=_extract_reflection_candidates,
+    stale_after_days=_STALE_AFTER_DAYS,
+    early_retire_days=_EARLY_RETIRE_DAYS,
+    early_retire_predicate=_reflection_early_retire,
+    refresh_scan_limit=_REFRESH_SCAN_LIMIT,
+    refreshable_statuses=frozenset({"active", "integrating", "settled"}),
+    stale_status_reason="Marked stale after bounded reflection inactivity window.",
+    surface_status_order=("active", "integrating", "settled", "stale", "superseded"),
+    surface_active_statuses=frozenset({"active", "integrating", "settled"}),
+    surface_history_cap=6,
+    history_item_fn=_history_item_from_signal,
+    empty_current_label="No active reflection signal",
+    extra_status_events={"settled": "reflection_signal.settled"},
+    stale_payload_extra=("status_reason",),
+    superseded_payload_extra=("canonical_key",),
+    track_summary_fn=_reflection_track_summary,
+)
+
+
+# ── reflection-specific domain-key mapping + labels (unique) ───────────────────
 def _domain_key_from_focus(canonical_key: str) -> str:
     text = str(canonical_key or "")
     if "danish-concise-calibration" in text:
@@ -394,27 +293,6 @@ def _domain_title(domain_key: str) -> str:
     if domain_key == "avoid-repetitive-openers":
         return "opener calibration"
     return domain_key.replace("-", " ") or "current bounded thread"
-
-
-def _merge_fragments(*parts: str) -> str:
-    merged: list[str] = []
-    seen: set[str] = set()
-    for part in parts:
-        normalized = " ".join(str(part or "").split()).strip()
-        if not normalized or normalized in seen:
-            continue
-        seen.add(normalized)
-        merged.append(normalized)
-        if len(merged) >= 4:
-            break
-    return " | ".join(merged)
-
-
-def _parse_dt(value: str) -> datetime | None:
-    try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    except ValueError:
-        return None
 
 
 def _history_transition_label(*, signal_type: str, status: str) -> str:

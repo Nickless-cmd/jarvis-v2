@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6408/12971 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6408/12970 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6408/12971 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4236 | 9033 | 46% |
+| `core.services` | 4236 | 9032 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1296,9 +1296,9 @@ Generated from source. 6408/12971 functions/methods documented (49%). The list b
 - `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L345)
 - `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L143)
 - `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L139)
-- `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L92)
-- `core/services/reflection_signal_tracking.py` :: `refresh_runtime_reflection_signal_statuses` (L53)
-- `core/services/reflection_signal_tracking.py` :: `track_runtime_reflection_signals_for_visible_turn` (L24)
+- `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)
+- `core/services/reflection_signal_tracking.py` :: `refresh_runtime_reflection_signal_statuses` (L47)
+- `core/services/reflection_signal_tracking.py` :: `track_runtime_reflection_signals_for_visible_turn` (L36)
 - `core/services/reflection_to_plan.py` :: `build_reflection_to_plan_surface` (L340)
 - `core/services/reflection_to_plan.py` :: `complete_reflective_plan` (L265)
 - `core/services/reflection_to_plan.py` :: `list_reflective_plans` (L320)

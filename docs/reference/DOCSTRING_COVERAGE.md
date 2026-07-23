@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6408/12967 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6408/12964 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6408/12967 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4236 | 9029 | 46% |
+| `core.services` | 4236 | 9026 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1081,9 +1081,9 @@ Generated from source. 6408/12967 functions/methods documented (49%). The list b
 - `core/services/mcp_registry.py` :: `add_mcp_server` (L28)
 - `core/services/mcp_registry.py` :: `list_mcp_servers` (L24)
 - `core/services/mcp_registry.py` :: `remove_mcp_server` (L40)
-- `core/services/meaning_significance_signal_tracking.py` :: `build_runtime_meaning_significance_signal_surface` (L78)
-- `core/services/meaning_significance_signal_tracking.py` :: `refresh_runtime_meaning_significance_signal_statuses` (L47)
-- `core/services/meaning_significance_signal_tracking.py` :: `track_runtime_meaning_significance_signals_for_visible_turn` (L24)
+- `core/services/meaning_significance_signal_tracking.py` :: `build_runtime_meaning_significance_signal_surface` (L69)
+- `core/services/meaning_significance_signal_tracking.py` :: `refresh_runtime_meaning_significance_signal_statuses` (L65)
+- `core/services/meaning_significance_signal_tracking.py` :: `track_runtime_meaning_significance_signals_for_visible_turn` (L39)
 - `core/services/memory_breathing.py` :: `build_memory_breathing_surface` (L114)
 - `core/services/memory_decay_daemon.py` :: `build_memory_decay_surface` (L146)
 - `core/services/memory_decay_daemon.py` :: `get_latest_rediscovery` (L142)
@@ -1310,18 +1310,18 @@ Generated from source. 6408/12967 functions/methods documented (49%). The list b
 - `core/services/reflective_critic_tracking.py` :: `track_runtime_reflective_critics_for_visible_turn` (L27)
 - `core/services/regret_engine.py` :: `list_regrets` (L291)
 - `core/services/regret_engine.py` :: `summarize_regrets` (L314)
-- `core/services/regulation_homeostasis_signal_tracking.py` :: `build_runtime_regulation_homeostasis_signal_surface` (L86)
-- `core/services/regulation_homeostasis_signal_tracking.py` :: `refresh_runtime_regulation_homeostasis_signal_statuses` (L55)
-- `core/services/regulation_homeostasis_signal_tracking.py` :: `track_runtime_regulation_homeostasis_signals_for_visible_turn` (L23)
+- `core/services/regulation_homeostasis_signal_tracking.py` :: `build_runtime_regulation_homeostasis_signal_surface` (L81)
+- `core/services/regulation_homeostasis_signal_tracking.py` :: `refresh_runtime_regulation_homeostasis_signal_statuses` (L77)
+- `core/services/regulation_homeostasis_signal_tracking.py` :: `track_runtime_regulation_homeostasis_signals_for_visible_turn` (L43)
 - `core/services/relation_continuity_signal_tracking.py` :: `build_runtime_relation_continuity_signal_surface` (L77)
 - `core/services/relation_continuity_signal_tracking.py` :: `refresh_runtime_relation_continuity_signal_statuses` (L46)
 - `core/services/relation_continuity_signal_tracking.py` :: `track_runtime_relation_continuity_signals_for_visible_turn` (L23)
 - `core/services/relation_dynamics.py` :: `build_relation_dynamics_surface` (L244)
 - `core/services/relation_dynamics.py` :: `get_relation_dynamics` (L223)
 - `core/services/relation_dynamics.py` :: `tick` (L236)
-- `core/services/relation_state_signal_tracking.py` :: `build_runtime_relation_state_signal_surface` (L86)
-- `core/services/relation_state_signal_tracking.py` :: `refresh_runtime_relation_state_signal_statuses` (L55)
-- `core/services/relation_state_signal_tracking.py` :: `track_runtime_relation_state_signals_for_visible_turn` (L23)
+- `core/services/relation_state_signal_tracking.py` :: `build_runtime_relation_state_signal_surface` (L76)
+- `core/services/relation_state_signal_tracking.py` :: `refresh_runtime_relation_state_signal_statuses` (L72)
+- `core/services/relation_state_signal_tracking.py` :: `track_runtime_relation_state_signals_for_visible_turn` (L38)
 - `core/services/relational_warmth.py` :: `build_relational_warmth_surface` (L214)
 - `core/services/relational_warmth.py` :: `get_relation` (L209)
 - `core/services/relational_warmth.py` :: `tick` (L194)
@@ -1625,9 +1625,9 @@ Generated from source. 6408/12967 functions/methods documented (49%). The list b
 - `core/services/telegram_gateway.py` :: `is_configured` (L57)
 - `core/services/telegram_gateway.py` :: `start_telegram_gateway` (L464)
 - `core/services/telegram_gateway.py` :: `stop_telegram_gateway` (L495)
-- `core/services/temperament_tendency_signal_tracking.py` :: `build_runtime_temperament_tendency_signal_surface` (L78)
-- `core/services/temperament_tendency_signal_tracking.py` :: `refresh_runtime_temperament_tendency_signal_statuses` (L47)
-- `core/services/temperament_tendency_signal_tracking.py` :: `track_runtime_temperament_tendency_signals_for_visible_turn` (L24)
+- `core/services/temperament_tendency_signal_tracking.py` :: `build_runtime_temperament_tendency_signal_surface` (L69)
+- `core/services/temperament_tendency_signal_tracking.py` :: `refresh_runtime_temperament_tendency_signal_statuses` (L65)
+- `core/services/temperament_tendency_signal_tracking.py` :: `track_runtime_temperament_tendency_signals_for_visible_turn` (L39)
 - `core/services/temporal_body.py` :: `age_journey` (L8)
 - `core/services/temporal_body.py` :: `build_temporal_body_surface` (L35)
 - `core/services/temporal_body.py` :: `describe_temporal_body` (L23)

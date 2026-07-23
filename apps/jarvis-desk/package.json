@@ -67,7 +67,8 @@
         "owner": "Nickless-cmd",
         "repo": "jarvis-v2"
       }
-    ]
+    ],
+    "afterPack": "build-hooks/afterPack.js"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",

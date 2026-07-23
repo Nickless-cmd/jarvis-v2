@@ -1,9 +1,22 @@
+"""Temporal-recurrence signal tracking — migrated onto signal_tracking_framework.
+
+The public surface is unchanged (byte-identical behaviour): the three functions
+below delegate the shared lifecycle scaffolding (persist / refresh-to-stale /
+surface bucketing / event publishing) to :mod:`signal_tracking_framework`, while
+the recurrence-specific cross-layer candidate derivation and domain-key mapping
+stay here — that is the part unique to temporal recurrence.
+
+Two knobs are non-standard and stay in this file's own ``_build_candidate``:
+the confidence rule adds ``or record_count >= 5`` (passed explicitly to
+``make_candidate``), and ``support_summary`` / ``support_count`` fold in the
+``record_count`` (overridden on the returned candidate — ``make_candidate`` can
+only build them from source items). The display token stays "temporal recurrence"
+(a space, not the hyphenated slug) via ``track_summary_fn``.
+"""
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-from uuid import uuid4
-
-from core.eventbus.bus import event_bus
+from core.services import signal_tracking_framework as _stf
+from core.services.signal_tracking_framework import SignalTrackingSpec, make_candidate
 from core.runtime.db import (
     list_runtime_development_focuses,
     list_runtime_goal_signals,
@@ -18,83 +31,25 @@ from core.runtime.db import (
 _STALE_AFTER_DAYS = 14
 
 
+# ── public surface (thin delegates; signatures unchanged) ─────────────────────
 def track_runtime_temporal_recurrence_signals_for_visible_turn(
     *,
     session_id: str | None,
     run_id: str,
 ) -> dict[str, object]:
-    items = _persist_recurrence_signals(
-        signals=_extract_recurrence_candidates(),
-        session_id=str(session_id or "").strip(),
-        run_id=run_id,
-    )
-    return {
-        "created": len([item for item in items if item.get("was_created")]),
-        "updated": len([item for item in items if item.get("was_updated")]),
-        "items": items,
-        "summary": (
-            f"Tracked {len(items)} bounded temporal recurrence signals."
-            if items
-            else "No bounded temporal recurrence signal warranted tracking."
-        ),
-    }
+    return _stf.track_for_visible_turn(_SPEC, session_id=session_id, run_id=run_id)
 
 
 def refresh_runtime_temporal_recurrence_signal_statuses() -> dict[str, int]:
-    now = datetime.now(UTC)
-    refreshed = 0
-    for item in list_runtime_temporal_recurrence_signals(limit=40):
-        if str(item.get("status") or "") not in {"active", "softening"}:
-            continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
-        if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
-            continue
-        refreshed_item = update_runtime_temporal_recurrence_signal_status(
-            str(item.get("signal_id") or ""),
-            status="stale",
-            updated_at=now.isoformat(),
-            status_reason="Marked stale after bounded recurrence inactivity window.",
-        )
-        if refreshed_item is None:
-            continue
-        refreshed += 1
-        event_bus.publish(
-            "temporal_recurrence_signal.stale",
-            {
-                "signal_id": refreshed_item.get("signal_id"),
-                "signal_type": refreshed_item.get("signal_type"),
-                "status": refreshed_item.get("status"),
-                "summary": refreshed_item.get("summary"),
-                "status_reason": refreshed_item.get("status_reason"),
-            },
-        )
-    return {"stale_marked": refreshed}
+    return _stf.refresh_statuses(_SPEC)
 
 
 def build_runtime_temporal_recurrence_signal_surface(*, limit: int = 8) -> dict[str, object]:
-    refresh_runtime_temporal_recurrence_signal_statuses()
-    items = list_runtime_temporal_recurrence_signals(limit=max(limit, 1))
-    active = [item for item in items if str(item.get("status") or "") == "active"]
-    softening = [item for item in items if str(item.get("status") or "") == "softening"]
-    stale = [item for item in items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in items if str(item.get("status") or "") == "superseded"]
-    ordered = [*active, *softening, *stale, *superseded]
-    latest = next(iter(active or softening or stale or superseded), None)
-    return {
-        "active": bool(active or softening),
-        "items": ordered,
-        "summary": {
-            "active_count": len(active),
-            "softening_count": len(softening),
-            "stale_count": len(stale),
-            "superseded_count": len(superseded),
-            "current_signal": str((latest or {}).get("title") or "No active temporal recurrence signal"),
-            "current_status": str((latest or {}).get("status") or "none"),
-        },
-    }
+    return _stf.build_surface(_SPEC, limit=limit)
 
 
-def _extract_recurrence_candidates() -> list[dict[str, object]]:
+# ── recurrence-specific cross-layer candidate derivation (unique ~40%) ─────────
+def _extract_recurrence_candidates(*_args, **_kwargs) -> list[dict[str, object]]:
     snapshots: dict[str, dict[str, object]] = {}
 
     for focus in list_runtime_development_focuses(limit=18):
@@ -213,75 +168,6 @@ def _extract_recurrence_candidates() -> list[dict[str, object]]:
     return candidates[:4]
 
 
-def _persist_recurrence_signals(
-    *,
-    signals: list[dict[str, object]],
-    session_id: str,
-    run_id: str,
-) -> list[dict[str, object]]:
-    now = datetime.now(UTC).isoformat()
-    persisted: list[dict[str, object]] = []
-    for signal in signals:
-        persisted_item = upsert_runtime_temporal_recurrence_signal(
-            signal_id=f"recurrence-{uuid4().hex}",
-            signal_type=str(signal.get("signal_type") or "temporal-recurrence"),
-            canonical_key=str(signal.get("canonical_key") or ""),
-            status=str(signal.get("status") or "active"),
-            title=str(signal.get("title") or ""),
-            summary=str(signal.get("summary") or ""),
-            rationale=str(signal.get("rationale") or ""),
-            source_kind=str(signal.get("source_kind") or "runtime-derived-support"),
-            confidence=str(signal.get("confidence") or "low"),
-            evidence_summary=str(signal.get("evidence_summary") or ""),
-            support_summary=str(signal.get("support_summary") or ""),
-            support_count=int(signal.get("support_count") or 1),
-            session_count=int(signal.get("session_count") or 1),
-            created_at=now,
-            updated_at=now,
-            status_reason=str(signal.get("status_reason") or ""),
-            run_id=run_id,
-            session_id=session_id,
-        )
-        superseded_count = supersede_runtime_temporal_recurrence_signals_for_domain(
-            domain_key=str(signal.get("domain_key") or ""),
-            exclude_signal_id=str(persisted_item.get("signal_id") or ""),
-            updated_at=now,
-            status_reason="Superseded by a newer temporal recurrence reading for the same bounded domain.",
-        )
-        if superseded_count > 0:
-            event_bus.publish(
-                "temporal_recurrence_signal.superseded",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "superseded_count": superseded_count,
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        if persisted_item.get("was_created"):
-            event_bus.publish(
-                "temporal_recurrence_signal.created",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "status": persisted_item.get("status"),
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        elif persisted_item.get("was_updated"):
-            event_bus.publish(
-                "temporal_recurrence_signal.updated",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "status": persisted_item.get("status"),
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        persisted.append(persisted_item)
-    return persisted
-
-
 def _build_candidate(
     *,
     domain_key: str,
@@ -294,31 +180,70 @@ def _build_candidate(
     source_items: list[dict[str, object] | None],
     record_count: int,
 ) -> dict[str, object]:
+    # canonical_key = "temporal-recurrence:{signal_type}:{domain_key}"; confidence
+    # is high when >=3 source layers OR record_count >= 5 (non-default → passed
+    # explicitly). support_summary/support_count fold in record_count, which
+    # make_candidate cannot express, so they are overridden on the result.
     items = [item for item in source_items if item]
-    support_count = max([int(item.get("support_count") or 1) for item in items], default=1)
-    session_count = max([int(item.get("session_count") or 1) for item in items], default=1)
     confidence = "high" if len(items) >= 3 or record_count >= 5 else "medium"
-    return {
-        "signal_type": signal_type,
-        "canonical_key": f"temporal-recurrence:{signal_type}:{domain_key}",
-        "domain_key": domain_key,
-        "status": status,
-        "title": title,
-        "summary": summary,
-        "rationale": rationale,
-        "source_kind": "multi-signal-runtime-derivation",
-        "confidence": confidence,
-        "evidence_summary": _merge_fragments(*[str(item.get("evidence_summary") or "") for item in items]),
-        "support_summary": _merge_fragments(
-            f"{record_count} bounded signal records across existing runtime layers.",
-            *[str(item.get("support_summary") or "") for item in items],
-        ),
-        "support_count": max(support_count, record_count),
-        "session_count": session_count,
-        "status_reason": status_reason,
-    }
+    candidate = make_candidate(
+        _SPEC,
+        signal_type=signal_type,
+        discriminator=signal_type,
+        key=domain_key,
+        status=status,
+        title=title,
+        summary=summary,
+        rationale=rationale,
+        status_reason=status_reason,
+        source_items=source_items,
+        confidence=confidence,
+        group_value=domain_key,
+    )
+    candidate["support_summary"] = _merge_fragments(
+        f"{record_count} bounded signal records across existing runtime layers.",
+        *[str(item.get("support_summary") or "") for item in items],
+    )
+    candidate["support_count"] = max(int(candidate["support_count"]), record_count)
+    return candidate
 
 
+def _temporal_recurrence_track_summary(items: list[dict[str, object]], message: str) -> str:
+    return (
+        f"Tracked {len(items)} bounded temporal recurrence signals."
+        if items
+        else "No bounded temporal recurrence signal warranted tracking."
+    )
+
+
+# ── spec: standard S-family knobs + _for_domain supersede ──────────────────────
+_SPEC = SignalTrackingSpec(
+    name="temporal-recurrence",
+    slug="temporal-recurrence",
+    signal_id_prefix="recurrence",
+    event_prefix="temporal_recurrence_signal",
+    default_signal_type="temporal-recurrence",
+    list_fn=list_runtime_temporal_recurrence_signals,
+    upsert_fn=upsert_runtime_temporal_recurrence_signal,
+    update_status_fn=update_runtime_temporal_recurrence_signal_status,
+    supersede_fn=supersede_runtime_temporal_recurrence_signals_for_domain,
+    supersede_group_field="domain_key",
+    supersede_group_kw="domain_key",
+    extract_fn=_extract_recurrence_candidates,
+    stale_after_days=_STALE_AFTER_DAYS,
+    refresh_scan_limit=40,
+    refreshable_statuses=frozenset({"active", "softening"}),
+    stale_status_reason="Marked stale after bounded recurrence inactivity window.",
+    surface_status_order=("active", "softening", "stale", "superseded"),
+    surface_active_statuses=frozenset({"active", "softening"}),
+    empty_current_label="No active temporal recurrence signal",
+    omit_recent_history=True,
+    stale_payload_extra=("status_reason",),
+    track_summary_fn=_temporal_recurrence_track_summary,
+)
+
+
+# ── recurrence-specific snapshot scaffolding + domain-key mapping (unique) ─────
 def _empty_snapshot() -> dict[str, object]:
     return {
         "focus_records": [],
@@ -380,16 +305,3 @@ def _merge_fragments(*values: str) -> str:
         if normalized and normalized not in parts:
             parts.append(normalized)
     return " | ".join(parts[:4])
-
-
-def _parse_dt(value: str) -> datetime | None:
-    text = str(value or "").strip()
-    if not text:
-        return None
-    try:
-        parsed = datetime.fromisoformat(text)
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC)

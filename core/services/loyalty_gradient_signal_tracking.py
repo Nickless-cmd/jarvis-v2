@@ -1,9 +1,25 @@
+"""Loyalty-gradient signal tracking — migrated onto signal_tracking_framework.
+
+The public surface is unchanged (byte-identical behaviour): the three functions
+below delegate the shared lifecycle scaffolding (persist / refresh-to-stale /
+surface bucketing / event publishing) to :mod:`signal_tracking_framework`, while
+the loyalty-gradient-specific candidate derivation, gradient scoring, and the
+control-layer surface projection stay here — that is the part unique to this
+signal.
+
+This is a multi-candidate ``_for_domain`` S-family variant. Three knobs are
+atypical and handled in the thin ``track`` wrapper / spec: the supersede is
+**silent** (same-domain siblings are marked superseded but publish **no**
+``.superseded`` event → ``publish_superseded=False``); each candidate carries its
+own ``run_id``/``session_id`` (derived from the source substrate); and the
+persisted ``support_summary`` is rebuilt to inject the post-sort ``gradient-rank``
+(the candidate itself only knows rank 0 until the ranking pass). The read surface
+uses ``item_view_fn`` + ``surface_extra_fn`` and omits ``recent_history``.
+"""
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-from uuid import uuid4
-
-from core.eventbus.bus import event_bus
+from core.services import signal_tracking_framework as _stf
+from core.services.signal_tracking_framework import SignalTrackingSpec
 from core.runtime.db import (
     list_runtime_attachment_topology_signals,
     list_runtime_chronicle_consolidation_briefs,
@@ -23,17 +39,43 @@ _CONFIDENCE_RANKS = {"low": 0, "medium": 1, "high": 2}
 _WEIGHT_RANKS = {"low": 0, "medium": 1, "high": 2}
 
 
+# ── public surface (thin delegates; signatures unchanged) ─────────────────────
 def track_runtime_loyalty_gradient_signals_for_visible_turn(
     *,
     session_id: str | None,
     run_id: str,
 ) -> dict[str, object]:
+    # Delegate upsert/supersede/event scaffolding to the framework, but persist
+    # each candidate under its own run_id/session_id and with a support_summary
+    # rebuilt to carry the post-sort gradient-rank — matching the pre-migration
+    # persist exactly. Re-apply the surface view on the returned items.
     normalized_session_id = str(session_id or "").strip()
-    items = _persist_loyalty_gradient_signals(
-        signals=_extract_loyalty_gradient_candidates(run_id=run_id),
-        session_id=normalized_session_id,
-        run_id=run_id,
-    )
+    persisted: list[dict[str, object]] = []
+    for candidate in _extract_loyalty_gradient_candidates(run_id=run_id):
+        rank = int(candidate.get("gradient_rank") or 0)
+        source_summary = str(candidate.get("support_summary") or "")
+        support_summary = _merge_fragments(
+            f"gradient-state={_find_support_value(source_summary, 'gradient-state', 'loyalty-emerging')}",
+            f"gradient-focus={_find_support_value(source_summary, 'gradient-focus', '')}",
+            f"gradient-rank={rank}",
+            f"gradient-weight={_find_support_value(source_summary, 'gradient-weight', 'low')}",
+            f"gradient-confidence={_find_support_value(source_summary, 'gradient-confidence', str(candidate.get('confidence') or 'low'))}",
+            f"source-anchor={_find_support_value(source_summary, 'source-anchor', '')}",
+        )
+        grouped = {
+            **candidate,
+            "support_summary": support_summary,
+            "domain_key": _domain_key(str(candidate.get("canonical_key") or "")),
+        }
+        persisted.extend(
+            _stf.persist_signals(
+                _SPEC,
+                signals=[grouped],
+                session_id=str(candidate.get("session_id") or normalized_session_id),
+                run_id=str(candidate.get("run_id") or run_id),
+            )
+        )
+    items = [_with_surface_view(item) for item in persisted]
     return {
         "created": len([item for item in items if item.get("was_created")]),
         "updated": len([item for item in items if item.get("was_updated")]),
@@ -47,75 +89,11 @@ def track_runtime_loyalty_gradient_signals_for_visible_turn(
 
 
 def refresh_runtime_loyalty_gradient_signal_statuses() -> dict[str, int]:
-    now = datetime.now(UTC)
-    refreshed = 0
-    for item in list_runtime_loyalty_gradient_signals(limit=40):
-        if str(item.get("status") or "") not in {"active", "softening"}:
-            continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
-        if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
-            continue
-        refreshed_item = update_runtime_loyalty_gradient_signal_status(
-            str(item.get("signal_id") or ""),
-            status="stale",
-            updated_at=now.isoformat(),
-            status_reason="Marked stale after bounded loyalty-gradient inactivity window.",
-        )
-        if refreshed_item is None:
-            continue
-        refreshed += 1
-        event_bus.publish(
-            "loyalty_gradient_signal.stale",
-            {
-                "signal_id": refreshed_item.get("signal_id"),
-                "signal_type": refreshed_item.get("signal_type"),
-                "status": refreshed_item.get("status"),
-                "summary": refreshed_item.get("summary"),
-                "status_reason": refreshed_item.get("status_reason"),
-            },
-        )
-    return {"stale_marked": refreshed}
+    return _stf.refresh_statuses(_SPEC)
 
 
 def build_runtime_loyalty_gradient_signal_surface(*, limit: int = 8) -> dict[str, object]:
-    refresh_runtime_loyalty_gradient_signal_statuses()
-    items = list_runtime_loyalty_gradient_signals(limit=max(limit, 1))
-    enriched_items = [_with_surface_view(item) for item in items]
-    active = [item for item in enriched_items if str(item.get("status") or "") == "active"]
-    softening = [item for item in enriched_items if str(item.get("status") or "") == "softening"]
-    stale = [item for item in enriched_items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in enriched_items if str(item.get("status") or "") == "superseded"]
-    ordered = [*active, *softening, *stale, *superseded]
-    latest = next(iter(active or softening or stale or superseded), None)
-    return {
-        "active": bool(active or softening),
-        "authority": "non-authoritative",
-        "layer_role": "runtime-support",
-        "planner_priority_state": "not-planner-priority",
-        "canonical_preference_state": "not-canonical-preference-truth",
-        "prompt_inclusion_state": "not-prompt-included",
-        "workflow_bridge_state": "not-workflow-bridge",
-        "items": ordered,
-        "summary": {
-            "active_count": len(active),
-            "softening_count": len(softening),
-            "stale_count": len(stale),
-            "superseded_count": len(superseded),
-            "current_signal": str((latest or {}).get("title") or "No active loyalty-gradient support"),
-            "current_status": str((latest or {}).get("status") or "none"),
-            "current_state": str((latest or {}).get("gradient_state") or "none"),
-            "current_focus": str((latest or {}).get("gradient_focus") or "none"),
-            "current_rank": int((latest or {}).get("gradient_rank") or 0),
-            "current_weight": str((latest or {}).get("gradient_weight") or "low"),
-            "current_confidence": str((latest or {}).get("gradient_confidence") or "low"),
-            "authority": "non-authoritative",
-            "layer_role": "runtime-support",
-            "planner_priority_state": "not-planner-priority",
-            "canonical_preference_state": "not-canonical-preference-truth",
-            "prompt_inclusion_state": "not-prompt-included",
-            "workflow_bridge_state": "not-workflow-bridge",
-        },
-    }
+    return _stf.build_surface(_SPEC, limit=limit)
 
 
 def _extract_loyalty_gradient_candidates(*, run_id: str) -> list[dict[str, object]]:
@@ -351,75 +329,6 @@ def _build_candidate(
     }
 
 
-def _persist_loyalty_gradient_signals(
-    *,
-    signals: list[dict[str, object]],
-    session_id: str,
-    run_id: str,
-) -> list[dict[str, object]]:
-    now = datetime.now(UTC).isoformat()
-    persisted: list[dict[str, object]] = []
-    for signal in signals:
-        rank = int(signal.get("gradient_rank") or 0)
-        support_summary = _merge_fragments(
-            f"gradient-state={_find_support_value(str(signal.get('support_summary') or ''), 'gradient-state', 'loyalty-emerging')}",
-            f"gradient-focus={_find_support_value(str(signal.get('support_summary') or ''), 'gradient-focus', '')}",
-            f"gradient-rank={rank}",
-            f"gradient-weight={_find_support_value(str(signal.get('support_summary') or ''), 'gradient-weight', 'low')}",
-            f"gradient-confidence={_find_support_value(str(signal.get('support_summary') or ''), 'gradient-confidence', str(signal.get('confidence') or 'low'))}",
-            f"source-anchor={_find_support_value(str(signal.get('support_summary') or ''), 'source-anchor', '')}",
-        )
-        created = upsert_runtime_loyalty_gradient_signal(
-            signal_id=f"loyalty-gradient-{uuid4().hex}",
-            signal_type=str(signal.get("signal_type") or "loyalty-gradient"),
-            canonical_key=str(signal.get("canonical_key") or ""),
-            status=str(signal.get("status") or "active"),
-            title=str(signal.get("title") or "Loyalty gradient"),
-            summary=str(signal.get("summary") or ""),
-            rationale=str(signal.get("rationale") or ""),
-            source_kind=str(signal.get("source_kind") or "runtime-derived-support"),
-            confidence=str(signal.get("confidence") or "low"),
-            evidence_summary=str(signal.get("evidence_summary") or ""),
-            support_summary=support_summary,
-            status_reason=str(signal.get("status_reason") or ""),
-            run_id=str(signal.get("run_id") or run_id),
-            session_id=str(signal.get("session_id") or session_id),
-            support_count=int(signal.get("support_count") or 1),
-            session_count=int(signal.get("session_count") or 1),
-            created_at=now,
-            updated_at=now,
-        )
-        superseded = supersede_runtime_loyalty_gradient_signals_for_domain(
-            domain_key=_domain_key(str(created.get("canonical_key") or "")),
-            exclude_signal_id=str(created.get("signal_id") or ""),
-            updated_at=now,
-            status_reason="Superseded by a newer bounded loyalty-gradient signal for the same domain.",
-        )
-        created["superseded_count"] = superseded
-        if created.get("was_created"):
-            event_bus.publish(
-                "loyalty_gradient_signal.created",
-                {
-                    "signal_id": created.get("signal_id"),
-                    "signal_type": created.get("signal_type"),
-                    "status": created.get("status"),
-                    "summary": created.get("summary"),
-                },
-            )
-        elif created.get("was_updated"):
-            event_bus.publish(
-                "loyalty_gradient_signal.updated",
-                {
-                    "signal_id": created.get("signal_id"),
-                    "signal_type": created.get("signal_type"),
-                    "status": created.get("status"),
-                    "summary": created.get("summary"),
-                },
-            )
-        persisted.append(created)
-    return [_with_surface_view(item) for item in persisted]
-
-
 def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     support_summary = str(item.get("support_summary") or "")
     focus = _find_support_value(support_summary, "gradient-focus", _domain_key(str(item.get("canonical_key") or "")))
@@ -443,6 +352,33 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     summary["workflow_bridge_state"] = "not-workflow-bridge"
     summary["source"] = f"/mc/runtime.loyalty_gradient_signal/{item.get('signal_id') or ''}"
     return summary
+
+
+def _loyalty_gradient_surface_extra(
+    summary: dict[str, object], latest: dict[str, object] | None
+) -> dict[str, object]:
+    current = latest or {}
+    return {
+        "authority": "non-authoritative",
+        "layer_role": "runtime-support",
+        "planner_priority_state": "not-planner-priority",
+        "canonical_preference_state": "not-canonical-preference-truth",
+        "prompt_inclusion_state": "not-prompt-included",
+        "workflow_bridge_state": "not-workflow-bridge",
+        "summary_extra": {
+            "current_state": str(current.get("gradient_state") or "none"),
+            "current_focus": str(current.get("gradient_focus") or "none"),
+            "current_rank": int(current.get("gradient_rank") or 0),
+            "current_weight": str(current.get("gradient_weight") or "low"),
+            "current_confidence": str(current.get("gradient_confidence") or "low"),
+            "authority": "non-authoritative",
+            "layer_role": "runtime-support",
+            "planner_priority_state": "not-planner-priority",
+            "canonical_preference_state": "not-canonical-preference-truth",
+            "prompt_inclusion_state": "not-prompt-included",
+            "workflow_bridge_state": "not-workflow-bridge",
+        },
+    }
 
 
 def _derive_gradient_score(
@@ -585,8 +521,30 @@ def _stronger_confidence(*values: str) -> str:
     return best
 
 
-def _parse_dt(value: str) -> datetime | None:
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return None
+# ── spec: multi-candidate _for_domain S-family + silent supersede + surface ────
+_SPEC = SignalTrackingSpec(
+    name="loyalty-gradient",
+    slug="loyalty-gradient",
+    signal_id_prefix="loyalty-gradient",
+    event_prefix="loyalty_gradient_signal",
+    default_signal_type="loyalty-gradient",
+    list_fn=list_runtime_loyalty_gradient_signals,
+    upsert_fn=upsert_runtime_loyalty_gradient_signal,
+    update_status_fn=update_runtime_loyalty_gradient_signal_status,
+    supersede_fn=supersede_runtime_loyalty_gradient_signals_for_domain,
+    supersede_group_field="domain_key",
+    supersede_group_kw="domain_key",
+    extract_fn=lambda spec, ctx: _extract_loyalty_gradient_candidates(run_id=str(ctx.get("run_id") or "")),
+    stale_after_days=_STALE_AFTER_DAYS,
+    refresh_scan_limit=40,
+    refreshable_statuses=frozenset({"active", "softening"}),
+    stale_status_reason="Marked stale after bounded loyalty-gradient inactivity window.",
+    surface_status_order=("active", "softening", "stale", "superseded"),
+    surface_active_statuses=frozenset({"active", "softening"}),
+    empty_current_label="No active loyalty-gradient support",
+    item_view_fn=_with_surface_view,
+    surface_extra_fn=_loyalty_gradient_surface_extra,
+    omit_recent_history=True,
+    publish_superseded=False,
+    stale_payload_extra=("status_reason",),
+)

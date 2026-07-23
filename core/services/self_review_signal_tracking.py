@@ -1,15 +1,27 @@
+"""Self-review signal tracking — migrated onto signal_tracking_framework.
+
+The public surface is unchanged (byte-identical behaviour): the three functions
+below delegate the shared lifecycle scaffolding (persist / refresh-to-stale /
+surface bucketing / event publishing) to :mod:`signal_tracking_framework`, while
+the self-review-specific cross-layer candidate derivation and domain-key mapping
+stay here — that is the part unique to self-review.
+
+This is an X-family variant: it composes many layers (focus / goal / recurrence /
+witness / reflection / open-loop / internal-opposition) into multi-candidate
+readings, using the same ``high if >=3 source items else medium`` confidence rule
+reflection uses — but *without* reflection's early-retire window or ``.settled``
+event. It is a plain ``{active,softening}`` S-family surface (no ``recent_history``).
+"""
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-from uuid import uuid4
-
+from core.services import signal_tracking_framework as _stf
+from core.services.signal_tracking_framework import SignalTrackingSpec, make_candidate
 from core.services.internal_opposition_signal_tracking import (
     build_runtime_internal_opposition_signal_surface,
 )
 from core.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
-from core.eventbus.bus import event_bus
 from core.runtime.db import (
     list_runtime_development_focuses,
     list_runtime_goal_signals,
@@ -25,83 +37,25 @@ from core.runtime.db import (
 _STALE_AFTER_DAYS = 14
 
 
+# ── public surface (thin delegates; signatures unchanged) ─────────────────────
 def track_runtime_self_review_signals_for_visible_turn(
     *,
     session_id: str | None,
     run_id: str,
 ) -> dict[str, object]:
-    items = _persist_self_review_signals(
-        signals=_extract_self_review_candidates(),
-        session_id=str(session_id or "").strip(),
-        run_id=run_id,
-    )
-    return {
-        "created": len([item for item in items if item.get("was_created")]),
-        "updated": len([item for item in items if item.get("was_updated")]),
-        "items": items,
-        "summary": (
-            f"Tracked {len(items)} bounded self-review signals."
-            if items
-            else "No bounded self-review signal warranted tracking."
-        ),
-    }
+    return _stf.track_for_visible_turn(_SPEC, session_id=session_id, run_id=run_id)
 
 
 def refresh_runtime_self_review_signal_statuses() -> dict[str, int]:
-    now = datetime.now(UTC)
-    refreshed = 0
-    for item in list_runtime_self_review_signals(limit=40):
-        if str(item.get("status") or "") not in {"active", "softening"}:
-            continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
-        if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
-            continue
-        refreshed_item = update_runtime_self_review_signal_status(
-            str(item.get("signal_id") or ""),
-            status="stale",
-            updated_at=now.isoformat(),
-            status_reason="Marked stale after bounded self-review inactivity window.",
-        )
-        if refreshed_item is None:
-            continue
-        refreshed += 1
-        event_bus.publish(
-            "self_review_signal.stale",
-            {
-                "signal_id": refreshed_item.get("signal_id"),
-                "signal_type": refreshed_item.get("signal_type"),
-                "status": refreshed_item.get("status"),
-                "summary": refreshed_item.get("summary"),
-                "status_reason": refreshed_item.get("status_reason"),
-            },
-        )
-    return {"stale_marked": refreshed}
+    return _stf.refresh_statuses(_SPEC)
 
 
 def build_runtime_self_review_signal_surface(*, limit: int = 8) -> dict[str, object]:
-    refresh_runtime_self_review_signal_statuses()
-    items = list_runtime_self_review_signals(limit=max(limit, 1))
-    active = [item for item in items if str(item.get("status") or "") == "active"]
-    softening = [item for item in items if str(item.get("status") or "") == "softening"]
-    stale = [item for item in items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in items if str(item.get("status") or "") == "superseded"]
-    ordered = [*active, *softening, *stale, *superseded]
-    latest = next(iter(active or softening or stale or superseded), None)
-    return {
-        "active": bool(active or softening),
-        "items": ordered,
-        "summary": {
-            "active_count": len(active),
-            "softening_count": len(softening),
-            "stale_count": len(stale),
-            "superseded_count": len(superseded),
-            "current_signal": str((latest or {}).get("title") or "No active self-review signal"),
-            "current_status": str((latest or {}).get("status") or "none"),
-        },
-    }
+    return _stf.build_surface(_SPEC, limit=limit)
 
 
-def _extract_self_review_candidates() -> list[dict[str, object]]:
+# ── self-review-specific cross-layer candidate derivation (unique ~40%) ───────
+def _extract_self_review_candidates(*_args, **_kwargs) -> list[dict[str, object]]:
     snapshots: dict[str, dict[str, object]] = {}
 
     for focus in list_runtime_development_focuses(limit=18):
@@ -253,75 +207,6 @@ def _extract_self_review_candidates() -> list[dict[str, object]]:
     return candidates[:4]
 
 
-def _persist_self_review_signals(
-    *,
-    signals: list[dict[str, object]],
-    session_id: str,
-    run_id: str,
-) -> list[dict[str, object]]:
-    now = datetime.now(UTC).isoformat()
-    persisted: list[dict[str, object]] = []
-    for signal in signals:
-        persisted_item = upsert_runtime_self_review_signal(
-            signal_id=f"self-review-{uuid4().hex}",
-            signal_type=str(signal.get("signal_type") or "self-review-signal"),
-            canonical_key=str(signal.get("canonical_key") or ""),
-            status=str(signal.get("status") or "active"),
-            title=str(signal.get("title") or ""),
-            summary=str(signal.get("summary") or ""),
-            rationale=str(signal.get("rationale") or ""),
-            source_kind=str(signal.get("source_kind") or "runtime-derived-support"),
-            confidence=str(signal.get("confidence") or "low"),
-            evidence_summary=str(signal.get("evidence_summary") or ""),
-            support_summary=str(signal.get("support_summary") or ""),
-            support_count=int(signal.get("support_count") or 1),
-            session_count=int(signal.get("session_count") or 1),
-            created_at=now,
-            updated_at=now,
-            status_reason=str(signal.get("status_reason") or ""),
-            run_id=run_id,
-            session_id=session_id,
-        )
-        superseded_count = supersede_runtime_self_review_signals_for_domain(
-            domain_key=str(signal.get("domain_key") or ""),
-            exclude_signal_id=str(persisted_item.get("signal_id") or ""),
-            updated_at=now,
-            status_reason="Superseded by a newer bounded self-review reading for the same domain.",
-        )
-        if superseded_count > 0:
-            event_bus.publish(
-                "self_review_signal.superseded",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "superseded_count": superseded_count,
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        if persisted_item.get("was_created"):
-            event_bus.publish(
-                "self_review_signal.created",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "status": persisted_item.get("status"),
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        elif persisted_item.get("was_updated"):
-            event_bus.publish(
-                "self_review_signal.updated",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "status": persisted_item.get("status"),
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        persisted.append(persisted_item)
-    return persisted
-
-
 def _build_candidate(
     *,
     domain_key: str,
@@ -333,28 +218,52 @@ def _build_candidate(
     status_reason: str,
     source_items: list[dict[str, object] | None],
 ) -> dict[str, object]:
-    items = [item for item in source_items if item]
-    support_count = max([int(item.get("support_count") or 1) for item in items], default=1)
-    session_count = max([int(item.get("session_count") or 1) for item in items], default=1)
-    confidence = "high" if len(items) >= 3 else "medium"
-    return {
-        "signal_type": signal_type,
-        "canonical_key": f"self-review:{signal_type}:{domain_key}",
-        "domain_key": domain_key,
-        "status": status,
-        "title": title,
-        "summary": summary,
-        "rationale": rationale,
-        "source_kind": "runtime-derived-support",
-        "confidence": confidence,
-        "evidence_summary": _merge_fragments(*[str(item.get("evidence_summary") or "") for item in items]),
-        "support_summary": _merge_fragments(*[str(item.get("support_summary") or "") for item in items]),
-        "support_count": support_count,
-        "session_count": session_count,
-        "status_reason": status_reason,
-    }
+    # canonical_key = "self-review:{signal_type}:{domain_key}"; confidence high
+    # when >=3 source layers else medium (make_candidate's default) — matches the
+    # original exactly. source_kind is the file's own "runtime-derived-support".
+    return make_candidate(
+        _SPEC,
+        signal_type=signal_type,
+        discriminator=signal_type,
+        key=domain_key,
+        status=status,
+        title=title,
+        summary=summary,
+        rationale=rationale,
+        status_reason=status_reason,
+        source_items=source_items,
+        source_kind="runtime-derived-support",
+        group_value=domain_key,
+    )
 
 
+# ── spec: standard S-family knobs + _for_domain supersede ──────────────────────
+_SPEC = SignalTrackingSpec(
+    name="self-review",
+    slug="self-review",
+    signal_id_prefix="self-review",
+    event_prefix="self_review_signal",
+    default_signal_type="self-review-signal",
+    list_fn=list_runtime_self_review_signals,
+    upsert_fn=upsert_runtime_self_review_signal,
+    update_status_fn=update_runtime_self_review_signal_status,
+    supersede_fn=supersede_runtime_self_review_signals_for_domain,
+    supersede_group_field="domain_key",
+    supersede_group_kw="domain_key",
+    extract_fn=_extract_self_review_candidates,
+    stale_after_days=_STALE_AFTER_DAYS,
+    refresh_scan_limit=40,
+    refreshable_statuses=frozenset({"active", "softening"}),
+    stale_status_reason="Marked stale after bounded self-review inactivity window.",
+    surface_status_order=("active", "softening", "stale", "superseded"),
+    surface_active_statuses=frozenset({"active", "softening"}),
+    empty_current_label="No active self-review signal",
+    omit_recent_history=True,
+    stale_payload_extra=("status_reason",),
+)
+
+
+# ── self-review-specific domain-key mapping + labels (unique) ──────────────────
 def _focus_domain_key(canonical_key: str) -> str:
     parts = canonical_key.split(":")
     return parts[-1] if len(parts) >= 3 else ""
@@ -393,23 +302,3 @@ def _internal_opposition_domain_key(canonical_key: str) -> str:
 def _domain_title(domain_key: str) -> str:
     text = str(domain_key or "").replace("-", " ").strip()
     return text[:1].upper() + text[1:] if text else "Self-review"
-
-
-def _merge_fragments(*parts: str) -> str:
-    seen: list[str] = []
-    for part in parts:
-        text = " ".join(str(part or "").split()).strip()
-        if not text or text in seen:
-            continue
-        seen.append(text)
-    return " | ".join(seen[:4])
-
-
-def _parse_dt(raw: str) -> datetime | None:
-    value = str(raw or "").strip()
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value)
-    except ValueError:
-        return None

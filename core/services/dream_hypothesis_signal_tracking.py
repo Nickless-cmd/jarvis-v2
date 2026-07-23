@@ -1,7 +1,25 @@
-from __future__ import annotations
+"""Dream-hypothesis signal tracking — migrated onto signal_tracking_framework.
 
-from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+The public surface is unchanged (byte-identical behaviour): the three functions
+below delegate the shared lifecycle scaffolding (persist / refresh-to-stale /
+surface bucketing / event publishing) to :mod:`signal_tracking_framework`, while
+the dream-hypothesis-specific candidate derivation (recurrence × focus × witness ×
+review-outcome × review-cadence synthesis) and the private-hypothesis view
+enrichment stay here — that is the part unique to this signal.
+
+Dream is one of the *early-retire* variants (like reflection): a bounded
+``_EARLY_RETIRE_DAYS=1`` window applies to weak/noisy rows, otherwise the flat
+``_STALE_AFTER_DAYS=14``. Its refreshable/surface status set is the atypical
+``{active, integrating, fading}`` (+ stale/superseded), and the read surface
+carries ``current_hypothesis_type`` on top of the standard counts. Every one of
+those is expressed as an explicit spec field / hook so nothing leaks.
+
+Surface enrichment needs the cross-signal ``snapshots`` map built **once** per
+read (its sub-surface builders each run their own refresh), so the ``build``
+wrapper builds it once and the per-item ``item_view_fn`` reads it — preserving
+the single-build invariant and identical snapshot content.
+"""
+from __future__ import annotations
 
 from core.services.self_review_cadence_signal_tracking import (
     build_runtime_self_review_cadence_signal_surface,
@@ -19,7 +37,8 @@ from core.services.temporal_recurrence_signal_tracking import (
 from core.services.witness_signal_tracking import (
     build_runtime_witness_signal_surface,
 )
-from core.eventbus.bus import event_bus
+from core.services import signal_tracking_framework as _stf
+from core.services.signal_tracking_framework import SignalTrackingSpec
 from core.runtime.db import (
     list_runtime_development_focuses,
     list_runtime_dream_hypothesis_signals,
@@ -32,17 +51,25 @@ _STALE_AFTER_DAYS = 14
 _EARLY_RETIRE_DAYS = 1
 _REFRESH_SCAN_LIMIT = 3000
 
+# Cross-signal snapshot map for the read surface, built once per build_surface
+# pass by the wrapper below and read by the per-item enrichment hook.
+_SURFACE_SNAPSHOTS: dict[str, dict[str, object]] = {}
 
+
+# ── public surface (thin delegates; signatures unchanged) ─────────────────────
 def track_runtime_dream_hypothesis_signals_for_visible_turn(
     *,
     session_id: str | None,
     run_id: str,
 ) -> dict[str, object]:
-    items = _persist_dream_hypothesis_signals(
-        signals=_extract_dream_hypothesis_candidates(),
-        session_id=str(session_id or "").strip(),
-        run_id=run_id,
+    # Delegate the upsert/supersede/event scaffolding to the framework, but keep
+    # the original 2-arg runtime-view enrichment (needs the originating candidate)
+    # on the returned items — matching the pre-migration output exactly.
+    signals = _extract_dream_hypothesis_candidates()
+    persisted = _stf.persist_signals(
+        _SPEC, signals=signals, session_id=str(session_id or "").strip(), run_id=run_id
     )
+    items = [_with_runtime_view(item, signal) for item, signal in zip(persisted, signals)]
     return {
         "created": len([item for item in items if item.get("was_created")]),
         "updated": len([item for item in items if item.get("was_updated")]),
@@ -56,70 +83,13 @@ def track_runtime_dream_hypothesis_signals_for_visible_turn(
 
 
 def refresh_runtime_dream_hypothesis_signal_statuses() -> dict[str, int]:
-    now = datetime.now(UTC)
-    refreshed = 0
-    for item in list_runtime_dream_hypothesis_signals(limit=_REFRESH_SCAN_LIMIT):
-        if str(item.get("status") or "") not in {"active", "integrating", "fading"}:
-            continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
-        if updated_at is None:
-            continue
-        retire_early = (
-            str(item.get("confidence") or "") == "low"
-            or int(item.get("support_count") or 0) <= 1
-            or is_noisy_signal_text(str(item.get("title") or "") + " " + str(item.get("summary") or ""))
-        )
-        stale_after = _EARLY_RETIRE_DAYS if retire_early else _STALE_AFTER_DAYS
-        if updated_at > now - timedelta(days=stale_after):
-            continue
-        refreshed_item = update_runtime_dream_hypothesis_signal_status(
-            str(item.get("signal_id") or ""),
-            status="stale",
-            updated_at=now.isoformat(),
-            status_reason="Marked stale after bounded dream-hypothesis inactivity window.",
-        )
-        if refreshed_item is None:
-            continue
-        refreshed += 1
-        event_bus.publish(
-            "dream_hypothesis_signal.stale",
-            {
-                "signal_id": refreshed_item.get("signal_id"),
-                "signal_type": refreshed_item.get("signal_type"),
-                "status": refreshed_item.get("status"),
-                "summary": refreshed_item.get("summary"),
-                "status_reason": refreshed_item.get("status_reason"),
-            },
-        )
-    return {"stale_marked": refreshed}
+    return _stf.refresh_statuses(_SPEC)
 
 
 def build_runtime_dream_hypothesis_signal_surface(*, limit: int = 8) -> dict[str, object]:
-    refresh_runtime_dream_hypothesis_signal_statuses()
-    items = list_runtime_dream_hypothesis_signals(limit=max(limit, 1))
-    snapshots = _build_dream_snapshots()
-    enriched_items = [_with_surface_view(item, snapshots=snapshots) for item in items]
-    active = [item for item in enriched_items if str(item.get("status") or "") == "active"]
-    integrating = [item for item in enriched_items if str(item.get("status") or "") == "integrating"]
-    fading = [item for item in enriched_items if str(item.get("status") or "") == "fading"]
-    stale = [item for item in enriched_items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in enriched_items if str(item.get("status") or "") == "superseded"]
-    ordered = [*active, *integrating, *fading, *stale, *superseded]
-    latest = next(iter(active or integrating or fading or stale or superseded), None)
-    return {
-        "active": bool(active or integrating or fading),
-        "items": ordered,
-        "summary": {
-            "active_count": len(active),
-            "integrating_count": len(integrating),
-            "fading_count": len(fading),
-            "stale_count": len(stale),
-            "superseded_count": len(superseded),
-            "current_signal": str((latest or {}).get("title") or "No active dream hypothesis signal"),
-            "current_status": str((latest or {}).get("status") or "none"),
-            "current_hypothesis_type": str((latest or {}).get("hypothesis_type") or "none"),
-        },
-    }
+    global _SURFACE_SNAPSHOTS
+    _SURFACE_SNAPSHOTS = _build_dream_snapshots()
+    return _stf.build_surface(_SPEC, limit=limit)
 
 
 def _extract_dream_hypothesis_candidates() -> list[dict[str, object]]:
@@ -192,75 +162,6 @@ def _extract_dream_hypothesis_candidates() -> list[dict[str, object]]:
     return candidates[:4]
 
 
-def _persist_dream_hypothesis_signals(
-    *,
-    signals: list[dict[str, object]],
-    session_id: str,
-    run_id: str,
-) -> list[dict[str, object]]:
-    now = datetime.now(UTC).isoformat()
-    persisted: list[dict[str, object]] = []
-    for signal in signals:
-        persisted_item = upsert_runtime_dream_hypothesis_signal(
-            signal_id=f"dream-hypothesis-{uuid4().hex}",
-            signal_type=str(signal.get("signal_type") or "emerging-hypothesis"),
-            canonical_key=str(signal.get("canonical_key") or ""),
-            status=str(signal.get("status") or "active"),
-            title=str(signal.get("title") or ""),
-            summary=str(signal.get("hypothesis_note") or signal.get("summary") or ""),
-            rationale=str(signal.get("rationale") or ""),
-            source_kind=str(signal.get("source_kind") or "runtime-derived-support"),
-            confidence=str(signal.get("confidence") or "low"),
-            evidence_summary=str(signal.get("evidence_summary") or ""),
-            support_summary=str(signal.get("support_summary") or ""),
-            support_count=int(signal.get("support_count") or 1),
-            session_count=int(signal.get("session_count") or 1),
-            created_at=now,
-            updated_at=now,
-            status_reason=str(signal.get("status_reason") or ""),
-            run_id=run_id,
-            session_id=session_id,
-        )
-        superseded_count = supersede_runtime_dream_hypothesis_signals_for_domain(
-            domain_key=str(signal.get("domain_key") or ""),
-            exclude_signal_id=str(persisted_item.get("signal_id") or ""),
-            updated_at=now,
-            status_reason="Superseded by a newer bounded dream hypothesis for the same domain.",
-        )
-        if superseded_count > 0:
-            event_bus.publish(
-                "dream_hypothesis_signal.superseded",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "superseded_count": superseded_count,
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        if persisted_item.get("was_created"):
-            event_bus.publish(
-                "dream_hypothesis_signal.created",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "status": persisted_item.get("status"),
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        elif persisted_item.get("was_updated"):
-            event_bus.publish(
-                "dream_hypothesis_signal.updated",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "status": persisted_item.get("status"),
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        persisted.append(_with_runtime_view(persisted_item, signal))
-    return persisted
-
-
 def _build_dream_snapshots() -> dict[str, dict[str, object]]:
     snapshots: dict[str, dict[str, object]] = {}
 
@@ -313,6 +214,29 @@ def _with_surface_view(item: dict[str, object], *, snapshots: dict[str, dict[str
     enriched["hypothesis_note"] = str(item.get("summary") or "")
     enriched["hypothesis_anchor"] = _build_hypothesis_anchor(snapshot=snapshot)
     return enriched
+
+
+def _dream_surface_item_view(item: dict[str, object]) -> dict[str, object]:
+    return _with_surface_view(item, snapshots=_SURFACE_SNAPSHOTS)
+
+
+def _dream_surface_extra(
+    summary: dict[str, object], latest: dict[str, object] | None
+) -> dict[str, object]:
+    current = latest or {}
+    return {
+        "summary_extra": {
+            "current_hypothesis_type": str(current.get("hypothesis_type") or "none"),
+        },
+    }
+
+
+def _dream_early_retire(item: dict[str, object]) -> bool:
+    return (
+        str(item.get("confidence") or "") == "low"
+        or int(item.get("support_count") or 0) <= 1
+        or is_noisy_signal_text(str(item.get("title") or "") + " " + str(item.get("summary") or ""))
+    )
 
 
 def _build_hypothesis_type(*, item: dict[str, object], snapshot: dict[str, object]) -> str:
@@ -435,11 +359,31 @@ def _merge_fragments(*parts: str) -> str:
     return " | ".join(seen[:4])
 
 
-def _parse_dt(raw: str) -> datetime | None:
-    value = str(raw or "").strip()
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value)
-    except ValueError:
-        return None
+# ── spec: early-retire + {active,integrating,fading} status set made explicit ─
+_SPEC = SignalTrackingSpec(
+    name="dream-hypothesis",
+    slug="dream-hypothesis",
+    signal_id_prefix="dream-hypothesis",
+    event_prefix="dream_hypothesis_signal",
+    default_signal_type="emerging-hypothesis",
+    list_fn=list_runtime_dream_hypothesis_signals,
+    upsert_fn=upsert_runtime_dream_hypothesis_signal,
+    update_status_fn=update_runtime_dream_hypothesis_signal_status,
+    supersede_fn=supersede_runtime_dream_hypothesis_signals_for_domain,
+    supersede_group_field="domain_key",
+    supersede_group_kw="domain_key",
+    extract_fn=lambda spec, ctx: _extract_dream_hypothesis_candidates(),
+    stale_after_days=_STALE_AFTER_DAYS,
+    early_retire_days=_EARLY_RETIRE_DAYS,
+    early_retire_predicate=_dream_early_retire,
+    refresh_scan_limit=_REFRESH_SCAN_LIMIT,
+    refreshable_statuses=frozenset({"active", "integrating", "fading"}),
+    stale_status_reason="Marked stale after bounded dream-hypothesis inactivity window.",
+    surface_status_order=("active", "integrating", "fading", "stale", "superseded"),
+    surface_active_statuses=frozenset({"active", "integrating", "fading"}),
+    empty_current_label="No active dream hypothesis signal",
+    item_view_fn=_dream_surface_item_view,
+    surface_extra_fn=_dream_surface_extra,
+    omit_recent_history=True,
+    stale_payload_extra=("status_reason",),
+)

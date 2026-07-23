@@ -1,10 +1,23 @@
+"""User-understanding signal tracking — migrated onto signal_tracking_framework.
+
+The public surface is unchanged (byte-identical behaviour): the three functions
+below delegate the shared lifecycle scaffolding (persist / refresh-to-stale /
+surface bucketing / event publishing) to :mod:`signal_tracking_framework`, while
+the user-understanding-specific candidate derivation (preference / workstyle /
+reminder-worthiness / cadence extraction) and the small runtime/surface view
+enrichment stay here — that is the part unique to this signal.
+
+Supersede grouping is by ``dimension_key`` (the user dimension). Persisted
+``summary`` comes from the candidate's ``signal_summary`` (falling back to
+``summary``), and the read surface carries ``current_signal_type`` /
+``current_signal_confidence`` on top of the standard counts — both expressed via
+the framework's hooks so nothing leaks and nothing is lost.
+"""
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-from uuid import uuid4
-
 from core.services.chat_sessions import get_chat_session
-from core.eventbus.bus import event_bus
+from core.services import signal_tracking_framework as _stf
+from core.services.signal_tracking_framework import SignalTrackingSpec
 from core.runtime.db import (
     list_runtime_user_understanding_signals,
     supersede_runtime_user_understanding_signals_for_dimension,
@@ -16,12 +29,16 @@ _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
 _STALE_AFTER_DAYS = 14
 
 
+# ── public surface (thin delegates; signatures unchanged) ─────────────────────
 def track_runtime_user_understanding_signals_for_visible_turn(
     *,
     session_id: str | None,
     run_id: str,
     user_message: str,
 ) -> dict[str, object]:
+    # Keep the original empty-evidence guard and the 2-arg runtime-view
+    # enrichment (needs the originating candidate) while delegating the
+    # upsert/supersede/event scaffolding to the framework.
     normalized_session_id = str(session_id or "").strip()
     normalized_message = " ".join(str(user_message or "").split()).strip()
     if not normalized_message and not normalized_session_id:
@@ -32,14 +49,17 @@ def track_runtime_user_understanding_signals_for_visible_turn(
             "summary": "No bounded user-understanding evidence was available.",
         }
 
-    items = _persist_user_understanding_signals(
-        signals=_extract_user_understanding_candidates(
-            user_message=normalized_message,
-            session_id=normalized_session_id,
-        ),
+    signals = _extract_user_understanding_candidates(
+        user_message=normalized_message,
         session_id=normalized_session_id,
-        run_id=run_id,
     )
+    for signal in signals:
+        signal["summary"] = str(signal.get("signal_summary") or signal.get("summary") or "")
+
+    persisted = _stf.persist_signals(
+        _SPEC, signals=signals, session_id=normalized_session_id, run_id=run_id
+    )
+    items = [_with_runtime_view(item, signal) for item, signal in zip(persisted, signals)]
     return {
         "created": len([item for item in items if item.get("was_created")]),
         "updated": len([item for item in items if item.get("was_updated")]),
@@ -53,60 +73,11 @@ def track_runtime_user_understanding_signals_for_visible_turn(
 
 
 def refresh_runtime_user_understanding_signal_statuses() -> dict[str, int]:
-    now = datetime.now(UTC)
-    refreshed = 0
-    for item in list_runtime_user_understanding_signals(limit=40):
-        if str(item.get("status") or "") not in {"active", "softening"}:
-            continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
-        if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
-            continue
-        refreshed_item = update_runtime_user_understanding_signal_status(
-            str(item.get("signal_id") or ""),
-            status="stale",
-            updated_at=now.isoformat(),
-            status_reason="Marked stale after bounded user-understanding inactivity window.",
-        )
-        if refreshed_item is None:
-            continue
-        refreshed += 1
-        event_bus.publish(
-            "user_understanding_signal.stale",
-            {
-                "signal_id": refreshed_item.get("signal_id"),
-                "signal_type": refreshed_item.get("signal_type"),
-                "status": refreshed_item.get("status"),
-                "summary": refreshed_item.get("summary"),
-                "status_reason": refreshed_item.get("status_reason"),
-            },
-        )
-    return {"stale_marked": refreshed}
+    return _stf.refresh_statuses(_SPEC)
 
 
 def build_runtime_user_understanding_signal_surface(*, limit: int = 8) -> dict[str, object]:
-    refresh_runtime_user_understanding_signal_statuses()
-    items = list_runtime_user_understanding_signals(limit=max(limit, 1))
-    enriched_items = [_with_surface_view(item) for item in items]
-    active = [item for item in enriched_items if str(item.get("status") or "") == "active"]
-    softening = [item for item in enriched_items if str(item.get("status") or "") == "softening"]
-    stale = [item for item in enriched_items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in enriched_items if str(item.get("status") or "") == "superseded"]
-    ordered = [*active, *softening, *stale, *superseded]
-    latest = next(iter(active or softening or stale or superseded), None)
-    return {
-        "active": bool(active or softening),
-        "items": ordered,
-        "summary": {
-            "active_count": len(active),
-            "softening_count": len(softening),
-            "stale_count": len(stale),
-            "superseded_count": len(superseded),
-            "current_signal": str((latest or {}).get("title") or "No active user-understanding signal"),
-            "current_status": str((latest or {}).get("status") or "none"),
-            "current_signal_type": str((latest or {}).get("signal_type") or "none"),
-            "current_signal_confidence": str((latest or {}).get("signal_confidence") or "low"),
-        },
-    }
+    return _stf.build_surface(_SPEC, limit=limit)
 
 
 def _extract_user_understanding_candidates(
@@ -141,75 +112,6 @@ def _extract_user_understanding_candidates(
         ):
             deduped[canonical_key] = signal
     return list(deduped.values())[:4]
-
-
-def _persist_user_understanding_signals(
-    *,
-    signals: list[dict[str, object]],
-    session_id: str,
-    run_id: str,
-) -> list[dict[str, object]]:
-    now = datetime.now(UTC).isoformat()
-    persisted: list[dict[str, object]] = []
-    for signal in signals:
-        persisted_item = upsert_runtime_user_understanding_signal(
-            signal_id=f"user-understanding-{uuid4().hex}",
-            signal_type=str(signal.get("signal_type") or "preference-signal"),
-            canonical_key=str(signal.get("canonical_key") or ""),
-            status=str(signal.get("status") or "active"),
-            title=str(signal.get("title") or ""),
-            summary=str(signal.get("signal_summary") or signal.get("summary") or ""),
-            rationale=str(signal.get("rationale") or ""),
-            source_kind=str(signal.get("source_kind") or "user-explicit"),
-            confidence=str(signal.get("confidence") or "low"),
-            evidence_summary=str(signal.get("evidence_summary") or ""),
-            support_summary=str(signal.get("support_summary") or ""),
-            support_count=int(signal.get("support_count") or 1),
-            session_count=int(signal.get("session_count") or 1),
-            created_at=now,
-            updated_at=now,
-            status_reason=str(signal.get("status_reason") or ""),
-            run_id=run_id,
-            session_id=session_id,
-        )
-        superseded_count = supersede_runtime_user_understanding_signals_for_dimension(
-            dimension_key=str(signal.get("dimension_key") or ""),
-            exclude_signal_id=str(persisted_item.get("signal_id") or ""),
-            updated_at=now,
-            status_reason="Superseded by a newer bounded user-understanding signal for the same user dimension.",
-        )
-        if superseded_count > 0:
-            event_bus.publish(
-                "user_understanding_signal.superseded",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "superseded_count": superseded_count,
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        if persisted_item.get("was_created"):
-            event_bus.publish(
-                "user_understanding_signal.created",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "status": persisted_item.get("status"),
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        elif persisted_item.get("was_updated"):
-            event_bus.publish(
-                "user_understanding_signal.updated",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "status": persisted_item.get("status"),
-                    "summary": persisted_item.get("summary"),
-                },
-            )
-        persisted.append(_with_runtime_view(persisted_item, signal))
-    return persisted
 
 
 def _preference_signal(messages: list[str]) -> dict[str, object] | None:
@@ -377,6 +279,18 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     return enriched
 
 
+def _user_understanding_surface_extra(
+    summary: dict[str, object], latest: dict[str, object] | None
+) -> dict[str, object]:
+    current = latest or {}
+    return {
+        "summary_extra": {
+            "current_signal_type": str(current.get("signal_type") or "none"),
+            "current_signal_confidence": str(current.get("signal_confidence") or "low"),
+        },
+    }
+
+
 def _recent_user_messages(*, session_id: str, current_message: str) -> list[str]:
     messages: list[str] = []
     seen: set[str] = set()
@@ -504,11 +418,33 @@ def _rank_confidence(confidence: str) -> int:
     return _CONFIDENCE_RANKS.get(str(confidence or "").lower(), 0)
 
 
-def _parse_dt(value: str) -> datetime | None:
-    text = str(value or "").strip()
-    if not text:
-        return None
-    try:
-        return datetime.fromisoformat(text)
-    except ValueError:
-        return None
+# ── spec: dimension-grouped supersede + surface hooks made explicit ───────────
+_SPEC = SignalTrackingSpec(
+    name="user-understanding",
+    slug="user-understanding",
+    signal_id_prefix="user-understanding",
+    event_prefix="user_understanding_signal",
+    default_signal_type="preference-signal",
+    list_fn=list_runtime_user_understanding_signals,
+    upsert_fn=upsert_runtime_user_understanding_signal,
+    update_status_fn=update_runtime_user_understanding_signal_status,
+    supersede_fn=supersede_runtime_user_understanding_signals_for_dimension,
+    supersede_group_field="dimension_key",
+    supersede_group_kw="dimension_key",
+    extract_fn=lambda spec, ctx: _extract_user_understanding_candidates(
+        user_message=str(ctx.get("user_message") or ""),
+        session_id=str(ctx.get("session_id") or ""),
+    ),
+    takes_user_message=True,
+    stale_after_days=_STALE_AFTER_DAYS,
+    refresh_scan_limit=40,
+    refreshable_statuses=frozenset({"active", "softening"}),
+    stale_status_reason="Marked stale after bounded user-understanding inactivity window.",
+    surface_status_order=("active", "softening", "stale", "superseded"),
+    surface_active_statuses=frozenset({"active", "softening"}),
+    empty_current_label="No active user-understanding signal",
+    item_view_fn=_with_surface_view,
+    surface_extra_fn=_user_understanding_surface_extra,
+    omit_recent_history=True,
+    stale_payload_extra=("status_reason",),
+)

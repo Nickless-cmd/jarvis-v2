@@ -224,26 +224,26 @@ _attachment_service — download, store, and read channel attachments._
 | function | `validate_send_path` | `(path)` | Return (ok, error_message) for outbound file send. | [src](../../../core/services/attachment_service.py#L371) |
 
 ## `core/services/attachment_topology_signal_tracking.py`
+_Attachment-topology signal tracking — migrated onto signal_tracking_framework._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `track_runtime_attachment_topology_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L27) |
-| function | `refresh_runtime_attachment_topology_signal_statuses` | `()` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L50) |
-| function | `build_runtime_attachment_topology_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L81) |
-| function | `_extract_attachment_topology_candidates` | `(*, run_id)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L117) |
-| function | `_build_candidate` | `(*, domain_key, relation_continuity, meaning, witness, chronicle_brief, metabolism, self_narrative, temperament, forgetting_candidate)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L209) |
-| function | `_persist_attachment_topology_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L311) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L371) |
-| function | `_derive_attachment_weight` | `(*, relation_weight, meaning_weight, witness_status, witness_persistence, brief_weight, metabolism_weight, narrative_weight, temperament_weight, forgetting_state)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L393) |
-| function | `_derive_attachment_state` | `(*, weight, witness_status, metabolism_state)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L429) |
-| function | `_attachment_summary` | `(*, focus, attachment_state, attachment_weight, forgetting_candidate)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L437) |
-| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L465) |
-| function | `_humanize_focus` | `(value)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L472) |
-| function | `_anchor` | `(item)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L477) |
-| function | `_find_support_value` | `(summary, key, default=…)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L485) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L497) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L509) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L518) |
+| function | `track_runtime_attachment_topology_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L44) |
+| function | `refresh_runtime_attachment_topology_signal_statuses` | `()` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L81) |
+| function | `build_runtime_attachment_topology_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L85) |
+| function | `_extract_attachment_topology_candidates` | `(*, run_id)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L89) |
+| function | `_build_candidate` | `(*, domain_key, relation_continuity, meaning, witness, chronicle_brief, metabolism, self_narrative, temperament, forgetting_candidate)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L181) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L283) |
+| function | `_attachment_topology_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L305) |
+| function | `_derive_attachment_weight` | `(*, relation_weight, meaning_weight, witness_status, witness_persistence, brief_weight, metabolism_weight, narrative_weight, temperament_weight, forgetting_state)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L327) |
+| function | `_derive_attachment_state` | `(*, weight, witness_status, metabolism_state)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L363) |
+| function | `_attachment_summary` | `(*, focus, attachment_state, attachment_weight, forgetting_candidate)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L371) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L399) |
+| function | `_humanize_focus` | `(value)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L406) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L411) |
+| function | `_find_support_value` | `(summary, key, default=…)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L419) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L431) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L443) |
 
 ## `core/services/attention_blink_test.py`
 _Attention Blink Test — capacity-limit measurement (Experiment 5: Serial consciousness)._

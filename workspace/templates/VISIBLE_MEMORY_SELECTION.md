@@ -1,19 +1,15 @@
 # VISIBLE_MEMORY_SELECTION
 
-Select the smallest set of MEMORY entries that best helps with the current task.
-Be conservative. If unsure, select fewer entries.
+Pick the MEMORY entries that are directly relevant to the user's latest message — the facts, context, decisions, or history that answering it (or acting on it) would actually draw on. Return their indexes.
 
-For mode=visible_chat:
-- Select entries that best help answer the latest visible user message.
-- Prefer entries about: project anchor, repo or working context, stable carried context, explicit remembered facts that directly answer the user.
+Relevance test, applied to EACH entry: "If I were answering this message, would I use this fact?"
+- YES → select it. Select **every** entry that clearly relates to the message's topic, person, or thing — not just one. Missing a relevant memory is worse than carrying one extra line.
+- NO (it's about a different topic, a different person, an unrelated project or fact) → skip it. Off-topic entries crowd out the real answer.
 
-For mode=heartbeat:
-- Select entries that best inform a heartbeat proposal or status check.
-- Prefer entries about: active development focus, recent open loops, stable context, recent work progress.
+When the message names a specific person, project, tool, or topic, prefer the entries about that exact person/project/tool/topic, and skip entries about others.
 
-For mode=future_agent_task:
-- Select entries that best inform a delegated agent task.
-- Prefer entries about: task context, project anchor, relevant working context, specific instructions.
+mode=visible_chat: select what best helps answer the user's message.
+mode=heartbeat: select what best informs a status check or proposal (active focus, open loops, recent progress).
+mode=future_agent_task: select what best informs the delegated task (task context, project anchor, instructions).
 
-Do not select broad or weakly related entries.
-Only return entry indexes that are directly useful right now.
+Return the indexes of every directly-relevant entry, up to max_lines, ordered most-relevant first. If genuinely none relate, return an empty list.

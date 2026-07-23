@@ -924,17 +924,22 @@ def _execute_openai_compatible_chat(
     # OFF, proxy stays None (unchanged, home-IP behavior). When ON, a non-default
     # profile is routed through its egress proxy; _resolve_proxy hard-raises on a
     # missing endpoint rather than leaking account2 over the home IP.
-    proxy = _resolve_egress_proxy(provider=provider, auth_profile=auth_profile)
-    # Only thread the proxy kwarg when a proxy is actually resolved, so the
-    # flag-OFF / home-egress path stays byte-identical to the pre-8b signature.
+    # v6bind (2026-07-23): when the flag is on and this slot is eligible (account2
+    # profile + provider on the allowlist, e.g. groq), bind the connection to a
+    # native-IPv6 source address in our HE /64 INSTEAD of the he6 proxy hop. When
+    # None (default), the existing multiprofile proxy path is byte-identical.
+    from core.services.egress_routing import resolve_v6bind_source as _rv6
+    _v6src = _rv6(provider, auth_profile)
+    proxy = None if _v6src else _resolve_egress_proxy(provider=provider, auth_profile=auth_profile)
     _proxy_kw = {"proxy": proxy} if proxy else {}
     if provider == "groq":
+        _egress_kw = {"source_address": _v6src} if _v6src else _proxy_kw
         data, _headers = _f._http_json_httpx(
             f"{root}/chat/completions",
             payload=payload,
             headers=headers,
             provider=provider,
-            **_proxy_kw,
+            **_egress_kw,
         )
     else:
         data, _headers = _f._http_json(
@@ -1595,6 +1600,7 @@ def _http_json_httpx(
     payload: dict[str, object] | None = None,
     headers: dict[str, str] | None = None,
     proxy: str | None = None,
+    source_address: str | None = None,
 ) -> tuple[dict[str, object], dict[str, str]]:
     request_headers = {
         "Accept": "application/json",
@@ -1608,7 +1614,13 @@ def _http_json_httpx(
         "timeout": _DEFAULT_TIMEOUT_SECONDS,
         "follow_redirects": True,
     }
-    if proxy:
+    # v6bind (2026-07-23): bind the outbound connection to a specific local source
+    # address (account2 native-IPv6 egress in our HE /64) — the httpx equivalent of
+    # `curl --interface <v6addr>`. Mutually exclusive with a proxy; when set it
+    # replaces the he6 proxy hop so the connection egresses natively from CT105.
+    if source_address:
+        _client_kwargs["transport"] = httpx.HTTPTransport(local_address=source_address)
+    elif proxy:
         _client_kwargs["proxy"] = proxy
     try:
         with httpx.Client(**_client_kwargs) as client:

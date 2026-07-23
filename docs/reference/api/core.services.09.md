@@ -559,7 +559,9 @@ _Egress routing — which network egress a (provider, auth_profile) slot uses._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `resolve_egress` | `(provider, auth_profile)` | Which egress a slot uses. default profile -> 'home'; other profiles -> | [src](../../../core/services/egress_routing.py#L27) |
-| function | `proxy_endpoints` | `()` | Return {egress: url|None}. Reads runtime config override if present, else | [src](../../../core/services/egress_routing.py#L35) |
+| function | `resolve_v6bind_source` | `(provider, auth_profile)` | Native-IPv6 account2 egress: bind the outbound socket to a distinct v6 | [src](../../../core/services/egress_routing.py#L40) |
+| function | `_source_addr_usable` | `(addr)` | True if ``addr`` can be bound as an IPv6 source on this host (cheap check). | [src](../../../core/services/egress_routing.py#L75) |
+| function | `proxy_endpoints` | `()` | Return {egress: url|None}. Reads runtime config override if present, else | [src](../../../core/services/egress_routing.py#L89) |
 
 ## `core/services/embodied_presence.py`
 _Embodied Presence — situational grounding in the physical now._

@@ -32,6 +32,60 @@ def resolve_egress(provider: str, auth_profile: str) -> str:
     return EGRESS_ROUTES.get(provider, _DEFAULT_NONDEFAULT_EGRESS)
 
 
+_V6BIND_FLAG_KEY = "egress_v6bind_enabled"          # master switch, default OFF
+_V6BIND_SOURCE_KEY = "egress_v6bind_source"         # account2 v6 source addr in the /64
+_V6BIND_PROVIDERS_KEY = "egress_v6bind_providers"   # comma-sep provider allowlist
+
+
+def resolve_v6bind_source(provider: str, auth_profile: str) -> str | None:
+    """Native-IPv6 account2 egress: bind the outbound socket to a distinct v6
+    SOURCE address in our HE /64 instead of routing account2 through the he6 HTTP
+    proxy. Returns the source address for an eligible slot, else None (unchanged —
+    the existing proxy path still applies).
+
+    Gated by ``egress_v6bind_enabled`` (default False → always None → byte-identical
+    to today). Only non-default (account2) profiles, and only providers on the
+    ``egress_v6bind_providers`` allowlist (start: just ``groq``). Self-safe: any
+    error → None → falls back to the proxy path (never silently leaks account2 over
+    the home IP, because the proxy leak-guard still runs when this returns None).
+    """
+    if (auth_profile or "default") == "default":
+        return None
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        if not bool(get_runtime_state_value(_V6BIND_FLAG_KEY, False)):
+            return None
+        allow = str(get_runtime_state_value(_V6BIND_PROVIDERS_KEY, "groq") or "")
+        if provider not in {p.strip() for p in allow.split(",") if p.strip()}:
+            return None
+        src = str(get_runtime_state_value(_V6BIND_SOURCE_KEY, "") or "").strip()
+        if not src:
+            return None
+        # Fail-safe: only bind if the address actually exists on this host. If it
+        # ever vanishes (e.g. a reboot before the persistence unit ran), fall back
+        # to None → the proxy path — so groq degrades gracefully instead of erroring
+        # with "cannot assign requested address".
+        if not _source_addr_usable(src):
+            return None
+        return src
+    except Exception:
+        return None
+
+
+def _source_addr_usable(addr: str) -> bool:
+    """True if ``addr`` can be bound as an IPv6 source on this host (cheap check)."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        try:
+            s.bind((addr, 0))
+            return True
+        finally:
+            s.close()
+    except OSError:
+        return False
+
+
 def proxy_endpoints() -> dict:
     """Return {egress: url|None}. Reads runtime config override if present, else
     the defaults. Self-safe: any error -> the hardcoded defaults."""

@@ -29,6 +29,11 @@ from time import monotonic as _monotonic
 
 from core.runtime.config import PROJECT_ROOT
 from core.runtime.workspace_paths import shared_dir as _shared_dir
+# _exec_bash klipper stor output med clip_head_tail (halen betyder mest for bash).
+# Den blev BRUGT (linje ~346/373) men aldrig importeret her → NameError
+# "'_clip_head_tail' is not defined" ramte ETHVERT bash-kald med output >16k
+# (fx `ls -la /tmp` på ChiefOne) → tool-fejl i kode-lanen. (2026-07-23)
+from core.services.text_clip import clip_head_tail as _clip_head_tail
 
 logger = __import__("logging").getLogger(__name__)
 

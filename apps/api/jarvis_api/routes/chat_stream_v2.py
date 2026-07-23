@@ -369,6 +369,16 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     # if ollama can't be reached). Only touches the ollama provider.
     if _eff_provider == "ollama":
         _eff_model = _resolve_ollama_model_name(_eff_model)
+        # KRITISK (2026-07-23, jarvis-code "svarer ikke / dør ved 4.4s"): den
+        # detached run kalder provideren med model_override (IKKE eff_model —
+        # eff_model bruges kun til display i message_start). Resolver vi kun
+        # eff_model, får selve ollama-kaldet stadig det bare "glm-5.2" →
+        # HTTP 404 "model not found" → run fejler ~4.4s → intet svar (præcis
+        # Bjørns symptom). Resolver BEGGE så både display og det faktiske kald
+        # rammer ":cloud"-taggen. Kun når owner har sat et override (ellers falder
+        # start_visible_run til settings-defaulten, som ikke er en bar ollama-cloud).
+        if _model_override:
+            _model_override = _resolve_ollama_model_name(_model_override)
     # Observability: hvad valgte klienten, og hvad resolver det til? Gør provider-
     # mismatch ("jeg kører ikke ollama") diagnosticerbar uden at gætte.
     print(

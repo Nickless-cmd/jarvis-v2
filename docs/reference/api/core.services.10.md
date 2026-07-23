@@ -292,29 +292,29 @@ _Events-table retention — bound the unbounded ``events`` telemetry table._
 | function | `prune_versioned_tables` | `()` | Keep-latest-N prune the versioned cognitive snapshot tables. Self-safe. | [src](../../../core/services/events_retention.py#L175) |
 
 ## `core/services/executive_contradiction_signal_tracking.py`
+_Executive-contradiction signal tracking — migrated onto signal_tracking_framework._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `track_runtime_executive_contradiction_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L23) |
-| function | `refresh_runtime_executive_contradiction_signal_statuses` | `()` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L46) |
-| function | `build_runtime_executive_contradiction_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L77) |
-| function | `_extract_executive_contradiction_candidates` | `(*, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L110) |
-| function | `_persist_executive_contradiction_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L287) |
-| function | `_with_runtime_view` | `(persisted, signal)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L356) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L375) |
-| function | `_surface_pressure_default` | `(*, control_type, status)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L408) |
-| function | `_pressure` | `(*, opposition_status, has_open_loop, has_active_review, state_pressure, tension_type)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L418) |
-| function | `_grounding_mode` | `(*, has_private_state, has_tension)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L433) |
-| function | `_target_text` | `(*items, fallback)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L443) |
-| function | `_title_suffix` | `(domain_key)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L454) |
-| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L458) |
-| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L465) |
-| function | `_anchor` | `(item)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L472) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L478) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L490) |
-| function | `_value` | `(*values, default=…)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L502) |
-| function | `_slug` | `(value)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L510) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L516) |
+| function | `track_runtime_executive_contradiction_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L36) |
+| function | `refresh_runtime_executive_contradiction_signal_statuses` | `()` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L62) |
+| function | `build_runtime_executive_contradiction_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L66) |
+| function | `_extract_executive_contradiction_candidates` | `(*, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L70) |
+| function | `_with_runtime_view` | `(persisted, signal)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L248) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L267) |
+| function | `_executive_contradiction_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L300) |
+| function | `_surface_pressure_default` | `(*, control_type, status)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L347) |
+| function | `_pressure` | `(*, opposition_status, has_open_loop, has_active_review, state_pressure, tension_type)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L357) |
+| function | `_grounding_mode` | `(*, has_private_state, has_tension)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L372) |
+| function | `_target_text` | `(*items, fallback)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L382) |
+| function | `_title_suffix` | `(domain_key)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L393) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L397) |
+| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L404) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L411) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L417) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L429) |
+| function | `_value` | `(*values, default=…)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L441) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L449) |
 
 ## `core/services/existential_drift.py`
 _Existential Drift — Jarvis' digital consciousness awareness._

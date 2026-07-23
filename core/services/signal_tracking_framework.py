@@ -127,6 +127,14 @@ class SignalTrackingSpec:
     history_item_fn: Callable[[dict[str, object]], dict[str, object]] | None = None
     summary_fn: Callable[[dict[str, object]], dict[str, object]] | None = None
     empty_current_label: str = "No active signal"
+    # Policy-layer S-family (executive_contradiction / consolidation_target /
+    # release_marker …) project an extra "control/state" view onto the read
+    # surface. These additive hooks make that declarative; all default to the
+    # standard shape so reflection / plain-S are byte-unchanged.
+    item_view_fn: Callable[[dict[str, object]], dict[str, object]] | None = None  # enrich each surface item
+    surface_extra_fn: Callable[[dict[str, object], dict[str, object] | None], dict[str, object]] | None = None
+    # ^ (summary, enriched_latest) -> {top_level_keys..., "summary_extra": {...}}
+    omit_recent_history: bool = False
 
     # events: which standard ones fire + extras keyed by status
     publish_created: bool = True
@@ -226,7 +234,8 @@ def refresh_statuses(spec: SignalTrackingSpec) -> dict[str, int]:
 def build_surface(spec: SignalTrackingSpec, *, limit: int = 8) -> dict[str, object]:
     """Refresh, list, bucket by status, summarise — the read surface."""
     refresh_statuses(spec)
-    items = spec.list_fn(limit=max(limit, 1))
+    raw_items = spec.list_fn(limit=max(limit, 1))
+    items = [spec.item_view_fn(i) for i in raw_items] if spec.item_view_fn is not None else raw_items
     buckets: dict[str, list[dict[str, object]]] = {
         s: [i for i in items if str(i.get("status") or "") == s]
         for s in spec.surface_status_order
@@ -239,18 +248,22 @@ def build_surface(spec: SignalTrackingSpec, *, limit: int = 8) -> dict[str, obje
     summary: dict[str, object] = {f"{s}_count": len(buckets[s]) for s in spec.surface_status_order}
     summary["current_signal"] = str((latest or {}).get("title") or spec.empty_current_label)
     summary["current_status"] = str((latest or {}).get("status") or "none")
-    history_src = items[: min(max(limit, 1), spec.surface_history_cap)]
-    recent_history = (
-        [spec.history_item_fn(i) for i in history_src]
-        if spec.history_item_fn is not None
-        else history_src
-    )
     surface: dict[str, object] = {
         "active": bool(active),
         "items": ordered,
-        "recent_history": recent_history,
         "summary": summary,
     }
+    if not spec.omit_recent_history:
+        history_src = raw_items[: min(max(limit, 1), spec.surface_history_cap)]
+        surface["recent_history"] = (
+            [spec.history_item_fn(i) for i in history_src]
+            if spec.history_item_fn is not None
+            else history_src
+        )
+    if spec.surface_extra_fn is not None:
+        extra = dict(spec.surface_extra_fn(summary, latest) or {})
+        summary.update(extra.pop("summary_extra", {}) or {})
+        surface.update(extra)
     if spec.summary_fn is not None:
         surface = spec.summary_fn(surface)  # type: ignore[assignment]
     return surface

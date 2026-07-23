@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6408/12970 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6408/12967 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6408/12970 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4236 | 9032 | 46% |
+| `core.services` | 4236 | 9029 | 46% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -787,9 +787,9 @@ Generated from source. 6408/12970 functions/methods documented (49%). The list b
 - `core/services/consent_registry.py` :: `build_consent_registry_surface` (L143)
 - `core/services/consent_registry.py` :: `get_active_consents` (L112)
 - `core/services/consolidation_judge_daemon.py` :: `now_date_str` (L385)
-- `core/services/consolidation_target_signal_tracking.py` :: `build_runtime_consolidation_target_signal_surface` (L82)
+- `core/services/consolidation_target_signal_tracking.py` :: `build_runtime_consolidation_target_signal_surface` (L55)
 - `core/services/consolidation_target_signal_tracking.py` :: `refresh_runtime_consolidation_target_signal_statuses` (L51)
-- `core/services/consolidation_target_signal_tracking.py` :: `track_runtime_consolidation_target_signals_for_visible_turn` (L28)
+- `core/services/consolidation_target_signal_tracking.py` :: `track_runtime_consolidation_target_signals_for_visible_turn` (L41)
 - `core/services/contract_evolution.py` :: `build_contract_evolution_surface` (L148)
 - `core/services/conversation_rhythm.py` :: `build_conversation_rhythm_surface` (L74)
 - `core/services/council_memory_daemon.py` :: `build_council_memory_surface` (L65)
@@ -932,9 +932,9 @@ Generated from source. 6408/12970 functions/methods documented (49%). The list b
 - `core/services/epistemics.py` :: `list_wrongness` (L374)
 - `core/services/epistemics.py` :: `looks_like_recommendation` (L301)
 - `core/services/error_healers.py` :: `ErrorHealer.heal` (L231)
-- `core/services/executive_contradiction_signal_tracking.py` :: `build_runtime_executive_contradiction_signal_surface` (L77)
-- `core/services/executive_contradiction_signal_tracking.py` :: `refresh_runtime_executive_contradiction_signal_statuses` (L46)
-- `core/services/executive_contradiction_signal_tracking.py` :: `track_runtime_executive_contradiction_signals_for_visible_turn` (L23)
+- `core/services/executive_contradiction_signal_tracking.py` :: `build_runtime_executive_contradiction_signal_surface` (L66)
+- `core/services/executive_contradiction_signal_tracking.py` :: `refresh_runtime_executive_contradiction_signal_statuses` (L62)
+- `core/services/executive_contradiction_signal_tracking.py` :: `track_runtime_executive_contradiction_signals_for_visible_turn` (L36)
 - `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L163)
 - `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L159)
 - `core/services/experience_correction_listener.py` :: `stop_listener` (L215)
@@ -1327,9 +1327,9 @@ Generated from source. 6408/12970 functions/methods documented (49%). The list b
 - `core/services/relational_warmth.py` :: `tick` (L194)
 - `core/services/relationship_texture.py` :: `build_relationship_texture_surface` (L213)
 - `core/services/relationship_texture.py` :: `update_relationship_async` (L163)
-- `core/services/release_marker_signal_tracking.py` :: `build_runtime_release_marker_signal_surface` (L79)
+- `core/services/release_marker_signal_tracking.py` :: `build_runtime_release_marker_signal_surface` (L52)
 - `core/services/release_marker_signal_tracking.py` :: `refresh_runtime_release_marker_signal_statuses` (L48)
-- `core/services/release_marker_signal_tracking.py` :: `track_runtime_release_marker_signals_for_visible_turn` (L25)
+- `core/services/release_marker_signal_tracking.py` :: `track_runtime_release_marker_signals_for_visible_turn` (L38)
 - `core/services/remembered_fact_signal_tracking.py` :: `build_runtime_remembered_fact_signal_surface` (L94)
 - `core/services/remembered_fact_signal_tracking.py` :: `refresh_runtime_remembered_fact_signal_statuses` (L63)
 - `core/services/remembered_fact_signal_tracking.py` :: `track_runtime_remembered_fact_signals_for_visible_turn` (L27)
@@ -1549,8 +1549,8 @@ Generated from source. 6408/12970 functions/methods documented (49%). The list b
 - `core/services/signal_noise_guard.py` :: `strip_signal_wrappers` (L114)
 - `core/services/signal_surface_router.py` :: `get_surface_names` (L274)
 - `core/services/signal_surface_router.py` :: `resolve_surface` (L278)
-- `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.ev` (L144)
-- `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.new_signal_id` (L147)
+- `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.ev` (L152)
+- `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.new_signal_id` (L155)
 - `core/services/silence_detector.py` :: `build_silence_surface` (L62)
 - `core/services/silence_listener.py` :: `build_silence_listener_surface` (L43)
 - `core/services/silence_listener.py` :: `describe_silence` (L24)

@@ -555,6 +555,23 @@ def _device_presence_line(user_id: str) -> str:
 _ASSEMBLY_TURN_CACHE: dict = {}
 _ASSEMBLY_TURN_TTL_S = 45.0
 
+# recall_before_act non-blocking cache (2026-07-23, latency critical-path fix). The
+# main thread used to JOIN up to 4s (typ. ~1.5s) on this recall — the single biggest
+# critical-path blocker in the assembly. It's SUPPLEMENTARY continuity ("answer from
+# memory, not stub"), so a one-turn-stale result is acceptable. We now serve the last
+# cached result IMMEDIATELY (never join) and refresh in the background for the next
+# turn. Keyed per session; first turn per session has none (self-corrects next turn).
+_RBA_CACHE: dict = {}          # session_id -> (monotonic_ts, summary_text)
+_RBA_INFLIGHT: set = set()     # session_ids with a background refresh running
+_RBA_LOCK = _threading_mod.Lock()
+_RBA_TTL_S = 300.0
+
+# multi_signal_recall — same non-blocking treatment (2026-07-23). It's the "wider
+# net" complementary recall (~1.9s synchronous), also supplementary → serve cached,
+# refresh in background. Shares the RBA lock (both are quick dict ops).
+_MSR_CACHE: dict = {}
+_MSR_INFLIGHT: set = set()
+
 
 def _latest_user_msg_id(session_id: str | None) -> int:
     """Cheap indexed lookup of the newest USER message id for the session. It's the SAME
@@ -1684,34 +1701,37 @@ def _build_visible_chat_prompt_assembly_impl(
             # allerede 4s-cap). Samme tråd-deadline-mønster; synlig i Centralen.
             import threading as _thr_rba
             import contextvars as _cv_rba
-            _rba_box: dict = {}
-            # Kopiér caller-context (user_context → current_user_id) ind i den rå tråd, ellers
-            # fejler recall-kilden 'workspace' lydløst (16.jul). copy_context fanges HER (inde i
-            # kaldernes user_context) og køres via ctx.run i tråden.
-            _rba_ctx = _cv_rba.copy_context()
+            import time as _t_rba
+            _sid_rba = (session_id or "").strip()
+            _now_rba = _t_rba.monotonic()
+            # 1) Serve the last cached recall IMMEDIATELY — never block the turn.
+            with _RBA_LOCK:
+                _cached = _RBA_CACHE.get(_sid_rba)
+                _busy = _sid_rba in _RBA_INFLIGHT
+            if _cached and (_now_rba - _cached[0]) < _RBA_TTL_S and _cached[1]:
+                _dyn_memory_recall.append(_cached[1])
+                derived_inputs.append("recall-before-act (cached, non-blocking)")
+            # 2) Refresh in the background for the NEXT turn (deduped per session).
+            #    copy_context() so the raw thread keeps user_context (workspace source).
+            if not _busy and _sid_rba:
+                with _RBA_LOCK:
+                    _RBA_INFLIGHT.add(_sid_rba)
+                _rba_ctx = _cv_rba.copy_context()
+                _rba_q = user_message
 
-            def _do_rba() -> None:
-                try:
-                    _rba_box["v"] = _rba_ctx.run(recall_before_act_summary, query=user_message)
-                except Exception:
-                    pass
+                def _refresh_rba() -> None:
+                    try:
+                        _v = _rba_ctx.run(recall_before_act_summary, query=_rba_q)
+                        if _v:
+                            with _RBA_LOCK:
+                                _RBA_CACHE[_sid_rba] = (_t_rba.monotonic(), _v)
+                    except Exception:
+                        pass
+                    finally:
+                        with _RBA_LOCK:
+                            _RBA_INFLIGHT.discard(_sid_rba)
 
-            _rt = _thr_rba.Thread(target=_do_rba, name="recall-before-act", daemon=True)
-            _rt.start()
-            _rt.join(4.0)
-            if _rt.is_alive():
-                try:
-                    from core.services.central_core import central
-                    central().observe({
-                        "cluster": "prompt", "nerve": "phase_timeout",
-                        "phase": "recall_before_act", "timeout_s": 4.0,
-                    })
-                except Exception:
-                    pass
-            _rba = _rba_box.get("v")
-            if _rba:
-                _dyn_memory_recall.append(_rba)
-                derived_inputs.append("recall-before-act (user-msg tail)")
+                _thr_rba.Thread(target=_refresh_rba, name="recall-before-act-bg", daemon=True).start()
     except Exception:
         pass
     # Multi-signal recall (B1, 2026-06-08) — Claude 2026-06-09: B1 module
@@ -1723,8 +1743,37 @@ def _build_visible_chat_prompt_assembly_impl(
     try:
         from core.services.memory_recall_engine import multi_signal_recall_section
         if user_message and len(user_message.strip()) >= 8:
-            _awareness_add(28, "multi-signal recall (BM25+entity+embedding)",
-                           multi_signal_recall_section(user_message) or None)
+            import threading as _thr_msr
+            import contextvars as _cv_msr
+            import time as _t_msr
+            _sid_msr = (session_id or "").strip()
+            _now_msr = _t_msr.monotonic()
+            with _RBA_LOCK:
+                _c_msr = _MSR_CACHE.get(_sid_msr)
+                _busy_msr = _sid_msr in _MSR_INFLIGHT
+            # Serve last cached result immediately (non-blocking).
+            if _c_msr and (_now_msr - _c_msr[0]) < _RBA_TTL_S and _c_msr[1]:
+                _awareness_add(28, "multi-signal recall (BM25+entity+embedding)", _c_msr[1])
+            # Refresh in background for the next turn (deduped per session).
+            if not _busy_msr and _sid_msr:
+                with _RBA_LOCK:
+                    _MSR_INFLIGHT.add(_sid_msr)
+                _msr_ctx = _cv_msr.copy_context()
+                _msr_q = user_message
+
+                def _refresh_msr() -> None:
+                    try:
+                        _v = _msr_ctx.run(multi_signal_recall_section, _msr_q)
+                        if _v:
+                            with _RBA_LOCK:
+                                _MSR_CACHE[_sid_msr] = (_t_msr.monotonic(), _v)
+                    except Exception:
+                        pass
+                    finally:
+                        with _RBA_LOCK:
+                            _MSR_INFLIGHT.discard(_sid_msr)
+
+                _thr_msr.Thread(target=_refresh_msr, name="multi-signal-recall-bg", daemon=True).start()
     except Exception as _e:
         _sec_err("multi-signal recall (BM25+entity+embedding)", _e)
     # Phase 1 — proactive auto-compact at 70% threshold (best-effort, cooldown-protected)

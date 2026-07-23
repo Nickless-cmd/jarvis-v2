@@ -118,6 +118,17 @@ def spawn_agent_task(
             f"spawn depth limit reached: {spawn_depth}/{MAX_SPAWN_DEPTH} — recursion chain too deep"
         )
     allowed_tools = allowed_tools or []
+    template = AGENT_ROLE_TEMPLATES.get(role, AGENT_ROLE_TEMPLATES["researcher"])
+    system_prompt = str(system_prompt or template["system_prompt"])
+    tool_policy = str(tool_policy or template["default_tool_policy"])
+    # Expand tool_policy → concrete tools when the caller gave no explicit allowlist
+    # (2026-07-23). Without this a tool-using role (read-only-runtime / can-spawn)
+    # spawned with allowed_tools=[] got ZERO tools → the model fabricated tool output
+    # (hallucinated file lists). Done BEFORE the parent-ceiling so the expansion is
+    # still bounded by never-escalate. See agent_runtime_base.tools_for_policy.
+    if not allowed_tools:
+        from core.services.agent_runtime_base import tools_for_policy
+        allowed_tools = tools_for_policy(tool_policy)
     # Fase 2 Task 3: strictest-mode inheritance — never-escalate ceiling. A
     # child agent's effective tool allowlist is the requested tools
     # intersected with the parent's own allowlist, so a child can never gain
@@ -140,9 +151,6 @@ def spawn_agent_task(
         "confidence": True,
         "blockers": True,
     }
-    template = AGENT_ROLE_TEMPLATES.get(role, AGENT_ROLE_TEMPLATES["researcher"])
-    system_prompt = str(system_prompt or template["system_prompt"])
-    tool_policy = str(tool_policy or template["default_tool_policy"])
     # Layer 2 (Scout Memory): inject role's learned skills.md if present
     try:
         from core.services.agent_skill_library import get_skills
@@ -181,6 +189,37 @@ def spawn_agent_task(
             resolved = resolve_role_model(role=role, goal=goal)
             provider = str(provider or resolved.get("provider") or "")
             model = str(model or resolved.get("model") or "")
+        except Exception:
+            pass
+    # Capability floor for TOOL-USING roles (2026-07-23): council_models.json pins
+    # some roles' "fast" tier to nvidia-nim/llama-3.1-8b — an 8B that HALLUCINATES
+    # tool output (fabricates file lists instead of reading find_files; the config's
+    # own note warns tool roles need capable providers). If a tool-using role
+    # resolved BELOW the capability floor, upgrade it via the capability-ranked agent
+    # router (deepseek/70B/qwen3-32b/nemotron-120B). Reflection roles (filosof/etiker)
+    # and already-capable configs are untouched. Se central_route._model_capability.
+    _TOOL_ROLES = {"researcher", "critic", "planner", "executor", "watcher", "devils_advocate"}
+    if role in _TOOL_ROLES and provider and model:
+        try:
+            from core.services.central_route import _model_capability
+            if _model_capability(provider, model) < 0.6:
+                from core.services.agent_pool_router import route_agent_task
+                _rr = route_agent_task(kind=role, allow_paid=False)
+                _rp, _rm = str(_rr.get("provider") or ""), str(_rr.get("model") or "")
+                if _rp and _rm:
+                    provider, model = _rp, _rm
+        except Exception:
+            pass
+    if not provider or not model:
+        # Capability-ranked agent router: pick a STRONG free model for the sub-agent's
+        # own reasoning instead of whatever priority-first default the cheap lane held.
+        # Same router the jc task-lane uses; free-first (backend spawns = Jarvis' gratis
+        # arbejdskraft). Only reached when config gave no provider/model at all.
+        try:
+            from core.services.agent_pool_router import route_agent_task
+            _rr = route_agent_task(kind=role, allow_paid=False)
+            provider = str(provider or _rr.get("provider") or "")
+            model = str(model or _rr.get("model") or "")
         except Exception:
             pass
     if not provider or not model:

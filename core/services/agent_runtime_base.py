@@ -417,6 +417,28 @@ def _role_prompt(intro: str, *, tools: bool = False, structured: bool = True) ->
     return "\n\n".join(p for p in parts if p)
 
 
+# ── tool_policy → concrete tool allowlist (2026-07-23) ───────────────────────
+# tool_policy was a DEAD string: templates set default_tool_policy="read-only-
+# runtime" but nothing expanded it into actual tool NAMES, so a spawned agent's
+# allowed_tools stayed [] → the tool loop saw an empty payload → text-only → the
+# model HALLUCINATED tool output (fabricated file lists it never read). This map
+# turns a policy into the real read-only tools that exist in the catalog. bash is
+# included: the command gate (gate_execution) blocks destructive commands, so a
+# researcher can still run `ls | wc -l` etc. safely.
+_READ_ONLY_TOOLS = ["read_file", "find_files", "glob", "grep", "search",
+                    "read_tool_result", "bash"]
+_TOOL_POLICY_SETS: dict[str, list[str]] = {
+    "none": [],
+    "read-only-runtime": list(_READ_ONLY_TOOLS),
+    "can-spawn": [*_READ_ONLY_TOOLS, "spawn_agent_task"],
+}
+
+
+def tools_for_policy(policy: str) -> list[str]:
+    """Concrete tool-name allowlist for a tool_policy. Unknown/empty → []."""
+    return list(_TOOL_POLICY_SETS.get((policy or "").strip(), []))
+
+
 AGENT_ROLE_TEMPLATES = {
     "planner": {
         "title": "Planner",

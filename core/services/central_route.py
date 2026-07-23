@@ -11,6 +11,46 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+import re as _re
+
+# Static capability estimate so the AGENT lane prefers strong reasoners
+# (deepseek / 70B / qwen3-32b / gpt-oss-120b) over weak 8B chat models for
+# research/reasoning work. Root cause (Bjørn 2026-07-23): explore/research agents
+# routed to nvidia-nim llama-3.1-8b and HALLUCINATED — the pool had far stronger
+# free models sitting idle, but ranking was priority-only (no quality signal).
+# Heuristic on the model name — no network, no state. Only consulted for lane="agent".
+_STRONG_FAMILIES = (
+    "deepseek", "qwen3", "qwen2.5-coder", "qwen-coder", "glm-5", "glm-4.7",
+    "minimax", "gpt-oss-120", "nemotron-3-ultra", "nemotron-3-super", "-coder",
+)
+_PREMIUM_NAMES = ("claude", "sonnet", "opus", "gpt-5", "gpt-4", "o4-", "o3-", "gemini-pro")
+_WEAK_MARKERS = ("mini", "nano", "lite", "small", "instant", "edge", "-8b", "-7b", "-3b", "1.8b")
+
+
+def _model_capability(provider: str, model: str) -> float:
+    """Capability estimate in [0,1] from the model name. Higher = stronger reasoner."""
+    m = (model or "").lower()
+    best = 0.0
+    # Param-size hints (billions): 120b+→.95, 70b→.85, 30b→.72, 12b→.55, 7b→.42, <7b→.28
+    for num, unit in _re.findall(r"(\d+(?:\.\d+)?)\s*([bm])\b", m):
+        try:
+            b = float(num) * (0.001 if unit == "m" else 1.0)
+        except ValueError:
+            continue
+        s = (0.95 if b >= 100 else 0.85 if b >= 60 else 0.72 if b >= 27
+             else 0.55 if b >= 12 else 0.42 if b >= 7 else 0.28)
+        best = max(best, s)
+    if any(k in m for k in _PREMIUM_NAMES):
+        best = max(best, 0.95)
+    elif any(k in m for k in _STRONG_FAMILIES):
+        best = max(best, 0.80)
+    if best == 0.0:
+        best = 0.45  # unknown → neutral
+    if any(k in m for k in _WEAK_MARKERS) and best < 0.80:
+        best = min(best, 0.45)  # weak marker caps non-strong models
+    return best
+
+
 def _rank_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tuple[str, str]]:
     """Rangerede (provider, model) for en lane. Genbruger den eksisterende
     selection-kandidat-bygger + task_kind-semantik + proaktiv headroom (Task 8).
@@ -52,9 +92,12 @@ def _rank_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tupl
         # background: skub public proxies foran (træk 1000 fra så de vinder)
         proxy_bonus = -1000.0 if (kind == "background" and _is_public_proxy(p)) else 0.0
         rank = proxy_bonus + prio / max(headroom_weight(p), 1e-3)
-        out.append((rank, p, m))          # de-vægt ved >=80%
-    out.sort(key=lambda x: x[0])
-    return [(p, m) for _, p, m in out]
+        # AGENT-lanen: kvalitet FØRST (stærke reasoners før svage 8B) — priority/
+        # headroom er kun tiebreaker. Andre lanes uændret (cap=0 → ren priority-orden).
+        cap = _model_capability(p, m) if lane == "agent" else 0.0
+        out.append((-cap, rank, p, m))
+    out.sort(key=lambda x: (x[0], x[1]))
+    return [(p, m) for _, _, p, m in out]
 
 
 def route(*, lane: str, task: Any = None,

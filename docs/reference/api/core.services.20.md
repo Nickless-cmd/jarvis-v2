@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/source_confidence_gate.py`
+_Source-confidence gate (epistemisk gate, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tool_names` | `(tools_used)` | — | [src](../../../core/services/source_confidence_gate.py#L38) |
+| function | `assess_source_confidence` | `(*, output_text, tools_used=…)` | Vurdér epistemisk kilde-konfidens for en tur. | [src](../../../core/services/source_confidence_gate.py#L47) |
+| function | `build_source_confidence_surface` | `(*, output_text=…, tools_used=…)` | Central-CLI: jc raw /central/source-confidence (senest vurderede tur, hvis givet). | [src](../../../core/services/source_confidence_gate.py#L88) |
+
 ## `core/services/spaced_repetition.py`
 _Spaced Repetition — schedule reviews for things Jarvis learned._
 
@@ -636,14 +645,4 @@ _TikTok content daemon — autonomous 3x/day video generation and upload._
 | function | `_refill_pool` | `(slot_type=…)` | Auto-refill the pool with fresh LLM-generated concepts when running low. | [src](../../../core/services/tiktok_content_daemon.py#L470) |
 | function | `_count_unused` | `(pool, slot_type)` | Count how many unused concepts of a given type remain in the pool. | [src](../../../core/services/tiktok_content_daemon.py#L545) |
 | function | `_get_concept_from_pool` | `(slot_type)` | Read pool file and return (text, hashtags) for the first unused concept of slot_type. | [src](../../../core/services/tiktok_content_daemon.py#L550) |
-
-## `core/services/tiktok_research_daemon.py`
-_TikTok research daemon — daily content concept pool generator._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_tiktok_research_daemon` | `()` | Daily tick — generate content concepts and write to pool file. | [src](../../../core/services/tiktok_research_daemon.py#L75) |
-| function | `_load_pool` | `()` | Load the pool JSON from disk. Returns empty dict if missing or corrupt. | [src](../../../core/services/tiktok_research_daemon.py#L155) |
-| function | `_generate_concepts_for_type` | `(slot_type)` | Call LLM to generate 3 concepts for the given slot type. | [src](../../../core/services/tiktok_research_daemon.py#L165) |
-| function | `_parse_json_array` | `(text)` | Try to parse a JSON array from LLM output. Returns None on failure. | [src](../../../core/services/tiktok_research_daemon.py#L198) |
 

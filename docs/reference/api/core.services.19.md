@@ -384,6 +384,27 @@ _Signal Surface Router — maps surface names to build functions._
 | function | `read_surface` | `(name)` | Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names. | [src](../../../core/services/signal_surface_router.py#L282) |
 | function | `list_all_surfaces` | `()` | Call all registered surfaces. Per-surface exceptions caught and returned as errors. | [src](../../../core/services/signal_surface_router.py#L294) |
 
+## `core/services/signal_tracking_framework.py`
+_Spec-driven framework for the ``*_signal_tracking`` family._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `parse_dt` | `(value, *, z_normalize=…, tz_normalize=…)` | ISO → datetime, superset of the 12 original variants. | [src](../../../core/services/signal_tracking_framework.py#L46) |
+| function | `merge_fragments` | `(*parts, cap=…, sep=…)` | De-duplicated, whitespace-normalised join of text fragments (capped). | [src](../../../core/services/signal_tracking_framework.py#L66) |
+| function | `_default_early_retire` | `(_item)` | — | [src](../../../core/services/signal_tracking_framework.py#L82) |
+| class | `SignalTrackingSpec` | `` | Everything the framework needs to run one signal's lifecycle. | [src](../../../core/services/signal_tracking_framework.py#L87) |
+| method | `SignalTrackingSpec.ev` | `(self, leaf)` | — | [src](../../../core/services/signal_tracking_framework.py#L144) |
+| method | `SignalTrackingSpec.new_signal_id` | `(self)` | — | [src](../../../core/services/signal_tracking_framework.py#L147) |
+| function | `track_for_visible_turn` | `(spec, *, session_id, run_id, user_message=…, context=…)` | Extract candidates for this turn and persist them. Never raises. | [src](../../../core/services/signal_tracking_framework.py#L153) |
+| function | `refresh_statuses` | `(spec)` | Mark long-inactive signals stale. Preserves each spec's exact window + | [src](../../../core/services/signal_tracking_framework.py#L188) |
+| function | `build_surface` | `(spec, *, limit=…)` | Refresh, list, bucket by status, summarise — the read surface. | [src](../../../core/services/signal_tracking_framework.py#L226) |
+| function | `persist_signals` | `(spec, *, signals, session_id, run_id)` | Upsert candidates, supersede same-group siblings, publish events. | [src](../../../core/services/signal_tracking_framework.py#L259) |
+| function | `_supersede_and_publish` | `(spec, *, signal, item, now)` | — | [src](../../../core/services/signal_tracking_framework.py#L296) |
+| function | `_publish_lifecycle` | `(spec, *, item)` | — | [src](../../../core/services/signal_tracking_framework.py#L322) |
+| function | `make_candidate` | `(spec, *, signal_type, discriminator, key, status, title, summary, rationale, status_reason, source_items=…, confidence=…, group_value=…, source_kind=…, fragment_cap=…)` | Build a candidate dict with a spec-formatted canonical_key. | [src](../../../core/services/signal_tracking_framework.py#L346) |
+| function | `stronger_confidence` | `(*values, ranks=…)` | Highest-ranked confidence among ``values`` (S-family merge). | [src](../../../core/services/signal_tracking_framework.py#L400) |
+| function | `_publish` | `(event_name, payload)` | — | [src](../../../core/services/signal_tracking_framework.py#L412) |
+
 ## `core/services/silence_detector.py`
 _Silence Detector — what is the user NOT saying?_
 
@@ -576,13 +597,4 @@ _Somatic runtime body: turn runtime signals into bodily regulation cues._
 | function | `_base_levels` | `()` | — | [src](../../../core/services/somatic_runtime_body.py#L129) |
 | function | `_posture` | `(levels)` | — | [src](../../../core/services/somatic_runtime_body.py#L133) |
 | function | `_regulation` | `(posture)` | — | [src](../../../core/services/somatic_runtime_body.py#L145) |
-
-## `core/services/source_confidence_gate.py`
-_Source-confidence gate (epistemisk gate, 2026-07-10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_names` | `(tools_used)` | — | [src](../../../core/services/source_confidence_gate.py#L38) |
-| function | `assess_source_confidence` | `(*, output_text, tools_used=…)` | Vurdér epistemisk kilde-konfidens for en tur. | [src](../../../core/services/source_confidence_gate.py#L47) |
-| function | `build_source_confidence_surface` | `(*, output_text=…, tools_used=…)` | Central-CLI: jc raw /central/source-confidence (senest vurderede tur, hvis givet). | [src](../../../core/services/source_confidence_gate.py#L88) |
 

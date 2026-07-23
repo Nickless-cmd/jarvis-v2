@@ -47,7 +47,7 @@ class RuntimeSettings:
     # kører på ollama (deepseek-v4-flash:cloud). Overstyrbar uden kode-deploy.
     autonomous_model_provider: str = "ollama"
     autonomous_model_name: str = "deepseek-v4-flash:cloud"
-    relevance_model_name: str = "glm-5.1:cloud"
+    relevance_model_name: str = "qwen3:4b-instruct-2507-q4_K_M"  # local GPU (2026-07-23): faster (734 vs 946ms) + better F1 than glm-5.1:cloud remote
     # Associative recall thresholds
     recall_strong_threshold: float = 0.7
     recall_weak_threshold: float = 0.3
@@ -69,7 +69,7 @@ class RuntimeSettings:
     # "opencode"      = OpenCode Zen free models via cheap lane (real timeouts).
     # "ollamafreeapi" = public cloud (free models, timeout kwarg is silently dropped).
     # "ollama"        = local LXC GPU (slower, private-safe).
-    relevance_backend_primary: str = "opencode"
+    relevance_backend_primary: str = "ollama"  # 2026-07-23: local qwen3:4b (GPU) — faster + better than opencode/glm-cloud remote for memory-selection
     relevance_opencode_model: str = "minimax-m2.5-free"
     relevance_opencode_timeout: int = 6
     relevance_ollamafreeapi_model: str = "deepseek-r1"

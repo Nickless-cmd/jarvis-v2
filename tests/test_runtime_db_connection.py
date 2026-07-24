@@ -22,11 +22,16 @@ def test_connection_pool_reconnects_on_db_path_change(monkeypatch, tmp_path) -> 
         names = {r[0] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     assert "marker" not in names  # fresh DB b, not the stale pooled conn to a.db
+    db_core.close_pooled_connection()  # don't leak pool state into the next test
 
 
 def test_connect_context_manager_closes_connection(monkeypatch, tmp_path) -> None:
+    # With pooling DISABLED, connect() returns a ClosingConnection that closes on
+    # context exit. (Pooled connections deliberately stay open for reuse — the perf
+    # optimisation added 2026-07-12 — so this closing invariant is the NOPOOL path.)
+    monkeypatch.setattr(db_core, "_POOL_DISABLED", True)
     db_path = tmp_path / "jarvis.db"
-    monkeypatch.setattr(runtime_db, "DB_PATH", db_path)
+    monkeypatch.setattr(db_core, "DB_PATH", db_path)
 
     with runtime_db.connect() as conn:
         conn.execute("SELECT 1")
@@ -36,4 +41,4 @@ def test_connect_context_manager_closes_connection(monkeypatch, tmp_path) -> Non
     except sqlite3.ProgrammingError:
         pass
     else:
-        raise AssertionError("runtime_db.connect() should close sqlite connection on context exit")
+        raise AssertionError("connect() should close sqlite connection on context exit (NOPOOL)")

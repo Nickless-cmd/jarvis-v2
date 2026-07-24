@@ -29,6 +29,19 @@ def test_keyless_is_single_profile(tmp_path, monkeypatch):
     assert s.ready_profiles_for("ollamafreeapi") == ["default"]
 
 
+def test_bearer_public_proxy_rotates_account2(tmp_path, monkeypatch):
+    # opencode is in _PUBLIC_PROXIES but auth_kind=bearer (real per-account keys) —
+    # it must NOT be treated keyless, so its account2 key is surfaced for rotation.
+    from core.services import auth_profile_scan as s
+    for prof in ("default", "account2"):
+        (tmp_path / prof / "providers" / "opencode").mkdir(parents=True)
+    monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
+    monkeypatch.setattr(s, "provider_auth_ready", lambda *, provider, auth_profile: True)
+    s.clear_cache()
+    assert s._is_keyless("opencode") is False
+    assert s.ready_profiles_for("opencode") == ["default", "account2"]
+
+
 def test_only_account_profiles_not_backups_or_legacy(tmp_path, monkeypatch):
     # Regression: the live flip revealed default.bak-* + single-provider/OAuth profile
     # dirs were wrongly materialized as account slots. Only default + account<N> count.

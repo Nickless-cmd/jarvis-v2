@@ -67,8 +67,16 @@ def _is_keyless(provider: str) -> bool:
     public proxy / keyless extra. Public-proxy membership is sufficient on its
     own, so keyless providers don't require CHEAP_PROVIDER_DEFAULTS entries.
     """
-    if str((CHEAP_PROVIDER_DEFAULTS.get(provider) or {}).get("auth_kind")) == "none":
+    ak = str((CHEAP_PROVIDER_DEFAULTS.get(provider) or {}).get("auth_kind") or "")
+    if ak == "none":
         return True
+    if ak in ("bearer", "api_key"):
+        # Per-account API key required → NEVER keyless, even if listed as a public
+        # proxy. opencode is in _PUBLIC_PROXIES but authenticates with real per-account
+        # bearer keys (default + account2 on disk) — treating it keyless hid its
+        # account2 key from the profile rotation. arko (runtime-key, shared) and the
+        # auth_kind="none" proxies stay keyless.
+        return False
     return provider in _PUBLIC_PROXIES or provider in _KEYLESS_EXTRA
 
 

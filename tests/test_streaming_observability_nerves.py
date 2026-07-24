@@ -36,6 +36,36 @@ def _install_sink(monkeypatch) -> _CentralSink:
     return sink
 
 
+class _UrllibShim:
+    """Mirror af det rigtige ``urllib.request``-modul med KUN ``urlopen`` overrided.
+
+    HVORFOR: ``monkeypatch.setattr(vm.urllib_request, "urlopen", ...)`` muterer
+    det DELTE ``urllib.request``-modul-objekt globalt i processen. Under en
+    testkørsel rammer enhver ANDEN ``urllib.request.urlopen``-kalder (fx cheap-
+    lane-fan-out fra baggrunds-daemons) så mock'en og fejler med
+    ``'_StallingResponse' object has no attribute 'read'`` — og de fejl blev
+    skrevet i den ægte ``cheap_provider_invocations``-DB (testene requester ikke
+    ``isolated_runtime``). Ved i stedet at rebinde NAVNET ``urllib_request`` på
+    ``visible_model``-modulet rammer patch'en kun vm's egne kald; det globale
+    modul er urørt. ``__getattr__`` delegerer alle øvrige attrs (Request m.fl.)
+    til det ægte modul.
+    """
+
+    def __init__(self, real, urlopen) -> None:
+        self._real = real
+        self.urlopen = urlopen
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+
+def _patch_vm_urlopen(monkeypatch, fake_urlopen) -> None:
+    """Scoped erstatning af ``visible_model.urllib_request.urlopen`` uden at
+    lække ind i det globale ``urllib.request``-modul. Se ``_UrllibShim``."""
+    monkeypatch.setattr(
+        vm, "urllib_request", _UrllibShim(vm.urllib_request, fake_urlopen))
+
+
 # ── H4: openai-responses-banen ───────────────────────────────────────────────
 def test_h4_openai_responses_observes_provider_error_before_raise(monkeypatch):
     """`_stream_openai_model` skal observe provider_error FØR den re-raiser når
@@ -55,8 +85,7 @@ def test_h4_openai_responses_observes_provider_error_before_raise(monkeypatch):
         def close(self):
             pass
 
-    monkeypatch.setattr(vm.urllib_request, "urlopen",
-                        lambda *a, **k: _FakeResp())
+    _patch_vm_urlopen(monkeypatch, lambda *a, **k: _FakeResp())
 
     def _boom_sse(*_a, **_k):
         raise RuntimeError("simuleret responses-stream-drop")
@@ -93,8 +122,7 @@ def test_h4_openai_responses_observe_is_self_safe(monkeypatch):
         def close(self):
             pass
 
-    monkeypatch.setattr(vm.urllib_request, "urlopen",
-                        lambda *a, **k: _FakeResp())
+    _patch_vm_urlopen(monkeypatch, lambda *a, **k: _FakeResp())
 
     def _boom_sse(*_a, **_k):
         raise RuntimeError("oprindelig-fejl")
@@ -283,8 +311,7 @@ def test_h3_inter_byte_watchdog_fires_and_observes_on_midstream_freeze(monkeypat
         def close(self):
             closed.set()
 
-    monkeypatch.setattr(vm.urllib_request, "urlopen",
-                        lambda *a, **k: _StallingResponse())
+    _patch_vm_urlopen(monkeypatch, lambda *a, **k: _StallingResponse())
 
     deltas: list[str] = []
     with pytest.raises(Exception):

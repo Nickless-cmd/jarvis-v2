@@ -95,6 +95,41 @@ def test_candidates_multiprofile_when_flag_on(monkeypatch):
     assert profs == {"default", "account2"}
 
 
+def test_roundrobin_alternates_first_profile(monkeypatch):
+    # A: with roundrobin on, the FIRST-emitted profile for a multi-key provider
+    # alternates per call so load splits across default/account2 (central-route-live
+    # and the strict selector both take the first matching candidate).
+    from core.services import cheap_provider_runtime_selection as sel
+    monkeypatch.setattr("core.services.auth_profile_scan.ready_profiles_for",
+                        lambda provider: ["default", "account2"] if provider == "groq" else ["default"])
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: True)
+    monkeypatch.setattr(sel, "_flag_profile_roundrobin", lambda: True)
+    _stub_groq_registry(monkeypatch, sel)
+    sel._PROFILE_RR.clear()
+
+    def first_groq_profile():
+        for c in sel._configured_cheap_candidates(include_public_proxy=True):
+            if c["provider"] == "groq":
+                return c["auth_profile"]
+
+    a, b, c = first_groq_profile(), first_groq_profile(), first_groq_profile()
+    assert [a, b, c] == ["default", "account2", "default"], [a, b, c]
+
+
+def test_roundrobin_off_keeps_default_first(monkeypatch):
+    # roundrobin OFF (default): default always emitted first -> account2 stays failover.
+    from core.services import cheap_provider_runtime_selection as sel
+    monkeypatch.setattr("core.services.auth_profile_scan.ready_profiles_for",
+                        lambda provider: ["default", "account2"] if provider == "groq" else ["default"])
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: True)
+    monkeypatch.setattr(sel, "_flag_profile_roundrobin", lambda: False)
+    _stub_groq_registry(monkeypatch, sel)
+    for _ in range(3):
+        first = next(c["auth_profile"] for c in sel._configured_cheap_candidates(include_public_proxy=True)
+                     if c["provider"] == "groq")
+        assert first == "default"
+
+
 def test_candidates_single_profile_when_flag_off(monkeypatch):
     from core.services import cheap_provider_runtime_selection as sel
     monkeypatch.setattr(sel, "_flag_multiprofile", lambda: False)

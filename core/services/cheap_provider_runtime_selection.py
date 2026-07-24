@@ -345,6 +345,37 @@ def _flag_multiprofile() -> bool:
         return False
 
 
+def _flag_profile_roundrobin() -> bool:
+    """A (2026-07-24): when multiprofile is on AND a provider has >1 ready auth
+    profile (e.g. default + account2), rotate WHICH profile is emitted first per
+    call so load splits across the accounts instead of always draining `default`
+    (strict-priority-first means the always-first profile wins every call — account2
+    then only ever serves as failover and is never actually used). Default OFF →
+    byte-identical strict-priority behaviour; flip True = live round-robin, flip
+    False = instant rollback."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("cheap_pool_profile_roundrobin_enabled", False)
+    except Exception:
+        return False
+
+
+# provider -> next rotation index (module-level, advances once per provider per call).
+_PROFILE_RR: dict[str, int] = {}
+
+
+def _roundrobin_profiles(provider: str, profiles: list[str]) -> list[str]:
+    """Rotate ``profiles`` by a per-provider counter so the preferred (first-emitted)
+    profile advances each call. len<=1 → unchanged. Deterministic within a call,
+    advances across calls → even split over default/account2 for the winning
+    provider. Order within the rotation is preserved (stable)."""
+    if len(profiles) <= 1:
+        return profiles
+    i = _PROFILE_RR.get(provider, 0) % len(profiles)
+    _PROFILE_RR[provider] = i + 1
+    return profiles[i:] + profiles[:i]
+
+
 def _resolve_proxy(egress: str, endpoints: dict | None = None) -> str | None:
     """Task 8b: map an egress ('home'|'vpn'|'he6') to its proxy endpoint URL.
 
@@ -873,8 +904,22 @@ def _configured_cheap_candidates(
     seen: set[tuple[str, str]] = set()
     emitted: set[tuple[str, str, str]] = set()
     multiprofile = _flag_multiprofile()
+    roundrobin = multiprofile and _flag_profile_roundrobin()
+    # A (2026-07-24): rotate profile emit-order per provider ONCE per call (shared
+    # across the model loop and the static-models loop) so the account split is
+    # consistent within a call and advances between calls.
+    call_rr: dict[str, list[str]] = {}
     if multiprofile:
         from core.services.auth_profile_scan import ready_profiles_for
+
+    def _profiles_for(prov: str, fallback_profile: str) -> list[str]:
+        if not multiprofile:
+            return [fallback_profile]
+        if roundrobin:
+            if prov not in call_rr:
+                call_rr[prov] = _roundrobin_profiles(prov, list(ready_profiles_for(prov)))
+            return call_rr[prov]
+        return list(ready_profiles_for(prov))
     for item in registry.get("models") or []:
         if not bool(item.get("enabled", True)):
             continue
@@ -899,10 +944,8 @@ def _configured_cheap_candidates(
         registry_profile = str(provider_entry.get("auth_profile") or "").strip()
         # Multiprofil (flag ON): én kandidat pr. klar auth-profil for provideren.
         # Flag OFF (default): uændret — kun registry-entry'ens egen auth_profile.
-        if multiprofile:
-            auth_profiles = list(ready_profiles_for(provider))
-        else:
-            auth_profiles = [registry_profile]
+        # roundrobin (flag ON): profil-rækkefølgen roteres pr. kald (se _profiles_for).
+        auth_profiles = _profiles_for(provider, registry_profile)
         for auth_profile in auth_profiles:
             triple = (provider, model, auth_profile)
             if triple in emitted:
@@ -940,10 +983,8 @@ def _configured_cheap_candidates(
         provider_entry = provider_entries.get(provider_name, {})
         registry_profile = str(provider_entry.get("auth_profile") or "").strip()
         # Multiprofil (flag ON): iterér klare auth-profiler; OFF: kun entry-profilen.
-        if multiprofile:
-            static_profiles = list(ready_profiles_for(provider_name))
-        else:
-            static_profiles = [registry_profile]
+        # roundrobin deler samme call_rr så profil-splittet er konsistent i kaldet.
+        static_profiles = _profiles_for(provider_name, registry_profile)
         for sm in static_models:
             key = (provider_name, sm)
             if key in seen:

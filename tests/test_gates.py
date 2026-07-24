@@ -4,6 +4,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch
 
+from core.runtime.db import connect as _db_connect
 from core.services.emotional_controls import EmotionalSnapshot
 
 
@@ -366,7 +367,7 @@ class TestVetoAdaptiveCountersTable:
         finally:
             # Cleanup
             import sqlite3, os
-            with sqlite3.connect(os.path.expanduser("~/.jarvis-v2/state/jarvis.db")) as c:
+            with _db_connect() as c:
                 c.execute(
                     "DELETE FROM veto_adaptive_counters WHERE tool_name = ?",
                     (TOOL,),
@@ -383,7 +384,7 @@ class TestVetoAdaptiveCountersTable:
             assert _get_counter(TOOL, FEELING, "honored") == 3
         finally:
             import sqlite3, os
-            with sqlite3.connect(os.path.expanduser("~/.jarvis-v2/state/jarvis.db")) as c:
+            with _db_connect() as c:
                 c.execute(
                     "DELETE FROM veto_adaptive_counters WHERE tool_name = ?",
                     (TOOL,),
@@ -398,7 +399,7 @@ class TestVetoAdaptiveCountersTable:
         FEELING = "tf"
         try:
             _adjust_counter(TOOL, FEELING, "overrides", +1)
-            with sqlite3.connect(os.path.expanduser("~/.jarvis-v2/state/jarvis.db")) as c:
+            with _db_connect() as c:
                 row = c.execute(
                     "SELECT created_at, last_modified FROM veto_adaptive_counters "
                     "WHERE tool_name = ? AND feeling = ? AND counter_kind = 'overrides'",
@@ -410,7 +411,7 @@ class TestVetoAdaptiveCountersTable:
             time.sleep(0.01)
             # Mutate again → last_modified should update, created_at stays
             _adjust_counter(TOOL, FEELING, "overrides", +1)
-            with sqlite3.connect(os.path.expanduser("~/.jarvis-v2/state/jarvis.db")) as c:
+            with _db_connect() as c:
                 row2 = c.execute(
                     "SELECT created_at, last_modified FROM veto_adaptive_counters "
                     "WHERE tool_name = ? AND feeling = ? AND counter_kind = 'overrides'",
@@ -419,7 +420,7 @@ class TestVetoAdaptiveCountersTable:
             assert row2[0] == created_at  # created_at stable
             assert row2[1] >= last_modified_1  # last_modified moved forward
         finally:
-            with sqlite3.connect(os.path.expanduser("~/.jarvis-v2/state/jarvis.db")) as c:
+            with _db_connect() as c:
                 c.execute(
                     "DELETE FROM veto_adaptive_counters WHERE tool_name = ?",
                     (TOOL,),

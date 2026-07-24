@@ -63,14 +63,24 @@ def test_persists_pattern_what_if_event(monkeypatch):
     result = pcd.run_pattern_cf_cycle()
     assert result["written"] == 1
 
-    with connect() as c:
-        row = c.execute(
-            "SELECT payload_json FROM events "
-            "WHERE kind = 'counterfactual.pattern_what_if' "
-            "AND json_extract(payload_json, '$.parent_kind') = 'x.start' "
-            "AND json_extract(payload_json, '$.child_kind') = 'y.end' "
-            "ORDER BY id DESC LIMIT 1"
-        ).fetchone()
+    # event_bus.publish() skriver ASYNKRONT via en writer-tråd, så eventet er ikke
+    # nødvendigvis persisteret i samme øjeblik publish() returnerer. Poll kort i
+    # stedet for at læse én gang med det samme (racen ramte tidligere kun tilfældigt
+    # når prod-DB'en var varm; en frisk/kold DB afslører den).
+    import time as _time
+    row = None
+    for _ in range(30):
+        with connect() as c:
+            row = c.execute(
+                "SELECT payload_json FROM events "
+                "WHERE kind = 'counterfactual.pattern_what_if' "
+                "AND json_extract(payload_json, '$.parent_kind') = 'x.start' "
+                "AND json_extract(payload_json, '$.child_kind') = 'y.end' "
+                "ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        if row is not None:
+            break
+        _time.sleep(0.1)
     assert row is not None
     payload = json.loads(row["payload_json"])
     assert payload["occurrences_7d"] == 42

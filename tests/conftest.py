@@ -87,6 +87,79 @@ except Exception:
     _VISIBLE_RUNS_ANCHOR_CLASSES = {}
 
 
+@pytest.fixture(scope="session")
+def _prod_db_shield_path(tmp_path_factory):
+    """Én skema-komplet tmp-DB pr. session som ikke-isolerede tests peges mod.
+
+    Skemaet KOPIERES fra den ægte prod-DB (alle tabeller/indekser/triggere, men
+    TOMME) — ikke bygget via `init_db()`, som ikke skaber alle prod-tabeller (fx
+    `cognitive_decisions`). Kopi = shielden er skema-tro med prod, så en ikke-
+    isoleret test der læser/ALTER'er en vilkårlig prod-tabel opfører sig som mod
+    prod, bare uden data og uden at røre den ægte DB. init_db() køres bagefter som
+    supplement (tabeller der KUN lever i runtime-init, ikke i prod endnu)."""
+    import sqlite3
+    from core.runtime.config import STATE_DIR as _real_state
+    shield = tmp_path_factory.mktemp("prod_db_shield") / "jarvis.db"
+    prod = Path(_real_state) / "jarvis.db"
+    # 1) Kopiér prods fulde skema (tomt) hvis prod findes.
+    if prod.is_file():
+        try:
+            src = sqlite3.connect(f"file:{prod}?mode=ro", uri=True)
+            try:
+                stmts = [
+                    r[0] for r in src.execute(
+                        "SELECT sql FROM sqlite_master "
+                        "WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' "
+                        "ORDER BY CASE type WHEN 'table' THEN 0 WHEN 'index' "
+                        "THEN 1 ELSE 2 END"
+                    ).fetchall() if r[0]
+                ]
+            finally:
+                src.close()
+            dst = sqlite3.connect(str(shield))
+            try:
+                for sql in stmts:
+                    try:
+                        dst.execute(sql)
+                    except Exception:
+                        pass  # dublet/afhængigheds-rækkefølge — skip, aldrig vælt
+                dst.commit()
+            finally:
+                dst.close()
+        except Exception:
+            pass
+    # 2) Supplér med init_db() (runtime-only tabeller ikke i prod-skemaet endnu).
+    import core.runtime.db_core as db_core
+    prev = db_core.DB_PATH
+    try:
+        db_core.DB_PATH = shield
+        from core.runtime.db_schema import init_db
+        init_db()
+    except Exception:
+        pass
+    finally:
+        db_core.DB_PATH = prev
+    return shield
+
+
+@pytest.fixture(autouse=True)
+def _guard_prod_db_path(request, monkeypatch):
+    """Sikkerhedsnet: INGEN test må skrive i den ægte ~/.jarvis-v2/state/jarvis.db."""
+    if request.node.get_closest_marker("real_db") is not None:
+        yield
+        return
+    try:
+        import core.runtime.db_core as db_core
+        from core.runtime.config import STATE_DIR as _real_state
+        real_prod = Path(_real_state) / "jarvis.db"
+        if db_core.DB_PATH == real_prod:
+            shield = request.getfixturevalue("_prod_db_shield_path")
+            monkeypatch.setattr(db_core, "DB_PATH", shield)
+    except Exception:
+        pass
+    yield
+
+
 @pytest.fixture(autouse=True)
 def _restore_visible_runs_anchor_classes():
     """Gen-installér visible_runs' ANKER-klasser efter hver test (se blok ovenfor).

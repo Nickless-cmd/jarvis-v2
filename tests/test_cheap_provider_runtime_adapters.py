@@ -350,3 +350,67 @@ def test_openai_compatible_set_derived_from_protocol():
         assert p in _OPENAI_COMPATIBLE_PROVIDERS, f"{p} mangler"
     assert "arko" not in _OPENAI_COMPATIBLE_PROVIDERS          # arko-protokol
     assert "ollamafreeapi" not in _OPENAI_COMPATIBLE_PROVIDERS
+
+
+def test_ollama_a2_present_free_lan_cloud_account():
+    """account2's separate ollama-cloud free-tier (10.0.0.45) skal være en distinkt
+    cheap-lane-provider — IKKE den lokale `ollama` (ejerens konto, excluded).
+    LAN-kald: auth_kind=none, protocol=ollama, gratis. static_models = KUN de
+    cloud-modeller free-tier faktisk kan (de subscription-gatede er udeladt)."""
+    cfg = CHEAP_PROVIDER_DEFAULTS["ollama-a2"]
+    assert cfg["base_url"] == "http://10.0.0.45:11434"
+    assert cfg["auth_kind"] == "none"          # LAN — ingen nøgle fra vores side
+    assert cfg["protocol"] == "ollama"          # native /api/chat, ikke openai-compat
+    assert cfg.get("cost_class") == "free"
+    assert set(cfg["static_models"]) == {"gemma4:31b-cloud", "minimax-m3:cloud"}
+    # Må ALDRIG folde subscription-gatede modeller ind (ville blive døde slots).
+    for gated in ("glm-5.2:cloud", "deepseek-v4-flash:cloud", "kimi-k2.7-code:cloud"):
+        assert gated not in cfg["static_models"]
+
+
+def _ollama_urlopen_shim(monkeypatch, payload_bytes):
+    """Scoped patch af adapters-modulets urllib — ALDRIG det globale urllib.request
+    (det lækker ind i andre in-process urlopen-kaldere, jf. streaming-fixet 24. jul)."""
+    import types
+    import core.services.cheap_provider_runtime_adapters as mod
+
+    class _Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return payload_bytes
+
+    real = mod.urllib_request
+    shim = types.SimpleNamespace(Request=real.Request, urlopen=lambda *a, **k: _Resp())
+    monkeypatch.setattr(mod, "urllib_request", shim)
+
+
+def test_ollama_a2_dispatch_labels_provider(monkeypatch):
+    """Success-svar skal labelles med den kaldende provider (ollama-a2), ikke den
+    hardcodede 'ollama' — ellers fejl-attribueres account2's kald til lokal ollama."""
+    import json as _json
+    import core.services.cheap_provider_runtime_adapters as mod
+    _ollama_urlopen_shim(monkeypatch, _json.dumps(
+        {"message": {"content": "OK"}}).encode("utf-8"))
+    r = mod._execute_local_ollama_chat(
+        model="gemma4:31b-cloud", base_url="http://10.0.0.45:11434",
+        message="hi", provider="ollama-a2")
+    assert r["provider"] == "ollama-a2"
+    assert r["status"] == "completed"
+    assert r["text"] == "OK"
+
+
+def test_ollama_a2_error_body_raises_not_silent_completion(monkeypatch):
+    """Ollama melder subscription/kvote som {"error": ...} med HTTP 200. Det skal
+    blive en ægte CheapProviderError (så balanceren cooldown'er), IKKE en tavs
+    status=completed med tom tekst."""
+    import json as _json
+    import core.services.cheap_provider_runtime_adapters as mod
+    _ollama_urlopen_shim(monkeypatch, _json.dumps(
+        {"error": "this model requires a subscription, upgrade for access"}
+    ).encode("utf-8"))
+    with pytest.raises(mod.CheapProviderError) as ei:
+        mod._execute_local_ollama_chat(
+            model="glm-5.2:cloud", base_url="http://10.0.0.45:11434",
+            message="hi", provider="ollama-a2")
+    assert ei.value.code == "model-not-found"
+    assert ei.value.provider == "ollama-a2"

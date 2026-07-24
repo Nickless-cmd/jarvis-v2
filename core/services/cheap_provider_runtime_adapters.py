@@ -300,6 +300,27 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "daily_limit": 100,
         "static_models": ["Meta-Llama-3_3-70B-Instruct", "Qwen3.5-9B"],
     },
+    # account2's EGEN ollama-cloud free-tier-konto (24. jul, Bjørn): en separat
+    # ollama-server på VPN-gateway-hosten 10.0.0.45 (ct106) proxy'er til
+    # ollama.com med account2's konto → adskilt gratis cloud-kvote fra den lokale
+    # `ollama` (ejerens konto, visible-lane, i _EXCLUDED_PROVIDERS). Kaldet er et
+    # ALM. LAN-kald til 10.0.0.45 (auth_kind=none, egress=home) — account2-
+    # adskillelsen sker inde i ollama-serveren, ikke i vores egress. static_models
+    # = KUN de cloud-modeller free-tier faktisk kan (verificeret 24. jul); de øvrige
+    # (glm-5.2/kimi-k2.7-code/deepseek-v4-*) kræver subscription → udeladt så de ikke
+    # bliver døde pool-slots.
+    "ollama-a2": {
+        "label": "Ollama Cloud (account2 free tier)",
+        "priority": 90,
+        "base_url": "http://10.0.0.45:11434",
+        "auth_kind": "none",
+        "protocol": "ollama",
+        "models_endpoint": "/api/tags",
+        "rpm_limit": 6,
+        "daily_limit": 200,
+        "cost_class": "free",
+        "static_models": ["gemma4:31b-cloud", "minimax-m3:cloud"],
+    },
     # Pollinations (15. jul, live-verificeret): ANONYM (ingen key, auth_kind=none),
     # openai-compat, TOOL-CAPABLE (tool_calls=1 testet med rigtigt tool-kald). Backed
     # af GPT-OSS. Anonymt eksponeres kun "openai-fast". base_url ender på /openai
@@ -856,11 +877,14 @@ def _execute_provider_chat(
             model=model,
             message=message,
         )
-    if provider == "ollama":
+    if provider in ("ollama", "ollama-a2"):
+        # ollama-a2 = account2's separate ollama-cloud-konto på 10.0.0.45; samme
+        # native /api/chat-sti, men base_url + provider-label kommer fra slot'et.
         return _f._execute_local_ollama_chat(
             model=model,
             base_url=base_url,
             message=message,
+            provider=provider,
         )
     if provider == "arko":
         return _f._execute_arko_chat(message=message)
@@ -1467,16 +1491,20 @@ _OLLAMA_LOCAL_TIMEOUT_SECONDS = 120
 
 
 def _execute_local_ollama_chat(
-    *, model: str, base_url: str, message: str
+    *, model: str, base_url: str, message: str, provider: str = "ollama"
 ) -> dict[str, object]:
-    """Call the local Ollama instance with a specific model.
+    """Call an Ollama instance with a specific model.
 
     Added 2026-05-14 to support per-model selection from the public-safe
     cheap-lane pool (vs. _execute_public_safe_local_ollama which picks
     via resolve_provider_router_target and only respects lane=local).
 
+    ``provider`` labels the result/errors — default ``ollama`` (localhost,
+    owner account); ``ollama-a2`` is account2's separate cloud account on
+    10.0.0.45 (same /api/chat wire, base_url comes from the slot).
+
     Uses a 120s timeout (vs the 30s default) because cloud-passthrough
-    models on local Ollama can be slow on first call / cold start, and
+    models on Ollama can be slow on first call / cold start, and
     counterfactual prompts are longer than the typical heartbeat probe.
     """
     url = str(base_url or "http://127.0.0.1:11434").rstrip("/")
@@ -1503,12 +1531,26 @@ def _execute_local_ollama_chat(
             data = json.loads(response.read().decode("utf-8"))
     except Exception as exc:
         raise CheapProviderError(
-            provider="ollama", code="request-failed", message=str(exc)
+            provider=provider, code="request-failed", message=str(exc)
         )
+    # Ollama melder subscription/kvote-fejl som {"error": ...} med HTTP 200. Uden
+    # dette ville en tom `message.content` fejlagtigt blive status=completed (tavs
+    # tom-completion → kan hænge). Klassificér til en ægte failure så balanceren
+    # kan cooldown'e/429-håndtere slot'et (særligt vigtigt for free-tier-kvote).
+    err = str(data.get("error") or "").strip()
+    if err:
+        low = err.lower()
+        if any(k in low for k in ("subscription", "upgrade", "not found", "no such model")):
+            code = "model-not-found"
+        elif any(k in low for k in ("rate", "quota", "limit", "429", "too many")):
+            code = "rate-limited"
+        else:
+            code = "provider-error"
+        raise CheapProviderError(provider=provider, code=code, message=err)
     text = str((data.get("message") or {}).get("content") or "").strip()
     return {
         "lane": "cheap",
-        "provider": "ollama",
+        "provider": provider,
         "model": model,
         "status": "completed",
         "execution_mode": "public-safe-local-ollama",

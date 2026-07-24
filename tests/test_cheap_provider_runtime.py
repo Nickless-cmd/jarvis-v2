@@ -429,15 +429,23 @@ def test_important_cheap_lane_skips_ollamafreeapi(isolated_runtime) -> None:
         set_visible=False,
     )
 
+    # ollama-a2 (account2's LAN ollama-cloud, auth_kind=none → altid "ready") ville
+    # ellers maskere dette scenarie: på en boks med LAN-adgang til 10.0.0.45 overlever
+    # den reachability-proben og bliver et non-public default-pick, så testen af
+    # public-proxy-tieringen bliver miljø-afhængig. Skip den her så vi tester netop
+    # proxy-fallback-kontrakten deterministisk (CI uden 10.0.0.45 så det aldrig).
+    _skip = frozenset({"ollama-a2"})
+
     # Default kind: a public proxy (ollamafreeapi, or arko if it happens to be
     # configured via runtime state) is an acceptable graceful last resort.
-    default_target = cheap.select_cheap_lane_target()
+    default_target = cheap.select_cheap_lane_target(skip_providers=_skip)
     assert default_target["active"] is True
     assert cheap._is_public_proxy(default_target["provider"])
 
     # Important kind: public proxies are excluded. With only public proxies
     # available, that means no healthy provider.
-    important_target = cheap.select_cheap_lane_target(task_kind="important")
+    important_target = cheap.select_cheap_lane_target(
+        task_kind="important", skip_providers=_skip)
     assert important_target["active"] is False
     assert important_target["status"] == "no-healthy-provider"
 

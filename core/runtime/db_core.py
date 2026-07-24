@@ -131,6 +131,18 @@ def connect() -> sqlite3.Connection:
     if _POOL_DISABLED:
         return _make_connection(ClosingConnection)
     conn = getattr(_conn_pool, "conn", None)
+    if conn is not None and getattr(_conn_pool, "conn_path", None) != DB_PATH:
+        # Korrekthed (2026-07-24): pool'en ignorerede DB_PATH-skift. Tests repointer
+        # DB_PATH pr. test — en efterladt forbindelse til en TIDLIGERE DB blev genbrugt
+        # → lækket state / "no such table" på tværs af tests. Produktion skifter aldrig
+        # DB_PATH i drift, så dette er en billig same-Path-sammenligning der ALTID
+        # matcher der (pool uændret); kun tests trigger reconnect'et.
+        try:
+            sqlite3.Connection.close(conn)
+        except Exception:
+            pass
+        _conn_pool.conn = None
+        conn = None
     if conn is not None:
         try:
             if conn.in_transaction:
@@ -145,6 +157,7 @@ def connect() -> sqlite3.Connection:
             _conn_pool.conn = None
     conn = _make_connection(PooledConnection)
     _conn_pool.conn = conn
+    _conn_pool.conn_path = DB_PATH
     return conn
 
 

@@ -365,15 +365,23 @@ _PROFILE_RR: dict[str, int] = {}
 
 
 def _roundrobin_profiles(provider: str, profiles: list[str]) -> list[str]:
-    """Rotate ``profiles`` by a per-provider counter so the preferred (first-emitted)
-    profile advances each call. len<=1 → unchanged. Deterministic within a call,
-    advances across calls → even split over default/account2 for the winning
-    provider. Order within the rotation is preserved (stable)."""
+    """Rotate ``profiles`` by a per-provider counter (PEEK — does not advance) so
+    the preferred (first-emitted) profile is stable within a selection. len<=1 →
+    unchanged. The counter is advanced exactly once per actual pick via
+    ``_advance_profile_rr`` — NOT here — because ``_configured_cheap_candidates``
+    runs several times per ``select_cheap_lane_target`` (builder + shadow-compare +
+    adaptive scoring); advancing per builder-call desynced the rotation from the
+    used pick and skewed the split well below 50/50."""
     if len(profiles) <= 1:
         return profiles
     i = _PROFILE_RR.get(provider, 0) % len(profiles)
-    _PROFILE_RR[provider] = i + 1
     return profiles[i:] + profiles[:i]
+
+
+def _advance_profile_rr(provider: str) -> None:
+    """Advance the round-robin counter for ``provider`` by one — call exactly once
+    per actual pick so the winning provider alternates default/account2 evenly."""
+    _PROFILE_RR[provider] = _PROFILE_RR.get(provider, 0) + 1
 
 
 def _resolve_proxy(egress: str, endpoints: dict | None = None) -> str | None:
@@ -553,7 +561,12 @@ def select_cheap_lane_target(
         }
         _maybe_shadow_compare(_target)  # Task 9: shadow-sammenligning (OFF → no-op)
         # Task 9 live: lad central_route vælge blandt de samme kandidater når live er ON.
-        return _maybe_central_route_live(_target, candidates, kind, skip_providers)
+        final = _maybe_central_route_live(_target, candidates, kind, skip_providers)
+        # A (2026-07-24): advance the profile round-robin ONCE per pick, for the
+        # provider that actually won, so its default/account2 split is ~50/50.
+        if _flag_profile_roundrobin():
+            _advance_profile_rr(str(final.get("provider") or ""))
+        return final
     return {
         "active": False,
         "lane": "cheap",

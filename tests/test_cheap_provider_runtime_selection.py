@@ -95,10 +95,24 @@ def test_candidates_multiprofile_when_flag_on(monkeypatch):
     assert profs == {"default", "account2"}
 
 
-def test_roundrobin_alternates_first_profile(monkeypatch):
-    # A: with roundrobin on, the FIRST-emitted profile for a multi-key provider
-    # alternates per call so load splits across default/account2 (central-route-live
-    # and the strict selector both take the first matching candidate).
+def test_roundrobin_peek_stable_until_advance():
+    # A/2: the builder PEEKS the rotation (stable across the several builder calls
+    # per pick); the counter only moves via _advance_profile_rr. This is what keeps
+    # the split at 50/50 (advancing per builder-call skewed it well below).
+    from core.services import cheap_provider_runtime_selection as sel
+    sel._PROFILE_RR.clear()
+    p = ["default", "account2"]
+    assert sel._roundrobin_profiles("groq", p) == ["default", "account2"]
+    assert sel._roundrobin_profiles("groq", p) == ["default", "account2"]  # peek: stable
+    sel._advance_profile_rr("groq")
+    assert sel._roundrobin_profiles("groq", p) == ["account2", "default"]  # flipped
+    sel._advance_profile_rr("groq")
+    assert sel._roundrobin_profiles("groq", p) == ["default", "account2"]
+
+
+def test_roundrobin_builder_stable_within_pick(monkeypatch):
+    # Multiple builder calls (as happen within one select) must yield the SAME first
+    # profile — otherwise the used pick desyncs from the counter.
     from core.services import cheap_provider_runtime_selection as sel
     monkeypatch.setattr("core.services.auth_profile_scan.ready_profiles_for",
                         lambda provider: ["default", "account2"] if provider == "groq" else ["default"])
@@ -112,8 +126,9 @@ def test_roundrobin_alternates_first_profile(monkeypatch):
             if c["provider"] == "groq":
                 return c["auth_profile"]
 
-    a, b, c = first_groq_profile(), first_groq_profile(), first_groq_profile()
-    assert [a, b, c] == ["default", "account2", "default"], [a, b, c]
+    assert first_groq_profile() == first_groq_profile() == first_groq_profile()
+    sel._advance_profile_rr("groq")
+    assert first_groq_profile() == "account2"
 
 
 def test_roundrobin_off_keeps_default_first(monkeypatch):

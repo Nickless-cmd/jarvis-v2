@@ -616,6 +616,24 @@ def is_routable_provider(provider: str) -> bool:
     return bool((cfg or {}).get("routable", True))
 
 
+def _huggingface_runtime_token() -> str:
+    """Delt owner-token for HuggingFace Router — læses fra runtime.json
+    (`huggingface_token`), samme kilde som `hf_connector`/`hf_inference_tools`.
+
+    HF's nøgle lever IKKE i per-profil auth-store (`get_provider_credentials`),
+    så både readiness og dispatch skal falde tilbage hertil — ellers markeres
+    HF's 7 static_models som ikke-klar og kommer aldrig i cheap-pool, selvom
+    tokenen findes (både lokalt og på CT105). Returnerer tom streng hvis fraværende.
+    """
+    try:
+        from core.runtime.secrets import read_runtime_key
+        return str(
+            read_runtime_key("huggingface_token", env_override="HUGGINGFACE_TOKEN")
+            or "").strip()
+    except Exception:
+        return ""
+
+
 def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
     normalized_provider = str(provider or "").strip()
     # Tom profil → "default" (16.jul): candidate-byggeren giver auth_profile='' for providere
@@ -636,6 +654,12 @@ def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
         # Arko's credentials live in runtime.json, not in auth profiles.
         from core.runtime.arko_provider import is_configured as arko_is_configured
         return arko_is_configured()
+    if normalized_provider == "huggingface":
+        # HF-token lever i runtime.json (delt owner-token), ikke i auth-store.
+        # Findes den → ready. Ellers fald igennem til det generiske store-tjek
+        # nedenfor (bagudkompat, hvis nogen har lagt en profil-nøgle).
+        if _huggingface_runtime_token():
+            return True
     if normalized_provider == _OPENAI_CODEX_PROVIDER:
         # Codex uses OAuth tokens imported from ~/.codex/auth.json.
         # Check that the auth profile exists and has usable credentials.
@@ -1542,6 +1566,13 @@ def _require_credentials(*, profile: str, provider: str) -> dict[str, object]:
         except Exception:
             return {}
     credentials = get_provider_credentials(profile=profile, provider=provider)
+    if not credentials and provider == "huggingface":
+        # HF-token i runtime.json (delt owner-token), ikke i auth-store — samme
+        # fallback som readiness (provider_auth_ready). Uden dette ville dispatch
+        # rejse auth-not-ready selvom tokenen findes, og pool-slot'et var dødt.
+        tok = _huggingface_runtime_token()
+        if tok:
+            return {"api_key": tok}
     if not credentials:
         raise CheapProviderError(
             provider=provider,

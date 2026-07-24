@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6410/12948 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6420/12957 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6410/12948 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4238 | 9010 | 47% |
+| `core.services` | 4248 | 9019 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -338,8 +338,8 @@ Generated from source. 6410/12948 functions/methods documented (49%). The list b
 - `core/runtime/db_concept_baseline.py` :: `list_concept_baseline_stats` (L110)
 - `core/runtime/db_concept_baseline.py` :: `upsert_concept_baseline_stat` (L29)
 - `core/runtime/db_core.py` :: `PooledConnection.close` (L76)
-- `core/runtime/db_core.py` :: `get_runtime_state_value` (L378)
-- `core/runtime/db_core.py` :: `set_runtime_state_value` (L358)
+- `core/runtime/db_core.py` :: `get_runtime_state_value` (L391)
+- `core/runtime/db_core.py` :: `set_runtime_state_value` (L371)
 - `core/runtime/db_decisions.py` :: `count_decisions` (L263)
 - `core/runtime/db_decisions.py` :: `create_decision` (L80)
 - `core/runtime/db_decisions.py` :: `delete_decision` (L248)
@@ -524,16 +524,16 @@ Generated from source. 6410/12948 functions/methods documented (49%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L149)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L199)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L249)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1109)
-- `core/services/agent_runtime_spawn.py` :: `execute_agent_task` (L432)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1164)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1145)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L981)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L745)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L685)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L713)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1116)
+- `core/services/agent_runtime_spawn.py` :: `execute_agent_task` (L439)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1171)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1152)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L988)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L752)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L692)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L720)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L92)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1128)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1135)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L89)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L133)
@@ -726,13 +726,13 @@ Generated from source. 6410/12948 functions/methods documented (49%). The list b
 - `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L829)
 - `core/services/chat_sessions.py` :: `rename_chat_session` (L854)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
-- `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L659)
-- `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L619)
+- `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L683)
+- `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L637)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L600)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L590)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L77)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L535)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L814)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L579)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L858)
 - `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L51)
 - `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L55)
 - `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L169)
@@ -877,9 +877,9 @@ Generated from source. 6410/12948 functions/methods documented (49%). The list b
 - `core/services/device_tokens.py` :: `delete` (L57)
 - `core/services/device_tokens.py` :: `list_for_user` (L45)
 - `core/services/device_tokens.py` :: `register` (L28)
-- `core/services/diary_synthesis_signal_tracking.py` :: `build_diary_synthesis_signal_surface` (L87)
+- `core/services/diary_synthesis_signal_tracking.py` :: `build_diary_synthesis_signal_surface` (L58)
 - `core/services/diary_synthesis_signal_tracking.py` :: `refresh_diary_synthesis_signal_statuses` (L54)
-- `core/services/diary_synthesis_signal_tracking.py` :: `track_diary_synthesis_signals_for_visible_turn` (L22)
+- `core/services/diary_synthesis_signal_tracking.py` :: `track_diary_synthesis_signals_for_visible_turn` (L20)
 - `core/services/docs_drift_watchdog.py` :: `check_docs_drift` (L49)
 - `core/services/docs_drift_watchdog.py` :: `read_report` (L19)
 - `core/services/dream_adoption_candidate_tracking.py` :: `build_runtime_dream_adoption_candidate_surface` (L85)

@@ -326,6 +326,13 @@ def isolated_runtime(
         # copy — settings writes silently escape isolation (and pollute the real
         # config). Reload it right after config so writes land in the tmp config.
         "core.runtime.runtime_json_io",
+        # secrets binder `SETTINGS_FILE` via `from core.runtime.config import
+        # SETTINGS_FILE` ved import-tid. Uden reload (efter config ovenfor) peger
+        # `secrets.SETTINGS_FILE` stadig på den ÆGTE ~/.jarvis-v2/config/runtime.json,
+        # så `read_runtime_key(...)` læser rigtige secrets ind i isolerede tests
+        # (import-rækkefølge-afhængigt) — fx blev huggingface_token synlig og gjorde
+        # HF-slottet "ready" i cheap-lane-tests der asserter en eksakt provider-liste.
+        "core.runtime.secrets",
         # db_core skal reloades FØR db, fordi db re-eksporterer fra db_core
         # og _ENSURED_TABLES cache lever i db_core (efter 2026-05-15 split).
         # Uden dette overlever cache-entries mellem tests og forurener

@@ -118,6 +118,18 @@ def dispatch_code_mode_task(task: str, *, inline: bool | None = None,
         pass  # fail-open
 
     plan = plan_dispatch(task, executor_count=executor_count)
+    # recursion_guard (2026-07-24): bound children-per-dispatch. Normal plans are ~5
+    # steps (ROLE_PLAN), so the default ceiling only trips on pathological fan-out.
+    # Cap + log rather than raise or drop silently, so a legit dispatch still runs.
+    from core.services import recursion_guard as _rg
+    if plan and not _rg.fanout_allowed(len(plan)):
+        _cap = _rg.effective_max_fanout()
+        import logging
+        logging.getLogger(__name__).warning(
+            "agent_dispatch: plan fan-out %d exceeds cap %d — truncating to cap",
+            len(plan), _cap,
+        )
+        plan = plan[:_cap]
     spawned: list[dict] = []
     if not dry_run:
         from core.services.agent_runtime import spawn_agent_task

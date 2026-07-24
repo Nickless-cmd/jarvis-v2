@@ -113,7 +113,14 @@ def spawn_agent_task(
     if max_turns <= 0:
         max_turns = MAX_AGENT_TURNS
     spawn_depth = _spawn_depth_for(str(parent_agent_id or ""))
-    if spawn_depth > MAX_SPAWN_DEPTH:
+    # recursion_guard (2026-07-24): route the depth bound through the durable guard
+    # so it becomes live + runtime-tunable. Semantics preserved exactly: the old
+    # check raised on spawn_depth > MAX_SPAWN_DEPTH (inclusive bound), and
+    # can_spawn returns depth < max_depth, so max_depth=MAX_SPAWN_DEPTH+1 keeps the
+    # same allowed set. Concurrency stays on _check_spawn_limits (above) — the guard's
+    # durable counter is intentionally NOT wired here to avoid double-gating.
+    from core.services import recursion_guard as _rg
+    if not _rg.can_spawn(spawn_depth, max_depth=MAX_SPAWN_DEPTH + 1):
         raise ValueError(
             f"spawn depth limit reached: {spawn_depth}/{MAX_SPAWN_DEPTH} — recursion chain too deep"
         )

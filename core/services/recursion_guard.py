@@ -151,6 +151,12 @@ def exit(now_ts: float | None = None) -> None:
     _save_entries(entries)
 
 
+def effective_max_fanout() -> int:
+    """The live fan-out ceiling (runtime-state override or default). Callers use it
+    to cap+log a truncated fan-out rather than silently dropping children."""
+    return _tunable_int(_STATE_MAX_FANOUT, DEFAULT_MAX_FANOUT)
+
+
 def active_count(now_ts: float | None = None) -> int:
     """Number of live (non-stale) concurrency slots currently held."""
     if now_ts is None:

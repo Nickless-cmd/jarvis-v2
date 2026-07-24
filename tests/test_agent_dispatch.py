@@ -44,6 +44,18 @@ def test_dispatch_dry_run_does_not_spawn() -> None:
     assert res["plan"]
 
 
+def test_dispatch_fanout_capped_by_recursion_guard(monkeypatch) -> None:
+    # recursion_guard: a pathological plan is truncated to the fan-out ceiling
+    # instead of spawning an unbounded number of children.
+    import core.services.agent_dispatch as ad
+    from core.services import recursion_guard as rg
+    big_plan = [{"role": "executor", "goal": f"g{i}", "max_turns": 1} for i in range(25)]
+    monkeypatch.setattr(ad, "plan_dispatch", lambda task, executor_count=2: big_plan)
+    res = ad.dispatch_code_mode_task("implementer stor feature og refaktor og migrer modul")
+    assert res["mode"] == "dispatch"
+    assert len(res["plan"]) == rg.effective_max_fanout()   # truncated to cap (default 8)
+
+
 def test_dispatch_inline_short_circuits() -> None:
     from core.services.agent_dispatch import dispatch_code_mode_task
     res = dispatch_code_mode_task("ret typo", inline=True)

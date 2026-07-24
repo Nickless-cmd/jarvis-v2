@@ -369,12 +369,21 @@ def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
 def _slot_status(slot: BalancerSlot, state: SlotState, now: float) -> str:
     """Single derived status string for a slot, most-severe-wins.
 
-    Severity order (high→low): disabled > cooldown > stale > breaker > healthy.
-    - "disabled": manually_disabled
-    - "cooldown": cooldown_until is in the future
-    - "stale":    stale_until_daily_reset (anti-jag, ≥3 daily-quota 429s today)
-    - "breaker":  breaker_level > 0
-    - "healthy":  none of the above
+    Severity order (high→low): disabled > cooldown > stale > recovering > healthy.
+    - "disabled":   manually_disabled
+    - "cooldown":   cooldown_until is in the future (an OPEN breaker also shows
+                    here — _register_failure sets cooldown_until alongside the
+                    breaker escalation, so an actively-blocking breaker IS a
+                    cooldown by this ordering).
+    - "stale":      stale_until_daily_reset (anti-jag, ≥3 daily-quota 429s today)
+    - "recovering": breaker_level > 0 but the cooldown has ALREADY EXPIRED — the
+                    slot is eligible for a trial call again (half-open); the
+                    breaker_level only resets to 0 on the next SUCCESS. This is
+                    NOT an active breaker — showing it as "breaker" made stale,
+                    long-expired trips read as live outages in Mission Control
+                    (a dead provider that's simply never re-picked stays flagged
+                    forever). It's de-weighted via _BREAKER_HEALTH, not blocked.
+    - "healthy":    none of the above
     """
     if state.manually_disabled:
         return "disabled"
@@ -383,7 +392,7 @@ def _slot_status(slot: BalancerSlot, state: SlotState, now: float) -> str:
     if state.stale_until_daily_reset:
         return "stale"
     if state.breaker_level > 0:
-        return "breaker"
+        return "recovering"
     return "healthy"
 
 
@@ -1257,7 +1266,13 @@ def balancer_snapshot() -> dict:
         "cooldown": status_counts.get("cooldown", 0),
         "disabled": status_counts.get("disabled", 0),
         "stale": status_counts.get("stale", 0),
+        # "breaker" = ACTIVE circuit-breaker (blocking). An open breaker shows as
+        # "cooldown" by _slot_status severity, so this is ~always 0 now and kept
+        # only for schema back-compat. "recovering" = breaker tripped earlier but
+        # its cooldown has expired (half-open, eligible again) — surfaced
+        # separately so stale trips don't read as live outages in Mission Control.
         "breaker": status_counts.get("breaker", 0),
+        "recovering": status_counts.get("recovering", 0),
         "by_profile": by_profile,
         "by_egress": by_egress,
         "providers": len(providers),

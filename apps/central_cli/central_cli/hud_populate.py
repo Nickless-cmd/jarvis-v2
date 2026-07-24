@@ -975,11 +975,14 @@ class _PopulateMixin:
         panel.update(Text.from_markup("\n".join(lines)))
 
     # -- Balancer (cheap-lane / load-balancer pool) ------------------------
-    # local status→color map (healthy=green, cooldown=amber, breaker=red,
-    # stale/disabled=grey) — kept local so the balancer view owns its severity.
+    # local status→color map (healthy=green, cooldown/recovering=amber,
+    # breaker=red, stale/disabled=grey) — kept local so the balancer view owns
+    # its severity. "recovering" = breaker tripped but cooldown expired (half-
+    # open, eligible again) → amber, NOT red: it is not a live outage.
     _BAL_STATUS = {
         "healthy": GREEN, "ok": GREEN, "active": GREEN, "live": GREEN,
         "cooldown": AMBER, "throttled": AMBER, "degraded": AMBER, "warn": AMBER,
+        "recovering": AMBER,
         "breaker": RED, "open": RED, "error": RED, "failed": RED, "down": RED,
         "stale": DIM, "disabled": DIM, "idle": DIM, "off": DIM,
     }
@@ -1008,6 +1011,7 @@ class _PopulateMixin:
         healthy = int(header.get("healthy", 0) or 0)
         cooldown = int(header.get("cooldown", 0) or 0)
         breaker = int(header.get("breaker", 0) or 0)
+        recovering = int(header.get("recovering", 0) or 0)
         stale = int(header.get("stale", 0) or 0)
         disabled = int(header.get("disabled", 0) or 0)
         profiles = "/".join(str(k) for k in (header.get("by_profile") or {})) or "—"
@@ -1016,7 +1020,8 @@ class _PopulateMixin:
             f"[{CYAN}]BALANCER[/] [{FGDIM}]— {total} slots · [/]"
             f"[{GREEN}]{healthy} healthy[/] [{FGDIM}]· [/]"
             f"[{AMBER}]{cooldown} cooldown[/] [{FGDIM}]· "
-            f"{breaker} breaker · {stale} stale · {disabled} disabled · "
+            f"{recovering} recovering · {breaker} breaker · {stale} stale · "
+            f"{disabled} disabled · "
             f"profil {_esc(profiles)} · egress {_esc(egresses)}[/]"
         )
         if not rows:

@@ -1175,11 +1175,13 @@ def test_slot_status_severity_order():
     st = bal.SlotState(slot_id=slot.slot_id)
     assert bal._slot_status(slot, st, now) == "healthy"
 
-    # breaker
+    # breaker_level>0 uden aktiv cooldown = 'recovering' (half-open, eligible),
+    # ikke 'breaker' — en aktivt blokerende breaker sætter cooldown og vises som
+    # 'cooldown' (se test nedenfor).
     st = bal.SlotState(slot_id=slot.slot_id, breaker_level=2)
-    assert bal._slot_status(slot, st, now) == "breaker"
+    assert bal._slot_status(slot, st, now) == "recovering"
 
-    # stale outranks breaker
+    # stale outranks recovering
     st = bal.SlotState(slot_id=slot.slot_id, breaker_level=2)
     st.stale_until_daily_reset = True
     assert bal._slot_status(slot, st, now) == "stale"
@@ -1270,3 +1272,34 @@ def test_balancer_snapshot_header_counts_status(monkeypatch, tmp_path):
     assert h["healthy"] == 1
     assert h["cooldown"] == 1
     assert h["disabled"] == 1
+
+
+def test_slot_status_expired_breaker_is_recovering_not_breaker():
+    """En breaker hvis cooldown er UDLØBET må vise 'recovering' (half-open,
+    eligible igen), ikke 'breaker' — ellers hænger stale/døde slots som live
+    outages i Mission Control (Bjørns '20 breakers' der reelt var udløbne)."""
+    from core.services.cheap_lane_balancer import BalancerSlot, SlotState, _slot_status
+    s = BalancerSlot(provider="p", model="m", auth_profile="default",
+                     base_url="", rpm_limit=None, daily_limit=None,
+                     is_public_proxy=False)
+    now = 1_000_000.0
+    # breaker tripped, cooldown i FORTIDEN → recovering
+    st_expired = SlotState(slot_id=s.slot_id, breaker_level=2,
+                           cooldown_until=now - 10)
+    assert _slot_status(s, st_expired, now) == "recovering"
+    # breaker tripped, cooldown i FREMTIDEN (aktivt blokerende) → cooldown
+    st_active = SlotState(slot_id=s.slot_id, breaker_level=2,
+                          cooldown_until=now + 300)
+    assert _slot_status(s, st_active, now) == "cooldown"
+    # ingen breaker → healthy
+    st_ok = SlotState(slot_id=s.slot_id, breaker_level=0)
+    assert _slot_status(s, st_ok, now) == "healthy"
+
+
+def test_snapshot_header_separates_recovering_from_breaker():
+    """balancer_snapshot's header skal have et 'recovering'-felt adskilt fra
+    'breaker' (som nu ~altid er 0 fordi aktive breakers vises som cooldown)."""
+    from core.services.cheap_lane_balancer import balancer_snapshot
+    h = balancer_snapshot().get("header", {})
+    assert "recovering" in h
+    assert "breaker" in h

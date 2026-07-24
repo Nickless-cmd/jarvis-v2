@@ -203,14 +203,14 @@ _Central HUD — read-side rendering (``_PopulateMixin``)._
 | method | `_PopulateMixin._populate_approvals` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L829) |
 | method | `_PopulateMixin._populate_agents` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L865) |
 | method | `_PopulateMixin._render_agent_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L928) |
-| method | `_PopulateMixin._populate_balancer` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L989) |
-| method | `_PopulateMixin._render_balancer_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1060) |
-| method | `_PopulateMixin._render_mind_self_panel` | `(self)` | Render Jarvis' reduced self as HIS presence in the Central — warm, | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1126) |
-| method | `_PopulateMixin._rel_age` | `(iso)` | ISO timestamp → short relative age (2s / 4m / 3t / 2d). '—' on failure. | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1350) |
-| method | `_PopulateMixin._fmt_value` | `(value)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1370) |
-| method | `_PopulateMixin._healer_flag_name` | `(self, healer)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1381) |
-| method | `_PopulateMixin._render_healing_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1384) |
-| method | `_PopulateMixin._render_placeholder_panel` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1422) |
+| method | `_PopulateMixin._populate_balancer` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L992) |
+| method | `_PopulateMixin._render_balancer_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1065) |
+| method | `_PopulateMixin._render_mind_self_panel` | `(self)` | Render Jarvis' reduced self as HIS presence in the Central — warm, | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1131) |
+| method | `_PopulateMixin._rel_age` | `(iso)` | ISO timestamp → short relative age (2s / 4m / 3t / 2d). '—' on failure. | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1355) |
+| method | `_PopulateMixin._fmt_value` | `(value)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1375) |
+| method | `_PopulateMixin._healer_flag_name` | `(self, healer)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1386) |
+| method | `_PopulateMixin._render_healing_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1389) |
+| method | `_PopulateMixin._render_placeholder_panel` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1427) |
 
 ## `apps/central_cli/central_cli/hud_theme.py`
 _Central HUD palette, status-maps and the ``_esc`` markup guard._

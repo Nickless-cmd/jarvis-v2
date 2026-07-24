@@ -450,8 +450,9 @@ def pick_failover_target(
     findes (fx vi er ALLEREDE på fallback'en → undgå at faile over til os selv,
     eller fallback'ens EGEN breaker er åben → den er også død).
 
-    Default-målet er ``deepseek``/``deepseek-v4-flash:cloud`` (den dokumenterede
-    reliable default). Self-safe: enhver fejl → None (→ graceful exhaustion)."""
+    Default-målet er ``ollama``/``deepseek-v4-flash:cloud`` — samme model, men via
+    den GRATIS ollama-cloud-sti (Bjørns free-tier) i stedet for betalt deepseek
+    direkte. Self-safe: enhver fejl → None (→ graceful exhaustion)."""
     try:
         cur_p = (current_provider or "").strip().lower()
         fb_p = _FAILOVER_FALLBACK_PROVIDER.strip().lower()

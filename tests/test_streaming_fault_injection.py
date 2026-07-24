@@ -823,25 +823,25 @@ def test_failover_flag_env_override(monkeypatch) -> None:
 
 
 def test_pick_failover_target_basic(_breaker_clean) -> None:
-    """pick_failover_target → deepseek for en anden (supported) primær."""
+    """pick_failover_target → ollama (gratis ollama-cloud) for en anden primær."""
     tgt = vf.pick_failover_target("groq", "some-model")
     assert tgt is not None
-    assert tgt[0] == "deepseek"
-    assert "deepseek" in tgt[1]
+    assert tgt[0] == "ollama"
+    assert "deepseek" in tgt[1]        # model = deepseek-v4-flash:cloud via ollama-cloud
 
 
 def test_pick_failover_target_none_when_already_fallback(_breaker_clean) -> None:
-    """Ingen failover fra deepseek → deepseek (kan ikke faile over til sig selv)."""
-    assert vf.pick_failover_target("deepseek", "deepseek-v4-flash") is None
+    """Ingen failover fra ollama → ollama (kan ikke faile over til sig selv)."""
+    assert vf.pick_failover_target("ollama", "deepseek-v4-flash:cloud") is None
 
 
 def test_pick_failover_target_none_when_fallback_breaker_open(_breaker_clean) -> None:
-    """Hvis fallback'ens (deepseek) EGEN breaker er åben → ingen failover."""
+    """Hvis fallback'ens (ollama) EGEN breaker er åben → ingen failover."""
     # Brug REAL monotonic (ingen now=) så pp_is_open()'s egen monotonic ser den åben.
-    _cbmod.pp_configure("deepseek", threshold=4, cooldown_s=60.0)
+    _cbmod.pp_configure("ollama", threshold=4, cooldown_s=60.0)
     for _ in range(4):
-        _cbmod.pp_record_failure("deepseek")
-    assert _cbmod.pp_is_open("deepseek") is True
+        _cbmod.pp_record_failure("ollama")
+    assert _cbmod.pp_is_open("ollama") is True
     assert vf.pick_failover_target("groq", "m") is None
 
 
@@ -852,8 +852,9 @@ def test_breaker_opens_and_no_retry_storm(monkeypatch, _failover_on, _breaker_cl
     vi falder til graceful exhaustion uden at hamre videre. provider_circuit_open-
     nerven fyrer (cluster=stream). Run-provider = deepseek → ingen failover-target
     (kan ikke faile over til sig selv) → ren breaker-stop-sti."""
-    # Lav threshold så breakeren åbner hurtigt og deterministisk.
-    _cbmod.pp_configure("deepseek", threshold=2, cooldown_s=60.0)
+    # Lav threshold så breakeren åbner hurtigt og deterministisk. Run-provider =
+    # ollama = fallback'en selv → pick_failover_target returnerer None (ingen self-failover).
+    _cbmod.pp_configure("ollama", threshold=2, cooldown_s=60.0)
 
     real_dispatch = vf.stream_visible_followup
     dispatch_count = {"n": 0}
@@ -865,8 +866,8 @@ def test_breaker_opens_and_no_retry_storm(monkeypatch, _failover_on, _breaker_cl
 
     central_nerves: list[dict] = []
     res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
-                 run_id="f3-breaker", provider="deepseek",
-                 model="deepseek-v4-flash",
+                 run_id="f3-breaker", provider="ollama",
+                 model="deepseek-v4-flash:cloud",
                  central_nerves=central_nerves,
                  partial_deltas=("p-",), drop_as_exception=True,
                  fire_once=False, fail_times=99, recover_text="(uopnåelig)")
@@ -875,7 +876,7 @@ def test_breaker_opens_and_no_retry_storm(monkeypatch, _failover_on, _breaker_cl
     opens = [n for n in central_nerves if n.get("nerve") == "provider_circuit_open"]
     assert opens, f"provider_circuit_open skal fyre; fik {central_nerves}"
     assert opens[0]["cluster"] == "stream"
-    assert opens[0]["provider_id"] == "deepseek"
+    assert opens[0]["provider_id"] == "ollama"
 
     # INGEN retry-storm: vi stoppede ved/omkring breaker-tærsklen, IKKE det fulde
     # round-retry-budget (som ellers ville give 1 + 3 = 4 dispatches). Med
@@ -888,16 +889,16 @@ def test_breaker_opens_and_no_retry_storm(monkeypatch, _failover_on, _breaker_cl
     assert res.done_status == "interrupted"
 
 
-def test_failover_picks_deepseek_when_primary_breaker_open(
+def test_failover_picks_ollama_when_primary_breaker_open(
         monkeypatch, _failover_on, _breaker_clean) -> None:
-    """En primær (groq) hvis breaker åbner → failer over til deepseek for resten
-    af turen, og deepseek's første kald RECOVERER. provider_failover-nerven fyrer
-    (from=groq → to=deepseek). Vi modellerer det via per-provider fail-styring:
-    groq fejler altid, deepseek lykkes."""
-    # Groq's breaker åbner hurtigt (threshold 2); deepseek er sund.
+    """En primær (groq) hvis breaker åbner → failer over til ollama (gratis
+    ollama-cloud) for resten af turen, og ollama's første kald RECOVERER.
+    provider_failover-nerven fyrer (from=groq → to=ollama). Vi modellerer det via
+    per-provider fail-styring: groq fejler altid, ollama lykkes."""
+    # Groq's breaker åbner hurtigt (threshold 2); ollama er sund.
     _cbmod.pp_configure("groq", threshold=2, cooldown_s=60.0)
 
-    # Provider-bevidst dispatch-stub: groq → transport-drop (raise), deepseek →
+    # Provider-bevidst dispatch-stub: groq → transport-drop (raise), ollama →
     # clean FollowupDone. Vi behøver ikke fault-injektoren her.
     real_dispatch = vf.stream_visible_followup
     seen_providers: list[str] = []
@@ -907,7 +908,7 @@ def test_failover_picks_deepseek_when_primary_breaker_open(
         seen_providers.append(prov)
 
         def _gen():
-            if prov == "deepseek":
+            if prov == "ollama":
                 yield vf.FollowupDelta(delta="FAILOVER-SVAR")
                 yield vf.FollowupDone(text="")
             else:
@@ -920,16 +921,16 @@ def test_failover_picks_deepseek_when_primary_breaker_open(
                  run_id="f3-failover", provider="groq", model="groq-model",
                  central_nerves=central_nerves)
 
-    # provider_failover-nerven fyrede (from groq → to deepseek).
+    # provider_failover-nerven fyrede (from groq → to ollama).
     fos = [n for n in central_nerves if n.get("nerve") == "provider_failover"]
     assert fos, f"provider_failover skal fyre; fik {central_nerves}"
     assert fos[0]["from_provider"] == "groq"
-    assert fos[0]["to_provider"] == "deepseek"
+    assert fos[0]["to_provider"] == "ollama"
     assert fos[0]["cluster"] == "stream"
 
-    # Vi failede faktisk over: deepseek blev dispatchet EFTER groq.
-    assert "groq" in seen_providers and "deepseek" in seen_providers
-    assert seen_providers.index("deepseek") > seen_providers.index("groq")
+    # Vi failede faktisk over: ollama blev dispatchet EFTER groq.
+    assert "groq" in seen_providers and "ollama" in seen_providers
+    assert seen_providers.index("ollama") > seen_providers.index("groq")
 
     # En provider_failover-SSE nåede klienten.
     assert res.events_of("provider_failover"), "provider_failover-SSE skal emitteres"

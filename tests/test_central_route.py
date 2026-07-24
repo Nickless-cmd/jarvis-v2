@@ -4,20 +4,67 @@ import core.services.central_route as cr
 
 
 def test_route_returns_target_for_healthy_lane(monkeypatch):
-    monkeypatch.setattr(cr, "_rank_candidates",
-                        lambda lane, task, exclude: [("groq", "llama-3.3-70b-versatile")])
+    monkeypatch.setattr(cr, "_scored_candidates",
+                        lambda lane, task, exclude: [(0.0, 1.0, "groq", "llama-3.3-70b-versatile")])
     t = cr.route(lane="cheap")
     assert t["provider"] == "groq"
     assert t["is_floor"] is False
 
 
 def test_route_never_raises_falls_to_floor(monkeypatch):
-    monkeypatch.setattr(cr, "_rank_candidates", lambda lane, task, exclude: [])
+    monkeypatch.setattr(cr, "_scored_candidates", lambda lane, task, exclude: [])
     monkeypatch.setattr("core.services.cheap_lane_floor.floor_targets",
                         lambda: [("deepseek", "deepseek-chat")])
     t = cr.route(lane="cheap")               # tom kandidat-liste
     assert t["is_floor"] is True             # aldrig raise
     assert t["provider"] in ("deepseek", "floor")
+
+
+def test_route_spread_off_is_winner_take_all(monkeypatch):
+    # flag OFF (default): winner-take-all, scored[0] wins deterministically.
+    monkeypatch.setattr(cr, "_scored_candidates", lambda lane, task, exclude: [
+        (0.0, 1.0, "cerebras", "m1"), (0.0, 2.0, "gemini", "m2")])
+    monkeypatch.setattr(cr, "_flag_cheap_provider_spread", lambda: False)
+    for _ in range(5):
+        t = cr.route(lane="cheap")
+        assert t["provider"] == "cerebras"
+        assert t["reason"] == "central-route:ranked"
+
+
+def test_route_spread_on_uses_quota_weighted_pick(monkeypatch):
+    # flag ON + cheap lane: route delegates to the quota-weighted pick and marks it.
+    monkeypatch.setattr(cr, "_scored_candidates", lambda lane, task, exclude: [
+        (0.0, 1.0, "cerebras", "m1"), (0.0, 2.0, "gemini", "m2")])
+    monkeypatch.setattr(cr, "_flag_cheap_provider_spread", lambda: True)
+    monkeypatch.setattr(cr, "_weighted_provider_pick", lambda scored, rng=None: ("gemini", "m2"))
+    t = cr.route(lane="cheap")
+    assert t["provider"] == "gemini"
+    assert t["reason"] == "central-route:quota-spread"
+
+
+def test_weighted_pick_is_quota_proportional():
+    # direct: more headroom (lower rank) -> higher weight -> chosen at low r.
+    scored = [(0.0, 1.0, "cerebras", "m1"), (0.0, 2.0, "gemini", "m2"), (0.0, 4.0, "mistral", "m3")]
+
+    class RNG:
+        def __init__(self, v): self.v = v
+        def random(self): return self.v
+
+    assert cr._weighted_provider_pick(scored, RNG(0.0)) == ("cerebras", "m1")
+    assert cr._weighted_provider_pick(scored, RNG(0.99)) == ("mistral", "m3")
+    # best model per provider wins the dedup
+    scored2 = [(0.0, 1.0, "cerebras", "m1"), (0.0, 3.0, "cerebras", "m9"), (0.0, 2.0, "gemini", "m2")]
+    assert cr._weighted_provider_pick(scored2, RNG(0.0)) == ("cerebras", "m1")
+
+
+def test_route_spread_on_agent_lane_unchanged(monkeypatch):
+    # spread is cheap-only: agent lane stays winner-take-all even with flag on.
+    monkeypatch.setattr(cr, "_scored_candidates", lambda lane, task, exclude: [
+        (-0.9, 1.0, "deepseek", "deepseek-chat"), (0.0, 1.0, "cerebras", "m1")])
+    monkeypatch.setattr(cr, "_flag_cheap_provider_spread", lambda: True)
+    t = cr.route(lane="agent")
+    assert t["provider"] == "deepseek"
+    assert t["reason"] == "central-route:ranked"
 
 
 def test_provider_history_computes_error_rate(monkeypatch):

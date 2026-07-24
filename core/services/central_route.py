@@ -52,7 +52,13 @@ def _model_capability(provider: str, model: str) -> float:
 
 
 def _rank_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tuple[str, str]]:
-    """Rangerede (provider, model) for en lane. Genbruger den eksisterende
+    """Rangerede (provider, model) for en lane — tynd wrapper over _scored_candidates."""
+    return [(p, m) for _, _, p, m in _scored_candidates(lane, task, exclude)]
+
+
+def _scored_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tuple[float, float, str, str]]:
+    """(-cap, rank, provider, model) sorteret bedst-først. rank = prio/headroom_weight
+    (lavere=bedre); bevares så cheap-lanens kvote-proportionale spredning kan vægte.
     selection-kandidat-bygger + task_kind-semantik + proaktiv headroom (Task 8).
 
     task_kind-semantik SKAL matche select_cheap_lane_target (ellers router den
@@ -97,19 +103,72 @@ def _rank_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tupl
         cap = _model_capability(p, m) if lane == "agent" else 0.0
         out.append((-cap, rank, p, m))
     out.sort(key=lambda x: (x[0], x[1]))
-    return [(p, m) for _, _, p, m in out]
+    return out
+
+
+def _flag_cheap_provider_spread() -> bool:
+    """Cheap-lane kvote-proportional provider-spredning. Default OFF → uændret
+    winner-take-all (ranked[0]). ON → vælg blandt sunde providere proportionalt med
+    headroom (1/rank), så ALLE providere (og deres account2-nøgler) drænes jævnt i
+    stedet for at malke den bedste. Kun cheap-lanen (agent-lanen = kvalitet-først)."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("cheap_lane_provider_spread_enabled", False)
+    except Exception:
+        return False
+
+
+def _weighted_provider_pick(scored: list[tuple[float, float, str, str]],
+                            rng: Any = None) -> tuple[str, str] | None:
+    """Vælg (provider, model) kvote-proportionalt: bedste model pr. provider, vægt =
+    1/rank (∝ headroom/prio). Self-safe → None ved tom/fejl (caller falder til ranked[0])."""
+    try:
+        best_per_prov: dict[str, tuple[float, str, str]] = {}
+        for _cap, rank, p, m in scored:            # scored er bedst-først → første pr. provider vinder
+            if p not in best_per_prov:
+                best_per_prov[p] = (rank, p, m)
+        entries = list(best_per_prov.values())
+        if not entries:
+            return None
+        if len(entries) == 1:
+            _, p, m = entries[0]
+            return (p, m)
+        weights = [1.0 / max(rank, 1e-3) for rank, _, _ in entries]
+        total = sum(weights)
+        if total <= 0:
+            _, p, m = entries[0]
+            return (p, m)
+        import random as _random
+        r = (rng or _random).random() * total
+        acc = 0.0
+        for (rank, p, m), w in zip(entries, weights):
+            acc += w
+            if r <= acc:
+                return (p, m)
+        _, p, m = entries[-1]
+        return (p, m)
+    except Exception:
+        return None
 
 
 def route(*, lane: str, task: Any = None,
           exclude: frozenset[str] = frozenset()) -> dict[str, Any]:
     """Vælg (provider, model) for en lane. Aldrig tør."""
     try:
-        ranked = _rank_candidates(lane, task, exclude)
+        scored = _scored_candidates(lane, task, exclude)
     except Exception:
         logger.debug("central_route: kandidat-rangering fejlede", exc_info=True)
-        ranked = []
-    if ranked:
-        p, m = ranked[0]
+        scored = []
+    # A/1 (2026-07-24): cheap-lane kvote-proportional spredning (flag-gated). Vælg
+    # blandt sunde providere vægtet efter headroom, så alle drænes jævnt i stedet for
+    # winner-take-all. Andre lanes + flag OFF → uændret ranked[0]. Self-safe fallback.
+    if scored and lane == "cheap" and _flag_cheap_provider_spread():
+        pick = _weighted_provider_pick(scored)
+        if pick is not None:
+            return {"provider": pick[0], "model": pick[1], "lane": lane,
+                    "reason": "central-route:quota-spread", "is_floor": False}
+    if scored:
+        p, m = scored[0][2], scored[0][3]
         return {"provider": p, "model": m, "lane": lane,
                 "reason": "central-route:ranked", "is_floor": False}
     from core.services.cheap_lane_floor import floor_targets

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6420/12957 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6423/12960 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6420/12957 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4248 | 9019 | 47% |
+| `core.services` | 4251 | 9022 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -888,8 +888,8 @@ Generated from source. 6420/12957 functions/methods documented (49%). The list b
 - `core/services/dream_articulation.py` :: `build_dream_articulation_from_inputs` (L165)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_surface` (L332)
 - `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L232)
-- `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L654)
-- `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L650)
+- `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L660)
+- `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L656)
 - `core/services/dream_distillation_daemon.py` :: `build_dream_distillation_surface` (L167)
 - `core/services/dream_distillation_daemon.py` :: `clear_expired_dream_residue` (L187)
 - `core/services/dream_distillation_daemon.py` :: `get_dream_residue_for_prompt` (L150)

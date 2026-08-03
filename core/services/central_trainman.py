@@ -34,6 +34,23 @@ _REFLECTION_INTERVAL_HOURS = 24
 _SILENCE_DAYS = 14
 _SCAN_LIMIT = 12  # hvor mange seneste drømme vi kigger på pr. cadence
 
+# Vage/ikke-bærende temaer der aldrig skal signaleres til Agendaen (2026-08-03).
+# Defensivt lag oven på dream_consolidation's _STOPWORDS — hvis et uartikuleret tema
+# alligevel når hertil ("noget", tom streng …), så tier Trainman stille i stedet for
+# at sende "Tilbagevendende drømme-tema: noget" til Bjørn.
+_VAGUE_THEMES = {
+    "", "noget", "nogen", "nogle", "sådan", "altså", "måske", "faktisk", "egentlig",
+    "vist", "ukendt", "unknown", "none", "noget jeg ikke helt kunne navngive",
+}
+
+
+def _is_vague_theme(theme: str) -> bool:
+    """True hvis temaet er tomt, for kort, eller et rent fyldeord. Ren, self-safe."""
+    t = (theme or "").strip().lower()
+    if not t or len(t) <= 2:
+        return True
+    return t in _VAGUE_THEMES
+
 
 # ── Kilder (self-safe) ────────────────────────────────────────────────────────
 
@@ -182,7 +199,10 @@ def _write_memory(*, dream_id: str, theme: str, narrative: str, interlanguage: s
 
 def _signal_agenda(*, theme: str, count: int, dream_id: str) -> bool:
     """3+ drømme om samme tema på 7 dage → lav-prioritets initiativ til Agendaen. Self-safe.
-    Gated af mood-dialeren i push_initiative; blokerer aldrig. Returnerer True hvis pushet."""
+    Gated af mood-dialeren i push_initiative; blokerer aldrig. Returnerer True hvis pushet.
+    Vage/ikke-bærende temaer (tomme, fyldeord) signaleres aldrig — se _is_vague_theme."""
+    if _is_vague_theme(theme):
+        return False
     try:
         from core.services.initiative_queue import push_initiative
         iid = push_initiative(

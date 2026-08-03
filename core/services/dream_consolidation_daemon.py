@@ -86,6 +86,12 @@ _STOPWORDS = {
     "min", "din", "vores", "sig", "nu", "ikke", "også", "lige", "bare",
     "mere", "meget", "lidt", "men", "eller", "fra", "der", "de",
     "the", "is", "a", "to", "of", "and", "in", "for",
+    # Vage fylde-ord der ikke bærer et drømme-tema (2026-08-03). "noget" er præcis 5
+    # bogstaver og slap igennem _tokens() → konsolideringen lavede temaet "noget" →
+    # Trainman signalerede "Tilbagevendende drømme-tema: noget (4× på 7 dage)".
+    "noget", "nogen", "nogle", "sådan", "altså", "måske", "faktisk", "egentlig",
+    "vist", "aldrig", "altid", "derfor", "hvorfor", "hvordan", "hvilken", "hvilket",
+    "virkelig", "sikkert",
 }
 _WORD_RE = re.compile(r"[a-zæøåA-ZÆØÅ_-]+")
 

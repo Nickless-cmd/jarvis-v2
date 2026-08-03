@@ -12,6 +12,10 @@ _PRESENT_WINDOW_S = 900   # owner regnes "til stede" hvis synlig < 15 min siden
 _AWAY_MIN_S = 3600        # digest kræver ≥1t fravær (urgent kræver ikke)
 _URGENT_PRIORITIES = {"high", "critical"}
 _URGENT_KINDS = {"critical_impulse"}
+# Dedikeret session hvor proaktive spørgsmål persisteres som RIGTIGE chat-beskeder,
+# så Bjørn kan se og svare på dem i companion — ikke kun en forsvindende notifikation.
+_PROACTIVITY_SESSION_ID = "proactivity-bridge"
+_PROACTIVITY_SESSION_TITLE = "💭 Proaktive spørgsmål"
 
 
 def classify(candidate: dict[str, Any]) -> str:
@@ -165,6 +169,37 @@ def _route(uid: str, text: str, importance: str) -> dict[str, Any]:
     return res
 
 
+def _persist_as_chat(uid: str, text: str) -> str:
+    """Skriv beskeden som en RIGTIG chat-besked i den dedikerede proactivity-session, så
+    Bjørn kan se og SVARE på den i companion — ikke kun en forsvindende notifikation.
+    Self-safe; returnerer session_id ('' ved fejl)."""
+    try:
+        from core.services.chat_sessions import (get_or_create_named_session,
+                                                 append_chat_message)
+        sid = get_or_create_named_session(_PROACTIVITY_SESSION_ID, _PROACTIVITY_SESSION_TITLE)
+        append_chat_message(session_id=sid, role="assistant", content=text,
+                            user_id=uid, workspace_name="default")
+        return sid
+    except Exception:
+        return ""
+
+
+def _mark_sent_items_acted(items: list[dict[str, Any]]) -> None:
+    """Markér afsendte initiativer som acted, så de ikke sendes igen senere (før kun
+    cap+cooldown beskyttede mod gentagelse). Self-safe — ukendte id'er returnerer False."""
+    for it in items or []:
+        if str(it.get("source") or "") != "initiative_queue":
+            continue
+        iid = str(it.get("source_id") or "")
+        if not iid:
+            continue
+        try:
+            from core.services.initiative_queue import mark_acted
+            mark_acted(iid, action_summary="surfaced via proactivity_bridge")
+        except Exception:
+            pass
+
+
 def _observe(nerve: str, meta: dict[str, Any]) -> None:
     try:
         from core.services.central_core import central
@@ -208,7 +243,10 @@ def run_proactivity_bridge_tick(*, trigger: str = "cadence", last_visible_at: st
                                             cap=cap, within_cooldown=cooldown, urgent=True)
             if ok:
                 item = sel["urgent"][0]
-                res = _route(uid, build_urgent(item), "high")
+                text = build_urgent(item)
+                res = _route(uid, text, "high")
+                _persist_as_chat(uid, text)
+                _mark_sent_items_acted([item])
                 _observe("bridge_surfaced", {"kind": "urgent", "delivered": bool(res.get("delivered")),
                                              "source_id": item.get("source_id")})
                 return {"status": "ok", "action": "surfaced_urgent"}
@@ -217,7 +255,10 @@ def run_proactivity_bridge_tick(*, trigger: str = "cadence", last_visible_at: st
             ok, reason = should_reach_owner(owner_present=present, is_quiet=is_quiet, sent_today=sent_today,
                                             cap=cap, within_cooldown=cooldown, urgent=False)
             if ok:
-                res = _route(uid, build_digest(sel["normal"]), "normal")
+                text = build_digest(sel["normal"])
+                res = _route(uid, text, "normal")
+                _persist_as_chat(uid, text)
+                _mark_sent_items_acted(sel["normal"])
                 _observe("bridge_surfaced", {"kind": "digest", "n": len(sel["normal"]),
                                              "delivered": bool(res.get("delivered"))})
                 return {"status": "ok", "action": "surfaced_digest"}

@@ -445,6 +445,11 @@ def run_continuous():
             for a in actions:
                 print(f"    → {a['action']} @ ${a.get('price', 0):.2f}")
 
+            # Heartbeat: skriv state hver cycle (også ved 0 actions), så
+            # process_watcher's state_stale-check ikke fyrer falske alarmer
+            # i sideways-markeder hvor der ikke sker events.
+            bot.write_trading_state()
+
             # Vent (i små bidder så SIGTERM fanges hurtigt)
             for _ in range(interval):
                 if not bot._running:

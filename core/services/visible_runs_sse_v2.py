@@ -185,8 +185,25 @@ _MAX_IDLE_TICKS = 9          # ~180s total stilhed → kilden er død uanset
 
 
 def _run_still_active(run_id: str) -> bool:
-    """True hvis dette run stadig er det aktive visible-run server-side. Fail-safe:
-    antag AKTIVT ved fejl, så vi aldrig afslutter en levende stream for tidligt."""
+    """True hvis dette run stadig kører server-side. Fail-safe: antag AKTIVT ved fejl,
+    så vi aldrig afslutter en levende stream for tidligt.
+
+    ROD-FIX (Bjørn 4. aug): FØR tjekkede den KUN den globale active-visible-run-slot
+    (_get_active_visible_run_state). Men ALLE runs er nu detached (server-autoritative),
+    og detached-stien vedligeholder den slot UPÅLIDELIGT (detached_run.py:86-96) → den
+    returnerede False for LEVENDE runs → idle-timeouten (20s uden legacy-event) brød
+    _translation_loop → gen.aclose() rev det stadig-kørende run ned midt i tool-exec →
+    CancelledError/vis_len=0 i ALLE sessioner på tværs af klienter. run_event_log er den
+    PÅLIDELIGE autoritet (detached_run.py:144): is_live = not-done OG (frame <45s ELLER
+    created <60s), så et run der stadig sender 15s-heartbeats forbliver live; kun en ægte
+    død/hængt kilde brydes (og _MAX_IDLE_TICKS≈180s er sidste værn). Slot beholdes som
+    fallback for evt. ikke-registrerede/legacy runs → ingen regression."""
+    try:
+        from core.services import run_event_log as _rel
+        if _rel.is_live(run_id):
+            return True
+    except Exception:
+        return True
     try:
         from core.services.visible_runs import _get_active_visible_run_state
         st = _get_active_visible_run_state() or {}

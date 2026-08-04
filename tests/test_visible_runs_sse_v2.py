@@ -488,3 +488,28 @@ async def test_stream_error_observed_and_still_terminates(monkeypatch):
     assert "message_stop" in kinds, f"fejl-stream afsluttede ikke rent: {kinds}"
     errs = [e for e in events if e["kind"] == "error"]
     assert errs and "RuntimeError" in errs[0].get("error", ""), f"fejl ikke observeret: {events}"
+
+
+def test_run_still_active_uses_run_event_log_not_flaky_slot():
+    """ROD-FIX (Bjørn 4. aug): _run_still_active må IKKE kun stole på den globale
+    active-visible-run-slot — den vedligeholdes upålideligt for detached runs, så den
+    returnerede False for LEVENDE runs → idle-timeouten (20s) brød runs midt i tool-exec
+    (CancelledError/vis_len=0) i ALLE sessioner på tværs af klienter. Autoritet =
+    run_event_log.is_live."""
+    from core.services import run_event_log as rel
+    from core.services.visible_runs_sse_v2 import _run_still_active
+    from core.services.visible_runs import _set_active_visible_run
+
+    # Slot peger bevidst på et ANDET run (simulér detached-slot-upålidelighed).
+    _set_active_visible_run({"active": True, "run_id": "some-other-run"})
+    # Opret et LEVENDE run i run_event_log (den pålidelige autoritet). claim_or_create
+    # opretter entry'en; append alene gør IKKE (den returnerer hvis st is None).
+    rid, _created = rel.claim_or_create("test-session-rodfix")
+    try:
+        # FØR fixet: False (slot matcher ikke) → run brydes. EFTER: True (is_live).
+        assert _run_still_active(rid) is True
+        # Done → is_live False → falder til slot (matcher ikke) → False.
+        rel.mark_done(rid)
+        assert _run_still_active(rid) is False
+    finally:
+        _set_active_visible_run({})

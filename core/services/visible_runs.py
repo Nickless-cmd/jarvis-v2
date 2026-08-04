@@ -5271,6 +5271,29 @@ async def _stream_visible_run(
                 })
             except Exception:
                 pass
+            # PERSISTÉR cut-off som RIGTIG incident så Centralen faktisk fanger den.
+            # Regression-rod (Bjørn 4. aug): cut-off-signalet gik KUN til observe()→trace-
+            # sink (flygtig ring-buffer, per-proces, tabt v. restart) → central_incidents
+            # fik 0 rows → panelet så ALDRIG cut-offs (genopstået 29.-jun-bug). dedup=True:
+            # gentagne cut-offs bumper en recurrence-tæller i stedet for at oversvømme
+            # panelet. Abort-type + loop-lag i message → mekanismen er nu synlig pr. cutoff.
+            try:
+                from core.runtime.db_central_incidents import (
+                    record_central_incident as _rec_cutoff_inc)
+                _rec_cutoff_inc(
+                    cluster="loop", nerve="run_abandoned_midflight",
+                    kind="cutoff", severity="error",
+                    message=(
+                        f"run afbrudt midt-flugt: abort={_abort_kind} "
+                        f"provider={run.provider or '?'} model={run.model or '?'} "
+                        f"stage={_run_stage} vis_len={len(visible_output_text or '')} "
+                        f"loop_lag_peak_ms={_cutoff_lag}"),
+                    run_id=str(run.run_id or ""),
+                    session_id=str(run.session_id or ""),
+                    dedup=True,
+                )
+            except Exception:
+                pass
             # Ærlig, rolig besked til brugeren (IKKE survival-stemmen) — kun hvis han
             # ikke allerede fik et svar. Idempotent + self-safe. På reload ser han
             # dette i stedet for tavshed eller en dramatisk overlevelses-tekst.

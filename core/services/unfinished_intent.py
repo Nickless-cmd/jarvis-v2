@@ -106,6 +106,22 @@ _PROMISE_NEGATION_RE = re.compile(
 _CLIFFHANGER_ELLIPSIS_RE = re.compile(r"[.…]{2,}\s*$")
 _CLIFFHANGER_COLON_RE = re.compile(r":\s*$")
 
+# Handoff-endings (2026-08-15, Bjørn): en AFSLUTTENDE høflig frase der giver kontrollen
+# tilbage til brugeren ("så sig til", "lad mig vide", "giv besked") = Jarvis venter
+# bevidst på svar — ligesom et afsluttende "?". UDEN denne misfyrede detektoren på
+# "jeg skal kigge" i "…hvis der er andet, jeg skal kigge på, så sig til." og spawnede
+# en continuation der fabrikerede en cache-check. Matcher kun NÆR slutningen (valgfri
+# kort "hvis …"-hale + trailing tegn/emoji), så en handoff midt i teksten ikke tæller.
+_HANDOFF_TAIL_RE = re.compile(
+    r"\b(?:"
+    r"(?:så\s+)?sig\s+(?:endelig\s+|bare\s+|blot\s+|gerne\s+)?til"
+    r"|lad\s+mig\s+(?:det\s+)?vide"
+    r"|giv\s+(?:mig\s+)?(?:endelig\s+)?besked"
+    r"|du\s+ved\s+hvor\s+(?:jeg\s+er|du\s+har\s+mig)"
+    r")\b(?:\s+(?:hvis|hvad|hvornår|når|om)\b[^.?!]{0,60})?[\W_]*$",
+    re.IGNORECASE | re.UNICODE,
+)
+
 
 def _tail(text: str, n: int = _TAIL_WINDOW_CHARS) -> str:
     """Returner sidste ~n tegn af teksten."""
@@ -142,6 +158,14 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     # (dobbelt/tripel de sidste dage). Et afsluttende "?" = kontrollen givet tilbage
     # til brugeren → ALDRIG continuation. (Promise-fraser UDEN spørgsmål fanges stadig.)
     if stripped.rstrip().endswith("?"):
+        return None
+
+    # ── Handoff-guard (2026-08-15, Bjørn) ───────────────────────────────────
+    # Samme logik som spørgsmåls-guarden: en AFSLUTTENDE handoff-frase ("så sig
+    # til", "lad mig vide", "giv besked") giver kontrollen tilbage til brugeren →
+    # Jarvis venter bevidst, det er IKKE en pause midt i opgaven. Fanger den høflige
+    # afslutnings-familie der ellers misfyrer via "jeg skal"/"lad mig".
+    if _HANDOFF_TAIL_RE.search(stripped):
         return None
 
     if len(stripped) < _MIN_TEXT_LEN:

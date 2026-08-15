@@ -76,6 +76,30 @@ def build_digest(normal: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _norm_digest(text: str) -> str:
+    """Normalisér digest til gentagelses-sammenligning (trim/lowercase/kollaps whitespace)."""
+    return " ".join((text or "").strip().lower().split())
+
+
+def _digest_is_repeat(text: str) -> bool:
+    """True hvis digest-teksten ~= den sidst postede assistant-besked i proactivity-sessionen.
+
+    Broen dedup'er på source_id INDEN for ét tik, men upstream-undren er statisk i dagevis
+    → samme "💭 Mens du var væk…" genpostes (aug 2026: ~40× på 5 dage). Denne gate stopper
+    at sende/persistere en digest der er identisk med den forrige. Self-safe → False."""
+    want = _norm_digest(text)
+    if not want:
+        return False
+    try:
+        from core.services.chat_sessions import recent_chat_session_messages
+        for m in reversed(recent_chat_session_messages(_PROACTIVITY_SESSION_ID, limit=8)):
+            if str(m.get("role")) == "assistant":
+                return _norm_digest(str(m.get("content"))) == want
+    except Exception:
+        pass
+    return False
+
+
 # ── I/O layer ────────────────────────────────────────────────────────────
 import logging as _logging
 from datetime import UTC, datetime
@@ -256,6 +280,9 @@ def run_proactivity_bridge_tick(*, trigger: str = "cadence", last_visible_at: st
                                             cap=cap, within_cooldown=cooldown, urgent=False)
             if ok:
                 text = build_digest(sel["normal"])
+                if _digest_is_repeat(text):
+                    _observe("bridge_suppressed", {"reason": "duplicate_digest", "branch": "digest"})
+                    return {"status": "ok", "action": "suppressed", "reason": "duplicate_digest"}
                 res = _route(uid, text, "normal")
                 _persist_as_chat(uid, text)
                 _mark_sent_items_acted(sel["normal"])

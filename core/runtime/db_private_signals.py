@@ -390,6 +390,11 @@ def get_private_temporal_promotion_signal() -> dict[str, object] | None:
     }
 
 
+def _norm_retained(value: str) -> str:
+    """Normalisér til novelty-sammenligning: trim, lowercase, kollaps whitespace."""
+    return " ".join((value or "").strip().lower().split())
+
+
 def record_private_retained_memory_record(
     *,
     record_id: str,
@@ -403,6 +408,16 @@ def record_private_retained_memory_record(
     confidence: str,
     created_at: str,
 ) -> None:
+    # Novelty-gate: en autonom run der promoverer PRÆCIS samme retained_value som den
+    # seneste record er bare et ekko (aug 2026: ~20 identiske "keep carrying what
+    # helped…"). Skip persist i så fald — udvikling skal være NY for at hobe sig op.
+    # (Consolidation-laget har allerede en near-dup-vagt; per-run-skrivningen manglede.)
+    try:
+        latest = get_private_retained_memory_record()
+        if latest is not None and _norm_retained(str(latest.get("retained_value") or "")) == _norm_retained(retained_value):
+            return
+    except Exception:
+        pass
     with connect() as conn:
         conn.execute(
             """

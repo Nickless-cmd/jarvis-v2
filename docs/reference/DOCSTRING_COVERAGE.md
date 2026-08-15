@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6425/12961 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6428/12964 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,8 +23,8 @@ Generated from source. 6425/12961 functions/methods documented (49%). The list b
 | `core.identity` | 63 | 154 | 40% |
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4253 | 9023 | 47% |
+| `core.runtime` | 554 | 1024 | 54% |
+| `core.services` | 4255 | 9025 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -391,13 +391,13 @@ Generated from source. 6425/12961 functions/methods documented (49%). The list b
 - `core/runtime/db_private_signals.py` :: `ensure_private_signals_tables` (L16)
 - `core/runtime/db_private_signals.py` :: `get_private_development_state` (L237)
 - `core/runtime/db_private_signals.py` :: `get_private_reflective_selection` (L271)
-- `core/runtime/db_private_signals.py` :: `get_private_retained_memory_record` (L453)
+- `core/runtime/db_private_signals.py` :: `get_private_retained_memory_record` (L468)
 - `core/runtime/db_private_signals.py` :: `get_private_temporal_promotion_signal` (L357)
 - `core/runtime/db_private_signals.py` :: `recent_private_reflective_selections` (L152)
-- `core/runtime/db_private_signals.py` :: `recent_private_retained_memory_records` (L489)
+- `core/runtime/db_private_signals.py` :: `recent_private_retained_memory_records` (L504)
 - `core/runtime/db_private_signals.py` :: `record_private_development_state` (L192)
 - `core/runtime/db_private_signals.py` :: `record_private_reflective_selection` (L101)
-- `core/runtime/db_private_signals.py` :: `record_private_retained_memory_record` (L393)
+- `core/runtime/db_private_signals.py` :: `record_private_retained_memory_record` (L398)
 - `core/runtime/db_private_signals.py` :: `record_private_temporal_promotion_signal` (L309)
 - `core/runtime/db_private_states.py` :: `ensure_private_states_tables` (L14)
 - `core/runtime/db_private_states.py` :: `get_private_promotion_decision` (L262)

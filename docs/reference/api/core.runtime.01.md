@@ -617,10 +617,11 @@ _Persistence for the private inner-life signal tables._
 | function | `get_private_reflective_selection` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L271) |
 | function | `record_private_temporal_promotion_signal` | `(*, signal_id, source, run_id, work_id, rhythm_state, rhythm_window, promotion_target, promotion_action, promotion_confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L309) |
 | function | `get_private_temporal_promotion_signal` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L357) |
-| function | `record_private_retained_memory_record` | `(*, record_id, source, run_id, work_id, retained_value, retained_kind, retention_scope, retention_horizon, confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L393) |
-| function | `update_private_retained_memory_record_enriched` | `(*, run_id, enriched_value)` | Replace template retained_value with LLM-enriched lesson text. | [src](../../../core/runtime/db_private_signals.py#L441) |
-| function | `get_private_retained_memory_record` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L453) |
-| function | `recent_private_retained_memory_records` | `(limit=…)` | — | [src](../../../core/runtime/db_private_signals.py#L489) |
+| function | `_norm_retained` | `(value)` | Normalisér til novelty-sammenligning: trim, lowercase, kollaps whitespace. | [src](../../../core/runtime/db_private_signals.py#L393) |
+| function | `record_private_retained_memory_record` | `(*, record_id, source, run_id, work_id, retained_value, retained_kind, retention_scope, retention_horizon, confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L398) |
+| function | `update_private_retained_memory_record_enriched` | `(*, run_id, enriched_value)` | Replace template retained_value with LLM-enriched lesson text. | [src](../../../core/runtime/db_private_signals.py#L456) |
+| function | `get_private_retained_memory_record` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L468) |
+| function | `recent_private_retained_memory_records` | `(limit=…)` | — | [src](../../../core/runtime/db_private_signals.py#L504) |
 
 ## `core/runtime/db_private_states.py`
 _Persistence for the private self-model / mood / promotion-decision tables._

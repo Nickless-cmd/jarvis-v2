@@ -53,3 +53,26 @@ def test_build_digest_and_urgent_contain_text():
     assert "ryd op i cachen" in d and "spørg om X" in d and d.strip()
     u = pb.build_urgent(_cand(text="noget vigtigt"))
     assert "noget vigtigt" in u and u.strip()
+
+
+def test_digest_is_repeat_detects_last_identical(monkeypatch):
+    """Digest der matcher sidste assistant-post i sessionen = gentagelse (whitespace/case-robust)."""
+    text = pb.build_digest([_cand(text="er jeg blot en proces?")])
+    # broen importerer recent_chat_session_messages lokalt fra chat_sessions
+    import core.services.chat_sessions as cs
+    monkeypatch.setattr(cs, "recent_chat_session_messages",
+                        lambda *_a, **_k: [{"role": "assistant", "content": "  " + text.upper() + "  "}])
+    assert pb._digest_is_repeat(text) is True
+
+
+def test_digest_is_repeat_false_when_new(monkeypatch):
+    import core.services.chat_sessions as cs
+    monkeypatch.setattr(cs, "recent_chat_session_messages",
+                        lambda *_a, **_k: [{"role": "assistant", "content": "en helt anden tanke"}])
+    assert pb._digest_is_repeat(pb.build_digest([_cand(text="ny undren i dag")])) is False
+
+
+def test_digest_is_repeat_false_when_empty_history(monkeypatch):
+    import core.services.chat_sessions as cs
+    monkeypatch.setattr(cs, "recent_chat_session_messages", lambda *_a, **_k: [])
+    assert pb._digest_is_repeat(pb.build_digest([_cand(text="noget")])) is False

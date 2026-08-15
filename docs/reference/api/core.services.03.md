@@ -244,18 +244,18 @@ _core/services/central_agenda.py_
 | function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_agenda.py#L25) |
 | function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_agenda.py#L34) |
 | function | `is_authoritative` | `()` | — | [src](../../../core/services/central_agenda.py#L42) |
-| function | `_read_goals` | `()` | — | [src](../../../core/services/central_agenda.py#L47) |
-| function | `_read_plans` | `()` | — | [src](../../../core/services/central_agenda.py#L61) |
-| function | `_read_todos` | `()` | — | [src](../../../core/services/central_agenda.py#L71) |
-| function | `_read_initiatives` | `()` | — | [src](../../../core/services/central_agenda.py#L82) |
-| function | `_top_want` | `()` | — | [src](../../../core/services/central_agenda.py#L98) |
-| function | `build_agenda` | `()` | Konvergér de spredte kilder til Centralens ene ejede dagsorden. Self-safe. | [src](../../../core/services/central_agenda.py#L112) |
-| function | `choose_next_intention` | `(agenda)` | Centralens VALG: hvad skal Jarvis bevæge sig mod nu. Prioritet: aktiv plan-næste-trin > | [src](../../../core/services/central_agenda.py#L126) |
-| function | `run_agenda_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: byg + EJ dagsordenen durabelt + vælg næste-intention. Egress-frit observe (kun tællere + | [src](../../../core/services/central_agenda.py#L154) |
-| function | `get_agenda` | `()` | Centralens durable ejede dagsorden (overlever genstart). Self-safe. | [src](../../../core/services/central_agenda.py#L173) |
-| function | `authoritative_next_intention` | `()` | KONSUMENT-KONTRAKT: Centralens valgte næste-intention — KUN bag flag (default OFF → None → | [src](../../../core/services/central_agenda.py#L180) |
-| function | `register_agenda_producer` | `()` | Registrér agenda-ejerskabet som cadence-producer (~hvert 20 min). SHADOW medmindre flag ON. | [src](../../../core/services/central_agenda.py#L189) |
-| function | `build_agenda_surface` | `()` | Mission Control — read-only: Centralens ejede dagsorden + valgte næste-intention. | [src](../../../core/services/central_agenda.py#L201) |
+| function | `_read_goals` | `()` | Feed-LÆSNING af Jarvis' eksisterende mål — syntetiserer ALDRIG. | [src](../../../core/services/central_agenda.py#L47) |
+| function | `_read_plans` | `()` | — | [src](../../../core/services/central_agenda.py#L73) |
+| function | `_read_todos` | `()` | — | [src](../../../core/services/central_agenda.py#L83) |
+| function | `_read_initiatives` | `()` | — | [src](../../../core/services/central_agenda.py#L94) |
+| function | `_top_want` | `()` | — | [src](../../../core/services/central_agenda.py#L110) |
+| function | `build_agenda` | `()` | Konvergér de spredte kilder til Centralens ene ejede dagsorden. Self-safe. | [src](../../../core/services/central_agenda.py#L124) |
+| function | `choose_next_intention` | `(agenda)` | Centralens VALG: hvad skal Jarvis bevæge sig mod nu. Prioritet: aktiv plan-næste-trin > | [src](../../../core/services/central_agenda.py#L138) |
+| function | `run_agenda_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: byg + EJ dagsordenen durabelt + vælg næste-intention. Egress-frit observe (kun tællere + | [src](../../../core/services/central_agenda.py#L166) |
+| function | `get_agenda` | `()` | Centralens durable ejede dagsorden (overlever genstart). Self-safe. | [src](../../../core/services/central_agenda.py#L185) |
+| function | `authoritative_next_intention` | `()` | KONSUMENT-KONTRAKT: Centralens valgte næste-intention — KUN bag flag (default OFF → None → | [src](../../../core/services/central_agenda.py#L192) |
+| function | `register_agenda_producer` | `()` | Registrér agenda-ejerskabet som cadence-producer (~hvert 20 min). SHADOW medmindre flag ON. | [src](../../../core/services/central_agenda.py#L201) |
+| function | `build_agenda_surface` | `()` | Mission Control — read-only: Centralens ejede dagsorden + valgte næste-intention. | [src](../../../core/services/central_agenda.py#L213) |
 
 ## `core/services/central_agent_smith.py`
 _Agent Smith — stående selv-lighed-kritiker. Detekterer når Jarvis gentager sig selv på tværs af_

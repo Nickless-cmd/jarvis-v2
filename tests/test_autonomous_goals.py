@@ -23,6 +23,41 @@ def test_create_goal_basic(tmp_path, monkeypatch):
     assert result["goal"]["status"] == "pending"
 
 
+def test_create_goal_dedupes_open_titles(monkeypatch):
+    """Samme titel på et åbent (pending/active) mål skal genbruges, ikke dubleres.
+
+    Regression: uden dedup ophobede synthesis-runaway 1763 pending-mål med samme titel.
+    """
+    state: dict = {}
+    def fake_load(): return state.copy()
+    def fake_save(d): state.clear(); state.update(d)
+    monkeypatch.setattr(ag, "_load", fake_load)
+    monkeypatch.setattr(ag, "_save", fake_save)
+    first = ag.create_goal(title="Afklar Ny nysgerrighed", source="reflection")
+    assert first["status"] == "ok"
+    # Samme titel (kun forskel i whitespace/case) → genbrug, ingen ny entry
+    second = ag.create_goal(title="  afklar   ny nysgerrighed ", source="reflection")
+    assert second["status"] == "ok"
+    assert second.get("deduped") is True
+    assert second["goal"]["goal_id"] == first["goal"]["goal_id"]
+    assert len(state) == 1
+
+
+def test_create_goal_allows_reuse_after_archived(monkeypatch):
+    """Et arkiveret/afsluttet mål blokerer IKKE et nyt med samme titel."""
+    state: dict = {}
+    def fake_load(): return state.copy()
+    def fake_save(d): state.clear(); state.update(d)
+    monkeypatch.setattr(ag, "_load", fake_load)
+    monkeypatch.setattr(ag, "_save", fake_save)
+    g = ag.create_goal(title="Genbrugbart mål")
+    ag.update_goal_status(g["goal"]["goal_id"], "archived")
+    again = ag.create_goal(title="Genbrugbart mål")
+    assert again.get("deduped") is not True
+    assert again["goal"]["goal_id"] != g["goal"]["goal_id"]
+    assert len(state) == 2
+
+
 def test_create_goal_requires_title(monkeypatch):
     monkeypatch.setattr(ag, "_load", dict)
     monkeypatch.setattr(ag, "_save", lambda d: None)

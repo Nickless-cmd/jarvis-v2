@@ -41,6 +41,28 @@ def test_next_intention_falls_through_to_want_then_goal():
     assert ag.choose_next_intention(a2)["kind"] == "goal"
 
 
+# ── REGRESSION: _read_goals er en READ, aldrig en synthesis-write (aug 2026) ──────────
+def test_read_goals_reads_never_synthesizes(monkeypatch, isolated_runtime):
+    """Feed-læsning må ALDRIG kalde den skrivende synthesize_candidate_goals.
+
+    Regression: central_agenda._read_goals() kaldte synthesize_candidate_goals() på
+    hver agenda-build → 1763 dublet-mål ophobet, throttle omgået. En read der skriver
+    = dobbelt-sandhed. Nu skal den læse eksisterende mål via list_goals.
+    """
+    import core.services.autonomous_goals as goals_mod
+
+    def _boom(*_a, **_k):  # pragma: no cover - må aldrig rammes
+        raise AssertionError("_read_goals kaldte synthesize_candidate_goals (skriver!)")
+
+    monkeypatch.setattr("core.services.goal_signal_synthesizer.synthesize_candidate_goals", _boom)
+    monkeypatch.setattr(goals_mod, "list_goals", lambda **_k: [
+        {"goal_id": "g1", "title": "aktivt mål", "status": "active", "priority": "high"},
+    ])
+    read = ag._read_goals()
+    assert read and read[0]["text"] == "aktivt mål"
+    assert read[0]["source"] == "goal"
+
+
 # ── AUTORITET bag flag ───────────────────────────────────────────────────────────────
 def test_authority_shadow_default(isolated_runtime):
     """SHADOW default: authoritative_next_intention returnerer None (runtime bruger gammel sti)."""

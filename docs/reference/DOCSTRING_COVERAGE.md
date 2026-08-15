@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6423/12960 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6425/12961 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6423/12960 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4251 | 9022 | 47% |
+| `core.services` | 4253 | 9023 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -594,7 +594,7 @@ Generated from source. 6423/12960 functions/methods documented (49%). The list b
 - `core/services/automation_dsl.py` :: `deactivate_automation` (L180)
 - `core/services/automation_dsl.py` :: `list_automations` (L190)
 - `core/services/autonomous_council_daemon.py` :: `build_autonomous_council_surface` (L456)
-- `core/services/autonomous_goals.py` :: `update_goal_status` (L92)
+- `core/services/autonomous_goals.py` :: `update_goal_status` (L108)
 - `core/services/autonomous_outreach_daemon.py` :: `build_autonomous_outreach_surface` (L360)
 - `core/services/autonomous_outreach_daemon.py` :: `recent_log` (L356)
 - `core/services/autonomous_sessions.py` :: `normalize_origin` (L35)

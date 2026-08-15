@@ -45,14 +45,26 @@ def is_authoritative() -> bool:
 
 # ── Kilde-læsning (feed) — hver best-effort, self-safe ───────────────────────────────
 def _read_goals() -> list[dict[str, Any]]:
+    """Feed-LÆSNING af Jarvis' eksisterende mål — syntetiserer ALDRIG.
+
+    Regression (aug 2026): denne kaldte den SKRIVENDE synthesize_candidate_goals() på
+    hver agenda-build. Det omgik den ugentlige throttle og ophobede 1763 dublet-mål
+    (alle pending/reflection) — præcis den dobbelt-sandhed modulets kontrakt forbyder
+    ("kilderne muterer egne rækker; midten ejer sammenstillingen"). Syntese ejes af
+    periodic_jobs_scheduler ('goal_synthesis', 7 dage). Her: ren læsning.
+    """
     out: list[dict[str, Any]] = []
     try:
-        from core.services.goal_signal_synthesizer import synthesize_candidate_goals
-        cand = synthesize_candidate_goals(max_candidates=3) or {}
-        for g in (cand.get("candidates") or cand.get("goals") or []):
-            txt = g.get("goal") or g.get("text") or g.get("title") if isinstance(g, dict) else str(g)
-            if txt:
-                out.append({"text": str(txt)[:200], "source": "goal_synth"})
+        from core.services.autonomous_goals import list_goals
+        rows = list_goals(status="active", parent_id="any", limit=5)
+        if not rows:  # ingen aktive → vis åbne kandidater, men skab intet
+            rows = [g for g in list_goals(parent_id="any", limit=50)
+                    if g.get("status") in ("pending", "blocked")][:5]
+        for g in rows:
+            title = g.get("title") or ""
+            if title:
+                out.append({"text": str(title)[:200], "source": "goal",
+                            "goal_id": g.get("goal_id")})
     except Exception:
         pass
     return out[:5]

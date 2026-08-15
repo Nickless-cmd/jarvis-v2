@@ -29,6 +29,12 @@ logger = logging.getLogger(__name__)
 _STATE_KEY = "autonomous_goals"
 _VALID_STATUSES = {"pending", "active", "blocked", "achieved", "archived"}
 _VALID_PRIORITIES = {"critical", "high", "medium", "low"}
+_OPEN_STATUSES = {"pending", "active", "blocked"}
+
+
+def _norm_title(title: str) -> str:
+    """Normalisér til dedup: trim, lowercase, kollaps whitespace, cap 200."""
+    return " ".join((title or "").strip().lower().split())[:200]
 
 
 def _load() -> dict[str, dict[str, Any]]:
@@ -61,6 +67,16 @@ def create_goal(
     if priority not in _VALID_PRIORITIES:
         priority = "medium"
     goals = _load()
+    # Dedup-værn: et ÅBENT mål med samme normaliserede titel genbruges i stedet for
+    # at skabe en dublet. Uden dette ophobede synthesis-runaway 1763 pending-mål
+    # (aug 2026). Arkiverede/afsluttede mål blokerer ikke — samme titel må genopstå.
+    norm = _norm_title(title)
+    if norm:
+        for g in goals.values():
+            if (isinstance(g, dict)
+                    and g.get("status") in _OPEN_STATUSES
+                    and _norm_title(g.get("title") or "") == norm):
+                return {"status": "ok", "goal": g, "deduped": True}
     goal_id = f"goal-{uuid4().hex[:12]}"
     entry = {
         "goal_id": goal_id,

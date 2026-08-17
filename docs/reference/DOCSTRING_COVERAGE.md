@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6430/12966 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6434/12977 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -31,15 +31,15 @@ Generated from source. 6430/12966 functions/methods documented (49%). The list b
 | `core.services.visible_runs_sections` | 11 | 23 | 47% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 370 | 820 | 45% |
+| `core.tools` | 371 | 821 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 156 | 242 | 64% |
+| `scripts` | 159 | 252 | 63% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1848)
+## Undocumented public functions (1854)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1853,6 +1853,9 @@ Generated from source. 6430/12966 functions/methods documented (49%). The list b
 - `scripts/honesty_metrics.py` :: `main` (L45)
 - `scripts/identity_formation_monitor.py` :: `main` (L36)
 - `scripts/injection_richness_check.py` :: `richness_ok` (L14)
+- `scripts/interlanguage_analyze.py` :: `analyze` (L61)
+- `scripts/interlanguage_analyze.py` :: `load_all` (L42)
+- `scripts/interlanguage_analyze.py` :: `main` (L96)
 - `scripts/interlanguage_binary_jarvis_vs_ollama.py` :: `main` (L40)
 - `scripts/interlanguage_classifier_interim.py` :: `featurize` (L101)
 - `scripts/interlanguage_classifier_interim.py` :: `load_raw` (L49)
@@ -1860,6 +1863,9 @@ Generated from source. 6430/12966 functions/methods documented (49%). The list b
 - `scripts/interlanguage_classifier_interim.py` :: `permutation_p` (L118)
 - `scripts/interlanguage_drift_classifier.py` :: `main` (L211)
 - `scripts/interlanguage_drift_classifier.py` :: `run` (L128)
+- `scripts/interlanguage_llm_judge.py` :: `main` (L215)
+- `scripts/interlanguage_llm_judge.py` :: `run_alpha` (L100)
+- `scripts/interlanguage_llm_judge.py` :: `run_delta` (L149)
 - `scripts/interlanguage_structural_classifier.py` :: `main` (L174)
 - `scripts/jarvis_bare_practice_runner.py` :: `main` (L318)
 - `scripts/link_google_email.py` :: `main` (L21)

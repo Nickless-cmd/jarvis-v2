@@ -2,7 +2,7 @@
   "name": "jarvis-desktop",
   "productName": "J.A.R.V.I.S.",
   "private": true,
-  "version": "0.3.39",
+  "version": "0.3.41",
   "description": "J.A.R.V.I.S. — Calm, robust desktop app. Built on /chat/stream/v2 Anthropic-style protocol.",
   "homepage": "https://github.com/Nickless-cmd/jarvis-v2",
   "main": "dist-electron/main.js",
@@ -68,7 +68,10 @@
         "repo": "jarvis-v2"
       }
     ],
-    "afterPack": "build-hooks/afterPack.js"
+    "afterPack": "build-hooks/afterPack.cjs",
+    "deb": {
+      "afterInstall": "build-hooks/deb-after-install.sh"
+    }
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",

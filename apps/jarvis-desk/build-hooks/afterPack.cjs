@@ -7,6 +7,10 @@
 // = the app silently "won't start". The mode is recorded in the packed output, so
 // the generated .deb installs chrome-sandbox as root:root 4755 and the sandbox works.
 // (2026-07-23 — a build lost this bit and jarvis-desk stopped opening on ChiefOne.)
+//
+// .cjs, NOT .js (2026-08-17): package.json har "type": "module", så en .js-fil læses som
+// ESM → `require is not defined in ES module scope` → electron-builder fejlede HELE
+// pakningen. electron-builder loader hooken med require, så den skal være CommonJS.
 const fs = require("fs");
 const path = require("path");
 

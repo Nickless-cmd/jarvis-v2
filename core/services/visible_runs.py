@@ -620,20 +620,13 @@ def _classify_visible_run_interruption(error_message: str) -> dict[str, str]:
     }
 
 
-def _agentic_watchdog_timeout_reason(
-    *,
-    started_at: float,
-    last_progress_at: float,
-    now: float,
-    max_total_s: float,
-    max_silence_s: float,
-) -> str | None:
-    """Return the watchdog timeout reason, or None if the round can continue."""
-    if max_silence_s > 0 and (now - last_progress_at) > max_silence_s:
-        return "provider-silence-timeout"
-    if max_total_s > 0 and (now - started_at) > max_total_s:
-        return "provider-round-timeout"
-    return None
+# Watchdog-beslutningen bor nu i visible_runs_watchdog (Boy Scout-udskillelse,
+# 17. aug 2026) og er SULT-BEVIDST: tavshed mens vores eget event-loop var blokeret
+# er ikke bevis på en død provider. Re-eksporteret her, så eksisterende kaldere og
+# test-patch-mål (…visible_runs._agentic_watchdog_timeout_reason) er uændrede.
+from core.services.visible_runs_watchdog import (  # noqa: E402
+    agentic_watchdog_timeout_reason as _agentic_watchdog_timeout_reason,
+)
 
 
 def start_visible_run(
@@ -2894,12 +2887,23 @@ async def _stream_visible_run(
                                 _a_item = await asyncio.wait_for(_a_queue.get(), timeout=1.0)
                             except asyncio.TimeoutError:
                                 _now_t = time.monotonic()
+                                # Sult-signal: var VORES event-loop blokeret i vinduet?
+                                # I så fald er tavsheden vores skyld, ikke providerens →
+                                # watchdog'en giver nåde i stedet for at kassere runet
+                                # (17. aug: 515 req/min poll-storm → lag 347ms → 13 cutoffs).
+                                try:
+                                    from core.services.central_loop_lag import (
+                                        recent_peak_ms as _lag_wd)
+                                    _wd_lag_ms = _lag_wd(10.0)
+                                except Exception:
+                                    _wd_lag_ms = 0.0
                                 _watchdog_reason = _agentic_watchdog_timeout_reason(
                                     started_at=_round_start_t,
                                     last_progress_at=_last_provider_progress_t,
                                     now=_now_t,
                                     max_total_s=_round_overall_timeout_s,
                                     max_silence_s=_round_silence_timeout_s,
+                                    loop_lag_peak_ms=_wd_lag_ms,
                                 )
                                 # Keepalive-heartbeat under followup-rundens model-vent
                                 # (PROVIDER-AGNOSTISK idle-gap-fix, Bjørn 2026-06-23): first-

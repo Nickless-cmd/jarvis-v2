@@ -5,6 +5,7 @@
  *  Eget modul (ikke i api.ts) så det store api.ts ikke vokser. Løse defensive typer:
  *  backend-formerne er kendt, men UI'et skal aldrig vælte på et manglende felt. */
 import { apiFetch, type ApiConfig } from './api'
+import { sharedRead } from './sharedRead'
 
 export interface McRun {
   run_id: string
@@ -131,8 +132,22 @@ export interface McDailyCost {
   total_cost?: number
 }
 
+/** Rå costs-daily-payload, delt mellem ALLE forbrugere.
+ *  Rod: /central/costs-daily blev hentet 80 gange i minuttet (CostPanel + getMcOverviewSafe,
+ *  hver med eget poll-interval) — for data der opdateres ÉN gang i døgnet. Ét delt kald med
+ *  lang TTL i stedet. */
+async function readCostsDailyRaw(
+  config: ApiConfig,
+): Promise<{ days?: McDailyCost[]; today_cost?: number }> {
+  return sharedRead(
+    `costs-daily:${config.apiBaseUrl}`,
+    () => apiFetch<{ days?: McDailyCost[]; today_cost?: number }>(config, '/central/costs-daily'),
+    { ttlMs: 60_000, streamingTtlMs: 120_000 },
+  )
+}
+
 export async function getMcCostsDaily(config: ApiConfig, _days = 30): Promise<McDailyCost[]> {
-  const r = await apiFetch<{ days?: McDailyCost[] }>(config, `/central/costs-daily`)
+  const r = await readCostsDailyRaw(config)
   return r.days ?? []
 }
 
@@ -160,7 +175,8 @@ export interface McOverview {
 export async function getMcOverviewSafe(config: ApiConfig): Promise<McOverview> {
   // /central/overview findes ikke — byg et blødt overblik fra costs-daily.
   // Kaldet er wrappet i catch hos forbrugeren; hold det minimalt og robust.
-  const r = await apiFetch<{ today_cost?: number }>(config, '/central/costs-daily')
+  // Deler cache med getMcCostsDaily → samme endpoint hentes ikke to gange.
+  const r = await readCostsDailyRaw(config)
   return {
     ok: true,
     events: 0,

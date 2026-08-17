@@ -10,6 +10,7 @@
 import { StreamError } from './streamClient'
 import type { ContentBlock } from './sseProtocol'
 import { messageToBlocks } from './normalizeMessage'
+import { sharedRead } from './sharedRead'
 
 export interface ChatSession {
   id: string
@@ -458,9 +459,16 @@ export async function denyTool(config: ApiConfig, approvalId: string): Promise<v
   await apiFetch(config, `/chat/approvals/${encodeURIComponent(approvalId)}/deny`, { method: 'POST' })
 }
 
-/** Sessioner med et aktivt visible-run lige nu (#8 — også autonome runs). */
+/** Sessioner med et aktivt visible-run lige nu (#8 — også autonome runs).
+ *  Delt læsning: Sidebar, TakeoverHost, ChatView og CodeView poller alle denne (hver med
+ *  eget interval) → 95 req/min mod backenden. sharedRead kollapser dem til ét kald pr.
+ *  TTL, og bakker hårdt af mens et run streamer (se sharedRead). */
 export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
-  const data = await apiFetch<{ session_ids: string[] }>(config, '/chat/active-runs')
+  const data = await sharedRead(
+    `active-runs:${config.apiBaseUrl}`,
+    () => apiFetch<{ session_ids: string[] }>(config, '/chat/active-runs'),
+    { ttlMs: 2_000, streamingTtlMs: 10_000 },
+  )
   return data.session_ids ?? []
 }
 
@@ -499,9 +507,15 @@ export interface CentralSnapshot {
   }
 }
 
-/** Snapshot af Centralens live-tilstand (owner-only; 403 for ikke-ejere). */
+/** Snapshot af Centralens live-tilstand (owner-only; 403 for ikke-ejere).
+ *  Delt læsning: CentralPanel, CentralHud og CentralBadge poller alle denne → 128 req/min.
+ *  Kollapses til ét kald pr. TTL; kraftig backoff mens et run streamer. */
 export async function getCentralRealtime(config: ApiConfig): Promise<CentralSnapshot> {
-  return apiFetch<CentralSnapshot>(config, '/central/realtime')
+  return sharedRead(
+    `central-realtime:${config.apiBaseUrl}`,
+    () => apiFetch<CentralSnapshot>(config, '/central/realtime'),
+    { ttlMs: 3_000, streamingTtlMs: 15_000 },
+  )
 }
 
 /** Live owner-terminal ind i Centralen: kør en kommando-linje, få terminal-linjer retur. */

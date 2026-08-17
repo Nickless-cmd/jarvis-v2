@@ -6,6 +6,7 @@ import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
 import { lastTextBlock } from '../lib/blockHelpers'
 import { useCanonicalError } from '../hooks/useCanonicalError'
 import type { CanonicalError } from '../lib/canonicalError'
+import { setStreamActive } from '../lib/sharedRead'
 
 /** Struktureret bruger-vendt fejl (unified fejl-system, central_error_envelope).
  *  Kommer fra backendens `error`-system_event ELLER klient-side StreamError. */
@@ -376,6 +377,15 @@ export function StreamProvider({
     if (status !== 'working') return
     const id = setInterval(() => setElapsedMs(Date.now() - startedAtRef.current), 500)
     return () => clearInterval(id)
+  }, [status])
+
+  // Poll-backoff mens Jarvis streamer (Bjørn 17. aug 2026): desk'ens baggrundspolls
+  // (active-runs/central-realtime/costs-daily fra ~9 komponenter) sultede vores EGEN
+  // SSE-læser → forbindelsen døde → serveren cancellerede runet midt-flugt og Jarvis'
+  // arbejde blev kasseret. Mens et run kører skruer vi baggrundsstøjen ned.
+  useEffect(() => {
+    setStreamActive(status === 'working')
+    return () => setStreamActive(false)
   }, [status])
 
   const needsAttention =

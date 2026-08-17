@@ -56,7 +56,11 @@ export class AppDispatchWatcher {
     if (this.busy) return
     this.busy = true
     try {
-      const r = await fetch(`${this.base}/api/cowork/app-dispatch/pending`, { headers: this.headers() })
+      // Sti-fix (Bjørn 17. aug 2026): ruten er monteret under /cowork (APIRouter
+      // prefix="/cowork", include_router uden ekstra prefix) — IKKE /api/cowork.
+      // Det forkerte prefix gav 404 ved HVERT tick, som `if (!r.ok) return` slugte
+      // tavst → app-dispatch har aldrig virket, og pollen var ren spildtrafik.
+      const r = await fetch(`${this.base}/cowork/app-dispatch/pending`, { headers: this.headers() })
       if (!r.ok) return
       const data = (await r.json()) as { pending?: AppInstruction[] }
       for (const instr of data.pending ?? []) {
@@ -86,7 +90,7 @@ export class AppDispatchWatcher {
 
   private async ack(id: string): Promise<void> {
     try {
-      await fetch(`${this.base}/api/cowork/app-dispatch/${encodeURIComponent(id)}/ack`,
+      await fetch(`${this.base}/cowork/app-dispatch/${encodeURIComponent(id)}/ack`,
         { method: 'POST', headers: this.headers() })
     } catch { /* best-effort */ }
   }

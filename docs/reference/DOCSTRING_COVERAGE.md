@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6429/12965 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6432/12975 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,22 +24,22 @@ Generated from source. 6429/12965 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 554 | 1024 | 54% |
-| `core.services` | 4256 | 9026 | 47% |
+| `core.services` | 4255 | 9025 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 11 | 23 | 47% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 370 | 820 | 45% |
+| `core.tools` | 371 | 821 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 156 | 242 | 64% |
+| `scripts` | 159 | 252 | 63% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1848)
+## Undocumented public functions (1854)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1731,20 +1731,20 @@ Generated from source. 6429/12965 functions/methods documented (49%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L502)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L499)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L509)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6289)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6314)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6518)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6527)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6514)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6285)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6427)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6479)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6396)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6337)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6369)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6255)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6537)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6300)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6285)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6310)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6514)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6523)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6510)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6281)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6423)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6475)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6392)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6333)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6365)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6251)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6533)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6296)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L333)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
@@ -1853,6 +1853,9 @@ Generated from source. 6429/12965 functions/methods documented (49%). The list b
 - `scripts/honesty_metrics.py` :: `main` (L45)
 - `scripts/identity_formation_monitor.py` :: `main` (L36)
 - `scripts/injection_richness_check.py` :: `richness_ok` (L14)
+- `scripts/interlanguage_analyze.py` :: `analyze` (L61)
+- `scripts/interlanguage_analyze.py` :: `load_all` (L42)
+- `scripts/interlanguage_analyze.py` :: `main` (L96)
 - `scripts/interlanguage_binary_jarvis_vs_ollama.py` :: `main` (L40)
 - `scripts/interlanguage_classifier_interim.py` :: `featurize` (L101)
 - `scripts/interlanguage_classifier_interim.py` :: `load_raw` (L49)
@@ -1860,6 +1863,9 @@ Generated from source. 6429/12965 functions/methods documented (49%). The list b
 - `scripts/interlanguage_classifier_interim.py` :: `permutation_p` (L118)
 - `scripts/interlanguage_drift_classifier.py` :: `main` (L211)
 - `scripts/interlanguage_drift_classifier.py` :: `run` (L128)
+- `scripts/interlanguage_llm_judge.py` :: `main` (L215)
+- `scripts/interlanguage_llm_judge.py` :: `run_alpha` (L100)
+- `scripts/interlanguage_llm_judge.py` :: `run_delta` (L149)
 - `scripts/interlanguage_structural_classifier.py` :: `main` (L174)
 - `scripts/jarvis_bare_practice_runner.py` :: `main` (L318)
 - `scripts/link_google_email.py` :: `main` (L21)

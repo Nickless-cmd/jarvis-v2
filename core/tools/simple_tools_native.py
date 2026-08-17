@@ -2264,6 +2264,21 @@ def _exec_central_query(args: dict[str, Any]) -> dict[str, Any]:
                 "meta": {"latency_ms": 0, "source": "central_query", "truncated": False}}
 
 
+def _exec_interlanguage_protocol(args: dict[str, Any]) -> dict[str, Any]:
+    """Eksportér inter-sprog-protokollen (designets fase 5 — bæring ved modelskift).
+    Returnerer de seneste N state-expressions + vokabular, så protokollen kan
+    genindlæses i en anden model-kontekst. HÅRD invariant: ALTID status=ok/error."""
+    try:
+        from core.services.interlanguage_practice import export_protocol
+        recent_days = int((args or {}).get("recent_days", 30))
+        max_expressions = int((args or {}).get("max_expressions", 200))
+        data = export_protocol(recent_days=recent_days, max_expressions=max_expressions)
+        return {"status": "ok", "data": data}
+    except Exception as exc:
+        return {"status": "error", "data": None,
+                "error": f"interlanguage_protocol unavailable: {type(exc).__name__}: {exc}"}
+
+
 def _json_safe_cell(v: Any) -> Any:
     """Coerce a raw SQLite cell value to a JSON-safe type. BLOB/bytes → utf-8
     text if decodable, else a short base64 placeholder. str/int/float/None are

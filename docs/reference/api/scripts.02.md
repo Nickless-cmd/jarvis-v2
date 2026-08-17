@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/rewrite_legacy_memory_provenance.py`
+_Bulk-rewrite legacy `[MEMORY.md]` / `[USER.md]` prefixes in daily memory._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `rewrite_file` | `(path, *, dry_run)` | Return (matched_lines, rewritten_lines). | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L36) |
+| function | `main` | `()` | — | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L57) |
+
+## `scripts/seed_cognitive_state.py`
+_Seed cognitive state tables with initial values based on known context._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `seed_personality_vector` | `()` | Seed personality-vektoren (confidence/stil/præferencer/fejl/styrker/baseline). | [src](../../../scripts/seed_cognitive_state.py#L33) |
+| function | `seed_taste_profile` | `()` | Seed taste-profilen (kode-/design-/kommunikations-smag + evidence_count). | [src](../../../scripts/seed_cognitive_state.py#L84) |
+| function | `seed_relationship_texture` | `()` | Seed relations-teksturen (humor, inside-referencer, korrektions-mønstre, | [src](../../../scripts/seed_cognitive_state.py#L118) |
+| function | `seed_compass` | `()` | Seed kompas-tilstanden (bearing, rationale, open_loop_count). | [src](../../../scripts/seed_cognitive_state.py#L164) |
+| function | `seed_rhythm` | `()` | Seed rytme-tilstanden ud fra nuværende UTC-time. | [src](../../../scripts/seed_cognitive_state.py#L180) |
+| function | `seed_chronicle` | `()` | Seed en initial chronicle-post (2026-W14: narrativ, key_events, lessons). | [src](../../../scripts/seed_cognitive_state.py#L208) |
+| function | `main` | `()` | Kør alle seed-funktioner i rækkefølge og print samlet status. | [src](../../../scripts/seed_cognitive_state.py#L241) |
+
 ## `scripts/setup_google_calendar.py`
 _One-time OAuth setup for Google Calendar._
 

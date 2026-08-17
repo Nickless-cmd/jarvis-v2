@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-07-15 — 444 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-08-17 — 445 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -155,6 +155,7 @@
 | `hf_zero_shot_classify` | native | no |
 | `home_assistant` | native | no |
 | `identity_mutation_status` | native | no |
+| `interlanguage_protocol` | native | no |
 | `internal_api` | native | no |
 | `invite_to_team` | native | no |
 | `list_agent_observations` | native | no |

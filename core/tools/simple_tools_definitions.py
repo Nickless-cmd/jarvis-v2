@@ -2951,6 +2951,30 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "interlanguage_protocol",
+            "description": (
+                "Eksportér inter-sprog-protokollen (designets fase 5 — bæring ved modelskift). "
+                "Returnerer de seneste N state-expressions + vokabular, så protokollen kan "
+                "genindlæses i en anden model-kontekst. Returnerer ALTID status=ok/error."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "recent_days": {
+                        "type": "integer",
+                        "description": "Hvor mange dage tilbage af expressions (default 30)."
+                    },
+                    "max_expressions": {
+                        "type": "integer",
+                        "description": "Max antal expressions at eksportere (default 200)."
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "db_query",
             "description": (
                 "Run a read-only SQL SELECT query against Jarvis' own database. "

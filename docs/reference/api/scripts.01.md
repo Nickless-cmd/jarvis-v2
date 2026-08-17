@@ -217,6 +217,15 @@ _Rigdoms-gate for injektions-migration (spec 2026-07-05 §7)._
 | function | `_lines` | `(text)` | — | [src](../../../scripts/injection_richness_check.py#L10) |
 | function | `richness_ok` | `(*, direct, cached)` | — | [src](../../../scripts/injection_richness_check.py#L14) |
 
+## `scripts/interlanguage_analyze.py`
+_Interlanguage analysis — aggregate report over the practice corpus._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_all` | `(*, days=…)` | — | [src](../../../scripts/interlanguage_analyze.py#L42) |
+| function | `analyze` | `(rows)` | — | [src](../../../scripts/interlanguage_analyze.py#L61) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_analyze.py#L96) |
+
 ## `scripts/interlanguage_binary_jarvis_vs_ollama.py`
 _Binary: jarvis vs ollama_local — pre-check for Phase 4._
 
@@ -262,6 +271,19 @@ _Phase 3 supplementary — drift-feature classifier for jarvis vs random._
 | function | `build_chunks_for_peer` | `(peer)` | Chunk expressions chronologically; return [(snapshot, drift), ...]. | [src](../../../scripts/interlanguage_drift_classifier.py#L119) |
 | function | `run` | `(allow_early)` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L128) |
 | function | `main` | `()` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L211) |
+
+## `scripts/interlanguage_llm_judge.py`
+_LLM-judge for interlanguage validation — Phase 3+4 pre-registered design._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_expressions` | `(peer_id, *, days=…, limit=…)` | Pull expression_text for a peer from the interlanguage_practice table. | [src](../../../scripts/interlanguage_llm_judge.py#L57) |
+| function | `_ollama_chat` | `(model, prompt, *, timeout=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L72) |
+| function | `_parse_entity` | `(raw)` | Match first token of judge reply to an entity name (case-insensitive). | [src](../../../scripts/interlanguage_llm_judge.py#L88) |
+| function | `run_alpha` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L100) |
+| function | `run_delta` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L149) |
+| function | `_binomial_p` | `(k, n, p0)` | One-sided binomial p-value: P(X >= k) under H0 with prob p0. | [src](../../../scripts/interlanguage_llm_judge.py#L199) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_llm_judge.py#L215) |
 
 ## `scripts/interlanguage_structural_classifier.py`
 _Structural-feature classifier for interlanguage expressions._
@@ -442,25 +464,4 @@ _Reset heartbeat scheduler state when it gets stuck._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/reset_heartbeat_state.py#L36) |
-
-## `scripts/rewrite_legacy_memory_provenance.py`
-_Bulk-rewrite legacy `[MEMORY.md]` / `[USER.md]` prefixes in daily memory._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `rewrite_file` | `(path, *, dry_run)` | Return (matched_lines, rewritten_lines). | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L36) |
-| function | `main` | `()` | — | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L57) |
-
-## `scripts/seed_cognitive_state.py`
-_Seed cognitive state tables with initial values based on known context._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `seed_personality_vector` | `()` | Seed personality-vektoren (confidence/stil/præferencer/fejl/styrker/baseline). | [src](../../../scripts/seed_cognitive_state.py#L33) |
-| function | `seed_taste_profile` | `()` | Seed taste-profilen (kode-/design-/kommunikations-smag + evidence_count). | [src](../../../scripts/seed_cognitive_state.py#L84) |
-| function | `seed_relationship_texture` | `()` | Seed relations-teksturen (humor, inside-referencer, korrektions-mønstre, | [src](../../../scripts/seed_cognitive_state.py#L118) |
-| function | `seed_compass` | `()` | Seed kompas-tilstanden (bearing, rationale, open_loop_count). | [src](../../../scripts/seed_cognitive_state.py#L164) |
-| function | `seed_rhythm` | `()` | Seed rytme-tilstanden ud fra nuværende UTC-time. | [src](../../../scripts/seed_cognitive_state.py#L180) |
-| function | `seed_chronicle` | `()` | Seed en initial chronicle-post (2026-W14: narrativ, key_events, lessons). | [src](../../../scripts/seed_cognitive_state.py#L208) |
-| function | `main` | `()` | Kør alle seed-funktioner i rækkefølge og print samlet status. | [src](../../../scripts/seed_cognitive_state.py#L241) |
 

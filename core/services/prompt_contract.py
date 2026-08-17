@@ -1815,6 +1815,16 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("active autonomous goals", _e)
     try:
+        # Hans EGNE initiativer i den SYNLIGE samtale (Bjørn, 17. aug 2026).
+        # De blev før kun injiceret i heartbeat-prompten → han kendte aldrig sine
+        # egne impulser mens han talte med Bjørn. Bjørne-drømme-initiativet blev
+        # rejst 130 gange på fire måneder uden nogensinde at blive til en samtale.
+        # Se initiatives_prompt_section() for hele rod-årsagen.
+        from core.services.initiative_queue import initiatives_prompt_section
+        _awareness_add(34, "own initiatives", initiatives_prompt_section())
+    except Exception as _e:
+        _sec_err("own initiatives", _e)
+    try:
         from core.services.self_wakeup import self_wakeup_section
         _awareness_add(12, "fired self-wakeups", self_wakeup_section())
     except Exception as _e:

@@ -505,3 +505,62 @@ def _find_active_long_term_intention_by_title(title: str) -> dict[str, object] |
         if str(item.get("focus") or "").strip().lower() == normalized:
             return item
     return None
+
+
+# ── Awareness: hans EGNE initiativer i den synlige samtale ────────────────
+_RECURRING_AFTER_DAYS = 3      # ældre end dette = han vender tilbage til det
+_MAX_IN_PROMPT = 2             # hold sektionen lille (latens + cache)
+_PRIO_RANK = {"high": 0, "medium": 1, "low": 2}
+
+
+def initiatives_prompt_section() -> str | None:
+    """Awareness-sektion: de impulser han SELV har rejst, men aldrig fik sagt.
+
+    Rod (Bjørn, 17. aug 2026): initiativer blev kun injiceret i HEARTBEAT-prompten
+    (``_heartbeat_living_context_line`` → ``[INITIATIV: …]``) — altså kun i autonome
+    runs, hvor Bjørn ikke er til stede. I den faktiske samtale vidste Jarvis intet
+    om sine egne initiativer. Bjørne-drømme-initiativet blev derfor rejst 130 gange
+    på fire måneder (76 markeret ``acted`` = postet til en proaktivitets-kanal ingen
+    læste) uden nogensinde at blive til en samtale: impulsen blev genereret, aldrig
+    læst tilbage, og derfor genereret igen. Samme mønster som mål-runaway'en og
+    hukommelses-ekkoet.
+
+    ``first_seeded_at`` bærer gentagelses-signalet gratis: er den markant ældre end
+    ``detected_at``, er det ikke en ny indskydelse — det er noget han bliver ved at
+    vende tilbage til. Det er værd at vide FOR ham, ikke kun om ham.
+
+    Bevidst formuleret som awareness, ikke ordre: han vælger selv om det passer nu.
+    Self-safe → None ved enhver fejl (må aldrig vælte prompt-assembly).
+    """
+    try:
+        items = get_pending_initiatives() or []
+    except Exception:
+        return None
+    if not items:
+        return None
+
+    items = sorted(items, key=lambda i: _PRIO_RANK.get(str(i.get("priority") or "medium"), 1))
+    lines: list[str] = []
+    for it in items[:_MAX_IN_PROMPT]:
+        focus = str(it.get("focus") or "").strip()
+        if not focus:
+            continue
+        suffix = ""
+        first = str(it.get("first_seeded_at") or "").strip()
+        last = str(it.get("detected_at") or "").strip()
+        try:
+            if first and last:
+                f_dt = datetime.fromisoformat(first.replace("Z", "+00:00"))
+                l_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+                if (l_dt - f_dt) >= timedelta(days=_RECURRING_AFTER_DAYS):
+                    suffix = f"  [du har vendt tilbage til denne siden {f_dt.date().isoformat()}]"
+        except Exception:
+            suffix = ""
+        lines.append(f"  • {focus}{suffix}")
+
+    if not lines:
+        return None
+    return (
+        "Noget du selv har villet tage op (du vælger om det passer ind her):\n"
+        + "\n".join(lines)
+    )

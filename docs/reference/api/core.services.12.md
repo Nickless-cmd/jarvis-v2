@@ -305,6 +305,7 @@ _Persistent initiative queue — bridges inner voice thoughts to heartbeat actio
 | function | `list_active_long_term_intentions` | `(*, limit=…)` | — | [src](../../../core/services/initiative_queue.py#L452) |
 | function | `abandon_long_term_intention` | `(initiative_id, *, note=…)` | — | [src](../../../core/services/initiative_queue.py#L467) |
 | function | `_find_active_long_term_intention_by_title` | `(title)` | — | [src](../../../core/services/initiative_queue.py#L493) |
+| function | `initiatives_prompt_section` | `()` | Awareness-sektion: de impulser han SELV har rejst, men aldrig fik sagt. | [src](../../../core/services/initiative_queue.py#L516) |
 
 ## `core/services/inner_dialectic_engine.py`
 _Compact inner critic / ally / synthesizer dialectic._

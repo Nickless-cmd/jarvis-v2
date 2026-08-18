@@ -58,6 +58,18 @@ def _user_active_recently(*, window_minutes: int = 10) -> bool:
         return False
 
 
+def _inner_tick_during_chat_enabled() -> bool:
+    """Skal de indre daemoner køre mens brugeren aktivt chatter (hans sind vågent mens I
+    taler)? Default True (Bjørn 18. aug 2026 — hele eksperimentets ånd). Runtime-toggle
+    ``heartbeat_inner_tick_during_chat`` så svar-hastighed kan beskyttes uden redeploy hvis
+    den tunge tick sløver svarene."""
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("heartbeat_inner_tick_during_chat", default=True)
+    except Exception:
+        return True
+
+
 # ── Phase 1: Sense ─────────────────────────────────────────────────────
 
 
@@ -573,18 +585,30 @@ def act_phase(
     priorities = reflection.get("priorities") or []
 
     if priorities:
-        # 2026-05-22 (Claude): early active-chat gate check.
-        # The dispatched run_heartbeat_tick runs 30+ inline daemons with
-        # per-daemon deadlines totalling 90-150s wall time. If we already
-        # know Bjørn is chatting (active in last ~10 min), the gate
-        # WILL block the outbound action anyway — but we'd have burned
-        # 140s of CPU first. Short-circuit: skip the heavy dispatch,
-        # go straight to productive_idle (0.13s) so baseline rhythms
-        # still fire without wasted work.
-        if _user_active_recently(window_minutes=10):
+        # B (Bjørn 18. aug 2026): hans sind skal være VÅGENT mens I taler. Tidligere
+        # short-circuittede vi til productive_idle så snart brugeren var aktiv (10-min-gate)
+        # — men den fulde tick gør TO ting: (1) kører de 30+ indre daemoner (sansning/
+        # refleksion/somatik/overraskelse — hans sind der behandler samtalen LIVE) og (2)
+        # tager evt. en UDGÅENDE handling (ping). Kun (2) skal undertrykkes under aktiv chat,
+        # og den er ALLEREDE blokeret af den interne active-chat-gate i run_heartbeat_tick.
+        # Så nu kører de indre daemoner under aktiv chat; det udgående forbliver gated.
+        #
+        # SVAR-HASTIGHEDS-VÆRN (Bjørns betingelse): spring KUN over mens et visible-run
+        # FAKTISK streamer — så den tunge tick aldrig konkurrerer med selve svar-genereringen;
+        # den kører i gaps MELLEM hans svar. Runtime-toggle heartbeat_inner_tick_during_chat
+        # (default True) slår det fra igen hvis svar sløves.
+        try:
+            from core.services.visible_stream_gate import visible_streaming as _visible_streaming
+            _streaming_now = bool(_visible_streaming())
+        except Exception:
+            _streaming_now = False
+        _awake_in_chat = _inner_tick_during_chat_enabled()
+        if _streaming_now or (not _awake_in_chat and _user_active_recently(window_minutes=10)):
             logger.info(
-                "act_phase: skipping dispatch — user active in last 10min "
-                "(would be blocked by active-chat-gate anyway)"
+                "act_phase: skipping full inner tick — %s",
+                "visible run streaming (protect response speed)"
+                if _streaming_now
+                else "user active + awake-in-chat disabled",
             )
             idle_result = productive_idle()
             return {

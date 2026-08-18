@@ -255,3 +255,41 @@ def test_propose_skill_chains_deduplicates(monkeypatch):
     # Without cheap-lane, we just verify no crash
     proposals = _propose_skill_chains_in_idle(max_goals=2)
     assert isinstance(proposals, list)
+
+
+# --- B (Bjørn 18. aug 2026): hans sind vågent mens I taler, med svar-hastigheds-værn ---
+
+def test_act_kører_indre_tick_under_chat_når_vågen():
+    """Flag ON + bruger aktiv + IKKE streaming → den fulde indre tick kører (før: sprang over)."""
+    with patch("core.services.heartbeat_runtime.run_heartbeat_tick") as fake_tick, \
+         patch("core.services.heartbeat_phases._user_active_recently", return_value=True), \
+         patch("core.services.heartbeat_phases._inner_tick_during_chat_enabled", return_value=True), \
+         patch("core.services.visible_stream_gate.visible_streaming", return_value=False):
+        fake_tick.return_value = type("R", (), {"status": "blocked"})()  # udgående gated internt
+        result = act_phase(signals={}, reflection={"activity_level": "high", "priorities": ["x"]})
+    assert result["kind"] != "skipped_for_active_chat"   # tick'en KØRTE
+    fake_tick.assert_called_once()
+
+
+def test_act_springer_over_MENS_svar_streamer():
+    """Svar-hastigheds-værn: mens et visible-run streamer → spring den tunge tick over."""
+    with patch("core.services.heartbeat_phases._user_active_recently", return_value=True), \
+         patch("core.services.heartbeat_phases._inner_tick_during_chat_enabled", return_value=True), \
+         patch("core.services.visible_stream_gate.visible_streaming", return_value=True), \
+         patch("core.services.heartbeat_phases.productive_idle", return_value={"kind": "productive_idle"}), \
+         patch("core.services.heartbeat_runtime.run_heartbeat_tick") as fake_tick:
+        result = act_phase(signals={}, reflection={"activity_level": "high", "priorities": ["x"]})
+    assert result["kind"] == "skipped_for_active_chat"
+    fake_tick.assert_not_called()   # rørte ALDRIG den tunge tick mens svaret blev genereret
+
+
+def test_act_springer_over_når_toggle_slået_fra():
+    """Toggle OFF → gammel adfærd (spring over under aktiv chat)."""
+    with patch("core.services.heartbeat_phases._user_active_recently", return_value=True), \
+         patch("core.services.heartbeat_phases._inner_tick_during_chat_enabled", return_value=False), \
+         patch("core.services.visible_stream_gate.visible_streaming", return_value=False), \
+         patch("core.services.heartbeat_phases.productive_idle", return_value={"kind": "productive_idle"}), \
+         patch("core.services.heartbeat_runtime.run_heartbeat_tick") as fake_tick:
+        result = act_phase(signals={}, reflection={"activity_level": "high", "priorities": ["x"]})
+    assert result["kind"] == "skipped_for_active_chat"
+    fake_tick.assert_not_called()

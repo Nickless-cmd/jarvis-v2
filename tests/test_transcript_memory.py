@@ -49,8 +49,15 @@ def test_structured_transcript_user_assistant_roles() -> None:
     assert "Hvad kan jeg hjælpe med?" in result[1]["content"]
 
 
-def test_structured_transcript_tool_compressed_into_assistant() -> None:
-    """Tool messages are merged into preceding assistant message as annotation."""
+def test_structured_transcript_tool_results_bæres_som_INPUT() -> None:
+    """Tool-resultater hører på USER-siden — ikke i assistant-beskeden.
+
+    Rod (Bjørn 18. aug 2026): før blev historiske tool-resultater flettet ind i den
+    foregående assistant-besked som "\\n(<resultat>)". Dermed lærte Jarvis' egen historik
+    ham at assistent-beskeder INDEHOLDER tool-output — og da han fabrikerede fem
+    tool-resultater var det mønster-fuldførelse af hans eget transskript, ikke
+    opfindsomhed. Et tool-resultat er INPUT til modellen, ikke noget den har sagt.
+    """
     import unittest.mock as mock
     from core.services.prompt_contract import (
         _build_structured_transcript_messages,
@@ -67,13 +74,41 @@ def test_structured_transcript_tool_compressed_into_assistant() -> None:
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
 
-    # Tool should be compressed into the first assistant message
     roles = [m["role"] for m in result]
-    assert "tool" not in roles, "Tool messages should not appear as separate turns"
+    assert "tool" not in roles, "tool-rolle må ikke lække som selvstændig tur"
 
-    # The tool result should be annotated on the preceding assistant message
-    first_assistant = next(m for m in result if m["role"] == "assistant")
-    assert "[get_time]" in first_assistant["content"]
+    # Resultatet skal findes — på user-siden, med eksplicit ramme.
+    joined_user = " ".join(m["content"] for m in result if m["role"] == "user")
+    assert "[get_time]" in joined_user, "tool-resultatet må ALDRIG tabes"
+    assert "værktøjs-resultat" in joined_user, "skal bære den eksplicitte input-ramme"
+
+    # ...og IKKE i nogen assistant-besked (det var mimekilden).
+    joined_assistant = " ".join(m["content"] for m in result if m["role"] == "assistant")
+    assert "[get_time]" not in joined_assistant
+
+
+def test_structured_transcript_tool_gammel_adfaerd_naar_flag_slaaet_fra() -> None:
+    """Flag OFF → historisk adfærd (annotation på assistant-besked) bevares."""
+    import unittest.mock as mock
+    from core.services.prompt_contract import (
+        _build_structured_transcript_messages,
+    )
+    fake_history = [
+        {"role": "user", "content": "Hvad er klokken?", "created_at": "2026-01-01T00:00:00"},
+        {"role": "assistant", "content": "Lad mig tjekke.", "created_at": "2026-01-01T00:00:01"},
+        {"role": "tool", "content": "[get_time]: 14:30", "created_at": "2026-01-01T00:00:02"},
+    ]
+    with mock.patch(
+        "core.services.prompt_contract.chat_session_messages_since_last_compact",
+        return_value=fake_history,
+    ), mock.patch(
+        "core.services.prompt_sections.transcript_sections._tool_results_as_input",
+        return_value=False,
+    ):
+        result = _build_structured_transcript_messages("test-session", limit=20, include=True)
+
+    joined_assistant = " ".join(m["content"] for m in result if m["role"] == "assistant")
+    assert "[get_time]" in joined_assistant
 
 
 def test_structured_transcript_tool_without_preceding_assistant() -> None:

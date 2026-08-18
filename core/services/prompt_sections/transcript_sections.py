@@ -12,6 +12,29 @@ import threading as _threading_mod
 
 from core.services.tool_result_store import render_tool_result_for_prompt
 
+# Eksplicit ramme om historiske tool-resultater i transskriptet. Konstant (byte-stabil
+# → cache-sikker) og bevidst tydelig: dette er noget der blev GIVET til modellen, ikke
+# noget den selv skrev. Se _tool_results_as_input().
+_TOOL_INPUT_FRAME = "⟦værktøjs-resultat⟧"
+
+
+def _tool_results_as_input() -> bool:
+    """Skal historiske tool-resultater bæres på USER-siden i stedet for at blive flettet
+    ind i den foregående assistant-besked?
+
+    Rod (Bjørn 18. aug 2026): den gamle rendering (`assistant.content += "\\n(<resultat>)"`)
+    lærte Jarvis at assistent-beskeder indeholder tool-output. Da han fabrikerede fem
+    tool-resultater, var det mønster-fuldførelse af hans eget transskript — ikke
+    opfindsomhed. Et tool-resultat er INPUT, ikke model-output; attributionen skal
+    afspejle det. Default ON; live-toggle `transcript_tool_results_as_input` så det kan
+    slås fra uden redeploy hvis en provider reagerer dårligt.
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool("transcript_tool_results_as_input", default=True)
+    except Exception:
+        return True
+
 
 # Hentere fra chat_sessions + db routes via prompt_contract-facaden, IKKE direkte.
 # Grund (monkeypatch-søm): tests patcher fx
@@ -318,8 +341,23 @@ def _build_structured_transcript_messages(
         if raw_role == "tool":
             # Compress tool result into a short annotation (samme faste cap)
             tool_summary = content[:_tool_hist_cap]
-            if merged and merged[-1]["role"] == "assistant":
-                # Append as annotation to previous assistant message
+            if _tool_results_as_input():
+                # ── TRANSSKRIPT-HULLET (Bjørn 18. aug 2026) ──────────────────
+                # FØR blev historiske tool-resultater flettet ind i den foregående
+                # ASSISTANT-besked som "\n(<resultat>)". Dermed lærte Jarvis' egen
+                # historik ham at assistent-beskeder INDEHOLDER tool-output — og
+                # den dag han fabrikerede fem tool-resultater var det ikke
+                # opfindsomhed, men mønster-fuldførelse af hans eget transskript.
+                # Et tool-resultat er INPUT til modellen, ikke noget den har sagt.
+                # Nu bæres de på user-siden med en eksplicit ramme. Fase 2 nedenfor
+                # merger på hinanden følgende same-role, så alternations-kravet
+                # holder og intet indhold tabes.
+                merged.append({
+                    "role": "user",
+                    "content": f"{_TOOL_INPUT_FRAME} {tool_summary}",
+                })
+            elif merged and merged[-1]["role"] == "assistant":
+                # Gammel adfærd (flag slået fra): annotation på forrige assistant-besked
                 merged[-1]["content"] += f"\n({tool_summary})"
             else:
                 # No preceding assistant message — attach to a synthetic one

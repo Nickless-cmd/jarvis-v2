@@ -230,21 +230,22 @@ _Transcript rendering + session compaction for prompts._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `chat_session_messages_since_last_compact` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L25) |
-| function | `_lifecycle_enabled` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L30) |
-| function | `_cold_floor_for` | `(session_id)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L38) |
-| function | `recent_chat_session_messages` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L46) |
-| function | `recent_chat_session_messages_by_user_turns` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L51) |
-| function | `visible_session_continuity` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L56) |
-| function | `_visible_session_continuity_instruction` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L61) |
-| function | `_recent_transcript_section` | `(session_id, *, limit, include)` | Legacy flat-text fallback — used only when structured messages are not viable. | [src](../../../core/services/prompt_sections/transcript_sections.py#L116) |
-| function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L169) |
-| function | `_build_structured_transcript_messages` | `(session_id, *, limit, include)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L207) |
-| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L417) |
-| function | `_ground_truth_for` | `(session_id)` | Best-effort VERIFIED-facts block (git HEAD, recent commits, key files) for the session, | [src](../../../core/services/prompt_sections/transcript_sections.py#L454) |
-| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | Build a summarise_fn(old_messages)->str for compact_session_history. | [src](../../../core/services/prompt_sections/transcript_sections.py#L466) |
-| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det | [src](../../../core/services/prompt_sections/transcript_sections.py#L540) |
-| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L580) |
+| function | `_tool_results_as_input` | `()` | Skal historiske tool-resultater bæres på USER-siden i stedet for at blive flettet | [src](../../../core/services/prompt_sections/transcript_sections.py#L21) |
+| function | `chat_session_messages_since_last_compact` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L48) |
+| function | `_lifecycle_enabled` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L53) |
+| function | `_cold_floor_for` | `(session_id)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L61) |
+| function | `recent_chat_session_messages` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L69) |
+| function | `recent_chat_session_messages_by_user_turns` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L74) |
+| function | `visible_session_continuity` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L79) |
+| function | `_visible_session_continuity_instruction` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L84) |
+| function | `_recent_transcript_section` | `(session_id, *, limit, include)` | Legacy flat-text fallback — used only when structured messages are not viable. | [src](../../../core/services/prompt_sections/transcript_sections.py#L139) |
+| function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L192) |
+| function | `_build_structured_transcript_messages` | `(session_id, *, limit, include)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L230) |
+| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L455) |
+| function | `_ground_truth_for` | `(session_id)` | Best-effort VERIFIED-facts block (git HEAD, recent commits, key files) for the session, | [src](../../../core/services/prompt_sections/transcript_sections.py#L492) |
+| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | Build a summarise_fn(old_messages)->str for compact_session_history. | [src](../../../core/services/prompt_sections/transcript_sections.py#L504) |
+| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det | [src](../../../core/services/prompt_sections/transcript_sections.py#L578) |
+| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L618) |
 
 ## `core/services/prompt_sections/workspace_files.py`
 _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._

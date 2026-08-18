@@ -77,6 +77,10 @@ class _Session:
                     dict(
                         os.environ,
                         PS1="",
+                        # PS2="" bevidst: protokollen wrapper hver kommando i "{ ... }",
+                        # så bash printer ALTID continuation-prompt som normal del af flowet
+                        # — PS2 kan derfor ikke bruges til desync-detektion (afprøvet og
+                        # forkastet 18. aug 2026: gav falsk positiv på hver kommando).
                         PS2="",
                         TERM="dumb",
                         # 2026-05-16 fix: pty hænger fordi git/less/man auto-pager
@@ -118,12 +122,63 @@ class _Session:
         except ChildProcessError:
             return False
 
+    def _resync(self, probe_timeout: float = 3.0) -> bool:
+        """Bryd shell'en ud af en hængende/continuation-tilstand og bekræft at den svarer.
+
+        Rod (Bjørn 18. aug 2026 — "alle hans tools sluges, især bash"): efterlader en
+        kommando shell'en i continuation-tilstand (uafsluttet quote/brace/heredoc), spises
+        både ``}``-linjen og END-markeren som en del af den ventende konstruktion → markeren
+        kommer aldrig → timeout. Uden resync forbliver den DELTE shell desynket, så HVER
+        efterfølgende kommando sluges: intet output, ingen filer, ingen fejl.
+
+        Ctrl-C (``\\x03``) på PTY'en sender SIGINT til foreground-gruppen: bash forkaster en
+        ventende continuation-linje og dræber en langvarig kommando → tilbage til prompt.
+        Derefter probes med en unik markør; svarer den, er sessionen brugbar igen.
+        Returnerer False hvis shell'en ikke kan reddes (kalderen lukker og genåbner).
+        """
+        try:
+            os.write(self.fd, b"\x03")          # afbryd ventende konstruktion/kommando
+            time.sleep(0.05)
+            os.write(self.fd, b"\n")            # tom linje → frisk prompt
+        except OSError:
+            return False
+        self._drain_pending(timeout=0.3)
+
+        probe = f"__JARVIS_PROBE_{uuid.uuid4().hex}__"
+        try:
+            os.write(self.fd, f'echo "{probe}"\n'.encode())
+        except OSError:
+            return False
+        probe_b = probe.encode()
+        buf = b""
+        deadline = time.time() + max(0.5, float(probe_timeout))
+        while time.time() < deadline:
+            r, _, _ = select.select([self.fd], [], [], 0.1)
+            if not r:
+                if not self.alive():
+                    return False
+                continue
+            try:
+                chunk = os.read(self.fd, 4096)
+            except OSError:
+                return False
+            if not chunk:
+                return False
+            buf += chunk
+            if probe_b in buf:
+                self._drain_pending(timeout=0.2)   # ryd resten af probe-ekkoet
+                return True
+        return False
+
     def run(self, command: str, timeout: float = _DEFAULT_TIMEOUT) -> dict[str, Any]:
         if not self.alive():
             return {"status": "error", "error": "session terminated"}
 
         with self.lock:
             self.last_used = time.time()
+            # Ryd efterladt output fra en tidligere timeout/afbrudt kommando, så det ikke
+            # blandes ind i denne kommandos output eller forvirrer marker-detektionen.
+            self._drain_pending(timeout=0.05)
             marker = f"__JARVIS_END_{uuid.uuid4().hex}__"
             payload = (
                 f"{{ {command}\n"
@@ -164,14 +219,33 @@ class _Session:
                 if len(buf) > _OUTPUT_LIMIT_BYTES * 2:
                     buf = buf[-_OUTPUT_LIMIT_BYTES * 2:]
             else:
+                # Timeout: enten kører kommandoen stadig, ELLER shell'en står i en
+                # continuation-tilstand og har spist markøren. I begge tilfælde er den
+                # DELTE shell ubrugelig for næste kald hvis vi ikke rydder op — det var
+                # roden til "alle mine bash-kald sluges" (18. aug 2026). Resync nu.
+                _recovered = self._resync()
+                if not _recovered:
+                    # Kan ikke reddes → luk, så kalderens "session terminated"-sti
+                    # åbner en frisk session ved næste kald i stedet for at sluge alt.
+                    try:
+                        self.close()
+                    except Exception:
+                        pass
+                    return {
+                        "status": "error",
+                        "session_id": self.session_id,
+                        "command": command[:160],
+                        "error": "session terminated (desync efter timeout — genåbnes ved næste kald)",
+                        "output": _decode(buf)[-_OUTPUT_LIMIT_BYTES:],
+                    }
                 return {
                     "status": "timeout",
                     "session_id": self.session_id,
                     "command": command[:160],
                     "timeout_seconds": timeout,
                     "output": _decode(buf)[-_OUTPUT_LIMIT_BYTES:],
-                    "note": "Command did not finish within timeout. "
-                    "Session is still alive but the command may still be running.",
+                    "note": "Command did not finish within timeout (afbrudt; sessionen er "
+                    "resynkroniseret og klar til næste kommando).",
                 }
 
             return {

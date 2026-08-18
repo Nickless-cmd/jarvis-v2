@@ -47,21 +47,22 @@ _Persistent bash sessions — Jarvis' one-shot bash forced him to restart his_
 |---|---|---|---|---|
 | class | `_Session` | `` | — | [src](../../../core/tools/bash_session.py#L66) |
 | method | `_Session.__init__` | `(self, session_id)` | — | [src](../../../core/tools/bash_session.py#L67) |
-| method | `_Session._drain_pending` | `(self, timeout)` | — | [src](../../../core/tools/bash_session.py#L103) |
-| method | `_Session.alive` | `(self)` | — | [src](../../../core/tools/bash_session.py#L114) |
-| method | `_Session.run` | `(self, command, timeout=…)` | — | [src](../../../core/tools/bash_session.py#L121) |
-| method | `_Session.close` | `(self)` | — | [src](../../../core/tools/bash_session.py#L185) |
-| function | `_decode` | `(buf)` | — | [src](../../../core/tools/bash_session.py#L204) |
-| function | `_daemon_main` | `()` | Singleton bash-session daemon. Listens on the Unix socket, owns sessions. | [src](../../../core/tools/bash_session.py#L216) |
-| function | `_send` | `(client, payload)` | — | [src](../../../core/tools/bash_session.py#L367) |
-| function | `_ensure_daemon_running` | `()` | Return True if a reachable daemon exists. Spawn one if not. | [src](../../../core/tools/bash_session.py#L379) |
-| function | `_spawn_daemon` | `()` | Fork a detached daemon process running _daemon_main(). | [src](../../../core/tools/bash_session.py#L415) |
-| function | `_ping_daemon` | `()` | — | [src](../../../core/tools/bash_session.py#L431) |
-| function | `_client_call` | `(payload, timeout=…)` | — | [src](../../../core/tools/bash_session.py#L451) |
-| function | `_exec_bash_session_open` | `(args)` | — | [src](../../../core/tools/bash_session.py#L482) |
-| function | `_exec_bash_session_run` | `(args)` | — | [src](../../../core/tools/bash_session.py#L486) |
-| function | `_exec_bash_session_close` | `(args)` | — | [src](../../../core/tools/bash_session.py#L504) |
-| function | `_exec_bash_session_list` | `(_args)` | — | [src](../../../core/tools/bash_session.py#L511) |
+| method | `_Session._drain_pending` | `(self, timeout)` | — | [src](../../../core/tools/bash_session.py#L107) |
+| method | `_Session.alive` | `(self)` | — | [src](../../../core/tools/bash_session.py#L118) |
+| method | `_Session._resync` | `(self, probe_timeout=…)` | Bryd shell'en ud af en hængende/continuation-tilstand og bekræft at den svarer. | [src](../../../core/tools/bash_session.py#L125) |
+| method | `_Session.run` | `(self, command, timeout=…)` | — | [src](../../../core/tools/bash_session.py#L173) |
+| method | `_Session.close` | `(self)` | — | [src](../../../core/tools/bash_session.py#L259) |
+| function | `_decode` | `(buf)` | — | [src](../../../core/tools/bash_session.py#L278) |
+| function | `_daemon_main` | `()` | Singleton bash-session daemon. Listens on the Unix socket, owns sessions. | [src](../../../core/tools/bash_session.py#L290) |
+| function | `_send` | `(client, payload)` | — | [src](../../../core/tools/bash_session.py#L441) |
+| function | `_ensure_daemon_running` | `()` | Return True if a reachable daemon exists. Spawn one if not. | [src](../../../core/tools/bash_session.py#L453) |
+| function | `_spawn_daemon` | `()` | Fork a detached daemon process running _daemon_main(). | [src](../../../core/tools/bash_session.py#L489) |
+| function | `_ping_daemon` | `()` | — | [src](../../../core/tools/bash_session.py#L505) |
+| function | `_client_call` | `(payload, timeout=…)` | — | [src](../../../core/tools/bash_session.py#L525) |
+| function | `_exec_bash_session_open` | `(args)` | — | [src](../../../core/tools/bash_session.py#L556) |
+| function | `_exec_bash_session_run` | `(args)` | — | [src](../../../core/tools/bash_session.py#L560) |
+| function | `_exec_bash_session_close` | `(args)` | — | [src](../../../core/tools/bash_session.py#L578) |
+| function | `_exec_bash_session_list` | `(_args)` | — | [src](../../../core/tools/bash_session.py#L585) |
 
 ## `core/tools/brain_write_gate.py`
 _HARD gate for user-initiated writes to Jarvis' brain._

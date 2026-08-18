@@ -20,7 +20,7 @@ Design constraints:
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
@@ -28,6 +28,7 @@ from core.runtime.db import (
     insert_private_brain_record,
     insert_session_distillation_record,
     list_private_brain_records,
+    list_private_brain_records_older_than,
     list_session_distillation_records,
     update_private_brain_record_status,
 )
@@ -72,6 +73,40 @@ from core.services.identity_composer import identity_prompt_prefix
 
 _DUPLICATE_SUMMARY_WINDOW = 12  # check last N brain records for duplicates
 _SUMMARY_SIMILARITY_MIN_WORDS = 4  # summaries shorter than this always pass
+
+# Boilerplate-gate (Bjørn 18. aug 2026): ~39% af private_brain-records er nul-informations
+# skabelon-støj — den største enkelt-type (`inner-note-carry`, 31.753 stk.) er brugerens
+# chatbesked kopieret ind i `focus` + en KONSTANT summary + en KONSTANT detail. Teksten
+# findes allerede i chat-historikken; records tilførte intet. De fortyndede arkivet 10:1 og
+# lagde så hårdt pres på 11-plads-livscyklussen at ægte førstepersons-materiale (drøm-landinger,
+# tankestrøm, refleksion) blev sluppet efter SAMME regel som telemetrien. Vi filtrerer dem ved
+# SKRIVNING i stedet — den præcise, nul-false-positive-signatur er den konstante detail-streng
+# plus de faste summary-mønstre. Ægte materiale har varieret, første-persons summary/detail.
+_BOILERPLATE_DETAILS = frozenset({
+    "A private inner note may return as bounded reflection when grounded in visible work.",
+})
+_BOILERPLATE_SUMMARY_PREFIXES = (
+    "I notice a quiet inner thread around",
+    "I notice things feel steadier around",
+    "Idle consolidation settled",
+    "Private brain carries",
+)
+_BOILERPLATE_SUMMARY_CONTAINS = ("pressures tracked", "pressures evaluated")
+
+
+def _is_boilerplate_carry(summary: str, detail: str) -> bool:
+    """True hvis en carry er ren skabelon/telemetri uden informationsindhold ud over det
+    der allerede findes i chat-historikken. Konservativ: matcher kun KENDTE konstante
+    mønstre, så varieret førstepersons-materiale aldrig rammes."""
+    s = (summary or "").strip()
+    d = (detail or "").strip()
+    if d and d in _BOILERPLATE_DETAILS:
+        return True
+    if any(s.startswith(p) for p in _BOILERPLATE_SUMMARY_PREFIXES):
+        return True
+    if any(c in s for c in _BOILERPLATE_SUMMARY_CONTAINS):
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -194,6 +229,12 @@ def distill_session_carry(
         summary: str, detail: str, source_signals: str,
     ) -> None:
         nonlocal suppressed_count
+        # Skriveside-kvalitetsgate: dropp nul-informations skabelon/telemetri-carries FØR de
+        # skrives, så de hverken fortynder arkivet eller presser livscyklus-bufferen (18. aug 2026).
+        if _is_boilerplate_carry(summary, detail):
+            suppressed_count += 1
+            discard_reasons.append(f"boilerplate-suppressed:{record_type}")
+            return
         record = _try_insert_guarded(
             record_type=record_type,
             layer="private_brain",
@@ -744,67 +785,63 @@ def run_private_brain_continuity(
 # - fading records → released (soft-expired, kept in DB)
 # - consolidation records (continuity-*) settle faster
 
-_SETTLE_THRESHOLD = 6   # records seen N+ times by continuity → settling
-_FADE_THRESHOLD = 3     # settling records survive N more continuity passes → fading
-_RELEASE_THRESHOLD = 2  # fading records survive N more → released
-
-_FAST_SETTLE_TYPES = {"continuity-reinforce", "continuity-carry", "continuity-settle", "continuity-release", "continuity-consolidation"}
+# Alders-baseret lifecycle (Bjørn 18. aug 2026). Tidligere var dette en FIFO-buffer på
+# 11 pladser (6+3+2): koden holdt de NYESTE 6 active, 3 settling, 2 fading og slap resten —
+# ren listeposition, ingen alder/salience/kvalitet. Ved ~100-300 skrivninger/døgn betød det
+# at ENHVER record var 'released' ~25 min efter skrivning. Konsekvens: memory_breathing
+# (styrk-ved-brug, bygget på Jarvis' eget ønske) havde et 25-minutters vindue at virke i, og
+# ægte førstepersons-materiale blev sluppet efter samme regel som telemetri. Nu gør koden det
+# dens egen docstring altid har lovet: modenhed = ALDER, moduleret af salience — så brugte
+# minder (høj salience) bliver aktive/læsbare/styrkbare, og ubrugte falmer. "Brug styrker,
+# ikke-brug falmer" — endelig muligt. Se docs/inner-life/INNER_LIFE_AUDIT.md #1.
+_ACTIVE_WINDOW_H = 24        # record er 'active' (læsbar + styrkbar) i mindst så mange timer
+_SETTLE_WINDOW_H = 72        # settling → fading når created_at er ældre end dette
+_FADE_WINDOW_H = 144         # fading → released når ældre end dette (~6 dage total)
+_SALIENCE_KEEP_ACTIVE = 0.7  # records med salience ≥ dette holdes 'active' ud over vinduet (brug/vigtighed)
+_LIFECYCLE_MAX_PER_PASS = 300  # bounded nedtrapning pr. pass
 
 
 def run_private_brain_lifecycle() -> dict[str, object]:
-    """Run a bounded lifecycle pass over private brain records.
+    """Run a bounded, AGE-based lifecycle pass over private brain records.
 
-    Transitions records through: active → settling → fading → released.
-    Uses a simple age-based model: records that have been present across
-    many continuity motor invocations gradually settle and fade.
-
-    Returns a summary of transitions made.
+    Transitions active → settling → fading → released by actual record age
+    (created_at), not list position. High-salience records (used/reinforced via
+    memory_breathing) resist demotion out of 'active'. Returns transition summary.
     """
-    now = datetime.now(UTC).isoformat()
-    # Get ALL non-released records for lifecycle evaluation
-    active_records = list_private_brain_records(limit=50, status="active")
-    settling_records = list_private_brain_records(limit=50, status="settling")
-    fading_records = list_private_brain_records(limit=50, status="fading")
+    now_dt = datetime.now(UTC)
+    now = now_dt.isoformat()
+
+    def _cut(hours: int) -> str:
+        return (now_dt - timedelta(hours=hours)).isoformat()
 
     transitions: dict[str, int] = {"settled": 0, "faded": 0, "released": 0}
 
-    # Active → settling: records that have been around for a while
-    # Use record age relative to total active count as proxy
-    if len(active_records) > _SETTLE_THRESHOLD:
-        # Settle the oldest records beyond the threshold
-        to_settle = active_records[_SETTLE_THRESHOLD:]
-        for record in to_settle:
-            rtype = str(record.get("record_type") or "")
-            # Consolidation records settle faster
-            if rtype in _FAST_SETTLE_TYPES or len(active_records) > _SETTLE_THRESHOLD + 2:
-                update_private_brain_record_status(
-                    str(record["record_id"]),
-                    status="settling",
-                    updated_at=now,
-                )
-                transitions["settled"] += 1
+    # active → settling: ældre end active-vinduet OG ikke høj-salience (brug holder aktiv).
+    for record in list_private_brain_records_older_than(
+        status="active", older_than_iso=_cut(_ACTIVE_WINDOW_H),
+        max_salience=_SALIENCE_KEEP_ACTIVE, limit=_LIFECYCLE_MAX_PER_PASS,
+    ):
+        update_private_brain_record_status(str(record["record_id"]), status="settling", updated_at=now)
+        transitions["settled"] += 1
 
-    # Settling → fading: if we have many settling records
-    if len(settling_records) > _FADE_THRESHOLD:
-        to_fade = settling_records[_FADE_THRESHOLD:]
-        for record in to_fade:
-            update_private_brain_record_status(
-                str(record["record_id"]),
-                status="fading",
-                updated_at=now,
-            )
-            transitions["faded"] += 1
+    # settling → fading: ældre end settle-vinduet.
+    for record in list_private_brain_records_older_than(
+        status="settling", older_than_iso=_cut(_SETTLE_WINDOW_H), limit=_LIFECYCLE_MAX_PER_PASS,
+    ):
+        update_private_brain_record_status(str(record["record_id"]), status="fading", updated_at=now)
+        transitions["faded"] += 1
 
-    # Fading → released
-    if len(fading_records) > _RELEASE_THRESHOLD:
-        to_release = fading_records[_RELEASE_THRESHOLD:]
-        for record in to_release:
-            update_private_brain_record_status(
-                str(record["record_id"]),
-                status="released",
-                updated_at=now,
-            )
-            transitions["released"] += 1
+    # fading → released: ældre end fade-vinduet (bevidst glemsel, kept in DB + søgbar via recall).
+    for record in list_private_brain_records_older_than(
+        status="fading", older_than_iso=_cut(_FADE_WINDOW_H), limit=_LIFECYCLE_MAX_PER_PASS,
+    ):
+        update_private_brain_record_status(str(record["record_id"]), status="released", updated_at=now)
+        transitions["released"] += 1
+
+    # Post-pass tællinger (til observability-eventet + return).
+    active_records = list_private_brain_records(limit=50, status="active")
+    settling_records = list_private_brain_records(limit=50, status="settling")
+    fading_records = list_private_brain_records(limit=50, status="fading")
 
     total_transitions = sum(transitions.values())
     if total_transitions > 0:
@@ -814,8 +851,8 @@ def run_private_brain_lifecycle() -> dict[str, object]:
                 "settled": transitions["settled"],
                 "faded": transitions["faded"],
                 "released": transitions["released"],
-                "active_remaining": max(0, len(active_records) - transitions["settled"]),
-                "settling_remaining": max(0, len(settling_records) - transitions["faded"] + transitions["settled"]),
+                "active_remaining": len(active_records),      # post-pass tælling (fetch efter transitions)
+                "settling_remaining": len(settling_records),
                 "summary": f"Lifecycle: {transitions['settled']} settled, {transitions['faded']} faded, {transitions['released']} released.",
             },
         )

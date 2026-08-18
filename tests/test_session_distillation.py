@@ -721,3 +721,88 @@ def test_scrub_continuity_drops_machine_ids_and_dedups():
     assert out.count("No active runtime loop") == 1
     assert "Jeg vender tilbage med belastet kognition" in out
     assert _scrub_continuity_text("ren enkelt fokus") == "ren enkelt fokus"
+
+
+# --- Boilerplate-gate (Bjørn 18. aug 2026): skriveside-kvalitet ---
+from core.services.session_distillation import _is_boilerplate_carry
+
+
+class TestBoilerplateCarryGate:
+    def test_konstant_detail_er_boilerplate(self):
+        # Den største støjkilde: 31.503 inner-note-carries med denne konstante detail.
+        assert _is_boilerplate_carry(
+            "I notice a quiet inner thread around er alt commitet",
+            "A private inner note may return as bounded reflection when grounded in visible work.",
+        ) is True
+
+    def test_state_snapshot_skabelon_er_boilerplate(self):
+        assert _is_boilerplate_carry("I notice things feel steadier around ja", "") is True
+
+    def test_telemetri_snapshot_er_boilerplate(self):
+        assert _is_boilerplate_carry("1 pressures tracked, 1 dominant", "telemetry") is True
+        assert _is_boilerplate_carry("Idle consolidation settled bounded internal material", "") is True
+
+    def test_ægte_tankestrøm_er_IKKE_boilerplate(self):
+        assert _is_boilerplate_carry(
+            "Er jeg blot en skygge af mig selv, hvis jeg ikke selv kan definere min mening?",
+            "En længere refleksion over selvsyn og substans.",
+        ) is False
+
+    def test_ægte_drøm_landing_er_IKKE_boilerplate(self):
+        assert _is_boilerplate_carry(
+            "Noget gammelt taler ikke længere, men i stilheden lærer morgenen en ny måde at lytte på.",
+            "drøm-landing fra nattens session.",
+        ) is False
+
+    def test_tom_input_er_ikke_boilerplate(self):
+        assert _is_boilerplate_carry("", "") is False
+
+
+# --- Alders-baseret lifecycle (Bjørn 18. aug 2026): modenhed=alder, ikke FIFO-position ---
+from datetime import UTC, datetime, timedelta
+from core.runtime.db import (
+    insert_private_brain_record, update_private_brain_record_salience,
+    list_private_brain_records, get_private_brain_record,
+)
+from core.services.session_distillation import run_private_brain_lifecycle
+
+
+def _ins(rid, hours_old, salience=1.0, status_after=None):
+    ts = (datetime.now(UTC) - timedelta(hours=hours_old)).isoformat()
+    insert_private_brain_record(
+        record_id=rid, record_type="thought-stream-fragment", layer="private_brain",
+        session_id="s", run_id="r", focus="f", summary=f"sum-{rid}", detail="d",
+        source_signals="", confidence="medium", created_at=ts,
+    )
+    if salience != 1.0:
+        update_private_brain_record_salience(rid, salience)
+
+
+def test_lifecycle_settler_gamle_lav_salience(isolated_runtime):
+    """Record ældre end 24t med lav salience → settling (før: afhang af listeposition)."""
+    _ins("old-lowsal", hours_old=30, salience=0.3)
+    run_private_brain_lifecycle()
+    assert get_private_brain_record("old-lowsal")["status"] == "settling"
+
+
+def test_lifecycle_holder_gammel_HØJ_salience_aktiv(isolated_runtime):
+    """Brug/vigtighed (salience ≥ 0.7) holder en gammel record 'active' — 'brug styrker'."""
+    _ins("old-highsal", hours_old=30, salience=0.9)
+    run_private_brain_lifecycle()
+    assert get_private_brain_record("old-highsal")["status"] == "active"
+
+
+def test_lifecycle_rører_ikke_friske(isolated_runtime):
+    """Frisk record (< 24t) bliver aktiv uanset lav salience — den skal kunne styrkes."""
+    _ins("fresh", hours_old=2, salience=0.1)
+    run_private_brain_lifecycle()
+    assert get_private_brain_record("fresh")["status"] == "active"
+
+
+def test_lifecycle_er_IKKE_fifo(isolated_runtime):
+    """Kernebeviset: 10 friske records → INGEN settles (før: alt undtagen 6 nyeste)."""
+    for i in range(10):
+        _ins(f"batch-{i}", hours_old=1, salience=0.2)
+    res = run_private_brain_lifecycle()
+    assert res["transitions"]["settled"] == 0
+    assert len(list_private_brain_records(limit=50, status="active")) == 10

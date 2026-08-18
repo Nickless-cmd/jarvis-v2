@@ -150,6 +150,40 @@ def list_private_brain_records(
     return [_private_brain_record_from_row(row) for row in rows]
 
 
+def list_private_brain_records_older_than(
+    *,
+    status: str,
+    older_than_iso: str,
+    limit: int = 200,
+    max_salience: float | None = None,
+) -> list[dict[str, Any]]:
+    """Records i ``status`` med ``created_at < older_than_iso``, ÆLDSTE først.
+
+    Til alders-baseret lifecycle-nedtrapning (Bjørn 18. aug 2026): erstatter FIFO-position
+    med faktisk modenhed. ``max_salience``: hvis sat, KUN records med ``salience <`` denne —
+    så brugte/vigtige records (høj salience via memory_breathing) holdes tilbage i status.
+    Auto-scopet til scope_uid() (#154), som resten af laget.
+    """
+    from core.services.user_scope import scope_uid
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        clauses = ["status = ?", "created_at < ?"]
+        params: list[object] = [status, older_than_iso]
+        _uid = scope_uid()
+        if _uid:
+            clauses.append("user_id = ?")
+            params.append(_uid)
+        if max_salience is not None:
+            clauses.append("salience < ?")
+            params.append(float(max_salience))
+        where = "WHERE " + " AND ".join(clauses)
+        rows = conn.execute(
+            f"SELECT * FROM private_brain_records {where} ORDER BY id ASC LIMIT ?",
+            (*params, int(limit)),
+        ).fetchall()
+    return [_private_brain_record_from_row(row) for row in rows]
+
+
 def search_private_brain_records(
     query: str,
     *,

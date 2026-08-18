@@ -347,6 +347,7 @@ from core.runtime.db_scheduled_tasks import (  # noqa: E402,F401
 
 # --- Private brain records (split into db_private_brain.py per boy scout rule, 2026-06-15) ---
 from core.runtime.db_private_brain import (  # noqa: E402,F401
+    list_private_brain_records_older_than,
     _ensure_private_brain_records_table,
     _private_brain_record_from_row,
     insert_private_brain_record,

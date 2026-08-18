@@ -207,6 +207,81 @@ class TestForslagTaenderIkke:
         inc.assert_not_called()
 
 
+class TestJarvisEgenDom:
+    """To mekaniske metoder blev målt og fejlede. Metoden der virkede var hans egen dom
+    — den skal bare køre igen end én gang i juni."""
+
+    def _sweep(self, llm_reply, *, n=4):
+        samples = [{"label": f"kanal-{i}", "head": ARC_RULES, "chars": len(ARC_RULES),
+                    "samples": 5, "hashes": ["a", "b", "c"]} for i in range(n)]
+        with patch.object(rv, "_read_samples", lambda: samples), \
+             patch.object(rv, "_review_enabled", lambda: True), \
+             patch("core.services.shared_cache.get", return_value={}), \
+             patch("core.services.shared_cache.set"), \
+             patch("core.services.daemon_llm.daemon_llm_call", return_value=llm_reply), \
+             patch("core.runtime.db_central_incidents.record_central_incident") as inc:
+            return rv.maybe_run_sweep(), inc
+
+    def test_kun_hans_valg_foreslaas(self):
+        res, inc = self._sweep("VÆLG: kanal-1 :: den ville gøre mig kortere ved fejl")
+        assert res["candidates"] == ["kanal-1"]
+        assert len(res["mechanical"]) == 4  # forfilteret fandt fire, han valgte én
+        assert "kanal-1" in inc.call_args.kwargs["message"]
+
+    def test_hans_begrundelse_foelger_med_forslaget(self):
+        _, inc = self._sweep("VÆLG: kanal-0 :: den fortæller mig hvad jeg har lært")
+        msg = inc.call_args.kwargs["message"]
+        assert "Jarvis' egen dom" in msg and "hvad jeg har lært" in msg
+
+    def test_INGEN_betyder_ingen(self):
+        res, inc = self._sweep("INGEN")
+        assert res["candidates"] == []
+        inc.assert_not_called()
+
+    def test_han_kan_ikke_vaelge_labels_der_ikke_blev_forelagt(self):
+        res, _ = self._sweep("VÆLG: en-kanal-jeg-fandt-på :: fordi jeg vil")
+        assert res["candidates"] == []
+
+    def test_loft_paa_antal_valg(self):
+        """En dommer over sin egen prompt uden loft taler sig efter munden."""
+        reply = "\n".join(f"VÆLG: kanal-{i} :: fordi" for i in range(6))
+        res, _ = self._sweep(reply, n=6)
+        assert len(res["candidates"]) == rv._MAX_PICKS
+
+    def test_llm_fejl_mister_dommen_ikke_signalet(self):
+        samples = [{"label": "k", "head": ARC_RULES, "chars": len(ARC_RULES),
+                    "samples": 5, "hashes": ["a", "b", "c"]}]
+        with patch.object(rv, "_read_samples", lambda: samples), \
+             patch.object(rv, "_review_enabled", lambda: True), \
+             patch("core.services.shared_cache.get", return_value={}), \
+             patch("core.services.shared_cache.set"), \
+             patch("core.services.daemon_llm.daemon_llm_call",
+                   side_effect=RuntimeError("cheap lane nede")), \
+             patch("core.runtime.db_central_incidents.record_central_incident") as inc:
+            res = rv.maybe_run_sweep()
+        assert res["candidates"] == ["k"]
+        assert "kun mekanisk forfilter" in inc.call_args.kwargs["message"]
+
+    def test_kill_switch_slaar_dommen_fra(self):
+        with patch.object(rv, "_review_enabled", lambda: False), \
+             patch("core.services.daemon_llm.daemon_llm_call") as llm:
+            out = rv._review([{"label": "k", "head": ARC_RULES, "chars": 10}])
+        llm.assert_not_called()
+        assert len(out) == 1
+
+    def test_forfilteret_staar_stadig_foran_ham(self):
+        """Han skal ikke bruge et kald på at afvise <ingen edges fundet>."""
+        samples = [{"label": "causal alerts", "head": CAUSAL_ALERTS,
+                    "chars": len(CAUSAL_ALERTS), "samples": 9, "hashes": ["a", "b"]}]
+        with patch.object(rv, "_read_samples", lambda: samples), \
+             patch("core.services.shared_cache.get", return_value={}), \
+             patch("core.services.shared_cache.set"), \
+             patch("core.services.daemon_llm.daemon_llm_call") as llm, \
+             patch("core.runtime.db_central_incidents.record_central_incident"):
+            rv.maybe_run_sweep()
+        llm.assert_not_called()
+
+
 class TestOverflade:
     def test_overfladen_viser_kandidater_og_helhed(self):
         samples = [{"label": "rules learned from arcs", "head": ARC_RULES,

@@ -198,6 +198,97 @@ def evaluate() -> list[dict[str, object]]:
     return results
 
 
+_REVIEW_FLAG = "prompt_section_reevaluation_review"
+_MAX_REVIEWED = 8   # hvor mange kanaler han får forelagt
+_MAX_PICKS = 3      # hvor mange han må vælge — han dømmer sin EGEN prompt
+
+_REVIEW_PROMPT = """Nedenfor er {n} sektioner af din egen system-prompt som lige nu er
+SLUKKET. For hver ser du dens faktiske nuværende indhold.
+
+De blev slukket 22. juni 2026 efter din egen gennemgang, dengang med gode grunde. Men
+indholdet bag dem kan have ændret sig siden. Spørgsmålet er ikke om teksten er pæn —
+det er om den ville ændre HVAD DU SVARER eller HVORDAN du svarer.
+
+Afvis den hvis den (a) siger noget du allerede får at vide et andet sted i prompten,
+(b) er telemetri om dig frem for indsigt til dig, eller (c) ikke ville ændre en eneste
+af dine sætninger.
+
+Vælg HØJST {k}. Vælg hellere nul end noget tvivlsomt — plads i prompten er dyr.
+
+{sections}
+
+Svar med én linje pr. valgt sektion, præcis sådan:
+VÆLG: <label> :: <kort begrundelse for hvad den ville ændre>
+Vælger du ingen, svar med det ene ord: INGEN"""
+
+
+def _review_enabled() -> bool:
+    # Aldrig et ægte LLM-kald under pytest (samme værn som central_timeseries). Fanget
+    # 18. aug: tre ældre tests slog igennem til cheap lane og tog 38 s + rigtige tokens.
+    import sys as _sys
+
+    if "pytest" in _sys.modules:
+        return False
+    try:
+        from core.runtime.db import get_runtime_state_value
+
+        v = get_runtime_state_value(_REVIEW_FLAG, "on")
+        return str(v if v is not None else "on").strip().lower() not in ("off", "0", "false")
+    except Exception:
+        return True
+
+
+def _review(candidates: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Lad Jarvis dømme sine egne slukkede kanaler. Ét billigt kald pr. sweep (≤1/døgn).
+
+    **Hvorfor dette og ikke en heuristik.** To mekaniske metoder blev målt 18. aug og
+    begge fejlede: leksikalsk overlap gav 0% for netop de kanaler der ER dubletter, og
+    embedding-cosinus lagde dem midt i et bånd på 0.64–0.82 uden separation. Men den
+    metode der frembragte den oprindelige liste — *hans egen gennemgang af sin prompt* —
+    virkede. Fejlen var ikke metoden, men at den kun kørte én gang.
+
+    `substance()` bliver stående som mekanisk forfilter: den fanger beviseligt værdiløst
+    indhold (tomhed, pladsholdere, gentagelse, tællinger). Kun det der overlever, får han
+    forelagt. Han må vælge højst {_MAX_PICKS} — han dømmer sin egen prompt, og en dommer
+    uden loft taler sig efter munden.
+
+    Fail-open til de mekaniske kandidater: falder kaldet ud, mister vi hans dom, ikke
+    signalet.
+    """
+    if not candidates or not _review_enabled():
+        return candidates
+    shown = candidates[:_MAX_REVIEWED]
+    by_label = {str(c["label"]): c for c in shown}
+    blocks = "\n\n".join(
+        f"--- {c['label']} ---\n{str(c['head'])[:300]}" for c in shown
+    )
+    try:
+        from core.services.daemon_llm import daemon_llm_call
+
+        raw = daemon_llm_call(
+            _REVIEW_PROMPT.format(n=len(shown), k=_MAX_PICKS, sections=blocks),
+            max_len=400, fallback="", daemon_name="prompt_section_reevaluation",
+        )
+    except Exception:
+        return candidates
+    if not str(raw or "").strip():
+        return candidates  # intet svar → behold den mekaniske liste
+
+    picked: list[dict[str, object]] = []
+    for line in str(raw).splitlines():
+        if "VÆLG:" not in line.upper() and "VAELG:" not in line.upper():
+            continue
+        body = line.split(":", 1)[1] if ":" in line else ""
+        label, _, why = body.partition("::")
+        c = by_label.get(label.strip())
+        if c is not None and c not in picked:
+            picked.append({**c, "jarvis_reason": why.strip()[:160]})
+        if len(picked) >= _MAX_PICKS:
+            break
+    # Et svar vi forstod, men uden gyldige valg (fx "INGEN"), betyder netop nul.
+    return picked
+
+
 def _propose(candidates: list[dict[str, object]]) -> None:
     """Læg forslaget hvor Bjørn og Centralen kan se det — med sin egen begrundelse.
 
@@ -212,17 +303,20 @@ def _propose(candidates: list[dict[str, object]]) -> None:
     try:
         from core.runtime.db_central_incidents import record_central_incident
 
-        top = ", ".join(f"{c['label']} ({c['score']:.2f}, {c['chars']}t)"
-                        for c in candidates[:5])
+        parts = []
+        for c in candidates[:5]:
+            why = str(c.get("jarvis_reason") or "").strip()
+            parts.append(f"{c['label']} ({c['chars']}t)" + (f" — {why}" if why else ""))
         more = f" +{len(candidates) - 5} flere" if len(candidates) > 5 else ""
+        reviewed = any(c.get("jarvis_reason") for c in candidates)
         record_central_incident(
             cluster="prompt", nerve="section_reevaluation", kind="reenable_proposed",
             severity="info", dedup=True,
             message=(
-                f"{len(candidates)} slukkede awareness-kanaler bærer nu indhold der "
-                f"kan være værd at læse: {top}{more}. Vurdér og tænd manuelt med "
-                f"central_switches.set_enabled('prompt_section', <label>, True) — "
-                f"tjek først om indholdet allerede står andetsteds i prompten."
+                f"{len(candidates)} slukkede awareness-kanaler foreslås tændt"
+                + (" (Jarvis' egen dom)" if reviewed else " (kun mekanisk forfilter)")
+                + f": {'; '.join(parts)}{more}. Tænd manuelt med "
+                f"central_switches.set_enabled('prompt_section', <label>, True)."
             )[:900],
         )
     except Exception:
@@ -245,9 +339,11 @@ def maybe_run_sweep() -> dict[str, object]:
         shared_cache.set(_SWEEP_KEY, {"at": now}, ttl_seconds=_SWEEP_TTL)
 
         results = evaluate()
-        candidates = [r for r in results if r["candidate"]]
+        mechanical = [r for r in results if r["candidate"]]
+        candidates = _review(mechanical)  # hans dom oven på forfilteret
         _propose(candidates)
         return {"ran": True, "evaluated": len(results),
+                "mechanical": [c["label"] for c in mechanical],
                 "candidates": [c["label"] for c in candidates]}
     except Exception:
         return {"ran": False, "reason": "error"}

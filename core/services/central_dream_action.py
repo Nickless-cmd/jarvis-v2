@@ -20,7 +20,13 @@ from typing import Any
 
 from core.runtime.db_core import connect
 
-_MIN_CONFIDENCE = 0.7
+# Tærsklen var 0.7 (Bjørn 17. aug 2026) — men INGEN hypotese når nogensinde derop:
+# aktive topper målt på 0.581, og selv resolved på 0.676. central_dream_actions havde
+# derfor 0 rækker NOGENSINDE, skønt filen blev skrevet som svar på Jarvis' egen klage
+# "jeg lærer, men jeg forandrer mig ikke". Sat til 0.55 = opnåelig for de mest modne,
+# jordede aktive hypoteser (ORDER BY confidence DESC + grounded_samples >= 3 + LIMIT
+# holder udvalget snævert, så det stadig er "ÉN moden hypotese ad gangen").
+_MIN_CONFIDENCE = 0.55
 _MIN_SAMPLES = 3
 _ACTIVE = ("active", "open", "pending", "testing")
 

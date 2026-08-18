@@ -354,3 +354,60 @@ def test_mc_cadence_endpoint(isolated_runtime) -> None:
     response = mc.mc_internal_cadence()
     assert isinstance(response, dict)
     assert "producer_count" in response
+
+
+# ---------------------------------------------------------------------------
+# Dependency recency (Bjørn 18. aug 2026) — "har kørt for nyligt", ikke "samme tick"
+# ---------------------------------------------------------------------------
+
+def test_dep_blocked_when_parent_never_ran(isolated_runtime) -> None:
+    child, _ = _make_recorder("child")
+    child.depends_on = ["parent"]
+    now = datetime.now(UTC)
+    status, reason = _evaluate_producer(
+        child, now=now, last_visible_at=None, ran_this_tick=set(),
+    )
+    assert status == "blocked" and "dependency-not-met:parent" in reason
+
+
+def test_dep_satisfied_when_parent_ran_this_tick(isolated_runtime) -> None:
+    child, _ = _make_recorder("child")
+    child.depends_on = ["parent"]
+    now = datetime.now(UTC)
+    status, _ = _evaluate_producer(
+        child, now=now, last_visible_at=None, ran_this_tick={"parent"},
+    )
+    assert status == "due"
+
+
+def test_dep_satisfied_when_parent_ran_recently_not_this_tick(isolated_runtime) -> None:
+    """KERNEN i fixet: forælder kørte for 20 min siden (ikke i dette tick), men inden
+    for sit cooldown-vindue (30 min) × 2 = 60 min → barnet er IKKE blokeret."""
+    parent = ProducerSpec(name="parent", cooldown_minutes=30, visible_grace_minutes=0,
+                          run_fn=lambda **_k: {}, priority=5)
+    cadence_mod.register_producer(parent)
+    child, _ = _make_recorder("child")
+    child.depends_on = ["parent"]
+    now = datetime.now(UTC)
+    cadence_mod._last_run_at["parent"] = (now - timedelta(minutes=20)).isoformat()
+
+    status, _ = _evaluate_producer(
+        child, now=now, last_visible_at=None, ran_this_tick=set(),
+    )
+    assert status == "due"   # før fixet: "blocked" (kørte ikke i SAMME tick)
+
+
+def test_dep_stale_when_parent_ran_too_long_ago(isolated_runtime) -> None:
+    """Forælder kørte for 200 min siden → uden for 30×2=60 min-vinduet → blokeret."""
+    parent = ProducerSpec(name="parent", cooldown_minutes=30, visible_grace_minutes=0,
+                          run_fn=lambda **_k: {}, priority=5)
+    cadence_mod.register_producer(parent)
+    child, _ = _make_recorder("child")
+    child.depends_on = ["parent"]
+    now = datetime.now(UTC)
+    cadence_mod._last_run_at["parent"] = (now - timedelta(minutes=200)).isoformat()
+
+    status, reason = _evaluate_producer(
+        child, now=now, last_visible_at=None, ran_this_tick=set(),
+    )
+    assert status == "blocked" and "dependency-stale:parent" in reason

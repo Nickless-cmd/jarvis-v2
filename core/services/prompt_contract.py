@@ -2089,16 +2089,25 @@ def _build_visible_chat_prompt_assembly_impl(
     # buffer, budget-exempt like inner life (self-narrative is already capped, the
     # temperature/affect lines are small).
     _self_buffer: list[str] = []
-    for _prio, _label, _content in _awareness:
+
+    def _flush_awareness_entry(_prio: int, _label: str, _content: str) -> None:
+        # Én awareness-sektion → rette buffer, med budget + kategori-header. Udskilt
+        # (2026-08-18) så BÅDE hovedflushen og den supplerende flush af de fire
+        # tail-deferred selv-sektioner (cognitive state / self state / cognitive frame /
+        # visible session continuity) bruger IDENTISK logik. De fire tilføjes efter
+        # denne løkke (deres indhold resolver først post-flush via tunge futures) og blev
+        # derfor tabt fra HVER visible prompt — samme bug-klasse som 2026-07-06-noten
+        # advarer om, blot for sektioner der ikke kan tilføjes før flushen.
+        nonlocal _used, _last_category
         _category = _awareness_category_for(_label)
         if _category == "indre":
             _inner_buffer.append(_content)
             derived_inputs.append(_label)
-            continue
+            return
         if _category == "self":
             _self_buffer.append(_content)
             derived_inputs.append(_label)
-            continue
+            return
         _pending_header = (
             _AWARENESS_CATEGORY_HEADERS.get(_category, "")
             if _category != _last_category else ""
@@ -2109,7 +2118,7 @@ def _build_visible_chat_prompt_assembly_impl(
         _never_drop = _label == "pinned identity context"
         if not _never_drop and _used > 0 and _used + _needed > _AWARENESS_BUDGET:
             _dropped.append(_label)
-            continue
+            return
         # Audit #3 (2026-07-22): keep the category header ATTACHED to its first
         # content item (single "\n") instead of pushing it as its own buffer
         # entry — otherwise the "\n\n" dyn_tail join renders every header as a
@@ -2124,6 +2133,12 @@ def _build_visible_chat_prompt_assembly_impl(
         derived_inputs.append(_label)
         _used += len(_content)
         _last_category = _category
+
+    for _prio, _label, _content in _awareness:
+        _flush_awareness_entry(_prio, _label, _content)
+    # Alt op til her er flushet; sektioner tilføjet SENERE (de fire tunge tail-deferred)
+    # flushes supplerende neden for, før bufferne forbruges ind i _dyn_tail.
+    _awareness_flushed_upto = len(_awareness)
     if _dropped:
         derived_inputs.append(f"awareness budget dropped: {', '.join(_dropped)}")
     # Prompt-cluster: ét central.observe pr. build → trace af hvad der kom med + hvorfor noget
@@ -2390,6 +2405,17 @@ def _build_visible_chat_prompt_assembly_impl(
     if frame_content:
         _awareness_add(42, "cognitive frame", frame_content)
         frame_content = None
+
+    # Supplerende flush (2026-08-18): de fire tunge tail-deferred sektioner ovenfor
+    # (visible session continuity / cognitive state / self state numbers / cognitive
+    # frame) blev _awareness_add'et EFTER hovedflushen allerede havde tømt _awareness
+    # — så de blev tavst droppet fra HVER visible prompt (cognitive_state koster 6-8s at
+    # bygge og blev kastet væk; self_state, bygget netop for at stoppe konfabulering af
+    # introspektive tal, nåede ham aldrig). Flush de nytilkomne entries ind i samme
+    # buffere/budget, før bufferne forbruges i _dyn_tail nedenfor.
+    for _prio, _label, _content in _awareness[_awareness_flushed_upto:]:
+        _flush_awareness_entry(_prio, _label, _content)
+    _awareness_flushed_upto = len(_awareness)
 
     raw_sections = {
         "capability_truth": capability_truth,

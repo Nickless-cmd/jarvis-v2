@@ -108,10 +108,29 @@ def _evaluate_producer(
     adfærd; alle eksterne kaldere upåvirket). Infra/health/SECURITY undtages inde i
     effective_cooldown → altid rå cadence. tempo ∈ [0.5, 2.0] → 0.5×..2× base.
     """
-    # Check dependencies
+    # Check dependencies — "har kørt for NYLIGT", ikke "kørte i SAMME tick" (Bjørn
+    # 18. aug 2026). Same-tick-kravet betød at hele indre-liv-kæden (dream_distillation,
+    # creative_journal, finitude, ontological_revision, self_critique …) kun kunne åbne
+    # i det ene tick efter opstart hvor ALT er 'due' samtidig — derefter aldrig, fordi
+    # forælder og barn på forskudte cooldowns sjældent lander i samme tick igen. Reel
+    # kadence blev = deploy-kadence; cognitive_chronicle_entries havde 1 række. Nu skal
+    # forælderen blot have kørt inden for sit eget cooldown-vindue (×2 margin) — efter
+    # opstarts-byrsten holder kæden sig selv i live. Fail-open ved manglende/ulæselig
+    # data (som resten af cadencen).
     for dep in spec.depends_on:
-        if dep not in ran_this_tick:
+        if dep in ran_this_tick:
+            continue
+        _dep_last = _last_run_at.get(dep)
+        if not _dep_last:
             return "blocked", f"dependency-not-met:{dep}"
+        try:
+            _dep_spec = _producers.get(dep)
+            _dep_window_min = (float(_dep_spec.cooldown_minutes) if _dep_spec else 60.0) * 2.0
+            _dep_elapsed_min = (now - datetime.fromisoformat(_dep_last)).total_seconds() / 60.0
+            if _dep_elapsed_min > _dep_window_min:
+                return "blocked", f"dependency-stale:{dep}"
+        except Exception:
+            pass  # kan ikke afgøre recency → tillad (fail-open)
 
     # Cooldown check — moduleret af tempo for non-exempt producers (self-safe:
     # fejl i modulationen falder tilbage til rå cooldown = nuværende adfærd).

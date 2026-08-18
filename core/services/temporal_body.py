@@ -1,5 +1,8 @@
 """Temporal Body — sense of age."""
 from __future__ import annotations
+
+import random  # age_journey() bruger random.randint; manglede → NameError sluges →
+               # _total_thoughts steg aldrig → alderen sad permanent på "spæd" (17. aug 2026).
 from typing import Any
 
 _ticks_alive: int = 0

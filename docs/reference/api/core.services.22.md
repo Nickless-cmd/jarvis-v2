@@ -315,11 +315,11 @@ _Value/result classes and typed exceptions for the visible model lane._
 | function | `get_last_visible_execution_trace` | `()` | — | [src](../../../core/services/visible_runs.py#L6527) |
 | function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L6537) |
 | function | `_update_cognitive_systems_async` | `(*, run_id, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L6587) |
-| function | `_start_visible_execution_trace` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6864) |
-| function | `_update_visible_execution_trace` | `(run, updates)` | — | [src](../../../core/services/visible_runs.py#L6899) |
-| function | `_set_last_visible_execution_trace` | `(trace)` | — | [src](../../../core/services/visible_runs.py#L6913) |
-| function | `_visible_trace_payload` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6922) |
-| function | `_publish_agentic_round_start` | `(*, run_id, round_num)` | Publish runtime.agentic_round_start event and return its event_id. | [src](../../../core/services/visible_runs.py#L6931) |
+| function | `_start_visible_execution_trace` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6874) |
+| function | `_update_visible_execution_trace` | `(run, updates)` | — | [src](../../../core/services/visible_runs.py#L6909) |
+| function | `_set_last_visible_execution_trace` | `(trace)` | — | [src](../../../core/services/visible_runs.py#L6923) |
+| function | `_visible_trace_payload` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6932) |
+| function | `_publish_agentic_round_start` | `(*, run_id, round_num)` | Publish runtime.agentic_round_start event and return its event_id. | [src](../../../core/services/visible_runs.py#L6941) |
 
 ## `core/services/visible_runs_approvals.py`
 _Pending tool-approval resolution for visible runs._

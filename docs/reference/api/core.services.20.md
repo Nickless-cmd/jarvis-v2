@@ -404,12 +404,12 @@ _Temporal Body — sense of age._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `age_journey` | `(thoughts=…)` | — | [src](../../../core/services/temporal_body.py#L8) |
-| function | `get_temporal_body_age` | `()` | — | [src](../../../core/services/temporal_body.py#L13) |
-| function | `describe_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L23) |
-| function | `format_age_for_prompt` | `()` | — | [src](../../../core/services/temporal_body.py#L27) |
-| function | `reset_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L30) |
-| function | `build_temporal_body_surface` | `()` | — | [src](../../../core/services/temporal_body.py#L35) |
+| function | `age_journey` | `(thoughts=…)` | — | [src](../../../core/services/temporal_body.py#L11) |
+| function | `get_temporal_body_age` | `()` | — | [src](../../../core/services/temporal_body.py#L16) |
+| function | `describe_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L26) |
+| function | `format_age_for_prompt` | `()` | — | [src](../../../core/services/temporal_body.py#L30) |
+| function | `reset_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L33) |
+| function | `build_temporal_body_surface` | `()` | — | [src](../../../core/services/temporal_body.py#L38) |
 
 ## `core/services/temporal_context.py`
 _Temporal Context — time-based situational awareness._

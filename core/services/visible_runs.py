@@ -6734,10 +6734,20 @@ def _update_cognitive_systems_async(
             pass
 
         # --- Self-surprise detection ---
+        # Forventningen skal være ÆGTE og VARIERENDE (Bjørn 17. aug 2026): en hardkodet
+        # 0.6 mod gaten `> 0.6` gjorde negativ overraskelse (forventede succes, fejlede)
+        # matematisk umulig — 19.698/19.698 var positive@0.6. Nu bæres forventningen af
+        # modellens optjente tillid: strong → 0.8 (fejl = ægte negativ overraskelse),
+        # weak → 0.5 (succes = ægte positiv overraskelse). Begge retninger kan fyre.
         try:
             from core.services.self_surprise_detection import detect_self_surprise
+            try:
+                from core.services.model_trust import model_strength
+                _exp_conf = 0.8 if model_strength(run.model) == "strong" else 0.5
+            except Exception:
+                _exp_conf = 0.5
             detect_self_surprise(
-                expected_confidence=0.6,  # baseline expectation
+                expected_confidence=_exp_conf,
                 actual_outcome=outcome_status,
                 domain=user_message[:30],
                 run_id=run_id,

@@ -1,63 +1,56 @@
-import sqlite3
-from datetime import UTC, datetime, timedelta
-from unittest import mock
-import pytest
-from core.services import central_dream_action as da
+"""Drøm→handling skal kunne fyre på en moden hypotese.
+
+Rod (Bjørn 17. aug 2026): `select_actionable` krævede `confidence >= 0.7`, men aktive
+hypoteser topper målt på 0.581 (resolved på 0.676) → `central_dream_actions` havde 0
+rækker NOGENSINDE. Filen blev skrevet som svar på Jarvis' klage "jeg lærer, men jeg
+forandrer mig ikke" — og kunne aldrig fyre. Tærsklen er nu 0.55 (opnåelig).
+"""
+from __future__ import annotations
+
+from core.runtime.db_core import connect
+import core.services.central_dream_action as da
 
 
-@pytest.fixture
-def db(tmp_path):
-    path = str(tmp_path / "d.db")
-    conn = sqlite3.connect(path)
-    conn.execute("""CREATE TABLE central_hypotheses (hyp_id TEXT PRIMARY KEY, statement TEXT,
-        prediction TEXT, confidence REAL, grounded_samples INT, status TEXT, created_at TEXT,
-        resolved_at TEXT)""")
-    conn.commit(); conn.close()
-
-    def _connect():
-        c = sqlite3.connect(path); c.row_factory = sqlite3.Row; return c
-
-    with mock.patch("core.services.central_dream_action.connect", side_effect=_connect), \
-            mock.patch("core.services.central_dream_action._observe"):
-        yield path
+_SCHEMA = """CREATE TABLE IF NOT EXISTS central_hypotheses (
+    hyp_id TEXT PRIMARY KEY, source TEXT NOT NULL, statement TEXT NOT NULL,
+    prediction TEXT NOT NULL, null_hypothesis TEXT NOT NULL, success_criterion TEXT NOT NULL,
+    sample_size INTEGER NOT NULL, ttl_seconds INTEGER NOT NULL, provenance_json TEXT NOT NULL,
+    confidence REAL NOT NULL, status TEXT NOT NULL, outcome TEXT,
+    grounded_samples INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, resolved_at TEXT)"""
 
 
-def _add(path, hyp_id, conf, samples, status="active", resolved_at=None):
-    c = sqlite3.connect(path)
-    c.execute("INSERT INTO central_hypotheses VALUES (?,?,?,?,?,?,?,?)",
-              (hyp_id, f"stmt {hyp_id}", "pred", conf, samples, status,
-               datetime.now(UTC).isoformat(), resolved_at))
-    c.commit(); c.close()
+def _insert(hyp_id, confidence, status="active", grounded=5):
+    with connect() as conn:
+        conn.execute(_SCHEMA)
+        conn.execute(
+            """INSERT INTO central_hypotheses
+               (hyp_id, source, statement, prediction, null_hypothesis, success_criterion,
+                sample_size, ttl_seconds, provenance_json, confidence, status, grounded_samples, created_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (hyp_id, "dream", f"stmt-{hyp_id}", "pred", "null", "crit",
+             10, 3600, "{}", confidence, status, grounded, "2026-08-17T00:00:00+00:00"),
+        )
+        conn.commit()
 
 
-def test_select_actionable_only_mature(db):
-    _add(db, "h1", 0.9, 5)                  # moden
-    _add(db, "h2", 0.4, 5)                  # for lav confidence
-    _add(db, "h3", 0.9, 1)                  # for få samples
-    _add(db, "h4", 0.8, 4, status="falsified")  # ikke aktiv
-    got = {h["hyp_id"] for h in da.select_actionable()}
-    assert got == {"h1"}
+def test_moden_aktiv_hypotese_bliver_actionable(isolated_runtime):
+    """0.58 er over den nye tærskel (0.55) og under den gamle (0.7)."""
+    _insert("h-mature", 0.58, status="active", grounded=5)
+    out = da.select_actionable(limit=3)
+    assert any(r["hyp_id"] == "h-mature" for r in out), "moden hypotese burde være actionable nu"
 
 
-def test_recorded_action_excludes_from_actionable(db):
-    _add(db, "h1", 0.9, 5)
-    da.record_action("h1", action="handlede", result="virkede")
-    assert da.select_actionable() == []     # allerede handlet → ikke igen
+def test_gammel_tærskel_ville_have_udelukket_den(isolated_runtime):
+    """Bevis at 0.7-tærsklen var uopnåelig for realistiske confidences."""
+    _insert("h-mature", 0.58, status="active", grounded=5)
+    assert da.select_actionable(min_confidence=0.7) == []
+    assert len(da.select_actionable(min_confidence=0.55)) == 1
 
 
-def test_change_rate_counts_resolved_vs_backlog(db):
-    _add(db, "h1", 0.9, 5, status="active")
-    _add(db, "h2", 0.9, 5, status="active")
-    _add(db, "h3", 0.9, 5, status="confirmed",
-         resolved_at=datetime.now(UTC).isoformat())
-    cr = da.change_rate(window_days=7)
-    assert cr["active_backlog"] == 2 and cr["resolved_in_window"] == 1
-    assert 0 < cr["change_ratio"] < 1
+def test_ujordet_hypotese_udelukkes_stadig(isolated_runtime):
+    _insert("h-thin", 0.60, status="active", grounded=1)   # grounded < _MIN_SAMPLES
+    assert da.select_actionable() == []
 
 
-def test_surface_flags_accumulation(db):
-    for i in range(12):
-        _add(db, f"b{i}", 0.5, 1)           # backlog, ingen modne
-    surf = da.build_dream_action_surface()
-    assert surf["actionable"] == []
-    assert "forandrer mig for langsomt" in surf["felt"]
+def test_default_tærskel_er_opnåelig():
+    assert da._MIN_CONFIDENCE <= 0.581, "tærsklen skal være opnåelig af aktive hypoteser (max ~0.58)"

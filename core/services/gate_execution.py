@@ -241,3 +241,102 @@ def check_upload(path: str, *, block_on_unavailable: bool = False) -> ExecCheck:
     return _to_check(_decide("exec_upload_scan", {
         "action": "upload_scan", "path": path,
         "block_on_unavailable": block_on_unavailable}))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  In-loop gate-observationer (Bjørns gate-princip, 18. aug 2026)
+# ─────────────────────────────────────────────────────────────────────────────
+# "Gates skal fange realtime, korrigere og advare — og kun ende et run hvis det
+# virkelig er nødvendigt." En gate skal være et TOOL-RESULTAT, ikke en guillotine:
+# dommen injiceres tilbage i det agentiske loop som en observation modellen kan
+# handle på i SAMME tur (præcis som en tool-fejl), i stedet for at afslutte runden
+# eller returnere en blind afvisning.
+#
+# Rod: `_exec_bash` returnerede `{"error": "Command blocked for safety: <cmd>"}` og
+# SMED `ExecCheck.reason` væk. Jarvis fik altså at vide AT han blev stoppet, men
+# aldrig HVORFOR eller HVAD han skulle gøre i stedet — så han kunne ikke rette sig
+# selv. En gate uden brugbar feedback er en blindgyde, ikke et værn.
+#
+# Tre egenskaber (samme mønster som fabricated_tool_result_gate):
+#   1. NON-BLOCKING  — returnerer et resultat ind i loopet; dræber aldrig runden.
+#   2. KLIENT-SYNLIG — incident bærer gate-navn + klassifikation + begrundelse.
+#   3. ESKALERENDE   — gentagne blokeringer af samme emne tælles og gøres synlige
+#                      for modellen ("du har fået denne blokering N gange"), så
+#                      gentagelse fører til skærpet formulering i stedet for tavshed.
+
+_GATE_REPEAT_COUNTS: dict[str, int] = {}
+_GATE_REPEAT_CAP = 50  # bounded — undgå ubegrænset vækst i en lang session
+
+
+def _gate_repeat_key(gate: str, subject: str) -> str:
+    import hashlib
+    digest = hashlib.sha1(f"{gate}|{subject}".encode("utf-8", "replace")).hexdigest()[:16]
+    return digest
+
+
+def gate_observation(
+    check: "ExecCheck",
+    *,
+    gate: str,
+    subject: str,
+    remedy: str = "",
+    status: str = "blocked",
+) -> dict[str, object]:
+    """Byg et IN-LOOP tool-resultat ud af en gate-dom — brugbart nok til selvkorrektion.
+
+    ``gate``     — hvilken gate slog til (vises til klienten og til modellen).
+    ``subject``  — det der blev vurderet (kommando/sti), bruges til gentagelses-tælling.
+    ``remedy``   — konkret næste skridt modellen kan tage i stedet.
+    Self-safe: telemetri må aldrig kunne forhindre at resultatet returneres.
+    """
+    reason = str(getattr(check, "reason", "") or "").strip()
+    classification = str(getattr(check, "classification", "") or "")
+
+    key = _gate_repeat_key(gate, subject)
+    if len(_GATE_REPEAT_COUNTS) > _GATE_REPEAT_CAP:
+        _GATE_REPEAT_COUNTS.clear()
+    count = _GATE_REPEAT_COUNTS.get(key, 0) + 1
+    _GATE_REPEAT_COUNTS[key] = count
+
+    parts = [f"[{gate}] {classification or status}"]
+    if reason:
+        parts.append(f"Årsag: {reason}")
+    else:
+        parts.append("Årsag: ikke oplyst af gaten.")
+    if remedy:
+        parts.append(f"Gør i stedet: {remedy}")
+    if count >= 2:
+        parts.append(
+            f"Bemærk: samme blokering er nu sket {count} gange i denne session — "
+            "vælg en anden fremgangsmåde i stedet for at gentage."
+        )
+    message = " | ".join(parts)
+
+    try:
+        from core.runtime.db_central_incidents import record_central_incident
+        record_central_incident(
+            cluster="execution",
+            nerve=gate,
+            kind="gate_fired",
+            severity="warning" if count < 3 else "error",
+            message=f"gate {gate} → {classification or status}: {reason or '(ingen begrundelse)'} "
+                    f"| emne={subject[:120]} | gentagelse={count}",
+            dedup=True,
+        )
+    except Exception:
+        pass
+
+    return {
+        "status": status,
+        "error": message,
+        "gate": gate,
+        "classification": classification,
+        "reason": reason,
+        "remedy": remedy,
+        "repeat_count": count,
+    }
+
+
+def reset_gate_repeat_counts() -> None:
+    """Nulstil gentagelses-tællere (tests + sessionsskift)."""
+    _GATE_REPEAT_COUNTS.clear()

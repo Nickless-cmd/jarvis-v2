@@ -287,11 +287,28 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     from core.services.gate_execution import check_command
     _ec = check_command(command, session_id=str(_session_id))
 
+    # Gate-domme leveres som IN-LOOP observationer med begrundelse + næste skridt
+    # (Bjørns gate-princip, 18. aug 2026). Før returnerede "blocked" kun
+    # "Command blocked for safety: <cmd>" og SMED _ec.reason væk — så Jarvis vidste
+    # AT han blev stoppet, men ikke HVORFOR eller HVAD han skulle gøre i stedet, og
+    # kunne derfor ikke rette sig selv. Gaten dræber stadig ikke runden; den giver nu
+    # bare brugbar feedback, er synlig for klienten, og skærper tonen ved gentagelse.
+    from core.services.gate_execution import gate_observation
+
     if _ec.classification == "guard_blocked":
-        return {"status": "guard_blocked", "error": _ec.reason}
+        return gate_observation(
+            _ec, gate="exec_command_guard", subject=command,
+            status="guard_blocked",
+            remedy="Omformulér kommandoen uden det blokerede mønster, eller brug et "
+                   "dedikeret værktøj (read_file/edit_file) i stedet for shell.",
+        )
 
     if _ec.classification == "blocked":
-        return {"error": f"Command blocked for safety: {command}", "status": "blocked"}
+        return gate_observation(
+            _ec, gate="exec_command", subject=command, status="blocked",
+            remedy="Vælg en ikke-destruktiv variant, indsnævr stien, eller spørg Bjørn "
+                   "om lov før du prøver igen — gentag ikke den samme kommando.",
+        )
 
     if _ec.classification == "destructive":
         return {

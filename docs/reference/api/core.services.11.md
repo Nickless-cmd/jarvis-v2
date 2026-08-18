@@ -46,6 +46,9 @@ _Execution-cluster gate 🔒 — én graderet SECURITY-gate for ALLE tool-eksekv
 | function | `check_workspace_trust` | `(tool_name)` | — | [src](../../../core/services/gate_execution.py#L225) |
 | function | `check_operator` | `(path, session_id=…, *, file_exists=…)` | — | [src](../../../core/services/gate_execution.py#L230) |
 | function | `check_upload` | `(path, *, block_on_unavailable=…)` | Malware-scan en uploadet fil GENNEM Centralen (SECURITY). .allowed=False ⇔ infected/ | [src](../../../core/services/gate_execution.py#L237) |
+| function | `_gate_repeat_key` | `(gate, subject)` | — | [src](../../../core/services/gate_execution.py#L271) |
+| function | `gate_observation` | `(check, *, gate, subject, remedy=…, status=…)` | Byg et IN-LOOP tool-resultat ud af en gate-dom — brugbart nok til selvkorrektion. | [src](../../../core/services/gate_execution.py#L277) |
+| function | `reset_gate_repeat_counts` | `()` | Nulstil gentagelses-tællere (tests + sessionsskift). | [src](../../../core/services/gate_execution.py#L340) |
 
 ## `core/services/gate_kernel.py`
 _GateKernel — central orchestrator for alle gates (spec 2026-06-21)._

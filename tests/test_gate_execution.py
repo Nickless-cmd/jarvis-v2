@@ -220,3 +220,72 @@ def test_upload_scan_unavailable_fail_closed(monkeypatch):
                         lambda path, block_on_unavailable=False: (not block_on_unavailable, rep))
     ec = ge.check_upload("/tmp/x", block_on_unavailable=True)  # member-upload → blokeret
     assert ec.allowed is False
+
+
+# --- In-loop gate-observationer (Bjørns gate-princip, 18. aug 2026) ---
+from core.services.gate_execution import (
+    ExecCheck, Decision, gate_observation, reset_gate_repeat_counts,
+)
+from unittest.mock import patch as _patch
+
+
+def _check(classification="blocked", reason="rm -rf mod beskyttet sti"):
+    return ExecCheck(allowed=False, decision=Decision.RED,
+                     classification=classification, reason=reason)
+
+
+class TestGateObservation:
+    def setup_method(self):
+        reset_gate_repeat_counts()
+
+    def test_begrundelsen_naar_frem(self):
+        """KERNEN: før blev _ec.reason smidt væk → han kunne ikke rette sig selv."""
+        with _patch("core.runtime.db_central_incidents.record_central_incident"):
+            out = gate_observation(_check(), gate="exec_command", subject="rm -rf /",
+                                   remedy="brug en indsnævret sti")
+        assert out["status"] == "blocked"
+        assert "rm -rf mod beskyttet sti" in out["error"]      # ÅRSAG med
+        assert "brug en indsnævret sti" in out["error"]        # NÆSTE SKRIDT med
+        assert out["gate"] == "exec_command"                   # hvilken gate
+
+    def test_er_non_blocking_returnerer_resultat(self):
+        """Gaten må aldrig kaste/dræbe — den returnerer et tool-resultat ind i loopet."""
+        with _patch("core.runtime.db_central_incidents.record_central_incident"):
+            out = gate_observation(_check(), gate="g", subject="x")
+        assert isinstance(out, dict) and out["status"] == "blocked"
+
+    def test_gentagelse_eskalerer_synligt(self):
+        with _patch("core.runtime.db_central_incidents.record_central_incident"):
+            first = gate_observation(_check(), gate="g", subject="samme")
+            second = gate_observation(_check(), gate="g", subject="samme")
+        assert first["repeat_count"] == 1
+        assert "gange i denne session" not in first["error"]
+        assert second["repeat_count"] == 2
+        assert "2 gange i denne session" in second["error"]
+
+    def test_forskellige_emner_taelles_hver_for_sig(self):
+        with _patch("core.runtime.db_central_incidents.record_central_incident"):
+            a = gate_observation(_check(), gate="g", subject="cmd-A")
+            b = gate_observation(_check(), gate="g", subject="cmd-B")
+        assert a["repeat_count"] == 1 and b["repeat_count"] == 1
+
+    def test_incident_er_klient_synlig_med_gate_navn(self):
+        with _patch("core.runtime.db_central_incidents.record_central_incident") as inc:
+            gate_observation(_check(), gate="exec_command", subject="rm -rf /")
+        assert inc.called
+        kw = inc.call_args.kwargs
+        assert kw["nerve"] == "exec_command"
+        assert kw["kind"] == "gate_fired"
+        assert "rm -rf mod beskyttet sti" in kw["message"]
+
+    def test_telemetri_fejl_forhindrer_ikke_resultatet(self):
+        def _boom(*_a, **_k):
+            raise RuntimeError("db nede")
+        with _patch("core.runtime.db_central_incidents.record_central_incident", _boom):
+            out = gate_observation(_check(), gate="g", subject="x")
+        assert out["status"] == "blocked"      # resultatet kommer altid igennem
+
+    def test_manglende_begrundelse_siger_det_aabent(self):
+        with _patch("core.runtime.db_central_incidents.record_central_incident"):
+            out = gate_observation(_check(reason=""), gate="g", subject="x")
+        assert "ikke oplyst" in out["error"]

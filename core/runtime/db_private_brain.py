@@ -85,6 +85,40 @@ def _private_brain_record_from_row(row: sqlite3.Row) -> dict[str, Any]:
     }
 
 
+# Boilerplate-gate (Bjørn 18. aug 2026) — på DB-INSERTET, det ENE choke-point alle
+# skrive-stier passerer (_try_private OG de ~10 daemons der kalder direkte). ~39% af
+# private_brain-records var nul-informations skabelon/telemetri: den største type
+# (inner-note-carry) var brugerens chatbesked + to KONSTANTE sætninger — teksten fandtes
+# allerede i chat-historikken. De fortyndede arkivet 10:1 og pressede livscyklussen så
+# ægte førstepersons-materiale blev sluppet efter samme regel. Konservativ, nul-false-
+# positive-signatur: konstant detail-streng + faste summary-mønstre. Se INNER_LIFE_AUDIT.md #3.
+# KUN de to beviseligt-redundante signaler (konservativt, 18. aug 2026): inner-note-carry
+# (konstant detail-streng, 31.5k — brugerens chatbesked, teksten findes i chat-historikken)
+# og state-snapshot-carry ("I notice things feel steadier around X", 9.7k — ren telemetri).
+# ~85% af boilerplate'en, nul tvetydighed. Bevidst UDELADT: "Idle consolidation settled"
+# (bærer åben-løkke-indhold i focus) og "pressures tracked" — de kan indeholde signal.
+_BOILERPLATE_DETAILS = frozenset({
+    "A private inner note may return as bounded reflection when grounded in visible work.",
+})
+_BOILERPLATE_SUMMARY_PREFIXES = (
+    "I notice a quiet inner thread around",
+    "I notice things feel steadier around",
+)
+
+
+def _is_boilerplate_carry(summary: str, detail: str) -> bool:
+    """True hvis en record er ren skabelon uden informationsindhold ud over det der allerede
+    findes i chat-historikken. Konservativ: kun de to KENDTE, beviseligt-redundante mønstre,
+    så varieret førstepersons-materiale (drøm/tankestrøm/refleksion/åben-løkke) aldrig rammes."""
+    s = (summary or "").strip()
+    d = (detail or "").strip()
+    if d and d in _BOILERPLATE_DETAILS:
+        return True
+    if any(s.startswith(p) for p in _BOILERPLATE_SUMMARY_PREFIXES):
+        return True
+    return False
+
+
 def insert_private_brain_record(
     *,
     record_id: str,
@@ -101,6 +135,10 @@ def insert_private_brain_record(
     domain: str = "",
 ) -> dict[str, Any]:
     from core.services.user_scope import scope_uid
+    # Skriveside-kvalitetsgate: dropp nul-informations skabelon/telemetri FØR skrivning,
+    # så de hverken fortynder arkivet eller presser den alders-baserede livscyklus.
+    if _is_boilerplate_carry(summary, detail):
+        return {}
     with connect() as conn:
         _ensure_private_brain_records_table(conn)
         conn.execute(

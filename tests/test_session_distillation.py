@@ -738,9 +738,13 @@ class TestBoilerplateCarryGate:
     def test_state_snapshot_skabelon_er_boilerplate(self):
         assert _is_boilerplate_carry("I notice things feel steadier around ja", "") is True
 
-    def test_telemetri_snapshot_er_boilerplate(self):
-        assert _is_boilerplate_carry("1 pressures tracked, 1 dominant", "telemetry") is True
-        assert _is_boilerplate_carry("Idle consolidation settled bounded internal material", "") is True
+    def test_state_snapshot_steadier_er_boilerplate(self):
+        assert _is_boilerplate_carry("I notice things feel steadier around ja", "telemetry") is True
+
+    def test_tvetydige_mønstre_er_IKKE_boilerplate(self):
+        # Bevidst konservativt: disse kan bære signal i focus → skrives.
+        assert _is_boilerplate_carry("Idle consolidation settled bounded internal material", "") is False
+        assert _is_boilerplate_carry("1 pressures tracked, 1 dominant", "telemetry") is False
 
     def test_ægte_tankestrøm_er_IKKE_boilerplate(self):
         assert _is_boilerplate_carry(

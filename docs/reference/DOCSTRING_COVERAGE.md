@@ -23,8 +23,8 @@ Generated from source. 6436/12979 functions/methods documented (49%). The list b
 | `core.identity` | 63 | 154 | 40% |
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 555 | 1025 | 54% |
-| `core.services` | 4258 | 9028 | 47% |
+| `core.runtime` | 556 | 1026 | 54% |
+| `core.services` | 4257 | 9027 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -377,9 +377,9 @@ Generated from source. 6436/12979 functions/methods documented (49%). The list b
 - `core/runtime/db_heartbeat.py` :: `record_heartbeat_runtime_tick` (L598)
 - `core/runtime/db_heartbeat.py` :: `upsert_heartbeat_runtime_state` (L421)
 - `core/runtime/db_instrument.py` :: `set_file_hash` (L68)
-- `core/runtime/db_private_brain.py` :: `get_private_brain_record` (L251)
-- `core/runtime/db_private_brain.py` :: `insert_private_brain_record` (L88)
-- `core/runtime/db_private_brain.py` :: `list_private_brain_records` (L124)
+- `core/runtime/db_private_brain.py` :: `get_private_brain_record` (L289)
+- `core/runtime/db_private_brain.py` :: `insert_private_brain_record` (L122)
+- `core/runtime/db_private_brain.py` :: `list_private_brain_records` (L162)
 - `core/runtime/db_private_notes.py` :: `ensure_private_notes_tables` (L15)
 - `core/runtime/db_private_notes.py` :: `get_protected_inner_voice` (L367)
 - `core/runtime/db_private_notes.py` :: `list_recent_protected_inner_voices` (L403)

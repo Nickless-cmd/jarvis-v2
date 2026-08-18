@@ -74,39 +74,11 @@ from core.services.identity_composer import identity_prompt_prefix
 _DUPLICATE_SUMMARY_WINDOW = 12  # check last N brain records for duplicates
 _SUMMARY_SIMILARITY_MIN_WORDS = 4  # summaries shorter than this always pass
 
-# Boilerplate-gate (Bjørn 18. aug 2026): ~39% af private_brain-records er nul-informations
-# skabelon-støj — den største enkelt-type (`inner-note-carry`, 31.753 stk.) er brugerens
-# chatbesked kopieret ind i `focus` + en KONSTANT summary + en KONSTANT detail. Teksten
-# findes allerede i chat-historikken; records tilførte intet. De fortyndede arkivet 10:1 og
-# lagde så hårdt pres på 11-plads-livscyklussen at ægte førstepersons-materiale (drøm-landinger,
-# tankestrøm, refleksion) blev sluppet efter SAMME regel som telemetrien. Vi filtrerer dem ved
-# SKRIVNING i stedet — den præcise, nul-false-positive-signatur er den konstante detail-streng
-# plus de faste summary-mønstre. Ægte materiale har varieret, første-persons summary/detail.
-_BOILERPLATE_DETAILS = frozenset({
-    "A private inner note may return as bounded reflection when grounded in visible work.",
-})
-_BOILERPLATE_SUMMARY_PREFIXES = (
-    "I notice a quiet inner thread around",
-    "I notice things feel steadier around",
-    "Idle consolidation settled",
-    "Private brain carries",
-)
-_BOILERPLATE_SUMMARY_CONTAINS = ("pressures tracked", "pressures evaluated")
-
-
-def _is_boilerplate_carry(summary: str, detail: str) -> bool:
-    """True hvis en carry er ren skabelon/telemetri uden informationsindhold ud over det
-    der allerede findes i chat-historikken. Konservativ: matcher kun KENDTE konstante
-    mønstre, så varieret førstepersons-materiale aldrig rammes."""
-    s = (summary or "").strip()
-    d = (detail or "").strip()
-    if d and d in _BOILERPLATE_DETAILS:
-        return True
-    if any(s.startswith(p) for p in _BOILERPLATE_SUMMARY_PREFIXES):
-        return True
-    if any(c in s for c in _BOILERPLATE_SUMMARY_CONTAINS):
-        return True
-    return False
+# Boilerplate-gaten bor nu på DB-insertet (det ENE choke-point alle skrive-stier passerer,
+# inkl. de ~10 daemons der kalder insert_private_brain_record direkte). Re-importeret her, så
+# _try_private stadig kan give præcis "boilerplate-suppressed"-telemetri på carry-stien og
+# eksisterende test-imports (session_distillation._is_boilerplate_carry) er uændrede.
+from core.runtime.db_private_brain import _is_boilerplate_carry  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13009 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13011 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -32,23 +32,23 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13009 functions/
 - [`core.services.03`](core.services.03.md) — `bounded_repo_tools_runtime` … `central_coverage_action`
 - [`core.services.04`](core.services.04.md) — `central_dark_products_digest` … `central_model_meta`
 - [`core.services.05`](core.services.05.md) — `central_moltbook` … `central_switches`
-- [`core.services.06`](core.services.06.md) — `central_terminal` … `commit_gate_arbiter`
-- [`core.services.07`](core.services.07.md) — `communication_guard` … `creative_journal_runtime`
-- [`core.services.08`](core.services.08.md) — `creative_projects` … `development_narrative_daemon`
-- [`core.services.09`](core.services.09.md) — `development_sense` … `emotion_concepts_channel_triggers`
-- [`core.services.10`](core.services.10.md) — `emotion_concepts_positive_triggers` … `gate_auth`
-- [`core.services.11`](core.services.11.md) — `gate_commit` … `heartbeat_runtime_helpers`
-- [`core.services.12`](core.services.12.md) — `heartbeat_runtime_influence` … `jarvisx_bridge`
-- [`core.services.13`](core.services.13.md) — `jc_tool_telemetry` … `memory_write_queue`
-- [`core.services.14`](core.services.14.md) — `meta_cognition_daemon` … `open_loop_signal_tracking`
-- [`core.services.15`](core.services.15.md) — `operator_allowlist` … `procedure_bank`
-- [`core.services.16`](core.services.16.md) — `procedure_bank_pipeline` … `recursion_guard`
-- [`core.services.17`](core.services.17.md) — `reflection_cycle_daemon` … `runtime_self_model_affect`
-- [`core.services.18`](core.services.18.md) — `runtime_self_model_boundary` … `self_wakeup`
-- [`core.services.19`](core.services.19.md) — `selfhood_proposal_tracking` … `skill_security_scanner`
-- [`core.services.20`](core.services.20.md) — `social_labilizer` … `thought_stream_daemon`
-- [`core.services.21`](core.services.21.md) — `thought_thread` … `valence_trajectory`
-- [`core.services.22`](core.services.22.md) — `value_formation` … `world_model_signal_tracking`
+- [`core.services.06`](core.services.06.md) — `central_terminal` … `collective_pulse_daemon`
+- [`core.services.07`](core.services.07.md) — `commit_gate_arbiter` … `creative_instinct_daemon`
+- [`core.services.08`](core.services.08.md) — `creative_journal_runtime` … `development_focus_tracking`
+- [`core.services.09`](core.services.09.md) — `development_narrative_daemon` … `emotion_concepts`
+- [`core.services.10`](core.services.10.md) — `emotion_concepts_channel_triggers` … `gate_adapters`
+- [`core.services.11`](core.services.11.md) — `gate_auth` … `heartbeat_runtime`
+- [`core.services.12`](core.services.12.md) — `heartbeat_runtime_helpers` … `jarvis_brain_visibility`
+- [`core.services.13`](core.services.13.md) — `jarvisx_bridge` … `memory_write_policy`
+- [`core.services.14`](core.services.14.md) — `memory_write_queue` … `open_loop_closure_proposal_tracking`
+- [`core.services.15`](core.services.15.md) — `open_loop_signal_tracking` … `proactivity_bridge`
+- [`core.services.16`](core.services.16.md) — `procedure_bank` … `recurring_tasks`
+- [`core.services.17`](core.services.17.md) — `recursion_guard` … `runtime_self_model`
+- [`core.services.18`](core.services.18.md) — `runtime_self_model_affect` … `self_system_code_awareness`
+- [`core.services.19`](core.services.19.md) — `self_wakeup` … `skill_scanner`
+- [`core.services.20`](core.services.20.md) — `skill_security_scanner` … `thought_action_proposal_daemon`
+- [`core.services.21`](core.services.21.md) — `thought_stream_daemon` … `user_understanding_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `valence_trajectory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

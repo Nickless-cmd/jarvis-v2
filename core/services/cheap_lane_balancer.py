@@ -473,6 +473,20 @@ def _register_failure(
     state.total_calls += 1   # FIX 15. jul: tæl ALLE forsøg (før: kun succes → fejl% kunne >100%)
     state.cooldown_reason = error_kind
 
+    # Karantæne efter ÅRSAG, ikke kun efter antal (18. aug 2026). Breaker-trappen
+    # nedenfor antager en flakkende forbindelse: tre fejl før den reagerer, maks 1 times
+    # cooldown. For en pensioneret model (`model-not-found`, `http-410`) eller en opbrugt
+    # konto er den antagelse forkert — slottet fejler på 66 ms og er tilbage i
+    # lodtrækningen en time senere, for evigt. Målt: 25 af 106 slots cyklede sådan, mens
+    # 71 sunde stod ubrugte og balanceren erklærede "bunden tør". Tidsbegrænset, så en
+    # rettet config heler sig selv.
+    from core.services.cheap_lane_failure_policy import quarantine_seconds
+
+    _q = quarantine_seconds(error_kind, retry_after_s=retry_after_s)
+    if _q:
+        state.cooldown_until = now + _q
+        return
+
     if _flag_adaptive_quota():
         _maybe_daily_reset(state, now)
         kind = (error_kind or "").lower()
@@ -993,7 +1007,14 @@ def call_balanced(
         pass
     # Fund 4: aldrig rejse ved udmattelse — fald til garanteret bund.
     from core.services.cheap_lane_floor import attempt_floor
-    fr = attempt_floor(message=prompt, lane="cheap", reason="balancer-exhausted")
+    # Sig hvad der FAKTISK skete. "balancer-exhausted" fik cheap_lane_floor til at logge
+    # "HELE bunden tør" mens 71 af 106 slots var sunde — vi havde blot brugt vores
+    # max_retries på døde slots. En fejlbesked der overdriver, sender fejlsøgningen
+    # det forkerte sted hen (18. aug 2026).
+    fr = attempt_floor(
+        message=prompt, lane="cheap",
+        reason=f"balancer-retries-brugt ({len(tried_slot_ids)}/{len(pool)} slots prøvet)",
+    )
     fr.setdefault("attempts", len(tried_slot_ids))
     fr.setdefault("output_tokens", int(fr.get("output_tokens") or 0))
     return fr

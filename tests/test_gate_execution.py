@@ -244,6 +244,9 @@ class TestGateObservation:
             out = gate_observation(_check(), gate="exec_command", subject="rm -rf /",
                                    remedy="brug en indsnævret sti")
         assert out["status"] == "blocked"
+        assert out["gate_type"] == "exec_command"      # klient-synlig nøgle
+        assert out["message"] in out["error"]           # error = "[gate] " + message
+        assert not out["message"].startswith("[")       # loopet præfikser selv gate_type
         assert "rm -rf mod beskyttet sti" in out["error"]      # ÅRSAG med
         assert "brug en indsnævret sti" in out["error"]        # NÆSTE SKRIDT med
         assert out["gate"] == "exec_command"                   # hvilken gate

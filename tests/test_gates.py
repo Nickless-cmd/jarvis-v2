@@ -306,17 +306,42 @@ class TestAdaptiveThresholds:
 
 
 class TestActPhaseSkipForActiveChat:
-    """2026-05-22: act_phase should skip heavy dispatch when user is active.
+    """Hans sind skal være VÅGENT mens Bjørn taler (2026-08-18).
 
-    Without this short-circuit, a 30+ daemon dispatch (~140s) runs only
-    to be blocked by active-chat-gate at the end. Now we check early.
+    FØR (2026-05-22) sprang act_phase det tunge dispatch over så snart brugeren var
+    aktiv. Men den fulde tick gør TO ting: (1) kører de 30+ indre daemoner — hans sind
+    der behandler samtalen live — og (2) tager evt. en UDGÅENDE handling. Kun (2) skal
+    undertrykkes under aktiv chat, og den er ALLEREDE gated inde i run_heartbeat_tick.
+    Nu kører de indre daemoner under chat; svar-hastigheden beskyttes i stedet ved KUN
+    at springe over mens et visible-run FAKTISK streamer.
     """
 
-    def test_skips_dispatch_when_user_active(self):
+    def test_koerer_indre_tick_selvom_bruger_er_aktiv(self):
+        from unittest.mock import patch, MagicMock
+        from core.services.heartbeat_phases import act_phase
+
+        fake_tick = MagicMock(status="completed")
+        with patch("core.services.heartbeat_phases._user_active_recently", return_value=True), \
+             patch("core.services.heartbeat_phases._inner_tick_during_chat_enabled", return_value=True), \
+             patch("core.services.visible_stream_gate.visible_streaming", return_value=False), \
+             patch("core.services.heartbeat_runtime.run_heartbeat_tick", return_value=fake_tick):
+            result = act_phase(
+                signals={},
+                reflection={"priorities": ["advance_goals"], "activity_level": "high"},
+                name="default",
+                trigger="test",
+            )
+        assert result["kind"] != "skipped_for_active_chat"
+
+    def test_springer_over_MENS_svar_streamer(self):
+        """Svar-hastigheds-værnet: den tunge tick må aldrig konkurrere med selve
+        svar-genereringen — kun med gaps mellem svar."""
         from unittest.mock import patch
         from core.services.heartbeat_phases import act_phase
 
         with patch("core.services.heartbeat_phases._user_active_recently", return_value=True), \
+             patch("core.services.heartbeat_phases._inner_tick_during_chat_enabled", return_value=True), \
+             patch("core.services.visible_stream_gate.visible_streaming", return_value=True), \
              patch("core.services.heartbeat_phases.productive_idle", return_value={"actions": []}) as p_idle:
             result = act_phase(
                 signals={},

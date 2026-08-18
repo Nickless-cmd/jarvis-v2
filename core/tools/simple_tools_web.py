@@ -298,14 +298,14 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     if _ec.classification == "guard_blocked":
         return gate_observation(
             _ec, gate="exec_command_guard", subject=command,
-            status="guard_blocked",
+            status="gate_blocked",   # klient-synlig sti (capability-event m. gate_type)
             remedy="Omformulér kommandoen uden det blokerede mønster, eller brug et "
                    "dedikeret værktøj (read_file/edit_file) i stedet for shell.",
         )
 
     if _ec.classification == "blocked":
         return gate_observation(
-            _ec, gate="exec_command", subject=command, status="blocked",
+            _ec, gate="exec_command", subject=command, status="gate_blocked",
             remedy="Vælg en ikke-destruktiv variant, indsnævr stien, eller spørg Bjørn "
                    "om lov før du prøver igen — gentag ikke den samme kommando.",
         )

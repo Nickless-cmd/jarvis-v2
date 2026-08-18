@@ -298,7 +298,7 @@ def gate_observation(
     count = _GATE_REPEAT_COUNTS.get(key, 0) + 1
     _GATE_REPEAT_COUNTS[key] = count
 
-    parts = [f"[{gate}] {classification or status}"]
+    parts = [f"{classification or status}"]
     if reason:
         parts.append(f"Årsag: {reason}")
     else:
@@ -328,7 +328,16 @@ def gate_observation(
 
     return {
         "status": status,
-        "error": message,
+        # `error` bærer gate-navnet (standalone-kontekster uden loop-præfiks);
+        # `message` gør IKKE, fordi den agentiske løkke selv præfikser "[gate_type] ".
+        "error": f"[{gate}] {message}",
+        # gate_type/message er den KLIENT-SYNLIGE kontrakt: den agentiske løkke har
+        # allerede en gate_blocked-sti der resolver `[gate_type] message` ind i loopet
+        # OG udsender et capability-event med gate_type, så UI'et kan vise HVILKEN gate
+        # der slog til (visible_runs ~4054). Ved at bære de samme nøgler kommer
+        # exec-gates med i den sti i stedet for at ende som anonym fejltekst.
+        "gate_type": gate,
+        "message": message,
         "gate": gate,
         "classification": classification,
         "reason": reason,

@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tiktok_content_daemon.py`
+_TikTok content daemon — autonomous 3x/day video generation and upload._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tiktok_setting` | `(key, fallback=…)` | Load a TikTok setting from runtime config. | [src](../../../core/services/tiktok_content_daemon.py#L83) |
+| function | `tick_tiktok_content_daemon` | `()` | Main tick — generate and upload a TikTok video for the current time slot. | [src](../../../core/services/tiktok_content_daemon.py#L138) |
+| function | `_detect_slot` | `(hour)` | Return slot name for the given UTC hour, or None if outside windows. | [src](../../../core/services/tiktok_content_daemon.py#L292) |
+| function | `_generate_quote` | `(slot)` | Generate a quote/line for the slot via LLM. Returns fallback on failure. | [src](../../../core/services/tiktok_content_daemon.py#L300) |
+| function | `_get_source_image` | `(slot)` | Return path to a source image for the slot. | [src](../../../core/services/tiktok_content_daemon.py#L316) |
+| function | `_generate_flux_image` | `(slot)` | Generate a high-quality image via pollinations.ai flux model (free API). | [src](../../../core/services/tiktok_content_daemon.py#L339) |
+| function | `_generate_sdxl_image` | `(slot)` | Generate a unique image for the slot via ComfyUI SDXL (fallback). | [src](../../../core/services/tiktok_content_daemon.py#L402) |
+| function | `_create_solid_image` | `(slot)` | Create a 1080x1920 solid color PNG using PIL. Returns path or None. | [src](../../../core/services/tiktok_content_daemon.py#L437) |
+| function | `_do_upload` | `(video_path, title)` | Upload via _exec_tiktok_upload. Returns result dict. | [src](../../../core/services/tiktok_content_daemon.py#L454) |
+| function | `_refill_pool` | `(slot_type=…)` | Auto-refill the pool with fresh LLM-generated concepts when running low. | [src](../../../core/services/tiktok_content_daemon.py#L470) |
+| function | `_count_unused` | `(pool, slot_type)` | Count how many unused concepts of a given type remain in the pool. | [src](../../../core/services/tiktok_content_daemon.py#L545) |
+| function | `_get_concept_from_pool` | `(slot_type)` | Read pool file and return (text, hashtags) for the first unused concept of slot_type. | [src](../../../core/services/tiktok_content_daemon.py#L550) |
+
 ## `core/services/tiktok_research_daemon.py`
 _TikTok research daemon — daily content concept pool generator._
 
@@ -538,19 +556,4 @@ _Verification gate — advisory check on destructive/mutation actions._
 | function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L306) |
 | function | `verification_gate_section` | `()` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L332) |
 | function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L398) |
-
-## `core/services/verification_gate_telemetry.py`
-_R2 verification gate telemetry — track whether warnings get heeded._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/verification_gate_telemetry.py#L44) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/verification_gate_telemetry.py#L56) |
-| function | `record_surface` | `(*, failed_verify_count, unverified_count, mutation_count, verify_count)` | Called by verification_gate_section when it returns a non-None section. | [src](../../../core/services/verification_gate_telemetry.py#L69) |
-| function | `record_verify_event` | `(*, tool, status, at=…, verify_kind=…)` | Called by the telemetry listener for tool.completed events. If a recent | [src](../../../core/services/verification_gate_telemetry.py#L106) |
-| function | `sweep_expired_surfaces` | `()` | Mark surfaces as 'ignored' once they're past the reaction window with | [src](../../../core/services/verification_gate_telemetry.py#L152) |
-| function | `get_telemetry_summary` | `(*, hours=…)` | Aggregate counts + heed rates over the lookback window. | [src](../../../core/services/verification_gate_telemetry.py#L183) |
-| function | `telemetry_section` | `()` | Render telemetry as a prompt-awareness section. Only shows when there's | [src](../../../core/services/verification_gate_telemetry.py#L238) |
-| function | `_poll_db_for_verify_events` | `()` | Poll the events table for new tool.completed verify_* events. | [src](../../../core/services/verification_gate_telemetry.py#L276) |
-| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/verification_gate_telemetry.py#L356) |
 

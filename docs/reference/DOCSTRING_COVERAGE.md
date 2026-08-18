@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6439/12982 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6443/12988 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6439/12982 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 556 | 1026 | 54% |
-| `core.services` | 4259 | 9029 | 47% |
+| `core.services` | 4263 | 9035 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -39,7 +39,7 @@ Generated from source. 6439/12982 functions/methods documented (49%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1854)
+## Undocumented public functions (1856)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -944,6 +944,8 @@ Generated from source. 6439/12982 functions/methods documented (49%). The list b
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_prompt_section` (L127)
 - `core/services/experiential_runtime_context.py` :: `resolve_prior_experiential_snapshot` (L43)
 - `core/services/experiment_runner.py` :: `list_experiments` (L177)
+- `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.ok` (L51)
+- `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.severity` (L55)
 - `core/services/fcm_gateway.py` :: `is_configured` (L34)
 - `core/services/file_watch_daemon.py` :: `build_file_watch_surface` (L172)
 - `core/services/file_watch_daemon.py` :: `recent_changes` (L168)

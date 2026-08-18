@@ -479,6 +479,13 @@ def scan_response(text: str) -> str:
     _footnotes: list[str] = list(time_corrections) + list(system_corrections)
     # 🔗 Commit-hash-flag → nu som fodnote (ikke inline "[⚠ ikke i repo]").
     _footnotes.extend(_collect_unknown_commit_hash_footnotes(result))
+    # ✋ Fabrikerede tool-resultater (Bjørn 18. aug 2026): EKSAKT test — et
+    # tool-result-id der ikke findes i storen kan ikke være ægte. Non-blocking:
+    # runden dræbes aldrig; verdiktet bliver en fodnote + en synlig incident
+    # (gate-navn + ID) som klienten kan vise, og gentagelse eskalerer.
+    _fab_note = _fabricated_tool_result_footnote(result)
+    if _fab_note:
+        _footnotes.append(_fab_note)
     if _footnotes:
         result = result.rstrip() + "\n\n" + "\n".join(_footnotes)
 
@@ -490,6 +497,46 @@ def scan_response(text: str) -> str:
         )
 
     return result
+
+
+def _fabricated_tool_result_footnote(text: str) -> str | None:
+    """Kør fabrikations-gaten og gør verdiktet SYNLIGT — uden at dræbe runden.
+
+    Tre egenskaber (Bjørns princip, 18. aug 2026):
+      * **non-blocking** — returnerer kun en fodnote; runden fortsætter altid.
+      * **eskalerende**  — gentagne fabrikationer i samme session bumper severity
+        via incident-dedup'ens recurrence-tæller.
+      * **klient-synlig** — incident bærer gate-navn (``nerve='fabricated_tool_result'``)
+        og de konkrete ID'er, så en klient kan vise HVILKEN gate der slog til og hvorfor.
+    Self-safe: enhver fejl her må aldrig ændre eller blokere svaret.
+    """
+    try:
+        from core.services.fabricated_tool_result_gate import (
+            scan_for_fabricated_tool_results,
+        )
+        verdict = scan_for_fabricated_tool_results(text)
+        if verdict.ok:
+            return None
+        try:
+            from core.runtime.db_central_incidents import record_central_incident
+            _ids = verdict.fabricated or verdict.leaked
+            record_central_incident(
+                cluster="honesty",
+                nerve="fabricated_tool_result" if verdict.fabricated else "tool_marker_leak",
+                kind="gate_fired",
+                severity=verdict.severity,
+                message=(
+                    f"gate fabricated_tool_result → {verdict.severity}: "
+                    f"{len(verdict.fabricated)} fabrikeret, {len(verdict.leaked)} lækket; "
+                    f"ids={', '.join(_ids[:5])}"
+                ),
+                dedup=True,          # gentagelse bumper recurrence i stedet for at spamme
+            )
+        except Exception:
+            pass
+        return verdict.note()
+    except Exception:
+        return None
 
 
 def scan_enabled() -> bool:

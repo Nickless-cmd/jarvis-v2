@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 12982 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 12988 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -36,19 +36,19 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 12982 functions/
 - [`core.services.07`](core.services.07.md) — `communication_guard` … `creative_journal_runtime`
 - [`core.services.08`](core.services.08.md) — `creative_projects` … `development_narrative_daemon`
 - [`core.services.09`](core.services.09.md) — `development_sense` … `emotion_concepts_channel_triggers`
-- [`core.services.10`](core.services.10.md) — `emotion_concepts_positive_triggers` … `gate_commit`
-- [`core.services.11`](core.services.11.md) — `gate_enforcement` … `heartbeat_runtime_influence`
-- [`core.services.12`](core.services.12.md) — `heartbeat_runtime_providers` … `jc_tool_telemetry`
-- [`core.services.13`](core.services.13.md) — `jobs_engine` … `meta_cognition_daemon`
-- [`core.services.14`](core.services.14.md) — `meta_learning_aggregator` … `operator_allowlist`
-- [`core.services.15`](core.services.15.md) — `orb_phase` … `procedure_bank_pipeline`
-- [`core.services.16`](core.services.16.md) — `process_supervisor` … `reflection_signal_tracking`
-- [`core.services.17`](core.services.17.md) — `reflection_to_plan` … `runtime_self_model_builder`
-- [`core.services.18`](core.services.18.md) — `runtime_self_model_identity` … `semantic_memory`
-- [`core.services.19`](core.services.19.md) — `sensory_archive` … `somatic_runtime_body`
-- [`core.services.20`](core.services.20.md) — `source_confidence_gate` … `tiktok_content_daemon`
-- [`core.services.21`](core.services.21.md) — `tiktok_research_daemon` … `verification_gate_telemetry`
-- [`core.services.22`](core.services.22.md) — `veto_gate` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `emotion_concepts_positive_triggers` … `gate_auth`
+- [`core.services.11`](core.services.11.md) — `gate_commit` … `heartbeat_runtime_helpers`
+- [`core.services.12`](core.services.12.md) — `heartbeat_runtime_influence` … `jarvisx_bridge`
+- [`core.services.13`](core.services.13.md) — `jc_tool_telemetry` … `memory_write_queue`
+- [`core.services.14`](core.services.14.md) — `meta_cognition_daemon` … `open_loop_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `operator_allowlist` … `procedure_bank`
+- [`core.services.16`](core.services.16.md) — `procedure_bank_pipeline` … `reflection_cycle_daemon`
+- [`core.services.17`](core.services.17.md) — `reflection_signal_tracking` … `runtime_self_model_boundary`
+- [`core.services.18`](core.services.18.md) — `runtime_self_model_builder` … `semantic_indexer`
+- [`core.services.19`](core.services.19.md) — `semantic_memory` … `somatic_daemon`
+- [`core.services.20`](core.services.20.md) — `somatic_runtime_body` … `tick_cache`
+- [`core.services.21`](core.services.21.md) — `tiktok_content_daemon` … `verification_gate`
+- [`core.services.22`](core.services.22.md) — `verification_gate_telemetry` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

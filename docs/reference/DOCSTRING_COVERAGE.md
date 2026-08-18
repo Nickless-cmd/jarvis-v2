@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6446/12992 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6453/12997 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6446/12992 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 556 | 1026 | 54% |
-| `core.services` | 4265 | 9038 | 47% |
+| `core.services` | 4272 | 9043 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 67 | 119 | 56% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -39,7 +39,7 @@ Generated from source. 6446/12992 functions/methods documented (49%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1856)
+## Undocumented public functions (1854)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1506,8 +1506,6 @@ Generated from source. 6446/12992 functions/methods documented (49%). The list b
 - `core/services/self_review_signal_tracking.py` :: `track_runtime_self_review_signals_for_visible_turn` (L41)
 - `core/services/self_review_unified.py` :: `build_self_review_surface` (L349)
 - `core/services/self_review_unified.py` :: `list_self_reviews` (L330)
-- `core/services/self_surprise_detection.py` :: `build_self_surprise_surface` (L39)
-- `core/services/self_surprise_detection.py` :: `detect_self_surprise` (L11)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
 - `core/services/self_wakeup.py` :: `list_wakeups` (L181)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)

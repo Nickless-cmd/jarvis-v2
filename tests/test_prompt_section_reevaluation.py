@@ -239,8 +239,20 @@ class TestJarvisEgenDom:
         inc.assert_not_called()
 
     def test_han_kan_ikke_vaelge_labels_der_ikke_blev_forelagt(self):
-        res, _ = self._sweep("VÆLG: en-kanal-jeg-fandt-på :: fordi jeg vil")
-        assert res["candidates"] == []
+        """Opdigtede labels afvises — men det er ikke en dom, så signalet består."""
+        res, _ = self._sweep("VÆLG: en-kanal-jeg-fandt-på :: fordi jeg vil", n=2)
+        assert res["candidates"] == res["mechanical"]
+
+    def test_degraderet_svar_er_en_FEJL_ikke_en_dom(self):
+        """Målt i produktion: cheap lane udtømt → uparsbart svar → tavs nul-liste der
+        LIGNEDE et bevidst fravalg. Præcis den fejltype vi har jagtet."""
+        res, inc = self._sweep("Beklager, jeg kan ikke hjælpe med det lige nu.", n=3)
+        assert res["candidates"] == res["mechanical"]
+        assert "kun mekanisk forfilter" in inc.call_args.kwargs["message"]
+
+    def test_tomt_svar_er_ogsaa_en_fejl(self):
+        res, _ = self._sweep("", n=2)
+        assert res["candidates"] == res["mechanical"]
 
     def test_loft_paa_antal_valg(self):
         """En dommer over sin egen prompt uden loft taler sig efter munden."""

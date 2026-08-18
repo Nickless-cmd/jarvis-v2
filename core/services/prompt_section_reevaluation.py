@@ -271,8 +271,18 @@ def _review(candidates: list[dict[str, object]]) -> list[dict[str, object]]:
         )
     except Exception:
         return candidates
-    if not str(raw or "").strip():
+    text = str(raw or "").strip()
+    if not text:
         return candidates  # intet svar → behold den mekaniske liste
+
+    # En FEJL må aldrig ligne en DOM. Målt 18. aug: cheap lane var udtømt
+    # ("balancer-exhausted → degraderet svar"), svaret var uparsbart, og den tavse
+    # nul-liste så ud som om han bevidst havde fravalgt alt. Et svar tæller kun som
+    # hans dom hvis det bærer enten et gyldigt VÆLG eller et eksplicit INGEN.
+    upper = text.upper()
+    explicit_none = "INGEN" in upper
+    if "VÆLG:" not in upper and "VAELG:" not in upper and not explicit_none:
+        return candidates
 
     picked: list[dict[str, object]] = []
     for line in str(raw).splitlines():
@@ -285,7 +295,8 @@ def _review(candidates: list[dict[str, object]]) -> list[dict[str, object]]:
             picked.append({**c, "jarvis_reason": why.strip()[:160]})
         if len(picked) >= _MAX_PICKS:
             break
-    # Et svar vi forstod, men uden gyldige valg (fx "INGEN"), betyder netop nul.
+    if not picked and not explicit_none:
+        return candidates  # formede VÆLG-linjer, men ingen gyldige labels → ikke en dom
     return picked
 
 

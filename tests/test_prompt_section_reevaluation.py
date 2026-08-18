@@ -173,6 +173,21 @@ class TestForslagTaenderIkke:
         msg = inc.call_args.kwargs["message"]
         assert "rules learned from arcs" in msg and "set_enabled" in msg
 
+    def test_mange_kandidater_giver_EN_samlet_incident(self):
+        """Målt i produktion: 13 kanaler scorer højt på første build. Ét blik, ikke en mur."""
+        samples = [{"label": f"kanal-{i}", "head": ARC_RULES, "chars": len(ARC_RULES),
+                    "samples": 5, "hashes": ["a", "b", "c"]} for i in range(13)]
+        with patch.object(rv, "_read_samples", lambda: samples), \
+             patch("core.services.shared_cache.get", return_value={}), \
+             patch("core.services.shared_cache.set"), \
+             patch("core.runtime.db_central_incidents.record_central_incident") as inc:
+            res = rv.maybe_run_sweep()
+        assert len(res["candidates"]) == 13
+        assert inc.call_count == 1
+        msg = inc.call_args.kwargs["message"]
+        assert "13 slukkede" in msg and "+8 flere" in msg
+        assert inc.call_args.kwargs["dedup"] is True
+
     def test_sweep_koerer_hoejst_en_gang_i_doegnet(self):
         import time as _t
         with patch("core.services.shared_cache.get", return_value={"at": _t.time()}), \

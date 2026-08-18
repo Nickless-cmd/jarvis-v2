@@ -199,23 +199,32 @@ def evaluate() -> list[dict[str, object]]:
 
 
 def _propose(candidates: list[dict[str, object]]) -> None:
-    """Læg forslaget hvor Bjørn og Centralen kan se det — med sin egen begrundelse."""
+    """Læg forslaget hvor Bjørn og Centralen kan se det — med sin egen begrundelse.
+
+    ÉN samlet incident, ikke én pr. kanal. Målt i produktion 18. aug: 13 kanaler scorer
+    højt på første build, fordi `substance()` kan se støj men ikke DUBLETTER — fx
+    `markdown formatting` og `no tool-result echo`, der blev slukket netop fordi de
+    allerede står i guidance rules. Indtil redundans kan måles, skal et falsk positiv
+    koste ét blik, ikke en mur af notifikationer. `dedup=True` bumper den ene åbne række.
+    """
     if not candidates:
         return
     try:
         from core.runtime.db_central_incidents import record_central_incident
 
-        for c in candidates:
-            record_central_incident(
-                cluster="prompt", nerve="section_reevaluation", kind="reenable_proposed",
-                severity="info", dedup=True,
-                message=(
-                    f"'{c['label']}' er slukket, men bærer nu {c['chars']} tegn "
-                    f"({c['score']:.2f}): {'; '.join(c['reasons'])[:160]}. "
-                    f"Tænd: central_switches.set_enabled('prompt_section', "
-                    f"'{c['label']}', True)"
-                ),
-            )
+        top = ", ".join(f"{c['label']} ({c['score']:.2f}, {c['chars']}t)"
+                        for c in candidates[:5])
+        more = f" +{len(candidates) - 5} flere" if len(candidates) > 5 else ""
+        record_central_incident(
+            cluster="prompt", nerve="section_reevaluation", kind="reenable_proposed",
+            severity="info", dedup=True,
+            message=(
+                f"{len(candidates)} slukkede awareness-kanaler bærer nu indhold der "
+                f"kan være værd at læse: {top}{more}. Vurdér og tænd manuelt med "
+                f"central_switches.set_enabled('prompt_section', <label>, True) — "
+                f"tjek først om indholdet allerede står andetsteds i prompten."
+            )[:900],
+        )
     except Exception:
         pass
 

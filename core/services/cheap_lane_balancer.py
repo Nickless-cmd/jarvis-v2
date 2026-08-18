@@ -403,6 +403,14 @@ def _slot_status(slot: BalancerSlot, state: SlotState, now: float) -> str:
 
 _BREAKER_COOLDOWN_SECONDS = {0: 0, 1: 300, 2: 900, 3: 3600}  # 5min/15min/1h
 _CONSECUTIVE_FAILURE_THRESHOLD = 3
+
+# Tre forsøg mod en pool på 106 slots var for lavt (18. aug 2026). Karantænen efter
+# årsag fjerner de fleste lig fra lodtrækningen, men den bygges først op efterhånden som
+# hvert dødt slot fejler én gang — og en større prompt fejler på flere slots end en lille.
+# Målt: et 1248-tegns kald brændte alle tre forsøg og faldt til bunden, mens 71 sunde
+# slots stod ubrugte. Seks forsøg er stadig bundet (worst case ~6 × 3 s), men gør
+# udmattelse til noget der kræver et ægte udfald frem for tre uheldige træk.
+_DEFAULT_MAX_RETRIES = 6
 _DEFAULT_429_COOLDOWN_SECONDS = 3600
 # Pålideligheds-vægtning: kræv ≥ dette antal kald før fejl-rate straffer vægten
 # (ellers straffes en ny slot på 1-2 uheldige kald); gulv så de-vægtede slots aldrig
@@ -792,7 +800,7 @@ def call_balanced(
     *,
     prompt: str,
     daemon_name: str = "",
-    max_retries: int = 3,
+    max_retries: int = _DEFAULT_MAX_RETRIES,
 ) -> dict:
     """Pick a slot via weighted-random; execute; on failure retry next slot.
 

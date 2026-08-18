@@ -104,3 +104,21 @@ class TestBalancerBrugerPolitikken:
                             is_public_proxy=False)
         after = 1000.0 + pol.PERMANENT_QUARANTINE_S + 1
         assert _compute_weight(slot, st, after) > 0.0
+
+
+class TestRetryDybde:
+    def test_seks_forsoeg_mod_en_stor_pool(self):
+        """Tre forsøg mod 106 slots gjorde udmattelse til et uheldigt træk, ikke et udfald."""
+        import inspect
+
+        from core.services.cheap_lane_balancer import _DEFAULT_MAX_RETRIES, call_balanced
+
+        assert _DEFAULT_MAX_RETRIES >= 6
+        sig = inspect.signature(call_balanced)
+        assert sig.parameters["max_retries"].default == _DEFAULT_MAX_RETRIES
+
+    def test_retries_er_stadig_bundet(self):
+        """Ubundet retry ville gøre ét daemon-kald til en minutlang kaskade."""
+        from core.services.cheap_lane_balancer import _DEFAULT_MAX_RETRIES
+
+        assert _DEFAULT_MAX_RETRIES <= 10

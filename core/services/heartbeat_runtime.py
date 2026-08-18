@@ -353,8 +353,48 @@ def poll_heartbeat_schedule(*, name: str = "default") -> dict[str, object]:
         _run_heartbeat_tick_with_deadline(
             name=name, trigger="scheduled"
         )
+        # A (Bjørn 18. aug 2026): en due-beat der landede i productive_idle (aktiv chat
+        # eller ingen priorities) avancerer IKKE skemaet — kun den fulde run_heartbeat_tick
+        # gør. Under en lang aktiv session lander HVER beat i productive_idle → last_tick_at
+        # sidder fast → skemaet permanent 'due' → recovery_status hænger på 'startup-recovery-
+        # pending' på tværs af genstarter (wedge). En idle-beat ER et hjerteslag: avancér
+        # skemaet hvis den fulde tick ikke gjorde det. Rører IKKE hvornår den fulde tick
+        # fyrer (det er en separat design-beslutning, B).
+        _advance_schedule_after_idle_beat(name=name)
         return heartbeat_runtime_surface(name=name)
     return {"state": state}
+
+
+def _advance_schedule_after_idle_beat(*, name: str) -> None:
+    """Avancér skemaet let hvis det STADIG er 'due' efter en beat — dvs. beat'en landede i
+    productive_idle og opdaterede ikke last_tick_at. En idle-beat tæller som et hjerteslag,
+    så skemaet ikke wedger permanent. Rører kun tidsstempler + recovery. Self-safe."""
+    try:
+        fresh = get_heartbeat_runtime_state() or _default_persisted_state()
+        if str(fresh.get("schedule_state") or "") != "due":
+            return  # den fulde tick avancerede allerede skemaet — intet at gøre
+        policy = load_heartbeat_policy(name=name)
+        now = datetime.now(UTC)
+        now_iso = now.isoformat()
+        next_tick = _compute_next_tick_at(
+            interval_minutes=int(policy.get("interval_minutes") or 180),
+            last_tick_at=now_iso,
+            enabled=bool(policy.get("enabled", True)),
+        )
+        _persist_runtime_state(
+            policy=policy,
+            persisted=fresh,
+            now=now,
+            overrides={
+                "last_tick_at": now_iso,
+                "next_tick_at": next_tick,
+                "last_decision_type": "productive_idle",
+                "recovery_status": "idle",
+                "last_recovery_at": now_iso,
+            },
+        )
+    except Exception:
+        pass
 
 
 def _run_heartbeat_tick_with_deadline(

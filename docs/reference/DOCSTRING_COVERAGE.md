@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6436/12979 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6437/12980 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6436/12979 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 556 | 1026 | 54% |
-| `core.services` | 4257 | 9027 | 47% |
+| `core.services` | 4258 | 9028 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 66 | 118 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1003,10 +1003,10 @@ Generated from source. 6436/12979 functions/methods documented (49%). The list b
 - `core/services/habits_pipeline.py` :: `list_suggestions` (L310)
 - `core/services/habits_pipeline.py` :: `reject_suggestion` (L350)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
-- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L451)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2231)
+- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L491)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2271)
 - `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L317)
-- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1177)
+- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1217)
 - `core/services/heartbeat_runtime.py` :: `start_heartbeat_scheduler` (L245)
 - `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L287)
 - `core/services/hf_connector.py` :: `model_info` (L85)

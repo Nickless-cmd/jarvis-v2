@@ -1127,6 +1127,7 @@ def _build_visible_chat_prompt_assembly_impl(
                 label, blacklisted=label in _DIAGNOSTIC_NOISE_LABELS,
                 overrides=_section_overrides):
             _dropped_disabled.append(label)
+            _prompt_observer.observe_discarded_content(label, content)
             return
         # Tråd 2: kontekst-komponisten gater pr. tur-type (shadow-default: inkluderer ALT; frosne
         # sektioner aldrig; live+lav-vægt → udelad). Fail-open — skjuler aldrig ved fejl.
@@ -1162,6 +1163,7 @@ def _build_visible_chat_prompt_assembly_impl(
                 label, blacklisted=label in _TAIL_NOISE_LABELS,
                 overrides=_section_overrides):
             _dropped_disabled.append(label)
+            _prompt_observer.observe_discarded_content(label, content)
             return
         _tail_dynamic.append(content)
         derived_inputs.append(f"{label} (tail-anchored)")

@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/reflection_cycle_daemon.py`
+_Reflection cycle daemon — pure experience without action, every 10 minutes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/reflection_cycle_daemon.py#L19) |
+| function | `tick_reflection_cycle_daemon` | `(snapshot, *, skip_event_gate=…)` | Generate a pure experience reflection if cadence allows. | [src](../../../core/services/reflection_cycle_daemon.py#L27) |
+| function | `_generate_reflection` | `(snapshot)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L71) |
+| function | `_store_reflection` | `(reflection)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L107) |
+| function | `get_latest_reflection` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L139) |
+| function | `build_reflection_surface` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L143) |
+
 ## `core/services/reflection_signal_tracking.py`
 _Reflection signal tracking — migrated onto signal_tracking_framework._
 
@@ -721,21 +733,4 @@ _Runtime self-model — affective awareness (flow, wonder, longing, relation)._
 | function | `_derive_relation_continuity_self_awareness` | `(*, temporal_feel, mineness, longing, relation_sources)` | Derive a small runtime truth when relation continuity touches the self-stream. | [src](../../../core/services/runtime_self_model_affect.py#L892) |
 | function | `_relation_continuity_self_narrative` | `(*, relation_continuity_state, relation_self_relation, relation_continuity_source, relation_anchor)` | Compact relation continuity narrative. Empty when quiet. | [src](../../../core/services/runtime_self_model_affect.py#L1026) |
 | function | `build_relation_continuity_self_awareness_prompt_section` | `()` | Compact heartbeat-side prompt section for relation continuity as self-truth. | [src](../../../core/services/runtime_self_model_affect.py#L1053) |
-
-## `core/services/runtime_self_model_boundary.py`
-_Runtime self-model — self-boundary clarity + world-contact awareness._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/runtime_self_model_boundary.py#L28) |
-| function | `_internal_pressure_snapshot` | `()` | Pull internal pressure signals for self-boundary derivation. | [src](../../../core/services/runtime_self_model_boundary.py#L55) |
-| function | `_external_pressure_snapshot` | `()` | Pull external pressure signals for self-boundary derivation. | [src](../../../core/services/runtime_self_model_boundary.py#L123) |
-| function | `_derive_self_boundary_clarity` | `(*, internal, external)` | Synthesise internal + external pressure into a boundary-clarity surface. | [src](../../../core/services/runtime_self_model_boundary.py#L140) |
-| function | `_self_boundary_narrative` | `(*, pressure_source, primary_internal, context_pressure, in_tension)` | Compact self-boundary narrative. Empty when ambient. | [src](../../../core/services/runtime_self_model_boundary.py#L209) |
-| function | `build_self_boundary_clarity_prompt_section` | `()` | Compact prompt section for self-boundary clarity. None when ambient. | [src](../../../core/services/runtime_self_model_boundary.py#L236) |
-| function | `_self_boundary_clarity_surface` | `()` | — | [src](../../../core/services/runtime_self_model_boundary.py#L264) |
-| function | `_derive_world_contact` | `(*, tool_intent, browser_body, system_code)` | Synthesise tool/browser/system into a unified world-contact field. | [src](../../../core/services/runtime_self_model_boundary.py#L295) |
-| function | `_world_contact_narrative` | `(*, contact_state, parts, concerns)` | Felt-sense world-contact narrative — signal-first, 6-14 words. | [src](../../../core/services/runtime_self_model_boundary.py#L389) |
-| function | `build_world_contact_prompt_section` | `()` | Felt-sense prompt section for unified world awareness. None when idle. | [src](../../../core/services/runtime_self_model_boundary.py#L409) |
-| function | `_world_contact_surface` | `()` | — | [src](../../../core/services/runtime_self_model_boundary.py#L436) |
 

@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/value_formation.py`
+_Value Formation — emergent ethics from experience._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_value_from_experience` | `(*, action, outcome, reflection)` | — | [src](../../../core/services/value_formation.py#L12) |
+| function | `detect_value_from_outcome` | `(*, action_type, outcome_status, user_mood)` | Detect potential value-forming experiences. | [src](../../../core/services/value_formation.py#L32) |
+| function | `get_crystallized_values` | `(conviction_threshold=…)` | Return values with conviction above threshold — these have become commitments. | [src](../../../core/services/value_formation.py#L54) |
+| function | `build_formed_values_surface` | `()` | — | [src](../../../core/services/value_formation.py#L60) |
+
 ## `core/services/verification_gate.py`
 _Verification gate — advisory check on destructive/mutation actions._
 

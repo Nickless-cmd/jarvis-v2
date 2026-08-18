@@ -101,6 +101,22 @@ def section_enabled(label: str, *, blacklisted: bool, overrides: dict[str, bool]
     return not blacklisted
 
 
+def observe_discarded_content(label: str, content: str | None) -> None:
+    """En slukket sektions indhold blev netop kasseret — prøvetag det.
+
+    Blacklisten sparer nul compute: kaldsmønsteret ``_awareness_add(60, label,
+    builder())`` evaluerer builderen FØR gaten, så indholdet er allerede beregnet når
+    det forkastes. Opsamlingen er derfor gratis, og den er forudsætningen for at en
+    frossen dom kan revurderes når indholdet bag den bliver bedre.
+    Selv-sikker; kaster ALDRIG ind i en prompt-build."""
+    try:
+        from core.services.prompt_section_reevaluation import observe_discarded
+
+        observe_discarded(label, content)
+    except Exception:
+        pass
+
+
 def observe_build(*, lane: str, included: int, dropped_disabled: list[str],
                   dropped_budget: list[str],
                   dropped_error: list[tuple[str, str]] | None = None) -> None:

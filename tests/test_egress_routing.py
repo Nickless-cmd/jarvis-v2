@@ -11,9 +11,16 @@ def test_resolve_egress_account2_vpn():
     assert resolve_egress("mistral", "account3") == "vpn"
 
 
-def test_resolve_egress_groq_uses_ipv6():
-    from core.services.egress_routing import resolve_egress
-    assert resolve_egress("groq", "account2") == "he6"   # groq exception
+def test_groq_har_ingen_saerrute_mere():
+    """groq pegede på "he6", hvis vært blev frigivet 23. juli 2026.
+
+    ground_truth_registry havde noteret frigivelsen; konfigurationen fulgte aldrig med.
+    groq/account2 løses af native v6bind FØR proxy-stien konsulteres, og falder v6bind
+    ud er `vpn` den rigtige nødplan — samme som de øvrige tolv.
+    """
+    from core.services.egress_routing import EGRESS_ROUTES, resolve_egress
+    assert resolve_egress("groq", "account2") == "vpn"
+    assert EGRESS_ROUTES == {}, "en per-provider særrute er en fremtidig drift-fælde"
 
 
 def test_proxy_endpoints_has_defaults():

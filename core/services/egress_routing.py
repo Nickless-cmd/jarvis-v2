@@ -1,20 +1,41 @@
 """Egress routing — which network egress a (provider, auth_profile) slot uses.
 
-Two egress proxies route account2 traffic so it looks different from the
-default (home-IP) profile, removing multi-account ban risk:
+Egress-proxy'en router account2-trafik så den ser anderledes ud end default-profilen
+(hjemme-IP), hvilket fjerner risikoen for multi-konto-bans:
 
-- VPN proxy (``vpn``)  — for 12 of 13 account2 providers.
-- IPv6 proxy (``he6``) — for ``groq`` ONLY (Cloudflare blocks groq's VPN IP
-  but accepts our Hurricane-Electric IPv6).
-- ``home`` — no proxy; used by the default profile (home IP).
+- VPN-proxy (``vpn``) — llm-gateway (CT106), som præsenterer VPN-exit'en.
+- ``home`` — ingen proxy; bruges af default-profilen (hjemme-IP).
 
-Resolution is per-(provider, auth_profile): default -> home; any other
-profile -> per-provider override (EGRESS_ROUTES) or 'vpn'.
+Resolution er pr. (provider, auth_profile): default -> home; enhver anden profil ->
+per-provider-override (EGRESS_ROUTES) eller 'vpn'.
+
+**``he6`` er pensioneret (19. aug 2026).** Den var en separat IPv6-proxy for ``groq``
+alene, fordi Cloudflare blokerer groq's VPN-IP men accepterer vores Hurricane-Electric
+IPv6. Den vært (``croq-ipv6``, LXC-107 på 10.0.0.46) blev frigivet **23. juli** da groq
+flyttede til native v6bind source-binding på CT105 — hvilket
+``ground_truth_registry`` har stået og sagt hele tiden. Konfigurationen fulgte bare
+aldrig med, så ``he6`` pegede på en vært der ikke fandtes; da v6bind-adressen
+``::a2:1`` senere forsvandt fra eth1, faldt groq/account2 tilbage på den døde proxy og
+fejlede med ``[Errno 113] No route to host``.
+
+Nøglen ``he6`` er BEVARET som alias for ``vpn`` — ikke af nostalgi, men fordi
+``_resolve_egress_proxy`` hæver en hård lækage-guard hvis en egress mangler sit
+endpoint. Et gemt runtime-override eller en gammel state-post der stadig siger "he6"
+skal resolve, ikke fejle account2 over på hjemme-IP'en.
+
+**Læren:** en egress-rute må ikke navngives efter sin transport ("he6" = IPv6), for
+transporten kan flytte uden at navnet gør. ``vpn`` beskriver hvem der sender, ikke
+hvordan.
 """
 from __future__ import annotations
 
 # EGRESS_ROUTES: per-provider override of which egress a NON-default profile uses.
-EGRESS_ROUTES = {"groq": "he6"}   # groq's VPN IP is Cloudflare-blocked -> use IPv6 proxy
+# TØMT 19. aug 2026: groq pegede på "he6", hvis vært blev frigivet 23. juli (se
+# ground_truth_registry: 10.0.0.46 "FREED … retired when groq moved to native v6bind").
+# groq/account2 løses i praksis af `resolve_v6bind_source` FØR proxy-stien overhovedet
+# konsulteres — målt 555-564 ms uden proxy. Falder v6bind ud, er `vpn` den rigtige
+# nødplan, samme som de øvrige tolv account2-providere.
+EGRESS_ROUTES: dict[str, str] = {}
 _DEFAULT_NONDEFAULT_EGRESS = "vpn"
 # proxy endpoints (overridable via runtime config; these are the real proven defaults)
 #
@@ -42,6 +63,10 @@ _DEFAULT_NONDEFAULT_EGRESS = "vpn"
 # VPN-kill-switch — ikke en ny adresse.
 _DEFAULT_PROXY_ENDPOINTS = {
     "vpn": "http://10.0.0.45:8888",
+    # DEPRECATED alias — intet ruter hertil længere (EGRESS_ROUTES er tom). Bevaret
+    # fordi _resolve_egress_proxy hæver en hård lækage-guard ved manglende endpoint;
+    # en gammel state-post der stadig siger "he6" skal resolve, ikke sende account2
+    # over hjemme-IP'en. Kan fjernes når ingen persisteret state nævner "he6".
     "he6": "http://10.0.0.45:8888",
     "home": None,
 }

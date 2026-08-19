@@ -971,9 +971,11 @@ def test_built_slots_carry_egress(monkeypatch):
     monkeypatch.setattr(bal, "_credentials_ready", lambda p, a: True)
     monkeypatch.setattr(bal, "_flag_multiprofile", lambda: True)
     slots = {s.slot_id: s for s in bal.build_slot_pool()}
-    # default profile -> home; account2 groq -> he6 (Cloudflare-blocked VPN IP)
+    # default profile -> home; account2 -> vpn. groq havde en "he6"-særrute indtil
+    # 19. aug 2026; dens vært blev frigivet 23. juli, og groq løses nu af native
+    # v6bind før proxy-stien overhovedet konsulteres.
     assert slots["groq::llama-x::default"].egress == "home"
-    assert slots["groq::llama-x::account2"].egress == "he6"
+    assert slots["groq::llama-x::account2"].egress == "vpn"
 
 
 # ---------------------------------------------------------------------------

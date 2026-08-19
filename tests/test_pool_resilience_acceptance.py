@@ -131,11 +131,19 @@ def test_autonomous_ollama_quota_falls_to_pool(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Locks in the empirically-proven egress map for the 13 account2 workhorses:
-# groq → he6 (IPv6, its VPN IP is Cloudflare-blocked); everything else → vpn.
+# Låser SIKKERHEDSEGENSKABEN fast for de 13 account2-arbejdsheste, ikke rutetabellen.
+#
+# Testen sagde tidligere "groq → he6, resten → vpn". Den var grøn den dag he6-værten
+# (10.0.0.46) blev frigivet 23. juli 2026, og forblev grøn hele vejen frem til groq's
+# account2-kald begyndte at fejle med [Errno 113]. En test der gentager en rutetabel
+# beviser kun at nogen skrev den to steder; det der betyder noget er at INGEN account2-
+# provider nogensinde sender over hjemme-IP'en — dét er hele grunden til at routingen
+# findes.
 # ---------------------------------------------------------------------------
-def test_egress_map_covers_all_13_account2_providers():
-    from core.services.egress_routing import resolve_egress
+def test_ingen_account2_provider_sender_over_hjemme_ip():
+    from core.services.egress_routing import (
+        proxy_endpoints, resolve_egress, resolve_nat64, resolve_v6bind_source,
+    )
 
     account2_providers = [
         "aihubmix", "cerebras", "cohere", "gemini", "groq", "huggingface",
@@ -144,9 +152,24 @@ def test_egress_map_covers_all_13_account2_providers():
     ]
     assert len(account2_providers) == 13
 
+    endpoints = proxy_endpoints()
     for p in account2_providers:
-        expected = "he6" if p == "groq" else "vpn"
-        assert resolve_egress(p, "account2") == expected, (
-            f"egress for {p!r} on account2 should be {expected!r}, "
-            f"got {resolve_egress(p, 'account2')!r}"
+        egress = resolve_egress(p, "account2")
+        assert egress != "home", f"{p} på account2 ville sende over hjemme-IP"
+        # Uanset hvilken vej der vælges, skal MINDST ÉN være farbar: native v6bind,
+        # nat64, eller en proxy med et konfigureret endpoint. Ellers hæver dispatch
+        # sin lækage-guard og account2 kan slet ikke køre.
+        has_route = (
+            bool(resolve_v6bind_source(p, "account2"))
+            or bool(resolve_nat64(p, "account2"))
+            or bool(endpoints.get(egress))
         )
+        assert has_route, f"{p} har ingen farbar account2-egress (egress={egress!r})"
+
+
+def test_default_profil_bruger_altid_hjemme_ip():
+    """Modstykket: default-profilen må ALDRIG proxies — så ville de to korrelere."""
+    from core.services.egress_routing import resolve_egress
+
+    for p in ("groq", "gemini", "mistral", "cohere"):
+        assert resolve_egress(p, "default") == "home"

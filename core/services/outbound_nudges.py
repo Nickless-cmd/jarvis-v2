@@ -79,6 +79,13 @@ def ensure_schema() -> None:
               ON outbound_nudges(source);
             """
         )
+        # shown_count tilføjet 19. aug 2026 (idempotent — eksisterende DB'er mangler den).
+        # Bærer hvor mange gange en nudge er renderet, så pensionering kan kræve flere
+        # visninger i stedet for én.
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(outbound_nudges)").fetchall()}
+        if "shown_count" not in cols:
+            conn.execute("ALTER TABLE outbound_nudges ADD COLUMN shown_count INTEGER DEFAULT 0")
+        conn.commit()
         conn.commit()
     _SCHEMA_INITIALIZED = True
 
@@ -179,21 +186,46 @@ def list_pending(*, limit: int = 10) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
-def mark_inspected(nudge_ids: list[str]) -> int:
-    """Mark nudges as seen by Jarvis (he saw them in prompt). Returns count."""
+# Hvor mange gange en nudge må vises FØR den pensioneres. Var implicit 1: den blev
+# markeret `inspected` i samme åndedrag som den blev renderet, og `list_pending` henter
+# kun `pending` — så hver nudge fik ÉN prompt-optræden og forsvandt. Målt 19. aug 2026:
+# 1.752 nudges, median-levetid **26 sekunder**, 997 opslugt på under et minut, og
+# `mark_sent` kaldt NUL gange. Alle 78 matrix-beskeder — hans egne indre stemmer —
+# endte som `inspected` uden at nogen havde læst dem.
+_SHOW_LIMIT = 3
+
+
+def note_shown(nudge_ids: list[str]) -> int:
+    """Tæl én visning. Pensionerer først ved `_SHOW_LIMIT`, ikke ved første render.
+
+    "Renderet ind i en prompt" er ikke det samme som "set og overvejet" — det var
+    præcis den sammenblanding der tømte brønden. En nudge overlever nu til den enten
+    er vist nok gange, eller er eksplicit sendt/afvist.
+    """
     if not nudge_ids:
         return 0
     ensure_schema()
     now_iso = datetime.now(UTC).isoformat()
-    placeholders = ",".join("?" for _ in nudge_ids)
+    ph = ",".join("?" for _ in nudge_ids)
     with connect() as conn:
+        conn.execute(
+            f"UPDATE outbound_nudges SET shown_count = COALESCE(shown_count, 0) + 1 "
+            f"WHERE nudge_id IN ({ph}) AND status = 'pending'",
+            list(nudge_ids),
+        )
         cur = conn.execute(
             f"UPDATE outbound_nudges SET status='inspected', inspected_at=? "
-            f"WHERE nudge_id IN ({placeholders}) AND status='pending'",
-            [now_iso, *nudge_ids],
+            f"WHERE nudge_id IN ({ph}) AND status='pending' "
+            f"AND COALESCE(shown_count, 0) >= ?",
+            [now_iso, *nudge_ids, int(_SHOW_LIMIT)],
         )
         conn.commit()
         return cur.rowcount
+
+
+def mark_inspected(nudge_ids: list[str]) -> int:
+    """Bagudkompatibelt alias for `note_shown`."""
+    return note_shown(nudge_ids)
 
 
 def mark_sent(nudge_id: str) -> bool:
@@ -256,9 +288,20 @@ def format_pending_for_awareness() -> str:
         "mark_dismissed(nudge_id) hvis ikke. Inspekteret automatisk når læst."
     )
 
-    # Mark as inspected (best-effort, never blocks awareness rendering)
+    # En SPEKULATIV build må aldrig forbruge en nudge. `assembly_prewarm` bygger en
+    # throwaway-assembly for at varme sektions-cachen — ingen læser resultatet. Uden
+    # dette tjek pensionerede cache-opvarmningen hans indre stemmer i baggrunden.
+    # Signalet fandtes allerede (`is_prewarm_active`); brønden spurgte bare aldrig.
     try:
-        mark_inspected(ids_seen)
+        from core.services.assembly_prewarm import is_prewarm_active
+        if is_prewarm_active():
+            return "\n".join(lines)
+    except Exception:
+        pass
+
+    # Tæl visningen. Pensionerer først efter _SHOW_LIMIT — se note_shown.
+    try:
+        note_shown(ids_seen)
     except Exception:
         pass
 

@@ -3089,6 +3089,34 @@ async def _stream_visible_run(
                                             round_num=_agentic_round + 1)
                                     except Exception:
                                         pass
+                                    # ── FORTSÆT (2026-08-20): tving modellen til at
+                                    # fortsætte præcis der hvor streamen blev lukket
+                                    # (finish_reason="length"). a585c808 gjorde
+                                    # truncation SYNLIG — dette redder svaret. Én
+                                    # continuation-runde; hvis den selv afkortes
+                                    # eller fejler → behold flaget + det delvise
+                                    # svar (self-safe, aldrig værre end i går).
+                                    _partial = str(_a_item.text or "")
+                                    if _partial:
+                                        try:
+                                            _cont_text = await asyncio.to_thread(
+                                                _vf.synthesize_continuation,
+                                                provider=str(run.provider or ""),
+                                                model=str(run.model or ""),
+                                                base_messages=_round_base_messages,
+                                                exchanges=_followup_exchanges,
+                                                partial_text=_partial,
+                                            )
+                                        except Exception:
+                                            _cont_text = ""
+                                        if _cont_text:
+                                            _a_parts.append(_cont_text)
+                                            _all_followup_parts.append(_cont_text)
+                                            yield _sse("delta", {
+                                                "type": "delta",
+                                                "run_id": run.run_id,
+                                                "delta": _cont_text,
+                                            })
                                 continue
 
                         # ── Fase 1 retry-decision (spec §4.1/C11/D11/E11) ────────

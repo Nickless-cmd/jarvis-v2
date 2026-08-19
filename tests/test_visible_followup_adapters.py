@@ -818,6 +818,100 @@ def test_rescue_returns_empty_when_synthesis_empty(monkeypatch: pytest.MonkeyPat
     assert out == ""
 
 
+# ── CUT-OFF fortsættelse (#2026-08-20) ───────────────────────────────────────
+
+
+def test_continuation_feeds_partial_and_returns_continuation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Continuation skal fodre modellen med det delvise svar som assistant-turn,
+    bruge non-thinking chat-alias (omgår #1453), force-prose (ingen tools), og
+    returnere fortsættelsen — ikke doblet."""
+    seen: dict[str, object] = {}
+
+    def _fake_stream(*, provider, model, base_messages, exchanges,
+                     tool_definitions=None, round_index=0, thinking_mode="think",
+                     temperature=None, top_p=None):
+        seen.update(
+            model=model, tool_definitions=tool_definitions,
+            thinking_mode=thinking_mode, base_messages=base_messages,
+            round_index=round_index,
+        )
+        yield vf.FollowupDelta(delta=" og så ")
+        yield vf.FollowupDelta(delta="videre.")
+        yield vf.FollowupDone(text=" og så videre.", reasoning_content="")
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _fake_stream)
+
+    out = vf.synthesize_continuation(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hej"}],
+        exchanges=[],
+        partial_text="Svaret blev afkortet her",
+    )
+    assert out == "og så videre."             # strippet (kontrakt: .strip()), ikke doblet
+    # flash swappes ikke i dag (deepseek_model_for_thinking_mode efterlader den
+    # urørt; kun reasoner → flash). Forventningen er den FAKTISKE adfærd.
+    assert seen["model"] == "deepseek-v4-flash"
+    assert seen["tool_definitions"] is None   # force-prose
+    assert seen["thinking_mode"] == "fast"
+    assert seen["round_index"] == 902         # continuation-marker
+    # Det delvise svar ligger som assistant-turn FØR fortsæt-instruktionen.
+    msgs = list(seen["base_messages"])        # type: ignore[arg-type]
+    assert msgs[-2]["role"] == "assistant"
+    assert msgs[-2]["content"] == "Svaret blev afkortet her"
+    assert msgs[-1]["role"] == "user"
+    assert "Fortsæt PRÆCIS der hvor" in msgs[-1]["content"]
+
+
+def test_continuation_swaps_reasoner_to_flash(monkeypatch: pytest.MonkeyPatch) -> None:
+    """#1453-beskyttelse: deepseek-reasoner (thinking-lane) swappes til flash
+    (non-thinking chat-alias) i continuation-runden."""
+    seen: dict[str, object] = {}
+
+    def _fake_stream(*, model, **kw):
+        seen["model"] = model
+        yield vf.FollowupDone(text="fortsat.", reasoning_content="")
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _fake_stream)
+    vf.synthesize_continuation(
+        provider="deepseek", model="deepseek-reasoner",
+        base_messages=[], exchanges=[], partial_text="afkortet",
+    )
+    assert seen["model"] == "deepseek-v4-flash"
+
+
+def test_continuation_is_self_safe_on_stream_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Provider-fejl → "" (pumpen beholder det delvise svar + truncation-flag)."""
+    def _boom(**_kw):
+        raise RuntimeError("provider down")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _boom)
+    out = vf.synthesize_continuation(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[], exchanges=[], partial_text="afkortet",
+    )
+    assert out == ""
+
+
+def test_continuation_empty_when_synthesis_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Hvis fortsættelses-runden OGSÅ er tom → "" (self-safe, aldrig værre)."""
+    def _empty(**_kw):
+        yield vf.FollowupDone(text="", reasoning_content="")
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _empty)
+    out = vf.synthesize_continuation(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[], exchanges=[], partial_text="afkortet",
+    )
+    assert out == ""
+
+
 def test_tool_choice_none_lands_in_deepseek_payload_keeping_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

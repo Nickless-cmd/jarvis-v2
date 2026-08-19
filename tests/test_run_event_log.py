@@ -60,11 +60,18 @@ def test_create_grace_keeps_new_run_live_without_appends():
 
 
 def test_frame_cap():
+    """2026-08-19: cap'en er nu et RING-VINDUE, ikke et hårdt drop. Nye frames
+    lander altid (live læsere sultes aldrig); de ældste rulles ud og base rykker."""
     rel.create("r1", "s1")
-    for i in range(rel._MAX_FRAMES + 50):
+    total = rel._MAX_FRAMES + 50
+    for i in range(total):
         rel.append("r1", f"f{i}")
+    st = rel._RUNS["r1"]
+    assert len(st["frames"]) <= rel._MAX_FRAMES          # hukommelsesværnet består
+    assert st["frames"][-1] == f"f{total-1}"             # den NYESTE frame er der
+    assert st["base"] > 0                                # de ældste blev rullet ud
     frames, _ = rel.read("r1", 0)
-    assert len(frames) == rel._MAX_FRAMES
+    assert frames[-1] == f"f{total-1}"
 
 
 def test_prune_keeps_latest_per_session():
@@ -173,3 +180,70 @@ def test_touch_liveness_noop_on_done_or_unknown():
     rel.touch_liveness("r-done")
     assert rel.is_live("r-done") is False
     rel.touch_liveness("nope")  # ukendt → ingen exception
+
+
+# ── Ring-buffer (2026-08-19): "streaming stopper pludselig i chatview, liveness
+# fortsætter… klipper gerne midt i runde 5". FØR var _MAX_FRAMES en HÅRD cap der
+# droppede frame 4001+ — og den LIVE subscriber læser fra samme buffer, så
+# chatview frøs midt i runden. Lange agentiske runs rammer 4000 omkring runde
+# 4-6 (thinking-deltas + text-deltas + tool-frames tæller alle). ─────────────
+
+
+def test_live_laeser_sultes_aldrig_over_vinduet():
+    """Regressionstesten for det Bjørn så: en læser der følger med skal modtage
+    ALLE frames, også efter frame 4000."""
+    rel.create("r-ring", "s1")
+    idx = 0
+    received = []
+    total = rel._MAX_FRAMES + 500
+    for i in range(total):
+        rel.append("r-ring", f"f{i}")
+        if i % 100 == 0:  # læseren følger med undervejs
+            frames, _done, idx = rel.read_from("r-ring", idx)
+            received.extend(frames)
+    frames, _done, idx = rel.read_from("r-ring", idx)
+    received.extend(frames)
+    assert received == [f"f{i}" for i in range(total)], \
+        "en live læser må ALDRIG miste frames — det var chatview-frysningen"
+
+
+def test_efternoeler_faar_gap_markoer_ikke_tavshed_eller_duplikater():
+    rel.create("r-lag", "s1")
+    total = rel._MAX_FRAMES + rel._ROLL_CHUNK * 2
+    for i in range(total):
+        rel.append("r-lag", f"f{i}")
+    # Efternøler starter fra 0 — positionen er rullet ud af vinduet.
+    frames, _done, idx = rel.read_from("r-lag", 0)
+    assert frames[0] == rel.GAP_FRAME, "efternøleren skal SE at der mangler et stykke"
+    assert frames[-1] == f"f{total-1}"
+    assert idx == total
+    # Næste læsning må IKKE gen-levere noget (duplikat-værnet).
+    frames2, _d, idx2 = rel.read_from("r-lag", idx)
+    assert frames2 == [] and idx2 == total
+
+
+def test_hukommelsesvinduet_holder():
+    rel.create("r-mem", "s1")
+    for i in range(rel._MAX_FRAMES * 3):
+        rel.append("r-mem", f"f{i}")
+    assert len(rel._RUNS["r-mem"]["frames"]) <= rel._MAX_FRAMES, \
+        "runaway-værnet skal bestå — ring, ikke ubegrænset vækst"
+
+
+def test_terminal_frame_naar_frem_selv_over_vinduet():
+    rel.create("r-term", "s1")
+    for i in range(rel._MAX_FRAMES + 100):
+        rel.append("r-term", f"f{i}")
+    rel.append("r-term", rel.SYNTHETIC_MESSAGE_STOP)
+    frames, _done, _idx = rel.read_from("r-term", 0)
+    assert any("message_stop" in f for f in frames), \
+        "klienten forlader kun 'working' på message_stop — den må aldrig tabes"
+
+
+def test_gammel_read_er_uaendret_for_normale_runs():
+    """Bagudkompatibilitet: base=0-runs (langt de fleste) → read() som altid."""
+    rel.create("r-compat", "s1")
+    rel.append("r-compat", "a")
+    rel.append("r-compat", "b")
+    assert rel.read("r-compat", 0) == (["a", "b"], False)
+    assert rel.read("r-compat", 1) == (["b"], False)

@@ -24,25 +24,32 @@ def setup_function():
 # ---------------------------------------------------------------- F11: cap + terminal
 
 def test_terminal_frame_stored_even_over_cap(monkeypatch):
+    """2026-08-19 ring-revision: over cap'en DROPPES intet længere — vinduet
+    RULLER (live læsere sultes aldrig; det var chatview-frysningen midt i runde 5).
+    Terminal-garantien består: message_stop lander altid i bufferen, og nerven
+    fyrer stadig ÉN gang pr. run ved første rul."""
     captured = []
     monkeypatch.setattr(rel, "_emit_cap_nerve", lambda rid: captured.append(rid))
 
     rel.create("r1", "s1")
-    # Fyld bufferen helt op til cap'en med ikke-terminale frames.
     for i in range(rel._MAX_FRAMES):
         rel.append("r1", f"event: x\ndata: {i}\n\n")
     assert len(rel._RUNS["r1"]["frames"]) == rel._MAX_FRAMES
+    assert captured == []  # præcis fyldt — endnu ikke rullet
 
-    # En ikke-terminal frame OVER cap'en droppes (og trigger nerven).
+    # Frame OVER vinduet: lander (ingen drop), de ældste rulles ud, nerven fyrer én gang.
     rel.append("r1", "event: x\ndata: over\n\n")
-    assert len(rel._RUNS["r1"]["frames"]) == rel._MAX_FRAMES
-    assert captured == ["r1"]  # nerve fyrede én gang
+    st = rel._RUNS["r1"]
+    assert st["frames"][-1] == "event: x\ndata: over\n\n"
+    assert len(st["frames"]) <= rel._MAX_FRAMES
+    assert st["base"] > 0
+    assert captured == ["r1"]
 
-    # Terminal-frame OVER cap'en gemmes ALLIGEVEL.
+    # Terminal-frame lander også, og er sidste frame.
     term = rel.SYNTHETIC_MESSAGE_STOP
     rel.append("r1", term)
     assert rel._RUNS["r1"]["frames"][-1] == term
-    assert len(rel._RUNS["r1"]["frames"]) == rel._MAX_FRAMES + 1
+    assert captured == ["r1"]  # stadig kun én nerve-fyring
 
     # En re-subscriber der læser hele bufferen ser terminal-frame'en.
     frames, _done = rel.read("r1", 0)

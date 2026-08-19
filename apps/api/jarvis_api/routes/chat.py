@@ -917,9 +917,9 @@ async def chat_run_subscribe(run_id: str, from_idx: int = 0):
             idx = max(0, int(from_idx))
             empty = 0
             while True:
-                frames, done = rel.read(run_id, idx)
+                # read_from: ring-bevidst (globalt next_idx + gap-markør). Se run_event_log.
+                frames, done, idx = rel.read_from(run_id, idx)
                 for f in frames:
-                    idx += 1
                     if "message_stop" in f:
                         saw_stop = True
                     yield f
@@ -978,9 +978,9 @@ async def chat_session_live(session_id: str):
             idx = 0
             empty = 0
             while True:
-                frames, done = rel.read(run_id, idx)
+                # read_from: ring-bevidst (globalt next_idx + gap-markør). Se run_event_log.
+                frames, done, idx = rel.read_from(run_id, idx)
                 for f in frames:
-                    idx += 1
                     if "message_stop" in f:
                         saw_stop = True
                     yield f

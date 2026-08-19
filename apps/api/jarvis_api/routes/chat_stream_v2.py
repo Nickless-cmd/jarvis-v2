@@ -445,9 +445,10 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                 idx = 0
                 empty = 0
                 while True:
-                    frames, done = rel.read(run_id, idx)
+                    # read_from: ring-bevidst (globalt next_idx + gap-markør hvis
+                    # positionen er rullet ud af vinduet). idx er GLOBALT.
+                    frames, done, idx = rel.read_from(run_id, idx)
                     for f in frames:
-                        idx += 1
                         if "message_stop" in f:
                             saw_stop = True
                         yield f

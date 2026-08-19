@@ -14,9 +14,21 @@ import time
 from uuid import uuid4
 
 _lock = threading.Lock()
-# run_id -> {session_id, frames: list[str], done: bool, last_append_at: float, created_at: float}
+# run_id -> {session_id, frames: list[str], base: int, done: bool,
+#            last_append_at: float, created_at: float}
+# `base` = globalt indeks for frames[0] (ring-buffer-offset, se _MAX_FRAMES).
 _RUNS: dict[str, dict] = {}
-_MAX_FRAMES = 4000   # runaway-værn pr. run
+# RING-VINDUE pr. run (2026-08-19, Bjørn: "streaming stopper pludselig i chatview,
+# liveness fortsætter… klipper gerne midt i runde 5"). FØR var dette en HÅRD cap:
+# frame 4001+ blev DROPPET (kun terminal reserveret) — og da den LIVE subscriber
+# læser fra SAMME buffer som replay, frøs chatview midt i runden mens routens egne
+# pings holdt liveness kørende. Lange agentiske runs rammer 4000 omkring runde 4-6
+# fordi thinking-deltas (deepseek reasoning), text-deltas og tool-frames alle
+# tæller. NU: ring-buffer — ældste frames rulles ud (base rykker), live læsere ved
+# hovedet sultes ALDRIG, hukommelsesværnet består (samme vindue). En efternøler
+# under base får en gap-markør i stedet for tavshed (read_from).
+_MAX_FRAMES = 4000   # runaway-VINDUE pr. run (ring, ikke hård cap)
+_ROLL_CHUNK = 256    # rul i klumper så del-operationen amortiseres
 
 
 def _is_terminal_frame(frame: str) -> bool:
@@ -76,12 +88,13 @@ def create(run_id: str, session_id: str) -> None:
         _RUNS[rid] = {
             "session_id": (session_id or "").strip(),
             "frames": [],
+            "base": 0,
             "done": False,
             "last_append_at": time.monotonic(),
             "created_at": time.monotonic(),
             "subscribers": 0,
             "consumed": False,
-            "cap_hit": False,  # F11: har vi allerede emitteret truncation-nerven for runnet?
+            "cap_hit": False,  # har vi allerede emitteret ring-roll-nerven for runnet?
         }
 
 
@@ -99,34 +112,34 @@ def append(run_id: str, frame: str) -> None:
         # replay-bufferen — så de ikke æder cap-budgettet (F11).
         if _is_ephemeral_frame(frame):
             return
-        terminal = _is_terminal_frame(frame)
-        if len(st["frames"]) < _MAX_FRAMES:
-            st["frames"].append(frame)
-        elif terminal:
-            # F11: TERMINAL-frame ankom EFTER cap'en. Den MÅ aldrig droppes —
-            # ellers ser hver re-subscriber intet 'done' → H1 bare-break → hæng.
-            # Reservér en hale-plads: tilføj den uanset cap (det er højst én frame
-            # i praksis, så bufferen vokser ikke ubegrænset).
-            st["frames"].append(frame)
-        else:
-            # F11: ikke-terminal frame over cap → DROPPES. Emit truncation-nerven
-            # ÉN gang pr. run, FØR vi taber den første over-cap frame.
+        # RING: appender ALTID (live læsere må aldrig sultes — det frøs chatview
+        # midt i runde 5). Over vinduet rulles de ÆLDSTE frames ud i klumper og
+        # base rykker tilsvarende; globale indekser forbliver monotone.
+        st["frames"].append(frame)
+        if len(st["frames"]) > _MAX_FRAMES:
+            st["frames"][:_ROLL_CHUNK] = []
+            st["base"] = int(st.get("base", 0)) + _ROLL_CHUNK
             if not st.get("cap_hit"):
                 st["cap_hit"] = True
                 cap_just_hit = True
     if cap_just_hit:
         _emit_cap_nerve(rid)
+        # Synlig i journald (trace-sinken er in-memory og forsvinder ved restart —
+        # dét skjulte denne bug i månedsvis). Én linje pr. run.
+        print(f"[run_event_log] ring-roll: run={rid[:24]} vindue={_MAX_FRAMES} "
+              f"(ældste frames beskæres; live stream upåvirket)", flush=True)
 
 
 def _emit_cap_nerve(run_id: str) -> None:
-    """Observe (cluster='stream', nerve='relay_frame_cap') at relay-bufferen ramte
-    cap'en og begynder at droppe ikke-terminale frames. Selv-sikker."""
+    """Observe (cluster='stream', nerve='relay_frame_cap') at ring-vinduet begyndte
+    at rulle (ældste frames beskæres). Live stream er UPÅVIRKET — nerven er nu
+    ren telemetri om lange runs, ikke et tab. Selv-sikker."""
     try:
         from core.services.central_core import central
         central().observe({
             "cluster": "stream", "nerve": "relay_frame_cap",
             "run_id": str(run_id or ""), "max_frames": _MAX_FRAMES,
-            "detail": "relay-buffer over cap — dropper ikke-terminale frames; terminal-frame reserveres",
+            "detail": "ring-vindue ruller — ældste frames beskåret; live stream upåvirket",
         })
     except Exception:
         pass
@@ -154,12 +167,45 @@ def mark_done(run_id: str) -> None:
             st["done"] = True
 
 
+# Gap-markør til en efternøler-læser hvis position er rullet ud af ring-vinduet.
+# system_event — klienterne ignorerer ukendte kinds; bedre et hul med besked end
+# frossen tavshed. DB har altid det endelige svar.
+GAP_FRAME = (
+    'event: system_event\n'
+    'data: {"type": "system_event", "kind": "relay_gap", '
+    '"detail": "tidlig del af streamen beskaaret (ring-vindue) - fortsaetter live"}\n\n'
+)
+
+
 def read(run_id: str, from_idx: int) -> tuple[list[str], bool]:
+    """Bagudkompatibel læser (globalt from_idx). For ikke-rullede runs (base=0)
+    identisk med før. En efternøler under base får vinduet fra base — brug
+    read_from() i stream-loops for korrekt indeks-bogføring + gap-markør."""
     with _lock:
         st = _RUNS.get((run_id or "").strip())
         if st is None:
             return ([], False)
-        return (st["frames"][from_idx:], bool(st["done"]))
+        start = max(int(from_idx) - int(st.get("base", 0)), 0)
+        return (st["frames"][start:], bool(st["done"]))
+
+
+def read_from(run_id: str, from_idx: int) -> tuple[list[str], bool, int]:
+    """Ring-bevidst læser: returnerer (frames, done, next_idx) hvor next_idx er det
+    GLOBALE indeks læseren skal fortsætte fra. Hvis from_idx er rullet ud af
+    vinduet (efternøler/re-subscriber), prependes GAP_FRAME så klienten ved at der
+    mangler et stykke — i stedet for stille duplikater eller tavshed."""
+    with _lock:
+        st = _RUNS.get((run_id or "").strip())
+        if st is None:
+            return ([], False, int(from_idx))
+        base = int(st.get("base", 0))
+        done = bool(st["done"])
+        if from_idx < base:
+            frames = list(st["frames"])
+            return ([GAP_FRAME] + frames, done, base + len(frames))
+        start = int(from_idx) - base
+        frames = st["frames"][start:]
+        return (frames, done, int(from_idx) + len(frames))
 
 
 def active_run_for_session(session_id: str) -> str | None:
@@ -272,6 +318,7 @@ def claim_or_create(session_id: str, stale_cap_s: float = 150.0) -> tuple[str, b
         _RUNS[rid] = {
             "session_id": sid,
             "frames": [],
+            "base": 0,
             "done": False,
             "last_append_at": now,
             "created_at": now,

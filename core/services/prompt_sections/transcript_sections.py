@@ -397,11 +397,15 @@ def _build_structured_transcript_messages(
             # threades her ind i transcript-output så API'et får det.
             r_content = str(item.get("reasoning_content") or "").strip()
             if r_content:
-                # Capper også reasoning ved 2400 så vi ikke pumper kæmpe
-                # context tilbage. Deepseek bryder sig ikke om hvor langt det
-                # er, kun at det er der.
-                if len(r_content) > 8000:
-                    r_content = r_content[:7997].rstrip() + "…"
+                # Capper reasoning ved 2400: Deepseek thinking-mode KRÆVER at
+                # feltet er der (400 uden — se 949712ba), men bryder sig ikke
+                # om hvor langt det er. 52d6563e bumpede til 8000 sammen med
+                # tekst-caps ("1M har headroom") — målt 19. aug 2026 kostede
+                # det 14,6k tokens STALE tænkning pr. tur (31% af transkriptet)
+                # i ren TTFT-last. Cappen er konstant/recency-uafhængig →
+                # byte-stabil tur-til-tur (cache-invarianten holder).
+                if len(r_content) > 2400:
+                    r_content = r_content[:2397].rstrip() + "…"
                 assistant_msg["reasoning_content"] = r_content
             merged.append(assistant_msg)
 

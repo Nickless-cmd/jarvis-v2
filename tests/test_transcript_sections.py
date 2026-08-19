@@ -42,3 +42,25 @@ def test_fallback_never_empty_and_references_raw():
     assert out.strip().startswith("<summary>")
     assert "raw messages remain" in out.lower()
     assert "[user] hello" in out
+
+
+def test_reasoning_replay_cappes_ved_2400():
+    """Reasoning-replay er et API-krav (Deepseek 400'er uden feltet — 949712ba),
+    men længden er ligegyldig for API'et. 52d6563e bumpede cappen til 8000 chars
+    sammen med tekst-caps; målt 19. aug 2026 kostede det 14,6k tokens stale
+    tænkning pr. tur (31% af transkriptet). Tilbage til 2400 — feltet er der,
+    vægten er væk."""
+    long_reasoning = "tænk " * 2000  # 10.000 chars
+    history = [
+        {"id": 1, "role": "user", "content": "hej", "user_id": "", "reasoning_content": ""},
+        {"id": 2, "role": "assistant", "content": "svar", "user_id": "",
+         "reasoning_content": long_reasoning},
+    ]
+    with patch.object(ts, "chat_session_messages_since_last_compact", return_value=history), \
+         patch("core.services.prompt_contract._get_compact_marker_for_transcript",
+               return_value=None), \
+         patch("core.services.prompt_contract._maybe_auto_compact_session"):
+        out = ts._build_structured_transcript_messages("s-reason", limit=60, include=True)
+    replayed = [m for m in out if m.get("reasoning_content")]
+    assert replayed, "assistant-turnens reasoning_content skal stadig være der (API-krav)"
+    assert len(replayed[0]["reasoning_content"]) <= 2400

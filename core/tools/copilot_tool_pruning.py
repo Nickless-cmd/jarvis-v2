@@ -50,7 +50,7 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "edit_task", "eventbus_recent", "find_files", "get_news",
     "get_weather", "geolocation_lookup", "geocode", "reverse_geocode",
     "route_directions", "nearby_search",
-    "create_team", "list_teams", "invite_to_team", "git_diff", "git_log", "git_status",
+    "git_diff", "git_log", "git_status",
     "goal_create", "goal_list", "heartbeat_status", "hf_vision_analyze",
     "home_assistant", "internal_api", "list_agents", "list_events",
     "list_initiatives", "list_plans", "list_proposals", "list_recurring",

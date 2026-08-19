@@ -168,11 +168,10 @@ def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]
                         WHERE mu.session_id = s.session_id
                           AND mu.user_id = ?
                     )
-                    OR """ + _teams().team_scope_sql("s") + """
                 )
                 ORDER BY s.updated_at DESC, s.id DESC
                 """,
-                (uid, uid),
+                (uid,),
             ).fetchall()
         return [_session_summary(dict(row)) for row in rows]
     with connect() as conn:

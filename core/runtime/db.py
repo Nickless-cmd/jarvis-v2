@@ -1182,8 +1182,6 @@ from core.runtime.db_schema import (  # noqa: E402,F401
     _ensure_skill_audit_table,
     _ensure_skill_usage_table,
     _ensure_chat_session_workspace_columns,
-    _ensure_teams_tables,
-    _ensure_chat_session_team_column,
     _ensure_notification_tables,
     _ensure_security_guard_tables,
     _ensure_decision_trigger_column,

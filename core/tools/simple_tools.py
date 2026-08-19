@@ -28,7 +28,6 @@ from core.services.tool_result_store import get_tool_result
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
 from core.runtime.workspace_paths import shared_dir
 from core.tools import geolocation_tools as _geo_tools
-from core.tools import team_tools as _team_tools
 from core.tools.browser_tools import (
     BROWSER_TOOL_DEFINITIONS,
     _exec_browser_navigate,
@@ -1479,9 +1478,6 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "reverse_geocode": _geo_tools.exec_reverse_geocode,
     "route_directions": _geo_tools.exec_route_directions,
     "nearby_search": _geo_tools.exec_nearby_search,
-    "create_team": _team_tools.exec_create_team,
-    "list_teams": _team_tools.exec_list_teams,
-    "invite_to_team": _team_tools.exec_invite_to_team,
     "get_exchange_rate": _exec_get_exchange_rate,
     "get_news": _exec_get_news,
     "wolfram_query": _exec_wolfram_query,

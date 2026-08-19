@@ -7,7 +7,6 @@ interface Prefs {
   briefing: Channel | null
   reminder: Channel | null
   reach_out: Channel | null
-  team_invite: Channel | null
   wakeup: Channel | null
   quiet_start: string
   quiet_end: string
@@ -19,7 +18,6 @@ const TYPES: { key: keyof Prefs; label: string }[] = [
   { key: 'briefing', label: 'Morgenbriefing' },
   { key: 'reminder', label: 'Påmindelser' },
   { key: 'reach_out', label: 'Jarvis tager kontakt' },
-  { key: 'team_invite', label: 'Team-invitationer' },
   { key: 'wakeup', label: 'Wakeups' },
 ]
 

@@ -51,26 +51,23 @@ def _content_json_for_row(role: str, content: str, raw_json: object) -> list[dic
 def create_chat_session(
     *, title: str = "New chat",
     workspace_kind: str | None = None, workspace_root: str | None = None,
-    team_id: str | None = None,
 ) -> dict[str, object]:
-    from core.runtime.db import (
-        _ensure_chat_session_team_column,
-        _ensure_chat_session_workspace_columns,
-    )
+    # `team_id` fjernet 19. aug 2026 med Teams-featuren. Kolonnen bliver liggende i
+    # eksisterende databaser (data røres ikke), men intet skriver den mere.
+    from core.runtime.db import _ensure_chat_session_workspace_columns
     session_id = f"chat-{uuid4().hex}"
     created_at = datetime.now(UTC).isoformat()
     normalized_title = _normalize_title(title) or "New chat"
     with connect() as conn:
         _ensure_chat_session_workspace_columns(conn)
-        _ensure_chat_session_team_column(conn)
         conn.execute(
             """
             INSERT INTO chat_sessions (session_id, title, created_at, updated_at,
-                                       workspace_kind, workspace_root, team_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                                       workspace_kind, workspace_root)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (session_id, normalized_title, created_at, created_at,
-             (workspace_kind or None), (workspace_root or None), (team_id or None)),
+             (workspace_kind or None), (workspace_root or None)),
         )
     return get_chat_session(session_id) or {
         "session_id": session_id,
@@ -91,16 +88,12 @@ def get_or_create_named_session(session_id: str, title: str) -> str:
     OR IGNORE → race-fri på tværs af api+runtime-processer. Returnerer session_id.
     Self-safe: ved fejl returneres id'et alligevel (kalder bruger det som session).
     """
-    from core.runtime.db import (
-        _ensure_chat_session_team_column,
-        _ensure_chat_session_workspace_columns,
-    )
+    from core.runtime.db import _ensure_chat_session_workspace_columns
     now = datetime.now(UTC).isoformat()
     normalized_title = _normalize_title(title) or "Autonomous"
     try:
         with connect() as conn:
             _ensure_chat_session_workspace_columns(conn)
-            _ensure_chat_session_team_column(conn)
             conn.execute(
                 """
                 INSERT OR IGNORE INTO chat_sessions
@@ -112,12 +105,6 @@ def get_or_create_named_session(session_id: str, title: str) -> str:
     except Exception:
         pass
     return session_id
-
-
-def _teams():
-    """Lazy-import af teams-modulet (undgår import-cyklus ved opstart)."""
-    import core.services.teams as teams
-    return teams
 
 
 def most_recent_session_id() -> str:

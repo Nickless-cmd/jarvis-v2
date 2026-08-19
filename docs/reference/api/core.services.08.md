@@ -105,7 +105,7 @@ _Altid-aktiv deling-guard — stopper Jarvis før han deler info om en ANDEN bru
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `check_outbound` | `(text, *, current_user_id, known_users, session_id=…)` | Tjek et udgående svar for omtale af andre brugere end samtalepartneren. | [src](../../../core/services/cross_user_share_guard.py#L25) |
-| function | `check_against_registry` | `(text, *, current_user_id)` | Som check_outbound, men henter kendte brugere fra users-registry. | [src](../../../core/services/cross_user_share_guard.py#L80) |
+| function | `check_against_registry` | `(text, *, current_user_id)` | Som check_outbound, men henter kendte brugere fra users-registry. | [src](../../../core/services/cross_user_share_guard.py#L68) |
 
 ## `core/services/curiosity_budget.py`
 _Curiosity-budget service — Phase 1 (AGI track #6 Åben udforskning)._

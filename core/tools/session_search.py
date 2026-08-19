@@ -90,15 +90,14 @@ def _user_scope_clause(user_id: str) -> tuple[str, list[Any]]:
     Tom uid matcher kun user_id='' (legacy/uattribueret owner-æra) — ALDRIG medlemmers
     data, da medlemsbeskeder altid bærer et ikke-tomt discord-id. Fail-closed.
     """
-    # Regel A (du postede) ELLER regel B (team-session du er medlem af). 's' er
-    # chat_sessions-aliaset i søge-queryen (LEFT JOIN chat_sessions s).
-    import core.services.teams as teams
+    # Kun regel A: du postede i sessionen. Teams-grenen (delt team-session) blev
+    # fjernet 19. aug 2026 sammen med Teams-featuren — scopet er dermed STRAMMERE,
+    # aldrig løsere.
     clause = (
-        "AND (EXISTS (SELECT 1 FROM chat_messages mu "
-        "WHERE mu.session_id = m.session_id AND COALESCE(mu.user_id, '') = ?) "
-        "OR " + teams.team_scope_sql("s") + ")"
+        "AND EXISTS (SELECT 1 FROM chat_messages mu "
+        "WHERE mu.session_id = m.session_id AND COALESCE(mu.user_id, '') = ?)"
     )
-    return clause, [str(user_id or ""), str(user_id or "")]
+    return clause, [str(user_id or "")]
 
 
 def _keyword_search(

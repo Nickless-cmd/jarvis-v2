@@ -35,23 +35,11 @@ def check_outbound(
     en liste af {"id", "name"} (fx fra users-registry). Word-boundary + case-
     insensitive match på navn ELLER id; samtalepartnerens eget navn/id ignoreres.
 
-    Teams (spec 2026-06-20): i en delt team-session brugeren er medlem af ER
-    cross-user-omtaler tilladt (det er hele pointen) → tidlig retur uden flag.
+    Teams-undtagelsen (spec 2026-06-20) er FJERNET 19. aug 2026 sammen med featuren.
+    Den lod en delt team-session springe guarden over helt. Uden den gælder den
+    normale kryds-bruger-kontrol altid — vagten er dermed STRAMMERE, aldrig løsere.
+    `session_id` beholdes i signaturen for bagudkompatibilitet med kaldere.
     """
-    if session_id:
-        try:
-            import core.services.teams as teams
-            from core.runtime.db import connect
-            with connect() as conn:
-                row = conn.execute(
-                    "SELECT team_id FROM chat_sessions WHERE session_id = ?", (session_id,)
-                ).fetchone()
-            team_id = row[0] if row and row[0] else None
-            if team_id and teams.is_member(team_id, current_user_id):
-                return {"needs_confirmation": False, "mentioned_users": [], "prompt": ""}
-        except Exception:
-            pass  # fail-open til normal guard-logik
-
     mentioned: list[str] = []
     if text and known_users:
         lower = text.lower()

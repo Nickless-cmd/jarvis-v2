@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-08-17 — 445 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-08-19 — 442 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -65,7 +65,6 @@
 | `convene_council` | native | no |
 | `counterfactual_summary` | native | no |
 | `create_event` | native | no |
-| `create_team` | native | no |
 | `cross_agent_recall` | native | no |
 | `curiosity_list_skills` | native | no |
 | `curiosity_list_tools` | native | no |
@@ -157,7 +156,6 @@
 | `identity_mutation_status` | native | no |
 | `interlanguage_protocol` | native | no |
 | `internal_api` | native | no |
-| `invite_to_team` | native | no |
 | `list_agent_observations` | native | no |
 | `list_agent_roles` | native | no |
 | `list_agents` | native | no |
@@ -185,7 +183,6 @@
 | `list_skill_mutations` | native | no |
 | `list_skill_roles` | native | no |
 | `list_staged_edits` | native | no |
-| `list_teams` | native | no |
 | `load_more_tools` | native | no |
 | `log_variant_outcome` | native | no |
 | `look_around` | native | no |

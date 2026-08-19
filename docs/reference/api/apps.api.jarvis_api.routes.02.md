@@ -613,26 +613,6 @@ _Public-safe /status endpoint._
 | class | `CommitRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/system_health.py#L80) |
 | function | `system_git_commit` | `(body)` | Stage tracked changes and commit with the given message. | [src](../../../apps/api/jarvis_api/routes/system_health.py#L85) |
 
-## `apps/api/jarvis_api/routes/teams.py`
-_Teams REST-API (Teams-feature, spec 2026-06-20 §6). Scoper til auth'et bruger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_current_user` | `()` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L17) |
-| class | `CreateTeamBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L22) |
-| class | `InviteBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L26) |
-| function | `_team_view` | `(t)` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L31) |
-| function | `list_teams` | `()` | Returnér den auth'ede brugers teams (Jarvis-medlemmet filtreret fra). | [src](../../../apps/api/jarvis_api/routes/teams.py#L38) |
-| function | `create_team` | `(body)` | Opret et team med den auth'ede bruger som owner og returnér team-viewet. | [src](../../../apps/api/jarvis_api/routes/teams.py#L50) |
-| function | `team_members` | `(team_id)` | Returnér teamets medlemmer (Jarvis-medlemmet filtreret fra). | [src](../../../apps/api/jarvis_api/routes/teams.py#L75) |
-| function | `invite` | `(team_id, body)` | Inviter en bruger (via email eller user_id) til teamet. | [src](../../../apps/api/jarvis_api/routes/teams.py#L88) |
-| class | `TeamSessionBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/teams.py#L108) |
-| function | `team_sessions` | `(team_id)` | Returnér teamets delte chat-sessioner. | [src](../../../apps/api/jarvis_api/routes/teams.py#L113) |
-| function | `create_team_session` | `(team_id, body)` | Opret en ny delt chat-session i teamet og returnér session_id + title. | [src](../../../apps/api/jarvis_api/routes/teams.py#L125) |
-| function | `my_pending_invites` | `()` | Pull-baseret invite-levering: brugerens egne pending invites så app'en kan | [src](../../../apps/api/jarvis_api/routes/teams.py#L139) |
-| function | `accept` | `(token)` | Accepter en invite-token og meld den auth'ede bruger ind i teamet. | [src](../../../apps/api/jarvis_api/routes/teams.py#L150) |
-| function | `kick` | `(team_id, target_user_id)` | Fjern et medlem fra teamet. | [src](../../../apps/api/jarvis_api/routes/teams.py#L167) |
-
 ## `apps/api/jarvis_api/routes/tool_router.py`
 _MC observability for tool_router._
 
@@ -669,4 +649,16 @@ _TTS synthesis route — backed by Microsoft Edge's read-aloud cloud_
 | function | `_synthesize_elevenlabs_bytes` | `(text)` | Jarvis' egen ElevenLabs-stemme → MP3-bytes. Genbruger nøgle+voice_id fra voice-skillen | [src](../../../apps/api/jarvis_api/routes/tts.py#L66) |
 | function | `synthesize` | `(req)` | Synthesize text → MP3 bytes via edge-tts. | [src](../../../apps/api/jarvis_api/routes/tts.py#L83) |
 | function | `list_voices` | `(lang=…)` | List available Edge-TTS voices, optionally filtered by language tag. | [src](../../../apps/api/jarvis_api/routes/tts.py#L153) |
+
+## `apps/api/jarvis_api/routes/users.py`
+_Owner-only user-administration (spec 2026-06-15 §4/§6). CRUD + GDPR-erasure._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `PatchUserReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L20) |
+| class | `DeleteUserReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L30) |
+| function | `list_all` | `(claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L35) |
+| function | `get_one` | `(user_id, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L40) |
+| function | `patch_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L48) |
+| function | `delete_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L75) |
 

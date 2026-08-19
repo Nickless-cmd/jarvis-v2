@@ -425,41 +425,6 @@ _Taste Profile — accumulating aesthetic preferences for code, design, and comm
 | function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/taste_profile.py#L167) |
 | function | `_safe_json` | `(value, default)` | — | [src](../../../core/services/taste_profile.py#L174) |
 
-## `core/services/team_mentions.py`
-_@mention-parsing for team-sessioner (Teams-feature, spec 2026-06-20 §5.2-5.3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `extract_mentions` | `(text)` | Rå @-tokens i teksten (lowercased, dedupe, rækkefølge bevaret). | [src](../../../core/services/team_mentions.py#L17) |
-| function | `parse_mentions` | `(text, member_ids)` | Klassificér mentions mod et teams medlemskab. | [src](../../../core/services/team_mentions.py#L27) |
-| function | `should_jarvis_respond` | `(text, *, is_reply_to_jarvis=…)` | v1 (summoned baseline, spec §5.2): Jarvis svarer i en team-session KUN når | [src](../../../core/services/team_mentions.py#L47) |
-
-## `core/services/teams.py`
-_Team data-lag: CRUD, medlemskab, rolle-opslag, scope-helper (Teams-feature,_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/teams.py#L19) |
-| function | `_new_id` | `()` | — | [src](../../../core/services/teams.py#L23) |
-| function | `_new_token` | `()` | — | [src](../../../core/services/teams.py#L27) |
-| function | `_invite_expiry_iso` | `()` | — | [src](../../../core/services/teams.py#L31) |
-| function | `create_team` | `(name, *, owner_user_id)` | Opret team + git-workspace; opretteren bliver owner, Jarvis bliver deltager. | [src](../../../core/services/teams.py#L35) |
-| function | `add_member` | `(team_id, user_id, team_role=…)` | — | [src](../../../core/services/teams.py#L58) |
-| function | `member_role` | `(team_id, user_id)` | — | [src](../../../core/services/teams.py#L67) |
-| function | `is_member` | `(team_id, user_id)` | — | [src](../../../core/services/teams.py#L76) |
-| function | `list_members` | `(team_id)` | — | [src](../../../core/services/teams.py#L80) |
-| function | `list_teams_for_user` | `(user_id)` | — | [src](../../../core/services/teams.py#L89) |
-| function | `get_team` | `(team_id)` | — | [src](../../../core/services/teams.py#L101) |
-| function | `list_team_sessions` | `(team_id)` | Delte sessioner der hører til et team (nyeste først). | [src](../../../core/services/teams.py#L114) |
-| function | `create_invite` | `(team_id, *, invited_email, invited_by)` | Opret et pending invite-token (gemmer email → muliggør email-onboarding | [src](../../../core/services/teams.py#L126) |
-| function | `get_invite` | `(token)` | — | [src](../../../core/services/teams.py#L139) |
-| function | `list_pending_invites_for` | `(*, user_id, email=…)` | Pull-baseret invite-levering: alle pending, ikke-udløbne invites hvor | [src](../../../core/services/teams.py#L152) |
-| function | `accept_invite` | `(token, *, accepting_user_id)` | Valider + acceptér et invite. Tilføjer brugeren som editor og markerer | [src](../../../core/services/teams.py#L179) |
-| function | `autocommit` | `(team_id, *, message, author_user_id)` | Stage alt i team-repoet og commit med den handlende bruger som author. | [src](../../../core/services/teams.py#L199) |
-| function | `team_scope_sql` | `(session_alias=…)` | SQL-fragment: 'sessionen er en team-session jeg er medlem af'. Bruger | [src](../../../core/services/teams.py#L218) |
-| function | `can_admin` | `(team_id, user_id)` | — | [src](../../../core/services/teams.py#L229) |
-| function | `remove_member` | `(team_id, user_id, *, acting_user_id)` | — | [src](../../../core/services/teams.py#L233) |
-
 ## `core/services/telegram_gateway.py`
 _Telegram gateway — bidirectional messaging via Telegram Bot API._
 
@@ -677,4 +642,31 @@ _Theory of Mind — Step A.v1 of meta-evne stack._
 | function | `_listener_loop` | `()` | Poll events table for channel.chat_message_appended events. | [src](../../../core/services/theory_of_mind.py#L376) |
 | function | `start_theory_of_mind_tracker` | `()` | Start the DB-polling listener. Idempotent. | [src](../../../core/services/theory_of_mind.py#L440) |
 | function | `stop_theory_of_mind_tracker` | `()` | — | [src](../../../core/services/theory_of_mind.py#L457) |
+
+## `core/services/theory_of_mind_engine.py`
+_Active theory-of-mind engine for Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_theory_of_mind_surface` | `(*, user_message=…, assistant_text=…, user_id=…)` | Build active social hypotheses and response policy. | [src](../../../core/services/theory_of_mind_engine.py#L20) |
+| function | `build_theory_of_mind_prompt_section` | `(*, user_message=…, assistant_text=…, user_id=…)` | — | [src](../../../core/services/theory_of_mind_engine.py#L53) |
+| function | `record_theory_of_mind_update` | `(*, user_message=…, assistant_text=…, outcome_status=…, source_run_id=…, user_id=…)` | Persist a lightweight outcome update for future hypotheses. | [src](../../../core/services/theory_of_mind_engine.py#L84) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/theory_of_mind_engine.py#L135) |
+| function | `_safe_user_model` | `(agent_id)` | — | [src](../../../core/services/theory_of_mind_engine.py#L142) |
+| function | `_derive_hypotheses` | `(*, base_model, recent_updates, user_message, assistant_text)` | — | [src](../../../core/services/theory_of_mind_engine.py#L150) |
+| function | `_hypothesis` | `(label, confidence, evidence, implication)` | — | [src](../../../core/services/theory_of_mind_engine.py#L214) |
+| function | `_derive_response_policy` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L225) |
+| function | `_derive_uncertainty` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L252) |
+| function | `_summary` | `(*, hypotheses, policy)` | — | [src](../../../core/services/theory_of_mind_engine.py#L263) |
+
+## `core/services/thought_action_proposal_daemon.py`
+_Thought-action proposal daemon — turns action impulses in thought stream into MC proposals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_persist_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L26) |
+| function | `tick_thought_action_proposal_daemon` | `(fragment)` | Classify fragment and create a proposal if an action impulse is detected. | [src](../../../core/services/thought_action_proposal_daemon.py#L35) |
+| function | `resolve_proposal` | `(proposal_id, decision)` | Move a proposal from pending to resolved. decision: 'approved' | 'dismissed'. | [src](../../../core/services/thought_action_proposal_daemon.py#L114) |
+| function | `get_pending_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L138) |
+| function | `build_proposal_surface` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L142) |
 

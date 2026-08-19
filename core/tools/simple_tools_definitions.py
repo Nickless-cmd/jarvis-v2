@@ -1639,42 +1639,6 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "create_team",
-            "description": "Create a shared Team (Discord-replacement): a container for shared chat sessions + a shared git workspace. The current user becomes owner. Confirm with the user before creating.",
-            "parameters": {
-                "type": "object",
-                "properties": {"name": {"type": "string", "description": "Team name, e.g. 'Engineering'."}},
-                "required": ["name"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "list_teams",
-            "description": "List the teams the current user is a member of, with their members.",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "invite_to_team",
-            "description": "Invite someone to a team (owner only). Provide an email or an existing user_id. Creates an invite token. Confirm with the user before inviting — it is an outward-facing action.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "team_id": {"type": "string", "description": "The team to invite to."},
-                    "email": {"type": "string", "description": "Invitee's email."},
-                    "user_id": {"type": "string", "description": "Existing user id (alternative to email)."},
-                },
-                "required": ["team_id"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "get_news",
             "description": "Search for recent news articles on a topic using NewsAPI.",
             "parameters": {

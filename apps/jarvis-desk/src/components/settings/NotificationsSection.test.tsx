@@ -8,7 +8,7 @@ vi.mock('../../lib/api', () => ({ apiFetch: (...a: unknown[]) => apiFetch(...a) 
 
 const DEFAULTS = {
   global: 'auto', briefing: null, reminder: null, reach_out: null,
-  team_invite: null, wakeup: null, quiet_start: '23:00', quiet_end: '07:00',
+  wakeup: null, quiet_start: '23:00', quiet_end: '07:00',
 }
 
 describe('NotificationsSection', () => {

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6476/13029 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6452/12985 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6476/13029 functions/methods documented (49%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 585 | 771 | 75% |
+| `apps.api.jarvis_api.routes` | 576 | 760 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -23,15 +23,15 @@ Generated from source. 6476/13029 functions/methods documented (49%). The list b
 | `core.identity` | 63 | 154 | 40% |
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 556 | 1026 | 54% |
-| `core.services` | 4293 | 9069 | 47% |
+| `core.runtime` | 553 | 1023 | 54% |
+| `core.services` | 4282 | 9045 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 67 | 119 | 56% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 11 | 23 | 47% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 372 | 822 | 45% |
+| `core.tools` | 371 | 816 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -39,7 +39,7 @@ Generated from source. 6476/13029 functions/methods documented (49%). The list b
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1855)
+## Undocumented public functions (1843)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -445,7 +445,7 @@ Generated from source. 6476/13029 functions/methods documented (49%). The list b
 - `core/runtime/db_scheduled_tasks.py` :: `list_scheduled_tasks` (L169)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L129)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L115)
-- `core/runtime/db_schema.py` :: `init_db` (L351)
+- `core/runtime/db_schema.py` :: `init_db` (L314)
 - `core/runtime/db_self_repair.py` :: `count_recent_attempts` (L287)
 - `core/runtime/db_self_repair.py` :: `delete_self_repair_pattern` (L247)
 - `core/runtime/db_self_repair.py` :: `get_self_repair_pattern` (L173)
@@ -718,13 +718,13 @@ Generated from source. 6476/13029 functions/methods documented (49%). The list b
 - `core/services/central_trace.py` :: `sink` (L96)
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L378)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L365)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L51)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L868)
-- `core/services/chat_sessions.py` :: `get_chat_session` (L311)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L579)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L829)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L854)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L855)
+- `core/services/chat_sessions.py` :: `get_chat_session` (L298)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L566)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L816)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L841)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
 - `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L719)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L673)
@@ -1612,15 +1612,6 @@ Generated from source. 6476/13029 functions/methods documented (49%). The list b
 - `core/services/system_cartographer.py` :: `stop_system_cartographer_daemon` (L133)
 - `core/services/taste_profile.py` :: `build_taste_profile_surface` (L155)
 - `core/services/taste_profile.py` :: `update_taste_async` (L125)
-- `core/services/teams.py` :: `add_member` (L58)
-- `core/services/teams.py` :: `can_admin` (L229)
-- `core/services/teams.py` :: `get_invite` (L139)
-- `core/services/teams.py` :: `get_team` (L101)
-- `core/services/teams.py` :: `is_member` (L76)
-- `core/services/teams.py` :: `list_members` (L80)
-- `core/services/teams.py` :: `list_teams_for_user` (L89)
-- `core/services/teams.py` :: `member_role` (L67)
-- `core/services/teams.py` :: `remove_member` (L233)
 - `core/services/telegram_gateway.py` :: `get_status` (L61)
 - `core/services/telegram_gateway.py` :: `is_configured` (L57)
 - `core/services/telegram_gateway.py` :: `start_telegram_gateway` (L464)
@@ -1731,20 +1722,20 @@ Generated from source. 6476/13029 functions/methods documented (49%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L502)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L499)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L509)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6289)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6314)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6518)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6527)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6514)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6285)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6427)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6479)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6396)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6337)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6369)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6255)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6537)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6300)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6286)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6311)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6515)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6524)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6511)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6282)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6424)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6476)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6393)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6334)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6366)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6252)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6534)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6297)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L333)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
@@ -1814,14 +1805,11 @@ Generated from source. 6476/13029 functions/methods documented (49%). The list b
 - `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1070)
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1055)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
-- `core/tools/session_search.py` :: `exec_search_sessions` (L255)
-- `core/tools/team_tools.py` :: `exec_create_team` (L25)
-- `core/tools/team_tools.py` :: `exec_invite_to_team` (L109)
-- `core/tools/team_tools.py` :: `exec_list_teams` (L44)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L166)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L184)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L162)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L189)
+- `core/tools/session_search.py` :: `exec_search_sessions` (L254)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L164)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L182)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L160)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L187)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1864)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L549)

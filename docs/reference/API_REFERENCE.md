@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-08-17 from app.routes (live) — 527 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-08-19 from app.routes (live) — 518 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -270,8 +270,6 @@
 | POST | `/interlanguage-blind/api/start` |  | interlanguage_blind |
 | GET | `/interlanguage-blind/phase4` |  | interlanguage_blind |
 | GET | `/interlanguage-blind/phase4/` |  | interlanguage_blind |
-| GET | `/invites` | dict | teams |
-| POST | `/invites/{token}/accept` | dict | teams |
 | GET | `/mc/absence-awareness` | dict | mission_control_introspection |
 | GET | `/mc/absence-state` | dict | mission_control_living_mind |
 | GET | `/mc/adaptive-learning` | dict | mission_control_runtime_config |
@@ -512,13 +510,6 @@
 | POST | `/push/register` | dict | push |
 | POST | `/push/unregister` | dict | push |
 | GET | `/status` | dict | status |
-| GET | `/teams` | dict | teams |
-| POST | `/teams` | dict | teams |
-| POST | `/teams/{team_id}/invite` | dict | teams |
-| GET | `/teams/{team_id}/members` | dict | teams |
-| DELETE | `/teams/{team_id}/members/{target_user_id}` | dict | teams |
-| GET | `/teams/{team_id}/sessions` | dict | teams |
-| POST | `/teams/{team_id}/sessions` | dict | teams |
 | POST | `/transcribe` | dict | transcribe |
 | GET | `/v1/agent/audit` | dict | agent_audit |
 | POST | `/v1/agent/step` |  | agent_loop |

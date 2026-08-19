@@ -35,12 +35,24 @@ def test_note_loop_complete(captured):
     assert e["exit_reason"] == "completed"
 
 
+def test_note_truncation(captured):
+    """Afkortet svar (finish_reason=length) skal være synligt i Centralen med
+    længde + runde — aldrig tavs (2026-08-19: 'runnet stod som completed')."""
+    fo.note_truncation("r1", provider="deepseek", model="deepseek-v4-flash",
+                       text_len=12703, round_num=3)
+    e = captured[0]
+    assert e["nerve"] == "provider_length_truncation"
+    assert e["text_len"] == 12703 and e["round_num"] == 3
+    assert e["provider"] == "deepseek" and e["model"] == "deepseek-v4-flash"
+
+
 def test_self_safe_on_central_failure(monkeypatch):
     import core.services.central_core as cc
     monkeypatch.setattr(cc, "central", lambda: (_ for _ in ()).throw(RuntimeError("nede")))
     fo.note_round("r", 1)            # må ikke kaste
     fo.note_round_failed("r", 1)
     fo.note_loop_complete("r", rounds=1)
+    fo.note_truncation("r", text_len=100, round_num=1)
 
 
 def test_followup_summary_aggregates_avg(monkeypatch):

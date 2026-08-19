@@ -848,6 +848,7 @@ class OpenAICompatFollowupAdapter:
         _ttfb_ms: int | None = None
         _prompt_chars = sum(len(str(m.get("content", ""))) for m in messages)
         _usage: dict | None = None
+        _finish_reason = ""
 
         try:
             with urllib_request.urlopen(req, timeout=180) as response:
@@ -873,6 +874,18 @@ class OpenAICompatFollowupAdapter:
                         yield FollowupReasoningDelta(delta=reasoning_delta)
                     _merge_openai_tool_call_deltas(tool_call_accumulator, event)
                     if _chat_completion_stream_is_terminal(event):
+                        # Capture WHY the provider ended the stream before we
+                        # throw it away (2026-08-04 rod-årsag: finish_reason was
+                        # accepted as terminal unconditionally, so "length"
+                        # truncation looked like a clean success). Thread it into
+                        # FollowupDone so the agentic pump can treat truncation
+                        # as an interrupted round, not a success.
+                        try:
+                            _choices = event.get("choices") or []
+                            _fr0 = (_choices[0] or {}).get("finish_reason") if _choices else ""
+                            _finish_reason = str(_fr0 or "").strip()
+                        except Exception:
+                            _finish_reason = ""
                         break
         except urllib_error.HTTPError as exc:
             body = ""
@@ -1006,6 +1019,7 @@ class OpenAICompatFollowupAdapter:
         yield FollowupDone(
             text="".join(parts),
             reasoning_content="".join(reasoning_parts),
+            finish_reason=_finish_reason,
         )
 
 
@@ -1103,7 +1117,11 @@ class CodexFollowupAdapter:
                 elif kind == "done":
                     if collected_tool_calls:
                         yield FollowupToolCalls(tool_calls=collected_tool_calls)
-                    yield FollowupDone(text=str(ev.get("full_text") or ""), reasoning_content="")
+                    yield FollowupDone(
+                        text=str(ev.get("full_text") or ""),
+                        reasoning_content="",
+                        finish_reason=str(ev.get("finish_reason") or "").strip(),
+                    )
         except CheapProviderError as exc:
             _kind, _ = classify_failure(http_status=None, error_text=str(exc))
             yield FollowupFailed(

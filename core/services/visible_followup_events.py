@@ -72,13 +72,24 @@ class FollowupToolCalls:
 
 @dataclass(frozen=True, slots=True)
 class FollowupDone:
-    """The model finished this round cleanly (may have emitted text, tool calls, or both)."""
+    """The model finished this round (may have emitted text, tool calls, or both).
+
+    ``finish_reason`` tells the CALLER why the provider ended the stream
+    (``""`` = unknown/legacy, ``"stop"`` = clean, ``"length"`` = truncated).
+    Previously the adapters threw this away, so a provider that cut the answer
+    short (finish_reason=="length") still produced a FollowupDone and the
+    agentic pump treated it as a clean success — the user got a truncated
+    reply while the run was marked ``completed``. The pump now checks this
+    field (see MEMORY.md: cut-off i agentiske runder — rod-årsag 2026-08-04).
+    """
 
     text: str
     # Reasoning trace from thinking-mode models (Deepseek v4-pro/reasoner).
     # Must be threaded into the assistant message that joins the next
     # ToolExchange so multi-round agentic loops survive past round 1.
     reasoning_content: str = ""
+    # Provider stream end reason: "" (unknown/legacy), "stop", "length", ...
+    finish_reason: str = ""
 
 
 @dataclass(frozen=True, slots=True)

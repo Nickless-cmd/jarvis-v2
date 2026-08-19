@@ -2765,6 +2765,10 @@ async def _stream_visible_run(
                         _a_queue = asyncio.Queue()
                         _a_sentinel = object()
                         _a_failure = {}
+                        # CUT-OFF (2026-08-19): sættes når en followup-runde ender
+                        # med finish_reason='length' → svaret er afkortet, ikke rent.
+                        # Resettes pr. attempt så en evt. retry får en frisk chance.
+                        _a_truncated = False
                         # D11 fence: holder for the live provider generator of the
                         # CURRENT attempt, so a retry can force-close the failed
                         # attempt's stream (no orphaned concurrent provider stream when
@@ -3065,6 +3069,26 @@ async def _stream_visible_run(
                                 # it in the next session.
                                 if _a_round_reasoning:
                                     _persist_reasoning = _a_round_reasoning
+                                # ── CUT-OFF (2026-08-19, Bjørn: "runnet stod som
+                                # completed" men svaret døde midt i sætningen).
+                                # Provideren lukkede streamen med finish_reason=
+                                # "length" → svaret er afkortet. Det er IKKE en ren
+                                # succes: flag + incident i Centralen (bump ved
+                                # gentagelse). Retry-stien (fase 1, kill-switch)
+                                # kan senere tage den herfra; indtil da er den i
+                                # det mindste SYNLIG — aldrig tavs.
+                                if _a_item.finish_reason == "length":
+                                    _a_truncated = True
+                                    try:
+                                        from core.services import followup_observer as _fu_trunc
+                                        _fu_trunc.note_truncation(
+                                            run.run_id,
+                                            provider=str(run.provider or ""),
+                                            model=str(run.model or ""),
+                                            text_len=len(_a_item.text or ""),
+                                            round_num=_agentic_round + 1)
+                                    except Exception:
+                                        pass
                                 continue
 
                         # ── Fase 1 retry-decision (spec §4.1/C11/D11/E11) ────────
@@ -4251,6 +4275,12 @@ async def _stream_visible_run(
                                     pass
                     except Exception:
                         pass
+                # CUT-OFF (2026-08-19): loopet sluttede "completed", men en runde
+                # blev afkortet (finish_reason=length) → exit-grunden skal ikke
+                # lyve om ren succes. Status forbliver completed (der ER et svar),
+                # men telemetri/incident viser truncation ærligt.
+                if _a_truncated and _agentic_loop_exit_reason == "completed":
+                    _agentic_loop_exit_reason = "completed-truncated"
                 logger.info(
                     "agentic-loop-exit run_id=%s reason=%s rounds_done=%d",
                     run.run_id, _agentic_loop_exit_reason,

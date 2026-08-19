@@ -126,6 +126,40 @@ def note_empty_completion(run_id: str, *, provider: str = "", model: str = "",
         pass
 
 
+def note_truncation(run_id: str, *, provider: str = "", model: str = "",
+                    text_len: int = 0, round_num: int = 0) -> None:
+    """AFKORTET SVAR (finish_reason='length'): provideren lukkede streamen tidligt,
+    så svaret blev klippet midt i sætningen — men run'et blev alligevel markeret
+    'completed'. Før var det usynligt: adapterne kastede finish_reason væk, så
+    pumpen tog imod et 'rent' FollowupDone. Nu bærer FollowupDone feltet, pumpen
+    flagger, og Centralen ser frekvensen LIVE (bump ved gentagelse, aldrig tavs
+    dedup) — samme mønster som empty_completion (Bjørn 19. aug: 'runnet stod som
+    completed')."""
+
+    _observe("provider_length_truncation", run_id, provider=str(provider or ""),
+             model=str(model or ""), text_len=int(text_len or 0),
+             round_num=int(round_num or 0))
+    try:
+        from core.runtime.db_central_incidents import (
+            record_central_incident, has_open_incident, bump_open_incident)
+        _n = "provider_length_truncation"
+        if has_open_incident(cluster=_CLUSTER, nerve=_n):
+            bump_open_incident(
+                cluster=_CLUSTER, nerve=_n,
+                run_id=str(run_id or ""), session_id="",
+                note=f"text_len={int(text_len or 0)} {provider}/{model}")
+        else:
+            record_central_incident(
+                cluster=_CLUSTER, nerve=_n, kind="truncation",
+                severity="error", run_id=str(run_id or ""), session_id="",
+                message=(f"Afkortet svar (finish_reason=length): "
+                         f"{int(text_len or 0)} tegn nåede frem, men svaret blev "
+                         f"klippet — {provider}/{model}, runde "
+                         f"{int(round_num or 0)}. Run markeret completed alligevel."))
+    except Exception:
+        pass
+
+
 def note_hollow_promise(run_id: str, *, provider: str = "", model: str = "",
                         round_index: int = 0, session_id: str = "",
                         resolved: bool = True) -> None:

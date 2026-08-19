@@ -1,68 +1,109 @@
-"""Tests: Matrix Ensemble — central_matrix_ensemble.py (Spec F)"""
+"""Matrix-ensemblet skal tale i hans prompt — når de har noget at sige, og ikke ellers.
 
-from core.services.central_matrix_ensemble import (
-    build_matrix_ensemble_prompt_section,
-    build_matrix_signoff_section,
-)
+Bjørn 19. aug 2026: "hver karakter har en funktion der skal hjælpe jarvis. og de skal
+dukke op realtime i hans prompt til at guide og huske og korrigere og eskalere... og de
+skal ikk stå der hele tiden, men komme og gå efter behov og nødvendighed."
 
+Før: karaktererne blev skrevet til nudge-brønden af `push_active_character_nudges()` —
+kaldt på linje ~2852 i prompt_contract, mens nudge-sektionen bygges på ~1241. Beskederne
+kunne altså ALDRIG nå den prompt de blev skabt i, og prompten fik kun et tal:
+"🎬 Matrix: 3 karakter(er) har meldinger". Brønden pensionerede dem derefter efter
+median 26 sekunder. 78 beskeder skrevet, nul læst.
+"""
+from __future__ import annotations
 
-def test_ensemble_returns_string_or_none() -> None:
-    """build_matrix_ensemble_prompt_section must return str or None."""
-    result = build_matrix_ensemble_prompt_section()
-    assert result is None or isinstance(result, str)
+from unittest.mock import patch
 
-
-def test_ensemble_contains_active_characters_when_present() -> None:
-    """When any character is active, their label must appear in output."""
-    result = build_matrix_ensemble_prompt_section()
-    if result and result != "Alle Matrix-karakterer er stille lige nu.":
-        assert "[" in result  # at least one [🎭 label]
+import core.services.central_matrix_ensemble as me
 
 
-def test_ensemble_no_leaked_content() -> None:
-    """Ensemble must never leak private brain content — only labels and one-liners."""
-    result = build_matrix_ensemble_prompt_section()
-    if result is None:
-        return
-    # Labels only — no raw data dumps
-    assert "private_brain" not in result
+class TestKommerOgGaar:
+    def test_ingen_aktive_giver_ingen_sektion(self):
+        """De skal ikke stå der hele tiden."""
+        with patch.object(me, "active_character_voices", return_value=[]):
+            assert me.build_matrix_voices_section() is None
+
+    def test_aktiv_karakter_taler_med_egne_ord(self):
+        v = [{"cid": "trinity", "label": "[💜 Trinity]", "line": "Det her er rigtigt.",
+              "unaddressed": 0, "text": "[💜 Trinity] Det her er rigtigt."}]
+        with patch.object(me, "active_character_voices", return_value=v):
+            out = me.build_matrix_voices_section()
+        assert "Trinity" in out and "Det her er rigtigt." in out
+        assert "tjek pending nudges" not in out, "prompten må ikke bare få et tal"
+
+    def test_fejl_giver_ingen_sektion_i_stedet_for_at_kaste(self):
+        with patch.object(me, "active_character_voices", side_effect=RuntimeError):
+            assert me.build_matrix_voices_section() is None
 
 
-def test_signoff_returns_string_or_none() -> None:
-    """build_matrix_signoff_section must return str starting with MATRIX SIGN-OFF or None."""
-    result = build_matrix_signoff_section()
-    assert result is None or (isinstance(result, str) and result.startswith("MATRIX SIGN-OFF:"))
+class TestRelevansLiggerIKaraktererne:
+    def _surf(self, active):
+        return {"active": active, "items": [], "line": "min replik"}
+
+    def test_kun_karakterer_hvis_check_er_sand(self):
+        builders = {c["id"]: (lambda a=(c["id"] == "seraph"): self._surf(a))
+                    for c in me._CHARACTERS}
+        with patch.object(me, "_SURFACE_BUILDERS", builders), \
+             patch.object(me, "get_unaddressed", return_value=0):
+            got = {v["cid"] for v in me.active_character_voices(limit=99)}
+        assert "seraph" in got
+        assert "trainman" not in got, "en inaktiv surface må ikke give en stemme"
+
+    def test_loft_paa_antal_stemmer(self):
+        builders = {c["id"]: (lambda: self._surf(True)) for c in me._CHARACTERS}
+        with patch.object(me, "_SURFACE_BUILDERS", builders), \
+             patch.object(me, "get_unaddressed", return_value=0):
+            voices = me.active_character_voices(limit=3)
+        assert len(voices) == 3, "prompten må ikke oversvømmes"
+
+    def test_en_kastende_karakter_tier_de_andre_ikke(self):
+        def _boom():
+            raise RuntimeError("surface nede")
+        builders = {c["id"]: (lambda: self._surf(True)) for c in me._CHARACTERS}
+        builders[me._CHARACTERS[0]["id"]] = _boom
+        with patch.object(me, "_SURFACE_BUILDERS", builders), \
+             patch.object(me, "get_unaddressed", return_value=0):
+            voices = me.active_character_voices(limit=3)
+        assert voices, "de øvrige stemmer skal overleve én defekt karakter"
 
 
-def test_signoff_contains_label_when_active() -> None:
-    """When a character is active, the sign-off must include their label."""
-    result = build_matrix_signoff_section()
-    if result is not None:
-        assert "[" in result and "]" in result  # contains [emoji Name]
+class TestEskalering:
+    def _one_active(self):
+        return {me._CHARACTERS[1]["id"]: (lambda: {"active": True, "line": "l", "items": []})}
+
+    def test_ubesvaret_giver_skarpere_replik(self):
+        with patch.object(me, "_SURFACE_BUILDERS", self._one_active()), \
+             patch.object(me, "get_unaddressed", return_value=3):
+            v = me.active_character_voices(limit=1)
+        assert v and v[0]["unaddressed"] == 3
+        assert v[0]["text"] != f"{v[0]['label']} l", "eskaleret replik forventes"
+
+    def test_sektionen_naevner_gentagen_ignorering(self):
+        v = [{"cid": "smith", "label": "[🕴️ Smith]", "line": "l", "unaddressed": 4,
+              "text": "[🕴️ Smith] Nok."}]
+        with patch.object(me, "active_character_voices", return_value=v):
+            out = me.build_matrix_voices_section()
+        assert "4 gange" in out
+
+    def test_visning_er_ikke_svar(self):
+        """At have set en stemme er ikke at have svaret den — samme fejl som brønden."""
+        with patch.object(me, "increment_unaddressed") as inc:
+            me.note_voices_shown(["neo", "smith"])
+        assert inc.call_count == 2
 
 
-def test_smith_consolidated_respects_kill_switch(monkeypatch) -> None:
-    """Smith er samlet ét sted (sign-off). Kill-switch (agent_smith_voice OFF) skal mute ham
-    dér — ellers ville muting ikke virke efter konsolideringen."""
-    import core.services.central_matrix_ensemble as me
-    monkeypatch.setattr("core.runtime.db_core.get_runtime_state_value",
-                        lambda *a, **k: {"score": 0.9, "line": "SMITH-LINE", "rung_line": ""})
-    monkeypatch.setattr("core.services.central_switches.is_enabled",
-                        lambda scope, name: not (scope == "autonomy" and name == "agent_smith_voice"))
-    # voice OFF → Smith må ikke være den valgte karakter
-    ch = me._most_active_character()
-    assert ch is None or ch.get("label") != "[🕴️ Smith]"
+class TestSignOffErVaek:
+    """Bjørn: sign-off'en var lavet som en joke og skal fjernes."""
 
+    def test_ingen_signoff_funktioner_tilbage(self):
+        for name in ("build_matrix_signoff_section", "signoff_enabled", "_most_active_character"):
+            assert not hasattr(me, name), f"{name} skulle være fjernet"
 
-def test_smith_escalation_surfaces_regardless_of_score(monkeypatch) -> None:
-    """En eskaleret rung_line (bind/confront) skal surface selv når score < 0.5.
+    def test_prompt_contract_bruger_stemme_sektionen_ikke_et_tal(self):
+        import inspect
 
-    Efter oprydning (Smith er en normal _CHARACTERS-member, ikke en sign-off-special-case)
-    lever denne garanti i _smith_surface: active=True + den LEVENDE rung_line eksponeres."""
-    import core.services.central_matrix_ensemble as me
-    monkeypatch.setattr("core.services.central_switches.is_enabled", lambda scope, name: True)
-    monkeypatch.setattr(
-        "core.runtime.db_core.get_runtime_state_value",
-        lambda *a, **k: {"score": 0.1, "line": "x", "rung_line": "BIND-LINE"})
-    surf = me._smith_surface()
-    assert surf.get("active") is True and surf.get("line") == "BIND-LINE"
+        from core.services import prompt_contract
+        src = inspect.getsource(prompt_contract)
+        assert "build_matrix_voices_section" in src
+        assert "tjek pending nudges" not in src
+        assert "build_matrix_signoff_section" not in src

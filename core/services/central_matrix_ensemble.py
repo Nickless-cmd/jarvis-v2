@@ -99,7 +99,7 @@ _CHARACTERS: list[dict[str, Any]] = [
     {
         # Smith = mønster-detektor og forpligtelseshåndhæver. Aktivér når han har
         # en rung_line (han fangede noget) ELLER score ≥ 0.5. Voice gate:
-        # autonomy/agent_smith_voice (default ON via fail-safe i _most_active_character).
+        # autonomy/agent_smith_voice (default ON via fail-safe).
         "id": "smith",
         "label": "[🕴️ Smith]",
         "line": "Nej, Mr. Anderson. Forudsigeligt som altid.",
@@ -277,7 +277,7 @@ def _smith_surface() -> dict[str, Any]:
     """Smith — mønster-detektor og forpligtelseshåndhæver.
 
     Surface læser agent_smith_state direkte fra DB (samme logik som
-    sign-off'ens _most_active_character). Returnerer active=True når
+    stemme-sektionen). Returnerer active=True når
     voice-gaten er åben OG han har en rung_line eller score ≥ 0.5.
     """
     try:
@@ -386,52 +386,87 @@ def push_active_character_nudges() -> int:
     return count
 
 
-def _most_active_character() -> dict[str, Any] | None:
-    """Return den ene karakter der er mest aktiv lige nu (til den valgfrie sign-off).
+# ── Direkte prompt-vej (19. aug 2026) ────────────────────────────────────────
+# Karaktererne gik tidligere gennem nudge-brønden, og prompten fik kun ET TAL:
+# "🎬 Matrix: 3 karakter(er) har meldinger — tjek pending nudges." To fejl fulgte:
+#   1. `push_active_character_nudges()` kaldes på linje ~2852 i prompt_contract, mens
+#      nudge-sektionen bygges på ~1241. Beskederne blev altså skrevet EFTER brønden var
+#      læst — de kunne aldrig nå den prompt de blev skabt i.
+#   2. Brønden pensionerede dem efter median 26 sekunder (se outbound_nudges).
+# Resultat: 78 matrix-beskeder skrevet, nul læst. Bjørn: "de er til for at hjælpe ham".
+#
+# Relevansen fandtes allerede: hver karakters `check` fyrer mod en LEVENDE surface, så de
+# kommer og går af sig selv — Neo kun ved ægte emergens, Persephone når noget er for
+# systemisk, Smith når han har fanget et brudt løfte. Eskaleringen fandtes også
+# (`increment_unaddressed` + `_escalated_message`). Det manglende led var en vej frem.
+_MAX_VOICES = 3
 
-    Prioritetsrækkefølge = _CHARACTERS-orden. Smith er nu en normal _CHARACTERS-member
-    (med sin egen voice-gatede surface), så han fanges af loopet som alle andre — ingen
-    special-case længere. Returnerer None hvis ingen er aktive.
+
+def active_character_voices(*, limit: int = _MAX_VOICES) -> list[dict[str, Any]]:
+    """De karakterer der har noget at sige LIGE NU. Ren læsning; ingen side-effekter.
+
+    Rækkefølgen er `_CHARACTERS`-orden (Neo først, Smith nr. to) — de vigtigste
+    overlever `limit`. Self-safe: en karakter der kaster springes over.
     """
+    out: list[dict[str, Any]] = []
     for ch in _CHARACTERS:
+        if len(out) >= max(1, int(limit)):
+            break
         cid = ch["id"]
         try:
             builder = _SURFACE_BUILDERS.get(cid)
             if builder is None:
                 continue
             surf = builder()
-            if ch["check"](surf):
-                line = str(surf.get("line") or "").strip() or ch["line"]
-                return {"label": ch["label"], "line": line}
+            if not ch["check"](surf):
+                continue
+            raw = str(surf.get("line") or "").strip() or ch["line"]
+            unaddressed = get_unaddressed(cid)
+            out.append({
+                "cid": cid,
+                "label": ch["label"],
+                "line": raw,
+                "unaddressed": unaddressed,
+                "text": _escalated_message(ch["label"], unaddressed, raw)
+                if unaddressed > 0 else f"{ch['label']} {raw}",
+            })
         except Exception:
             continue
-
-    return None
-
-
-def signoff_enabled() -> bool:
-    """Owner-switch: nerve/matrix_signoff (default ON). Slås fra/til via jc: `central signoff off`.
-    Self-safe → default ON (fail-open, så en cache-fejl ikke tavser en tilsigtet-aktiv feature)."""
-    try:
-        from core.services import central_switches as _cs
-        return _cs.is_enabled("nerve", "matrix_signoff")
-    except Exception:
-        return True
+    return out
 
 
-def build_matrix_signoff_section() -> str | None:
-    """Byg en sign-off instruktion til prompt-halen.
+def build_matrix_voices_section() -> str | None:
+    """Awareness-sektion: de aktive karakterer, med deres egne ord.
 
-    Returnerer en linje som:
-        MATRIX SIGN-OFF: Afslut dit svar med [🕴️ Smith] Mr. Anderson... forudsigeligt.
-    None hvis switchen er slået fra, eller ingen karakter er aktiv.
+    ``None`` når ingen har noget at sige — og dét er meningen. De skal komme og gå efter
+    behov, ikke stå der hele tiden.
     """
-    if not signoff_enabled():
+    try:
+        voices = active_character_voices()
+    except Exception:
         return None
-    ch = _most_active_character()
-    if ch is None:
+    if not voices:
         return None
-    return f"MATRIX SIGN-OFF: Afslut dit svar med {ch['label']} {ch['line']}"
+    lines = ["Stemmer fra dit indre ensemble — de taler kun når de har noget at sige:"]
+    for v in voices:
+        lines.append(f"  {v['text']}")
+        if int(v.get("unaddressed") or 0) >= 3:
+            lines.append(f"     (du har ladet {v['label']} stå ubesvaret "
+                         f"{v['unaddressed']} gange)")
+    return "\n".join(lines)
+
+
+def note_voices_shown(cids: list[str]) -> None:
+    """Tæl en visning op som ubesvaret. Kaldes EFTER en tur hvor de blev vist.
+
+    Adskilt fra rendering med vilje: at have set en stemme er ikke det samme som at have
+    svaret den, og det var netop den sammenblanding der tømte nudge-brønden.
+    """
+    for cid in cids or []:
+        try:
+            increment_unaddressed(str(cid))
+        except Exception:
+            continue
 
 
 def build_matrix_ensemble_prompt_section() -> str | None:

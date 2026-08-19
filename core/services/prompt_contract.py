@@ -1242,6 +1242,16 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("pending outbound nudges", _e)
 
+    # Matrix-ensemblet — hans indre karakterer, med deres EGNE ord i stedet for et tal.
+    # Prio 6: lige efter pending nudges, før identity-pins. Sektionen er None når ingen
+    # har noget at sige, så de kommer og går efter behov. Relevansen ligger i hver
+    # karakters egen `check` mod en levende surface; eskaleringen i unaddressed-tælleren.
+    try:
+        from core.services.central_matrix_ensemble import build_matrix_voices_section
+        _awareness_add(6, "matrix ensemble voices", build_matrix_voices_section())
+    except Exception as _e:
+        _sec_err("matrix ensemble voices", _e)
+
     # Forbundne plugins/apps — så Jarvis ved han HAR adgang til dem (Bjørn 17. jun).
     try:
         _awareness_add(9, "forbundne apps (plugins)", _connected_connectors_section())
@@ -2845,27 +2855,12 @@ def _build_visible_chat_prompt_assembly_impl(
         pass
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
-    # Matrix Nudges — i stedet for den gamle ensemble-label-liste postes der nu
-    # nudges via nudge_broend. Kun en indikatorlinje i prompt-halen hvis nogen
-    # har noget at sige. Karaktererne dukker op i awareness via nudge-systemet.
-    try:
-        from core.services.central_matrix_ensemble import push_active_character_nudges as _push_matrix_nudges
-        _nudge_count = _push_matrix_nudges()
-        if _nudge_count > 0:
-            _dyn_tail.append(f"🎬 Matrix: {_nudge_count} karakter(er) har meldinger — tjek pending nudges.")
-            derived_inputs.append("matrix character nudges indicator (tail)")
-    except Exception:
-        pass
-    # Matrix Sign-Off — automatisk karakter-signatur i bunden af svar.
-    # Kører EFTER labels-sektionen så sign-off'en har karakterernes kontekst.
-    try:
-        from core.services.central_matrix_ensemble import build_matrix_signoff_section as _signoff_fn
-        _signoff = _signoff_fn()
-        if _signoff:
-            _dyn_tail.append(_signoff)
-            derived_inputs.append("matrix sign-off instruction (tail)")
-    except Exception:
-        pass
+    # Matrix-stemmerne er flyttet til en ÆGTE awareness-sektion (se prio 6 ovenfor).
+    # Her stod tidligere to ting, begge fjernet 19. aug 2026:
+    #   · en indikatorlinje der kun bar et TAL ("3 karakter(er) har meldinger — tjek
+    #     pending nudges") og pegede på beskeder der blev skrevet 1600 linjer SENERE end
+    #     nudge-sektionen blev læst — de kunne aldrig nå den prompt de tilhørte;
+    #   · Matrix Sign-Off, som Bjørn har bekræftet var ment som en joke.
     if _dyn_tail:
         parts.append(DYNAMIC_TAIL_SENTINEL)
         parts.extend(_dyn_tail)

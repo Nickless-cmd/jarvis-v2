@@ -56,10 +56,12 @@ def _format_chain_for_failure(failure_event: dict) -> str:
     root_kind = str(failure_event["kind"])
     root_ts = str(failure_event.get("created_at", ""))[:19]
     if not chain["chain"]:
-        return (
-            f"🔗 Kausalkæde — recent failure:\n"
-            f"  ROOT: {root_kind} ({root_ts}) <ingen edges fundet>"
-        )
+        # Tavshed frem for en tom kæde (19. aug 2026). Sektionen udsendte tidligere
+        # overskriften "🔗 Kausalkæde" og meldte derefter selv at den intet fandt —
+        # en alarm der annoncerer sin egen tomhed. Målt: hele sektionen bestod af
+        # sådanne pladsholdere. En årsagskæde uden kanter er ikke en kort kæde; det
+        # er fraværet af en, og så er der intet at fortælle.
+        return ""
     lines = ["🔗 Kausalkæde — recent failure:"]
     lines.append(f"  ROOT: {root_kind} ({root_ts})")
     for step in chain["chain"]:
@@ -81,8 +83,10 @@ def causal_alerts_section() -> str:
     chunks: list[str] = []
     for fail in failures:
         try:
-            chunks.append(_format_chain_for_failure(fail))
+            chunk = _format_chain_for_failure(fail)
         except Exception as exc:
             logger.debug("causal_alerts: format failed: %s", exc)
             continue
+        if chunk:  # tomme kæder bidrager ikke — ellers står headeren alene
+            chunks.append(chunk)
     return "\n\n".join(chunks)

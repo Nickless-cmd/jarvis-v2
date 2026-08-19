@@ -291,14 +291,18 @@ def test_bootstrap_registers_known_producers(isolated_runtime) -> None:
     # Clear to force re-bootstrap
     cadence._producers.clear()
 
-    result = cadence.run_cadence_tick_with_bootstrap(trigger="test")
-    # Was '== 7' when this test was written; the system has grown to ~20
-    # producers since then. The test's intent is "the 7 known producers
-    # are registered" — verified by the membership asserts below — so
-    # relax the count to >= 7 to stay stable as new producers are added.
-    assert result["producer_count"] >= 7
+    # Kun BOOTSTRAP, ikke en fuld tick (19. aug 2026). Testen kaldte tidligere
+    # `run_cadence_tick_with_bootstrap`, som registrerer producerne OG kører dem —
+    # altså witness, inner_voice, dream_articulation m.fl. med rigtige LLM-kald. Den
+    # tog ~40 s mod pytest-timeout på 45 s og fejlede derfor ca. hver tredje kørsel:
+    # en tidsrace, ikke en logikfejl. Testens hensigt er at bootstrap REGISTRERER de
+    # kendte producere i rigtig prioritetsorden — det kræver ikke at de eksekveres.
+    cadence._ensure_producers_registered()
 
     state = cadence.get_cadence_state()
+    # Var '== 7' da testen blev skrevet; systemet er vokset til ~20 producere. Hensigten
+    # er "de 7 kendte er registreret" — verificeret af medlemskabs-asserts nedenfor.
+    assert len(state["producers"]) >= 7
     names = [p["name"] for p in state["producers"]]
     assert "brain_continuity" in names
     assert "sleep_consolidation" in names

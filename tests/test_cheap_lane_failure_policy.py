@@ -157,3 +157,49 @@ class TestBeskedenVejerTungereEndKoden:
     def test_uden_besked_er_adfaerden_uaendret(self):
         assert pol.classify("http-400") == "transient"
         assert pol.classify("model-not-found") == "permanent"
+
+
+class TestBundKaeden:
+    """Bunden skal kunne svare når alt andet brænder — ellers er den dekoration.
+
+    Målt 19. aug 2026: primæret var `pollinations/openai`, men providerens eneste model
+    hedder `openai-fast`. Bundens FØRSTE target pegede altså på et modelnavn der ikke
+    fandtes, og backup'en (ovhcloud, anonym) er 2 RPM med 12,4 s svartid.
+    """
+
+    def test_alle_targets_er_keyless(self):
+        """En bund der kræver en nøgle kan fejle af en grund vi ikke kontrollerer."""
+        from core.services.cheap_lane_floor import floor_targets
+        from core.services.cheap_provider_runtime_adapters import CHEAP_PROVIDER_DEFAULTS
+
+        for prov, _ in floor_targets():
+            meta = CHEAP_PROVIDER_DEFAULTS.get(prov) or {}
+            assert str(meta.get("auth_kind")) == "none", f"{prov} er ikke keyless"
+
+    def test_alle_targets_navngiver_en_model_provideren_faktisk_har(self):
+        """Præcis den fejl der gjorde bundens primære target ubrugelig."""
+        from core.services.cheap_lane_floor import floor_targets
+        from core.services.cheap_provider_runtime_adapters import CHEAP_PROVIDER_DEFAULTS
+
+        for prov, model in floor_targets():
+            meta = CHEAP_PROVIDER_DEFAULTS.get(prov) or {}
+            static = meta.get("static_models")
+            if not static:
+                continue  # dynamisk model-liste → kan ikke tjekkes statisk
+            assert model in static, (
+                f"bund-target {prov}/{model!r} findes ikke i providerens "
+                f"static_models {static}"
+            )
+
+    def test_kaeden_har_dybde(self):
+        """Ét target er ikke en bund; det er et enkelt fejlpunkt."""
+        from core.services.cheap_lane_floor import floor_targets
+
+        assert len(floor_targets()) >= 2
+
+    def test_ingen_dublet_provider_i_kaeden(self):
+        """To targets hos samme provider deler skæbne ved kvote/nedbrud."""
+        from core.services.cheap_lane_floor import floor_targets
+
+        provs = [p for p, _ in floor_targets()]
+        assert len(provs) == len(set(provs)), f"dublet-provider i bund-kæden: {provs}"

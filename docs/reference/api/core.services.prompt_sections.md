@@ -46,7 +46,7 @@ _Causal alerts — surface failure-event chains in the prompt._
 |---|---|---|---|---|
 | function | `_fetch_recent_failures` | `(limit)` | — | [src](../../../core/services/prompt_sections/causal_alerts.py#L35) |
 | function | `_format_chain_for_failure` | `(failure_event)` | — | [src](../../../core/services/prompt_sections/causal_alerts.py#L48) |
-| function | `causal_alerts_section` | `()` | Build the causal-alerts awareness section. Returns "" if no alerts. | [src](../../../core/services/prompt_sections/causal_alerts.py#L72) |
+| function | `causal_alerts_section` | `()` | Build the causal-alerts awareness section. Returns "" if no alerts. | [src](../../../core/services/prompt_sections/causal_alerts.py#L74) |
 
 ## `core/services/prompt_sections/causal_narrative.py`
 _Causal narrative — surface "how you landed here" in the prompt._

@@ -16,11 +16,27 @@ logger = logging.getLogger(__name__)
 # bunden må ALDRIG trække fra den betalte deepseek-API — heller ikke som nød-bund.
 # Agent/cheap/inder-lanerne router allerede til gratis-poolen først (central_route);
 # floor'en er kun sidste-udvej når HELE poolen er nede, og selv da skal den være GRATIS.
-# pollinations valgt som primær (keyless → ingen profil-afhængighed, altid-reachable,
-# live-verificeret PONG gennem floor-stien); ovhcloud som keyless backup. Hvis begge er
-# nede → typet degraderet svar (aldrig exception, aldrig en overraskelses-regning).
+# Alle targets er keyless (auth_kind=none) → ingen profil-afhængighed.
+#
+# OMLAGT 19. aug 2026 efter at bunden blev målt tør i produktion. To fejl fandtes:
+#   1. Primæret var ``pollinations/openai`` — men providerens eneste model hedder
+#      ``openai-fast``. Bundens FØRSTE target har altså peget på et modelnavn der ikke
+#      eksisterer. (Navnet er rettet, men pollinations er p.t. credits-exhausted
+#      uanset, så den er rykket sidst.)
+#   2. ``ovhcloud`` er anonym med **2 RPM** og målt 12,4 s svartid — brugbar, men et
+#      dårligt primær-valg for en bund der skal svare når alt andet brænder.
+# Målt alternativ: ``kilo/tencent/hy3:free`` — keyless, 2,5 s, og kilo var 5/5 sund i
+# hele pool-sweepet. Den er nu primær.
+#
+# Rækkefølgen er hurtigst-og-sundest først. Hvis alle er nede → typet degraderet svar
+# (aldrig exception, aldrig en overraskelses-regning); daemon_llm falder derefter videre
+# til heartbeat-modellen (lokal Ollama), som er den egentlige backstop.
 # Overstyres af config-nøgle ``cheap_lane_floor_targets`` (liste af [provider, model]).
-_DEFAULT_FLOOR: list[tuple[str, str]] = [("pollinations", "openai"), ("ovhcloud", "Qwen3.5-9B")]
+_DEFAULT_FLOOR: list[tuple[str, str]] = [
+    ("kilo", "tencent/hy3:free"),
+    ("ovhcloud", "Qwen3.5-9B"),
+    ("pollinations", "openai-fast"),
+]
 
 
 def floor_targets() -> list[tuple[str, str]]:

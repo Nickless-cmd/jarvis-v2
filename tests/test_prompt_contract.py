@@ -100,38 +100,50 @@ class TestTimePinPlacement:
     keeps the front of the prompt stable.
     """
 
-    def test_time_pin_referenced_once_in_assembly(self):
-        """Only the tail-anchored time_pin call should exist (the old
-        position-#4 call was removed)."""
+    # Guarden pegede indtil 19. aug 2026 på `build_visible_chat_prompt_assembly` — men
+    # den funktion blev splittet i en tur-cachet WRAPPER og `_..._impl`, og selve
+    # samlingen flyttede med til impl'en. Testen scannede derefter en wrapper uden
+    # time_pin overhovedet og fejlede med "time_pin call not found" på ren main. Den
+    # fejlede altså højlydt — den blev bare ignoreret, hvilket er værre end at være
+    # stille: en rød test man vænner sig til, beskytter ingenting.
+    @staticmethod
+    def _assembly_source() -> str:
         import inspect
         from core.services import prompt_contract
-        src = inspect.getsource(prompt_contract.build_visible_chat_prompt_assembly)
-        # _time_pin_section() should be called exactly once
-        n_calls = src.count("_time_pin_section()")
+        src = inspect.getsource(prompt_contract._build_visible_chat_prompt_assembly_impl)
+        assert "parts" in src and "_dyn_tail" in src, (
+            "prompt-samlingen ser ikke ud som forventet — er impl'en omdøbt eller "
+            "splittet igen? Ret denne guard til at pege på den nye samling."
+        )
+        return src
+
+    def test_time_pin_referenced_once_in_assembly(self):
+        """Kun det hale-forankrede time_pin-kald må findes (det gamle position-#4-kald
+        blev fjernet — det brød DeepSeek-cachen midt i prompten)."""
+        n_calls = self._assembly_source().count("_time_pin_section()")
         assert n_calls == 1, (
-            f"Expected exactly 1 call to _time_pin_section() in assembly, "
-            f"found {n_calls}. Either the old position-#4 call was reintroduced "
-            f"or the tail-anchor call was lost."
+            f"Forventede præcis 1 kald til _time_pin_section() i samlingen, fandt "
+            f"{n_calls}. Enten er det gamle position-#4-kald genindført, eller "
+            f"hale-forankringen er gået tabt."
         )
 
-    def test_time_pin_appears_near_end_of_parts(self):
-        """In the source, the time_pin parts.append call should come AFTER
-        the bulk of parts.append sites (specifically, after the assembled_text
-        comment), so the part lands at the tail of the prompt."""
-        import inspect
-        from core.services import prompt_contract
-        src = inspect.getsource(prompt_contract.build_visible_chat_prompt_assembly)
-        # Find the index of the time_pin call and the assembled_text join.
+    def test_time_pin_lander_i_halen(self):
+        """time_pin skal ind i `_dyn_tail` og tæt på den afsluttende join.
+
+        Hvorfor det betyder noget: tidsstemplet ændrer sig hver tur. Ligger det midt i
+        prompten, invalideres prefix-cachen ved hvert kald. Hale-forankringen er hele
+        grunden til at cache-hit-raten kan holdes høj.
+        """
+        src = self._assembly_source()
         idx_tp = src.find("_time_pin_section()")
         idx_join = src.find('"\\n\\n".join(part for part in parts if part)')
-        assert idx_tp > 0, "time_pin call not found"
-        assert idx_join > 0, "assembled_text join not found"
-        # time_pin must come right before the join, not way up near
-        # model-identity-awareness.
-        # Heuristic: distance from time_pin to join is small (< 500 chars).
-        assert (idx_join - idx_tp) < 1000, (
-            "time_pin appears too far from the prompt assembly tail — "
-            f"distance to join: {idx_join - idx_tp} chars"
+        assert idx_tp > 0, "time_pin-kaldet blev ikke fundet i samlingen"
+        assert idx_join > 0, "assembled_text-join blev ikke fundet"
+        assert idx_tp < idx_join, "time_pin skal tilføjes FØR prompten samles"
+        # Skal stå i den dynamiske hale, ikke appendes direkte i parts midt i prompten.
+        line = src[src.rfind("\n", 0, idx_tp) + 1:idx_tp]
+        assert "_dyn_tail" in line, (
+            f"time_pin skal hale-forankres via _dyn_tail, fandt: {line.strip()!r}"
         )
 
 

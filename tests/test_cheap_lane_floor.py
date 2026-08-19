@@ -20,7 +20,13 @@ def test_default_floor_is_keyless_free_never_deepseek():
     from core.services.cheap_provider_runtime_adapters import provider_cost_class
     assert all(p != "deepseek" for p, _ in floor._DEFAULT_FLOOR)
     assert all(provider_cost_class(p) == "free" for p, _ in floor._DEFAULT_FLOOR)
-    assert ("pollinations", "openai") in floor._DEFAULT_FLOOR   # keyless primær
+    # Tidligere stod her `assert ("pollinations", "openai") in _DEFAULT_FLOOR`. Den
+    # låste et konkret par fast — og netop DET par var forkert: providerens eneste
+    # model hedder "openai-fast", så bundens primære target pegede på et modelnavn der
+    # ikke fandtes, mens testen var grøn. Egenskaben (keyless + gratis + aldrig betalt)
+    # er det der skal beskyttes; hvilken konkret model der er hurtigst skifter over tid
+    # og er dækket af test_alle_targets_navngiver_en_model_provideren_faktisk_har.
+    assert floor._DEFAULT_FLOOR, "bund-kæden må aldrig være tom"
     # floor_targets() falder tilbage til default når config er tom
     import core.runtime.settings as settings_mod
 

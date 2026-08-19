@@ -309,7 +309,7 @@ _Agent Smith — eskalerings-stige ("The Confrontation")._
 | function | `_voice` | `(kind, label, metric=…)` | Teatralsk Smith-stemme pr. trin. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L182) |
 | function | `_resolve_actions` | `(state, key, pat, now, reason)` | Byg de-eskalerings-actions: pensionér direktiv (hvis mintet), anerkend, observ. | [src](../../../core/services/central_agent_smith_escalation.py#L198) |
 | function | `step_escalation` | `(state, detected, now, cfg=…)` | REN kerne. `detected` = {pattern_key: {kind, label, metric, corroborated?}} for mønstre | [src](../../../core/services/central_agent_smith_escalation.py#L220) |
-| function | `top_line` | `(actions)` | Vælg den mest alvorlige stemme-linje til prompt-halen (confront>bind>resolved>comment). | [src](../../../core/services/central_agent_smith_escalation.py#L323) |
+| function | `top_line` | `(actions)` | Vælg den mest alvorlige stemme-linje til prompt-halen (confront>bind>resolved>comment). | [src](../../../core/services/central_agent_smith_escalation.py#L336) |
 
 ## `core/services/central_agents_surface.py`
 _Central agents-/council-surface (B3, 13. jul 2026) — gør de nye agent-/council-_

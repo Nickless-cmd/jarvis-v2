@@ -109,3 +109,34 @@ class TestIngenSelvbekraeftendeLoekke:
 
     def test_tom_konfiguration_er_det_sikre_udgangspunkt(self):
         assert default_config()["self_commitments"] == []
+
+
+class TestTavshedVedUberettigetMoenster:
+    """Efter eskalerings-gaten kommenterede Smith stadig på funktionsord i hver prompt:
+    "Mr. Anderson... du gentager «det er ikke». Jeg finder det forudsigeligt. Varier."
+    Han bandt ikke længere — men han hakkede. Tavshed er den rigtige adfærd."""
+
+    def _det(self, label, **extra):
+        from core.services.central_agent_smith_escalation import pattern_key
+        return {pattern_key("phrase", label): {"kind": "phrase", "label": label,
+                                               "metric": 18.0, **extra}}
+
+    def test_funktionsord_giver_INGEN_stemme(self):
+        from core.services.central_agent_smith_escalation import step_escalation
+        st, acts = step_escalation(None, self._det("det er ikke"), "t0",
+                                   _cfg(self_commitments=[]))
+        assert [a for a in acts if a.get("type") == "voice"] == []
+        assert st.get("patterns") == {}, "uberettiget mønster skal ikke engang spores"
+
+    def test_selv_bundet_moenster_faar_stemme(self):
+        from core.services.central_agent_smith_escalation import step_escalation
+        _, acts = step_escalation(None, self._det("vil du have"), "t0",
+                                  _cfg(self_commitments=["vil du have"]))
+        assert [a for a in acts if a.get("type") == "voice"], "hans egne løfter skal høres"
+
+    def test_risikabel_handling_faar_stemme_uden_loefte(self):
+        from core.services.central_agent_smith_escalation import pattern_key, step_escalation
+        det = {pattern_key("seq", "delete workspace memory line"): {
+            "kind": "seq", "label": "delete workspace memory line", "metric": 3.0}}
+        _, acts = step_escalation(None, det, "t0", _cfg(self_commitments=[]))
+        assert [a for a in acts if a.get("type") == "voice"]

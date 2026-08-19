@@ -246,6 +246,19 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
         metric = float(d.get("metric") or 0.0)
         label = str(d.get("label") or "")
         kind = str(d.get("kind") or "phrase")
+
+        # Berettigelse gælder OGSÅ Trin 1 (19. aug 2026). Efter at eskaleringen blev
+        # gated, kommenterede Smith stadig: "Mr. Anderson... du gentager «det er ikke».
+        # Jeg finder det forudsigeligt. Varier." Han bandt ikke længere — men han stod
+        # og hakkede på danske funktionsord i hver eneste prompt. Er mønsteret hverken
+        # noget Jarvis selv har lovet at stoppe eller en risikabel handling, har Smith
+        # ingenting at sige om det. Tavshed er den rigtige adfærd, ikke en blødere tone.
+        if not (_matches_any(label, conf.get("risky_terms"))
+                or _is_self_bound(label, d, conf)):
+            seen.discard(key)
+            patterns.pop(key, None)
+            continue
+
         pat = patterns.get(key)
         if pat is None:
             patterns[key] = {

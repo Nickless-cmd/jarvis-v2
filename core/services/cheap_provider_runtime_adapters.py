@@ -231,7 +231,10 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "daily_limit": 1000,
         # gemma-4-31b (non-reasoning) først = default-pick uden reasoning-overhead;
         # gpt-oss/glm er reasoning (brænder korte token-budgetter på tanke → tom content).
-        "static_models": ["gemma-4-31b", "zai-glm-4.7", "gpt-oss-120b"],
+        # zai-glm-4.7 fjernet 19. aug 2026: Cerebras svarer `model_archived_error`
+        # ("archived and unavailable for the organization") på begge auth-profiler.
+        # Verificeret mod /v1/models — kontoen tilbyder nu KUN gemma-4-31b + gpt-oss-120b.
+        "static_models": ["gemma-4-31b", "gpt-oss-120b"],
     },
     "cline": {
         "label": "Cline",
@@ -284,8 +287,13 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "models_endpoint": "",
         "rpm_limit": 10,
         "daily_limit": 50,
-        "static_models": ["openai/gpt-5-mini", "openai/gpt-4o", "openai/o4-mini",
-                          "deepseek/deepseek-r1", "meta/llama-3.3-70b-instruct"],
+        # TØMT 19. aug 2026: GitHub retirer hele tjenesten. Alle fem modeller svarer
+        # HTTP 410 med `github_models_retirement_brownout` — "temporarily unavailable as
+        # part of a scheduled retirement brownout". En brownout er en varslet nedlukning,
+        # ikke en driftsforstyrrelse: der er ingen model at skifte til hos denne udbyder.
+        # Beholdt som tom entry (ikke slettet), så en genopstået tjeneste kun kræver at
+        # listen fyldes igen — og så historikken i git forklarer hvorfor den er tom.
+        "static_models": [],
     },
     # OVHcloud AI Endpoints (14. jul research): EU/GDPR, ANONYM (ingen key, auth_kind=none).
     # 2 RPM anon → backup-lane. Model-navne m. UNDERSCORES. openai-compat.

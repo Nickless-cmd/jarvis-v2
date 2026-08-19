@@ -17,9 +17,19 @@ from __future__ import annotations
 EGRESS_ROUTES = {"groq": "he6"}   # groq's VPN IP is Cloudflare-blocked -> use IPv6 proxy
 _DEFAULT_NONDEFAULT_EGRESS = "vpn"
 # proxy endpoints (overridable via runtime config; these are the real proven defaults)
+#
+# he6 rettet 19. aug 2026: pegede på 10.0.0.46, som INGEN vært har. llm-gateway (CT106)
+# får sin adresse via DHCP og ligger på .45 — samme tinyproxy på 0.0.0.0:8888 betjener
+# begge ruter. Resultat: alle groq/account2-kald fejlede med `[Errno 113] No route to
+# host` og brændte balancerens retries.
+#
+# VIGTIGT for fremtiden: CT106 har slet INGEN global IPv6, så den kan i praksis ikke
+# levere he6-egress uanset adresse. Den rigtige vej for account2-groq er den native
+# source-bind (`resolve_v6bind_source` nedenfor) fra CT105's egen HE-adresse — den er
+# målt til ~560 ms uden proxy. Denne endpoint er kun en nødplan.
 _DEFAULT_PROXY_ENDPOINTS = {
     "vpn": "http://10.0.0.45:8888",
-    "he6": "http://10.0.0.46:8888",
+    "he6": "http://10.0.0.45:8888",
     "home": None,
 }
 

@@ -17,11 +17,23 @@ def test_resolve_egress_groq_uses_ipv6():
 
 
 def test_proxy_endpoints_has_defaults():
+    """Test invarianten, ikke adressen.
+
+    Denne test låste tidligere he6 fast på `http://10.0.0.46:8888`. Den IP forsvandt da
+    llm-gateway (CT106, DHCP) flyttede til .45, og testen blev grøn på en påstand der var
+    holdt op med at være sand — mens ALLE groq/account2-kald fejlede med Errno 113.
+    En test der gentager en hardkodet adresse beviser kun at nogen skrev den to steder.
+    """
     from core.services.egress_routing import proxy_endpoints
     ep = proxy_endpoints()
-    assert ep["vpn"] == "http://10.0.0.45:8888"
-    assert ep["he6"] == "http://10.0.0.46:8888"
-    assert ep["home"] is None
+    assert ep["home"] is None, "home = ingen proxy, altid"
+    for name in ("vpn", "he6"):
+        assert ep[name] and ep[name].startswith("http://"), name
+    # Begge proxy-ruter betjenes af den samme tinyproxy på llm-gateway; peger de på
+    # forskellige værter, er den ene sandsynligvis efterladt ved en flytning.
+    assert ep["vpn"] == ep["he6"], (
+        "vpn og he6 peger på forskellige værter — tjek om den ene er forældet"
+    )
 
 
 def test_resolve_nat64_default_profile_never():

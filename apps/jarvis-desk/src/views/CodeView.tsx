@@ -20,7 +20,6 @@ import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralBadge } from '../components/shell/CentralBadge'
 import { SystemHealth } from '../components/shell/SystemHealth'
-import { OperatorPanel } from '../components/code/OperatorPanel'
 import { MessageRail, railLabel } from '../components/chat/MessageRail'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
@@ -755,7 +754,6 @@ export function CodeView({
               installingTool={installingTool}
               onInstallTool={onInstallTool}
             />
-            {isOwner && <OperatorPanel config={config} />}
           </div>
         )}
         {trustBanner}

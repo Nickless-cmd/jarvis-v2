@@ -122,3 +122,38 @@ class TestRetryDybde:
         from core.services.cheap_lane_balancer import _DEFAULT_MAX_RETRIES
 
         assert _DEFAULT_MAX_RETRIES <= 10
+
+
+class TestBeskedenVejerTungereEndKoden:
+    """Udbyderne er ikke enige om hvilken kode en pensioneret model giver.
+
+    Målt 19. aug 2026: opencode svarede `auth-rejected` på "Model north-mini-code-free
+    is not supported" — hvilket sendte fejlsøgningen efter NØGLER. aionlabs svarede
+    `http-400` på "Unknown model: aion-labs/aion-2.5" — klassificeret transient, så
+    slottet kom tilbage i lodtrækningen igen og igen. Koden løj; beskeden ikke.
+    """
+
+    def test_ikke_understoettet_bag_auth_kode(self):
+        assert pol.classify("auth-rejected", "Model north-mini-code-free is not supported") == "permanent"
+
+    def test_ukendt_model_bag_http_400(self):
+        assert pol.classify("http-400", "Unknown model: aion-labs/aion-2.5") == "permanent"
+        assert pol.quarantine_seconds("http-400", message="Unknown model: x") == pol.PERMANENT_QUARANTINE_S
+
+    def test_arkiveret_model_genkendes(self):
+        assert pol.classify("model-archived", "Model zai-glm-4.7 is archived") == "permanent"
+
+    def test_retirement_brownout_genkendes(self):
+        assert pol.classify("http-410", "scheduled retirement brownout") == "permanent"
+
+    def test_uskyldig_besked_aendrer_ikke_klassifikationen(self):
+        """En transient fejl må ikke blive permanent, blot fordi den har en tekst."""
+        assert pol.classify("unreachable", "connection reset by peer") == "transient"
+        assert pol.classify("rate-limited", "too many requests, slow down") == "transient"
+
+    def test_retry_after_vinder_stadig_over_beskeden(self):
+        assert pol.quarantine_seconds("http-400", retry_after_s=30, message="Unknown model") == 0
+
+    def test_uden_besked_er_adfaerden_uaendret(self):
+        assert pol.classify("http-400") == "transient"
+        assert pol.classify("model-not-found") == "permanent"

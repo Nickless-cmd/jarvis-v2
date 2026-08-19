@@ -197,7 +197,11 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
             "hy3-free",
             "mimo-v2.5-free",
             "nemotron-3-ultra-free",
-            "north-mini-code-free",
+            # north-mini-code-free udgik 19. aug 2026 ("Model … is not supported" —
+            # rapporteret som auth-rejected, hvilket sendte fejlsøgningen efter nøgler
+            # frem for efter modeller). /models viser 6 gratis; disse to er nye.
+            "nemotron-3.5-lightning-free",
+            "laguna-s-2.1-free",
         ],
     },
     "openai-codex": {
@@ -511,8 +515,11 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "rpm_limit": 15,
         "daily_limit": 100,
         "cost_class": "free",
+        # aion-2.5 udgik 19. aug 2026 ("Unknown model", rapporteret som http-400 →
+        # klassificeret transient, så slottet blev ved med at komme tilbage). /models
+        # viser 4; aion-3.0 er efterfølgeren.
         "static_models": ["aion-labs/aion-2.0", "aion-labs/aion-3.0-mini",
-                          "aion-labs/aion-2.5"],
+                          "aion-labs/aion-3.0"],
     },
     # FreeTheAi (16. jul, Bjørn-nøgle `sta_…`): OpenAI-compat gateway `api.freetheai.xyz/v1`,
     # ~54 modeller. Live-verificeret PONG på bbl/gpt-5.5-mini, bbl/grok-4.1-fast-non-reasoning,
@@ -927,6 +934,16 @@ def _execute_openai_compatible_chat(
     _f = _facade()
     credentials = _f._require_credentials(profile=auth_profile, provider=provider)
     root = str(base_url or _f.provider_runtime_defaults(provider).get("base_url") or "").rstrip("/")
+    # Uløste base_url-skabeloner udfyldes fra credential'en (19. aug 2026). Cloudflares
+    # default bærer "{account_id}", og meningen var at provider_router.json på containeren
+    # skulle overskrive den. Routeren HAVDE den rigtige URL, men slot-byggeren læste den
+    # statiske default — så kaldet gik til .../accounts/%7Baccount_id%7D/... og serveren
+    # svarede "Could not route to". Vi står med credential'en her og har account_id lige
+    # ved hånden; at udfylde den her kan ikke drifte fra hvad der står i routeren.
+    if "{account_id}" in root:
+        _acct = str(credentials.get("account_id") or "").strip()
+        if _acct:
+            root = root.replace("{account_id}", _acct)
     _api_key = str(credentials.get('api_key') or '').strip()
     headers: dict[str, str] = {}
     if _api_key:  # auth_kind=none (OVHcloud anon) → ingen Authorization-header

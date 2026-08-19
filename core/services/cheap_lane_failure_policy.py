@@ -58,12 +58,37 @@ PERMANENT_QUARANTINE_S = 24 * 3600
 DEPLETED_QUARANTINE_S = 6 * 3600
 
 
-def classify(error_kind: str) -> str:
+# Udbyderne er ikke enige om hvilken HTTP-kode en pensioneret model giver. Målt 19. aug:
+# opencode svarede ``auth-rejected`` på "Model … is not supported" (sendte fejlsøgningen
+# efter NØGLER), og aionlabs svarede ``http-400`` på "Unknown model" (klassificeret
+# transient → slottet kom tilbage i lodtrækningen igen og igen). Beskeden er sandere end
+# koden, så vi læser den når vi har den.
+_RETIRED_PHRASES = (
+    "is not supported",
+    "unknown model",
+    "does not exist",
+    "no longer available",
+    "model_archived",
+    "is archived",
+    "has been retired",
+    "retirement",
+    "decommissioned",
+)
+
+
+def classify(error_kind: str, message: str = "") -> str:
     """``'permanent'`` | ``'depleted'`` | ``'transient'``.
 
-    Ukendte koder bliver ``transient``: en fejl vi ikke forstår må aldrig føre til at
-    et sundt slot forsvinder i et døgn. Fejlretningen skal være mild ved tvivl.
+    ``message`` er serverens egen fejltekst, når vi har den. Den vejer TUNGERE end koden:
+    en udbyder der skriver "Unknown model" bag en 400'er fortæller os noget koden skjuler.
+
+    Ukendte koder uden sigende besked bliver ``transient``: en fejl vi ikke forstår må
+    aldrig føre til at et sundt slot forsvinder i et døgn. Mild ved tvivl.
     """
+    body = str(message or "").strip().lower()
+    if body and any(p in body for p in _RETIRED_PHRASES):
+        return "permanent"
+
     kind = str(error_kind or "").strip().lower()
     if not kind:
         return "transient"
@@ -74,7 +99,7 @@ def classify(error_kind: str) -> str:
     return "transient"
 
 
-def quarantine_seconds(error_kind: str, *, retry_after_s: int = 0) -> int:
+def quarantine_seconds(error_kind: str, *, retry_after_s: int = 0, message: str = "") -> int:
     """Karantæne-længde, eller ``0`` når slottet skal følge den normale breaker-trappe.
 
     Et ``retry-after`` fra serveren er altid autoritativt — providerens eget svar om
@@ -82,7 +107,7 @@ def quarantine_seconds(error_kind: str, *, retry_after_s: int = 0) -> int:
     """
     if retry_after_s and retry_after_s > 0:
         return 0
-    kind = classify(error_kind)
+    kind = classify(error_kind, message)
     if kind == "permanent":
         return PERMANENT_QUARANTINE_S
     if kind == "depleted":

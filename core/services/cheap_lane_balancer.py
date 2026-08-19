@@ -458,6 +458,7 @@ def _register_failure(
     *,
     retry_after_s: int = 0,
     now: float,
+    error_message: str = "",
     observed_used: Optional[int] = None,
     config_daily: Optional[int] = None,
 ) -> None:
@@ -490,7 +491,7 @@ def _register_failure(
     # rettet config heler sig selv.
     from core.services.cheap_lane_failure_policy import quarantine_seconds
 
-    _q = quarantine_seconds(error_kind, retry_after_s=retry_after_s)
+    _q = quarantine_seconds(error_kind, retry_after_s=retry_after_s, message=error_message)
     if _q:
         state.cooldown_until = now + _q
         return
@@ -934,6 +935,11 @@ def call_balanced(
                 exc.code,
                 retry_after_s=getattr(exc, "retry_after_seconds", 0),
                 now=_time.time(),
+                # Serverens egen tekst er sandere end koden: målt 19. aug svarede
+                # opencode `auth-rejected` på "Model … is not supported" og aionlabs
+                # `http-400` på "Unknown model" — begge pensionerede modeller skjult
+                # bag en kode der pegede et helt andet sted hen.
+                error_message=str(exc),
             )
             # ── Lag 1: score failed provider_routing ─────────────────
             if _choice_id:

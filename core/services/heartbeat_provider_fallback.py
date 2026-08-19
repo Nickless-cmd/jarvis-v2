@@ -51,11 +51,15 @@ _PROVIDER_BASE_URLS: dict[str, str] = {
 
 
 def execute_openai_compat_heartbeat_prompt(
-    *, prompt: str, target: dict[str, str | bool]
+    *, prompt: str, target: dict[str, str | bool],
+    max_tokens: int = 1536, temperature: float = 0.7,
 ) -> dict[str, object]:
     """Call an OpenAI-chat/completions-compatible provider for heartbeat.
 
     Used for sambanova, mistral, nvidia-nim as configured heartbeat providers.
+    Also reused by compact_llm for primary-lane summaries (deepseek), which
+    needs a larger max_tokens and lower temperature — hence the kwargs
+    (defaults preserve the original heartbeat behaviour exactly).
     Raises RuntimeError on failure (caller handles fallback).
     """
     from core.services.heartbeat_runtime import _load_provider_api_key
@@ -76,8 +80,8 @@ def execute_openai_compat_heartbeat_prompt(
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
-            "temperature": 0.7,
-            "max_tokens": 1536,  # var 512 → trunkerede beslutnings-JSON (29. jun)
+            "temperature": float(temperature),
+            "max_tokens": int(max_tokens),  # default 1536; var 512 → trunkerede beslutnings-JSON (29. jun)
         }
     ).encode("utf-8")
     req = urllib_request.Request(

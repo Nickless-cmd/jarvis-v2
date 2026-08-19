@@ -217,8 +217,16 @@ def build(out_path: Path) -> None:
       f"**{len(alive)}** findes stadig ({gone} er siden slettet eller flyttet).")
     A("")
     A(f"**{len(orphans)} af dem importeres ingen steder** i `core/`, `apps/` eller "
-      f"`scripts/` i dag. Det betyder ikke automatisk at de er døde — en cadence-producer "
-      f"eller en route kan blive nået dynamisk — men det er stedet at lede først.")
+      f"`scripts/` i dag. Det er stedet at lede først — men **nul referencer betyder "
+      f"ikke død.**")
+    A("")
+    A("> **Lære fra første gennemgang (19. aug):** `central_gardener.py` stod på listen. "
+      "Den viste sig at være et menneske-kaldt kirurgisk værktøj — den kørte to gange "
+      "6. juli, fjernede 201 attrap-funktioner fra 107 services, arkiverede alt til "
+      "`docs/gardener/`, og har intet tilbage at lave (tør-kørsel i dag: 0 fundet). Nul "
+      "referencer er den KORREKTE tilstand for den. Indekset måler referencer, og et "
+      "værktøj man kalder i hånden ser identisk ud med forladt kode. Læs docstringen før "
+      "du konkluderer: står der at et menneske kører den, er den ikke glemt.")
     A("")
     A("> Kør `python scripts/capability_audit.py` for den dybere live/stale/orphan-analyse "
       "(`docs/capability_matrix.md`).")

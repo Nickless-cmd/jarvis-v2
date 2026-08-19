@@ -1,6 +1,6 @@
 # Jarvis V2 — komplet commit-historie
 
-**4,975 commits** fra 2026-03-20 til 2026-08-19 · 6 måneder · genereret af `scripts/commit_history_report.py`
+**4,976 commits** fra 2026-03-20 til 2026-08-19 · 6 måneder · genereret af `scripts/commit_history_report.py`
 
 Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-indekset](#fødsels-indeks--nye-systemer-i-coreservices)** nederst — det er dér man leder først.
 
@@ -13,7 +13,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 | Omstrukturering (`refactor`) | 118 | 2% |
 | Ydelse (`perf`) | 68 | 1% |
 | Tests (`test`) | 65 | 1% |
-| Dokumentation (`docs`) | 490 | 10% |
+| Dokumentation (`docs`) | 491 | 10% |
 | Vedligehold (`chore`) | 83 | 2% |
 | Formatering (`style`) | 13 | 0% |
 | Build (`build`) | 5 | 0% |
@@ -23,7 +23,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 
 | Forfatter | Commits |
 |---|---:|
-| Nickless | 4,853 |
+| Nickless | 4,854 |
 | Claude | 54 |
 | Jarvis | 42 |
 | Nickless-cmd | 13 |
@@ -36,7 +36,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 - [Maj 2026](#maj-2026) — 906 commits
 - [Juni 2026](#juni-2026) — 1,118 commits
 - [Juli 2026](#juli-2026) — 1,158 commits
-- [August 2026](#august-2026) — 44 commits
+- [August 2026](#august-2026) — 45 commits
 - [Fødsels-indeks](#fødsels-indeks--nye-systemer-i-coreservices)
 
 ---
@@ -5495,7 +5495,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 
 ## August 2026
 
-*44 commits · 2026-08-03 → 2026-08-19*
+*45 commits · 2026-08-03 → 2026-08-19*
 
 ### Uge 32 · 3.–9. august — 6 commits
 
@@ -5527,7 +5527,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 - `9c4a41ac` 2026-08-16 — **mc** · komplet kortlægning af det gamle Mission Control-UI
 - `2a6cef5c` 2026-08-16 — **mc** · drift-sonde — 96% af gammelt MC's /mc/*-flade lever stadig
 
-### Uge 34 · 17.–23. august — 33 commits
+### Uge 34 · 17.–23. august — 34 commits
 
 **Nyt**
 
@@ -5573,6 +5573,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 - `edf7b7e2` 2026-08-17 — regenerér api-docs efter rebase (interlanguage + initiativer)
 - `6e979afe` 2026-08-17 — **indre-liv** · audit — hvor Jarvis' indre liv fødes, og hvor det dør
 - `5f5904d4` 2026-08-19 — **egress** · he6 kan ikke levere IPv6 — VPN-kill-switchen blokerer den by design
+- `07f2c743` 2026-08-19 — komplet commit-historie pr. måned/uge + fødsels-indeks over core/services
 
 ---
 
@@ -5580,7 +5581,9 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 
 **917 filer** er blevet tilføjet under `core/services/` gennem historien. **910** findes stadig (7 er siden slettet eller flyttet).
 
-**4 af dem importeres ingen steder** i `core/`, `apps/` eller `scripts/` i dag. Det betyder ikke automatisk at de er døde — en cadence-producer eller en route kan blive nået dynamisk — men det er stedet at lede først.
+**3 af dem importeres ingen steder** i `core/`, `apps/` eller `scripts/` i dag. Det er stedet at lede først — men **nul referencer betyder ikke død.**
+
+> **Lære fra første gennemgang (19. aug):** `central_gardener.py` stod på listen. Den viste sig at være et menneske-kaldt kirurgisk værktøj — den kørte to gange 6. juli, fjernede 201 attrap-funktioner fra 107 services, arkiverede alt til `docs/gardener/`, og har intet tilbage at lave (tør-kørsel i dag: 0 fundet). Nul referencer er den KORREKTE tilstand for den. Indekset måler referencer, og et værktøj man kalder i hånden ser identisk ud med forladt kode. Læs docstringen før du konkluderer: står der at et menneske kører den, er den ikke glemt.
 
 > Kør `python scripts/capability_audit.py` for den dybere live/stale/orphan-analyse (`docs/capability_matrix.md`).
 
@@ -5590,7 +5593,6 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 |---|---|---|
 | `team_mentions.py` | 2026-06-20 | `0bcc14d4` |
 | `gate_eval.py` | 2026-06-21 | `2cea193e` |
-| `central_gardener.py` | 2026-07-06 | `19926f8b` |
 | `client_tool_delegation.py` | 2026-07-15 | `8b230503` |
 
 ### Alle nye systemer, i fødselsrækkefølge
@@ -6353,7 +6355,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 | `user_activity.py` | 2026-07-06 | `13920089` | 1 |
 | `central_excess.py` | 2026-07-06 | `607e6198` | 6 |
 | `central_decentralization.py` | 2026-07-06 | `158cd295` | 4 |
-| `central_gardener.py` | 2026-07-06 | `19926f8b` | 0 ⚠️ |
+| `central_gardener.py` | 2026-07-06 | `19926f8b` | 1 |
 | `central_keymaker.py` | 2026-07-06 | `aa76a496` | 5 |
 | `central_architect.py` | 2026-07-06 | `0da5bd64` | 3 |
 | `central_construct.py` | 2026-07-06 | `0da5bd64` | 4 |

@@ -1,15 +1,52 @@
 """Tests for heartbeat_runtime daemon wiring."""
 
 
-def test_associative_recall_daemon_registered():
-    """Verify associative_recall is registered in daemon_manager registry."""
+def test_associative_recall_daemon_er_pensioneret_ikke_forsvundet():
+    """Den selvstændige daemon blev PENSIONERET 15. juli 2026 → foldet ind i cluster_memory.
+
+    Testen hævdede tidligere `default_enabled is True` og var derfor rød på main lige
+    siden pensioneringen — den tredje røde-på-main-test fundet 19. aug. Den beskyttede
+    daemonens ADRESSE, ikke dens funktion, og var blevet et fejlsignal man vænnede sig
+    til. Vi hævder nu selve pensioneringen, så en utilsigtet gen-tænding også fanges.
+    """
     from core.services.daemon_manager import _REGISTRY
 
     assert "associative_recall" in _REGISTRY
     entry = _REGISTRY["associative_recall"]
     assert entry["module"] == "core.services.associative_recall"
-    assert entry["default_cadence_minutes"] == 2
-    assert entry["default_enabled"] is True
+    assert entry["default_enabled"] is False, (
+        "den selvstændige daemon er pensioneret — to kilder til samme tick "
+        "ville køre associativ recall dobbelt"
+    )
+    assert entry.get("retired"), "pensioneringen skal stå i registret, ikke kun i en commit"
+
+
+def test_associativ_recall_koerer_STADIG_via_cluster_memory():
+    """Det der betyder noget: at evnen overlevede flytningen.
+
+    Associativ recall er underbevidstheden — den vækker sovende minder ved kontekst.
+    Havde pensioneringen tabt den, ville intet have sagt fra: den gamle test tjekkede
+    kun et flag på den tomme plads, ikke om nogen havde overtaget arbejdet.
+    """
+    from core.services.cluster_daemon_families import (
+        _MEMORY_UNCONDITIONAL,
+        _mem_associative_recall_live,
+    )
+    from core.services.daemon_manager import _REGISTRY
+
+    names = [n for n, _ in _MEMORY_UNCONDITIONAL]
+    assert "associative_recall" in names, "evnen er faldet ud af memory-familien"
+
+    fn = dict(_MEMORY_UNCONDITIONAL)["associative_recall"]
+    assert fn is _mem_associative_recall_live
+
+    family = _REGISTRY.get("cluster_memory") or {}
+    assert family.get("default_enabled") is True, (
+        "familien der nu bærer associativ recall er slukket — evnen ville være død"
+    )
+    assert family.get("default_cadence_minutes") == 2, (
+        "kadencen skal matche den pensionerede daemons 2 minutter"
+    )
 
 
 def test_associative_recall_tick_function_exists():

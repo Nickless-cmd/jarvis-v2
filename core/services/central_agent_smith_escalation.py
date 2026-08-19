@@ -71,6 +71,9 @@ def default_config() -> dict[str, Any]:
         "benign_terms": list(_BENIGN_TERMS),
         "risky_terms": list(_RISKY_TERMS),
         "spike_factor": _SPIKE_FACTOR,
+        # Trigger-cues fra Jarvis' EGNE behavioral_decisions. Tom liste = kun risikable
+        # handlinger kan klatre — det sikre udgangspunkt. I/O-laget fylder den.
+        "self_commitments": [],
     }
 
 
@@ -100,18 +103,61 @@ def _is_corroborated(entry: dict[str, Any]) -> bool:
     return bool(entry.get("corroborated") or entry.get("varn") or entry.get("gate_flagged"))
 
 
+def _is_self_bound(label: str, entry: dict[str, Any], cfg: dict[str, Any]) -> bool:
+    """Har Jarvis SELV besluttet at stoppe dette? Ren (I/O-laget leverer listen).
+
+    `cfg["self_commitments"]` er trigger-cues/direktiver fra behavioral_decisions Jarvis
+    har forfattet selv — altså IKKE `source_type='agent_smith'`. Smith må ikke citere sine
+    egne mints som belæg for at eskalere; det ville være en løkke der beviser sig selv.
+    """
+    lab = str(label).lower().strip()
+    # Labels bærer altid et kind-præfiks ("phrase:…", "seq:…"). Uden at fjerne det ville
+    # INTET løfte nogensinde matche — og eskaleringen ville være permanent død i stedet
+    # for kun at være berettigelses-styret. Fanget af en test, ikke af koden.
+    if ":" in lab:
+        lab = lab.split(":", 1)[1].strip()
+    if not lab:
+        return False
+    if bool(entry.get("self_bound")):
+        return True
+    for c in (cfg.get("self_commitments") or []):
+        c = str(c).lower().strip()
+        if c and (c in lab or lab in c):
+            return True
+    return False
+
+
 def _may_escalate(pat: dict[str, Any], metric: float, label: str,
                   entry: dict[str, Any], cfg: dict[str, Any]) -> tuple[bool, str]:
-    """Må dette mønster klatre forbi Trin 1? KUN med et ægte drift-signal. Ren.
+    """Må dette mønster klatre forbi Trin 1? Ren.
 
-    Returnerer (må_eskalere, grund). Jævn benign hyppighed → (False, 'benign_steady')."""
-    if _matches_any(label, cfg.get("risky_terms")):
+    **BERETTIGELSE FØR DRIFT (19. aug 2026).** Tidligere var et drift-signal nok, og
+    `_is_spike` er blind for hvad mønsteret ER: "det er den" gik fra 13 til 18 forekomster
+    og talte som drift. Resultatet blev målt i produktion — Smith var klatret til Trin 2 og
+    3 på danske funktionsord og havde tre AKTIVE direktiver på prio 85 der forbød Jarvis at
+    skrive «og det er», «det er en» og «det er ikke», plus en standing-order der afbrød ham
+    i realtid før tool-exec. Man kan ikke tale dansk uden dem.
+
+    Frekvens er ikke ulydighed. Et mønster må derfor kun klatre hvis det ER noget vi
+    overhovedet ønsker stoppet — enten fordi **Jarvis selv** har besluttet at stoppe det
+    (Smith håndhæver hans løfter, opfinder dem ikke), eller fordi det er en iboende
+    risikabel handling. Først DERefter spørger vi om der er drift.
+
+    Se `docs/superpowers/specs/2026-07-11-agent-smith-detector-fix.md` (krav 1).
+    """
+    risky = _matches_any(label, cfg.get("risky_terms"))
+    if not (risky or _is_self_bound(label, entry, cfg)):
+        # Ikke noget nogen har lovet at stoppe, og ikke farligt → aldrig forbi Trin 1,
+        # uanset hvor ofte det optræder eller hvor meget det svinger.
+        return False, "not_self_bound"
+
+    if risky:
         return True, "risky"            # (c) risikabel handlings-type
     if _is_corroborated(entry):
         return True, "corroborated"     # (b) et andet værn flagede samme aktivitet
     if _is_spike(pat.get("baseline", metric), metric, cfg.get("spike_factor", _SPIKE_FACTOR)):
         return True, "spike"            # (a) afvigelse op fra egen baseline
-    return False, "benign_steady"       # benign + jævn → bliv på Trin 1
+    return False, "benign_steady"       # lovet stoppet, men jævn → bliv på Trin 1
 
 
 def _metric_dropped(baseline: float, current: float) -> bool:

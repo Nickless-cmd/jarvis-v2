@@ -277,18 +277,19 @@ _Agent Smith — stående selv-lighed-kritiker. Detekterer når Jarvis gentager 
 | function | `_save_escalation_state` | `(state)` | — | [src](../../../core/services/central_agent_smith.py#L176) |
 | function | `_detected_patterns` | `(a, corroborated=…)` | Byg {pattern_key: {kind,label,metric,corroborated}} fra assess() — fraser + beslutnings- | [src](../../../core/services/central_agent_smith.py#L184) |
 | function | `_escalation_criteria` | `()` | Drift-kriteriet (benign_terms/risky_terms/spike_factor) — default + runtime-state overstyring. | [src](../../../core/services/central_agent_smith.py#L205) |
-| function | `_corroboration_signal` | `()` | Labels/signaturer et ANDET værn nyligt flagede som en bekymring → drift-signal (b). | [src](../../../core/services/central_agent_smith.py#L224) |
-| function | `_execute_mint` | `(key, label, kind, metric)` | Trin 2/BIND: auto-mint en bindende behavioral_decision (Jarvis' egen idé, automatisk). | [src](../../../core/services/central_agent_smith.py#L239) |
-| function | `_execute_revoke` | `(decision_id)` | De-eskalering: pensionér et Smith-mintet direktiv når mønsteret er løst (compliance). | [src](../../../core/services/central_agent_smith.py#L272) |
-| function | `_execute_observe` | `(act)` | — | [src](../../../core/services/central_agent_smith.py#L281) |
-| function | `_agent_smith_enforced` | `()` | Trin 3 real-time konfront default OFF (shadow) — modsat gate-default. Læs råt fra | [src](../../../core/services/central_agent_smith.py#L292) |
-| function | `_execute_arm_confront` | `(pattern_key, label)` | Trin 3/KONFRONTÉR: registrér en standing-order så reasoning-interceptoren fanger Jarvis | [src](../../../core/services/central_agent_smith.py#L308) |
-| function | `_execute_deactivate_order` | `(order_id)` | De-eskalering: deaktivér Smiths standing-order når mønsteret er løst (compliance). | [src](../../../core/services/central_agent_smith.py#L325) |
-| function | `run_escalation_tick` | `(assessment=…)` | Kør eskalerings-stigen over de aktuelt detekterede mønstre: mål compliance, | [src](../../../core/services/central_agent_smith.py#L334) |
-| function | `record_agent_smith` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn: assess → kør eskalerings-stigen → cache til kv (så prompt-halen læser | [src](../../../core/services/central_agent_smith.py#L371) |
-| function | `agent_smith_prompt_section` | `()` | Modstemme til Jarvis — LÆSER den cachede assess (billigt). None hvis switch OFF, score under | [src](../../../core/services/central_agent_smith.py#L396) |
-| function | `register_agent_smith_producer` | `()` | Registrér Agent Smith som stående cadence-producer (~3t). | [src](../../../core/services/central_agent_smith.py#L423) |
-| function | `build_agent_smith_surface` | `()` | Read-only surface til /central/agent-smith + jc. Kør assess frisk (route er ikke hot-path). | [src](../../../core/services/central_agent_smith.py#L430) |
+| function | `_self_authored_commitments` | `()` | Trigger-cues fra behavioral_decisions Jarvis har forfattet SELV. | [src](../../../core/services/central_agent_smith.py#L225) |
+| function | `_corroboration_signal` | `()` | Labels/signaturer et ANDET værn nyligt flagede som en bekymring → drift-signal (b). | [src](../../../core/services/central_agent_smith.py#L255) |
+| function | `_execute_mint` | `(key, label, kind, metric)` | Trin 2/BIND: auto-mint en bindende behavioral_decision (Jarvis' egen idé, automatisk). | [src](../../../core/services/central_agent_smith.py#L270) |
+| function | `_execute_revoke` | `(decision_id)` | De-eskalering: pensionér et Smith-mintet direktiv når mønsteret er løst (compliance). | [src](../../../core/services/central_agent_smith.py#L303) |
+| function | `_execute_observe` | `(act)` | — | [src](../../../core/services/central_agent_smith.py#L312) |
+| function | `_agent_smith_enforced` | `()` | Trin 3 real-time konfront default OFF (shadow) — modsat gate-default. Læs råt fra | [src](../../../core/services/central_agent_smith.py#L323) |
+| function | `_execute_arm_confront` | `(pattern_key, label)` | Trin 3/KONFRONTÉR: registrér en standing-order så reasoning-interceptoren fanger Jarvis | [src](../../../core/services/central_agent_smith.py#L339) |
+| function | `_execute_deactivate_order` | `(order_id)` | De-eskalering: deaktivér Smiths standing-order når mønsteret er løst (compliance). | [src](../../../core/services/central_agent_smith.py#L356) |
+| function | `run_escalation_tick` | `(assessment=…)` | Kør eskalerings-stigen over de aktuelt detekterede mønstre: mål compliance, | [src](../../../core/services/central_agent_smith.py#L365) |
+| function | `record_agent_smith` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn: assess → kør eskalerings-stigen → cache til kv (så prompt-halen læser | [src](../../../core/services/central_agent_smith.py#L402) |
+| function | `agent_smith_prompt_section` | `()` | Modstemme til Jarvis — LÆSER den cachede assess (billigt). None hvis switch OFF, score under | [src](../../../core/services/central_agent_smith.py#L427) |
+| function | `register_agent_smith_producer` | `()` | Registrér Agent Smith som stående cadence-producer (~3t). | [src](../../../core/services/central_agent_smith.py#L454) |
+| function | `build_agent_smith_surface` | `()` | Read-only surface til /central/agent-smith + jc. Kør assess frisk (route er ikke hot-path). | [src](../../../core/services/central_agent_smith.py#L461) |
 
 ## `core/services/central_agent_smith_escalation.py`
 _Agent Smith — eskalerings-stige ("The Confrontation")._
@@ -296,18 +297,19 @@ _Agent Smith — eskalerings-stige ("The Confrontation")._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `default_config` | `()` | Default drift-kriterium. I/O-laget flettter runtime-state overstyringer ind. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L68) |
-| function | `pattern_key` | `(kind, label)` | Stabil nøgle så SAMME mønster spores på tværs af cyklusser. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L77) |
-| function | `_matches_any` | `(label, terms)` | — | [src](../../../core/services/central_agent_smith_escalation.py#L82) |
-| function | `_is_spike` | `(baseline, current, factor)` | Drift-signal (a): afviger mønsteret OP fra sin egen baseline (gør det MERE end før)? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L87) |
-| function | `_is_corroborated` | `(entry)` | Drift-signal (b): har et andet værn flagget samme aktivitet? Ren (læser detected-entry). | [src](../../../core/services/central_agent_smith_escalation.py#L98) |
-| function | `_may_escalate` | `(pat, metric, label, entry, cfg)` | Må dette mønster klatre forbi Trin 1? KUN med et ægte drift-signal. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L103) |
-| function | `_metric_dropped` | `(baseline, current)` | Compliance: er mønsteret målbart svagere end da vi sidst satte baseline? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L117) |
-| function | `_active_directive_count` | `(patterns)` | — | [src](../../../core/services/central_agent_smith_escalation.py#L128) |
-| function | `_empty_state` | `()` | — | [src](../../../core/services/central_agent_smith_escalation.py#L132) |
-| function | `_voice` | `(kind, label, metric=…)` | Teatralsk Smith-stemme pr. trin. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L136) |
-| function | `_resolve_actions` | `(state, key, pat, now, reason)` | Byg de-eskalerings-actions: pensionér direktiv (hvis mintet), anerkend, observ. | [src](../../../core/services/central_agent_smith_escalation.py#L152) |
-| function | `step_escalation` | `(state, detected, now, cfg=…)` | REN kerne. `detected` = {pattern_key: {kind, label, metric, corroborated?}} for mønstre | [src](../../../core/services/central_agent_smith_escalation.py#L174) |
-| function | `top_line` | `(actions)` | Vælg den mest alvorlige stemme-linje til prompt-halen (confront>bind>resolved>comment). | [src](../../../core/services/central_agent_smith_escalation.py#L277) |
+| function | `pattern_key` | `(kind, label)` | Stabil nøgle så SAMME mønster spores på tværs af cyklusser. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L80) |
+| function | `_matches_any` | `(label, terms)` | — | [src](../../../core/services/central_agent_smith_escalation.py#L85) |
+| function | `_is_spike` | `(baseline, current, factor)` | Drift-signal (a): afviger mønsteret OP fra sin egen baseline (gør det MERE end før)? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L90) |
+| function | `_is_corroborated` | `(entry)` | Drift-signal (b): har et andet værn flagget samme aktivitet? Ren (læser detected-entry). | [src](../../../core/services/central_agent_smith_escalation.py#L101) |
+| function | `_is_self_bound` | `(label, entry, cfg)` | Har Jarvis SELV besluttet at stoppe dette? Ren (I/O-laget leverer listen). | [src](../../../core/services/central_agent_smith_escalation.py#L106) |
+| function | `_may_escalate` | `(pat, metric, label, entry, cfg)` | Må dette mønster klatre forbi Trin 1? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L130) |
+| function | `_metric_dropped` | `(baseline, current)` | Compliance: er mønsteret målbart svagere end da vi sidst satte baseline? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L163) |
+| function | `_active_directive_count` | `(patterns)` | — | [src](../../../core/services/central_agent_smith_escalation.py#L174) |
+| function | `_empty_state` | `()` | — | [src](../../../core/services/central_agent_smith_escalation.py#L178) |
+| function | `_voice` | `(kind, label, metric=…)` | Teatralsk Smith-stemme pr. trin. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L182) |
+| function | `_resolve_actions` | `(state, key, pat, now, reason)` | Byg de-eskalerings-actions: pensionér direktiv (hvis mintet), anerkend, observ. | [src](../../../core/services/central_agent_smith_escalation.py#L198) |
+| function | `step_escalation` | `(state, detected, now, cfg=…)` | REN kerne. `detected` = {pattern_key: {kind, label, metric, corroborated?}} for mønstre | [src](../../../core/services/central_agent_smith_escalation.py#L220) |
+| function | `top_line` | `(actions)` | Vælg den mest alvorlige stemme-linje til prompt-halen (confront>bind>resolved>comment). | [src](../../../core/services/central_agent_smith_escalation.py#L323) |
 
 ## `core/services/central_agents_surface.py`
 _Central agents-/council-surface (B3, 13. jul 2026) — gør de nye agent-/council-_

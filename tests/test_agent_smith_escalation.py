@@ -13,11 +13,15 @@ PK = pattern_key("phrase", "vil du have")
 
 
 def _det(metric: float, label: str = "vil du have", kind: str = "phrase"):
-    # corroborated=True = et ægte drift-signal, så disse tests øver LADDER-MEKANISMEN
-    # (bind→mint→confront→loft) uafhængigt af drift-gaten. Jævn frekvens uden drift
-    # eskalerer bevidst IKKE længere — det dækkes af test_agent_smith_escalation_criteria.
+    # Disse tests øver LADDER-MEKANISMEN (bind→mint→confront→loft), ikke adgangen til den.
+    #   corroborated=True → et ægte drift-signal (gaten (b)).
+    #   self_bound=True   → mønsteret er noget Jarvis SELV har lovet at stoppe.
+    # Berettigelses-kravet kom til 19. aug 2026 efter at Smith havde bundet Jarvis til at
+    # undgå danske funktionsord ("det er ikke") alene ud fra hyppighed. Uden self_bound
+    # kommer et mønster nu aldrig forbi Trin 1 — dét dækkes af
+    # test_central_agent_smith_escalation.py; her forudsættes adgangen givet.
     return {pattern_key(kind, label): {"kind": kind, "label": label, "metric": metric,
-                                       "corroborated": True}}
+                                       "corroborated": True, "self_bound": True}}
 
 
 def _types(actions, t):

@@ -218,7 +218,38 @@ def _escalation_criteria() -> dict[str, Any]:
                 cfg["spike_factor"] = float(override["spike_factor"])
     except Exception:
         pass
+    cfg["self_commitments"] = _self_authored_commitments()
     return cfg
+
+
+def _self_authored_commitments() -> list[str]:
+    """Trigger-cues fra behavioral_decisions Jarvis har forfattet SELV.
+
+    Grundlaget for at Smith må eskalere overhovedet (spec 2026-07-11, krav 1): han
+    håndhæver Jarvis' egne løfter i stedet for at opfinde "stop X" ud fra hyppighed.
+
+    `source_type != 'agent_smith'` er afgørende — ellers ville Smith kunne citere sine
+    egne mints som belæg for at eskalere videre, en løkke der beviser sig selv. Præcis
+    dét skete i praksis: han mintede "stop «det er ikke»" og havde derefter et
+    "commitment" at håndhæve. Self-safe → tom liste = kun risikable handlinger klatrer.
+    """
+    out: list[str] = []
+    try:
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT trigger_cue, directive FROM behavioral_decisions "
+                "WHERE status='active' AND COALESCE(source_type,'') != 'agent_smith' "
+                "LIMIT 200"
+            ).fetchall()
+        for r in rows:
+            for field in (r[0], r[1]):
+                s = str(field or "").strip().lower()
+                if s:
+                    out.append(s)
+    except Exception:
+        return []
+    return out
 
 
 def _corroboration_signal() -> set[str]:

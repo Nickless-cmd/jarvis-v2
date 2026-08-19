@@ -23,10 +23,23 @@ _DEFAULT_NONDEFAULT_EGRESS = "vpn"
 # begge ruter. Resultat: alle groq/account2-kald fejlede med `[Errno 113] No route to
 # host` og brændte balancerens retries.
 #
-# VIGTIGT for fremtiden: CT106 har slet INGEN global IPv6, så den kan i praksis ikke
-# levere he6-egress uanset adresse. Den rigtige vej for account2-groq er den native
-# source-bind (`resolve_v6bind_source` nedenfor) fra CT105's egen HE-adresse — den er
-# målt til ~560 ms uden proxy. Denne endpoint er kun en nødplan.
+# MEN "he6" kan IKKE længere levere IPv6, og det er ikke til at fikse på den vært:
+# CT106 er VPN-gatewayen, og ExpressVPNs lækage-beskyttelse har en firewall-kæde ved
+# navn `evpn.250.blockIPv6` der blokerer al IPv6. Det er kill-switchen der gør sit
+# arbejde, ikke en fejlkonfiguration. Undersøgt i praksis 19. aug: containeren fik både
+# RA-default-rute og en statisk HE-adresse, og ping6 til en literal gav stadig 100% tab
+# — og dens resolver er VPN'ens IPv4-only DNS (100.64.100.1), så AAAA-opslag returnerer
+# kun ::ffff:-mappede A-records. Begge dele er by design.
+#
+# Det forklarer den oprindelige arkitektur: he6 lå på en SEPARAT vært (.46) netop fordi
+# VPN-gatewayen ikke kan bære IPv6. Da .46 forsvandt, døde ruten stille.
+#
+# Den rigtige vej for account2-groq er derfor den native source-bind
+# (`resolve_v6bind_source` nedenfor) fra CT105's egen HE-adresse — målt til ~560 ms uden
+# proxy overhovedet. `he6` peger nu på VPN-proxyen, hvilket giver en fungerende
+# IPv4-sti; bemærk at den historisk var Cloudflare-blokeret for groq, så den er en
+# nødplan der kan fejle. Skal ægte he6-IPv6 genoplives, kræver det en vært UDEN
+# VPN-kill-switch — ikke en ny adresse.
 _DEFAULT_PROXY_ENDPOINTS = {
     "vpn": "http://10.0.0.45:8888",
     "he6": "http://10.0.0.45:8888",

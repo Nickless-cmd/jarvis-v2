@@ -171,3 +171,38 @@ class TestRoererIkkeHypoteseTabellen:
         src = open(ex.__file__, encoding="utf-8").read()
         assert "record_action" in src
         assert "INSERT INTO" not in src, "al skrivning skal gå gennem record_action()"
+
+
+class TestProvenanceNaarFrem:
+    """Uden mekanismen kan allowlisten ikke skelne — og filtrerer så ALT fra.
+
+    Målt 19. aug 2026: eksekutoren overvejede 12 kandidater og handlede på 0, fordi
+    `select_actionable()` ikke hentede `provenance_json` i sin SELECT. Filteret virkede
+    perfekt; det havde bare intet at filtrere på. En tavs nul-linje der lignede
+    "ingen modne" i stedet for "jeg kan ikke se dem".
+    """
+
+    def test_select_actionable_henter_provenance(self):
+        import inspect
+
+        from core.services.central_dream_action import select_actionable
+        src = inspect.getsource(select_actionable)
+        assert "provenance_json" in src, (
+            "uden provenance_json kan ingen forbruger se hypotesens mekanisme"
+        )
+
+    def test_executor_laeser_provenance_som_json_streng(self):
+        """Rækken kommer fra DB som en JSON-STRENG, ikke et dict."""
+        h = {"hyp_id": "h9", "confidence": 0.58, "grounded_samples": 4, "status": "active",
+             "provenance_json": '{"mechanism": "prediction_error", "family": "x->y"}'}
+        with patch.object(ex, "mode", return_value="live"), \
+             patch("core.services.central_dream_action.select_actionable", return_value=[h]), \
+             patch("core.services.central_dream_action.record_action",
+                   return_value={"ok": True}) as rec, \
+             patch.object(ex, "adjudicate",
+                          return_value={"verdict": "regime", "prob": 0.2, "from_total": 50,
+                                        "reason": "r"}), \
+             patch.object(ex, "_observe_incident"):
+            r = ex.run_once()
+        assert r["acted"] == 1 and rec.call_count == 1
+        assert r["results"][0]["from"] == "x" and r["results"][0]["to"] == "y"

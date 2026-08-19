@@ -63,7 +63,11 @@ def select_actionable(*, limit: int = 3, min_confidence: float = _MIN_CONFIDENCE
         with connect() as conn:
             placeholders = ",".join("?" for _ in _ACTIVE)
             rows = conn.execute(
-                f"""SELECT hyp_id, statement, prediction, confidence, grounded_samples, status, created_at
+                # provenance_json medtaget 19. aug 2026: uden den kan en forbruger ikke
+                # se hypotesens MEKANISME, og `dream_action_executor` filtrerede derfor
+                # alle 12 kandidater fra på sin allowlist uden at kunne sige hvorfor.
+                f"""SELECT hyp_id, statement, prediction, confidence, grounded_samples, status,
+                           created_at, provenance_json
                     FROM central_hypotheses
                     WHERE status IN ({placeholders}) AND confidence >= ? AND grounded_samples >= ?
                     ORDER BY confidence DESC, grounded_samples DESC LIMIT ?""",

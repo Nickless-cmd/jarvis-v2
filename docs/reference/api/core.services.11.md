@@ -488,6 +488,16 @@ _Hardware body — collects CPU/GPU/RAM/VRAM/disk/temp signals._
 | function | `register_hardware_body_producer` | `()` | Registrér krop-sansningen som cadence-producer (~hvert 60s — hardware ændrer sig | [src](../../../core/services/hardware_body.py#L270) |
 | function | `_emit_body_event` | `(metric, value)` | — | [src](../../../core/services/hardware_body.py#L283) |
 
+## `core/services/heartbeat_action_hints.py`
+_Hvornår er en indre-livs-handling det rigtige valg? Vink til heartbeat-beslutningen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/heartbeat_action_hints.py#L34) |
+| function | `chronicle_days_stale` | `()` | Døgn siden seneste kronik-post. ``None`` hvis ukendt. Self-safe. | [src](../../../core/services/heartbeat_action_hints.py#L45) |
+| function | `chronicle_hint` | `()` | Vink om at skrive kronik — kun når handlingen FAKTISK ville skrive noget. | [src](../../../core/services/heartbeat_action_hints.py#L61) |
+| function | `inner_life_hints` | `()` | Alle aktive vink for indre-livs-handlinger. Tom liste når intet er forfaldent. | [src](../../../core/services/heartbeat_action_hints.py#L86) |
+
 ## `core/services/heartbeat_phases.py`
 _Heartbeat phases — explicit Sense / Reflect / Act structure on top of existing tick._
 
@@ -509,12 +519,4 @@ _Heartbeat phases — explicit Sense / Reflect / Act structure on top of existin
 | function | `tick_with_phases` | `(*, name=…, trigger=…)` | Run all 3 phases in sequence, return structured result. | [src](../../../core/services/heartbeat_phases.py#L664) |
 | function | `_exec_phased_tick` | `(args)` | — | [src](../../../core/services/heartbeat_phases.py#L709) |
 | function | `_exec_sense_only` | `(args)` | Read-only: gather current signals without running reflection or action. | [src](../../../core/services/heartbeat_phases.py#L716) |
-
-## `core/services/heartbeat_provider_fallback.py`
-_Heartbeat provider fallback — cheap cloud lane when primary (Groq) fails._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `execute_openai_compat_heartbeat_prompt` | `(*, prompt, target)` | Call an OpenAI-chat/completions-compatible provider for heartbeat. | [src](../../../core/services/heartbeat_provider_fallback.py#L53) |
-| function | `try_heartbeat_cheap_fallback` | `(prompt)` | Try cheap lane providers (skip groq + ollamafreeapi) as heartbeat fallback. | [src](../../../core/services/heartbeat_provider_fallback.py#L121) |
 

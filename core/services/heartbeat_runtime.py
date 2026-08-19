@@ -151,6 +151,17 @@ from core.services.boredom_curiosity_bridge import (
 
 HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
 HEARTBEAT_ALLOWED_DECISIONS = {"noop", "propose", "execute", "ping", "initiative"}
+def _inner_life_action_hints() -> list[str]:
+    """Tynd delegation til `heartbeat_action_hints` (Boy Scout: denne fil er 7.6k linjer).
+    Self-safe — et manglende vink må aldrig kunne vælte beslutnings-prompten."""
+    try:
+        from core.services.heartbeat_action_hints import inner_life_hints
+
+        return inner_life_hints()
+    except Exception:
+        return []
+
+
 HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "act_on_initiative",
     "gather_system_context",
@@ -3856,6 +3867,11 @@ def _heartbeat_prompt_text(base_text: str) -> str:
             "- Prefer inspect_repo_context when the active thread is about code, repo structure, paths, commits, backend shape, or why a capability behaved a certain way.",
             "- Prefer gather_system_context when the active thread is about the machine, distro, hardware, runtime environment, or host diagnostics.",
             "- If memory, continuity, or recent claims feel stale, prefer refresh_memory_context, follow_open_loop, or verify_recent_claim instead of a vague proposal.",
+            # Indre-livs-handlingerne var tilladt men aldrig MOTIVEREDE: alle "Prefer …"-
+            # vink pegede på operationelle valg, så over 2.859 ticks blev
+            # write_chronicle_entry valgt nul gange. Vinkene tilføjes kun når handlingen
+            # faktisk ville skrive noget — se heartbeat_action_hints.
+            *_inner_life_action_hints(),
             'JSON schema: {"decision_type":"noop|propose|execute|ping|initiative","summary":"","reason":"","proposed_action":"","ping_text":"","execute_action":""}',
         ]
     )
@@ -6292,7 +6308,17 @@ def _execute_heartbeat_internal_action(
             # Run all dreaming-phase actions in sequence
             batch_results = []
             batch_actions = phase.get("suggested_actions") or []
-            for batch_action in batch_actions[:5]:
+            # Var `[:5]` — men drømme-fasen lister SYV handlinger, og
+            # write_chronicle_entry står sidst. Den blev altså skåret af hver gang,
+            # tavst. Et loft er stadig rigtigt (hver del-handling er en fuld intern
+            # handling), men det skal dække listen og sige til når det ikke gør.
+            _BATCH_CAP = 8
+            if len(batch_actions) > _BATCH_CAP:
+                logger.warning(
+                    "sleep_batch: %d handlinger, loft %d — udelader %s",
+                    len(batch_actions), _BATCH_CAP, batch_actions[_BATCH_CAP:],
+                )
+            for batch_action in batch_actions[:_BATCH_CAP]:
                 try:
                     sub_result = _execute_heartbeat_internal_action(
                         action_type=batch_action,

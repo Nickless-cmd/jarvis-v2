@@ -251,6 +251,19 @@ _SP5 docs-drift watchdog — surface docs/drift_report.json to the Central as a 
 | function | `_run_producer_tick` | `(**_)` | — | [src](../../../core/services/docs_drift_watchdog.py#L101) |
 | function | `register_docs_drift_producer` | `()` | Register the docs-drift observation as a ~5-min cadence producer. | [src](../../../core/services/docs_drift_watchdog.py#L106) |
 
+## `core/services/dream_action_executor.py`
+_Dream-to-Action: den ende der manglede._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `mode` | `()` | ``'off'`` | ``'shadow'`` | ``'live'``. Default **shadow** — bevis før tillid. | [src](../../../core/services/dream_action_executor.py#L56) |
+| function | `_parse_family` | `(provenance)` | ``{"family": "X->Y"}`` → ``("X", "Y")``. None hvis formen ikke er som forventet. | [src](../../../core/services/dream_action_executor.py#L67) |
+| function | `adjudicate` | `(from_fam, to_fam)` | Mål om regimet holdt. Ren læsning af sekvens-modellen; ændrer ingenting. | [src](../../../core/services/dream_action_executor.py#L77) |
+| function | `_observe_incident` | `(hyp_id, ver, *, applied)` | Klient-synlig, så indgreb er muligt uden at læse en database. | [src](../../../core/services/dream_action_executor.py#L107) |
+| function | `_bump_errors` | `()` | Gentagne fejl → `off`. Den genstarter ikke sig selv. | [src](../../../core/services/dream_action_executor.py#L122) |
+| function | `run_once` | `(*, limit=…)` | Ét gennemløb: find modne prediction_error-hypoteser, mål regimet, registrér. | [src](../../../core/services/dream_action_executor.py#L135) |
+| function | `build_executor_surface` | `()` | Overflade til Centralen: tilstand + hvad den ville/har gjort. Self-safe. | [src](../../../core/services/dream_action_executor.py#L193) |
+
 ## `core/services/dream_adoption_candidate_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -675,27 +688,4 @@ _Emergent Goals — desires that grow from experience, not assignment._
 | function | `_safe_daemon_state` | `(module_name, fn_name)` | — | [src](../../../core/services/emergent_signal_tracking.py#L410) |
 | function | `_inner_voice_recent` | `(state, *, now)` | — | [src](../../../core/services/emergent_signal_tracking.py#L419) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/emergent_signal_tracking.py#L432) |
-
-## `core/services/emotion_concepts.py`
-_Emotion Concepts — discrete, event-driven Lag-2 emotional signals._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | Indirected for monkeypatching in tests. | [src](../../../core/services/emotion_concepts.py#L123) |
-| function | `trigger_emotion_concept` | `(concept, intensity, trigger=…, source=…, lifetime_hours=…, *, min_seconds_since_last_from_same_source=…)` | Create or strengthen an active emotion concept instance. | [src](../../../core/services/emotion_concepts.py#L128) |
-| function | `tick_emotion_concepts` | `(elapsed_seconds)` | Decay all active concepts proportional to elapsed time. | [src](../../../core/services/emotion_concepts.py#L215) |
-| function | `drain_expired_residue` | `()` | Return accumulated residue deltas from expired concepts and reset to zero. | [src](../../../core/services/emotion_concepts.py#L250) |
-| function | `get_active_emotion_concepts` | `()` | Return all active concepts above threshold, sorted by intensity descending. | [src](../../../core/services/emotion_concepts.py#L264) |
-| function | `get_lag1_influence_deltas` | `()` | Compute cumulative influence on Lag-1 axes from all active concepts. | [src](../../../core/services/emotion_concepts.py#L276) |
-| function | `get_bearing_push` | `()` | Return bearing push from the highest-intensity bearing-influencing concept. | [src](../../../core/services/emotion_concepts.py#L294) |
-| function | `build_emotion_concept_surface` | `()` | MC surface: active concepts + influence deltas. | [src](../../../core/services/emotion_concepts.py#L309) |
-| function | `_prune_if_needed` | `()` | Remove the weakest concept when over limit. Must be called under _lock. | [src](../../../core/services/emotion_concepts.py#L326) |
-| function | `_persist_async` | `(signal)` | Fire-and-forget: persist signal to DB for MC observability. | [src](../../../core/services/emotion_concepts.py#L333) |
-| function | `_safe_persist` | `(signal)` | — | [src](../../../core/services/emotion_concepts.py#L339) |
-| function | `_handle_event` | `(kind, payload)` | Map eventbus events to emotion concept triggers. | [src](../../../core/services/emotion_concepts.py#L364) |
-| function | `_handle_heartbeat_tick` | `(payload)` | Map heartbeat tick outcomes to emotion concepts. | [src](../../../core/services/emotion_concepts.py#L430) |
-| function | `_handle_tool_completed` | `(payload)` | Map the actual simple_tools event shape to emotion concepts. | [src](../../../core/services/emotion_concepts.py#L465) |
-| function | `_listener_loop` | `(q)` | Background thread: reads from eventbus queue and dispatches events. | [src](../../../core/services/emotion_concepts.py#L496) |
-| function | `register_event_listeners` | `()` | Subscribe to eventbus and start background listener thread. | [src](../../../core/services/emotion_concepts.py#L513) |
-| function | `stop_event_listeners` | `()` | Stop the background listener thread. | [src](../../../core/services/emotion_concepts.py#L535) |
 

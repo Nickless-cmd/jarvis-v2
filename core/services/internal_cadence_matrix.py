@@ -220,10 +220,23 @@ def register_matrix_producers(register_producer: Callable[[ProducerSpec], None])
     ))
 
     # Dream-to-Action (6. jul, Jarvis #3): mål FORANDRINGS-tempo (resolveret vs backlog) + peg på
-    # én moden hypotese at handle på. Propose-only.
+    # én moden hypotese at handle på.
+    #
+    # 19. aug 2026: producenten var propose-only, og forslaget havde ingen modtager —
+    # `record_action()` havde nul kaldere, så `central_dream_actions` stod tom siden
+    # filen blev skrevet (374 i backlog, 0 handlinger på 7 dage). Eksekutoren lukker den
+    # ende. Den er i `shadow` som default: den måler og gør sig synlig uden at skrive,
+    # indtil Bjørn flipper `dream_action_executor_mode` til `live`.
     def _run_dream_action(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.central_dream_action import record_dream_action
-        return record_dream_action(trigger=trigger, last_visible_at=last_visible_at)
+        out = dict(record_dream_action(trigger=trigger, last_visible_at=last_visible_at))
+        try:
+            from core.services.dream_action_executor import run_once
+            ex = run_once()
+            out["executor"] = {"mode": ex.get("mode"), "acted": ex.get("acted")}
+        except Exception:
+            pass  # eksekutoren må aldrig kunne vælte cadence-producenten
+        return out
 
     register_producer(ProducerSpec(
         name="dream_action",

@@ -103,6 +103,18 @@ _central_connectivity_audit.py — HOLDBART kort over hvad der er koblet til Cen
 | function | `render_md` | `(data)` | — | [src](../../../scripts/central_connectivity_audit.py#L212) |
 | function | `main` | `()` | — | [src](../../../scripts/central_connectivity_audit.py#L276) |
 
+## `scripts/commit_history_report.py`
+_Generér en læsbar commit-historie grupperet pr. måned og uge._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_git` | `(*args)` | — | [src](../../../scripts/commit_history_report.py#L47) |
+| function | `_commits` | `()` | — | [src](../../../scripts/commit_history_report.py#L52) |
+| function | `_week_span` | `(iso_year, iso_week)` | — | [src](../../../scripts/commit_history_report.py#L72) |
+| function | `_new_service_files` | `()` | Hver fil der nogensinde blev TILFØJET under core/services/, med fødselsdato. | [src](../../../scripts/commit_history_report.py#L81) |
+| function | `_import_counts` | `(paths)` | Hvor mange andre filer nævner modulet? 0 = værd at kigge på først. | [src](../../../scripts/commit_history_report.py#L99) |
+| function | `build` | `(out_path)` | — | [src](../../../scripts/commit_history_report.py#L123) |
+
 ## `scripts/db_decomposition_map.py`
 _Read-only db.py dekomponerings-kort — grupperer 171 tabeller i naturlige domæner efter_
 
@@ -457,11 +469,4 @@ _Scan core/+apps/+scripts for THIRD-PARTY top-level imports (filter stdlib + fir
 | function | `scan` | `(repo=…)` | — | [src](../../../scripts/requirements_gen.py#L29) |
 | function | `third_party` | `(mods)` | — | [src](../../../scripts/requirements_gen.py#L40) |
 | function | `main` | `()` | — | [src](../../../scripts/requirements_gen.py#L46) |
-
-## `scripts/reset_heartbeat_state.py`
-_Reset heartbeat scheduler state when it gets stuck._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/reset_heartbeat_state.py#L36) |
 

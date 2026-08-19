@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/reset_heartbeat_state.py`
+_Reset heartbeat scheduler state when it gets stuck._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/reset_heartbeat_state.py#L36) |
+
 ## `scripts/rewrite_legacy_memory_provenance.py`
 _Bulk-rewrite legacy `[MEMORY.md]` / `[USER.md]` prefixes in daily memory._
 

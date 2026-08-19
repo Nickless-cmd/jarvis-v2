@@ -113,7 +113,7 @@ _Generér en læsbar commit-historie grupperet pr. måned og uge._
 | function | `_week_span` | `(iso_year, iso_week)` | — | [src](../../../scripts/commit_history_report.py#L72) |
 | function | `_new_service_files` | `()` | Hver fil der nogensinde blev TILFØJET under core/services/, med fødselsdato. | [src](../../../scripts/commit_history_report.py#L81) |
 | function | `_import_counts` | `(paths)` | Hvor mange andre filer nævner modulet? 0 = værd at kigge på først. | [src](../../../scripts/commit_history_report.py#L99) |
-| function | `build` | `(out_path)` | — | [src](../../../scripts/commit_history_report.py#L123) |
+| function | `build` | `(out_path)` | — | [src](../../../scripts/commit_history_report.py#L125) |
 
 ## `scripts/db_decomposition_map.py`
 _Read-only db.py dekomponerings-kort — grupperer 171 tabeller i naturlige domæner efter_

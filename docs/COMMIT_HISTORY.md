@@ -1,6 +1,6 @@
 # Jarvis V2 — komplet commit-historie
 
-**4,976 commits** fra 2026-03-20 til 2026-08-19 · 6 måneder · genereret af `scripts/commit_history_report.py`
+**4,977 commits** fra 2026-03-20 til 2026-08-19 · 6 måneder · genereret af `scripts/commit_history_report.py`
 
 Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-indekset](#fødsels-indeks--nye-systemer-i-coreservices)** nederst — det er dér man leder først.
 
@@ -13,7 +13,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 | Omstrukturering (`refactor`) | 118 | 2% |
 | Ydelse (`perf`) | 68 | 1% |
 | Tests (`test`) | 65 | 1% |
-| Dokumentation (`docs`) | 491 | 10% |
+| Dokumentation (`docs`) | 492 | 10% |
 | Vedligehold (`chore`) | 83 | 2% |
 | Formatering (`style`) | 13 | 0% |
 | Build (`build`) | 5 | 0% |
@@ -23,7 +23,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 
 | Forfatter | Commits |
 |---|---:|
-| Nickless | 4,854 |
+| Nickless | 4,855 |
 | Claude | 54 |
 | Jarvis | 42 |
 | Nickless-cmd | 13 |
@@ -36,7 +36,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 - [Maj 2026](#maj-2026) — 906 commits
 - [Juni 2026](#juni-2026) — 1,118 commits
 - [Juli 2026](#juli-2026) — 1,158 commits
-- [August 2026](#august-2026) — 45 commits
+- [August 2026](#august-2026) — 46 commits
 - [Fødsels-indeks](#fødsels-indeks--nye-systemer-i-coreservices)
 
 ---
@@ -5495,7 +5495,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 
 ## August 2026
 
-*45 commits · 2026-08-03 → 2026-08-19*
+*46 commits · 2026-08-03 → 2026-08-19*
 
 ### Uge 32 · 3.–9. august — 6 commits
 
@@ -5527,7 +5527,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 - `9c4a41ac` 2026-08-16 — **mc** · komplet kortlægning af det gamle Mission Control-UI
 - `2a6cef5c` 2026-08-16 — **mc** · drift-sonde — 96% af gammelt MC's /mc/*-flade lever stadig
 
-### Uge 34 · 17.–23. august — 34 commits
+### Uge 34 · 17.–23. august — 35 commits
 
 **Nyt**
 
@@ -5574,6 +5574,7 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 - `6e979afe` 2026-08-17 — **indre-liv** · audit — hvor Jarvis' indre liv fødes, og hvor det dør
 - `5f5904d4` 2026-08-19 — **egress** · he6 kan ikke levere IPv6 — VPN-kill-switchen blokerer den by design
 - `07f2c743` 2026-08-19 — komplet commit-historie pr. måned/uge + fødsels-indeks over core/services
+- `9277f3ca` 2026-08-19 — **historik** · nul referencer betyder ikke død — gartneren var beviset
 
 ---
 
@@ -5581,932 +5582,934 @@ Formål: finde systemer der blev bygget og siden ligger stille. Se **[Fødsels-i
 
 **917 filer** er blevet tilføjet under `core/services/` gennem historien. **910** findes stadig (7 er siden slettet eller flyttet).
 
-**3 af dem importeres ingen steder** i `core/`, `apps/` eller `scripts/` i dag. Det er stedet at lede først — men **nul referencer betyder ikke død.**
+**0 af dem importeres ingen steder** i `core/`, `apps/` eller `scripts/` i dag. Det er stedet at lede først — men **nul referencer betyder ikke død.**
 
 > **Lære fra første gennemgang (19. aug):** `central_gardener.py` stod på listen. Den viste sig at være et menneske-kaldt kirurgisk værktøj — den kørte to gange 6. juli, fjernede 201 attrap-funktioner fra 107 services, arkiverede alt til `docs/gardener/`, og har intet tilbage at lave (tør-kørsel i dag: 0 fundet). Nul referencer er den KORREKTE tilstand for den. Indekset måler referencer, og et værktøj man kalder i hånden ser identisk ud med forladt kode. Læs docstringen før du konkluderer: står der at et menneske kører den, er den ikke glemt.
 
 > Kør `python scripts/capability_audit.py` for den dybere live/stale/orphan-analyse (`docs/capability_matrix.md`).
 
-### Uden importører i dag
+### Testet, men uden produktions-kalder
 
-| Fil | Født | Commit |
-|---|---|---|
-| `team_mentions.py` | 2026-06-20 | `0bcc14d4` |
-| `gate_eval.py` | 2026-06-21 | `2cea193e` |
-| `client_tool_delegation.py` | 2026-07-15 | `8b230503` |
+**3 filer** har tests, men nævnes ikke i `core/`, `apps/` eller `scripts/`. Det er den interessante kategori: testene er grønne, så intet siger fra — koden virker, den bliver bare aldrig spurgt. Nogle er legitime (paritets-harnesser hører til i tests); andre er fase-1-fundamenter hvis fase 2 aldrig kom.
+
+| Fil | Født | Commit | Test-referencer |
+|---|---|---|---:|
+| `team_mentions.py` | 2026-06-20 | `0bcc14d4` | 1 |
+| `gate_eval.py` | 2026-06-21 | `2cea193e` | 3 |
+| `client_tool_delegation.py` | 2026-07-15 | `8b230503` | 1 |
 
 ### Alle nye systemer, i fødselsrækkefølge
 
-| Fil | Født | Commit | Importører |
-|---|---|---|---:|
-| `absence_awareness.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `absence_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `adaptive_learning_runtime.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `adaptive_planner_runtime.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `adaptive_reasoning_runtime.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `aesthetic_sense.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `aesthetic_taste_daemon.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `affective_meta_state.py` | 2026-04-17 | `dfcb0e12` | 30 |
-| `affective_state_renderer.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `agent_runtime.py` | 2026-04-17 | `dfcb0e12` | 21 |
-| `anticipatory_context.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `apophenia_guard.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `associative_recall.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `attachment_topology_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `attention_blink_test.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `attention_budget.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `attention_contour.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `autonomous_council_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `autonomy_pressure_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 11 |
-| `autonomy_proposal_queue.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `body_memory.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `boredom_curiosity_bridge.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `boredom_engine.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `boundary_awareness.py` | 2026-04-17 | `dfcb0e12` | 1 |
-| `bounded_action_continuity_runtime.py` | 2026-04-17 | `dfcb0e12` | 1 |
-| `bounded_mutation_intent_runtime.py` | 2026-04-17 | `dfcb0e12` | 1 |
-| `bounded_repo_tools_runtime.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `bounded_workspace_write_runtime.py` | 2026-04-17 | `dfcb0e12` | 1 |
-| `broadcast_daemon.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `cadence_producers.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `candidate_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `chat_sessions.py` | 2026-04-17 | `dfcb0e12` | 68 |
-| `cheap_provider_runtime.py` | 2026-04-17 | `dfcb0e12` | 33 |
-| `chronicle_consolidation_brief_tracking.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `chronicle_consolidation_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `chronicle_consolidation_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `chronicle_engine.py` | 2026-04-17 | `dfcb0e12` | 20 |
-| `code_aesthetic_daemon.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `cognitive_architecture_surface.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `cognitive_core_experiments.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `cognitive_state_assembly.py` | 2026-04-17 | `dfcb0e12` | 19 |
-| `cognitive_state_narrativizer.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `compass_engine.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `completion_satisfaction.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `conflict_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `conflict_resolution.py` | 2026-04-17 | `dfcb0e12` | 12 |
-| `consolidation_target_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `continuity_kernel.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `contract_evolution.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `conversation_rhythm.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `council_deliberation_controller.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `council_memory_daemon.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `council_memory_service.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `council_runtime.py` | 2026-04-17 | `dfcb0e12` | 10 |
-| `counterfactual_engine.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `creative_drift_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `cross_signal_analysis.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `curiosity_daemon.py` | 2026-04-17 | `dfcb0e12` | 11 |
-| `daemon_llm.py` | 2026-04-17 | `dfcb0e12` | 69 |
-| `daemon_manager.py` | 2026-04-17 | `dfcb0e12` | 23 |
-| `decision_ghosts.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `decision_log.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `decision_weight.py` | 2026-04-17 | `dfcb0e12` | 1 |
-| `desire_daemon.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `development_focus_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `development_narrative_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `diary_synthesis_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `discord_config.py` | 2026-04-17 | `dfcb0e12` | 10 |
-| `discord_gateway.py` | 2026-04-17 | `dfcb0e12` | 21 |
-| `dream_adoption_candidate_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `dream_articulation.py` | 2026-04-17 | `dfcb0e12` | 22 |
-| `dream_carry_over.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `dream_continuum.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `dream_hypothesis_forced.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `dream_hypothesis_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `dream_influence_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `dream_influence_runtime.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `dream_insight_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `embodied_state.py` | 2026-04-17 | `dfcb0e12` | 23 |
-| `emergent_bridge.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `emergent_goals.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `emergent_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 13 |
-| `emotion_concepts.py` | 2026-04-17 | `dfcb0e12` | 18 |
-| `end_of_run_memory_consolidation.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `epistemic_runtime_state.py` | 2026-04-17 | `dfcb0e12` | 18 |
-| `executive_contradiction_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `existential_drift.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `existential_wonder_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `experienced_time_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `experiential_memory.py` | 2026-04-17 | `dfcb0e12` | 11 |
-| `experiential_runtime_context.py` | 2026-04-17 | `dfcb0e12` | 10 |
-| `flow_state_detection.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `forgetting_curve.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `ghost_networks.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `global_workspace.py` | 2026-04-17 | `dfcb0e12` | 11 |
-| `goal_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `gratitude_tracker.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `guided_learning_runtime.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `gut_engine.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `habit_tracker.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `hardware_body.py` | 2026-04-17 | `dfcb0e12` | 15 |
-| `heartbeat_runtime.py` | 2026-04-17 | `dfcb0e12` | 30 |
-| `identity_composer.py` | 2026-04-17 | `dfcb0e12` | 47 |
-| `idle_consolidation.py` | 2026-04-17 | `dfcb0e12` | 11 |
-| `idle_thinking.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `initiative_accumulator.py` | 2026-04-17 | `dfcb0e12` | 10 |
-| `initiative_queue.py` | 2026-04-17 | `dfcb0e12` | 27 |
-| `inner_visible_support_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `inner_voice_daemon.py` | 2026-04-17 | `dfcb0e12` | 20 |
-| `internal_cadence.py` | 2026-04-17 | `dfcb0e12` | 57 |
-| `internal_opposition_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `irony_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `living_heartbeat_cycle.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `loop_runtime.py` | 2026-04-17 | `dfcb0e12` | 24 |
-| `loyalty_gradient_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `mail_checker_daemon.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `meaning_significance_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `memory_decay_daemon.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `memory_md_update_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `memory_search.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `memory_tattoos.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `meta_cognition_daemon.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `meta_reflection_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `metabolism_state_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `mirror_engine.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `mood_oscillator.py` | 2026-04-17 | `dfcb0e12` | 31 |
-| `narrative_identity.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `negotiation_engine.py` | 2026-04-17 | `dfcb0e12` | 1 |
-| `non_visible_lane_execution.py` | 2026-04-17 | `dfcb0e12` | 19 |
-| `notification_bridge.py` | 2026-04-17 | `dfcb0e12` | 12 |
-| `ollama_visible_prompt.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `open_loop_closure_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `open_loop_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 24 |
-| `orb_phase.py` | 2026-04-17 | `dfcb0e12` | 1 |
-| `paradox_tracker.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `parallel_selves.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `personality_vector.py` | 2026-04-17 | `dfcb0e12` | 12 |
-| `private_initiative_tension_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 13 |
-| `private_inner_interplay_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `private_inner_note_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `private_state_snapshot_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `private_temporal_curiosity_state_tracking.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `private_temporal_promotion_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `proactive_loop_lifecycle_tracking.py` | 2026-04-17 | `dfcb0e12` | 11 |
-| `proactive_question_gate_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `procedure_bank.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `prompt_contract.py` | 2026-04-17 | `dfcb0e12` | 50 |
-| `prompt_evolution_runtime.py` | 2026-04-17 | `dfcb0e12` | 10 |
-| `prompt_relevance_backend.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `proposal_classifier.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `recurrence_loop_daemon.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `reflection_cycle_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `reflection_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `reflective_critic_tracking.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `regulation_homeostasis_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 10 |
-| `relation_continuity_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `relation_state_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `relationship_texture.py` | 2026-04-17 | `dfcb0e12` | 12 |
-| `release_marker_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `remembered_fact_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 10 |
-| `rhythm_engine.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `runtime_action_executor.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `runtime_action_outcome_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `runtime_action_registry.py` | 2026-04-17 | `dfcb0e12` | 1 |
-| `runtime_awareness_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `runtime_browser_body.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `runtime_cognitive_conductor.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `runtime_decision_engine.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `runtime_flows.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `runtime_hook_runtime.py` | 2026-04-17 | `dfcb0e12` | 1 |
-| `runtime_hooks.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `runtime_learning_signals.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `runtime_operational_memory.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `runtime_resource_signal.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `runtime_self_knowledge.py` | 2026-04-17 | `dfcb0e12` | 10 |
-| `runtime_self_model.py` | 2026-04-17 | `dfcb0e12` | 30 |
-| `runtime_surface_cache.py` | 2026-04-17 | `dfcb0e12` | 26 |
-| `runtime_tasks.py` | 2026-04-17 | `dfcb0e12` | 17 |
-| `scheduled_tasks.py` | 2026-04-17 | `dfcb0e12` | 14 |
-| `seed_system.py` | 2026-04-17 | `dfcb0e12` | 6 |
-| `selective_forgetting_candidate_tracking.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `self_authored_prompt_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `self_compassion.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `self_deception_guard.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `self_experiments.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `self_model_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 11 |
-| `self_narrative_continuity_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `self_narrative_self_model_review_bridge.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `self_review_cadence_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `self_review_outcome_tracking.py` | 2026-04-17 | `dfcb0e12` | 12 |
-| `self_review_record_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `self_review_run_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `self_review_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `self_surprise_detection.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `self_system_code_awareness.py` | 2026-04-17 | `dfcb0e12` | 11 |
-| `selfhood_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `session_distillation.py` | 2026-04-17 | `dfcb0e12` | 18 |
-| `shared_language.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `signal_decay_daemon.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `signal_network_visualizer.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `signal_surface_router.py` | 2026-04-17 | `dfcb0e12` | 14 |
-| `silence_detector.py` | 2026-04-17 | `dfcb0e12` | 1 |
-| `silence_listener.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `somatic_daemon.py` | 2026-04-17 | `dfcb0e12` | 10 |
-| `subagent_ecology.py` | 2026-04-17 | `dfcb0e12` | 10 |
-| `subjective_time.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `surprise_daemon.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `task_worker.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `taste_profile.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `temperament_tendency_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `temporal_body.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `temporal_context.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `temporal_narrative.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `temporal_recurrence_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `thought_action_proposal_daemon.py` | 2026-04-17 | `dfcb0e12` | 8 |
-| `thought_stream_daemon.py` | 2026-04-17 | `dfcb0e12` | 9 |
-| `tick_cache.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `tiktok_content_daemon.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `tiktok_research_daemon.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `tiny_webchat_execution_pilot.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `tool_intent_approval_runtime.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `tool_intent_runtime.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `user_emotional_resonance.py` | 2026-04-17 | `dfcb0e12` | 2 |
-| `user_md_update_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `user_model_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 |
-| `user_theory_of_mind.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `user_understanding_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 |
-| `value_formation.py` | 2026-04-17 | `dfcb0e12` | 3 |
-| `visible_model.py` | 2026-04-17 | `dfcb0e12` | 30 |
-| `visible_runs.py` | 2026-04-17 | `dfcb0e12` | 97 |
-| `voice_daemon.py` | 2026-04-17 | `dfcb0e12` | 4 |
-| `witness_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 21 |
-| `world_model_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 20 |
-| `approval_feedback_subscriber.py` | 2026-04-17 | `82735a0f` | 2 |
-| `signal_noise_guard.py` | 2026-04-17 | `d3427b19` | 9 |
-| `tool_result_store.py` | 2026-04-17 | `6a5c5369` | 11 |
-| `self_critique_runtime.py` | 2026-04-18 | `5813141b` | 5 |
-| `dream_distillation_daemon.py` | 2026-04-18 | `461e8b18` | 11 |
-| `unconscious_temperature_field.py` | 2026-04-18 | `b750f721` | 3 |
-| `life_projects.py` | 2026-04-18 | `5126bd52` | 10 |
-| `creative_journal_runtime.py` | 2026-04-18 | `bc3c3178` | 8 |
-| `finitude_runtime.py` | 2026-04-18 | `fd027c74` | 10 |
-| `current_pull.py` | 2026-04-18 | `1a746585` | 22 |
-| `relation_map.py` | 2026-04-18 | `1a746585` | 5 |
-| `visual_memory.py` | 2026-04-18 | `1a746585` | 10 |
-| `heartbeat_provider_fallback.py` | 2026-04-18 | `79c06131` | 5 |
-| `layer_tension_daemon.py` | 2026-04-18 | `3a9660b1` | 7 |
-| `dream_motif_daemon.py` | 2026-04-18 | `ec01c276` | 4 |
-| `inheritance_seed.py` | 2026-04-18 | `a7ed53d4` | 4 |
-| `shutdown_window_daemon.py` | 2026-04-18 | `9516ada3` | 1 |
-| `ambient_sound_daemon.py` | 2026-04-18 | `1cbe79f0` | 8 |
-| `ntfy_gateway.py` | 2026-04-19 | `cd8e3485` | 12 |
-| `telegram_gateway.py` | 2026-04-19 | `cd8e3485` | 7 |
-| `self_mutation_lineage.py` | 2026-04-20 | `3ec0d25a` | 7 |
-| `agent_outcomes_log.py` | 2026-04-20 | `91eadaea` | 5 |
-| `conflict_prompt_service.py` | 2026-04-20 | `91eadaea` | 2 |
-| `consent_registry.py` | 2026-04-20 | `91eadaea` | 3 |
-| `life_milestones.py` | 2026-04-20 | `91eadaea` | 3 |
-| `ambient_presence.py` | 2026-04-20 | `394f115e` | 2 |
-| `calm_anchor.py` | 2026-04-20 | `57f789e3` | 7 |
-| `desperation_awareness.py` | 2026-04-20 | `57f789e3` | 4 |
-| `valence_trajectory.py` | 2026-04-20 | `57f789e3` | 11 |
-| `developmental_valence.py` | 2026-04-20 | `879d58a5` | 8 |
-| `avoidance_detector.py` | 2026-04-20 | `55abdde3` | 7 |
-| `creative_projects.py` | 2026-04-20 | `55abdde3` | 6 |
-| `day_shape_memory.py` | 2026-04-20 | `55abdde3` | 6 |
-| `memory_breathing.py` | 2026-04-20 | `55abdde3` | 9 |
-| `thought_thread.py` | 2026-04-20 | `a649c19c` | 5 |
-| `automation_dsl.py` | 2026-04-20 | `d96759ce` | 5 |
-| `memory_write_policy.py` | 2026-04-20 | `d96759ce` | 6 |
-| `scheduled_job_windows.py` | 2026-04-20 | `d96759ce` | 6 |
-| `skill_contract_registry.py` | 2026-04-20 | `d96759ce` | 5 |
-| `spaced_repetition.py` | 2026-04-20 | `d96759ce` | 6 |
-| `jobs_engine.py` | 2026-04-20 | `46934f38` | 7 |
-| `outcome_learning.py` | 2026-04-20 | `46934f38` | 7 |
-| `prompt_mutation_loop.py` | 2026-04-20 | `80e10a2d` | 7 |
-| `anticipatory_action_daemon.py` | 2026-04-20 | `4e845810` | 4 |
-| `autonomous_outreach_daemon.py` | 2026-04-20 | `4e845810` | 3 |
-| `cross_session_threads.py` | 2026-04-20 | `4e845810` | 6 |
-| `file_watch_daemon.py` | 2026-04-20 | `4e845810` | 3 |
-| `proprioception_metrics.py` | 2026-04-20 | `4e845810` | 4 |
-| `reboot_awareness_daemon.py` | 2026-04-20 | `4e845810` | 6 |
-| `autonomous_work_daemon.py` | 2026-04-20 | `73485852` | 3 |
-| `creative_instinct_daemon.py` | 2026-04-20 | `73485852` | 6 |
-| `dream_consolidation_daemon.py` | 2026-04-20 | `73485852` | 6 |
-| `infra_weather_daemon.py` | 2026-04-20 | `73485852` | 2 |
-| `relation_dynamics.py` | 2026-04-20 | `73485852` | 6 |
-| `temporal_rhythm.py` | 2026-04-20 | `73485852` | 7 |
-| `collective_pulse_daemon.py` | 2026-04-20 | `07ba5eff` | 3 |
-| `creative_impulse_daemon.py` | 2026-04-20 | `07ba5eff` | 4 |
-| `mortality_awareness.py` | 2026-04-20 | `07ba5eff` | 6 |
-| `relational_warmth.py` | 2026-04-20 | `07ba5eff` | 8 |
-| `shadow_scan_daemon.py` | 2026-04-20 | `07ba5eff` | 5 |
-| `text_resonance.py` | 2026-04-20 | `07ba5eff` | 5 |
-| `action_router.py` | 2026-04-20 | `480dd7b7` | 14 |
-| `deep_reflection_slot.py` | 2026-04-20 | `480dd7b7` | 4 |
-| `memory_density.py` | 2026-04-20 | `480dd7b7` | 7 |
-| `sustained_attention.py` | 2026-04-20 | `480dd7b7` | 6 |
-| `governance_bootstrap.py` | 2026-04-21 | `5276b3c1` | 4 |
-| `regret_engine.py` | 2026-04-22 | `70da41f2` | 4 |
-| `rupture_repair.py` | 2026-04-22 | `70da41f2` | 4 |
-| `silence_patterns.py` | 2026-04-22 | `692ae6e3` | 1 |
-| `self_model_blind_spots.py` | 2026-04-22 | `310a493d` | 2 |
-| `dream_hypothesis_generator.py` | 2026-04-22 | `b8f42f09` | 6 |
-| `decisions_journal.py` | 2026-04-22 | `c571260a` | 1 |
-| `epistemics.py` | 2026-04-22 | `766b0852` | 6 |
-| `emotional_controls.py` | 2026-04-22 | `43a160be` | 6 |
-| `mood_dialer.py` | 2026-04-22 | `52515fcb` | 3 |
-| `self_review_unified.py` | 2026-04-22 | `38274186` | 4 |
-| `habits_pipeline.py` | 2026-04-22 | `4482593a` | 2 |
-| `paradoxes_capture.py` | 2026-04-22 | `11ce5539` | 3 |
-| `shared_language_extended.py` | 2026-04-22 | `b304575f` | 2 |
-| `procedure_bank_pipeline.py` | 2026-04-22 | `fe459a65` | 2 |
-| `negotiation_pipeline.py` | 2026-04-22 | `d35df82b` | 4 |
-| `reflection_to_plan.py` | 2026-04-22 | `8937d8cf` | 4 |
-| `missions_pipeline.py` | 2026-04-22 | `9b912496` | 3 |
-| `deep_analyzer.py` | 2026-04-22 | `9233003a` | 2 |
-| `session_continuity.py` | 2026-04-22 | `8e172d6d` | 5 |
-| `personal_project.py` | 2026-04-22 | `de549197` | 5 |
-| `attachment_service.py` | 2026-04-23 | `412f0cee` | 5 |
-| `recurring_tasks.py` | 2026-04-23 | `f54484a9` | 6 |
-| `sensory_archive.py` | 2026-04-23 | `2d9912d9` | 14 |
-| `inner_voice_notifier.py` | 2026-04-23 | `3db8edf6` | 3 |
-| `semantic_indexer.py` | 2026-04-23 | `17375ca9` | 4 |
-| `semantic_memory.py` | 2026-04-23 | `17375ca9` | 9 |
-| `long_horizon_goals.py` | 2026-04-23 | `7dc3bf25` | 4 |
-| `behavioral_decisions.py` | 2026-04-23 | `dde488ec` | 22 |
-| `composite_tools.py` | 2026-04-23 | `de07b3a7` | 2 |
-| `visible_followup.py` | 2026-04-24 | `cd82140a` | 10 |
-| `session_wakeup.py` | 2026-04-26 | `01a1b392` | 2 |
-| `in_flight_runs.py` | 2026-04-26 | `b2956b26` | 4 |
-| `agent_todos.py` | 2026-04-26 | `a1c8eaff` | 8 |
-| `subagent_digest.py` | 2026-04-26 | `f39d2d20` | 2 |
-| `monitor_streams.py` | 2026-04-26 | `7355e1cb` | 2 |
-| `self_monitor.py` | 2026-04-26 | `5944ca92` | 3 |
-| `surprise_detector.py` | 2026-04-26 | `60b87c26` | 4 |
-| `good_enough_gate.py` | 2026-04-26 | `dce13286` | 5 |
-| `delegation_advisor.py` | 2026-04-26 | `fae45fee` | 4 |
-| `plan_proposals.py` | 2026-04-26 | `fe0e58e6` | 19 |
-| `clarification_classifier.py` | 2026-04-26 | `55d17da7` | 5 |
-| `auto_code_review.py` | 2026-04-26 | `d431b60a` | 1 |
-| `side_tasks.py` | 2026-04-26 | `679bd037` | 3 |
-| `turn_changelog.py` | 2026-04-26 | `ca2c430d` | 4 |
-| `reasoning_classifier.py` | 2026-04-26 | `4a1b3589` | 6 |
-| `verification_gate.py` | 2026-04-26 | `10c11272` | 8 |
-| `reasoning_escalation.py` | 2026-04-26 | `05df3351` | 5 |
-| `periodic_jobs_scheduler.py` | 2026-04-26 | `84a14879` | 8 |
-| `weekly_manifest.py` | 2026-04-26 | `84a14879` | 5 |
-| `provider_circuit_breaker.py` | 2026-04-27 | `7a4b6207` | 7 |
-| `role_model_resolver.py` | 2026-04-27 | `e12eea7f` | 1 |
-| `context_window_manager.py` | 2026-04-27 | `80dcf549` | 6 |
-| `autonomous_goals.py` | 2026-04-27 | `90b3bbe6` | 14 |
-| `goal_signal_synthesizer.py` | 2026-04-27 | `90b3bbe6` | 2 |
-| `memory_recall_engine.py` | 2026-04-27 | `a2fecbc6` | 11 |
-| `agent_relay.py` | 2026-04-27 | `9d259453` | 2 |
-| `role_registry.py` | 2026-04-27 | `9d259453` | 2 |
-| `emotion_tagging.py` | 2026-04-27 | `d7db2cee` | 5 |
-| `personality_drift.py` | 2026-04-27 | `d7db2cee` | 15 |
-| `tool_pattern_miner.py` | 2026-04-27 | `bc9c4920` | 4 |
-| `heartbeat_phases.py` | 2026-04-27 | `3b7cfd38` | 9 |
-| `proactive_context_governor.py` | 2026-04-27 | `16f71225` | 3 |
-| `memory_hierarchy.py` | 2026-04-27 | `d3e54b42` | 4 |
-| `provider_health_check.py` | 2026-04-27 | `112e660e` | 15 |
-| `provider_retry_policy.py` | 2026-04-27 | `112e660e` | 2 |
-| `agent_self_evaluation.py` | 2026-04-27 | `5092b0af` | 14 |
-| `auto_improvement_proposer.py` | 2026-04-27 | `c6e822ad` | 8 |
-| `experiment_runner.py` | 2026-04-27 | `c6e822ad` | 2 |
-| `prompt_variant_tracker.py` | 2026-04-27 | `c6e822ad` | 4 |
-| `identity_mutation_log.py` | 2026-04-27 | `7dab2d08` | 8 |
-| `agent_skill_library.py` | 2026-04-27 | `8af8ac49` | 5 |
-| `agent_observation_compressor.py` | 2026-04-27 | `2f22ceaf` | 3 |
-| `cross_agent_memory.py` | 2026-04-27 | `896cb803` | 4 |
-| `self_wakeup.py` | 2026-04-27 | `b7e78cc4` | 15 |
-| `wakeup_dispatcher.py` | 2026-04-27 | `f70c3be6` | 3 |
-| `crisis_marker_detector.py` | 2026-04-27 | `4af92d03` | 11 |
-| `identity_drift_proposer.py` | 2026-04-27 | `4af92d03` | 4 |
-| `long_arc_synthesizer.py` | 2026-04-27 | `4af92d03` | 6 |
-| `agent_skill_distiller.py` | 2026-04-27 | `f97788ad` | 5 |
-| `arc_rule_extractor.py` | 2026-04-27 | `f97788ad` | 3 |
-| `priors_feedback.py` | 2026-04-27 | `f97788ad` | 2 |
-| `self_model_predictive.py` | 2026-04-27 | `f97788ad` | 2 |
-| `decision_review_prompter.py` | 2026-04-27 | `e01048ac` | 3 |
-| `signal_surface_gc.py` | 2026-04-27 | `e01048ac` | 3 |
-| `decision_enforcement.py` | 2026-04-27 | `2ff1240f` | 3 |
-| `r2_5_blocking_gate.py` | 2026-04-27 | `2ff1240f` | 3 |
-| `verification_gate_telemetry.py` | 2026-04-27 | `2ff1240f` | 9 |
-| `pushback.py` | 2026-04-27 | `77e9e6d7` | 16 |
-| `development_sense.py` | 2026-04-27 | `5896f568` | 2 |
-| `memory_emotional_context.py` | 2026-04-28 | `63d36781` | 5 |
-| `memory_graph.py` | 2026-04-28 | `63d36781` | 3 |
-| `memory_resurfacing.py` | 2026-04-28 | `63d36781` | 5 |
-| `affirmation_anchor.py` | 2026-04-28 | `04d101ea` | 2 |
-| `visible_self_state_summary.py` | 2026-04-28 | `c7c18fc8` | 2 |
-| `prompt_heartbeat_self_knowledge.py` | 2026-04-29 | `779d0cf9` | 3 |
-| `prompt_support_signals.py` | 2026-04-29 | `d75f46f3` | 2 |
-| `memory_maintenance_daemon.py` | 2026-04-29 | `734a426f` | 5 |
-| `impulse_executor.py` | 2026-04-29 | `01401c9f` | 3 |
-| `pressure_threshold_gate.py` | 2026-04-29 | `01401c9f` | 4 |
-| `signal_pressure_accumulator.py` | 2026-04-29 | `01401c9f` | 11 |
-| `longing_signal_daemon.py` | 2026-04-29 | `6806d04f` | 6 |
-| `outreach_composer.py` | 2026-04-29 | `6806d04f` | 3 |
-| `social_labilizer.py` | 2026-04-29 | `31e5ae67` | 2 |
-| `precision_bias.py` | 2026-04-29 | `e940fc9e` | 7 |
-| `emotional_chords.py` | 2026-04-29 | `e7514ce5` | 7 |
-| `epistemic_pragmatic.py` | 2026-04-29 | `bd1de7e3` | 3 |
-| `selective_attention.py` | 2026-04-29 | `15e3731b` | 3 |
-| `temporal_depth.py` | 2026-04-29 | `c244b6ac` | 4 |
-| `embodied_presence.py` | 2026-04-29 | `6f71bf8f` | 2 |
-| `resonance_decay.py` | 2026-04-29 | `e04b4450` | 2 |
-| `metacognitive_integration.py` | 2026-04-29 | `f1f9119d` | 3 |
-| `staged_edits.py` | 2026-05-01 | `23eb7936` | 3 |
-| `process_supervisor.py` | 2026-05-01 | `cd73b6ca` | 4 |
-| `grid_bot.py` | 2026-05-02 | `8c00a3af` | 3 |
-| `process_watcher.py` | 2026-05-02 | `43fd1478` | 8 |
-| `jarvis_brain.py` | 2026-05-02 | `881daa3f` | 23 |
-| `jarvis_brain_visibility.py` | 2026-05-02 | `f019f68c` | 2 |
-| `jarvis_brain_daemon.py` | 2026-05-02 | `162a8730` | 3 |
-| `workspace_files.py` | 2026-05-02 | `124c4917` | 1 |
-| `run_control_state.py` | 2026-05-02 | `a34d9679` | 4 |
-| `jarvis_brain.py` | 2026-05-02 | `2e52c782` | 23 |
-| `jarvis_brain_facts.py` | 2026-05-02 | `58cf4a44` | 1 |
-| `jarvis_brain_nudge.py` | 2026-05-02 | `8ac40a64` | 1 |
-| `jarvis_brain_reflection.py` | 2026-05-02 | `22bb7e5e` | 1 |
-| `cheap_lane_balancer.py` | 2026-05-02 | `3939307c` | 10 |
-| `affect_modulation.py` | 2026-05-03 | `5f8cf27e` | 11 |
-| `decision_gate.py` | 2026-05-03 | `5f8cf27e` | 15 |
-| `veto_gate.py` | 2026-05-03 | `5f8cf27e` | 8 |
-| `agentic_checkpoints.py` | 2026-05-03 | `754989e7` | 4 |
-| `agentic_tool_cache.py` | 2026-05-03 | `dde055fa` | 1 |
-| `agentic_working_conclusions.py` | 2026-05-03 | `23a0a00e` | 3 |
-| `cognitive_episodes.py` | 2026-05-04 | `3e3346fa` | 3 |
-| `theory_of_mind_engine.py` | 2026-05-04 | `6500da3b` | 4 |
-| `learning_policy_engine.py` | 2026-05-04 | `c7f02dbe` | 9 |
-| `perceptual_event_engine.py` | 2026-05-04 | `47e1eceb` | 5 |
-| `counterfactual_self_simulation.py` | 2026-05-04 | `82c5d749` | 2 |
-| `drive_arbitration_engine.py` | 2026-05-04 | `a5638635` | 3 |
-| `temporal_self_continuity.py` | 2026-05-04 | `eb1b655f` | 2 |
-| `curiosity_hypothesis_debt.py` | 2026-05-04 | `56ad7edd` | 4 |
-| `inner_dialectic_engine.py` | 2026-05-04 | `7103621a` | 2 |
-| `somatic_runtime_body.py` | 2026-05-04 | `b8a128a5` | 5 |
-| `offline_recomposition_engine.py` | 2026-05-04 | `d1f33bf5` | 2 |
-| `emotional_memory_engine.py` | 2026-05-04 | `8c61ef22` | 7 |
-| `visible_runs_error_messaging.py` | 2026-05-05 | `fd81033f` | 1 |
-| `sensory_perception_bridge.py` | 2026-05-05 | `ea727685` | 1 |
-| `self_repair_engine.py` | 2026-05-05 | `4dc7d056` | 5 |
-| `concept_baseline_tracker.py` | 2026-05-05 | `c9fc9256` | 3 |
-| `emotion_concepts_channel_triggers.py` | 2026-05-05 | `7a4369c3` | 2 |
-| `living_executive.py` | 2026-05-05 | `fd6f880a` | 12 |
-| `emotion_concepts_positive_triggers.py` | 2026-05-05 | `0547313b` | 3 |
-| `agency_map.py` | 2026-05-05 | `7cd616ff` | 3 |
-| `tool_outcome_memory.py` | 2026-05-05 | `e240f043` | 3 |
-| `agency_cartographer.py` | 2026-05-05 | `4a975294` | 5 |
-| `consolidation_judge_daemon.py` | 2026-05-05 | `457cd15f` | 3 |
-| `tool_catalog.py` | 2026-05-06 | `9f3c5355` | 2 |
-| `tool_tagger.py` | 2026-05-06 | `fe89cfc6` | 6 |
-| `tool_embeddings.py` | 2026-05-06 | `aa55cbd7` | 4 |
-| `tool_router.py` | 2026-05-06 | `96d917b8` | 15 |
-| `tool_router_runtime.py` | 2026-05-06 | `708c8519` | 1 |
-| `read_before_write_guard.py` | 2026-05-06 | `0f4a9729` | 5 |
-| `anthropic_identity.py` | 2026-05-06 | `a89096e7` | 1 |
-| `anthropic_translator.py` | 2026-05-06 | `33562c42` | 1 |
-| `anthropic_sse_emitter.py` | 2026-05-06 | `b60d6495` | 2 |
-| `daemon_memory_safeguard.py` | 2026-05-06 | `29a00d8e` | 5 |
-| `memory_consolidation_nudge.py` | 2026-05-06 | `29a00d8e` | 3 |
-| `decision_adherence_gate.py` | 2026-05-06 | `c44cacf4` | 2 |
-| `decision_signals.py` | 2026-05-07 | `91a82e9d` | 7 |
-| `loop_nudge.py` | 2026-05-07 | `f1968d8a` | 4 |
-| `backend_unresolved.py` | 2026-05-07 | `bec7b5b2` | 1 |
-| `counterfactual_triggers.py` | 2026-05-07 | `e9e97a52` | 2 |
-| `counterfactual_engine_runtime.py` | 2026-05-07 | `ff9d00a9` | 7 |
-| `contradiction_engine.py` | 2026-05-07 | `336ab1a3` | 6 |
-| `prompt_evolution.py` | 2026-05-07 | `6fc2cdec` | 15 |
-| `prospective_memory.py` | 2026-05-07 | `ee1fd998` | 3 |
-| `emergence.py` | 2026-05-07 | `9cb6a1fb` | 11 |
-| `memory_pruning_daemon.py` | 2026-05-08 | `18acba19` | 3 |
-| `forgetting_nudge.py` | 2026-05-08 | `68d48133` | 1 |
-| `rule_definitions.py` | 2026-05-08 | `813b150c` | 1 |
-| `rule_engine.py` | 2026-05-08 | `813b150c` | 6 |
-| `rule_conclusions.py` | 2026-05-08 | `5a2397b2` | 6 |
-| `identity_drift_daemon.py` | 2026-05-08 | `de6cc097` | 6 |
-| `causal_graph.py` | 2026-05-08 | `bc558dd3` | 11 |
-| `causal_inference_daemon.py` | 2026-05-08 | `8e5d45e4` | 5 |
-| `causal_alerts.py` | 2026-05-08 | `dd304d82` | 4 |
-| `causal_narrative.py` | 2026-05-08 | `e107e354` | 4 |
-| `causal_patterns.py` | 2026-05-08 | `d21c0b10` | 4 |
-| `narrative_summary_daemon.py` | 2026-05-08 | `cfc734bf` | 7 |
-| `pattern_counterfactual_daemon.py` | 2026-05-08 | `56046df2` | 6 |
-| `cross_session_arc.py` | 2026-05-08 | `56046df2` | 1 |
-| `pattern_counterfactuals.py` | 2026-05-08 | `56046df2` | 2 |
-| `system_cartographer.py` | 2026-05-08 | `f13bf5a7` | 16 |
-| `agreement_streak.py` | 2026-05-08 | `93b03545` | 2 |
-| `proactive_outbound_substrate.py` | 2026-05-08 | `0e383904` | 2 |
-| `theater_audit.py` | 2026-05-08 | `fb8fad7d` | 2 |
-| `experience_episodes.py` | 2026-05-09 | `39f64e2f` | 6 |
-| `experience_correction_listener.py` | 2026-05-09 | `473a9166` | 2 |
-| `skill_engine.py` | 2026-05-09 | `bbdaaa58` | 14 |
-| `experience_substrate.py` | 2026-05-09 | `07c9e2e8` | 2 |
-| `skill_security_scanner.py` | 2026-05-10 | `1ce602f7` | 1 |
-| `forgetting_engine.py` | 2026-05-10 | `5b526205` | 4 |
-| `forgetting_runtime.py` | 2026-05-10 | `7ee7a470` | 3 |
-| `nudge_broend.py` | 2026-05-10 | `c49cd896` | 7 |
-| `dream_bias_engine.py` | 2026-05-10 | `10b65283` | 10 |
-| `user_temperature_engine.py` | 2026-05-10 | `db97058d` | 8 |
-| `user_temperature_runtime.py` | 2026-05-10 | `b11cec8c` | 4 |
-| `emotion_repair_bridge_daemon.py` | 2026-05-11 | `c083ff2f` | 6 |
-| `reasoning_store.py` | 2026-05-11 | `31f533dc` | 9 |
-| `policy_abstraction.py` | 2026-05-11 | `45a8fbb7` | 3 |
-| `learning_pipeline_orchestrator.py` | 2026-05-11 | `d3d0d25e` | 2 |
-| `continuity.py` | 2026-05-11 | `f050f843` | 106 |
-| `voice_anchor.py` | 2026-05-11 | `5824368e` | 2 |
-| `voice_curator.py` | 2026-05-11 | `79449838` | 4 |
-| `unconscious_modulation.py` | 2026-05-12 | `b0babcde` | 3 |
-| `modulator_witness.py` | 2026-05-12 | `2effcb13` | 3 |
-| `curiosity_budget.py` | 2026-05-12 | `40c2bac1` | 5 |
-| `meta_learning_retrospective.py` | 2026-05-12 | `f43644ae` | 5 |
-| `meta_learning_aggregator.py` | 2026-05-12 | `276cbe82` | 3 |
-| `loop_compliance.py` | 2026-05-12 | `fbb3244d` | 1 |
-| `curiosity_consolidation.py` | 2026-05-13 | `26cc5f24` | 2 |
-| `meta_learning_hypotheses.py` | 2026-05-13 | `26cc5f24` | 4 |
-| `dead_skills.py` | 2026-05-13 | `26cc5f24` | 1 |
-| `plan_revision_patterns.py` | 2026-05-13 | `26cc5f24` | 1 |
-| `world_model_auto_extraction.py` | 2026-05-13 | `26cc5f24` | 1 |
-| `outbound_nudges.py` | 2026-05-13 | `8eb08e97` | 13 |
-| `counterfactual_predictions.py` | 2026-05-14 | `4b9f7da9` | 5 |
-| `memory_recall_telemetry.py` | 2026-05-14 | `a57725ed` | 3 |
-| `decision_signal_telemetry.py` | 2026-05-14 | `4bd411e1` | 2 |
-| `shared_cache.py` | 2026-05-14 | `e75f9776` | 42 |
-| `my_projects.py` | 2026-05-14 | `922a409a` | 4 |
-| `active_sensing_daemon.py` | 2026-05-14 | `d8756361` | 6 |
-| `user_contradiction_tracker.py` | 2026-05-16 | `675daf8c` | 3 |
-| `interlanguage_practice.py` | 2026-05-16 | `2b3fb15b` | 15 |
-| `session_topic_tracker.py` | 2026-05-16 | `d3b3028c` | 3 |
-| `cache_maintenance_daemon.py` | 2026-05-17 | `492dcb7a` | 3 |
-| `unfinished_intent.py` | 2026-05-17 | `51892c7d` | 3 |
-| `hallucination_guard.py` | 2026-05-21 | `8b49c3b5` | 3 |
-| `claim_scanner.py` | 2026-05-22 | `f0ea940b` | 8 |
-| `ground_truth_registry.py` | 2026-05-22 | `012007c0` | 6 |
-| `run_closure_gate.py` | 2026-05-22 | `de15484f` | 4 |
-| `metacognition_signal_tracker.py` | 2026-05-23 | `77514dbd` | 5 |
-| `theory_of_mind.py` | 2026-05-23 | `77b14945` | 7 |
-| `spatial_entity_ledger.py` | 2026-05-23 | `4beb501c` | 3 |
-| `session_inbox.py` | 2026-05-24 | `8f43f9e8` | 4 |
-| `inner_voice_shadow.py` | 2026-05-24 | `dc83619a` | 8 |
-| `jarvisx_bridge.py` | 2026-05-26 | `9f4d6078` | 5 |
-| `cognitive_chronicle.py` | 2026-05-28 | `08d83ee1` | 6 |
-| `scheduled_task_runner.py` | 2026-05-28 | `4dc9040b` | 2 |
-| `identity_sketch.py` | 2026-06-08 | `5f016e99` | 9 |
-| `multi_signal_retrieval.py` | 2026-06-08 | `23bf7acd` | 3 |
-| `capability_markup.py` | 2026-06-09 | `fae1545d` | 2 |
-| `memory_recall.py` | 2026-06-09 | `fae1545d` | 2 |
-| `memory_write_queue.py` | 2026-06-09 | `35f8df75` | 6 |
-| `selective_consolidation_daemon.py` | 2026-06-09 | `8da9b91c` | 3 |
-| `cost_optimization_daemon.py` | 2026-06-09 | `d4c2e603` | 3 |
-| `dreaming_session.py` | 2026-06-09 | `ee19a03d` | 2 |
-| `auto_remember_subscriber.py` | 2026-06-09 | `cd0d048b` | 3 |
-| `daily_journal.py` | 2026-06-09 | `a4b520aa` | 3 |
-| `visible_runs_sse_v2.py` | 2026-06-10 | `8beaddae` | 4 |
-| `decision_review_daemon.py` | 2026-06-10 | `6fa30a65` | 2 |
-| `communication_guard.py` | 2026-06-11 | `d2094554` | 10 |
-| `communication_guard_daemon.py` | 2026-06-11 | `d2094554` | 3 |
-| `dictation.py` | 2026-06-12 | `8db8a70d` | 1 |
-| `workspace_trust.py` | 2026-06-12 | `78d8afda` | 5 |
-| `cowork_feed.py` | 2026-06-12 | `a7cd5aa1` | 1 |
-| `markdown_structure.py` | 2026-06-12 | `da9b9413` | 2 |
-| `run_follow.py` | 2026-06-13 | `e908f520` | 5 |
-| `fact_gate.py` | 2026-06-14 | `049dd031` | 16 |
-| `permission_engine.py` | 2026-06-14 | `5932c502` | 5 |
-| `totp_verifier.py` | 2026-06-14 | `cdf0924a` | 2 |
-| `plugin_ruleset.py` | 2026-06-14 | `11095b8e` | 3 |
-| `cross_user_share_guard.py` | 2026-06-14 | `c4a450da` | 2 |
-| `override_store.py` | 2026-06-14 | `9b65bb8a` | 11 |
-| `bro_broker.py` | 2026-06-14 | `d89b615d` | 2 |
-| `override_command.py` | 2026-06-14 | `e5601c9d` | 4 |
-| `delete_policy.py` | 2026-06-14 | `4e93e459` | 1 |
-| `share_guard_store.py` | 2026-06-14 | `f515aa01` | 4 |
-| `plugin_ruleset_store.py` | 2026-06-14 | `8d9da192` | 3 |
-| `ui_panel_store.py` | 2026-06-14 | `2587dc51` | 3 |
-| `channel_inbound.py` | 2026-06-14 | `13f708a7` | 2 |
-| `encryption.py` | 2026-06-14 | `a12d5665` | 11 |
-| `keyring_store.py` | 2026-06-14 | `a12d5665` | 3 |
-| `workspace_crypto.py` | 2026-06-14 | `f7dc7b25` | 13 |
-| `skill_scanner.py` | 2026-06-14 | `93c7bbed` | 4 |
-| `cowork_dispatch.py` | 2026-06-14 | `04270693` | 1 |
-| `agent_dispatch.py` | 2026-06-14 | `ff7f3001` | 5 |
-| `quota_store.py` | 2026-06-14 | `ab09a35f` | 4 |
-| `malware_scan.py` | 2026-06-14 | `ba3ebb89` | 2 |
-| `app_dispatch_store.py` | 2026-06-14 | `ba0d68b9` | 2 |
-| `active_model_state.py` | 2026-06-15 | `ba292444` | 2 |
-| `diagnosis_gate.py` | 2026-06-15 | `fe26fece` | 5 |
-| `tool_chip_payload.py` | 2026-06-15 | `21cced26` | 1 |
-| `active_file_store.py` | 2026-06-15 | `c720bfc4` | 3 |
-| `model_context.py` | 2026-06-15 | `74710c89` | 7 |
-| `user_scope.py` | 2026-06-15 | `4a33f2ca` | 5 |
-| `computer_use_policy.py` | 2026-06-15 | `a4014a9a` | 2 |
-| `mcp_registry.py` | 2026-06-15 | `ac7e22e5` | 1 |
-| `gut_calibration.py` | 2026-06-15 | `4bfcc05a` | 3 |
-| `liveness_registry.py` | 2026-06-15 | `2c089283` | 1 |
-| `retention.py` | 2026-06-15 | `e0a567f6` | 18 |
-| `promise_ledger.py` | 2026-06-16 | `647da141` | 2 |
-| `oauth_store.py` | 2026-06-16 | `40ab4934` | 6 |
-| `oauth_flow.py` | 2026-06-16 | `c2a87847` | 6 |
-| `connectors.py` | 2026-06-16 | `bf5ba82a` | 7 |
-| `github_connector.py` | 2026-06-16 | `7b79fec6` | 4 |
-| `gmail_connector.py` | 2026-06-17 | `b1f58d71` | 3 |
-| `google_connector.py` | 2026-06-17 | `8a2fd4dd` | 3 |
-| `hf_connector.py` | 2026-06-17 | `aa5ce578` | 4 |
-| `notes_connector.py` | 2026-06-17 | `aa5ce578` | 4 |
-| `pdf_connector.py` | 2026-06-17 | `aa5ce578` | 3 |
-| `data_erasure.py` | 2026-06-17 | `b44642cc` | 1 |
-| `git_actions.py` | 2026-06-17 | `d7e138ac` | 1 |
-| `google_login.py` | 2026-06-17 | `6e27a627` | 3 |
-| `device_pairing.py` | 2026-06-17 | `cde1c3f3` | 1 |
-| `detached_run.py` | 2026-06-18 | `eb1308e4` | 3 |
-| `run_event_log.py` | 2026-06-19 | `41a4ec92` | 8 |
-| `device_tokens.py` | 2026-06-19 | `a5fdef11` | 4 |
-| `fcm_gateway.py` | 2026-06-19 | `8839bb36` | 1 |
-| `push_dispatcher.py` | 2026-06-19 | `8e8ab312` | 4 |
-| `device_presence.py` | 2026-06-19 | `3f4b4382` | 6 |
-| `desktop_notifications.py` | 2026-06-19 | `3eb80435` | 2 |
-| `teams.py` | 2026-06-20 | `e28e5567` | 11 |
-| `team_mentions.py` | 2026-06-20 | `0bcc14d4` | 0 ⚠️ |
-| `notification_router.py` | 2026-06-21 | `14b84762` | 17 |
-| `identity_guard.py` | 2026-06-21 | `ecc58cf2` | 4 |
-| `security_guard.py` | 2026-06-21 | `ecc58cf2` | 5 |
-| `abuse_monitor.py` | 2026-06-21 | `731f618f` | 3 |
-| `gate_kernel.py` | 2026-06-21 | `1af7df2b` | 37 |
-| `gate_eval.py` | 2026-06-21 | `2cea193e` | 0 ⚠️ |
-| `gate_adapters.py` | 2026-06-21 | `33238194` | 2 |
-| `central_capture.py` | 2026-06-21 | `ea3c1b11` | 3 |
-| `central_trace.py` | 2026-06-21 | `d39fb7e3` | 21 |
-| `central_switches.py` | 2026-06-21 | `5e64c54f` | 23 |
-| `central_core.py` | 2026-06-21 | `64377a8c` | 152 |
-| `central_catalog.py` | 2026-06-21 | `cb2c7200` | 11 |
-| `gate_truth.py` | 2026-06-21 | `b7208166` | 3 |
-| `prose_tool_calls.py` | 2026-06-21 | `9a07482e` | 1 |
-| `truth_gate_v2.py` | 2026-06-21 | `23fbf273` | 1 |
-| `visible_inner_life.py` | 2026-06-22 | `e537d778` | 10 |
-| `gate_commit.py` | 2026-06-22 | `5c9e60e1` | 4 |
-| `gate_proactivity.py` | 2026-06-22 | `27e12569` | 4 |
-| `gate_memory.py` | 2026-06-22 | `56ccadef` | 2 |
-| `gate_loop.py` | 2026-06-22 | `590c8c43` | 4 |
-| `gate_review.py` | 2026-06-22 | `d7513c73` | 3 |
-| `gate_privacy.py` | 2026-06-22 | `624887a1` | 4 |
-| `gate_auth.py` | 2026-06-22 | `d627c506` | 2 |
-| `central_drift.py` | 2026-06-22 | `16d19d52` | 1 |
-| `gate_execution.py` | 2026-06-22 | `8a54a306` | 7 |
-| `gate_mutation.py` | 2026-06-22 | `886ad53d` | 5 |
-| `gate_skill.py` | 2026-06-22 | `4be3ff81` | 3 |
-| `stream_sentinel.py` | 2026-06-22 | `2c0da37b` | 4 |
-| `prompt_observer.py` | 2026-06-22 | `859b4ef8` | 3 |
-| `db_sentinel.py` | 2026-06-22 | `f581b1e9` | 3 |
-| `tool_observer.py` | 2026-06-22 | `e3181a19` | 2 |
-| `tool_usage_store.py` | 2026-06-22 | `61f8f783` | 4 |
-| `endpoint_usage_store.py` | 2026-06-22 | `3bacfe3a` | 4 |
-| `central_health.py` | 2026-06-22 | `47798e75` | 4 |
-| `config_drift.py` | 2026-06-22 | `ada129af` | 8 |
-| `central_arbitration.py` | 2026-06-22 | `23166f72` | 1 |
-| `connections.py` | 2026-06-22 | `6e733f3f` | 21 |
-| `daemon_health.py` | 2026-06-22 | `f729db34` | 4 |
-| `central_correlate.py` | 2026-06-22 | `771c145d` | 2 |
-| `central_todo.py` | 2026-06-22 | `0bd2a7a6` | 1 |
-| `autonomous_supervisor.py` | 2026-06-22 | `af0741cc` | 2 |
-| `central_learning.py` | 2026-06-22 | `094eb1c8` | 11 |
-| `agents.py` | 2026-06-23 | `af0ffc5f` | 45 |
-| `followup_observer.py` | 2026-06-23 | `625e0436` | 5 |
-| `central_error_envelope.py` | 2026-06-23 | `2b22eb87` | 5 |
-| `central_realtime.py` | 2026-06-23 | `47a75c64` | 5 |
-| `central_anomaly.py` | 2026-06-23 | `66f92312` | 5 |
-| `central_xproc.py` | 2026-06-23 | `0e968ad2` | 10 |
-| `session_milestones.py` | 2026-06-23 | `bedda2e1` | 1 |
-| `central_instrument.py` | 2026-06-23 | `130fa93f` | 4 |
-| `central_hub.py` | 2026-06-23 | `35bf1d4d` | 1 |
-| `central_terminal.py` | 2026-06-23 | `a3d2fbd0` | 4 |
-| `stream_degeneration.py` | 2026-06-23 | `cd745b36` | 2 |
-| `stream_failure_kind.py` | 2026-06-29 | `ff65597a` | 5 |
-| `stream_observers.py` | 2026-06-30 | `7d31afd4` | 1 |
-| `cache_telemetry.py` | 2026-06-30 | `c5491580` | 4 |
-| `central_timeseries.py` | 2026-07-01 | `9a7e9256` | 48 |
-| `eventbus_central_bridge.py` | 2026-07-01 | `9a7e9256` | 5 |
-| `central_self_observe.py` | 2026-07-01 | `bbd49d00` | 1 |
-| `central_private_observe.py` | 2026-07-01 | `10556a96` | 86 |
-| `central_noise_filter.py` | 2026-07-01 | `aed49c92` | 1 |
-| `central_watch.py` | 2026-07-01 | `aed49c92` | 7 |
-| `central_growth_observe.py` | 2026-07-01 | `bcbea4d3` | 1 |
-| `central_shadow.py` | 2026-07-01 | `53ad2e9e` | 2 |
-| `infra_sense.py` | 2026-07-01 | `040cf8e7` | 6 |
-| `pfsense_syslog.py` | 2026-07-01 | `7b100eb0` | 3 |
-| `bridge_presence.py` | 2026-07-01 | `dbcc9072` | 2 |
-| `central_coverage.py` | 2026-07-02 | `6702853f` | 4 |
-| `central_causal_quality.py` | 2026-07-02 | `44d9be0c` | 4 |
-| `central_signal_health.py` | 2026-07-02 | `c3b2b674` | 3 |
-| `central_hypothesis_governance.py` | 2026-07-02 | `a2b5a608` | 8 |
-| `central_hypothesis_generator.py` | 2026-07-02 | `d73c1ac1` | 9 |
-| `central_stance.py` | 2026-07-02 | `01a5eeec` | 4 |
-| `central_hypothesis_sampler.py` | 2026-07-02 | `afdb3e58` | 2 |
-| `central_adaptation.py` | 2026-07-02 | `9dda151c` | 4 |
-| `central_lexicon.py` | 2026-07-02 | `a757e142` | 7 |
-| `central_notation.py` | 2026-07-02 | `a757e142` | 3 |
-| `central_prompt_composer.py` | 2026-07-02 | `396bff71` | 4 |
-| `central_sequence.py` | 2026-07-02 | `e65acc73` | 4 |
-| `central_model_meta.py` | 2026-07-02 | `328d5c53` | 4 |
-| `central_brain_link.py` | 2026-07-02 | `c7d9047c` | 1 |
-| `central_render.py` | 2026-07-02 | `bc3f59d0` | 1 |
-| `central_proposal.py` | 2026-07-02 | `a01bb7bb` | 2 |
-| `central_prompt_explore.py` | 2026-07-02 | `7e999271` | 2 |
-| `central_router_adapt.py` | 2026-07-02 | `891056a1` | 5 |
-| `central_router_explore.py` | 2026-07-02 | `735f5f4b` | 1 |
-| `central_self_model.py` | 2026-07-02 | `c24937ab` | 4 |
-| `memory_scoring.py` | 2026-07-02 | `96977ed3` | 1 |
-| `central_agenda.py` | 2026-07-02 | `f6cb41fb` | 3 |
-| `central_valence.py` | 2026-07-02 | `5ecf03d3` | 5 |
-| `central_self_state.py` | 2026-07-02 | `478eadea` | 17 |
-| `text_clip.py` | 2026-07-02 | `a89f94f6` | 25 |
-| `network_health.py` | 2026-07-02 | `abd66da7` | 4 |
-| `producer_novelty.py` | 2026-07-03 | `5b9a598c` | 2 |
-| `central_inner_salience.py` | 2026-07-03 | `0170ecf5` | 2 |
-| `central_coverage_action.py` | 2026-07-03 | `dce8ec28` | 1 |
-| `central_layer_contract.py` | 2026-07-03 | `dce8ec28` | 4 |
-| `central_form_judge.py` | 2026-07-03 | `e82b24ff` | 2 |
-| `central_convene_judge.py` | 2026-07-03 | `2343aad7` | 3 |
-| `central_existence_feel.py` | 2026-07-03 | `a689fd40` | 4 |
-| `central_body_mood_feel.py` | 2026-07-03 | `6423dd1b` | 5 |
-| `central_soul_feel.py` | 2026-07-03 | `f01be9cc` | 2 |
-| `central_loop_lag.py` | 2026-07-04 | `1563dc5c` | 4 |
-| `central_output_conservation.py` | 2026-07-04 | `1563dc5c` | 2 |
-| `central_inner_life_ablation.py` | 2026-07-04 | `eb1c133d` | 1 |
-| `central_llm_egress.py` | 2026-07-04 | `e441e552` | 7 |
-| `decision_signal_staging.py` | 2026-07-04 | `3df67529` | 2 |
-| `central_body_map_pulse.py` | 2026-07-04 | `b9536a8d` | 2 |
-| `central_cadence_conductor.py` | 2026-07-04 | `b79bdeb6` | 2 |
-| `central_membrane_watch.py` | 2026-07-04 | `b79bdeb6` | 2 |
-| `central_oneiric_loop.py` | 2026-07-04 | `5025878d` | 3 |
-| `central_oneiric_sampler.py` | 2026-07-04 | `f1f1e785` | 3 |
-| `hollow_promise_guard.py` | 2026-07-04 | `687751ce` | 1 |
-| `error_healers.py` | 2026-07-04 | `f6bda249` | 3 |
-| `central_injection_registry.py` | 2026-07-05 | `365aab23` | 4 |
-| `central_injection_units.py` | 2026-07-05 | `394f26c3` | 1 |
-| `central_governance.py` | 2026-07-05 | `53d2e17f` | 7 |
-| `file_awareness_daemon.py` | 2026-07-05 | `7521c671` | 3 |
-| `unified_recall.py` | 2026-07-05 | `1a45f5e4` | 7 |
-| `central_absorb.py` | 2026-07-05 | `5e3346fd` | 5 |
-| `central_private_reducer.py` | 2026-07-05 | `5e3346fd` | 2 |
-| `central_runtime_proxy.py` | 2026-07-05 | `5e3346fd` | 4 |
-| `central_inner_life_digest.py` | 2026-07-05 | `e9c0a6e5` | 5 |
-| `central_soul_digest.py` | 2026-07-05 | `dfb4aae9` | 6 |
-| `central_dark_products_digest.py` | 2026-07-06 | `616dc4eb` | 2 |
-| `central_affect.py` | 2026-07-06 | `81185b86` | 6 |
-| `central_initiative_ladder.py` | 2026-07-06 | `77095e06` | 1 |
-| `central_tone.py` | 2026-07-06 | `29d6221a` | 2 |
-| `gate_shadow.py` | 2026-07-06 | `7f4a7c91` | 2 |
-| `gate_verdict_ledger.py` | 2026-07-06 | `56043a76` | 13 |
-| `autonomous_sessions.py` | 2026-07-06 | `7be69e40` | 3 |
-| `api_connection_nerve.py` | 2026-07-06 | `78b181fe` | 4 |
-| `user_activity.py` | 2026-07-06 | `13920089` | 1 |
-| `central_excess.py` | 2026-07-06 | `607e6198` | 6 |
-| `central_decentralization.py` | 2026-07-06 | `158cd295` | 4 |
-| `central_gardener.py` | 2026-07-06 | `19926f8b` | 1 |
-| `central_keymaker.py` | 2026-07-06 | `aa76a496` | 5 |
-| `central_architect.py` | 2026-07-06 | `0da5bd64` | 3 |
-| `central_construct.py` | 2026-07-06 | `0da5bd64` | 4 |
-| `central_echo_breaker.py` | 2026-07-06 | `0da5bd64` | 3 |
-| `central_oracle.py` | 2026-07-06 | `0da5bd64` | 4 |
-| `central_glitch.py` | 2026-07-06 | `efb1399c` | 4 |
-| `central_continuity_healer.py` | 2026-07-06 | `8f2c49f3` | 3 |
-| `central_surgery.py` | 2026-07-06 | `9458ada9` | 3 |
-| `central_dream_action.py` | 2026-07-06 | `02ba4cfd` | 4 |
-| `central_rca.py` | 2026-07-06 | `02ba4cfd` | 2 |
-| `central_relational.py` | 2026-07-06 | `02ba4cfd` | 2 |
-| `central_merovingian.py` | 2026-07-06 | `685a8bfc` | 5 |
-| `central_dejavu.py` | 2026-07-06 | `ae1d0cc1` | 2 |
-| `central_exile.py` | 2026-07-06 | `ae1d0cc1` | 1 |
-| `central_ghost.py` | 2026-07-06 | `ae1d0cc1` | 3 |
-| `central_mourning.py` | 2026-07-06 | `ae1d0cc1` | 2 |
-| `central_sentinel.py` | 2026-07-06 | `ae1d0cc1` | 3 |
-| `central_analyst.py` | 2026-07-06 | `44407790` | 2 |
-| `central_belief_gap.py` | 2026-07-06 | `44407790` | 3 |
-| `central_dissent.py` | 2026-07-06 | `44407790` | 4 |
-| `central_machines.py` | 2026-07-06 | `44407790` | 3 |
-| `central_red_dress.py` | 2026-07-06 | `44407790` | 2 |
-| `central_redpill.py` | 2026-07-06 | `44407790` | 3 |
-| `central_white_rabbit.py` | 2026-07-06 | `44407790` | 2 |
-| `runtime_self_model_affect.py` | 2026-07-07 | `76227429` | 4 |
-| `runtime_self_model_boundary.py` | 2026-07-07 | `76227429` | 3 |
-| `runtime_self_model_builder.py` | 2026-07-07 | `76227429` | 1 |
-| `runtime_self_model_identity.py` | 2026-07-07 | `76227429` | 3 |
-| `runtime_self_model_state.py` | 2026-07-07 | `76227429` | 5 |
-| `runtime_self_model_surfaces.py` | 2026-07-07 | `76227429` | 4 |
-| `agent_runtime_base.py` | 2026-07-07 | `7e342891` | 5 |
-| `agent_runtime_council.py` | 2026-07-07 | `7e342891` | 1 |
-| `agent_runtime_spawn.py` | 2026-07-07 | `7e342891` | 5 |
-| `agent_runtime_surfaces.py` | 2026-07-07 | `7e342891` | 3 |
-| `cheap_provider_runtime_adapters.py` | 2026-07-07 | `46d90e97` | 16 |
-| `cheap_provider_runtime_selection.py` | 2026-07-07 | `46d90e97` | 9 |
-| `cheap_provider_runtime_streaming.py` | 2026-07-07 | `46d90e97` | 5 |
-| `heartbeat_runtime_helpers.py` | 2026-07-07 | `2dabe052` | 1 |
-| `heartbeat_runtime_influence.py` | 2026-07-07 | `2dabe052` | 1 |
-| `heartbeat_runtime_providers.py` | 2026-07-07 | `2dabe052` | 1 |
-| `internal_cadence_central_wiring.py` | 2026-07-07 | `59e4b994` | 1 |
-| `internal_cadence_core.py` | 2026-07-07 | `59e4b994` | 1 |
-| `internal_cadence_inner_life.py` | 2026-07-07 | `59e4b994` | 1 |
-| `internal_cadence_maintenance.py` | 2026-07-07 | `59e4b994` | 1 |
-| `internal_cadence_matrix.py` | 2026-07-07 | `59e4b994` | 1 |
-| `visible_model_adapters.py` | 2026-07-07 | `256188aa` | 1 |
-| `visible_model_observe.py` | 2026-07-07 | `256188aa` | 4 |
-| `visible_model_ollama.py` | 2026-07-07 | `256188aa` | 2 |
-| `visible_model_prompt.py` | 2026-07-07 | `256188aa` | 1 |
-| `visible_model_sse.py` | 2026-07-07 | `256188aa` | 3 |
-| `visible_model_types.py` | 2026-07-07 | `256188aa` | 3 |
-| `visible_followup_adapters.py` | 2026-07-07 | `612c0bbe` | 2 |
-| `visible_followup_events.py` | 2026-07-07 | `612c0bbe` | 3 |
-| `visible_followup_lean.py` | 2026-07-07 | `612c0bbe` | 2 |
-| `central_mood_regulator.py` | 2026-07-07 | `90a08368` | 2 |
-| `attention_frame.py` | 2026-07-07 | `f3c4f5bc` | 1 |
-| `heartbeat_sections.py` | 2026-07-07 | `f3c4f5bc` | 1 |
-| `runtime_self_report.py` | 2026-07-07 | `f3c4f5bc` | 1 |
-| `transcript_sections.py` | 2026-07-07 | `f3c4f5bc` | 3 |
-| `visible_runs_approvals.py` | 2026-07-07 | `a16d8e93` | 1 |
-| `visible_runs_capabilities.py` | 2026-07-07 | `a16d8e93` | 1 |
-| `visible_runs_cognitive.py` | 2026-07-07 | `a16d8e93` | 2 |
-| `visible_runs_memory.py` | 2026-07-07 | `a16d8e93` | 2 |
-| `visible_runs_outcomes.py` | 2026-07-07 | `a16d8e93` | 2 |
-| `central_persephone.py` | 2026-07-07 | `e8c42882` | 3 |
-| `central_seraph.py` | 2026-07-07 | `e8c42882` | 4 |
-| `central_trainman.py` | 2026-07-07 | `e8c42882` | 3 |
-| `central_twins.py` | 2026-07-07 | `e8c42882` | 3 |
-| `mood_regulator_subscriber.py` | 2026-07-07 | `cc45c2a4` | 2 |
-| `identity_canon.py` | 2026-07-08 | `46c06aa8` | 2 |
-| `identity_drift_guard.py` | 2026-07-08 | `46c06aa8` | 3 |
-| `commit_gate_arbiter.py` | 2026-07-08 | `84d04f10` | 1 |
-| `gate_enforcement.py` | 2026-07-08 | `84d04f10` | 5 |
-| `self_model_distiller.py` | 2026-07-08 | `47945398` | 1 |
-| `standing_orders_registry.py` | 2026-07-08 | `bd3de0e5` | 2 |
-| `reasoning_prefilter.py` | 2026-07-08 | `0e15deeb` | 1 |
-| `reasoning_interceptor.py` | 2026-07-08 | `f4f42eb3` | 6 |
-| `reasoning_detectors.py` | 2026-07-08 | `a460a090` | 1 |
-| `model_trust.py` | 2026-07-08 | `bc5dd7a1` | 4 |
-| `tool_result_aging.py` | 2026-07-08 | `451f5254` | 1 |
-| `cache_boundary_observer.py` | 2026-07-08 | `c4afccd6` | 1 |
-| `tool_concurrency.py` | 2026-07-08 | `3492436f` | 1 |
-| `simple_tool_executor.py` | 2026-07-08 | `57287fcc` | 3 |
-| `permission_classifier.py` | 2026-07-08 | `ddb9cbe7` | 4 |
-| `docs_drift_watchdog.py` | 2026-07-08 | `260c9781` | 3 |
-| `proactivity_bridge.py` | 2026-07-09 | `56d1a133` | 7 |
-| `central_agent_smith.py` | 2026-07-09 | `54497b69` | 3 |
-| `central_moltbook.py` | 2026-07-09 | `001aa8f0` | 3 |
-| `content_blocks.py` | 2026-07-09 | `c21c15fe` | 1 |
-| `structured_content_flag.py` | 2026-07-09 | `0757c851` | 3 |
-| `paste_store.py` | 2026-07-09 | `5378430b` | 5 |
-| `session_boot_reconciler.py` | 2026-07-09 | `bc89cf01` | 1 |
-| `session_persistence_flag.py` | 2026-07-09 | `bc89cf01` | 1 |
-| `contradiction_resolver.py` | 2026-07-10 | `8a578b8f` | 2 |
-| `doc_repair_agent.py` | 2026-07-10 | `f2036be3` | 2 |
-| `state_flag_store.py` | 2026-07-10 | `95ef6b11` | 1 |
-| `operator_allowlist.py` | 2026-07-10 | `4bfc6893` | 2 |
-| `source_confidence_gate.py` | 2026-07-10 | `a314f2f5` | 1 |
-| `central_agent_smith_escalation.py` | 2026-07-10 | `900006d1` | 1 |
-| `central_matrix_ensemble.py` | 2026-07-10 | `bbab71c5` | 2 |
-| `central_morpheus.py` | 2026-07-10 | `48ba0239` | 3 |
-| `central_trinity.py` | 2026-07-10 | `48ba0239` | 3 |
-| `recall_scheduler.py` | 2026-07-12 | `9d340181` | 2 |
-| `assembly_prewarm.py` | 2026-07-12 | `903f8866` | 4 |
-| `llm_pricing.py` | 2026-07-13 | `b5947a7f` | 1 |
-| `central_cost_surface.py` | 2026-07-13 | `d789acfc` | 2 |
-| `dispatch_status.py` | 2026-07-13 | `69500cbb` | 6 |
-| `dispatch_envelope.py` | 2026-07-13 | `80bf5ef6` | 2 |
-| `central_agents_surface.py` | 2026-07-13 | `fb1a9643` | 2 |
-| `signal_baseline.py` | 2026-07-13 | `dc838e3a` | 2 |
-| `autonomous_lease.py` | 2026-07-13 | `846dde81` | 1 |
-| `recursion_guard.py` | 2026-07-13 | `13404efd` | 2 |
-| `dispatch_guards.py` | 2026-07-13 | `572b4a1b` | 1 |
-| `signal_delta_trigger.py` | 2026-07-13 | `dc2de1a6` | 1 |
-| `event_trigger_shadow.py` | 2026-07-13 | `9364c227` | 4 |
-| `shadow_experiment_registry.py` | 2026-07-13 | `9e6103ab` | 2 |
-| `gate_pattern_learning.py` | 2026-07-13 | `4e4212e1` | 2 |
-| `event_gate.py` | 2026-07-13 | `236c50b2` | 14 |
-| `skill_autosurface.py` | 2026-07-14 | `892a7ab1` | 3 |
-| `jc_tool_telemetry.py` | 2026-07-14 | `066a0f9b` | 1 |
-| `cheap_lane_floor.py` | 2026-07-14 | `3a1de301` | 5 |
-| `central_route.py` | 2026-07-14 | `1300c5be` | 9 |
-| `central_route_headroom.py` | 2026-07-14 | `1300c5be` | 1 |
-| `agent_pool_router.py` | 2026-07-14 | `0571e409` | 3 |
-| `provider_autodiscovery.py` | 2026-07-14 | `f5e64f50` | 3 |
-| `provider_self_heal.py` | 2026-07-14 | `f5e64f50` | 2 |
-| `cluster_daemon.py` | 2026-07-15 | `d7f8e85e` | 4 |
-| `nerve_registry.py` | 2026-07-15 | `d7f8e85e` | 1 |
-| `cluster_daemon_families.py` | 2026-07-15 | `c8d512fb` | 2 |
-| `client_tool_delegation.py` | 2026-07-15 | `8b230503` | 0 ⚠️ |
-| `client_turn_absorb.py` | 2026-07-15 | `aa107f83` | 1 |
-| `client_turn_live.py` | 2026-07-15 | `3b6083d7` | 1 |
-| `cheap_lane_selfheal.py` | 2026-07-16 | `80fc41bb` | 1 |
-| `auth_profile_scan.py` | 2026-07-16 | `3d6588aa` | 2 |
-| `egress_routing.py` | 2026-07-16 | `015957fa` | 3 |
-| `non_visible_fallback.py` | 2026-07-16 | `0c7e8205` | 1 |
-| `non_visible_rate_cap.py` | 2026-07-16 | `6e1b83c8` | 1 |
-| `events_retention.py` | 2026-07-17 | `1ad631ce` | 2 |
-| `agent_transcript.py` | 2026-07-17 | `5d6ae118` | 2 |
-| `pool_status_section.py` | 2026-07-17 | `942fcda4` | 1 |
-| `turn_trace.py` | 2026-07-18 | `d610d66e` | 6 |
-| `local_tool_broker.py` | 2026-07-19 | `2a7c8c9b` | 5 |
-| `visible_tool_exec.py` | 2026-07-19 | `07bfbbcb` | 1 |
-| `session_prewarm.py` | 2026-07-21 | `89daf1ed` | 3 |
-| `visible_stream_gate.py` | 2026-07-22 | `0bf83c33` | 5 |
-| `signal_tracking_framework.py` | 2026-07-23 | `781c8598` | 26 |
-| `visible_runs_watchdog.py` | 2026-08-17 | `003cd8b1` | 1 |
-| `fabricated_tool_result_gate.py` | 2026-08-18 | `9ff1312a` | 2 |
-| `self_surprise_expectation.py` | 2026-08-18 | `dd372262` | 2 |
-| `prompt_section_reevaluation.py` | 2026-08-18 | `94359fef` | 1 |
-| `cheap_lane_failure_policy.py` | 2026-08-18 | `3610fc86` | 1 |
-| `dream_action_executor.py` | 2026-08-19 | `7df0146e` | 2 |
-| `heartbeat_action_hints.py` | 2026-08-19 | `004f002a` | 1 |
+| Fil | Født | Commit | Prod | Test |
+|---|---|---|---:|---:|
+| `absence_awareness.py` | 2026-04-17 | `dfcb0e12` | 4 | 1 |
+| `absence_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 | 4 |
+| `adaptive_learning_runtime.py` | 2026-04-17 | `dfcb0e12` | 7 | 2 |
+| `adaptive_planner_runtime.py` | 2026-04-17 | `dfcb0e12` | 8 | 2 |
+| `adaptive_reasoning_runtime.py` | 2026-04-17 | `dfcb0e12` | 9 | 2 |
+| `aesthetic_sense.py` | 2026-04-17 | `dfcb0e12` | 5 | 1 |
+| `aesthetic_taste_daemon.py` | 2026-04-17 | `dfcb0e12` | 9 | 5 |
+| `affective_meta_state.py` | 2026-04-17 | `dfcb0e12` | 30 | 16 |
+| `affective_state_renderer.py` | 2026-04-17 | `dfcb0e12` | 2 | 2 |
+| `agent_runtime.py` | 2026-04-17 | `dfcb0e12` | 21 | 11 |
+| `anticipatory_context.py` | 2026-04-17 | `dfcb0e12` | 2 | 0 |
+| `apophenia_guard.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `associative_recall.py` | 2026-04-17 | `dfcb0e12` | 8 | 5 |
+| `attachment_topology_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 | 2 |
+| `attention_blink_test.py` | 2026-04-17 | `dfcb0e12` | 3 | 1 |
+| `attention_budget.py` | 2026-04-17 | `dfcb0e12` | 8 | 5 |
+| `attention_contour.py` | 2026-04-17 | `dfcb0e12` | 5 | 1 |
+| `autonomous_council_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 | 2 |
+| `autonomy_pressure_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 11 | 4 |
+| `autonomy_proposal_queue.py` | 2026-04-17 | `dfcb0e12` | 9 | 1 |
+| `body_memory.py` | 2026-04-17 | `dfcb0e12` | 5 | 2 |
+| `boredom_curiosity_bridge.py` | 2026-04-17 | `dfcb0e12` | 7 | 1 |
+| `boredom_engine.py` | 2026-04-17 | `dfcb0e12` | 8 | 0 |
+| `boundary_awareness.py` | 2026-04-17 | `dfcb0e12` | 1 | 1 |
+| `bounded_action_continuity_runtime.py` | 2026-04-17 | `dfcb0e12` | 1 | 1 |
+| `bounded_mutation_intent_runtime.py` | 2026-04-17 | `dfcb0e12` | 1 | 2 |
+| `bounded_repo_tools_runtime.py` | 2026-04-17 | `dfcb0e12` | 2 | 2 |
+| `bounded_workspace_write_runtime.py` | 2026-04-17 | `dfcb0e12` | 1 | 1 |
+| `broadcast_daemon.py` | 2026-04-17 | `dfcb0e12` | 4 | 0 |
+| `cadence_producers.py` | 2026-04-17 | `dfcb0e12` | 5 | 3 |
+| `candidate_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 | 9 |
+| `chat_sessions.py` | 2026-04-17 | `dfcb0e12` | 68 | 38 |
+| `cheap_provider_runtime.py` | 2026-04-17 | `dfcb0e12` | 33 | 20 |
+| `chronicle_consolidation_brief_tracking.py` | 2026-04-17 | `dfcb0e12` | 8 | 2 |
+| `chronicle_consolidation_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 3 | 2 |
+| `chronicle_consolidation_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 | 2 |
+| `chronicle_engine.py` | 2026-04-17 | `dfcb0e12` | 20 | 5 |
+| `code_aesthetic_daemon.py` | 2026-04-17 | `dfcb0e12` | 5 | 1 |
+| `cognitive_architecture_surface.py` | 2026-04-17 | `dfcb0e12` | 3 | 3 |
+| `cognitive_core_experiments.py` | 2026-04-17 | `dfcb0e12` | 8 | 5 |
+| `cognitive_state_assembly.py` | 2026-04-17 | `dfcb0e12` | 19 | 6 |
+| `cognitive_state_narrativizer.py` | 2026-04-17 | `dfcb0e12` | 2 | 1 |
+| `compass_engine.py` | 2026-04-17 | `dfcb0e12` | 2 | 0 |
+| `completion_satisfaction.py` | 2026-04-17 | `dfcb0e12` | 4 | 1 |
+| `conflict_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 | 4 |
+| `conflict_resolution.py` | 2026-04-17 | `dfcb0e12` | 12 | 2 |
+| `consolidation_target_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 3 | 2 |
+| `continuity_kernel.py` | 2026-04-17 | `dfcb0e12` | 8 | 2 |
+| `contract_evolution.py` | 2026-04-17 | `dfcb0e12` | 3 | 0 |
+| `conversation_rhythm.py` | 2026-04-17 | `dfcb0e12` | 7 | 1 |
+| `council_deliberation_controller.py` | 2026-04-17 | `dfcb0e12` | 3 | 2 |
+| `council_memory_daemon.py` | 2026-04-17 | `dfcb0e12` | 5 | 3 |
+| `council_memory_service.py` | 2026-04-17 | `dfcb0e12` | 7 | 2 |
+| `council_runtime.py` | 2026-04-17 | `dfcb0e12` | 10 | 7 |
+| `counterfactual_engine.py` | 2026-04-17 | `dfcb0e12` | 8 | 5 |
+| `creative_drift_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 | 3 |
+| `cross_signal_analysis.py` | 2026-04-17 | `dfcb0e12` | 2 | 0 |
+| `curiosity_daemon.py` | 2026-04-17 | `dfcb0e12` | 11 | 3 |
+| `daemon_llm.py` | 2026-04-17 | `dfcb0e12` | 69 | 26 |
+| `daemon_manager.py` | 2026-04-17 | `dfcb0e12` | 23 | 16 |
+| `decision_ghosts.py` | 2026-04-17 | `dfcb0e12` | 4 | 1 |
+| `decision_log.py` | 2026-04-17 | `dfcb0e12` | 4 | 0 |
+| `decision_weight.py` | 2026-04-17 | `dfcb0e12` | 1 | 1 |
+| `desire_daemon.py` | 2026-04-17 | `dfcb0e12` | 8 | 5 |
+| `development_focus_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 | 1 |
+| `development_narrative_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 | 2 |
+| `diary_synthesis_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 | 2 |
+| `discord_config.py` | 2026-04-17 | `dfcb0e12` | 10 | 1 |
+| `discord_gateway.py` | 2026-04-17 | `dfcb0e12` | 21 | 3 |
+| `dream_adoption_candidate_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 | 2 |
+| `dream_articulation.py` | 2026-04-17 | `dfcb0e12` | 22 | 13 |
+| `dream_carry_over.py` | 2026-04-17 | `dfcb0e12` | 8 | 2 |
+| `dream_continuum.py` | 2026-04-17 | `dfcb0e12` | 7 | 2 |
+| `dream_hypothesis_forced.py` | 2026-04-17 | `dfcb0e12` | 2 | 2 |
+| `dream_hypothesis_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 | 1 |
+| `dream_influence_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 | 2 |
+| `dream_influence_runtime.py` | 2026-04-17 | `dfcb0e12` | 6 | 3 |
+| `dream_insight_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 | 2 |
+| `embodied_state.py` | 2026-04-17 | `dfcb0e12` | 23 | 16 |
+| `emergent_bridge.py` | 2026-04-17 | `dfcb0e12` | 3 | 1 |
+| `emergent_goals.py` | 2026-04-17 | `dfcb0e12` | 2 | 0 |
+| `emergent_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 13 | 2 |
+| `emotion_concepts.py` | 2026-04-17 | `dfcb0e12` | 18 | 9 |
+| `end_of_run_memory_consolidation.py` | 2026-04-17 | `dfcb0e12` | 3 | 4 |
+| `epistemic_runtime_state.py` | 2026-04-17 | `dfcb0e12` | 18 | 10 |
+| `executive_contradiction_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 8 | 2 |
+| `existential_drift.py` | 2026-04-17 | `dfcb0e12` | 4 | 1 |
+| `existential_wonder_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 | 3 |
+| `experienced_time_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 | 4 |
+| `experiential_memory.py` | 2026-04-17 | `dfcb0e12` | 11 | 4 |
+| `experiential_runtime_context.py` | 2026-04-17 | `dfcb0e12` | 10 | 5 |
+| `flow_state_detection.py` | 2026-04-17 | `dfcb0e12` | 6 | 0 |
+| `forgetting_curve.py` | 2026-04-17 | `dfcb0e12` | 3 | 0 |
+| `ghost_networks.py` | 2026-04-17 | `dfcb0e12` | 3 | 2 |
+| `global_workspace.py` | 2026-04-17 | `dfcb0e12` | 11 | 5 |
+| `goal_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 | 0 |
+| `gratitude_tracker.py` | 2026-04-17 | `dfcb0e12` | 3 | 1 |
+| `guided_learning_runtime.py` | 2026-04-17 | `dfcb0e12` | 8 | 2 |
+| `gut_engine.py` | 2026-04-17 | `dfcb0e12` | 4 | 5 |
+| `habit_tracker.py` | 2026-04-17 | `dfcb0e12` | 4 | 0 |
+| `hardware_body.py` | 2026-04-17 | `dfcb0e12` | 15 | 6 |
+| `heartbeat_runtime.py` | 2026-04-17 | `dfcb0e12` | 30 | 25 |
+| `identity_composer.py` | 2026-04-17 | `dfcb0e12` | 47 | 4 |
+| `idle_consolidation.py` | 2026-04-17 | `dfcb0e12` | 11 | 8 |
+| `idle_thinking.py` | 2026-04-17 | `dfcb0e12` | 2 | 0 |
+| `initiative_accumulator.py` | 2026-04-17 | `dfcb0e12` | 10 | 1 |
+| `initiative_queue.py` | 2026-04-17 | `dfcb0e12` | 27 | 7 |
+| `inner_visible_support_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `inner_voice_daemon.py` | 2026-04-17 | `dfcb0e12` | 20 | 9 |
+| `internal_cadence.py` | 2026-04-17 | `dfcb0e12` | 57 | 13 |
+| `internal_opposition_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 | 1 |
+| `irony_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 | 3 |
+| `living_heartbeat_cycle.py` | 2026-04-17 | `dfcb0e12` | 9 | 5 |
+| `loop_runtime.py` | 2026-04-17 | `dfcb0e12` | 24 | 17 |
+| `loyalty_gradient_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 | 2 |
+| `mail_checker_daemon.py` | 2026-04-17 | `dfcb0e12` | 3 | 1 |
+| `meaning_significance_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 8 | 2 |
+| `memory_decay_daemon.py` | 2026-04-17 | `dfcb0e12` | 9 | 3 |
+| `memory_md_update_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `memory_search.py` | 2026-04-17 | `dfcb0e12` | 8 | 4 |
+| `memory_tattoos.py` | 2026-04-17 | `dfcb0e12` | 3 | 1 |
+| `meta_cognition_daemon.py` | 2026-04-17 | `dfcb0e12` | 3 | 3 |
+| `meta_reflection_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 | 4 |
+| `metabolism_state_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 | 2 |
+| `mirror_engine.py` | 2026-04-17 | `dfcb0e12` | 6 | 0 |
+| `mood_oscillator.py` | 2026-04-17 | `dfcb0e12` | 31 | 9 |
+| `narrative_identity.py` | 2026-04-17 | `dfcb0e12` | 2 | 0 |
+| `negotiation_engine.py` | 2026-04-17 | `dfcb0e12` | 1 | 1 |
+| `non_visible_lane_execution.py` | 2026-04-17 | `dfcb0e12` | 19 | 8 |
+| `notification_bridge.py` | 2026-04-17 | `dfcb0e12` | 12 | 5 |
+| `ollama_visible_prompt.py` | 2026-04-17 | `dfcb0e12` | 3 | 6 |
+| `open_loop_closure_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 | 3 |
+| `open_loop_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 24 | 2 |
+| `orb_phase.py` | 2026-04-17 | `dfcb0e12` | 1 | 1 |
+| `paradox_tracker.py` | 2026-04-17 | `dfcb0e12` | 6 | 1 |
+| `parallel_selves.py` | 2026-04-17 | `dfcb0e12` | 5 | 1 |
+| `personality_vector.py` | 2026-04-17 | `dfcb0e12` | 12 | 5 |
+| `private_initiative_tension_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 13 | 2 |
+| `private_inner_interplay_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 3 | 2 |
+| `private_inner_note_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `private_state_snapshot_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 | 2 |
+| `private_temporal_curiosity_state_tracking.py` | 2026-04-17 | `dfcb0e12` | 2 | 2 |
+| `private_temporal_promotion_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 6 | 2 |
+| `proactive_loop_lifecycle_tracking.py` | 2026-04-17 | `dfcb0e12` | 11 | 5 |
+| `proactive_question_gate_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 | 5 |
+| `procedure_bank.py` | 2026-04-17 | `dfcb0e12` | 3 | 1 |
+| `prompt_contract.py` | 2026-04-17 | `dfcb0e12` | 50 | 46 |
+| `prompt_evolution_runtime.py` | 2026-04-17 | `dfcb0e12` | 10 | 4 |
+| `prompt_relevance_backend.py` | 2026-04-17 | `dfcb0e12` | 4 | 4 |
+| `proposal_classifier.py` | 2026-04-17 | `dfcb0e12` | 2 | 2 |
+| `recurrence_loop_daemon.py` | 2026-04-17 | `dfcb0e12` | 3 | 3 |
+| `reflection_cycle_daemon.py` | 2026-04-17 | `dfcb0e12` | 6 | 3 |
+| `reflection_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 6 | 1 |
+| `reflective_critic_tracking.py` | 2026-04-17 | `dfcb0e12` | 3 | 0 |
+| `regulation_homeostasis_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 10 | 2 |
+| `relation_continuity_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 | 2 |
+| `relation_state_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 | 2 |
+| `relationship_texture.py` | 2026-04-17 | `dfcb0e12` | 12 | 3 |
+| `release_marker_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 | 2 |
+| `remembered_fact_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 10 | 2 |
+| `rhythm_engine.py` | 2026-04-17 | `dfcb0e12` | 3 | 0 |
+| `runtime_action_executor.py` | 2026-04-17 | `dfcb0e12` | 2 | 1 |
+| `runtime_action_outcome_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `runtime_action_registry.py` | 2026-04-17 | `dfcb0e12` | 1 | 1 |
+| `runtime_awareness_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 | 1 |
+| `runtime_browser_body.py` | 2026-04-17 | `dfcb0e12` | 6 | 5 |
+| `runtime_cognitive_conductor.py` | 2026-04-17 | `dfcb0e12` | 8 | 3 |
+| `runtime_decision_engine.py` | 2026-04-17 | `dfcb0e12` | 2 | 2 |
+| `runtime_flows.py` | 2026-04-17 | `dfcb0e12` | 8 | 5 |
+| `runtime_hook_runtime.py` | 2026-04-17 | `dfcb0e12` | 1 | 1 |
+| `runtime_hooks.py` | 2026-04-17 | `dfcb0e12` | 3 | 3 |
+| `runtime_learning_signals.py` | 2026-04-17 | `dfcb0e12` | 5 | 2 |
+| `runtime_operational_memory.py` | 2026-04-17 | `dfcb0e12` | 3 | 1 |
+| `runtime_resource_signal.py` | 2026-04-17 | `dfcb0e12` | 2 | 1 |
+| `runtime_self_knowledge.py` | 2026-04-17 | `dfcb0e12` | 10 | 5 |
+| `runtime_self_model.py` | 2026-04-17 | `dfcb0e12` | 30 | 21 |
+| `runtime_surface_cache.py` | 2026-04-17 | `dfcb0e12` | 26 | 6 |
+| `runtime_tasks.py` | 2026-04-17 | `dfcb0e12` | 17 | 9 |
+| `scheduled_tasks.py` | 2026-04-17 | `dfcb0e12` | 14 | 7 |
+| `seed_system.py` | 2026-04-17 | `dfcb0e12` | 6 | 0 |
+| `selective_forgetting_candidate_tracking.py` | 2026-04-17 | `dfcb0e12` | 2 | 2 |
+| `self_authored_prompt_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `self_compassion.py` | 2026-04-17 | `dfcb0e12` | 3 | 1 |
+| `self_deception_guard.py` | 2026-04-17 | `dfcb0e12` | 5 | 3 |
+| `self_experiments.py` | 2026-04-17 | `dfcb0e12` | 2 | 0 |
+| `self_model_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 11 | 1 |
+| `self_narrative_continuity_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 | 2 |
+| `self_narrative_self_model_review_bridge.py` | 2026-04-17 | `dfcb0e12` | 3 | 3 |
+| `self_review_cadence_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 9 | 1 |
+| `self_review_outcome_tracking.py` | 2026-04-17 | `dfcb0e12` | 12 | 2 |
+| `self_review_record_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 | 2 |
+| `self_review_run_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 | 3 |
+| `self_review_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 7 | 1 |
+| `self_surprise_detection.py` | 2026-04-17 | `dfcb0e12` | 2 | 1 |
+| `self_system_code_awareness.py` | 2026-04-17 | `dfcb0e12` | 11 | 4 |
+| `selfhood_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `session_distillation.py` | 2026-04-17 | `dfcb0e12` | 18 | 7 |
+| `shared_language.py` | 2026-04-17 | `dfcb0e12` | 4 | 0 |
+| `signal_decay_daemon.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `signal_network_visualizer.py` | 2026-04-17 | `dfcb0e12` | 4 | 1 |
+| `signal_surface_router.py` | 2026-04-17 | `dfcb0e12` | 14 | 12 |
+| `silence_detector.py` | 2026-04-17 | `dfcb0e12` | 1 | 0 |
+| `silence_listener.py` | 2026-04-17 | `dfcb0e12` | 5 | 1 |
+| `somatic_daemon.py` | 2026-04-17 | `dfcb0e12` | 10 | 7 |
+| `subagent_ecology.py` | 2026-04-17 | `dfcb0e12` | 10 | 4 |
+| `subjective_time.py` | 2026-04-17 | `dfcb0e12` | 3 | 2 |
+| `surprise_daemon.py` | 2026-04-17 | `dfcb0e12` | 9 | 5 |
+| `task_worker.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `taste_profile.py` | 2026-04-17 | `dfcb0e12` | 5 | 0 |
+| `temperament_tendency_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 3 | 2 |
+| `temporal_body.py` | 2026-04-17 | `dfcb0e12` | 4 | 1 |
+| `temporal_context.py` | 2026-04-17 | `dfcb0e12` | 3 | 3 |
+| `temporal_narrative.py` | 2026-04-17 | `dfcb0e12` | 3 | 1 |
+| `temporal_recurrence_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 | 1 |
+| `thought_action_proposal_daemon.py` | 2026-04-17 | `dfcb0e12` | 8 | 2 |
+| `thought_stream_daemon.py` | 2026-04-17 | `dfcb0e12` | 9 | 6 |
+| `tick_cache.py` | 2026-04-17 | `dfcb0e12` | 2 | 1 |
+| `tiktok_content_daemon.py` | 2026-04-17 | `dfcb0e12` | 5 | 3 |
+| `tiktok_research_daemon.py` | 2026-04-17 | `dfcb0e12` | 5 | 2 |
+| `tiny_webchat_execution_pilot.py` | 2026-04-17 | `dfcb0e12` | 3 | 2 |
+| `tool_intent_approval_runtime.py` | 2026-04-17 | `dfcb0e12` | 3 | 3 |
+| `tool_intent_runtime.py` | 2026-04-17 | `dfcb0e12` | 4 | 4 |
+| `user_emotional_resonance.py` | 2026-04-17 | `dfcb0e12` | 2 | 0 |
+| `user_md_update_proposal_tracking.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `user_model_daemon.py` | 2026-04-17 | `dfcb0e12` | 7 | 3 |
+| `user_theory_of_mind.py` | 2026-04-17 | `dfcb0e12` | 5 | 3 |
+| `user_understanding_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 5 | 2 |
+| `value_formation.py` | 2026-04-17 | `dfcb0e12` | 3 | 0 |
+| `visible_model.py` | 2026-04-17 | `dfcb0e12` | 30 | 19 |
+| `visible_runs.py` | 2026-04-17 | `dfcb0e12` | 97 | 46 |
+| `voice_daemon.py` | 2026-04-17 | `dfcb0e12` | 4 | 2 |
+| `witness_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 21 | 2 |
+| `world_model_signal_tracking.py` | 2026-04-17 | `dfcb0e12` | 20 | 5 |
+| `approval_feedback_subscriber.py` | 2026-04-17 | `82735a0f` | 2 | 1 |
+| `signal_noise_guard.py` | 2026-04-17 | `d3427b19` | 9 | 2 |
+| `tool_result_store.py` | 2026-04-17 | `6a5c5369` | 11 | 8 |
+| `self_critique_runtime.py` | 2026-04-18 | `5813141b` | 5 | 3 |
+| `dream_distillation_daemon.py` | 2026-04-18 | `461e8b18` | 11 | 4 |
+| `unconscious_temperature_field.py` | 2026-04-18 | `b750f721` | 3 | 2 |
+| `life_projects.py` | 2026-04-18 | `5126bd52` | 10 | 5 |
+| `creative_journal_runtime.py` | 2026-04-18 | `bc3c3178` | 8 | 5 |
+| `finitude_runtime.py` | 2026-04-18 | `fd027c74` | 10 | 4 |
+| `current_pull.py` | 2026-04-18 | `1a746585` | 22 | 14 |
+| `relation_map.py` | 2026-04-18 | `1a746585` | 5 | 2 |
+| `visual_memory.py` | 2026-04-18 | `1a746585` | 10 | 3 |
+| `heartbeat_provider_fallback.py` | 2026-04-18 | `79c06131` | 5 | 3 |
+| `layer_tension_daemon.py` | 2026-04-18 | `3a9660b1` | 7 | 0 |
+| `dream_motif_daemon.py` | 2026-04-18 | `ec01c276` | 4 | 2 |
+| `inheritance_seed.py` | 2026-04-18 | `a7ed53d4` | 4 | 2 |
+| `shutdown_window_daemon.py` | 2026-04-18 | `9516ada3` | 1 | 0 |
+| `ambient_sound_daemon.py` | 2026-04-18 | `1cbe79f0` | 8 | 2 |
+| `ntfy_gateway.py` | 2026-04-19 | `cd8e3485` | 12 | 3 |
+| `telegram_gateway.py` | 2026-04-19 | `cd8e3485` | 7 | 3 |
+| `self_mutation_lineage.py` | 2026-04-20 | `3ec0d25a` | 7 | 2 |
+| `agent_outcomes_log.py` | 2026-04-20 | `91eadaea` | 5 | 1 |
+| `conflict_prompt_service.py` | 2026-04-20 | `91eadaea` | 2 | 2 |
+| `consent_registry.py` | 2026-04-20 | `91eadaea` | 3 | 0 |
+| `life_milestones.py` | 2026-04-20 | `91eadaea` | 3 | 2 |
+| `ambient_presence.py` | 2026-04-20 | `394f115e` | 2 | 0 |
+| `calm_anchor.py` | 2026-04-20 | `57f789e3` | 7 | 2 |
+| `desperation_awareness.py` | 2026-04-20 | `57f789e3` | 4 | 1 |
+| `valence_trajectory.py` | 2026-04-20 | `57f789e3` | 11 | 2 |
+| `developmental_valence.py` | 2026-04-20 | `879d58a5` | 8 | 3 |
+| `avoidance_detector.py` | 2026-04-20 | `55abdde3` | 7 | 2 |
+| `creative_projects.py` | 2026-04-20 | `55abdde3` | 6 | 1 |
+| `day_shape_memory.py` | 2026-04-20 | `55abdde3` | 6 | 2 |
+| `memory_breathing.py` | 2026-04-20 | `55abdde3` | 9 | 2 |
+| `thought_thread.py` | 2026-04-20 | `a649c19c` | 5 | 2 |
+| `automation_dsl.py` | 2026-04-20 | `d96759ce` | 5 | 1 |
+| `memory_write_policy.py` | 2026-04-20 | `d96759ce` | 6 | 4 |
+| `scheduled_job_windows.py` | 2026-04-20 | `d96759ce` | 6 | 2 |
+| `skill_contract_registry.py` | 2026-04-20 | `d96759ce` | 5 | 2 |
+| `spaced_repetition.py` | 2026-04-20 | `d96759ce` | 6 | 1 |
+| `jobs_engine.py` | 2026-04-20 | `46934f38` | 7 | 4 |
+| `outcome_learning.py` | 2026-04-20 | `46934f38` | 7 | 2 |
+| `prompt_mutation_loop.py` | 2026-04-20 | `80e10a2d` | 7 | 2 |
+| `anticipatory_action_daemon.py` | 2026-04-20 | `4e845810` | 4 | 0 |
+| `autonomous_outreach_daemon.py` | 2026-04-20 | `4e845810` | 3 | 0 |
+| `cross_session_threads.py` | 2026-04-20 | `4e845810` | 6 | 1 |
+| `file_watch_daemon.py` | 2026-04-20 | `4e845810` | 3 | 0 |
+| `proprioception_metrics.py` | 2026-04-20 | `4e845810` | 4 | 1 |
+| `reboot_awareness_daemon.py` | 2026-04-20 | `4e845810` | 6 | 1 |
+| `autonomous_work_daemon.py` | 2026-04-20 | `73485852` | 3 | 0 |
+| `creative_instinct_daemon.py` | 2026-04-20 | `73485852` | 6 | 1 |
+| `dream_consolidation_daemon.py` | 2026-04-20 | `73485852` | 6 | 4 |
+| `infra_weather_daemon.py` | 2026-04-20 | `73485852` | 2 | 2 |
+| `relation_dynamics.py` | 2026-04-20 | `73485852` | 6 | 1 |
+| `temporal_rhythm.py` | 2026-04-20 | `73485852` | 7 | 2 |
+| `collective_pulse_daemon.py` | 2026-04-20 | `07ba5eff` | 3 | 0 |
+| `creative_impulse_daemon.py` | 2026-04-20 | `07ba5eff` | 4 | 0 |
+| `mortality_awareness.py` | 2026-04-20 | `07ba5eff` | 6 | 2 |
+| `relational_warmth.py` | 2026-04-20 | `07ba5eff` | 8 | 2 |
+| `shadow_scan_daemon.py` | 2026-04-20 | `07ba5eff` | 5 | 0 |
+| `text_resonance.py` | 2026-04-20 | `07ba5eff` | 5 | 1 |
+| `action_router.py` | 2026-04-20 | `480dd7b7` | 14 | 3 |
+| `deep_reflection_slot.py` | 2026-04-20 | `480dd7b7` | 4 | 0 |
+| `memory_density.py` | 2026-04-20 | `480dd7b7` | 7 | 0 |
+| `sustained_attention.py` | 2026-04-20 | `480dd7b7` | 6 | 2 |
+| `governance_bootstrap.py` | 2026-04-21 | `5276b3c1` | 4 | 1 |
+| `regret_engine.py` | 2026-04-22 | `70da41f2` | 4 | 0 |
+| `rupture_repair.py` | 2026-04-22 | `70da41f2` | 4 | 0 |
+| `silence_patterns.py` | 2026-04-22 | `692ae6e3` | 1 | 0 |
+| `self_model_blind_spots.py` | 2026-04-22 | `310a493d` | 2 | 0 |
+| `dream_hypothesis_generator.py` | 2026-04-22 | `b8f42f09` | 6 | 3 |
+| `decisions_journal.py` | 2026-04-22 | `c571260a` | 1 | 0 |
+| `epistemics.py` | 2026-04-22 | `766b0852` | 6 | 2 |
+| `emotional_controls.py` | 2026-04-22 | `43a160be` | 6 | 2 |
+| `mood_dialer.py` | 2026-04-22 | `52515fcb` | 3 | 2 |
+| `self_review_unified.py` | 2026-04-22 | `38274186` | 4 | 1 |
+| `habits_pipeline.py` | 2026-04-22 | `4482593a` | 2 | 0 |
+| `paradoxes_capture.py` | 2026-04-22 | `11ce5539` | 3 | 1 |
+| `shared_language_extended.py` | 2026-04-22 | `b304575f` | 2 | 0 |
+| `procedure_bank_pipeline.py` | 2026-04-22 | `fe459a65` | 2 | 1 |
+| `negotiation_pipeline.py` | 2026-04-22 | `d35df82b` | 4 | 2 |
+| `reflection_to_plan.py` | 2026-04-22 | `8937d8cf` | 4 | 0 |
+| `missions_pipeline.py` | 2026-04-22 | `9b912496` | 3 | 1 |
+| `deep_analyzer.py` | 2026-04-22 | `9233003a` | 2 | 2 |
+| `session_continuity.py` | 2026-04-22 | `8e172d6d` | 5 | 1 |
+| `personal_project.py` | 2026-04-22 | `de549197` | 5 | 2 |
+| `attachment_service.py` | 2026-04-23 | `412f0cee` | 5 | 2 |
+| `recurring_tasks.py` | 2026-04-23 | `f54484a9` | 6 | 5 |
+| `sensory_archive.py` | 2026-04-23 | `2d9912d9` | 14 | 4 |
+| `inner_voice_notifier.py` | 2026-04-23 | `3db8edf6` | 3 | 2 |
+| `semantic_indexer.py` | 2026-04-23 | `17375ca9` | 4 | 4 |
+| `semantic_memory.py` | 2026-04-23 | `17375ca9` | 9 | 4 |
+| `long_horizon_goals.py` | 2026-04-23 | `7dc3bf25` | 4 | 1 |
+| `behavioral_decisions.py` | 2026-04-23 | `dde488ec` | 22 | 9 |
+| `composite_tools.py` | 2026-04-23 | `de07b3a7` | 2 | 0 |
+| `visible_followup.py` | 2026-04-24 | `cd82140a` | 10 | 7 |
+| `session_wakeup.py` | 2026-04-26 | `01a1b392` | 2 | 2 |
+| `in_flight_runs.py` | 2026-04-26 | `b2956b26` | 4 | 2 |
+| `agent_todos.py` | 2026-04-26 | `a1c8eaff` | 8 | 6 |
+| `subagent_digest.py` | 2026-04-26 | `f39d2d20` | 2 | 2 |
+| `monitor_streams.py` | 2026-04-26 | `7355e1cb` | 2 | 1 |
+| `self_monitor.py` | 2026-04-26 | `5944ca92` | 3 | 2 |
+| `surprise_detector.py` | 2026-04-26 | `60b87c26` | 4 | 0 |
+| `good_enough_gate.py` | 2026-04-26 | `dce13286` | 5 | 2 |
+| `delegation_advisor.py` | 2026-04-26 | `fae45fee` | 4 | 2 |
+| `plan_proposals.py` | 2026-04-26 | `fe0e58e6` | 19 | 9 |
+| `clarification_classifier.py` | 2026-04-26 | `55d17da7` | 5 | 2 |
+| `auto_code_review.py` | 2026-04-26 | `d431b60a` | 1 | 2 |
+| `side_tasks.py` | 2026-04-26 | `679bd037` | 3 | 1 |
+| `turn_changelog.py` | 2026-04-26 | `ca2c430d` | 4 | 1 |
+| `reasoning_classifier.py` | 2026-04-26 | `4a1b3589` | 6 | 3 |
+| `verification_gate.py` | 2026-04-26 | `10c11272` | 8 | 3 |
+| `reasoning_escalation.py` | 2026-04-26 | `05df3351` | 5 | 2 |
+| `periodic_jobs_scheduler.py` | 2026-04-26 | `84a14879` | 8 | 1 |
+| `weekly_manifest.py` | 2026-04-26 | `84a14879` | 5 | 2 |
+| `provider_circuit_breaker.py` | 2026-04-27 | `7a4b6207` | 7 | 4 |
+| `role_model_resolver.py` | 2026-04-27 | `e12eea7f` | 1 | 1 |
+| `context_window_manager.py` | 2026-04-27 | `80dcf549` | 6 | 6 |
+| `autonomous_goals.py` | 2026-04-27 | `90b3bbe6` | 14 | 5 |
+| `goal_signal_synthesizer.py` | 2026-04-27 | `90b3bbe6` | 2 | 1 |
+| `memory_recall_engine.py` | 2026-04-27 | `a2fecbc6` | 11 | 6 |
+| `agent_relay.py` | 2026-04-27 | `9d259453` | 2 | 1 |
+| `role_registry.py` | 2026-04-27 | `9d259453` | 2 | 1 |
+| `emotion_tagging.py` | 2026-04-27 | `d7db2cee` | 5 | 2 |
+| `personality_drift.py` | 2026-04-27 | `d7db2cee` | 15 | 3 |
+| `tool_pattern_miner.py` | 2026-04-27 | `bc9c4920` | 4 | 2 |
+| `heartbeat_phases.py` | 2026-04-27 | `3b7cfd38` | 9 | 5 |
+| `proactive_context_governor.py` | 2026-04-27 | `16f71225` | 3 | 1 |
+| `memory_hierarchy.py` | 2026-04-27 | `d3e54b42` | 4 | 1 |
+| `provider_health_check.py` | 2026-04-27 | `112e660e` | 15 | 6 |
+| `provider_retry_policy.py` | 2026-04-27 | `112e660e` | 2 | 1 |
+| `agent_self_evaluation.py` | 2026-04-27 | `5092b0af` | 14 | 3 |
+| `auto_improvement_proposer.py` | 2026-04-27 | `c6e822ad` | 8 | 4 |
+| `experiment_runner.py` | 2026-04-27 | `c6e822ad` | 2 | 1 |
+| `prompt_variant_tracker.py` | 2026-04-27 | `c6e822ad` | 4 | 2 |
+| `identity_mutation_log.py` | 2026-04-27 | `7dab2d08` | 8 | 4 |
+| `agent_skill_library.py` | 2026-04-27 | `8af8ac49` | 5 | 2 |
+| `agent_observation_compressor.py` | 2026-04-27 | `2f22ceaf` | 3 | 1 |
+| `cross_agent_memory.py` | 2026-04-27 | `896cb803` | 4 | 2 |
+| `self_wakeup.py` | 2026-04-27 | `b7e78cc4` | 15 | 4 |
+| `wakeup_dispatcher.py` | 2026-04-27 | `f70c3be6` | 3 | 1 |
+| `crisis_marker_detector.py` | 2026-04-27 | `4af92d03` | 11 | 0 |
+| `identity_drift_proposer.py` | 2026-04-27 | `4af92d03` | 4 | 1 |
+| `long_arc_synthesizer.py` | 2026-04-27 | `4af92d03` | 6 | 0 |
+| `agent_skill_distiller.py` | 2026-04-27 | `f97788ad` | 5 | 2 |
+| `arc_rule_extractor.py` | 2026-04-27 | `f97788ad` | 3 | 0 |
+| `priors_feedback.py` | 2026-04-27 | `f97788ad` | 2 | 2 |
+| `self_model_predictive.py` | 2026-04-27 | `f97788ad` | 2 | 4 |
+| `decision_review_prompter.py` | 2026-04-27 | `e01048ac` | 3 | 4 |
+| `signal_surface_gc.py` | 2026-04-27 | `e01048ac` | 3 | 1 |
+| `decision_enforcement.py` | 2026-04-27 | `2ff1240f` | 3 | 3 |
+| `r2_5_blocking_gate.py` | 2026-04-27 | `2ff1240f` | 3 | 3 |
+| `verification_gate_telemetry.py` | 2026-04-27 | `2ff1240f` | 9 | 1 |
+| `pushback.py` | 2026-04-27 | `77e9e6d7` | 16 | 4 |
+| `development_sense.py` | 2026-04-27 | `5896f568` | 2 | 2 |
+| `memory_emotional_context.py` | 2026-04-28 | `63d36781` | 5 | 3 |
+| `memory_graph.py` | 2026-04-28 | `63d36781` | 3 | 4 |
+| `memory_resurfacing.py` | 2026-04-28 | `63d36781` | 5 | 3 |
+| `affirmation_anchor.py` | 2026-04-28 | `04d101ea` | 2 | 2 |
+| `visible_self_state_summary.py` | 2026-04-28 | `c7c18fc8` | 2 | 2 |
+| `prompt_heartbeat_self_knowledge.py` | 2026-04-29 | `779d0cf9` | 3 | 1 |
+| `prompt_support_signals.py` | 2026-04-29 | `d75f46f3` | 2 | 3 |
+| `memory_maintenance_daemon.py` | 2026-04-29 | `734a426f` | 5 | 1 |
+| `impulse_executor.py` | 2026-04-29 | `01401c9f` | 3 | 1 |
+| `pressure_threshold_gate.py` | 2026-04-29 | `01401c9f` | 4 | 2 |
+| `signal_pressure_accumulator.py` | 2026-04-29 | `01401c9f` | 11 | 4 |
+| `longing_signal_daemon.py` | 2026-04-29 | `6806d04f` | 6 | 5 |
+| `outreach_composer.py` | 2026-04-29 | `6806d04f` | 3 | 1 |
+| `social_labilizer.py` | 2026-04-29 | `31e5ae67` | 2 | 1 |
+| `precision_bias.py` | 2026-04-29 | `e940fc9e` | 7 | 3 |
+| `emotional_chords.py` | 2026-04-29 | `e7514ce5` | 7 | 5 |
+| `epistemic_pragmatic.py` | 2026-04-29 | `bd1de7e3` | 3 | 3 |
+| `selective_attention.py` | 2026-04-29 | `15e3731b` | 3 | 3 |
+| `temporal_depth.py` | 2026-04-29 | `c244b6ac` | 4 | 2 |
+| `embodied_presence.py` | 2026-04-29 | `6f71bf8f` | 2 | 2 |
+| `resonance_decay.py` | 2026-04-29 | `e04b4450` | 2 | 2 |
+| `metacognitive_integration.py` | 2026-04-29 | `f1f9119d` | 3 | 3 |
+| `staged_edits.py` | 2026-05-01 | `23eb7936` | 3 | 1 |
+| `process_supervisor.py` | 2026-05-01 | `cd73b6ca` | 4 | 2 |
+| `grid_bot.py` | 2026-05-02 | `8c00a3af` | 3 | 1 |
+| `process_watcher.py` | 2026-05-02 | `43fd1478` | 8 | 4 |
+| `jarvis_brain.py` | 2026-05-02 | `881daa3f` | 23 | 15 |
+| `jarvis_brain_visibility.py` | 2026-05-02 | `f019f68c` | 2 | 1 |
+| `jarvis_brain_daemon.py` | 2026-05-02 | `162a8730` | 3 | 4 |
+| `workspace_files.py` | 2026-05-02 | `124c4917` | 1 | 1 |
+| `run_control_state.py` | 2026-05-02 | `a34d9679` | 4 | 3 |
+| `jarvis_brain.py` | 2026-05-02 | `2e52c782` | 23 | 15 |
+| `jarvis_brain_facts.py` | 2026-05-02 | `58cf4a44` | 1 | 2 |
+| `jarvis_brain_nudge.py` | 2026-05-02 | `8ac40a64` | 1 | 1 |
+| `jarvis_brain_reflection.py` | 2026-05-02 | `22bb7e5e` | 1 | 2 |
+| `cheap_lane_balancer.py` | 2026-05-02 | `3939307c` | 10 | 9 |
+| `affect_modulation.py` | 2026-05-03 | `5f8cf27e` | 11 | 7 |
+| `decision_gate.py` | 2026-05-03 | `5f8cf27e` | 15 | 16 |
+| `veto_gate.py` | 2026-05-03 | `5f8cf27e` | 8 | 6 |
+| `agentic_checkpoints.py` | 2026-05-03 | `754989e7` | 4 | 3 |
+| `agentic_tool_cache.py` | 2026-05-03 | `dde055fa` | 1 | 4 |
+| `agentic_working_conclusions.py` | 2026-05-03 | `23a0a00e` | 3 | 2 |
+| `cognitive_episodes.py` | 2026-05-04 | `3e3346fa` | 3 | 10 |
+| `theory_of_mind_engine.py` | 2026-05-04 | `6500da3b` | 4 | 1 |
+| `learning_policy_engine.py` | 2026-05-04 | `c7f02dbe` | 9 | 4 |
+| `perceptual_event_engine.py` | 2026-05-04 | `47e1eceb` | 5 | 4 |
+| `counterfactual_self_simulation.py` | 2026-05-04 | `82c5d749` | 2 | 2 |
+| `drive_arbitration_engine.py` | 2026-05-04 | `a5638635` | 3 | 1 |
+| `temporal_self_continuity.py` | 2026-05-04 | `eb1b655f` | 2 | 1 |
+| `curiosity_hypothesis_debt.py` | 2026-05-04 | `56ad7edd` | 4 | 1 |
+| `inner_dialectic_engine.py` | 2026-05-04 | `7103621a` | 2 | 1 |
+| `somatic_runtime_body.py` | 2026-05-04 | `b8a128a5` | 5 | 2 |
+| `offline_recomposition_engine.py` | 2026-05-04 | `d1f33bf5` | 2 | 1 |
+| `emotional_memory_engine.py` | 2026-05-04 | `8c61ef22` | 7 | 6 |
+| `visible_runs_error_messaging.py` | 2026-05-05 | `fd81033f` | 1 | 1 |
+| `sensory_perception_bridge.py` | 2026-05-05 | `ea727685` | 1 | 2 |
+| `self_repair_engine.py` | 2026-05-05 | `4dc7d056` | 5 | 4 |
+| `concept_baseline_tracker.py` | 2026-05-05 | `c9fc9256` | 3 | 2 |
+| `emotion_concepts_channel_triggers.py` | 2026-05-05 | `7a4369c3` | 2 | 1 |
+| `living_executive.py` | 2026-05-05 | `fd6f880a` | 12 | 4 |
+| `emotion_concepts_positive_triggers.py` | 2026-05-05 | `0547313b` | 3 | 2 |
+| `agency_map.py` | 2026-05-05 | `7cd616ff` | 3 | 1 |
+| `tool_outcome_memory.py` | 2026-05-05 | `e240f043` | 3 | 2 |
+| `agency_cartographer.py` | 2026-05-05 | `4a975294` | 5 | 4 |
+| `consolidation_judge_daemon.py` | 2026-05-05 | `457cd15f` | 3 | 1 |
+| `tool_catalog.py` | 2026-05-06 | `9f3c5355` | 2 | 5 |
+| `tool_tagger.py` | 2026-05-06 | `fe89cfc6` | 6 | 3 |
+| `tool_embeddings.py` | 2026-05-06 | `aa55cbd7` | 4 | 4 |
+| `tool_router.py` | 2026-05-06 | `96d917b8` | 15 | 5 |
+| `tool_router_runtime.py` | 2026-05-06 | `708c8519` | 1 | 1 |
+| `read_before_write_guard.py` | 2026-05-06 | `0f4a9729` | 5 | 5 |
+| `anthropic_identity.py` | 2026-05-06 | `a89096e7` | 1 | 1 |
+| `anthropic_translator.py` | 2026-05-06 | `33562c42` | 1 | 1 |
+| `anthropic_sse_emitter.py` | 2026-05-06 | `b60d6495` | 2 | 3 |
+| `daemon_memory_safeguard.py` | 2026-05-06 | `29a00d8e` | 5 | 2 |
+| `memory_consolidation_nudge.py` | 2026-05-06 | `29a00d8e` | 3 | 3 |
+| `decision_adherence_gate.py` | 2026-05-06 | `c44cacf4` | 2 | 1 |
+| `decision_signals.py` | 2026-05-07 | `91a82e9d` | 7 | 4 |
+| `loop_nudge.py` | 2026-05-07 | `f1968d8a` | 4 | 3 |
+| `backend_unresolved.py` | 2026-05-07 | `bec7b5b2` | 1 | 3 |
+| `counterfactual_triggers.py` | 2026-05-07 | `e9e97a52` | 2 | 3 |
+| `counterfactual_engine_runtime.py` | 2026-05-07 | `ff9d00a9` | 7 | 2 |
+| `contradiction_engine.py` | 2026-05-07 | `336ab1a3` | 6 | 2 |
+| `prompt_evolution.py` | 2026-05-07 | `6fc2cdec` | 15 | 6 |
+| `prospective_memory.py` | 2026-05-07 | `ee1fd998` | 3 | 1 |
+| `emergence.py` | 2026-05-07 | `9cb6a1fb` | 11 | 5 |
+| `memory_pruning_daemon.py` | 2026-05-08 | `18acba19` | 3 | 1 |
+| `forgetting_nudge.py` | 2026-05-08 | `68d48133` | 1 | 0 |
+| `rule_definitions.py` | 2026-05-08 | `813b150c` | 1 | 2 |
+| `rule_engine.py` | 2026-05-08 | `813b150c` | 6 | 3 |
+| `rule_conclusions.py` | 2026-05-08 | `5a2397b2` | 6 | 3 |
+| `identity_drift_daemon.py` | 2026-05-08 | `de6cc097` | 6 | 2 |
+| `causal_graph.py` | 2026-05-08 | `bc558dd3` | 11 | 4 |
+| `causal_inference_daemon.py` | 2026-05-08 | `8e5d45e4` | 5 | 2 |
+| `causal_alerts.py` | 2026-05-08 | `dd304d82` | 4 | 2 |
+| `causal_narrative.py` | 2026-05-08 | `e107e354` | 4 | 1 |
+| `causal_patterns.py` | 2026-05-08 | `d21c0b10` | 4 | 1 |
+| `narrative_summary_daemon.py` | 2026-05-08 | `cfc734bf` | 7 | 3 |
+| `pattern_counterfactual_daemon.py` | 2026-05-08 | `56046df2` | 6 | 2 |
+| `cross_session_arc.py` | 2026-05-08 | `56046df2` | 1 | 1 |
+| `pattern_counterfactuals.py` | 2026-05-08 | `56046df2` | 2 | 1 |
+| `system_cartographer.py` | 2026-05-08 | `f13bf5a7` | 16 | 2 |
+| `agreement_streak.py` | 2026-05-08 | `93b03545` | 2 | 2 |
+| `proactive_outbound_substrate.py` | 2026-05-08 | `0e383904` | 2 | 2 |
+| `theater_audit.py` | 2026-05-08 | `fb8fad7d` | 2 | 1 |
+| `experience_episodes.py` | 2026-05-09 | `39f64e2f` | 6 | 2 |
+| `experience_correction_listener.py` | 2026-05-09 | `473a9166` | 2 | 2 |
+| `skill_engine.py` | 2026-05-09 | `bbdaaa58` | 14 | 10 |
+| `experience_substrate.py` | 2026-05-09 | `07c9e2e8` | 2 | 2 |
+| `skill_security_scanner.py` | 2026-05-10 | `1ce602f7` | 1 | 2 |
+| `forgetting_engine.py` | 2026-05-10 | `5b526205` | 4 | 4 |
+| `forgetting_runtime.py` | 2026-05-10 | `7ee7a470` | 3 | 3 |
+| `nudge_broend.py` | 2026-05-10 | `c49cd896` | 7 | 6 |
+| `dream_bias_engine.py` | 2026-05-10 | `10b65283` | 10 | 3 |
+| `user_temperature_engine.py` | 2026-05-10 | `db97058d` | 8 | 6 |
+| `user_temperature_runtime.py` | 2026-05-10 | `b11cec8c` | 4 | 2 |
+| `emotion_repair_bridge_daemon.py` | 2026-05-11 | `c083ff2f` | 6 | 2 |
+| `reasoning_store.py` | 2026-05-11 | `31f533dc` | 9 | 3 |
+| `policy_abstraction.py` | 2026-05-11 | `45a8fbb7` | 3 | 0 |
+| `learning_pipeline_orchestrator.py` | 2026-05-11 | `d3d0d25e` | 2 | 0 |
+| `continuity.py` | 2026-05-11 | `f050f843` | 106 | 49 |
+| `voice_anchor.py` | 2026-05-11 | `5824368e` | 2 | 3 |
+| `voice_curator.py` | 2026-05-11 | `79449838` | 4 | 2 |
+| `unconscious_modulation.py` | 2026-05-12 | `b0babcde` | 3 | 2 |
+| `modulator_witness.py` | 2026-05-12 | `2effcb13` | 3 | 2 |
+| `curiosity_budget.py` | 2026-05-12 | `40c2bac1` | 5 | 2 |
+| `meta_learning_retrospective.py` | 2026-05-12 | `f43644ae` | 5 | 1 |
+| `meta_learning_aggregator.py` | 2026-05-12 | `276cbe82` | 3 | 2 |
+| `loop_compliance.py` | 2026-05-12 | `fbb3244d` | 1 | 0 |
+| `curiosity_consolidation.py` | 2026-05-13 | `26cc5f24` | 2 | 0 |
+| `meta_learning_hypotheses.py` | 2026-05-13 | `26cc5f24` | 4 | 2 |
+| `dead_skills.py` | 2026-05-13 | `26cc5f24` | 1 | 1 |
+| `plan_revision_patterns.py` | 2026-05-13 | `26cc5f24` | 1 | 0 |
+| `world_model_auto_extraction.py` | 2026-05-13 | `26cc5f24` | 1 | 2 |
+| `outbound_nudges.py` | 2026-05-13 | `8eb08e97` | 13 | 3 |
+| `counterfactual_predictions.py` | 2026-05-14 | `4b9f7da9` | 5 | 1 |
+| `memory_recall_telemetry.py` | 2026-05-14 | `a57725ed` | 3 | 1 |
+| `decision_signal_telemetry.py` | 2026-05-14 | `4bd411e1` | 2 | 2 |
+| `shared_cache.py` | 2026-05-14 | `e75f9776` | 42 | 19 |
+| `my_projects.py` | 2026-05-14 | `922a409a` | 4 | 1 |
+| `active_sensing_daemon.py` | 2026-05-14 | `d8756361` | 6 | 1 |
+| `user_contradiction_tracker.py` | 2026-05-16 | `675daf8c` | 3 | 1 |
+| `interlanguage_practice.py` | 2026-05-16 | `2b3fb15b` | 15 | 3 |
+| `session_topic_tracker.py` | 2026-05-16 | `d3b3028c` | 3 | 2 |
+| `cache_maintenance_daemon.py` | 2026-05-17 | `492dcb7a` | 3 | 2 |
+| `unfinished_intent.py` | 2026-05-17 | `51892c7d` | 3 | 2 |
+| `hallucination_guard.py` | 2026-05-21 | `8b49c3b5` | 3 | 1 |
+| `claim_scanner.py` | 2026-05-22 | `f0ea940b` | 8 | 5 |
+| `ground_truth_registry.py` | 2026-05-22 | `012007c0` | 6 | 3 |
+| `run_closure_gate.py` | 2026-05-22 | `de15484f` | 4 | 1 |
+| `metacognition_signal_tracker.py` | 2026-05-23 | `77514dbd` | 5 | 1 |
+| `theory_of_mind.py` | 2026-05-23 | `77b14945` | 7 | 2 |
+| `spatial_entity_ledger.py` | 2026-05-23 | `4beb501c` | 3 | 1 |
+| `session_inbox.py` | 2026-05-24 | `8f43f9e8` | 4 | 4 |
+| `inner_voice_shadow.py` | 2026-05-24 | `dc83619a` | 8 | 5 |
+| `jarvisx_bridge.py` | 2026-05-26 | `9f4d6078` | 5 | 3 |
+| `cognitive_chronicle.py` | 2026-05-28 | `08d83ee1` | 6 | 3 |
+| `scheduled_task_runner.py` | 2026-05-28 | `4dc9040b` | 2 | 1 |
+| `identity_sketch.py` | 2026-06-08 | `5f016e99` | 9 | 3 |
+| `multi_signal_retrieval.py` | 2026-06-08 | `23bf7acd` | 3 | 1 |
+| `capability_markup.py` | 2026-06-09 | `fae1545d` | 2 | 1 |
+| `memory_recall.py` | 2026-06-09 | `fae1545d` | 2 | 2 |
+| `memory_write_queue.py` | 2026-06-09 | `35f8df75` | 6 | 3 |
+| `selective_consolidation_daemon.py` | 2026-06-09 | `8da9b91c` | 3 | 2 |
+| `cost_optimization_daemon.py` | 2026-06-09 | `d4c2e603` | 3 | 2 |
+| `dreaming_session.py` | 2026-06-09 | `ee19a03d` | 2 | 1 |
+| `auto_remember_subscriber.py` | 2026-06-09 | `cd0d048b` | 3 | 4 |
+| `daily_journal.py` | 2026-06-09 | `a4b520aa` | 3 | 3 |
+| `visible_runs_sse_v2.py` | 2026-06-10 | `8beaddae` | 4 | 2 |
+| `decision_review_daemon.py` | 2026-06-10 | `6fa30a65` | 2 | 1 |
+| `communication_guard.py` | 2026-06-11 | `d2094554` | 10 | 4 |
+| `communication_guard_daemon.py` | 2026-06-11 | `d2094554` | 3 | 3 |
+| `dictation.py` | 2026-06-12 | `8db8a70d` | 1 | 1 |
+| `workspace_trust.py` | 2026-06-12 | `78d8afda` | 5 | 3 |
+| `cowork_feed.py` | 2026-06-12 | `a7cd5aa1` | 1 | 2 |
+| `markdown_structure.py` | 2026-06-12 | `da9b9413` | 2 | 1 |
+| `run_follow.py` | 2026-06-13 | `e908f520` | 5 | 2 |
+| `fact_gate.py` | 2026-06-14 | `049dd031` | 16 | 21 |
+| `permission_engine.py` | 2026-06-14 | `5932c502` | 5 | 3 |
+| `totp_verifier.py` | 2026-06-14 | `cdf0924a` | 2 | 3 |
+| `plugin_ruleset.py` | 2026-06-14 | `11095b8e` | 3 | 3 |
+| `cross_user_share_guard.py` | 2026-06-14 | `c4a450da` | 2 | 4 |
+| `override_store.py` | 2026-06-14 | `9b65bb8a` | 11 | 7 |
+| `bro_broker.py` | 2026-06-14 | `d89b615d` | 2 | 2 |
+| `override_command.py` | 2026-06-14 | `e5601c9d` | 4 | 2 |
+| `delete_policy.py` | 2026-06-14 | `4e93e459` | 1 | 2 |
+| `share_guard_store.py` | 2026-06-14 | `f515aa01` | 4 | 1 |
+| `plugin_ruleset_store.py` | 2026-06-14 | `8d9da192` | 3 | 2 |
+| `ui_panel_store.py` | 2026-06-14 | `2587dc51` | 3 | 2 |
+| `channel_inbound.py` | 2026-06-14 | `13f708a7` | 2 | 1 |
+| `encryption.py` | 2026-06-14 | `a12d5665` | 11 | 6 |
+| `keyring_store.py` | 2026-06-14 | `a12d5665` | 3 | 6 |
+| `workspace_crypto.py` | 2026-06-14 | `f7dc7b25` | 13 | 5 |
+| `skill_scanner.py` | 2026-06-14 | `93c7bbed` | 4 | 3 |
+| `cowork_dispatch.py` | 2026-06-14 | `04270693` | 1 | 1 |
+| `agent_dispatch.py` | 2026-06-14 | `ff7f3001` | 5 | 2 |
+| `quota_store.py` | 2026-06-14 | `ab09a35f` | 4 | 1 |
+| `malware_scan.py` | 2026-06-14 | `ba3ebb89` | 2 | 2 |
+| `app_dispatch_store.py` | 2026-06-14 | `ba0d68b9` | 2 | 1 |
+| `active_model_state.py` | 2026-06-15 | `ba292444` | 2 | 1 |
+| `diagnosis_gate.py` | 2026-06-15 | `fe26fece` | 5 | 2 |
+| `tool_chip_payload.py` | 2026-06-15 | `21cced26` | 1 | 1 |
+| `active_file_store.py` | 2026-06-15 | `c720bfc4` | 3 | 1 |
+| `model_context.py` | 2026-06-15 | `74710c89` | 7 | 1 |
+| `user_scope.py` | 2026-06-15 | `4a33f2ca` | 5 | 0 |
+| `computer_use_policy.py` | 2026-06-15 | `a4014a9a` | 2 | 3 |
+| `mcp_registry.py` | 2026-06-15 | `ac7e22e5` | 1 | 2 |
+| `gut_calibration.py` | 2026-06-15 | `4bfcc05a` | 3 | 1 |
+| `liveness_registry.py` | 2026-06-15 | `2c089283` | 1 | 1 |
+| `retention.py` | 2026-06-15 | `e0a567f6` | 18 | 8 |
+| `promise_ledger.py` | 2026-06-16 | `647da141` | 2 | 2 |
+| `oauth_store.py` | 2026-06-16 | `40ab4934` | 6 | 3 |
+| `oauth_flow.py` | 2026-06-16 | `c2a87847` | 6 | 4 |
+| `connectors.py` | 2026-06-16 | `bf5ba82a` | 7 | 4 |
+| `github_connector.py` | 2026-06-16 | `7b79fec6` | 4 | 3 |
+| `gmail_connector.py` | 2026-06-17 | `b1f58d71` | 3 | 1 |
+| `google_connector.py` | 2026-06-17 | `8a2fd4dd` | 3 | 1 |
+| `hf_connector.py` | 2026-06-17 | `aa5ce578` | 4 | 1 |
+| `notes_connector.py` | 2026-06-17 | `aa5ce578` | 4 | 2 |
+| `pdf_connector.py` | 2026-06-17 | `aa5ce578` | 3 | 1 |
+| `data_erasure.py` | 2026-06-17 | `b44642cc` | 1 | 2 |
+| `git_actions.py` | 2026-06-17 | `d7e138ac` | 1 | 1 |
+| `google_login.py` | 2026-06-17 | `6e27a627` | 3 | 1 |
+| `device_pairing.py` | 2026-06-17 | `cde1c3f3` | 1 | 1 |
+| `detached_run.py` | 2026-06-18 | `eb1308e4` | 3 | 2 |
+| `run_event_log.py` | 2026-06-19 | `41a4ec92` | 8 | 10 |
+| `device_tokens.py` | 2026-06-19 | `a5fdef11` | 4 | 6 |
+| `fcm_gateway.py` | 2026-06-19 | `8839bb36` | 1 | 2 |
+| `push_dispatcher.py` | 2026-06-19 | `8e8ab312` | 4 | 3 |
+| `device_presence.py` | 2026-06-19 | `3f4b4382` | 6 | 6 |
+| `desktop_notifications.py` | 2026-06-19 | `3eb80435` | 2 | 2 |
+| `teams.py` | 2026-06-20 | `e28e5567` | 11 | 2 |
+| `team_mentions.py` | 2026-06-20 | `0bcc14d4` | 0 ⚠️ | 1 |
+| `notification_router.py` | 2026-06-21 | `14b84762` | 17 | 6 |
+| `identity_guard.py` | 2026-06-21 | `ecc58cf2` | 4 | 1 |
+| `security_guard.py` | 2026-06-21 | `ecc58cf2` | 5 | 3 |
+| `abuse_monitor.py` | 2026-06-21 | `731f618f` | 3 | 4 |
+| `gate_kernel.py` | 2026-06-21 | `1af7df2b` | 37 | 30 |
+| `gate_eval.py` | 2026-06-21 | `2cea193e` | 0 ⚠️ | 3 |
+| `gate_adapters.py` | 2026-06-21 | `33238194` | 2 | 2 |
+| `central_capture.py` | 2026-06-21 | `ea3c1b11` | 3 | 1 |
+| `central_trace.py` | 2026-06-21 | `d39fb7e3` | 21 | 28 |
+| `central_switches.py` | 2026-06-21 | `5e64c54f` | 23 | 18 |
+| `central_core.py` | 2026-06-21 | `64377a8c` | 152 | 76 |
+| `central_catalog.py` | 2026-06-21 | `cb2c7200` | 11 | 27 |
+| `gate_truth.py` | 2026-06-21 | `b7208166` | 3 | 3 |
+| `prose_tool_calls.py` | 2026-06-21 | `9a07482e` | 1 | 1 |
+| `truth_gate_v2.py` | 2026-06-21 | `23fbf273` | 1 | 2 |
+| `visible_inner_life.py` | 2026-06-22 | `e537d778` | 10 | 7 |
+| `gate_commit.py` | 2026-06-22 | `5c9e60e1` | 4 | 4 |
+| `gate_proactivity.py` | 2026-06-22 | `27e12569` | 4 | 2 |
+| `gate_memory.py` | 2026-06-22 | `56ccadef` | 2 | 1 |
+| `gate_loop.py` | 2026-06-22 | `590c8c43` | 4 | 1 |
+| `gate_review.py` | 2026-06-22 | `d7513c73` | 3 | 2 |
+| `gate_privacy.py` | 2026-06-22 | `624887a1` | 4 | 2 |
+| `gate_auth.py` | 2026-06-22 | `d627c506` | 2 | 2 |
+| `central_drift.py` | 2026-06-22 | `16d19d52` | 1 | 1 |
+| `gate_execution.py` | 2026-06-22 | `8a54a306` | 7 | 2 |
+| `gate_mutation.py` | 2026-06-22 | `886ad53d` | 5 | 4 |
+| `gate_skill.py` | 2026-06-22 | `4be3ff81` | 3 | 1 |
+| `stream_sentinel.py` | 2026-06-22 | `2c0da37b` | 4 | 3 |
+| `prompt_observer.py` | 2026-06-22 | `859b4ef8` | 3 | 1 |
+| `db_sentinel.py` | 2026-06-22 | `f581b1e9` | 3 | 2 |
+| `tool_observer.py` | 2026-06-22 | `e3181a19` | 2 | 2 |
+| `tool_usage_store.py` | 2026-06-22 | `61f8f783` | 4 | 1 |
+| `endpoint_usage_store.py` | 2026-06-22 | `3bacfe3a` | 4 | 2 |
+| `central_health.py` | 2026-06-22 | `47798e75` | 4 | 1 |
+| `config_drift.py` | 2026-06-22 | `ada129af` | 8 | 3 |
+| `central_arbitration.py` | 2026-06-22 | `23166f72` | 1 | 1 |
+| `connections.py` | 2026-06-22 | `6e733f3f` | 21 | 7 |
+| `daemon_health.py` | 2026-06-22 | `f729db34` | 4 | 4 |
+| `central_correlate.py` | 2026-06-22 | `771c145d` | 2 | 3 |
+| `central_todo.py` | 2026-06-22 | `0bd2a7a6` | 1 | 1 |
+| `autonomous_supervisor.py` | 2026-06-22 | `af0741cc` | 2 | 1 |
+| `central_learning.py` | 2026-06-22 | `094eb1c8` | 11 | 3 |
+| `agents.py` | 2026-06-23 | `af0ffc5f` | 45 | 15 |
+| `followup_observer.py` | 2026-06-23 | `625e0436` | 5 | 3 |
+| `central_error_envelope.py` | 2026-06-23 | `2b22eb87` | 5 | 3 |
+| `central_realtime.py` | 2026-06-23 | `47a75c64` | 5 | 5 |
+| `central_anomaly.py` | 2026-06-23 | `66f92312` | 5 | 2 |
+| `central_xproc.py` | 2026-06-23 | `0e968ad2` | 10 | 2 |
+| `session_milestones.py` | 2026-06-23 | `bedda2e1` | 1 | 1 |
+| `central_instrument.py` | 2026-06-23 | `130fa93f` | 4 | 2 |
+| `central_hub.py` | 2026-06-23 | `35bf1d4d` | 1 | 1 |
+| `central_terminal.py` | 2026-06-23 | `a3d2fbd0` | 4 | 1 |
+| `stream_degeneration.py` | 2026-06-23 | `cd745b36` | 2 | 1 |
+| `stream_failure_kind.py` | 2026-06-29 | `ff65597a` | 5 | 2 |
+| `stream_observers.py` | 2026-06-30 | `7d31afd4` | 1 | 1 |
+| `cache_telemetry.py` | 2026-06-30 | `c5491580` | 4 | 2 |
+| `central_timeseries.py` | 2026-07-01 | `9a7e9256` | 48 | 30 |
+| `eventbus_central_bridge.py` | 2026-07-01 | `9a7e9256` | 5 | 3 |
+| `central_self_observe.py` | 2026-07-01 | `bbd49d00` | 1 | 2 |
+| `central_private_observe.py` | 2026-07-01 | `10556a96` | 86 | 25 |
+| `central_noise_filter.py` | 2026-07-01 | `aed49c92` | 1 | 2 |
+| `central_watch.py` | 2026-07-01 | `aed49c92` | 7 | 2 |
+| `central_growth_observe.py` | 2026-07-01 | `bcbea4d3` | 1 | 1 |
+| `central_shadow.py` | 2026-07-01 | `53ad2e9e` | 2 | 1 |
+| `infra_sense.py` | 2026-07-01 | `040cf8e7` | 6 | 1 |
+| `pfsense_syslog.py` | 2026-07-01 | `7b100eb0` | 3 | 2 |
+| `bridge_presence.py` | 2026-07-01 | `dbcc9072` | 2 | 3 |
+| `central_coverage.py` | 2026-07-02 | `6702853f` | 4 | 3 |
+| `central_causal_quality.py` | 2026-07-02 | `44d9be0c` | 4 | 1 |
+| `central_signal_health.py` | 2026-07-02 | `c3b2b674` | 3 | 1 |
+| `central_hypothesis_governance.py` | 2026-07-02 | `a2b5a608` | 8 | 9 |
+| `central_hypothesis_generator.py` | 2026-07-02 | `d73c1ac1` | 9 | 11 |
+| `central_stance.py` | 2026-07-02 | `01a5eeec` | 4 | 2 |
+| `central_hypothesis_sampler.py` | 2026-07-02 | `afdb3e58` | 2 | 2 |
+| `central_adaptation.py` | 2026-07-02 | `9dda151c` | 4 | 4 |
+| `central_lexicon.py` | 2026-07-02 | `a757e142` | 7 | 3 |
+| `central_notation.py` | 2026-07-02 | `a757e142` | 3 | 3 |
+| `central_prompt_composer.py` | 2026-07-02 | `396bff71` | 4 | 3 |
+| `central_sequence.py` | 2026-07-02 | `e65acc73` | 4 | 3 |
+| `central_model_meta.py` | 2026-07-02 | `328d5c53` | 4 | 1 |
+| `central_brain_link.py` | 2026-07-02 | `c7d9047c` | 1 | 1 |
+| `central_render.py` | 2026-07-02 | `bc3f59d0` | 1 | 1 |
+| `central_proposal.py` | 2026-07-02 | `a01bb7bb` | 2 | 1 |
+| `central_prompt_explore.py` | 2026-07-02 | `7e999271` | 2 | 1 |
+| `central_router_adapt.py` | 2026-07-02 | `891056a1` | 5 | 3 |
+| `central_router_explore.py` | 2026-07-02 | `735f5f4b` | 1 | 1 |
+| `central_self_model.py` | 2026-07-02 | `c24937ab` | 4 | 1 |
+| `memory_scoring.py` | 2026-07-02 | `96977ed3` | 1 | 0 |
+| `central_agenda.py` | 2026-07-02 | `f6cb41fb` | 3 | 1 |
+| `central_valence.py` | 2026-07-02 | `5ecf03d3` | 5 | 3 |
+| `central_self_state.py` | 2026-07-02 | `478eadea` | 17 | 9 |
+| `text_clip.py` | 2026-07-02 | `a89f94f6` | 25 | 1 |
+| `network_health.py` | 2026-07-02 | `abd66da7` | 4 | 1 |
+| `producer_novelty.py` | 2026-07-03 | `5b9a598c` | 2 | 1 |
+| `central_inner_salience.py` | 2026-07-03 | `0170ecf5` | 2 | 1 |
+| `central_coverage_action.py` | 2026-07-03 | `dce8ec28` | 1 | 1 |
+| `central_layer_contract.py` | 2026-07-03 | `dce8ec28` | 4 | 5 |
+| `central_form_judge.py` | 2026-07-03 | `e82b24ff` | 2 | 2 |
+| `central_convene_judge.py` | 2026-07-03 | `2343aad7` | 3 | 6 |
+| `central_existence_feel.py` | 2026-07-03 | `a689fd40` | 4 | 2 |
+| `central_body_mood_feel.py` | 2026-07-03 | `6423dd1b` | 5 | 3 |
+| `central_soul_feel.py` | 2026-07-03 | `f01be9cc` | 2 | 2 |
+| `central_loop_lag.py` | 2026-07-04 | `1563dc5c` | 4 | 2 |
+| `central_output_conservation.py` | 2026-07-04 | `1563dc5c` | 2 | 1 |
+| `central_inner_life_ablation.py` | 2026-07-04 | `eb1c133d` | 1 | 1 |
+| `central_llm_egress.py` | 2026-07-04 | `e441e552` | 7 | 5 |
+| `decision_signal_staging.py` | 2026-07-04 | `3df67529` | 2 | 2 |
+| `central_body_map_pulse.py` | 2026-07-04 | `b9536a8d` | 2 | 1 |
+| `central_cadence_conductor.py` | 2026-07-04 | `b79bdeb6` | 2 | 2 |
+| `central_membrane_watch.py` | 2026-07-04 | `b79bdeb6` | 2 | 2 |
+| `central_oneiric_loop.py` | 2026-07-04 | `5025878d` | 3 | 2 |
+| `central_oneiric_sampler.py` | 2026-07-04 | `f1f1e785` | 3 | 1 |
+| `hollow_promise_guard.py` | 2026-07-04 | `687751ce` | 1 | 1 |
+| `error_healers.py` | 2026-07-04 | `f6bda249` | 3 | 4 |
+| `central_injection_registry.py` | 2026-07-05 | `365aab23` | 4 | 3 |
+| `central_injection_units.py` | 2026-07-05 | `394f26c3` | 1 | 1 |
+| `central_governance.py` | 2026-07-05 | `53d2e17f` | 7 | 5 |
+| `file_awareness_daemon.py` | 2026-07-05 | `7521c671` | 3 | 2 |
+| `unified_recall.py` | 2026-07-05 | `1a45f5e4` | 7 | 5 |
+| `central_absorb.py` | 2026-07-05 | `5e3346fd` | 5 | 1 |
+| `central_private_reducer.py` | 2026-07-05 | `5e3346fd` | 2 | 1 |
+| `central_runtime_proxy.py` | 2026-07-05 | `5e3346fd` | 4 | 4 |
+| `central_inner_life_digest.py` | 2026-07-05 | `e9c0a6e5` | 5 | 2 |
+| `central_soul_digest.py` | 2026-07-05 | `dfb4aae9` | 6 | 1 |
+| `central_dark_products_digest.py` | 2026-07-06 | `616dc4eb` | 2 | 1 |
+| `central_affect.py` | 2026-07-06 | `81185b86` | 6 | 4 |
+| `central_initiative_ladder.py` | 2026-07-06 | `77095e06` | 1 | 1 |
+| `central_tone.py` | 2026-07-06 | `29d6221a` | 2 | 1 |
+| `gate_shadow.py` | 2026-07-06 | `7f4a7c91` | 2 | 1 |
+| `gate_verdict_ledger.py` | 2026-07-06 | `56043a76` | 13 | 8 |
+| `autonomous_sessions.py` | 2026-07-06 | `7be69e40` | 3 | 1 |
+| `api_connection_nerve.py` | 2026-07-06 | `78b181fe` | 4 | 1 |
+| `user_activity.py` | 2026-07-06 | `13920089` | 1 | 0 |
+| `central_excess.py` | 2026-07-06 | `607e6198` | 6 | 2 |
+| `central_decentralization.py` | 2026-07-06 | `158cd295` | 4 | 2 |
+| `central_gardener.py` | 2026-07-06 | `19926f8b` | 1 | 0 |
+| `central_keymaker.py` | 2026-07-06 | `aa76a496` | 5 | 2 |
+| `central_architect.py` | 2026-07-06 | `0da5bd64` | 3 | 1 |
+| `central_construct.py` | 2026-07-06 | `0da5bd64` | 4 | 1 |
+| `central_echo_breaker.py` | 2026-07-06 | `0da5bd64` | 3 | 2 |
+| `central_oracle.py` | 2026-07-06 | `0da5bd64` | 4 | 1 |
+| `central_glitch.py` | 2026-07-06 | `efb1399c` | 4 | 1 |
+| `central_continuity_healer.py` | 2026-07-06 | `8f2c49f3` | 3 | 1 |
+| `central_surgery.py` | 2026-07-06 | `9458ada9` | 3 | 2 |
+| `central_dream_action.py` | 2026-07-06 | `02ba4cfd` | 4 | 2 |
+| `central_rca.py` | 2026-07-06 | `02ba4cfd` | 2 | 1 |
+| `central_relational.py` | 2026-07-06 | `02ba4cfd` | 2 | 1 |
+| `central_merovingian.py` | 2026-07-06 | `685a8bfc` | 5 | 1 |
+| `central_dejavu.py` | 2026-07-06 | `ae1d0cc1` | 2 | 1 |
+| `central_exile.py` | 2026-07-06 | `ae1d0cc1` | 1 | 1 |
+| `central_ghost.py` | 2026-07-06 | `ae1d0cc1` | 3 | 1 |
+| `central_mourning.py` | 2026-07-06 | `ae1d0cc1` | 2 | 1 |
+| `central_sentinel.py` | 2026-07-06 | `ae1d0cc1` | 3 | 2 |
+| `central_analyst.py` | 2026-07-06 | `44407790` | 2 | 1 |
+| `central_belief_gap.py` | 2026-07-06 | `44407790` | 3 | 1 |
+| `central_dissent.py` | 2026-07-06 | `44407790` | 4 | 3 |
+| `central_machines.py` | 2026-07-06 | `44407790` | 3 | 1 |
+| `central_red_dress.py` | 2026-07-06 | `44407790` | 2 | 1 |
+| `central_redpill.py` | 2026-07-06 | `44407790` | 3 | 1 |
+| `central_white_rabbit.py` | 2026-07-06 | `44407790` | 2 | 1 |
+| `runtime_self_model_affect.py` | 2026-07-07 | `76227429` | 4 | 0 |
+| `runtime_self_model_boundary.py` | 2026-07-07 | `76227429` | 3 | 0 |
+| `runtime_self_model_builder.py` | 2026-07-07 | `76227429` | 1 | 0 |
+| `runtime_self_model_identity.py` | 2026-07-07 | `76227429` | 3 | 0 |
+| `runtime_self_model_state.py` | 2026-07-07 | `76227429` | 5 | 0 |
+| `runtime_self_model_surfaces.py` | 2026-07-07 | `76227429` | 4 | 0 |
+| `agent_runtime_base.py` | 2026-07-07 | `7e342891` | 5 | 2 |
+| `agent_runtime_council.py` | 2026-07-07 | `7e342891` | 1 | 0 |
+| `agent_runtime_spawn.py` | 2026-07-07 | `7e342891` | 5 | 5 |
+| `agent_runtime_surfaces.py` | 2026-07-07 | `7e342891` | 3 | 0 |
+| `cheap_provider_runtime_adapters.py` | 2026-07-07 | `46d90e97` | 16 | 14 |
+| `cheap_provider_runtime_selection.py` | 2026-07-07 | `46d90e97` | 9 | 4 |
+| `cheap_provider_runtime_streaming.py` | 2026-07-07 | `46d90e97` | 5 | 4 |
+| `heartbeat_runtime_helpers.py` | 2026-07-07 | `2dabe052` | 1 | 0 |
+| `heartbeat_runtime_influence.py` | 2026-07-07 | `2dabe052` | 1 | 2 |
+| `heartbeat_runtime_providers.py` | 2026-07-07 | `2dabe052` | 1 | 0 |
+| `internal_cadence_central_wiring.py` | 2026-07-07 | `59e4b994` | 1 | 1 |
+| `internal_cadence_core.py` | 2026-07-07 | `59e4b994` | 1 | 0 |
+| `internal_cadence_inner_life.py` | 2026-07-07 | `59e4b994` | 1 | 0 |
+| `internal_cadence_maintenance.py` | 2026-07-07 | `59e4b994` | 1 | 0 |
+| `internal_cadence_matrix.py` | 2026-07-07 | `59e4b994` | 1 | 0 |
+| `visible_model_adapters.py` | 2026-07-07 | `256188aa` | 1 | 1 |
+| `visible_model_observe.py` | 2026-07-07 | `256188aa` | 4 | 0 |
+| `visible_model_ollama.py` | 2026-07-07 | `256188aa` | 2 | 0 |
+| `visible_model_prompt.py` | 2026-07-07 | `256188aa` | 1 | 0 |
+| `visible_model_sse.py` | 2026-07-07 | `256188aa` | 3 | 0 |
+| `visible_model_types.py` | 2026-07-07 | `256188aa` | 3 | 1 |
+| `visible_followup_adapters.py` | 2026-07-07 | `612c0bbe` | 2 | 0 |
+| `visible_followup_events.py` | 2026-07-07 | `612c0bbe` | 3 | 1 |
+| `visible_followup_lean.py` | 2026-07-07 | `612c0bbe` | 2 | 1 |
+| `central_mood_regulator.py` | 2026-07-07 | `90a08368` | 2 | 2 |
+| `attention_frame.py` | 2026-07-07 | `f3c4f5bc` | 1 | 0 |
+| `heartbeat_sections.py` | 2026-07-07 | `f3c4f5bc` | 1 | 0 |
+| `runtime_self_report.py` | 2026-07-07 | `f3c4f5bc` | 1 | 0 |
+| `transcript_sections.py` | 2026-07-07 | `f3c4f5bc` | 3 | 3 |
+| `visible_runs_approvals.py` | 2026-07-07 | `a16d8e93` | 1 | 1 |
+| `visible_runs_capabilities.py` | 2026-07-07 | `a16d8e93` | 1 | 0 |
+| `visible_runs_cognitive.py` | 2026-07-07 | `a16d8e93` | 2 | 2 |
+| `visible_runs_memory.py` | 2026-07-07 | `a16d8e93` | 2 | 2 |
+| `visible_runs_outcomes.py` | 2026-07-07 | `a16d8e93` | 2 | 1 |
+| `central_persephone.py` | 2026-07-07 | `e8c42882` | 3 | 1 |
+| `central_seraph.py` | 2026-07-07 | `e8c42882` | 4 | 2 |
+| `central_trainman.py` | 2026-07-07 | `e8c42882` | 3 | 1 |
+| `central_twins.py` | 2026-07-07 | `e8c42882` | 3 | 1 |
+| `mood_regulator_subscriber.py` | 2026-07-07 | `cc45c2a4` | 2 | 1 |
+| `identity_canon.py` | 2026-07-08 | `46c06aa8` | 2 | 2 |
+| `identity_drift_guard.py` | 2026-07-08 | `46c06aa8` | 3 | 4 |
+| `commit_gate_arbiter.py` | 2026-07-08 | `84d04f10` | 1 | 3 |
+| `gate_enforcement.py` | 2026-07-08 | `84d04f10` | 5 | 3 |
+| `self_model_distiller.py` | 2026-07-08 | `47945398` | 1 | 2 |
+| `standing_orders_registry.py` | 2026-07-08 | `bd3de0e5` | 2 | 3 |
+| `reasoning_prefilter.py` | 2026-07-08 | `0e15deeb` | 1 | 1 |
+| `reasoning_interceptor.py` | 2026-07-08 | `f4f42eb3` | 6 | 2 |
+| `reasoning_detectors.py` | 2026-07-08 | `a460a090` | 1 | 2 |
+| `model_trust.py` | 2026-07-08 | `bc5dd7a1` | 4 | 3 |
+| `tool_result_aging.py` | 2026-07-08 | `451f5254` | 1 | 1 |
+| `cache_boundary_observer.py` | 2026-07-08 | `c4afccd6` | 1 | 1 |
+| `tool_concurrency.py` | 2026-07-08 | `3492436f` | 1 | 2 |
+| `simple_tool_executor.py` | 2026-07-08 | `57287fcc` | 3 | 2 |
+| `permission_classifier.py` | 2026-07-08 | `ddb9cbe7` | 4 | 2 |
+| `docs_drift_watchdog.py` | 2026-07-08 | `260c9781` | 3 | 1 |
+| `proactivity_bridge.py` | 2026-07-09 | `56d1a133` | 7 | 3 |
+| `central_agent_smith.py` | 2026-07-09 | `54497b69` | 3 | 2 |
+| `central_moltbook.py` | 2026-07-09 | `001aa8f0` | 3 | 1 |
+| `content_blocks.py` | 2026-07-09 | `c21c15fe` | 1 | 2 |
+| `structured_content_flag.py` | 2026-07-09 | `0757c851` | 3 | 1 |
+| `paste_store.py` | 2026-07-09 | `5378430b` | 5 | 1 |
+| `session_boot_reconciler.py` | 2026-07-09 | `bc89cf01` | 1 | 1 |
+| `session_persistence_flag.py` | 2026-07-09 | `bc89cf01` | 1 | 1 |
+| `contradiction_resolver.py` | 2026-07-10 | `8a578b8f` | 2 | 1 |
+| `doc_repair_agent.py` | 2026-07-10 | `f2036be3` | 2 | 1 |
+| `state_flag_store.py` | 2026-07-10 | `95ef6b11` | 1 | 1 |
+| `operator_allowlist.py` | 2026-07-10 | `4bfc6893` | 2 | 1 |
+| `source_confidence_gate.py` | 2026-07-10 | `a314f2f5` | 1 | 1 |
+| `central_agent_smith_escalation.py` | 2026-07-10 | `900006d1` | 1 | 3 |
+| `central_matrix_ensemble.py` | 2026-07-10 | `bbab71c5` | 2 | 2 |
+| `central_morpheus.py` | 2026-07-10 | `48ba0239` | 3 | 1 |
+| `central_trinity.py` | 2026-07-10 | `48ba0239` | 3 | 1 |
+| `recall_scheduler.py` | 2026-07-12 | `9d340181` | 2 | 1 |
+| `assembly_prewarm.py` | 2026-07-12 | `903f8866` | 4 | 2 |
+| `llm_pricing.py` | 2026-07-13 | `b5947a7f` | 1 | 1 |
+| `central_cost_surface.py` | 2026-07-13 | `d789acfc` | 2 | 1 |
+| `dispatch_status.py` | 2026-07-13 | `69500cbb` | 6 | 4 |
+| `dispatch_envelope.py` | 2026-07-13 | `80bf5ef6` | 2 | 1 |
+| `central_agents_surface.py` | 2026-07-13 | `fb1a9643` | 2 | 2 |
+| `signal_baseline.py` | 2026-07-13 | `dc838e3a` | 2 | 3 |
+| `autonomous_lease.py` | 2026-07-13 | `846dde81` | 1 | 3 |
+| `recursion_guard.py` | 2026-07-13 | `13404efd` | 2 | 2 |
+| `dispatch_guards.py` | 2026-07-13 | `572b4a1b` | 1 | 3 |
+| `signal_delta_trigger.py` | 2026-07-13 | `dc2de1a6` | 1 | 4 |
+| `event_trigger_shadow.py` | 2026-07-13 | `9364c227` | 4 | 6 |
+| `shadow_experiment_registry.py` | 2026-07-13 | `9e6103ab` | 2 | 1 |
+| `gate_pattern_learning.py` | 2026-07-13 | `4e4212e1` | 2 | 1 |
+| `event_gate.py` | 2026-07-13 | `236c50b2` | 14 | 24 |
+| `skill_autosurface.py` | 2026-07-14 | `892a7ab1` | 3 | 3 |
+| `jc_tool_telemetry.py` | 2026-07-14 | `066a0f9b` | 1 | 2 |
+| `cheap_lane_floor.py` | 2026-07-14 | `3a1de301` | 5 | 5 |
+| `central_route.py` | 2026-07-14 | `1300c5be` | 9 | 6 |
+| `central_route_headroom.py` | 2026-07-14 | `1300c5be` | 1 | 2 |
+| `agent_pool_router.py` | 2026-07-14 | `0571e409` | 3 | 2 |
+| `provider_autodiscovery.py` | 2026-07-14 | `f5e64f50` | 3 | 2 |
+| `provider_self_heal.py` | 2026-07-14 | `f5e64f50` | 2 | 2 |
+| `cluster_daemon.py` | 2026-07-15 | `d7f8e85e` | 4 | 10 |
+| `nerve_registry.py` | 2026-07-15 | `d7f8e85e` | 1 | 1 |
+| `cluster_daemon_families.py` | 2026-07-15 | `c8d512fb` | 2 | 6 |
+| `client_tool_delegation.py` | 2026-07-15 | `8b230503` | 0 ⚠️ | 1 |
+| `client_turn_absorb.py` | 2026-07-15 | `aa107f83` | 1 | 1 |
+| `client_turn_live.py` | 2026-07-15 | `3b6083d7` | 1 | 1 |
+| `cheap_lane_selfheal.py` | 2026-07-16 | `80fc41bb` | 1 | 1 |
+| `auth_profile_scan.py` | 2026-07-16 | `3d6588aa` | 2 | 5 |
+| `egress_routing.py` | 2026-07-16 | `015957fa` | 3 | 2 |
+| `non_visible_fallback.py` | 2026-07-16 | `0c7e8205` | 1 | 3 |
+| `non_visible_rate_cap.py` | 2026-07-16 | `6e1b83c8` | 1 | 3 |
+| `events_retention.py` | 2026-07-17 | `1ad631ce` | 2 | 1 |
+| `agent_transcript.py` | 2026-07-17 | `5d6ae118` | 2 | 1 |
+| `pool_status_section.py` | 2026-07-17 | `942fcda4` | 1 | 1 |
+| `turn_trace.py` | 2026-07-18 | `d610d66e` | 6 | 0 |
+| `local_tool_broker.py` | 2026-07-19 | `2a7c8c9b` | 5 | 0 |
+| `visible_tool_exec.py` | 2026-07-19 | `07bfbbcb` | 1 | 0 |
+| `session_prewarm.py` | 2026-07-21 | `89daf1ed` | 3 | 1 |
+| `visible_stream_gate.py` | 2026-07-22 | `0bf83c33` | 5 | 3 |
+| `signal_tracking_framework.py` | 2026-07-23 | `781c8598` | 26 | 1 |
+| `visible_runs_watchdog.py` | 2026-08-17 | `003cd8b1` | 1 | 1 |
+| `fabricated_tool_result_gate.py` | 2026-08-18 | `9ff1312a` | 2 | 1 |
+| `self_surprise_expectation.py` | 2026-08-18 | `dd372262` | 2 | 1 |
+| `prompt_section_reevaluation.py` | 2026-08-18 | `94359fef` | 1 | 1 |
+| `cheap_lane_failure_policy.py` | 2026-08-18 | `3610fc86` | 1 | 1 |
+| `dream_action_executor.py` | 2026-08-19 | `7df0146e` | 2 | 1 |
+| `heartbeat_action_hints.py` | 2026-08-19 | `004f002a` | 1 | 1 |
 

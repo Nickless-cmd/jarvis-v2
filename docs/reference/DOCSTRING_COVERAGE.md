@@ -1841,7 +1841,7 @@ Generated from source. 6476/13029 functions/methods documented (49%). The list b
 - `scripts/central_connectivity_audit.py` :: `main` (L276)
 - `scripts/central_connectivity_audit.py` :: `render_md` (L212)
 - `scripts/central_connectivity_audit.py` :: `scan` (L144)
-- `scripts/commit_history_report.py` :: `build` (L123)
+- `scripts/commit_history_report.py` :: `build` (L125)
 - `scripts/db_decomposition_map.py` :: `comp_of` (L55)
 - `scripts/db_decomposition_map.py` :: `find` (L36)
 - `scripts/db_decomposition_map.py` :: `union` (L40)

@@ -109,14 +109,16 @@ def _import_counts(paths: list[str]) -> dict[str, int]:
     counts: dict[str, int] = {}
     for p in paths:
         mod = Path(p).stem
-        try:
-            r = subprocess.run(
-                ["grep", "-rlw", "--include=*.py", mod, "core", "apps", "scripts"],
-                capture_output=True, text=True)
-            hits = {ln for ln in r.stdout.splitlines() if ln and not ln.endswith(p)}
-        except Exception:
-            hits = set()
-        counts[p] = len(hits)
+        counts[p] = 0
+        for label, roots in (("prod", ("core", "apps", "scripts")), ("test", ("tests",))):
+            try:
+                r = subprocess.run(["grep", "-rlw", "--include=*.py", mod, *roots],
+                                   capture_output=True, text=True)
+                hits = {ln for ln in r.stdout.splitlines() if ln and not ln.endswith(p)}
+            except Exception:
+                hits = set()
+            counts.setdefault(f"{p}::{label}", len(hits))
+        counts[p] = counts[f"{p}::prod"] + counts[f"{p}::test"]
     return counts
 
 
@@ -212,6 +214,11 @@ def build(out_path: Path) -> None:
     gone = len(news) - len(alive)
     counts = _import_counts([n["path"] for n in alive])
     orphans = [n for n in alive if counts.get(n["path"], 0) == 0]
+    # Den interessante kategori: har tests, men INGEN produktions-kalder. Testene er
+    # grønne, så intet siger fra — koden virker, den bliver bare aldrig spurgt.
+    test_only = [n for n in alive
+                 if counts.get(f"{n['path']}::prod", 0) == 0
+                 and counts.get(f"{n['path']}::test", 0) > 0]
 
     A(f"**{len(news)} filer** er blevet tilføjet under `core/services/` gennem historien. "
       f"**{len(alive)}** findes stadig ({gone} er siden slettet eller flyttet).")
@@ -232,21 +239,37 @@ def build(out_path: Path) -> None:
       "(`docs/capability_matrix.md`).")
     A("")
     if orphans:
-        A("### Uden importører i dag")
+        A("### Uden nogen referencer overhovedet")
         A("")
         A("| Fil | Født | Commit |")
         A("|---|---|---|")
         for n in sorted(orphans, key=lambda z: z["date"]):
             A(f"| `{Path(n['path']).name}` | {n['date']} | `{n['hash']}` |")
         A("")
+    A("### Testet, men uden produktions-kalder")
+    A("")
+    A(f"**{len(test_only)} filer** har tests, men nævnes ikke i `core/`, `apps/` eller "
+      f"`scripts/`. Det er den interessante kategori: testene er grønne, så intet siger "
+      f"fra — koden virker, den bliver bare aldrig spurgt. Nogle er legitime "
+      f"(paritets-harnesser hører til i tests); andre er fase-1-fundamenter hvis fase 2 "
+      f"aldrig kom.")
+    A("")
+    if test_only:
+        A("| Fil | Født | Commit | Test-referencer |")
+        A("|---|---|---|---:|")
+        for n in sorted(test_only, key=lambda z: z["date"]):
+            A(f"| `{Path(n['path']).name}` | {n['date']} | `{n['hash']}` | "
+              f"{counts.get(n['path'] + '::test', 0)} |")
+        A("")
     A("### Alle nye systemer, i fødselsrækkefølge")
     A("")
-    A("| Fil | Født | Commit | Importører |")
-    A("|---|---|---|---:|")
+    A("| Fil | Født | Commit | Prod | Test |")
+    A("|---|---|---|---:|---:|")
     for n in sorted(alive, key=lambda z: z["date"]):
-        c = counts.get(n["path"], 0)
-        mark = " ⚠️" if c == 0 else ""
-        A(f"| `{Path(n['path']).name}` | {n['date']} | `{n['hash']}` | {c}{mark} |")
+        prod = counts.get(f"{n['path']}::prod", 0)
+        test = counts.get(f"{n['path']}::test", 0)
+        mark = " ⚠️" if prod == 0 else ""
+        A(f"| `{Path(n['path']).name}` | {n['date']} | `{n['hash']}` | {prod}{mark} | {test} |")
     A("")
 
     out_path.write_text("\n".join(L) + "\n", encoding="utf-8")

@@ -4377,15 +4377,19 @@ async def _stream_visible_run(
                     if _reasoning_join:
                         try:
                             from core.services.visible_model import (
-                                _strip_thinking_delimiters,
+                                _reasoning_fallback_text,
                                 _observe_content_empty_thinking_fallback,
                             )
-                            followup_text = _strip_thinking_delimiters(_reasoning_join).strip()
-                            _observe_content_empty_thinking_fallback(
-                                run.provider, run.model, "agentic_followup", len(_reasoning_join),
+                            followup_text = _reasoning_fallback_text(
+                                _reasoning_join,
+                                finish_reason="length" if _a_truncated else "stop",
                             )
+                            if followup_text:
+                                _observe_content_empty_thinking_fallback(
+                                    run.provider, run.model, "agentic_followup", len(_reasoning_join),
+                                )
                         except Exception:
-                            followup_text = _reasoning_join
+                            followup_text = "" if _a_truncated else _reasoning_join
 
                 if not followup_text:
                     # #1453-RESCUE (2026-06-30 — verificeret DeepSeek-bug): thinking-

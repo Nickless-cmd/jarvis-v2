@@ -123,3 +123,15 @@ def _strip_thinking_delimiters(text: str) -> str:
         "", text, flags=re.IGNORECASE,
     )
     return cleaned.strip()
+
+
+def _reasoning_fallback_text(reasoning: str, *, finish_reason: str = "") -> str:
+    """Surface reasoning only when the provider completed it cleanly.
+
+    ``finish_reason=length`` means the field is a truncated internal plan, not
+    an answer. Returning an empty string lets the run layer use its existing
+    non-thinking resend instead of leaking the plan into visible history.
+    """
+    if str(finish_reason or "").strip().lower() == "length":
+        return ""
+    return _strip_thinking_delimiters(reasoning)

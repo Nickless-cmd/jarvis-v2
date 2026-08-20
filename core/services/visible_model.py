@@ -49,6 +49,7 @@ from core.services.visible_model_observe import (  # noqa: F401
     _observe_content_empty_thinking_fallback,
     _observe_malformed_stream_payload,
     _observe_visible_provider_error,
+    _reasoning_fallback_text,
     _strip_thinking_delimiters,
 )
 from core.services.visible_model_sse import (  # noqa: F401

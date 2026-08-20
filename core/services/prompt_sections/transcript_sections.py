@@ -308,6 +308,8 @@ def _build_structured_transcript_messages(
     # invariant as the warm path above.
     _cold_on = _lifecycle_enabled()
     _cold_floor = _cold_floor_for(session_id) if _cold_on else 0
+    _collapse_on = _round_collapse_enabled()
+    _cold_run: list[str] = []   # buffer: konsekutive COLD tool-navne
     merged: list[dict[str, str]] = []
     for index, item in enumerate(window):
         raw_role = str(item.get("role") or "")
@@ -318,6 +320,19 @@ def _build_structured_transcript_messages(
         # actual tool messages — apply it only there. User/assistant text
         # gets normal whitespace normalization and the per-role cap below.
         raw_content = str(item.get("content") or "")
+        # Sekvensen af konsekutive COLD-results er brudt → flush bufferen som
+        # ét rundesummary, FØR den aktuelle besked renderes.
+        if _collapse_on and _cold_run and raw_role != "tool":
+            _summary = _render_collapsed_round(_cold_run)
+            _cold_run = []
+            if _summary:
+                if _tool_results_as_input():
+                    merged.append({"role": "user",
+                                   "content": f"{_TOOL_INPUT_FRAME} {_summary}"})
+                elif merged and merged[-1]["role"] == "assistant":
+                    merged[-1]["content"] += f"\n({_summary})"
+                else:
+                    merged.append({"role": "assistant", "content": f"({_summary})"})
         if raw_role == "tool":
             _mid = int(item.get("id", 0) or 0)
             # cold = id <= floor (warm = id > floor) — matches the lifecycle
@@ -327,6 +342,11 @@ def _build_structured_transcript_messages(
                 content = render_tool_result_for_prompt(
                     raw_content, expand=False, stub=True,
                 )
+                if _collapse_on:
+                    # Buffer i stedet for at udsende: hele sekvensen bliver til
+                    # ét summary når den brydes (eller ved vinduets slut).
+                    _cold_run.append(_tool_name_from_stub(content))
+                    continue
             else:
                 content = render_tool_result_for_prompt(
                     raw_content,
@@ -409,6 +429,20 @@ def _build_structured_transcript_messages(
                 assistant_msg["reasoning_content"] = r_content
             merged.append(assistant_msg)
 
+    # Halen: slutter vinduet midt i en cold-sekvens, ville den ellers forsvinde
+    # lydløst — og så ville Jarvis ikke ane at der HAR været aktivitet der.
+    if _collapse_on and _cold_run:
+        _summary = _render_collapsed_round(_cold_run)
+        _cold_run = []
+        if _summary:
+            if _tool_results_as_input():
+                merged.append({"role": "user",
+                               "content": f"{_TOOL_INPUT_FRAME} {_summary}"})
+            elif merged and merged[-1]["role"] == "assistant":
+                merged[-1]["content"] += f"\n({_summary})"
+            else:
+                merged.append({"role": "assistant", "content": f"({_summary})"})
+
     # Phase 2: Ensure alternating user/assistant turns (required by some models).
     # Drop messages that break alternation rather than fabricating filler.
     result: list[dict[str, str]] = []
@@ -455,6 +489,75 @@ def _build_structured_transcript_messages(
             pass
 
     return result
+
+_ROUND_COLLAPSE_KEY = "tool_result_round_collapse"
+
+
+def _round_collapse_enabled() -> bool:
+    """Kollaps konsekutive COLD tool-results til ÉT rundesummary. Default OFF.
+
+    Codex' A/B/C-eksperiment 20. aug 2026 (samme transcript, samme slutbesked,
+    samme model — kun rendering varieret):
+
+    | arm                          | prompt-tok | median synlig tekst |
+    |------------------------------|-----------:|--------------------:|
+    | A nuværende (individuelle)   |    125.047 |             26,41 s |
+    | B kollapset pr. runde        |    105.186 |              9,21 s |
+    | C kollapset + padding til A  |    125.047 |              6,31 s |
+
+    **C er beviset:** identisk tokenvægt med A, men 4× hurtigere til synlig
+    tekst. Tokenreduktion kan altså ikke forklare gevinsten — det er selve
+    INDHOLDET. Hver stub bærer et 32-tegns UUID, et 40-tegns indholdsfragment
+    og "(read_tool_result)"; 337 af dem er 337 ting der ligner noget man kan
+    slå op. Alle ni replay-kald brændte hele 4096-token reasoning-budgettet
+    uden at nå et svar — over-ræsonnering, ikke langsomhed.
+
+    A og B gav begge 3/3 korrekte attributioner; B mistede ingen målbar
+    kvalitet. Eksperimentet er dog n=3, og C's padding er ikke semantisk
+    neutral — derfor bag flag, ikke som default.
+
+    CACHE-INVARIANTEN HOLDER: grupperingen udledes KUN af beskedrækkefølgen og
+    cold_floor. Begge er faste gennem en prompt-build og mellem floor-
+    avanceringer (som kun sker diskret ved run-slut), så de samme historik-
+    bytes renderes identisk tur efter tur. Det er samme garanti som den
+    eksisterende cold-stubbing — IKKE recency-baseret pruning, som brækkede
+    DeepSeek-cachen 30. juni (28% hit vs 90% loft).
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_bool
+        return get_runtime_state_bool(_ROUND_COLLAPSE_KEY, default=False)
+    except Exception:
+        return False
+
+
+def _tool_name_from_stub(stub: str) -> str:
+    """Træk tool-navnet ud af en cold-stub. Formatet er
+    `[tool_result:<id> — <navn>: <snippet> (read_tool_result)]`.
+    Ukendt form → "værktøj", så et enkelt afvigende format ikke vælter noget."""
+    try:
+        head = stub.split("—", 1)[1]
+        return head.split(":", 1)[0].strip() or "værktøj"
+    except Exception:
+        return "værktøj"
+
+
+def _render_collapsed_round(tool_names: list[str]) -> str:
+    """Ét deterministisk summary for en sekvens af kollapsede cold-results.
+
+    Bevarer HVAD der skete (antal + hvilke værktøjer), fjerner det der skaber
+    støj: de individuelle UUID'er og indholdsfragmenterne. Sorteret efter
+    antal, så outputtet er stabilt for samme input — cache-kravet.
+    """
+    if not tool_names:
+        return ""
+    counts: dict[str, int] = {}
+    for n in tool_names:
+        counts[n] = counts.get(n, 0) + 1
+    parts = [f"{n}×{c}" if c > 1 else n
+             for n, c in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
+    return (f"[{len(tool_names)} tidligere værktøjskald: {', '.join(parts)} "
+            f"— resultater beskåret]")
+
 
 def _get_compact_marker_for_transcript(session_id: str) -> str | None:
     """Fetch the most recent compact marker for this session (monkeypatchable).

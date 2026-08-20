@@ -320,9 +320,13 @@ def _build_structured_transcript_messages(
         # actual tool messages — apply it only there. User/assistant text
         # gets normal whitespace normalization and the per-role cap below.
         raw_content = str(item.get("content") or "")
+        _mid = int(item.get("id", 0) or 0) if raw_role == "tool" else 0
+        _is_cold_tool = bool(
+            raw_role == "tool" and _cold_on and _mid and _mid <= _cold_floor
+        )
         # Sekvensen af konsekutive COLD-results er brudt → flush bufferen som
         # ét rundesummary, FØR den aktuelle besked renderes.
-        if _collapse_on and _cold_run and raw_role != "tool":
+        if _collapse_on and _cold_run and not _is_cold_tool:
             _summary = _render_collapsed_round(_cold_run)
             _cold_run = []
             if _summary:
@@ -334,11 +338,10 @@ def _build_structured_transcript_messages(
                 else:
                     merged.append({"role": "assistant", "content": f"({_summary})"})
         if raw_role == "tool":
-            _mid = int(item.get("id", 0) or 0)
             # cold = id <= floor (warm = id > floor) — matches the lifecycle
             # module's accounting convention (compute_new_floor: warm=id>floor,
             # _candidate_by_tokens returns the ceiling-crossing id as cold).
-            if _cold_on and _mid and _mid <= _cold_floor:
+            if _is_cold_tool:
                 content = render_tool_result_for_prompt(
                     raw_content, expand=False, stub=True,
                 )
@@ -505,12 +508,12 @@ def _round_collapse_enabled() -> bool:
     | B kollapset pr. runde        |    105.186 |              9,21 s |
     | C kollapset + padding til A  |    125.047 |              6,31 s |
 
-    **C er beviset:** identisk tokenvægt med A, men 4× hurtigere til synlig
-    tekst. Tokenreduktion kan altså ikke forklare gevinsten — det er selve
-    INDHOLDET. Hver stub bærer et 32-tegns UUID, et 40-tegns indholdsfragment
-    og "(read_tool_result)"; 337 af dem er 337 ting der ligner noget man kan
-    slå op. Alle ni replay-kald brændte hele 4096-token reasoning-budgettet
-    uden at nå et svar — over-ræsonnering, ikke langsomhed.
+    C gav evidens for en indholdseffekt: identisk tokenvægt med A, men 4×
+    hurtigere til synlig tekst. Padding er dog ikke semantisk neutral, så det
+    er ikke et rent bevis. Hver stub bærer et 32-tegns UUID, et 40-tegns
+    indholdsfragment og "(read_tool_result)"; 337 af dem ligner 337 ting der
+    kan slås op. Alle ni replay-kald brugte hele reasoning-budgettet, også
+    efter kollaps, så replay-resultatet kan ikke tilskrives stubs alene.
 
     A og B gav begge 3/3 korrekte attributioner; B mistede ingen målbar
     kvalitet. Eksperimentet er dog n=3, og C's padding er ikke semantisk

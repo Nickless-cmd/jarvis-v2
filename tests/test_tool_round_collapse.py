@@ -9,9 +9,10 @@ samme model, kun rendering varieret:
 | B kollapset pr. runde       |    105.186 |              9,21 s |
 | C kollapset + padding til A |    125.047 |              6,31 s |
 
-C er beviset: identisk tokenvægt med A, 4× hurtigere til synlig tekst. Altså
-er det INDHOLDET, ikke vægten. Hver stub bar et 32-tegns UUID, et 40-tegns
-fragment og "(read_tool_result)" — 337 invitationer til at slå noget op.
+C gav evidens for en indholdseffekt: identisk tokenvægt med A, 4× hurtigere
+til synlig tekst. Padding er ikke semantisk neutral, så det er ikke et rent
+bevis. Hver stub bar et 32-tegns UUID, et 40-tegns fragment og
+"(read_tool_result)" — 337 invitationer til at slå noget op.
 
 Flaget er default OFF: n=3, og C's padding er ikke semantisk neutral.
 """
@@ -93,6 +94,40 @@ class TestFlagGating:
         blob = " ".join(m["content"] for m in out)
         assert "2 tidligere værktøjskald" in blob
         assert "tool-result-xyz" not in blob, "individuelle ID'er skal være væk"
+
+    def test_samme_historik_og_floor_giver_byte_identisk_transcript(self):
+        assert self._build(True) == self._build(True)
+
+    def test_warm_result_flusher_cold_summary_foer_sig_selv(self):
+        hist = [
+            {"id": 1, "role": "user", "content": "hej", "user_id": ""},
+            {"id": 2, "role": "assistant", "content": "svar", "user_id": ""},
+            {"id": 3, "role": "tool", "content": "cold-before"},
+            {"id": 51, "role": "tool", "content": "WARM-MARKER"},
+            {"id": 99, "role": "assistant", "content": "færdig", "user_id": ""},
+        ]
+
+        def render(content, **kwargs):
+            if not kwargs.get("stub"):
+                return content
+            return f"[tool_result:x — bash: {content} (read_tool_result)]"
+
+        with patch.object(ts, "chat_session_messages_since_last_compact",
+                          return_value=hist), \
+             patch.object(ts, "_lifecycle_enabled", return_value=True), \
+             patch.object(ts, "_cold_floor_for", return_value=50), \
+             patch.object(ts, "_round_collapse_enabled", return_value=True), \
+             patch.object(ts, "render_tool_result_for_prompt", side_effect=render), \
+             patch("core.services.prompt_contract._get_compact_marker_for_transcript",
+                   return_value=None), \
+             patch("core.services.prompt_contract._maybe_auto_compact_session"):
+            out = ts._build_structured_transcript_messages(
+                "s1", limit=60, include=True,
+            )
+
+        blob = "\n".join(message["content"] for message in out)
+        assert blob.count("1 tidligere værktøjskald") == 1
+        assert blob.index("bash") < blob.index("WARM-MARKER")
 
     def test_default_er_OFF(self):
         """n=3 og ikke-neutral padding — det skal slås til bevidst."""

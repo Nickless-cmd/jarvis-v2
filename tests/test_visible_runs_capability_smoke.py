@@ -261,7 +261,7 @@ def test_visible_run_second_pass_strips_capability_markup_and_does_not_loop(
     assert capability_events[1]["capability_id"] == "tool:read-repository-readme"
 
 
-def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
+def test_visible_run_native_tool_calls_persist_cost_before_done(
     isolated_runtime,
     monkeypatch,
 ) -> None:
@@ -269,9 +269,15 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
     visible_runs = importlib.reload(visible_runs)
     visible_model = importlib.import_module("core.services.visible_model")
     visible_followup = importlib.import_module("core.services.visible_followup")
+    simple_tool_executor = importlib.import_module("core.services.simple_tool_executor")
     ollama_prompt = importlib.import_module("core.services.ollama_visible_prompt")
 
-    monkeypatch.setattr(visible_runs, "record_cost", lambda **kwargs: None)
+    recorded_costs: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        visible_runs,
+        "record_cost",
+        lambda **kwargs: recorded_costs.append(dict(kwargs)),
+    )
     monkeypatch.setattr(
         visible_runs, "_track_runtime_candidates", lambda run, assistant_text: None
     )
@@ -339,6 +345,11 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
         ]
 
     monkeypatch.setattr(visible_runs, "_execute_simple_tool_calls", stub_execute_simple_tool_calls)
+    monkeypatch.setattr(
+        simple_tool_executor,
+        "_execute_simple_tool_calls",
+        stub_execute_simple_tool_calls,
+    )
 
     followup_calls: list[dict[str, object]] = []
 
@@ -405,8 +416,14 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
 
     async def collect() -> list[str]:
         chunks: list[str] = []
-        async for chunk in visible_runs._stream_visible_run(run):
-            chunks.append(chunk)
+        stream = visible_runs._stream_visible_run(run)
+        try:
+            async for chunk in stream:
+                chunks.append(chunk)
+                if "event: done" in chunk:
+                    break
+        finally:
+            await stream.aclose()
         return chunks
 
     import asyncio
@@ -428,6 +445,8 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
     assert followup_calls[1]["last_results"] == 2
     assert len(tool_exec_calls) == 2
     assert tool_exec_calls[1][0]["function"]["name"] == "search_memory"
+    assert recorded_costs, "cost skal være gemt før klienten stopper ved done"
+    assert recorded_costs[0]["run_id"] == run.run_id
 
 
 def test_visible_run_executes_dynamic_external_read_from_user_message_path(

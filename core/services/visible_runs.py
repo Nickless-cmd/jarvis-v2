@@ -4524,10 +4524,10 @@ async def _stream_visible_run(
                 total_input_tokens = result.input_tokens * 2
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
                 # 2026-06-13: denne agentiske completion-gren satte input/output
-                # men IKKE cache-vars — så _cache_tokens-aflæsningen nedenfor
-                # (linje ~2581) kastede UnboundLocalError og crashede HELE visible-
-                # run'et midt i (fremstod som "Jarvis stopper / lyver"). Init dem
-                # her fra result, ligesom hovedstien gør.
+                # men IKKE cache-vars — så cost-persistensen kastede
+                # UnboundLocalError og crashede HELE visible-run'et midt i
+                # (fremstod som "Jarvis stopper / lyver"). Init dem her fra
+                # result, ligesom hovedstien gør.
                 total_cache_hit_tokens = getattr(result, "cache_hit_tokens", 0)
                 total_cache_miss_tokens = getattr(result, "cache_miss_tokens", 0)
                 visible_output_text = followup_text
@@ -4594,6 +4594,21 @@ async def _stream_visible_run(
                 except Exception:
                     pass
                 _reached_finalization = True
+
+                # Cost-ledger er en del af run-kontrakten, ikke best-effort
+                # efterbehandling. SSE-v2 lukker legacy-generatoren så snart den
+                # ser done; kode efter yield'et bliver derfor aldrig kørt.
+                record_cost(
+                    provider=run.provider,
+                    model=run.model,
+                    input_tokens=total_input_tokens,
+                    output_tokens=total_output_tokens,
+                    cost_usd=0.0,
+                    lane="visible",
+                    cache_hit_tokens=total_cache_hit_tokens,
+                    cache_miss_tokens=total_cache_miss_tokens,
+                    run_id=run.run_id,
+                )
                 yield _sse("done", {
                     "type": "done",
                     "run_id": run.run_id,
@@ -4602,10 +4617,9 @@ async def _stream_visible_run(
                     "output_tokens": total_output_tokens,
                 })
 
-                # Background: status update and cost recording only
+                # Background: status update and cognitive post-processing only.
                 _run_ref = run
                 _tokens = (total_input_tokens, total_output_tokens)
-                _cache_tokens = (total_cache_hit_tokens, total_cache_miss_tokens)
                 _followup_text = followup_text
                 _outcome_status = _final_run_status
                 _outcome_error = _final_run_error
@@ -4613,23 +4627,6 @@ async def _stream_visible_run(
 
                 def _persist_tool_result() -> None:
                     try:
-                        # 2026-06-10: tidligere kommentar sagde "cache måles på
-                        # den senere primary call" — men total_cache_hit_tokens
-                        # er allerede akkumuleret i scope (linje 2529 + 2594 +
-                        # 2647), så vi kan rapportere ægte tal her i stedet for
-                        # 0/0. Resultat: visible-lane dashboard viser nu reel
-                        # hit rate i stedet for misleading "0% af 4.4M".
-                        record_cost(
-                            provider=_run_ref.provider,
-                            model=_run_ref.model,
-                            input_tokens=_tokens[0],
-                            output_tokens=_tokens[1],
-                            cost_usd=0.0,
-                            lane="visible",
-                            cache_hit_tokens=_cache_tokens[0],
-                            cache_miss_tokens=_cache_tokens[1],
-                            run_id=_run_ref.run_id,
-                        )
                         finished_at = datetime.now(UTC).isoformat()
                         if _outcome_status == "completed":
                             event_bus.publish(

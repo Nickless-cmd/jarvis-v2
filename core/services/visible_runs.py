@@ -4628,6 +4628,7 @@ async def _stream_visible_run(
                             lane="visible",
                             cache_hit_tokens=_cache_tokens[0],
                             cache_miss_tokens=_cache_tokens[1],
+                            run_id=_run_ref.run_id,
                         )
                         finished_at = datetime.now(UTC).isoformat()
                         if _outcome_status == "completed":
@@ -5057,6 +5058,7 @@ async def _stream_visible_run(
             cost_usd=total_cost_usd,
             cache_hit_tokens=total_cache_hit_tokens,
             cache_miss_tokens=total_cache_miss_tokens,
+            run_id=run.run_id,
         )
         event_bus.publish(
             "cost.recorded",

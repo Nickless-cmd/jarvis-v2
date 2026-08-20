@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6467/12999 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6467/13000 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,10 +37,10 @@ Generated from source. 6467/12999 functions/methods documented (49%). The list b
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 161 | 258 | 62% |
 | `scripts.acceptance` | 3 | 7 | 42% |
-| `scripts.diagnostics` | 1 | 1 | 100% |
+| `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1842)
+## Undocumented public functions (1843)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -224,8 +224,8 @@ Generated from source. 6467/12999 functions/methods documented (49%). The list b
 - `core/cli/visible_output.py` :: `visible_execution_section` (L4)
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L96)
-- `core/costing/ledger.py` :: `recent_costs` (L126)
-- `core/costing/ledger.py` :: `telemetry_summary` (L106)
+- `core/costing/ledger.py` :: `recent_costs` (L135)
+- `core/costing/ledger.py` :: `telemetry_summary` (L115)
 - `core/eventbus/bus.py` :: `EventBus.recent` (L149)
 - `core/eventbus/bus.py` :: `EventBus.recent_by_family` (L170)
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L195)
@@ -1722,20 +1722,20 @@ Generated from source. 6467/12999 functions/methods documented (49%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L502)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L499)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L509)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6359)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6384)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6588)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6597)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6584)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6355)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6497)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6549)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6466)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6407)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6439)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6325)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6607)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6370)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6361)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6386)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6590)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6599)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6586)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6357)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6499)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6551)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6468)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6409)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6441)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6327)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6609)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6372)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L333)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
@@ -1836,6 +1836,7 @@ Generated from source. 6467/12999 functions/methods documented (49%). The list b
 - `scripts/db_path_fixture_audit.py` :: `main` (L20)
 - `scripts/db_split_baseline.py` :: `main` (L43)
 - `scripts/db_split_baseline.py` :: `measure` (L18)
+- `scripts/diagnostics/canary_measure.py` :: `main` (L56)
 - `scripts/enforce_commit_hygiene.py` :: `main` (L68)
 - `scripts/god_file_map.py` :: `blast` (L24)
 - `scripts/god_file_map.py` :: `own_py_files` (L14)

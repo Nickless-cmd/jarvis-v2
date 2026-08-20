@@ -347,6 +347,7 @@ def init_db() -> None:
                 cache_hit_tokens INTEGER NOT NULL DEFAULT 0,
                 cache_miss_tokens INTEGER NOT NULL DEFAULT 0,
                 user_id TEXT NOT NULL DEFAULT '',
+                run_id TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL
             )
             """
@@ -362,6 +363,15 @@ def init_db() -> None:
             conn.execute("ALTER TABLE costs ADD COLUMN cache_miss_tokens INTEGER NOT NULL DEFAULT 0")
         if "user_id" not in _cost_cols:
             conn.execute("ALTER TABLE costs ADD COLUMN user_id TEXT NOT NULL DEFAULT ''")
+        # 2026-08-20: run_id. FØR havde costs kun created_at, så kobling mellem
+        # et run og dets omkostning var ren tidsheuristik. Den heuristik gav en
+        # direkte forkert konklusion under latens-analysen: TTFT-tal blev matchet
+        # til de forkerte runs (15k-prompts forvekslet med 111k-runs), hvilket
+        # fik cache-hit til at fremstå som latensens hovedårsag. Historiske
+        # rækker og interne kald uden run-kontekst beholder ''.
+        if "run_id" not in _cost_cols:
+            conn.execute("ALTER TABLE costs ADD COLUMN run_id TEXT NOT NULL DEFAULT ''")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_costs_run_id ON costs (run_id)")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS cheap_provider_runtime_state (

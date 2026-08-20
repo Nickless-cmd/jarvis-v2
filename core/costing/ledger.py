@@ -17,8 +17,16 @@ def record_cost(
     cache_hit_tokens: int = 0,
     cache_miss_tokens: int = 0,
     user_id: str = "",
+    run_id: str = "",
 ) -> None:
     """Insert a row into the costs ledger.
+
+    2026-08-20: `run_id` tilføjet. FØR havde costs KUN created_at, så enhver
+    kobling mellem et run og dets omkostning var tidsheuristik — og den
+    heuristik gav en direkte forkert konklusion (TTFT-tal blev matchet til
+    de forkerte runs, hvilket fik cache-hit til at se ud som latensens
+    hovedårsag). Med run_id er koblingen eksakt. Tom streng for historiske
+    rækker og interne kald uden run-kontekst.
 
     2026-06-09: cache_hit_tokens + cache_miss_tokens added so DeepSeek
     prompt-cache utilization can be measured historically. Older call
@@ -69,9 +77,9 @@ def record_cost(
             """
             INSERT INTO costs (
                 lane, provider, model, input_tokens, output_tokens, cost_usd,
-                cache_hit_tokens, cache_miss_tokens, user_id, created_at
+                cache_hit_tokens, cache_miss_tokens, user_id, run_id, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 lane,
@@ -83,6 +91,7 @@ def record_cost(
                 int(cache_hit_tokens),
                 int(cache_miss_tokens),
                 str(user_id or ""),
+                str(run_id or ""),
                 datetime.now(UTC).isoformat(),
             ),
         )

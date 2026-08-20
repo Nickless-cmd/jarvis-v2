@@ -219,13 +219,67 @@ def _chunk_all_files(files: list[Path]) -> list[Chunk]:
     return all_chunks
 
 
+def _load_cached_vectors() -> dict[str, "np.ndarray"]:
+    """chunk-tekst → vektor fra den eksisterende cache, til INKREMENTEL reindex.
+
+    Tom dict betyder "ingen brugbar cache" → kalderen laver en fuld embed.
+    Modelskift invaliderer alt (vektorer fra to modeller må aldrig blandes).
+    Self-safe: enhver fejl → {} → fuld embed, som før."""
+    try:
+        cache = _cache_path()
+        if not cache.exists():
+            return {}
+        with open(cache, "rb") as fh:
+            data = pickle.load(fh)
+        if data.get("model") != _EMBED_MODEL:
+            return {}
+        chunks = data.get("chunks") or []
+        embs = data.get("embeddings")
+        if embs is None or len(chunks) != len(embs):
+            return {}
+        return {c.text: embs[i] for i, c in enumerate(chunks)}
+    except Exception:
+        return {}
+
+
 def _build_and_cache_index(files: list[Path], current_mtimes: dict[str, float]) -> None:
-    """Byg indeks fra bunden (chunk + embed ALLE chunks) og skriv cache. LANGSOM (embedding).
-    Kaldes KUN fra baggrunds-tråden — aldrig i en bruger-søgnings request-path."""
+    """Byg indeks og skriv cache. Kaldes KUN fra baggrunds-tråden.
+
+    INKREMENTEL siden 2026-08-20 (Bjørn: "kold start tog over 40 sek?"). FØR blev
+    HELE korpuset re-embeddet hver gang ÉN memory-fil skiftede mtime — og Jarvis
+    skriver til sine memory-filer under stort set hver tur. Målt i produktion:
+    `ms-corpus n=658` tog 14,5-16,4 s, TRE ture i træk. Baggrundstråden beskyttede
+    ganske vist kalderens TRÅD, men ikke den delte RESSOURCE: ollama serialiserer
+    pr. model, så assemblyens egne embeds stod i kø bag de 658 → recall_bundle
+    +16,5 s, cognitive state +10,7 s, assembly 2 s → 15-17 s.
+
+    Nu genbruges vektoren for hver chunk hvis TEKST er uændret; kun ægte nye/ændrede
+    chunks embeddes. Typisk tur: 1-5 embeds i stedet for 658. Resultatet er
+    bit-identisk med en fuld rebuild (samme model, samme tekst → samme vektor)."""
     all_chunks = _chunk_all_files(files)
     if not all_chunks:
         return
-    embeddings = _embed_ollama([c.text for c in all_chunks])
+    reuse = _load_cached_vectors()
+    todo = [i for i, c in enumerate(all_chunks) if c.text not in reuse]
+    embeddings: "np.ndarray | None"
+    if not reuse:
+        embeddings = _embed_ollama([c.text for c in all_chunks])  # ingen cache → fuld
+    else:
+        new_vecs = _embed_ollama([all_chunks[i].text for i in todo]) if todo else None
+        if todo and new_vecs is None:
+            embeddings = _embed_ollama([c.text for c in all_chunks])  # delvis fejl → fuld
+        else:
+            dim = len(next(iter(reuse.values())))
+            embeddings = np.zeros((len(all_chunks), dim), dtype=np.float32)
+            k = 0
+            for i, c in enumerate(all_chunks):
+                if c.text in reuse:
+                    embeddings[i] = reuse[c.text]
+                else:
+                    embeddings[i] = new_vecs[k]
+                    k += 1
+            logger.info("memory_search: inkrementel reindex — %d genbrugt, %d embeddet",
+                        len(all_chunks) - len(todo), len(todo))
     try:
         cache = _cache_path()
         cache.parent.mkdir(parents=True, exist_ok=True)

@@ -54,3 +54,98 @@ def test_top_result_not_candidate_when_curated_available():
             f"top={top}\n"
             f"first non-candidate={non_candidates[0]}"
         )
+
+
+# ── Inkrementel reindex (2026-08-20) ─────────────────────────────────────────
+# Bjørn: "kold start tog over 40 sek?" — målt i produktion embeddede reindexen
+# HELE korpuset (`ms-corpus n=658`, 14,5-16,4 s) TRE ture i træk, fordi Jarvis
+# skriver til sine memory-filer under hver tur og enhver mtime-ændring
+# invaliderede alt. Baggrundstråden beskyttede kalderens tråd, men ikke ollama-
+# køen: assemblyens egne embeds stod bag de 658 → assembly 2 s → 15-17 s.
+
+class TestInkrementelReindex:
+    def _setup(self, monkeypatch, tmp_path, chunk_texts):
+        import numpy as _np
+        import core.services.memory_search as ms
+        from core.services.memory_search import Chunk
+        monkeypatch.setattr(ms, "_cache_path", lambda: tmp_path / "idx.pkl")
+        monkeypatch.setattr(ms, "_chunk_all_files",
+                            lambda files: [Chunk(text=t, source="m.md", section="") for t in chunk_texts])
+        calls: list[list[str]] = []
+
+        def _fake_embed(texts):
+            calls.append(list(texts))
+            # deterministisk pr. tekst → gør "samme tekst = samme vektor" testbar
+            return _np.array([[float(len(t)), float(sum(map(ord, t[:3])))] for t in texts],
+                             dtype=_np.float32)
+
+        monkeypatch.setattr(ms, "_embed_ollama", _fake_embed)
+        return ms, calls
+
+    def test_foerste_build_embedder_alt(self, monkeypatch, tmp_path):
+        ms, calls = self._setup(monkeypatch, tmp_path, ["alfa", "beta", "gamma"])
+        ms._build_and_cache_index([], {"f": 1.0})
+        assert calls == [["alfa", "beta", "gamma"]], "uden cache skal alt embeddes"
+
+    def test_kun_nye_chunks_embeddes_anden_gang(self, monkeypatch, tmp_path):
+        """Kernen: én ny linje i en memory-fil må ikke koste 658 embeds."""
+        ms, calls = self._setup(monkeypatch, tmp_path, ["alfa", "beta", "gamma"])
+        ms._build_and_cache_index([], {"f": 1.0})
+        calls.clear()
+        ms, calls2 = self._setup(monkeypatch, tmp_path, ["alfa", "beta", "gamma", "ny linje"])
+        ms._build_and_cache_index([], {"f": 2.0})
+        assert calls2 == [["ny linje"]], f"kun den nye chunk skulle embeddes, fik {calls2}"
+
+    def test_uaendret_korpus_embedder_INTET(self, monkeypatch, tmp_path):
+        ms, calls = self._setup(monkeypatch, tmp_path, ["alfa", "beta"])
+        ms._build_and_cache_index([], {"f": 1.0})
+        ms, calls2 = self._setup(monkeypatch, tmp_path, ["alfa", "beta"])
+        ms._build_and_cache_index([], {"f": 2.0})
+        assert calls2 == [], "mtime-skift uden indholdsændring må ikke koste ét eneste embed"
+
+    def test_resultat_er_identisk_med_fuld_rebuild(self, monkeypatch, tmp_path):
+        """Den afgørende invariant: inkrementel må ikke ændre ét eneste tal —
+        ellers ville recall-scores stille skride."""
+        import pickle
+        import numpy as _np
+        texts = ["alfa", "beta", "gamma", "delta"]
+        # inkrementel: byg med 3, udvid til 4
+        ms, _ = self._setup(monkeypatch, tmp_path, texts[:3])
+        ms._build_and_cache_index([], {"f": 1.0})
+        ms, _ = self._setup(monkeypatch, tmp_path, texts)
+        ms._build_and_cache_index([], {"f": 2.0})
+        with open(tmp_path / "idx.pkl", "rb") as fh:
+            inkrementel = pickle.load(fh)["embeddings"]
+        # fuld: byg alle 4 i ét hug i en frisk mappe
+        frisk = tmp_path / "frisk"
+        frisk.mkdir()
+        ms, _ = self._setup(monkeypatch, frisk, texts)
+        ms._build_and_cache_index([], {"f": 1.0})
+        with open(frisk / "idx.pkl", "rb") as fh:
+            fuld = pickle.load(fh)["embeddings"]
+        assert _np.array_equal(inkrementel, fuld), "inkrementel ≠ fuld rebuild"
+
+    def test_modelskift_tvinger_fuld_reembed(self, monkeypatch, tmp_path):
+        """Vektorer fra to modeller må ALDRIG blandes i samme matrix."""
+        ms, _ = self._setup(monkeypatch, tmp_path, ["alfa", "beta"])
+        ms._build_and_cache_index([], {"f": 1.0})
+        monkeypatch.setattr(ms, "_EMBED_MODEL", "en-anden-model")
+        ms, calls2 = self._setup(monkeypatch, tmp_path, ["alfa", "beta"])
+        monkeypatch.setattr(ms, "_EMBED_MODEL", "en-anden-model")
+        ms._build_and_cache_index([], {"f": 2.0})
+        assert calls2 == [["alfa", "beta"]], "modelskift skal give fuld re-embed"
+
+    def test_embed_fejl_falder_tilbage_til_fuld(self, monkeypatch, tmp_path):
+        ms, _ = self._setup(monkeypatch, tmp_path, ["alfa", "beta"])
+        ms._build_and_cache_index([], {"f": 1.0})
+        ms, calls2 = self._setup(monkeypatch, tmp_path, ["alfa", "beta", "ny"])
+        seen: list[list[str]] = []
+
+        def _fail_once(texts):
+            seen.append(list(texts))
+            return None if len(seen) == 1 else __import__("numpy").zeros((len(texts), 2), dtype="float32")
+
+        monkeypatch.setattr(ms, "_embed_ollama", _fail_once)
+        ms._build_and_cache_index([], {"f": 2.0})
+        assert seen[0] == ["ny"] and seen[1] == ["alfa", "beta", "ny"], \
+            "fejlet delvis-embed skal falde tilbage til fuld rebuild"

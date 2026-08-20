@@ -46,6 +46,14 @@ _Visible-run control state — udskilt fra visible_runs.py (Boy Scout)._
 | function | `_get_visible_client_tool_state` | `(call_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L152) |
 | function | `resolve_visible_client_tool` | `(call_id, result_text)` | Klienten leverer resultatet af en delegeret tool. Flip pending → resolved | [src](../../../core/services/visible_runs_sections/run_control_state.py#L157) |
 
+## `core/services/visible_runs_sections/run_finalization.py`
+_Hvad der skal ske NÅR et visible run er slut — samlet ét sted._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `advance_tool_lifecycle` | `(session_id)` | Ryk tool-result cold_floor frem (spec 2026-07-16). Self-safe. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L33) |
+| function | `finalize_run` | `(session_id, *, status)` | Kaldes fra run-afslutningens finally — uanset hvordan runnet endte. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L49) |
+
 ## `core/services/visible_runs_sections/stream_observers.py`
 _Stream-observabilitets-nerver — Boy Scout-udtrækning fra visible_runs.py._
 

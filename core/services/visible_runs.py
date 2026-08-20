@@ -247,13 +247,13 @@ def _persist_pending_approvals() -> None:
     _save_approvals_state(_APPROVALS_STATE_KEY, _PENDING_APPROVALS)
 
 
-def _advance_tool_lifecycle(session_id: str) -> None:
-    """Run-end: advance tool-result cold_floor (spec 2026-07-16). Fault-tolerant."""
-    try:
-        from core.context.tool_result_lifecycle import evaluate_and_advance
-        evaluate_and_advance(session_id)
-    except Exception:
-        pass
+# Boy Scout-udtrækning (2026-08-20): run-afslutningens sideeffekter bor nu i
+# visible_runs_sections.run_finalization. Re-eksporteret her under det gamle
+# navn så eksisterende call-sites/monkeypatches ikke knækker.
+from core.services.visible_runs_sections.run_finalization import (  # noqa: E402
+    advance_tool_lifecycle as _advance_tool_lifecycle,
+    finalize_run as _finalize_run,
+)
 # Run control state — udskilt til visible_runs_sections/run_control_state.py
 # (Boy Scout before jarvis-brain-auto-inject added below). Re-exported
 # from here so existing monkeypatches in tests/test_visible_runs_approval_resolution.py
@@ -5567,6 +5567,20 @@ async def _stream_visible_run(
             threading.Thread(target=_drain_post_process, daemon=True).start()
         else:
             threading.Thread(target=_post_process, daemon=True).start()
+
+        # LIFECYCLE-FINALISERING (2026-08-20). FØR blev cold_floor kun rykket
+        # inde i den agentiske followup-gren (~4574), men et run kan afsluttes
+        # ad mindst otte veje — den simple gren, afbrud og fire fejlstier.
+        # Alle dem lod floor'en stå stille. Målt: floor frøs kl. 18:05 mens
+        # otte afsluttede runs passerede uden at flytte den; et manuelt kald
+        # gav straks 104207 → 104311 = 61 tool-results fra warm til cold og
+        # 3.641 tokens sparet i HVER efterfølgende prompt.
+        # Denne finally-blok er den eneste sti alle runs garanteret når.
+        # evaluate_and_advance er idempotent, så det gamle kald er harmløst.
+        try:
+            _finalize_run(run.session_id, status=_final_run_status)
+        except Exception:
+            pass
 
         # Phase 5: clear in-flight record. Runs reaching this finally block
         # have either completed, failed cleanly, or been cancelled — all

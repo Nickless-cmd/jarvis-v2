@@ -4570,8 +4570,9 @@ async def _stream_visible_run(
                     # H5: svaret er vist live, men gemmes ikke → væk ved reload.
                     _observe_persist_failed(run, _persist_exc)
 
-                if _final_run_status == "completed":
-                    _advance_tool_lifecycle(run.session_id)
+                # (Lifecycle-avanceringen lå FØR her — i den agentiske gren alene.
+                # Den bor nu i run-afslutningens finally, som alle runs når. Ét
+                # ejerskab: run_finalization. Se visible_runs_sections/run_finalization.py)
 
                 _set_orb_phase("idle")
                 # Phase E6: emit a per-turn changelog as its own SSE event

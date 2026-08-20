@@ -61,12 +61,61 @@ class TestBagudkompatibilitet:
         from core.services import visible_runs
         assert visible_runs._advance_tool_lifecycle is advance_tool_lifecycle
 
-    def test_finally_grenen_kalder_finalize(self):
-        """Regressionstesten for selve hullet: kaldet SKAL stå i den finally-blok
-        alle runs nåar — ikke kun i den agentiske gren."""
+    def test_finalize_ligger_FAKTISK_i_en_finally_blok(self):
+        """Regressionstesten for selve hullet — verificeret med AST, ikke tekstsøgning.
+
+        Codex 20. aug: den første version af denne test greppede blot efter
+        kaldeteksten i hele kildefilen. Den ville være grøn selv hvis linjen
+        blev flyttet tilbage ind i en gren — altså præcis den bug den skulle
+        fange. Nu parses træet, og kaldet skal ligge i `finalbody` på en
+        try-node. Det er dét der giver garantien "alle runs når hertil".
+        """
+        import ast
+        import inspect
+
+        from core.services import visible_runs
+
+        tree = ast.parse(inspect.getsource(visible_runs))
+
+        def _calls_in(body) -> set[str]:
+            names = set()
+            for stmt in body:
+                for sub in ast.walk(stmt):
+                    if isinstance(sub, ast.Call):
+                        f = sub.func
+                        if isinstance(f, ast.Name):
+                            names.add(f.id)
+                        elif isinstance(f, ast.Attribute):
+                            names.add(f.attr)
+            return names
+
+        # Det er ikke nok at kaldet ligger i EN finally — hele run-funktionen er
+        # pakket ind i en ydre try/finally, så selv et kald inde i en gren ville
+        # teknisk være "i en finally". Kravet er at det deler finally med
+        # in-flight-oprydningen (`_mark_run_completed`), for DEN blok er
+        # beviseligt den der køres for hvert eneste run.
+        sammen = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Try) and node.finalbody:
+                names = _calls_in(node.finalbody)
+                if "_finalize_run" in names and "_mark_run_completed" in names:
+                    sammen = True
+        assert sammen, (
+            "_finalize_run deler ikke finally-blok med in-flight-oprydningen. "
+            "Enten er den flyttet ind i en gren igen (= den oprindelige bug, "
+            "hvor kun agentiske runs rykkede cold_floor), eller "
+            "afslutningslogikken er delt op og garantien er væk."
+        )
+
+    def test_ingen_konkurrerende_lifecycle_kald_tilbage(self):
+        """run_finalization skal have ENE-ejerskab (Codex' note).
+
+        Det gamle gren-kald var idempotent og dermed harmløst, men to ejere af
+        samme sideeffekt betyder to steder at holde styr på næste gang nogen
+        ændrer afslutningslogikken."""
         import inspect
 
         from core.services import visible_runs
         src = inspect.getsource(visible_runs)
-        assert "_finalize_run(run.session_id, status=_final_run_status)" in src, \
-            "finally-blokkens lifecycle-kald mangler — bug'en er tilbage"
+        assert "_advance_tool_lifecycle(run.session_id)" not in src, \
+            "gammelt gren-kald findes stadig — ejerskabet er delt"

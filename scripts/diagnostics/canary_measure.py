@@ -78,37 +78,43 @@ def main() -> int:
     print(f"  {'run':<10} {'model':<24} {'inp':>7} {'cache%':>7} {'sek':>5}  kilde")
     print("  " + "-" * 72)
 
-    claimed: dict[int, str] = {}   # cost-index -> run_id
-    ambiguous: list[tuple[int, str]] = []
+    # COST-CENTRERET klassifikation. Den run-centrerede version havde en
+    # restfejl (Codex): ved én cost-række inde i TO overlappende runs vandt det
+    # første run rækken, og kun det andet blev markeret tvetydigt — så en
+    # tvetydig række blev alligevel rapporteret som et gyldigt datapunkt.
+    # Nu afgøres ejerskabet PR. RÆKKE: har den flere mulige ejere, afvises de
+    # ALLE. En tvetydig række må aldrig blive til et tal nogen stoler på.
+    owner: dict[int, str] = {}          # cost-index -> run_id
+    src_of: dict[int, str] = {}         # cost-index -> "run_id" | "interval"
+    contested: dict[str, str] = {}      # run_id -> årsag
+
+    for i, c in enumerate(costs):
+        if has_run_id and c.get("run_id"):
+            owner[i], src_of[i] = c["run_id"], "run_id"
+            continue
+        t = parse_ts(c["created_at"])
+        if t is None:
+            continue
+        cand = [r for r in runs
+                if (s := parse_ts(r[3])) and (f := parse_ts(r[4]))
+                and s <= t <= f and r[1] == c["provider"] and r[2] == c["model"]]
+        if len(cand) == 1:
+            owner[i], src_of[i] = cand[0][0], "interval"
+        elif len(cand) > 1:
+            for r in cand:
+                contested[r[0]] = f"deler cost-række med {len(cand) - 1} andet/andre run(s)"
+
+    by_run: dict[str, list[int]] = {}
+    for i, rid in owner.items():
+        by_run.setdefault(rid, []).append(i)
+
+    ambiguous: list[tuple[str, str]] = list(contested.items())
 
     for run_id, prov, model, started, finished, status in runs:
-        rows: list[int] = []
-        source = ""
-        if has_run_id:
-            rows = [i for i, c in enumerate(costs) if c.get("run_id") == run_id]
-            source = "run_id"
-        if not rows:
-            # Historisk fallback: præcis ÉN kandidat, og provider/model SKAL matche.
-            s, f = parse_ts(started), parse_ts(finished)
-            if not (s and f):
-                continue
-            cand = [i for i, c in enumerate(costs)
-                    if (t := parse_ts(c["created_at"])) and s <= t <= f
-                    and c["provider"] == prov and c["model"] == model]
-            if len(cand) != 1:
-                if cand:
-                    ambiguous.append((run_id, f"{len(cand)} kandidater i intervallet"))
-                continue
-            rows, source = cand, "interval"
-
-        # Er nogen af rækkerne allerede taget af et andet run? Så er den tvetydig
-        # — og skal SIGES, ikke skjules bag en 'matched'-mængde.
-        stolen = [i for i in rows if i in claimed and claimed[i] != run_id]
-        if stolen:
-            ambiguous.append((run_id, f"deler række med run {claimed[stolen[0]][8:16]}"))
+        rows = by_run.get(run_id, [])
+        if run_id in contested or not rows:
             continue
-        for i in rows:
-            claimed[i] = run_id
+        source = src_of[rows[0]]
 
         inp = sum(costs[i]["inp"] for i in rows)
         hit = sum(costs[i]["hit"] for i in rows)
@@ -125,7 +131,7 @@ def main() -> int:
         for rid, why in ambiguous[:8]:
             print(f"     {rid[8:16]}  {why}")
 
-    orphan = [c for i, c in enumerate(costs) if i not in claimed]
+    orphan = [c for i, c in enumerate(costs) if i not in owner]
     if orphan:
         print(f"\n  ⚠️ {len(orphan)} cost-rækker uden ejer:")
         for c in orphan[:6]:

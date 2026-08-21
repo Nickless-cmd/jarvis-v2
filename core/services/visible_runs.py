@@ -258,6 +258,9 @@ from core.services.visible_runs_sections.run_finalization import (  # noqa: E402
 # (Boy Scout before jarvis-brain-auto-inject added below). Re-exported
 # from here so existing monkeypatches in tests/test_visible_runs_approval_resolution.py
 # (visible_runs._set_visible_approval_state, etc.) fortsat virker.
+from core.services.visible_runs_sections.approval_wait import (  # noqa: E402
+    wait_for_approval,
+)
 from core.services.visible_runs_sections.run_control_state import (  # noqa: E402
     _VISIBLE_RUN_ACTIVE_KEY,
     _VISIBLE_RUN_APPROVAL_PREFIX,
@@ -2082,36 +2085,16 @@ async def _stream_visible_run(
                                 or sr["result"].get("command", "")
                             ),
                         })
-                        # Block the generator until user approves or denies (5 min timeout)
-                        _resolved = None
-                        _deadline = asyncio.get_running_loop().time() + 300.0
-                        logger.info(
-                            "approval-wait-start run_id=%s round=0 approval_id=%s tool=%s",
-                            run.run_id, approval_id, sr["tool_name"],
-                        )
-                        while asyncio.get_running_loop().time() < _deadline:
-                            _approval_state = _get_visible_approval_state(approval_id)
-                            _status = str(_approval_state.get("status") or "")
-                            if _status == "approved":
-                                _resolved = str(_approval_state.get("result_text") or "")
-                                logger.info(
-                                    "approval-resolved run_id=%s approval_id=%s result_chars=%d",
-                                    run.run_id, approval_id, len(_resolved),
-                                )
-                                break
-                            if _status in {"denied", "expired"}:
-                                _resolved = None
-                                logger.info(
-                                    "approval-rejected run_id=%s approval_id=%s status=%s",
-                                    run.run_id, approval_id, _status,
-                                )
-                                break
-                            await asyncio.sleep(0.25)
-                        else:
-                            logger.warning(
-                                "approval-timeout run_id=%s approval_id=%s",
-                                run.run_id, approval_id,
-                            )
+                        # Vent på brugeren — MED keepalive. Uden heartbeats tolker
+                        # _translation_loop 180s tavshed som en død kilde og river det
+                        # levende run ned (se approval_wait-modulets docstring).
+                        _appr_out: dict = {}
+                        async for _appr_frame in wait_for_approval(
+                            approval_id=approval_id, tool_name=sr["tool_name"],
+                            run_id=run.run_id, round_no=0, out=_appr_out,
+                        ):
+                            yield _appr_frame
+                        _resolved = _appr_out["result_text"]
                         if _resolved is None:
                             _resolved_result_texts[_idx] = f"[{sr['tool_name']}]: Tool call denied by user."
                             yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
@@ -4058,35 +4041,17 @@ async def _stream_visible_run(
                                     or _a_sr["result"].get("command", "")
                                 ),
                             })
-                            _a_res = None
-                            _a_deadline = asyncio.get_running_loop().time() + 300.0
-                            logger.info(
-                                "approval-wait-start run_id=%s round=%d approval_id=%s tool=%s",
-                                run.run_id, _agentic_round + 1, _a_apid, _a_sr["tool_name"],
-                            )
-                            while asyncio.get_running_loop().time() < _a_deadline:
-                                _a_state = _get_visible_approval_state(_a_apid)
-                                _a_status = str(_a_state.get("status") or "")
-                                if _a_status == "approved":
-                                    _a_res = str(_a_state.get("result_text") or "")
-                                    logger.info(
-                                        "approval-resolved run_id=%s approval_id=%s "
-                                        "result_chars=%d", run.run_id, _a_apid, len(_a_res),
-                                    )
-                                    break
-                                if _a_status in {"denied", "expired"}:
-                                    _a_res = None
-                                    logger.info(
-                                        "approval-rejected run_id=%s approval_id=%s status=%s",
-                                        run.run_id, _a_apid, _a_status,
-                                    )
-                                    break
-                                await asyncio.sleep(0.25)
-                            else:
-                                logger.warning(
-                                    "approval-timeout run_id=%s approval_id=%s",
-                                    run.run_id, _a_apid,
-                                )
+                            # Samme keepalive-ventelokke som den simple gren. Det var
+                            # HER run 6f6235b0 døde 21. aug: approval_needed i runde 15,
+                            # 180s tavshed, hele svaret tabt.
+                            _a_appr_out: dict = {}
+                            async for _a_appr_frame in wait_for_approval(
+                                approval_id=_a_apid, tool_name=_a_sr["tool_name"],
+                                run_id=run.run_id, round_no=_agentic_round + 1,
+                                out=_a_appr_out,
+                            ):
+                                yield _a_appr_frame
+                            _a_res = _a_appr_out["result_text"]
                             if _a_res is None:
                                 _a_resolved[_a_idx] = (
                                     f"[{_a_sr['tool_name']}]: Tool call denied by user."

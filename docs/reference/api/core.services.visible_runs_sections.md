@@ -7,6 +7,13 @@ _visible_runs_sections — Boy Scout-udtrækninger fra visible_runs.py._
 
 _(no top-level classes or functions)_
 
+## `core/services/visible_runs_sections/approval_wait.py`
+_Vent på brugerens godkendelse — uden at runnet dør imens._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `wait_for_approval` | `(*, approval_id, tool_name, run_id, round_no, out, window_s=…, heartbeat_interval_s=…)` | Poll godkendelsestilstanden og yield keepalive imens. | [src](../../../core/services/visible_runs_sections/approval_wait.py#L57) |
+
 ## `core/services/visible_runs_sections/client_tool_delegation.py`
 _Klient-tool-delegering — udskilt enhed (Boy Scout: holder visible_runs.py lille)._
 

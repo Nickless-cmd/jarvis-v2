@@ -407,7 +407,7 @@ _Central 'users' route — hvornår var hver bruger sidst aktiv, og hvordan (own
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_users.py#L16) |
-| function | `get_user_activity` | `()` | Bruger-aktivitet: sidst aktiv pr. bruger flettet fra alle kilder. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_users.py#L22) |
+| function | `get_user_activity` | `()` | Bruger-aktivitet: sidst aktiv pr. bruger flettet fra alle kilder. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_users.py#L28) |
 
 ## `apps/api/jarvis_api/routes/chat.py`
 

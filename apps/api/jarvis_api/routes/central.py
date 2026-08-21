@@ -38,12 +38,25 @@ def _require_owner() -> None:
     require_central_owner()
 
 
+# HUD'en poller dette hvert sekund (målt 310 kald/5 min). Snapshottet koster
+# 78ms, så ucachet brændte det 24% af al poll-belastning. 2s er stadig "live"
+# for et øje, men halverer arbejdet — og cache_age_ms fortæller sandheden om
+# hvor gammelt tallet er i stedet for at lade som om.
+_REALTIME_TTL_S = 2.0
+
+
 @router.get("/realtime")
 async def central_realtime() -> dict:
     """Ét snapshot af Centralens live-tilstand (puls/feed/flag/læring)."""
     _require_owner()
+    from core.services.central_projection_cache import cached
     from core.services.central_realtime import realtime_snapshot
-    return await asyncio.to_thread(realtime_snapshot)
+
+    snap, age_s = await asyncio.to_thread(
+        cached, "central:realtime", _REALTIME_TTL_S, realtime_snapshot)
+    if isinstance(snap, dict):
+        return {**snap, "cache_age_ms": int(age_s * 1000)}
+    return snap
 
 
 @router.get("/timeseries")

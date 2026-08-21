@@ -16,6 +16,8 @@ tom liste og svarer 200. Owner-gaten håndhæves altid først.
 """
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter
 
 from apps.api.jarvis_api.routes.central_auth import require_central_owner
@@ -56,6 +58,9 @@ async def get_agents() -> dict:
     return {"agents": agents, "count": len(agents)}
 
 
+_COSTS_DAILY_TTL_S = 15.0
+
+
 @router.get("/costs-daily")
 async def get_costs_daily() -> dict:
     """Projicér cost-timeserien (samme data som ``/mc/costs``) + absorbér den.
@@ -66,70 +71,82 @@ async def get_costs_daily() -> dict:
     """
     require_central_owner()
 
-    from core.costing import ledger
+    # Fire forespørgsler, hver med fuld SCAN over 480k costs-rækker, PLUS en
+    # absorb()-skrivning — 343ms pr. kald, 192 kald/5min. Og funktionen er
+    # async men kaldte ledger blokerende, så event-loopet stod stille imens.
+    # Nu: cachet 15s og kørt i en tråd. absorb() sker ved miss, hvilket også
+    # holder nerven fra at gentage samme værdi 192 gange (decision_signal_runaway).
+    from core.services.central_projection_cache import cached
 
-    try:
-        days = ledger.daily_cost_summary()
-    except Exception:
-        days = []
-    if not isinstance(days, list):
-        days = []
+    def _build() -> dict:
+        from core.costing import ledger
 
-    try:
-        today = float(ledger.today_cost())
-    except Exception:
-        today = 0.0
-
-    try:
-        week = float(ledger.this_week_cost())
-    except Exception:
-        week = 0.0
-
-    try:
-        summary = ledger.telemetry_summary()
-    except Exception:
-        summary = {}
-    if not isinstance(summary, dict):
-        summary = {}
-
-    # Dag-over-dag: aggregér total_cost pr. dag (sum over lanes). ──────────────
-    per_day: dict[str, float] = {}
-    order: list[str] = []
-    for row in days:
-        if not isinstance(row, dict):
-            continue
-        day = row.get("day")
-        if not isinstance(day, str):
-            continue
         try:
-            cost = float(row.get("total_cost") or 0.0)
+            days = ledger.daily_cost_summary()
         except Exception:
-            cost = 0.0
-        if day not in per_day:
-            per_day[day] = 0.0
-            order.append(day)
-        per_day[day] += cost
+            days = []
+        if not isinstance(days, list):
+            days = []
 
-    today_total = per_day[order[0]] if len(order) >= 1 else 0.0
-    prev_total = per_day[order[1]] if len(order) >= 2 else 0.0
+        try:
+            today = float(ledger.today_cost())
+        except Exception:
+            today = 0.0
 
-    absorb(
-        "cost",
-        "daily",
-        {"today": today_total, "prev": prev_total, "usd_today": today},
-        flag_if=lambda v: v["prev"] > 0 and v["today"] > v["prev"] * 1.5,
-        flag_reason="dags-omkostning >150% af går",
-        learn_key="cost_daily",
-    )
+        try:
+            week = float(ledger.this_week_cost())
+        except Exception:
+            week = 0.0
 
-    return {
-        "days": days,
-        "today_cost": today,
-        "week_cost": week,
-        "summary": summary,
-        "today_total": today_total,
-        "prev_total": prev_total,
-    }
+        try:
+            summary = ledger.telemetry_summary()
+        except Exception:
+            summary = {}
+        if not isinstance(summary, dict):
+            summary = {}
+
+        # Dag-over-dag: aggregér total_cost pr. dag (sum over lanes). ──────────────
+        per_day: dict[str, float] = {}
+        order: list[str] = []
+        for row in days:
+            if not isinstance(row, dict):
+                continue
+            day = row.get("day")
+            if not isinstance(day, str):
+                continue
+            try:
+                cost = float(row.get("total_cost") or 0.0)
+            except Exception:
+                cost = 0.0
+            if day not in per_day:
+                per_day[day] = 0.0
+                order.append(day)
+            per_day[day] += cost
+
+        today_total = per_day[order[0]] if len(order) >= 1 else 0.0
+        prev_total = per_day[order[1]] if len(order) >= 2 else 0.0
+
+        absorb(
+            "cost",
+            "daily",
+            {"today": today_total, "prev": prev_total, "usd_today": today},
+            flag_if=lambda v: v["prev"] > 0 and v["today"] > v["prev"] * 1.5,
+            flag_reason="dags-omkostning >150% af går",
+            learn_key="cost_daily",
+        )
+
+        return {
+            "days": days,
+            "today_cost": today,
+            "week_cost": week,
+            "summary": summary,
+            "today_total": today_total,
+            "prev_total": prev_total,
+        }
+
+    payload, age_s = await asyncio.to_thread(
+        cached, "central:costs-daily", _COSTS_DAILY_TTL_S, _build)
+    return {**payload, "cache_age_ms": int(age_s * 1000)}
 
 
 @router.get("/council")

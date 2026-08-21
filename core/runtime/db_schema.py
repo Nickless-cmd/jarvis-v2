@@ -372,6 +372,13 @@ def init_db() -> None:
         if "run_id" not in _cost_cols:
             conn.execute("ALTER TABLE costs ADD COLUMN run_id TEXT NOT NULL DEFAULT ''")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_costs_run_id ON costs (run_id)")
+        # Alle cost-projektioner filtrerer på tidsvindue (daily_cost_summary
+        # 30 dage, this_week_cost, today_cost). Uden dette indeks var hver af
+        # dem en fuld SCAN over 480.705 rækker — 343ms samlet pr. kald af
+        # /central/costs-daily, som Centralen poller 192 gange i kvarteret.
+        # Kun 35% af rækkerne ligger i 30-dages-vinduet, så range-scan er en
+        # reel besparelse og ikke bare et indeks for syns skyld.
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_costs_created_at ON costs (created_at)")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS cheap_provider_runtime_state (

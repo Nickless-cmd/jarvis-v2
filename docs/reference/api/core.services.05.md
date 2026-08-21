@@ -185,9 +185,10 @@ _Kortlivet cache for Centralens projektioner — så polling ikke koster._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `cached` | `(key, ttl_s, producer)` | Returnér ``(værdi, alder_i_sekunder)`` — beregn kun hvis TTL er udløbet. | [src](../../../core/services/central_projection_cache.py#L54) |
-| function | `invalidate` | `(prefix=…)` | Smid cachede værdier væk. Tom prefix rydder alt. Returnerer antal fjernet. | [src](../../../core/services/central_projection_cache.py#L80) |
-| function | `stats` | `()` | Hits/misses/hitrate — så effekten kan aflæses i stedet for antages. | [src](../../../core/services/central_projection_cache.py#L89) |
+| function | `cached` | `(key, ttl_s, producer)` | Returnér ``(værdi, alder_i_sekunder)`` — beregn kun hvis TTL er udløbet. | [src](../../../core/services/central_projection_cache.py#L55) |
+| function | `invalidate` | `(prefix=…)` | Smid cachede værdier væk. Tom prefix rydder alt. Returnerer antal fjernet. | [src](../../../core/services/central_projection_cache.py#L81) |
+| function | `stats` | `()` | Hits/misses/hitrate — så effekten kan aflæses i stedet for antages. | [src](../../../core/services/central_projection_cache.py#L93) |
+| function | `cached_by_version` | `(key, version, producer)` | Som ``cached()``, men invalideret af en VERSIONSNØGLE i stedet for en TTL. | [src](../../../core/services/central_projection_cache.py#L105) |
 
 ## `core/services/central_prompt_composer.py`
 _core/services/central_prompt_composer.py_

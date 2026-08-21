@@ -167,45 +167,45 @@ _Real-time Central-vindue til owner (jarvis-desk code mode)._
 |---|---|---|---|---|
 | function | `_rec_to_item` | `(r)` | TraceRecord → kompakt feed-item (samme form som snapshot-feed'en). | [src](../../../apps/api/jarvis_api/routes/central.py#L18) |
 | function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central.py#L36) |
-| function | `central_realtime` | `()` | Ét snapshot af Centralens live-tilstand (puls/feed/flag/læring). | [src](../../../apps/api/jarvis_api/routes/central.py#L42) |
-| function | `central_timeseries_merged` | `()` | Per-nerve tidsserie merget PÅ TVÆRS af processer (runtime+api). Lukker cross-proces- | [src](../../../apps/api/jarvis_api/routes/central.py#L50) |
-| function | `central_diagnostics` | `()` | Fuldt diagnostik-sted til Central-HUD'ens Diagnostik-mode (Bjørn 2026-06-23: 'mangler et | [src](../../../apps/api/jarvis_api/routes/central.py#L60) |
-| function | `central_providers` | `()` | Provider-helbred til Central-HUD'en — læser DET GEMTE ping-snapshot (billigt, ingen live | [src](../../../apps/api/jarvis_api/routes/central.py#L98) |
-| function | `central_cost` | `(window=…, provider=…)` | Cost-aggregat (WS3): today/7d/30d total $, tokens ind/ud, cache-hit%, fordelt på | [src](../../../apps/api/jarvis_api/routes/central.py#L107) |
-| function | `central_agents` | `(window=…)` | Agent-observabilitet (B3): costs-aggregat (lane in agent/council) + dispatch- | [src](../../../apps/api/jarvis_api/routes/central.py#L116) |
-| function | `central_agent_cancel` | `(agent_id, payload=…)` | Afbryd (abort) en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L126) |
-| function | `central_agent_pause` | `(agent_id)` | Pausér en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L150) |
-| function | `central_council` | `(window=…)` | Council-observabilitet (B3): convocations/deadlocks/roller/event-vs-ondemand- | [src](../../../apps/api/jarvis_api/routes/central.py#L176) |
-| function | `central_shadow_review` | `()` | Shadow-eksperiment-register: hvilke shadow-vinduer kører, og hvilke er MODNE | [src](../../../apps/api/jarvis_api/routes/central.py#L185) |
-| function | `central_command` | `(payload)` | Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/ | [src](../../../apps/api/jarvis_api/routes/central.py#L196) |
-| function | `central_mind` | `(section=…)` | Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L207) |
-| function | `central_stream` | `()` | SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L221) |
-| function | `central_nerve_detail` | `(nerve)` | Lag 5: én nerves spor + kode-lokation + cluster + live tænd/sluk-tilstand. | [src](../../../apps/api/jarvis_api/routes/central.py#L251) |
-| function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L288) |
+| function | `central_realtime` | `()` | Ét snapshot af Centralens live-tilstand (puls/feed/flag/læring). | [src](../../../apps/api/jarvis_api/routes/central.py#L49) |
+| function | `central_timeseries_merged` | `()` | Per-nerve tidsserie merget PÅ TVÆRS af processer (runtime+api). Lukker cross-proces- | [src](../../../apps/api/jarvis_api/routes/central.py#L63) |
+| function | `central_diagnostics` | `()` | Fuldt diagnostik-sted til Central-HUD'ens Diagnostik-mode (Bjørn 2026-06-23: 'mangler et | [src](../../../apps/api/jarvis_api/routes/central.py#L73) |
+| function | `central_providers` | `()` | Provider-helbred til Central-HUD'en — læser DET GEMTE ping-snapshot (billigt, ingen live | [src](../../../apps/api/jarvis_api/routes/central.py#L111) |
+| function | `central_cost` | `(window=…, provider=…)` | Cost-aggregat (WS3): today/7d/30d total $, tokens ind/ud, cache-hit%, fordelt på | [src](../../../apps/api/jarvis_api/routes/central.py#L120) |
+| function | `central_agents` | `(window=…)` | Agent-observabilitet (B3): costs-aggregat (lane in agent/council) + dispatch- | [src](../../../apps/api/jarvis_api/routes/central.py#L129) |
+| function | `central_agent_cancel` | `(agent_id, payload=…)` | Afbryd (abort) en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L139) |
+| function | `central_agent_pause` | `(agent_id)` | Pausér en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L163) |
+| function | `central_council` | `(window=…)` | Council-observabilitet (B3): convocations/deadlocks/roller/event-vs-ondemand- | [src](../../../apps/api/jarvis_api/routes/central.py#L189) |
+| function | `central_shadow_review` | `()` | Shadow-eksperiment-register: hvilke shadow-vinduer kører, og hvilke er MODNE | [src](../../../apps/api/jarvis_api/routes/central.py#L198) |
+| function | `central_command` | `(payload)` | Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/ | [src](../../../apps/api/jarvis_api/routes/central.py#L209) |
+| function | `central_mind` | `(section=…)` | Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L220) |
+| function | `central_stream` | `()` | SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L234) |
+| function | `central_nerve_detail` | `(nerve)` | Lag 5: én nerves spor + kode-lokation + cluster + live tænd/sluk-tilstand. | [src](../../../apps/api/jarvis_api/routes/central.py#L264) |
+| function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L301) |
 
 ## `apps/api/jarvis_api/routes/central_absorb_routes.py`
 _Central-absorb routes — MC-kategorier PROJICERET som levende central-nerver._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `get_agents` | `()` | Projicér agent-runtime-surfacen (samme som ``/mc/agents``) + absorbér den. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L28) |
-| function | `get_costs_daily` | `()` | Projicér cost-timeserien (samme data som ``/mc/costs``) + absorbér den. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L60) |
-| function | `get_council` | `()` | Projicér råds-/swarm-surfacen (samme som ``/mc/council``) + absorbér den. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L136) |
-| function | `get_scheduled` | `()` | Projicér ventende planlagte opgaver + absorbér antallet som nerve. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L172) |
-| function | `get_events` | `(limit=…, family=…)` | Projicér eventbus-feedet (recent / recent_by_family) + absorbér en tæller. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L199) |
-| function | `get_memory_health` | `()` | Projicér memory-pipeline-surfacen (genbrug ``mc_memory_pipeline``) + absorbér. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L223) |
-| function | `get_runs` | `(limit=…)` | Projicér de seneste visible runs + absorbér en kompakt liveness-tæller. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L256) |
-| function | `get_run_detail` | `(run_id)` | Projicér én run-detalje (opslag i de seneste 50) + absorbér fund/status. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L284) |
-| function | `get_autonomy` | `()` | Projicér autonomi-forslags-køen + absorbér den som nerve. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L311) |
-| function | `get_attention` | `()` | Projicér attention-budget-surfacen + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L352) |
-| function | `get_skills` | `()` | Projicér skill-engine + skill-contract-registry + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L369) |
-| function | `get_integrity` | `()` | Projicér self-deception-guard-surfacen + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L395) |
-| function | `get_experiments` | `()` | Projicér cognitive-core-experiments-surfacen + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L419) |
-| function | `get_soul` | `()` | Projicér Jarvis' stadig-mørke sjæle-/tids-signaler som levende nerver. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L456) |
-| function | `get_dark_products` | `()` | Projicér mørke daemon-PRODUKTER ind i Centralen som nerver. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L522) |
-| function | `get_initiative` | `()` | Projicér den gatede initiativ-stige + absorbér den som levende nerve. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L566) |
-| function | `get_execution` | `()` | Projicér visible-execution-config (whitelisted flags) + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L594) |
-| function | `get_tone` | `()` | Projicér Centralens sproglige TONE-PROFIL (rådets #5) + absorbér den. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L614) |
+| function | `get_agents` | `()` | Projicér agent-runtime-surfacen (samme som ``/mc/agents``) + absorbér den. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L30) |
+| function | `get_costs_daily` | `()` | Projicér cost-timeserien (samme data som ``/mc/costs``) + absorbér den. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L65) |
+| function | `get_council` | `()` | Projicér råds-/swarm-surfacen (samme som ``/mc/council``) + absorbér den. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L153) |
+| function | `get_scheduled` | `()` | Projicér ventende planlagte opgaver + absorbér antallet som nerve. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L189) |
+| function | `get_events` | `(limit=…, family=…)` | Projicér eventbus-feedet (recent / recent_by_family) + absorbér en tæller. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L216) |
+| function | `get_memory_health` | `()` | Projicér memory-pipeline-surfacen (genbrug ``mc_memory_pipeline``) + absorbér. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L240) |
+| function | `get_runs` | `(limit=…)` | Projicér de seneste visible runs + absorbér en kompakt liveness-tæller. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L273) |
+| function | `get_run_detail` | `(run_id)` | Projicér én run-detalje (opslag i de seneste 50) + absorbér fund/status. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L301) |
+| function | `get_autonomy` | `()` | Projicér autonomi-forslags-køen + absorbér den som nerve. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L328) |
+| function | `get_attention` | `()` | Projicér attention-budget-surfacen + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L369) |
+| function | `get_skills` | `()` | Projicér skill-engine + skill-contract-registry + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L386) |
+| function | `get_integrity` | `()` | Projicér self-deception-guard-surfacen + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L412) |
+| function | `get_experiments` | `()` | Projicér cognitive-core-experiments-surfacen + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L436) |
+| function | `get_soul` | `()` | Projicér Jarvis' stadig-mørke sjæle-/tids-signaler som levende nerver. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L473) |
+| function | `get_dark_products` | `()` | Projicér mørke daemon-PRODUKTER ind i Centralen som nerver. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L539) |
+| function | `get_initiative` | `()` | Projicér den gatede initiativ-stige + absorbér den som levende nerve. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L583) |
+| function | `get_execution` | `()` | Projicér visible-execution-config (whitelisted flags) + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L611) |
+| function | `get_tone` | `()` | Projicér Centralens sproglige TONE-PROFIL (rådets #5) + absorbér den. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L631) |
 
 ## `apps/api/jarvis_api/routes/central_affect.py`
 _Central 'affect' route — surfaces nervesystemets affektive fordeling til OWNER._

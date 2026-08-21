@@ -24,7 +24,7 @@ def _require_owner() -> None:
 
 
 @router.get("/autonomous")
-async def get_autonomous_history() -> dict:
+def get_autonomous_history() -> dict:
     """Jarvis' autonome historie grupperet pr. oprindelse (owner-only, read-only, self-safe)."""
     _require_owner()
     try:

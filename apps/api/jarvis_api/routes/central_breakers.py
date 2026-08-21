@@ -22,7 +22,7 @@ class ResetBody(BaseModel):
 
 
 @router.post("/breakers/{nerve:path}/reset")
-async def reset_breaker(nerve: str, body: ResetBody) -> dict:
+def reset_breaker(nerve: str, body: ResetBody) -> dict:
     _require_owner()
     if not body.confirm:
         return {"ok": False, "needs_confirm": True}

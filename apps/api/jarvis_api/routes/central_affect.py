@@ -22,7 +22,7 @@ def _require_owner() -> None:
 
 
 @router.get("/affect")
-async def get_affect() -> dict:
+def get_affect() -> dict:
     """Nervesystemets affektive fordeling lige nu (owner-only, read-only, self-safe).
 
     Proxyer til RUNTIME-processen (8011) hvor affekt-meta faktisk lever i
@@ -41,7 +41,7 @@ async def get_affect() -> dict:
 
 
 @router.get("/body")
-async def get_body() -> dict:
+def get_body() -> dict:
     """Jarvis' live hardware-krop (CPU/temp/disk/RAM/GPU). Proxyer til runtime hvor
     psutil-samlingen sker. Owner-only, read-only, self-safe."""
     _require_owner()

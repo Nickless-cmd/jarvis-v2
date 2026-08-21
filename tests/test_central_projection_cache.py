@@ -143,3 +143,61 @@ class TestSkema:
         src = inspect.getsource(db_schema)
         assert "idx_costs_created_at ON costs (created_at)" in src
         assert "IF NOT EXISTS" in src.split("idx_costs_created_at")[0][-60:]
+
+
+class TestBlokerendeHandlers:
+    """75 route-handlers var `async def` uden at awaite noget.
+
+    FastAPI kører en `async def` handler DIREKTE i event-loopet; en almindelig
+    `def` handler kører i dens threadpool. Alle 75 var altså synkront DB-arbejde
+    der frøs loopet mens det kørte — /central/users alene 111ms x 100 kald pr.
+    kvarter. Det er samme mekanisme som bidrog til loop-lag ved cutoffs.
+
+    Testen scanner AST'en, så den fanger både en genindført `async` og en ny
+    handler skrevet efter det gamle mønster.
+    """
+
+    def _blokerende(self):
+        import ast
+        import pathlib
+        fundet = []
+        root = pathlib.Path(__file__).resolve().parents[1]
+        for p in sorted((root / "apps/api/jarvis_api/routes").glob("central*.py")):
+            for node in ast.walk(ast.parse(p.read_text())):
+                if not isinstance(node, ast.AsyncFunctionDef):
+                    continue
+                if not any(
+                    isinstance(d, ast.Call) and isinstance(d.func, ast.Attribute)
+                    and d.func.attr in ("get", "post")
+                    for d in node.decorator_list
+                ):
+                    continue
+                body = ast.unparse(node)
+                if "to_thread" in body:
+                    continue
+                if any(isinstance(n, (ast.Await, ast.AsyncFor, ast.AsyncWith))
+                       for n in ast.walk(node)):
+                    continue
+                fundet.append(f"{p.name}:{node.name}")
+        return fundet
+
+    def test_ingen_async_handler_blokerer_event_loopet(self):
+        blok = self._blokerende()
+        assert not blok, (
+            f"{len(blok)} handler(e) er `async def` uden await og uden to_thread — "
+            f"de kører synkront DB-arbejde i event-loopet: {blok[:5]}")
+
+    def test_users_er_cachet(self):
+        import inspect
+        from apps.api.jarvis_api.routes import central_users as cu
+        src = inspect.getsource(cu.get_user_activity)
+        assert "cached(" in src, "/central/users var 67% af belastningen efter costs-daily"
+        assert "cache_age_ms" in src
+
+    def test_users_ts_bygges_inde_i_cachen(self):
+        """Et 9s gammelt snapshot må ikke bære et friskt tidsstempel."""
+        import inspect
+        from apps.api.jarvis_api.routes import central_users as cu
+        src = inspect.getsource(cu.get_user_activity)
+        build = src[src.index("def _build()"):src.index("surf, age_s = cached")]
+        assert 'surf["ts"]' in build, "ts sættes uden for cachen — det lyver om friskheden"

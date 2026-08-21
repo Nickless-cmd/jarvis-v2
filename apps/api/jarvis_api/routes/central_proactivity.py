@@ -16,7 +16,7 @@ def _require_owner() -> None:
 
 
 @router.get("/proactivity")
-async def get_proactivity() -> dict:
+def get_proactivity() -> dict:
     """Proaktivitets-broen: switch-status + ventende urgent/normal kandidater. Owner-only."""
     _require_owner()
     try:

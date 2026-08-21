@@ -16,7 +16,7 @@ def _require_owner() -> None:
 
 
 @router.get("/moltbook")
-async def get_moltbook() -> dict:
+def get_moltbook() -> dict:
     """Moltbook observe-nerve: sidste scan + ny aktivitet + seneste tråde + status. Owner-only."""
     _require_owner()
     try:

@@ -20,7 +20,7 @@ def _require_owner() -> None:
 
 
 @router.get("/excess")
-async def get_excess(propose: int = 0) -> dict:
+def get_excess(propose: int = 0) -> dict:
     """Excess-sans: føles-pres + oversized filer. ?propose=1 → tilføj dead-function-snit-forslag."""
     _require_owner()
     try:

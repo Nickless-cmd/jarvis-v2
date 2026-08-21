@@ -17,7 +17,7 @@ def _require_owner() -> None:
 
 
 @router.get("/agent-smith")
-async def get_agent_smith() -> dict:
+def get_agent_smith() -> dict:
     """Agent Smith: selv-lighed-score + top-gentagne fraser/mønstre + modstemme-status. Owner-only."""
     _require_owner()
     try:

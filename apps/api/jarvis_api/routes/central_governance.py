@@ -24,14 +24,14 @@ class SetFlagBody(BaseModel):
 
 
 @router.get("/governance")
-async def get_governance() -> dict:
+def get_governance() -> dict:
     _require_owner()
     from core.services.central_governance import list_flags
     return {"flags": list_flags()}
 
 
 @router.post("/governance/set")
-async def set_governance(body: SetFlagBody) -> dict:
+def set_governance(body: SetFlagBody) -> dict:
     # Privilege-eskalering: at flippe et governance-flag kan slå enforcement fra → fail-closed gate.
     _require_owner_strict()
     from core.services.central_governance import set_flag

@@ -112,7 +112,7 @@ _SURFACES = (
 
 
 @router.get("/self")
-async def get_self() -> dict:
+def get_self() -> dict:
     """Jarvis' reduced self-snapshot (owner-only, read-only, self-safe)."""
     require_central_owner()
     out: dict = {}
@@ -136,7 +136,7 @@ async def get_self() -> dict:
 
 
 @router.get("/inner-life")
-async def get_inner_life() -> dict:
+def get_inner_life() -> dict:
     """Jarvis' reducerede inner-life-digest (owner-only, liveness+count, self-safe)."""
     require_central_owner()
     from core.services.central_runtime_proxy import proxy_or_local

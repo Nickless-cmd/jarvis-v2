@@ -7,7 +7,7 @@ def _require_owner() -> None:
     from apps.api.jarvis_api.routes.central_auth import require_central_owner
     require_central_owner()
 @router.get("/decentralization")
-async def get_decentralization() -> dict:
+def get_decentralization() -> dict:
     """Hvor meget af Centralen er unødvendig flaskehals + hvad kunne resolve lokalt. Owner-only."""
     _require_owner()
     try:

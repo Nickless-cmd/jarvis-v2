@@ -20,14 +20,14 @@ class HealerFlagBody(BaseModel):
 
 
 @router.get("/healers")
-async def get_healers() -> dict:
+def get_healers() -> dict:
     _require_owner()
     from core.services.error_healers import build_healer_surface
     return build_healer_surface()
 
 
 @router.post("/healers/flag")
-async def set_healer(body: HealerFlagBody) -> dict:
+def set_healer(body: HealerFlagBody) -> dict:
     _require_owner()
     if body.name not in _VALID_FLAGS:
         return {"ok": False, "error": f"ukendt healer-flag: {body.name}"}

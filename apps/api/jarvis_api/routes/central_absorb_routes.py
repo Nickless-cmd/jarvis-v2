@@ -27,7 +27,7 @@ router = APIRouter(prefix="/central", tags=["central-agents"])
 
 
 @router.get("/agents")
-async def get_agents() -> dict:
+def get_agents() -> dict:
     """Projicér agent-runtime-surfacen (samme som ``/mc/agents``) + absorbér den.
 
     Owner-gated. Self-safe: producent-fejl → tom roster, stadig 200.
@@ -150,7 +150,7 @@ async def get_costs_daily() -> dict:
 
 
 @router.get("/council")
-async def get_council() -> dict:
+def get_council() -> dict:
     """Projicér råds-/swarm-surfacen (samme som ``/mc/council``) + absorbér den.
 
     Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200.
@@ -186,7 +186,7 @@ async def get_council() -> dict:
 
 
 @router.get("/queues/scheduled")
-async def get_scheduled() -> dict:
+def get_scheduled() -> dict:
     """Projicér ventende planlagte opgaver + absorbér antallet som nerve.
 
     Owner-gated. Self-safe: producent-fejl → tom liste, stadig 200.
@@ -213,7 +213,7 @@ async def get_scheduled() -> dict:
 
 
 @router.get("/events")
-async def get_events(limit: int = 50, family: str | None = None) -> dict:
+def get_events(limit: int = 50, family: str | None = None) -> dict:
     """Projicér eventbus-feedet (recent / recent_by_family) + absorbér en tæller.
 
     Owner-gated. Self-safe: producent-fejl → tom liste, stadig 200. Kun en
@@ -237,7 +237,7 @@ async def get_events(limit: int = 50, family: str | None = None) -> dict:
 
 
 @router.get("/memory-health")
-async def get_memory_health() -> dict:
+def get_memory_health() -> dict:
     """Projicér memory-pipeline-surfacen (genbrug ``mc_memory_pipeline``) + absorbér.
 
     Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200. Flagger
@@ -270,7 +270,7 @@ async def get_memory_health() -> dict:
 
 
 @router.get("/runs")
-async def get_runs(limit: int = 20) -> dict:
+def get_runs(limit: int = 20) -> dict:
     """Projicér de seneste visible runs + absorbér en kompakt liveness-tæller.
 
     Owner-gated. Self-safe: producent-fejl → tom liste, stadig 200. Flagger hvis
@@ -298,7 +298,7 @@ async def get_runs(limit: int = 20) -> dict:
 
 
 @router.get("/runs/{run_id}")
-async def get_run_detail(run_id: str) -> dict:
+def get_run_detail(run_id: str) -> dict:
     """Projicér én run-detalje (opslag i de seneste 50) + absorbér fund/status.
 
     Owner-gated. Self-safe: producent-fejl → ikke-fundet, stadig 200.
@@ -325,7 +325,7 @@ async def get_run_detail(run_id: str) -> dict:
 
 
 @router.get("/autonomy")
-async def get_autonomy() -> dict:
+def get_autonomy() -> dict:
     """Projicér autonomi-forslags-køen + absorbér den som nerve.
 
     Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200.
@@ -366,7 +366,7 @@ async def get_autonomy() -> dict:
 
 
 @router.get("/attention")
-async def get_attention() -> dict:
+def get_attention() -> dict:
     """Projicér attention-budget-surfacen + absorbér liveness.
 
     Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200.
@@ -383,7 +383,7 @@ async def get_attention() -> dict:
 
 
 @router.get("/skills")
-async def get_skills() -> dict:
+def get_skills() -> dict:
     """Projicér skill-engine + skill-contract-registry + absorbér liveness.
 
     Owner-gated. Self-safe: hver producent-fejl → tomt surface, stadig 200.
@@ -409,7 +409,7 @@ async def get_skills() -> dict:
 
 
 @router.get("/integrity")
-async def get_integrity() -> dict:
+def get_integrity() -> dict:
     """Projicér self-deception-guard-surfacen + absorbér liveness.
 
     Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200.
@@ -433,7 +433,7 @@ async def get_integrity() -> dict:
 
 
 @router.get("/experiments")
-async def get_experiments() -> dict:
+def get_experiments() -> dict:
     """Projicér cognitive-core-experiments-surfacen + absorbér liveness.
 
     Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200.
@@ -470,7 +470,7 @@ _EXECUTION_KEYS = (
 
 
 @router.get("/soul")
-async def get_soul() -> dict:
+def get_soul() -> dict:
     """Projicér Jarvis' stadig-mørke sjæle-/tids-signaler som levende nerver.
 
     Længsel, identitets-drift, aktiv sansning, følelses-reparation, associativ
@@ -536,7 +536,7 @@ _DARK_ROUTES: dict[str, tuple[str, str, str]] = {
 
 
 @router.get("/dark-products")
-async def get_dark_products() -> dict:
+def get_dark_products() -> dict:
     """Projicér mørke daemon-PRODUKTER ind i Centralen som nerver.
 
     Mønster-skepsis (apophenia), drøm-konsolidering, dyb refleksion, semantisk
@@ -580,7 +580,7 @@ async def get_dark_products() -> dict:
 
 
 @router.get("/initiative")
-async def get_initiative() -> dict:
+def get_initiative() -> dict:
     """Projicér den gatede initiativ-stige + absorbér den som levende nerve.
 
     Rådets #3: initiativ stiger observe→propose→execute→learn med en gate før
@@ -608,7 +608,7 @@ async def get_initiative() -> dict:
 
 
 @router.get("/execution")
-async def get_execution() -> dict:
+def get_execution() -> dict:
     """Projicér visible-execution-config (whitelisted flags) + absorbér liveness.
 
     Owner-gated. Self-safe: producent-fejl → tomt config, stadig 200. KUN
@@ -628,7 +628,7 @@ async def get_execution() -> dict:
 
 
 @router.get("/tone")
-async def get_tone() -> dict:
+def get_tone() -> dict:
     """Projicér Centralens sproglige TONE-PROFIL (rådets #5) + absorbér den.
 
     J.A.R.V.I.S-kernen (præcis, køligt-varm, human, kortfattet) er konstant;

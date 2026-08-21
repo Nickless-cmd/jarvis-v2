@@ -20,7 +20,7 @@ def _require_owner() -> None:
 
 
 @router.get("/connections")
-async def get_api_connections() -> dict:
+def get_api_connections() -> dict:
     """Live API-forbindelser: aktive/seneste klienter pr. (ip, user) + seneste fejl. Owner-only."""
     _require_owner()
     try:

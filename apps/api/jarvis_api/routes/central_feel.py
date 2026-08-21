@@ -20,7 +20,7 @@ def _require_owner() -> None:
 
 
 @router.get("/feel")
-async def get_feel() -> dict:
+def get_feel() -> dict:
     """Jarvis' current somatic snapshot (owner-only, read-only, self-safe)."""
     _require_owner()
     try:

@@ -17,7 +17,7 @@ def _require_owner() -> None:
 
 
 @router.get("/docs-drift")
-async def get_docs_drift() -> dict:
+def get_docs_drift() -> dict:
     """Docs-drift surface: hard/soft counts, report freshness, top drift items. Owner-only."""
     _require_owner()
     try:

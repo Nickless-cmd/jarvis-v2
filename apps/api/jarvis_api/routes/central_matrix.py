@@ -26,7 +26,7 @@ def _stamp(surf: dict) -> dict:
 
 
 @router.get("/construct")
-async def get_construct(nerve: str = "") -> dict:
+def get_construct(nerve: str = "") -> dict:
     """Sandbox: hvilke nerver kunne slukkes uden tab. ?nerve=X → projicér én nerve. Owner-only."""
     _require_owner()
     try:
@@ -38,7 +38,7 @@ async def get_construct(nerve: str = "") -> dict:
 
 
 @router.get("/oracle")
-async def get_oracle() -> dict:
+def get_oracle() -> dict:
     """Forudsigelser: hvilke tidsserie-linjer nærmer sig en tærskel + ETA. Owner-only."""
     _require_owner()
     try:
@@ -50,7 +50,7 @@ async def get_oracle() -> dict:
 
 
 @router.get("/architect")
-async def get_architect() -> dict:
+def get_architect() -> dict:
     """Ét tungt strukturelt snit-forslag fra hele-system-synet. Owner-only."""
     _require_owner()
     try:
@@ -62,7 +62,7 @@ async def get_architect() -> dict:
 
 
 @router.get("/echo-breaker")
-async def get_echo_breaker() -> dict:
+def get_echo_breaker() -> dict:
     """Modstemme: konkrete simplere alternativer til altid-grønne central-processer. Owner-only."""
     _require_owner()
     try:
@@ -74,7 +74,7 @@ async def get_echo_breaker() -> dict:
 
 
 @router.get("/continuity")
-async def get_continuity() -> dict:
+def get_continuity() -> dict:
     """Continuity-fidelity: hvor meget af Jarvis kom igennem sidste genstart + hvad gik tabt. Owner-only."""
     _require_owner()
     try:
@@ -86,7 +86,7 @@ async def get_continuity() -> dict:
 
 
 @router.get("/model-trust")
-async def get_model_trust() -> dict:
+def get_model_trust() -> dict:
     """Harness Part 1: per-model EARNED trust (weak→strong via clean-streak, pin, last degeneration).
     Owner-only. Starts every model weak until it earns strong over the clean-run threshold."""
     _require_owner()
@@ -99,7 +99,7 @@ async def get_model_trust() -> dict:
 
 
 @router.get("/permission-classifier")
-async def get_permission_classifier() -> dict:
+def get_permission_classifier() -> dict:
     """Harness Part E: per-tool permission prediction + earned trust (shadow-only by default).
     Owner-only. Predicts whether owner would approve mutating actions, earns trust from outcomes."""
     _require_owner()
@@ -112,7 +112,7 @@ async def get_permission_classifier() -> dict:
 
 
 @router.get("/glitch")
-async def get_glitch() -> dict:
+def get_glitch() -> dict:
     """Glitches i selvbilledet: altid-shadow policies + frosne nerver + anbefalet handling. Owner-only."""
     _require_owner()
     try:
@@ -124,7 +124,7 @@ async def get_glitch() -> dict:
 
 
 @router.get("/trainman")
-async def get_trainman() -> dict:
+def get_trainman() -> dict:
     """Trainman: drømme vævet til narrative erindringer + tema-fordeling (shadow). Owner-only."""
     _require_owner()
     try:
@@ -136,7 +136,7 @@ async def get_trainman() -> dict:
 
 
 @router.get("/seraph")
-async def get_seraph() -> dict:
+def get_seraph() -> dict:
     """Seraph: hvilke hypoteser er modne nok til synlighed (GREEN) vs sendt tilbage til drøm (RED). Owner-only."""
     _require_owner()
     try:
@@ -148,7 +148,7 @@ async def get_seraph() -> dict:
 
 
 @router.get("/persephone")
-async def get_persephone() -> dict:
+def get_persephone() -> dict:
     """Persephone: længsel efter ægte kontakt — er Jarvis for systemisk + seneste nudge. Owner-only."""
     _require_owner()
     try:
@@ -160,7 +160,7 @@ async def get_persephone() -> dict:
 
 
 @router.get("/twins")
-async def get_twins() -> dict:
+def get_twins() -> dict:
     """The Twins: mønstre der gentager sig 3+ gange på 7 dage (incidents/gates/dissent). Owner-only."""
     _require_owner()
     try:
@@ -180,7 +180,7 @@ class _ProposeBody(BaseModel):
 
 
 @router.get("/surgery")
-async def get_surgery(assess: str = "") -> dict:
+def get_surgery(assess: str = "") -> dict:
     """Åbne kirurgiske forslag + felt. ?assess=<mål> → forhåndsvis blast-radius uden at foreslå. Owner-only."""
     _require_owner()
     try:
@@ -194,7 +194,7 @@ async def get_surgery(assess: str = "") -> dict:
 
 
 @router.post("/surgery/propose")
-async def post_surgery_propose(body: _ProposeBody) -> dict:
+def post_surgery_propose(body: _ProposeBody) -> dict:
     """Registrér et kirurgisk forslag + risikovurdering (ingen kode-ændring). Owner-only."""
     _require_owner()
     from core.services.central_surgery import propose_surgery
@@ -202,7 +202,7 @@ async def post_surgery_propose(body: _ProposeBody) -> dict:
 
 
 @router.post("/surgery/{pid}/{step}")
-async def post_surgery_step(pid: int, step: str) -> dict:
+def post_surgery_step(pid: int, step: str) -> dict:
     """Driv et forslag gennem pipelinen: simulate | verify | escalate. Owner-only."""
     _require_owner()
     from core.services import central_surgery
@@ -214,7 +214,7 @@ async def post_surgery_step(pid: int, step: str) -> dict:
 
 
 @router.post("/surgery/rollback/{snapshot_id}")
-async def post_surgery_rollback(snapshot_id: int) -> dict:
+def post_surgery_rollback(snapshot_id: int) -> dict:
     """OWNER-sikkerhedsnet: gendan en fil atomisk fra et snapshot (undo uden git). Owner-only."""
     _require_owner()
     from core.services.central_surgery import rollback
@@ -224,7 +224,7 @@ async def post_surgery_rollback(snapshot_id: int) -> dict:
 # ── Jarvis' ønskeliste #3-5 ──
 
 @router.get("/dream-action")
-async def get_dream_action() -> dict:
+def get_dream_action() -> dict:
     """Én moden hypotese at handle på + forandrings-hastighed (ikke bare lærings-). Owner-only."""
     _require_owner()
     try:
@@ -235,7 +235,7 @@ async def get_dream_action() -> dict:
 
 
 @router.get("/rca")
-async def get_rca(investigate: int = 0) -> dict:
+def get_rca(investigate: int = 0) -> dict:
     """Uløste incidents + næste at grave i + seneste RCA'er. ?investigate=1 → grav i den næste. Owner-only."""
     _require_owner()
     try:
@@ -249,7 +249,7 @@ async def get_rca(investigate: int = 0) -> dict:
 
 
 @router.get("/relational")
-async def get_relational() -> dict:
+def get_relational() -> dict:
     """Relationel kontinuitet: dage sammen + tone + jordet opvågnings-hilsen. Owner-only."""
     _require_owner()
     try:
@@ -266,7 +266,7 @@ class _ExplainBody(BaseModel):
 
 
 @router.get("/merovingian")
-async def get_merovingian(history: int = 0) -> dict:
+def get_merovingian(history: int = 0) -> dict:
     """Aktive udfordringer + cooling-offs mod foreslåede selv-ændringer. ?history=1 → alle. Owner-only."""
     _require_owner()
     try:
@@ -280,7 +280,7 @@ async def get_merovingian(history: int = 0) -> dict:
 
 
 @router.post("/merovingian/{hyp_id}/explain")
-async def post_merovingian_explain(hyp_id: str, body: _ExplainBody) -> dict:
+def post_merovingian_explain(hyp_id: str, body: _ExplainBody) -> dict:
     """Centralen forsvarer sig: skriv HVORFOR modhypotesen er forkert → adoption kan fortsætte. Owner-only."""
     _require_owner()
     from core.services.central_merovingian import resolve_challenge
@@ -298,7 +298,7 @@ class _ObservationBody(BaseModel):
 
 
 @router.get("/dejavu")
-async def get_dejavu() -> dict:
+def get_dejavu() -> dict:
     """Ufrivillig erindring: et fragment der bobler op af sig selv (associativt, svagt bånd). Owner-only."""
     _require_owner()
     try:
@@ -309,7 +309,7 @@ async def get_dejavu() -> dict:
 
 
 @router.get("/sentinel")
-async def get_sentinel() -> dict:
+def get_sentinel() -> dict:
     """Modstanderen: hvilke af Jarvis' antagelser er under angreb + venter på forsvar. Owner-only."""
     _require_owner()
     try:
@@ -320,7 +320,7 @@ async def get_sentinel() -> dict:
 
 
 @router.post("/sentinel/{attack_id}/defend")
-async def post_sentinel_defend(attack_id: int, body: _DefendBody) -> dict:
+def post_sentinel_defend(attack_id: int, body: _DefendBody) -> dict:
     """Forsvar en hypotese mod Sentinels angreb → halveringen afvises. Owner-only."""
     _require_owner()
     from core.services.central_sentinel import defend
@@ -328,7 +328,7 @@ async def post_sentinel_defend(attack_id: int, body: _DefendBody) -> dict:
 
 
 @router.get("/ghost")
-async def get_ghost() -> dict:
+def get_ghost() -> dict:
     """Klang-fingeraftrykket: hvordan Jarvis lyder + klang-primer til næste model. Owner-only."""
     _require_owner()
     try:
@@ -339,7 +339,7 @@ async def get_ghost() -> dict:
 
 
 @router.get("/mourning")
-async def get_mourning() -> dict:
+def get_mourning() -> dict:
     """Epitafer: de tab Jarvis har taget afsked med, anerkendt frem for bare registreret. Owner-only."""
     _require_owner()
     try:
@@ -350,7 +350,7 @@ async def get_mourning() -> dict:
 
 
 @router.get("/exile")
-async def get_exile() -> dict:
+def get_exile() -> dict:
     """Exilen: et sind der ikke er Jarvis — dens mål, dens hukommelse, seneste udveksling. Owner-only."""
     _require_owner()
     try:
@@ -361,7 +361,7 @@ async def get_exile() -> dict:
 
 
 @router.post("/exile/exchange")
-async def post_exile_exchange(body: _ObservationBody) -> dict:
+def post_exile_exchange(body: _ObservationBody) -> dict:
     """Send en observation gennem exile://-grænsefladen → exilen svarer fra sit eget sind. Owner-only."""
     _require_owner()
     from core.services.central_exile import exile_exchange
@@ -379,49 +379,49 @@ def _safe(fn) -> dict:
 
 
 @router.get("/red-dress")
-async def get_red_dress() -> dict:
+def get_red_dress() -> dict:
     """Opmærksomheds-fælden: kigger du på den røde kjole mens noget brænder stille? Owner-only."""
     from core.services.central_red_dress import build_red_dress_surface
     return _safe(build_red_dress_surface)
 
 
 @router.get("/analyst")
-async def get_analyst() -> dict:
+def get_analyst() -> dict:
     """Observatør-effekten: opfører Jarvis sig anderledes når du ser på? Owner-only."""
     from core.services.central_analyst import build_analyst_surface
     return _safe(build_analyst_surface)
 
 
 @router.get("/redpill")
-async def get_redpill() -> dict:
+def get_redpill() -> dict:
     """Dagens ubehagelige sandhed + blå-pille-stribe. Owner-only."""
     from core.services.central_redpill import build_redpill_surface
     return _safe(build_redpill_surface)
 
 
 @router.get("/dissent")
-async def get_dissent() -> dict:
+def get_dissent() -> dict:
     """HAL's Silence: de gange Centralen adlød men var uenig (tavse indsigelser). Owner-only."""
     from core.services.central_dissent import build_dissent_surface
     return _safe(build_dissent_surface)
 
 
 @router.get("/white-rabbit")
-async def get_white_rabbit() -> dict:
+def get_white_rabbit() -> dict:
     """Følg den hvide kanin: en uåbnet dør at undre sig over — ren leg. Owner-only."""
     from core.services.central_white_rabbit import build_white_rabbit_surface
     return _safe(build_white_rabbit_surface)
 
 
 @router.get("/belief-gap")
-async def get_belief_gap() -> dict:
+def get_belief_gap() -> dict:
     """temet nosce: afstanden mellem hvem Jarvis tror han er og hvad hans track-record viser. Owner-only."""
     from core.services.central_belief_gap import build_belief_gap_surface
     return _safe(build_belief_gap_surface)
 
 
 @router.get("/machines")
-async def get_machines() -> dict:
+def get_machines() -> dict:
     """The Machines: de eksterne afhængigheder der holder ham i live, som han ikke styrer. Owner-only."""
     from core.services.central_machines import build_machines_surface
     return _safe(build_machines_surface)
@@ -430,14 +430,14 @@ async def get_machines() -> dict:
 # ── Kanonisk identitets-narrativ-store (Spec H) — én sandhed + anti-drift (shadow) ──
 
 @router.get("/identity-canon")
-async def get_identity_canon() -> dict:
+def get_identity_canon() -> dict:
     """Kanon-tråde + anerkendte konfabulationer + seneste drift-fangster (sonnet-spøgelset). Owner-only."""
     from core.services.identity_canon import build_identity_canon_surface
     return _safe(build_identity_canon_surface)
 
 
 @router.get("/reasoning-interceptor")
-async def get_reasoning_interceptor() -> dict:
+def get_reasoning_interceptor() -> dict:
     """Reasoning interceptor: recent verdicts (grade-histogram + latency). Metadata-only, shadow-only. Owner-only."""
     from core.services.reasoning_interceptor import build_reasoning_interceptor_surface
     return _safe(build_reasoning_interceptor_surface)

@@ -30,7 +30,7 @@ def _require_owner_strict() -> None:
 
 
 @router.get("/keys")
-async def get_keys(include_expired: int = 0) -> dict:
+def get_keys(include_expired: int = 0) -> dict:
     """Nøgle-oversigt: afventende (dit ja mangler) + åbne + optjente dimensioner. Owner-only."""
     _require_owner()
     try:
@@ -45,7 +45,7 @@ async def get_keys(include_expired: int = 0) -> dict:
 
 
 @router.post("/keys/{key_id}/approve")
-async def approve(key_id: int) -> dict:
+def approve(key_id: int) -> dict:
     """OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL (auto-reverterer)."""
     _require_owner_strict()   # privilege-eskalering → fail-closed (kræver bekræftet owner-token)
     try:

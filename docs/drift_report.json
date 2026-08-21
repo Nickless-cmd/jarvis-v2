@@ -1,7 +1,48 @@
 {
-  "generated_at": "2026-07-09T13:41:09.344461+00:00",
-  "hard": [],
+  "generated_at": "2026-08-21T09:17:45.197371+00:00",
+  "hard": [
+    {
+      "generator": "api_reference_gen",
+      "kind": "stale",
+      "path": "docs/reference/API_REFERENCE.md"
+    }
+  ],
   "soft": [
+    {
+      "doc": "docs/COMMIT_HISTORY.md",
+      "kind": "prose_path",
+      "target": "apps/api/jarvis_api/services/discord_gateway.py"
+    },
+    {
+      "doc": "docs/COMMIT_HISTORY.md",
+      "kind": "prose_path",
+      "target": "apps/api/jarvis_api/services/heartbeat_runtime.py"
+    },
+    {
+      "doc": "docs/COMMIT_HISTORY.md",
+      "kind": "prose_path",
+      "target": "apps/api/jarvis_api/services/tiktok_content_daemon.py"
+    },
+    {
+      "doc": "docs/COMMIT_HISTORY.md",
+      "kind": "prose_path",
+      "target": "apps/api/jarvis_api/services/visible_runs.py"
+    },
+    {
+      "doc": "docs/capability_matrix.md",
+      "kind": "prose_path",
+      "target": "core/services/team_mentions.py"
+    },
+    {
+      "doc": "docs/capability_matrix.md",
+      "kind": "prose_path",
+      "target": "core/services/teams.py"
+    },
+    {
+      "doc": "docs/notes/2026-07-09-central-council-sweep.md",
+      "kind": "prose_path",
+      "target": "core/services/central_kv.py"
+    },
     {
       "doc": "docs/specs/2026-06-30-wire-eventbus-and-cache-to-central.md",
       "kind": "prose_path",
@@ -70,11 +111,19 @@
     },
     {
       "kind": "requirement_missing",
+      "module": "dns"
+    },
+    {
+      "kind": "requirement_missing",
       "module": "ds_store"
     },
     {
       "kind": "requirement_missing",
       "module": "edge_tts"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "fastembed"
     },
     {
       "kind": "requirement_missing",
@@ -162,7 +211,7 @@
     }
   ],
   "counts": {
-    "hard": 0,
-    "soft": 39
+    "hard": 1,
+    "soft": 48
   }
 }

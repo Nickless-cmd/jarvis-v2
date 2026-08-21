@@ -48,6 +48,7 @@ T = TypeVar("T")
 
 _LOCK = threading.Lock()
 _ENTRIES: dict[str, tuple[float, Any]] = {}
+_VERSIONED: dict[str, tuple[str, Any]] = {}
 _STATS = {"hits": 0, "misses": 0}
 
 
@@ -83,7 +84,10 @@ def invalidate(prefix: str = "") -> int:
         keys = [k for k in _ENTRIES if k.startswith(prefix)]
         for k in keys:
             _ENTRIES.pop(k, None)
-        return len(keys)
+        vkeys = [k for k in _VERSIONED if k.startswith(prefix)]
+        for k in vkeys:
+            _VERSIONED.pop(k, None)
+        return len(keys) + len(vkeys)
 
 
 def stats() -> dict[str, Any]:
@@ -95,5 +99,37 @@ def stats() -> dict[str, Any]:
             "hits": hits,
             "misses": misses,
             "hit_rate": round(hits / total, 3) if total else 0.0,
-            "keys": len(_ENTRIES),
+            "keys": len(_ENTRIES) + len(_VERSIONED),
         }
+
+def cached_by_version(key: str, version: str, producer: Callable[[], T]) -> tuple[T, bool]:
+    """Som ``cached()``, men invalideret af en VERSIONSNØGLE i stedet for en TTL.
+
+    Returnerer ``(værdi, var_hit)``.
+
+    En TTL er et gæt: for kort og man betaler unødigt, for lang og man viser
+    gammelt indhold. Hvor der findes en billig nøgle der ændrer sig præcis når
+    indholdet gør, er den nøgle bedre på begge fronter — svaret er ALDRIG
+    forældet, og det genberegnes ALDRIG uden grund.
+
+    Brugt af ``GET /chat/sessions/{id}``, hvor versionen er
+    ``COUNT + MAX(id) + SUM(LENGTH(content))`` over sessionens beskeder (0,6ms
+    mod 23ms for at bygge svaret). Summen er med, så en besked der redigeres
+    in-place — uden at antal eller højeste id ændrer sig — stadig bumper
+    versionen. Uden den ville en rettelse i en eksisterende besked aldrig nå
+    frem til klienten.
+
+    Kun ÉN version pr. nøgle gemmes; en ny version smider den gamle væk, så
+    lange samtaler ikke ophober et payload pr. besked.
+    """
+    with _LOCK:
+        entry = _VERSIONED.get(key)
+        if entry is not None and entry[0] == version:
+            _STATS["hits"] += 1
+            return entry[1], True
+        _STATS["misses"] += 1
+
+    value = producer()
+    with _LOCK:
+        _VERSIONED[key] = (version, value)
+    return value, False

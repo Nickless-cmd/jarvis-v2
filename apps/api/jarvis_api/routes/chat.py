@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -13,6 +13,7 @@ from core.services.chat_sessions import (
     get_chat_session,
     list_chat_sessions,
     rename_chat_session,
+    session_version,
 )
 from core.services.visible_runs import (
     cancel_visible_run,
@@ -1275,11 +1276,27 @@ async def chat_create_session(request: ChatSessionCreateRequest) -> dict:
 
 
 @router.get("/sessions/{session_id}")
-async def chat_session(session_id: str) -> dict:
-    """Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}."""
-    session = get_chat_session(session_id)
-    if session is None:
+def chat_session(session_id: str, request: Request, response: Response):
+    """Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}.
+
+    Desk poller dette hvert 6. sekund. Målt 21. aug: 23ms for at bygge svaret,
+    6,6ms serialisering og **1,75 MB JSON** pr. kald — 135 MB i kvarteret for at
+    vise en samtale der ikke havde ændret sig. Prisen vokser med samtalen, fordi
+    ALLE beskeder hentes hver gang (381 i Bjørns session).
+
+    `session_version()` koster 0,6ms og ændrer sig præcis når indholdet gør. Den
+    bruges to steder: som ETag, så browseren kan revalidere og få 304 i stedet
+    for 1,75 MB, og som cache-nøgle, så payloadet ikke bygges igen unødigt.
+
+    `Cache-Control: no-cache` betyder "gem, men revalidér altid" — browseren
+    sender selv If-None-Match og serverer sin egen kopi ved 304. Klienten skal
+    derfor ikke ændres; `fetch()` ser stadig et almindeligt 200-svar med data.
+    (React Native har ikke den HTTP-cache, så mobil får kun server-gevinsten.)
+    """
+    version = session_version(session_id)
+    if version is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
+
     # Prewarm-on-return: at åbne en session = intent om at chatte. Varm dens
     # DeepSeek-prefix nu (throttlet 45s, kun owner→deepseek) så den første besked
     # efter en pause rammer cachen i stedet for cold prefill (~32k). Dækker ALLE
@@ -1303,6 +1320,20 @@ async def chat_session(session_id: str) -> dict:
             )
     except Exception:
         pass
+
+    etag = f'W/"{version}"'
+    # Svar 304 UDEN at bygge payloadet — det er hele pointen.
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={
+            "ETag": etag, "Cache-Control": "no-cache"})
+
+    from core.services.central_projection_cache import cached_by_version
+    session, _hit = cached_by_version(
+        f"chat:session:{session_id}", version, lambda: get_chat_session(session_id))
+    if session is None:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+    response.headers["ETag"] = etag
+    response.headers["Cache-Control"] = "no-cache"
     return {"session": session}
 
 

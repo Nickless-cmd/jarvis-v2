@@ -162,13 +162,15 @@ class TestBlokerendeHandlers:
         import pathlib
         fundet = []
         root = pathlib.Path(__file__).resolve().parents[1]
-        for p in sorted((root / "apps/api/jarvis_api/routes").glob("central*.py")):
+        filer = sorted((root / "apps/api/jarvis_api/routes").glob("central*.py"))
+        filer.append(root / "apps/api/jarvis_api/routes/chat.py")
+        for p in filer:
             for node in ast.walk(ast.parse(p.read_text())):
                 if not isinstance(node, ast.AsyncFunctionDef):
                     continue
                 if not any(
                     isinstance(d, ast.Call) and isinstance(d.func, ast.Attribute)
-                    and d.func.attr in ("get", "post")
+                    and d.func.attr in ("get", "post", "put", "delete")
                     for d in node.decorator_list
                 ):
                     continue
@@ -177,6 +179,10 @@ class TestBlokerendeHandlers:
                     continue
                 if any(isinstance(n, (ast.Await, ast.AsyncFor, ast.AsyncWith))
                        for n in ast.walk(node)):
+                    continue
+                # Streaming-handlers SKAL blive async — de lever i loopet og
+                # driver en generator; at gøre dem til `def` ville bryde SSE.
+                if "StreamingResponse" in body or "yield" in body:
                     continue
                 fundet.append(f"{p.name}:{node.name}")
         return fundet

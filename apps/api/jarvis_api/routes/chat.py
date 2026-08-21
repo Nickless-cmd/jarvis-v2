@@ -519,7 +519,7 @@ async def chat_git_status(kind: str = "container", root: str = "") -> dict:
 
 
 @router.get("/workspace-trust")
-async def get_workspace_trust(kind: str = "container", root: str = "") -> dict:
+def get_workspace_trust(kind: str = "container", root: str = "") -> dict:
     """Er det aktuelle workspace betroet for den indloggede bruger?"""
     from core.identity.workspace_context import current_user_id
     from core.services.workspace_trust import is_trusted
@@ -534,7 +534,7 @@ class WorkspaceTrustRequest(BaseModel):
 
 
 @router.post("/workspace-trust")
-async def set_workspace_trust(request: WorkspaceTrustRequest) -> dict:
+def set_workspace_trust(request: WorkspaceTrustRequest) -> dict:
     """Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode)."""
     from core.identity.workspace_context import current_user_id
     from core.services.workspace_trust import set_trusted
@@ -815,7 +815,7 @@ class ChatSessionRenameRequest(BaseModel):
 
 
 @router.get("/sessions")
-async def chat_sessions() -> dict:
+def chat_sessions() -> dict:
     """List chat sessions.
 
     When the request carries an X-JarvisX-User header (set by the
@@ -832,7 +832,7 @@ async def chat_sessions() -> dict:
 
 # Bemærk: defineres FØR /sessions/{session_id} så "search" ikke fanges som id.
 @router.get("/sessions/search")
-async def chat_search_sessions(q: str = "", limit: int = 30) -> dict:
+def chat_search_sessions(q: str = "", limit: int = 30) -> dict:
     """Søg sessioner på titel + besked-indhold. Scopes pr. bruger som
     /sessions. Returnerer {items: [{session_id, title, snippet, updated_at}]}."""
     from core.identity.workspace_context import current_user_id
@@ -842,7 +842,7 @@ async def chat_search_sessions(q: str = "", limit: int = 30) -> dict:
 
 
 @router.get("/active-runs")
-async def chat_active_runs() -> dict:
+def chat_active_runs() -> dict:
     """Sessioner med et aktivt visible-run lige nu (#8 — autonome/baggrunds-runs).
 
     Bruges af Sidebar til at vise en arbejds-indikator på en session der ikke er
@@ -872,7 +872,7 @@ async def chat_active_runs() -> dict:
 
 
 @router.post("/sessions/{session_id}/cancel-active")
-async def chat_cancel_active(session_id: str) -> dict:
+def chat_cancel_active(session_id: str) -> dict:
     """Afbryd det run der kører for sessionen (mobil/desk stop-knap naar klienten
     ikke selv streamer runnet — fx efter baggrund hvor serveren stadig arbejder)."""
     from core.services.visible_runs import (
@@ -1065,7 +1065,7 @@ async def chat_session_follow(session_id: str):
 
 
 @router.get("/context-info")
-async def chat_context_info() -> dict:
+def chat_context_info() -> dict:
     """Kontekst-tærskler til composer-ringen (#9). Kun ægte config-tal:
     autocompact-punktet (context_compact_threshold_tokens). Klienten holder
     selv tælleren (usage.input + cache fra streamen)."""
@@ -1192,7 +1192,7 @@ class _CompactNowBody(BaseModel):
 
 
 @router.post("/compact-now")
-async def chat_compact_now(body: _CompactNowBody) -> dict:
+def chat_compact_now(body: _CompactNowBody) -> dict:
     """Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som
     auto-triggeren — round-atomisk 2-trins struktureret summary — men NU, uanset om
     attention-budgettet er nået. Valgfri `focus` styrer hvad summary'en prioriterer.
@@ -1251,7 +1251,7 @@ async def chat_session_milestones(session_id: str = "") -> dict:
 
 
 @router.get("/model-context")
-async def chat_model_context(provider: str = "", model: str = "") -> dict:
+def chat_model_context(provider: str = "", model: str = "") -> dict:
     """Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt
     + det effektive loft (det første der rammer = min). Klienten bruger 'effective'
     som ring-nævner, så ringen er nøjagtig for HVER model (deepseek 1M vs et 64k-
@@ -1265,7 +1265,7 @@ async def chat_model_context(provider: str = "", model: str = "") -> dict:
 
 
 @router.post("/sessions")
-async def chat_create_session(request: ChatSessionCreateRequest) -> dict:
+def chat_create_session(request: ChatSessionCreateRequest) -> dict:
     """Opret en ny chat-session (valgfrit bundet til et code-mode workspace).
     Returnerer {session: ...}."""
     return {"session": create_chat_session(
@@ -1338,7 +1338,7 @@ def chat_session(session_id: str, request: Request, response: Response):
 
 
 @router.put("/sessions/{session_id}/rename")
-async def chat_rename_session(session_id: str, request: ChatSessionRenameRequest) -> dict:
+def chat_rename_session(session_id: str, request: ChatSessionRenameRequest) -> dict:
     """Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes;
     ellers {session: ...}."""
     session = rename_chat_session(session_id, title=request.title)
@@ -1348,7 +1348,7 @@ async def chat_rename_session(session_id: str, request: ChatSessionRenameRequest
 
 
 @router.delete("/sessions/{session_id}")
-async def chat_delete_session(session_id: str) -> dict:
+def chat_delete_session(session_id: str) -> dict:
     """Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}."""
     if not delete_chat_session(session_id):
         raise HTTPException(status_code=404, detail="Chat session not found")
@@ -1557,7 +1557,7 @@ async def chat_deny_tool(approval_id: str) -> dict:
 
 
 @router.post("/runs/{run_id}/cancel")
-async def chat_cancel_run(run_id: str) -> dict:
+def chat_cancel_run(run_id: str) -> dict:
     """Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt;
     ellers {ok: True, run_id, status: "cancelled"}."""
     if not cancel_visible_run(run_id):
@@ -1570,7 +1570,7 @@ async def chat_cancel_run(run_id: str) -> dict:
 
 
 @router.post("/runs/{run_id}/steer")
-async def chat_steer_run(run_id: str, body: dict) -> dict:
+def chat_steer_run(run_id: str, body: dict) -> dict:
     """Mid-flight steer: inject a user message into a running visible-run.
     The agentic loop picks it up at the next round boundary."""
     from core.services.visible_runs import append_visible_run_steer
@@ -1584,7 +1584,7 @@ async def chat_steer_run(run_id: str, body: dict) -> dict:
 
 
 @router.post("/runs/{run_id}/tool-result")
-async def chat_client_tool_result(run_id: str, body: dict) -> dict:
+def chat_client_tool_result(run_id: str, body: dict) -> dict:
     """Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et
     delegeret execution=="client"-tool. Serverens turn-loop emitterede tool_use
     og venter (poll) på dette. Body: {call_id, result}. 404 hvis call_id ikke er

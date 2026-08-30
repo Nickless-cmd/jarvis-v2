@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6514/13064 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6514/13067 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6514/13064 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4326 | 9092 | 47% |
+| `core.services` | 4326 | 9095 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 70 | 122 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -98,7 +98,7 @@ Generated from source. 6514/13064 functions/methods documented (49%). The list b
 - `apps/api/jarvis_api/routes/sensory.py` :: `search_memories` (L44)
 - `apps/api/jarvis_api/routes/sensory.py` :: `summary` (L54)
 - `apps/api/jarvis_api/routes/status.py` :: `status` (L54)
-- `apps/api/jarvis_api/routes/system_health.py` :: `system_health` (L14)
+- `apps/api/jarvis_api/routes/system_health.py` :: `system_health` (L19)
 - `apps/api/jarvis_api/routes/tool_router.py` :: `get_state` (L25)
 - `apps/api/jarvis_api/routes/totp.py` :: `totp_status` (L30)
 - `apps/api/jarvis_api/routes/transcribe.py` :: `transcribe` (L22)
@@ -976,10 +976,10 @@ Generated from source. 6514/13064 functions/methods documented (49%). The list b
 - `core/services/ghost_networks.py` :: `describe_ghost_network` (L18)
 - `core/services/ghost_networks.py` :: `format_ghost_for_prompt` (L24)
 - `core/services/ghost_networks.py` :: `reset_ghost_networks` (L30)
-- `core/services/git_actions.py` :: `commit_all` (L71)
-- `core/services/git_actions.py` :: `commit_all_container` (L20)
-- `core/services/git_actions.py` :: `commit_all_workstation` (L53)
-- `core/services/git_actions.py` :: `parse_owner_repo` (L83)
+- `core/services/git_actions.py` :: `commit_all` (L128)
+- `core/services/git_actions.py` :: `commit_all_container` (L47)
+- `core/services/git_actions.py` :: `commit_all_workstation` (L110)
+- `core/services/git_actions.py` :: `parse_owner_repo` (L140)
 - `core/services/gmail_connector.py` :: `list_inbox` (L148)
 - `core/services/gmail_connector.py` :: `search` (L142)
 - `core/services/goal_signal_tracking.py` :: `build_runtime_goal_signal_surface` (L101)

@@ -1,9 +1,14 @@
 import re
 import shutil
 import subprocess
+from pathlib import Path
+
 import psutil
 from fastapi import APIRouter
 from pydantic import BaseModel
+
+from core.services.attributed_git_commit import commit_with_attribution
+from core.services.commit_attribution import CommitAttribution, new_manual_run_id
 
 router = APIRouter(tags=["system"])
 
@@ -95,14 +100,23 @@ def system_git_commit(body: CommitRequest) -> dict:
             timeout=10,
             stderr=subprocess.STDOUT,
         )
-        out = subprocess.check_output(
-            ["git", "commit", "-m", message],
-            cwd=_REPO_ROOT,
-            text=True,
+        committed = commit_with_attribution(
+            repo=Path(_REPO_ROOT),
+            message=message,
+            attribution=CommitAttribution(
+                actor="bjorn",
+                actor_type="human",
+                run_id=new_manual_run_id(),
+                session_id="none",
+                origin="interactive",
+                approved_by="bjorn",
+            ),
             timeout=10,
-            stderr=subprocess.STDOUT,
         )
-        return {"ok": True, "output": out.strip()}
+        if committed.returncode != 0:
+            error = (committed.stderr or committed.stdout).strip()
+            return {"ok": False, "error": error or "git commit failed"}
+        return {"ok": True, "output": committed.stdout.strip()}
     except subprocess.CalledProcessError as exc:
         return {"ok": False, "error": (exc.output or "").strip() or str(exc)}
     except Exception as exc:

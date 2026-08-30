@@ -97,9 +97,13 @@ def test_commit_writes_and_commits(monkeypatch, tmp_path):
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "ok" and r.json()["sha"]
     assert (tmp_path / "f.py").read_text() == "a = 2\n"
-    log = subprocess.run(["git", "-C", str(tmp_path), "log", "-1", "--pretty=%s"],
+    log = subprocess.run(["git", "-C", str(tmp_path), "log", "-1", "--pretty=%B"],
                          capture_output=True, text=True).stdout.strip()
-    assert log == "bump a"
+    assert log.startswith("bump a\n")
+    assert "Actor: bjorn" in log
+    assert "Actor-Type: human" in log
+    assert "Origin: interactive" in log
+    assert "Approved-By: bjorn" in log
 
 
 def test_commit_rejects_non_repo_root(monkeypatch, tmp_path):

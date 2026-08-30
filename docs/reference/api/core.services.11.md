@@ -257,17 +257,20 @@ _Rolle-aware git-eksekvering for code mode._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_git_container` | `(repo, *a, timeout=…)` | — | [src](../../../core/services/git_actions.py#L16) |
-| function | `commit_all_container` | `(repo, message)` | — | [src](../../../core/services/git_actions.py#L20) |
-| function | `_operator_exec` | `(name, args)` | — | [src](../../../core/services/git_actions.py#L38) |
-| function | `_ws_git` | `(root, uid, gitargs, timeout=…)` | Kør `git -C <root> <gitargs>` på brugerens bro. Returnér (rc, stdout, stderr). | [src](../../../core/services/git_actions.py#L43) |
-| function | `commit_all_workstation` | `(root, uid, message)` | — | [src](../../../core/services/git_actions.py#L53) |
-| function | `commit_all` | `(target, container_repo, uid, message)` | — | [src](../../../core/services/git_actions.py#L71) |
-| function | `parse_owner_repo` | `(remote_url)` | — | [src](../../../core/services/git_actions.py#L83) |
-| function | `_ws_git_raw` | `(root, uid, cmd, timeout=…)` | Kør vilkårlig kommando i `root` på brugerens bro (til gh). | [src](../../../core/services/git_actions.py#L94) |
-| function | `create_pr` | `(target, container_repo, uid, title, body)` | Commit → branch hvis på default → push → PR (API, ellers gh-fallback). | [src](../../../core/services/git_actions.py#L104) |
-| function | `_create_pr_gh` | `(ws, root, uid, base, branch, title, body)` | — | [src](../../../core/services/git_actions.py#L140) |
-| function | `_split_gh` | `(args)` | — | [src](../../../core/services/git_actions.py#L154) |
+| function | `_git_container` | `(repo, *a, timeout=…)` | — | [src](../../../core/services/git_actions.py#L24) |
+| function | `_human_attribution` | `()` | — | [src](../../../core/services/git_actions.py#L28) |
+| function | `_commit_container` | `(repo, message)` | — | [src](../../../core/services/git_actions.py#L39) |
+| function | `commit_all_container` | `(repo, message)` | — | [src](../../../core/services/git_actions.py#L47) |
+| function | `_operator_exec` | `(name, args)` | — | [src](../../../core/services/git_actions.py#L65) |
+| function | `_ws_git` | `(root, uid, gitargs, timeout=…)` | Kør `git -C <root> <gitargs>` på brugerens bro. Returnér (rc, stdout, stderr). | [src](../../../core/services/git_actions.py#L70) |
+| function | `_ws_attributed_commit` | `(root, uid, message, *, timeout=…)` | — | [src](../../../core/services/git_actions.py#L80) |
+| function | `commit_all_workstation` | `(root, uid, message)` | — | [src](../../../core/services/git_actions.py#L110) |
+| function | `commit_all` | `(target, container_repo, uid, message)` | — | [src](../../../core/services/git_actions.py#L128) |
+| function | `parse_owner_repo` | `(remote_url)` | — | [src](../../../core/services/git_actions.py#L140) |
+| function | `_ws_git_raw` | `(root, uid, cmd, timeout=…)` | Kør vilkårlig kommando i `root` på brugerens bro (til gh). | [src](../../../core/services/git_actions.py#L151) |
+| function | `create_pr` | `(target, container_repo, uid, title, body)` | Commit → branch hvis på default → push → PR (API, ellers gh-fallback). | [src](../../../core/services/git_actions.py#L161) |
+| function | `_create_pr_gh` | `(ws, root, uid, base, branch, title, body)` | — | [src](../../../core/services/git_actions.py#L201) |
+| function | `_split_gh` | `(args)` | — | [src](../../../core/services/git_actions.py#L215) |
 
 ## `core/services/github_connector.py`
 _GitHub-connector — API-klient + tool-handlers (v1: issues + PRs)._

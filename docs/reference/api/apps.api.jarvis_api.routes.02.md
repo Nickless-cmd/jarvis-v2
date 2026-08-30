@@ -608,10 +608,10 @@ _Public-safe /status endpoint._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `system_health` | `()` | — | [src](../../../apps/api/jarvis_api/routes/system_health.py#L14) |
-| function | `system_git` | `()` | Return current git branch and diff stats (insertions/deletions since HEAD). | [src](../../../apps/api/jarvis_api/routes/system_health.py#L34) |
-| class | `CommitRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/system_health.py#L80) |
-| function | `system_git_commit` | `(body)` | Stage tracked changes and commit with the given message. | [src](../../../apps/api/jarvis_api/routes/system_health.py#L85) |
+| function | `system_health` | `()` | — | [src](../../../apps/api/jarvis_api/routes/system_health.py#L19) |
+| function | `system_git` | `()` | Return current git branch and diff stats (insertions/deletions since HEAD). | [src](../../../apps/api/jarvis_api/routes/system_health.py#L39) |
+| class | `CommitRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/system_health.py#L85) |
+| function | `system_git_commit` | `(body)` | Stage tracked changes and commit with the given message. | [src](../../../apps/api/jarvis_api/routes/system_health.py#L90) |
 
 ## `apps/api/jarvis_api/routes/tool_router.py`
 _MC observability for tool_router._

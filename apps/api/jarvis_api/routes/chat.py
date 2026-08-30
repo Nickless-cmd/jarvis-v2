@@ -15,6 +15,8 @@ from core.services.chat_sessions import (
     rename_chat_session,
     session_version,
 )
+from core.services.attributed_git_commit import commit_with_attribution
+from core.services.commit_attribution import CommitAttribution, new_manual_run_id
 from core.services.visible_runs import (
     cancel_visible_run,
     resolve_pending_approval,
@@ -319,13 +321,26 @@ def _commit_file_sync(path: str, root: str, content: str, message: str, role: st
     add = _git("add", "--", path)
     if add.returncode != 0:
         raise HTTPException(status_code=500, detail=f"git add fejlede: {add.stderr[:200]}")
-    cm = _git("commit", "-m", msg, "--", path)
+    cm = commit_with_attribution(
+        repo=base,
+        message=msg,
+        attribution=CommitAttribution(
+            actor="bjorn",
+            actor_type="human",
+            run_id=new_manual_run_id(),
+            session_id="none",
+            origin="interactive",
+            approved_by="bjorn",
+        ),
+        paths=(path,),
+        timeout=20,
+    )
     if cm.returncode != 0:
         out = (cm.stdout or "") + (cm.stderr or "")
         if "nothing to commit" in out or "no changes added" in out:
             return {"status": "nochange", "message": msg}
         raise HTTPException(status_code=500, detail=f"git commit fejlede: {out[:200]}")
-    sha = _git("rev-parse", "--short", "HEAD").stdout.strip()
+    sha = (cm.sha or "")[:12]
     return {"status": "ok", "sha": sha, "message": msg}
 
 

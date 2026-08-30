@@ -8,7 +8,15 @@ PR-oprettelse: GitHub-OAuth-connector (API) primært, gh CLI som fallback.
 from __future__ import annotations
 
 import re
+import shlex
 import subprocess
+from pathlib import Path
+
+from core.services.attributed_git_commit import (
+    AttributedCommitResult,
+    commit_with_attribution,
+)
+from core.services.commit_attribution import CommitAttribution, new_manual_run_id
 
 
 # ── Container (server-repo) ────────────────────────────────────────────────
@@ -17,18 +25,37 @@ def _git_container(repo: str, *a: str, timeout: int = 60) -> subprocess.Complete
     return subprocess.run(["git", "-C", repo, *a], capture_output=True, text=True, timeout=timeout)
 
 
+def _human_attribution() -> CommitAttribution:
+    return CommitAttribution(
+        actor="bjorn",
+        actor_type="human",
+        run_id=new_manual_run_id(),
+        session_id="none",
+        origin="interactive",
+        approved_by="bjorn",
+    )
+
+
+def _commit_container(repo: str, message: str) -> AttributedCommitResult:
+    return commit_with_attribution(
+        repo=Path(repo),
+        message=message,
+        attribution=_human_attribution(),
+    )
+
+
 def commit_all_container(repo: str, message: str) -> dict:
     msg = (message or "").strip() or "WIP: ændringer fra code mode"
     add = _git_container(repo, "add", "-A")
     if add.returncode != 0:
         return {"status": "error", "detail": f"git add: {add.stderr[:200]}"}
-    cm = _git_container(repo, "commit", "-m", msg)
+    cm = _commit_container(repo, msg)
     if cm.returncode != 0:
         out = (cm.stdout or "") + (cm.stderr or "")
         if "nothing to commit" in out or "working tree clean" in out:
             return {"status": "nochange", "message": msg}
         return {"status": "error", "detail": out[:200]}
-    sha = _git_container(repo, "rev-parse", "--short", "HEAD").stdout.strip()
+    sha = (cm.sha or "")[:12]
     branch = _git_container(repo, "branch", "--show-current").stdout.strip()
     return {"status": "ok", "sha": sha, "branch": branch, "message": msg}
 
@@ -50,12 +77,42 @@ def _ws_git(root: str, uid: str, gitargs: str, timeout: int = 60) -> tuple[int, 
     return (int(r.get("exit_code") or 0), str(r.get("stdout") or ""), str(r.get("stderr") or ""))
 
 
+def _ws_attributed_commit(
+    root: str,
+    uid: str,
+    message: str,
+    *,
+    timeout: int = 120,
+) -> tuple[int, str, str]:
+    command = shlex.join([
+        "python3",
+        str(Path(root) / "scripts" / "commit_with_attribution.py"),
+        "--repo", root,
+        "--message", message,
+        "--actor", "bjorn",
+        "--origin", "interactive",
+        "--approved-by", "bjorn",
+    ])
+    res = _operator_exec(
+        "operator_bash",
+        {"command": command, "_user_id": uid, "timeout_s": timeout},
+    )
+    if res.get("status") != "ok":
+        return (1, "", str(res.get("error") or "bridge_not_connected"))
+    result = res.get("result") or {}
+    return (
+        int(result.get("exit_code") or 0),
+        str(result.get("stdout") or ""),
+        str(result.get("stderr") or ""),
+    )
+
+
 def commit_all_workstation(root: str, uid: str, message: str) -> dict:
     msg = (message or "").strip() or "WIP: ændringer fra code mode"
     rc, _, err = _ws_git(root, uid, "add -A")
     if rc != 0:
         return {"status": "error", "detail": f"git add: {err[:200]}"}
-    rc, out, err = _ws_git(root, uid, f"commit -m {msg!r}")
+    rc, out, err = _ws_attributed_commit(root, uid, msg)
     if rc != 0:
         blob = out + err
         if "nothing to commit" in blob or "working tree clean" in blob:
@@ -124,7 +181,11 @@ def create_pr(target: dict, container_repo: str, uid: str, title: str, body: str
         if g(f"switch -c {branch}")[0] != 0:
             return {"status": "error", "detail": "kunne ikke oprette branch"}
     g("add -A")
-    g(f"commit -m {(title or 'Ændringer fra code mode')!r}")
+    commit_message = title or "Ændringer fra code mode"
+    if ws:
+        _ws_attributed_commit(root, uid, commit_message)
+    else:
+        _commit_container(root, commit_message)
     if g(f"push -u origin {branch}")[0] != 0:
         return {"status": "error", "detail": "git push fejlede (creds?)"}
 

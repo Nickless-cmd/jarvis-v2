@@ -28,7 +28,10 @@ Denne service subscriber til ``runtime.autonomous_run_completed`` og:
 - Siden 2026-08-30 (Jarvis): for AUTONOME runs (ingen bruger til stede)
   er gaten hård, ikke kun informativ — den committer selv de rørte paths
   gennem ``git commit`` så pre-commit-hooks (docs-drift, secrets,
-  coverage) kører i sessionen. Lykkes det, publiseres
+  coverage) kører i sessionen. FAIL-CLOSED: auto-commit sker KUN når
+  et pre-run snapshot findes OG working tree var rent ved run-start —
+  ellers afstår gaten (kan ikke attribuere ændringerne sikkert).
+  Lykkes det, publiseres
   ``runtime.run_auto_committed`` med commit-hash. Blokeres den (hook
   fejlede, git-konflikt), rulles staging tilbage, ``run_left_unstaged_changes``
   får ``auto_commit_error``, og Bjørn nudges via nudge-brønden — nat-runs
@@ -165,9 +168,16 @@ def _record_pre_run_state(run_id: str) -> None:
         _pre_run_git_state[run_id] = (snapshot, hashes)
 
 
-def _pop_pre_run_state(run_id: str) -> tuple[set[str], dict[str, str]]:
+def _pop_pre_run_state(run_id: str) -> tuple[set[str], dict[str, str]] | None:
+    """Return pre-run snapshot, or ``None`` if no snapshot was recorded.
+
+    Returning ``None`` (not empty set) on missing snapshot is fail-closed:
+    an empty set is indistinguishable from "clean baseline", which would
+    attribute ALL dirty files to the run. ``None`` forces the caller to
+    abstain — no auto-commit without a verified starting point.
+    """
     with _pre_run_git_lock:
-        return _pre_run_git_state.pop(run_id, (set(), {}))
+        return _pre_run_git_state.pop(run_id, None)
 
 
 # ── tool-call tracking ────────────────────────────────────────────────
@@ -265,18 +275,23 @@ def _is_auto_commit_excluded(path: str) -> bool:
     return any(lower.endswith(s) for s in _AUTO_COMMIT_EXCLUDE_SUFFIXES)
 
 
-def _git_staged_paths(*, cwd: Path = _REPO_ROOT) -> set[str]:
-    """Return paths currently staged in the index (empty on failure)."""
+def _git_staged_paths(*, cwd: Path = _REPO_ROOT) -> set[str] | None:
+    """Return paths currently staged in the index.
+
+    Returns ``None`` on git failure — fail-closed so the caller abstains
+    rather than proceeding with an unknown staging state (which could
+    sweep another process's staged work into an auto-commit).
+    """
     try:
         result = subprocess.run(
             ["git", "diff", "--cached", "--name-only"],
             capture_output=True, text=True, timeout=5, cwd=cwd,
         )
         if result.returncode != 0:
-            return set()
+            return None  # fail-closed — unknown state, must not proceed
         return {p for p in result.stdout.splitlines() if p.strip()}
     except Exception:
-        return set()
+        return None  # fail-closed
 
 
 def _try_auto_commit(
@@ -296,31 +311,32 @@ def _try_auto_commit(
     global _last_auto_commit_error
     _last_auto_commit_error = ""
 
+    # Sikkerhedsregel 1: kun paths der ikke er artefakter.
+    # NB: vi filtrerer IKKE på is_file() — slettede filer eksisterer ikke
+    # på disk, men `git add -- <path>` håndterer dem korrekt (stages sletningen).
+    # Renames normaliseres allerede i _git_dirty_content_hashes og porcelain-
+    # parsing (tager "new"-siden af "old -> new").
     candidates: list[str] = []
     for path in sorted(touched_paths):
         if not path or _is_auto_commit_excluded(path):
             continue
-        full = _REPO_ROOT / path
-        try:
-            if full.is_file():
-                candidates.append(path)
-        except Exception:
-            continue
+        candidates.append(path)
     if not candidates:
-        _last_auto_commit_error = "kun artefakter eller ikke-filer — intet at forsegle"
+        _last_auto_commit_error = "kun artefakter — intet at forsegle"
         return None
 
     # Sikkerhedsregel 2: aldrig oven i eksisterende staged ændringer.
-    try:
-        pre_staged = _git_staged_paths()
-        if pre_staged:
-            _last_auto_commit_error = (
-                f"afstår — {len(pre_staged)} allerede staged path(s): "
-                + ", ".join(sorted(pre_staged)[:3])
-            )
-            return None
-    except Exception:
-        pass
+    # Fail-closed: None = ukendt state → afstå (committer intet).
+    pre_staged = _git_staged_paths()
+    if pre_staged is None:
+        _last_auto_commit_error = "afstår — kan ikke verificere staging-state (git-fejl)"
+        return None
+    if pre_staged:
+        _last_auto_commit_error = (
+            f"afstår — {len(pre_staged)} allerede staged path(s): "
+            + ", ".join(sorted(pre_staged)[:3])
+        )
+        return None
 
     subject = f"auto(run): {focus or 'autonom session'} — {len(candidates)} fil(er)"
     body = f"\n\nrun_id: {run_id}\nsession_id: {session_id}\npaths: {len(candidates)}"
@@ -334,7 +350,7 @@ def _try_auto_commit(
             return None
 
         commit = subprocess.run(
-            ["git", "commit", "-m", subject + body],
+            ["git", "commit", "-m", subject + body, "--", *candidates],
             capture_output=True, text=True, timeout=120, cwd=_REPO_ROOT,
         )
         if commit.returncode != 0:
@@ -428,7 +444,16 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
     #      appearances and status-transitions like staged→unstaged)
     #   2. Content-hash deltas (catches modify-modify within run window
     #      where porcelain alone would look identical before and after)
-    pre_lines, pre_hashes = _pop_pre_run_state(run_id)
+    pre_state = _pop_pre_run_state(run_id)
+    if pre_state is None:
+        # No pre-run snapshot → cannot safely attribute changes to this run.
+        # Fail-closed: skip auto-commit, but still publish unstaged-event.
+        pre_lines: set[str] = set()
+        pre_hashes: dict[str, str] = {}
+        _no_baseline = True
+    else:
+        pre_lines, pre_hashes = pre_state
+        _no_baseline = False
     post_lines = _git_porcelain_status()
     post_hashes = _git_dirty_content_hashes()
 
@@ -479,7 +504,11 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
         summary = _summarize_unstaged(synthetic)
 
         auto_commit = None
-        if autonomous:
+        if autonomous and not _no_baseline and not pre_lines:
+            # Fail-closed: only auto-commit when we have a verified clean
+            # baseline. Missing snapshot (_no_baseline) or dirty pre-run
+            # state (pre_lines) means we cannot safely attribute changes
+            # to this run — another process may have been working too.
             auto_commit = _try_auto_commit(
                 touched_paths,
                 run_id=run_id,

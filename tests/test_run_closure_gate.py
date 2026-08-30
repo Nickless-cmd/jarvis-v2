@@ -59,10 +59,10 @@ class TestPreRunGitSnapshot:
         assert "?? other.py" in lines
         assert hashes == {"file.py": "abc123"}
 
-    def test_pop_unknown_returns_empty(self):
-        lines, hashes = _pop_pre_run_state("nonexistent")
-        assert lines == set()
-        assert hashes == {}
+    def test_pop_unknown_returns_none(self):
+        """Fail-closed: missing snapshot returns None, not empty set."""
+        result = _pop_pre_run_state("nonexistent")
+        assert result is None
 
     def test_pop_is_destructive(self):
         with patch(
@@ -76,10 +76,8 @@ class TestPreRunGitSnapshot:
         lines, hashes = _pop_pre_run_state("rid-2")
         assert lines == {" M f.py"}
         assert hashes == {"f.py": "h1"}
-        # second pop returns empty
-        lines2, hashes2 = _pop_pre_run_state("rid-2")
-        assert lines2 == set()
-        assert hashes2 == {}
+        # second pop returns None (fail-closed — no snapshot)
+        assert _pop_pre_run_state("rid-2") is None
 
     def test_empty_run_id_ignored(self):
         _record_pre_run_state("")  # no-op, shouldn't raise
@@ -264,6 +262,8 @@ class TestAutoCommitGate:
                 run_id="rid-2", session_id="sid-2", focus="only artifacts",
             )
         assert short is None
+        from core.services import run_closure_gate as gate_mod
+        assert "kun artefakter" in gate_mod._last_auto_commit_error
 
     def test_abstains_when_user_has_staged_changes(self):
         from core.services import run_closure_gate as gate_mod
@@ -297,6 +297,153 @@ class TestAutoCommitGate:
         assert "docs-drift" in gate_mod._last_auto_commit_error
         # staging rullet tilbage så ændringerne forbliver synlige
         assert any(c[:2] == ["git", "restore"] for c in calls)
+
+    def test_commit_has_pathspec_not_kitchen_sink(self):
+        """Fund 2: git commit must have -- pathspec, never commit everything."""
+        from core.services.run_closure_gate import _try_auto_commit
+        fake_run, calls = self._fake_git()
+        with patch("core.services.run_closure_gate._git_staged_paths", return_value=set()),              patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run):
+            _try_auto_commit(
+                {"core/services/run_closure_gate.py"},
+                run_id="rid-ps", session_id="sid-ps", focus="pathspec test",
+            )
+        commit_call = next(c for c in calls if c[:2] == ["git", "commit"])
+        assert "--" in commit_call
+        assert "core/services/run_closure_gate.py" in commit_call
+
+    def test_abstains_when_staging_check_fails(self):
+        """Fund 2: _git_staged_paths returns None → fail-closed, no commit."""
+        from core.services import run_closure_gate as gate_mod
+        from core.services.run_closure_gate import _try_auto_commit
+        fake_run, calls = self._fake_git()
+        with patch("core.services.run_closure_gate._git_staged_paths", return_value=None),              patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run):
+            short = _try_auto_commit(
+                {"core/services/run_closure_gate.py"},
+                run_id="rid-fc", session_id="sid-fc", focus="fail-closed",
+            )
+        assert short is None
+        assert "staging-state" in gate_mod._last_auto_commit_error
+        assert not any(c[:2] == ["git", "add"] for c in calls)
+
+    def test_commits_deleted_files(self):
+        """Fund 4: deleted files must be committable (no is_file filter)."""
+        from core.services.run_closure_gate import _try_auto_commit
+        fake_run, calls = self._fake_git()
+        # A deleted file doesn't exist on disk, but git add -- <path> stages the deletion
+        with patch("core.services.run_closure_gate._git_staged_paths", return_value=set()),              patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run):
+            short = _try_auto_commit(
+                {"core/deleted_file.py"},  # doesn't exist on disk
+                run_id="rid-del", session_id="sid-del", focus="deletion test",
+            )
+        assert short == "abc1234"
+        add_call = next(c for c in calls if c[:2] == ["git", "add"])
+        assert "core/deleted_file.py" in add_call
+
+
+class TestOnRunCompletedFailClosed:
+    """Fund 1+3: _on_run_completed must abstain from auto-commit when
+    baseline is missing or pre-run working tree was dirty."""
+
+    def test_no_auto_commit_when_baseline_missing(self):
+        """Fund 3: missing snapshot → no auto-commit, but unstaged-event still published."""
+        from core.services.run_closure_gate import _on_run_completed
+
+        published = []
+
+        class FakeBus:
+            def publish(self, kind, payload):
+                published.append((kind, payload))
+
+        with patch(
+            "core.services.run_closure_gate._git_porcelain_status",
+            return_value={" M new_file.py"},
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes",
+            return_value={"new_file.py": "h-after"},
+        ), patch(
+            "core.eventbus.bus.event_bus", FakeBus(),
+        ), patch(
+            "core.services.run_closure_gate._pop_pre_run_state",
+            return_value=None,  # No baseline!
+        ), patch(
+            "core.services.run_closure_gate._try_auto_commit",
+        ) as mock_commit:
+            _on_run_completed({
+                "run_id": "rid-nb", "session_id": "sid-nb",
+                "autonomous": True,
+            })
+
+        # Auto-commit must NOT have been called
+        mock_commit.assert_not_called()
+        # But unstaged-event should still be published
+        kinds = [k for k, _ in published]
+        assert "runtime.run_left_unstaged_changes" in kinds
+
+    def test_no_auto_commit_when_pre_run_dirty(self):
+        """Fund 1: dirty pre-run state → can't attribute changes → no auto-commit."""
+        from core.services.run_closure_gate import _on_run_completed
+
+        published = []
+
+        class FakeBus:
+            def publish(self, kind, payload):
+                published.append((kind, payload))
+
+        with patch(
+            "core.services.run_closure_gate._git_porcelain_status",
+            return_value={" M file_a.py", " M file_b.py"},
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes",
+            return_value={"file_a.py": "h-after", "file_b.py": "h-b"},
+        ), patch(
+            "core.eventbus.bus.event_bus", FakeBus(),
+        ), patch(
+            "core.services.run_closure_gate._pop_pre_run_state",
+            return_value=({" M file_a.py"}, {"file_a.py": "h-before"}),  # dirty at start!
+        ), patch(
+            "core.services.run_closure_gate._try_auto_commit",
+        ) as mock_commit:
+            _on_run_completed({
+                "run_id": "rid-dirty", "session_id": "sid-dirty",
+                "autonomous": True,
+            })
+
+        # Auto-commit must NOT have been called — can't tell who changed file_b
+        mock_commit.assert_not_called()
+
+    def test_auto_commit_when_clean_baseline(self):
+        """Happy path: clean baseline + autonomous + dirty post-run → auto-commit."""
+        from core.services.run_closure_gate import _on_run_completed
+
+        published = []
+
+        class FakeBus:
+            def publish(self, kind, payload):
+                published.append((kind, payload))
+
+        with patch(
+            "core.services.run_closure_gate._git_porcelain_status",
+            return_value={" M new_file.py"},
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes",
+            return_value={"new_file.py": "h-after"},
+        ), patch(
+            "core.eventbus.bus.event_bus", FakeBus(),
+        ), patch(
+            "core.services.run_closure_gate._pop_pre_run_state",
+            return_value=(set(), {}),  # clean baseline!
+        ), patch(
+            "core.services.run_closure_gate._try_auto_commit",
+            return_value="abc1234",
+        ) as mock_commit:
+            _on_run_completed({
+                "run_id": "rid-clean", "session_id": "sid-clean",
+                "autonomous": True,
+            })
+
+        mock_commit.assert_called_once()
+        kinds = [k for k, _ in published]
+        assert "runtime.run_auto_committed" in kinds
 
 
 class TestAutoCommitBlockedNotification:

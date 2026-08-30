@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6489/13025 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6493/13029 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -17,7 +17,7 @@ Generated from source. 6489/13025 functions/methods documented (49%). The list b
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
 | `core.coding_lane` | 9 | 10 | 90% |
-| `core.context` | 48 | 56 | 85% |
+| `core.context` | 52 | 60 | 86% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 9 | 22 | 40% |
 | `core.identity` | 63 | 154 | 40% |
@@ -223,7 +223,7 @@ Generated from source. 6489/13025 functions/methods documented (49%). The list b
 - `core/cli/visible_output.py` :: `normalize_visible_work_units` (L136)
 - `core/cli/visible_output.py` :: `visible_execution_section` (L4)
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
-- `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L96)
+- `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L188)
 - `core/costing/ledger.py` :: `recent_costs` (L135)
 - `core/costing/ledger.py` :: `telemetry_summary` (L115)
 - `core/eventbus/bus.py` :: `EventBus.recent` (L149)

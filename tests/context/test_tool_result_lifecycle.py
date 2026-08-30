@@ -121,6 +121,7 @@ def test_evaluate_and_advance_moves_floor(monkeypatch):
         tool_warm_run_window = 8
         tool_warm_token_ceiling = 40000
         tool_warm_hysteresis = 0.25
+        tool_warm_advance_only_on_compact = False
 
     new_floor = trl.evaluate_and_advance(sid, settings=_S())
     assert new_floor > 0
@@ -140,3 +141,45 @@ def test_evaluate_noop_when_disabled(monkeypatch):
 
     assert trl.evaluate_and_advance(sid, settings=_S()) == 0
     assert trl.get_cold_floor(sid) == 0
+
+
+def test_evaluate_defers_without_compaction_by_default(monkeypatch):
+    """Cache-gaten (30-08-2026): uden compaction rykker gulvet IKKE.
+
+    Hver avancering omskriver historik tidligt i prompten og kostede 52-95 % af
+    DeepSeeks cachede prefix. Standardadfærden er nu at vente til compaction
+    alligevel omskriver historikken.
+    """
+    sid = "sess-trl-gate-1"
+    msgs = [_msg(i, "user") for i in range(1, 13)]
+    monkeypatch.setattr(trl, "_load_session_messages", lambda s: msgs)
+    monkeypatch.setattr(trl, "latest_compact_marker_id", lambda s: 0)
+
+    class _S:
+        tool_result_lifecycle_enabled = True
+        tool_warm_run_window = 8
+        tool_warm_token_ceiling = 40000
+        tool_warm_hysteresis = 0.25
+
+    assert trl.evaluate_and_advance(sid, settings=_S()) == 0
+    assert trl.get_cold_floor(sid) == 0
+
+
+def test_evaluate_advances_once_compaction_happened(monkeypatch):
+    """Samme session: så snart der ER komprimeret, må gulvet rykke."""
+    sid = "sess-trl-gate-2"
+    msgs = [_msg(i, "user") for i in range(1, 13)]
+    monkeypatch.setattr(trl, "_load_session_messages", lambda s: msgs)
+    monkeypatch.setattr(trl, "latest_compact_marker_id", lambda s: 4242)
+
+    class _S:
+        tool_result_lifecycle_enabled = True
+        tool_warm_run_window = 8
+        tool_warm_token_ceiling = 40000
+        tool_warm_hysteresis = 0.25
+
+    new_floor = trl.evaluate_and_advance(sid, settings=_S())
+    assert new_floor > 0
+    assert trl.get_compact_epoch(sid) == 4242
+    # Anden run-slutning uden ny compaction → ingen yderligere bevægelse.
+    assert trl.evaluate_and_advance(sid, settings=_S()) == new_floor

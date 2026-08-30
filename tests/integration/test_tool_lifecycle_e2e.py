@@ -11,6 +11,9 @@ class _S:
     tool_warm_run_window = 2          # small so the test triggers easily
     tool_warm_token_ceiling = 10**9
     tool_warm_hysteresis = 0.0
+    # Gaten (30-08) udskyder avancering til compaction; denne test handler om
+    # cold-rendering + rehydrering, ikke om HVORNAAR gulvet rykker.
+    tool_warm_advance_only_on_compact = False
 
 
 def test_e2e_old_tool_becomes_cold_and_rehydratable():

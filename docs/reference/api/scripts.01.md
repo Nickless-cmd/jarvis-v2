@@ -254,8 +254,10 @@ _Install or verify the required pre-commit managed Git hooks._
 |---|---|---|---|---|
 | function | `_hook_path` | `(repo, hook)` | — | [src](../../../scripts/install_git_hooks.py#L17) |
 | function | `check_installation` | `(repo)` | Return one error for every missing or inactive required hook. | [src](../../../scripts/install_git_hooks.py#L30) |
-| function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L56) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L65) |
+| function | `_local_hooks_path_values` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L56) |
+| function | `_is_default_hooks_path` | `(repo, configured)` | — | [src](../../../scripts/install_git_hooks.py#L71) |
+| function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L93) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L131) |
 
 ## `scripts/interlanguage_analyze.py`
 _Interlanguage analysis — aggregate report over the practice corpus._

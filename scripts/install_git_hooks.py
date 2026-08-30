@@ -53,13 +53,79 @@ def check_installation(repo: Path) -> tuple[str, ...]:
     return tuple(errors)
 
 
+def _local_hooks_path_values(repo: Path) -> tuple[str, ...]:
+    result = subprocess.run(
+        [
+            "git", "-C", str(repo), "config", "--local", "--get-all",
+            "core.hooksPath",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    if result.returncode not in (0, 1):
+        return ()
+    return tuple(line for line in result.stdout.splitlines() if line)
+
+
+def _is_default_hooks_path(repo: Path, configured: tuple[str, ...]) -> bool:
+    if not configured:
+        return False
+    common = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "--git-common-dir"],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    if common.returncode != 0:
+        return False
+    common_dir = Path(common.stdout.strip())
+    if not common_dir.is_absolute():
+        common_dir = repo / common_dir
+    default = (common_dir / "hooks").resolve()
+    return all(
+        (Path(value) if Path(value).is_absolute() else repo / value).resolve()
+        == default
+        for value in configured
+    )
+
+
 def install(repo: Path) -> int:
     root = Path(repo).resolve()
     command = [sys.executable, "-m", "pre_commit", "install"]
     for hook in REQUIRED_HOOKS:
         command.extend(["--hook-type", hook])
-    result = subprocess.run(command, cwd=root, text=True)
-    return result.returncode
+    configured = _local_hooks_path_values(root)
+    temporarily_unset = _is_default_hooks_path(root, configured)
+    if temporarily_unset:
+        unset = subprocess.run(
+            [
+                "git", "-C", str(root), "config", "--local", "--unset-all",
+                "core.hooksPath",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if unset.returncode != 0:
+            return unset.returncode
+    result_code = 1
+    restore_code = 0
+    try:
+        result_code = subprocess.run(command, cwd=root, text=True).returncode
+    finally:
+        if temporarily_unset:
+            for value in configured:
+                restored = subprocess.run(
+                    [
+                        "git", "-C", str(root), "config", "--local", "--add",
+                        "core.hooksPath", value,
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+                if restored.returncode != 0:
+                    restore_code = restored.returncode
+    return restore_code or result_code
 
 
 def main(argv: list[str] | None = None) -> int:

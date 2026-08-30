@@ -122,9 +122,15 @@ def test_commit_attribution_hooks_end_to_end(tmp_path: Path) -> None:
     (repo / ".commit-attribution-baseline").write_text(
         baseline + "\n", encoding="utf-8"
     )
+    default_hooks = repo / ".git" / "hooks"
+    _git(repo, "config", "--local", "core.hooksPath", str(default_hooks))
 
     assert install(repo) == 0
     assert check_installation(repo) == ()
+    configured_hooks = _git(
+        repo, "config", "--local", "--get", "core.hooksPath"
+    ).stdout.strip()
+    assert configured_hooks == str(default_hooks)
 
     actors = (
         ("bjorn", "interactive", "bjorn"),

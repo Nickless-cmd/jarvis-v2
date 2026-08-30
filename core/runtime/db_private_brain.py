@@ -164,6 +164,7 @@ def list_private_brain_records(
     limit: int = 20,
     session_id: str | None = None,
     status: str | None = None,
+    record_type: str | None = None,
 ) -> list[dict[str, Any]]:
     from core.services.user_scope import scope_uid
     with connect() as conn:
@@ -180,6 +181,9 @@ def list_private_brain_records(
         if status:
             clauses.append("status = ?")
             params.append(status)
+        if record_type:
+            clauses.append("record_type = ?")
+            params.append(record_type)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         rows = conn.execute(
             f"SELECT * FROM private_brain_records {where} ORDER BY id DESC LIMIT ?",

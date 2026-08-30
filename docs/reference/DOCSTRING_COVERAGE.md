@@ -378,7 +378,7 @@ Generated from source. 6477/13013 functions/methods documented (49%). The list b
 - `core/runtime/db_heartbeat.py` :: `record_heartbeat_runtime_tick` (L598)
 - `core/runtime/db_heartbeat.py` :: `upsert_heartbeat_runtime_state` (L421)
 - `core/runtime/db_instrument.py` :: `set_file_hash` (L68)
-- `core/runtime/db_private_brain.py` :: `get_private_brain_record` (L289)
+- `core/runtime/db_private_brain.py` :: `get_private_brain_record` (L293)
 - `core/runtime/db_private_brain.py` :: `insert_private_brain_record` (L122)
 - `core/runtime/db_private_brain.py` :: `list_private_brain_records` (L162)
 - `core/runtime/db_private_notes.py` :: `ensure_private_notes_tables` (L15)

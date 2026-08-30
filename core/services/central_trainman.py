@@ -64,11 +64,15 @@ def _recent_dreams(limit: int = _SCAN_LIMIT) -> list[dict[str, Any]]:
 
 
 def _existing_dream_memories(limit: int = 200) -> list[dict[str, Any]]:
-    """Trainmans allerede-vævede erindringer i private_brain (til idempotens + tema-forbindelser)."""
+    """Trainmans allerede-vævede erindringer i private_brain (til idempotens + tema-forbindelser).
+    #dreamfix 2026-08-24: filtrerer direkte pa\u030a record_type='dream' i DB'en i stedet
+    for at hente alle og filtrere klient-side — de 200 seneste records af alle typer
+    indeholdt oftest kun 1-2 dr\u00f8mme, hvilket br\u00f8d idempotens og for\u00e5rsagede
+    falske tilbagevendende-tema-signaler."""
     try:
         from core.runtime.db import list_private_brain_records
-        recs = list_private_brain_records(limit=limit) or []
-        return [r for r in recs if str(r.get("record_type") or "") == _DREAM_RECORD_TYPE]
+        recs = list_private_brain_records(limit=limit, record_type=_DREAM_RECORD_TYPE) or []
+        return recs
     except Exception:
         return []
 

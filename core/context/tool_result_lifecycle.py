@@ -293,7 +293,18 @@ def evaluate_and_advance(session_id: str, *, settings=None) -> int:
             warm_tool_tokens=_warm,
             current_epoch=_epoch,
             recorded_epoch=get_compact_epoch(sid),
-            hard_ceiling=int(getattr(s, "tool_warm_hard_ceiling", _ceiling * 3)),
+            # Ventilen sættes lige OVER det bløde loft, ikke langt over. Så styrer
+            # token-grænsen (absolut, kontekst-bundet) hvornår gulvet rykker, mens
+            # `_candidate_by_runs` — der holder de sidste N bruger-ture varme og
+            # derfor skubber gulvet ved næsten hver tur — bliver filtreret fra.
+            # Målt 30-08: varme tool-tokens var 8.931 mod et loft på 40.000, så
+            # token-kriteriet var ALDRIG bindende; alle 7 avanceringer på 3,5 time
+            # kom fra recency-kriteriet. Modulets egen header siger «NO recency-
+            # relative logic (breaks the cache)» — det er præcis dét der skete.
+            hard_ceiling=int(
+                getattr(s, "tool_warm_hard_ceiling", None)
+                or _ceiling * (1.0 + float(getattr(s, "tool_warm_hysteresis", 0.25)))
+            ),
             only_on_compact=as_bool(
                 getattr(s, "tool_warm_advance_only_on_compact", None), default=True
             ),

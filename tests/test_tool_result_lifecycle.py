@@ -153,3 +153,46 @@ class TestAsBool:
     def test_real_bools_and_numbers(self) -> None:
         assert as_bool(True) is True and as_bool(False) is False
         assert as_bool(1) is True and as_bool(0) is False
+
+
+class TestValveGovernsInsteadOfRecency:
+    """Ventilen skal slippe TOKEN-drevne avanceringer igennem, ikke recency-drevne.
+
+    Målt 30-08: varme tool-tokens 8.931 mod loft 40.000 — token-kriteriet var
+    aldrig bindende. Alle 7 avanceringer kom fra `_candidate_by_runs`, som holder
+    de sidste N bruger-ture varme og derfor skubber gulvet ved næsten hver tur.
+    """
+
+    VALVE = int(40_000 * 1.25)   # blødt loft + hysterese
+
+    def test_recency_driven_advance_is_filtered_out(self) -> None:
+        """Typisk tur: langt under loftet → gulvet skal blive stående."""
+        ok, _ = should_advance(
+            warm_tool_tokens=8_931, current_epoch=0, recorded_epoch=0,
+            hard_ceiling=self.VALVE,
+        )
+        assert ok is False
+
+    def test_token_driven_advance_passes(self) -> None:
+        """Konteksten er reelt ved at løbe løbsk → gulvet SKAL rykke."""
+        ok, why = should_advance(
+            warm_tool_tokens=self.VALVE + 1, current_epoch=0, recorded_epoch=0,
+            hard_ceiling=self.VALVE,
+        )
+        assert ok is True
+        assert "sikkerhedsventil" in why
+
+    def test_context_stays_bounded_without_compaction(self) -> None:
+        """Compaction er død på den synlige bane (nyeste markør 22-07), så
+        ventilen er den eneste kontekst-grænse. Den skal holde."""
+        for warm in (0, 10_000, 40_000, self.VALVE):
+            ok, _ = should_advance(
+                warm_tool_tokens=warm, current_epoch=0, recorded_epoch=0,
+                hard_ceiling=self.VALVE,
+            )
+            assert ok is False, f"{warm} burde udskydes"
+        ok, _ = should_advance(
+            warm_tool_tokens=self.VALVE + 1, current_epoch=0, recorded_epoch=0,
+            hard_ceiling=self.VALVE,
+        )
+        assert ok is True

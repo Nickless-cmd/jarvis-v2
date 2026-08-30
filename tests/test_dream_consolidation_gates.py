@@ -36,3 +36,56 @@ def test_runs_and_releases_lock_when_gates_pass(isolated_runtime, monkeypatch):
     r = d.tick()
     assert r == {"consolidations": ["x"]}
     assert released["n"] == 1
+
+
+# ── _is_idle_enough: fuld stilhed vs. lav aktivitet (fix 2026-08-30) ──────
+# Før krævede gaten 30 min UDEN synlige runs — hvilket aldrig indtraf fordi der
+# altid er et chat-run hvert 15-20 min. Nu: <= 2 runs i 30 min = lav aktivitet.
+
+
+def _run(started_at: str) -> dict:
+    return {"started_at": started_at, "text_preview": "x"}
+
+
+def test_idle_full_silence_allows(monkeypatch):
+    """Ingen synlige runs i 30+ min → fuld stilhed → tilladt."""
+    monkeypatch.setattr(
+        "core.runtime.db.recent_visible_runs",
+        lambda limit=20: [_run("2026-08-29T00:00:00+00:00")],
+    )
+    ok, minutes = d._is_idle_enough()
+    assert ok is True and minutes >= 30
+
+
+def _iso(minutes_ago: int) -> str:
+    from datetime import UTC, datetime, timedelta
+    return (datetime.now(UTC) - timedelta(minutes=minutes_ago)).isoformat()
+
+
+def test_idle_low_activity_allows(monkeypatch):
+    """1-2 synlige runs i 30-min vinduet → lav aktivitet → tilladt."""
+    monkeypatch.setattr(
+        "core.runtime.db.recent_visible_runs",
+        lambda limit=20: [_run(_iso(10))],
+    )
+    ok, _ = d._is_idle_enough()
+    assert ok is True
+
+
+def test_idle_active_chat_blocks(monkeypatch):
+    """> 2 synlige runs i 30-min vinduet → aktiv samtale → blokeret."""
+    monkeypatch.setattr(
+        "core.runtime.db.recent_visible_runs",
+        lambda limit=20: [_run(_iso(5)), _run(_iso(10)), _run(_iso(15))],
+    )
+    ok, _ = d._is_idle_enough()
+    assert ok is False
+
+
+def test_idle_exception_is_fail_closed(monkeypatch):
+    """DB-fejl → fail-closed (False), aldrig blind konsolidering."""
+    def boom(limit=20):
+        raise RuntimeError("db down")
+    monkeypatch.setattr("core.runtime.db.recent_visible_runs", boom)
+    ok, _ = d._is_idle_enough()
+    assert ok is False

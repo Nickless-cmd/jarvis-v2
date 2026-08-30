@@ -32,6 +32,11 @@ from core.runtime.workspace_paths import shared_dir
 logger = logging.getLogger(__name__)
 
 _TRIGGER_IDLE_MINUTES = 30
+# Lav-aktivitetstærskel (2026-08-30): konsolidering må køre når der ikke er en
+# aktiv samtale — ikke kun ved fuld stilhed. Tæller synlige runs i vinduet:
+# <= _LOW_ACTIVITY_MAX_RUNS runs paa 30 min = ro i systemet, drømme maa dannes.
+_LOW_ACTIVITY_WINDOW_MINUTES = 30
+_LOW_ACTIVITY_MAX_RUNS = 2
 _MIN_COOLDOWN_HOURS = 4  # don't re-dream more than once every 4h
 _LOOKBACK_HOURS = 24
 _MIN_CLUSTER_SIZE = 2
@@ -138,15 +143,40 @@ def _tokens(text: str) -> list[str]:
 
 
 def _is_idle_enough() -> tuple[bool, int]:
+    """True hvis systemet er i ro nok til at konsolidere drømme.
+
+    To veje til ro:
+      1. Fuld stilhed: seneste synlige run er >= _TRIGGER_IDLE_MINUTES gammelt.
+      2. Lav aktivitet: hojst _LOW_ACTIVITY_MAX_RUNS synlige runs i
+         _LOW_ACTIVITY_WINDOW_MINUTES — ingen aktiv samtale, blot sporadisk
+         trafik. (Fix 2026-08-30: for krævede vi kun vej 1, hvilket aldrig
+         indtraf fordi der altid er et chat-run hvert 15-20 min.)
+    """
     try:
         from core.runtime.db import recent_visible_runs
-        runs = recent_visible_runs(limit=1) or []
+        runs = recent_visible_runs(limit=20) or []
         if not runs:
             return True, 99999
+        now = datetime.now(UTC)
         ts = str(runs[0].get("started_at") or "")
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-        minutes = int((datetime.now(UTC) - dt).total_seconds() / 60)
-        return minutes >= _TRIGGER_IDLE_MINUTES, minutes
+        minutes = int((now - dt).total_seconds() / 60)
+        if minutes >= _TRIGGER_IDLE_MINUTES:
+            return True, minutes
+        # Lav aktivitet: tæl synlige runs inden for vinduet.
+        cutoff = now - timedelta(minutes=_LOW_ACTIVITY_WINDOW_MINUTES)
+        n_active = 0
+        for r in runs:
+            rts = str(r.get("started_at") or "")
+            try:
+                rdt = datetime.fromisoformat(rts.replace("Z", "+00:00"))
+            except Exception:
+                continue
+            if rdt >= cutoff:
+                n_active += 1
+        if n_active <= _LOW_ACTIVITY_MAX_RUNS:
+            return True, minutes
+        return False, minutes
     except Exception:
         return False, 0
 

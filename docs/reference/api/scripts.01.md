@@ -48,6 +48,16 @@ _Reproducérbart latency/concurrency-benchmark for Ollama-lanen._
 | function | `bench_concurrency` | `(model, ks=…)` | Concurrency-skalering: K parallelle kald, wall-clock pr. K. | [src](../../../scripts/bench_ollama_concurrency.py#L79) |
 | function | `main` | `()` | — | [src](../../../scripts/bench_ollama_concurrency.py#L93) |
 
+## `scripts/block_literal_credentials.py`
+_Blokér credential-lignende NAVNE der får en literal streng-VÆRDI._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tokens` | `(name)` | Split MAIL_PASS / mailPass / mail-pass / mail.pass -> ['mail', 'pass']. | [src](../../../scripts/block_literal_credentials.py#L87) |
+| function | `_is_credential_name` | `(name)` | — | [src](../../../scripts/block_literal_credentials.py#L93) |
+| function | `_suspicious` | `(line)` | — | [src](../../../scripts/block_literal_credentials.py#L109) |
+| function | `check` | `(paths)` | — | [src](../../../scripts/block_literal_credentials.py#L125) |
+
 ## `scripts/cache_rate_monitor.py`
 _Cache hit rate monitor._
 
@@ -459,14 +469,4 @@ _Manuel repro af de tre streaming-fejl-former (Fase 0-harness)._
 |---|---|---|---|---|
 | function | `_install_hermetic_mocks` | `(persisted, nerves)` | — | [src](../../../scripts/repro_streaming_fault.py#L50) |
 | function | `main` | `()` | — | [src](../../../scripts/repro_streaming_fault.py#L77) |
-
-## `scripts/requirements_gen.py`
-_Scan core/+apps/+scripts for THIRD-PARTY top-level imports (filter stdlib + first-party)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `top_level_imports` | `(tree)` | Root module names of ABSOLUTE imports in one parsed file (relative imports ignored). | [src](../../../scripts/requirements_gen.py#L15) |
-| function | `scan` | `(repo=…)` | — | [src](../../../scripts/requirements_gen.py#L29) |
-| function | `third_party` | `(mods)` | — | [src](../../../scripts/requirements_gen.py#L40) |
-| function | `main` | `()` | — | [src](../../../scripts/requirements_gen.py#L46) |
 

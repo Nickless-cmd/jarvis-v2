@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/requirements_gen.py`
+_Scan core/+apps/+scripts for THIRD-PARTY top-level imports (filter stdlib + first-party)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `top_level_imports` | `(tree)` | Root module names of ABSOLUTE imports in one parsed file (relative imports ignored). | [src](../../../scripts/requirements_gen.py#L15) |
+| function | `scan` | `(repo=…)` | — | [src](../../../scripts/requirements_gen.py#L29) |
+| function | `third_party` | `(mods)` | — | [src](../../../scripts/requirements_gen.py#L40) |
+| function | `main` | `()` | — | [src](../../../scripts/requirements_gen.py#L46) |
+
 ## `scripts/reset_heartbeat_state.py`
 _Reset heartbeat scheduler state when it gets stuck._
 

@@ -997,7 +997,9 @@ def tick_cluster_projects(snapshot: dict | None = None, *, shadow: bool | None =
 #
 # The INFRASTRUCTURE / MAINTENANCE family. Eight daemons that keep Jarvis'
 # machine, caches, budget-awareness, ground truth, mail and eyes healthy. Like
-# family #9 (projects) this family has NO LLM member — every member is
+# family #9 (projects) this family has no *gated* LLM member — but note the
+# correction of 2026-08-30: mail_checker DOES call an LLM (one ``daemon_llm_call``
+# per actionable mail, and it can send an auto-reply). Everything else is
 # rules/DB-driven (visual_memory runs a LOCAL ollama vision model at 0 API tokens,
 # so it is a non-LLM-COST member too). There is therefore NO gated (LLM) tier:
 # every member runs in the UNCONDITIONAL tier and self-throttles on its OWN
@@ -1048,11 +1050,18 @@ def tick_cluster_projects(snapshot: dict | None = None, *, shadow: bool | None =
 #     anywhere (the watcher only started if some other path called
 #     start_file_awareness) → the family gives it a reliable per-tick ensure.
 #
-#   * mail_checker — RULES (IMAP poll, no LLM). Checks jarvis@srvlab.dk for new mail
-#     and publishes eventbus notifications for unseen messages. Had NO internal timer
+#   * mail_checker — IMAP poll + **LLM per actionable mail** (the family header's
+#     "no LLM member" claim did NOT hold for this member — corrected 2026-08-30).
+#     Checks jarvis@srvlab.dk, publishes eventbus notifications for unseen messages,
+#     and for fresh non-automated mail it runs ``_evaluate_mail`` (daemon_llm_call)
+#     and MAY send an auto-reply. Budget it accordingly. Had NO internal timer
 #     (ran every heartbeat via its is_enabled-gated site) → 15-min family
 #     self-throttle to keep its registry cadence and avoid per-heartbeat IMAP polls.
 #     LOAD-BEARING: the mail events drive Jarvis' inbox awareness.
+#     Noise guards (2026-08-30): mail older than 24h, bounces and auto-replies are
+#     marked seen but neither notify nor cost an LLM call; more than 5 fresh mails in
+#     one tick collapses to a single summary alert. Added after 435 bounces from a
+#     mail-account compromise turned into ~435 push notifications and LLM calls.
 #
 #   * visual_memory — LOCAL-VISION (0 API tokens). Lag 6: webcam snapshot + local
 #     ollama vision-model room description (4x/day). Non-LLM-COST but expensive
@@ -1089,7 +1098,8 @@ def _infra_throttle_ready(key: str, minutes: float) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Shared snapshot — this family has NO LLM member and no shared inputs
+# Shared snapshot — no GATED LLM member and no shared inputs (mail_checker does
+# call an LLM per actionable mail; see its member note above)
 # ---------------------------------------------------------------------------
 
 
@@ -1107,9 +1117,11 @@ def _collect_infra_snapshot() -> dict[str, Any]:
 def build_infra_family() -> ClusterDaemon:
     """Construct the infra/maintenance cluster-daemon (family #10), LIVE.
 
-    NO gated LLM member — all eight members are rules/DB-driven (visual_memory uses
-    a LOCAL vision model at 0 API tokens) and run in the UNCONDITIONAL tier via
-    ``tick_cluster_infra``. The ClusterDaemon is built with an EMPTY ``members`` list
+    NO *gated* LLM member — all eight members run in the UNCONDITIONAL tier via
+    ``tick_cluster_infra``. Note (corrected 2026-08-30): "unconditional" is not the
+    same as "free" — ``mail_checker`` issues one ``daemon_llm_call`` per actionable
+    mail and may send an auto-reply, and ``visual_memory`` runs a LOCAL vision model
+    (0 API tokens). The ClusterDaemon is built with an EMPTY ``members`` list
     (the gated tier): its one-gate call is therefore fail-open (no signals → always
     fires) and exists only to keep the family's ONE-gate invariant + Central trace
     continuous, mirroring the projects family (#9).

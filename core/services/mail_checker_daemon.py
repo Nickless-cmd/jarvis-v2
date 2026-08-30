@@ -10,10 +10,12 @@ import email as email_lib
 import imaplib
 import json
 import logging
+import re
 import smtplib
 from datetime import UTC, datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import parsedate_to_datetime
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
@@ -34,6 +36,57 @@ _MAX_SEEN_IDS = 500
 # Auto-responded Message-IDs to avoid duplicate replies
 _auto_responded_ids: set[str] = set()
 _MAX_RESPONDED_IDS = 200
+
+# --- Støjværn -------------------------------------------------------------
+# Dæmonen læser INBOX med SEARCH UNSEEN. Den har ingen anelse om ALDER eller
+# ART, så enhver ulæst mail er "ny mail" der udløser push-notifikation,
+# høj-prioritets nudge OG et LLM-kald.
+#
+# 2026-08-26 blev kontoen misbrugt til en udsendelse. Returmailsene landede i
+# INBOX: 435 ulæste bounces. Dæmonen begyndte at behandle dem 15 ad gangen som
+# "ny mail" — dvs. ~435 notifikationer og ~435 LLM-kald fordelt over to døgn,
+# for post der var fire dage gammel og udelukkende bestod af MAILER-DAEMON.
+#
+# Tre værn, i den rækkefølge de rammer:
+#   1. ALDER   — post ældre end _MAX_AGE_HOURS er ikke "ny". Markeres læst, ellers tavs.
+#   2. ART     — bounces og autosvar er maskinstøj: hverken notifikation eller LLM.
+#   3. MÆNGDE  — flere end _FLOOD_THRESHOLD ægte nye mails i ét tick er et
+#                unormalt indbrud af post. Så ét samlet varsel i stedet for N,
+#                og ingen LLM-vurdering i det tick.
+# Alle tre markerer stadig posten som læst, så backloggen ikke bygger sig op igen.
+_MAX_AGE_HOURS = 24
+_FLOOD_THRESHOLD = 5
+
+_AUTOMATED_RE = re.compile(
+    r"mailer.?daemon|postmaster@|delivery (status|subsystem)|undeliver"
+    r"|returned mail|automatic reply|out of office|auto.?response|auto.?reply",
+    re.IGNORECASE,
+)
+
+
+def _is_automated(sender: str, subject: str) -> bool:
+    """True for bounces og autosvar — maskinstøj, ikke post der skal svares på."""
+    return bool(_AUTOMATED_RE.search(sender or "") or _AUTOMATED_RE.search(subject or ""))
+
+
+def _is_stale(date_header: str, now: datetime | None = None) -> bool:
+    """True hvis mailen er ældre end _MAX_AGE_HOURS.
+
+    Et ulæselig/manglende Date-felt regnes som FRISK — vi vil hellere notificere
+    en gang for meget end tie om ægte post.
+    """
+    if not date_header:
+        return False
+    try:
+        sent = parsedate_to_datetime(date_header)
+    except (TypeError, ValueError):
+        return False
+    if sent is None:
+        return False
+    if sent.tzinfo is None:
+        sent = sent.replace(tzinfo=UTC)
+    age = (now or datetime.now(UTC)) - sent
+    return age.total_seconds() > _MAX_AGE_HOURS * 3600
 
 
 def _evaluate_mail(sender: str, subject: str, snippet: str) -> dict:
@@ -250,10 +303,55 @@ def tick_mail_checker_daemon() -> dict[str, object]:
     _last_senders = [m.get("from", "") for m in new_mails]
     _last_subjects = [m.get("subject", "") for m in new_mails]
 
+    # Del posten op FØR vi larmer: kun frisk, menneskelig post fortjener en
+    # notifikation, et nudge og et LLM-kald. Resten markeres blot læst.
+    actionable: list[dict] = []
+    quiet: list[dict] = []
+    for mail in new_mails:
+        is_quiet = _is_automated(
+            mail.get("from", ""), mail.get("subject", "")
+        ) or _is_stale(mail.get("date", ""))
+        mail["quiet"] = is_quiet
+        (quiet if is_quiet else actionable).append(mail)
+
+    flooded = len(actionable) > _FLOOD_THRESHOLD
+    if quiet:
+        logger.info(
+            "mail_checker: %d ny(e) mail(s) tavse (bounce/autosvar eller ældre end %dt)",
+            len(quiet), _MAX_AGE_HOURS,
+        )
+    if flooded:
+        # Et indbrud af post er én begivenhed, ikke N. Ét varsel, ingen LLM.
+        logger.warning(
+            "mail_checker: %d nye mails i ét tick (grænse %d) — samlet varsel, "
+            "ingen per-mail vurdering", len(actionable), _FLOOD_THRESHOLD,
+        )
+        try:
+            from core.services.outbound_nudges import push_nudge
+            push_nudge(
+                source="mail_checker",
+                kind="other",
+                message=f"{len(actionable)} nye mails på én gang — usædvanligt meget post",
+                importance="high",
+            )
+        except Exception:
+            pass
+        try:
+            from core.services.ntfy_gateway import send_notification
+            send_notification(
+                message=f"{len(actionable)} nye mails på én gang. Tjek indbakken.",
+                title="Usædvanlig meget post",
+                priority="default",
+                tags=["email"],
+            )
+        except Exception as e:
+            logger.warning("mail_checker: ntfy notify failed: %s", e)
+
     # Publish event for each new mail + proactive notification
     for mail in new_mails:
         sender = mail.get("from", "")
         subject = mail.get("subject", "")
+        noisy_ok = not mail.get("quiet") and not flooded
         try:
             event_bus.publish(
                 "mail_checker.new_mail",
@@ -268,19 +366,20 @@ def tick_mail_checker_daemon() -> dict[str, object]:
             pass
 
         # Push nudge so Jarvis sees new mail in awareness prompt
-        try:
-            from core.services.outbound_nudges import push_nudge
-            push_nudge(
-                source="mail_checker",
-                kind="other",
-                message=f"Ny mail fra {sender}: {subject}",
-                importance="high",
-            )
-        except Exception:
-            pass
+        if noisy_ok:
+            try:
+                from core.services.outbound_nudges import push_nudge
+                push_nudge(
+                    source="mail_checker",
+                    kind="other",
+                    message=f"Ny mail fra {sender}: {subject}",
+                    importance="high",
+                )
+            except Exception:
+                pass
 
         # Proactive notification + auto-evaluate for non-self mail
-        if "jarvis@srvlab.dk" not in sender and "root@srvlab.dk" not in sender:
+        if noisy_ok and "jarvis@srvlab.dk" not in sender and "root@srvlab.dk" not in sender:
             try:
                 from core.services.ntfy_gateway import send_notification
                 decoded_subject = subject
@@ -364,6 +463,10 @@ def tick_mail_checker_daemon() -> dict[str, object]:
         "senders": _last_senders,
         "subjects": _last_subjects,
         "marked_seen": marked,
+        # Støjværnets arbejde, så det kan ses i registry/diagnostik
+        "actionable_count": len(actionable),
+        "quiet_count": len(quiet),
+        "flood_suppressed": flooded,
     }
 
 

@@ -635,6 +635,16 @@ def _build_visible_chat_messages_for_github(
         except Exception:
             pass
 
+    # Cache-sonde (slukket; touch /tmp/jarvis-msgdump). DETTE er deepseek-stien
+    # — sonden skal sidde efter hale-splittet, så den måler præcis det array der
+    # sendes. Se prompt_cache_probe for hvorfor to kald i træk ikke kan afsløre
+    # bruddet: de mistænkte sektioner muterer på minut-skala, ikke sekund-skala.
+    try:
+        from core.services.prompt_cache_probe import probe
+        probe(messages, session_id=session_id or "")
+    except Exception:
+        pass
+
     return messages
 
 

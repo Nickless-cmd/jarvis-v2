@@ -1,4 +1,4 @@
-default_install_hook_types: [pre-commit, commit-msg, pre-push]
+default_install_hook_types: [pre-commit, commit-msg, pre-push, pre-rebase]
 
 repos:
   - repo: https://github.com/Yelp/detect-secrets
@@ -106,3 +106,11 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+
+      - id: block-unattributed-rebase
+        name: Block rebase that preserves stale actor attribution
+        entry: /opt/conda/envs/ai/bin/python scripts/block_unattributed_rebase.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-rebase]

@@ -33,13 +33,14 @@ def _copy_runtime(repo: Path) -> None:
         "core/services/commit_attribution.py",
         "scripts/commit_with_attribution.py",
         "scripts/install_git_hooks.py",
+        "scripts/block_unattributed_rebase.py",
         "scripts/validate_commit_attribution.py",
     ):
         target = repo / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(SOURCE_ROOT / relative, target)
     (repo / ".pre-commit-config.yaml").write_text(
-        f"""default_install_hook_types: [pre-commit, commit-msg, pre-push]
+        f"""default_install_hook_types: [pre-commit, commit-msg, pre-push, pre-rebase]
 repos:
   - repo: local
     hooks:
@@ -55,6 +56,13 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+      - id: block-unattributed-rebase
+        name: Block rebase that preserves stale actor attribution
+        entry: {sys.executable} scripts/block_unattributed_rebase.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-rebase]
 """,
         encoding="utf-8",
     )
@@ -151,6 +159,14 @@ def test_commit_attribution_hooks_end_to_end(tmp_path: Path) -> None:
         assert f"Actor: {actor}" in body
         assert f"Actor-Type: {ACTOR_REGISTRY[actor].actor_type}" in body
 
+    main_branch = _git(repo, "branch", "--show-current").stdout.strip()
+    _git(repo, "checkout", "-qb", "rebase-candidate", "HEAD^")
+    rebased = _git(repo, "rebase", main_branch, check=False)
+    assert rebased.returncode != 0
+    assert "rebase is blocked" in rebased.stdout + rebased.stderr
+    _git(repo, "checkout", main_branch)
+    _git(repo, "branch", "-D", "rebase-candidate")
+
     before_rejected = _git(repo, "rev-parse", "HEAD").stdout.strip()
     (repo / "audit.txt").write_text("raw rejected\n", encoding="utf-8")
     _git(repo, "add", "audit.txt")
@@ -184,7 +200,6 @@ def test_commit_attribution_hooks_end_to_end(tmp_path: Path) -> None:
     )
     assert amended != original
 
-    main_branch = _git(repo, "branch", "--show-current").stdout.strip()
     _git(repo, "checkout", "-qb", "merge-source")
     (repo / "branch.txt").write_text("branch\n", encoding="utf-8")
     _git(repo, "add", "branch.txt")

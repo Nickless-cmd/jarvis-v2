@@ -5,6 +5,25 @@ on:
   pull_request:
 
 jobs:
+  commit-attribution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate outgoing commit attribution
+        env:
+          PRE_COMMIT_FROM_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PRE_COMMIT_TO_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [[ "$PRE_COMMIT_FROM_REF" =~ ^0+$ ]]; then
+            export PRE_COMMIT_FROM_REF=""
+          fi
+          python scripts/validate_commit_attribution.py --pre-push
+
   python-smoke:
     runs-on: ubuntu-latest
     steps:

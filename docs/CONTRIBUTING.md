@@ -42,7 +42,10 @@ Write the failing test → run it (confirm it fails) → minimal implementation 
   Select the actual actor (`bjorn`, `jarvis`, `codex`, or `opus`) and supply
   the current run/task ID when available. Do not hand-write managed trailers.
 - Every commit after `.commit-attribution-baseline` is checked by `commit-msg`;
-  `pre-push` checks the full outgoing range so `--no-verify` is not a bypass.
+  `pre-push` checks the full outgoing range. CI repeats the range-check because
+  `git push --no-verify` bypasses every local pre-push hook.
+- Rebase is blocked: replay creates new hashes while preserving stale actor trailers.
+  Merge the target branch instead.
 - Install and verify all required hooks:
   ```bash
   /opt/conda/envs/ai/bin/python scripts/install_git_hooks.py

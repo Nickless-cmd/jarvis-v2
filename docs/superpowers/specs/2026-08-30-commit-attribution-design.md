@@ -116,8 +116,9 @@ Ingen aktor udledes fra procesnavn, committekst, modelnavn eller global `git con
 
 Direkte commits er tilladt, hvis beskeden allerede indeholder en gyldig kontrakt. Ellers
 afviser `commit-msg` med en kort fejl og viser den korrekte wrapperkommando. `--no-verify`
-kan teknisk omga hooken; push-validatoren er derfor den anden kontrol og afviser den
-resulterende commit, for den kommer ind i delt historik.
+kan teknisk omga lokale hooks. En normal push afvises af pre-push-validatoren; en push
+der ogsa bruger `--no-verify` opdages af CI-range-checket. Merge/deploy er kun blokeret
+server-side nar dette CI-check er markeret som required pa den beskyttede branch.
 
 ## 6. Validering og handhaevelse
 
@@ -130,16 +131,19 @@ Validatoren er en ren funktion over commitbeskeden og actor-registret. Den tjekk
 - `Approved-By` er en registreret actor eller et syntaktisk gyldigt `policy:*` id;
 - trailerblokken kan parses med Gits egen trailersemantik.
 
-Handhaevelsen har to lag:
+Handhaevelsen har tre lag:
 
 1. **`commit-msg`:** hurtig lokal feedback pa den commit, der er ved at blive skabt.
 2. **Pre-push/range-check:** validerer alle nye commits i den range, der skubbes. Dermed
    fanges commits skabt med `--no-verify`, fra en anden checkout eller via aeldre tooling.
+3. **CI/range-check:** korer samme validator pa `push` og `pull_request`, og kan derfor
+   ikke omgas med klientens `git push --no-verify`.
 
 Hooks installeres fra versionerede scripts via repositoryets setupkommando. Installation
 verificeres af capability/deploy-checket; en manglende hook ma ikke rapporteres som aktiv.
-Hvis repositoryet senere far server-side CI eller protected remote, kan samme range-check
-kores der uden ny valideringslogik.
+`pre-rebase` blokerer replay, fordi en rebase ellers bevarer syntaktisk gyldige, men
+forkerte actor-trailers. CI-checket skal vaere required pa protected branches for at
+blokere merge/deploy; en almindelig push-workflow kan kun rapportere efter at pushen er sket.
 
 ## 7. Git-specialtilfaelde
 
@@ -149,8 +153,10 @@ kores der uden ny valideringslogik.
   standard-reverttekst.
 - **Cherry-pick:** `Actor` er den der udforer cherry-picket. Oprindelig author bevares i
   Git, mens de styrede trailers omskrives til den nye commit-aktor.
-- **Amend/rebase:** den aktor der producerer den nye hash bliver `Actor`. Wrapperen
-  erstatter gamle styrede trailers i stedet for at duplikere dem.
+- **Amend:** den aktor der producerer den nye hash bliver `Actor`. Wrapperen erstatter
+  gamle styrede trailers i stedet for at duplikere dem.
+- **Rebase:** forbudt og blokeret af `pre-rebase`, fordi Git replay bevarer den gamle
+  trailer pa en ny hash. Opdater branch med merge i stedet.
 - **Automatiske hook-rettelser:** filer som en pre-commit-hook genererer, tilhorer samme
   commit og samme actor-kontekst.
 - **Historiske commits:** grandfatheres. Range-checket validerer kun commits nyere end
@@ -222,6 +228,7 @@ efter aktivering er manglende metadata en hard fejl.
   approval.
 - Ingen normal commitsti for Bjorn, Jarvis, Codex eller Opus kan skabe en commit uden
   gyldig kontrakt.
-- `--no-verify` opdages senest ved push.
+- Commit-`--no-verify` opdages ved normal push; push-`--no-verify` opdages af CI.
+- Rebase blokeres i normal workflow, sa actor-trailers ikke overlever hash-replay.
 - Git er eneste autoritative historik; enhver UI/DB-visning kan genbygges.
 - Eksisterende auto-commit path-isolation svaekkes ikke.

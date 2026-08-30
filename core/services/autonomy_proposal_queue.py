@@ -34,6 +34,8 @@ from core.runtime.db import (
     list_autonomy_proposals,
     resolve_autonomy_proposal,
 )
+from core.services.attributed_git_commit import commit_with_attribution
+from core.services.commit_attribution import CommitAttribution
 
 logger = logging.getLogger(__name__)
 
@@ -195,8 +197,15 @@ def approve_proposal(
         return {"status": "approved", "proposal": resolved}
     # Execute
     payload = proposal.get("payload") or {}
+    execution_payload = dict(payload) if isinstance(payload, dict) else {}
+    execution_payload["_proposal_context"] = {
+        "proposal_id": proposal_id,
+        "run_id": str(proposal.get("run_id") or ""),
+        "session_id": str(proposal.get("session_id") or ""),
+        "approved_by": "bjorn",
+    }
     try:
-        result = executor(dict(payload) if isinstance(payload, dict) else {})
+        result = executor(execution_payload)
     except Exception as exc:
         logger.exception("autonomy proposal executor failed for %s", kind)
         resolved = resolve_autonomy_proposal(
@@ -456,11 +465,19 @@ def _auto_commit_after_source_edit(proposal: dict, result: dict) -> None:
     proposal_id = str(proposal.get("proposal_id") or "unknown")
     commit_msg = f"source-edit: {rationale}\n\nProposal: {proposal_id}"
 
-    commit_result = _sp.run(
-        ["git", "commit", "--author", "Jarvis <jarvis@srvlab.dk>", "-m", commit_msg],
-        capture_output=True,
-        text=True,
-        cwd=project_root,
+    commit_result = commit_with_attribution(
+        repo=_Path(project_root),
+        message=commit_msg,
+        attribution=CommitAttribution(
+            actor="jarvis",
+            actor_type="agent",
+            run_id=str(proposal.get("run_id") or proposal_id),
+            session_id=str(proposal.get("session_id") or "none"),
+            origin="autonomous",
+            approved_by="bjorn",
+        ),
+        paths=(relative_path,),
+        author="Jarvis <jarvis@srvlab.dk>",
     )
     if commit_result.returncode != 0:
         stdout = commit_result.stdout.strip()
@@ -476,12 +493,7 @@ def _auto_commit_after_source_edit(proposal: dict, result: dict) -> None:
     # Publish commit_landed event for coding_lane auto-reviewer
     try:
         from core.eventbus.bus import event_bus as _eb
-        import subprocess as _sp2
-        _sha_result = _sp2.run(
-            ["git", "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=5, cwd=project_root,
-        )
-        _sha = _sha_result.stdout.strip() if _sha_result.returncode == 0 else "unknown"
+        _sha = commit_result.sha or "unknown"
         _eb.publish("coding_lane.commit_landed", {
             "sha": _sha,
             "message": commit_msg[:200],
@@ -524,12 +536,21 @@ def _execute_git_commit_proposal(payload: dict) -> dict:
             "error": f"git add failed: {add_result.stderr.strip()}",
         }
 
-    # Commit
-    commit_result = _sp.run(
-        ["git", "commit", "--author", "Jarvis <jarvis@srvlab.dk>", "-m", message],
-        capture_output=True,
-        text=True,
-        cwd=project_root,
+    context = payload.get("_proposal_context") or {}
+    proposal_id = str(context.get("proposal_id") or "proposal-unknown")
+    commit_result = commit_with_attribution(
+        repo=_Path(project_root),
+        message=message,
+        attribution=CommitAttribution(
+            actor="jarvis",
+            actor_type="agent",
+            run_id=str(context.get("run_id") or proposal_id),
+            session_id=str(context.get("session_id") or "none"),
+            origin="autonomous",
+            approved_by=str(context.get("approved_by") or "bjorn"),
+        ),
+        paths=tuple(str(f) for f in files),
+        author="Jarvis <jarvis@srvlab.dk>",
     )
     if commit_result.returncode != 0:
         stderr = commit_result.stderr.strip()
@@ -540,10 +561,7 @@ def _execute_git_commit_proposal(payload: dict) -> dict:
         return {"status": "error", "error": f"git commit failed: {stderr or stdout}"}
 
     output = commit_result.stdout.strip()
-    # Extract commit hash from output like "[main abc1234] message"
-    import re as _re
-    m = _re.search(r"\[(?:\S+)\s+([0-9a-f]+)\]", output)
-    commit_hash = m.group(1) if m else "unknown"
+    commit_hash = commit_result.sha or "unknown"
 
     # Publish commit_landed event for coding_lane auto-reviewer
     try:

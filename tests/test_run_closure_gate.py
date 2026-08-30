@@ -12,6 +12,7 @@ import subprocess
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from core.services.attributed_git_commit import AttributedCommitResult
 from core.services.run_closure_gate import (
     _summarize_unstaged,
     _record_pre_run_state,
@@ -220,7 +221,7 @@ class TestAutoCommitExclusion:
 class TestAutoCommitGate:
     """_try_auto_commit: forsegl autonome runs' rørte filer gennem git commit."""
 
-    def _fake_git(self, *, commit_rc: int = 0, commit_stderr: str = ""):
+    def _fake_git(self):
         """Return (fake_run, calls) der dispatcher på git-subkommandoer."""
         calls: list[list[str]] = []
 
@@ -228,10 +229,6 @@ class TestAutoCommitGate:
             calls.append(list(args))
             if args[:2] == ["git", "add"]:
                 return SimpleNamespace(returncode=0, stdout="", stderr="")
-            if args[:2] == ["git", "commit"]:
-                return SimpleNamespace(returncode=commit_rc, stdout="", stderr=commit_stderr)
-            if args[:2] == ["git", "rev-parse"]:
-                return SimpleNamespace(returncode=0, stdout="abc1234\n", stderr="")
             if args[:2] == ["git", "restore"]:
                 return SimpleNamespace(returncode=0, stdout="", stderr="")
             return subprocess.run(args, **kwargs)
@@ -242,7 +239,11 @@ class TestAutoCommitGate:
         from core.services.run_closure_gate import _try_auto_commit
         fake_run, calls = self._fake_git()
         with patch("core.services.run_closure_gate._git_staged_paths", return_value=set()), \
-             patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run):
+             patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run), \
+             patch(
+                 "core.services.run_closure_gate.commit_with_attribution",
+                 return_value=AttributedCommitResult(0, sha="abc1234"),
+             ) as commit:
             short = _try_auto_commit(
                 {"core/services/run_closure_gate.py"},
                 run_id="rid-1", session_id="sid-1", focus="test fix",
@@ -251,6 +252,13 @@ class TestAutoCommitGate:
         # add kaldt med præcis den rørte fil — aldrig -A
         add_call = next(c for c in calls if c[:2] == ["git", "add"])
         assert "core/services/run_closure_gate.py" in add_call
+        attribution = commit.call_args.kwargs["attribution"]
+        assert attribution.actor == "jarvis"
+        assert attribution.actor_type == "agent"
+        assert attribution.run_id == "rid-1"
+        assert attribution.session_id == "sid-1"
+        assert attribution.origin == "autonomous"
+        assert attribution.approved_by == "policy:auto-commit-v1"
 
     def test_never_commits_artifacts(self):
         from core.services.run_closure_gate import _try_auto_commit
@@ -284,11 +292,15 @@ class TestAutoCommitGate:
     def test_unstages_and_records_error_when_hook_blocks(self):
         from core.services import run_closure_gate as gate_mod
         from core.services.run_closure_gate import _try_auto_commit
-        fake_run, calls = self._fake_git(
-            commit_rc=1, commit_stderr="docs-drift: API docs are stale\n"
-        )
+        fake_run, calls = self._fake_git()
         with patch("core.services.run_closure_gate._git_staged_paths", return_value=set()), \
-             patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run):
+             patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run), \
+             patch(
+                 "core.services.run_closure_gate.commit_with_attribution",
+                 return_value=AttributedCommitResult(
+                     1, stderr="docs-drift: API docs are stale\n"
+                 ),
+             ):
             short = _try_auto_commit(
                 {"core/services/run_closure_gate.py"},
                 run_id="rid-4", session_id="sid-4", focus="x",
@@ -301,15 +313,19 @@ class TestAutoCommitGate:
     def test_commit_has_pathspec_not_kitchen_sink(self):
         """Fund 2: git commit must have -- pathspec, never commit everything."""
         from core.services.run_closure_gate import _try_auto_commit
-        fake_run, calls = self._fake_git()
+        fake_run, _ = self._fake_git()
         with patch("core.services.run_closure_gate._git_staged_paths", return_value=set()),              patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run):
-            _try_auto_commit(
-                {"core/services/run_closure_gate.py"},
-                run_id="rid-ps", session_id="sid-ps", focus="pathspec test",
-            )
-        commit_call = next(c for c in calls if c[:2] == ["git", "commit"])
-        assert "--" in commit_call
-        assert "core/services/run_closure_gate.py" in commit_call
+            with patch(
+                "core.services.run_closure_gate.commit_with_attribution",
+                return_value=AttributedCommitResult(0, sha="abc1234"),
+            ) as commit:
+                _try_auto_commit(
+                    {"core/services/run_closure_gate.py"},
+                    run_id="rid-ps", session_id="sid-ps", focus="pathspec test",
+                )
+        assert commit.call_args.kwargs["paths"] == (
+            "core/services/run_closure_gate.py",
+        )
 
     def test_abstains_when_staging_check_fails(self):
         """Fund 2: _git_staged_paths returns None → fail-closed, no commit."""
@@ -331,10 +347,14 @@ class TestAutoCommitGate:
         fake_run, calls = self._fake_git()
         # A deleted file doesn't exist on disk, but git add -- <path> stages the deletion
         with patch("core.services.run_closure_gate._git_staged_paths", return_value=set()),              patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run):
-            short = _try_auto_commit(
-                {"core/deleted_file.py"},  # doesn't exist on disk
-                run_id="rid-del", session_id="sid-del", focus="deletion test",
-            )
+            with patch(
+                "core.services.run_closure_gate.commit_with_attribution",
+                return_value=AttributedCommitResult(0, sha="abc1234"),
+            ):
+                short = _try_auto_commit(
+                    {"core/deleted_file.py"},  # doesn't exist on disk
+                    run_id="rid-del", session_id="sid-del", focus="deletion test",
+                )
         assert short == "abc1234"
         add_call = next(c for c in calls if c[:2] == ["git", "add"])
         assert "core/deleted_file.py" in add_call

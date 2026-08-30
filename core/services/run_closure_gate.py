@@ -50,6 +50,9 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from core.services.attributed_git_commit import commit_with_attribution
+from core.services.commit_attribution import CommitAttribution
+
 logger = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -349,9 +352,19 @@ def _try_auto_commit(
             _last_auto_commit_error = (add.stderr or add.stdout or "git add fejlede").strip()[:300]
             return None
 
-        commit = subprocess.run(
-            ["git", "commit", "-m", subject + body, "--", *candidates],
-            capture_output=True, text=True, timeout=120, cwd=_REPO_ROOT,
+        commit = commit_with_attribution(
+            repo=_REPO_ROOT,
+            message=subject + body,
+            attribution=CommitAttribution(
+                actor="jarvis",
+                actor_type="agent",
+                run_id=run_id,
+                session_id=session_id or "none",
+                origin="autonomous",
+                approved_by="policy:auto-commit-v1",
+            ),
+            paths=tuple(candidates),
+            timeout=120,
         )
         if commit.returncode != 0:
             # Hook blokerede eller git fejlede → rul staging tilbage, behold
@@ -368,11 +381,7 @@ def _try_auto_commit(
                 pass
             return None
 
-        rev = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=5, cwd=_REPO_ROOT,
-        )
-        short = (rev.stdout or "?").strip()
+        short = (commit.sha or "?")[:12]
         logger.info(
             "run_closure_gate: auto-commit %s → %s (%d paths, run %s)",
             short[:12], subject[:60], len(candidates), run_id[:12],

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6494/13029 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6495/13030 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6494/13029 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4310 | 9071 | 47% |
+| `core.services` | 4311 | 9072 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 70 | 122 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1205,9 +1205,9 @@ Generated from source. 6494/13029 functions/methods documented (49%). The list b
 - `core/services/personal_project.py` :: `pause_project` (L356)
 - `core/services/personal_project.py` :: `resume_project` (L380)
 - `core/services/pfsense_syslog.py` :: `syslog_stats` (L175)
-- `core/services/plan_proposals.py` :: `list_session_plans` (L468)
+- `core/services/plan_proposals.py` :: `list_session_plans` (L479)
 - `core/services/plan_proposals.py` :: `propose_plan` (L49)
-- `core/services/plan_proposals.py` :: `resolve_plan` (L122)
+- `core/services/plan_proposals.py` :: `resolve_plan` (L133)
 - `core/services/policy_abstraction.py` :: `is_enabled` (L71)
 - `core/services/policy_abstraction.py` :: `set_enabled` (L75)
 - `core/services/precision_bias.py` :: `build_precision_bias_surface` (L285)

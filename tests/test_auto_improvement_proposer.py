@@ -31,3 +31,58 @@ def test_is_safe_target_empty_false():
 def test_infrastructure_list_is_canonical_single_source():
     from core.services import gate_mutation as gm
     assert aip._INFRASTRUCTURE_BLOCKED_MODULES is gm.INFRASTRUCTURE_BLOCKED_MODULES
+
+
+# ── Regression 2026-08-30: kronisk-provider-plan må ikke fyre på stale data ──
+# Problemet: ved genstart læser proposeren et gammelt snapshot (fra natten) og
+# genopretter provider-planen selvom provideren er kommet op igen.
+
+
+def test_provider_health_chronic_skips_stale_snapshot(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+    from core.services import auto_improvement_proposer as aip
+
+    def stale_snap():
+        return {
+            "checked_at": (datetime.now(UTC) - timedelta(hours=12)).isoformat(),
+            "unreachable": ["groq"],
+        }
+
+    monkeypatch.setattr(
+        "core.services.provider_health_check.latest_health_snapshot", stale_snap
+    )
+    assert aip._check_provider_health_chronic() is None
+
+
+def test_provider_health_chronic_fires_on_fresh_snapshot(monkeypatch):
+    from datetime import UTC, datetime
+    from core.services import auto_improvement_proposer as aip
+
+    def fresh_snap():
+        return {
+            "checked_at": datetime.now(UTC).isoformat(),
+            "unreachable": ["groq"],
+        }
+
+    monkeypatch.setattr(
+        "core.services.provider_health_check.latest_health_snapshot", fresh_snap
+    )
+    res = aip._check_provider_health_chronic()
+    assert res is not None
+    assert "kronisk ikke-tilgængelig" in res["title"]
+
+
+def test_provider_health_chronic_noop_when_all_up(monkeypatch):
+    from datetime import UTC, datetime
+    from core.services import auto_improvement_proposer as aip
+
+    def fresh_snap():
+        return {
+            "checked_at": datetime.now(UTC).isoformat(),
+            "unreachable": [],
+        }
+
+    monkeypatch.setattr(
+        "core.services.provider_health_check.latest_health_snapshot", fresh_snap
+    )
+    assert aip._check_provider_health_chronic() is None

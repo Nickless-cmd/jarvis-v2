@@ -68,24 +68,35 @@ def propose_plan(
 
     data = _load_all()
 
-    # Deduplicate: if an awaiting_approval plan with the same title already
-    # exists (any session), skip creating a duplicate. This prevents the
-    # auto-improvement proposer from spawning endless identical plans.
+    # Deduplicate: if a plan with the same title already exists (any
+    # session/status), skip creating a duplicate. This prevents the
+    # auto-improvement proposer from spawning endless identical plans —
+    # including plans the user already dismissed or that were superseded,
+    # which would otherwise be re-proposed at every restart.
     normalized_title = title[:160].strip().lower()
+    _DEDUP_WINDOW_DAYS = 30
+    cutoff = datetime.now(UTC) - timedelta(days=_DEDUP_WINDOW_DAYS)
     for rec in data.values():
-        if (
-            rec.get("status") == "awaiting_approval"
-            and (rec.get("title") or "").strip().lower() == normalized_title
+        if (rec.get("title") or "").strip().lower() != normalized_title:
+            continue
+        status = rec.get("status")
+        created = _parse_iso(str(rec.get("created_at") or ""))
+        if status == "awaiting_approval" or (
+            status in {"dismissed", "superseded"}
+            and created is not None
+            and created >= cutoff
         ):
             logger.info(
-                "Skipping duplicate plan proposal — title '%s' already pending as %s",
+                "Skipping duplicate plan proposal — title '%s' already %s as %s",
                 title[:80],
+                status,
                 rec.get("plan_id"),
             )
             return {
                 "status": "skipped_duplicate",
                 "existing_plan_id": rec.get("plan_id"),
-                "awaiting": True,
+                "existing_status": status,
+                "awaiting": status == "awaiting_approval",
                 "session_id": sid,
             }
 

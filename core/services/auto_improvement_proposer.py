@@ -30,9 +30,20 @@ or dismisses via existing tools (approve_plan, dismiss_plan).
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_iso(value: str) -> datetime | None:
+    """Parse an ISO-8601 timestamp leniently; None on garbage."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 # 2026-04-27: User explicitly authorized Tier 3 (identity-level) auto-mutation.
@@ -138,11 +149,20 @@ def _check_decision_adherence() -> dict[str, Any] | None:
 
 
 def _check_provider_health_chronic() -> dict[str, Any] | None:
-    """If a provider is chronically down (>30 min), propose explicit demotion."""
+    """If a provider is chronically down (>30 min), propose explicit demotion.
+
+    2026-08-30: require a FRESH snapshot. The stored snapshot may be hours
+    old (e.g. from the night before a restart), and proposing demotion on
+    stale data re-creates the same plan on every restart even after the
+    provider recovered. A stale snapshot means "unknown", not "down".
+    """
     try:
         from core.services.provider_health_check import latest_health_snapshot
         snap = latest_health_snapshot()
     except Exception:
+        return None
+    checked_at = _parse_iso(str(snap.get("checked_at") or ""))
+    if checked_at is None or checked_at < datetime.now(UTC) - timedelta(hours=2):
         return None
     unreachable = snap.get("unreachable") or []
     if not unreachable:

@@ -22,6 +22,22 @@ _Collective Pulse — what is the air full of right now?_
 | function | `_surface_summary` | `(latest)` | — | [src](../../../core/services/collective_pulse_daemon.py#L259) |
 | function | `build_collective_pulse_prompt_section` | `()` | Surface the week's zeitgeist while it's still current (within 7 days). | [src](../../../core/services/collective_pulse_daemon.py#L266) |
 
+## `core/services/commit_attribution.py`
+_Canonical, audit-only attribution metadata for Git commit messages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ActorRule` | `` | Stable actor type and the origins that actor may claim. | [src](../../../core/services/commit_attribution.py#L28) |
+| class | `CommitAttribution` | `` | The six required audit fields stored in a commit trailer block. | [src](../../../core/services/commit_attribution.py#L36) |
+| method | `CommitAttribution.as_trailers` | `(self)` | — | [src](../../../core/services/commit_attribution.py#L46) |
+| class | `AttributionError` | `` | Raised when attribution cannot satisfy the commit contract. | [src](../../../core/services/commit_attribution.py#L57) |
+| function | `new_manual_run_id` | `(now=…, suffix=…)` | Return a sortable id for a commit without an existing runtime run. | [src](../../../core/services/commit_attribution.py#L69) |
+| function | `parse_git_trailers` | `(message)` | Parse the final trailer block with Git's own trailer semantics. | [src](../../../core/services/commit_attribution.py#L85) |
+| function | `validate_trailers` | `(trailers)` | Validate parsed trailers without reading process or repository state. | [src](../../../core/services/commit_attribution.py#L106) |
+| function | `validate_commit_message` | `(message)` | Return every attribution error in a complete commit message. | [src](../../../core/services/commit_attribution.py#L159) |
+| function | `_split_final_trailer_block` | `(message)` | — | [src](../../../core/services/commit_attribution.py#L165) |
+| function | `render_attributed_message` | `(message, attribution)` | Replace managed trailers and return a deterministic commit message. | [src](../../../core/services/commit_attribution.py#L180) |
+
 ## `core/services/commit_gate_arbiter.py`
 _Pre-eksekverings commit-gate arbitrage — udskilt fra visible_runs (Boy Scout, 2026-07-08)._
 
@@ -574,34 +590,4 @@ _Creative drift daemon — generates spontaneous, unexpected ideas unrelated to 
 | function | `_gather_concrete_anchor` | `()` | Returns (anchor_text, anchor_kind) — a single concrete thing to drift | [src](../../../core/services/creative_drift_daemon.py#L109) |
 | function | `_generate_drift_idea` | `(fragments)` | — | [src](../../../core/services/creative_drift_daemon.py#L143) |
 | function | `_store_drift` | `(idea, now)` | — | [src](../../../core/services/creative_drift_daemon.py#L197) |
-
-## `core/services/creative_impulse_daemon.py`
-_Creative Impulse — unasked-for creations._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L36) |
-| function | `_creative_dir` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L40) |
-| function | `_load` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L44) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/creative_impulse_daemon.py#L62) |
-| function | `_dream_residue` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L79) |
-| function | `_current_signals` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L93) |
-| function | `_tokens_from` | `(text)` | — | [src](../../../core/services/creative_impulse_daemon.py#L117) |
-| function | `_compose_poem` | `(tokens, signals)` | Structural poem — not LLM. 4 lines composed from available tokens. | [src](../../../core/services/creative_impulse_daemon.py#L123) |
-| function | `_compose_essay_fragment` | `(residue, signals)` | A few sentences woven from residue phrases. | [src](../../../core/services/creative_impulse_daemon.py#L138) |
-| function | `_compose_concept` | `(tokens)` | A naming game — combine 2 tokens into a concept. | [src](../../../core/services/creative_impulse_daemon.py#L153) |
-| function | `_compose_snippet` | `(tokens)` | A tiny Python-like pseudo snippet from tokens. | [src](../../../core/services/creative_impulse_daemon.py#L162) |
-| function | `_compose` | `(form)` | — | [src](../../../core/services/creative_impulse_daemon.py#L175) |
-| function | `_compute_next_due` | `(now)` | — | [src](../../../core/services/creative_impulse_daemon.py#L196) |
-| function | `_write_creation` | `(creation)` | — | [src](../../../core/services/creative_impulse_daemon.py#L201) |
-| function | `create_now` | `()` | Force a creation (bypasses scheduling). | [src](../../../core/services/creative_impulse_daemon.py#L230) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/creative_impulse_daemon.py#L264) |
-| function | `list_creations` | `(*, limit=…)` | — | [src](../../../core/services/creative_impulse_daemon.py#L284) |
-| function | `build_creative_impulse_surface` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L289) |
-| function | `_surface_summary` | `(creations, next_due)` | — | [src](../../../core/services/creative_impulse_daemon.py#L315) |
-| function | `build_creative_impulse_prompt_section` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L322) |
-| function | `_seed_confidence` | `(creation)` | Score a creation as a 'seed worth showing' — higher = better. | [src](../../../core/services/creative_impulse_daemon.py#L342) |
-| function | `_select_best_unsurfaced` | `()` | Find the highest-confidence creation that hasn't been surfaced. | [src](../../../core/services/creative_impulse_daemon.py#L378) |
-| function | `surface_daily_seed` | `()` | Pick the best unsurfaced creation and mark it as surfaced. | [src](../../../core/services/creative_impulse_daemon.py#L392) |
-| function | `build_creative_seed_section` | `()` | Build a prompt-awareness section if there's an unsurfaced seed waiting. | [src](../../../core/services/creative_impulse_daemon.py#L428) |
 

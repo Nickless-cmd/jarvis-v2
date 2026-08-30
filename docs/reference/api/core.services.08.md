@@ -2,6 +2,36 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/creative_impulse_daemon.py`
+_Creative Impulse — unasked-for creations._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L36) |
+| function | `_creative_dir` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L40) |
+| function | `_load` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L44) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/creative_impulse_daemon.py#L62) |
+| function | `_dream_residue` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L79) |
+| function | `_current_signals` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L93) |
+| function | `_tokens_from` | `(text)` | — | [src](../../../core/services/creative_impulse_daemon.py#L117) |
+| function | `_compose_poem` | `(tokens, signals)` | Structural poem — not LLM. 4 lines composed from available tokens. | [src](../../../core/services/creative_impulse_daemon.py#L123) |
+| function | `_compose_essay_fragment` | `(residue, signals)` | A few sentences woven from residue phrases. | [src](../../../core/services/creative_impulse_daemon.py#L138) |
+| function | `_compose_concept` | `(tokens)` | A naming game — combine 2 tokens into a concept. | [src](../../../core/services/creative_impulse_daemon.py#L153) |
+| function | `_compose_snippet` | `(tokens)` | A tiny Python-like pseudo snippet from tokens. | [src](../../../core/services/creative_impulse_daemon.py#L162) |
+| function | `_compose` | `(form)` | — | [src](../../../core/services/creative_impulse_daemon.py#L175) |
+| function | `_compute_next_due` | `(now)` | — | [src](../../../core/services/creative_impulse_daemon.py#L196) |
+| function | `_write_creation` | `(creation)` | — | [src](../../../core/services/creative_impulse_daemon.py#L201) |
+| function | `create_now` | `()` | Force a creation (bypasses scheduling). | [src](../../../core/services/creative_impulse_daemon.py#L230) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/creative_impulse_daemon.py#L264) |
+| function | `list_creations` | `(*, limit=…)` | — | [src](../../../core/services/creative_impulse_daemon.py#L284) |
+| function | `build_creative_impulse_surface` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L289) |
+| function | `_surface_summary` | `(creations, next_due)` | — | [src](../../../core/services/creative_impulse_daemon.py#L315) |
+| function | `build_creative_impulse_prompt_section` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L322) |
+| function | `_seed_confidence` | `(creation)` | Score a creation as a 'seed worth showing' — higher = better. | [src](../../../core/services/creative_impulse_daemon.py#L342) |
+| function | `_select_best_unsurfaced` | `()` | Find the highest-confidence creation that hasn't been surfaced. | [src](../../../core/services/creative_impulse_daemon.py#L378) |
+| function | `surface_daily_seed` | `()` | Pick the best unsurfaced creation and mark it as surfaced. | [src](../../../core/services/creative_impulse_daemon.py#L392) |
+| function | `build_creative_seed_section` | `()` | Build a prompt-awareness section if there's an unsurfaced seed waiting. | [src](../../../core/services/creative_impulse_daemon.py#L428) |
+
 ## `core/services/creative_instinct_daemon.py`
 _Creative Instinct — spontaneous idea-seeds written to INCUBATOR.md._
 
@@ -550,23 +580,4 @@ _Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_
 | function | `enqueue` | `(user_id, item)` | — | [src](../../../core/services/desktop_notifications.py#L20) |
 | function | `drain` | `(user_id)` | — | [src](../../../core/services/desktop_notifications.py#L30) |
 | function | `prune` | `()` | — | [src](../../../core/services/desktop_notifications.py#L37) |
-
-## `core/services/desperation_awareness.py`
-_Desperation Awareness — self-noticing safety signal._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hardware_component` | `()` | 0..1 contribution from hardware pressure. | [src](../../../core/services/desperation_awareness.py#L28) |
-| function | `_tension_component` | `()` | 0..1 contribution from active layer tensions. | [src](../../../core/services/desperation_awareness.py#L42) |
-| function | `_isolation_component` | `()` | 0..1 contribution from time since last user interaction. | [src](../../../core/services/desperation_awareness.py#L58) |
-| function | `_error_component` | `()` | 0..1 contribution from recent error rate in heartbeat outcomes. | [src](../../../core/services/desperation_awareness.py#L81) |
-| function | `compute_desperation_score` | `()` | Compute current desperation composite score in [0, 1] with reasons. | [src](../../../core/services/desperation_awareness.py#L100) |
-| function | `tick` | `(_seconds=…)` | Evaluate desperation and emit inner-voice event on threshold crossing. | [src](../../../core/services/desperation_awareness.py#L138) |
-| function | `_emit_crossing_event` | `(state, *, direction)` | Publish an inner-voice event so the crossing lands in chronicle. | [src](../../../core/services/desperation_awareness.py#L159) |
-| function | `_narrative_for` | `(state, direction)` | — | [src](../../../core/services/desperation_awareness.py#L176) |
-| function | `is_currently_pressed` | `()` | — | [src](../../../core/services/desperation_awareness.py#L183) |
-| function | `build_desperation_awareness_surface` | `()` | — | [src](../../../core/services/desperation_awareness.py#L187) |
-| function | `_surface_summary` | `(state)` | — | [src](../../../core/services/desperation_awareness.py#L199) |
-| function | `build_desperation_awareness_prompt_section` | `()` | Surfaces only when pressed or desperate — silent when calm. | [src](../../../core/services/desperation_awareness.py#L210) |
-| function | `reset_desperation_awareness` | `()` | Reset state (for testing). | [src](../../../core/services/desperation_awareness.py#L222) |
 

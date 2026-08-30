@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13040 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13047 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -32,23 +32,23 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13040 functions/
 - [`core.services.04`](core.services.04.md) — `central_dark_products_digest` … `central_model_meta`
 - [`core.services.05`](core.services.05.md) — `central_moltbook` … `central_surgery`
 - [`core.services.06`](core.services.06.md) — `central_switches` … `cognitive_state_narrativizer`
-- [`core.services.07`](core.services.07.md) — `collective_pulse_daemon` … `creative_impulse_daemon`
-- [`core.services.08`](core.services.08.md) — `creative_instinct_daemon` … `desperation_awareness`
-- [`core.services.09`](core.services.09.md) — `development_focus_tracking` … `emergent_goals`
-- [`core.services.10`](core.services.10.md) — `emergent_signal_tracking` … `forgetting_engine`
-- [`core.services.11`](core.services.11.md) — `forgetting_runtime` … `heartbeat_action_hints`
-- [`core.services.12`](core.services.12.md) — `heartbeat_phases` … `jarvis_brain`
-- [`core.services.13`](core.services.13.md) — `jarvis_brain_daemon` … `memory_resurfacing`
-- [`core.services.14`](core.services.14.md) — `memory_search` … `oauth_store`
-- [`core.services.15`](core.services.15.md) — `offline_recomposition_engine` … `proactive_loop_lifecycle_tracking`
-- [`core.services.16`](core.services.16.md) — `proactive_outbound_substrate` … `reasoning_prefilter`
-- [`core.services.17`](core.services.17.md) — `reasoning_store` … `runtime_hooks`
-- [`core.services.18`](core.services.18.md) — `runtime_learning_signals` … `self_review_run_tracking`
-- [`core.services.19`](core.services.19.md) — `self_review_signal_tracking` … `silence_patterns`
-- [`core.services.20`](core.services.20.md) — `simple_tool_executor` … `text_resonance`
-- [`core.services.21`](core.services.21.md) — `theater_audit` … `user_scope`
-- [`core.services.22`](core.services.22.md) — `user_temperature_engine` … `witness_signal_tracking`
-- [`core.services.23`](core.services.23.md) — `workspace_crypto` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `collective_pulse_daemon` … `creative_drift_daemon`
+- [`core.services.08`](core.services.08.md) — `creative_impulse_daemon` … `desktop_notifications`
+- [`core.services.09`](core.services.09.md) — `desperation_awareness` … `emergent_bridge`
+- [`core.services.10`](core.services.10.md) — `emergent_goals` … `forgetting_curve`
+- [`core.services.11`](core.services.11.md) — `forgetting_engine` … `hardware_body`
+- [`core.services.12`](core.services.12.md) — `heartbeat_action_hints` … `irony_daemon`
+- [`core.services.13`](core.services.13.md) — `jarvis_brain` … `memory_recall_telemetry`
+- [`core.services.14`](core.services.14.md) — `memory_resurfacing` … `oauth_flow`
+- [`core.services.15`](core.services.15.md) — `oauth_store` … `proactive_context_governor`
+- [`core.services.16`](core.services.16.md) — `proactive_loop_lifecycle_tracking` … `reasoning_interceptor`
+- [`core.services.17`](core.services.17.md) — `reasoning_prefilter` … `runtime_hook_runtime`
+- [`core.services.18`](core.services.18.md) — `runtime_hooks` … `self_review_record_tracking`
+- [`core.services.19`](core.services.19.md) — `self_review_run_tracking` … `silence_listener`
+- [`core.services.20`](core.services.20.md) — `silence_patterns` … `text_clip`
+- [`core.services.21`](core.services.21.md) — `text_resonance` … `user_model_daemon`
+- [`core.services.22`](core.services.22.md) — `user_scope` … `weekly_manifest`
+- [`core.services.23`](core.services.23.md) — `witness_signal_tracking` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

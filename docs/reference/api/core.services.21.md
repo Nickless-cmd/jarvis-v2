@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/text_resonance.py`
+_Text Resonance — I feel what I read, before I analyze it._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resonate` | `(text, *, source=…)` | Compute warmth, cold, urgency scores for a piece of text. | [src](../../../core/services/text_resonance.py#L61) |
+| function | `recent_resonances` | `(*, limit=…)` | — | [src](../../../core/services/text_resonance.py#L139) |
+| function | `build_text_resonance_surface` | `()` | — | [src](../../../core/services/text_resonance.py#L143) |
+| function | `build_text_resonance_prompt_section` | `()` | Only surface when recent reading is strongly toned. | [src](../../../core/services/text_resonance.py#L168) |
+| function | `reset_text_resonance` | `()` | — | [src](../../../core/services/text_resonance.py#L185) |
+
 ## `core/services/theater_audit.py`
 _Theater Audit -- find narrative-first inner-life patterns._
 
@@ -526,11 +537,4 @@ _User model daemon — Theory of Mind: a living model of the user's state and pa
 | function | `_detect_communication_style` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L164) |
 | function | `_generate_model_summary` | `(messages, model)` | — | [src](../../../core/services/user_model_daemon.py#L175) |
 | function | `_store_model` | `(summary, now)` | — | [src](../../../core/services/user_model_daemon.py#L203) |
-
-## `core/services/user_scope.py`
-_Per-bruger data-scope (SECURITY #154, streng GDPR)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `scope_uid` | `()` | Den bruger-id en privat DB-operation skal scopes til. "" hvis intet kan | [src](../../../core/services/user_scope.py#L15) |
 

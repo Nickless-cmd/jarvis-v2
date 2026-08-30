@@ -44,6 +44,25 @@ _PROMISE_PATTERNS = [
     r"\b(let me|i'?m going to|i will now|now i'?ll|i'?m about to)\s+(run|start|check|fetch|read|fix|call|execute)\b",
     r"\b(running|starting|kicking off|executing)\s+(it|that|this|the)\b[^.]{0,30}\bnow\b",
     r"\bon it\b|\bright away\b",
+    # ── Udvidet 30-08-2026 efter live-fund ──────────────────────────────────────
+    # Bjørn: "han bliver cuttet" = turen ender med et HELT svar der annoncerer
+    # næste skridt, og stopper. Sproget lignede allerede et løfte, men ramte ved
+    # siden af på to måder:
+    #   (a) ADVERBIET STÅR FØRST. Han skriver "nu læser jeg X", ikke "jeg læser X
+    #       nu" — og mønstret ovenfor kræver verbum FØR adverbium.
+    #   (b) VERBET MANGLEDE. "læser"/"skriver" stod ikke i "nu <verb> jeg"-listen.
+    # Faktiske haler fra 30-08: "nu læser jeg `_pop_pre_run_state`",
+    # "Nu læser jeg `_git_staged_paths`", "før jeg skriver fixet og nye tests".
+    r"\bnu (læser|skriver|kører|starter|gør|udfører|tjekker|kigger|retter|fikser|"
+    r"opdaterer|committer|kalder|henter|verificerer|implementerer|tilføjer) jeg\b",
+    # Fremtidig hensigt UDEN nu-adverbium — "så skriver jeg", "før jeg skriver",
+    # "derefter retter jeg". Kræver stadig førsteperson + konkret handlingsverbum,
+    # så passive/hypotetiske formuleringer ikke fanges.
+    r"\b(så|dernæst|derefter|herefter|bagefter) (læser|skriver|kører|retter|fikser|"
+    r"tjekker|opdaterer|committer|henter|implementerer|tilføjer|verificerer) jeg\b",
+    r"\b(før|inden) jeg (skriver|kører|retter|fikser|committer|implementerer|tilføjer)\b",
+    r"\bjeg (læser|skriver|retter|fikser|implementerer|tilføjer|verificerer)\b[^.]{0,60}"
+    r"\b(før|inden) jeg\b",
 ]
 _PROMISE_RE = [re.compile(p, re.IGNORECASE) for p in _PROMISE_PATTERNS]
 
@@ -71,8 +90,9 @@ def is_hollow_promise(
     total_tool_calls: int,
     user_message: str = "",
     nudged_already: bool = False,
+    last_round_tool_calls: int | None = None,
 ) -> bool:
-    """Tom løfte = lovede handling + NUL tool-kald hele runnet + ikke allerede nudget.
+    """Tom løfte = lovede handling + NUL tool-kald i SIDSTE runde + ikke allerede nudget.
 
     Konservativ: enhver tvivl → False (→ nuværende adfærd). `user_message` accepteres til
     fremtidig request-intent-gating men KRÆVES ikke (løfte+nul-tool er allerede stærkt +
@@ -80,7 +100,15 @@ def is_hollow_promise(
     try:
         if nudged_already:
             return False
-        if int(total_tool_calls) != 0:       # et tool KØRTE → ikke tomt
+        # 30-08-2026: FØR kiggede vi paa hele runnet — "et tool koerte nogensinde
+        # → ikke tomt". Det gjorde vaernet strukturelt blindt for Bjoerns faktiske
+        # fejl: Jarvis kalder 15 vaerktoejer, opsummerer, annoncerer naeste skridt
+        # og stopper. Summen er saa aldrig 0, og vaernet sagde nej med det samme.
+        # Det RELEVANTE er om han kaldte et vaerktoej i den SIDSTE runde — altsaa
+        # om han handlede paa det han lige lovede. Falder tilbage til hele runnet
+        # naar kalderen ikke oplyser sidste runde (bagudkompatibelt).
+        _calls = total_tool_calls if last_round_tool_calls is None else last_round_tool_calls
+        if int(_calls) != 0:                 # et tool KOERTE i sidste runde → ikke tomt
             return False
         if not final_text or not final_text.strip():
             return False                     # tomt håndteres af empty-completion-vagten

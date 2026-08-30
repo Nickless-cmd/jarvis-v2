@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13017 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13019 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,14 +41,14 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13017 functions/
 - [`core.services.13`](core.services.13.md) — `jarvis_brain_daemon` … `memory_resurfacing`
 - [`core.services.14`](core.services.14.md) — `memory_search` … `oauth_store`
 - [`core.services.15`](core.services.15.md) — `offline_recomposition_engine` … `proactive_loop_lifecycle_tracking`
-- [`core.services.16`](core.services.16.md) — `proactive_outbound_substrate` … `reboot_awareness_daemon`
-- [`core.services.17`](core.services.17.md) — `recall_scheduler` … `runtime_operational_memory`
-- [`core.services.18`](core.services.18.md) — `runtime_resource_signal` … `self_review_unified`
-- [`core.services.19`](core.services.19.md) — `self_surprise_detection` … `skill_autosurface`
-- [`core.services.20`](core.services.20.md) — `skill_contract_registry` … `theory_of_mind_engine`
-- [`core.services.21`](core.services.21.md) — `thought_action_proposal_daemon` … `user_theory_of_mind`
-- [`core.services.22`](core.services.22.md) — `user_understanding_signal_tracking` … `world_model_auto_extraction`
-- [`core.services.23`](core.services.23.md) — `world_model_signal_tracking` … `world_model_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `proactive_outbound_substrate` … `reasoning_store`
+- [`core.services.17`](core.services.17.md) — `reboot_awareness_daemon` … `runtime_learning_signals`
+- [`core.services.18`](core.services.18.md) — `runtime_operational_memory` … `self_review_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `self_review_unified` … `simple_tool_executor`
+- [`core.services.20`](core.services.20.md) — `skill_autosurface` … `theory_of_mind`
+- [`core.services.21`](core.services.21.md) — `theory_of_mind_engine` … `user_temperature_runtime`
+- [`core.services.22`](core.services.22.md) — `user_theory_of_mind` … `workspace_trust`
+- [`core.services.23`](core.services.23.md) — `world_model_auto_extraction` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

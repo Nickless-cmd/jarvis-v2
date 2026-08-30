@@ -3592,9 +3592,20 @@ async def _stream_visible_run(
                             _consecutive_empty_text_rounds = 0
                             continue
                         # ── HOLLOW-PROMISE-VAGT (4. jul, flag-gated, fail-open) ──
-                        # Modellen lovede imminent handling ("jeg kører nu") men kaldte NUL
-                        # værktøj hele runnet → giv ÉN nudge-runde ("gør det nu eller sig
-                        # hvorfor"), cap 1. Ved enhver tvivl/fejl → normal break (byte-identisk).
+                        # Modellen lovede imminent handling ("jeg kører nu") men kaldte
+                        # INTET værktøj i DENNE runde → giv ÉN nudge-runde ("gør det nu
+                        # eller sig hvorfor"), cap 1. Ved tvivl/fejl → normal break.
+                        #
+                        # 30-08-2026: betingelsen var FØR "nul værktøjskald i HELE runnet",
+                        # og det gjorde vagten strukturelt blind for den fejl Bjørn faktisk
+                        # oplevede. Jarvis kalder 15 værktøjer, opsummerer, annoncerer næste
+                        # skridt ("nu læser jeg `_git_staged_paths`") — og stopper. Summen
+                        # var derfor aldrig 0, så vagten sagde nej før den nåede at kigge på
+                        # teksten. Turen blev afsluttet som `completed` med et grammatisk
+                        # helt svar, så hverken Centralen eller nogen detektor kunne fange
+                        # den; Bjørn måtte selv puffe med "ok"/"hmm" hver gang.
+                        # Vi står her INDE i `if not _a_tool_calls`, så den aktuelle runde
+                        # har per definition nul kald — det er netop det signal vi vil have.
                         try:
                             from core.services.hollow_promise_guard import (
                                 hollow_promise_guard_enabled, is_hollow_promise,
@@ -3611,6 +3622,7 @@ async def _stream_visible_run(
                                         for _ex in _followup_exchanges),
                                     user_message=run.user_message,
                                     nudged_already=_hollow_promise_nudged,
+                                    last_round_tool_calls=len(_a_tool_calls or []),
                                 )
                             ):
                                 _hollow_promise_nudged = True
@@ -5867,6 +5879,27 @@ def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:
         text,
         had_markup=bool(plan["had_markup"]),
     )
+    # PROVIDER-FEJL-VAGT (30-08-2026). En udbyders fejlbesked må aldrig stå som
+    # Jarvis' svar. Set live: aihubmix' kvote-afvisning ("Sorry, to prevent abuse
+    # of free resources … /topup") blev gemt som assistent-besked, og kørslen
+    # talte som `completed`. Samme princip som PresentationInvariantError — dét
+    # værn fanger INTERNE artefakter, dette fanger FREMMED tekst. Fail-open:
+    # enhver tvivl eller fejl → uændret adfærd.
+    try:
+        from core.services.provider_error_guard import describe, looks_like_provider_error
+        if cleaned and looks_like_provider_error(cleaned):
+            try:
+                from core.runtime.db_central_incidents import record_central_incident
+                record_central_incident(
+                    cluster="runtime", nerve="provider_error_as_reply",
+                    kind="provider_error_leaked", severity="error",
+                    message=f"udbyder-fejl blev fanget før den nåede chatten: {describe(cleaned)}",
+                    dedup=True)
+            except Exception:
+                pass
+            return fallback
+    except Exception:
+        pass
     if cleaned:
         return cleaned
     return fallback

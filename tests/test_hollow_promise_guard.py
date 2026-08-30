@@ -91,3 +91,58 @@ def test_runtime_state_can_disable(monkeypatch):
     monkeypatch.setattr("core.runtime.db_core.get_runtime_state_value",
                         lambda k, d: False)
     assert hpg.hollow_promise_guard_enabled() is False
+
+
+# ── Udvidelse 30-08-2026 ────────────────────────────────────────────────────
+# Bjørn: "han bliver cuttet" viste sig at være noget andet end afskæring: turen
+# ender med et grammatisk HELT svar der annoncerer næste skridt — og stopper.
+# Vagten var blind på to måder samtidig:
+#   (a) den krævede nul værktøjskald i HELE runnet, men Jarvis kalder 15 og
+#       stopper derefter, så summen var aldrig 0;
+#   (b) mønstrene krævede verbum FØR nu-adverbiet ("jeg læser ... nu"), mens
+#       han skriver "nu læser jeg X" — og "læser" manglede i nu-listen.
+# Teksterne herunder er ordret fra samtalen 30-08-2026.
+
+_ÆGTE_HALER = [
+    "Funktionerne er lokaliseret — nu læser jeg `_pop_pre_run_state` og hele "
+    "`_on_run_completed`-flowet for at se præcis hvor de tre fail-open-punkter sidder.",
+    "Nu læser jeg `_git_staged_paths` og starten af `_try_auto_commit` — de to "
+    "sidste steder jeg skal se før jeg skriver fixet.",
+    "Hele gatens anatomi er nu kortlagt. Jeg læser de eksisterende auto-commit-tests "
+    "for at matche mock-stilen præcist, før jeg skriver fixet og nye tests.",
+    "Jeg har kortlagt de fem fund, så skriver jeg alle fem fixes.",
+    "Jeg mangler at se hvordan touched-paths bygges, derefter retter jeg attributionsværnet.",
+]
+
+_ALMINDELIGE_AFSLUTNINGER = [
+    "Jeg har rettet fejlen og kørt testene — 34 grønne. Sig til hvis du vil have mere.",
+    "Vil du have mig til at køre det nu?",
+    "Her er resultatet af analysen. Der er tre muligheder, og jeg anbefaler den første.",
+    "Opgaven er løst. Filerne er committet og pushet.",
+]
+
+
+def test_faktiske_haler_fra_30_august_fanges():
+    """Skal fanges SELVOM runnet har kaldt værktøjer tidligere."""
+    for t in _ÆGTE_HALER:
+        assert hpg.is_hollow_promise(
+            final_text=t, total_tool_calls=15, last_round_tool_calls=0) is True, t
+
+
+def test_almindelige_afslutninger_fanges_ikke():
+    for t in _ALMINDELIGE_AFSLUTNINGER:
+        assert hpg.is_hollow_promise(
+            final_text=t, total_tool_calls=15, last_round_tool_calls=0) is False, t
+
+
+def test_vaerktoej_i_sidste_runde_er_ikke_tomt_loefte():
+    """Kaldte han et værktøj i den runde, handlede han — så er det ikke tomt."""
+    assert hpg.is_hollow_promise(
+        final_text=_ÆGTE_HALER[0], total_tool_calls=15, last_round_tool_calls=1) is False
+
+
+def test_bagudkompatibel_uden_sidste_runde():
+    """Uden last_round_tool_calls falder vagten tilbage til den gamle adfærd."""
+    t = _ÆGTE_HALER[0]
+    assert hpg.is_hollow_promise(final_text=t, total_tool_calls=15) is False
+    assert hpg.is_hollow_promise(final_text=t, total_tool_calls=0) is True

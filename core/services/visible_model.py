@@ -547,7 +547,7 @@ def _build_visible_input(
     # skala — to assemblies bygget i træk ser ens ud, to rigtige ture gør ikke.
     try:
         from core.services.prompt_cache_probe import probe
-        probe(items, session_id=session_id or "")
+        probe(items, session_id=session_id or "", source="ollama-input")
     except Exception:
         pass
 
@@ -641,7 +641,7 @@ def _build_visible_chat_messages_for_github(
     # bruddet: de mistænkte sektioner muterer på minut-skala, ikke sekund-skala.
     try:
         from core.services.prompt_cache_probe import probe
-        probe(messages, session_id=session_id or "")
+        probe(messages, session_id=session_id or "", source="openai-compat")
     except Exception:
         pass
 

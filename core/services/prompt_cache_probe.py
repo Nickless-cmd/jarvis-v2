@@ -152,7 +152,8 @@ def enabled() -> bool:
         return False
 
 
-def probe(items: list[dict], *, session_id: str = "") -> ProbeVerdict | None:
+def probe(items: list[dict], *, session_id: str = "",
+          source: str = "") -> ProbeVerdict | None:
     """Skriv turens beskeds-array og sammenlign med forrige tur.
 
     Self-safe: må ALDRIG kaste ind i den synlige svar-sti. Returnerer dommen
@@ -165,6 +166,7 @@ def probe(items: list[dict], *, session_id: str = "") -> ProbeVerdict | None:
         cur = flatten(items)
         payload = {
             "session_id": session_id,
+            "source": source,
             "messages": [
                 {
                     "role": r,
@@ -202,7 +204,8 @@ def probe(items: list[dict], *, session_id: str = "") -> ProbeVerdict | None:
 
         if verdict is not None:
             import sys
-            print(verdict.as_line(), file=sys.stderr, flush=True)
+            _src = f" src={old.get('source') or '?'}->{source or '?'}"
+            print(verdict.as_line() + _src, file=sys.stderr, flush=True)
             if not verdict.identical:
                 print(f"  A: {verdict.excerpt_a!r}", file=sys.stderr, flush=True)
                 print(f"  B: {verdict.excerpt_b!r}", file=sys.stderr, flush=True)

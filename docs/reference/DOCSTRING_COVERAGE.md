@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6474/13007 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6477/13013 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6474/13007 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4295 | 9057 | 47% |
+| `core.services` | 4297 | 9059 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 70 | 122 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -35,12 +35,12 @@ Generated from source. 6474/13007 functions/methods documented (49%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 161 | 258 | 62% |
+| `scripts` | 162 | 262 | 61% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1843)
+## Undocumented public functions (1844)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -757,7 +757,7 @@ Generated from source. 6474/13007 functions/methods documented (49%). The list b
 - `core/services/cluster_daemon.py` :: `narrative_family` (L1376)
 - `core/services/cluster_daemon.py` :: `somatic_family` (L498)
 - `core/services/cluster_daemon_families.py` :: `aesthetic_family` (L435)
-- `core/services/cluster_daemon_families.py` :: `infra_family` (L1130)
+- `core/services/cluster_daemon_families.py` :: `infra_family` (L1142)
 - `core/services/cluster_daemon_families.py` :: `memory_family` (L152)
 - `core/services/cluster_daemon_families.py` :: `projects_family` (L860)
 - `core/services/cluster_daemon_families.py` :: `relation_family` (L659)
@@ -1821,6 +1821,7 @@ Generated from source. 6474/13007 functions/methods documented (49%). The list b
 - `scripts/api_reference_gen.py` :: `main` (L74)
 - `scripts/api_reference_gen.py` :: `render_md` (L63)
 - `scripts/bench_ollama_concurrency.py` :: `main` (L93)
+- `scripts/block_literal_credentials.py` :: `check` (L125)
 - `scripts/cache_rate_monitor.py` :: `append_log` (L118)
 - `scripts/cache_rate_monitor.py` :: `main` (L124)
 - `scripts/capabilities_gen.py` :: `collect` (L35)

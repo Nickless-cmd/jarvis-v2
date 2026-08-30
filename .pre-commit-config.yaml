@@ -59,6 +59,19 @@ repos:
         pass_filenames: true
         stages: [pre-commit]
 
+      # Pre-commit: block credential-navne der tildeles en literal streng.
+      # detect-secrets missede engang et 8-tegns mail-kodeord i en modulkonstant
+      # — for lav entropi, intet sk-/ghp_-præfiks — og kontoen blev senere
+      # misbrugt. Denne hook ser på NAVNET, ikke værdiens entropi: hedder
+      # variablen noget med pass/token/secret/api_key, må den ikke tildeles en
+      # literal streng. Samme rationale som block-jvs-keys ovenfor.
+      - id: block-literal-credentials
+        name: Block literal credentials (navn-baseret, ikke entropi)
+        entry: /opt/conda/envs/ai/bin/python scripts/block_literal_credentials.py
+        language: system
+        pass_filenames: true
+        stages: [pre-commit]
+
       # Pre-commit: docs drift-sikring (SP5). Blocks a commit whose staged
       # source changes leave a generated doc un-regenerated, or whose docs
       # contain a broken markdown link. Staleness is scoped to the staged

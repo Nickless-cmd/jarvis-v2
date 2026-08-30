@@ -30,12 +30,14 @@ def _git(
     repo: Path,
     *args: str,
     timeout: int,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(repo), *args],
         capture_output=True,
         text=True,
         timeout=timeout,
+        env=env,
     )
 
 
@@ -112,7 +114,11 @@ def commit_with_attribution(
             command.extend(["--author", author])
         if selected:
             command.extend(["--", *selected])
-        committed = _git(root, *command, timeout=timeout)
+        commit_env = None
+        if amend:
+            commit_env = os.environ.copy()
+            commit_env["JARVIS_ATTRIBUTED_REWRITE"] = "1"
+        committed = _git(root, *command, timeout=timeout, env=commit_env)
         if committed.returncode != 0:
             return AttributedCommitResult(
                 returncode=committed.returncode,

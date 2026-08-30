@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6514/13070 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6514/13072 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,12 +35,12 @@ Generated from source. 6514/13070 functions/methods documented (49%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 166 | 279 | 59% |
+| `scripts` | 166 | 281 | 59% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1851)
+## Undocumented public functions (1852)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1825,6 +1825,7 @@ Generated from source. 6514/13070 functions/methods documented (49%). The list b
 - `scripts/bench_ollama_concurrency.py` :: `main` (L93)
 - `scripts/block_literal_credentials.py` :: `check` (L125)
 - `scripts/block_unattributed_rebase.py` :: `main` (L9)
+- `scripts/block_unattributed_ref_rewrite.py` :: `main` (L24)
 - `scripts/cache_rate_monitor.py` :: `append_log` (L118)
 - `scripts/cache_rate_monitor.py` :: `main` (L124)
 - `scripts/capabilities_gen.py` :: `collect` (L35)
@@ -1848,8 +1849,8 @@ Generated from source. 6514/13070 functions/methods documented (49%). The list b
 - `scripts/honesty_metrics.py` :: `main` (L45)
 - `scripts/identity_formation_monitor.py` :: `main` (L36)
 - `scripts/injection_richness_check.py` :: `richness_ok` (L14)
-- `scripts/install_git_hooks.py` :: `install` (L93)
-- `scripts/install_git_hooks.py` :: `main` (L131)
+- `scripts/install_git_hooks.py` :: `install` (L115)
+- `scripts/install_git_hooks.py` :: `main` (L179)
 - `scripts/interlanguage_analyze.py` :: `analyze` (L61)
 - `scripts/interlanguage_analyze.py` :: `load_all` (L42)
 - `scripts/interlanguage_analyze.py` :: `main` (L96)

@@ -291,9 +291,9 @@ _Execute Git commits with canonical attribution and no staging side effects._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `AttributedCommitResult` | `` | Process result plus the resulting commit hash when successful. | [src](../../../core/services/attributed_git_commit.py#L20) |
-| function | `_git` | `(repo, *args, timeout)` | — | [src](../../../core/services/attributed_git_commit.py#L29) |
-| function | `_verify_staged_paths` | `(repo, paths, *, timeout)` | — | [src](../../../core/services/attributed_git_commit.py#L42) |
-| function | `commit_with_attribution` | `(*, repo, message, attribution, paths=…, author=…, timeout=…, amend=…)` | Commit already-staged content with canonical audit trailers. | [src](../../../core/services/attributed_git_commit.py#L65) |
+| function | `_git` | `(repo, *args, timeout, env=…)` | — | [src](../../../core/services/attributed_git_commit.py#L29) |
+| function | `_verify_staged_paths` | `(repo, paths, *, timeout)` | — | [src](../../../core/services/attributed_git_commit.py#L44) |
+| function | `commit_with_attribution` | `(*, repo, message, attribution, paths=…, author=…, timeout=…, amend=…)` | Commit already-staged content with canonical audit trailers. | [src](../../../core/services/attributed_git_commit.py#L67) |
 
 ## `core/services/auth_profile_scan.py`
 _Shared scanner for multi-profile provider auth slots._

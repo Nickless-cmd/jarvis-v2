@@ -187,11 +187,11 @@ def render_attributed_message(
     if direct_errors:
         raise AttributionError("; ".join(direct_errors))
     body, existing = _split_final_trailer_block(message)
-    unrelated = [
-        line
-        for line in existing
-        if (_TRAILER_LINE.match(line) or (None,))[1] not in MANAGED_TRAILERS
-    ]
+    unrelated: list[str] = []
+    for line in existing:
+        match = _TRAILER_LINE.match(line)
+        if match is None or match.group(1) not in MANAGED_TRAILERS:
+            unrelated.append(line)
     rendered = [*body, ""]
     rendered.extend(unrelated)
     rendered.extend(f"{key}: {value}" for key, value in attribution.as_trailers())

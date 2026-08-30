@@ -11,18 +11,28 @@ from core.services.commit_attribution import (
     CommitAttribution,
     render_attributed_message,
 )
-from scripts.install_git_hooks import check_installation, install
+from scripts.install_git_hooks import (
+    REFERENCE_HOOK_IMPL,
+    check_installation,
+    install,
+)
 
 
 SOURCE_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _git(repo: Path, *args: str, check: bool = True):
+def _git(
+    repo: Path,
+    *args: str,
+    check: bool = True,
+    env: dict[str, str] | None = None,
+):
     return subprocess.run(
         ["git", "-C", str(repo), *args],
         capture_output=True,
         text=True,
         check=check,
+        env=env,
     )
 
 
@@ -34,6 +44,7 @@ def _copy_runtime(repo: Path) -> None:
         "scripts/commit_with_attribution.py",
         "scripts/install_git_hooks.py",
         "scripts/block_unattributed_rebase.py",
+        "scripts/block_unattributed_ref_rewrite.py",
         "scripts/validate_commit_attribution.py",
     ):
         target = repo / relative
@@ -77,9 +88,10 @@ def _wrapper_commit(
     run_id: str,
     content: str,
     amend: bool = False,
+    path: str = "audit.txt",
 ) -> str:
-    (repo / "audit.txt").write_text(content, encoding="utf-8")
-    _git(repo, "add", "audit.txt")
+    (repo / path).write_text(content, encoding="utf-8")
+    _git(repo, "add", path)
     command = [
         sys.executable,
         str(repo / "scripts" / "commit_with_attribution.py"),
@@ -90,7 +102,7 @@ def _wrapper_commit(
         "--session-id", "none",
         "--origin", origin,
         "--approved-by", approved_by,
-        "--path", "audit.txt",
+        "--path", path,
     ]
     if amend:
         command.append("--amend")
@@ -135,6 +147,12 @@ def test_commit_attribution_hooks_end_to_end(tmp_path: Path) -> None:
 
     assert install(repo) == 0
     assert check_installation(repo) == ()
+    reference_hook = default_hooks / "reference-transaction"
+    installed_impl = default_hooks / REFERENCE_HOOK_IMPL
+    assert installed_impl.read_bytes() == (
+        repo / "scripts" / "block_unattributed_ref_rewrite.py"
+    ).read_bytes()
+    assert str(repo) not in reference_hook.read_text(encoding="utf-8")
     configured_hooks = _git(
         repo, "config", "--local", "--get", "core.hooksPath"
     ).stdout.strip()
@@ -161,9 +179,30 @@ def test_commit_attribution_hooks_end_to_end(tmp_path: Path) -> None:
 
     main_branch = _git(repo, "branch", "--show-current").stdout.strip()
     _git(repo, "checkout", "-qb", "rebase-candidate", "HEAD^")
+    _wrapper_commit(
+        repo,
+        actor="codex",
+        origin="delegated",
+        approved_by="bjorn",
+        run_id="run-rebase-candidate",
+        content="unique topic commit\n",
+        path="candidate.txt",
+    )
     rebased = _git(repo, "rebase", main_branch, check=False)
     assert rebased.returncode != 0
     assert "rebase is blocked" in rebased.stdout + rebased.stderr
+    bypassed_rebase = _git(
+        repo,
+        "rebase",
+        "--no-verify",
+        main_branch,
+        check=False,
+    )
+    assert bypassed_rebase.returncode != 0
+    assert "non-fast-forward branch rewrite" in (
+        bypassed_rebase.stdout + bypassed_rebase.stderr
+    )
+    _git(repo, "rebase", "--abort", check=False)
     _git(repo, "checkout", main_branch)
     _git(repo, "branch", "-D", "rebase-candidate")
 
@@ -179,7 +218,13 @@ def test_commit_attribution_hooks_end_to_end(tmp_path: Path) -> None:
     pre_push = _validate_pre_push(repo, before_rejected, bad_head)
     assert pre_push.returncode != 0
     assert "commit attribution failed" in pre_push.stderr
-    _git(repo, "reset", "--hard", before_rejected)
+    _git(
+        repo,
+        "reset",
+        "--hard",
+        before_rejected,
+        env={**os.environ, "JARVIS_ATTRIBUTED_REWRITE": "1"},
+    )
 
     original = _wrapper_commit(
         repo,

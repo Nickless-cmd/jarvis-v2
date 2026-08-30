@@ -65,6 +65,14 @@ _Reject rebases because replayed commits retain stale actor trailers._
 |---|---|---|---|---|
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/block_unattributed_rebase.py#L9) |
 
+## `scripts/block_unattributed_ref_rewrite.py`
+_Block local branch rewrites that can preserve stale actor attribution._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_ancestor` | `(old, new)` | — | [src](../../../scripts/block_unattributed_ref_rewrite.py#L14) |
+| function | `main` | `(argv=…, *, input_text=…)` | — | [src](../../../scripts/block_unattributed_ref_rewrite.py#L24) |
+
 ## `scripts/cache_rate_monitor.py`
 _Cache hit rate monitor._
 
@@ -255,16 +263,16 @@ _Rigdoms-gate for injektions-migration (spec 2026-07-05 §7)._
 | function | `richness_ok` | `(*, direct, cached)` | — | [src](../../../scripts/injection_richness_check.py#L14) |
 
 ## `scripts/install_git_hooks.py`
-_Install or verify the required pre-commit managed Git hooks._
+_Install or verify the required commit-attribution Git hooks._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_hook_path` | `(repo, hook)` | — | [src](../../../scripts/install_git_hooks.py#L17) |
-| function | `check_installation` | `(repo)` | Return one error for every missing or inactive required hook. | [src](../../../scripts/install_git_hooks.py#L30) |
-| function | `_local_hooks_path_values` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L56) |
-| function | `_is_default_hooks_path` | `(repo, configured)` | — | [src](../../../scripts/install_git_hooks.py#L71) |
-| function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L93) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L131) |
+| function | `_hook_path` | `(repo, hook)` | — | [src](../../../scripts/install_git_hooks.py#L23) |
+| function | `check_installation` | `(repo)` | Return one error for every missing or inactive required hook. | [src](../../../scripts/install_git_hooks.py#L36) |
+| function | `_local_hooks_path_values` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L78) |
+| function | `_is_default_hooks_path` | `(repo, configured)` | — | [src](../../../scripts/install_git_hooks.py#L93) |
+| function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L115) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L179) |
 
 ## `scripts/interlanguage_analyze.py`
 _Interlanguage analysis — aggregate report over the practice corpus._
@@ -445,13 +453,4 @@ _Peer model adapters for interlanguage validation experiment._
 | function | `_generate_ollama_local` | `(prompt)` | deepseek-v4-flash:cloud via lokal Ollama (samme model som Jarvis). | [src](../../../scripts/peer_models.py#L85) |
 | function | `_generate_random` | `(prompt)` | Random baseline — bruger generate_state_expression() uden mood-bias. | [src](../../../scripts/peer_models.py#L99) |
 | function | `generate` | `(prompt, peer_id)` | Dispatch til peer-specific adapter. Raise ValueError ved ukendt peer. | [src](../../../scripts/peer_models.py#L123) |
-
-## `scripts/peer_practice_runner.py`
-_Peer practice runner — kører kontinuerligt i ~7 dage per peer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_build_prompt` | `(mood, seed_expressions=…)` | Build per-tick prompt fra protokol + mood + valgfri seed. | [src](../../../scripts/peer_practice_runner.py#L39) |
-| function | `run_one_tick` | `(*, peer_id, mood_trace, use_seed=…)` | Generér og persistér én expression for peer. Returnér expression eller None ved fejl. | [src](../../../scripts/peer_practice_runner.py#L69) |
-| function | `main` | `()` | — | [src](../../../scripts/peer_practice_runner.py#L106) |
 

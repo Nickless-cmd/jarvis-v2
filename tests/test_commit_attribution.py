@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
 
@@ -127,3 +128,12 @@ def test_render_is_deterministic() -> None:
     first = render_attributed_message("fix: x", _attribution())
     second = render_attributed_message(first, _attribution())
     assert second == first
+
+
+def test_render_tolerates_non_trailer_line_in_existing_block() -> None:
+    with patch(
+        "core.services.commit_attribution._split_final_trailer_block",
+        return_value=(["fix: x"], ["not-a-trailer"]),
+    ):
+        with pytest.raises(AttributionError, match="Actor must appear"):
+            render_attributed_message("fix: x", _attribution())

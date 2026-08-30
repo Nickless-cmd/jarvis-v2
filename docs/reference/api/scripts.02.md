@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/peer_practice_runner.py`
+_Peer practice runner — kører kontinuerligt i ~7 dage per peer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_build_prompt` | `(mood, seed_expressions=…)` | Build per-tick prompt fra protokol + mood + valgfri seed. | [src](../../../scripts/peer_practice_runner.py#L39) |
+| function | `run_one_tick` | `(*, peer_id, mood_trace, use_seed=…)` | Generér og persistér én expression for peer. Returnér expression eller None ved fejl. | [src](../../../scripts/peer_practice_runner.py#L69) |
+| function | `main` | `()` | — | [src](../../../scripts/peer_practice_runner.py#L106) |
+
 ## `scripts/primary_cache_warmer.py`
 _Primary lane cache warmer._
 

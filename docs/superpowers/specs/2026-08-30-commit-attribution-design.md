@@ -131,17 +131,21 @@ Validatoren er en ren funktion over commitbeskeden og actor-registret. Den tjekk
 - `Approved-By` er en registreret actor eller et syntaktisk gyldigt `policy:*` id;
 - trailerblokken kan parses med Gits egen trailersemantik.
 
-Handhaevelsen har tre lag:
+Handhaevelsen har fire lag:
 
 1. **`commit-msg`:** hurtig lokal feedback pa den commit, der er ved at blive skabt.
-2. **Pre-push/range-check:** validerer alle nye commits i den range, der skubbes. Dermed
+2. **Rewrite-hooks:** `pre-rebase` giver tidlig feedback. En versioneret
+   `reference-transaction`-hook afviser desuden non-fast-forward opdateringer af lokale
+   branches, sa `rebase --no-verify` ikke kan bevare en gammel actor-trailer pa en ny
+   hash. Den attribuerede amend-wrapper tillader kun rewriten i sin egen commitproces.
+3. **Pre-push/range-check:** validerer alle nye commits i den range, der skubbes. Dermed
    fanges commits skabt med `--no-verify`, fra en anden checkout eller via aeldre tooling.
-3. **CI/range-check:** korer samme validator pa `push` og `pull_request`, og kan derfor
+4. **CI/range-check:** korer samme validator pa `push` og `pull_request`, og kan derfor
    ikke omgas med klientens `git push --no-verify`.
 
 Hooks installeres fra versionerede scripts via repositoryets setupkommando. Installation
 verificeres af capability/deploy-checket; en manglende hook ma ikke rapporteres som aktiv.
-`pre-rebase` blokerer replay, fordi en rebase ellers bevarer syntaktisk gyldige, men
+Rewrite-hooks blokerer replay, fordi en rebase ellers bevarer syntaktisk gyldige, men
 forkerte actor-trailers. CI-checket skal vaere required pa protected branches for at
 blokere merge/deploy; en almindelig push-workflow kan kun rapportere efter at pushen er sket.
 
@@ -155,8 +159,9 @@ blokere merge/deploy; en almindelig push-workflow kan kun rapportere efter at pu
   Git, mens de styrede trailers omskrives til den nye commit-aktor.
 - **Amend:** den aktor der producerer den nye hash bliver `Actor`. Wrapperen erstatter
   gamle styrede trailers i stedet for at duplikere dem.
-- **Rebase:** forbudt og blokeret af `pre-rebase`, fordi Git replay bevarer den gamle
-  trailer pa en ny hash. Opdater branch med merge i stedet.
+- **Rebase:** forbudt og blokeret af `pre-rebase` samt `reference-transaction`, fordi
+  Git replay bevarer den gamle trailer pa en ny hash. Det sidste lag virker ogsa ved
+  `rebase --no-verify`. Opdater branch med merge i stedet.
 - **Automatiske hook-rettelser:** filer som en pre-commit-hook genererer, tilhorer samme
   commit og samme actor-kontekst.
 - **Historiske commits:** grandfatheres. Range-checket validerer kun commits nyere end
@@ -194,10 +199,11 @@ filer. Wrapperen kan generere en midlertidig besked, men Git ejer den endelige c
 4. Wrapperen erstatter eksisterende styrede trailers deterministisk.
 5. Manuelt run-id er unikt og har stabilt format.
 6. Reelle temp-repo-tests for commit, merge, revert, cherry-pick og amend.
-7. `--no-verify` slipper forbi lokal hook, men afvises af range-validatoren.
-8. Historiske commits foer aktiveringspunktet grandfatheres.
-9. Jarvis auto-commit sender korrekt run/session/policy og bruger fortsat pathspec.
-10. Hook-installationscheck skelner mellem fil pa disk og faktisk aktiv hook-konfiguration.
+7. Commit-`--no-verify` slipper forbi `commit-msg`, men afvises af range-validatoren.
+8. Reelle divergerende rebases afvises bade normalt og med `--no-verify`.
+9. Historiske commits foer aktiveringspunktet grandfatheres.
+10. Jarvis auto-commit sender korrekt run/session/policy og bruger fortsat pathspec.
+11. Hook-installationscheck skelner mellem fil pa disk og faktisk aktiv hook-konfiguration.
 
 Mocks er ikke tilstraekkelige for Git-semantik; specialtilfaelde og range-check kores mod
 rigtige midlertidige repositories.
@@ -229,6 +235,7 @@ efter aktivering er manglende metadata en hard fejl.
 - Ingen normal commitsti for Bjorn, Jarvis, Codex eller Opus kan skabe en commit uden
   gyldig kontrakt.
 - Commit-`--no-verify` opdages ved normal push; push-`--no-verify` opdages af CI.
-- Rebase blokeres i normal workflow, sa actor-trailers ikke overlever hash-replay.
+- Rebase blokeres bade normalt og med `--no-verify`, sa actor-trailers ikke overlever
+  hash-replay.
 - Git er eneste autoritative historik; enhver UI/DB-visning kan genbygges.
 - Eksisterende auto-commit path-isolation svaekkes ikke.

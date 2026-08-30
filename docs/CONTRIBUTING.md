@@ -45,7 +45,9 @@ Write the failing test → run it (confirm it fails) → minimal implementation 
   `pre-push` checks the full outgoing range. CI repeats the range-check because
   `git push --no-verify` bypasses every local pre-push hook.
 - Rebase is blocked: replay creates new hashes while preserving stale actor trailers.
-  Merge the target branch instead.
+  `pre-rebase` gives early feedback, while the installed `reference-transaction`
+  hook also blocks `git rebase --no-verify` and other non-fast-forward branch
+  rewrites. Merge the target branch instead.
 - Install and verify all required hooks:
   ```bash
   /opt/conda/envs/ai/bin/python scripts/install_git_hooks.py

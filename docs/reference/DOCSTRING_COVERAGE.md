@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6474/13007 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6476/13009 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6474/13007 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4295 | 9057 | 47% |
+| `core.services` | 4297 | 9059 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 70 | 122 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -757,7 +757,7 @@ Generated from source. 6474/13007 functions/methods documented (49%). The list b
 - `core/services/cluster_daemon.py` :: `narrative_family` (L1376)
 - `core/services/cluster_daemon.py` :: `somatic_family` (L498)
 - `core/services/cluster_daemon_families.py` :: `aesthetic_family` (L435)
-- `core/services/cluster_daemon_families.py` :: `infra_family` (L1130)
+- `core/services/cluster_daemon_families.py` :: `infra_family` (L1142)
 - `core/services/cluster_daemon_families.py` :: `memory_family` (L152)
 - `core/services/cluster_daemon_families.py` :: `projects_family` (L860)
 - `core/services/cluster_daemon_families.py` :: `relation_family` (L659)

@@ -47,9 +47,9 @@ _Find a live host Claude Code OAuth token to inject into `claude -p` spawns._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_build_prompt` | `(spec)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L23) |
-| function | `_new_task_id` | `()` | — | [src](../../../core/tools/claude_dispatch/runner.py#L47) |
-| function | `run_dispatch` | `(spec, eventbus)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L51) |
+| function | `_build_prompt` | `(spec, task_id)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L24) |
+| function | `_new_task_id` | `()` | — | [src](../../../core/tools/claude_dispatch/runner.py#L67) |
+| function | `run_dispatch` | `(spec, eventbus)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L71) |
 
 ## `core/tools/claude_dispatch/spec.py`
 

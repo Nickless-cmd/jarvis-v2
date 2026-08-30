@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shlex
 import subprocess
 import threading
 import time
@@ -20,7 +21,25 @@ from core.tools.claude_dispatch.worktree import create_worktree, worktree_diff
 logger = logging.getLogger(__name__)
 
 
-def _build_prompt(spec: TaskSpec) -> str:
+def _build_prompt(spec: TaskSpec, task_id: str) -> str:
+    commit_subject = f"feat(worker): {spec.goal.strip()[:58]}"
+    scoped_paths = " ".join(shlex.quote(path) for path in spec.scope_files)
+    commit_command = shlex.join([
+        "python",
+        "scripts/commit_with_attribution.py",
+        "--repo", ".",
+        "--actor", "opus",
+        "--run-id", task_id,
+        "--session-id", "none",
+        "--origin", "delegated",
+        "--approved-by", "policy:claude-dispatch-v1",
+        "--message", commit_subject,
+        *[
+            item
+            for path in spec.scope_files
+            for item in ("--path", path)
+        ],
+    ])
     parts = [
         f"GOAL: {spec.goal}",
         "",
@@ -35,9 +54,10 @@ def _build_prompt(spec: TaskSpec) -> str:
         "",
         "Operate strictly within SCOPE. Do not modify files outside it.",
         "",
-        "When you have finished writing or editing files, you MUST commit "
-        "your changes with a short descriptive commit message. Use: "
-        "git add -A && git commit -m '<short summary>'",
+        "When you have finished writing or editing files, stage only the "
+        "scoped paths and commit through the attributed wrapper. Use:",
+        f"git add -- {scoped_paths}",
+        commit_command,
         "",
         "After committing, summarize what you changed in one paragraph.",
     ]
@@ -61,7 +81,7 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
     worktree_path = create_worktree(task_id)
 
     cmd = [
-        "claude", "-p", _build_prompt(spec),
+        "claude", "-p", _build_prompt(spec, task_id),
         "--add-dir", str(worktree_path),
         "--allowed-tools", ",".join(spec.allowed_tools),
         "--permission-mode", spec.permission_mode,

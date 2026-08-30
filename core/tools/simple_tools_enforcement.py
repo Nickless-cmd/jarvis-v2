@@ -56,11 +56,9 @@ def _repo_state_reset_counter(session_id: str) -> None:
 
 
 def _detect_git_commit_in_bash(command: str, stdout: str) -> bool:
-    """True hvis bash-kommandoen kørte en git commit der lykkedes.
-    Heuristik: command indeholder 'git commit' og stdout/stderr ikke
-    indeholder 'nothing to commit' eller error-markers."""
+    """True when raw Git or the attributed wrapper completed a commit."""
     cmd = (command or "").lower()
-    if "git commit" not in cmd:
+    if "git commit" not in cmd and "commit_with_attribution.py" not in cmd:
         return False
     out = (stdout or "").lower()
     if "nothing to commit" in out or "working tree clean" in out:

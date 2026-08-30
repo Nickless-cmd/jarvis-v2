@@ -1769,7 +1769,7 @@ Generated from source. 6514/13067 functions/methods documented (49%). The list b
 - `core/tools/claude_dispatch/budget.py` :: `BudgetTracker.record_usage` (L50)
 - `core/tools/claude_dispatch/jail.py` :: `assert_inside_jail` (L16)
 - `core/tools/claude_dispatch/jail.py` :: `build_worktree_path` (L24)
-- `core/tools/claude_dispatch/runner.py` :: `run_dispatch` (L51)
+- `core/tools/claude_dispatch/runner.py` :: `run_dispatch` (L71)
 - `core/tools/claude_dispatch/spec.py` :: `parse_spec` (L33)
 - `core/tools/claude_dispatch/stream.py` :: `parse_stream_line` (L17)
 - `core/tools/claude_dispatch/worktree.py` :: `cleanup_worktree` (L24)

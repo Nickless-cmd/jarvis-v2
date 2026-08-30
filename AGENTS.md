@@ -21,6 +21,22 @@ python -m compileall core apps/api scripts
 
 Python 3.11+ required.
 
+## Commit attribution
+
+Stage only the intended paths, then commit Codex work through the repository
+wrapper:
+
+```bash
+git add -- <paths...>
+python scripts/commit_with_attribution.py --repo . --actor codex \
+  --origin interactive --approved-by bjorn --message '<commit message>' \
+  --path <path>
+```
+
+Repeat `--path` for every staged path. Supply the current task as `--run-id`
+when one exists. Raw `git commit`, `--no-verify`, and hand-written attribution
+trailers are not the normal commit path.
+
 ## Architecture
 
 ### Directory Structure

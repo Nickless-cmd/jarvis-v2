@@ -96,9 +96,15 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         # hvoraf ALLE var over 7 dage, ældste 125). Samme princip som
         # events-retention ovenfor — bare på filerne i stedet for tabellerne.
         state_files_pruned: dict[str, int] = {}
+        orphan_uploads: dict[str, int] = {}
         try:
-            from core.services.state_file_retention import prune_all_state_files
+            from core.services.state_file_retention import (
+                cleanup_orphan_uploads, prune_all_state_files,
+            )
             state_files_pruned = prune_all_state_files()
+            # Vedhæftninger for sessioner der hverken har række eller beskeder.
+            # Målt 30-08: 151 filer / 87 MB i 12 døde mapper.
+            orphan_uploads = cleanup_orphan_uploads()
         except Exception:
             pass
 
@@ -134,6 +140,7 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             "telemetry_pruned": telemetry_pruned,
             "versioned_pruned": versioned_pruned,
             "state_files_pruned": state_files_pruned,
+            "orphan_uploads": orphan_uploads,
             "wal_checkpoint": wal_checkpoint,
         }
     except Exception as exc:

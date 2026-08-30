@@ -1,4 +1,7 @@
-"""Rotation af operationelle state-filer i ``~/.jarvis-v2/state``.
+"""Rotation af operationel runtime-tilstand i ``~/.jarvis-v2``.
+
+Dækker to ting: de operationelle JSON-filer i ``state/`` og forældreløse
+vedhæftnings-mapper i ``uploads/``.
 
 Målt 2026-08-30 — fire filer havde aldrig fået ryddet:
 
@@ -132,3 +135,81 @@ def prune_all_state_files(*, now: datetime | None = None) -> dict[str, int]:
         if removed:
             result[name] = removed
     return result
+
+
+# ── Forældreløse uploads ────────────────────────────────────────────────────
+#
+# Vedhæftninger gemmes som ``uploads/{session_id}/{uuid}_{filnavn}``
+# (``routes/attachments.py``). Når en session forsvinder, bliver mappen liggende.
+# Målt 2026-08-30: 166 af 169 filer (92,3 MB) lå i mapper uden sessions-række.
+#
+# MEN en manglende sessions-række betyder IKKE at samtalen er væk: 7 af de 19
+# mapper hørte til sessioner der stadig havde beskeder i ``chat_messages`` —
+# én med 3.799. Havde vi slettet på "ingen sessions-række", havde vi revet
+# vedhæftninger ud af levende samtaler. Reglen kræver derfor BEGGE dele.
+
+def find_orphan_upload_dirs(
+    upload_root: str, *, session_is_known
+) -> list[str]:
+    """Mapper hvis session hverken har en række eller beskeder. Ren udvælgelse.
+
+    ``session_is_known(session_id) -> bool`` slås op udefra, så logikken kan
+    testes uden database. Løse filer i roden røres aldrig — de hører ikke til
+    en session og kan stadig være refereret.
+    """
+    out: list[str] = []
+    try:
+        for name in sorted(os.listdir(upload_root)):
+            path = os.path.join(upload_root, name)
+            if not os.path.isdir(path):
+                continue
+            try:
+                if not session_is_known(name):
+                    out.append(name)
+            except Exception:
+                continue          # tvivl → behold
+    except Exception:
+        return []
+    return out
+
+
+def cleanup_orphan_uploads() -> dict[str, int]:
+    """Fjern vedhæftnings-mapper for sessioner der hverken har række eller beskeder.
+
+    Returnerer ``{"dirs": n, "files": n, "bytes": n}``. Self-safe.
+    """
+    import shutil
+
+    root = os.path.join(os.path.expanduser("~"), ".jarvis-v2", "uploads")
+    stats = {"dirs": 0, "files": 0, "bytes": 0}
+    try:
+        from core.runtime.db import connect
+    except Exception:
+        return stats
+
+    def _known(session_id: str) -> bool:
+        with connect() as conn:
+            if conn.execute(
+                "SELECT 1 FROM chat_sessions WHERE id = ? LIMIT 1", (session_id,)
+            ).fetchone():
+                return True
+            return conn.execute(
+                "SELECT 1 FROM chat_messages WHERE session_id = ? LIMIT 1",
+                (session_id,),
+            ).fetchone() is not None
+
+    try:
+        for name in find_orphan_upload_dirs(root, session_is_known=_known):
+            path = os.path.join(root, name)
+            for base, _dirs, files in os.walk(path):
+                for f in files:
+                    try:
+                        stats["bytes"] += os.path.getsize(os.path.join(base, f))
+                        stats["files"] += 1
+                    except Exception:
+                        pass
+            shutil.rmtree(path, ignore_errors=True)
+            stats["dirs"] += 1
+    except Exception:
+        pass
+    return stats

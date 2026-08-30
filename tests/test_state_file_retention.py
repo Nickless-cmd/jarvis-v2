@@ -14,6 +14,7 @@ import pytest
 
 from core.services.state_file_retention import (
     POLICIES,
+    find_orphan_upload_dirs,
     parse_ts,
     prune_all_state_files,
     prune_state_file,
@@ -147,3 +148,55 @@ class TestPolicies:
         import core.services.state_file_retention as mod
         monkeypatch.setattr(mod, "_state_dir", lambda: str(tmp_path / "findes-ikke"))
         assert prune_all_state_files(now=NOW) == {}
+
+
+class TestOrphanUploadSelection:
+    """Reglen der næsten gik galt.
+
+    166 af 169 upload-filer lå i mapper uden sessions-række — men 7 af de 19
+    mapper hørte til sessioner der STADIG havde beskeder i chat_messages, én
+    med 3.799. "Ingen sessions-række" er derfor ikke nok; begge dele skal væk.
+    """
+
+    def _tree(self, tmp_path, names) -> str:
+        root = tmp_path / "uploads"
+        root.mkdir()
+        for n in names:
+            d = root / n
+            d.mkdir()
+            (d / "vedhaeftning.png").write_bytes(b"x")
+        return str(root)
+
+    def test_selects_only_fully_dead_sessions(self, tmp_path) -> None:
+        root = self._tree(tmp_path, ["chat-levende", "chat-doed"])
+        found = find_orphan_upload_dirs(
+            root, session_is_known=lambda s: s == "chat-levende")
+        assert found == ["chat-doed"]
+
+    def test_session_with_messages_only_is_kept(self, tmp_path) -> None:
+        """Den fælde der ville have kostet vedhæftninger i levende samtaler."""
+        root = self._tree(tmp_path, ["chat-uden-raekke-men-med-beskeder"])
+        # session_is_known slår BEGGE dele op → returnerer True
+        assert find_orphan_upload_dirs(root, session_is_known=lambda s: True) == []
+
+    def test_loose_files_in_root_are_never_selected(self, tmp_path) -> None:
+        """Løse filer hører ikke til en session og kan stadig være refereret."""
+        root = self._tree(tmp_path, ["chat-doed"])
+        (tmp_path / "uploads" / "webcam-bjorn.jpg").write_bytes(b"x")
+        assert find_orphan_upload_dirs(root, session_is_known=lambda s: False) == ["chat-doed"]
+
+    def test_lookup_failure_keeps_the_directory(self, tmp_path) -> None:
+        """Tvivl → behold. En DB-fejl må aldrig blive til en sletning."""
+        def boom(_s):
+            raise RuntimeError("db nede")
+        root = self._tree(tmp_path, ["chat-x"])
+        assert find_orphan_upload_dirs(root, session_is_known=boom) == []
+
+    def test_missing_root_is_safe(self, tmp_path) -> None:
+        assert find_orphan_upload_dirs(str(tmp_path / "nope"),
+                                       session_is_known=lambda s: False) == []
+
+    def test_empty_root(self, tmp_path) -> None:
+        root = tmp_path / "uploads"
+        root.mkdir()
+        assert find_orphan_upload_dirs(str(root), session_is_known=lambda s: False) == []

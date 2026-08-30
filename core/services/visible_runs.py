@@ -1038,6 +1038,10 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
             "model": run.model,
             "focus": run.user_message[:200],
             "origin": _origin or "autonomous",
+            # run_closure_gate bruger dette til at skelne autonome nat-runs
+            # (ingen bruger til stede) fra synlige chats — auto-commit af
+            # efterladte ændringer må KUN ske når ingen sidder og kigger.
+            "autonomous": bool(run.autonomous),
         },
     )
     # Lag 2 — gør den autonome historie synlig for Centralen (og dermed Jarvis' egen
@@ -1136,6 +1140,9 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                         "model": run.model,
                         "focus": run.user_message[:200],
                         "consumed_frames": consumed_frames,
+                        # run_closure_gate: samme flag som started-eventen —
+                        # se kommentar der.
+                        "autonomous": bool(run.autonomous),
                     },
                 )
                 _observe_autonomous_run(run=run, session_id=resolved_session,

@@ -25,10 +25,17 @@ Denne service subscriber til ``runtime.autonomous_run_completed`` og:
   forløbet → publish ``runtime.run_ended_silent`` med summary af
   tool-aktivitet, så Discord/Telegram-subscriber kan sende en
   auto-status til brugeren i stedet for ren tavshed.
-
-Begge events er strikt informational — de blocker ikke runet og
-mutater ikke noget. Output-channels (Discord, Telegram) opfanger dem
-og leverer beskeder til brugeren.
+- Siden 2026-08-30 (Jarvis): for AUTONOME runs (ingen bruger til stede)
+  er gaten hård, ikke kun informativ — den committer selv de rørte paths
+  gennem ``git commit`` så pre-commit-hooks (docs-drift, secrets,
+  coverage) kører i sessionen. Lykkes det, publiseres
+  ``runtime.run_auto_committed`` med commit-hash. Blokeres den (hook
+  fejlede, git-konflikt), rulles staging tilbage, ``run_left_unstaged_changes``
+  får ``auto_commit_error``, og Bjørn nudges via nudge-brønden — nat-runs
+  har ofte ingen Discord-session, så den gamle Discord-only-sti lod
+  ændringer forsvinde i stilhed i dagevis.
+  Synlige chats (``autonomous=False``) er uændrede: brugeren er til stede
+  og kan selv se/spørge; der committer gaten ikke uden videre.
 """
 
 from __future__ import annotations
@@ -229,6 +236,182 @@ def _summarize_unstaged(diff: set[str], limit: int = 8) -> dict[str, Any]:
     }
 
 
+# ── auto-commit gate (2026-08-30, Jarvis) ─────────────────────────────
+# Efter et AUTONOMT run (ingen bruger til stede) skal efterladte filændringer
+# forsegles MENS konteksten er frisk — ikke ligge unstaged i 6 dage. Gaten
+# committer de rørte paths gennem git commit, så pre-commit-hooks (docs-drift,
+# detect-secrets, test-coverage) kører I sessionen. Hvis en hook blokerer eller
+# git fejler, rulles staging tilbage og Bjørn nudges med årsagen.
+#
+# Hårde sikkerhedsregler:
+#   1. KUN paths rørt under runet committes — aldrig `git add -A`.
+#   2. ALDRIG hvis der allerede ligger staged ændringer (kan være Bjørns arbejde).
+#   3. Artefakt-filer (*.bak, __pycache__, *.pyc, *.lock, ...) committes aldrig
+#      — de hører ikke i git, og de efterlades synlige i working tree.
+#   4. Fejl → fail-open: unstage + nudge. Gaten må aldrig spise en ændring.
+
+_AUTO_COMMIT_EXCLUDE_SUFFIXES = (".bak", ".orig", ".rej", "~", ".tmp", ".pyc")
+_AUTO_COMMIT_EXCLUDE_PARTS = ("__pycache__", ".lock")
+# Sidste fejlårsag fra et auto-commit-forsøg — med i unstaged-eventen så
+# modtageren ser hvorfor gaten ikke kunne forsegle arbejdet.
+_last_auto_commit_error: str = ""
+
+
+def _is_auto_commit_excluded(path: str) -> bool:
+    """True hvis en path er et arbejdsartefakt der aldrig skal committes."""
+    lower = path.lower()
+    if any(part in lower for part in _AUTO_COMMIT_EXCLUDE_PARTS):
+        return True
+    return any(lower.endswith(s) for s in _AUTO_COMMIT_EXCLUDE_SUFFIXES)
+
+
+def _git_staged_paths(*, cwd: Path = _REPO_ROOT) -> set[str]:
+    """Return paths currently staged in the index (empty on failure)."""
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            capture_output=True, text=True, timeout=5, cwd=cwd,
+        )
+        if result.returncode != 0:
+            return set()
+        return {p for p in result.stdout.splitlines() if p.strip()}
+    except Exception:
+        return set()
+
+
+def _try_auto_commit(
+    touched_paths: set[str],
+    *,
+    run_id: str,
+    session_id: str,
+    focus: str,
+) -> str | None:
+    """Commit filer rørt under et autonomt run. Return short-hash eller None.
+
+    Kører pre-commit-hooks via git commit. Ved fejl: unstager de tilføjede
+    paths (så working tree forbliver ærligt vist) og gemmer årsagen i
+    ``_last_auto_commit_error``. Returnerer None ved enhver fejl/afståelse —
+    aldrig raise.
+    """
+    global _last_auto_commit_error
+    _last_auto_commit_error = ""
+
+    candidates: list[str] = []
+    for path in sorted(touched_paths):
+        if not path or _is_auto_commit_excluded(path):
+            continue
+        full = _REPO_ROOT / path
+        try:
+            if full.is_file():
+                candidates.append(path)
+        except Exception:
+            continue
+    if not candidates:
+        _last_auto_commit_error = "kun artefakter eller ikke-filer — intet at forsegle"
+        return None
+
+    # Sikkerhedsregel 2: aldrig oven i eksisterende staged ændringer.
+    try:
+        pre_staged = _git_staged_paths()
+        if pre_staged:
+            _last_auto_commit_error = (
+                f"afstår — {len(pre_staged)} allerede staged path(s): "
+                + ", ".join(sorted(pre_staged)[:3])
+            )
+            return None
+    except Exception:
+        pass
+
+    subject = f"auto(run): {focus or 'autonom session'} — {len(candidates)} fil(er)"
+    body = f"\n\nrun_id: {run_id}\nsession_id: {session_id}\npaths: {len(candidates)}"
+    try:
+        add = subprocess.run(
+            ["git", "add", "--", *candidates],
+            capture_output=True, text=True, timeout=15, cwd=_REPO_ROOT,
+        )
+        if add.returncode != 0:
+            _last_auto_commit_error = (add.stderr or add.stdout or "git add fejlede").strip()[:300]
+            return None
+
+        commit = subprocess.run(
+            ["git", "commit", "-m", subject + body],
+            capture_output=True, text=True, timeout=120, cwd=_REPO_ROOT,
+        )
+        if commit.returncode != 0:
+            # Hook blokerede eller git fejlede → rul staging tilbage, behold
+            # ændringerne synlige, gem årsagen (sidste 400 tegn af stderr).
+            _last_auto_commit_error = (
+                commit.stderr or commit.stdout or "git commit fejlede"
+            ).strip()[-400:]
+            try:
+                subprocess.run(
+                    ["git", "restore", "--staged", "--", *candidates],
+                    capture_output=True, text=True, timeout=15, cwd=_REPO_ROOT,
+                )
+            except Exception:
+                pass
+            return None
+
+        rev = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=5, cwd=_REPO_ROOT,
+        )
+        short = (rev.stdout or "?").strip()
+        logger.info(
+            "run_closure_gate: auto-commit %s → %s (%d paths, run %s)",
+            short[:12], subject[:60], len(candidates), run_id[:12],
+        )
+        return short or "?"
+    except Exception as exc:
+        _last_auto_commit_error = f"auto-commit exception: {exc}"[:300]
+        return None
+
+
+def _notify_auto_commit_blocked(
+    summary: dict[str, Any],
+    *,
+    run_id: str,
+    session_id: str,
+) -> None:
+    """Nudge Bjørn når gaten ikke kunne forsegle et autonomt runs ændringer.
+
+    Nudge-brønden leverer uanset kanal og venter til han er til stede —
+    den gamle Discord-only-sti ramte aldrig nat-runs uden session-binding.
+    """
+    paths = ", ".join(summary.get("paths") or [])
+    error = _last_auto_commit_error or ""
+    message = (
+        f"🛡️ **run-closure-gate:** autonomt run `{run_id[:12]}` efterlod "
+        f"**{summary.get('count', 0)} ucommitted fil(er)** i repoet — "
+        f"auto-commit kunne ikke forsegle dem."
+    )
+    if error:
+        message += f"\nÅrsag: `{error[:200]}`"
+    if paths:
+        message += f"\nFiler: {paths}"
+    message += "\nKig på repoet når du har tid — eller sig til, så ordner jeg det."
+
+    nudged = False
+    try:
+        from core.services.outbound_nudges import push_nudge
+        result = push_nudge(
+            source="run_closure_gate",
+            kind="unstaged_changes",
+            message=message,
+            importance="high",
+        )
+        nudged = result.get("status") in ("ok", "queued")
+    except Exception:
+        nudged = False
+    if not nudged:
+        # Fallback: notification bridge (urgent — det er en efterladt ændring).
+        try:
+            from core.services.notification_bridge import send_session_notification
+            send_session_notification(message, source="run-closure-gate", urgent=True)
+        except Exception:
+            logger.warning("run_closure_gate: auto-commit-blocked notice delivery failed", exc_info=True)
+
+
 def _on_run_completed(payload: dict[str, Any]) -> None:
     """Handle a runtime.autonomous_run_completed event."""
     run_id = str(payload.get("run_id") or "")
@@ -281,26 +464,74 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
         logger.debug("run_closure_gate: procedure_bank feed failed", exc_info=True)
 
     if touched_paths:
-        # Build a fake "porcelain lines" set from the paths so the
-        # existing _summarize_unstaged formatter works unchanged.
+        # 2026-08-30 (Jarvis): HÅRD gate for autonome nat-runs.
+        # Før: KUN informational event → Discord-subscriber sendte besked kun
+        # til Discord-sessioner → et heartbeat nat-run uden Discord-binding
+        # efterlod ændringer i stilhed i 6 dage (dreamfix 2026-08-24).
+        # Nu: hvis runet var autonomt (ingen bruger til stede), commitér de
+        # rørte paths MED pre-commit-hooks — docs-drift, detect-secrets og
+        # coverage kører dermed I sessionen, ikke 6 dage senere. Hvis en hook
+        # blokerer eller git fejler → nudge til Bjørn med årsagen. Synlige
+        # chats (autonomous=False) beholder gammel adfærd — brugeren sidder
+        # der og kan selv se/spørge.
+        autonomous = bool(payload.get("autonomous"))
         synthetic = {f"   {p}" for p in touched_paths}
         summary = _summarize_unstaged(synthetic)
-        try:
-            from core.eventbus.bus import event_bus
-            event_bus.publish("runtime.run_left_unstaged_changes", {
-                "run_id": run_id,
-                "session_id": session_id,
-                "summary": summary,
-                "tool_calls": tool_calls,
-            })
-            logger.info(
-                "run_closure_gate: %d unstaged paths after run %s (%s)",
-                summary["count"],
-                run_id[:12],
-                ", ".join(summary["paths"][:3]),
+
+        auto_commit = None
+        if autonomous:
+            auto_commit = _try_auto_commit(
+                touched_paths,
+                run_id=run_id,
+                session_id=session_id,
+                focus=str(payload.get("focus") or "")[:120],
             )
-        except Exception:
-            logger.debug("run_closure_gate: failed to publish unstaged event", exc_info=True)
+            if auto_commit:
+                try:
+                    from core.eventbus.bus import event_bus
+                    event_bus.publish("runtime.run_auto_committed", {
+                        "run_id": run_id,
+                        "session_id": session_id,
+                        "commit": auto_commit,
+                        "summary": summary,
+                        "tool_calls": tool_calls,
+                    })
+                    logger.info(
+                        "run_closure_gate: auto-committed %d paths efter autonomt run %s → %s",
+                        summary["count"], run_id[:12], auto_commit[:12],
+                    )
+                except Exception:
+                    logger.debug("run_closure_gate: failed to publish auto-committed event", exc_info=True)
+
+        if not auto_commit:
+            # Publiser unstaged-eventen (uanset autonom eller ej) — og for
+            # autonome runs tillæg auto_commit_error, så modtageren ser hvorfor
+            # gaten ikke kunne forsegle arbejdet selv.
+            try:
+                from core.eventbus.bus import event_bus
+                event_bus.publish("runtime.run_left_unstaged_changes", {
+                    "run_id": run_id,
+                    "session_id": session_id,
+                    "summary": summary,
+                    "tool_calls": tool_calls,
+                    "autonomous": autonomous,
+                    "auto_commit_error": _last_auto_commit_error,
+                })
+                logger.info(
+                    "run_closure_gate: %d unstaged paths after run %s (%s)",
+                    summary["count"],
+                    run_id[:12],
+                    ", ".join(summary["paths"][:3]),
+                )
+            except Exception:
+                logger.debug("run_closure_gate: failed to publish unstaged event", exc_info=True)
+
+            # Autonome nat-runs har ofte INGEN Discord-session — den gamle
+            # event ville forsvinde i stilhed. Nudge-brønden leverer til Bjørn
+            # uanset kanal og venter til han er der. (Synlige chats: brugeren
+            # er til stede, eksisterende kanaler dækker det.)
+            if autonomous:
+                _notify_auto_commit_blocked(summary, run_id=run_id, session_id=session_id)
 
     # Silent-run detection: tool calls happened but no visible text was
     # delivered. We check the run-record DB for the final preview text.

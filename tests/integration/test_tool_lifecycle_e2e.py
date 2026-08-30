@@ -9,7 +9,7 @@ from core.services.tool_result_store import get_tool_result, parse_tool_result_r
 class _S:
     tool_result_lifecycle_enabled = True
     tool_warm_run_window = 2          # small so the test triggers easily
-    tool_warm_token_ceiling = 10**9
+    tool_warm_token_ceiling = 100     # lavt -> token-kriteriet fyrer
     tool_warm_hysteresis = 0.0
     # Gaten (30-08) udskyder avancering til compaction; denne test handler om
     # cold-rendering + rehydrering, ikke om HVORNAAR gulvet rykker.

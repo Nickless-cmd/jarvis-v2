@@ -122,6 +122,7 @@ def test_evaluate_and_advance_moves_floor(monkeypatch):
         tool_warm_token_ceiling = 40000
         tool_warm_hysteresis = 0.25
         tool_warm_advance_only_on_compact = False
+        tool_warm_run_window_enabled = True   # testen maaler recency-mekanikken
 
     new_floor = trl.evaluate_and_advance(sid, settings=_S())
     assert new_floor > 0
@@ -138,6 +139,7 @@ def test_evaluate_noop_when_disabled(monkeypatch):
         tool_warm_run_window = 8
         tool_warm_token_ceiling = 40000
         tool_warm_hysteresis = 0.25
+        tool_warm_run_window_enabled = True
 
     assert trl.evaluate_and_advance(sid, settings=_S()) == 0
     assert trl.get_cold_floor(sid) == 0
@@ -177,6 +179,7 @@ def test_evaluate_advances_once_compaction_happened(monkeypatch):
         tool_warm_run_window = 8
         tool_warm_token_ceiling = 40000
         tool_warm_hysteresis = 0.25
+        tool_warm_run_window_enabled = True
 
     new_floor = trl.evaluate_and_advance(sid, settings=_S())
     assert new_floor > 0

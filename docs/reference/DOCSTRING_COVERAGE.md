@@ -223,7 +223,7 @@ Generated from source. 6493/13029 functions/methods documented (49%). The list b
 - `core/cli/visible_output.py` :: `normalize_visible_work_units` (L136)
 - `core/cli/visible_output.py` :: `visible_execution_section` (L4)
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
-- `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L188)
+- `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L202)
 - `core/costing/ledger.py` :: `recent_costs` (L135)
 - `core/costing/ledger.py` :: `telemetry_summary` (L115)
 - `core/eventbus/bus.py` :: `EventBus.recent` (L149)

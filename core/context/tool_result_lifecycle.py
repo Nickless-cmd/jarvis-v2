@@ -62,20 +62,34 @@ def compute_new_floor(
 
     Warm = messages with id > current_floor. Advance only if warm EXCEEDS the
     limit by the hysteresis margin. On advance, trim warm to the BASE limits.
+
+    ``run_window <= 0`` slår RECENCY-kriteriet fra (standard fra 30-08-2026).
+    Modulets header siger «NO recency-relative logic (breaks the cache)», men
+    "hold de sidste N bruger-ture varme" ER recency-relativt: efter N ture rykker
+    gulvet ved stort set hver tur, og hver avancering omskriver historik tidligt i
+    prompten (målt: kun 5-48 % af DeepSeeks cachede prefix overlevede). Målt samme
+    dag var token-kriteriet ALDRIG bindende — 8.931 varme tool-tokens mod et loft
+    på 40.000 — så recency stod for alle 7 avanceringer på 3,5 time. Den absolutte
+    token-grænse bunder konteksten lige så godt uden at flytte gulvet hver tur.
     """
     warm = [m for m in messages if int(m.get("id", 0)) > current_floor]
-    user_ids_warm = user_message_ids(warm)
     tokens_warm = estimate_tool_tokens(warm)
+    _recency_on = run_window > 0
 
     # >= so warm reaching exactly the hysteresis threshold advances (the margin
     # is inclusive); strict > would stall at the exact boundary (e.g. 50k vs 40k*1.25).
-    over_runs = len(user_ids_warm) >= run_window * (1 + hysteresis)
+    over_runs = (
+        _recency_on
+        and len(user_message_ids(warm)) >= run_window * (1 + hysteresis)
+    )
     over_tokens = tokens_warm >= token_ceiling * (1 + hysteresis)
     if not (over_runs or over_tokens):
         return current_floor
 
-    all_user_ids = user_message_ids(messages)
-    cand_runs = _candidate_by_runs(all_user_ids, run_window)
+    cand_runs = (
+        _candidate_by_runs(user_message_ids(messages), run_window)
+        if _recency_on else 0
+    )
     cand_tokens = _candidate_by_tokens(messages, token_ceiling)
     return max(current_floor, cand_runs, cand_tokens)
 
@@ -275,7 +289,15 @@ def evaluate_and_advance(session_id: str, *, settings=None) -> int:
         new_floor = compute_new_floor(
             messages,
             current_floor=current,
-            run_window=int(getattr(s, "tool_warm_run_window", 8)),
+            # Recency-kriteriet er slukket som standard (30-08-2026) — se
+            # compute_new_floor. Sæt tool_warm_run_window_enabled=True for at
+            # genskabe den gamle adfærd uden deploy.
+            run_window=(
+                int(getattr(s, "tool_warm_run_window", 8))
+                if as_bool(getattr(s, "tool_warm_run_window_enabled", None),
+                           default=False)
+                else 0
+            ),
             token_ceiling=_ceiling,
             hysteresis=float(getattr(s, "tool_warm_hysteresis", 0.25)),
         )

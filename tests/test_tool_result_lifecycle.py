@@ -196,3 +196,52 @@ class TestValveGovernsInsteadOfRecency:
             hard_ceiling=self.VALVE,
         )
         assert ok is True
+
+
+class TestRecencyCriterionOff:
+    """`run_window <= 0` slukker recency-kriteriet — modulets egen invariant.
+
+    Headeren siger «NO recency-relative logic (breaks the cache)», men "hold de
+    sidste N bruger-ture varme" ER recency-relativt og flyttede gulvet ved stort
+    set hver tur.
+    """
+
+    def _msgs(self, turns: int, tool_chars: int = 400) -> list[dict]:
+        out: list[dict] = []
+        mid = 1
+        for _ in range(turns):
+            out.append({"id": mid, "role": "user", "content": "u"}); mid += 1
+            out.append({"id": mid, "role": "tool", "content": "x" * tool_chars}); mid += 1
+        return out
+
+    def test_many_turns_alone_no_longer_advance_the_floor(self) -> None:
+        """40 ture, men kun ~4k tool-tokens: gulvet skal blive stående."""
+        msgs = self._msgs(40)
+        assert estimate_tool_tokens(msgs) < 40_000
+        assert compute_new_floor(msgs, current_floor=0, run_window=0,
+                                 token_ceiling=40_000, hysteresis=0.25) == 0
+
+    def test_same_input_advanced_under_the_old_recency_rule(self) -> None:
+        """Kontrast: med recency tændt rykkede præcis det samme input gulvet."""
+        msgs = self._msgs(40)
+        assert compute_new_floor(msgs, current_floor=0, run_window=8,
+                                 token_ceiling=40_000, hysteresis=0.25) > 0
+
+    def test_token_pressure_still_advances_with_recency_off(self) -> None:
+        """Den absolutte grænse bunder stadig konteksten."""
+        msgs = self._msgs(40, tool_chars=8000)
+        assert estimate_tool_tokens(msgs) >= 40_000 * 1.25
+        assert compute_new_floor(msgs, current_floor=0, run_window=0,
+                                 token_ceiling=40_000, hysteresis=0.25) > 0
+
+    def test_negative_run_window_is_also_off(self) -> None:
+        assert compute_new_floor(self._msgs(40), current_floor=0, run_window=-1,
+                                 token_ceiling=40_000, hysteresis=0.25) == 0
+
+    def test_still_monotonic_with_recency_off(self) -> None:
+        msgs = self._msgs(40, tool_chars=8000)
+        f1 = compute_new_floor(msgs, current_floor=0, run_window=0,
+                               token_ceiling=40_000, hysteresis=0.25)
+        f2 = compute_new_floor(msgs, current_floor=f1, run_window=0,
+                               token_ceiling=40_000, hysteresis=0.25)
+        assert f2 >= f1

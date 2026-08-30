@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/repro_streaming_fault.py`
+_Manuel repro af de tre streaming-fejl-former (Fase 0-harness)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_install_hermetic_mocks` | `(persisted, nerves)` | — | [src](../../../scripts/repro_streaming_fault.py#L50) |
+| function | `main` | `()` | — | [src](../../../scripts/repro_streaming_fault.py#L77) |
+
 ## `scripts/requirements_gen.py`
 _Scan core/+apps/+scripts for THIRD-PARTY top-level imports (filter stdlib + first-party)._
 

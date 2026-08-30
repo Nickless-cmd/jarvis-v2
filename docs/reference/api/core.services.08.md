@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/creative_drift_daemon.py`
+_Creative drift daemon — generates spontaneous, unexpected ideas unrelated to current tasks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_creative_drift_daemon` | `(fragments, *, skip_event_gate=…)` | Maybe generate a spontaneous associative idea. | [src](../../../core/services/creative_drift_daemon.py#L38) |
+| function | `get_latest_drift` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L91) |
+| function | `build_creative_drift_surface` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L95) |
+| function | `_gather_concrete_anchor` | `()` | Returns (anchor_text, anchor_kind) — a single concrete thing to drift | [src](../../../core/services/creative_drift_daemon.py#L109) |
+| function | `_generate_drift_idea` | `(fragments)` | — | [src](../../../core/services/creative_drift_daemon.py#L143) |
+| function | `_store_drift` | `(idea, now)` | — | [src](../../../core/services/creative_drift_daemon.py#L197) |
+
 ## `core/services/creative_impulse_daemon.py`
 _Creative Impulse — unasked-for creations._
 
@@ -570,14 +582,4 @@ _Desire daemon — emergent appetites based on Jarvis' actual experiences._
 | function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/desire_daemon.py#L228) |
 | function | `_build_raw_appetite_label` | `(spawning_type)` | Byg label udelukkende fra rå intensiteter — ingen LLM. | [src](../../../core/services/desire_daemon.py#L242) |
 | function | `_generate_appetite_label` | `(signal_text, appetite_type)` | — | [src](../../../core/services/desire_daemon.py#L260) |
-
-## `core/services/desktop_notifications.py`
-_Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `reset` | `()` | — | [src](../../../core/services/desktop_notifications.py#L15) |
-| function | `enqueue` | `(user_id, item)` | — | [src](../../../core/services/desktop_notifications.py#L20) |
-| function | `drain` | `(user_id)` | — | [src](../../../core/services/desktop_notifications.py#L30) |
-| function | `prune` | `()` | — | [src](../../../core/services/desktop_notifications.py#L37) |
 

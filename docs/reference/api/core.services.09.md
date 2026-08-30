@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/desktop_notifications.py`
+_Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `reset` | `()` | — | [src](../../../core/services/desktop_notifications.py#L15) |
+| function | `enqueue` | `(user_id, item)` | — | [src](../../../core/services/desktop_notifications.py#L20) |
+| function | `drain` | `(user_id)` | — | [src](../../../core/services/desktop_notifications.py#L30) |
+| function | `prune` | `()` | — | [src](../../../core/services/desktop_notifications.py#L37) |
+
 ## `core/services/desperation_awareness.py`
 _Desperation Awareness — self-noticing safety signal._
 
@@ -689,16 +699,4 @@ _Emergence — evidence-based pattern detection across recent activity._
 | function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L412) |
 | function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L421) |
 | function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L447) |
-
-## `core/services/emergent_bridge.py`
-_Emergent Bridge — consumer for emergent signals to influence visible prompt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `should_influence_prompt` | `()` | Determine if an emergent signal should influence the visible prompt. | [src](../../../core/services/emergent_bridge.py#L26) |
-| function | `get_influencing_emergents` | `()` | Get the emergent signals that are currently influencing. | [src](../../../core/services/emergent_bridge.py#L45) |
-| function | `format_emergent_for_prompt` | `()` | Format emergent signal for prompt injection. | [src](../../../core/services/emergent_bridge.py#L68) |
-| function | `reset_emergent_bridge` | `()` | Reset emergent bridge state (for testing). | [src](../../../core/services/emergent_bridge.py#L84) |
-| function | `get_emergent_bridge_state` | `()` | Get current state of emergent bridge. | [src](../../../core/services/emergent_bridge.py#L90) |
-| function | `build_emergent_bridge_surface` | `()` | Build MC surface for emergent bridge. | [src](../../../core/services/emergent_bridge.py#L100) |
 

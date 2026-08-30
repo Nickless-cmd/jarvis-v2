@@ -125,6 +125,14 @@ _Generér en læsbar commit-historie grupperet pr. måned og uge._
 | function | `_import_counts` | `(paths)` | Hvor mange andre filer nævner modulet? 0 = værd at kigge på først. | [src](../../../scripts/commit_history_report.py#L99) |
 | function | `build` | `(out_path)` | — | [src](../../../scripts/commit_history_report.py#L125) |
 
+## `scripts/commit_with_attribution.py`
+_CLI for creating a Git commit with canonical actor attribution._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_parser` | `()` | — | [src](../../../scripts/commit_with_attribution.py#L22) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/commit_with_attribution.py#L37) |
+
 ## `scripts/db_decomposition_map.py`
 _Read-only db.py dekomponerings-kort — grupperer 171 tabeller i naturlige domæner efter_
 
@@ -461,12 +469,4 @@ _Regenerate TIER_1_ALWAYS_ON in copilot_tool_pruning.py from 30-day usage data._
 | function | `render_literal` | `(names)` | Render the tool names as the source text of a TIER_1_ALWAYS_ON frozenset | [src](../../../scripts/regenerate_tier1.py#L104) |
 | function | `replace_literal_in_file` | `(new_literal)` | Rewrite the TIER_1_ALWAYS_ON literal in copilot_tool_pruning.py in place. | [src](../../../scripts/regenerate_tier1.py#L116) |
 | function | `main` | `()` | CLI entry point: compute the new Tier-1 set and print the diff vs current. | [src](../../../scripts/regenerate_tier1.py#L137) |
-
-## `scripts/repro_streaming_fault.py`
-_Manuel repro af de tre streaming-fejl-former (Fase 0-harness)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_install_hermetic_mocks` | `(persisted, nerves)` | — | [src](../../../scripts/repro_streaming_fault.py#L50) |
-| function | `main` | `()` | — | [src](../../../scripts/repro_streaming_fault.py#L77) |
 

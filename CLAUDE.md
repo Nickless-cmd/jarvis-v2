@@ -37,6 +37,14 @@ Repeat `--path` for every staged path. Supply the current task as `--run-id`
 when one exists. Raw `git commit`, `--no-verify`, and hand-written attribution
 trailers are not the normal commit path.
 
+All commits after `.commit-attribution-baseline` are enforced by `commit-msg`
+and `pre-push`. Install and verify the required hooks with:
+
+```bash
+/opt/conda/envs/ai/bin/python scripts/install_git_hooks.py
+/opt/conda/envs/ai/bin/python scripts/install_git_hooks.py --check
+```
+
 ## Architecture
 
 ### Directory Structure

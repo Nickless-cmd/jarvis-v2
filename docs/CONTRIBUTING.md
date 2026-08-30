@@ -38,9 +38,15 @@ Write the failing test → run it (confirm it fails) → minimal implementation 
 
 ## Commits & PRs
 - Branch off `main`; commit/push only when the work is ready and requested.
-- End commit messages with the trailer:
-  ```
-  Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+- Stage only intended paths and commit through `scripts/commit_with_attribution.py`.
+  Select the actual actor (`bjorn`, `jarvis`, `codex`, or `opus`) and supply
+  the current run/task ID when available. Do not hand-write managed trailers.
+- Every commit after `.commit-attribution-baseline` is checked by `commit-msg`;
+  `pre-push` checks the full outgoing range so `--no-verify` is not a bypass.
+- Install and verify all required hooks:
+  ```bash
+  /opt/conda/envs/ai/bin/python scripts/install_git_hooks.py
+  /opt/conda/envs/ai/bin/python scripts/install_git_hooks.py --check
   ```
 - Use `git pull --ff-only`; if the target host has diverged, **merge, never overwrite/rebase**.
 - Design docs live in `docs/superpowers/specs/`, plans in `docs/superpowers/plans/` (spec → plan → build).

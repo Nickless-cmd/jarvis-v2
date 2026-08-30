@@ -723,11 +723,24 @@ def search_brain(
     return [read_entry(eid) for _, eid in top]
 
 
+# Den ENESTE tærskel der bestemmer om en temporal edge nogensinde bliver LÆST.
+# Oprydningen bruger samme konstant, så de to ikke kan glide fra hinanden —
+# hvilket er præcis det der skete: prune slettede under 0.2, mens den laveste
+# værdi i tabellen var 0.4, så den fjernede nul rækker i tre måneder mens
+# tabellen voksede til 2,81 mio. rækker / 1,2 GB (målt 2026-08-30).
+TEMPORAL_EDGE_READ_MIN_CONFIDENCE = 0.5
+
+# Loft pr. node. Læseren tager MAX(confidence) pr. kandidat, og den ubrugte
+# get_temporal_neighbors bruger LIMIT 10 — så en tæt hale bliver aldrig set.
+# Uden et loft vokser grafen kvadratisk med antallet af entries.
+TEMPORAL_EDGE_MAX_PER_NODE = 64
+
+
 def _compute_search_temporal_boost(
     candidate_ids: list[str],
     *,
     boost_factor: float = 0.15,
-    min_confidence: float = 0.5,
+    min_confidence: float = TEMPORAL_EDGE_READ_MIN_CONFIDENCE,
 ) -> dict[str, float]:
     """Compute temporal boost for search candidates.
 
@@ -1298,7 +1311,7 @@ def temporal_boost_recall(
 def prune_stale_edges(
     *,
     max_age_days: int = 90,
-    min_confidence: float = 0.2,
+    min_confidence: float = TEMPORAL_EDGE_READ_MIN_CONFIDENCE,
 ) -> int:
     """Remove stale temporal edges with low confidence.
 
@@ -1315,6 +1328,61 @@ def prune_stale_edges(
                WHERE inferred_at < date('now', ? || ' days')
                  AND confidence < ?""",
             (f"-{max_age_days}", min_confidence),
+        )
+        conn.commit()
+        return result.rowcount
+    finally:
+        conn.close()
+
+
+def prune_unreadable_edges() -> int:
+    """Fjern kanter der beviseligt ALDRIG læses — uanset alder.
+
+    Den eneste reelle læser er ``_compute_search_temporal_boost``, som filtrerer
+    på ``confidence >= TEMPORAL_EDGE_READ_MIN_CONFIDENCE``.
+    ``get_temporal_neighbors`` har ingen kaldere. Alt under tærsklen er derfor
+    dødvægt, og alderskriteriet i ``prune_stale_edges`` er irrelevant for dem.
+
+    Målt 2026-08-30: 639.266 af 2.812.752 kanter (22,7 %) lå under tærsklen.
+    """
+    conn = connect_index()
+    try:
+        result = conn.execute(
+            "DELETE FROM brain_temporal_edges WHERE confidence < ?",
+            (TEMPORAL_EDGE_READ_MIN_CONFIDENCE,),
+        )
+        conn.commit()
+        return result.rowcount
+    finally:
+        conn.close()
+
+
+def prune_dense_edges(*, max_per_node: int = TEMPORAL_EDGE_MAX_PER_NODE) -> int:
+    """Loft pr. node: behold kun de ``max_per_node`` stærkeste kanter pr. endepunkt.
+
+    Uden dette vokser grafen kvadratisk med antallet af entries — 6.533 noder
+    havde 2,81 mio. kanter, altså 6,6 % af alle mulige par. Læseren tager
+    MAX(confidence) pr. kandidat, så en tæt hale bidrager ingenting.
+
+    Konservativ: en kant beholdes hvis den er blandt de stærkeste for BEGGE
+    endepunkter — den slettes kun når den er ude af top-N i begge retninger.
+    """
+    conn = connect_index()
+    try:
+        result = conn.execute(
+            """DELETE FROM brain_temporal_edges WHERE rowid IN (
+                   SELECT rowid FROM (
+                       SELECT rowid,
+                              ROW_NUMBER() OVER (
+                                  PARTITION BY from_id ORDER BY confidence DESC
+                              ) AS rank_from,
+                              ROW_NUMBER() OVER (
+                                  PARTITION BY to_id ORDER BY confidence DESC
+                              ) AS rank_to
+                       FROM brain_temporal_edges
+                   ) WHERE rank_from > ? AND rank_to > ?
+               )""",
+            (int(max_per_node), int(max_per_node)),
         )
         conn.commit()
         return result.rowcount

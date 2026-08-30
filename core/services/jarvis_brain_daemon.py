@@ -562,10 +562,18 @@ def b4_edge_maintenance_once() -> int:
     except Exception as exc:
         logger.warning("b4 catchup failed: %s", exc)
     try:
-        from core.services.jarvis_brain import prune_stale_edges
-        pruned = prune_stale_edges(max_age_days=90, min_confidence=0.2)
+        from core.services.jarvis_brain import (
+            prune_dense_edges,
+            prune_stale_edges,
+            prune_unreadable_edges,
+        )
+        # Rækkefølge: fjern først det der aldrig læses (billigst og størst),
+        # dernæst den tætte hale, til sidst gammelt lavvaerdi-støj.
+        pruned = prune_unreadable_edges()
+        pruned += prune_dense_edges()
+        pruned += prune_stale_edges(max_age_days=90)
         if pruned:
-            logger.info("b4 prune: removed %s stale edges", pruned)
+            logger.info("b4 prune: removed %s edges", pruned)
     except Exception as exc:
         logger.warning("b4 prune failed: %s", exc)
     return catchup + pruned
@@ -648,10 +656,16 @@ def _consolidation_summary_loop(stop_event: threading.Event) -> None:
         # B4 — daily prune stale edges (B4 Phase 3, 2026-06-09)
         if now_ts - last_b4_prune > _B4_PRUNE_INTERVAL_SECONDS:
             try:
-                from core.services.jarvis_brain import prune_stale_edges
-                pruned = prune_stale_edges(max_age_days=90, min_confidence=0.2)
+                from core.services.jarvis_brain import (
+                    prune_dense_edges,
+                    prune_stale_edges,
+                    prune_unreadable_edges,
+                )
+                pruned = prune_unreadable_edges()
+                pruned += prune_dense_edges()
+                pruned += prune_stale_edges(max_age_days=90)
                 if pruned:
-                    logger.info("b4 prune: removed %s stale edges", pruned)
+                    logger.info("b4 prune: removed %s edges", pruned)
                 last_b4_prune = now_ts
             except Exception:
                 logger.exception("b4 prune failed")

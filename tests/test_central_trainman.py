@@ -197,3 +197,43 @@ def test_surface_lists_woven_and_distribution(wired):
     themes = {d["theme"]: d["count"] for d in surf["theme_distribution"]}
     assert themes.get("persistence") == 2
     assert themes.get("speed") == 1
+
+
+# ── feedback-loop-værn (2026-08-30) ───────────────────────────────────────────
+# 47x identiske dream_reflection-poster siden 15. juli: _theme_distribution talte
+# Trainman's egne metakognitive reflektioner som "drømme", og _maybe_reflect skrev
+# saa en ny reflektion om dem ("De sidste 7 dage har jeg droemt om dream_reflection
+# 6 gange") — en selvbærende loop der maskerede fraværet af ægte drømme.
+
+def _rec(domain, *, at=None, sig=None):
+    return {
+        "record_id": f"r-{domain}-{at or 'x'}",
+        "domain": domain,
+        "created_at": at or datetime.now(UTC).isoformat(),
+        "source_signals": sig or "{}",
+    }
+
+
+def test_theme_distribution_excludes_meta_posts():
+    now = datetime.now(UTC)
+    memories = [
+        _rec("persistence", at=(now - timedelta(days=1)).isoformat()),
+        _rec("dream_reflection", at=(now - timedelta(days=2)).isoformat()),
+        _rec("dream_silence", at=(now - timedelta(days=3)).isoformat()),
+        _rec("persistence", at=(now - timedelta(days=4)).isoformat()),
+    ]
+    dist = t._theme_distribution(memories, now=now)
+    assert dist == {"persistence": 2}, f"reflektioner tæller sig selv: {dist}"
+
+
+def test_maybe_reflect_skips_when_only_meta_posts(wired):
+    now = datetime.now(UTC)
+    existing = [
+        _rec("dream_reflection", at=(now - timedelta(days=1)).isoformat(),
+             sig='{"source": "dream", "kind": "dream_reflection"}'),
+        _rec("dream_silence", at=(now - timedelta(days=2)).isoformat(),
+             sig='{"source": "dream", "kind": "dream_silence"}'),
+    ]
+    rid = t._maybe_reflect(existing=existing, now=now)
+    assert rid == "", f"skrev reflektion uden ægte drømme: {rid}"
+    assert len(wired["brain"].rows) == 0, "der blev skrevet en post uden ægte drømme"

@@ -316,6 +316,12 @@ def _theme_distribution(memories: list[dict[str, Any]], *, now: datetime,
         if ts is not None and ts < cutoff:
             continue
         theme = str(rec.get("domain") or "") or str(_sig_of(rec).get("theme") or "")
+        # Ekskluder metakognitive poster (samme værn som _maybe_reflect og
+        # build_trainman_surface) — ellers tæller reflektionerne sig selv som
+        # "drømme" og skaber en selvbærende feedback-loop (47x identiske
+        # dream_reflection-poster siden 15. juli, nul ægte drømme).
+        if theme in ("dream_reflection", "dream_silence"):
+            continue
         if theme:
             counts[theme] = counts.get(theme, 0) + 1
     return counts

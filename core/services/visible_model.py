@@ -541,6 +541,16 @@ def _build_visible_input(
         except Exception:
             pass
 
+    # Cache-sonde (slukket; touch /tmp/jarvis-msgdump). Sammenligner denne turs
+    # beskeds-array med forrige turs og printer hvor langt det byte-identiske
+    # prefix rækker. Nødvendig fordi de mistænkte sektioner muterer på minut-
+    # skala — to assemblies bygget i træk ser ens ud, to rigtige ture gør ikke.
+    try:
+        from core.services.prompt_cache_probe import probe
+        probe(items, session_id=session_id or "")
+    except Exception:
+        pass
+
     return items
 
 

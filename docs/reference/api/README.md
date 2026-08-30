@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13032 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13038 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -45,10 +45,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13032 functions/
 - [`core.services.17`](core.services.17.md) — `reasoning_store` … `runtime_hooks`
 - [`core.services.18`](core.services.18.md) — `runtime_learning_signals` … `self_review_run_tracking`
 - [`core.services.19`](core.services.19.md) — `self_review_signal_tracking` … `silence_patterns`
-- [`core.services.20`](core.services.20.md) — `simple_tool_executor` … `theater_audit`
-- [`core.services.21`](core.services.21.md) — `theory_of_mind` … `user_temperature_engine`
-- [`core.services.22`](core.services.22.md) — `user_temperature_runtime` … `workspace_crypto`
-- [`core.services.23`](core.services.23.md) — `workspace_trust` … `world_model_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `simple_tool_executor` … `text_resonance`
+- [`core.services.21`](core.services.21.md) — `theater_audit` … `user_scope`
+- [`core.services.22`](core.services.22.md) — `user_temperature_engine` … `witness_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `workspace_crypto` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

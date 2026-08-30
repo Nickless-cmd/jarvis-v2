@@ -91,6 +91,17 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         except Exception:
             pass
 
+        # State-fil-rotation: de operationelle JSON-filer i ~/.jarvis-v2/state
+        # havde aldrig fået ryddet (målt 30-08: plan_proposals havde 400 poster
+        # hvoraf ALLE var over 7 dage, ældste 125). Samme princip som
+        # events-retention ovenfor — bare på filerne i stedet for tabellerne.
+        state_files_pruned: dict[str, int] = {}
+        try:
+            from core.services.state_file_retention import prune_all_state_files
+            state_files_pruned = prune_all_state_files()
+        except Exception:
+            pass
+
         # WAL checkpoint: passive checkpoints get starved by long-running readers,
         # so the WAL grows unbounded (12+ MB observed) → write-lock contention →
         # visible-lane stalls. Retention above just freed pages; TRUNCATE folds the
@@ -122,6 +133,7 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             "events_pruned": events_pruned,
             "telemetry_pruned": telemetry_pruned,
             "versioned_pruned": versioned_pruned,
+            "state_files_pruned": state_files_pruned,
             "wal_checkpoint": wal_checkpoint,
         }
     except Exception as exc:

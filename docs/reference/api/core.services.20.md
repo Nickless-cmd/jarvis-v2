@@ -238,6 +238,18 @@ _Standing-orders registry — INDEPENDENT grounding for the reasoning-intercepto
 | function | `set_standing_order_active` | `(order_id, *, active)` | — | [src](../../../core/services/standing_orders_registry.py#L36) |
 | function | `list_active_standing_orders` | `()` | — | [src](../../../core/services/standing_orders_registry.py#L47) |
 
+## `core/services/state_file_retention.py`
+_Rotation af operationelle state-filer i ``~/.jarvis-v2/state``._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_dir` | `()` | — | [src](../../../core/services/state_file_retention.py#L47) |
+| function | `parse_ts` | `(value)` | Tolk et tidsstempel. Ukendt form → None (posten regnes som ung). | [src](../../../core/services/state_file_retention.py#L51) |
+| function | `record_age_days` | `(record, now)` | Postens alder i dage, eller None hvis den ikke bærer et brugbart stempel. | [src](../../../core/services/state_file_retention.py#L65) |
+| function | `select_expired` | `(records, *, max_age_days, now)` | Nøgler på poster der er ældre end vinduet. Ren funktion. | [src](../../../core/services/state_file_retention.py#L77) |
+| function | `prune_state_file` | `(path, *, max_age_days, now=…)` | Fjern udløbne poster fra én fil. Returnér antal fjernede. | [src](../../../core/services/state_file_retention.py#L93) |
+| function | `prune_all_state_files` | `(*, now=…)` | Kør rotationen på alle filer i ``POLICIES``. Returnér {fil: antal fjernet}. | [src](../../../core/services/state_file_retention.py#L124) |
+
 ## `core/services/state_flag_store.py`
 _State-flag store (leak-kandidat #1, 2026-07-10)._
 
@@ -645,21 +657,4 @@ _Text Resonance — I feel what I read, before I analyze it._
 | function | `build_text_resonance_surface` | `()` | — | [src](../../../core/services/text_resonance.py#L143) |
 | function | `build_text_resonance_prompt_section` | `()` | Only surface when recent reading is strongly toned. | [src](../../../core/services/text_resonance.py#L168) |
 | function | `reset_text_resonance` | `()` | — | [src](../../../core/services/text_resonance.py#L185) |
-
-## `core/services/theater_audit.py`
-_Theater Audit -- find narrative-first inner-life patterns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L85) |
-| function | `_scan_findings` | `()` | — | [src](../../../core/services/theater_audit.py#L113) |
-| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L160) |
-| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L178) |
-| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L226) |
-| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L232) |
-| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L247) |
-| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L284) |
-| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L309) |
-| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L317) |
-| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L325) |
 

@@ -247,6 +247,16 @@ _Rigdoms-gate for injektions-migration (spec 2026-07-05 §7)._
 | function | `_lines` | `(text)` | — | [src](../../../scripts/injection_richness_check.py#L10) |
 | function | `richness_ok` | `(*, direct, cached)` | — | [src](../../../scripts/injection_richness_check.py#L14) |
 
+## `scripts/install_git_hooks.py`
+_Install or verify the required pre-commit managed Git hooks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hook_path` | `(repo, hook)` | — | [src](../../../scripts/install_git_hooks.py#L17) |
+| function | `check_installation` | `(repo)` | Return one error for every missing or inactive required hook. | [src](../../../scripts/install_git_hooks.py#L30) |
+| function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L56) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L65) |
+
 ## `scripts/interlanguage_analyze.py`
 _Interlanguage analysis — aggregate report over the practice corpus._
 
@@ -457,16 +467,4 @@ _Primary lane cache warmer._
 | function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L441) |
 | function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run)` | Cache-warm én bestemt workspace. Logger separat per workspace. | [src](../../../scripts/primary_cache_warmer.py#L521) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L595) |
-
-## `scripts/regenerate_tier1.py`
-_Regenerate TIER_1_ALWAYS_ON in copilot_tool_pruning.py from 30-day usage data._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_usage` | `()` | Count tool.invoked events per tool over the last WINDOW_DAYS from the runtime DB. | [src](../../../scripts/regenerate_tier1.py#L58) |
-| function | `load_registered_tools` | `()` | Return the set of tool names from the live TOOL_DEFINITIONS catalog. | [src](../../../scripts/regenerate_tier1.py#L79) |
-| function | `compute_new_tier1` | `(usage, registered)` | Build the new Tier-1 set: tools used >= USAGE_THRESHOLD unioned with | [src](../../../scripts/regenerate_tier1.py#L96) |
-| function | `render_literal` | `(names)` | Render the tool names as the source text of a TIER_1_ALWAYS_ON frozenset | [src](../../../scripts/regenerate_tier1.py#L104) |
-| function | `replace_literal_in_file` | `(new_literal)` | Rewrite the TIER_1_ALWAYS_ON literal in copilot_tool_pruning.py in place. | [src](../../../scripts/regenerate_tier1.py#L116) |
-| function | `main` | `()` | CLI entry point: compute the new Tier-1 set and print the diff vs current. | [src](../../../scripts/regenerate_tier1.py#L137) |
 

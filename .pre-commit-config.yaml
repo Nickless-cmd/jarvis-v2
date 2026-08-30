@@ -1,4 +1,4 @@
-default_install_hook_types: [pre-commit, pre-push]
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
 
 repos:
   - repo: https://github.com/Yelp/detect-secrets
@@ -88,6 +88,20 @@ repos:
       - id: jarvis-runtime-startup-smoke
         name: Jarvis runtime startup smoke test
         entry: /opt/conda/envs/ai/bin/python scripts/smoke_test_startup.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: commit-attribution-message
+        name: Require commit attribution trailers
+        entry: /opt/conda/envs/ai/bin/python scripts/validate_commit_attribution.py --message-file
+        language: system
+        stages: [commit-msg]
+
+      - id: commit-attribution-range
+        name: Validate pushed commit attribution range
+        entry: /opt/conda/envs/ai/bin/python scripts/validate_commit_attribution.py --pre-push
         language: system
         pass_filenames: false
         always_run: true

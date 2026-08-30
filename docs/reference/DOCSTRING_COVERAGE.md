@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6510/13052 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6514/13064 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,12 +35,12 @@ Generated from source. 6510/13052 functions/methods documented (49%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 162 | 264 | 61% |
+| `scripts` | 166 | 276 | 60% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1847)
+## Undocumented public functions (1850)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1847,6 +1847,8 @@ Generated from source. 6510/13052 functions/methods documented (49%). The list b
 - `scripts/honesty_metrics.py` :: `main` (L45)
 - `scripts/identity_formation_monitor.py` :: `main` (L36)
 - `scripts/injection_richness_check.py` :: `richness_ok` (L14)
+- `scripts/install_git_hooks.py` :: `install` (L56)
+- `scripts/install_git_hooks.py` :: `main` (L65)
 - `scripts/interlanguage_analyze.py` :: `analyze` (L61)
 - `scripts/interlanguage_analyze.py` :: `load_all` (L42)
 - `scripts/interlanguage_analyze.py` :: `main` (L96)
@@ -1886,6 +1888,7 @@ Generated from source. 6510/13052 functions/methods documented (49%). The list b
 - `scripts/tag_untagged_skills.py` :: `main` (L155)
 - `scripts/tool_result_cleanup.py` :: `main` (L6)
 - `scripts/tool_router_bootstrap.py` :: `main` (L22)
+- `scripts/validate_commit_attribution.py` :: `main` (L122)
 - `scripts/verify_fase_a.py` :: `check_balancer_floor_no_raise` (L21)
 - `scripts/verify_fase_a.py` :: `check_central_visibility` (L33)
 - `scripts/verify_fase_a.py` :: `check_selection_floor_no_raise` (L9)

@@ -408,6 +408,58 @@ def _write_dream_note(consolidation_id: str, themes: list[dict[str, Any]], idle_
         return ""
 
 
+# ── Robust JSON-udtræk fra LLM-svar ─────────────────────────────────────────
+#
+# MÅLT 2026-08-31: syntesen returnerede `llm-no-json` og drømmen faldt tilbage
+# til den rene nøgleordsliste. Kaldt igen umiddelbart efter svarede SAMME model
+# med gyldig JSON. Fejlen er altså ikke deterministisk — modellen pakker sit
+# svar ind i tænkning eller markdown, eller svarer i prosa, og den gamle parser
+# (find første '{', find sidste '}') gav op ved den mindste indpakning.
+#
+# Nøjagtig samme familie som compaction-fejlen 18-07, hvor den billige model
+# returnerede <thinking> i stedet for <summary>.
+
+_THINKING_BLOCK = re.compile(r"<(thinking|thought|reasoning)>.*?</\1>", re.S | re.I)
+_CODE_FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.S)
+
+
+def extract_json_object(raw: object) -> dict | None:
+    """Træk det første JSON-objekt ud af et LLM-svar. Ren funktion, kaster aldrig.
+
+    Tåler tænknings-blokke, markdown-hegn og prosa før/efter objektet.
+    Returnerer None når der ikke er noget objekt at hente.
+    """
+    if not raw:
+        return None
+    text = _THINKING_BLOCK.sub(" ", str(raw))
+    fenced = _CODE_FENCE.search(text)
+    if fenced:
+        inner = fenced.group(1)
+        try:
+            value = json.loads(inner)
+            return value if isinstance(value, dict) else None
+        except Exception:
+            text = inner          # hegnet holdt ikke — scan indholdet alligevel
+    start = text.find("{")
+    if start < 0:
+        return None
+    # Balanceret scanning: en model kan skrive prosa EFTER objektet, så
+    # "sidste }" er ikke nødvendigvis objektets afslutning.
+    depth = 0
+    for i in range(start, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    value = json.loads(text[start:i + 1])
+                    return value if isinstance(value, dict) else None
+                except Exception:
+                    return None
+    return None
+
+
 def _llm_synthesize_dream(
     themes: list[dict[str, Any]],
     fragments: list[dict[str, Any]],
@@ -454,30 +506,36 @@ def _llm_synthesize_dream(
         "}"
     )
 
-    try:
-        from core.services.daemon_llm import quality_daemon_llm_call
-        raw = quality_daemon_llm_call(
-            prompt,
-            max_len=800,
-            fallback="",
-            daemon_name="dream_consolidation_synthesis",
-        )
-    except Exception as exc:
-        logger.warning("dream_consolidation: LLM synthesis failed: %s", exc)
-        return {"skipped": True, "reason": f"llm-error: {exc}"[:100]}
+    # To forsøg: fejlen er flakkende, ikke deterministisk (målt 31-08 — samme
+    # model gav no-json og derefter gyldig JSON på under et minut). Ét ekstra
+    # kald er billigere end en tom drøm der først opdages tre måneder senere.
+    parsed = None
+    last_reason = "llm-empty"
+    for attempt in (1, 2):
+        try:
+            from core.services.daemon_llm import quality_daemon_llm_call
+            raw = quality_daemon_llm_call(
+                prompt,
+                max_len=800,
+                fallback="",
+                daemon_name="dream_consolidation_synthesis",
+            )
+        except Exception as exc:
+            logger.warning("dream_consolidation: LLM synthesis failed: %s", exc)
+            return {"skipped": True, "reason": f"llm-error: {exc}"[:100]}
 
-    if not raw:
-        return {"skipped": True, "reason": "llm-empty"}
+        if not raw:
+            last_reason = "llm-empty"
+            continue
+        parsed = extract_json_object(raw)
+        if parsed is not None:
+            break
+        last_reason = "llm-no-json"
+        logger.info("dream_consolidation: forsoeg %d gav ingen JSON — proever igen",
+                    attempt)
 
-    # Parse JSON from response
-    start = raw.find("{")
-    end = raw.rfind("}") + 1
-    if start < 0 or end <= start:
-        return {"skipped": True, "reason": "llm-no-json"}
-    try:
-        parsed = json.loads(raw[start:end])
-    except Exception:
-        return {"skipped": True, "reason": "llm-parse-error"}
+    if parsed is None:
+        return {"skipped": True, "reason": last_reason}
 
     return {
         "skipped": False,

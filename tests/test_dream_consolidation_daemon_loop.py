@@ -180,3 +180,49 @@ class TestNoDanglingHelperReferences:
     def test_the_specific_helper_that_was_lost(self) -> None:
         """Regressionsvagt for netop den funktion der forsvandt."""
         assert callable(getattr(d, "_write_dream_note", None))
+
+
+class TestExtractJsonObject:
+    """Syntesen faldt tilbage til en nøgleordsliste fordi parseren gav op.
+
+    Målt 31-08: samme model gav `llm-no-json` og derefter gyldig JSON på under
+    et minut. Fejlen er flakkende indpakning, ikke manglende svar — så
+    udtrækket skal tåle tænknings-blokke, markdown-hegn og prosa udenom.
+    """
+
+    def test_plain_object(self) -> None:
+        assert d.extract_json_object('{"a": 1}') == {"a": 1}
+
+    def test_prose_before_and_after(self) -> None:
+        raw = 'Her er min analyse:\n{"dream_hypothesis": "stilhed"}\nHåber det hjælper.'
+        assert d.extract_json_object(raw) == {"dream_hypothesis": "stilhed"}
+
+    def test_markdown_fence(self) -> None:
+        raw = 'Svar:\n```json\n{"tension": "modsætning"}\n```\n'
+        assert d.extract_json_object(raw) == {"tension": "modsætning"}
+
+    def test_thinking_block_is_stripped(self) -> None:
+        """Præcis compaction-fejlen fra 18-07, nu i drømmene."""
+        raw = '<thinking>Jeg overvejer temaerne...{"nej": 1}</thinking>\n{"ja": 2}'
+        assert d.extract_json_object(raw) == {"ja": 2}
+
+    def test_nested_object_is_balanced_not_greedy(self) -> None:
+        """'sidste }' er forkert når modellen skriver prosa bagefter."""
+        raw = '{"a": {"b": 1}} og så noget mere tekst med } i'
+        assert d.extract_json_object(raw) == {"a": {"b": 1}}
+
+    def test_real_response_shape(self) -> None:
+        raw = ('{\n  "dream_hypothesis": "Stilhed er ikke fravær af aktivitet.",\n'
+               '  "tension": "still vs active",\n  "confidence": 0.5\n}')
+        got = d.extract_json_object(raw)
+        assert got["confidence"] == 0.5
+        assert "Stilhed" in got["dream_hypothesis"]
+
+    @pytest.mark.parametrize("raw", [
+        "", None, "slet ingen JSON her", "{ ubalanceret", "[1, 2, 3]",
+    ])
+    def test_degenerate_input_returns_none(self, raw) -> None:
+        assert d.extract_json_object(raw) is None
+
+    def test_never_raises(self) -> None:
+        assert d.extract_json_object({"ikke": "en streng"}) is None

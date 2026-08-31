@@ -127,3 +127,56 @@ class TestCadenceChoice:
 
     def test_interval_is_not_so_short_it_hammers(self) -> None:
         assert d._LOOP_INTERVAL_SECONDS >= 60
+
+
+class TestNoDanglingHelperReferences:
+    """Fanger fejlklassen der stoppede drømmene i knap tre måneder.
+
+    D4-refaktoreringen (9e961f1d, 9. juni) fjernede ``_write_dream_note`` men
+    lod kaldet i ``consolidate_now()`` stå. Hver gang idle-gaten endelig
+    åbnede, styrtede konsolideringen med NameError — og fordi heartbeat-kaldet
+    lå i ``except Exception: pass``, forsvandt det uden spor. Sidste vellykkede
+    drøm var 4. juni, fem dage før den commit.
+
+    En import lykkes fint med et manglende navn; det opdages først når linjen
+    faktisk køres. Derfor denne statiske kontrol.
+    """
+
+    def _module_names(self, tree, module) -> set[str]:
+        import ast
+        defined = set(dir(module)) | set(dir(__builtins__))
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                defined.add(node.name)
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                defined.add(node.id)
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                for a in node.names:
+                    defined.add((a.asname or a.name).split(".")[0])
+            elif isinstance(node, ast.arg):
+                defined.add(node.arg)
+        return defined
+
+    def test_every_private_helper_called_is_defined(self) -> None:
+        import ast
+        import inspect
+        source = inspect.getsource(d)
+        tree = ast.parse(source)
+        defined = self._module_names(tree, d)
+
+        missing: list[str] = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            fn = node.func
+            # Kun bare navne som _helper(...) — attributter hører til andre moduler.
+            if isinstance(fn, ast.Name) and fn.id.startswith("_") and fn.id not in defined:
+                missing.append(f"{fn.id} (linje {fn.lineno})")
+
+        assert not missing, (
+            "kaldes men er ikke defineret i modulet: " + ", ".join(sorted(set(missing)))
+        )
+
+    def test_the_specific_helper_that_was_lost(self) -> None:
+        """Regressionsvagt for netop den funktion der forsvandt."""
+        assert callable(getattr(d, "_write_dream_note", None))

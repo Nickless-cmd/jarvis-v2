@@ -369,6 +369,45 @@ def _query_fragmented_memories(
     return fragments[:15]
 
 
+# GENSKABT 2026-08-31. Definitionen blev fjernet i 9e961f1d (D4-refaktoreringen,
+# 9. juni) mens kaldet i consolidate_now() blev staaende. Resultatet: hver gang
+# gaten endelig aabnede, styrtede konsolideringen med
+#     NameError: name '_write_dream_note' is not defined
+# — og heartbeat-kaldet laa i `except Exception: pass`, saa det forsvandt uden
+# spor. Sidste vellykkede droem er fra 4. juni, fem dage foer den commit.
+def _write_dream_note(consolidation_id: str, themes: list[dict[str, Any]], idle_minutes: int) -> str:
+    """Write an abstract dream note to dreams/ dir."""
+    dreams_dir = _dreams_dir()
+    try:
+        dreams_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M")
+        path = dreams_dir / f"dream-{timestamp}-{consolidation_id[-6:]}.md"
+        lines = [
+            f"# Drøm {timestamp}",
+            "",
+            f"*Konsolideret efter {idle_minutes}m stilhed, {len(themes)} temaer.*",
+            "",
+        ]
+        for t in themes:
+            lines.append(f"## Tema: {t['theme']}")
+            lines.append("")
+            related = ", ".join(t.get("related_tokens") or [])
+            if related:
+                lines.append(f"- Associeret: {related}")
+            sources = ", ".join(f"{k}={v}" for k, v in (t.get("sources") or {}).items())
+            lines.append(f"- Kilder: {sources}")
+            lines.append(f"- Fragmenter: {t.get('fragment_count')}")
+            sample = t.get("sample_text") or ""
+            if sample:
+                lines.append(f"- Smagsprøve: \"{sample}\"")
+            lines.append("")
+        path.write_text("\n".join(lines), encoding="utf-8")
+        return str(path)
+    except Exception as exc:
+        logger.warning("dream_consolidation: write note failed: %s", exc)
+        return ""
+
+
 def _llm_synthesize_dream(
     themes: list[dict[str, Any]],
     fragments: list[dict[str, Any]],

@@ -285,6 +285,19 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("jarvis_brain daemon start failed: %s", _exc)
             try:
+                # Drømme-konsolidering — afkoblet fra heartbeat (2026-08-30).
+                # Var: heartbeat kaldte tick() midt i sin daemon-sekvens. Men
+                # gaten kræver >= 30 min stilhed, og på 30 dage faldt 0 af 237
+                # heartbeat-ticks i et stille vindue — selvom der var 440 af dem.
+                # Samme fejl som cadence-scheduleren fik rettet 2026-05-13.
+                from core.services.dream_consolidation_daemon import (
+                    start_dream_consolidation_daemon,
+                )
+                start_dream_consolidation_daemon()
+                logger.info("dream_consolidation daemon started")
+            except Exception as _exc:
+                logger.warning("dream_consolidation start failed: %s", _exc)
+            try:
                 from core.services.tool_router_runtime import start_tool_router_runtime
                 start_tool_router_runtime()
                 logger.info("tool_router_runtime daemon started")

@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 from collections import Counter, defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -735,3 +736,73 @@ def build_dream_consolidation_prompt_section() -> str | None:
         return None
     tags = ", ".join(t.get("theme", "") for t in themes[:3])
     return f"Jeg drømte om: {tags} ({last.get('theme_count', 0)} temaer konsolideret)."
+
+
+# ── Egen kadence, afkoblet fra heartbeat ────────────────────────────────────
+#
+# MÅLT 2026-08-30: konsolideringen blev KUN vurderet når heartbeat tikkede
+# (heartbeat_runtime.py kalder tick() midt i sin daemon-sekvens). På 30 dage:
+#
+#     synlige runs                1.484
+#     huller >= 30 min              440   <- stilheden fandtes rigeligt
+#     heartbeat-ticks               237   (~8/dag)
+#     ticks under >= 30 min stilhed   0   <- ingen chancer overhovedet
+#
+# Gaten kræver stilhed; observatøren var der aldrig når der var stille. De to
+# betingelser var strukturelt adskilte, og derfor stod konsolideringen stille
+# fra 4. juni til 30. august selvom hver eneste anden gate var grøn.
+#
+# Præcis samme fejl blev rettet for cadence-scheduleren 2026-05-13 ("decoupled
+# from heartbeat ... heartbeat gets blocked during active-chat-gate or
+# already-ticking"). Drømmene blev ladt tilbage. Nu får de deres egen tråd.
+#
+# Heartbeat-kaldet bliver liggende: cooldown + konsoliderings-lås gør dobbelt
+# kald harmløst, og to veje ind er mere robust end én.
+
+_LOOP_INTERVAL_SECONDS = 300      # 5 min → et modent stille-vindue ses hurtigt
+_DAEMON_STOP_EVENT: threading.Event | None = None
+_DAEMON_THREAD: threading.Thread | None = None
+
+
+def consolidation_loop(stop_event: threading.Event) -> None:
+    """Kald tick() på egen kadence og LOG udfaldet.
+
+    Heartbeat-kaldet ligger i ``except Exception: pass``, så en fejl inde i
+    konsolideringen forsvandt lydløst. Her logges hvert udfald, så næste
+    stilstand kan ses i journalen i stedet for at skulle måles frem.
+    """
+    while not stop_event.is_set():
+        try:
+            result = tick(float(_LOOP_INTERVAL_SECONDS)) or {}
+            if result.get("skipped"):
+                logger.debug("dream-consolidation: sprunget over (%s)",
+                             result.get("reason"))
+            else:
+                logger.info("dream-consolidation: KØRTE — %s",
+                            result.get("consolidation_id") or result)
+        except Exception:
+            logger.exception("dream-consolidation: tick fejlede")
+        stop_event.wait(_LOOP_INTERVAL_SECONDS)
+
+
+def start_dream_consolidation_daemon() -> None:
+    """Start konsoliderings-tråden. Idempotent."""
+    global _DAEMON_STOP_EVENT, _DAEMON_THREAD
+    if _DAEMON_STOP_EVENT is not None and not _DAEMON_STOP_EVENT.is_set():
+        logger.info("dream-consolidation daemon kører allerede — springer over")
+        return
+    _DAEMON_STOP_EVENT = threading.Event()
+    _DAEMON_THREAD = threading.Thread(
+        target=consolidation_loop, args=(_DAEMON_STOP_EVENT,),
+        name="jarvis-dream-consolidation", daemon=True,
+    )
+    _DAEMON_THREAD.start()
+    logger.info("dream-consolidation daemon startet (hvert %ds)",
+                _LOOP_INTERVAL_SECONDS)
+
+
+def stop_dream_consolidation_daemon() -> None:
+    """Stop tråden. Self-safe."""
+    global _DAEMON_STOP_EVENT
+    if _DAEMON_STOP_EVENT is not None:
+        _DAEMON_STOP_EVENT.set()

@@ -700,6 +700,10 @@ def _produce_dream_artifacts(
             path = dreams_dir / f"synthesis-{timestamp}-{consolidation_id[-6:]}.md"
             path.write_text("\n".join(lines), encoding="utf-8")
             produced["dream_note"] = True
+            # Kronik-fragmentet ligger I den fil vi lige skrev. Flaget blev
+            # aldrig sat (fejl siden D4), saa posten meldte chronicle=false
+            # selvom teksten stod der — og det saa ud som om kroniken manglede.
+            produced["chronicle"] = bool(chronicle_frag)
         except Exception as exc:
             logger.warning("dream_consolidation: artifact write failed: %s", exc)
 

@@ -275,3 +275,35 @@ class TestThemeQuality:
     @pytest.mark.parametrize("text", ["", None, "   ", "a"])
     def test_fragment_tokens_degenerate_input(self, text) -> None:
         assert d._fragment_tokens(text) == []
+
+
+class TestChronicleFlag:
+    """Posten meldte chronicle=false selvom teksten stod i filen.
+
+    Målt 31-08: `synthesis-*.md` indeholdt kronik-fragmentet ("I nat drømte jeg
+    om still...") mens `d4_synthesis` sagde chronicle=false. Branchen satte kun
+    dream_note. Flaget løj — kroniken manglede ikke.
+    """
+
+    def test_chronicle_flag_follows_the_written_text(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setattr(d, "_dreams_dir", lambda: tmp_path)
+        out = d._produce_dream_artifacts(
+            {"dream_hypothesis": "", "tension": "spænding",
+             "chronicle_fragment": "I nat stod ordet still stille i mig.",
+             "thematic_insight": "", "confidence": 0.5},
+            "dream-test01", [{"theme": "still"}],
+        )
+        assert out["dream_note"] is True
+        assert out["chronicle"] is True
+        written = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.glob("synthesis-*.md"))
+        assert "I nat stod ordet still stille i mig." in written
+
+    def test_no_chronicle_text_means_flag_stays_false(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setattr(d, "_dreams_dir", lambda: tmp_path)
+        out = d._produce_dream_artifacts(
+            {"dream_hypothesis": "", "tension": "", "chronicle_fragment": "",
+             "thematic_insight": "kun en indsigt", "confidence": 0.5},
+            "dream-test02", [{"theme": "x"}],
+        )
+        assert out["chronicle"] is False
+        assert out["dream_note"] is True

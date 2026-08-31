@@ -226,3 +226,52 @@ class TestExtractJsonObject:
 
     def test_never_raises(self) -> None:
         assert d.extract_json_object({"ikke": "en streng"}) is None
+
+
+class TestThemeQuality:
+    """Han drømte om sin egen skabelon.
+
+    Målt 31-08: 33 af 40 inder-liv-fragmenter begynder med samme sætning
+    ("[carry] Diverse inner threads (N types) are all still active..."), så
+    otte ord fik vægt 33 hver mens chattens hyppigste nåede 15. Temaerne blev
+    'still', 'types', 'diverse'. Dubletfjernelse duede ikke — fragmenterne ER
+    forskellige (Jaccard-median 0,36); de deler kun begyndelsen.
+    """
+
+    def test_boilerplate_tokens_are_dropped(self) -> None:
+        from collections import Counter
+        counter = Counter({"skabelon": 33, "indhold": 15, "sjaelden": 3})
+        out = d.drop_boilerplate_tokens(counter, fragment_count=76)
+        assert "skabelon" not in out          # 43 % af fragmenterne
+        assert out["indhold"] == 15           # 20 % — beholdes
+        assert out["sjaelden"] == 3
+
+    def test_small_corpus_is_left_alone(self) -> None:
+        """Med få fragmenter er en høj andel ikke støj — det ER temaet."""
+        from collections import Counter
+        counter = Counter({"alt": 4})
+        assert d.drop_boilerplate_tokens(counter, fragment_count=5) == counter
+
+    def test_boundary_is_inclusive(self) -> None:
+        from collections import Counter
+        counter = Counter({"paa_graensen": 33})
+        out = d.drop_boilerplate_tokens(counter, fragment_count=100,
+                                        max_doc_frequency=0.33)
+        assert out["paa_graensen"] == 33      # præcis paa loftet beholdes
+
+    def test_truncated_last_word_is_dropped(self) -> None:
+        """'materi' (af 'materiale') stod som tema nr. 2 før dette værn."""
+        toks = d._fragment_tokens("bounded internal materi")
+        assert "materi" not in toks
+
+    def test_complete_sentence_keeps_its_last_word(self) -> None:
+        toks = d._fragment_tokens("bounded internal materiale.")
+        assert "materiale" in toks
+
+    @pytest.mark.parametrize("weak", ["siden", "stadig", "still", "records"])
+    def test_weak_filler_words_are_stopwords(self, weak: str) -> None:
+        assert weak in d._STOPWORDS
+
+    @pytest.mark.parametrize("text", ["", None, "   ", "a"])
+    def test_fragment_tokens_degenerate_input(self, text) -> None:
+        assert d._fragment_tokens(text) == []

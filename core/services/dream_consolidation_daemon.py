@@ -87,6 +87,17 @@ def _release_consolidation_lock() -> None:
         pass
 
 _STOPWORDS = {
+    # Fylde-ord paa >= 5 bogstaver der slipper gennem laengde-filteret (2026-08-31).
+    # Samme aarsag som "noget" nedenfor: efter at dokumentfrekvens-filteret
+    # ryddede skabelon-ordene af vejen, blev "siden" oeverste tema — et ord der
+    # optraadte 15 gange uden at betyde noget som helst.
+    "siden", "stadig", "derfor", "altsaa", "saadan", "hvilket", "saaledes",
+    "blevet", "vaeret", "havde", "kunne", "skulle", "ville", "bliver", "blive",
+    "andre", "samme", "helet", "netop", "faktisk", "egentlig", "maaske",
+    "ellers", "imens", "still", "about", "there", "their", "which", "would",
+    "could", "should", "being", "been", "have", "that", "this", "with",
+    "from", "they", "what", "when", "where", "active", "across", "records",
+
     "jeg", "du", "er", "at", "det", "den", "en", "et", "og", "i", "på",
     "til", "af", "med", "for", "som", "har", "var", "vil", "kan", "skal",
     "min", "din", "vores", "sig", "nu", "ikke", "også", "lige", "bare",
@@ -141,6 +152,21 @@ def _save(data: dict[str, Any]) -> None:
 def _tokens(text: str) -> list[str]:
     words = _WORD_RE.findall(str(text or "").lower())
     return [w for w in words if len(w) >= 5 and w not in _STOPWORDS]
+
+
+def _fragment_tokens(text: str) -> list[str]:
+    """Tokens fra ét fragment, uden et evt. afhugget sidste ord.
+
+    Chat-uddrag er haardt beskaaret (text_preview, 320 tegn) og inder-resumeer
+    kan vaere det samme. Ender teksten midt i et ord, blev stumpen ellers til et
+    tema — maalt 31-08 stod "materi" (af "materiale") som nr. 2 paa listen.
+    Slutter teksten med tegnsaetning, er der intet hugget af, og alt beholdes.
+    """
+    raw = str(text or "").rstrip()
+    if raw and raw[-1].isalnum():
+        cut = raw.rfind(" ")
+        raw = raw[:cut] if cut > 0 else ""
+    return _tokens(raw)
 
 
 def _is_idle_enough() -> tuple[bool, int]:
@@ -247,6 +273,41 @@ def _gather_fragments() -> list[dict[str, Any]]:
     return fragments
 
 
+# Skabelon-ord filtreres fra foer temaerne vaelges.
+#
+# MAALT 2026-08-31: 33 af 40 inder-liv-fragmenter begynder med samme skabelon
+# ("[carry] Diverse inner threads (N types) are all still active. Across 6
+# records..."). Otte ord fik dermed vaegt 33 hver, mens chattens hyppigste ord
+# naaede 15. Han droemte om sin egen skabelon.
+#
+# Dubletfjernelse loeser det IKKE: fragmenterne er reelt forskellige (parvis
+# Jaccard-median 0,36, og 30 unikke praefikser ud af 40) — de deler kun de
+# foerste otte ord. Det rigtige vaerktoej er dokumentfrekvens: et ord der staar
+# i naesten halvdelen af alt materiale skelner ingenting.
+#
+# Graensen er sat mellem det maalte: skabelon-ordene laa paa 43 % af
+# fragmenterne, chattens bedste ord paa 20 %.
+_MAX_DOC_FREQUENCY = 0.33
+_MIN_FRAGMENTS_FOR_DF_FILTER = 10
+
+
+def drop_boilerplate_tokens(
+    token_counter: Counter[str],
+    *,
+    fragment_count: int,
+    max_doc_frequency: float = _MAX_DOC_FREQUENCY,
+) -> Counter[str]:
+    """Fjern ord der staar i for stor en andel af fragmenterne. Ren funktion.
+
+    Under ``_MIN_FRAGMENTS_FOR_DF_FILTER`` fragmenter roeres intet: med faa
+    fragmenter er en hoej andel ikke stoej, men netop temaet.
+    """
+    if fragment_count < _MIN_FRAGMENTS_FOR_DF_FILTER:
+        return token_counter
+    ceiling = fragment_count * max_doc_frequency
+    return Counter({tok: n for tok, n in token_counter.items() if n <= ceiling})
+
+
 def _find_themes(fragments: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Cluster fragments by shared keywords into themes."""
     if len(fragments) < 3:
@@ -255,10 +316,15 @@ def _find_themes(fragments: list[dict[str, Any]]) -> list[dict[str, Any]]:
     token_counter: Counter[str] = Counter()
     per_frag_tokens: list[set[str]] = []
     for frag in fragments:
-        toks = set(_tokens(frag.get("text") or ""))
+        toks = set(_fragment_tokens(frag.get("text") or ""))
         per_frag_tokens.append(toks)
         token_counter.update(toks)
 
+    # Skabelon-ord ud foerst — ellers bestemmer den mest gentagne generator
+    # temaerne. Se drop_boilerplate_tokens.
+    token_counter = drop_boilerplate_tokens(
+        token_counter, fragment_count=len(fragments)
+    )
     shared = [tok for tok, n in token_counter.most_common(30) if n >= _MIN_CLUSTER_SIZE]
     themes: list[dict[str, Any]] = []
     seen_tokens: set[str] = set()

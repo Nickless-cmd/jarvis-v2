@@ -31,6 +31,7 @@ from core.services.ollama_visible_prompt import serialize_ollama_visible_prompt
 
 from core.services.visible_model_types import (
     VisibleModelDelta,
+    VisibleModelReasoningDelta,
     VisibleModelResult,
     VisibleModelStreamCancelled,
     VisibleModelStreamDone,
@@ -467,6 +468,10 @@ def _stream_ollama_model(
                         # stadig efter prefill, så det er et gyldigt første-token-mål.
                         _t_first_content["ts"] = _wd_time.monotonic()
                     reasoning_parts.append(think)
+                    # Send tanken videre LIVE (2026-09-01). Før dette blev den
+                    # kun samlet op til replay, så glm-5.3-flash stod tavs i
+                    # 19,30 s mens 583 tanke-bidder ankom.
+                    yield VisibleModelReasoningDelta(delta=think)
 
                 tool_calls = msg.get("tool_calls") or []
                 if tool_calls:

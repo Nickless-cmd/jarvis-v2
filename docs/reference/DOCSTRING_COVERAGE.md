@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6527/13096 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6528/13100 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6527/13096 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1023 | 54% |
-| `core.services` | 4335 | 9104 | 47% |
+| `core.services` | 4336 | 9108 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 70 | 122 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6527/13096 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1859)
+## Undocumented public functions (1860)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1708,36 +1708,37 @@ Generated from source. 6527/13096 functions/methods documented (49%). The list b
 - `core/services/user_understanding_signal_tracking.py` :: `track_runtime_user_understanding_signals_for_visible_turn` (L33)
 - `core/services/value_formation.py` :: `build_formed_values_surface` (L60)
 - `core/services/value_formation.py` :: `track_value_from_experience` (L12)
+- `core/services/visible_first_pass_text.py` :: `FirstPassText.text` (L39)
 - `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1076)
 - `core/services/visible_followup_adapters.py` :: `OllamaFollowupAdapter.stream_followup` (L201)
 - `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L710)
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L165)
-- `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L394)
-- `core/services/visible_model.py` :: `available_provider_models` (L171)
-- `core/services/visible_model.py` :: `execute_visible_model` (L263)
-- `core/services/visible_model.py` :: `stream_visible_model` (L322)
-- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L576)
+- `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L395)
+- `core/services/visible_model.py` :: `available_provider_models` (L172)
+- `core/services/visible_model.py` :: `execute_visible_model` (L264)
+- `core/services/visible_model.py` :: `stream_visible_model` (L323)
+- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L589)
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
 - `core/services/visible_model_prompt.py` :: `visible_session_continuity_summary` (L346)
-- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L499)
-- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L505)
-- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L502)
-- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L512)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6367)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6392)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6596)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6605)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6592)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6363)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6505)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6557)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6474)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6415)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6447)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6333)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6615)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6378)
+- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L500)
+- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L506)
+- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L503)
+- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L513)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6378)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6403)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6607)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6616)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6603)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6374)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6516)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6568)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6485)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6426)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6458)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6344)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6626)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6389)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L333)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
@@ -1876,7 +1877,7 @@ Generated from source. 6527/13096 functions/methods documented (49%). The list b
 - `scripts/phase5_analyze.py` :: `cos` (L50)
 - `scripts/phase5_analyze.py` :: `embed` (L36)
 - `scripts/phase5_analyze.py` :: `main` (L82)
-- `scripts/phase5_collect.py` :: `run` (L104)
+- `scripts/phase5_collect.py` :: `run` (L109)
 - `scripts/pipelines/jarvis_pollinations_pipeline.py` :: `main` (L802)
 - `scripts/pipelines/tiktok_analytics.py` :: `main` (L246)
 - `scripts/pipelines/tiktok_analytics.py` :: `run` (L181)

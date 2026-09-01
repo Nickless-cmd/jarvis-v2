@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13096 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13100 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -47,8 +47,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13096 functions/
 - [`core.services.19`](core.services.19.md) — `self_review_outcome_tracking` … `signal_tracking_framework`
 - [`core.services.20`](core.services.20.md) — `silence_detector` … `temporal_rhythm`
 - [`core.services.21`](core.services.21.md) — `temporal_self_continuity` … `user_emotional_resonance`
-- [`core.services.22`](core.services.22.md) — `user_md_update_proposal_tracking` … `voice_daemon`
-- [`core.services.23`](core.services.23.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `user_md_update_proposal_tracking` … `voice_curator`
+- [`core.services.23`](core.services.23.md) — `voice_daemon` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

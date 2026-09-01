@@ -46,6 +46,20 @@ class VisibleModelDelta:
 
 
 @dataclass(slots=True)
+class VisibleModelReasoningDelta:
+    """Én tanke-bid fra en thinking-model, UNDER første pas.
+
+    Tilføjet 2026-09-01. Indtil da blev ræsonnering fra første pas samlet op og
+    først læst ved ``done`` — så brugeren så et tomt felt hele vejen gennem
+    modellens tænkning. Målt på deepseek-v4-flash: 20,66 s til første synlige
+    ord, hvoraf 1.653 tanke-bidder allerede var ankommet. Opfølgnings-runder
+    havde streamet deres ræsonnering siden juni; kun første pas manglede.
+    """
+
+    delta: str
+
+
+@dataclass(slots=True)
 class VisibleModelStreamDone:
     result: VisibleModelResult
 

@@ -47,6 +47,7 @@ from core.runtime.provider_router import load_provider_router_registry
 
 from core.services.visible_model_types import (
     VisibleModelDelta,
+    VisibleModelReasoningDelta,
     VisibleModelRateLimited,
     VisibleModelResult,
     VisibleModelStreamCancelled,
@@ -379,6 +380,18 @@ def _stream_openai_compatible_model(
                         _tt.mark("deepseek_first_token", f"{provider}/{model}")
                         _tt_first_tok = False
                     yield VisibleModelDelta(delta=delta)
+            elif kind == "reasoning_delta":
+                # Thinking-modeller sender ræsonnering FØR svaret. Videresend den
+                # live, så brugeren ser et foldbart «tænker…» med det samme i
+                # stedet for tomhed. Uden dette var deepseek-v4-flash tavs i
+                # 20,66 s (målt 2026-09-01) mens 1.653 tanke-bidder blev
+                # kasseret her og først læst igen ved `done`.
+                _rd = str(ev.get("text") or "")
+                if _rd:
+                    if _tt_first_tok and _tt is not None:
+                        _tt.mark("deepseek_first_token", f"{provider}/{model} (reasoning)")
+                        _tt_first_tok = False
+                    yield VisibleModelReasoningDelta(delta=_rd)
             elif kind == "tool_call":
                 tc = {
                     "id": str(ev.get("id") or ""),

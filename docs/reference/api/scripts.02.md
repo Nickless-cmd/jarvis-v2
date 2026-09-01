@@ -38,10 +38,10 @@ _Fase 5 «Bor der nogen?» — indsamler._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_identity_text` | `()` | SOUL + IDENTITY + USER som ren tekst — FILES-armens hele kontekst. | [src](../../../scripts/phase5_collect.py#L63) |
-| function | `_full_system_prompt` | `(probe_text)` | Jarvis' ÆGTE prompt-assembly — hele runtime-laget. | [src](../../../scripts/phase5_collect.py#L74) |
-| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase5_collect.py#L84) |
-| function | `run` | `(reps, only_arm=…)` | — | [src](../../../scripts/phase5_collect.py#L104) |
+| function | `_identity_text` | `()` | SOUL + IDENTITY + USER som ren tekst — FILES-armens hele kontekst. | [src](../../../scripts/phase5_collect.py#L68) |
+| function | `_full_system_prompt` | `(probe_text)` | Jarvis' ÆGTE prompt-assembly — hele runtime-laget. | [src](../../../scripts/phase5_collect.py#L79) |
+| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase5_collect.py#L89) |
+| function | `run` | `(reps, only_arm=…)` | — | [src](../../../scripts/phase5_collect.py#L109) |
 
 ## `scripts/primary_cache_warmer.py`
 _Primary lane cache warmer._

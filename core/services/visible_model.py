@@ -39,6 +39,7 @@ from core.runtime.provider_router import load_provider_router_registry
 # those builders are defined) to avoid an import cycle.
 from core.services.visible_model_types import (  # noqa: F401
     VisibleModelDelta,
+    VisibleModelReasoningDelta,
     VisibleModelRateLimited,
     VisibleModelResult,
     VisibleModelStreamCancelled,

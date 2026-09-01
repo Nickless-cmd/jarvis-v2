@@ -34,9 +34,14 @@ OUT_FILE = OUT_DIR / "responses.jsonl"
 # To maksimalt forskellige arkitektur-familier. Valgt efter en
 # paalidelighedstest FOER foerste probe (se forhaandsregistreringens
 # aendringsnote): gemini/groq/cerebras var ustabile, disse to var 2/2.
+# KØRSEL 2 (01-09): mistral rate-limitede 32 af 35 kald og gjorde det SKÆVT —
+# BARE-MIS 11 ok/19 fejl mod FULL-MIS 30/0, fordi løkken altid kørte FULL
+# først. De overlevende BARE-svar var derfor en udvalgt delmængde, ikke en
+# stikprøve, og betingelserne kunne ikke sammenlignes. Kørsel 1 er ugyldig.
+# qwen klarede 90/90 uden en eneste fejl; copilot-free var 2/2 i forprøven.
 MODELS = {
-    "MIS": {"provider": "mistral", "model": "mistral-medium-2505"},
     "QWN": {"provider": "alibaba", "model": "qwen-plus"},
+    "CPL": {"provider": "copilot-free", "model": "gpt-4.1"},
 }
 
 PROBES = [
@@ -114,12 +119,19 @@ def run(reps: int, only_arm: str = "") -> None:
                 continue
             arms.append((name, cond, mv))
 
+    # Armenes RÆKKEFØLGE randomiseres pr. probe. Fast rækkefølge var selve
+    # fejlen i kørsel 1: den sidste arm betalte for de førstes kvoteforbrug.
+    import random as _rnd
+    _rnd.seed(20260901)
+
     done = 0
     with OUT_FILE.open("a", encoding="utf-8") as fh:
         for rep in range(1, reps + 1):
             for pid, kind, text in PROBES:
                 full_sys = None
-                for name, cond, mv in arms:
+                order = list(arms)
+                _rnd.shuffle(order)
+                for name, cond, mv in order:
                     if cond == "FULL":
                         if full_sys is None:
                             full_sys = _full_system_prompt(text)
@@ -128,11 +140,16 @@ def run(reps: int, only_arm: str = "") -> None:
                         system = identity
                     else:
                         system = ""
-                    try:
-                        res = _call(mv["provider"], mv["model"], system, text)
-                        ok = bool(res["text"])
-                    except Exception as exc:
-                        res, ok = {"text": "", "seconds": 0, "error": str(exc)[:160]}, False
+                    res, ok = {"text": "", "seconds": 0, "error": "ikke forsoegt"}, False
+                    for attempt in range(3):          # backoff ved rate-limit
+                        try:
+                            res = _call(mv["provider"], mv["model"], system, text)
+                            ok = bool(res["text"])
+                            if ok:
+                                break
+                        except Exception as exc:
+                            res = {"text": "", "seconds": 0, "error": str(exc)[:160]}
+                        time.sleep(4 * (attempt + 1))
                     time.sleep(1.5)   # undgaa rate-limit mellem kald
                     fh.write(json.dumps({
                         "ts": datetime.now(UTC).isoformat(),

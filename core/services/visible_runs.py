@@ -192,6 +192,7 @@ from core.services.selfhood_proposal_tracking import (
 from core.services.claim_scanner import scan_response as _scan_response
 from core.services.visible_model import (
     VisibleModelDelta,
+    VisibleModelReasoningDelta,
     VisibleModelRateLimited,
     VisibleModelResult,
     VisibleModelStreamCancelled,
@@ -1516,8 +1517,11 @@ async def _stream_visible_run(
             # Blok-capture-fejl må aldrig forplante sig ind i streamet.
             pass
 
-    _fp_deg_accum = ""              # akkumuleret first-pass-tekst (degenerations-guard)
-    _fp_deg_since = 0               # tegn siden sidste degenerations-tjek
+    # Akkumuleret first-pass-tekst + degenerations-vagt i ét objekt
+    # (core/services/visible_first_pass_text.py).
+    from core.services.visible_first_pass_text import FirstPassText
+    _fp_text = FirstPassText()
+    _all_first_pass_reasoning: list[str] = []   # kun til observation/telemetri
     _degenerated_reason: str | None = None
     try:
         try:
@@ -1615,32 +1619,25 @@ async def _stream_visible_run(
                     # Provider-agnostisk: dræb model-repetitions-løkker ved kilden
                     # (var 147KB "probe_ollama"-skrald streamet+persisteret). Tjek
                     # periodisk (billigt) på akkumuleret first-pass-tekst.
-                    _fp_deg_accum += item.delta
-                    _fp_deg_since += len(item.delta)
-                    if _fp_deg_since >= 1500:
-                        _fp_deg_since = 0
-                        from core.services.stream_degeneration import (
-                            check_degeneration as _chk_deg,
-                        )
-                        _is_deg, _deg_why = _chk_deg(_fp_deg_accum)
-                        if _is_deg:
-                            try:
-                                controller.cancel()
-                            except Exception:
-                                pass
-                            try:
-                                from core.services import followup_observer as _fo_deg
-                                _fo_deg.note_degeneration(
-                                    run.run_id, provider=run.provider,
-                                    model=run.model, reason=_deg_why,
-                                    chars=len(_fp_deg_accum))
-                            except Exception:
-                                pass
-                            logger.warning(
-                                "degeneration-abort run_id=%s: %s",
-                                run.run_id, _deg_why)
-                            _degenerated_reason = _deg_why
-                            break
+                    _is_deg, _deg_why = _fp_text.feed(item.delta)
+                    if _is_deg:
+                        try:
+                            controller.cancel()
+                        except Exception:
+                            pass
+                        try:
+                            from core.services import followup_observer as _fo_deg
+                            _fo_deg.note_degeneration(
+                                run.run_id, provider=run.provider,
+                                model=run.model, reason=_deg_why,
+                                chars=len(_fp_text))
+                        except Exception:
+                            pass
+                        logger.warning(
+                            "degeneration-abort run_id=%s: %s",
+                            run.run_id, _deg_why)
+                        _degenerated_reason = _deg_why
+                        break
                     safe_text = markup_buffer.feed(item.delta)
                     if safe_text:
                         _interleave_log.append("text")
@@ -1653,6 +1650,20 @@ async def _stream_visible_run(
                                 "delta": safe_text,
                             },
                         )
+                    continue
+                if isinstance(item, VisibleModelReasoningDelta):
+                    # Live tanke fra FØRSTE pas. SSE v2 folder den ud som en
+                    # thinking-blok (visible_runs_sse_v2._open_thinking_block),
+                    # præcis som opfølgnings-runderne har gjort siden juni.
+                    # Ræsonnering persisteres fortsat via result.reasoning_content
+                    # ved `done` — denne gren er ren visning.
+                    if item.delta:
+                        _all_first_pass_reasoning.append(item.delta)
+                        yield _sse("reasoning_delta", {
+                            "type": "reasoning_delta",
+                            "run_id": run.run_id,
+                            "delta": item.delta,
+                        })
                     continue
                 if isinstance(item, VisibleModelToolCalls):
                     _collected_native_tool_calls = item.tool_calls
@@ -4424,11 +4435,11 @@ async def _stream_visible_run(
                     # eneste sande billede af hvad brugeren så. Genbrug dem frem for
                     # at lade fallback'en wipe svaret. Spejler first-pass-stien
                     # (~4125). No-op hvis intet streamede.
-                    _streamed_fp_ag = str(_fp_deg_accum or "").strip()
+                    _streamed_fp_ag = str(_fp_text.text or "").strip()
                     if _streamed_fp_ag:
                         followup_text = _streamed_fp_ag
                         _observe_streamed_text_recovered(
-                            run, chars=len(_fp_deg_accum), source="agentic_first_pass_stream",
+                            run, chars=len(_fp_text), source="agentic_first_pass_stream",
                         )
 
                 # ── Tavs cut-off-vagt (2026-06-23, udvidet) ────────────────────
@@ -4967,7 +4978,7 @@ async def _stream_visible_run(
             # ── DAG-ÉT DIVERGENS-FIX (2026-06-30, Bjørn: provider-AGNOSTISK, fra
             # dag ét) ────────────────────────────────────────────────────────────
             # Persisteringen brugte KUN result.text som kilde. Men det brugeren SER
-            # kommer fra de live-streamede deltas (akkumuleret i _fp_deg_accum,
+            # kommer fra de live-streamede deltas (akkumuleret i _fp_text,
             # linje ~1216) — en HELT anden kilde. Hvis adapteren streamede ægte
             # bytes til klienten (brugeren SÅ svaret) men result.text endte tom
             # (thinking-content, adapter-bug, race på StreamDone — verificeret tomt
@@ -4980,12 +4991,12 @@ async def _stream_visible_run(
             # tom — streamede vi tekst, gemmer vi tekst. No-op hvis intet streamede.
             if not visible_output_text.strip():
                 _streamed_fp = _visible_text_without_capability_markup(
-                    _fp_deg_accum, had_markup=bool(capability_plan["had_markup"]),
+                    _fp_text.text, had_markup=bool(capability_plan["had_markup"]),
                 )
                 if _streamed_fp.strip():
                     visible_output_text = _streamed_fp
                     _observe_streamed_text_recovered(
-                        run, chars=len(_fp_deg_accum), source="first_pass_stream",
+                        run, chars=len(_fp_text), source="first_pass_stream",
                     )
             # ── Rådets fund #5 (9. jul): output-conservation-instrument ("spøgelset") ──
             # Mål streamede first-pass-bytes (hvad brugeren SÅ, markup-strippet som persisten)
@@ -4995,7 +5006,7 @@ async def _stream_visible_run(
             try:
                 from core.services.central_output_conservation import observe_conservation
                 _streamed_measure = _visible_text_without_capability_markup(
-                    _fp_deg_accum, had_markup=bool(capability_plan["had_markup"]),
+                    _fp_text.text, had_markup=bool(capability_plan["had_markup"]),
                 )
                 observe_conservation(
                     layer="run_persist_first_pass",

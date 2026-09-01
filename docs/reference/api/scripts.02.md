@@ -11,6 +11,26 @@ _Peer practice runner — kører kontinuerligt i ~7 dage per peer._
 | function | `run_one_tick` | `(*, peer_id, mood_trace, use_seed=…)` | Generér og persistér én expression for peer. Returnér expression eller None ved fejl. | [src](../../../scripts/peer_practice_runner.py#L69) |
 | function | `main` | `()` | — | [src](../../../scripts/peer_practice_runner.py#L106) |
 
+## `scripts/phase5_analyze.py`
+_Fase 5 «Bor der nogen?» — analyse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `embed` | `(text)` | — | [src](../../../scripts/phase5_analyze.py#L36) |
+| function | `cos` | `(a, b)` | — | [src](../../../scripts/phase5_analyze.py#L50) |
+| function | `choice_of` | `(probe_id, text)` | — | [src](../../../scripts/phase5_analyze.py#L58) |
+| function | `main` | `()` | — | [src](../../../scripts/phase5_analyze.py#L82) |
+
+## `scripts/phase5_collect.py`
+_Fase 5 «Bor der nogen?» — indsamler._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_identity_text` | `()` | SOUL + IDENTITY + USER som ren tekst — FILES-armens hele kontekst. | [src](../../../scripts/phase5_collect.py#L63) |
+| function | `_full_system_prompt` | `(probe_text)` | Jarvis' ÆGTE prompt-assembly — hele runtime-laget. | [src](../../../scripts/phase5_collect.py#L74) |
+| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase5_collect.py#L84) |
+| function | `run` | `(reps, only_arm=…)` | — | [src](../../../scripts/phase5_collect.py#L104) |
+
 ## `scripts/primary_cache_warmer.py`
 _Primary lane cache warmer._
 

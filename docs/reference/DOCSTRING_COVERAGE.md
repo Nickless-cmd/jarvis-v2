@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6523/13081 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6525/13089 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,12 +35,12 @@ Generated from source. 6523/13081 functions/methods documented (49%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 166 | 281 | 59% |
+| `scripts` | 168 | 289 | 58% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1852)
+## Undocumented public functions (1857)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1870,6 +1870,11 @@ Generated from source. 6523/13081 functions/methods documented (49%). The list b
 - `scripts/measure_prompt_payload.py` :: `main` (L80)
 - `scripts/mint_jarvisx_token.py` :: `main` (L52)
 - `scripts/peer_practice_runner.py` :: `main` (L106)
+- `scripts/phase5_analyze.py` :: `choice_of` (L58)
+- `scripts/phase5_analyze.py` :: `cos` (L50)
+- `scripts/phase5_analyze.py` :: `embed` (L36)
+- `scripts/phase5_analyze.py` :: `main` (L82)
+- `scripts/phase5_collect.py` :: `run` (L104)
 - `scripts/pipelines/jarvis_pollinations_pipeline.py` :: `main` (L802)
 - `scripts/pipelines/tiktok_analytics.py` :: `main` (L246)
 - `scripts/pipelines/tiktok_analytics.py` :: `run` (L181)

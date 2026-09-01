@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13089 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13096 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -61,8 +61,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13089 functions/
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.util`](core.util.md)
-- [`scripts.01`](scripts.01.md) — `__init__` … `peer_models`
-- [`scripts.02`](scripts.02.md) — `peer_practice_runner` … `verify_fase_a`
+- [`scripts.01`](scripts.01.md) — `__init__` … `mint_jarvisx_token`
+- [`scripts.02`](scripts.02.md) — `peer_models` … `verify_fase_a`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

@@ -53,7 +53,36 @@ def _call_narrativizer_llm(system_prompt: str, user_message: str) -> str | None:
 
         prompt = f"{system_prompt}\n\n{user_message}"
         result = call_compact_llm(prompt, max_tokens=_NARRATIVIZER_MAX_TOKENS)
-        return result.strip() or None
+        text = (result or "").strip()
+        if not text:
+            return None
+
+        # En udbyders fejlbesked maa ALDRIG blive til Jarvis' selvbeskrivelse.
+        #
+        # FUNDET LIVE 2026-09-01: injektionen `cognitive_state` havde staaende
+        #     [COGNITIVE STATE] [SELF] Sorry, to prevent abuse of free
+        #     resources, accounts that have not been recharged can only try 10
+        #     times... https://console.aihubmix.com/topup
+        # Altsaa en regning fra aihubmix skrevet ind i [SELF]-ankeret. Kaeden:
+        # primaer-lane fejlede paa tom auth-profil ("Profile name must be a
+        # simple non-empty identifier"), kaldet faldt til cheap-lane, ramte
+        # aihubmix' gratis-kvote, og fejlteksten blev gemt som hans selv.
+        #
+        # Samme vagt som provider_error_guard giver den synlige chat (604b3c34)
+        # — men DENNE sti gik udenom, og her er indsatsen hoejere: en fejl i
+        # chatten er pinlig, en fejl i [SELF] er noget han BAERER videre.
+        try:
+            from core.services.provider_error_guard import (
+                describe, looks_like_provider_error,
+            )
+            if looks_like_provider_error(text):
+                logger.warning(
+                    "cognitive_state_narrativizer: udbyder-fejl afvist som "
+                    "narrativ (%s)", describe(text))
+                return None
+        except Exception:
+            pass
+        return text or None
     except Exception as exc:
         logger.warning("cognitive_state_narrativizer ollama call failed: %s", exc)
         return None

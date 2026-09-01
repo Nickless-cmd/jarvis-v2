@@ -407,6 +407,19 @@ _Measure where Jarvis's visible-chat prompt tokens come from._
 | function | `split_system_by_sections` | `(text)` | Split a system prompt into (header, char_count, token_count) tuples. | [src](../../../scripts/measure_prompt_payload.py#L57) |
 | function | `main` | `()` | — | [src](../../../scripts/measure_prompt_payload.py#L80) |
 
+## `scripts/measure_turn_latency.py`
+_Mål Jarvis' svartid — fra send til svar._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_token` | `()` | — | [src](../../../scripts/measure_turn_latency.py#L37) |
+| function | `_parse` | `(ts)` | — | [src](../../../scripts/measure_turn_latency.py#L42) |
+| function | `_turns` | `(session_id, limit=…)` | Par bruger-besked med det følgende assistent-svar. | [src](../../../scripts/measure_turn_latency.py#L52) |
+| function | `_provider_for` | `(asked_at, answered_at)` | Hvilken provider betjente turen. | [src](../../../scripts/measure_turn_latency.py#L76) |
+| function | `watch` | `(session_id)` | — | [src](../../../scripts/measure_turn_latency.py#L101) |
+| function | `_api` | `(path, payload=…, stream=…)` | — | [src](../../../scripts/measure_turn_latency.py#L123) |
+| function | `probe` | `(rounds, message)` | — | [src](../../../scripts/measure_turn_latency.py#L134) |
+
 ## `scripts/meta_evne_healthcheck.py`
 _Meta-evne healthcheck — read-only snapshot of all new tracker stacks._
 
@@ -441,16 +454,4 @@ _Mint a JarvisX bearer token for a user._
 | function | `_registry_path` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L35) |
 | function | `_append_registry` | `(entry)` | Append a token-issue entry to the audit registry. Best-effort. | [src](../../../scripts/mint_jarvisx_token.py#L40) |
 | function | `main` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L52) |
-
-## `scripts/peer_models.py`
-_Peer model adapters for interlanguage validation experiment._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_generate_claude` | `(prompt)` | Claude Sonnet 4.6 via GitHub Copilot. | [src](../../../scripts/peer_models.py#L34) |
-| function | `_ollama_chat` | `(model, prompt, *, timeout=…)` | POST mod localhost Ollama /api/chat — virker for cloud-modeller routet via Ollama. | [src](../../../scripts/peer_models.py#L62) |
-| function | `_generate_glm` | `(prompt)` | GLM 5.1 via lokal Ollama cloud-route. | [src](../../../scripts/peer_models.py#L80) |
-| function | `_generate_ollama_local` | `(prompt)` | deepseek-v4-flash:cloud via lokal Ollama (samme model som Jarvis). | [src](../../../scripts/peer_models.py#L85) |
-| function | `_generate_random` | `(prompt)` | Random baseline — bruger generate_state_expression() uden mood-bias. | [src](../../../scripts/peer_models.py#L99) |
-| function | `generate` | `(prompt, peer_id)` | Dispatch til peer-specific adapter. Raise ValueError ved ukendt peer. | [src](../../../scripts/peer_models.py#L123) |
 

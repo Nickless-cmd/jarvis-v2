@@ -200,3 +200,47 @@ class TestOrphanUploadSelection:
         root = tmp_path / "uploads"
         root.mkdir()
         assert find_orphan_upload_dirs(str(root), session_is_known=lambda s: False) == []
+
+
+class TestOrphanBalancerSlots:
+    """State-filen havde 264 poster men kun 98 levende slots.
+
+    De 166 øvrige var profiler `auth_profile_scan` filtrerer fra —
+    `default.bak-20260716-150508` og provider-navngivne mapper. De blev aldrig
+    valgt, men fik filen til at se dobbelt så stor ud som virkeligheden.
+    """
+
+    def _real(self, profile: str) -> bool:
+        import re
+        return bool(re.match(r"^(default|account\d+)$", profile))
+
+    def test_backup_profile_is_orphan(self) -> None:
+        from core.services.cheap_lane_balancer import orphan_slot_ids
+        ids = ["groq::llama::default", "groq::llama::default.bak-20260716-150508"]
+        assert orphan_slot_ids(ids, is_account_profile=self._real) == [ids[1]]
+
+    def test_provider_named_profile_is_orphan(self) -> None:
+        from core.services.cheap_lane_balancer import orphan_slot_ids
+        ids = ["mistral::m::mistral", "mistral::m::account2"]
+        assert orphan_slot_ids(ids, is_account_profile=self._real) == [ids[0]]
+
+    def test_keyless_two_segment_keys_are_always_kept(self) -> None:
+        """`provider::model` har ingen profil at være forældreløs fra."""
+        from core.services.cheap_lane_balancer import orphan_slot_ids
+        ids = ["ollamafreeapi::bakllava:latest", "pollinations::openai-fast"]
+        assert orphan_slot_ids(ids, is_account_profile=self._real) == []
+
+    def test_account_profiles_survive(self) -> None:
+        from core.services.cheap_lane_balancer import orphan_slot_ids
+        ids = ["a::b::default", "a::b::account2", "a::b::account3"]
+        assert orphan_slot_ids(ids, is_account_profile=self._real) == []
+
+    def test_lookup_failure_keeps_the_slot(self) -> None:
+        from core.services.cheap_lane_balancer import orphan_slot_ids
+        def boom(_p): raise RuntimeError("nede")
+        assert orphan_slot_ids(["a::b::c"], is_account_profile=boom) == []
+
+    def test_empty_input(self) -> None:
+        from core.services.cheap_lane_balancer import orphan_slot_ids
+        assert orphan_slot_ids([], is_account_profile=self._real) == []
+        assert orphan_slot_ids(None, is_account_profile=self._real) == []

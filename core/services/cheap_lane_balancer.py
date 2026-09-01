@@ -1323,3 +1323,59 @@ def balancer_snapshot() -> dict:
         "slots": slot_payloads,
         "recent_calls": recent_calls(),
     }
+
+# ── Oprydning af forældreløse slot-poster ───────────────────────────────────
+#
+# MÅLT 2026-09-01: state-filen havde 264 slot-poster, men build_slot_pool()
+# returnerede kun 98. De 166 øvrige var inert historik — 36 fra en backup-mappe
+# (`default.bak-20260716-150508`) og 17 fra provider-navngivne profil-mapper
+# (groq, mistral, gemini, opencode), som `auth_profile_scan` filtrerer fra med
+# `^(default|account\d+)$`.
+#
+# De blev ALDRIG valgt, så det er ikke en funktionsfejl. Men de fordoblede
+# filens tilsyneladende størrelse og fik mig til at tro at 14 % af poolen var
+# spøgelser. En state-fil skal kunne læses som sandhed.
+
+
+def orphan_slot_ids(slot_ids, *, is_account_profile) -> list[str]:
+    """Slot-ider hvis auth-profil ikke er en ægte konto. Ren udvælgelse.
+
+    Nøgleformatet er ``provider::model::profil`` ELLER ``provider::model`` for
+    nøgleløse providere. Poster uden profil-segment har ingen konto at være
+    forældreløse fra og beholdes altid.
+    """
+    out: list[str] = []
+    for sid in slot_ids or []:
+        parts = str(sid).split("::")
+        if len(parts) < 3:
+            continue
+        try:
+            if not is_account_profile(parts[2]):
+                out.append(str(sid))
+        except Exception:
+            continue          # tvivl → behold
+    return out
+
+
+def prune_orphan_slots() -> int:
+    """Fjern state-poster for profiler balanceren aldrig vælger. Self-safe."""
+    try:
+        from core.services.auth_profile_scan import _is_account_profile
+        path = _state_path()
+        if not path.exists():
+            return 0
+        data = json.loads(path.read_text(encoding="utf-8"))
+        slots = data.get("slots") or {}
+        orphans = orphan_slot_ids(list(slots), is_account_profile=_is_account_profile)
+        if not orphans:
+            return 0
+        for sid in orphans:
+            slots.pop(sid, None)
+        data["slots"] = slots
+        tmp = str(path) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, ensure_ascii=False)
+        os.replace(tmp, str(path))
+        return len(orphans)
+    except Exception:
+        return 0

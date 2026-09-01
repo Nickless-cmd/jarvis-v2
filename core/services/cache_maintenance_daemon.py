@@ -108,6 +108,16 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         except Exception:
             pass
 
+        # Forældreløse balancer-slots: profiler der aldrig vælges (backup-mapper,
+        # provider-navngivne profiler). Målt 01-09: 166 af 264 poster var inert
+        # historik, så state-filen så dobbelt så stor ud som virkeligheden.
+        orphan_slots = 0
+        try:
+            from core.services.cheap_lane_balancer import prune_orphan_slots
+            orphan_slots = prune_orphan_slots()
+        except Exception:
+            pass
+
         # WAL checkpoint: passive checkpoints get starved by long-running readers,
         # so the WAL grows unbounded (12+ MB observed) → write-lock contention →
         # visible-lane stalls. Retention above just freed pages; TRUNCATE folds the
@@ -141,6 +151,7 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             "versioned_pruned": versioned_pruned,
             "state_files_pruned": state_files_pruned,
             "orphan_uploads": orphan_uploads,
+            "orphan_slots": orphan_slots,
             "wal_checkpoint": wal_checkpoint,
         }
     except Exception as exc:

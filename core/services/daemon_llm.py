@@ -146,6 +146,19 @@ def daemon_llm_call(
     )
 
 
+# Kvalitets-lanen faar sin egen tidsramme.
+#
+# MAALT 2026-09-01: inner_enrichment-lanen har ÉT maal (betalt deepseek-v4-flash)
+# og ingen fallback i registret. Fire maalinger med en droem-stor prompt gav
+# 10,1 / 14,1 / 16,9 / 17,1 sekunder — mod standardens 30. Der er altsaa kun ~13
+# sekunders luft, og drømme-synteseprompten er stoerre end testprompten. Da
+# gaten endelig aabnede 31-08 timede netop dette kald ud ("The read operation
+# timed out"), lanen faldt tilbage til cheap-lane, og droemmen blev tom.
+#
+# De 30 sekunder er en UI-orienteret standard anvendt paa et batch-job. Ingen
+# venter paa en daemon; det er billigere at vente end at degradere i stilhed.
+_QUALITY_LANE_TIMEOUT_SECONDS = 120.0
+
 def quality_daemon_llm_call(
     prompt: str,
     *,
@@ -207,6 +220,7 @@ def quality_daemon_llm_call(
                 auth_profile=auth_profile or "default",
                 base_url=base_url,
                 message=prompt,
+                timeout=_QUALITY_LANE_TIMEOUT_SECONDS,
             )
             text = str(result.get("text") or "").strip()
             if text:
@@ -245,9 +259,13 @@ def quality_daemon_llm_call(
                     pass
                 return text[:max_len] if max_len else text
     except Exception as exc:
+        # Synlig nedgradering: docstringen lover en model der er skarp nok til
+        # at holde Jarvis ansvarlig. Falder vi til cheap-lane, forsvinder den
+        # garanti — og foer 01-09 skete det lydloest. Nu navngives daemonen.
         logger.warning(
-            "quality_daemon_llm_call: inner_enrichment lane failed (%s) — falling back to cheap-lane",
-            exc,
+            "quality_daemon_llm_call: inner_enrichment-lanen fejlede for %s (%s) "
+            "— NEDGRADERER til cheap-lane",
+            daemon_name or "(ukendt daemon)", exc,
         )
 
     # Fallback to standard cheap-lane (never break the daemon)

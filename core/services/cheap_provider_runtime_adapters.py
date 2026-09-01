@@ -605,6 +605,23 @@ _OPENAI_COMPATIBLE_PROVIDERS = frozenset(
 ) | {"deepseek"}
 
 
+# Re-eksport fra den udskilte breaker-modul (bagudkompatibilitet).
+from core.services.cheap_provider_breaker_adapters import (  # noqa: E402,F401
+    _ARKO_CB_OPEN_DURATION_S,
+    _ARKO_CB_THRESHOLD,
+    _ARKO_PROVIDER_ID,
+    _OFA_CB_OPEN_DURATION_S,
+    _OFA_CB_THRESHOLD,
+    _OFA_PROVIDER_ID,
+    _arko_circuit_open,
+    _arko_circuit_record_failure,
+    _arko_circuit_record_success,
+    _ofa_circuit_open,
+    _ofa_circuit_record_failure,
+    _ofa_circuit_record_success,
+)
+
+
 class CheapProviderError(RuntimeError):
     def __init__(
         self,
@@ -929,6 +946,7 @@ def _execute_openai_compatible_chat(
     temperature: float | None = None,
     top_p: float | None = None,
     extra_body: dict | None = None,
+    timeout: float | None = None,
 ) -> dict[str, object]:
     # Resolve monkeypatchable primitives through the facade (see _facade()).
     _f = _facade()
@@ -1028,6 +1046,7 @@ def _execute_openai_compatible_chat(
     if _nat64_url:
         data, _headers = _f._http_json_httpx(
             _nat64_url,
+            timeout=timeout,
             payload=payload,
             headers=headers,
             provider=provider,
@@ -1039,6 +1058,7 @@ def _execute_openai_compatible_chat(
         # provider's usual urllib/httpx default. Same URL + payload; only egress changes.
         data, _headers = _f._http_json_httpx(
             f"{root}/chat/completions",
+            timeout=timeout,
             payload=payload,
             headers=headers,
             provider=provider,
@@ -1047,6 +1067,7 @@ def _execute_openai_compatible_chat(
     elif provider == "groq":
         data, _headers = _f._http_json_httpx(
             f"{root}/chat/completions",
+            timeout=timeout,
             payload=payload,
             headers=headers,
             provider=provider,
@@ -1324,33 +1345,9 @@ def _list_ollamafreeapi_models() -> list[dict[str, object]]:
     return [{"id": model, "label": model} for model in list_ollamafreeapi_models()]
 
 
-# ── OllamaFreeAPI circuit breaker — LØFTET til den delte per-provider breaker ──
-# Spec §11.2: de tidligere ofa/arko-specifikke breakers er nu BAKKET af den delte
-# per-provider store (provider_circuit_breaker.pp_*), keyed på provider_id="ollamafreeapi".
-# Vi bevarer ofa's historiske adfærd (3 fejl i træk → åben 5 min) via pp_configure.
-_OFA_CB_THRESHOLD = 3            # open after 3 consecutive fails (bevaret)
-_OFA_CB_OPEN_DURATION_S = 300.0  # stay open 5 minutes (bevaret)
-_OFA_PROVIDER_ID = "ollamafreeapi"
-
-
-def _ofa_circuit_open() -> bool:
-    from core.services import provider_circuit_breaker as _cb
-    _cb.pp_configure(_OFA_PROVIDER_ID, threshold=_OFA_CB_THRESHOLD,
-                     cooldown_s=_OFA_CB_OPEN_DURATION_S)
-    return _cb.pp_is_open(_OFA_PROVIDER_ID)
-
-
-def _ofa_circuit_record_failure() -> None:
-    from core.services import provider_circuit_breaker as _cb
-    _cb.pp_configure(_OFA_PROVIDER_ID, threshold=_OFA_CB_THRESHOLD,
-                     cooldown_s=_OFA_CB_OPEN_DURATION_S)
-    _cb.pp_record_failure(_OFA_PROVIDER_ID)
-
-
-def _ofa_circuit_record_success() -> None:
-    from core.services import provider_circuit_breaker as _cb
-    _cb.pp_record_success(_OFA_PROVIDER_ID)
-
+# Circuit-breaker-adapterne for ofa og arko er udskilt til
+# cheap_provider_breaker_adapters (Boy Scout, 2026-09-01 — filen var 2.046
+# linjer). Symbolerne re-eksporteres nedenfor, saa imports ikke braekker.
 
 def _execute_ollamafreeapi_chat(
     *,
@@ -1388,32 +1385,9 @@ def _execute_ollamafreeapi_chat(
     }
 
 
-# ── Arko circuit breaker — LØFTET til den delte per-provider breaker ──────────
-# Spec §11.2: bakket af den delte per-provider store, keyed provider_id="arko".
-# Bevarer arko's historiske adfærd (3 fejl i træk → åben 3 min) via pp_configure.
-_ARKO_CB_THRESHOLD = 3          # consecutive failures before opening (bevaret)
-_ARKO_CB_OPEN_DURATION_S = 180  # stay open for 3 minutes (bevaret)
-_ARKO_PROVIDER_ID = "arko"
-
-
-def _arko_circuit_open() -> bool:
-    from core.services import provider_circuit_breaker as _cb
-    _cb.pp_configure(_ARKO_PROVIDER_ID, threshold=_ARKO_CB_THRESHOLD,
-                     cooldown_s=float(_ARKO_CB_OPEN_DURATION_S))
-    return _cb.pp_is_open(_ARKO_PROVIDER_ID)
-
-
-def _arko_circuit_record_failure() -> None:
-    from core.services import provider_circuit_breaker as _cb
-    _cb.pp_configure(_ARKO_PROVIDER_ID, threshold=_ARKO_CB_THRESHOLD,
-                     cooldown_s=float(_ARKO_CB_OPEN_DURATION_S))
-    _cb.pp_record_failure(_ARKO_PROVIDER_ID)
-
-
-def _arko_circuit_record_success() -> None:
-    from core.services import provider_circuit_breaker as _cb
-    _cb.pp_record_success(_ARKO_PROVIDER_ID)
-
+# Circuit-breaker-adapterne for ofa og arko er udskilt til
+# cheap_provider_breaker_adapters (Boy Scout, 2026-09-01 — filen var 2.046
+# linjer). Symbolerne re-eksporteres nedenfor, saa imports ikke braekker.
 
 def _execute_arko_chat(*, message: str) -> dict[str, object]:
     from core.runtime.arko_provider import call_arko
@@ -1738,6 +1712,7 @@ def _http_json_httpx(
     proxy: str | None = None,
     source_address: str | None = None,
     nat64_sni: str | None = None,
+    timeout: float | None = None,
 ) -> tuple[dict[str, object], dict[str, str]]:
     request_headers = {
         "Accept": "application/json",
@@ -1756,7 +1731,7 @@ def _http_json_httpx(
     # Task 8b: account2 egress-proxy (httpx 0.28 kwarg is `proxy=`, not `proxies=`).
     # None -> direct (home IP).
     _client_kwargs: dict[str, object] = {
-        "timeout": _DEFAULT_TIMEOUT_SECONDS,
+        "timeout": float(timeout or _DEFAULT_TIMEOUT_SECONDS),
         "follow_redirects": True,
     }
     # v6bind (2026-07-23): bind the outbound connection to a specific local source

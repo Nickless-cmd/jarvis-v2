@@ -119,11 +119,45 @@ describe('Composer', () => {
       <Composer
         onSend={jest.fn()}
         onStop={jest.fn()}
-        attachment={{ uri: 'file:///a.png', name: 'a.png' }}
+        attachments={[{ id: '1', uri: 'file:///a.png', name: 'a.png', mime: 'image/png' }]}
       />
     )
 
     expect(screen.queryByTestId('composer-rest')).toBeNull()
     await waitFor(() => expect(screen.getByTestId('composer-input')).toBeTruthy())
+  })
+
+  it('viser en chip pr. vedhæftning og kan fjerne én ad gangen', async () => {
+    const onRemove = jest.fn()
+    const screen = await render(
+      <Composer
+        onSend={jest.fn()}
+        onStop={jest.fn()}
+        onRemoveAttachment={onRemove}
+        attachments={[
+          { id: 'a', uri: 'file:///a.png', name: 'a.png', mime: 'image/png' },
+          { id: 'b', uri: 'file:///b.zip', name: 'b.zip', mime: 'application/zip' }
+        ]}
+      />
+    )
+
+    expect(screen.getByTestId('attach-chip-a')).toBeTruthy()
+    expect(screen.getByTestId('attach-chip-b')).toBeTruthy()
+
+    await act(async () => { fireEvent.press(screen.getByLabelText('Fjern b.zip')) })
+    expect(onRemove).toHaveBeenCalledWith('b')
+  })
+
+  it('kan sende med KUN vedhæftninger og ingen tekst', async () => {
+    const onSend = jest.fn()
+    const screen = await render(
+      <Composer
+        onSend={onSend}
+        onStop={jest.fn()}
+        attachments={[{ id: 'a', uri: 'file:///a.png', name: 'a.png', mime: 'image/png' }]}
+      />
+    )
+    await act(async () => { fireEvent.press(screen.getByTestId('composer-button')) })
+    expect(onSend).toHaveBeenCalledWith('')
   })
 })

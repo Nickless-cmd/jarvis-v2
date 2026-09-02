@@ -14,7 +14,7 @@ import {
 // billeder», hvilket er præcis det gitteret skal bruge. Den nye Query-API kan
 // det samme, men koster mere kode for ingen gevinst her.
 import * as MediaLibrary from 'expo-media-library/legacy'
-import { Camera, Images, Upload, X } from 'lucide-react-native'
+import { Camera, Check, Images, Upload, X } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
 import type { CapturedPhoto } from '../screens/CameraCapture'
 
@@ -37,17 +37,24 @@ export function AttachMenu({
   visible,
   onCamera,
   onGallery,
+  onUpload,
   onPick,
   onClose
 }: {
   visible: boolean
   onCamera: () => void
+  /** Systemets billedvælger (flere ad gangen). */
   onGallery: () => void
-  /** Et tryk direkte på en miniature — springer systemvælgeren helt over. */
-  onPick?: (photo: CapturedPhoto) => void
+  /** Systemets FIL-vælger — dokumenter, arkiver, hvad som helst. */
+  onUpload?: () => void
+  /** Valg direkte i gitteret — springer systemvælgeren helt over. */
+  onPick?: (photos: CapturedPhoto[]) => void
   onClose: () => void
 }) {
   const [assets, setAssets] = useState<MediaLibrary.Asset[]>([])
+  // Flere billeder ad gangen. Med kun ét valg skulle man åbne fladen igen for
+  // hvert billede, og rækkefølgen blev umulig at styre.
+  const [chosen, setChosen] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   // null = ikke spurgt endnu. false = nægtet → vis knappen til systemvælgeren
   // i stedet for et tomt gitter, så fladen aldrig står og lyver om ingenting.
@@ -85,20 +92,32 @@ export function AttachMenu({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible])
 
-  const choose = async (asset: MediaLibrary.Asset) => {
-    if (!onPick) return onGallery()
-    try {
-      // localUri er den sti vi faktisk kan læse; asset.uri er en ph://-lignende
-      // reference der ikke altid kan uploades direkte.
-      const info = await MediaLibrary.getAssetInfoAsync(asset)
-      onPick({
-        uri: info.localUri || asset.uri,
-        name: asset.filename || 'billede.jpg',
-        mime: 'image/jpeg'
-      })
-    } catch {
-      onGallery()
+  const toggle = (id: string) => {
+    setChosen((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  const confirm = async () => {
+    if (!onPick || !chosen.length) return
+    const picked: CapturedPhoto[] = []
+    for (const id of chosen) {
+      const asset = assets.find((a) => a.id === id)
+      if (!asset) continue
+      try {
+        // localUri er den sti vi faktisk kan læse; asset.uri er en ph://-lignende
+        // reference der ikke altid kan uploades direkte.
+        const info = await MediaLibrary.getAssetInfoAsync(asset)
+        picked.push({
+          uri: info.localUri || asset.uri,
+          name: asset.filename || 'billede.jpg',
+          mime: 'image/jpeg'
+        })
+      } catch {
+        // Ét billede der ikke kan læses må ikke koste de andre.
+      }
     }
+    setChosen([])
+    if (picked.length) onPick(picked)
+    else onGallery()
   }
 
   return (
@@ -119,7 +138,7 @@ export function AttachMenu({
 
         <Pressable
           accessibilityRole="button"
-          onPress={onGallery}
+          onPress={onUpload ?? onGallery}
           style={({ pressed }) => [styles.uploadRow, pressed && styles.pressed]}
         >
           <Upload size={22} color={tokens.color.fg1} strokeWidth={2} />
@@ -186,15 +205,38 @@ export function AttachMenu({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={item.asset.filename}
-                  onPress={() => void choose(item.asset)}
+                  onPress={() => toggle(item.asset.id)}
                   style={({ pressed }) => [styles.thumbWrap, pressed && styles.pressed]}
                 >
                   <Image source={{ uri: item.asset.uri }} style={styles.thumb} />
+                  <View
+                    style={[
+                      styles.tick,
+                      chosen.includes(item.asset.id) && styles.tickOn
+                    ]}
+                  >
+                    {chosen.includes(item.asset.id) ? (
+                      <Check size={14} color={tokens.color.bg0} strokeWidth={3} />
+                    ) : null}
+                  </View>
                 </Pressable>
               )
             }
           />
         )}
+
+        {chosen.length ? (
+          <Pressable
+            testID="attach-confirm"
+            accessibilityRole="button"
+            onPress={() => void confirm()}
+            style={({ pressed }) => [styles.confirm, pressed && styles.pressed]}
+          >
+            <Text style={styles.confirmText}>
+              {chosen.length === 1 ? 'Tilføj 1 billede' : `Tilføj ${chosen.length} billeder`}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </Modal>
   )
@@ -250,6 +292,23 @@ const styles = StyleSheet.create({
   },
   cameraText: { color: tokens.color.fg2, fontSize: 15 },
   thumbWrap: { flex: 1, height: 190, borderRadius: tokens.radius.lg, overflow: 'hidden', backgroundColor: tokens.color.bg2 },
+  // Markeringscirklen sidder øverst til højre, som i referencen.
+  tick: {
+    position: 'absolute', top: 10, right: 10,
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.75)',
+    backgroundColor: 'rgba(0,0,0,0.28)'
+  },
+  tickOn: { backgroundColor: tokens.color.accent, borderColor: tokens.color.accent },
+  confirm: {
+    margin: tokens.spacing.lg,
+    borderRadius: 26,
+    paddingVertical: tokens.spacing.md,
+    alignItems: 'center',
+    backgroundColor: tokens.color.accent
+  },
+  confirmText: { color: tokens.color.bg0, fontSize: 16, fontWeight: '700' },
   thumb: { width: '100%', height: '100%' },
   center: { flex: 1, alignItems: 'stretch', justifyContent: 'flex-start', padding: tokens.spacing.lg, gap: tokens.spacing.sm },
   wideCard: {

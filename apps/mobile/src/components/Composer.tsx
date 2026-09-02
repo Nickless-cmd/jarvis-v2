@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
-import { ArrowUp, AudioLines, ChevronDown, Cpu, Mic, Plus, Square } from 'lucide-react-native'
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ArrowUp, AudioLines, ChevronDown, Cpu, FileText, Mic, Plus, Square } from 'lucide-react-native'
 import { shortModelLabel } from '../lib/modelLabel'
 import { tokens } from '../theme/tokens'
 
@@ -27,7 +27,7 @@ export function Composer({
   onPressModel,
   onAttach,
   onMic,
-  attachment,
+  attachments,
   onRemoveAttachment,
   onFocusChange,
   showJumpToBottom,
@@ -41,8 +41,8 @@ export function Composer({
   onPressModel?: () => void
   onAttach?: () => void
   onMic?: () => void
-  attachment?: { uri: string; name: string } | null
-  onRemoveAttachment?: () => void
+  attachments?: { id: string; uri: string; name: string; mime: string }[]
+  onRemoveAttachment?: (id: string) => void
   /** Løftes ud, så skærmen kan vide om komponisten er i brug. */
   onFocusChange?: (focused: boolean) => void
   /** Rul-til-bunden flytter IND i komponisten mens man skriver. */
@@ -58,7 +58,8 @@ export function Composer({
   const [wantFocus, setWantFocus] = useState(false)
   const inputRef = useRef<TextInput>(null)
   // Hvileform: intet skrevet, ikke i fokus, intet vedhæftet, ikke i gang.
-  const resting = !text && !focused && !wantFocus && !attachment && !working
+  const att = attachments ?? []
+  const resting = !text && !focused && !wantFocus && att.length === 0 && !working
 
   // Arbejdsformen er lige monteret efter et tryk på hvilepillen → giv feltet
   // fokus, så tastaturet kommer frem uden et ekstra tryk.
@@ -76,7 +77,7 @@ export function Composer({
   const submit = async () => {
     const value = text.trim()
     // Tillad send når der er en vedhæftning, selv uden tekst.
-    if ((!value && !attachment) || disabled || working || submitting) return
+    if ((!value && att.length === 0) || disabled || working || submitting) return
 
     setSubmitting(true)
     try {
@@ -132,20 +133,34 @@ export function Composer({
   return (
     <View style={styles.outer}>
       <View style={styles.card}>
-        {attachment ? (
-          <View style={styles.attachChip}>
-            <Image source={{ uri: attachment.uri }} style={styles.attachThumb} />
-            <Text style={styles.attachName} numberOfLines={1}>{attachment.name}</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Fjern vedhæftning"
-              onPress={onRemoveAttachment}
-              hitSlop={8}
-              style={styles.attachRemove}
-            >
-              <Text style={styles.attachRemoveText}>×</Text>
-            </Pressable>
-          </View>
+        {att.length ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.attachRow}
+          >
+            {att.map((a) => (
+              <View key={a.id} testID={`attach-chip-${a.id}`} style={styles.attachChip}>
+                {a.mime.startsWith('image/') ? (
+                  <Image source={{ uri: a.uri }} style={styles.attachThumb} />
+                ) : (
+                  <View style={styles.attachIcon}>
+                    <FileText size={18} color={tokens.color.fg2} strokeWidth={1.8} />
+                  </View>
+                )}
+                <Text style={styles.attachName} numberOfLines={1}>{a.name}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Fjern ${a.name}`}
+                  onPress={() => onRemoveAttachment?.(a.id)}
+                  hitSlop={8}
+                  style={styles.attachRemove}
+                >
+                  <Text style={styles.attachRemoveText}>×</Text>
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
         ) : null}
         <TextInput
           ref={inputRef}
@@ -208,7 +223,7 @@ export function Composer({
             >
               {working ? (
                 <Square size={15} color={tokens.color.bg0} fill={tokens.color.bg0} strokeWidth={2} />
-              ) : text || attachment ? (
+              ) : text || att.length ? (
                 <ArrowUp size={20} color={tokens.color.bg0} strokeWidth={2.5} />
               ) : (
                 <AudioLines size={19} color={tokens.color.bg0} strokeWidth={2} />
@@ -263,17 +278,25 @@ const styles = StyleSheet.create({
   },
   // Fokus markeres ikke med en kant — feltet er allerede i forgrunden.
   cardFocused: {},
+  // Chips ruller vandret. Sender man fem filer, må rækken ikke kunne vokse
+  // komponisten ud over skærmen.
+  attachRow: { gap: tokens.spacing.xs, paddingBottom: tokens.spacing.xs },
   attachChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spacing.sm,
-    backgroundColor: tokens.color.bg2,
+    backgroundColor: tokens.color.bg3,
     borderRadius: tokens.radius.md,
     padding: tokens.spacing.xs,
-    marginBottom: tokens.spacing.xs
+    maxWidth: 210
+  },
+  attachIcon: {
+    width: 40, height: 40, borderRadius: tokens.radius.sm,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: tokens.color.bg2
   },
   attachThumb: { width: 40, height: 40, borderRadius: tokens.radius.sm, backgroundColor: tokens.color.bg3 },
-  attachName: { flex: 1, color: tokens.color.fg2, fontSize: 13 },
+  attachName: { color: tokens.color.fg2, fontSize: 13, flexShrink: 1 },
   attachRemove: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.bg3 },
   attachRemoveText: { color: tokens.color.fg1, fontSize: 18, lineHeight: 20 },
   input: {

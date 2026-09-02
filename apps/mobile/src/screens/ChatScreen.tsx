@@ -18,7 +18,8 @@ import { SidePanel } from '../components/SidePanel'
 import { SettingsScreen } from './SettingsScreen'
 import { CameraCapture, type CapturedPhoto } from './CameraCapture'
 import { AttachMenu } from '../components/AttachMenu'
-import { pickImageFromGallery } from '../lib/imagePicker'
+import { pickDocuments, pickImagesFromGallery } from '../lib/imagePicker'
+import { describeUploadError } from '../lib/uploadError'
 import { cancelActiveRun, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
@@ -117,7 +118,12 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [attachMenuOpen, setAttachMenuOpen] = useState(false)
   // FEATURE2/BUG3: valgt/taget billede lægger sig som ventende vedhæftning i
   // composeren (auto-sendes IKKE) så man kan skrive en besked til.
-  const [pendingAttachment, setPendingAttachment] = useState<{ id: string; uri: string; name: string } | null>(null)
+  // FLERE vedhæftninger pr. besked. Med kun én kunne man ikke sende to
+  // skærmbilleder sammen — man skulle sende to beskeder, og så mistede Jarvis
+  // sammenhængen mellem dem.
+  const [pendingAttachments, setPendingAttachments] = useState<
+    { id: string; uri: string; name: string; mime: string }[]
+  >([])
   const [displayName, setDisplayName] = useState('Jarvis')
   const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
   const [model, setModel] = useState<ModelChoice | null>(null)
@@ -285,9 +291,11 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const ensureSessionAndSend = async (text: string) => {
     if (!config) return
     const sessionId = sessions.activeId ?? (await sessions.create(config)).id
-    const attachmentIds = pendingAttachment ? [pendingAttachment.id] : undefined
+    const attachmentIds = pendingAttachments.length
+      ? pendingAttachments.map((a) => a.id)
+      : undefined
     stream.send(config, sessionId, text, { ...modelOpts(), attachmentIds })
-    setPendingAttachment(null)
+    setPendingAttachments([])
   }
 
   // Samtale-mode (Trin 3): voice-hook. sendMessage=ensureSessionAndSend, text fra text-blocks.
@@ -304,13 +312,37 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   // Upload billede (kamera/galleri) → stage som ventende vedhæftning i composeren
   // (BUG3: ikke auto-send). Sendes når brugeren trykker send, med valgfri besked.
   const stageAttachment = async (photo: CapturedPhoto) => {
-    if (!config) return
-    try {
-      const sessionId = sessions.activeId ?? (await sessions.create(config)).id
-      const up = await uploadAttachment(config, sessionId, photo)
-      setPendingAttachment({ id: up.id, uri: photo.uri, name: photo.name })
-    } catch {
-      Alert.alert('Billede', 'Kunne ikke uploade billedet — prøv igen.')
+    await stageAttachments([photo])
+  }
+
+  /**
+   * Upload flere filer og læg dem i komponisten som ventende vedhæftninger.
+   *
+   * Hver fil uploades for sig, og en enkelt der fejler stopper ikke resten —
+   * serveren kan afvise ÉN fil (malware, et arkiv der ikke kunne pakkes
+   * sikkert ud) uden at de andre er noget i vejen med. Brugeren får at vide
+   * hvilke der ikke kom med, i stedet for en samlet «det gik galt».
+   */
+  const stageAttachments = async (files: CapturedPhoto[]) => {
+    if (!config || !files.length) return
+    const sessionId = sessions.activeId ?? (await sessions.create(config)).id
+    const failed: string[] = []
+    for (const f of files) {
+      try {
+        const up = await uploadAttachment(config, sessionId, f)
+        setPendingAttachments((prev) => [
+          ...prev,
+          { id: up.id, uri: f.uri, name: f.name, mime: f.mime }
+        ])
+      } catch (e) {
+        failed.push(`${f.name}${describeUploadError(e)}`)
+      }
+    }
+    if (failed.length) {
+      Alert.alert(
+        failed.length === 1 ? 'Filen kom ikke med' : 'Nogle filer kom ikke med',
+        failed.join('\n')
+      )
     }
   }
 
@@ -321,8 +353,12 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
 
   const handlePickGallery = async () => {
     setAttachMenuOpen(false)
-    const photo = await pickImageFromGallery()
-    if (photo) await stageAttachment(photo)
+    await stageAttachments(await pickImagesFromGallery())
+  }
+
+  const handlePickDocuments = async () => {
+    setAttachMenuOpen(false)
+    await stageAttachments(await pickDocuments())
   }
 
   const handleSelectSession = (sessionId: string) => {
@@ -453,8 +489,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           onPressModel={() => setModelPickerOpen(true)}
           onAttach={() => setAttachMenuOpen(true)}
           onMic={voice.enter}
-          attachment={pendingAttachment ? { uri: pendingAttachment.uri, name: pendingAttachment.name } : null}
-          onRemoveAttachment={() => setPendingAttachment(null)}
+          attachments={pendingAttachments}
+          onRemoveAttachment={(id) =>
+            setPendingAttachments((prev) => prev.filter((a) => a.id !== id))
+          }
           onFocusChange={setComposerFocused}
           showJumpToBottom={scrolledUp && composerFocused}
           onJumpToBottom={jumpToBottom}
@@ -510,9 +548,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           setCameraOpen(true)
         }}
         onGallery={() => void handlePickGallery()}
-        onPick={(photo) => {
+        onUpload={() => void handlePickDocuments()}
+        onPick={(photos) => {
           setAttachMenuOpen(false)
-          void stageAttachment(photo)
+          void stageAttachments(photos)
         }}
         onClose={() => setAttachMenuOpen(false)}
       />

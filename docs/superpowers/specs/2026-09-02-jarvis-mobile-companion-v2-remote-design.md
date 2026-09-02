@@ -32,10 +32,15 @@ Arbejde-rummet kigger bare på det arbejde der allerede findes.
 3. **Én run-model på tværs.** Chat-sessioner (A), autonome runs (B) og
    agent-arbejde på andre maskiner (C) er alle *runs* med samme livscyklus:
    status, trin, godkendelser, resultater. Arbejde-tab viser dem samlet.
-4. **Genbrug serveren.** Mission-control API'et findes allerede
-   (`/mc/runs`, `/mc/approvals`, `/mc/overview`, `/mc/events` med 3s-cache).
-   Appen skal begynde at *bruge* det — ikke få bygget et nyt. Undtagelsen er
-   push: der kræves ét nyt server-stykke, plus en limit-fix på `/mc/approvals` (se Server-verifikation).
+4. **Genbrug serveren — men ikke blindt.** Mission-control API'et findes
+   allerede (`/mc/runs`, `/mc/approvals`, `/mc/overview`, `/mc/events` med
+   3s-cache). Appen skal begynde at *bruge* det. Men det endelige review
+   (Claude → Codex → Jarvis) viste, at de eksisterende endpoints **ikke er
+   bruger-isolerede, ikke er idempotente, og capper både runs og approvals
+   ved 5**. Fase 1 kræver derfor en serie server-ændringer — ikke kun push:
+   Boy Scout-udskillelse, bruger-isolation, ét idempotent
+   `approve-and-execute`-verb, cap-fix, durable outbox-push og stale-policy.
+   Detaljerne ligger i fase 1-planen (12 beslutninger).
 5. **Godkendelse er ikke en chat-besked.** Når noget kræver Bjørn, skal det
    ligge i en kø der overlever app-lukning og bliver til en notifikation.
 
@@ -271,6 +276,29 @@ De konkrete mål vi designer efter:
   lysegrå ikoner (kopi, like/dislike, TTS, del, menu).
 - **Statusbar/navigation:** Android-standard; systemindhold i toppen.
 
+### Reference-filer (fulde paths — til E2E og design-verifikation)
+
+De otte skærmbilleder Bjørn sendte 2026-09-02. Brug disse **fulde paths** til
+side-for-side-design-verifikation og som input til E2E-visuelle assertions
+(appen skal matche dette DNA, ikke kopiere pixels 1:1):
+
+- **R1 — samtalevisning (dark):**
+  `/home/bs/.jarvis-v2/uploads/chat-833fd0929f2f45099fb42334b91124a6/6626ef9b9cd7416e9a2fd9c6a42e1c56_660a42a7-cfca-4875-8c3c-393b9586c153.jpeg`
+- **R2 — hovedskærm (Chat | Work segmented control):**
+  `/home/bs/.jarvis-v2/uploads/chat-833fd0929f2f45099fb42334b91124a6/032eb5fadf60492ba95b07c4c973d305_803c37f4-0847-47a2-bc7d-5d6e0ab9a9f8.jpeg`
+- **R3 — hovedskærm, variant (samme DNA):**
+  `/home/bs/.jarvis-v2/uploads/chat-833fd0929f2f45099fb42334b91124a6/d4fce6b00c53489ea54fe73f16cce643_eaef60f8-cdc1-4d8c-a290-67701ae81aa0.jpeg`
+- **R4 — Sidebar/menu (dansk lokalisering):**
+  `/home/bs/.jarvis-v2/uploads/chat-833fd0929f2f45099fb42334b91124a6/9313907f718948bab69db89be60c9804_35e614ec-2190-410c-b4ec-e4687583ad15.jpeg`
+- **R5 — Remote-skærmen (Tasks-liste, ★ Arbejde-tab):**
+  `/home/bs/.jarvis-v2/uploads/chat-833fd0929f2f45099fb42334b91124a6/923affb62b5847be8780c544d89d6da0_69c633af-d771-42be-882e-c96bdd3625b1.jpeg`
+- **R6 — Opgave-tråd (detaljevisning, ★ niveau 2):**
+  `/home/bs/.jarvis-v2/uploads/chat-833fd0929f2f45099fb42334b91124a6/8c123ec6a0954adba7a08b627f32e71c_3f49b825-f971-415b-902a-c85247df887f.jpeg`
+- **R7 — Adgangsniveau-modal:**
+  `/home/bs/.jarvis-v2/uploads/chat-833fd0929f2f45099fb42334b91124a6/88d296242dc7432aa18b5d0eb6b7af68_c3ab333a-bd98-449e-9b8d-8aea5952ae4c.jpeg`
+- **R8 — Transaktions-approval-kort (★ godkendelses-øjeblik):**
+  `/home/bs/.jarvis-v2/uploads/chat-833fd0929f2f45099fb42334b91124a6/d1c20cd8b99f4d9bb7914f4b63295161_ab8497d5-a358-4268-8bd8-064c3a27f40c.jpeg`
+
 ### Reference #4 — Sidebar/menu (målt 2026-09-02)
 
 ChatGPT-appens hamburger-menu, dansk lokalisering. Vigtigst: OpenAI's egne
@@ -418,41 +446,47 @@ ikoner, logoer eller kode fra OpenAI's app.
 | B — autonom | Morgenvejr, PVE-overvågning | Scheduler/daemon | Sjældent, kun ved dømmekraft |
 | C — agent-arbejde | Opgave på desktop via bro | Remote → Ny opgave | Ja, ved handlinger |
 
-Alle tre eksponeres som runs af mission-control (`/mc/runs`). Forskellen er
-kun synlig i kilden (`source`-felt) og i hvilke verber der er tilgængelige
-(cancel/approve/steer).
+**Server-sandhed (vigtig korrektion fra det endelige review):** de tre typer
+er en *hensigt*, ikke en server-kendsgerning. `visible_runs` har ingen
+`source`-kolonne, og `/mc/runs` læser kun visible + autonomous runs — agent-
+arbejde (C) bor i `agent_runs` (`db_agent_runtime.py`) og eksponeres pr.
+agent, ikke i `/mc/runs`. Fase 1 viser derfor kun **A+B**; C kræver en ny
+work-projektion der inkluderer `agent_runs` (fase 2). Se fase 1-planens
+beslutning 7.
 
-## Server-verifikation (self-review, 2026-09-02)
+## Server-verifikation (self-review + endeligt review, 2026-09-02)
 
-Designet byggede på to server-antagelser. Begge er nu verificeret i koden:
+Designet byggede på to server-antagelser. Begge er nu verificeret i koden —
+og det endelige review (Codex) skærpede billedet på to afgørende punkter:
 
-1. **Overlever godkendelser en lukket session? — Ja, på data-niveau.**
-   Capability-approvals ligger i DB-tabellen `capability_approval_requests`
-   (oprettet i `core/runtime/db_capability_approval.py`) med livscyklus
-   pending → approved → executed. Flowet er **to-faset og asynkront**:
-   `workspace_capabilities` filer forespørgslen med kontekst (inkl.
-   indholds-fingerprint) og run'et *fortsætter* — det venter ikke. Bjørns
-   svar kan komme minutter eller timer senere; ved eksekvering matcher
-   serveren fingerprintet, så forslaget kun udføres hvis indholdet ikke har
-   ændret sig undervejs. Det betyder: **ingen timeout-mekanisme findes — og
-   ingen er nødvendig.** (Besvarer åbent spørgsmål 2.)
+1. **Der er TO godkendelsessystemer, ikke ét.** (a) `capability_approval_requests`
+   (db_capability_approval.py): intet udløb, to-faset og asynkront — run'et
+   filer forespørgslen og *fortsætter*; ved eksekvering matcher serveren et
+   indholds-fingerprint. (b) `tool_intent_approval_requests` med
+   `_APPROVAL_TTL = 15 min` — udløber, serveren svarer 409 expired. **Det kort
+   Bjørn sad med og bad om godkendelse på, var et tool-intent-kort** — en kø
+   der kun læste capability-systemet ville ikke have løst det problem. Fase 1
+   skal modellere begge. (Besvarer åbent spørgsmål 2 — delvist: capability har
+   ingen timeout, men tool-intent har.)
 2. **Push ved nye godkendelser? — Findes IKKE endnu.**
    `core/services/push_dispatcher.py` har kun tre kinds: `answer_ready`,
-   `initiative`, `reminder`. Der er ingen `approval_requested`. Fase 1's
-   leverance-kriterie ("få push når en godkendelse venter") kræver derfor ét
-   server-stykke: en ny kind + et hook der fyres når en
-   capability-approval-request files (naturligt sted:
-   `_persist_capability_approval_request` i `workspace_capabilities.py`,
-   linje ~468/515). Chat-approvals (A-runs) får *ikke* push i fase 1 — de
-   sker mens appen er åben i Snak; push der er fase 2-arbejde.
+   `initiative`, `reminder`. Der er ingen `approval_requested`. Fase 1 kræver
+   en ny kind + et hook. Men — skærpet af Codex — hooket skal være et
+   **durable outbox-event atomisk med requesten** (ikke et synkront FCM-kald
+   efter commit), med separat dispatcher, retry og deduplikering. (Beslutning 8.)
 
-Desuden verificeret: `/mc/approvals` læser den samme overflade (recent
-approval-requests) som appen skal vise, og eksisterende approve/execute-
-endpoints findes under `/mc/capability-approval-requests/{id}/...`. To
-yderligere fund, foldet ind i fase 1-planen: (a) overfladen capper
-approval-requests ved 5 — planen tilføjer en limit-fix så køen kan vise flere;
-(b) push-modtageren skal falde tilbage på `_owner_of_run(run_id)` når
-`scheduled_for_user_id` er tom, ellers får autonome runs ingen notifikation.
+Yderligere fund fra det endelige review, foldet ind i fase 1-planen:
+(a) `/mc/approvals` OG `/mc/runs` capper begge ved 5 — samme fil, fælles
+rettelse (beslutning 6); (b) push-modtageren skal falde tilbage på
+`_owner_of_run(run_id)` når `scheduled_for_user_id` er tom (beslutning 2's
+nabo-fund); (c) **bruger-isolation mangler** — CRUD-laget filtrerer kun på
+request_id, ikke på `scheduled_for_user_id`; enhver autentificeret bruger kan
+læse/godkende/eksekvere en andens request (beslutning 3); (d) **execute er
+ikke idempotent** — et dobbelttryk kan udføre samme handling to gange
+(beslutning 2); (e) **"approve + execute" genoptager ikke run'et** — der er
+intet checkpoint/suspension-token/resume; execute kalder capability'en
+separat. Ærlig run-semantik: fase 1 lover "godkend og udfør den gemte
+handling", ikke "run'et fortsætter" (beslutning 4).
 
 ## Data-flow
 
@@ -472,15 +506,22 @@ approval-requests ved 5 — planen tilføjer en limit-fix så køen kan vise fle
 ### Fase 1 — Remote read-only + Approve (kernen)
 - Navigation: tilføj `Arbejde`-sektion i segmented control med Tasks +
   Approve (UI efter ChatGPT-appens Remote-visuelle sprog — se UI-paritet).
-- Tasks: læs `/mc/runs` + `/mc/overview`, vis aktive runs A/B/C samlet
-  (+ nyligt afsluttede, se Beslutninger).
-- Approve: ApprovalCard-køen fra serverens `/mc/approvals`; ja/nej sender til
-  eksisterende approve-endpoint.
-- Server-arbejde: `approval_requested`-kind i push_dispatcher + hook ved
-  filing af capability-approval-request.
+- Tasks: læs `/mc/runs` + `/mc/overview`, vis aktive runs **A+B** samlet
+  (+ nyligt afsluttede, se Beslutninger). C (agent-arbejde) er fase 2 — det
+  bor i `agent_runs` og findes ikke i `/mc/runs`.
+- Approve: ApprovalCard-køen fra serverens `/mc/approvals`; **ét idempotent
+  `approve-and-execute`-verb** (ikke to POST-kald) der atomisk claimer
+  requesten og afviser konkurrerende execution. "Godkend altid" er taget ud
+  af fase 1 (mekanismen låner sudo-vinduet fra det forkerte system).
+- Server-arbejde (6 tasks, se plan): Boy Scout-udskillelse af
+  approval-persistens → bruger-isolation → idempotent approve-and-execute →
+  cap-fix på `/mc/runs` + `/mc/approvals` → durable outbox-push →
+  stale-policy + begge godkendelsessystemer i køen.
 - Fælles kort-komponent (status, maskine, alder) efter Codex-Remote-stil.
 - **Leverance-kriterie:** Bjørn kan lukke appen, få en notifikation om en
-  godkendelse, åbne, godkende — og run'et fortsætter.
+  godkendelse, åbne, godkende — og få den gemte handling *udført*. (Ikke
+  "run'et fortsætter" — det kræver en durable suspended-run-arkitektur, som
+  er en anden fase. Fase 1 lover ærligt: godkend og udfør gemt handling.)
 
 ### Fase 2 — Review + push for chat-approvals
 - Detaljevisning pr. run: trin-tidslinje, terminal-output/screenshots.
@@ -502,15 +543,88 @@ De fire åbne spørgsmål er besvaret og lukket:
    at falde tilbage på — uden de nyligt afsluttede kan Bjørn ikke se hvad en
    agent lavede efter det blev færdigt. Aktive øverst, "afsluttet i dag"
    under, kollapsbart.
-2. **Ingen auto-timeout på godkendelser.** Serveren har ingen
-   timeout-mekanisme, og behøver ingen: capability-approvals er asynkrone og
-   fingerprint-beskyttede (forslaget kan overleve timevis af grubleri). UI'et
-   viser kortets alder; hvis det run der bad om godkendelsen er dødt, markeres
-   kortet med run-status, men svaret behandles stadig korrekt.
-3. **B- og C-runs kan afbrydes fra mobilen** (cancel-knap med bekræftelse på
-   runs der understøtter det — agents-runs har spawn/execute/cancel i
-   mission-control). **A-runs (aktiv chat) kan ikke afbrydes fra Remote** —
-   den afbrydes i Snak, hvor den hører hjemme.
-4. **Tasks + Approve er nok til fase 1.** Review er fase 2 — ikke en
-   forudsætning for at levere "godkend fra lommen" (det er leverance-
-   kriteriet). Review tilføjes når fase 1 kører på telefonen.
+2. **Ingen auto-timeout på capability-godkendelser — men tool-intent har 15 min TTL.**
+   Capability-approvals er asynkrone og fingerprint-beskyttede (forslaget kan
+   overleve timevis af grubleri). Men tool-intent-approvals udløber efter
+   `_APPROVAL_TTL = 15 min` og svarer 409 expired. Fase 1 modellerer begge
+   eksplicit og indfører en stale-policy for gamle capability-requests (juli-
+   rækker markeret pending må ikke kunne eksekveres direkte). UI'et viser
+   kortets alder; hvis det run der bad om godkendelsen er dødt, markeres
+   kortet med run-status.
+3. **Cancel er fase 2, ikke fase 1.** Spec'ens oprindelige beslutning sagde
+   B/C kan afbrydes fra mobilen — men fase 1 har kun ét verb: godkendelse
+   (`approve-and-execute`). Cancel-knap tilføjes i fase 2, når serveren har
+   et ægte cancel-verb. A-runs afbrydes i Snak, hvor den hører hjemme.
+4. **Tasks (A+B) + Approve er nok til fase 1.** Review og C-runs er fase 2 —
+   ikke en forudsætning for at levere "godkend fra lommen" (det er leverance-
+   kriteriet). Review og agent_runs-projektion tilføjes når fase 1 kører på
+   telefonen.
+
+## Edges, tests og E2E-verifikation (2026-09-02)
+
+Fase 1 er først leveret, når både design og funktionalitet er verificeret —
+ikke kun "grønne tests", men live E2E på telefonen. Denne sektion er
+spec'ens definition af færdig, både på kanter og på lykke-stien.
+
+### Edges der skal håndteres (ikke blot "ikke crashe")
+
+Server-side (dækkes af planens Task 1–6, med tests):
+
+- **To godkendelsessystemer i samme kø.** capability (intet udløb) og
+  tool-intent (15 min TTL). Køen skal markere tool-intent-kort som
+  "udløbet" når TTL passeres, og en 409 expired skal vises som et forståeligt
+  kort — ikke som en fejl der bare sidder.
+- **Spøgelses-rækker.** Gamle capability-requests (juli, stadig pending) må
+  ikke kunne eksekveres direkte fra mobilen. Stale-policy: marker som stale,
+  karantæn owner-only. (Beslutning 12.)
+- **Dobbelt-tryk / timeout-retry / to klienter.** Ét idempotent
+  `approve-and-execute` der claimer atomisk og returnerer det tidligere
+  resultat ved retry. (Beslutning 2.)
+- **Bruger-isolation.** Bruger B må hverken se eller påvirke bruger A's
+  request. To-bruger-regressionstest. (Beslutning 3.)
+- **Autonome runs uden `scheduled_for_user_id`.** Push-modtager falder
+  tilbage på `_owner_of_run(run_id)`; ellers får B-runs ingen notifikation.
+
+App-side (dækkes af planens Task 7–12, med tests; Task 13 er selve E2E):
+
+- **Kold start + notifikations-tap.** Appen dræbt → tap på
+  `approval_requested`-notifikation → åbner direkte på det rette kort.
+  Én notification-navigation-ejer, ingen dobbelt-listener. (Beslutning 9.)
+- **Foreground vs. background tap** — begge skal åbne rette destination,
+  også for `answer_ready`.
+- **Netværk falder midt i polling.** ConnectionPill (findes) + sidst kendte
+  state; ingen korrupt tilstand, state er serverens.
+- **Empty-stater.** Ingen aktive runs, tom godkendelseskø — begge skal have
+  en bevidst tom-tilstand, ikke en blank skærm.
+- **Alder-grænsen.** "Nyligt afsluttede (24t)"-grupperingen skal rulle
+  korrekt over døgnskiftet.
+
+### Testlag
+
+- **Server:** unit-tests for bruger-isolation (to-bruger), idempotens
+  (claim-afvisning + retry returnerer tidligere resultat), stale-policy,
+  outbox-deduplikering. Repo-hooken "Enforce test coverage (core/ → tests/)"
+  skal forblive grøn.
+- **App:** Jest + RNTL for TopBar/SegmentedControl (render + mode-skift),
+  mission-control-klient (types + REST-kontrakt), ApprovalCard V2
+  (tre-graduerede valg + anledningstekst + præfiks-regel-visning),
+  notification-navigation (foreground/background/kold-start), og at
+  eksisterende ChatScreen-tests forbliver grønne.
+- **Kontrakt:** response-shape-tests mod de verificerede server-kontrakter
+  (planens "Server-kontrakter"-afsnit), så appen ikke dør når serveren
+  returnerer et felt vi ikke forventede.
+
+### E2E-verifikation (live, på telefonen — ikke kun CI)
+
+- **Leverance-kriteriet som E2E-scenarie:** luk appen → en godkendelse files
+  på serveren → notifikation lander → tap → åbn på kortet → godkend →
+  serveren udfører den gemte handling præcis én gang. Verificer at handlingen
+  faktisk skete (læs resultatet, ikke kun statuskoden).
+- **Idempotens i praksis:** tryk godkend to gange hurtigt (eller to klienter)
+  → handlingen udføres én gang.
+- **Design-verifikation:** hver skærm sammenlignes side-for-side mod de otte
+  reference-billeder (R1–R8, fulde paths i UI-paritet-sektionen) — mål mod
+  DNA (farver, afstande, hierarki, mikro-interaktioner), ikke pixel-kopi.
+  Bjørn bekræfter visuelt før skærmen erklæres færdig.
+- **Push-race:** godkendelse files mens appen er i foreground (polling) OG
+  mens den er dræbt (push) — begge skal vise kortet uden duplikat-notifikation.

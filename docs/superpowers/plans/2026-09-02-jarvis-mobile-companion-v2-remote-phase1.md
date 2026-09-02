@@ -177,6 +177,11 @@ juli) må ikke fremstå som aktive.
 
 ## UI-base — nye tokens (1:1 med ChatGPT dark, målt R1–R8)
 
+De otte reference-billeders **fulde paths** står i spec'ens UI-paritet-sektion
+("Reference-filer"). Brug dem til side-for-side-design-verifikation i Task 13.
+Spec'ens sektion "Edges, tests og E2E-verifikation" definerer færdig-kriteriet
+— læs den før Task 13.
+
 Erstatter V1's Jarvis-desk-grønne tokens (`bg0 #0d1117`, `accent #6ee7a8`) med
 ChatGPT-appens visuelle sprog. **Hele appen skifter visuelt** — dette er en
 bevidst, stor ændring (Bjørns 1:1-krav), ikke en kosmetisk touch-up:

@@ -3,6 +3,8 @@ import { ActivityIndicator, AppState, StatusBar, StyleSheet, View } from 'react-
 import * as Application from 'expo-application'
 import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context'
 import { ChatScreen } from './screens/ChatScreen'
+import { WorkScreen } from './screens/WorkScreen'
+import { TopBar, type AppMode } from './components/TopBar'
 import { LoginScreen } from './screens/LoginScreen'
 import { registerForPush, attachForegroundHandler } from './lib/push'
 import { startPresenceReporting } from './lib/presence'
@@ -21,6 +23,11 @@ function AppBody() {
   const [updBusy, setUpdBusy] = useState(false)
   const [updProgress, setUpdProgress] = useState(0)
   const [updDismissed, setUpdDismissed] = useState(false)
+  // Arbejde-rummet (V2). Tilstanden bor her — ikke i en navigation-lib;
+  // to bevidste tilstande af samme forhold til Jarvis, ikke to apps.
+  const [mode, setMode] = useState<AppMode>('snak')
+  const [syncSignal, setSyncSignal] = useState(0)
+  const [pendingWork, setPendingWork] = useState(0)
 
   // FCM: registrér device-token efter login + lyt på data-only i forgrunden.
   // Uden for tidlig return (hooks må ikke være betingede); guardet på authToken.
@@ -82,9 +89,25 @@ function AppBody() {
             onDismiss={() => setUpdDismissed(true)}
           />
         ) : null}
-        <ErrorBoundary label="chat">
-          <ChatScreen />
-        </ErrorBoundary>
+        <TopBar
+          mode={mode}
+          onModeChange={setMode}
+          onMenu={() => setMode('snak')}
+          onSync={() => setSyncSignal((n) => n + 1)}
+          pendingWork={pendingWork > 0}
+        />
+        {/* Begge skærme holdes monteret: Snak må ikke miste stream-tilstand
+            fordi Bjørn kigger på Arbejde. Skjult frem for unmountet. */}
+        <View style={mode === 'snak' ? styles.visible : styles.hidden}>
+          <ErrorBoundary label="chat">
+            <ChatScreen />
+          </ErrorBoundary>
+        </View>
+        <View style={mode === 'arbejde' ? styles.visible : styles.hidden}>
+          <ErrorBoundary label="arbejde">
+            <WorkScreen syncSignal={syncSignal} onPendingCount={setPendingWork} />
+          </ErrorBoundary>
+        </View>
       </StreamProvider>
     </SessionProvider>
   )
@@ -114,5 +137,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  visible: {
+    flex: 1
+  },
+  hidden: {
+    display: 'none'
   }
 })

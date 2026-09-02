@@ -710,3 +710,79 @@ def test_quiet_initiative_trace_shows_in_conflict_trace() -> None:
     )
     assert trace2.input_snapshot["quiet_hold_active"] is True
     assert trace2.input_snapshot["quiet_hold_count"] >= 1
+
+
+# ── «Fortsæt internt» må ikke betyde «gør ingenting» (2026-09-02) ───────────
+#
+# Målt over 30 dage af Jarvis' egne heartbeat-ticks: 26 gange besluttede han
+# execute + en kognitiv handling (write_chronicle_entry 16, analyze_cross_signals
+# 8, autonomous_daily_note 2). ALLE blev gemt som noop med action_type tom,
+# action_status="recorded" og execution_status="success" — ingen blokeringsgrund,
+# intet spor. Derfor lignede kronikken et system han «aldrig valgte».
+
+class TestContinueInternalBevarerValget:
+    def _trace(self, outcome: str):
+        from core.services.conflict_resolution import ConflictTrace
+        felter = {f: "" for f in ConflictTrace.__dataclass_fields__}
+        felter.update({"outcome": outcome, "reason_code": "test-kode",
+                       "summary": "resolverens egen opsummering"})
+        for navn, felt in ConflictTrace.__dataclass_fields__.items():
+            if felt.type in ("float", float) or "score" in navn or "pressure" in navn:
+                felter[navn] = 0.0
+        try:
+            return ConflictTrace(**felter)
+        except TypeError:
+            return ConflictTrace(outcome=outcome, reason_code="test-kode",
+                                 summary="resolverens egen opsummering")
+
+    def _beslutning(self, **kw):
+        d = {"decision_type": "execute", "summary": "Skriv dagens kronik.",
+             "reason": "der er sket noget der bør huskes",
+             "proposed_action": "", "ping_text": "",
+             "execute_action": "write_chronicle_entry"}
+        d.update(kw)
+        return d
+
+    def test_hans_valgte_handling_overlever(self) -> None:
+        from core.services.conflict_resolution import apply_conflict_resolution
+        ud = apply_conflict_resolution(
+            decision=self._beslutning(), trace=self._trace("continue_internal"))
+        assert ud["decision_type"] == "execute"
+        assert ud["execute_action"] == "write_chronicle_entry"
+
+    def test_hans_egen_opsummering_bevares(self) -> None:
+        """Det gemte spor skal beskrive det der faktisk sker."""
+        from core.services.conflict_resolution import apply_conflict_resolution
+        ud = apply_conflict_resolution(
+            decision=self._beslutning(), trace=self._trace("continue_internal"))
+        assert ud["summary"] == "Skriv dagens kronik."
+
+    def test_konflikten_kan_stadig_ses_i_begrundelsen(self) -> None:
+        from core.services.conflict_resolution import apply_conflict_resolution
+        ud = apply_conflict_resolution(
+            decision=self._beslutning(), trace=self._trace("continue_internal"))
+        assert ud["reason"].startswith("conflict-internal-kept:")
+        assert "test-kode" in ud["reason"]
+
+    def test_uden_valgt_handling_er_det_stadig_noop(self) -> None:
+        from core.services.conflict_resolution import apply_conflict_resolution
+        ud = apply_conflict_resolution(
+            decision=self._beslutning(execute_action=""),
+            trace=self._trace("continue_internal"))
+        assert ud["decision_type"] == "noop"
+        assert ud["reason"].startswith("conflict-internal:")
+
+    def test_ikke_execute_forbliver_noop(self) -> None:
+        """Kun en beslutning der VAR execute må slippe igennem."""
+        from core.services.conflict_resolution import apply_conflict_resolution
+        ud = apply_conflict_resolution(
+            decision=self._beslutning(decision_type="propose"),
+            trace=self._trace("continue_internal"))
+        assert ud["decision_type"] == "noop"
+
+    def test_de_oevrige_stille_udfald_er_uroerte(self) -> None:
+        from core.services.conflict_resolution import apply_conflict_resolution
+        for udfald in ("stay_quiet", "defer", "quiet_hold"):
+            ud = apply_conflict_resolution(
+                decision=self._beslutning(), trace=self._trace(udfald))
+            assert ud["decision_type"] == "noop", udfald

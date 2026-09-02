@@ -531,6 +531,31 @@ def apply_conflict_resolution(
         }
 
     if trace.outcome == "continue_internal":
+        # Udfaldet betyder «fortsæt internt» — og en handling Jarvis SELV har
+        # valgt er internt arbejde. Indtil 2026-09-02 blev hans valg nulstillet
+        # til noop her, tavst: målt over 30 dage besluttede han 26 gange at
+        # udføre en kognitiv handling (write_chronicle_entry 16,
+        # analyze_cross_signals 8, autonomous_daily_note 2) og ALLE endte som
+        # noop med action_status="recorded" og execution_status="success".
+        # Ingen blokeringsgrund, intet spor — derfor så kronikken ud til at
+        # have 1 række fordi han «aldrig valgte» den. Han valgte den hver måned.
+        #
+        # Allowlisten tjekkes nedstrøms (heartbeat_runtime, ~4024), så en
+        # uunderstøttet handling bliver blokeret SYNLIGT med grund frem for at
+        # forsvinde her.
+        chosen = str(decision.get("execute_action") or "").strip()
+        if str(decision.get("decision_type") or "") == "execute" and chosen:
+            return {
+                **decision,
+                "decision_type": "execute",
+                "execute_action": chosen,
+                "reason": (
+                    f"conflict-internal-kept: {trace.reason_code} — "
+                    f"{decision.get('reason', '')}"
+                ),
+                # Hans egen opsummering beskriver det der faktisk sker.
+                "summary": str(decision.get("summary") or "") or trace.summary,
+            }
         return {
             **decision,
             "decision_type": "noop",

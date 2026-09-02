@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
-import { ArrowUp, AudioLines, Mic, Plus, Square } from 'lucide-react-native'
+import { ArrowUp, AudioLines, ChevronDown, Cpu, Mic, Plus, Square } from 'lucide-react-native'
+import { shortModelLabel } from '../lib/modelLabel'
 import { tokens } from '../theme/tokens'
 
 /**
@@ -27,7 +28,10 @@ export function Composer({
   onAttach,
   onMic,
   attachment,
-  onRemoveAttachment
+  onRemoveAttachment,
+  onFocusChange,
+  showJumpToBottom,
+  onJumpToBottom
 }: {
   disabled?: boolean
   working?: boolean
@@ -39,6 +43,11 @@ export function Composer({
   onMic?: () => void
   attachment?: { uri: string; name: string } | null
   onRemoveAttachment?: () => void
+  /** Løftes ud, så skærmen kan vide om komponisten er i brug. */
+  onFocusChange?: (focused: boolean) => void
+  /** Rul-til-bunden flytter IND i komponisten mens man skriver. */
+  showJumpToBottom?: boolean
+  onJumpToBottom?: () => void
 }) {
   const [text, setText] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -56,6 +65,13 @@ export function Composer({
   useEffect(() => {
     if (wantFocus) inputRef.current?.focus()
   }, [wantFocus])
+
+  // Skærmen skal vide om komponisten er i brug: rul-til-bunden sidder OVER
+  // komponisten når den hviler, og INDE I den mens man skriver — ellers ville
+  // knappen ligge oven på det man er ved at skrive.
+  useEffect(() => {
+    onFocusChange?.(!resting)
+  }, [resting, onFocusChange])
 
   const submit = async () => {
     const value = text.trim()
@@ -150,13 +166,31 @@ export function Composer({
               <Plus size={22} color={tokens.color.fg1} strokeWidth={2} />
             </Pressable>
             {modelLabel ? (
-              <Pressable accessibilityRole="button" onPress={onPressModel} style={styles.modelPill}>
-                <Text style={styles.modelText} numberOfLines={1}>{modelLabel}</Text>
-                <Text style={styles.modelChev}>▾</Text>
+              <Pressable
+                testID="composer-model"
+                accessibilityRole="button"
+                accessibilityLabel={`Model: ${modelLabel}`}
+                onPress={onPressModel}
+                style={styles.modelPill}
+              >
+                <Cpu size={15} color={tokens.color.fg2} strokeWidth={2} />
+                <Text style={styles.modelText} numberOfLines={1}>{shortModelLabel(modelLabel)}</Text>
               </Pressable>
             ) : null}
           </View>
           <View style={styles.right}>
+            {showJumpToBottom ? (
+              <Pressable
+                testID="composer-jump"
+                accessibilityRole="button"
+                accessibilityLabel="Rul til nyeste"
+                onPress={onJumpToBottom}
+                hitSlop={6}
+                style={styles.iconBtn}
+              >
+                <ChevronDown size={20} color={tokens.color.fg1} strokeWidth={2.2} />
+              </Pressable>
+            ) : null}
             <Pressable accessibilityRole="button" accessibilityLabel="Diktér" onPress={onMic} hitSlop={6} style={styles.iconBtn}>
               <Mic size={21} color={tokens.color.fg1} strokeWidth={1.8} />
             </Pressable>
@@ -272,18 +306,19 @@ const styles = StyleSheet.create({
   },
   iconPlus: { color: tokens.color.fg1, fontSize: 20, lineHeight: 22, fontWeight: '600' },
   mic: { fontSize: 15 },
+  // Chippen bar før hele strengen «deepseek · deepseek-v4-flash» og åd over
+  // halvdelen af rækken. Nu: et lille ikon + modellens egen del af navnet.
   modelPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: tokens.spacing.sm,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: tokens.color.bg2,
+    gap: 5,
+    paddingHorizontal: 10,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: tokens.color.bg3,
     flexShrink: 1
   },
-  modelText: { color: tokens.color.fg2, fontSize: 13, fontWeight: '600', flexShrink: 1 },
-  modelChev: { color: tokens.color.fg3, fontSize: 11 },
+  modelText: { color: tokens.color.fg2, fontSize: 12, fontWeight: '600', flexShrink: 1 },
   sendBtn: {
     width: 40,
     height: 40,

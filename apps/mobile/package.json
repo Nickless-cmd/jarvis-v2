@@ -1,6 +1,6 @@
 {
   "name": "jarvis-mobile",
-  "version": "0.1.77",
+  "version": "0.1.81",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -23,6 +23,7 @@
     "expo-image-picker": "~56.0.18",
     "expo-intent-launcher": "~56.0.4",
     "expo-location": "~56.0.18",
+    "expo-media-library": "~56.0.11",
     "expo-secure-store": "^56.0.4",
     "expo-speech": "~56.0.3",
     "lucide-react-native": "^1.39.0",

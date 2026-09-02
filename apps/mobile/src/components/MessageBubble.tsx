@@ -1,10 +1,11 @@
-import { Check, Copy, RotateCw, Square, Volume2 } from 'lucide-react-native'
+import { Check, Copy, MoreHorizontal, RotateCw, Share2, Square, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native'
 import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
 import * as Clipboard from 'expo-clipboard'
 import * as Speech from 'expo-speech'
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Animated, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native'
+import { CodeBlock } from './CodeBlock'
 import type { ChatMessage } from '../lib/types'
 import { tokens } from '../theme/tokens'
 
@@ -17,10 +18,13 @@ const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'mon
 export function MessageBubble({
   message,
   onResend,
+  onRegenerate,
   hideActions
 }: {
   message: ChatMessage
   onResend?: (text: string) => void
+  /** Menu-ikonet i handlingsrækken. Uden handler er det blot inaktivt. */
+  onRegenerate?: () => void
   /**
    * Skjul handlingsrækken.
    *
@@ -33,6 +37,10 @@ export function MessageBubble({
   const isUser = message.role === 'user'
   const [speaking, setSpeaking] = useState(false)
   const [copied, setCopied] = useState(false)
+  // Tommelen er indtil videre KUN lokal markering. Der er ingen feedback-kanal
+  // til serveren endnu, og en knap der lader som om den sender noget, er værre
+  // end ingen knap. Når kanalen findes, sendes den herfra.
+  const [vote, setVote] = useState<'up' | 'down' | null>(null)
   const streaming = message.id.startsWith('stream-')
 
   // Blød spring-ind ved mount (§3.3): scale 0.96→1 + opacity 0→1.
@@ -46,6 +54,26 @@ export function MessageBubble({
     await Clipboard.setStringAsync(message.content)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  // Kodeblokke tegnes af CodeBlock (afrundet flade, syntaksfarver, kopiér-knap)
+  // i stedet for markdown-bibliotekets flade <Text>. Reglerne ligger her frem
+  // for i `style`, fordi det ikke er en STIL-forskel men en anden komponent.
+  const markdownRules = {
+    fence: (node: { key: string; content: string; sourceInfo?: string }) => (
+      <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
+    ),
+    code_block: (node: { key: string; content: string; sourceInfo?: string }) => (
+      <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
+    )
+  }
+
+  const share = async () => {
+    try {
+      await Share.share({ message: message.content })
+    } catch {
+      // Brugeren lukkede dele-arket — ikke en fejl.
+    }
   }
 
   const readAloud = () => {
@@ -74,7 +102,7 @@ export function MessageBubble({
       {isUser ? (
         <Text style={styles.userText}>{message.content}</Text>
       ) : (
-        <Markdown markdownit={markdownItInstance} style={markdownStyles}>
+        <Markdown markdownit={markdownItInstance} style={markdownStyles} rules={markdownRules}>
           {message.content}
         </Markdown>
       )}
@@ -93,12 +121,40 @@ export function MessageBubble({
               <Copy size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
             )}
           </Pressable>
+          <Pressable
+            accessibilityLabel="God besvarelse"
+            hitSlop={10}
+            onPress={() => setVote((v) => (v === 'up' ? null : 'up'))}
+          >
+            <ThumbsUp
+              size={ICON}
+              color={vote === 'up' ? tokens.color.accent : tokens.color.fg2}
+              strokeWidth={1.8}
+            />
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Dårlig besvarelse"
+            hitSlop={10}
+            onPress={() => setVote((v) => (v === 'down' ? null : 'down'))}
+          >
+            <ThumbsDown
+              size={ICON}
+              color={vote === 'down' ? tokens.color.error : tokens.color.fg2}
+              strokeWidth={1.8}
+            />
+          </Pressable>
           <Pressable accessibilityLabel="Læs op" hitSlop={10} onPress={readAloud}>
             {speaking ? (
               <Square size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
             ) : (
               <Volume2 size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
             )}
+          </Pressable>
+          <Pressable accessibilityLabel="Del" hitSlop={10} onPress={share}>
+            <Share2 size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
+          </Pressable>
+          <Pressable accessibilityLabel="Send igen" hitSlop={10} onPress={() => onRegenerate?.()}>
+            <MoreHorizontal size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
           </Pressable>
         </View>
       ) : null}

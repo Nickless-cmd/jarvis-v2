@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Animated, AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import notifee, { EventType } from '@notifee/react-native'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
@@ -104,6 +104,14 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     const up = fromBottom > 260
     setScrolledUp((prev) => (prev === up ? prev : up))
   }
+  // Rul-til-bunden har to pladser: SVÆVENDE over komponisten når den hviler,
+  // og INDE I komponistens knapperække mens man skriver. Ellers ville den
+  // flydende knap lægge sig oven på den tekst man er i gang med.
+  const [composerFocused, setComposerFocused] = useState(false)
+  const jumpToBottom = useCallback(() => {
+    listRef.current?.jumpBottom()
+    setScrolledUp(false)
+  }, [])
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [attachMenuOpen, setAttachMenuOpen] = useState(false)
@@ -367,12 +375,9 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         </Animated.View>
         {!showGreeting ? (
           <ScrollToBottom
-            visible={scrolledUp && sessions.messages.length >= 2}
+            visible={scrolledUp && !composerFocused && sessions.messages.length >= 2}
             bottom={liftPadding + 84}
-            onPress={() => {
-              listRef.current?.jumpBottom()
-              setScrolledUp(false)
-            }}
+            onPress={jumpToBottom}
           />
         ) : null}
         {canRetry ? (
@@ -450,6 +455,9 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           onMic={voice.enter}
           attachment={pendingAttachment ? { uri: pendingAttachment.uri, name: pendingAttachment.name } : null}
           onRemoveAttachment={() => setPendingAttachment(null)}
+          onFocusChange={setComposerFocused}
+          showJumpToBottom={scrolledUp && composerFocused}
+          onJumpToBottom={jumpToBottom}
         />
         </View>
       </View>
@@ -502,6 +510,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           setCameraOpen(true)
         }}
         onGallery={() => void handlePickGallery()}
+        onPick={(photo) => {
+          setAttachMenuOpen(false)
+          void stageAttachment(photo)
+        }}
         onClose={() => setAttachMenuOpen(false)}
       />
 

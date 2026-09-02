@@ -38,6 +38,96 @@ Arbejde-rummet kigger bare på det arbejde der allerede findes.
 5. **Godkendelse er ikke en chat-besked.** Når noget kræver Bjørn, skal det
    ligge i en kø der overlever app-lukning og bliver til en notifikation.
 
+## Research — hvad OpenAI faktisk gør (2026-09-02)
+
+Før fase 1-skitsen: hvad OpenAI's egne engineering-posts og docs beskriver
+om Codex' arkitektur. Kilder: "Unlocking the Codex harness" (OpenAI eng.,
+2026-02-04), Codex Remote docs (learn.chatgpt.com/docs/remote), SWE Quiz'
+gennemgang af agent-loop-posts. Ingen gæt — kun det de selv dokumenterer.
+
+### Arkitektur: én harness, mange overflader
+
+Alle Codex-overflader (CLI, web, VS Code, macOS-app) kører samme "Codex
+harness" (Rust-biblioteket Codex core: agent loop, thread-lifecycle, config,
+auth, sandboxet tool-eksekvering). Mellemleddet er **Codex App Server**: en
+langlivet proces der hoster core-threads og eksponerer dem via et
+**bidirektionalt JSON-RPC-protokol** (JSONL over stdio). Processen har fire
+komponenter: stdio-reader (transport), message-processor (oversætter klient-
+JSON-RPC → core-operationer og core's low-level events → stabile UI-ready
+notifikationer), thread-manager (én core-session pr. thread), og core-threads.
+
+Vigtig indsigt: de valgte JSON-RPC frem for MCP, fordi MCP ikke kunne
+repræsentere rig session-state (diffs, streaming-progress). Protokollen er
+designet bagudkompatibel, så klient og server kan opdateres uafhængigt.
+
+### Tre konversations-primitiver: Item, Turn, Thread
+
+1. **Item** — den atomiske I/O-enhed. Typet (user message, agent message,
+   tool execution, approval request, diff) med eksplicit livscyklus:
+   `item/started` → valgfri `item/*/delta` (streaming) → `item/completed`
+   med terminal payload. Klienten kan begynde at rendere på `started`,
+   streame på `delta`, finalisere på `completed`.
+2. **Turn** — én enhed agent-arbejde: starter når klienten sender input,
+   slutter når agenten er færdig med outputs. En turn = en sekvens af items.
+3. **Thread** — den durable container for en session: flere turns, kan
+   oprettes/fortsættes/forgrenaes/arkiveres, event-history persisteres så
+   klienter kan reconnecte og rendere en konsistent timeline.
+
+Serveren kan **pause en turn midt-eksekvering** ved at sende en
+approval-request til klienten — agenten venter på allow/deny før den
+fortsætter. (Dét er modellen for interruptible agenter.)
+
+### Robusthed: state bor på serveren, aldrig i klienten
+
+OpenAI's egen begrundelse for web-varianten: browser-tabs er flygtige
+(tabs lukkes, netværk falder), så web-appen kan ikke være source of truth for
+langtidige opgaver. Løsningen: en worker provisionerer en container med
+workspace, kører App Server i containeren, browseren taler HTTP+SSE til
+backend. "Work continues even if the tab disappears"; en ny session kan
+reconnecte, fortsætte og catch up "without rebuilding state in the client."
+Samme mønster planlægges for TUI: connecte til en remote server, agenten
+holder sig tæt på compute, arbejdet fortsætter selv hvis laptoppen sover.
+
+**Det er svaret på "hvordan sørger de for at et run aldrig dør":** ikke ved
+streaming-magi, men ved at eksekvering og state er på et stabilt plan og
+klienten kun er et øje/et sæt hænder der kan tabe forbindelsen uden konsekvens.
+
+### Streaming-format
+
+Én klient-anmodning → mange event-notifikationer. Web-laget: HTTP + SSE
+(typed response events). App-laget: JSON-RPC-notifikationer. Livscyklus-
+markørerne (started/delta/completed) gør delvis rendering, fejl-genopretning
+og audit-logging nemme. Før arbejdet: et `initialize`-handshake hvor klient
+og server aftaler protokol-version, capabilities og feature-flags.
+
+### Approval-mønstre (bekræfter R7 + R8)
+
+To lag, begge dokumenteret i OpenAI's Remote-docs:
+- **Tilladelses-spektrum pr. forbindelse** (R7): sandbox → auto-review →
+  read-only → fuld adgang. Kun dét der krydser niveauet bliver en approval.
+- **Transaktions-approval** (R8) i docs' ordlyd: "Permission requested — Do
+  you want to allow Codex to run this command? `pnpm test -- StatusBadge`" med
+  knapperne **Approve / Always approve / Tell Codex what to do / Deny** —
+  præcis det tre-graduerede mønster vi målte, inkl. "Always approve" der
+  gemmer en præfiks-regel, og et fjerde verb "Tell Codex what to do"
+  (svar med instruks i stedet for ja/nej).
+
+### Remote-fladens struktur (nuancerer R5)
+
+OpenAI's egen docs-mockup viser Remote-skærmen med **tabs øverst:
+`Tasks | Approve | Review | New task`**, og over dem et maskine-filter
+("All / MacBook / Studio / Devbox") og en opgaveliste med Pinned/Today-
+gruppering. R5-screenshot'et (maskine + projekter + seneste) er altså
+**Tasks-tabben i opgavevisning**, ikke hele fladen. Review viser "Changes:
+2 files changed +38 −12" med fil-liste og linje-diffs; New task er en guide
+(maskine → projekt → branch → "Work on {machine}").
+
+Konsekvens: vores tidligere "Remote er IKKE en tab-liste" (R5) var forhastet —
+konkluderet fra ét screenshot uden docs. Det korrekte billede: **Tasks/
+Approve/Review som tabs på Remote-niveau, med opgavedetalje (R6) som
+dykke-niveau hvor godkendelser/diffs er inline.** Fase 1-skitsen tegnes efter
+dette.
+
 ## De tre rum i appen
 
 Navigation følger ChatGPT-appens faktiske mønster (målt fra Bjørns
@@ -159,11 +249,12 @@ Selve Codex-Remote-fladen i ChatGPT-appen — det vi bygger som Arbejde-tab:
   `~#222222`) + to cirkulære gradient-knapper: voice (lydbølge) og
   compose (blyant/papir).
 
-Konsekvens for vores Arbejde-tab: Remote er IKKE en tab-liste med tre
-under-faner (Tasks/Approve/Review) — det er en **to-sektions forside**
-(Forbundet maskine + Projekter + Seneste) hvorfra man dykker ned i en valgt
-opgave/tråd. Vores Tasks/Approve/Review bliver tilstande i detaljevisningen,
-ikke top-tabs. (Justeres i fase 1-skitse før implementering.)
+Konsekvens for vores Arbejde-tab: dette er **Tasks-tabben i opgavevisning**
+(maskine + projekter + seneste opgaver). OpenAI's egne docs viser Remote-
+fladen med tabs ovenpå — Tasks | Approve | Review | New task — se
+Research-sektionen. Vores tre sektioner (Tasks/Approve/Review) er altså
+forenelige med det faktiske mønster; R5 dokumenterer hvordan Tasks-listen
+ser ud.
 
 ### Reference #6 — Opgave-tråd (detaljevisning, målt 2026-09-02) ★ niveau 2
 
@@ -189,10 +280,11 @@ agent-konversation ser ud på Remote-niveau:
 - **Ingen tabs, ingen sektioner** — ren tråd. Godkendelser og diffs må
   således dukke op *inde i* dette flow (inline-kort), ikke som faner ovenpå.
 
-Konsekvens: vores Tasks/Approve/Review-koncept bør redes til **Remote-hjem →
-opgave-tråd** med inline godkendelses-/diff-kort i tråden — ikke tre faner på
-toppen af Arbejde-tabet. (Justeres i fase 1-skitse før implementering; se
-åbent punkt nederst.)
+Konsekvens: R6 er **dykke-niveauet** — det man lander i efter at trykke på
+en opgave fra Tasks-listen. Her er der ingen tabs; godkendelser og diffs
+dukker op **inline i tråden** som kort (R8). Tabs (Tasks/Approve/Review)
+hører til på Remote-niveauet ovenover; dykke-niveauet er en ren tråd med
+kontekst-pille + steer-komponist. (Fase 1-skitse tegnes efter dette.)
 
 ### Reference #7 — Adgangsniveau-modal (målt 2026-09-02)
 

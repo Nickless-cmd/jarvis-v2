@@ -4,7 +4,6 @@ import MarkdownIt from 'markdown-it'
 import * as Clipboard from 'expo-clipboard'
 import * as Speech from 'expo-speech'
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
-import { formatRelativeTime } from '../lib/relativeDate'
 import type { ChatMessage } from '../lib/types'
 import { tokens } from '../theme/tokens'
 
@@ -70,64 +69,86 @@ export function MessageBubble({
         </Markdown>
       )}
 
-      {/* Tidsstempel + handlinger — skjult under live-streaming (intet at kopiere endnu). */}
-      {!streaming ? (
-        <View style={styles.meta}>
-          <Text style={styles.time}>{formatRelativeTime(message.created_at, new Date())}</Text>
-          <View style={styles.actions}>
-            <Pressable accessibilityLabel="Kopiér" hitSlop={8} onPress={copy}>
-              <Text style={styles.action}>{copied ? '✓ kopieret' : 'Kopiér'}</Text>
-            </Pressable>
-            {!isUser ? (
-              <Pressable accessibilityLabel="Læs op" hitSlop={8} onPress={readAloud}>
-                <Text style={styles.action}>{speaking ? '■ stop' : '🔊 Læs op'}</Text>
-              </Pressable>
-            ) : null}
-            {isUser && onResend ? (
-              <Pressable accessibilityLabel="Send igen" hitSlop={8} onPress={() => onResend(message.content)}>
-                <Text style={styles.action}>↻ Send igen</Text>
-              </Pressable>
-            ) : null}
-          </View>
+      {/* Handlingsrække — KUN ikoner, og kun under assistentens svar.
+          Målt i ChatGPT-appen: en vandret række lysegrå omrids-ikoner
+          (kopiér, tommel op/ned, oplæsning, del, menu) uden tidsstempel.
+          Tidsstemplet er fjernet bevidst: i referencen står der ingenting
+          dér, og hver linje man IKKE skriver, er en linje mindre støj. */}
+      {!streaming && !isUser ? (
+        <View style={styles.actions}>
+          <Pressable accessibilityLabel="Kopiér" hitSlop={10} onPress={copy}>
+            <Text style={styles.icon}>{copied ? '✓' : '⧉'}</Text>
+          </Pressable>
+          <Pressable accessibilityLabel="Læs op" hitSlop={10} onPress={readAloud}>
+            <Text style={styles.icon}>{speaking ? '■' : '◁'}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {!streaming && isUser && onResend ? (
+        <View style={styles.userActions}>
+          <Pressable
+            accessibilityLabel="Send igen"
+            hitSlop={10}
+            onPress={() => onResend(message.content)}
+          >
+            <Text style={styles.icon}>↻</Text>
+          </Pressable>
         </View>
       ) : null}
     </Animated.View>
   )
 }
 
+/**
+ * Boble-geometrien er målt i ChatGPT-appen på enheden 2026-09-02.
+ *
+ * Den vigtigste enkeltdetalje: ASSISTENTEN HAR INGEN BOBLE. Svaret står som
+ * ren tekst på den sorte flade, venstrejusteret, med luft omkring. Kun
+ * brugerens besked får en boble — lilla (#382462), højrejusteret, fuldt
+ * afrundet, og aldrig bredere end ~80 % af skærmen.
+ *
+ * Det er dét der giver ChatGPT-tråden sin ro: én talende part fylder fladen,
+ * den anden markerer sig kort. To bobler over for hinanden ville støje.
+ */
 const styles = StyleSheet.create({
   root: {
-    marginHorizontal: tokens.spacing.md,
-    marginVertical: tokens.spacing.xs,
-    paddingHorizontal: tokens.spacing.md,
-    paddingVertical: tokens.spacing.sm,
-    borderRadius: tokens.radius.md
+    marginHorizontal: tokens.spacing.lg,
+    marginVertical: tokens.spacing.sm,
+    paddingHorizontal: 0,
+    paddingVertical: 0
   },
-  assistant: { marginRight: 40, backgroundColor: tokens.color.depth2 },
+  assistant: {
+    // Ingen flade, ingen ramme, ingen radius — kun tekst.
+    marginRight: 0,
+    backgroundColor: 'transparent'
+  },
   user: {
-    marginLeft: 40,
-    backgroundColor: tokens.color.glassFill,
-    borderWidth: 1,
-    borderColor: tokens.color.glassLine,
-    borderRadius: tokens.radius.lg
+    alignSelf: 'flex-end',
+    maxWidth: '82%',
+    backgroundColor: tokens.color.userBubble,
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.md,
+    borderRadius: 26
   },
-  userText: { color: tokens.color.fg1, fontSize: 16, lineHeight: 23 },
-  meta: {
+  userText: { color: tokens.color.fg1, fontSize: 16.5, lineHeight: 24 },
+  actions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: tokens.spacing.xs,
-    gap: tokens.spacing.sm
+    gap: tokens.spacing.xl,
+    marginTop: tokens.spacing.md
   },
-  time: { color: tokens.color.fg3, fontSize: 11 },
-  actions: { flexDirection: 'row', gap: tokens.spacing.md },
-  action: { color: tokens.color.fg2, fontSize: 12, fontWeight: '600' }
+  userActions: {
+    flexDirection: 'row',
+    alignSelf: 'flex-end',
+    gap: tokens.spacing.lg,
+    marginTop: tokens.spacing.xs
+  },
+  icon: { color: tokens.color.fg2, fontSize: 18 }
 })
 
 // Fuld mørk-tema markdown-styling. Uden dette defaulter kode-blokke til lys
 // baggrund (= hvid boks med næsten-hvid tekst) og afsnit klistrer sammen.
 const markdownStyles = StyleSheet.create({
-  body: { color: tokens.color.fg1, fontSize: 16, lineHeight: 23 },
+  body: { color: tokens.color.fg1, fontSize: 16.5, lineHeight: 26 },
   paragraph: { marginTop: 0, marginBottom: tokens.spacing.sm },
   text: { color: tokens.color.fg1 },
   strong: { color: tokens.color.fg1, fontWeight: '700' },

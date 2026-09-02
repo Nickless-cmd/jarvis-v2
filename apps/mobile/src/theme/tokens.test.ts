@@ -10,15 +10,15 @@ describe('design-sprog tokens (ChatGPT-paritet, målt 2026-09-02)', () => {
     // Speccen sagde det modsatte. Målingen på R2 vandt: beholder #414141,
     // aktiv pille #222222. Testen findes for at fange en tilbagerulning.
     expect(tokens.color.segmentTrack).toBe('#414141')
-    expect(tokens.color.segmentActive).toBe('#222222')
+    expect(tokens.color.segmentActive).toBe('#212121')
     const lum = (hex: string) => parseInt(hex.slice(1, 3), 16)
     expect(lum(tokens.color.segmentActive)).toBeLessThan(lum(tokens.color.segmentTrack))
   })
 
   it('accenten er lilla — ikke V1s grønne', () => {
-    expect(tokens.color.accent).toBe('#9D84DB')
+    expect(tokens.color.accent).toBe('#A07FEB')
     expect(tokens.color.accent).not.toBe('#6ee7a8')
-    expect(tokens.color.accentDim).toContain('157, 132, 219')
+    expect(tokens.color.accentDim).toContain('160, 127, 235')
   })
 
   it('status-grøn lever videre som sin egen farve', () => {

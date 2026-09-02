@@ -123,23 +123,19 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spacing.sm,
     paddingBottom: tokens.spacing.md
   },
+  // Komponisten er MÅLT i ChatGPT-appen 2026-09-02: en flad, mørkegrå pille
+  // (#212121) uden skygge og uden kant. Ingen hævet kort, ingen glød ved
+  // fokus — fladen ligger stille, og kun send-knappen bærer farve. Det er en
+  // del af hvorfor deres komponist virker rolig.
   card: {
-    backgroundColor: tokens.color.depth1,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: tokens.color.line,
-    paddingHorizontal: tokens.spacing.md,
-    paddingTop: tokens.spacing.sm,
-    paddingBottom: tokens.spacing.sm,
-    // dybde — hævet kort
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4
+    backgroundColor: tokens.color.bg2,
+    borderRadius: 28,
+    paddingHorizontal: tokens.spacing.lg,
+    paddingTop: tokens.spacing.md,
+    paddingBottom: tokens.spacing.sm
   },
-  // accent-fokus-kant (§3.7) — subtil glød når man skriver
-  cardFocused: { borderColor: tokens.color.accent },
+  // Fokus markeres ikke med en kant — feltet er allerede i forgrunden.
+  cardFocused: {},
   attachChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -193,8 +189,8 @@ const styles = StyleSheet.create({
   modelChev: { color: tokens.color.fg3, fontSize: 11 },
   sendBtn: {
     width: 38,
-    height: 38,
-    borderRadius: 19,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: tokens.color.accent

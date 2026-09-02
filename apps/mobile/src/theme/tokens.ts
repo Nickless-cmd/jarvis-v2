@@ -7,9 +7,14 @@
  *
  *   1. Det AKTIVE segment er MØRKERE (#222222) end beholderen (#414141).
  *      Speccen sagde «aktivt tab: lysere grå pille».
- *   2. Voice-knappen er ENSFARVET lilla (#9D84DB), ikke en lilla→blå gradient.
+ *   2. Voice-knappen er ENSFARVET lilla (#A07FEB), ikke en lilla→blå gradient.
  *   3. Den lilla boble er BRUGERENS besked. AI-svaret står som ren tekst uden
  *      boble. Speccen tilskrev boblen AI-hilsenen.
+ *
+ * Værdierne er efterprøvet igen 2026-09-02 i TABSFRIE png-skærmbilleder taget
+ * direkte fra ChatGPT-appen på enheden. JPEG-referencerne var komprimerede og
+ * gav #9D84DB hvor den sande accent er #A07FEB. Måler man farver, skal kilden
+ * være tabsfri — ellers måler man kompressionen.
  *
  * Nøglenavnene er bevaret fra V1, så de ~30 komponenter der bruger dem skifter
  * med. Kun værdierne er nye. Planen foreslog at omdøbe nøglerne for at fremtvinge
@@ -34,13 +39,13 @@ export const tokens = {
     // ── Accent ──────────────────────────────────────────────────────
     // Ensfarvet lilla som voice-knappen. Erstatter V1's Jarvis-grønne
     // #6ee7a8 overalt — det er selve 1:1-kravet.
-    accent: '#9D84DB',
-    userBubble: '#31215A',   // brugerens boble (målt #2E2055–#34225C)
+    accent: '#A07FEB',
+    userBubble: '#382462',   // brugerens boble
     codeBg: '#303030',
 
     // ── Segmented control (målt — bemærk retningen) ─────────────────
     segmentTrack: '#414141',
-    segmentActive: '#222222',
+    segmentActive: '#212121',
 
     // ── Status ──────────────────────────────────────────────────────
     ok: '#4CAF50',       // online-prik / kørende
@@ -52,8 +57,8 @@ export const tokens = {
     depth1: '#121212',
     depth2: '#1D1D1D',
     depth3: '#212121',
-    accentDim: 'rgba(157, 132, 219, 0.55)',
-    accentGhost: 'rgba(157, 132, 219, 0.12)',
+    accentDim: 'rgba(160, 127, 235, 0.55)',
+    accentGhost: 'rgba(160, 127, 235, 0.12)',
     glassFill: 'rgba(255, 255, 255, 0.07)',
     glassLine: 'rgba(255, 255, 255, 0.10)'
   },

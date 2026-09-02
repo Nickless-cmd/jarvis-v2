@@ -1,11 +1,13 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { FlatList, StyleSheet } from 'react-native'
+import { FlatList, StyleSheet, View } from 'react-native'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { denseBlocks } from '../lib/blockHelpers'
 import type { ChatMessage } from '../lib/types'
 import { tokens } from '../theme/tokens'
 import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
+import { InlineToolLine } from './InlineToolLine'
+import { ThinkingLabel } from './ThinkingLabel'
 import { ToolResultCard } from './ToolResultCard'
 
 export interface MessageListHandle {
@@ -19,6 +21,8 @@ export interface MessageListHandle {
 interface MessageListProps {
   messages: ChatMessage[]
   blocks: ContentBlock[]
+  /** Vis «Tænker» nederst i tråden mens Jarvis arbejder (ChatGPT-mønsteret). */
+  thinking?: boolean
   onResend?: (text: string) => void
   /** Kaldes ved scroll-aktivitet (bruges til at vise Save Rail mens man scroller). */
   onScrollActivity?: () => void
@@ -88,7 +92,7 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollActivity },
+  { messages, blocks, onResend, onScrollActivity, thinking },
   ref
 ) {
   const flatRef = useRef<FlatList>(null)
@@ -131,6 +135,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     <FlatList
       ref={flatRef}
       inverted
+      // Inverteret liste: ListHeaderComponent tegnes NEDERST på skærmen —
+      // altså lige efter den nyeste besked, præcis hvor ChatGPT viser
+      // «Thinking». Det er derfor labelen ligger her og ikke over komponisten.
+      ListHeaderComponent={thinking ? <ThinkingLabelRow /> : null}
       data={ordered}
       keyExtractor={(item) => item.key}
       onContentSizeChange={(_w, h) => { contentLenRef.current = h }}
@@ -141,9 +149,18 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         flatRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true })
       }}
       renderItem={({ item }) => {
-        if (item.kind === 'tool') return <ToolResultCard content={item.content} />
+        // Værktøjsarbejde er ÉN linje inde i samtalen — ikke et kort.
+        // Målt i Codex-tråden: «</> Ændrede 16 filer ›». Det fulde output
+        // ligger bag linjen, ikke foran den.
+        if (item.kind === 'tool')
+          return <InlineToolLine summary={toolSummary(item.content)} />
         if (item.kind === 'live-tool')
-          return <ToolResultCard toolName={item.name} body={item.body} running={item.running} />
+          return (
+            <InlineToolLine
+              summary={liveToolSummary(item.name, item.running)}
+              running={item.running}
+            />
+          )
         return (
           <MessageBubble
             message={item.message}
@@ -157,7 +174,27 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   )
 })
 
+/** Én linje der beskriver hvad der blev gjort, i datid. */
+export function toolSummary(content: string): string {
+  const m = /\[([a-z_]+)\]/i.exec(content || '')
+  const name = m?.[1] ?? 'værktøj'
+  return `Kørte ${name}`
+}
+
+function liveToolSummary(name: string, running: boolean): string {
+  return running ? `Kører ${name}…` : `Kørte ${name}`
+}
+
+function ThinkingLabelRow() {
+  return (
+    <View style={styles.thinkingRow}>
+      <ThinkingLabel />
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
+  thinkingRow: { paddingHorizontal: tokens.spacing.lg },
   content: {
     paddingVertical: tokens.spacing.sm
   }

@@ -175,20 +175,20 @@ export function SidePanel({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, flexDirection: 'row' },
-  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  // Målt i ChatGPT-appen (R4 + live 2026-09-02): panelet er SORT som resten af
+  // appen, ikke en lysere flade, og der er hverken kant mod chatten eller
+  // streg under overskriften. Dybden kommer alene af at chatten bag den
+  // dæmpes. Det er dét der gør menuen rolig frem for kasse-agtig.
+  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
   panel: {
-    backgroundColor: tokens.color.bg1,
-    borderRightColor: tokens.color.line,
-    borderRightWidth: 1
+    backgroundColor: tokens.color.bg0
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: tokens.spacing.md,
-    paddingBottom: tokens.spacing.md,
-    borderBottomColor: tokens.color.line,
-    borderBottomWidth: 1
+    paddingHorizontal: tokens.spacing.lg,
+    paddingBottom: tokens.spacing.lg
   },
   identity: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm, flexShrink: 1 },
   ring: {
@@ -201,8 +201,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   ringInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: tokens.color.accent },
-  name: { color: tokens.color.fg1, fontSize: 16, fontWeight: '700', flexShrink: 1 },
-  gear: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: tokens.color.bg3 },
+  name: { color: tokens.color.fg1, fontSize: 24, fontWeight: '700', flexShrink: 1 },
+  gear: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: tokens.color.bg2 },
   gearIcon: { fontSize: 16 },
   searchWrap: {
     flexDirection: 'row',

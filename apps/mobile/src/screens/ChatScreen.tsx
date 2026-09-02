@@ -8,12 +8,9 @@ import { Composer } from '../components/Composer'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { VoiceOverlay } from '../components/VoiceOverlay'
 import type { ContentBlock } from '../lib/sseProtocol'
-import { StreamIndicator } from '../components/StreamIndicator'
-import { ConnectionPill } from '../components/ConnectionPill'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { ErrorCard } from '../components/ErrorCard'
 import { GreetingHero } from '../components/GreetingHero'
-import { LivenessRing } from '../components/LivenessRing'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
 import { SaveRail } from '../components/SaveRail'
 import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
@@ -42,11 +39,24 @@ const MEMBER_CHOICES: ModelChoice[] = [
 ]
 const OWNER_DEFAULT: ModelChoice = { model: '', providerChoice: 'deepseek', label: 'Deepseek' }
 
-export function ChatScreen() {
+interface ChatScreenProps {
+  /** Stiger når TopBars menu-knap trykkes — åbner sidepanelet. */
+  openPanelSignal?: number
+}
+
+export function ChatScreen({ openPanelSignal = 0 }: ChatScreenProps) {
   const { config } = useAuth()
   const sessions = useSessions()
   const stream = useStream()
   const [panelOpen, setPanelOpen] = useState(false)
+
+  // TopBar ejer toppen (ChatGPT-paritet): ChatScreens egen header er fjernet.
+  // Den bar LivenessRing + ConnectionPill, men ventetegnet står nu INLINE i
+  // tråden som ChatGPT gør det — derfor er ringen ikke længere nødvendig, og
+  // to bjælker om samme areal var det der gav «hoppen» ved tilstandsskift.
+  useEffect(() => {
+    if (openPanelSignal > 0) setPanelOpen(true)
+  }, [openPanelSignal])
   // Session-panel live-status: arbejder-prik (active-runs mens panel åbent) + ulæst.
   const [activeRunIds, setActiveRunIds] = useState<string[]>([])
   const [lastSeen, setLastSeen] = useState<Record<string, number>>({})
@@ -308,33 +318,6 @@ export function ChatScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Åbn sessioner og plugins"
-          onPress={() => setPanelOpen((open) => !open)}
-          style={styles.headerTitle}
-          hitSlop={8}
-        >
-          <LivenessRing
-            status={
-              stream.state.status === 'working' || serverBusy
-                ? 'working'
-                : stream.state.status === 'error'
-                  ? 'error'
-                  : 'idle'
-            }
-          />
-          {activeRunIds.length > 0 || Object.values(unreadIds).some(Boolean) ? (
-            <View style={styles.ringBadge} />
-          ) : null}
-          <Text style={styles.title} numberOfLines={1}>
-            {displayName}
-          </Text>
-        </Pressable>
-        <ConnectionPill label={stream.state.status} />
-      </View>
-
       {connectivity !== 'connected' ? (
         <View style={[styles.connBanner, connectivity === 'offline' ? styles.connOffline : styles.connReconnect]}>
           <Text style={styles.connText}>
@@ -358,6 +341,7 @@ export function ChatScreen() {
               blocks={stream.state.blocks}
               onResend={(text) => void ensureSessionAndSend(text)}
               onScrollActivity={bumpRail}
+              thinking={stream.state.status === 'working' || serverBusy}
             />
           )}
         </Animated.View>
@@ -421,7 +405,6 @@ export function ChatScreen() {
             onDeny={() => void stream.deny(config)}
           />
         ) : null}
-        <StreamIndicator active={stream.state.status === 'working' || serverBusy} />
         <Composer
           disabled={!config}
           working={stream.state.status === 'working' || serverBusy}
@@ -521,36 +504,6 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1
-  },
-  header: {
-    height: 56,
-    paddingHorizontal: tokens.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomColor: tokens.color.line,
-    borderBottomWidth: 1
-  },
-  headerTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spacing.sm,
-    flexShrink: 1
-  },
-  ringBadge: {
-    position: 'absolute',
-    top: 0,
-    left: 18,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: tokens.color.accent
-  },
-  title: {
-    color: tokens.color.fg1,
-    fontSize: 18,
-    fontWeight: '700',
-    flexShrink: 1
   },
   connBanner: {
     paddingVertical: tokens.spacing.xs,

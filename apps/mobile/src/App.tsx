@@ -33,6 +33,7 @@ function AppBody() {
   const [mode, setMode] = useState<AppMode>('snak')
   const [syncSignal, setSyncSignal] = useState(0)
   const [pendingWork, setPendingWork] = useState(0)
+  const [menuSignal, setMenuSignal] = useState(0)
 
   // FCM: registrér device-token efter login + lyt på data-only i forgrunden.
   // Uden for tidlig return (hooks må ikke være betingede); guardet på authToken.
@@ -107,7 +108,11 @@ function AppBody() {
         <TopBar
           mode={mode}
           onModeChange={setMode}
-          onMenu={() => setMode('snak')}
+          onMenu={() => {
+            // Menuen (sessioner, plugins, indstillinger) hører til Snak-rummet.
+            setMode('snak')
+            setMenuSignal((n) => n + 1)
+          }}
           onSync={() => setSyncSignal((n) => n + 1)}
           pendingWork={pendingWork > 0}
         />
@@ -115,7 +120,7 @@ function AppBody() {
             fordi Bjørn kigger på Arbejde. Skjult frem for unmountet. */}
         <View style={mode === 'snak' ? styles.visible : styles.hidden}>
           <ErrorBoundary label="chat">
-            <ChatScreen />
+            <ChatScreen openPanelSignal={menuSignal} />
           </ErrorBoundary>
         </View>
         <View style={mode === 'arbejde' ? styles.visible : styles.hidden}>

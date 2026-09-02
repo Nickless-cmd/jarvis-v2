@@ -364,6 +364,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
               onResend={(text) => void ensureSessionAndSend(text)}
               onScrollActivity={bumpRail}
               thinking={stream.state.status === 'working' || serverBusy}
+              bottomInset={liftPadding}
             />
           )}
         </Animated.View>

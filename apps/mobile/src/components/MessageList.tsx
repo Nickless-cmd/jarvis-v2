@@ -26,6 +26,13 @@ interface MessageListProps {
   blocks: ContentBlock[]
   /** Vis «Tænker» nederst i tråden mens Jarvis arbejder (ChatGPT-mønsteret). */
   thinking?: boolean
+  /**
+   * Ekstra plads i bunden mens tastaturet er fremme.
+   *
+   * Komponisten svæver og stiger med tastaturet — uden dette blev tråden
+   * stående, og de nyeste linjer forsvandt bag den. Nu følger indholdet med op.
+   */
+  bottomInset?: number
   onResend?: (text: string) => void
   /** Kaldes ved scroll-aktivitet (bruges til at vise Save Rail mens man scroller). */
   onScrollActivity?: () => void
@@ -133,7 +140,7 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollActivity, thinking },
+  { messages, blocks, onResend, onScrollActivity, thinking, bottomInset = 0 },
   ref
 ) {
   const flatRef = useRef<FlatList>(null)
@@ -253,7 +260,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           />
         )
       }}
-      contentContainerStyle={styles.content}
+      // INVERTERET: paddingTop lander visuelt NEDERST — det er dér tastaturet
+      // og komponisten æder plads.
+      contentContainerStyle={[styles.content, { paddingTop: BOTTOM_CLEARANCE + bottomInset }]}
       keyboardShouldPersistTaps="handled"
     />
   )
@@ -281,7 +290,8 @@ const TOP_CLEARANCE = 72
 const styles = StyleSheet.create({
   thinkingRow: { paddingHorizontal: tokens.spacing.lg },
   content: {
-    paddingTop: BOTTOM_CLEARANCE,
+    // paddingTop sættes dynamisk (BOTTOM_CLEARANCE + tastaturhøjde) — se
+    // contentContainerStyle. Kun den øverste er konstant.
     paddingBottom: TOP_CLEARANCE
   }
 })

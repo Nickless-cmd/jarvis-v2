@@ -27,11 +27,15 @@ interface Props {
  *   segmented        452 px  → 172 dp, centrum x=539,5 = SKÆRMENS MIDTE
  *   kantmargen        37 px  →  14 dp
  *
+ * BEVIDST AFVIGELSE: cirklerne er sat til 40 dp og bjælken gjort lavere, fordi
+ * Bjørn bad om «et nummer mindre». Segmentets bredde og centrering følger
+ * stadig målingen — det var dét der sad skævt.
+ *
  * Kontrollen er ABSOLUT centreret, ikke flex-strakt mellem cirklerne. Med flex
  * bliver midten et gennemsnit af de to knappers bredde — og den var synligt
  * skæv.
  */
-const CIRCLE = 44
+const CIRCLE = 40
 const EDGE = 14
 const SEGMENT_W = 172
 
@@ -45,7 +49,7 @@ export function TopBar({ mode, onModeChange, onMenu, onSync, pendingWork, syncin
         hitSlop={8}
         style={styles.circle}
       >
-        <Menu size={23} color={tokens.color.fg1} strokeWidth={2} />
+        <Menu size={21} color={tokens.color.fg1} strokeWidth={2} />
       </Pressable>
 
       <View pointerEvents="box-none" style={styles.centerWrap}>
@@ -73,7 +77,7 @@ export function TopBar({ mode, onModeChange, onMenu, onSync, pendingWork, syncin
         {syncing ? (
           <ActivityIndicator size="small" color={tokens.color.fg1} />
         ) : (
-          <RefreshCw size={22} color={tokens.color.fg1} strokeWidth={2} />
+          <RefreshCw size={20} color={tokens.color.fg1} strokeWidth={2} />
         )}
       </Pressable>
     </View>
@@ -86,7 +90,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: EDGE,
-    paddingVertical: 10,
+    paddingVertical: 6,
     // Halvgennemsigtig: tråden ANES bagved frem for at blive klippet af
     // en massiv bjælke. Det er dét der giver følelsen af ét sammenhængende
     // rum i stedet for tre etager.

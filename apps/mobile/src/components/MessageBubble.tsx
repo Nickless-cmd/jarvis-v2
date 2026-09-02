@@ -128,8 +128,8 @@ export function MessageBubble({
  * Det er dét der giver ChatGPT-tråden sin ro: én talende part fylder fladen,
  * den anden markerer sig kort. To bobler over for hinanden ville støje.
  */
-/** Ikonstørrelse målt i ChatGPT-appens handlingsrække. */
-const ICON = 19
+/** Handlingsrækkens ikoner. Bjørn bad om et nummer mindre end de målte 19. */
+const ICON = 17
 
 const styles = StyleSheet.create({
   root: {
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   userText: { color: tokens.color.fg1, fontSize: 16.5, lineHeight: 24 },
   actions: {
     flexDirection: 'row',
-    gap: tokens.spacing.xl,
+    gap: 26,
     marginTop: tokens.spacing.md
   },
   userActions: {

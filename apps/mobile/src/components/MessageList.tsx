@@ -281,10 +281,12 @@ function ThinkingLabelRow() {
  * `paddingTop` lander VISUELT NEDERST og `paddingBottom` visuelt øverst.
  * Det er kontraintuitivt nok til at være værd at skrive ned.
  *
- * Tallene er plads til de to svævende bjælker: komponisten nederst (~92) og
- * TopBar øverst (~72). Uden dem ville nyeste besked gemme sig bag komponisten.
+ * Tallene er plads til de to svævende bjælker. Bunden er 124 og ikke bare
+ * komponistens egen højde: handlingsrækken (kopiér/læs op) hænger UNDER
+ * turens sidste afsnit, og med for lidt luft gled netop de to ikoner ind bag
+ * komponisten. Man skal måle til bunden af det SIDSTE element, ikke af teksten.
  */
-const BOTTOM_CLEARANCE = 92
+const BOTTOM_CLEARANCE = 124
 const TOP_CLEARANCE = 72
 
 const styles = StyleSheet.create({

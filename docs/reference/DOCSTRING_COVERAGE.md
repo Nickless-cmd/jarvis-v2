@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6568/13184 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6571/13189 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -20,10 +20,10 @@ Generated from source. 6568/13184 functions/methods documented (49%). The list b
 | `core.context` | 52 | 60 | 86% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 9 | 22 | 40% |
-| `core.identity` | 63 | 154 | 40% |
+| `core.identity` | 65 | 158 | 41% |
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 553 | 1030 | 53% |
+| `core.runtime` | 554 | 1031 | 53% |
 | `core.services` | 4365 | 9162 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
@@ -40,7 +40,7 @@ Generated from source. 6568/13184 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1883)
+## Undocumented public functions (1884)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L143)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -243,6 +243,7 @@ Generated from source. 6568/13184 functions/methods documented (49%). The list b
 - `core/identity/candidate_workflow.py` :: `reject_runtime_contract_candidate` (L86)
 - `core/identity/email_verify.py` :: `create_token` (L37)
 - `core/identity/email_verify.py` :: `send_verification_email` (L79)
+- `core/identity/household.py` :: `is_valid_role` (L50)
 - `core/identity/project_context.py` :: `reset_project_root` (L38)
 - `core/identity/runtime_candidates.py` :: `build_runtime_candidate_workflows` (L125)
 - `core/identity/runtime_candidates.py` :: `build_runtime_candidate_write_history` (L255)

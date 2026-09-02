@@ -519,9 +519,9 @@ _Companion-endpoints — Jarvis' tre ønsker til mobil-appen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `companion_presence` | `()` | Er han vågen — og hvad lavede han sidst? | [src](../../../apps/api/jarvis_api/routes/companion.py#L27) |
-| function | `companion_senses` | `(limit=…)` | Sansernes Arkiv — hvad Jarvis har set i hjemmet. KUN owner. | [src](../../../apps/api/jarvis_api/routes/companion.py#L38) |
-| function | `companion_thoughts` | `(limit=…)` | Jarvis' initiativer — også dem der blev holdt tilbage. | [src](../../../apps/api/jarvis_api/routes/companion.py#L56) |
+| function | `companion_presence` | `()` | Er han vågen — og hvad lavede han sidst? | [src](../../../apps/api/jarvis_api/routes/companion.py#L35) |
+| function | `companion_senses` | `(limit=…)` | Sansernes Arkiv — hvad Jarvis har set i hjemmet. Kun husstanden. | [src](../../../apps/api/jarvis_api/routes/companion.py#L46) |
+| function | `companion_thoughts` | `(limit=…)` | Jarvis' initiativer — også dem der blev holdt tilbage. | [src](../../../apps/api/jarvis_api/routes/companion.py#L66) |
 
 ## `apps/api/jarvis_api/routes/connectors.py`
 _Connectors-API til jarvis-desk Marketplace (16. jun 2026)._

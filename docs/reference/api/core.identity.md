@@ -58,6 +58,16 @@ _Email-verifikation (spec 2026-06-15 §5). Token-store i runtime_state_kv,_
 | function | `_send_mail` | `(args)` | — | [src](../../../core/identity/email_verify.py#L74) |
 | function | `send_verification_email` | `(*, user_id, email, base_url)` | — | [src](../../../core/identity/email_verify.py#L79) |
 
+## `core/identity/household.py`
+_Hvem BOR i huset — og hvem gør ikke._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_norm` | `(role)` | — | [src](../../../core/identity/household.py#L36) |
+| function | `is_household` | `(role)` | Bor denne rolle i huset? (owner eller partner) | [src](../../../core/identity/household.py#L40) |
+| function | `is_member_like` | `(role)` | Har denne rolle medlems-rettigheder? (member eller partner) | [src](../../../core/identity/household.py#L45) |
+| function | `is_valid_role` | `(role)` | — | [src](../../../core/identity/household.py#L50) |
+
 ## `core/identity/owner_resolver.py`
 _Owner-identity resolution for autonomous dispatch._
 

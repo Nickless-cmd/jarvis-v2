@@ -6,9 +6,10 @@ import type { ChatMessage } from '../lib/types'
 import { tokens } from '../theme/tokens'
 import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
-import { InlineToolLine } from './InlineToolLine'
+import { InlineToolGroup } from './InlineToolGroup'
 import { ThinkingLabel } from './ThinkingLabel'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
+import { countFromResult, type ToolItem } from '../lib/toolGroup'
 import { ToolResultCard } from './ToolResultCard'
 
 export interface MessageListHandle {
@@ -33,6 +34,44 @@ type Row =
   | { kind: 'msg'; key: string; message: ChatMessage }
   | { kind: 'tool'; key: string; content: string }
   | { kind: 'live-tool'; key: string; name: string; body: string; running: boolean }
+  /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
+  | { kind: 'tool-group'; key: string; items: ToolItem[] }
+
+/**
+ * Fold sammenhængende værktøjsrækker sammen til én pr. runde.
+ *
+ * Codex-appen viser fortælling → ÉN linje → fortælling. Uden det her stablede
+ * vi fire «Kører verify_file_contains…» oven på hinanden — samme information
+ * fire gange, og tråden mistede sin ro. En tekstbesked afslutter runden.
+ */
+function groupToolRounds(rows: Row[]): Row[] {
+  const out: Row[] = []
+  let buf: Row[] = []
+  const flush = () => {
+    if (buf.length === 0) return
+    const items: ToolItem[] = buf.map((r) =>
+      r.kind === 'live-tool'
+        ? { label: describeTool(r.name, r.body, r.running), running: r.running, tool: r.name }
+        : {
+            label: describeToolResult((r as { content: string }).content),
+            running: false,
+            tool: /\[([a-z_0-9]+)\]\s*:/i.exec((r as { content: string }).content)?.[1] ?? '',
+            count: countFromResult((r as { content: string }).content)
+          }
+    )
+    out.push({ kind: 'tool-group', key: `group-${buf[0]!.key}`, items })
+    buf = []
+  }
+  for (const r of rows) {
+    if (r.kind === 'tool' || r.kind === 'live-tool') buf.push(r)
+    else {
+      flush()
+      out.push(r)
+    }
+  }
+  flush()
+  return out
+}
 
 function toolBody(block: Extract<ContentBlock, { type: 'tool_use' }>): string {
   if (block.partialJson) return block.partialJson
@@ -111,7 +150,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       : { kind: 'msg', key: m.id, message: m }
   )
 
-  const rows: Row[] = [...persisted, ...buildStreamingRows(blocks)]
+  const rows: Row[] = groupToolRounds([...persisted, ...buildStreamingRows(blocks)])
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
   const ordered = [...rows].reverse()
@@ -153,15 +192,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         // Værktøjsarbejde er ÉN linje inde i samtalen — ikke et kort.
         // Målt i Codex-tråden: «</> Ændrede 16 filer ›». Det fulde output
         // ligger bag linjen, ikke foran den.
-        if (item.kind === 'tool')
-          return <InlineToolLine summary={describeToolResult(item.content)} />
-        if (item.kind === 'live-tool')
-          return (
-            <InlineToolLine
-              summary={describeTool(item.name, item.body, item.running)}
-              running={item.running}
-            />
-          )
+        if (item.kind === 'tool-group') return <InlineToolGroup items={item.items} />
         return (
           <MessageBubble
             message={item.message}

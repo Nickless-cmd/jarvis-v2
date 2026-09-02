@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6539/13145 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6548/13154 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6539/13145 functions/methods documented (49%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 577 | 763 | 75% |
+| `apps.api.jarvis_api.routes` | 578 | 764 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,7 +24,7 @@ Generated from source. 6539/13145 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1030 | 53% |
-| `core.services` | 4341 | 9128 | 47% |
+| `core.services` | 4349 | 9136 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1755,7 +1755,7 @@ Generated from source. 6539/13145 functions/methods documented (49%). The list b
 - `core/services/visible_runs.py` :: `register_visible_run` (L6211)
 - `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6493)
 - `core/services/visible_runs.py` :: `unregister_visible_run` (L6256)
-- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L391)
+- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L432)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)

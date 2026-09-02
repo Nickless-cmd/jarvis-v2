@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/boredom_engine.py`
+_Boredom Engine — productive restlessness as first-class experience._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `update_boredom_state` | `(*, idle_hours=…, tick_monotony=…, novelty_score=…, open_loop_count=…)` | — | [src](../../../core/services/boredom_engine.py#L11) |
+| function | `get_boredom_state` | `()` | — | [src](../../../core/services/boredom_engine.py#L49) |
+| function | `build_boredom_surface` | `()` | — | [src](../../../core/services/boredom_engine.py#L53) |
+
 ## `core/services/boundary_awareness.py`
 _Boundary Awareness — "Where do I end?"_
 
@@ -594,12 +603,4 @@ _Den Intelligente Central — facade (§3.1). Komponerer gate_kernel (decide-mot
 | method | `Central.self_diagnose` | `(self)` | Meta-helbreds-check: virker Centralen SELV? Probe decide+observe, rapportér åbne | [src](../../../core/services/central_core.py#L240) |
 | method | `Central.register` | `(self, name, phase, fn, *, klass=…, timeout_ms=…, flag_key=…)` | — | [src](../../../core/services/central_core.py#L271) |
 | function | `central` | `()` | — | [src](../../../core/services/central_core.py#L281) |
-
-## `core/services/central_correlate.py`
-_Cross-cluster korrelation — saml ALT hvad der skete for ét run_id på tværs af ALLE clusters_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `correlate` | `(run_id)` | Saml ét run_id's fulde rejse på tværs af clusters. break_point = hvor filmen knækker | [src](../../../core/services/central_correlate.py#L14) |
-| function | `recent_broken_runs` | `(*, window=…)` | Nylige run_ids hvor filmen knækkede (RED/error) → til TODO/debugging. Nyeste pr. run. | [src](../../../core/services/central_correlate.py#L50) |
 

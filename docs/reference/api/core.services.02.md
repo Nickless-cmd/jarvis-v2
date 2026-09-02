@@ -216,6 +216,14 @@ _Associative Recall — dormant memories triggered by context._
 | function | `build_associative_recall_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/associative_recall.py#L641) |
 | function | `tick_associative_recall` | `()` | Heartbeat daemon tick — decay + periodic candidate scan. | [src](../../../core/services/associative_recall.py#L664) |
 
+## `core/services/attachment_blocks.py`
+_Vedhæftninger som blokke på brugerens besked._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_attachment_blocks` | `(metas)` | Lav content_json-blokke for en brugerbeskeds vedhæftninger. | [src](../../../core/services/attachment_blocks.py#L30) |
+| function | `user_message_content_json` | `(metas)` | Serialisér blokkene til det felt `append_chat_message` tager. | [src](../../../core/services/attachment_blocks.py#L59) |
+
 ## `core/services/attachment_service.py`
 _attachment_service — download, store, and read channel attachments._
 
@@ -623,13 +631,4 @@ _Boredom to Curiosity Bridge — transforms boredom into curiosity._
 | function | `reset_boredom_curiosity_bridge` | `()` | Reset boredom curiosity bridge state (for testing). | [src](../../../core/services/boredom_curiosity_bridge.py#L147) |
 | function | `get_boredom_curiosity_state` | `()` | Get current state of boredom curiosity bridge. | [src](../../../core/services/boredom_curiosity_bridge.py#L155) |
 | function | `build_boredom_curiosity_bridge_surface` | `()` | Build MC surface for boredom curiosity bridge. | [src](../../../core/services/boredom_curiosity_bridge.py#L165) |
-
-## `core/services/boredom_engine.py`
-_Boredom Engine — productive restlessness as first-class experience._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_boredom_state` | `(*, idle_hours=…, tick_monotony=…, novelty_score=…, open_loop_count=…)` | — | [src](../../../core/services/boredom_engine.py#L11) |
-| function | `get_boredom_state` | `()` | — | [src](../../../core/services/boredom_engine.py#L49) |
-| function | `build_boredom_surface` | `()` | — | [src](../../../core/services/boredom_engine.py#L53) |
 

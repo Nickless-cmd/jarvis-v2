@@ -121,13 +121,14 @@ _Attachment upload and serve endpoints._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `AttachmentMeta` | `` | — | [src](../../../apps/api/jarvis_api/routes/attachments.py#L28) |
-| function | `get_attachment` | `(attachment_id)` | Look up attachment metadata by ID (used by chat route for context injection). | [src](../../../apps/api/jarvis_api/routes/attachments.py#L37) |
-| function | `apply_attachment_context` | `(message, attachment_ids)` | Prepend en attachment-direktiv-blok til beskeden, så Jarvis ved HVORDAN han | [src](../../../apps/api/jarvis_api/routes/attachments.py#L42) |
-| function | `upload_attachment` | `(file, session_id=…)` | Upload a file and return its attachment_id. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L83) |
-| function | `list_images` | `(limit=…)` | Galleri-liste (#6): billed-attachments på tværs af sessioner, user-scopet. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L171) |
-| function | `serve_image_from_db` | `(attachment_id)` | Serve et billede fra DB'ens local_path (virker for historiske billeder | [src](../../../apps/api/jarvis_api/routes/attachments.py#L180) |
-| function | `serve_attachment` | `(attachment_id, session_id)` | Serve an uploaded file for browser display. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L205) |
+| class | `AttachmentMeta` | `` | — | [src](../../../apps/api/jarvis_api/routes/attachments.py#L31) |
+| function | `get_attachment` | `(attachment_id)` | Look up attachment metadata by ID (used by chat route for context injection). | [src](../../../apps/api/jarvis_api/routes/attachments.py#L40) |
+| function | `get_attachment_meta_dicts` | `(attachment_ids)` | Metadata som dicts, i den rækkefølge de blev vedhæftet. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L68) |
+| function | `apply_attachment_context` | `(message, attachment_ids)` | Prepend en attachment-direktiv-blok til beskeden, så Jarvis ved HVORDAN han | [src](../../../apps/api/jarvis_api/routes/attachments.py#L89) |
+| function | `upload_attachment` | `(file, session_id=…)` | Upload a file and return its attachment_id. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L130) |
+| function | `list_images` | `(limit=…)` | Galleri-liste (#6): billed-attachments på tværs af sessioner, user-scopet. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L237) |
+| function | `serve_image_from_db` | `(attachment_id)` | Serve et billede fra DB'ens local_path (virker for historiske billeder | [src](../../../apps/api/jarvis_api/routes/attachments.py#L246) |
+| function | `serve_attachment` | `(attachment_id, session_id)` | Serve an uploaded file for browser display. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L271) |
 
 ## `apps/api/jarvis_api/routes/auth.py`
 _Auth-routes (spec 2026-06-15 §5): register / verify-email / login._

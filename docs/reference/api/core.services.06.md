@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_soul_digest.py`
+_Soul digest — §24.4 reducér-ved-kilden for Jarvis' stadig-mørke sjæle-/tids-signaler._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_first_count` | `(surface)` | Find en repræsentativ magnitude UDEN at afsløre indhold: længden af den | [src](../../../core/services/central_soul_digest.py#L33) |
+| function | `_reduce` | `(surface)` | KUN liveness+count. Ingen tekst. Self-safe. | [src](../../../core/services/central_soul_digest.py#L49) |
+| function | `build_soul_digest` | `()` | Samlet reduceret sjæle-/tids-digest. Kaster ALDRIG. | [src](../../../core/services/central_soul_digest.py#L58) |
+
 ## `core/services/central_soul_feel.py`
 _core/services/central_soul_feel.py_
 
@@ -833,11 +842,4 @@ _Code aesthetic daemon — weekly aesthetic reflection on the codebase._
 |---|---|---|---|---|
 | function | `build_cognitive_architecture_surface` | `()` | Cached MC/self-model cognitive-architecture-surface. Self-safe → falder til fersk build. | [src](../../../core/services/cognitive_architecture_surface.py#L11) |
 | function | `_build_cognitive_architecture_surface_uncached` | `()` | Build a shared cognitive architecture surface for MC and self-model. | [src](../../../core/services/cognitive_architecture_surface.py#L23) |
-
-## `core/services/cognitive_chronicle.py`
-_Cognitive Chronicle — user-scoped read layer for chronicle entries._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `query_chronicle_for_user` | `(limit=…)` | Return chronicle entries visible to the current user. | [src](../../../core/services/cognitive_chronicle.py#L15) |
 

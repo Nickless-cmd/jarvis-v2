@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13145 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13154 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -27,28 +27,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13145 functions/
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_runtime_browser`
 - [`core.runtime.02`](core.runtime.02.md) — `db_runtime_chronicle` … `workspace_paths`
 - [`core.services.01`](core.services.01.md) — `__init__` … `ambient_presence`
-- [`core.services.02`](core.services.02.md) — `ambient_sound_daemon` … `boredom_engine`
-- [`core.services.03`](core.services.03.md) — `boundary_awareness` … `central_correlate`
-- [`core.services.04`](core.services.04.md) — `central_cost_surface` … `central_matrix_ensemble`
-- [`core.services.05`](core.services.05.md) — `central_membrane_watch` … `central_soul_digest`
-- [`core.services.06`](core.services.06.md) — `central_soul_feel` … `cognitive_chronicle`
-- [`core.services.07`](core.services.07.md) — `cognitive_core_experiments` … `counterfactual_self_simulation`
-- [`core.services.08`](core.services.08.md) — `counterfactual_triggers` … `deep_reflection_slot`
-- [`core.services.09`](core.services.09.md) — `delegation_advisor` … `egress_routing`
-- [`core.services.10`](core.services.10.md) — `embodied_presence` … `file_watch_daemon`
-- [`core.services.11`](core.services.11.md) — `finitude_runtime` … `gut_engine`
-- [`core.services.12`](core.services.12.md) — `habit_tracker` … `internal_cadence_inner_life`
-- [`core.services.13`](core.services.13.md) — `internal_cadence_maintenance` … `memory_maintenance_daemon`
-- [`core.services.14`](core.services.14.md) — `memory_md_update_proposal_tracking` … `notification_bridge`
-- [`core.services.15`](core.services.15.md) — `notification_router` … `private_inner_note_signal_tracking`
-- [`core.services.16`](core.services.16.md) — `private_state_snapshot_tracking` … `read_before_write_guard`
-- [`core.services.17`](core.services.17.md) — `reasoning_classifier` … `runtime_browser_body`
-- [`core.services.18`](core.services.18.md) — `runtime_cognitive_conductor` … `self_narrative_self_model_review_bridge`
-- [`core.services.19`](core.services.19.md) — `self_repair_engine` … `signal_surface_gc`
-- [`core.services.20`](core.services.20.md) — `signal_surface_router` … `temporal_narrative`
-- [`core.services.21`](core.services.21.md) — `temporal_recurrence_signal_tracking` … `user_activity`
-- [`core.services.22`](core.services.22.md) — `user_contradiction_tracker` … `visible_turn_blocks`
-- [`core.services.23`](core.services.23.md) — `visual_memory` … `world_model_signal_tracking`
+- [`core.services.02`](core.services.02.md) — `ambient_sound_daemon` … `boredom_curiosity_bridge`
+- [`core.services.03`](core.services.03.md) — `boredom_engine` … `central_core`
+- [`core.services.04`](core.services.04.md) — `central_correlate` … `central_machines`
+- [`core.services.05`](core.services.05.md) — `central_matrix_ensemble` … `central_signal_health`
+- [`core.services.06`](core.services.06.md) — `central_soul_digest` … `cognitive_architecture_surface`
+- [`core.services.07`](core.services.07.md) — `cognitive_chronicle` … `counterfactual_predictions`
+- [`core.services.08`](core.services.08.md) — `counterfactual_self_simulation` … `deep_analyzer`
+- [`core.services.09`](core.services.09.md) — `deep_reflection_slot` … `drive_arbitration_engine`
+- [`core.services.10`](core.services.10.md) — `egress_routing` … `file_awareness_daemon`
+- [`core.services.11`](core.services.11.md) — `file_watch_daemon` … `gut_calibration`
+- [`core.services.12`](core.services.12.md) — `gut_engine` … `internal_cadence_core`
+- [`core.services.13`](core.services.13.md) — `internal_cadence_inner_life` … `memory_hierarchy`
+- [`core.services.14`](core.services.14.md) — `memory_maintenance_daemon` … `notes_connector`
+- [`core.services.15`](core.services.15.md) — `notification_bridge` … `private_inner_interplay_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `private_inner_note_signal_tracking` … `r2_5_blocking_gate`
+- [`core.services.17`](core.services.17.md) — `read_before_write_guard` … `runtime_awareness_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `runtime_browser_body` … `self_narrative_continuity_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `self_narrative_self_model_review_bridge` … `signal_pressure_accumulator`
+- [`core.services.20`](core.services.20.md) — `signal_surface_gc` … `temporal_depth`
+- [`core.services.21`](core.services.21.md) — `temporal_narrative` … `unified_recall`
+- [`core.services.22`](core.services.22.md) — `user_activity` … `visible_thinking_trace`
+- [`core.services.23`](core.services.23.md) — `visible_tool_exec` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

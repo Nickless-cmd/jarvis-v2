@@ -35,7 +35,11 @@ HOSTS: list[tuple[str, str, int]] = [
     ("pihole", "10.0.0.5", 443),
     ("fileserver", "10.0.0.10", 22),
     ("home_assistant", "10.0.0.34", 8123),
-    ("webservice", "192.168.50.32", 22),
+    # 'webservice' (192.168.50.32) er FJERNET 2026-09-02. Adressen lå på det
+    # 192.168.50.x-net der blev pensioneret 30/8; hosten svarer ikke længere
+    # (verificeret med ping). Den flagede derfor UNREACHABLE ved hvert tick og
+    # var den ene halvdel af notifikations-stormen Bjørn så. Et overvågnings-mål
+    # der ALTID er nede måler ikke huset — det måler kun sin egen forældelse.
 ]
 
 _PROBE_TIMEOUT = 3.0
@@ -152,9 +156,6 @@ SSH_HOSTS: list[tuple[str, str, str]] = [
      "R=$(( $(pct list 2>/dev/null|tail -n+2|grep -cw running) + $(qm list 2>/dev/null|tail -n+2|grep -cw running) ));"
      "T=$(( $(pct list 2>/dev/null|tail -n+2|wc -l) + $(qm list 2>/dev/null|tail -n+2|wc -l) ));"
      "echo guests_running=$R guests_total=$T maxdisk=$(df --output=pcent 2>/dev/null|tail -n+2|tr -d ' %'|sort -n|tail -1) load1=$(cut -d' ' -f1 /proc/loadavg)"),
-    ("webservice", "root@192.168.50.32",
-     "echo disk=$(df --output=pcent / 2>/dev/null|tail -1|tr -d ' %') "
-     "svc_down=$(systemctl is-active apache2 postfix dovecot mariadb clamav-daemon fail2ban cloudflared 2>/dev/null|grep -vc '^active')"),
     ("fileserver", "root@10.0.0.10",
      "echo disk=$(df --output=pcent /mnt/shares 2>/dev/null|tail -1|tr -d ' %') "
      "smb=$(systemctl is-active smbd 2>/dev/null||echo inactive)"),

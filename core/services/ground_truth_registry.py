@@ -61,7 +61,7 @@ INFRASTRUCTURE_FACTS: dict[str, dict[str, str]] = {
         "10.0.0.36": "Proxmox pve-02 (Kingston SSD, read-only)",
         "10.0.0.39": "Jarvis runtime host (LXC-105 on 10.0.0.2) — primary runtime location since 2026-05-25",
         # Legacy Jarvis runtime hosts (pre-2026-05-25 migration)
-        "192.168.50.32": "Jarvis side-server (bs_jarvis, web root in ~/web/)",
+        "192.168.50.32": "Jarvis side-server (bs_jarvis, web root in ~/web/) — RETIRED with the 192.168.50.x network 2026-08-30; the address no longer answers. Removed from infra_sense monitoring 2026-09-02.",
         "192.168.50.36": "ChiefOne (Bjørn's desktop, NOT Jarvis runtime anymore)",
         "10.0.0.46": "FREED 2026-07-23 — was the he6 IPv6 egress proxy (croq-ipv6 LXC-107, tinyproxy:8888) for account2 groq; retired when groq moved to native v6bind source-binding on CT105",
         # Smart home
@@ -70,7 +70,7 @@ INFRASTRUCTURE_FACTS: dict[str, dict[str, str]] = {
         "cheifone": "Bjørn's desktop (NOT Jarvis runtime since 2026-05-25)",
         "chefone": "Bjørn's desktop (NOT Jarvis runtime since 2026-05-25)",
         "chiefone": "Bjørn's desktop (NOT Jarvis runtime since 2026-05-25)",
-        "bs_jarvis": "Jarvis side-server on 192.168.50.32",
+        "bs_jarvis": "Jarvis side-server, formerly on 192.168.50.32 — RETIRED with that network 2026-08-30",
         "jarvis": "Jarvis runtime LXC-105 on 10.0.0.39 (host = 10.0.0.2 / pve)",
         "pve": "Proxmox host 10.0.0.2 (Jarvis' new home)",
         "pve-02": "Proxmox node 10.0.0.36",
@@ -84,8 +84,8 @@ INFRASTRUCTURE_FACTS: dict[str, dict[str, str]] = {
         "/home/bs/.jarvis-v2/config/runtime.json": "runtime config + secrets",
         "/home/bs/.jarvis-v2/shared": "Jarvis shared state (identity, memory, arcs, brain)",
         "/home/bs/.jarvis-v2/workspaces/default": "default workspace (legacy — now migrated to shared/)",
-        "/home/bs/web": "Jarvis web root on bs_jarvis (192.168.50.32)",
-        "~/web": "Jarvis web root on bs_jarvis (192.168.50.32)",
+        "/home/bs/web": "Jarvis web root on bs_jarvis (192.168.50.32 — RETIRED 2026-08-30)",
+        "~/web": "Jarvis web root on bs_jarvis (192.168.50.32 — RETIRED 2026-08-30)",
         "/mnt/backup-ext": "external 4TB backup mount (on 10.0.0.2)",
     },
     # Known service ports.

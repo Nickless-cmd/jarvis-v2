@@ -86,17 +86,19 @@ def test_parse_kv():
 def test_poll_ssh_hosts_observes(monkeypatch):
     central = _FakeCentral()
     monkeypatch.setattr(isense, "central", lambda: central)
+    # 'webservice' er ude af SSH_HOSTS siden 2026-09-02 (adressen laa paa det
+    # pensionerede 192.168.50.x-net). Fileserveren er nu den anden host.
     fake = {"root@10.0.0.2": "guests_running=6 guests_total=6 maxdisk=45 load1=1.8",
-            "root@192.168.50.32": "disk=19 svc_down=0",
             "root@10.0.0.10": "disk=24 smb=active"}
     monkeypatch.setattr(isense, "_ssh_run", lambda t, c, timeout=8.0: fake.get(t))
     res = isense.poll_ssh_hosts()
     assert res["pve"]["guests_running"] == 6
-    assert res["webservice"]["svc_down"] == 0
+    assert res["fileserver"]["smb"] == "active"
+    assert "webservice" not in res
     # observe pr. host + disk-tidsserie
     assert any(o["nerve"] == "pve_health" for o in central.observed)
     assert central_timeseries.recent("infra", "pve_disk")[-1].value == 45.0
-    assert central_timeseries.recent("infra", "webservice_svc_down")[-1].value == 0.0
+    assert central_timeseries.recent("infra", "fileserver_disk")[-1].value == 24.0
 
 
 def test_poll_ssh_hosts_down_host_skipped(monkeypatch):

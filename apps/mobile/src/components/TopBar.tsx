@@ -87,7 +87,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: EDGE,
     paddingVertical: 10,
-    backgroundColor: tokens.color.bg0
+    // Halvgennemsigtig: tråden ANES bagved frem for at blive klippet af
+    // en massiv bjælke. Det er dét der giver følelsen af ét sammenhængende
+    // rum i stedet for tre etager.
+    backgroundColor: 'rgba(0,0,0,0.72)'
   },
   // Fylder hele bjælken og lader tryk gå igennem til cirklerne udenfor.
   centerWrap: {

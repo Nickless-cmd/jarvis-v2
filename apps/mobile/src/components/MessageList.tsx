@@ -214,9 +214,21 @@ function ThinkingLabelRow() {
   )
 }
 
+/**
+ * INVERTERET liste: indholdet er vendt 180°, så contentContainer'ens
+ * `paddingTop` lander VISUELT NEDERST og `paddingBottom` visuelt øverst.
+ * Det er kontraintuitivt nok til at være værd at skrive ned.
+ *
+ * Tallene er plads til de to svævende bjælker: komponisten nederst (~92) og
+ * TopBar øverst (~72). Uden dem ville nyeste besked gemme sig bag komponisten.
+ */
+const BOTTOM_CLEARANCE = 92
+const TOP_CLEARANCE = 72
+
 const styles = StyleSheet.create({
   thinkingRow: { paddingHorizontal: tokens.spacing.lg },
   content: {
-    paddingVertical: tokens.spacing.sm
+    paddingTop: BOTTOM_CLEARANCE,
+    paddingBottom: TOP_CLEARANCE
   }
 })

@@ -352,7 +352,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         </View>
       ) : null}
 
-      <View style={[styles.flex, { paddingBottom: liftPadding }]}>
+      <View style={styles.flex}>
         <Animated.View style={{ flex: 1, opacity: sessionFade }}>
           {showGreeting ? (
             <GreetingHero userName={displayName} />
@@ -427,6 +427,11 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             onDeny={() => void stream.deny(config)}
           />
         ) : null}
+        {/* Komponisten SVÆVER: tråden ruller bag den, som i ChatGPT-appen.
+            Den løftes selv af tastaturet (bottom: liftPadding) frem for at
+            containeren skubbes — ellers ville listen blive kortere og
+            rulle-positionen hoppe hver gang tastaturet kom frem. */}
+        <View style={[styles.floatBottom, { bottom: liftPadding }]} pointerEvents="box-none">
         <Composer
           disabled={!config}
           working={stream.state.status === 'working' || serverBusy}
@@ -448,6 +453,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           attachment={pendingAttachment ? { uri: pendingAttachment.uri, name: pendingAttachment.name } : null}
           onRemoveAttachment={() => setPendingAttachment(null)}
         />
+        </View>
       </View>
 
       <ModelPicker
@@ -526,6 +532,12 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1
+  },
+  floatBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 5
   },
   connBanner: {
     paddingVertical: tokens.spacing.xs,

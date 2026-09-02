@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, AppState, StatusBar, StyleSheet, View } from 'react-native'
 import * as Application from 'expo-application'
-import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context'
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  initialWindowMetrics,
+  useSafeAreaInsets
+} from 'react-native-safe-area-context'
 import { ChatScreen } from './screens/ChatScreen'
 import { WorkScreen } from './screens/WorkScreen'
 import { TopBar, type AppMode } from './components/TopBar'
@@ -24,6 +29,9 @@ import { tokens } from './theme/tokens'
 
 function AppBody() {
   const { config, loading } = useAuth()
+  // En absolut placeret child slipper uden om SafeAreaViews polstring —
+  // top: 0 ville lægge bjælken op i statusbaren. Insettet skal med.
+  const insets = useSafeAreaInsets()
   const [update, setUpdate] = useState<UpdateManifest | null>(null)
   const [updBusy, setUpdBusy] = useState(false)
   const [updProgress, setUpdProgress] = useState(0)
@@ -106,21 +114,28 @@ function AppBody() {
             onDismiss={() => setUpdDismissed(true)}
           />
         ) : null}
-        <TopBar
-          mode={mode}
-          onModeChange={setMode}
-          onMenu={() => {
-            // Menuen (sessioner, plugins, indstillinger) hører til Snak-rummet.
-            setMode('snak')
-            setMenuSignal((n) => n + 1)
-          }}
-          onSync={() => {
-            setSyncing(true)
-            setSyncSignal((n) => n + 1)
-          }}
-          syncing={syncing}
-          pendingWork={pendingWork > 0}
-        />
+        {/* TopBar SVÆVER over indholdet: tråden ruller BAG den, som i
+            ChatGPT-appen. En bjælke der skubber indholdet ned stjæler en
+            skærmhøjde man hellere vil læse i — og overgangen mellem «under»
+            og «bag» er dét der får fladen til at føles rolig frem for
+            opdelt. */}
+        <View style={[styles.floatTop, { top: insets.top }]} pointerEvents="box-none">
+          <TopBar
+            mode={mode}
+            onModeChange={setMode}
+            onMenu={() => {
+              // Menuen (sessioner, plugins, indstillinger) hører til Snak-rummet.
+              setMode('snak')
+              setMenuSignal((n) => n + 1)
+            }}
+            onSync={() => {
+              setSyncing(true)
+              setSyncSignal((n) => n + 1)
+            }}
+            syncing={syncing}
+            pendingWork={pendingWork > 0}
+          />
+        </View>
         {/* Begge skærme holdes monteret: Snak må ikke miste stream-tilstand
             fordi Bjørn kigger på Arbejde. Skjult frem for unmountet. */}
         <View style={mode === 'snak' ? styles.visible : styles.hidden}>
@@ -176,5 +191,13 @@ const styles = StyleSheet.create({
   },
   hidden: {
     display: 'none'
+  },
+  // Svævende topbjælke. `box-none` lader tryk gå igennem til tråden bagved
+  // overalt hvor der ikke sidder en knap.
+  floatTop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 10
   }
 })

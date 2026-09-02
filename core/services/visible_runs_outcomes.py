@@ -75,6 +75,16 @@ def _mark_mid_word_truncation(text: str) -> str:
     return stripped + "…"
 
 
+
+def _origin_of_session(session_id: str) -> str:
+    """«auto-dream-20260902» → «dream». Tom for almindelige samtaler."""
+    s = str(session_id or "")
+    if not s.startswith("auto-"):
+        return ""
+    dele = s.split("-")
+    return dele[1] if len(dele) >= 2 else ""
+
+
 def _persist_session_assistant_message(
     run: "_vr.VisibleRun",
     text: str,
@@ -99,6 +109,54 @@ def _persist_session_assistant_message(
                 chars=len(normalized), reason="svar > 8000 tegn (sandsynlig dump)")
         except Exception:
             pass
+    # ── UDBYDER-FEJL-VAGT ved selve persisteringen (2026-09-02) ────────────
+    # En udbyders fejlbesked må aldrig blive Jarvis' ord — og dermed hans
+    # hukommelse. Vagten fandtes i forvejen, men kun på ANDEN pas
+    # (_finalize_second_pass_visible_text), som næsten aldrig kører:
+    # provider_second_pass_status er "skipped" for langt de fleste runs. Derfor
+    # stod aihubmix' kvote-afvisning ordret i hans mund 35 gange på 14 dage,
+    # næsten alle i den autonome lane.
+    #
+    # Her er choke-punktet: ALT der bliver til en assistent-besked passerer
+    # denne funktion, uanset lane og pas.
+    #
+    # At kassere teksten er nødvendigt, men ikke nok — så fejler turen usynligt,
+    # og netop dét mønster lod runtime kaste hans egne beslutninger væk i
+    # månedsvis. Fejlen journaliseres derfor som en kendsgerning han kan SE
+    # (autonomous_run_failures) og selv vælge at prøve igen på.
+    try:
+        from core.services.provider_error_guard import (
+            describe, looks_like_provider_error,
+        )
+        if looks_like_provider_error(normalized):
+            try:
+                from core.services import autonomous_run_failures as _arf
+                _arf.record_failure(
+                    run_id=str(run.run_id or ""),
+                    session_id=str(run.session_id or ""),
+                    origin=_origin_of_session(str(run.session_id or "")),
+                    provider=str(run.provider or ""),
+                    model=str(run.model or ""),
+                    detail=describe(normalized))
+            except Exception:
+                pass
+            try:
+                from core.runtime.db_central_incidents import record_central_incident
+                record_central_incident(
+                    cluster="runtime", nerve="provider_error_as_reply",
+                    kind="provider_error_leaked", severity="error",
+                    message=("udbyder-fejl standset før den blev gemt som svar: "
+                             f"{describe(normalized)}"),
+                    dedup=True)
+            except Exception:
+                pass
+            logger.warning(
+                "provider-error-not-persisted run_id=%s session=%s: %s",
+                run.run_id, run.session_id, describe(normalized)[:160])
+            return
+    except Exception:
+        # Fail-open: kan vagten ikke køre, må den ikke æde et ægte svar.
+        pass
     normalized = _mark_mid_word_truncation(normalized)
     # 2026-06-11 (Bjørn frustration crisis fix D2): når LLM emitter
     # tool-result markers eller tool-calls som prose, raisede

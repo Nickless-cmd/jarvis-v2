@@ -90,9 +90,12 @@ def mc_runs(limit: int = 20) -> dict:
     """Runs-flade: aktiv run, sidste udfald/capability-brug, de seneste
     `limit` persisterede runs (med udledt failed/cancelled-tælling), seneste
     events samt seneste arbejds-enheder/-noter. Read-only projektion."""
-    surface = _visible_run_surface()
-    work = _visible_work_surface()
-    recent_runs = list(surface.get("persisted_recent_runs") or [])[: max(limit, 1)]
+    normalized_limit = max(int(limit), 1)
+    surface = _mc_facade("_visible_run_surface")()
+    work = _mc_facade("_visible_work_surface")()
+    recent_runs = list(
+        _mc_facade("recent_visible_runs")(limit=normalized_limit) or []
+    )
     failed_runs = [
         item
         for item in recent_runs
@@ -118,8 +121,18 @@ def mc_runs(limit: int = 20) -> dict:
 def mc_approvals(limit: int = 20) -> dict:
     """Approvals-flade: de seneste `limit` approval-requests (med udledt
     pending/approved-tælling), seneste persisterede invokationer og events."""
-    surface = _capability_invocation_surface()
-    requests = list(surface.get("recent_approval_requests") or [])[: max(limit, 1)]
+    from core.identity.workspace_context import current_role, current_user_id
+
+    normalized_limit = max(int(limit), 1)
+    surface = _mc_facade("_capability_invocation_surface")()
+    requests = list(
+        _mc_facade("recent_capability_approval_requests")(
+            limit=normalized_limit,
+            user_id=current_user_id() or None,
+            include_unassigned=current_role() in {"", "owner"},
+        )
+        or []
+    )
     pending = [item for item in requests if str(item.get("status") or "") == "pending"]
     approved = [
         item for item in requests if str(item.get("status") or "") == "approved"
@@ -127,7 +140,7 @@ def mc_approvals(limit: int = 20) -> dict:
     return {
         "requests": requests,
         "recent_invocations": list(surface.get("persisted_recent_invocations") or [])[
-            : max(limit, 1)
+            : normalized_limit
         ],
         "recent_events": list(surface.get("recent_events") or []),
         "summary": {
@@ -535,5 +548,4 @@ def mc_operations(limit: int = 20) -> dict:
         },
     }
     return _store_cached_mc_payload(cache_key, 3.0, payload)  # type: ignore[return-value]
-
 

@@ -1,7 +1,8 @@
 # Jarvis Mobile Companion V2 — Remote-paritet
 
 Date: 2026-09-02
-Status: gennemgået + beslutninger taget — klar til fase 1-implementering
+Status: gennemgået + beslutninger taget — fase 1-plan klar til eksternt review
+Fase 1-plan: `docs/superpowers/plans/2026-09-02-jarvis-mobile-companion-v2-remote-phase1.md`
 Branch for implementering: `codex/jarvis-mobile-companion-v1` (apps/mobile)
 Forrige design: `2026-06-17-jarvis-mobile-companion-design.md` (V1, færdig)
 

@@ -42,6 +42,8 @@ from core.runtime.db_capability_approval import (
     get_capability_approval_request,
     approve_capability_approval_request,
     record_capability_approval_request_execution,
+    claim_capability_approval_request_execution,
+    complete_capability_approval_request_execution,
     _capability_approval_request_from_row,
     _ensure_capability_approval_request_columns,
     latest_capability_approval_request,

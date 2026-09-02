@@ -453,35 +453,37 @@ _Mission Control routes: adaptive/tool-intent, runtime-contract, heartbeat, visi
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_capability_request_scope` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L14) |
-| function | `mc_adaptive_planner` | `()` | Return the current bounded adaptive planner runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L21) |
-| function | `mc_adaptive_reasoning` | `()` | Return the current bounded adaptive reasoning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L27) |
-| function | `mc_guided_learning` | `()` | Return the current bounded guided learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L37) |
-| function | `mc_adaptive_learning` | `()` | Return the current bounded adaptive learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L47) |
-| function | `mc_self_system_code_awareness` | `()` | Return the current bounded self system / code awareness runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L57) |
-| function | `mc_tool_intent` | `()` | Return the current bounded approval-gated tool intent runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L63) |
-| function | `mc_approval_feedback` | `()` | Return the approval-feedback surface (learning signal from past approvals/denials). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L69) |
-| function | `mc_approve_tool_intent` | `()` | Approve the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L75) |
-| function | `mc_deny_tool_intent` | `()` | Deny the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L102) |
-| function | `mc_private_brain` | `()` | Return the private-brain overview plus recent session-distillation entries. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L129) |
-| function | `mc_runtime_contract` | `()` | Return the current runtime-contract state (active contract + candidates). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L138) |
-| function | `mc_heartbeat` | `()` | Return the heartbeat runtime surface (current heartbeat state and policy). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L144) |
-| function | `mc_emotional_memory` | `(limit=…)` | Closes cartographer dark-edge (2026-05-13): emotional_memory_engine | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L150) |
-| function | `mc_heartbeat_tick` | `()` | Manually trigger one heartbeat tick and return its resulting state/tick/policy. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L159) |
-| function | `mc_approve_runtime_contract_candidate` | `(candidate_id)` | Approve a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L171) |
-| function | `mc_reject_runtime_contract_candidate` | `(candidate_id)` | Reject a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L184) |
-| function | `mc_apply_runtime_contract_candidate` | `(candidate_id)` | Apply an approved runtime-contract candidate by id; returns the apply result. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L197) |
-| function | `mc_runtime` | `()` | Return the aggregate Mission Control runtime surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L210) |
-| function | `mc_visible_execution` | `()` | Return the visible-execution surface (current visible model/provider/auth) from live settings. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L216) |
-| function | `mc_main_agent_selection` | `()` | Return the current main-agent selection surface (selected provider/model/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L223) |
-| function | `mc_ollama_models` | `()` | Return the Ollama models available for use as the visible target. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L229) |
-| function | `mc_provider_models` | `(provider=…, auth_profile=…)` | Return the models available for the given provider (optionally scoped to an auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L235) |
-| function | `mc_invoke_workspace_capability` | `(capability_id, approved=…, write_content=…, target_path=…, command_text=…)` | Invoke a workspace capability by id, passing through the approval flag and optional | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L249) |
-| function | `mc_approve_capability_request` | `(request_id)` | Approve a capability-approval request by id (stamping approved_at now). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L272) |
-| function | `mc_execute_capability_request` | `(request_id, write_content=…, command_text=…)` | Execute a previously approved capability-approval request. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L295) |
-| function | `mc_complete_development_focus` | `(focus_id)` | Manually mark a development focus as completed. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L412) |
-| function | `mc_update_visible_execution` | `(payload)` | Update the visible-execution settings (visible model provider/name/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L444) |
-| function | `mc_update_main_agent_selection` | `(payload)` | Select the main-agent target (provider/model, optional auth_profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L499) |
+| function | `_capability_request_scope` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L16) |
+| function | `_stored_capability_execution_args` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L23) |
+| function | `mc_adaptive_planner` | `()` | Return the current bounded adaptive planner runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L35) |
+| function | `mc_adaptive_reasoning` | `()` | Return the current bounded adaptive reasoning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L41) |
+| function | `mc_guided_learning` | `()` | Return the current bounded guided learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L51) |
+| function | `mc_adaptive_learning` | `()` | Return the current bounded adaptive learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L61) |
+| function | `mc_self_system_code_awareness` | `()` | Return the current bounded self system / code awareness runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L71) |
+| function | `mc_tool_intent` | `()` | Return the current bounded approval-gated tool intent runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L77) |
+| function | `mc_approval_feedback` | `()` | Return the approval-feedback surface (learning signal from past approvals/denials). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L83) |
+| function | `mc_approve_tool_intent` | `()` | Approve the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L89) |
+| function | `mc_deny_tool_intent` | `()` | Deny the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L116) |
+| function | `mc_private_brain` | `()` | Return the private-brain overview plus recent session-distillation entries. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L143) |
+| function | `mc_runtime_contract` | `()` | Return the current runtime-contract state (active contract + candidates). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L152) |
+| function | `mc_heartbeat` | `()` | Return the heartbeat runtime surface (current heartbeat state and policy). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L158) |
+| function | `mc_emotional_memory` | `(limit=…)` | Closes cartographer dark-edge (2026-05-13): emotional_memory_engine | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L164) |
+| function | `mc_heartbeat_tick` | `()` | Manually trigger one heartbeat tick and return its resulting state/tick/policy. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L173) |
+| function | `mc_approve_runtime_contract_candidate` | `(candidate_id)` | Approve a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L185) |
+| function | `mc_reject_runtime_contract_candidate` | `(candidate_id)` | Reject a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L198) |
+| function | `mc_apply_runtime_contract_candidate` | `(candidate_id)` | Apply an approved runtime-contract candidate by id; returns the apply result. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L211) |
+| function | `mc_runtime` | `()` | Return the aggregate Mission Control runtime surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L224) |
+| function | `mc_visible_execution` | `()` | Return the visible-execution surface (current visible model/provider/auth) from live settings. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L230) |
+| function | `mc_main_agent_selection` | `()` | Return the current main-agent selection surface (selected provider/model/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L237) |
+| function | `mc_ollama_models` | `()` | Return the Ollama models available for use as the visible target. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L243) |
+| function | `mc_provider_models` | `(provider=…, auth_profile=…)` | Return the models available for the given provider (optionally scoped to an auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L249) |
+| function | `mc_invoke_workspace_capability` | `(capability_id, approved=…, write_content=…, target_path=…, command_text=…)` | Invoke a workspace capability by id, passing through the approval flag and optional | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L263) |
+| function | `mc_approve_capability_request` | `(request_id)` | Approve a capability-approval request by id (stamping approved_at now). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L286) |
+| function | `mc_execute_capability_request` | `(request_id, write_content=…, command_text=…)` | Execute a previously approved capability-approval request. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L309) |
+| function | `mc_approve_and_execute_capability_request` | `(request_id)` | Atomically approve, claim and execute a stored capability request once. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L426) |
+| function | `mc_complete_development_focus` | `(focus_id)` | Manually mark a development focus as completed. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L496) |
+| function | `mc_update_visible_execution` | `(payload)` | Update the visible-execution settings (visible model provider/name/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L528) |
+| function | `mc_update_main_agent_selection` | `(payload)` | Select the main-agent target (provider/model, optional auth_profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L583) |
 
 ## `apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py`
 _Mission Control routes: skills, memory, hardening, lab_

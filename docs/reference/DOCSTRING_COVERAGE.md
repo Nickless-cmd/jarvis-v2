@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6536/13125 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6537/13129 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6536/13125 functions/methods documented (49%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 576 | 761 | 75% |
+| `apps.api.jarvis_api.routes` | 577 | 763 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -23,7 +23,7 @@ Generated from source. 6536/13125 functions/methods documented (49%). The list b
 | `core.identity` | 63 | 154 | 40% |
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 553 | 1024 | 54% |
+| `core.runtime` | 553 | 1026 | 53% |
 | `core.services` | 4339 | 9116 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
@@ -40,7 +40,7 @@ Generated from source. 6536/13125 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1868)
+## Undocumented public functions (1870)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -306,16 +306,18 @@ Generated from source. 6536/13125 functions/methods documented (49%). The list b
 - `core/runtime/db_bounded_action.py` :: `upsert_bounded_action_continuity_state` (L105)
 - `core/runtime/db_capability.py` :: `ensure_capability_tables` (L14)
 - `core/runtime/db_capability.py` :: `recent_capability_invocations` (L38)
-- `core/runtime/db_capability_approval.py` :: `approval_feedback_stats_by_tool` (L530)
-- `core/runtime/db_capability_approval.py` :: `approve_capability_approval_request` (L133)
-- `core/runtime/db_capability_approval.py` :: `count_approval_feedback` (L560)
-- `core/runtime/db_capability_approval.py` :: `get_capability_approval_request` (L88)
-- `core/runtime/db_capability_approval.py` :: `insert_approval_feedback` (L437)
-- `core/runtime/db_capability_approval.py` :: `latest_approved_capability_approval_request` (L385)
-- `core/runtime/db_capability_approval.py` :: `latest_capability_approval_request` (L334)
-- `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L515)
+- `core/runtime/db_capability_approval.py` :: `approval_feedback_stats_by_tool` (L649)
+- `core/runtime/db_capability_approval.py` :: `approve_capability_approval_request` (L135)
+- `core/runtime/db_capability_approval.py` :: `claim_capability_approval_request_execution` (L270)
+- `core/runtime/db_capability_approval.py` :: `complete_capability_approval_request_execution` (L331)
+- `core/runtime/db_capability_approval.py` :: `count_approval_feedback` (L679)
+- `core/runtime/db_capability_approval.py` :: `get_capability_approval_request` (L89)
+- `core/runtime/db_capability_approval.py` :: `insert_approval_feedback` (L556)
+- `core/runtime/db_capability_approval.py` :: `latest_approved_capability_approval_request` (L503)
+- `core/runtime/db_capability_approval.py` :: `latest_capability_approval_request` (L451)
+- `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L634)
 - `core/runtime/db_capability_approval.py` :: `recent_capability_approval_requests` (L43)
-- `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L199)
+- `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L202)
 - `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L303)
 - `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L106)
 - `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L162)

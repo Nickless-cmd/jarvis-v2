@@ -796,6 +796,7 @@ def init_db() -> None:
                 executed_at TEXT,
                 invocation_status TEXT,
                 invocation_execution_mode TEXT,
+                execution_result_json TEXT,
                 scheduled_for_user_id TEXT,
                 initiated_by TEXT
             )
@@ -1473,4 +1474,3 @@ def _migrate_chronicle_table_add_affective_signature() -> None:
 # levede i db.py og _install_ensure_once_cache() wrappede db.py-namespace).
 # Allerede-wrappede funcs (importeret fra andre submoduler) springes over.
 _install_ensure_once_cache_for("core.runtime.db_schema")
-

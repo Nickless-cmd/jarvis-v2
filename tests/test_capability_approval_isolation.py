@@ -42,3 +42,39 @@ def test_capability_approval_route_returns_404_for_cross_user_request(
         assert result["request"]["status"] == "approved"
     finally:
         reset_context(token)
+
+
+def test_approve_and_execute_replays_without_invoking_twice(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    from core.identity.workspace_context import reset_context, set_context
+
+    db = isolated_runtime.db
+    db.init_db()
+    _insert_request(db, "request-once", "user-a")
+    invocations: list[str] = []
+
+    def fake_invoke(capability_id: str, **_kwargs):
+        invocations.append(capability_id)
+        return {"status": "executed", "execution_mode": "workspace-file-write"}
+
+    monkeypatch.setattr(
+        isolated_runtime.mission_control,
+        "invoke_workspace_capability",
+        fake_invoke,
+    )
+    token = set_context(workspace_name="a", user_id="user-a", role="member")
+    try:
+        first = isolated_runtime.mission_control.mc_approve_and_execute_capability_request(
+            "request-once"
+        )
+        replay = isolated_runtime.mission_control.mc_approve_and_execute_capability_request(
+            "request-once"
+        )
+    finally:
+        reset_context(token)
+
+    assert first["ok"] is True
+    assert replay == {**first, "replayed": True}
+    assert invocations == ["tool:test"]

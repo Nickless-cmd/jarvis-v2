@@ -439,6 +439,8 @@ from core.runtime.provider_router import (
 )
 from core.runtime.db import (
     approve_capability_approval_request,
+    claim_capability_approval_request_execution,
+    complete_capability_approval_request_execution,
     connect,
     get_capability_approval_request,
     get_private_development_state,
@@ -467,4 +469,3 @@ from core.tools.workspace_capabilities import (
     invoke_workspace_capability,
     load_workspace_capabilities,
 )
-

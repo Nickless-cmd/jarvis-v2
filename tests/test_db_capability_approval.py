@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 
 def _insert_request(db, request_id: str, user_id: str | None) -> None:
     with db.connect() as conn:
@@ -63,3 +65,46 @@ def test_unassigned_capability_requests_are_visible_only_in_owner_scope(
     assert db.get_capability_approval_request(
         "legacy-request", user_id="owner", include_unassigned=True
     )["request_id"] == "legacy-request"
+
+
+def test_execution_claim_is_atomic_and_completed_result_is_replayed(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    db.init_db()
+    _insert_request(db, "request-a", "user-a")
+
+    first = db.claim_capability_approval_request_execution(
+        "request-a",
+        approved_at="2026-09-02T12:01:00+00:00",
+        user_id="user-a",
+        include_unassigned=False,
+    )
+    competing = db.claim_capability_approval_request_execution(
+        "request-a",
+        approved_at="2026-09-02T12:01:01+00:00",
+        user_id="user-a",
+        include_unassigned=False,
+    )
+    assert first["state"] == "claimed"
+    assert competing["state"] == "already-executing"
+
+    response = {"ok": True, "status": "executed", "invocation": {"value": 1}}
+    db.complete_capability_approval_request_execution(
+        "request-a",
+        executed_at="2026-09-02T12:02:00+00:00",
+        invocation_status="executed",
+        invocation_execution_mode="workspace-file-write",
+        execution_result_json=json.dumps(response),
+        user_id="user-a",
+        include_unassigned=False,
+    )
+    replay = db.claim_capability_approval_request_execution(
+        "request-a",
+        approved_at="2026-09-02T12:03:00+00:00",
+        user_id="user-a",
+        include_unassigned=False,
+    )
+
+    assert replay["state"] == "completed"
+    assert json.loads(replay["request"]["execution_result_json"]) == response

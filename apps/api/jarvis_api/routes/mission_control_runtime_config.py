@@ -4,6 +4,8 @@ Ruter flyttet uændret fra mission_control.py (god-fil-snit). Egen prefix-fri
 APIRouter; samles i mission_control.py via include_router(prefix=/mc)."""
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, HTTPException  # noqa: F401 (HTTPException brugt i route-kroppe)
 
 from .mission_control_common import *  # noqa: F401,F403 (delt flade + hjælpere)
@@ -16,6 +18,18 @@ def _capability_request_scope() -> tuple[str | None, bool]:
 
     user_id = current_user_id() or None
     return user_id, current_role() in {"", "owner"}
+
+
+def _stored_capability_execution_args(
+    request: dict[str, object],
+) -> tuple[str | None, str | None]:
+    proposal_content = str(request.get("proposal_content") or "") or None
+    execution_mode = str(request.get("execution_mode") or "")
+    if execution_mode == "workspace-file-write":
+        return proposal_content, None
+    if execution_mode in {"mutating-exec-proposal", "sudo-exec-proposal"}:
+        return None, proposal_content
+    return None, None
 
 @router.get("/adaptive-planner")
 def mc_adaptive_planner() -> dict:
@@ -408,6 +422,76 @@ def mc_execute_capability_request(
     }
 
 
+@router.post("/capability-approval-requests/{request_id}/approve-and-execute")
+def mc_approve_and_execute_capability_request(request_id: str) -> dict:
+    """Atomically approve, claim and execute a stored capability request once."""
+    user_id, include_unassigned = _capability_request_scope()
+    claimed = claim_capability_approval_request_execution(
+        request_id,
+        approved_at=datetime.now(UTC).isoformat(),
+        user_id=user_id,
+        include_unassigned=include_unassigned,
+    )
+    if claimed is None:
+        raise HTTPException(
+            status_code=404, detail="Capability approval request not found"
+        )
+    state = str(claimed.get("state") or "")
+    request = dict(claimed.get("request") or {})
+    if state == "already-executing":
+        raise HTTPException(
+            status_code=409, detail="Capability approval request is already executing"
+        )
+    if state == "not-approvable":
+        raise HTTPException(
+            status_code=409, detail="Capability approval request cannot be executed"
+        )
+    if state == "completed":
+        try:
+            result = json.loads(str(request.get("execution_result_json") or "{}"))
+        except (TypeError, ValueError):
+            result = {"ok": False, "request_id": request_id, "status": "result-unavailable"}
+        return {**result, "request": request, "replayed": True}
+
+    write_content, command_text = _stored_capability_execution_args(request)
+    try:
+        invocation = _mc_facade("invoke_workspace_capability")(
+            str(request.get("capability_id") or ""),
+            approved=True,
+            run_id=str(request.get("run_id") or "") or None,
+            write_content=write_content,
+            command_text=command_text,
+        )
+        result = {
+            "ok": invocation.get("status") == "executed",
+            "request_id": request_id,
+            "status": str(invocation.get("status") or ""),
+            "invocation": invocation,
+        }
+    except Exception as exc:
+        result = {
+            "ok": False,
+            "request_id": request_id,
+            "status": "failed",
+            "detail": str(exc),
+            "invocation": None,
+        }
+    completed = complete_capability_approval_request_execution(
+        request_id,
+        executed_at=datetime.now(UTC).isoformat(),
+        invocation_status=str(result.get("status") or ""),
+        invocation_execution_mode=str(request.get("execution_mode") or ""),
+        execution_result_json=json.dumps(result, sort_keys=True),
+        user_id=user_id,
+        include_unassigned=include_unassigned,
+    )
+    if completed is None:
+        raise HTTPException(
+            status_code=409, detail="Capability approval execution could not be finalized"
+        )
+    return {**result, "request": completed}
+
+
 @router.post("/development-focus/{focus_id}/complete")
 def mc_complete_development_focus(focus_id: str) -> dict:
     """Manually mark a development focus as completed."""
@@ -550,4 +634,3 @@ def mc_update_main_agent_selection(payload: dict) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return _main_agent_selection_surface()
-

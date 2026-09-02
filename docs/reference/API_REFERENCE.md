@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-08-21 from app.routes (live) — 518 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-02 from app.routes (live) — 519 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -300,6 +300,7 @@
 | GET | `/mc/boundary-model` | dict | mission_control_introspection |
 | GET | `/mc/cadence-producers` | dict | mission_control_introspection |
 | POST | `/mc/capability-approval-requests/{request_id}/approve` | dict | mission_control_runtime_config |
+| POST | `/mc/capability-approval-requests/{request_id}/approve-and-execute` | dict | mission_control_runtime_config |
 | POST | `/mc/capability-approval-requests/{request_id}/execute` | dict | mission_control_runtime_config |
 | GET | `/mc/cheap-balancer-state` | dict | cheap_balancer |
 | POST | `/mc/cheap-balancer/refresh-pool` | dict | cheap_balancer |

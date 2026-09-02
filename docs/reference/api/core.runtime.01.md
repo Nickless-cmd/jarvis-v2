@@ -49,7 +49,7 @@ _Facade for core.runtime.db submodules._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_session_distillation_record_from_row` | `(row)` | — | [src](../../../core/runtime/db.py#L76) |
+| function | `_session_distillation_record_from_row` | `(row)` | — | [src](../../../core/runtime/db.py#L78) |
 
 ## `core/runtime/db_absence_traces.py`
 _DB helpers for absence_traces (Lag 11 forgetting)._
@@ -182,18 +182,20 @@ _Capability approval + approval feedback CRUD._
 |---|---|---|---|---|
 | function | `_approval_user_scope` | `(*, user_id, include_unassigned)` | — | [src](../../../core/runtime/db_capability_approval.py#L27) |
 | function | `recent_capability_approval_requests` | `(limit=…, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L43) |
-| function | `get_capability_approval_request` | `(request_id, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L88) |
-| function | `approve_capability_approval_request` | `(request_id, *, approved_at, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L133) |
-| function | `record_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L199) |
-| function | `_capability_approval_request_from_row` | `(row, *, status=…, approved_at=…, executed=…, executed_at=…, invocation_status=…, invocation_execution_mode=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L266) |
-| function | `_ensure_capability_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_capability_approval.py#L310) |
-| function | `latest_capability_approval_request` | `(*, execution_mode=…, include_executed=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L334) |
-| function | `latest_approved_capability_approval_request` | `(*, execution_mode=…, capability_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L385) |
-| function | `insert_approval_feedback` | `(*, recorded_at, intent_key, approval_state, approval_source, tool_name=…, resolution_reason=…, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L437) |
-| function | `list_approval_feedback` | `(limit=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L515) |
-| function | `approval_feedback_stats_by_tool` | `(days=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L530) |
-| function | `count_approval_feedback` | `()` | — | [src](../../../core/runtime/db_capability_approval.py#L560) |
-| function | `_approval_feedback_from_row` | `(row)` | — | [src](../../../core/runtime/db_capability_approval.py#L568) |
+| function | `get_capability_approval_request` | `(request_id, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L89) |
+| function | `approve_capability_approval_request` | `(request_id, *, approved_at, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L135) |
+| function | `record_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L202) |
+| function | `claim_capability_approval_request_execution` | `(request_id, *, approved_at, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L270) |
+| function | `complete_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, execution_result_json, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L331) |
+| function | `_capability_approval_request_from_row` | `(row, *, status=…, approved_at=…, executed=…, executed_at=…, invocation_status=…, invocation_execution_mode=…, execution_result_json=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L372) |
+| function | `_ensure_capability_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_capability_approval.py#L426) |
+| function | `latest_capability_approval_request` | `(*, execution_mode=…, include_executed=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L451) |
+| function | `latest_approved_capability_approval_request` | `(*, execution_mode=…, capability_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L503) |
+| function | `insert_approval_feedback` | `(*, recorded_at, intent_key, approval_state, approval_source, tool_name=…, resolution_reason=…, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L556) |
+| function | `list_approval_feedback` | `(limit=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L634) |
+| function | `approval_feedback_stats_by_tool` | `(days=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L649) |
+| function | `count_approval_feedback` | `()` | — | [src](../../../core/runtime/db_capability_approval.py#L679) |
+| function | `_approval_feedback_from_row` | `(row)` | — | [src](../../../core/runtime/db_capability_approval.py#L687) |
 
 ## `core/runtime/db_central_incidents.py`
 _Central-incidents — persistent log af det Den Intelligente Central GRIBER._

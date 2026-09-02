@@ -73,6 +73,7 @@ def recent_capability_approval_requests(
                 executed_at,
                 invocation_status,
                 invocation_execution_mode,
+                execution_result_json,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests
@@ -118,6 +119,7 @@ def get_capability_approval_request(
                 executed_at,
                 invocation_status,
                 invocation_execution_mode,
+                execution_result_json,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests
@@ -164,6 +166,7 @@ def approve_capability_approval_request(
                 executed_at,
                 invocation_status,
                 invocation_execution_mode,
+                execution_result_json,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests
@@ -232,6 +235,7 @@ def record_capability_approval_request_execution(
                 executed_at,
                 invocation_status,
                 invocation_execution_mode,
+                execution_result_json,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests
@@ -263,6 +267,108 @@ def record_capability_approval_request_execution(
     )
 
 
+def claim_capability_approval_request_execution(
+    request_id: str,
+    *,
+    approved_at: str,
+    user_id: str | None,
+    include_unassigned: bool = False,
+) -> dict[str, object] | None:
+    scope_sql, scope_params = _approval_user_scope(
+        user_id=user_id, include_unassigned=include_unassigned
+    )
+    with connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            f"""
+            SELECT * FROM capability_approval_requests
+            WHERE request_id = ? AND {scope_sql}
+            """,
+            (request_id, *scope_params),
+        ).fetchone()
+        if row is None:
+            conn.rollback()
+            return None
+        if bool(row["executed"]) or str(row["status"] or "") == "executed":
+            conn.commit()
+            return {
+                "state": "completed",
+                "request": _capability_approval_request_from_row(row),
+            }
+        if str(row["status"] or "") == "executing":
+            conn.commit()
+            return {
+                "state": "already-executing",
+                "request": _capability_approval_request_from_row(row),
+            }
+        if str(row["status"] or "") not in {"pending", "approved"}:
+            conn.commit()
+            return {
+                "state": "not-approvable",
+                "request": _capability_approval_request_from_row(row),
+            }
+        cursor = conn.execute(
+            f"""
+            UPDATE capability_approval_requests
+            SET status = 'executing', approved_at = COALESCE(approved_at, ?)
+            WHERE request_id = ? AND {scope_sql}
+              AND status IN ('pending', 'approved') AND executed = 0
+            """,
+            (approved_at, request_id, *scope_params),
+        )
+        if cursor.rowcount != 1:
+            conn.rollback()
+            return None
+        conn.commit()
+    return {
+        "state": "claimed",
+        "request": _capability_approval_request_from_row(
+            row, status="executing", approved_at=row["approved_at"] or approved_at
+        ),
+    }
+
+
+def complete_capability_approval_request_execution(
+    request_id: str,
+    *,
+    executed_at: str,
+    invocation_status: str,
+    invocation_execution_mode: str,
+    execution_result_json: str,
+    user_id: str | None,
+    include_unassigned: bool = False,
+) -> dict[str, object] | None:
+    scope_sql, scope_params = _approval_user_scope(
+        user_id=user_id, include_unassigned=include_unassigned
+    )
+    with connect() as conn:
+        cursor = conn.execute(
+            f"""
+            UPDATE capability_approval_requests
+            SET status = 'executed', executed = 1, executed_at = ?,
+                invocation_status = ?, invocation_execution_mode = ?,
+                execution_result_json = ?
+            WHERE request_id = ? AND {scope_sql} AND status = 'executing'
+            """,
+            (
+                executed_at,
+                invocation_status,
+                invocation_execution_mode,
+                execution_result_json,
+                request_id,
+                *scope_params,
+            ),
+        )
+        conn.commit()
+    if cursor.rowcount != 1:
+        return None
+    return get_capability_approval_request(
+        request_id,
+        user_id=user_id,
+        include_unassigned=include_unassigned,
+    )
+
+
 def _capability_approval_request_from_row(
     row: sqlite3.Row,
     *,
@@ -272,6 +378,7 @@ def _capability_approval_request_from_row(
     executed_at: str | None = None,
     invocation_status: str | None = None,
     invocation_execution_mode: str | None = None,
+    execution_result_json: str | None = None,
 ) -> dict[str, object]:
     return {
         "request_id": row["request_id"],
@@ -302,6 +409,15 @@ def _capability_approval_request_from_row(
             if invocation_execution_mode is not None
             else row["invocation_execution_mode"]
         ),
+        "execution_result_json": (
+            execution_result_json
+            if execution_result_json is not None
+            else (
+                row["execution_result_json"]
+                if "execution_result_json" in row.keys()
+                else None
+            )
+        ),
         "scheduled_for_user_id": row["scheduled_for_user_id"],
         "initiated_by": row["initiated_by"],
     }
@@ -316,6 +432,7 @@ def _ensure_capability_approval_request_columns(conn: sqlite3.Connection) -> Non
         "executed_at": "TEXT",
         "invocation_status": "TEXT",
         "invocation_execution_mode": "TEXT",
+        "execution_result_json": "TEXT",
         "proposal_target_path": "TEXT",
         "proposal_content": "TEXT",
         "proposal_content_summary": "TEXT",
@@ -368,6 +485,7 @@ def latest_capability_approval_request(
                 executed_at,
                 invocation_status,
                 invocation_execution_mode,
+                execution_result_json,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests
@@ -420,6 +538,7 @@ def latest_approved_capability_approval_request(
                 executed_at,
                 invocation_status,
                 invocation_execution_mode,
+                execution_result_json,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests

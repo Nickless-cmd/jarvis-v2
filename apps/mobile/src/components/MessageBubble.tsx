@@ -16,10 +16,19 @@ const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'mon
 
 export function MessageBubble({
   message,
-  onResend
+  onResend,
+  hideActions
 }: {
   message: ChatMessage
   onResend?: (text: string) => void
+  /**
+   * Skjul handlingsrækken.
+   *
+   * En tur udfoldes nu i flere afsnit (fortælling → værktøj → fortælling), og
+   * uden dette fik HVERT afsnit sin egen kopiér/oplæs-række. ChatGPT viser
+   * dem én gang, under turens sidste afsnit — resten er støj.
+   */
+  hideActions?: boolean
 }) {
   const isUser = message.role === 'user'
   const [speaking, setSpeaking] = useState(false)
@@ -75,7 +84,7 @@ export function MessageBubble({
           (kopiér, tommel op/ned, oplæsning, del, menu) uden tidsstempel.
           Tidsstemplet er fjernet bevidst: i referencen står der ingenting
           dér, og hver linje man IKKE skriver, er en linje mindre støj. */}
-      {!streaming && !isUser ? (
+      {!streaming && !isUser && !hideActions ? (
         <View style={styles.actions}>
           <Pressable accessibilityLabel="Kopiér" hitSlop={10} onPress={copy}>
             {copied ? (

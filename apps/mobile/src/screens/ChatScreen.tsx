@@ -537,7 +537,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    zIndex: 5
+    // Under komponisten ligger enhedens gestus-zone. Uden en bund her
+    // lyste en smal stribe tråd igennem dernede — teksten rullede korrekt
+    // bagved, men fortsatte forbi den flade der skulle dække den.
+    paddingBottom: 16,
+    zIndex: 5,
+    // Samme halvgennemsigtige flade som TopBar. Uden den lækkede tråden ud
+    // NEDEN UNDER komponisten i skærmens sidste par millimeter — teksten
+    // rullede korrekt bagved, men fortsatte forbi pillens underkant.
+    backgroundColor: 'rgba(0,0,0,0.72)'
   },
   connBanner: {
     paddingVertical: tokens.spacing.xs,

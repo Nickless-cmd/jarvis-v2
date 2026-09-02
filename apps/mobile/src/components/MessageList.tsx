@@ -32,7 +32,7 @@ interface MessageListProps {
 }
 
 type Row =
-  | { kind: 'msg'; key: string; message: ChatMessage }
+  | { kind: 'msg'; key: string; message: ChatMessage; hideActions?: boolean }
   | { kind: 'tool'; key: string; content: string }
   | { kind: 'live-tool'; key: string; name: string; body: string; running: boolean }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
@@ -162,12 +162,20 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       const blocks = parseBlocks(m)
       if (hasOrdering(blocks)) {
         const expanded: Row[] = []
-        threadBlocks(blocks!).forEach((b, bi) => {
+        const thread = threadBlocks(blocks!)
+        const lastTextIdx = thread.reduce(
+          (acc, b, i) => (b.type === 'text' && (b.text ?? '').trim() ? i : acc),
+          -1
+        )
+        thread.forEach((b, bi) => {
           if (b.type === 'text' && (b.text ?? '').trim()) {
             expanded.push({
               kind: 'msg',
               key: `${m.id}-b${bi}`,
-              message: { ...m, id: `${m.id}-b${bi}`, content: (b.text ?? '').trim() }
+              message: { ...m, id: `${m.id}-b${bi}`, content: (b.text ?? '').trim() },
+              // Kun turens sidste afsnit bærer kopiér/oplæs — ellers gentages
+              // rækken efter hvert afsnit og tråden bliver støjende.
+              hideActions: bi !== lastTextIdx
             })
           } else if (b.type === 'tool_use') {
             expanded.push({
@@ -241,6 +249,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           <MessageBubble
             message={item.message}
             onResend={item.message.role === 'user' ? onResend : undefined}
+            hideActions={item.hideActions}
           />
         )
       }}

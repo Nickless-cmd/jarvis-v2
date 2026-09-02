@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from core.runtime.db import connect
+from core.runtime.db_capability_approval import capability_approval_envelope_fingerprint
 from core.tools.workspace_capabilities_results import _content_fingerprint, _preview_text
 
 
@@ -27,6 +28,16 @@ def _persist_capability_approval_request(
     proposal_content = invocation.get("proposal_content") or {}
     scheduled_for_user_id, initiated_by = _approval_request_user_context()
     request_id = f"cap-approval-{uuid4().hex}"
+    envelope_fingerprint = capability_approval_envelope_fingerprint(
+        {
+            "scheduled_for_user_id": scheduled_for_user_id,
+            "capability_id": capability.get("capability_id") or "unknown",
+            "execution_mode": invocation.get("execution_mode") or "unknown",
+            "proposal_target_path": proposal_content.get("target"),
+            "proposal_content": proposal_content.get("content"),
+            "proposal_content_fingerprint": proposal_content.get("fingerprint"),
+        }
+    )
     with connect() as conn:
         conn.execute(
             """
@@ -48,8 +59,9 @@ def _persist_capability_approval_request(
                 status,
                 scheduled_for_user_id,
                 initiated_by
+                , approval_envelope_fingerprint
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 request_id,
@@ -69,6 +81,7 @@ def _persist_capability_approval_request(
                 "pending",
                 scheduled_for_user_id,
                 initiated_by,
+                envelope_fingerprint,
             ),
         )
         if scheduled_for_user_id:
@@ -85,6 +98,7 @@ def _persist_capability_approval_request(
                     "execution_mode": invocation.get("execution_mode") or "unknown",
                     "target": proposal_content.get("target") or "",
                     "fingerprint": proposal_content.get("fingerprint") or "",
+                    "envelope_fingerprint": envelope_fingerprint,
                 },
             )
         conn.commit()

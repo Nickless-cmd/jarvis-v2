@@ -13,6 +13,8 @@ Split-spec: docs/superpowers/specs/2026-05-15-db-split-design.md
 from __future__ import annotations
 
 import json as _json
+import os
+from hashlib import sha256
 import sqlite3
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -21,6 +23,46 @@ from core.runtime.db_core import (
     _install_ensure_once_cache_for,
     connect,
 )
+
+_DEFAULT_CAPABILITY_APPROVAL_STALE_SECONDS = 24 * 60 * 60
+
+
+def capability_approval_stale_seconds() -> int:
+    raw = os.environ.get("JARVIS_CAPABILITY_APPROVAL_STALE_SECONDS", "")
+    try:
+        return max(int(raw), 60) if raw else _DEFAULT_CAPABILITY_APPROVAL_STALE_SECONDS
+    except ValueError:
+        return _DEFAULT_CAPABILITY_APPROVAL_STALE_SECONDS
+
+
+def capability_approval_request_is_stale(
+    request: dict[str, object], *, reference_now: datetime | None = None
+) -> bool:
+    if str(request.get("status") or "") not in {"pending", "approved"}:
+        return False
+    try:
+        requested_at = datetime.fromisoformat(
+            str(request.get("requested_at") or "").replace("Z", "+00:00")
+        )
+        if requested_at.tzinfo is None:
+            requested_at = requested_at.replace(tzinfo=UTC)
+    except ValueError:
+        return True
+    now = reference_now or datetime.now(UTC)
+    return (now - requested_at).total_seconds() > capability_approval_stale_seconds()
+
+
+def capability_approval_envelope_fingerprint(request: dict[str, object]) -> str:
+    envelope = {
+        "user_id": str(request.get("scheduled_for_user_id") or ""),
+        "capability_id": str(request.get("capability_id") or ""),
+        "execution_mode": str(request.get("execution_mode") or ""),
+        "target": str(request.get("proposal_target_path") or ""),
+        "content": str(request.get("proposal_content") or ""),
+        "content_fingerprint": str(request.get("proposal_content_fingerprint") or ""),
+    }
+    canonical = _json.dumps(envelope, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return sha256(canonical.encode("utf-8")).hexdigest()
 
 
 # === capability_approval_request CRUD (verbatim from db.py L4341-4689) ===
@@ -74,6 +116,7 @@ def recent_capability_approval_requests(
                 invocation_status,
                 invocation_execution_mode,
                 execution_result_json,
+                approval_envelope_fingerprint,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests
@@ -120,6 +163,7 @@ def get_capability_approval_request(
                 invocation_status,
                 invocation_execution_mode,
                 execution_result_json,
+                approval_envelope_fingerprint,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests
@@ -167,6 +211,7 @@ def approve_capability_approval_request(
                 invocation_status,
                 invocation_execution_mode,
                 execution_result_json,
+                approval_envelope_fingerprint,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests
@@ -295,6 +340,16 @@ def claim_capability_approval_request_execution(
                 "state": "completed",
                 "request": _capability_approval_request_from_row(row),
             }
+        projected = _capability_approval_request_from_row(row)
+        if capability_approval_request_is_stale(projected):
+            conn.commit()
+            return {"state": "stale", "request": projected}
+        expected_envelope = capability_approval_envelope_fingerprint(projected)
+        if not projected.get("approval_envelope_fingerprint") or (
+            str(projected["approval_envelope_fingerprint"]) != expected_envelope
+        ):
+            conn.commit()
+            return {"state": "envelope-mismatch", "request": projected}
         if str(row["status"] or "") == "executing":
             conn.commit()
             return {
@@ -418,6 +473,11 @@ def _capability_approval_request_from_row(
                 else None
             )
         ),
+        "approval_envelope_fingerprint": (
+            row["approval_envelope_fingerprint"]
+            if "approval_envelope_fingerprint" in row.keys()
+            else None
+        ),
         "scheduled_for_user_id": row["scheduled_for_user_id"],
         "initiated_by": row["initiated_by"],
     }
@@ -433,6 +493,7 @@ def _ensure_capability_approval_request_columns(conn: sqlite3.Connection) -> Non
         "invocation_status": "TEXT",
         "invocation_execution_mode": "TEXT",
         "execution_result_json": "TEXT",
+        "approval_envelope_fingerprint": "TEXT",
         "proposal_target_path": "TEXT",
         "proposal_content": "TEXT",
         "proposal_content_summary": "TEXT",
@@ -486,6 +547,7 @@ def latest_capability_approval_request(
                 invocation_status,
                 invocation_execution_mode,
                 execution_result_json,
+                approval_envelope_fingerprint,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests
@@ -539,6 +601,7 @@ def latest_approved_capability_approval_request(
                 invocation_status,
                 invocation_execution_mode,
                 execution_result_json,
+                approval_envelope_fingerprint,
                 scheduled_for_user_id,
                 initiated_by
             FROM capability_approval_requests

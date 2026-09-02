@@ -42,3 +42,34 @@ def test_mc_approvals_respects_requested_limit_beyond_surface_cap(
 
     assert len(mc.mc_approvals(limit=20)["requests"]) == 8
     assert len(mc.mc_approvals(limit=3)["requests"]) == 3
+
+
+def test_mc_approvals_combines_capability_and_expired_tool_intent(
+    isolated_runtime,
+) -> None:
+    from core.identity.workspace_context import reset_context, set_context
+
+    db = isolated_runtime.db
+    db.init_db()
+    token = set_context(workspace_name="a", user_id="user-a", role="member")
+    try:
+        db.create_tool_intent_approval_request(
+            intent_key="intent-expired",
+            intent_type="write",
+            intent_target="MEMORY.md",
+            approval_scope="workspace",
+            approval_required=True,
+            approval_reason="test",
+            requested_at="2000-01-01T00:00:00+00:00",
+            expires_at="2000-01-01T00:15:00+00:00",
+        )
+        payload = isolated_runtime.mission_control.mc_approvals(limit=20)
+    finally:
+        reset_context(token)
+
+    tool_request = next(
+        item for item in payload["requests"] if item["approval_system"] == "tool-intent"
+    )
+    assert tool_request["status"] == "expired"
+    assert tool_request["active"] is False
+    assert payload["summary"]["pending_count"] == 0

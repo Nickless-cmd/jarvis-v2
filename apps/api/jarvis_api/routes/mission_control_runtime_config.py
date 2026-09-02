@@ -442,6 +442,16 @@ def mc_approve_and_execute_capability_request(request_id: str) -> dict:
         raise HTTPException(
             status_code=409, detail="Capability approval request is already executing"
         )
+    if state == "stale":
+        raise HTTPException(
+            status_code=409,
+            detail="Capability approval request is stale and must be recreated",
+        )
+    if state == "envelope-mismatch":
+        raise HTTPException(
+            status_code=409,
+            detail="Capability approval request envelope is missing or has changed",
+        )
     if state == "not-approvable":
         raise HTTPException(
             status_code=409, detail="Capability approval request cannot be executed"

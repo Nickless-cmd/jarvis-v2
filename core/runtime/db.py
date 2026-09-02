@@ -44,6 +44,8 @@ from core.runtime.db_capability_approval import (
     record_capability_approval_request_execution,
     claim_capability_approval_request_execution,
     complete_capability_approval_request_execution,
+    capability_approval_envelope_fingerprint,
+    capability_approval_request_is_stale,
     _capability_approval_request_from_row,
     _ensure_capability_approval_request_columns,
     latest_capability_approval_request,
@@ -1070,6 +1072,7 @@ from core.runtime.db_runtime_initiatives import (  # noqa: E402,F401
 # _ensure_runtime_webchat_execution_pilot_table stay in db.py (init_db calls them).
 from core.runtime.db_governance import (  # noqa: E402,F401
     create_tool_intent_approval_request,
+    recent_tool_intent_approval_requests,
     get_tool_intent_approval_request,
     resolve_tool_intent_approval_request,
     expire_tool_intent_approval_request,

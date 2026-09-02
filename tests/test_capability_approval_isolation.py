@@ -16,6 +16,18 @@ def _insert_request(db, request_id: str, user_id: str | None) -> None:
             """,
             (request_id, user_id),
         )
+        row = conn.execute(
+            "SELECT * FROM capability_approval_requests WHERE request_id = ?",
+            (request_id,),
+        ).fetchone()
+        request = db._capability_approval_request_from_row(row)
+        conn.execute(
+            """
+            UPDATE capability_approval_requests
+            SET approval_envelope_fingerprint = ? WHERE request_id = ?
+            """,
+            (db.capability_approval_envelope_fingerprint(request), request_id),
+        )
         conn.commit()
 
 
@@ -78,3 +90,58 @@ def test_approve_and_execute_replays_without_invoking_twice(
     assert first["ok"] is True
     assert replay == {**first, "replayed": True}
     assert invocations == ["tool:test"]
+
+
+def test_stale_capability_request_cannot_be_approved_and_executed(
+    isolated_runtime,
+) -> None:
+    from core.identity.workspace_context import reset_context, set_context
+
+    db = isolated_runtime.db
+    db.init_db()
+    _insert_request(db, "stale-request", "user-a")
+    with db.connect() as conn:
+        conn.execute(
+            "UPDATE capability_approval_requests SET requested_at = ? WHERE request_id = ?",
+            ("2000-01-01T00:00:00+00:00", "stale-request"),
+        )
+        conn.commit()
+
+    token = set_context(workspace_name="a", user_id="user-a", role="member")
+    try:
+        with pytest.raises(HTTPException) as exc_info:
+            isolated_runtime.mission_control.mc_approve_and_execute_capability_request(
+                "stale-request"
+            )
+        assert exc_info.value.status_code == 409
+        assert "stale" in str(exc_info.value.detail).lower()
+    finally:
+        reset_context(token)
+
+
+def test_changed_capability_envelope_cannot_be_executed(isolated_runtime) -> None:
+    from core.identity.workspace_context import reset_context, set_context
+
+    db = isolated_runtime.db
+    db.init_db()
+    _insert_request(db, "changed-request", "user-a")
+    with db.connect() as conn:
+        conn.execute(
+            """
+            UPDATE capability_approval_requests
+            SET proposal_content = 'changed after approval request'
+            WHERE request_id = 'changed-request'
+            """
+        )
+        conn.commit()
+
+    token = set_context(workspace_name="a", user_id="user-a", role="member")
+    try:
+        with pytest.raises(HTTPException) as exc_info:
+            isolated_runtime.mission_control.mc_approve_and_execute_capability_request(
+                "changed-request"
+            )
+        assert exc_info.value.status_code == 409
+        assert "envelope" in str(exc_info.value.detail).lower()
+    finally:
+        reset_context(token)

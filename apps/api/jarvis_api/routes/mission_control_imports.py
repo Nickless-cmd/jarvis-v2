@@ -453,6 +453,7 @@ from core.runtime.db import (
     list_recent_protected_inner_voices,
     record_capability_approval_request_execution,
     recent_capability_approval_requests,
+    recent_tool_intent_approval_requests,
     recent_capability_invocations,
     recent_private_growth_notes,
     recent_private_inner_notes,

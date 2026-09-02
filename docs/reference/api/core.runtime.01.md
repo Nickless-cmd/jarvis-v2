@@ -49,7 +49,7 @@ _Facade for core.runtime.db submodules._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_session_distillation_record_from_row` | `(row)` | — | [src](../../../core/runtime/db.py#L78) |
+| function | `_session_distillation_record_from_row` | `(row)` | — | [src](../../../core/runtime/db.py#L80) |
 
 ## `core/runtime/db_absence_traces.py`
 _DB helpers for absence_traces (Lag 11 forgetting)._
@@ -180,22 +180,25 @@ _Capability approval + approval feedback CRUD._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_approval_user_scope` | `(*, user_id, include_unassigned)` | — | [src](../../../core/runtime/db_capability_approval.py#L27) |
-| function | `recent_capability_approval_requests` | `(limit=…, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L43) |
-| function | `get_capability_approval_request` | `(request_id, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L89) |
-| function | `approve_capability_approval_request` | `(request_id, *, approved_at, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L135) |
-| function | `record_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L202) |
-| function | `claim_capability_approval_request_execution` | `(request_id, *, approved_at, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L270) |
-| function | `complete_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, execution_result_json, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L331) |
-| function | `_capability_approval_request_from_row` | `(row, *, status=…, approved_at=…, executed=…, executed_at=…, invocation_status=…, invocation_execution_mode=…, execution_result_json=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L372) |
-| function | `_ensure_capability_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_capability_approval.py#L426) |
-| function | `latest_capability_approval_request` | `(*, execution_mode=…, include_executed=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L451) |
-| function | `latest_approved_capability_approval_request` | `(*, execution_mode=…, capability_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L503) |
-| function | `insert_approval_feedback` | `(*, recorded_at, intent_key, approval_state, approval_source, tool_name=…, resolution_reason=…, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L556) |
-| function | `list_approval_feedback` | `(limit=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L634) |
-| function | `approval_feedback_stats_by_tool` | `(days=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L649) |
-| function | `count_approval_feedback` | `()` | — | [src](../../../core/runtime/db_capability_approval.py#L679) |
-| function | `_approval_feedback_from_row` | `(row)` | — | [src](../../../core/runtime/db_capability_approval.py#L687) |
+| function | `capability_approval_stale_seconds` | `()` | — | [src](../../../core/runtime/db_capability_approval.py#L30) |
+| function | `capability_approval_request_is_stale` | `(request, *, reference_now=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L38) |
+| function | `capability_approval_envelope_fingerprint` | `(request)` | — | [src](../../../core/runtime/db_capability_approval.py#L55) |
+| function | `_approval_user_scope` | `(*, user_id, include_unassigned)` | — | [src](../../../core/runtime/db_capability_approval.py#L69) |
+| function | `recent_capability_approval_requests` | `(limit=…, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L85) |
+| function | `get_capability_approval_request` | `(request_id, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L132) |
+| function | `approve_capability_approval_request` | `(request_id, *, approved_at, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L179) |
+| function | `record_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L247) |
+| function | `claim_capability_approval_request_execution` | `(request_id, *, approved_at, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L315) |
+| function | `complete_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, execution_result_json, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L386) |
+| function | `_capability_approval_request_from_row` | `(row, *, status=…, approved_at=…, executed=…, executed_at=…, invocation_status=…, invocation_execution_mode=…, execution_result_json=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L427) |
+| function | `_ensure_capability_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_capability_approval.py#L486) |
+| function | `latest_capability_approval_request` | `(*, execution_mode=…, include_executed=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L512) |
+| function | `latest_approved_capability_approval_request` | `(*, execution_mode=…, capability_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L565) |
+| function | `insert_approval_feedback` | `(*, recorded_at, intent_key, approval_state, approval_source, tool_name=…, resolution_reason=…, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L619) |
+| function | `list_approval_feedback` | `(limit=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L697) |
+| function | `approval_feedback_stats_by_tool` | `(days=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L712) |
+| function | `count_approval_feedback` | `()` | — | [src](../../../core/runtime/db_capability_approval.py#L742) |
+| function | `_approval_feedback_from_row` | `(row)` | — | [src](../../../core/runtime/db_capability_approval.py#L750) |
 
 ## `core/runtime/db_central_incidents.py`
 _Central-incidents — persistent log af det Den Intelligente Central GRIBER._
@@ -502,21 +505,22 @@ _Persistence for governance-adjacent CRUD domains._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `create_tool_intent_approval_request` | `(*, intent_key, intent_type, intent_target, approval_scope, approval_required, approval_reason, requested_at, expires_at, execution_state=…)` | — | [src](../../../core/runtime/db_governance.py#L31) |
-| function | `get_tool_intent_approval_request` | `(intent_key)` | — | [src](../../../core/runtime/db_governance.py#L99) |
-| function | `resolve_tool_intent_approval_request` | `(intent_key, *, approval_state, approval_source, resolved_at, resolution_reason, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_governance.py#L134) |
-| function | `expire_tool_intent_approval_request` | `(intent_key, *, expired_at, resolution_reason)` | — | [src](../../../core/runtime/db_governance.py#L174) |
-| function | `_tool_intent_approval_request_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L206) |
-| function | `record_runtime_contract_file_write` | `(*, write_id, candidate_id, target_file, canonical_key, write_status, actor, summary, content_line, created_at)` | — | [src](../../../core/runtime/db_governance.py#L234) |
-| function | `get_runtime_contract_file_write` | `(write_id)` | — | [src](../../../core/runtime/db_governance.py#L282) |
-| function | `recent_runtime_contract_file_writes` | `(limit=…)` | — | [src](../../../core/runtime/db_governance.py#L308) |
-| function | `runtime_contract_file_write_counts` | `()` | — | [src](../../../core/runtime/db_governance.py#L332) |
-| function | `_ensure_runtime_contract_file_write_table` | `(conn)` | — | [src](../../../core/runtime/db_governance.py#L349) |
-| function | `_runtime_contract_file_write_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L374) |
-| function | `record_runtime_webchat_execution_pilot` | `(*, pilot_id, canonical_key, status, execution_type, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, delivery_channel=…, delivery_state=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_governance.py#L397) |
-| function | `list_runtime_webchat_execution_pilots` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_governance.py#L479) |
-| function | `get_runtime_webchat_execution_pilot` | `(pilot_id)` | — | [src](../../../core/runtime/db_governance.py#L526) |
-| function | `_runtime_webchat_execution_pilot_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L564) |
+| function | `recent_tool_intent_approval_requests` | `(limit=…, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_governance.py#L32) |
+| function | `create_tool_intent_approval_request` | `(*, intent_key, intent_type, intent_target, approval_scope, approval_required, approval_reason, requested_at, expires_at, execution_state=…)` | — | [src](../../../core/runtime/db_governance.py#L80) |
+| function | `get_tool_intent_approval_request` | `(intent_key)` | — | [src](../../../core/runtime/db_governance.py#L148) |
+| function | `resolve_tool_intent_approval_request` | `(intent_key, *, approval_state, approval_source, resolved_at, resolution_reason, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_governance.py#L183) |
+| function | `expire_tool_intent_approval_request` | `(intent_key, *, expired_at, resolution_reason)` | — | [src](../../../core/runtime/db_governance.py#L223) |
+| function | `_tool_intent_approval_request_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L255) |
+| function | `record_runtime_contract_file_write` | `(*, write_id, candidate_id, target_file, canonical_key, write_status, actor, summary, content_line, created_at)` | — | [src](../../../core/runtime/db_governance.py#L289) |
+| function | `get_runtime_contract_file_write` | `(write_id)` | — | [src](../../../core/runtime/db_governance.py#L337) |
+| function | `recent_runtime_contract_file_writes` | `(limit=…)` | — | [src](../../../core/runtime/db_governance.py#L363) |
+| function | `runtime_contract_file_write_counts` | `()` | — | [src](../../../core/runtime/db_governance.py#L387) |
+| function | `_ensure_runtime_contract_file_write_table` | `(conn)` | — | [src](../../../core/runtime/db_governance.py#L404) |
+| function | `_runtime_contract_file_write_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L429) |
+| function | `record_runtime_webchat_execution_pilot` | `(*, pilot_id, canonical_key, status, execution_type, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, delivery_channel=…, delivery_state=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_governance.py#L452) |
+| function | `list_runtime_webchat_execution_pilots` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_governance.py#L534) |
+| function | `get_runtime_webchat_execution_pilot` | `(pilot_id)` | — | [src](../../../core/runtime/db_governance.py#L581) |
+| function | `_runtime_webchat_execution_pilot_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L619) |
 
 ## `core/runtime/db_governance_ledger.py`
 _Governance-ledger — PERSISTENT log af governerede mutationer._

@@ -125,7 +125,7 @@ def mc_approvals(limit: int = 20) -> dict:
 
     normalized_limit = max(int(limit), 1)
     surface = _mc_facade("_capability_invocation_surface")()
-    requests = list(
+    capability_requests = list(
         _mc_facade("recent_capability_approval_requests")(
             limit=normalized_limit,
             user_id=current_user_id() or None,
@@ -133,6 +133,43 @@ def mc_approvals(limit: int = 20) -> dict:
         )
         or []
     )
+    tool_intent_requests = list(
+        _mc_facade("recent_tool_intent_approval_requests")(
+            limit=normalized_limit,
+            user_id=current_user_id() or None,
+            include_unassigned=current_role() in {"", "owner"},
+        )
+        or []
+    )
+    requests = []
+    from core.runtime.db_capability_approval import capability_approval_request_is_stale
+
+    for item in capability_requests:
+        stale = capability_approval_request_is_stale(item)
+        status = "stale" if stale and str(item.get("status") or "") == "pending" else str(item.get("status") or "")
+        requests.append(
+            {
+                **item,
+                "approval_system": "capability",
+                "status": status,
+                "stale": stale,
+                "active": status == "pending",
+            }
+        )
+    for item in tool_intent_requests:
+        status = str(item.get("effective_approval_state") or item.get("approval_state") or "")
+        requests.append(
+            {
+                **item,
+                "request_id": str(item.get("approval_id") or ""),
+                "approval_system": "tool-intent",
+                "status": status,
+                "stale": False,
+                "active": status == "pending",
+            }
+        )
+    requests.sort(key=lambda item: str(item.get("requested_at") or ""), reverse=True)
+    requests = requests[:normalized_limit]
     pending = [item for item in requests if str(item.get("status") or "") == "pending"]
     approved = [
         item for item in requests if str(item.get("status") or "") == "approved"
@@ -548,4 +585,3 @@ def mc_operations(limit: int = 20) -> dict:
         },
     }
     return _store_cached_mc_payload(cache_key, 3.0, payload)  # type: ignore[return-value]
-

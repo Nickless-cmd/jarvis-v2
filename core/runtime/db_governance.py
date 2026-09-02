@@ -18,6 +18,7 @@ self-contained CRUD domains and their private row-mappers:
 from __future__ import annotations
 
 import sqlite3
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from core.runtime.db_core import connect
@@ -26,6 +27,54 @@ from core.runtime.db_core import connect
 # ---------------------------------------------------------------------------
 # Tool-intent approval requests
 # ---------------------------------------------------------------------------
+
+
+def recent_tool_intent_approval_requests(
+    limit: int = 20,
+    *,
+    user_id: str | None,
+    include_unassigned: bool = False,
+) -> list[dict[str, object]]:
+    normalized_user_id = str(user_id or "").strip()
+    if normalized_user_id and include_unassigned:
+        scope_sql = "(scheduled_for_user_id = ? OR scheduled_for_user_id IS NULL)"
+        scope_params: tuple[object, ...] = (normalized_user_id,)
+    elif normalized_user_id:
+        scope_sql = "scheduled_for_user_id = ?"
+        scope_params = (normalized_user_id,)
+    elif include_unassigned:
+        scope_sql = "scheduled_for_user_id IS NULL"
+        scope_params = ()
+    else:
+        scope_sql = "1 = 0"
+        scope_params = ()
+    with connect() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT * FROM tool_intent_approval_requests
+            WHERE {scope_sql}
+            ORDER BY id DESC LIMIT ?
+            """,
+            (*scope_params, max(int(limit), 1)),
+        ).fetchall()
+    now = datetime.now(UTC)
+    requests = []
+    for row in rows:
+        request = _tool_intent_approval_request_from_row(row)
+        state = str(request["approval_state"])
+        try:
+            expires_at = datetime.fromisoformat(
+                str(request["expires_at"]).replace("Z", "+00:00")
+            )
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=UTC)
+        except ValueError:
+            expires_at = now
+        request["effective_approval_state"] = (
+            "expired" if state == "pending" and expires_at <= now else state
+        )
+        requests.append(request)
+    return requests
 
 
 def create_tool_intent_approval_request(
@@ -223,6 +272,12 @@ def _tool_intent_approval_request_from_row(
         "resolution_message": str(row["resolution_message"] or ""),
         "session_id": str(row["session_id"] or ""),
         "execution_state": str(row["execution_state"] or "not-executed"),
+        "scheduled_for_user_id": (
+            row["scheduled_for_user_id"]
+            if "scheduled_for_user_id" in row.keys()
+            else None
+        ),
+        "initiated_by": row["initiated_by"] if "initiated_by" in row.keys() else None,
     }
 
 

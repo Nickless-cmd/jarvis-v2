@@ -15,6 +15,18 @@ def _insert_request(db, request_id: str, user_id: str | None) -> None:
             """,
             (request_id, user_id),
         )
+        row = conn.execute(
+            "SELECT * FROM capability_approval_requests WHERE request_id = ?",
+            (request_id,),
+        ).fetchone()
+        request = db._capability_approval_request_from_row(row)
+        conn.execute(
+            """
+            UPDATE capability_approval_requests
+            SET approval_envelope_fingerprint = ? WHERE request_id = ?
+            """,
+            (db.capability_approval_envelope_fingerprint(request), request_id),
+        )
         conn.commit()
 
 

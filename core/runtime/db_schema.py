@@ -797,6 +797,7 @@ def init_db() -> None:
                 invocation_status TEXT,
                 invocation_execution_mode TEXT,
                 execution_result_json TEXT,
+                approval_envelope_fingerprint TEXT,
                 scheduled_for_user_id TEXT,
                 initiated_by TEXT
             )

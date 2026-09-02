@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6537/13138 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6537/13142 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,7 +23,7 @@ Generated from source. 6537/13138 functions/methods documented (49%). The list b
 | `core.identity` | 63 | 154 | 40% |
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 553 | 1026 | 53% |
+| `core.runtime` | 553 | 1030 | 53% |
 | `core.services` | 4339 | 9125 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
@@ -40,7 +40,7 @@ Generated from source. 6537/13138 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1877)
+## Undocumented public functions (1881)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -306,18 +306,21 @@ Generated from source. 6537/13138 functions/methods documented (49%). The list b
 - `core/runtime/db_bounded_action.py` :: `upsert_bounded_action_continuity_state` (L105)
 - `core/runtime/db_capability.py` :: `ensure_capability_tables` (L14)
 - `core/runtime/db_capability.py` :: `recent_capability_invocations` (L38)
-- `core/runtime/db_capability_approval.py` :: `approval_feedback_stats_by_tool` (L649)
-- `core/runtime/db_capability_approval.py` :: `approve_capability_approval_request` (L135)
-- `core/runtime/db_capability_approval.py` :: `claim_capability_approval_request_execution` (L270)
-- `core/runtime/db_capability_approval.py` :: `complete_capability_approval_request_execution` (L331)
-- `core/runtime/db_capability_approval.py` :: `count_approval_feedback` (L679)
-- `core/runtime/db_capability_approval.py` :: `get_capability_approval_request` (L89)
-- `core/runtime/db_capability_approval.py` :: `insert_approval_feedback` (L556)
-- `core/runtime/db_capability_approval.py` :: `latest_approved_capability_approval_request` (L503)
-- `core/runtime/db_capability_approval.py` :: `latest_capability_approval_request` (L451)
-- `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L634)
-- `core/runtime/db_capability_approval.py` :: `recent_capability_approval_requests` (L43)
-- `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L202)
+- `core/runtime/db_capability_approval.py` :: `approval_feedback_stats_by_tool` (L712)
+- `core/runtime/db_capability_approval.py` :: `approve_capability_approval_request` (L179)
+- `core/runtime/db_capability_approval.py` :: `capability_approval_envelope_fingerprint` (L55)
+- `core/runtime/db_capability_approval.py` :: `capability_approval_request_is_stale` (L38)
+- `core/runtime/db_capability_approval.py` :: `capability_approval_stale_seconds` (L30)
+- `core/runtime/db_capability_approval.py` :: `claim_capability_approval_request_execution` (L315)
+- `core/runtime/db_capability_approval.py` :: `complete_capability_approval_request_execution` (L386)
+- `core/runtime/db_capability_approval.py` :: `count_approval_feedback` (L742)
+- `core/runtime/db_capability_approval.py` :: `get_capability_approval_request` (L132)
+- `core/runtime/db_capability_approval.py` :: `insert_approval_feedback` (L619)
+- `core/runtime/db_capability_approval.py` :: `latest_approved_capability_approval_request` (L565)
+- `core/runtime/db_capability_approval.py` :: `latest_capability_approval_request` (L512)
+- `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L697)
+- `core/runtime/db_capability_approval.py` :: `recent_capability_approval_requests` (L85)
+- `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L247)
 - `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L303)
 - `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L106)
 - `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L162)
@@ -362,17 +365,18 @@ Generated from source. 6537/13138 functions/methods documented (49%). The list b
 - `core/runtime/db_goals.py` :: `list_goal_updates` (L213)
 - `core/runtime/db_goals.py` :: `list_goals` (L192)
 - `core/runtime/db_goals.py` :: `update_goal_fields` (L224)
-- `core/runtime/db_governance.py` :: `create_tool_intent_approval_request` (L31)
-- `core/runtime/db_governance.py` :: `expire_tool_intent_approval_request` (L174)
-- `core/runtime/db_governance.py` :: `get_runtime_contract_file_write` (L282)
-- `core/runtime/db_governance.py` :: `get_runtime_webchat_execution_pilot` (L526)
-- `core/runtime/db_governance.py` :: `get_tool_intent_approval_request` (L99)
-- `core/runtime/db_governance.py` :: `list_runtime_webchat_execution_pilots` (L479)
-- `core/runtime/db_governance.py` :: `recent_runtime_contract_file_writes` (L308)
-- `core/runtime/db_governance.py` :: `record_runtime_contract_file_write` (L234)
-- `core/runtime/db_governance.py` :: `record_runtime_webchat_execution_pilot` (L397)
-- `core/runtime/db_governance.py` :: `resolve_tool_intent_approval_request` (L134)
-- `core/runtime/db_governance.py` :: `runtime_contract_file_write_counts` (L332)
+- `core/runtime/db_governance.py` :: `create_tool_intent_approval_request` (L80)
+- `core/runtime/db_governance.py` :: `expire_tool_intent_approval_request` (L223)
+- `core/runtime/db_governance.py` :: `get_runtime_contract_file_write` (L337)
+- `core/runtime/db_governance.py` :: `get_runtime_webchat_execution_pilot` (L581)
+- `core/runtime/db_governance.py` :: `get_tool_intent_approval_request` (L148)
+- `core/runtime/db_governance.py` :: `list_runtime_webchat_execution_pilots` (L534)
+- `core/runtime/db_governance.py` :: `recent_runtime_contract_file_writes` (L363)
+- `core/runtime/db_governance.py` :: `recent_tool_intent_approval_requests` (L32)
+- `core/runtime/db_governance.py` :: `record_runtime_contract_file_write` (L289)
+- `core/runtime/db_governance.py` :: `record_runtime_webchat_execution_pilot` (L452)
+- `core/runtime/db_governance.py` :: `resolve_tool_intent_approval_request` (L183)
+- `core/runtime/db_governance.py` :: `runtime_contract_file_write_counts` (L387)
 - `core/runtime/db_heartbeat.py` :: `ensure_heartbeat_tables` (L17)
 - `core/runtime/db_heartbeat.py` :: `get_heartbeat_runtime_state` (L373)
 - `core/runtime/db_heartbeat.py` :: `get_heartbeat_runtime_tick` (L702)

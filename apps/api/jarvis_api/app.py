@@ -235,6 +235,15 @@ def create_app() -> FastAPI:
             start_telegram_gateway()
             start_voice_daemon()
             try:
+                from core.services.approval_outbox import (
+                    start_approval_outbox_dispatcher,
+                )
+
+                start_approval_outbox_dispatcher()
+                logger.info("approval outbox dispatcher started")
+            except Exception as _exc:
+                logger.warning("approval outbox dispatcher start failed: %s", _exc)
+            try:
                 from core.services.my_projects import ensure_my_projects_running
                 _mp_result = ensure_my_projects_running()
                 logger.info("my_projects boot spawn: %s", _mp_result)

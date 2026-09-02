@@ -77,3 +77,29 @@ def test_invalid_token_is_deleted(monkeypatch):
     monkeypatch.setattr(pd, "_owner_of_run", lambda run_id: "bjorn")
     pd._dispatch_run_done("run-3")
     assert dt.list_for_user("bjorn") == []  # selv-oprydning
+
+
+def test_approval_requested_push_carries_navigation_identity(monkeypatch):
+    routed = []
+    monkeypatch.setattr(
+        pd,
+        "_route_or_blast",
+        lambda uid, data, kind: routed.append((uid, data, kind)) or True,
+    )
+
+    assert pd.on_approval_requested(
+        "user-a",
+        {"request_id": "request-1", "capability_name": "Skriv MEMORY.md"},
+    ) is True
+    assert routed == [
+        (
+            "user-a",
+            {
+                "kind": "approval_requested",
+                "request_id": "request-1",
+                "title": "Godkendelse kræves",
+                "preview": "Skriv MEMORY.md",
+            },
+            "approval_requested",
+        )
+    ]

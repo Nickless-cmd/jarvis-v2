@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6537/13129 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6537/13138 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6537/13129 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1026 | 53% |
-| `core.services` | 4339 | 9116 | 47% |
+| `core.services` | 4339 | 9125 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6537/13129 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1870)
+## Undocumented public functions (1877)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L142)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -578,6 +578,12 @@ Generated from source. 6537/13129 functions/methods documented (49%). The list b
 - `core/services/apophenia_guard.py` :: `build_apophenia_guard_surface` (L120)
 - `core/services/approval_feedback_subscriber.py` :: `start_approval_feedback_subscriber` (L19)
 - `core/services/approval_feedback_subscriber.py` :: `stop_approval_feedback_subscriber` (L36)
+- `core/services/approval_outbox.py` :: `dispatch_pending_approval_notifications` (L106)
+- `core/services/approval_outbox.py` :: `enqueue_approval_notification` (L48)
+- `core/services/approval_outbox.py` :: `ensure_approval_outbox_table` (L23)
+- `core/services/approval_outbox.py` :: `make_approval_notification_due` (L93)
+- `core/services/approval_outbox.py` :: `pending_approval_notifications` (L68)
+- `core/services/approval_outbox.py` :: `start_approval_outbox_dispatcher` (L164)
 - `core/services/arc_rule_extractor.py` :: `extract_rules_for_unprocessed_arcs` (L151)
 - `core/services/arc_rule_extractor.py` :: `extract_rules_from_arc` (L74)
 - `core/services/attachment_topology_signal_tracking.py` :: `build_runtime_attachment_topology_signal_surface` (L85)
@@ -1293,8 +1299,9 @@ Generated from source. 6537/13129 functions/methods documented (49%). The list b
 - `core/services/proprioception_metrics.py` :: `recent_snapshots` (L134)
 - `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L207)
 - `core/services/proprioception_metrics.py` :: `tick` (L91)
-- `core/services/push_dispatcher.py` :: `on_initiative` (L117)
-- `core/services/push_dispatcher.py` :: `on_reminder` (L123)
+- `core/services/push_dispatcher.py` :: `on_approval_requested` (L132)
+- `core/services/push_dispatcher.py` :: `on_initiative` (L120)
+- `core/services/push_dispatcher.py` :: `on_reminder` (L126)
 - `core/services/reasoning_classifier.py` :: `build_reasoning_classifier_surface` (L275)
 - `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L223)
 - `core/services/reasoning_interceptor.py` :: `intercept_round` (L152)

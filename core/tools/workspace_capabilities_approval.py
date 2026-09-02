@@ -26,6 +26,7 @@ def _persist_capability_approval_request(
     approval = invocation.get("approval") or {}
     proposal_content = invocation.get("proposal_content") or {}
     scheduled_for_user_id, initiated_by = _approval_request_user_context()
+    request_id = f"cap-approval-{uuid4().hex}"
     with connect() as conn:
         conn.execute(
             """
@@ -51,7 +52,7 @@ def _persist_capability_approval_request(
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                f"cap-approval-{uuid4().hex}",
+                request_id,
                 capability.get("capability_id") or "unknown",
                 capability.get("name"),
                 capability.get("kind"),
@@ -70,6 +71,22 @@ def _persist_capability_approval_request(
                 initiated_by,
             ),
         )
+        if scheduled_for_user_id:
+            from core.services.approval_outbox import enqueue_approval_notification
+
+            enqueue_approval_notification(
+                conn,
+                request_id=request_id,
+                user_id=scheduled_for_user_id,
+                envelope={
+                    "request_id": request_id,
+                    "capability_id": capability.get("capability_id") or "unknown",
+                    "capability_name": capability.get("name") or "",
+                    "execution_mode": invocation.get("execution_mode") or "unknown",
+                    "target": proposal_content.get("target") or "",
+                    "fingerprint": proposal_content.get("fingerprint") or "",
+                },
+            )
         conn.commit()
 
 

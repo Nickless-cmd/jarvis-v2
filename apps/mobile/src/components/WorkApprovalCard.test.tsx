@@ -104,3 +104,47 @@ it('knappen låses mens den arbejder', async () => {
   await fireEvent.press(s.getByLabelText('Godkend'))
   expect(onApprove).not.toHaveBeenCalled()
 })
+
+describe('«Godkend altid» — kun hvor serveren kan holde løftet', () => {
+  it('vises med reglen ORDRET på et sudo-forslag', async () => {
+    const s = await render(
+      <WorkApprovalCard
+        approval={cap()}
+        onApprove={noop}
+        onAlways={noop}
+        onSkip={noop}
+        now={NOW}
+      />
+    )
+    expect(s.getByLabelText('Godkend altid')).toBeTruthy()
+    expect(s.getByText('Kommandoer, der starter med sudo head -n 5 /root/.profile')).toBeTruthy()
+  })
+
+  it('vises IKKE på andre execution_modes — serveren har ingen regel dér', async () => {
+    const s = await render(
+      <WorkApprovalCard
+        approval={cap({ execution_mode: 'mutating-exec-proposal' })}
+        onApprove={noop}
+        onAlways={noop}
+        onSkip={noop}
+        now={NOW}
+      />
+    )
+    expect(s.queryByLabelText('Godkend altid')).toBeNull()
+  })
+
+  it('vises ikke på tool-intents', async () => {
+    const s = await render(
+      <WorkApprovalCard approval={intent()} onApprove={noop} onAlways={noop} onSkip={noop} now={NOW} />
+    )
+    expect(s.queryByLabelText('Godkend altid')).toBeNull()
+  })
+
+  it('uden en onAlways-handler er knappen der slet ikke', async () => {
+    const s = await render(
+      <WorkApprovalCard approval={cap()} onApprove={noop} onSkip={noop} now={NOW} />
+    )
+    expect(s.queryByLabelText('Godkend altid')).toBeNull()
+  })
+})
+

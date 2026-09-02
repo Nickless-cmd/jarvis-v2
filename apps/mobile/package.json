@@ -1,6 +1,6 @@
 {
   "name": "jarvis-mobile",
-  "version": "0.1.62",
+  "version": "0.1.64",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -25,6 +25,7 @@
     "expo-location": "~56.0.18",
     "expo-secure-store": "^56.0.4",
     "expo-speech": "~56.0.3",
+    "lucide-react-native": "^1.39.0",
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-markdown-display": "^7.0.2",

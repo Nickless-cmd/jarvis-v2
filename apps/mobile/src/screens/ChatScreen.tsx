@@ -42,9 +42,13 @@ const OWNER_DEFAULT: ModelChoice = { model: '', providerChoice: 'deepseek', labe
 interface ChatScreenProps {
   /** Stiger når TopBars menu-knap trykkes — åbner sidepanelet. */
   openPanelSignal?: number
+  /** Stiger når sync-knappen trykkes. */
+  syncSignal?: number
+  /** Kaldes når opdateringen er FÆRDIG — så knappen kan holde op med at snurre. */
+  onSyncDone?: () => void
 }
 
-export function ChatScreen({ openPanelSignal = 0 }: ChatScreenProps) {
+export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: ChatScreenProps) {
   const { config } = useAuth()
   const sessions = useSessions()
   const stream = useStream()
@@ -57,6 +61,24 @@ export function ChatScreen({ openPanelSignal = 0 }: ChatScreenProps) {
   useEffect(() => {
     if (openPanelSignal > 0) setPanelOpen(true)
   }, [openPanelSignal])
+
+  // Sync-knappen skal GØRE noget i begge rum. I Snak henter den sessionerne
+  // igen; spinneren stopper først når hentningen er færdig, så knappen aldrig
+  // lyver om at være i gang.
+  useEffect(() => {
+    if (syncSignal <= 0 || !config) return
+    let alive = true
+    void sessions
+      .refresh(config)
+      .catch(() => {})
+      .finally(() => {
+        if (alive) onSyncDone?.()
+      })
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncSignal])
   // Session-panel live-status: arbejder-prik (active-runs mens panel åbent) + ulæst.
   const [activeRunIds, setActiveRunIds] = useState<string[]>([])
   const [lastSeen, setLastSeen] = useState<Record<string, number>>({})

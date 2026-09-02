@@ -1,3 +1,4 @@
+import { Check, Copy, RotateCw, Square, Volume2 } from 'lucide-react-native'
 import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
@@ -77,10 +78,18 @@ export function MessageBubble({
       {!streaming && !isUser ? (
         <View style={styles.actions}>
           <Pressable accessibilityLabel="Kopiér" hitSlop={10} onPress={copy}>
-            <Text style={styles.icon}>{copied ? '✓' : '⧉'}</Text>
+            {copied ? (
+              <Check size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
+            ) : (
+              <Copy size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
+            )}
           </Pressable>
           <Pressable accessibilityLabel="Læs op" hitSlop={10} onPress={readAloud}>
-            <Text style={styles.icon}>{speaking ? '■' : '◁'}</Text>
+            {speaking ? (
+              <Square size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
+            ) : (
+              <Volume2 size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
+            )}
           </Pressable>
         </View>
       ) : null}
@@ -91,7 +100,7 @@ export function MessageBubble({
             hitSlop={10}
             onPress={() => onResend(message.content)}
           >
-            <Text style={styles.icon}>↻</Text>
+            <RotateCw size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
           </Pressable>
         </View>
       ) : null}
@@ -110,6 +119,9 @@ export function MessageBubble({
  * Det er dét der giver ChatGPT-tråden sin ro: én talende part fylder fladen,
  * den anden markerer sig kort. To bobler over for hinanden ville støje.
  */
+/** Ikonstørrelse målt i ChatGPT-appens handlingsrække. */
+const ICON = 19
+
 const styles = StyleSheet.create({
   root: {
     marginHorizontal: tokens.spacing.lg,
@@ -143,6 +155,7 @@ const styles = StyleSheet.create({
     marginTop: tokens.spacing.xs
   },
   icon: { color: tokens.color.fg2, fontSize: 18 }
+
 })
 
 // Fuld mørk-tema markdown-styling. Uden dette defaulter kode-blokke til lys

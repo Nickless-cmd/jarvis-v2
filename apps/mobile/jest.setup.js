@@ -98,3 +98,25 @@ jest.mock('react-native-svg', () => {
     Stop: mk('Stop'),
   }
 })
+
+// lucide-react-native udgiver ESM (.mjs) som Jest ikke kan parse — uden denne
+// mock fejler ENHVER testfil der transitivt importerer et ikon med
+// «Unexpected token 'export'». Tests har ikke brug for de rigtige SVG-baner;
+// de har brug for at komponenttræet kan renderes. Appen bruger uændret de
+// ægte ikoner via Metro.
+jest.mock('lucide-react-native', () => {
+  const React = require('react')
+  const { View } = require('react-native')
+  return new Proxy(
+    {},
+    {
+      get: (_target, name) => {
+        if (name === '__esModule') return true
+        const Icon = (props) => React.createElement(View, { ...props, testID: `icon-${String(name)}` })
+        Icon.displayName = String(name)
+        return Icon
+      }
+    }
+  )
+})
+

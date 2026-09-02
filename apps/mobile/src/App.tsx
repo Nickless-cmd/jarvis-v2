@@ -34,6 +34,7 @@ function AppBody() {
   const [syncSignal, setSyncSignal] = useState(0)
   const [pendingWork, setPendingWork] = useState(0)
   const [menuSignal, setMenuSignal] = useState(0)
+  const [syncing, setSyncing] = useState(false)
 
   // FCM: registrér device-token efter login + lyt på data-only i forgrunden.
   // Uden for tidlig return (hooks må ikke være betingede); guardet på authToken.
@@ -113,19 +114,31 @@ function AppBody() {
             setMode('snak')
             setMenuSignal((n) => n + 1)
           }}
-          onSync={() => setSyncSignal((n) => n + 1)}
+          onSync={() => {
+            setSyncing(true)
+            setSyncSignal((n) => n + 1)
+          }}
+          syncing={syncing}
           pendingWork={pendingWork > 0}
         />
         {/* Begge skærme holdes monteret: Snak må ikke miste stream-tilstand
             fordi Bjørn kigger på Arbejde. Skjult frem for unmountet. */}
         <View style={mode === 'snak' ? styles.visible : styles.hidden}>
           <ErrorBoundary label="chat">
-            <ChatScreen openPanelSignal={menuSignal} />
+            <ChatScreen
+              openPanelSignal={menuSignal}
+              syncSignal={mode === 'snak' ? syncSignal : 0}
+              onSyncDone={() => setSyncing(false)}
+            />
           </ErrorBoundary>
         </View>
         <View style={mode === 'arbejde' ? styles.visible : styles.hidden}>
           <ErrorBoundary label="arbejde">
-            <WorkScreen syncSignal={syncSignal} onPendingCount={setPendingWork} />
+            <WorkScreen
+              syncSignal={mode === 'arbejde' ? syncSignal : 0}
+              onPendingCount={setPendingWork}
+              onSyncDone={() => setSyncing(false)}
+            />
           </ErrorBoundary>
         </View>
       </StreamProvider>

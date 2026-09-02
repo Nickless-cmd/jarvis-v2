@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SquarePen } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
@@ -47,6 +48,17 @@ export function SidePanel({
   const translateX = useRef(new Animated.Value(-PANEL_WIDTH)).current
   const [mounted, setMounted] = useState(open)
   const [query, setQuery] = useState('')
+  // Initialer som R4's «BS»-cirkel. To bogstaver, aldrig flere.
+  const initials = useMemo(
+    () =>
+      (displayName || 'J')
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w) => w[0]?.toUpperCase() ?? '')
+        .join('') || 'J',
+    [displayName]
+  )
 
   useEffect(() => {
     if (open) setMounted(true)
@@ -120,14 +132,6 @@ export function SidePanel({
           </View>
 
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-            <Pressable
-              accessibilityRole="button"
-              onPress={onNewSession}
-              style={({ pressed }) => [styles.newButton, pressed ? styles.pressed : null]}
-            >
-              <Text style={styles.newButtonText}>+ Ny samtale</Text>
-            </Pressable>
-
             {filtered.length === 0 ? (
               <Text style={styles.empty}>{query ? 'Ingen match' : 'Ingen samtaler endnu'}</Text>
             ) : (
@@ -160,6 +164,25 @@ export function SidePanel({
             )}
             <TeamsPanel config={config} onSelectSession={onSelectSession} />
           </ScrollView>
+
+          {/* Bundlaget, målt på R4: en lilla pille med blyant + label i
+              venstre side, og brugerens initial-cirkel til højre. Den flyder
+              OVER listen frem for at ligge i den — så «ny samtale» altid er
+              inden for rækkevidde, uanset hvor langt man har rullet. */}
+          <View style={styles.dock} pointerEvents="box-none">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ny samtale"
+              onPress={onNewSession}
+              style={({ pressed }) => [styles.fab, pressed ? styles.pressed : null]}
+            >
+              <SquarePen size={18} color={tokens.color.bg0} strokeWidth={2} />
+              <Text style={styles.fabText}>Ny samtale</Text>
+            </Pressable>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+          </View>
         </Animated.View>
 
         <Pressable
@@ -218,15 +241,34 @@ const styles = StyleSheet.create({
   searchIcon: { fontSize: 13 },
   search: { flex: 1, color: tokens.color.fg1, fontSize: 15, padding: 0 },
   body: { padding: tokens.spacing.md, paddingBottom: tokens.spacing.xl },
-  newButton: {
-    minHeight: 44,
-    borderRadius: tokens.radius.md,
-    backgroundColor: tokens.color.accent,
+  dock: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: tokens.spacing.md
+    justifyContent: 'space-between',
+    paddingHorizontal: tokens.spacing.lg,
+    paddingBottom: tokens.spacing.lg,
+    paddingTop: tokens.spacing.sm,
+    gap: tokens.spacing.md
   },
-  newButtonText: { color: tokens.color.bg0, fontWeight: '700' },
+  fab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.sm,
+    height: 48,
+    paddingHorizontal: tokens.spacing.lg,
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.color.accent
+  },
+  fabText: { color: tokens.color.bg0, fontWeight: '700', fontSize: 15 },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: tokens.color.bg2,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  avatarText: { color: tokens.color.fg1, fontWeight: '700', fontSize: 14 },
   empty: { color: tokens.color.fg3, paddingVertical: tokens.spacing.sm },
   sessionRow: {
     paddingVertical: tokens.spacing.md,

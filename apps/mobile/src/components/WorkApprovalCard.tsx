@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Terminal } from 'lucide-react-native'
 import { formatRelativeTime } from '../lib/relativeDate'
 import { tokens } from '../theme/tokens'
 import { approvalDetail, approvalReason, approvalTag, approvalTitle, isActionable, isToolIntent } from '../lib/mcTypes'
@@ -8,8 +9,24 @@ interface Props {
   approval: Approval
   busy?: boolean
   onApprove: (a: Approval) => void
+  /** «Godkend altid» — kun tilbudt når serveren FAKTISK kan huske en regel. */
+  onAlways?: (a: Approval) => void
   onSkip: (a: Approval) => void
   now?: Date
+}
+
+/**
+ * Serveren har kun ét genbrugeligt vindue: sudo-exec (5 min,
+ * sudo_approval_window_allows_request). Der findes ingen generel præfiks-regel
+ * for write-capabilities endnu — så knappen vises KUN hvor den kan holde hvad
+ * den lover. En «Godkend altid» der i virkeligheden kun gælder én gang er
+ * værre end ingen knap.
+ */
+function alwaysRule(a: Approval): string | null {
+  if (a.approval_system !== 'capability') return null
+  if (a.execution_mode !== 'sudo-exec-proposal') return null
+  const cmd = approvalDetail(a).trim()
+  return cmd ? `Kommandoer, der starter med ${cmd}` : null
 }
 
 /**
@@ -25,18 +42,19 @@ interface Props {
  *   3. Etiketten («Kommandoudførelse») ligger OVER kortet med sit ikon, ikke
  *      som en pille inde i det.
  */
-export function WorkApprovalCard({ approval, busy, onApprove, onSkip, now }: Props) {
+export function WorkApprovalCard({ approval, busy, onApprove, onAlways, onSkip, now }: Props) {
   const actionable = isActionable(approval)
   const reason = approvalReason(approval)
   const detail = approvalDetail(approval)
   const expired = approval.status === 'expired' || approval.stale
   const at = now ?? new Date()
+  const rule = onAlways ? alwaysRule(approval) : null
 
   return (
     <View style={styles.wrap}>
       <View style={styles.tagRow}>
         <View style={styles.tagIcon}>
-          <Text style={styles.tagGlyph}>{'>_'}</Text>
+          <Terminal size={13} color={tokens.color.fg2} strokeWidth={1.8} />
         </View>
         <Text style={styles.tagLabel} numberOfLines={1}>
           {approvalTag(approval)}
@@ -77,6 +95,25 @@ export function WorkApprovalCard({ approval, busy, onApprove, onSkip, now }: Pro
               </Text>
             </Pressable>
 
+            {rule ? (
+              <>
+                <View style={styles.divider} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Godkend altid"
+                  disabled={busy}
+                  onPress={() => onAlways?.(approval)}
+                  style={styles.action}
+                >
+                  <Text style={[styles.actionLabel, busy && styles.dim]}>Godkend altid</Text>
+                  {/* Reglen står ORDRET — «altid» må aldrig være en blank check. */}
+                  <Text style={styles.ruleText} numberOfLines={2}>
+                    {rule}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+
             <View style={styles.divider} />
 
             <Pressable
@@ -113,7 +150,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  tagGlyph: { color: tokens.color.fg2, fontSize: 10, fontFamily: 'monospace' },
   tagLabel: { color: tokens.color.fg1, fontSize: 14, flexShrink: 1 },
   spacer: { flex: 1 },
   age: { color: tokens.color.fg3, fontSize: 12 },
@@ -137,5 +173,6 @@ const styles = StyleSheet.create({
   actionLabel: { color: tokens.color.fg1, fontSize: 15 },
   dim: { color: tokens.color.fg3 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.line },
+  ruleText: { color: tokens.color.fg2, fontSize: 13, marginTop: 3, lineHeight: 18 },
   dead: { color: tokens.color.fg3, fontSize: 13, fontStyle: 'italic' }
 })

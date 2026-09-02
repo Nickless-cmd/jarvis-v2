@@ -17,6 +17,8 @@ interface Props {
   syncSignal?: number
   /** Løftes til AppBody så Arbejde-segmentet kan bære en prik. */
   onPendingCount?: (count: number) => void
+  /** Kaldes når en sync-udløst hentning er færdig. */
+  onSyncDone?: () => void
 }
 
 const POLL_MS = 4000
@@ -27,7 +29,7 @@ const POLL_MS = 4000
  * State bor på serveren — skærmen abonnerer, den ejer intet. Taber telefonen
  * forbindelsen, dør intet.
  */
-export function WorkScreen({ syncSignal = 0, onPendingCount }: Props) {
+export function WorkScreen({ syncSignal = 0, onPendingCount, onSyncDone }: Props) {
   const { config } = useAuth()
   const [tab, setTab] = useState<WorkTab>('tasks')
   const [runs, setRuns] = useState<McRun[]>([])
@@ -58,7 +60,10 @@ export function WorkScreen({ syncSignal = 0, onPendingCount }: Props) {
   }, [config])
 
   useEffect(() => {
-    void load()
+    void load().finally(() => {
+      if (syncSignal > 0) onSyncDone?.()
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, syncSignal, tick])
 
   useEffect(() => {

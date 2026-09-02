@@ -195,7 +195,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokens.color.accent
   },
-  stopBtn: { backgroundColor: tokens.color.warn },
+  // ChatGPT skifter IKKE farve når man kan stoppe — knappen bliver bare en
+  // firkant i samme lilla. Rav signalerer «advarsel», og det er en helt
+  // almindelig ting at afbryde.
+  stopBtn: { backgroundColor: tokens.color.accent },
   disabled: { opacity: 0.4 },
   pressed: { opacity: 0.85 },
   sendText: { color: tokens.color.bg0, fontWeight: '800', fontSize: 18 }

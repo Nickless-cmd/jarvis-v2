@@ -78,6 +78,23 @@ def test_lean_transform_materially_smaller():
     assert after == before - metrics["dropped_chars"]
 
 
+def test_lean_transform_handles_dynamic_tail_as_system_message():
+    base = [
+        {"role": "system", "content": _SYSTEM_PREFIX},
+        {"role": "user", "content": "Hej Jarvis"},
+        {"role": "assistant", "content": "Hej Bjørn"},
+        {"role": "system", "content": _HEAVY_TAIL},
+        {"role": "user", "content": _ORIGINAL_TASK},
+    ]
+
+    lean, metrics = vf.build_lean_base_messages(base)
+
+    assert metrics["changed"] is True
+    assert lean[-1]["content"] == _ORIGINAL_TASK
+    assert "[INDRE LIV]" not in "\n".join(m["content"] for m in lean)
+    assert any("⚖️ Before you answer" in m["content"] for m in lean)
+
+
 def test_lean_keeps_identity_core_and_tool_hygiene():
     base = _make_base_messages()
     lean, _ = vf.build_lean_base_messages(base)

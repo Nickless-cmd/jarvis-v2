@@ -286,6 +286,15 @@ def test_summary_quality_gate():
     assert not summary_looks_valid("[Kontekst komprimeret — detaljer ikke tilgængelige]")
 
 
+def test_summary_quality_gate_rejects_provider_error_text():
+    provider_error = (
+        "Sorry, to prevent abuse of free resources, accounts that have not "
+        "been recharged can only try 10 times. You can increase the free quota "
+        "after recharging; https://console.aihubmix.com/topup"
+    )
+    assert not summary_looks_valid(provider_error)
+
+
 def test_gate_rejects_thinking_and_meta_commentary():
     # The live-test failure: cheap model narrated the task instead of writing the summary.
     assert not summary_looks_valid("<thinking>Okay let me process this and figure out</thinking>")

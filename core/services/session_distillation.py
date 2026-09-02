@@ -957,6 +957,10 @@ def generate_session_summary(
     if not summary:
         return ""
 
+    from core.services.provider_error_guard import looks_like_provider_error
+    if looks_like_provider_error(summary):
+        return ""
+
     # Store the summary
     try:
         from core.runtime.db import session_summary_insert
@@ -1002,11 +1006,13 @@ def build_previous_session_summaries(*, limit: int = 3) -> str | None:
     if not summaries:
         return None
 
+    from core.services.provider_error_guard import looks_like_provider_error
+
     lines = ["Tidligere samtaler (nyeste først):"]
     for s in summaries:
         created = str(s.get("created_at") or "")[:16]
         text = str(s.get("summary") or "").strip()
-        if text:
+        if text and not looks_like_provider_error(text):
             lines.append(f"- [{created}] {text}")
 
     if len(lines) < 2:

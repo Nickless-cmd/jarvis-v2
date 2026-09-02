@@ -316,6 +316,9 @@ def summary_looks_valid(summary_text: str, *, min_chars: int = 60) -> bool:
     low = s.lower()
     if low.startswith("[kontekst komprimeret") or low.startswith("error"):
         return False
+    from core.services.provider_error_guard import looks_like_provider_error
+    if looks_like_provider_error(s):
+        return False
     # Still a thinking block, or the model described the task instead of writing the summary.
     if low.startswith("<think") or low.startswith("<thinking"):
         return False

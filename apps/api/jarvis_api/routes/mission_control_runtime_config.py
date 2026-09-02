@@ -10,6 +10,13 @@ from .mission_control_common import *  # noqa: F401,F403 (delt flade + hjælpere
 
 router = APIRouter()
 
+
+def _capability_request_scope() -> tuple[str | None, bool]:
+    from core.identity.workspace_context import current_role, current_user_id
+
+    user_id = current_user_id() or None
+    return user_id, current_role() in {"", "owner"}
+
 @router.get("/adaptive-planner")
 def mc_adaptive_planner() -> dict:
     """Return the current bounded adaptive planner runtime state."""
@@ -267,9 +274,12 @@ def mc_approve_capability_request(request_id: str) -> dict:
 
     Returns the projected request; raises 404 if the request does not exist.
     """
+    user_id, include_unassigned = _capability_request_scope()
     request = approve_capability_approval_request(
         request_id,
         approved_at=datetime.now(UTC).isoformat(),
+        user_id=user_id,
+        include_unassigned=include_unassigned,
     )
     if request is None:
         raise HTTPException(
@@ -296,7 +306,12 @@ def mc_execute_capability_request(
     capability and records the execution. Returns error dicts (not exceptions) for
     not-found / not-approved / fingerprint-mismatch cases.
     """
-    request = get_capability_approval_request(request_id)
+    user_id, include_unassigned = _capability_request_scope()
+    request = get_capability_approval_request(
+        request_id,
+        user_id=user_id,
+        include_unassigned=include_unassigned,
+    )
     if request is None:
         return {
             "ok": False,
@@ -318,6 +333,8 @@ def mc_execute_capability_request(
                     approve_capability_approval_request(
                         request_id,
                         approved_at=datetime.now(UTC).isoformat(),
+                        user_id=user_id,
+                        include_unassigned=include_unassigned,
                     )
                     or request
                 )
@@ -379,6 +396,8 @@ def mc_execute_capability_request(
         executed_at=datetime.now(UTC).isoformat(),
         invocation_status=str(invocation.get("status") or ""),
         invocation_execution_mode=str(invocation.get("execution_mode") or ""),
+        user_id=user_id,
+        include_unassigned=include_unassigned,
     )
     return {
         "ok": invocation["status"] == "executed",
@@ -531,5 +550,4 @@ def mc_update_main_agent_selection(payload: dict) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return _main_agent_selection_surface()
-
 

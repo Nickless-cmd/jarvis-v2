@@ -24,10 +24,34 @@ from core.runtime.db_core import (
 
 
 # === capability_approval_request CRUD (verbatim from db.py L4341-4689) ===
-def recent_capability_approval_requests(limit: int = 5) -> list[dict[str, object]]:
+def _approval_user_scope(
+    *, user_id: str | None, include_unassigned: bool
+) -> tuple[str, tuple[object, ...]]:
+    normalized_user_id = str(user_id or "").strip()
+    if normalized_user_id and include_unassigned:
+        return (
+            "(scheduled_for_user_id = ? OR scheduled_for_user_id IS NULL)",
+            (normalized_user_id,),
+        )
+    if normalized_user_id:
+        return "scheduled_for_user_id = ?", (normalized_user_id,)
+    if include_unassigned:
+        return "scheduled_for_user_id IS NULL", ()
+    return "1 = 0", ()
+
+
+def recent_capability_approval_requests(
+    limit: int = 5,
+    *,
+    user_id: str | None,
+    include_unassigned: bool = False,
+) -> list[dict[str, object]]:
+    scope_sql, scope_params = _approval_user_scope(
+        user_id=user_id, include_unassigned=include_unassigned
+    )
     with connect() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT
                 request_id,
                 capability_id,
@@ -48,20 +72,31 @@ def recent_capability_approval_requests(limit: int = 5) -> list[dict[str, object
                 executed,
                 executed_at,
                 invocation_status,
-                invocation_execution_mode
+                invocation_execution_mode,
+                scheduled_for_user_id,
+                initiated_by
             FROM capability_approval_requests
+            WHERE {scope_sql}
             ORDER BY id DESC
             LIMIT ?
             """,
-            (max(limit, 1),),
+            (*scope_params, max(limit, 1)),
         ).fetchall()
     return [_capability_approval_request_from_row(row) for row in rows]
 
 
-def get_capability_approval_request(request_id: str) -> dict[str, object] | None:
+def get_capability_approval_request(
+    request_id: str,
+    *,
+    user_id: str | None,
+    include_unassigned: bool = False,
+) -> dict[str, object] | None:
+    scope_sql, scope_params = _approval_user_scope(
+        user_id=user_id, include_unassigned=include_unassigned
+    )
     with connect() as conn:
         row = conn.execute(
-            """
+            f"""
             SELECT
                 request_id,
                 capability_id,
@@ -82,11 +117,13 @@ def get_capability_approval_request(request_id: str) -> dict[str, object] | None
                 executed,
                 executed_at,
                 invocation_status,
-                invocation_execution_mode
+                invocation_execution_mode,
+                scheduled_for_user_id,
+                initiated_by
             FROM capability_approval_requests
-            WHERE request_id = ?
+            WHERE request_id = ? AND {scope_sql}
             """,
-            (request_id,),
+            (request_id, *scope_params),
         ).fetchone()
     if row is None:
         return None
@@ -94,11 +131,18 @@ def get_capability_approval_request(request_id: str) -> dict[str, object] | None
 
 
 def approve_capability_approval_request(
-    request_id: str, *, approved_at: str
+    request_id: str,
+    *,
+    approved_at: str,
+    user_id: str | None,
+    include_unassigned: bool = False,
 ) -> dict[str, object] | None:
+    scope_sql, scope_params = _approval_user_scope(
+        user_id=user_id, include_unassigned=include_unassigned
+    )
     with connect() as conn:
         row = conn.execute(
-            """
+            f"""
             SELECT
                 request_id,
                 capability_id,
@@ -119,11 +163,13 @@ def approve_capability_approval_request(
                 executed,
                 executed_at,
                 invocation_status,
-                invocation_execution_mode
+                invocation_execution_mode,
+                scheduled_for_user_id,
+                initiated_by
             FROM capability_approval_requests
-            WHERE request_id = ?
+            WHERE request_id = ? AND {scope_sql}
             """,
-            (request_id,),
+            (request_id, *scope_params),
         ).fetchone()
         if row is None:
             return None
@@ -156,10 +202,15 @@ def record_capability_approval_request_execution(
     executed_at: str,
     invocation_status: str,
     invocation_execution_mode: str,
+    user_id: str | None,
+    include_unassigned: bool = False,
 ) -> dict[str, object] | None:
+    scope_sql, scope_params = _approval_user_scope(
+        user_id=user_id, include_unassigned=include_unassigned
+    )
     with connect() as conn:
         row = conn.execute(
-            """
+            f"""
             SELECT
                 request_id,
                 capability_id,
@@ -180,11 +231,13 @@ def record_capability_approval_request_execution(
                 executed,
                 executed_at,
                 invocation_status,
-                invocation_execution_mode
+                invocation_execution_mode,
+                scheduled_for_user_id,
+                initiated_by
             FROM capability_approval_requests
-            WHERE request_id = ?
+            WHERE request_id = ? AND {scope_sql}
             """,
-            (request_id,),
+            (request_id, *scope_params),
         ).fetchone()
         if row is None:
             return None
@@ -249,6 +302,8 @@ def _capability_approval_request_from_row(
             if invocation_execution_mode is not None
             else row["invocation_execution_mode"]
         ),
+        "scheduled_for_user_id": row["scheduled_for_user_id"],
+        "initiated_by": row["initiated_by"],
     }
 
 
@@ -312,7 +367,9 @@ def latest_capability_approval_request(
                 executed,
                 executed_at,
                 invocation_status,
-                invocation_execution_mode
+                invocation_execution_mode,
+                scheduled_for_user_id,
+                initiated_by
             FROM capability_approval_requests
             {where}
             ORDER BY id DESC
@@ -362,7 +419,9 @@ def latest_approved_capability_approval_request(
                 executed,
                 executed_at,
                 invocation_status,
-                invocation_execution_mode
+                invocation_execution_mode,
+                scheduled_for_user_id,
+                initiated_by
             FROM capability_approval_requests
             {where}
             ORDER BY approved_at DESC, id DESC

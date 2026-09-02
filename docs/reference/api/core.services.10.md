@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/embodied_state.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_embodied_state_surface` | `()` | — | [src](../../../core/services/embodied_state.py#L13) |
+| function | `build_embodied_state_from_facts` | `(facts, *, previous=…)` | — | [src](../../../core/services/embodied_state.py#L25) |
+| function | `build_embodied_state_prompt_section` | `(surface=…)` | — | [src](../../../core/services/embodied_state.py#L91) |
+| function | `collect_host_facts` | `()` | — | [src](../../../core/services/embodied_state.py#L157) |
+| function | `_build_cpu_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L201) |
+| function | `_build_memory_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L217) |
+| function | `_build_disk_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L233) |
+| function | `_build_thermal_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L249) |
+| function | `_derive_primary_state` | `(facts_surface)` | — | [src](../../../core/services/embodied_state.py#L261) |
+| function | `_derive_recovery_state` | `(*, previous, current_primary_state, built_at)` | — | [src](../../../core/services/embodied_state.py#L283) |
+| function | `_read_meminfo` | `()` | — | [src](../../../core/services/embodied_state.py#L303) |
+| function | `_read_thermal_celsius` | `()` | — | [src](../../../core/services/embodied_state.py#L322) |
+| function | `_bucket_from_thresholds` | `(value, thresholds)` | — | [src](../../../core/services/embodied_state.py#L342) |
+| function | `_severity` | `(bucket)` | — | [src](../../../core/services/embodied_state.py#L353) |
+| function | `_strain_level_for_state` | `(state)` | — | [src](../../../core/services/embodied_state.py#L362) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/embodied_state.py#L372) |
+
 ## `core/services/emergence.py`
 _Emergence — evidence-based pattern detection across recent activity._
 
@@ -654,13 +675,4 @@ _File Watch Daemon — proprioception: "I feel when my own files change"._
 | function | `_state` | `()` | — | [src](../../../core/services/finitude_runtime.py#L841) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/finitude_runtime.py#L846) |
 | function | `_now` | `()` | — | [src](../../../core/services/finitude_runtime.py#L859) |
-
-## `core/services/flow_state_detection.py`
-_Flow State Detection — when everything clicks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_flow_detection` | `(*, recent_outcomes, correction_count=…, sustained_minutes=…)` | — | [src](../../../core/services/flow_state_detection.py#L11) |
-| function | `get_flow_state` | `()` | — | [src](../../../core/services/flow_state_detection.py#L33) |
-| function | `build_flow_state_surface` | `()` | — | [src](../../../core/services/flow_state_detection.py#L37) |
 

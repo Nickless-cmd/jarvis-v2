@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cowork_dispatch.py`
+_Cowork dispatch — runtime→app instruktioner (spec §18.5)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_app_instruction` | `(*, action, target_user, channel=…, payload=…, requester=…)` | Byg en struktureret app-instruktion. Rejser ValueError ved ugyldig action | [src](../../../core/services/cowork_dispatch.py#L17) |
+| function | `dispatch_to_app` | `(*, action, target_user, channel=…, payload=…, requester=…)` | Byg + signalér en app-instruktion via eventbus. Appen udfører den lokalt. | [src](../../../core/services/cowork_dispatch.py#L38) |
+
 ## `core/services/cowork_feed.py`
 _Cowork-feed: normaliserer items fra eksisterende kilder til én rolle-scopet_
 
@@ -575,12 +583,4 @@ _Delegation advisor — inline vs which subagent role._
 |---|---|---|---|---|
 | function | `advise` | `(task)` | — | [src](../../../core/services/delegation_advisor.py#L46) |
 | function | `_exec_delegation_advisor` | `(args)` | — | [src](../../../core/services/delegation_advisor.py#L114) |
-
-## `core/services/delete_policy.py`
-_Slette-model — hvem må slette hvad, og hvor hårdt (spec §4.3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `resolve_delete_action` | `(*, role, is_own_workspace, gdpr_erasure=…)` | Afgør slette-mode for (rolle, om det er eget workspace). | [src](../../../core/services/delete_policy.py#L22) |
-| function | `is_delete_confirmed` | `(*, role, confirmations_received)` | True hvis sletningen må udføres givet antal modtagne bekræftelser. | [src](../../../core/services/delete_policy.py#L55) |
 

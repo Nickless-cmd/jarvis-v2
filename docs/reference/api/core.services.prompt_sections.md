@@ -198,6 +198,18 @@ _Pool-status prompt-sektion — så Jarvis ALTID kender forskellen på de to_
 |---|---|---|---|---|
 | function | `pool_status_line` | `()` | Kompakt to-linjers status af de to pools. Self-safe: enhver datakilde-fejl | [src](../../../core/services/prompt_sections/pool_status_section.py#L12) |
 
+## `core/services/prompt_sections/private_layer_sections.py`
+_Prompt-sektioner fra de private lag — tynde, selv-sikre delegationer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_visible_chronicle_context_section` | `()` | — | [src](../../../core/services/prompt_sections/private_layer_sections.py#L19) |
+| function | `_visible_dream_residue_section` | `()` | — | [src](../../../core/services/prompt_sections/private_layer_sections.py#L29) |
+| function | `_visible_unconscious_temperature_field_section` | `()` | — | [src](../../../core/services/prompt_sections/private_layer_sections.py#L39) |
+| function | `_visible_response_style_hint_section` | `()` | Lag 10 Site 4: response-style modifiers from user temperature field. | [src](../../../core/services/prompt_sections/private_layer_sections.py#L51) |
+| function | `_visible_current_pull_section` | `()` | Lag 5: inject current pull as quiet first-priority context. | [src](../../../core/services/prompt_sections/private_layer_sections.py#L79) |
+| function | `_visible_visual_memory_section` | `()` | Lag 6: inject latest visual room memory + ambient sound + echo signals + morning thread. | [src](../../../core/services/prompt_sections/private_layer_sections.py#L90) |
+
 ## `core/services/prompt_sections/rule_conclusions.py`
 _Rule-engine conclusions — symbolic reasoning surfaced to the LLM._
 

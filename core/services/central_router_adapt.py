@@ -161,6 +161,35 @@ def compute_preference() -> dict[str, Any]:
     return {"enough": True, "preferred": top_model, "support": support, "strength": strength}
 
 
+# Pladsholdere der ALDRIG er en rigtig model. visible_runs skriver provider="?"
+# og model="jarvis" for autonome runs; læste læreren dem som en kandidat, lærte
+# den at foretrække "?/jarvis" — en model der ikke findes — og hver autonom tur
+# faldt derefter tilfældigt ned gennem gratis-puljen. Målt live 2026-09-02:
+# {"visible": {"model": "?/jarvis", "strength": 0.253}}, sat LIVE.
+_PLACEHOLDER_TOKENS = {"", "?", "unknown", "jarvis", "none", "null"}
+
+
+def _is_real_model_key(model_key: str) -> bool:
+    """Er «provider/model» en rigtig rute — eller en pladsholder?
+
+    `visible_runs` skriver provider="?" og model="jarvis" for autonome runs.
+    Læste læreren sit eget spor som kandidat, lærte den at foretrække "?/jarvis"
+    — en model der ikke findes — og hver autonom tur faldt derefter tilfældigt
+    ned gennem gratis-puljen. Målt live 2026-09-02:
+    {"visible": {"model": "?/jarvis", "strength": 0.253}}, sat LIVE.
+
+    Vagten tjekker KUN form og pladsholdere. Den spørger bevidst IKKE
+    provider-registret: en præference må ikke kunne blive slået fra af hvad der
+    tilfældigvis står i registret i et givet miljø. Det er formen der var gal.
+    """
+    key = str(model_key or "").strip()
+    if "/" not in key:
+        return False
+    provider, model = key.split("/", 1)
+    return (provider.strip().lower() not in _PLACEHOLDER_TOKENS
+            and model.strip().lower() not in _PLACEHOLDER_TOKENS)
+
+
 def run_router_adapt_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
     """Cadence: beregn foreslået præference → §8-gate → SHADOW-diff altid; skriv live-præference KUN
     hvis flag ON + gate ok + ikke-deep-tier + konfigureret. Rører aldrig routing selv. Self-safe."""
@@ -175,7 +204,9 @@ def run_router_adapt_tick(*, trigger: str = "cadence", last_visible_at: str = ""
         verdict = gov.gate_self_mutation({"strength": strength},
                                          budgets={"strength": _STRENGTH_BUDGET}, domain=_DOMAIN)
         gate_action = verdict.action
-        if is_live_enabled() and verdict.action != "rollback" and not _is_never_tier(pref["preferred"]):
+        if (is_live_enabled() and verdict.action != "rollback"
+                and not _is_never_tier(pref["preferred"])
+                and _is_real_model_key(pref["preferred"])):
             _audit_notation(pref["preferred"])
             live = _kv_get(_PREF_KEY, {}) or {}
             if isinstance(live, dict):
@@ -272,7 +303,7 @@ def resolve_visible_model(*, provider_override: str = "", model_override: str = 
                 return alt
         # (b) LÆRT PRÆFERENCE
         pref = get_live_preference("visible")     # None i shadow/uden flag
-        if pref and pref.get("model") and "/" in str(pref["model"]):
+        if pref and pref.get("model") and _is_real_model_key(str(pref["model"])):
             p, m = str(pref["model"]).split("/", 1)
             if p and m:
                 return p, m

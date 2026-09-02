@@ -110,11 +110,25 @@ def test_resolver_shadow_returns_default(isolated_runtime):
     assert (p, m) == ("glm", "glm-5.2:cloud")
 
 
-def test_resolver_live_applies_preference(isolated_runtime):
+def test_resolver_live_applies_preference(isolated_runtime, monkeypatch):
+    """Præferencen gælder KUN den autonome lane (Bjørn 2026-07-19).
+
+    Testen hævdede tidligere at den også ramte interaktive ture. Den adfærd blev
+    bevidst fjernet — routeren havde lært 'kimi-k2.7-code' fra blandet trafik og
+    påtvang den Bjørns egne ture — men testen blev aldrig rettet og har fejlet
+    siden. Nu holder den begge halvdele af den faktiske invariant.
+    """
+    monkeypatch.setattr("core.services.central_router_explore.pick_exploration_model",
+                        lambda p, m: None, raising=False)
     ra._kv_set(ra._LIVE_FLAG, True)
     ra._kv_set(ra._PREF_KEY, {"visible": {"model": "deepseek/flash", "strength": 0.6}})
-    p, m = ra.resolve_visible_model(default_provider="glm", default_model="glm-5.2:cloud")
-    assert (p, m) == ("deepseek", "flash")       # præference anvendt
+    # interaktivt: brugerens/konfigurationens valg er ukrænkeligt
+    assert ra.resolve_visible_model(
+        default_provider="glm", default_model="glm-5.2:cloud") == ("glm", "glm-5.2:cloud")
+    # autonomt: præferencen anvendes
+    assert ra.resolve_visible_model(
+        default_provider="glm", default_model="glm-5.2:cloud",
+        autonomous=True) == ("deepseek", "flash")
 
 
 def test_resolver_explicit_override_always_wins(isolated_runtime):
@@ -165,3 +179,68 @@ def test_autonomous_guard_survives_explore_returning_deepseek(isolated_runtime, 
     p, m = ra.resolve_autonomous_model(
         autonomous_provider="ollama", autonomous_model="deepseek-v4-flash:cloud")
     assert (p, m) == ("ollama", "deepseek-v4-flash:cloud")
+
+
+# ── Den lærte præference pegede på en model der ikke findes (2026-09-02) ────
+#
+# FUNDET LIVE: præferencen stod på {"visible": {"model": "?/jarvis",
+# "strength": 0.253}} og var sat LIVE. `?/jarvis` er ikke en model — det er den
+# pladsholder visible_runs selv skriver for autonome kørsler (provider="?",
+# model="jarvis"). Læreren læste sit eget spor som kandidat og lærte at
+# foretrække det. Derefter faldt hver autonom tur tilfældigt ned gennem
+# gratis-puljen: ødelagt dansk, kvotefejl gemt som Jarvis' egne svar, nul
+# cost-rækker. Modulets kontrakt (linje 14) lovede allerede «kun blandt
+# KONFIGUREREDE providers» — løftet stod kun i teksten.
+
+class TestErModellenRigtig:
+    @pytest.mark.parametrize("key", [
+        "?/jarvis",            # selve hændelsen
+        "?/deepseek-v4-flash",
+        "ollama/jarvis",
+        "/deepseek-v4-flash",
+        "ollama/",
+        "unknown/none",
+    ])
+    def test_pladsholdere_afvises(self, key: str) -> None:
+        assert ra._is_real_model_key(key) is False
+
+    def test_manglende_skraastreg_afvises(self) -> None:
+        assert ra._is_real_model_key("deepseek-v4-flash") is False
+
+    @pytest.mark.parametrize("key", [
+        "ollama/deepseek-v4-flash:cloud",
+        "deepseek/deepseek-v4-flash",
+        "OLLAMA/GLM-5.3",           # store bogstaver må ikke gøre en forskel
+    ])
+    def test_rigtige_ruter_accepteres(self, key: str) -> None:
+        assert ra._is_real_model_key(key) is True
+
+    def test_ulaeseligt_register_blokerer_ikke(self, monkeypatch) -> None:
+        """Vagten må ikke lamme routingen hvis registret ikke kan læses."""
+        monkeypatch.setattr(
+            "core.runtime.provider_router.load_provider_router_registry",
+            lambda: (_ for _ in ()).throw(RuntimeError("nede")), raising=False)
+        assert ra._is_real_model_key("ollama/deepseek-v4-flash:cloud") is True
+        # men en pladsholder er stadig en pladsholder
+        assert ra._is_real_model_key("?/jarvis") is False
+
+
+class TestForbrugeren:
+    def _resolve(self, **kw):
+        return ra.resolve_visible_model(
+            default_provider="ollama", default_model="deepseek-v4-flash:cloud",
+            autonomous=True, **kw)
+
+    def test_forgiftet_praeference_ignoreres(self, monkeypatch) -> None:
+        monkeypatch.setattr(ra, "get_live_preference",
+                            lambda lane="visible": {"model": "?/jarvis"})
+        monkeypatch.setattr("core.services.central_router_explore.pick_exploration_model",
+                            lambda p, m: None, raising=False)
+        assert self._resolve() == ("ollama", "deepseek-v4-flash:cloud")
+
+    def test_gyldig_praeference_bruges_stadig(self, monkeypatch) -> None:
+        monkeypatch.setattr(ra, "get_live_preference",
+                            lambda lane="visible": {"model": "deepseek/deepseek-v4-flash"})
+        monkeypatch.setattr("core.services.central_router_explore.pick_exploration_model",
+                            lambda p, m: None, raising=False)
+        assert self._resolve() == ("deepseek", "deepseek-v4-flash")

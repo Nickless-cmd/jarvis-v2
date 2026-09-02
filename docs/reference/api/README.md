@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13154 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13165 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -47,8 +47,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13154 functions/
 - [`core.services.19`](core.services.19.md) — `self_narrative_self_model_review_bridge` … `signal_pressure_accumulator`
 - [`core.services.20`](core.services.20.md) — `signal_surface_gc` … `temporal_depth`
 - [`core.services.21`](core.services.21.md) — `temporal_narrative` … `unified_recall`
-- [`core.services.22`](core.services.22.md) — `user_activity` … `visible_thinking_trace`
-- [`core.services.23`](core.services.23.md) — `visible_tool_exec` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `upload_sandbox` … `visible_stream_gate`
+- [`core.services.23`](core.services.23.md) — `visible_thinking_trace` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

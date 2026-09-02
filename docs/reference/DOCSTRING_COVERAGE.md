@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6574/13193 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6579/13200 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6574/13193 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 554 | 1031 | 53% |
-| `core.services` | 4368 | 9166 | 47% |
+| `core.services` | 4373 | 9173 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6574/13193 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1884)
+## Undocumented public functions (1885)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L143)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1024,12 +1024,13 @@ Generated from source. 6574/13193 functions/methods documented (49%). The list b
 - `core/services/habits_pipeline.py` :: `list_suggestions` (L310)
 - `core/services/habits_pipeline.py` :: `reject_suggestion` (L350)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
-- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L502)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2282)
-- `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L328)
-- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1228)
-- `core/services/heartbeat_runtime.py` :: `start_heartbeat_scheduler` (L256)
-- `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L298)
+- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L476)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2256)
+- `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L302)
+- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1202)
+- `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L272)
+- `core/services/heartbeat_scheduler.py` :: `stop` (L100)
+- `core/services/heartbeat_scheduler.py` :: `stop_event` (L51)
 - `core/services/hf_connector.py` :: `model_info` (L85)
 - `core/services/hf_connector.py` :: `search_models` (L67)
 - `core/services/identity_drift_daemon.py` :: `build_identity_drift_surface` (L318)

@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/temporal_body.py`
+_Temporal Body — sense of age._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `age_journey` | `(thoughts=…)` | — | [src](../../../core/services/temporal_body.py#L11) |
+| function | `get_temporal_body_age` | `()` | — | [src](../../../core/services/temporal_body.py#L16) |
+| function | `describe_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L26) |
+| function | `format_age_for_prompt` | `()` | — | [src](../../../core/services/temporal_body.py#L30) |
+| function | `reset_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L33) |
+| function | `build_temporal_body_surface` | `()` | — | [src](../../../core/services/temporal_body.py#L38) |
+
 ## `core/services/temporal_context.py`
 _Temporal Context — time-based situational awareness._
 
@@ -528,12 +540,4 @@ _Unconscious modulation — sub-symbolic sampling-parameter shift._
 |---|---|---|---|---|
 | function | `_modulation_enabled` | `()` | Kill-switch check. True = modulate; False = pass base through. | [src](../../../core/services/unconscious_modulation.py#L32) |
 | function | `compute_unconscious_modulation` | `(*, base_temperature, base_top_p, workspace_id=…)` | Return (modulated_temperature, modulated_top_p). | [src](../../../core/services/unconscious_modulation.py#L40) |
-
-## `core/services/unconscious_temperature_field.py`
-_Unconscious temperature field — backwards-compat wrapper for Lag 10._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_unconscious_temperature_hint` | `()` | Backwards-compat: returns heartbeat-formatted hint string or None. | [src](../../../core/services/unconscious_temperature_field.py#L13) |
-| function | `build_unconscious_temperature_field_surface` | `(*, force_refresh=…)` | Backwards-compat: surface dict for Mission Control consumers. | [src](../../../core/services/unconscious_temperature_field.py#L28) |
 

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13193 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13200 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -38,18 +38,18 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13193 functions/
 - [`core.services.09`](core.services.09.md) — `decisions_journal` … `dream_motif_daemon`
 - [`core.services.10`](core.services.10.md) — `dreaming_session` … `fact_gate`
 - [`core.services.11`](core.services.11.md) — `fcm_gateway` … `ground_truth_registry`
-- [`core.services.12`](core.services.12.md) — `guided_learning_runtime` … `internal_cadence`
-- [`core.services.13`](core.services.13.md) — `internal_cadence_central_wiring` … `memory_emotional_context`
-- [`core.services.14`](core.services.14.md) — `memory_graph` … `non_visible_lane_execution`
-- [`core.services.15`](core.services.15.md) — `non_visible_rate_cap` … `priors_feedback`
-- [`core.services.16`](core.services.16.md) — `private_initiative_tension_signal_tracking` … `pushback`
-- [`core.services.17`](core.services.17.md) — `quota_store` … `runtime_action_outcome_tracking`
-- [`core.services.18`](core.services.18.md) — `runtime_action_registry` … `self_monitor`
-- [`core.services.19`](core.services.19.md) — `self_mutation_lineage` … `signal_network_visualizer`
-- [`core.services.20`](core.services.20.md) — `signal_noise_guard` … `temporal_body`
-- [`core.services.21`](core.services.21.md) — `temporal_context` … `unconscious_temperature_field`
-- [`core.services.22`](core.services.22.md) — `unfinished_intent` … `visible_runs_watchdog`
-- [`core.services.23`](core.services.23.md) — `visible_self_state_summary` … `world_model_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `guided_learning_runtime` … `interlanguage_practice`
+- [`core.services.13`](core.services.13.md) — `internal_cadence` … `memory_density`
+- [`core.services.14`](core.services.14.md) — `memory_emotional_context` … `non_visible_fallback`
+- [`core.services.15`](core.services.15.md) — `non_visible_lane_execution` … `pressure_threshold_gate`
+- [`core.services.16`](core.services.16.md) — `priors_feedback` … `push_dispatcher`
+- [`core.services.17`](core.services.17.md) — `pushback` … `runtime_action_executor`
+- [`core.services.18`](core.services.18.md) — `runtime_action_outcome_tracking` … `self_model_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `self_monitor` … `signal_delta_trigger`
+- [`core.services.20`](core.services.20.md) — `signal_network_visualizer` … `temperament_tendency_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `temporal_body` … `unconscious_modulation`
+- [`core.services.22`](core.services.22.md) — `unconscious_temperature_field` … `visible_runs_sse_v2`
+- [`core.services.23`](core.services.23.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

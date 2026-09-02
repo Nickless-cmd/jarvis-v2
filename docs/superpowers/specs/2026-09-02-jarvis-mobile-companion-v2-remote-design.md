@@ -104,8 +104,9 @@ Det betyder, vi efterligner det **visuelle sprog**, ikke kopierer assets:
 
 ### Målt fra Bjørns reference-screenshots (2026-09-02)
 
-Tre skærmbilleder fra ChatGPT-appen (dark mode) er analyseret og lagt i
-reference-pakken. De konkrete mål vi designer efter:
+Syv skærmbilleder fra ChatGPT-appen (dark mode) er analyseret og lagt i
+reference-pakken (R1–R3: samtale/hovedskærm, R4: sidebar, R5: Remote-hjem,
+R6: opgave-tråd, R7: adgangsniveau-modal). De konkrete mål vi designer efter:
 
 - **Baggrund:** solid sort (`#000000`). Sekundære elementer (cirkel-knapper,
   segmented control-beholder, input-pille): mørkegrå/antracit (~`#2F2F2F`).
@@ -121,6 +122,106 @@ reference-pakken. De konkrete mål vi designer efter:
   efterfulgt af hvid tekst uden boble. Under AI-svar: værktøjsrække med små
   lysegrå ikoner (kopi, like/dislike, TTS, del, menu).
 - **Statusbar/navigation:** Android-standard; systemindhold i toppen.
+
+### Reference #4 — Sidebar/menu (målt 2026-09-02)
+
+ChatGPT-appens hamburger-menu, dansk lokalisering. Vigtigst: OpenAI's egne
+danske destinationer og deres hierarki — dem matcher vi 1:1 i sproget:
+
+- **Menu-top:** "ChatGPT"-titel + søgeknap (cirkel) + kebab-menu.
+- **Primær navigation** (line-art ikoner): Billeder · Bibliotek · **Projekter**
+  · **Fjernbetjening** · **Planlagt** · Plugins.
+- **Fastgjort-sektion** (📌): fastgjorte chats (hos Bjørn: "Jarvis-agent").
+- **Seneste-sektion:** chat-liste; aktiv chat får mørkegrå highlight
+  (8–12px radius).
+- **Bund:** pille-FAB "✏️ Chat" med **lilla→blå gradient** (samme accent som
+  voice-knappen), profil-cirkel "BS", separat lilla voice-knap med waveform.
+- **Terminologi vi overtager (dansk, 1:1):** Fjernbetjening (Remote) ·
+  Planlagt (Scheduled) · Projekter · Fastgjort · Seneste · Bibliotek.
+
+### Reference #5 — Remote-skærmen (målt 2026-09-02) ★ vigtigste for Arbejde-tab
+
+Selve Codex-Remote-fladen i ChatGPT-appen — det vi bygger som Arbejde-tab:
+
+- **Top-bar:** tilbage-pil (venstre, cirkel), titel **"Remote"** centreret,
+  kebab-menu (højre, cirkel).
+- **Forbundet maskine-sektion** (øverst, under top-bar): grøn
+  online-statusprik (`~#4CAF50`) + laptop-ikon + maskinnavn (hos Bjørn:
+  "CheifOne"). Viser hvilken computer der eksekverer arbejdet.
+- **"Projekter"-sektion:** liste over tilgængelige projekter på maskinen.
+  Første række = laptop-ikon ("Chats"), øvrige = folder-ikoner
+  ("jarvis-v2", "observer-sessions"). Generøs vertikal padding (16–20px).
+- **"Seneste"-sektion:** tidligere opgaver, to-kolonne justeret:
+  venstre = opgavebeskrivelse ("Say hello", "Vurder Jarvis AI-arkitektur"),
+  højre = relativ tidsstempel i grå (`#B0B0B0`, "2d", "2mdr").
+- **Floating bottom-lag:** pilleformet søgefelt ("Søg i chats", mørkegrå
+  `~#222222`) + to cirkulære gradient-knapper: voice (lydbølge) og
+  compose (blyant/papir).
+
+Konsekvens for vores Arbejde-tab: Remote er IKKE en tab-liste med tre
+under-faner (Tasks/Approve/Review) — det er en **to-sektions forside**
+(Forbundet maskine + Projekter + Seneste) hvorfra man dykker ned i en valgt
+opgave/tråd. Vores Tasks/Approve/Review bliver tilstande i detaljevisningen,
+ikke top-tabs. (Justeres i fase 1-skitse før implementering.)
+
+### Reference #6 — Opgave-tråd (detaljevisning, målt 2026-09-02) ★ niveau 2
+
+Det man lander i efter at trykke på en opgave/projekt i Remote-hjemmet — en
+Codex-chat på CheifOne i projekt jarvis-v2 ("Say hello"). Viser hvordan en
+agent-konversation ser ud på Remote-niveau:
+
+- **Top-bar:** tilbage-pil i cirkel (venstre). Midten: en **kontekst-pille**
+  der bærer hele trådens identitet — chat-bobbel-ikon + trådnavn ("Say
+  hello"), robot-ikon + projekt ("jarvis-v2"), computer-ikon + maskine
+  ("CheifOne"). Højre: halvmåne-ikon (tema) + kebab-menu, begge i cirkler.
+- **Besked-flow:** agent-svar er **venstrejusteret tekst uden boble**
+  (rapport-stil); bruger-beskeder er **mørke lilla/blå piller, højrejusteret**
+  ("Du stoppede?", "du stoppede?"). Kode/commits i monospace
+  (`917f27dd`, `main`, `--no-verify`). Under agent-tekst: kopiér-ikon (venstre).
+- **Inline trin/tidslinje-elementer** i tråden (ikke en separat fane):
+  navigationslink ("Designing standalone hook wrapper for worktrees >") og
+  tidsstempel-link ("Arbejdede i 10 min. 57 sek. >"). Agenten rapporterer med
+  commit-info, bullet-lister og verifikations-afsnit i almindelig tekst.
+- **Komponist (Remote-form):** placeholder = **"Arbejd på {maskine}"**
+  ("Arbejd på CheifOne") — komponisten i en opgave-tråd er *steer-input* til
+  agenten, ikke en chat-besked til Jarvis. `+` venstre, mikrofon højre.
+- **Ingen tabs, ingen sektioner** — ren tråd. Godkendelser og diffs må
+  således dukke op *inde i* dette flow (inline-kort), ikke som faner ovenpå.
+
+Konsekvens: vores Tasks/Approve/Review-koncept bør redes til **Remote-hjem →
+opgave-tråd** med inline godkendelses-/diff-kort i tråden — ikke tre faner på
+toppen af Arbejde-tabet. (Justeres i fase 1-skitse før implementering; se
+åbent punkt nederst.)
+
+### Reference #7 — Adgangsniveau-modal (målt 2026-09-02)
+
+Bjørn sendte den som "approval cards", men den viser noget vigtigere og
+anderledes: en **modal hvor man vælger tilladelses-niveau** — ikke et
+transaktions-approval på én kommando. Centreret kort (~#212121, radius
+24–28px) over dæmpet/blurret baggrund (~60–80% sort), 4 radio-lignende
+valgmuligheder, hver med ikon (venstre) + titel/desc (midten) + checkmark
+ved aktivt valg (højre):
+
+- **Standardtilladelser** — "Kører kommandoer i en sandbox" (hånd-ikon)
+- **Automatisk gennemgang** — "Gennemgår automatisk anmodninger om udvidede
+  rettigheder" (cirkel-check-ikon)
+- **Kun læsning** — "Kræver godkendelse for at redigere filer eller køre
+  kommandoer" (hængelås-ikon)
+- **Fuld adgang** (aktiv) — "Fuld computeradgang (øget risiko)" (ambra
+  advarselstrekant ~#FFB347)
+
+Baggrunden er selve opgave-tråden (samme kontekst-pille øverst som R6:
+"Say hello" / jarvis-v2 / CheifOne) med komponisten "Arbejd på CheifOne".
+
+Konsekvens for vores design: OpenAI konfigurerer **magt pr. forbindelse/
+run på et spektrum** (sandbox → auto-review → read-only → fuld adgang)
+frem for et binært ja/nej på hver enkelt handling. Det giver os et mønster
+for vores egen sikkerhedsmodel: i stedet for at Approve-køen drukner i
+små godkendelser, kan et run have et **tilladelses-niveau der filtrerer hvad
+der overhovedet kræver Bjørn**. Kortet der så dukker op (når noget krydser
+niveauet) er fase 1's Approve-kort — og dette er skærmen *før*: vælg niveau
+når et run starter. (Tilføres fase 1-skitse som konfigurations-skærm;
+checkmark-radiogruppe + advarselsmarkering for det højeste niveau.)
 
 Alt visuelt design verificeres mod faktiske screenshots af ChatGPT-appen,
 side-for-side, før implementering af hver skærm. Bjørn leverer reference-

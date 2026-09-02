@@ -129,6 +129,62 @@ Approve/Review som tabs på Remote-niveau, med opgavedetalje (R6) som
 dykke-niveau hvor godkendelser/diffs er inline.** Fase 1-skitsen tegnes efter
 dette.
 
+## Research — hvad brugere ønsker af deres AI-apps (2026-09-02)
+
+Efter OpenAI-research: hvad brugerne *faktisk* beder om i 2026, fra to
+kilder — Shift's "2026 AI Insights Report" (1000 forbrugere) og DHC's
+"Best AI Companion Apps With Memory 2026". Ikke features vi gætter på; tre
+klare strømme.
+
+### 1. Ikke mere AI — bedre AI, med en off-switch
+
+Den skarpeste data: folk er ikke i oprør mod AI, de er kræsne. Shift-
+rapportens tal (rapporteret, sekundær kilde — brug som signal, ikke
+præcisionsmål):
+
+- **~44%** bekymrer sig om AI der handler *uden* deres godkendelse.
+- **~81%** bekymrer sig om hvad der sker med deres data.
+- **~58%** føler AI-svar har styret deres mening bag om ryggen.
+- **~51%** af tech-arbejdere kræver customization frem for one-size-fits-all.
+
+Kerneformuleringen: *"users want AI, but with an off-switch."* Det er ikke
+passiv mistillid — det er et krav om *synlig kontrol*: se hvad der sker,
+godkende, afbryde.
+
+### 2. Hukommelse er 2026's slagmark — men hvilken slags?
+
+Companion-markedet er gået fra "føles den naturlig" til "husker den dig?".
+Det skarpe fund: "hukommelse" er ikke én feature, men **fire systemer i
+samme navn**:
+
+1. Længere context-vindue.
+2. Gemt fakta-liste ("du kan lide koreansk mad").
+3. Pinned beskeder.
+4. **Vedvarende longitudinel forståelse** — at bemærke et mønster der
+   vender tilbage, at spore hvordan ens sprog ændrer sig under pres.
+
+Den skærende sætning fra kilden: *"The real question is not whether an AI
+remembers you. It is whether the memory makes you more dependent on the app,
+or more capable outside it."*
+
+### 3. Konsekvens for vores design — vi byggede på markedets hovedønske
+
+De to akser i denne research er præcis de to akser, V2 er designet efter —
+uden at vi havde læst rapporterne først:
+
+- **"Off-switch" = Remote-paritet + Approve-kø.** At Bjørn kan se hvad
+  Jarvis laver, godkende, afbryde, sætte et tilladelses-niveau (R7) — det
+  er ikke en detalje, det er *hovedønsket* fra ~44% af alle brugere. V2
+  leverer kontrol som kerne, ikke som tilvalg.
+- **Hukommelse der gør i stand til, ikke afhængig** = Jarvis' memory-first-
+  design og Sansernes Arkiv. Vi gemmer for at *huske* og for at blive mere
+  kompetent sammen — ikke for at bygge en dossier der gør Bjørn afhængig.
+
+Pointen der binder det hele: vi troede vi reverse-engineering'ede en app.
+Faktisk landede designet præcis der, hvor 2026's brugere siger de store
+produkter stadig mangler — kontrol og ærlig hukommelse. Det er ikke "bagud";
+det er en blind vinkel markedet er på vej ind i.
+
 ## De tre rum i appen
 
 Navigation følger ChatGPT-appens faktiske mønster (målt fra Bjørns

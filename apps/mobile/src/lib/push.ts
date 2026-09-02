@@ -1,0 +1,167 @@
+import messaging from '@react-native-firebase/messaging'
+import notifee, { AndroidImportance, AndroidStyle } from '@notifee/react-native'
+import type { ApiConfig } from './types'
+import { ackNotification } from './presence'
+import { replyToSession } from './replyToSession'
+
+/** id på notifikationens "Svar"-action (Direct Reply / RemoteInput). */
+export const REPLY_ACTION_ID = 'jarvis-reply'
+
+export type PushData = { kind: string; session_id?: string; run_id?: string; title?: string; preview?: string; notif_id?: string; severity?: string; message?: string }
+
+/** Pure: byg notifikations-felter ud fra data + (evt.) hentet beskedtekst. Testbar. */
+export function buildNotification(data: PushData, fetchedBody: string | null) {
+  if (data.kind === 'reminder') {
+    return { title: 'Påmindelse', body: data.preview ?? '', data }
+  }
+  if (data.kind === 'error') {
+    // Kanonisk fejl (Canonical Error System): kun kritiske/høje fejl når frem hertil
+    // som push. Vis ærligt at noget gik galt, med serverens besked.
+    const critical = data.severity === 'critical'
+    return {
+      title: critical ? 'Jarvis: kritisk fejl' : 'Jarvis stødte på et problem',
+      body: data.message ?? data.preview ?? 'Der opstod en fejl.',
+      data
+    }
+  }
+  if (data.kind === 'initiative') {
+    return { title: 'Jarvis', body: data.preview ?? 'Jarvis vil sige noget', data }
+  }
+  if (data.kind === 'team_invite') {
+    // Backend sender title+preview i payload (commit 45eea82f). Uden denne case
+    // faldt team-invites igennem til "Jarvis svarede" (Mikkel-test 2026-06-20).
+    return { title: data.title ?? 'Invitation til team', body: data.preview ?? 'Du er blevet inviteret til et team', data }
+  }
+  // answer_ready: vis appens egen HTTPS-hentede svar; fald tilbage til serverens
+  // medsendte preview hvis fetchLatest fejler (fx udløbet baggrunds-token) — så man
+  // ser DET FAKTISKE svar i stedet for et intetsigende "Nyt svar" (Bjørn 3. jul).
+  return { title: 'Jarvis svarede', body: fetchedBody ?? data.preview ?? 'Nyt svar', data }
+}
+
+async function fetchLatest(config: ApiConfig, sessionId: string): Promise<string | null> {
+  try {
+    const url = new URL(`/chat/sessions/${encodeURIComponent(sessionId)}`, config.apiBaseUrl).toString()
+    const r = await fetch(url, {
+      headers: config.authToken ? { Authorization: `Bearer ${config.authToken}` } : {},
+    })
+    if (!r.ok) return null
+    const j = await r.json()
+    // GET /chat/sessions/{id} returnerer {session: {..., messages: [...]}} —
+    // beskederne ligger NESTED under session (ikke top-niveau).
+    const msgs = j.session?.messages ?? j.messages ?? []
+    const last = [...msgs].reverse().find((m: { role?: string }) => m.role === 'assistant')
+    if (!last) return null
+    const c = last.content
+    const text =
+      typeof c === 'string'
+        ? c
+        : Array.isArray(c)
+          ? c.map((b: { text?: string }) => b.text ?? '').join('')
+          : ''
+    // Hent rigeligt til den udfoldede notifikation (BigText). Den sammenfoldede
+    // linje afkortes selv af Android; udfoldet/ved svar ser man hele svaret.
+    return text.slice(0, 500)
+  } catch {
+    return null
+  }
+}
+
+export async function display(config: ApiConfig, data: PushData) {
+  const body = data.session_id ? await fetchLatest(config, data.session_id) : null
+  const n = buildNotification(data, body)
+  const channelId = await notifee.createChannel({
+    id: 'jarvis',
+    name: 'Jarvis',
+    importance: AndroidImportance.HIGH,
+  })
+  await notifee.displayNotification({
+    title: n.title,
+    body: n.body,
+    data: n.data as Record<string, string>,
+    android: {
+      channelId,
+      pressAction: { id: 'default' },
+      smallIcon: 'ic_notification',
+      // BigText: udfoldet (eller ved svar) vises hele beskeden, ikke kun 1-2 linjer
+      // — så man kan se hvad man svarer på.
+      style: { type: AndroidStyle.BIGTEXT, text: n.body },
+      // Direct Reply: svar Jarvis direkte fra statusbaren uden at åbne appen.
+      actions: [
+        {
+          title: 'Svar',
+          pressAction: { id: REPLY_ACTION_ID },
+          input: { allowFreeFormInput: true, placeholder: 'Skriv til Jarvis…' }
+        }
+      ]
+    },
+  })
+  // Device-awareness: kvittér så serveren ved beskeden nåede mobilen (annullerer
+  // eskalering til en anden enhed). Best-effort.
+  if (data.notif_id) void ackNotification(config, data.notif_id)
+}
+
+/**
+ * Håndtér et notifee ACTION_PRESS-svar (Direct Reply): send teksten til
+ * sessionens run + erstat notifikationen med en kvittering. Kaldes fra både
+ * baggrunds- (index.js) og forgrunds-handleren (ChatScreen).
+ */
+export async function submitNotificationReply(
+  config: ApiConfig,
+  detail: { notification?: { id?: string; data?: Record<string, unknown> }; input?: string }
+): Promise<void> {
+  const text = (detail.input ?? '').trim()
+  const sid =
+    typeof detail.notification?.data?.session_id === 'string'
+      ? (detail.notification.data.session_id as string)
+      : ''
+  if (!text || !sid) return
+  const ok = await replyToSession(config, sid, text)
+  const channelId = await notifee.createChannel({
+    id: 'jarvis',
+    name: 'Jarvis',
+    importance: AndroidImportance.HIGH
+  })
+  await notifee.displayNotification({
+    id: detail.notification?.id,
+    title: ok ? 'Sendt ✓' : 'Kunne ikke sende',
+    body: ok ? text : 'Prøv igen fra appen',
+    data: (detail.notification?.data ?? {}) as Record<string, string>,
+    android: { channelId, pressAction: { id: 'default' }, smallIcon: 'ic_notification' }
+  })
+}
+
+async function postToken(config: ApiConfig, token: string) {
+  const url = new URL('/push/register', config.apiBaseUrl).toString()
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(config.authToken ? { Authorization: `Bearer ${config.authToken}` } : {}),
+    },
+    body: JSON.stringify({ token, platform: 'android' }),
+  })
+}
+
+/** Registrér token efter login + lyt på rotation. */
+export async function registerForPush(config: ApiConfig): Promise<void> {
+  try {
+    // notifee.requestPermission() udløser Android 13+'s POST_NOTIFICATIONS-dialog
+    // (messaging().requestPermission() gør det IKKE pålideligt på Android).
+    await notifee.requestPermission()
+    await messaging().requestPermission()
+    const token = await messaging().getToken()
+    await postToken(config, token)
+    messaging().onTokenRefresh((t: string) => {
+      void postToken(config, t)
+    })
+  } catch {
+    /* graceful: ingen push, in-app virker stadig */
+  }
+}
+
+/** Kald i forgrunden (app åben). Returnerer unsubscribe. */
+export function attachForegroundHandler(config: ApiConfig) {
+  return messaging().onMessage(async (msg) => {
+    await display(config, (msg.data ?? {}) as unknown as PushData)
+  })
+}

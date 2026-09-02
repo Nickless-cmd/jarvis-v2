@@ -1,0 +1,162 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useAudioRecorder, createAudioPlayer, setAudioModeAsync,
+  requestRecordingPermissionsAsync, RecordingPresets,
+} from 'expo-audio'
+import type { AudioPlayer, RecordingStatus } from 'expo-audio'
+import * as Speech from 'expo-speech'
+import type { ApiConfig } from './types'
+import type { ContentBlock } from './sseProtocol'
+import { transcribeAudio, synthesizeTtsToFile } from './voiceApi'
+
+/** Samtale-mode (Trin 3, mobil). expo-audio (New-Arch-kompatibel — expo-av crashede under
+ *  newArchEnabled). Tilstandsmaskine hvile→lyt→transskriber→tænk→tal→(loop). STT→/transcribe,
+ *  TTS-fil→/api/tts (ElevenLabs), expo-speech da-DK som device-fallback. Push-to-talk + VAD.
+ *  Self-safe: fejl → idle, brækker aldrig UI. */
+
+export type VoiceState = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking'
+export type VoiceMode = 'push' | 'hands-free'
+
+const _SILENCE_MS = 1300
+const _MAX_UTTERANCE_MS = 30000
+const _SPEECH_DB = -35
+
+export interface VoiceStreamDeps {
+  status: string
+  blocks: ContentBlock[]
+  sendMessage: (text: string) => void
+  extractText: (blocks: ContentBlock[]) => string
+}
+
+export function useVoiceConversation(config: ApiConfig | null | undefined, deps: VoiceStreamDeps) {
+  const [state, setState] = useState<VoiceState>('idle')
+  const [mode, setMode] = useState<VoiceMode>('push')
+  const [active, setActive] = useState(false)
+  const [lastProvider, setLastProvider] = useState('')
+
+  const playerRef = useRef<AudioPlayer | null>(null)
+  const awaitingRef = useRef(false)
+  const sawWorkingRef = useRef(false)
+  const activeRef = useRef(active)
+  const modeRef = useRef(mode)
+  const stateRef = useRef<VoiceState>(state)
+  const sawSpeechRef = useRef(false)
+  const silenceAtRef = useRef(0)
+  const startedAtRef = useRef(0)
+  const stopListeningRef = useRef<(() => Promise<void>) | undefined>(undefined)
+  const startListeningRef = useRef<(() => Promise<void>) | undefined>(undefined)
+
+  useEffect(() => { activeRef.current = active }, [active])
+  useEffect(() => { modeRef.current = mode }, [mode])
+  useEffect(() => { stateRef.current = state }, [state])
+
+  // VAD-status-listener (hænderfri): auto-stop efter tale + stilhed. Best-effort.
+  const onRecStatus = useCallback((status: RecordingStatus) => {
+    if (modeRef.current !== 'hands-free' || stateRef.current !== 'listening') return
+    const now = Date.now()
+    const db = (status as unknown as { metering?: number }).metering ?? -160
+    if (db > _SPEECH_DB) { sawSpeechRef.current = true; silenceAtRef.current = 0 }
+    else if (sawSpeechRef.current) {
+      if (!silenceAtRef.current) silenceAtRef.current = now
+      else if (now - silenceAtRef.current > _SILENCE_MS) { void stopListeningRef.current?.() }
+    }
+    if (startedAtRef.current && now - startedAtRef.current > _MAX_UTTERANCE_MS) void stopListeningRef.current?.()
+  }, [])
+
+  const recorder = useAudioRecorder(
+    { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true },
+    onRecStatus,
+  )
+
+  const _speakNative = useCallback((text: string, onDone: () => void) => {
+    try { setLastProvider('device'); Speech.speak(text, { language: 'da-DK', onDone, onError: onDone }) }
+    catch { onDone() }
+  }, [])
+
+  const _speak = useCallback(async (text: string) => {
+    if (!text) { setState('idle'); return }
+    setState('speaking')
+    const onDone = () => {
+      setState('idle')
+      if (activeRef.current && modeRef.current === 'hands-free') {
+        setTimeout(() => { void startListeningRef.current?.() }, 300)
+      }
+    }
+    try {
+      if (!config) throw new Error('no config')
+      const { uri, provider } = await synthesizeTtsToFile(config, text)
+      setLastProvider(provider)
+      try { playerRef.current?.remove() } catch { /* noop */ }
+      const player = createAudioPlayer({ uri })
+      playerRef.current = player
+      player.addListener('playbackStatusUpdate', (s) => {
+        if (s.didJustFinish) { try { player.remove() } catch { /* noop */ } onDone() }
+      })
+      player.play()
+    } catch {
+      _speakNative(text, onDone)
+    }
+  }, [config, _speakNative])
+
+  // Completion-watch: tal svaret når et run vi startede falder fra 'working'.
+  useEffect(() => {
+    if (!awaitingRef.current) return
+    if (deps.status === 'working') { sawWorkingRef.current = true; return }
+    if (sawWorkingRef.current && (deps.status === 'done' || deps.status === 'idle')) {
+      awaitingRef.current = false
+      sawWorkingRef.current = false
+      void _speak(deps.extractText(deps.blocks))
+    }
+  }, [deps.status, deps.blocks, deps, _speak])
+
+  const stopListening = useCallback(async () => {
+    if (stateRef.current !== 'listening') return
+    try {
+      await recorder.stop()
+      const uri = recorder.uri
+      if (!uri || !config) { setState('idle'); return }
+      setState('transcribing')
+      const r = await transcribeAudio(config, uri)
+      const text = (r.status === 'ok' ? r.text : '').trim()
+      if (!text) { setState('idle'); return }
+      setState('thinking')
+      awaitingRef.current = true
+      deps.sendMessage(text)
+    } catch {
+      setState('idle')
+    }
+  }, [config, deps, recorder])
+  useEffect(() => { stopListeningRef.current = stopListening }, [stopListening])
+
+  const startListening = useCallback(async () => {
+    if (!config || stateRef.current === 'listening') return
+    try { playerRef.current?.pause() } catch { /* noop */ }
+    try { Speech.stop() } catch { /* noop */ }
+    try {
+      const perm = await requestRecordingPermissionsAsync()
+      if (!perm.granted) { setState('idle'); return }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true })
+      sawSpeechRef.current = false
+      silenceAtRef.current = 0
+      startedAtRef.current = Date.now()
+      await recorder.prepareToRecordAsync()
+      recorder.record()
+      setState('listening')
+    } catch {
+      setState('idle')
+    }
+  }, [config, recorder])
+  useEffect(() => { startListeningRef.current = startListening }, [startListening])
+
+  const enter = useCallback(() => { setActive(true); setState('idle') }, [])
+  const exit = useCallback(() => {
+    setActive(false)
+    awaitingRef.current = false
+    try { playerRef.current?.pause() } catch { /* noop */ }
+    try { Speech.stop() } catch { /* noop */ }
+    void stopListeningRef.current?.()
+    setState('idle')
+  }, [])
+
+  return { active, state, mode, lastProvider, setMode, enter, exit, startListening, stopListening }
+}

@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Jarvis",
+    "slug": "jarvis-mobile",
+    "version": "0.1.58",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "dk.srvlab.jarvis.mobile",
+      "versionCode": 59,
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0d1117"
+      }
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-camera",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Jarvis kan se din lokation når appen er åben, så han ved hvor du er."
+        }
+      ],
+      "expo-audio"
+    ],
+    "icon": "./assets/icon.png"
+  }
+}

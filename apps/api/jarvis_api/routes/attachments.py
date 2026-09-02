@@ -6,6 +6,7 @@ which is acceptable for session-scoped attachments.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
@@ -14,6 +15,8 @@ from fastapi import APIRouter, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from core.services.chat_sessions import get_chat_session
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/attachments", tags=["attachments"])
 
@@ -35,8 +38,52 @@ class AttachmentMeta:
 
 
 def get_attachment(attachment_id: str) -> AttachmentMeta | None:
-    """Look up attachment metadata by ID (used by chat route for context injection)."""
-    return _registry.get(attachment_id)
+    """Look up attachment metadata by ID (used by chat route for context injection).
+
+    Kigger i hukommelses-registret FØRST og derefter i DB'en. Registret er hurtigt
+    men dør med processen; DB-posten overlever genstart. Uden fallback'et
+    forsvandt en vedhæftning fra en samtale, så snart api'en var genstartet —
+    filen lå der stadig, men ingen kunne finde den.
+    """
+    hit = _registry.get(attachment_id)
+    if hit is not None:
+        return hit
+    try:
+        from core.services.attachment_service import get_attachment as _db_get
+        row = _db_get(attachment_id)
+    except Exception:
+        row = None
+    if not row:
+        return None
+    return AttachmentMeta(
+        id=str(row.get("attachment_id") or attachment_id),
+        session_id=str(row.get("session_id") or ""),
+        filename=str(row.get("filename") or "fil"),
+        mime_type=str(row.get("mime_type") or "application/octet-stream"),
+        size_bytes=int(row.get("size_bytes") or 0),
+        server_path=str(row.get("local_path") or ""),
+    )
+
+
+def get_attachment_meta_dicts(attachment_ids: list[str]) -> list[dict]:
+    """Metadata som dicts, i den rækkefølge de blev vedhæftet.
+
+    Bruges af chat-ruten til at lægge billed-referencer på brugerens besked.
+    Ukendte id'er springes over frem for at give en tom plads klienten aldrig
+    kan fylde.
+    """
+    out: list[dict] = []
+    for aid in attachment_ids or []:
+        meta = get_attachment(str(aid or "").strip())
+        if meta is None:
+            continue
+        out.append({
+            "id": meta.id,
+            "filename": meta.filename,
+            "mime_type": meta.mime_type,
+            "size_bytes": meta.size_bytes,
+        })
+    return out
 
 
 def apply_attachment_context(message: str, attachment_ids: list[str] | None) -> str:
@@ -156,6 +203,25 @@ async def upload_attachment(
         server_path=str(dest_path),
     )
     _registry[attachment_id] = meta
+
+    # Gør posten holdbar. Registret ovenfor er processens korttidshukommelse;
+    # uden en DB-post var en vedhæftning glemt ved næste genstart, og beskeden
+    # der henviste til den pegede ud i ingenting. Self-safe: fejler skrivningen,
+    # er uploaden stadig lykkedes — den overlever bare ikke en genstart.
+    try:
+        from core.services.attachment_service import _db_store
+        _db_store(
+            attachment_id=attachment_id,
+            session_id=session_id,
+            channel_type="upload",
+            filename=safe_name,
+            mime_type=mime,
+            size_bytes=len(data),
+            local_path=str(dest_path),
+            source_url="",
+        )
+    except Exception as _store_exc:
+        logger.warning("attachment %s ikke persisteret: %s", attachment_id[:8], _store_exc)
 
     return {
         "id": attachment_id,

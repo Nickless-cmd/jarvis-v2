@@ -55,3 +55,45 @@ def test_ulaeseligt_spor_giver_unknown_ikke_groent(monkeypatch):
 def test_tidsstempel_uden_mening_giver_unknown(monkeypatch):
     monkeypatch.setattr(cp, "_last_heartbeat", lambda: {"finished_at": "ikke en dato"})
     assert cp.build_presence()["state"] == "unknown"
+
+
+# ── Kilden til «hvornår slog hjertet sidst» ──────────────────────────────────
+#
+# Fundet 2026-09-02: en beat der lander i `productive_idle` — fx mens Bjørn
+# sidder i en aktiv samtale — skriver INGEN række i heartbeat_runtime_ticks,
+# men avancerer skemaet (_advance_schedule_after_idle_beat, 18. aug). Læser man
+# kun tabellen, ser en time med livlig snak ud som en time hvor han var væk.
+
+class _Row(dict):
+    def __getitem__(self, k):
+        return dict.get(self, k)
+
+
+def test_idle_beat_taeller_som_livstegn(monkeypatch):
+    now = datetime(2026, 9, 2, 12, 0, tzinfo=UTC)
+
+    class _Conn:
+        def execute(self, sql, *a):
+            class _C:
+                def fetchone(_self):
+                    if "heartbeat_runtime_state" in sql:
+                        return _Row(last_tick_at=(now - timedelta(minutes=6)).isoformat(),
+                                    last_decision_type="productive_idle",
+                                    last_action_summary="lyttede med")
+                    # Sidste FULDE tick er timer gammel — den alene ville sige «stille».
+                    return _Row(started_at=(now - timedelta(hours=5)).isoformat(),
+                                finished_at=(now - timedelta(hours=5)).isoformat(),
+                                tick_status="completed", decision_type="execute",
+                                action_summary="ryddede op")
+            return _C()
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    import core.runtime.db as _db
+    monkeypatch.setattr(_db, "connect", lambda *a, **k: _Conn(), raising=False)
+    monkeypatch.setattr(cp, "_running_now", lambda: False)
+
+    out = cp.build_presence(now=now)
+    assert out["state"] == "awake"          # ikke «quiet»
+    assert out["last_beat_ago_s"] == 360
+    assert out["decision"] == "productive_idle"

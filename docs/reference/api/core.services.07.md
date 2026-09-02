@@ -192,9 +192,9 @@ _Livstegn — er Jarvis vågen lige nu, og hvad lavede han sidst?_
 |---|---|---|---|---|
 | function | `_parse` | `(ts)` | — | [src](../../../core/services/companion_presence.py#L29) |
 | function | `_last_heartbeat` | `()` | Seneste hjerteslag: hvornår, og hvad det endte med at gøre. | [src](../../../core/services/companion_presence.py#L40) |
-| function | `_running_now` | `()` | Er en synlig kørsel i gang? Det er stærkere end et hjerteslag: det | [src](../../../core/services/companion_presence.py#L63) |
-| function | `_short` | `(text, limit=…)` | — | [src](../../../core/services/companion_presence.py#L74) |
-| function | `build_presence` | `(*, now=…)` | Det ærlige livstegn. Kaster aldrig — men lyver heller aldrig. | [src](../../../core/services/companion_presence.py#L79) |
+| function | `_running_now` | `()` | Er en synlig kørsel i gang? Det er stærkere end et hjerteslag: det | [src](../../../core/services/companion_presence.py#L96) |
+| function | `_short` | `(text, limit=…)` | — | [src](../../../core/services/companion_presence.py#L107) |
+| function | `build_presence` | `(*, now=…)` | Det ærlige livstegn. Kaster aldrig — men lyver heller aldrig. | [src](../../../core/services/companion_presence.py#L112) |
 
 ## `core/services/compass_engine.py`
 _Compass Engine — weekly strategic bearing based on open loops and priorities._

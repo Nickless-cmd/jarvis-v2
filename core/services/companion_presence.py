@@ -38,9 +38,32 @@ def _parse(ts: object) -> datetime | None:
 
 
 def _last_heartbeat() -> dict[str, Any]:
-    """Seneste hjerteslag: hvornår, og hvad det endte med at gøre."""
+    """Seneste hjerteslag: hvornår, og hvad det endte med at gøre.
+
+    TO kilder, og rækkefølgen er ikke tilfældig.
+
+    `heartbeat_runtime_state.last_tick_at` er den sande «hvornår slog hjertet
+    sidst». `heartbeat_runtime_ticks` er kun de FULDE tick — en beat der lander
+    i `productive_idle` (fx mens Bjørn sidder i en aktiv samtale) skriver ingen
+    række, men avancerer skemaet (_advance_schedule_after_idle_beat, 18. aug).
+
+    Læser man kun tabellen, ser en time med livlig snak ud som en time hvor han
+    var væk. Det er stik modsat sandheden — og præcis den slags løgn indikatoren
+    blev bygget for at undgå.
+
+    Tabellen bruges stadig til HVAD han lavede: en idle-beat har ingen handling
+    at fortælle om.
+    """
     from core.runtime.db import connect
     with connect() as conn:
+        state = conn.execute(
+            """
+            SELECT last_tick_at, last_decision_type, last_action_summary
+              FROM heartbeat_runtime_state
+             WHERE state_id = 'default'
+             LIMIT 1
+            """
+        ).fetchone()
         row = conn.execute(
             """
             SELECT started_at, finished_at, tick_status, decision_type, action_summary
@@ -49,15 +72,25 @@ def _last_heartbeat() -> dict[str, Any]:
              LIMIT 1
             """
         ).fetchone()
-    if row is None:
-        return {}
-    return {
-        "started_at": row["started_at"],
-        "finished_at": row["finished_at"],
-        "status": row["tick_status"],
-        "decision": row["decision_type"],
-        "summary": row["action_summary"],
-    }
+
+    out: dict[str, Any] = {}
+    if row is not None:
+        out = {
+            "started_at": row["started_at"],
+            "finished_at": row["finished_at"],
+            "status": row["tick_status"],
+            "decision": row["decision_type"],
+            "summary": row["action_summary"],
+        }
+    if state is not None and str(state["last_tick_at"] or "").strip():
+        # Tilstanden vinder på TIDSPUNKTET — den kender også de idle-beats.
+        out["finished_at"] = state["last_tick_at"]
+        out.setdefault("started_at", state["last_tick_at"])
+        if str(state["last_decision_type"] or "").strip():
+            out["decision"] = state["last_decision_type"]
+        if str(state["last_action_summary"] or "").strip():
+            out["summary"] = state["last_action_summary"]
+    return out
 
 
 def _running_now() -> bool:

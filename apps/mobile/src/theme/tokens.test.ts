@@ -16,9 +16,11 @@ describe('design-sprog tokens (ChatGPT-paritet, målt 2026-09-02)', () => {
   })
 
   it('accenten er lilla — ikke V1s grønne', () => {
-    expect(tokens.color.accent).toBe('#A07FEB')
+    // Accenten er den ENE bevidste afvigelse fra de målte ChatGPT-værdier.
+    // Se kommentaren i tokens.ts: form følger referencen, farven er Jarvis' egen.
+    expect(tokens.color.accent).toBe('#3FC7B4')
     expect(tokens.color.accent).not.toBe('#6ee7a8')
-    expect(tokens.color.accentDim).toContain('160, 127, 235')
+    expect(tokens.color.accentDim).toContain('63, 199, 180')
   })
 
   it('status-grøn lever videre som sin egen farve', () => {

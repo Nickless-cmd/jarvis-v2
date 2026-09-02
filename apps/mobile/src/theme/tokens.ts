@@ -7,7 +7,8 @@
  *
  *   1. Det AKTIVE segment er MØRKERE (#222222) end beholderen (#414141).
  *      Speccen sagde «aktivt tab: lysere grå pille».
- *   2. Voice-knappen er ENSFARVET lilla (#A07FEB), ikke en lilla→blå gradient.
+ *   2. Voice-knappen er ENSFARVET (ikke en gradient). Referencens lilla var
+ *      #A07FEB; vi bruger bevidst en anden kulør — se Accent nedenfor.
  *   3. Den lilla boble er BRUGERENS besked. AI-svaret står som ren tekst uden
  *      boble. Speccen tilskrev boblen AI-hilsenen.
  *
@@ -36,11 +37,18 @@ export const tokens = {
     fg2: '#B0B0B0',      // sekundær: tidsstempler, undertekst
     fg3: '#7A7A7A',      // tertiær
 
-    // ── Accent ──────────────────────────────────────────────────────
-    // Ensfarvet lilla som voice-knappen. Erstatter V1's Jarvis-grønne
-    // #6ee7a8 overalt — det er selve 1:1-kravet.
-    accent: '#A07FEB',
-    userBubble: '#382462',   // brugerens boble
+    // ── Accent (BEVIDST AFVIGELSE fra referencen) ───────────────────
+    // Alt andet i paletten er målt i ChatGPT-appen. Accenten er ikke.
+    //
+    // Vi kørte en periode med referencens lilla #A07FEB, og den var korrekt
+    // målt — men 1:1 på FORM behøver ikke betyde 1:1 på IDENTITET. Bjørn bad
+    // om en anden farve end lilla, og valget faldt på teal: det er tættere på
+    // Jarvis' oprindelige grønne (#6ee7a8) uden at være mint, og det læser
+    // som instrument frem for chat-klon.
+    //
+    // Layout, mål og flader følger stadig referencen. Kun farven er hans.
+    accent: '#3FC7B4',
+    userBubble: '#10403A',   // brugerens boble — samme kulør, dybt nedtonet
     codeBg: '#303030',
 
     // ── Segmented control (målt — bemærk retningen) ─────────────────
@@ -57,8 +65,8 @@ export const tokens = {
     depth1: '#121212',
     depth2: '#1D1D1D',
     depth3: '#212121',
-    accentDim: 'rgba(160, 127, 235, 0.55)',
-    accentGhost: 'rgba(160, 127, 235, 0.12)',
+    accentDim: 'rgba(63, 199, 180, 0.55)',
+    accentGhost: 'rgba(63, 199, 180, 0.12)',
     glassFill: 'rgba(255, 255, 255, 0.07)',
     glassLine: 'rgba(255, 255, 255, 0.10)'
   },

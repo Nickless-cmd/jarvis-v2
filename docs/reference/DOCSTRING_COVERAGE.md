@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6536/13122 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6536/13123 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -31,7 +31,7 @@ Generated from source. 6536/13122 functions/methods documented (49%). The list b
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 371 | 816 | 45% |
+| `core.tools` | 371 | 817 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -1817,10 +1817,10 @@ Generated from source. 6536/13122 functions/methods documented (49%). The list b
 - `core/tools/tool_scoping.py` :: `set_tool_scope` (L160)
 - `core/tools/tool_scoping.py` :: `tool_scope` (L187)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
-- `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1864)
-- `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L549)
-- `core/tools/workspace_capabilities.py` :: `invoke_workspace_capability` (L397)
-- `core/tools/workspace_capabilities.py` :: `load_workspace_capabilities` (L138)
+- `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
+- `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)
+- `core/tools/workspace_capabilities.py` :: `invoke_workspace_capability` (L403)
+- `core/tools/workspace_capabilities.py` :: `load_workspace_capabilities` (L144)
 - `core/util/timezone.py` :: `dk_weekday_en` (L69)
 - `scripts/acceptance/migration_gate.py` :: `main` (L203)
 - `scripts/acceptance/migration_gate.py` :: `run_suites` (L99)

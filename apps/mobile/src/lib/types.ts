@@ -24,6 +24,15 @@ export interface ChatMessage {
   content: string
   created_at: string
   parent_id?: string | null
+  /**
+   * Serverens strukturerede blokke for turen, i ÆGTE rækkefølge:
+   * text → tool_use → tool_result → text → …
+   *
+   * `content` er den samme tur klasket sammen til én streng. Renderer man
+   * den, får man værktøjerne først og alle synteser smeltet til én blok —
+   * netop dét vi rettede på serveren. Har beskeden blokke, er de sandheden.
+   */
+  content_json?: unknown[] | string | null
 }
 
 export interface AccountProfile {

@@ -10,6 +10,7 @@ import { InlineToolGroup } from './InlineToolGroup'
 import { ThinkingLabel } from './ThinkingLabel'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
 import { countFromResult, type ToolItem } from '../lib/toolGroup'
+import { hasOrdering, parseBlocks, threadBlocks } from '../lib/persistedBlocks'
 import { ToolResultCard } from './ToolResultCard'
 
 export interface MessageListHandle {
@@ -144,11 +145,54 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     if (first && first.index != null) visibleRef.current = first.index
   }).current
 
-  const persisted: Row[] = messages.map((m) =>
-    m.role === 'tool'
-      ? { kind: 'tool', key: m.id, content: m.content }
-      : { kind: 'msg', key: m.id, message: m }
-  )
+  /**
+   * Har en gemt assistent-tur strukturerede blokke MED rækkefølge, bruges de
+   * frem for den flade `content`. Ellers ville skærmen stadig vise den gamle
+   * klump — værktøjer først, alle synteser smeltet sammen — selv om serveren
+   * nu gemmer den rigtige orden.
+   *
+   * De løse `tool`-beskeder i samme tur er de SAMME resultater; de springes
+   * over, så de ikke tælles to gange.
+   */
+  const persisted: Row[] = []
+  let skipToolRows = false
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]!
+    if (m.role === 'assistant') {
+      const blocks = parseBlocks(m)
+      if (hasOrdering(blocks)) {
+        const expanded: Row[] = []
+        threadBlocks(blocks!).forEach((b, bi) => {
+          if (b.type === 'text' && (b.text ?? '').trim()) {
+            expanded.push({
+              kind: 'msg',
+              key: `${m.id}-b${bi}`,
+              message: { ...m, id: `${m.id}-b${bi}`, content: (b.text ?? '').trim() }
+            })
+          } else if (b.type === 'tool_use') {
+            expanded.push({
+              kind: 'live-tool',
+              key: `${m.id}-t${bi}`,
+              name: String(b.name ?? ''),
+              body: JSON.stringify(b.input ?? {}),
+              running: false
+            })
+          }
+        })
+        persisted.unshift(...expanded)
+        skipToolRows = true
+        continue
+      }
+      skipToolRows = false
+    }
+    if (m.role === 'user') skipToolRows = false
+    if (m.role === 'tool') {
+      if (skipToolRows) continue
+      persisted.unshift({ kind: 'tool', key: m.id, content: m.content })
+      continue
+    }
+    persisted.unshift({ kind: 'msg', key: m.id, message: m })
+  }
 
   const rows: Row[] = groupToolRounds([...persisted, ...buildStreamingRows(blocks)])
 

@@ -25,6 +25,8 @@ _MAX_IMAGES_PER_SESSION = 25
 _UPLOAD_DIR = Path.home() / ".jarvis-v2" / "uploads"
 
 _registry: dict[str, "AttachmentMeta"] = {}
+# attachment_id -> udpakket sandkasse-rod, for arkiver.
+_sandbox_roots: dict[str, str] = {}
 
 
 @dataclass
@@ -108,10 +110,21 @@ def apply_attachment_context(message: str, attachment_ids: list[str] | None) -> 
                 f"Use that exact absolute path verbatim — do not abbreviate it."
             )
         else:
-            other_lines.append(
-                f"To read the file '{meta.filename}', call:\n"
-                f"  read_file(path={meta.server_path!r})"
-            )
+            sandbox = _sandbox_roots.get(aid, "")
+            if sandbox:
+                # Arkivet er ALLEREDE pakket ud i en sandkasse ved upload. Uden
+                # denne linje ville han forsøge at unzippe det selv — altså køre
+                # udpakning uden for det værn der findes.
+                other_lines.append(
+                    f"The archive '{meta.filename}' has already been extracted "
+                    f"safely to:\n  {sandbox}\n"
+                    f"Read files from THAT directory. Do NOT unzip it yourself."
+                )
+            else:
+                other_lines.append(
+                    f"To read the file '{meta.filename}', call:\n"
+                    f"  read_file(path={meta.server_path!r})"
+                )
     prefix_parts: list[str] = []
     if image_lines:
         prefix_parts.append(
@@ -124,6 +137,27 @@ def apply_attachment_context(message: str, attachment_ids: list[str] | None) -> 
     if not prefix_parts:
         return message
     return "\n\n".join(prefix_parts) + "\n\n---\n\n" + message
+
+
+
+# Filtyper hvor «kunne ikke scannes» er en grund til at sige nej. Navnet tælles
+# med, fordi mime-typen kommer fra klienten og kan lyve.
+_EXECUTABLE_MIMES = {
+    "application/x-msdownload", "application/x-msdos-program", "application/x-executable",
+    "application/x-sharedlib", "application/x-mach-binary", "application/vnd.microsoft.portable-executable",
+    "application/x-dosexec", "application/x-elf",
+}
+_EXECUTABLE_SUFFIXES = {
+    ".exe", ".dll", ".so", ".dylib", ".bat", ".cmd", ".com", ".scr", ".msi",
+    ".sh", ".bash", ".ps1", ".vbs", ".js", ".jar", ".apk", ".deb", ".rpm", ".bin", ".app",
+}
+
+
+def _is_executable_like(mime: str, filename: str) -> bool:
+    """Er filen af en type hvor en manglende scanning bør blokere?"""
+    if str(mime or "").lower() in _EXECUTABLE_MIMES:
+        return True
+    return Path(str(filename or "")).suffix.lower() in _EXECUTABLE_SUFFIXES
 
 
 @router.post("/upload")
@@ -161,12 +195,34 @@ async def upload_attachment(
     dest_path = dest_dir / f"{attachment_id}_{safe_name}"
     dest_path.write_bytes(data)
 
+    # Ingen uploadet fil må kunne eksekveres — heller ikke ved et uheld et helt
+    # andet sted i systemet. 0600, ingen x-bit, uanset hvad filen påstod.
+    try:
+        from core.services.upload_sandbox import harden_upload, looks_like_archive
+        harden_upload(dest_path)
+        _is_archive = looks_like_archive(dest_path)
+    except Exception:
+        _is_archive = False
+
     # A1 (2026-06-22): malware-scan GENNEM Den Intelligente Central (execution🔒, SECURITY).
     # Scanneren var bygget men UWIRET — uploads blev skrevet til disk uscannede. Infected →
-    # slet filen + afvis. ClamAV-utilgængelig → fail-open (blokerer ikke legitime uploads).
+    # slet filen + afvis.
+    #
+    # SCAN-POLITIK (2026-09-02, Bjørn: «de skal scannes alle filer»):
+    # ALT scannes. Forskellen ligger i hvad der sker når scanneren IKKE kan
+    # svare — og den forskel følger risikoen, ikke princippet:
+    #
+    #   fail-CLOSED for arkiver og eksekverbart indhold. En zip vi ikke kunne
+    #   se ind i, er præcis den vi helst ville have scannet.
+    #
+    #   fail-open for alt andet. Et dødt ClamAV må ikke gøre det umuligt at
+    #   sende et skærmbillede eller en tekstfil; risikoen ved en uscannet .txt
+    #   er ikke i nærheden af en uscannet .zip. (Fail-open er stadig SYNLIG:
+    #   den flagges som incident nedenfor.)
+    _fail_closed = _is_archive or _is_executable_like(mime, safe_name)
     try:
         from core.services.gate_execution import check_upload
-        _scan = check_upload(str(dest_path))
+        _scan = check_upload(str(dest_path), block_on_unavailable=_fail_closed)
     except Exception as _scan_exc:
         _scan = None
         # Fail-open synlighed (audit 2026-07-04): kaster scan-stien springes malware-scan
@@ -194,6 +250,40 @@ async def upload_attachment(
             detail=f"Upload afvist af malware-scan: {_scan.reason or 'infected'}",
         )
 
+    # Arkiver pakkes ud i deres EGEN sandkasse, post for post — aldrig med
+    # extractall. Zip-slip, zip-bomber og symlinks der peger ud af mappen
+    # stoppes dér. Lykkes udpakningen, scannes det udpakkede træ igen: clamscans
+    # arkiv-understøttelse har grænser (dybde, kryptering), og fladt indhold kan
+    # scannes for hvad det er.
+    _sandbox_root = ""
+    if _is_archive:
+        try:
+            from core.services.upload_sandbox import safe_extract, scan_tree
+            _ex = safe_extract(dest_path, attachment_id)
+            if not _ex.ok:
+                dest_path.unlink(missing_ok=True)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Arkivet blev afvist: {_ex.reason}",
+                )
+            _clean, _why = scan_tree(_ex.root)
+            if not _clean:
+                import shutil as _shutil
+                _shutil.rmtree(_ex.root, ignore_errors=True)
+                dest_path.unlink(missing_ok=True)
+                raise HTTPException(status_code=400, detail=f"Upload afvist: {_why}")
+            _sandbox_root = _ex.root
+        except HTTPException:
+            raise
+        except Exception as _ex_exc:
+            # Kan vi ikke pakke ud, lader vi IKKE arkivet passere uåbnet: hele
+            # pointen var at se hvad der er i det.
+            dest_path.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Arkivet kunne ikke behandles sikkert: {type(_ex_exc).__name__}",
+            ) from _ex_exc
+
     meta = AttachmentMeta(
         id=attachment_id,
         session_id=session_id,
@@ -203,6 +293,8 @@ async def upload_attachment(
         server_path=str(dest_path),
     )
     _registry[attachment_id] = meta
+    if _sandbox_root:
+        _sandbox_roots[attachment_id] = _sandbox_root
 
     # Gør posten holdbar. Registret ovenfor er processens korttidshukommelse;
     # uden en DB-post var en vedhæftning glemt ved næste genstart, og beskeden

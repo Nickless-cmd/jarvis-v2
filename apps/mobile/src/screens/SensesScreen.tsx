@@ -8,8 +8,9 @@ import { tokens } from '../theme/tokens'
 /**
  * Sansernes Arkiv — hvad Jarvis har set i hjemmet.
  *
- * OWNER-ONLY, og grænsen ligger IKKE her. Serveren afviser enhver anden rolle
- * med 403 på `/companion/senses` (dependencies=[Depends(require_owner)]).
+ * KUN FOR HUSSTANDEN (Bjørn og Michelle), og grænsen ligger IKKE her. Serveren
+ * afviser alle andre roller med 403 på `/companion/senses`
+ * (dependencies=[Depends(require_household)]).
  * Denne skærm skjuler bare noget, der allerede er lukket — forskellen på en dør
  * og et gardin. Bygger nogen en anden klient, holder døren stadig.
  *
@@ -54,7 +55,7 @@ export function SensesScreen({ onClose }: { onClose: () => void }) {
       ) : denied ? (
         <View style={styles.center}>
           <Text style={styles.empty}>
-            Arkivet er ikke tilgængeligt for din konto.
+Arkivet er privat for dem der bor i hjemmet.
           </Text>
         </View>
       ) : !items?.length ? (

@@ -25,7 +25,7 @@ export function SidePanel({
   onNewSession,
   onOpenSettings,
   onOpenSenses,
-  isOwner = false,
+  isOwner: inHousehold = false,
   workingIds = [],
   unreadIds = {},
   onFloatActive,
@@ -40,8 +40,9 @@ export function SidePanel({
   onSelectSession: (sessionId: string) => void
   onNewSession: () => void
   onOpenSettings: () => void
-  /** Sansernes Arkiv. Kun sat for owner — men serveren er den ægte grænse. */
+  /** Sansernes Arkiv. Kun sat for husstanden — men serveren er den ægte grænse. */
   onOpenSenses?: () => void
+  /** Bor brugeren i hjemmet (owner eller partner)? Skjuler kun indgangen. */
   isOwner?: boolean
   workingIds?: string[]
   unreadIds?: Record<string, boolean>
@@ -120,10 +121,10 @@ export function SidePanel({
                 <Text style={styles.gearIcon}>🫧</Text>
               </Pressable>
             ) : null}
-            {isOwner && onOpenSenses ? (
+            {inHousehold && onOpenSenses ? (
               // Skjuler kun noget der ALLEREDE er lukket: /companion/senses
-              // afviser enhver anden rolle med 403 i auth-laget. Forskellen på
-              // en dør og et gardin — her er gardinet.
+              // afviser alle uden for husstanden med 403 i auth-laget.
+              // Forskellen på en dør og et gardin — her er gardinet.
               <Pressable
                 testID="open-senses"
                 accessibilityRole="button"

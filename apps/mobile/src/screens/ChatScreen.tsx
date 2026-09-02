@@ -21,6 +21,7 @@ import { AttachMenu } from '../components/AttachMenu'
 import { pickDocuments, pickImagesFromGallery } from '../lib/imagePicker'
 import { describeUploadError } from '../lib/uploadError'
 import { fetchPresence, type Presence } from '../lib/companionClient'
+import { livesInHousehold } from '../lib/household'
 import { SensesScreen } from './SensesScreen'
 import { cancelActiveRun, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
@@ -117,6 +118,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   }, [])
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
+  const [inHousehold, setInHousehold] = useState(false)
   const [sensesOpen, setSensesOpen] = useState(false)
   // Livstegn. Hentes ved opstart og hvert minut — hjerteslaget slår ~hvert
   // 15. minut, så tættere polling ville kun koste strøm uden at vise mere.
@@ -209,6 +211,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       .then((me) => {
         setDisplayName(me.display_name || 'Jarvis')
         setIsOwner(me.role === 'owner')
+        // Arkiv-indgangen følger HUSSTANDEN, ikke owner-rollen: Michelle bor
+        // her og deler det rum Jarvis sanser. Serveren er stadig den ægte
+        // grænse — dette skjuler bare en indgang der allerede er lukket.
+        setInHousehold(livesInHousehold(me))
         if (me.role === 'owner') {
           // Owner: hele paletten (deepseek-default forrest).
           getModelOptions(config)
@@ -541,7 +547,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           onNewSession={handleNewSession}
           workingIds={activeRunIds}
           unreadIds={unreadIds}
-          isOwner={isOwner}
+          isOwner={inHousehold}
           onOpenSenses={() => {
             setPanelOpen(false)
             setSensesOpen(true)

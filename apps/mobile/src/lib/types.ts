@@ -8,7 +8,12 @@ export interface ApiConfig {
 export interface WhoAmI {
   user_id: string
   display_name: string
-  role: 'owner' | 'member' | 'guest'
+  /**
+   * `partner` er «member, plus husstand» — IKKE et trin mellem member og owner.
+   * Den giver adgang til det der er privat for dem der bor i hjemmet
+   * (Sansernes Arkiv) og intet andet. Se core/identity/household.py.
+   */
+  role: 'owner' | 'partner' | 'member' | 'guest'
 }
 
 export interface ChatSession {

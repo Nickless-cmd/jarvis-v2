@@ -24,7 +24,18 @@ from __future__ import annotations
 import logging
 import threading
 
-logger = logging.getLogger(__name__)
+# BEVIDST heartbeat_runtime's logger og ikke __name__.
+#
+# Første udgave brugte logging.getLogger(__name__), og så forsvandt hver eneste
+# linje fra dæmonen — også «loop entered», som skrives før noget som helst andet.
+# Modulet importeres DOVENT inde i start(), altså efter uvicorn har sat sit
+# log-setup op, og en logger født på det tidspunkt når ikke journalen. Linjerne
+# fra heartbeat_runtime gør, fordi det modul var importeret inden.
+#
+# En udskillelse må ikke kunne gøre kode tavs. Dæmonen logger derfor dér hvor
+# den altid har logget — og en fremtidig oprydning i log-opsætningen kan flytte
+# den tilbage, når kanalen er ens for alle moduler.
+logger = logging.getLogger("core.services.heartbeat_runtime")
 
 INTERVAL_SECONDS = 30
 

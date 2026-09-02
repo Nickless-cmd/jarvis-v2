@@ -261,12 +261,12 @@ _Hjerteslagets dæmon — tråden der spørger «er det tid?» hvert 30. sekund.
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `is_running` | `()` | Lever planlægger-tråden? | [src](../../../core/services/heartbeat_scheduler.py#L36) |
-| function | `iterations` | `()` | Antal gennemløb siden tråden startede. Står tallet stille, er løkken væk. | [src](../../../core/services/heartbeat_scheduler.py#L46) |
-| function | `stop_event` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L51) |
-| function | `start` | `(*, name=…)` | Start dæmonen. Er den allerede i gang, sker der ingenting. | [src](../../../core/services/heartbeat_scheduler.py#L55) |
-| function | `stop` | `(*, name=…)` | — | [src](../../../core/services/heartbeat_scheduler.py#L100) |
-| function | `_loop` | `(*, name, startup_recovery_requested)` | — | [src](../../../core/services/heartbeat_scheduler.py#L114) |
+| function | `is_running` | `()` | Lever planlægger-tråden? | [src](../../../core/services/heartbeat_scheduler.py#L47) |
+| function | `iterations` | `()` | Antal gennemløb siden tråden startede. Står tallet stille, er løkken væk. | [src](../../../core/services/heartbeat_scheduler.py#L57) |
+| function | `stop_event` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L62) |
+| function | `start` | `(*, name=…)` | Start dæmonen. Er den allerede i gang, sker der ingenting. | [src](../../../core/services/heartbeat_scheduler.py#L66) |
+| function | `stop` | `(*, name=…)` | — | [src](../../../core/services/heartbeat_scheduler.py#L111) |
+| function | `_loop` | `(*, name, startup_recovery_requested)` | — | [src](../../../core/services/heartbeat_scheduler.py#L125) |
 
 ## `core/services/hf_connector.py`
 _Hugging Face-connector — søg modeller/datasets via Hub API._

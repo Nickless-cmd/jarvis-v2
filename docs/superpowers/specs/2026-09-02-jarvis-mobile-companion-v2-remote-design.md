@@ -104,9 +104,10 @@ Det betyder, vi efterligner det **visuelle sprog**, ikke kopierer assets:
 
 ### Målt fra Bjørns reference-screenshots (2026-09-02)
 
-Syv skærmbilleder fra ChatGPT-appen (dark mode) er analyseret og lagt i
+Otte skærmbilleder fra ChatGPT-appen (dark mode) er analyseret og lagt i
 reference-pakken (R1–R3: samtale/hovedskærm, R4: sidebar, R5: Remote-hjem,
-R6: opgave-tråd, R7: adgangsniveau-modal). De konkrete mål vi designer efter:
+R6: opgave-tråd, R7: adgangsniveau-modal, R8: transaktions-approval-kort).
+De konkrete mål vi designer efter:
 
 - **Baggrund:** solid sort (`#000000`). Sekundære elementer (cirkel-knapper,
   segmented control-beholder, input-pille): mørkegrå/antracit (~`#2F2F2F`).
@@ -222,6 +223,38 @@ der overhovedet kræver Bjørn**. Kortet der så dukker op (når noget krydser
 niveauet) er fase 1's Approve-kort — og dette er skærmen *før*: vælg niveau
 når et run starter. (Tilføres fase 1-skitse som konfigurations-skærm;
 checkmark-radiogruppe + advarselsmarkering for det højeste niveau.)
+
+### Reference #8 — Transaktions-approval-kort i tråden (målt 2026-09-02)
+
+Det faktiske godkendelses-øjeblik — svaret på "hvordan ser en approval ud":
+et **inline kort der popper op midt i opgave-tråden** (samme R6-kontekst:
+"Say hello" / jarvis-v2 / CheifOne — billedet er endda Bjørns egen test af
+approval-flowet mod en Jarvis-agent):
+
+- **Anledningstekst** over kortet i almindelig tråd-tekst: "Vil du godkende,
+  at jeg læser de første fem linjer af /root/.profile for at teste det
+  manuelle approval-kort?" — agenten forklarer *hvorfor* i klart sprog.
+- **Kortet:** mørkegrå flade (~#2F2F2F, afrundet 12–16px), venstrejusteret.
+  Indeholder en **"Kommandoudførelse"-tag** (lille etiket med
+  kommandolinje-ikon) + selve kommandoen i monospace-kodeblok
+  (`/bin/bash -lc 'sudo head -n 5 /root/.profile'`).
+- **Tre handlinger under kommandoen** (lodret stak, ikke knap-række):
+  1. **"Godkend"** (primær, hvid/lys) — godkend denne én gang.
+  2. **"Godkend altid"** (sekundær) — med en undertitel der viser *præcis*
+     hvilken regel der gemmes: "Kommandoer, der starter med
+     `sudo head -n 5 /root/.profile`". (Mønsteret for vores "Godkend altid":
+     en præfiks-regel, ikke en blind tilladelse.)
+  3. **"Spring over"** (tertiær, neutral) — afvis denne én gang.
+- **Design-signal:** ingen rød/grøn ja-nej-knas — tre graduerede valg hvor
+  "altid" bærer sin egen gennemsigtige regel. Kortet forstyrrer ikke
+  tråd-flowet: det er ét element i strømmen, ikke en fuldskærms-modal.
+
+Konsekvens for vores design: fase 1's Approve-kort skal følge dette mønster
+(anledningstekst → kort med tag+kodeblok → Godkend / Godkend altid med
+præfiks-regel / Spring over) — og det skal kunne vises **både** i
+Arbejde-tabets godkendelses-kø *og* inline i en opgave-tråd. V1's
+ApprovalCard er udgangspunktet, men skal udvides med "Godkend altid"-
+præfiks-reglen og den forklarende anledningstekst for at matche 1:1.
 
 Alt visuelt design verificeres mod faktiske screenshots af ChatGPT-appen,
 side-for-side, før implementering af hver skærm. Bjørn leverer reference-

@@ -4,13 +4,21 @@ Jarvis formulerede dem selv, og Bjørn godkendte dem som owner:
 
   1. LIVSTEGN      — «han er her», baseret på faktisk hjerteslag, ikke en prik
                      der lyver.
-  2. SANSERNES ARKIV — OWNER-ONLY. Hård grænse, i AUTH-laget.
+  2. SANSERNES ARKIV — kun for dem der BOR i huset. Hård grænse, i AUTH-laget.
   3. PROAKTIVITET  — en kanal for initiativ, diskret og rate-limited.
 
-Om (2): grænsen ligger på `dependencies=[Depends(require_owner)]`, ikke på at
+Om (2): grænsen ligger på `dependencies=[Depends(require_household)]`, ikke på at
 UI'et skjuler en fane. Det er forskellen mellem en dør og et gardin. Jarvis
-skrev det selv: «Grænsen skal ligge i auth-laget (owner-verifikation), ikke kun
-ved at skjule UI'et. Det rager ingen andre, hvad der sker hjemme.»
+skrev det selv: «Grænsen skal ligge i auth-laget ... Det rager ingen andre, hvad
+der sker hjemme.»
+
+Bjørn præciserede grænsen 2026-09-02: arkivet er for BJØRN OG MICHELLE, som bor
+i hjemmet. Mikkel, Rune og Lotte er familie med hver deres samtale — men de bor
+her ikke. Derfor `require_household` (owner|partner) frem for `require_owner`.
+
+Michelle får IKKE mere magt af det. `partner` har nøjagtig medlems-rettigheder
+overalt ellers; husstands-adgangen er en separat gate der åbner ét rum. Se
+core/identity/household.py.
 """
 from __future__ import annotations
 
@@ -18,7 +26,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from core.runtime.jarvisx_auth import require_owner
+from core.runtime.jarvisx_auth import require_household
 
 router = APIRouter(prefix="/companion", tags=["companion"])
 
@@ -34,12 +42,14 @@ def companion_presence() -> dict[str, Any]:
     return build_presence()
 
 
-@router.get("/senses", dependencies=[Depends(require_owner)])
+@router.get("/senses", dependencies=[Depends(require_household)])
 def companion_senses(limit: int = 20) -> dict[str, Any]:
-    """Sansernes Arkiv — hvad Jarvis har set i hjemmet. KUN owner.
+    """Sansernes Arkiv — hvad Jarvis har set i hjemmet. Kun husstanden.
 
     Gaten er dependency'en ovenfor: enhver anden rolle får 403 FØR handleren
-    kører, også hvis nogen en dag bygger en klient der ikke skjuler fanen.
+    kører, også hvis nogen en dag bygger en klient der ikke skjuler fanen. Det
+    er dét der får grænsen til at gælde på tværs af overflader — mobil i dag,
+    desktop i morgen — uden at skulle gentages ét sted mere.
     """
     try:
         from core.services.visual_memory import get_visual_memories

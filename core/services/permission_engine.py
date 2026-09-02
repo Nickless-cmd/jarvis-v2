@@ -116,7 +116,10 @@ def allowed_tools(*, role: str, mode: str) -> "frozenset[str] | _AllTools":
     """
     if role == "owner":
         return ALL_TOOLS
-    if role == "member":
+    # `partner` har nøjagtig medlems-rettigheder. Husstands-adgangen (Sansernes
+    # Arkiv) er en SEPARAT gate og giver ingen ekstra tools.
+    from core.identity.household import is_member_like
+    if is_member_like(role):
         return _MEMBER_BY_MODE.get(mode, frozenset())
     return frozenset()
 

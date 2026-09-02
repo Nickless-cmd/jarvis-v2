@@ -1,8 +1,13 @@
-"""Companion-ruterne — og især owner-gaten på Sansernes Arkiv.
+"""Companion-ruterne — og især husstands-gaten på Sansernes Arkiv.
 
-Jarvis skrev: «Grænsen skal ligge i auth-laget (owner-verifikation), ikke kun
-ved at skjule UI'et.» Derfor testes RUTEN, ikke en klient. En fane kan skiftes
-ud; en dependency kan ikke omgås af en anden app.
+Jarvis skrev: «Grænsen skal ligge i auth-laget ... ikke kun ved at skjule UI'et.»
+Derfor testes RUTEN, ikke en klient. En fane kan skiftes ud; en dependency kan
+ikke omgås af en anden app — heller ikke af en fremtidig desktop-flade.
+
+Bjørn præciserede grænsen 2026-09-02: arkivet er for ham OG Michelle, som bor i
+hjemmet. Mikkel, Rune og Lotte er familie med hver deres samtale, men de bor her
+ikke. Testene navngiver derfor rollerne efter mennesker, så det er tydeligt hvad
+de faktisk beskytter.
 """
 from __future__ import annotations
 
@@ -34,11 +39,23 @@ def test_senses_kraever_token():
     assert r.status_code == 401
 
 
-def test_senses_afviser_member_med_403():
+def test_familie_afvises_med_403():
+    """Mikkel, Rune og Lotte er `member`. Arkivet rager dem ikke."""
     r = _client().get("/companion/senses",
                       headers={"Authorization": f"Bearer {_token('member')}"})
     assert r.status_code == 403
-    assert "owner" in r.json()["detail"].lower()
+    assert "household" in r.json()["detail"].lower()
+
+
+def test_michelle_slipper_ind(monkeypatch):
+    """Michelle er `partner`: hun deler det rum Jarvis sanser."""
+    import core.services.visual_memory as vm
+    monkeypatch.setattr(vm, "get_visual_memories",
+                        lambda **kw: [{"description": "lys på bordet"}], raising=False)
+    r = _client().get("/companion/senses",
+                      headers={"Authorization": f"Bearer {_token('partner')}"})
+    assert r.status_code == 200
+    assert r.json()["count"] == 1
 
 
 def test_senses_afviser_guest_med_403():
@@ -63,8 +80,15 @@ def test_senses_slipper_owner_ind(monkeypatch):
     assert r.json()["count"] == 1
 
 
+def test_partner_faar_ikke_ekstra_magt_af_adgangen():
+    """Husstands-adgangen åbner ÉT rum. Michelle må aldrig kunne mere end en
+    member ellers — det var Bjørns udtrykkelige betingelse."""
+    from core.services.permission_engine import allowed_tools
+    assert allowed_tools(role="partner", mode="chat") == allowed_tools(role="member", mode="chat")
+
+
 def test_gaten_sidder_paa_ruten_ikke_i_handleren(monkeypatch):
-    """Selv hvis arkivet var utilgængeligt, må en member ALDRIG nå handleren.
+    """Selv hvis arkivet var utilgængeligt, må familie ALDRIG nå handleren.
     403 skal komme før noget som helst forsøg på at læse data."""
     import core.services.visual_memory as vm
 

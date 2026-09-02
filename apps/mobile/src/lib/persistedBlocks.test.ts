@@ -1,4 +1,4 @@
-import { hasOrdering, parseBlocks, threadBlocks } from './persistedBlocks'
+import { attachmentBlocks, hasOrdering, parseBlocks, thinkingBlock, threadBlocks } from './persistedBlocks'
 import type { ChatMessage } from './types'
 
 const msg = (over: Partial<ChatMessage> = {}): ChatMessage => ({
@@ -83,3 +83,42 @@ describe('formen fra netværket er en påstand, ikke en garanti', () => {
   })
 })
 
+describe('taenkning og vedhaeftninger', () => {
+  const msg = (blocks: unknown[]) =>
+    ({ id: 'm', role: 'assistant', content: 'x', created_at: '', content_json: blocks } as never)
+
+  it('finder taenke-blokken', () => {
+    const b = parseBlocks(msg([{ type: 'thinking', seconds: 12, text: 'hm' }, { type: 'text', text: 'svar' }]))
+    expect(thinkingBlock(b)?.seconds).toBe(12)
+  })
+
+  it('giver null naar der ikke blev taenkt', () => {
+    expect(thinkingBlock(parseBlocks(msg([{ type: 'text', text: 'svar' }])))).toBeNull()
+  })
+
+  it('finder vedhaeftninger og bevarer raekkefoelgen', () => {
+    const b = parseBlocks(msg([
+      { type: 'image', attachment_id: 'a', filename: 'f.png' },
+      { type: 'file', attachment_id: 'b', filename: 'x.zip' }
+    ]))
+    expect(attachmentBlocks(b).map((x) => x.attachment_id)).toEqual(['a', 'b'])
+  })
+
+  it('springer vedhaeftninger uden id over — en halv reference kan ikke hentes', () => {
+    const b = parseBlocks(msg([{ type: 'image', filename: 'uden id' }, { type: 'image', attachment_id: '  ' }]))
+    expect(attachmentBlocks(b)).toEqual([])
+  })
+
+  // De tre typer renderes af hver sin egen komponent OVER turen og maa ikke
+  // ogsaa dukke op i den loebende blok-raekkefoelge.
+  it('threadBlocks filtrerer taenkning, billeder og filer fra', () => {
+    const b = parseBlocks(msg([
+      { type: 'thinking', seconds: 3 },
+      { type: 'image', attachment_id: 'a' },
+      { type: 'file', attachment_id: 'b' },
+      { type: 'progress', text: 'p' },
+      { type: 'text', text: 'svar' }
+    ]))!
+    expect(threadBlocks(b).map((x) => x.type)).toEqual(['text'])
+  })
+})

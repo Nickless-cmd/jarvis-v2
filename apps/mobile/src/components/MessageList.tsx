@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, View } from 'react-native'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { denseBlocks } from '../lib/blockHelpers'
 import type { ChatMessage } from '../lib/types'
+import type { PersistedBlock } from '../lib/persistedBlocks'
 import { tokens } from '../theme/tokens'
 import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
@@ -10,7 +11,10 @@ import { InlineToolGroup } from './InlineToolGroup'
 import { ThinkingLabel } from './ThinkingLabel'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
 import { countFromResult, type ToolItem } from '../lib/toolGroup'
-import { hasOrdering, parseBlocks, threadBlocks } from '../lib/persistedBlocks'
+import { attachmentBlocks, hasOrdering, parseBlocks, thinkingBlock } from '../lib/persistedBlocks'
+import { threadBlocks } from '../lib/persistedBlocks'
+import { ThinkingSummary } from './ThinkingSummary'
+import { MessageAttachments } from './MessageAttachments'
 import { ToolResultCard } from './ToolResultCard'
 
 export interface MessageListHandle {
@@ -47,6 +51,10 @@ interface MessageListProps {
 
 type Row =
   | { kind: 'msg'; key: string; message: ChatMessage; hideActions?: boolean }
+  /** «Tænkte i 14 s ›» — foldet spor af turens overvejelse. */
+  | { kind: 'thinking'; key: string; seconds?: number; text?: string }
+  /** Billeder/filer sendt MED en brugerbesked, tegnet over boblen. */
+  | { kind: 'attachments'; key: string; items: PersistedBlock[] }
   | { kind: 'tool'; key: string; content: string }
   | { kind: 'live-tool'; key: string; name: string; body: string; running: boolean }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
@@ -174,8 +182,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     const m = messages[i]!
     if (m.role === 'assistant') {
       const blocks = parseBlocks(m)
+      const think = thinkingBlock(blocks)
       if (hasOrdering(blocks)) {
         const expanded: Row[] = []
+        if (think) {
+          expanded.push({
+            kind: 'thinking', key: `${m.id}-think`,
+            seconds: think.seconds, text: think.text
+          })
+        }
         const thread = threadBlocks(blocks!)
         const lastTextIdx = thread.reduce(
           (acc, b, i) => (b.type === 'text' && (b.text ?? '').trim() ? i : acc),
@@ -206,8 +221,28 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         continue
       }
       skipToolRows = false
+      // En tur uden værktøjer har ingen «rækkefølge» at udfolde, men han kan
+      // sagtens have tænkt. Uden dette forsvandt linjen på netop de turer hvor
+      // tænkningen ofte er mest interessant: de rene svar.
+      if (think) {
+        persisted.unshift({ kind: 'msg', key: m.id, message: m })
+        persisted.unshift({
+          kind: 'thinking', key: `${m.id}-think`,
+          seconds: think.seconds, text: think.text
+        })
+        continue
+      }
     }
-    if (m.role === 'user') skipToolRows = false
+    if (m.role === 'user') {
+      skipToolRows = false
+      const ublocks = attachmentBlocks(parseBlocks(m))
+      if (ublocks.length) {
+        persisted.unshift({ kind: 'msg', key: m.id, message: m })
+        // Billederne ligger OVER boblen, som i referencen — ikke inde i den.
+        persisted.unshift({ kind: 'attachments', key: `${m.id}-att`, items: ublocks })
+        continue
+      }
+    }
     if (m.role === 'tool') {
       if (skipToolRows) continue
       persisted.unshift({ kind: 'tool', key: m.id, content: m.content })
@@ -259,6 +294,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         // Målt i Codex-tråden: «</> Ændrede 16 filer ›». Det fulde output
         // ligger bag linjen, ikke foran den.
         if (item.kind === 'tool-group') return <InlineToolGroup items={item.items} />
+        if (item.kind === 'thinking') {
+          return <ThinkingSummary seconds={item.seconds} text={item.text} />
+        }
+        if (item.kind === 'attachments') return <MessageAttachments items={item.items} />
         return (
           <MessageBubble
             message={item.message}

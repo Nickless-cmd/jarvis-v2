@@ -19,13 +19,34 @@ import type { ChatMessage } from './types'
  * ret, men skærmen ville ikke vise det.
  */
 export interface PersistedBlock {
-  type: 'text' | 'tool_use' | 'tool_result' | 'progress' | string
+  type: 'text' | 'tool_use' | 'tool_result' | 'progress' | 'thinking' | 'image' | 'file' | string
   text?: string
   name?: string
   input?: Record<string, unknown>
   tool_use_id?: string
   content?: string
   status?: string
+  /** thinking: hvor længe han tænkte. Mangler den, blev der ikke målt. */
+  seconds?: number
+  /** image/file: reference, ALDRIG data — hentning går over det user-scopede endpoint. */
+  attachment_id?: string
+  filename?: string
+  mime_type?: string
+  size_bytes?: number
+}
+
+/** Turens tænkning, hvis serveren målte den. */
+export function thinkingBlock(blocks: PersistedBlock[] | null): PersistedBlock | null {
+  if (!blocks) return null
+  return blocks.find((b) => b.type === 'thinking') ?? null
+}
+
+/** Vedhæftninger på en brugerbesked, i den rækkefølge de blev sendt. */
+export function attachmentBlocks(blocks: PersistedBlock[] | null): PersistedBlock[] {
+  if (!blocks) return []
+  return blocks.filter(
+    (b) => (b.type === 'image' || b.type === 'file') && !!(b.attachment_id ?? '').trim()
+  )
 }
 
 /**
@@ -68,7 +89,16 @@ export function hasOrdering(blocks: PersistedBlock[] | null): boolean {
   return tools > 0 && texts > 0
 }
 
-/** Progress-sporet er et separat, fladt spor (spec §5) — ikke en del af tråden. */
+/**
+ * Progress-sporet er et separat, fladt spor (spec §5) — ikke en del af tråden.
+ *
+ * Tænkning og vedhæftninger filtreres også fra: de renderes af hver sin egen
+ * komponent OVER turen (foldet tænke-linje, billeder over boblen) og hører
+ * ikke til i den løbende blok-rækkefølge.
+ */
 export function threadBlocks(blocks: PersistedBlock[]): PersistedBlock[] {
-  return blocks.filter((b) => b.type !== 'progress')
+  return blocks.filter(
+    (b) => b.type !== 'progress' && b.type !== 'thinking'
+      && b.type !== 'image' && b.type !== 'file'
+  )
 }

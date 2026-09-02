@@ -97,6 +97,7 @@ from core.services.voice_daemon import (
     stop_voice_daemon,
 )
 from apps.api.jarvis_api.routes.attachments import router as attachments_router
+from apps.api.jarvis_api.routes.companion import router as companion_router
 from apps.api.jarvis_api.routes.files import router as files_router
 from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.chat_stream_v2 import router as chat_stream_v2_router
@@ -616,6 +617,7 @@ def create_app() -> FastAPI:
     app.add_middleware(ApiConnectionNerveMiddleware)
 
     app.include_router(attachments_router)
+    app.include_router(companion_router)
     from apps.api.jarvis_api.routes.paste import router as paste_router
     app.include_router(paste_router)
     app.include_router(files_router)

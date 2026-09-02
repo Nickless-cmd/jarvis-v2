@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-02 from app.routes (live) — 519 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-02 from app.routes (live) — 522 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -240,6 +240,9 @@
 | POST | `/chat/warm` | dict | chat_stream_v2 |
 | GET | `/chat/workspace-trust` | dict | chat |
 | POST | `/chat/workspace-trust` | dict | chat |
+| GET | `/companion/presence` | dict | companion |
+| GET | `/companion/senses` | dict | companion |
+| GET | `/companion/thoughts` | dict | companion |
 | GET | `/cowork/agents` | dict | cowork |
 | GET | `/cowork/app-dispatch/pending` | dict | cowork |
 | POST | `/cowork/app-dispatch/{dispatch_id}/ack` | dict | cowork |

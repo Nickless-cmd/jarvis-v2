@@ -15,20 +15,25 @@ interface Props {
 }
 
 /**
- * Appens øverste bjælke — geometrien er MÅLT i ChatGPT-appen (1080 px, 3×):
+ * Appens øverste bjælke — geometrien er MÅLT i ChatGPT-appen på Bjørns enhed.
  *
- *   venstre cirkel   x 37..152    → 38 dp, 12 dp fra kanten
- *   segmented        x 314..765   → 150 dp bred, centrum x=539,5 = SKÆRMENS MIDTE
- *   højre cirkel     x 926..1042  → 39 dp, 13 dp fra højre kant
+ * DENSITETEN ER 2,625 — IKKE 3,0. Telefonen har `Override density: 420` mod
+ * de fysiske 480 (display-zoom, en helt almindelig indstilling). Første forsøg
+ * regnede med 3,0 og blev derfor 14 % for lille hele vejen: jeg satte 150 dp
+ * og målte 394 px tilbage, hvilket kun går op ved 2,625. Måler man px i et
+ * skærmbillede, skal man kende enhedens FAKTISKE densitet — ikke panelets.
  *
- * Kontrollen er derfor ABSOLUT centreret, ikke flex-strakt mellem cirklerne.
- * Med flex bliver midten et gennemsnit af de to knappers bredde — og den var
- * synligt skæv. Absolut centrering er den eneste måde midten faktisk bliver
- * midten på.
+ *   venstre cirkel   115 px  →  44 dp
+ *   segmented        452 px  → 172 dp, centrum x=539,5 = SKÆRMENS MIDTE
+ *   kantmargen        37 px  →  14 dp
+ *
+ * Kontrollen er ABSOLUT centreret, ikke flex-strakt mellem cirklerne. Med flex
+ * bliver midten et gennemsnit af de to knappers bredde — og den var synligt
+ * skæv.
  */
-const CIRCLE = 38
-const EDGE = 12
-const SEGMENT_W = 150
+const CIRCLE = 44
+const EDGE = 14
+const SEGMENT_W = 172
 
 export function TopBar({ mode, onModeChange, onMenu, onSync, pendingWork, syncing }: Props) {
   return (
@@ -40,7 +45,7 @@ export function TopBar({ mode, onModeChange, onMenu, onSync, pendingWork, syncin
         hitSlop={8}
         style={styles.circle}
       >
-        <Menu size={20} color={tokens.color.fg1} strokeWidth={2} />
+        <Menu size={23} color={tokens.color.fg1} strokeWidth={2} />
       </Pressable>
 
       <View pointerEvents="box-none" style={styles.centerWrap}>
@@ -68,7 +73,7 @@ export function TopBar({ mode, onModeChange, onMenu, onSync, pendingWork, syncin
         {syncing ? (
           <ActivityIndicator size="small" color={tokens.color.fg1} />
         ) : (
-          <RefreshCw size={19} color={tokens.color.fg1} strokeWidth={2} />
+          <RefreshCw size={22} color={tokens.color.fg1} strokeWidth={2} />
         )}
       </Pressable>
     </View>

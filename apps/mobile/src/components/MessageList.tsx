@@ -8,6 +8,7 @@ import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
 import { InlineToolLine } from './InlineToolLine'
 import { ThinkingLabel } from './ThinkingLabel'
+import { describeTool, describeToolResult } from '../lib/toolSummary'
 import { ToolResultCard } from './ToolResultCard'
 
 export interface MessageListHandle {
@@ -153,11 +154,11 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         // Målt i Codex-tråden: «</> Ændrede 16 filer ›». Det fulde output
         // ligger bag linjen, ikke foran den.
         if (item.kind === 'tool')
-          return <InlineToolLine summary={toolSummary(item.content)} />
+          return <InlineToolLine summary={describeToolResult(item.content)} />
         if (item.kind === 'live-tool')
           return (
             <InlineToolLine
-              summary={liveToolSummary(item.name, item.running)}
+              summary={describeTool(item.name, item.body, item.running)}
               running={item.running}
             />
           )
@@ -173,17 +174,6 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     />
   )
 })
-
-/** Én linje der beskriver hvad der blev gjort, i datid. */
-export function toolSummary(content: string): string {
-  const m = /\[([a-z_]+)\]/i.exec(content || '')
-  const name = m?.[1] ?? 'værktøj'
-  return `Kørte ${name}`
-}
-
-function liveToolSummary(name: string, running: boolean): string {
-  return running ? `Kører ${name}…` : `Kørte ${name}`
-}
 
 function ThinkingLabelRow() {
   return (

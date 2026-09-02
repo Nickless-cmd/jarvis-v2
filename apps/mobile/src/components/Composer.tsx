@@ -1,11 +1,21 @@
 import { useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ArrowUp, AudioLines, Mic, Plus, Square } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
 
 /**
- * Composer som hævet kort (ikke flad bjælke) med inline-kontroller:
- * `+` vedhæft, model-pille (rolle-bevidst — owner: palette, member: Standard/Pro),
- * mic, og send/stop. Spec §7 "intelligent plads / levende papir".
+ * Komponisten har TO former — begge målt i ChatGPT-appen (densitet 2,625):
+ *
+ *   i hvile   344 dp bred · 48 dp høj · 34 dp margen · ÉN række
+ *   i brug    387 dp bred · to rækker · 12 dp margen
+ *
+ * Den vokser og bliver BREDERE når man går i gang. Det er ikke pynt: den
+ * smalle hvileform giver tråden luft, og den brede arbejdsform giver plads
+ * til at skrive. Vi havde kun den brede — derfor virkede bunden tung.
+ *
+ * I hvile er højre knap en voice-knap (lydbølge); så snart der er tekst,
+ * bliver den en send-pil. Under arbejde bliver den en firkant i SAMME lilla —
+ * ChatGPT skifter ikke farve for at kunne stoppe.
  */
 export function Composer({
   disabled,
@@ -33,6 +43,8 @@ export function Composer({
   const [text, setText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [focused, setFocused] = useState(false)
+  // Hvileform: intet skrevet, ikke i fokus, intet vedhæftet, ikke i gang.
+  const resting = !text && !focused && !attachment && !working
 
   const submit = async () => {
     const value = text.trim()
@@ -51,8 +63,8 @@ export function Composer({
   }
 
   return (
-    <View style={styles.outer}>
-      <View style={[styles.card, focused ? styles.cardFocused : null]}>
+    <View style={[styles.outer, resting && styles.outerResting]}>
+      <View style={[styles.card, focused ? styles.cardResting : null]}>
         {attachment ? (
           <View style={styles.attachChip}>
             <Image source={{ uri: attachment.uri }} style={styles.attachThumb} />
@@ -80,12 +92,12 @@ export function Composer({
           placeholderTextColor={tokens.color.fg3}
           style={styles.input}
         />
-        <View style={styles.controls}>
+        <View style={[styles.controls, resting && styles.controlsResting]}>
           <View style={styles.left}>
             <Pressable accessibilityRole="button" accessibilityLabel="Vedhæft" onPress={onAttach} hitSlop={6} style={styles.iconBtn}>
-              <Text style={styles.iconPlus}>+</Text>
+              <Plus size={22} color={tokens.color.fg1} strokeWidth={2} />
             </Pressable>
-            {modelLabel ? (
+            {modelLabel && !resting ? (
               <Pressable accessibilityRole="button" onPress={onPressModel} style={styles.modelPill}>
                 <Text style={styles.modelText} numberOfLines={1}>{modelLabel}</Text>
                 <Text style={styles.modelChev}>▾</Text>
@@ -94,7 +106,7 @@ export function Composer({
           </View>
           <View style={styles.right}>
             <Pressable accessibilityRole="button" accessibilityLabel="Diktér" onPress={onMic} hitSlop={6} style={styles.iconBtn}>
-              <Text style={styles.mic}>🎙</Text>
+              <Mic size={21} color={tokens.color.fg1} strokeWidth={1.8} />
             </Pressable>
             <Pressable
               testID="composer-button"
@@ -108,7 +120,13 @@ export function Composer({
                 pressed ? styles.pressed : null
               ]}
             >
-              <Text style={styles.sendText}>{working ? '■' : '↑'}</Text>
+              {working ? (
+                <Square size={15} color={tokens.color.bg0} fill={tokens.color.bg0} strokeWidth={2} />
+              ) : text || attachment ? (
+                <ArrowUp size={20} color={tokens.color.bg0} strokeWidth={2.5} />
+              ) : (
+                <AudioLines size={19} color={tokens.color.bg0} strokeWidth={2} />
+              )}
             </Pressable>
           </View>
         </View>
@@ -119,9 +137,15 @@ export function Composer({
 
 const styles = StyleSheet.create({
   outer: {
-    paddingHorizontal: tokens.spacing.md,
+    // I brug: 12 dp margen (målt på R1 → 387 dp bred).
+    paddingHorizontal: 12,
     paddingTop: tokens.spacing.sm,
     paddingBottom: tokens.spacing.md
+  },
+  // I hvile: 34 dp margen (målt på think4 → 344 dp bred). Den smallere pille
+  // giver tråden luft; den bredere giver plads til at skrive.
+  outerResting: {
+    paddingHorizontal: 34
   },
   // Komponisten er MÅLT i ChatGPT-appen 2026-09-02: en flad, mørkegrå pille
   // (#212121) uden skygge og uden kant. Ingen hævet kort, ingen glød ved
@@ -133,6 +157,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spacing.lg,
     paddingTop: tokens.spacing.md,
     paddingBottom: tokens.spacing.sm
+  },
+  // Hvileform: én række, 48 dp høj, indholdet centreret lodret.
+  cardResting: {
+    minHeight: 48,
+    paddingTop: 0,
+    paddingBottom: 0,
+    justifyContent: 'center'
+  },
+  controlsResting: {
+    marginTop: 0
   },
   // Fokus markeres ikke med en kant — feltet er allerede i forgrunden.
   cardFocused: {},

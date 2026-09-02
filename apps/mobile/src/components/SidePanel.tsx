@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { SquarePen } from 'lucide-react-native'
+import { Eye, SquarePen } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
@@ -24,6 +24,8 @@ export function SidePanel({
   onSelectSession,
   onNewSession,
   onOpenSettings,
+  onOpenSenses,
+  isOwner = false,
   workingIds = [],
   unreadIds = {},
   onFloatActive,
@@ -38,6 +40,9 @@ export function SidePanel({
   onSelectSession: (sessionId: string) => void
   onNewSession: () => void
   onOpenSettings: () => void
+  /** Sansernes Arkiv. Kun sat for owner — men serveren er den ægte grænse. */
+  onOpenSenses?: () => void
+  isOwner?: boolean
   workingIds?: string[]
   unreadIds?: Record<string, boolean>
   onFloatActive?: () => void
@@ -113,6 +118,21 @@ export function SidePanel({
                 style={styles.gear}
               >
                 <Text style={styles.gearIcon}>🫧</Text>
+              </Pressable>
+            ) : null}
+            {isOwner && onOpenSenses ? (
+              // Skjuler kun noget der ALLEREDE er lukket: /companion/senses
+              // afviser enhver anden rolle med 403 i auth-laget. Forskellen på
+              // en dør og et gardin — her er gardinet.
+              <Pressable
+                testID="open-senses"
+                accessibilityRole="button"
+                accessibilityLabel="Sansernes Arkiv"
+                onPress={onOpenSenses}
+                hitSlop={8}
+                style={styles.gear}
+              >
+                <Eye size={19} color={tokens.color.fg2} strokeWidth={1.8} />
               </Pressable>
             ) : null}
             <Pressable accessibilityRole="button" accessibilityLabel="Indstillinger" onPress={onOpenSettings} hitSlop={8} style={styles.gear}>

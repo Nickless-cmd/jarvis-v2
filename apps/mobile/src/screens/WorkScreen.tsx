@@ -9,6 +9,8 @@ import { isToolIntent } from '../lib/mcTypes'
 import type { Approval, McRun } from '../lib/mcTypes'
 import { WorkTaskCard, isActive } from '../components/WorkTaskCard'
 import { WorkApprovalCard } from '../components/WorkApprovalCard'
+import { ThoughtsList } from '../components/ThoughtsList'
+import { fetchThoughts, type Thought } from '../lib/companionClient'
 
 export type WorkTab = 'tasks' | 'approve'
 
@@ -38,6 +40,15 @@ export function WorkScreen({ syncSignal = 0, onPendingCount, onSyncDone }: Props
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
   const [busyId, setBusyId] = useState<string | null>(null)
+  // Jarvis' egne initiativer. Fejler kaldet, står listen tom frem for at vise
+  // en fejl — hans tanker er ikke noget rummet KRÆVER for at fungere.
+  const [thoughts, setThoughts] = useState<Thought[]>([])
+  useEffect(() => {
+    if (!config) return
+    let cancelled = false
+    void fetchThoughts(config).then((t) => { if (!cancelled) setThoughts(t) })
+    return () => { cancelled = true }
+  }, [config, tick])
   // Sprunget over = lokal afvisning. Serveren har ingen 'denied'-status for
   // capability-requests, så kortet forbliver pending server-side. Den
   // asynkrone model gør at intet run blokerer imens.
@@ -132,7 +143,13 @@ export function WorkScreen({ syncSignal = 0, onPendingCount, onSyncDone }: Props
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
           {tab === 'tasks' ? (
-            <TasksView runs={runs} />
+            <>
+              <TasksView runs={runs} />
+              {/* Jarvis' egne tanker hører til i Arbejde-rummet: det er dét rum
+                  hvor noget venter på én, uden at det er en samtale. */}
+              <Text style={styles.groupLabel}>Fra Jarvis</Text>
+              <ThoughtsList items={thoughts} />
+            </>
           ) : (
             <ApproveView
               approvals={pending}

@@ -20,6 +20,8 @@ import { CameraCapture, type CapturedPhoto } from './CameraCapture'
 import { AttachMenu } from '../components/AttachMenu'
 import { pickDocuments, pickImagesFromGallery } from '../lib/imagePicker'
 import { describeUploadError } from '../lib/uploadError'
+import { fetchPresence, type Presence } from '../lib/companionClient'
+import { SensesScreen } from './SensesScreen'
 import { cancelActiveRun, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
@@ -114,6 +116,21 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     setScrolledUp(false)
   }, [])
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [isOwner, setIsOwner] = useState(false)
+  const [sensesOpen, setSensesOpen] = useState(false)
+  // Livstegn. Hentes ved opstart og hvert minut — hjerteslaget slår ~hvert
+  // 15. minut, så tættere polling ville kun koste strøm uden at vise mere.
+  const [presence, setPresence] = useState<Presence>({ state: 'unknown' })
+  useEffect(() => {
+    if (!config) return
+    let cancelled = false
+    const tick = () => {
+      void fetchPresence(config).then((p) => { if (!cancelled) setPresence(p) })
+    }
+    tick()
+    const id = setInterval(tick, 60_000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [config])
   const [cameraOpen, setCameraOpen] = useState(false)
   const [attachMenuOpen, setAttachMenuOpen] = useState(false)
   // FEATURE2/BUG3: valgt/taget billede lægger sig som ventende vedhæftning i
@@ -191,6 +208,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     whoami(config)
       .then((me) => {
         setDisplayName(me.display_name || 'Jarvis')
+        setIsOwner(me.role === 'owner')
         if (me.role === 'owner') {
           // Owner: hele paletten (deepseek-default forrest).
           getModelOptions(config)
@@ -396,7 +414,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       <View style={styles.flex}>
         <Animated.View style={{ flex: 1, opacity: sessionFade }}>
           {showGreeting ? (
-            <GreetingHero userName={displayName} />
+            <GreetingHero userName={displayName} presence={presence} />
           ) : (
             <MessageList
               ref={listRef}
@@ -523,6 +541,11 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           onNewSession={handleNewSession}
           workingIds={activeRunIds}
           unreadIds={unreadIds}
+          isOwner={isOwner}
+          onOpenSenses={() => {
+            setPanelOpen(false)
+            setSensesOpen(true)
+          }}
           onOpenSettings={() => {
             setPanelOpen(false)
             setSettingsOpen(true)
@@ -555,6 +578,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         }}
         onClose={() => setAttachMenuOpen(false)}
       />
+
+      <Modal visible={sensesOpen} animationType="slide" onRequestClose={() => setSensesOpen(false)}>
+        <SensesScreen onClose={() => setSensesOpen(false)} />
+      </Modal>
 
       <Modal visible={cameraOpen} animationType="slide" onRequestClose={() => setCameraOpen(false)}>
         <CameraCapture onCapture={handleCapture} onClose={() => setCameraOpen(false)} />

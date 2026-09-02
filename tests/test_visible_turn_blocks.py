@@ -123,3 +123,43 @@ class TestRobusthed:
             interleave=["text"], text_segments=["Bare et svar"],
         )
         assert _types(blocks) == ["text"]
+
+
+class TestBatchKaldTællesEnkeltvis:
+    """Native batch-exec leverer alle kald i ÉT item.
+
+    Loggede vi kun én markør pr. batch, undertalte interleave tools,
+    _trust_interleave faldt, og HELE turen røg i fallback: værktøjer først,
+    ét samlet tekstblok til sidst. Det var den fejl der overlevede første
+    rettelse — segmenterne var der, men grenen der bruger dem blev aldrig nået.
+    """
+
+    def test_tre_batchede_kald_med_tekst_imellem(self) -> None:
+        blocks = _build_turn_blocks(
+            text="AB",
+            tool_calls=[_call("a"), _call("b"), _call("c")],
+            tool_results=[_result("a"), _result("b"), _result("c")],
+            # Én markør PR. VÆRKTØJ — det er dét der gør tilliden mulig.
+            interleave=["text", "tool", "tool", "tool", "text"],
+            text_segments=["A", "B"],
+        )
+        assert _types(blocks) == [
+            "text",
+            "tool_use", "tool_result",
+            "tool_use", "tool_result",
+            "tool_use", "tool_result",
+            "text",
+        ]
+        assert _texts(blocks) == ["A", "B"]
+
+    def test_undertalt_log_falder_stadig_sikkert_tilbage(self) -> None:
+        """Går markørerne alligevel tabt, må intet forsvinde."""
+        blocks = _build_turn_blocks(
+            text="A",
+            tool_calls=[_call("a"), _call("b"), _call("c")],
+            tool_results=[_result("a"), _result("b"), _result("c")],
+            interleave=["text", "tool"],
+            text_segments=["A"],
+        )
+        assert _types(blocks).count("tool_use") == 3
+        assert _texts(blocks) == ["A"]

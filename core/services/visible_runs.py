@@ -1518,7 +1518,13 @@ async def _stream_visible_run(
                     continue
                 if isinstance(item, VisibleModelToolCalls):
                     _collected_native_tool_calls = item.tool_calls
-                    _interleave_log.append("tool")
+                    # ÉN markør PR. VÆRKTØJ, ikke pr. batch. Native batch-exec
+                    # leverer alle kald i ét item; med kun én markør undertalte
+                    # loggen tools, _trust_interleave faldt, og hele turen røg i
+                    # fallback — tools først, ét samlet tekstblok til sidst.
+                    # Præcis den fejl Bjørn så efter streaming (2026-09-02).
+                    for _ in (item.tool_calls or [None]):
+                        _interleave_log.append("tool")
                     _seg_close()
                     continue
                 if isinstance(item, VisibleModelStreamDone):
@@ -2849,6 +2855,10 @@ async def _stream_visible_run(
                                 if _a_item.delta:
                                     _a_parts.append(_a_item.delta)
                                     _all_followup_parts.append(_a_item.delta)
+                                    # Opfølgnings-runder logførte IKKE rækkefølge —
+                                    # så en tur med flere runder tabte den helt.
+                                    _interleave_log.append("text")
+                                    _seg_text(_a_item.delta)
                                     yield _sse("delta", {
                                         "type": "delta",
                                         "run_id": run.run_id,
@@ -2869,6 +2879,9 @@ async def _stream_visible_run(
                                 continue
                             if isinstance(_a_item, _vf.FollowupToolCalls):
                                 _a_tool_calls.extend(_a_item.tool_calls)
+                                for _ in (_a_item.tool_calls or [None]):
+                                    _interleave_log.append("tool")
+                                _seg_close()
                                 continue
                             if isinstance(_a_item, _vf.FollowupFailed):
                                 # Carry the B11 structured taxonomy (failure_kind +

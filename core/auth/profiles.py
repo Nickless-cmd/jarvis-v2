@@ -40,11 +40,25 @@ def list_auth_profiles() -> list[dict[str, str]]:
     for profile_dir in sorted(AUTH_PROFILES_DIR.iterdir()):
         if not profile_dir.is_dir():
             continue
-        manifest = _read_json(profile_dir / "profile.json")
+        # Ét ulæseligt manifest må ikke vælte HELE listen — den er indgangen
+        # til hvert eneste auth-opslag, så en enkelt beskadiget mappe ville
+        # ellers slå al provider-godkendelse ud på én gang.
+        try:
+            manifest = _read_json(profile_dir / "profile.json")
+        except Exception:
+            manifest = {}
+        # MAPPENAVNET er identiteten, ikke manifestets felt. _profile_dir()
+        # slår op med AUTH_PROFILES_DIR / navn, så et manifest der siger noget
+        # andet end sin egen mappe peger på en profil der ikke kan adresseres.
+        # Fundet 2026-09-02: default.bak-20260716-150508 bar stadig
+        # profile="default" og optrådte derfor som en ANDEN "default" i listen —
+        # en syv uger gammel kopi med potentielt tilbagekaldte tokens, som
+        # readiness-tjek kunne komme til at spørge.
         items.append(
             {
-                "profile": str(manifest.get("profile", profile_dir.name)),
+                "profile": profile_dir.name,
                 "created_at": str(manifest.get("created_at", "")),
+                "manifest_profile": str(manifest.get("profile", profile_dir.name)),
             }
         )
     return items

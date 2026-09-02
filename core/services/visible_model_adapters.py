@@ -1104,7 +1104,11 @@ def _resolve_copilot_profile(preferred: str) -> str:
         from core.auth.profiles import get_provider_state, list_auth_profiles
         if get_provider_state(profile=preferred, provider="github-copilot") is not None:
             return preferred
-        for p in ["copilot", *list_auth_profiles()]:
+        # list_auth_profiles() giver DICTS. Indtil 2026-09-02 blev de sendt
+        # direkte videre som profilnavn → TypeError på første iteration →
+        # slugt af except nedenfor → self-healingen virkede aldrig, kun
+        # maskeret af at "copilot" står hårdkodet først.
+        for p in ["copilot", *[str(i.get("profile") or "") for i in list_auth_profiles()]]:
             if p and get_provider_state(profile=p, provider="github-copilot") is not None:
                 return p
     except Exception:

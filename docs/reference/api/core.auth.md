@@ -56,22 +56,22 @@ _GitHub Copilot session-token exchange._
 |---|---|---|---|---|
 | function | `ensure_auth_profile` | `(profile)` | — | [src](../../../core/auth/profiles.py#L14) |
 | function | `list_auth_profiles` | `()` | — | [src](../../../core/auth/profiles.py#L35) |
-| function | `save_provider_credentials` | `(*, profile, provider, credentials)` | — | [src](../../../core/auth/profiles.py#L53) |
-| function | `get_provider_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L86) |
-| function | `get_provider_state_view` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L94) |
-| function | `get_provider_credentials` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L183) |
-| function | `provider_has_real_credentials` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L197) |
-| function | `get_provider_auth_material_kind` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L227) |
-| function | `get_provider_oauth_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L260) |
-| function | `get_provider_launch_result_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L297) |
-| function | `get_provider_launch_freshness` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L320) |
-| function | `get_provider_callback_validation_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L349) |
-| function | `get_provider_exchange_readiness` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L374) |
-| function | `get_provider_callback_intent_consistency` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L405) |
-| function | `revoke_provider` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L443) |
-| function | `_profile_dir` | `(profile)` | — | [src](../../../core/auth/profiles.py#L460) |
-| function | `_validate_provider` | `(provider)` | — | [src](../../../core/auth/profiles.py#L466) |
-| function | `_read_json` | `(path)` | — | [src](../../../core/auth/profiles.py#L472) |
-| function | `_existing_or_now` | `(path, key)` | — | [src](../../../core/auth/profiles.py#L476) |
-| function | `_now` | `()` | — | [src](../../../core/auth/profiles.py#L483) |
+| function | `save_provider_credentials` | `(*, profile, provider, credentials)` | — | [src](../../../core/auth/profiles.py#L67) |
+| function | `get_provider_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L100) |
+| function | `get_provider_state_view` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L108) |
+| function | `get_provider_credentials` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L197) |
+| function | `provider_has_real_credentials` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L211) |
+| function | `get_provider_auth_material_kind` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L241) |
+| function | `get_provider_oauth_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L274) |
+| function | `get_provider_launch_result_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L311) |
+| function | `get_provider_launch_freshness` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L334) |
+| function | `get_provider_callback_validation_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L363) |
+| function | `get_provider_exchange_readiness` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L388) |
+| function | `get_provider_callback_intent_consistency` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L419) |
+| function | `revoke_provider` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L457) |
+| function | `_profile_dir` | `(profile)` | — | [src](../../../core/auth/profiles.py#L474) |
+| function | `_validate_provider` | `(provider)` | — | [src](../../../core/auth/profiles.py#L480) |
+| function | `_read_json` | `(path)` | — | [src](../../../core/auth/profiles.py#L486) |
+| function | `_existing_or_now` | `(path, key)` | — | [src](../../../core/auth/profiles.py#L490) |
+| function | `_now` | `()` | — | [src](../../../core/auth/profiles.py#L497) |
 

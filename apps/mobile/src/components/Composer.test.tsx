@@ -1,12 +1,45 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 import { Composer } from './Composer'
 
+/**
+ * Komponisten har to ÆGTE former: en hvilepille på én række, og en arbejdsform
+ * på to rækker med det rigtige tekstfelt. Testene går derfor gennem den samme
+ * vej som en finger: tryk på pillen først, skriv derefter. Går man direkte
+ * efter feltet, tester man en tilstand brugeren aldrig starter i.
+ */
+async function openComposer(screen: Awaited<ReturnType<typeof render>>) {
+  const rest = screen.queryByTestId('composer-rest')
+  if (rest) {
+    await act(async () => {
+      fireEvent.press(rest)
+    })
+  }
+  await waitFor(() => expect(screen.getByTestId('composer-input')).toBeTruthy())
+}
+
 describe('Composer', () => {
+  it('starter i hvileformen — ét felt-attrap, intet rigtigt tekstfelt', async () => {
+    const screen = await render(<Composer onSend={jest.fn()} onStop={jest.fn()} />)
+
+    expect(screen.getByTestId('composer-rest')).toBeTruthy()
+    expect(screen.queryByTestId('composer-input')).toBeNull()
+  })
+
+  it('et tryk på hvilepillen åbner arbejdsformen', async () => {
+    const screen = await render(<Composer onSend={jest.fn()} onStop={jest.fn()} />)
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('composer-rest'))
+    })
+
+    await waitFor(() => expect(screen.getByTestId('composer-input')).toBeTruthy())
+    expect(screen.queryByTestId('composer-rest')).toBeNull()
+  })
+
   it('trims input, sends it, and clears the field', async () => {
     const onSend = jest.fn()
     const screen = await render(<Composer onSend={onSend} onStop={jest.fn()} />)
-
-    await waitFor(() => expect(screen.getByTestId('composer-input')).toBeTruthy())
+    await openComposer(screen)
 
     await act(async () => {
       screen.getByTestId('composer-input').props.onChangeText('  Hej Jarvis  ')
@@ -23,8 +56,7 @@ describe('Composer', () => {
   it('keeps the draft when async send fails', async () => {
     const onSend = jest.fn().mockRejectedValue(new Error('session create failed'))
     const screen = await render(<Composer onSend={onSend} onStop={jest.fn()} />)
-
-    await waitFor(() => expect(screen.getByTestId('composer-input')).toBeTruthy())
+    await openComposer(screen)
 
     await act(async () => {
       screen.getByTestId('composer-input').props.onChangeText('Hej Jarvis')
@@ -40,9 +72,12 @@ describe('Composer', () => {
   it('shows stop while working and calls onStop instead of sending', async () => {
     const onSend = jest.fn()
     const onStop = jest.fn()
+    // `working` holder arbejdsformen åben af sig selv — man skal kunne afbryde
+    // uden først at røre komponisten.
     const screen = await render(<Composer working onSend={onSend} onStop={onStop} />)
 
     await waitFor(() => expect(screen.getByTestId('composer-input')).toBeTruthy())
+    expect(screen.queryByTestId('composer-rest')).toBeNull()
 
     await act(async () => {
       screen.getByTestId('composer-input').props.onChangeText('Hej')
@@ -59,8 +94,7 @@ describe('Composer', () => {
   it('does not send blank or disabled input', async () => {
     const onSend = jest.fn()
     const screen = await render(<Composer disabled onSend={onSend} onStop={jest.fn()} />)
-
-    await waitFor(() => expect(screen.getByTestId('composer-input')).toBeTruthy())
+    await openComposer(screen)
 
     await act(async () => {
       screen.getByTestId('composer-input').props.onChangeText('   ')
@@ -78,5 +112,18 @@ describe('Composer', () => {
     })
 
     expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('en vedhæftning holder arbejdsformen åben uden fokus', async () => {
+    const screen = await render(
+      <Composer
+        onSend={jest.fn()}
+        onStop={jest.fn()}
+        attachment={{ uri: 'file:///a.png', name: 'a.png' }}
+      />
+    )
+
+    expect(screen.queryByTestId('composer-rest')).toBeNull()
+    await waitFor(() => expect(screen.getByTestId('composer-input')).toBeTruthy())
   })
 })

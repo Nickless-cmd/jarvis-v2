@@ -122,7 +122,7 @@ export function MessageBubble({
  *
  * Den vigtigste enkeltdetalje: ASSISTENTEN HAR INGEN BOBLE. Svaret står som
  * ren tekst på den sorte flade, venstrejusteret, med luft omkring. Kun
- * brugerens besked får en boble — dyb teal (#10403A), højrejusteret, fuldt
+ * brugerens besked får en boble — dyb grøn (#14402F), højrejusteret, fuldt
  * afrundet, og aldrig bredere end ~80 % af skærmen.
  *
  * Det er dét der giver ChatGPT-tråden sin ro: én talende part fylder fladen,

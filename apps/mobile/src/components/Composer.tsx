@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { ArrowUp, AudioLines, Mic, Plus, Square } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
@@ -43,8 +43,19 @@ export function Composer({
   const [text, setText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [focused, setFocused] = useState(false)
+  // Et tryk på hvilepillen skal åbne arbejdsformen FØR tastaturet er nået frem.
+  // Uden dette flag ville vi vente på TextInputens onFocus — men den findes ikke
+  // endnu i hvileformen, så trykket ville ikke føre nogen steder hen.
+  const [wantFocus, setWantFocus] = useState(false)
+  const inputRef = useRef<TextInput>(null)
   // Hvileform: intet skrevet, ikke i fokus, intet vedhæftet, ikke i gang.
-  const resting = !text && !focused && !attachment && !working
+  const resting = !text && !focused && !wantFocus && !attachment && !working
+
+  // Arbejdsformen er lige monteret efter et tryk på hvilepillen → giv feltet
+  // fokus, så tastaturet kommer frem uden et ekstra tryk.
+  useEffect(() => {
+    if (wantFocus) inputRef.current?.focus()
+  }, [wantFocus])
 
   const submit = async () => {
     const value = text.trim()
@@ -62,9 +73,49 @@ export function Composer({
     }
   }
 
+  // ── HVILEFORM ────────────────────────────────────────────────────────
+  // ÉN række, 48 dp høj — som målt i referencen. Den var før forsøgt lavet
+  // ved at nulstille kortets polstring, men kortet indeholdt stadig TO rækker
+  // (felt over knapper), så begge huggede kanten: teksten klistrede til
+  // overkanten og send-knappen til underkanten. En hvileform på én række skal
+  // faktisk VÆRE én række — ikke to rækker med polstringen taget væk.
+  //
+  // Feltet er en attrap her. Den ægte TextInput lever kun i arbejdsformen, så
+  // de to former ikke skal dele én komponent med modstridende krav.
+  if (resting) {
+    return (
+      <View style={[styles.outer, styles.outerResting]}>
+        <Pressable
+          testID="composer-rest"
+          accessibilityRole="button"
+          accessibilityLabel="Skriv til Jarvis"
+          onPress={() => setWantFocus(true)}
+          style={[styles.card, styles.cardResting]}
+        >
+          <Pressable accessibilityRole="button" accessibilityLabel="Vedhæft" onPress={onAttach} hitSlop={6} style={styles.iconBtn}>
+            <Plus size={22} color={tokens.color.fg1} strokeWidth={2} />
+          </Pressable>
+          <Text style={styles.restPlaceholder} numberOfLines={1}>Skriv til Jarvis</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Diktér" onPress={onMic} hitSlop={6} style={styles.iconBtn}>
+            <Mic size={21} color={tokens.color.fg1} strokeWidth={1.8} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Stemme"
+            onPress={onMic}
+            style={({ pressed }) => [styles.sendBtn, pressed ? styles.pressed : null]}
+          >
+            <AudioLines size={19} color={tokens.color.bg0} strokeWidth={2} />
+          </Pressable>
+        </Pressable>
+      </View>
+    )
+  }
+
+  // ── ARBEJDSFORM ──────────────────────────────────────────────────────
   return (
-    <View style={[styles.outer, resting && styles.outerResting]}>
-      <View style={[styles.card, resting ? styles.cardResting : null]}>
+    <View style={styles.outer}>
+      <View style={styles.card}>
         {attachment ? (
           <View style={styles.attachChip}>
             <Image source={{ uri: attachment.uri }} style={styles.attachThumb} />
@@ -81,23 +132,24 @@ export function Composer({
           </View>
         ) : null}
         <TextInput
+          ref={inputRef}
           testID="composer-input"
           value={text}
           onChangeText={setText}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={() => { setFocused(false); setWantFocus(false) }}
           multiline
           editable={!disabled}
           placeholder="Skriv til Jarvis"
           placeholderTextColor={tokens.color.fg3}
           style={styles.input}
         />
-        <View style={[styles.controls, resting && styles.controlsResting]}>
+        <View style={styles.controls}>
           <View style={styles.left}>
             <Pressable accessibilityRole="button" accessibilityLabel="Vedhæft" onPress={onAttach} hitSlop={6} style={styles.iconBtn}>
               <Plus size={22} color={tokens.color.fg1} strokeWidth={2} />
             </Pressable>
-            {modelLabel && !resting ? (
+            {modelLabel ? (
               <Pressable accessibilityRole="button" onPress={onPressModel} style={styles.modelPill}>
                 <Text style={styles.modelText} numberOfLines={1}>{modelLabel}</Text>
                 <Text style={styles.modelChev}>▾</Text>
@@ -158,20 +210,22 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spacing.md,
     paddingBottom: tokens.spacing.sm
   },
-  // Hvileform: én række, 48 dp høj, indholdet centreret lodret.
-  // BEMÆRK: denne stil hører til `resting` — IKKE til `focused`. Den har
-  // været bundet til `focused` og nulstillede derfor kortets polstring
-  // præcis når feltet var i brug: teksten klistrede til øverste venstre
-  // hjørne, og send-knappens bund ramte kortets bundkant (målt: 1 px fra).
-  // Hvile = smal, én række. Fokus = høj, to rækker med luft.
+  // Hvileform: ÉN vandret række med feltet som attrap mellem ikonerne.
+  // Polstringen er lille men ikke NUL — det var netop nul-polstringen der
+  // fik indholdet til at hugge kanten, både i den gamle fokus-variant og
+  // bagefter i hvile.
   cardResting: {
-    minHeight: 48,
-    paddingTop: 0,
-    paddingBottom: 0,
-    justifyContent: 'center'
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.sm,
+    paddingHorizontal: tokens.spacing.sm,
+    paddingTop: tokens.spacing.xs,
+    paddingBottom: tokens.spacing.xs
   },
-  controlsResting: {
-    marginTop: 0
+  restPlaceholder: {
+    flex: 1,
+    color: tokens.color.fg3,
+    fontSize: 16
   },
   // Fokus markeres ikke med en kant — feltet er allerede i forgrunden.
   cardFocused: {},

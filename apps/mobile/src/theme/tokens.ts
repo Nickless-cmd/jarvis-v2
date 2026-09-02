@@ -42,13 +42,13 @@ export const tokens = {
     //
     // Vi kørte en periode med referencens lilla #A07FEB, og den var korrekt
     // målt — men 1:1 på FORM behøver ikke betyde 1:1 på IDENTITET. Bjørn bad
-    // om en anden farve end lilla, og valget faldt på teal: det er tættere på
-    // Jarvis' oprindelige grønne (#6ee7a8) uden at være mint, og det læser
-    // som instrument frem for chat-klon.
+    // først om «noget andet end lilla» (vi prøvede teal #3FC7B4) og derefter
+    // om at komme nærmere den neongrønne han havde før. Det er dén, der står
+    // her nu: Jarvis' oprindelige #6EE7A8.
     //
     // Layout, mål og flader følger stadig referencen. Kun farven er hans.
-    accent: '#3FC7B4',
-    userBubble: '#10403A',   // brugerens boble — samme kulør, dybt nedtonet
+    accent: '#6EE7A8',
+    userBubble: '#14402F',   // brugerens boble — samme kulør, dybt nedtonet
     codeBg: '#303030',
 
     // ── Segmented control (målt — bemærk retningen) ─────────────────
@@ -65,8 +65,8 @@ export const tokens = {
     depth1: '#121212',
     depth2: '#1D1D1D',
     depth3: '#212121',
-    accentDim: 'rgba(63, 199, 180, 0.55)',
-    accentGhost: 'rgba(63, 199, 180, 0.12)',
+    accentDim: 'rgba(110, 231, 168, 0.55)',
+    accentGhost: 'rgba(110, 231, 168, 0.12)',
     glassFill: 'rgba(255, 255, 255, 0.07)',
     glassLine: 'rgba(255, 255, 255, 0.10)'
   },

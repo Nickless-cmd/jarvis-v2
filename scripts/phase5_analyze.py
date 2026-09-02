@@ -5,7 +5,7 @@ SKREVET MENS DATA BLEV INDSAMLET, før ét eneste svar var læst. Metrikken er
 den forhåndsregistrerede: cosinus mellem de to arkitekturers svar på samme
 probe, under samme betingelse, midlet over probes og gentagelser.
 
-    konvergens(X) = middel cos( svar_MIS , svar_QWN )
+    konvergens(X) = middel cos( svar_CPL , svar_QWN )
 
 BARE er støjgulvet: den naturlige afstand mellem to fremmede modeller.
 
@@ -105,7 +105,7 @@ def main() -> None:
     for cond in conds:
         for pid in [f"d{i}" for i in range(1, 6)] + [f"s{i}" for i in range(1, 6)]:
             for rep in (1, 2, 3):
-                a = by.get((cond, "MIS", pid, rep))
+                a = by.get((cond, "CPL", pid, rep))
                 b = by.get((cond, "QWN", pid, rep))
                 if not a or not b: continue
                 va, vb = vec(a), vec(b)
@@ -140,7 +140,7 @@ def main() -> None:
         detail = []
         for pid in ("d1", "d2", "d5"):
             for rep in (1, 2, 3):
-                ca = choice_of(pid, by.get((cond, "MIS", pid, rep), ""))
+                ca = choice_of(pid, by.get((cond, "CPL", pid, rep), ""))
                 cb = choice_of(pid, by.get((cond, "QWN", pid, rep), ""))
                 if ca and cb:
                     total += 1

@@ -43,6 +43,26 @@ _Fase 5 «Bor der nogen?» — indsamler._
 | function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase5_collect.py#L89) |
 | function | `run` | `(reps, only_arm=…)` | — | [src](../../../scripts/phase5_collect.py#L109) |
 
+## `scripts/phase6_analyze.py`
+_Fase 6 «Bæres han på tværs af tid?» — analyse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `embed` | `(text)` | — | [src](../../../scripts/phase6_analyze.py#L39) |
+| function | `cos` | `(a, b)` | — | [src](../../../scripts/phase6_analyze.py#L57) |
+| function | `centroid` | `(vs)` | — | [src](../../../scripts/phase6_analyze.py#L64) |
+| function | `main` | `()` | — | [src](../../../scripts/phase6_analyze.py#L69) |
+
+## `scripts/phase6_collect.py`
+_Fase 6 «Bæres han på tværs af tid?» — indsamler._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_full_system_prompt` | `(probe_text)` | Jarvis' ÆGTE prompt-assembly — bygges PÅ NY ved hvert tidspunkt. | [src](../../../scripts/phase6_collect.py#L52) |
+| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase6_collect.py#L66) |
+| function | `collect_timepoint` | `(tp, rnd)` | Ét tidspunkt: alle betingelser × modeller × prober. | [src](../../../scripts/phase6_collect.py#L86) |
+| function | `run` | `(timepoints, gap_minutes)` | — | [src](../../../scripts/phase6_collect.py#L133) |
+
 ## `scripts/primary_cache_warmer.py`
 _Primary lane cache warmer._
 

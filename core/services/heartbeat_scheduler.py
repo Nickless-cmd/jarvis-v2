@@ -24,18 +24,20 @@ from __future__ import annotations
 import logging
 import threading
 
-# BEVIDST heartbeat_runtime's logger og ikke __name__.
+# BEVIDST "uvicorn.error" — samme logger som heartbeat_runtime (linje 219).
 #
-# Første udgave brugte logging.getLogger(__name__), og så forsvandt hver eneste
-# linje fra dæmonen — også «loop entered», som skrives før noget som helst andet.
-# Modulet importeres DOVENT inde i start(), altså efter uvicorn har sat sit
-# log-setup op, og en logger født på det tidspunkt når ikke journalen. Linjerne
-# fra heartbeat_runtime gør, fordi det modul var importeret inden.
+# To forsøg gik galt før dette. Først logging.getLogger(__name__): hver eneste
+# linje fra dæmonen forsvandt, også «loop entered», som skrives før noget som
+# helst andet. Så gættede jeg på import-rækkefølge og bad om
+# getLogger("core.services.heartbeat_runtime") — lige så tavs.
 #
-# En udskillelse må ikke kunne gøre kode tavs. Dæmonen logger derfor dér hvor
-# den altid har logget — og en fremtidig oprydning i log-opsætningen kan flytte
-# den tilbage, når kanalen er ens for alle moduler.
-logger = logging.getLogger("core.services.heartbeat_runtime")
+# Årsagen var hverken: heartbeat_runtime logger IKKE på sit eget modulnavn. Den
+# bruger uvicorn's egen fejl-logger, og det er den ENESTE kanal i processen der
+# har handlers. Et modulnavn — hvilket som helst — går i gulvet.
+#
+# En udskillelse må ikke kunne gøre kode tavs. Dæmonen logger derfor præcis dér
+# hvor den loggede før den flyttede.
+logger = logging.getLogger("uvicorn.error")
 
 INTERVAL_SECONDS = 30
 

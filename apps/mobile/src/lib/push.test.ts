@@ -124,4 +124,39 @@ describe('approval_requested (fase 1s leverance-kriterie)', () => {
     ;(notifee.getInitialNotification as jest.Mock).mockRejectedValueOnce(new Error('nede'))
     await expect(openedFromApprovalPush()).resolves.toBe(false)
   })
+
+  // Regression, målt på enheden 2026-09-02: infra-vagtens flag kom frem som
+  // «Jarvis svarede / Nyt svar» hver halve time, selv om serveren ikke havde
+  // sendt ét answer_ready i fire timer. Årsagen var en catch-all der gav
+  // ENHVER ukendt kind svar-titlen. En notifikation må ikke påstå noget andet
+  // end det, den bærer.
+  it('central_flag -> serverens egen ordlyd, IKKE "Jarvis svarede"', () => {
+    const n = buildNotification(
+      { kind: 'central_flag', title: 'Central-flag: infra/pve_disk', message: "Disk-pres på 'pve': 94% brugt" },
+      null
+    )
+    expect(n.title).toBe('Central-flag: infra/pve_disk')
+    expect(n.body).toBe("Disk-pres på 'pve': 94% brugt")
+  })
+
+  it('infra_security -> serverens titel + besked', () => {
+    const n = buildNotification(
+      { kind: 'infra_security', title: '⚠️ Netværks-trussel: port_scan', message: 'port_scan fra 204.76.203.231 — BLOKERET' },
+      null
+    )
+    expect(n.title).toBe('⚠️ Netværks-trussel: port_scan')
+    expect(n.body).toContain('BLOKERET')
+  })
+
+  it('ukendt kind uden tekst -> neutral titel, aldrig svar-paastand', () => {
+    const n = buildNotification({ kind: 'noget_nyt' }, null)
+    expect(n.title).toBe('Jarvis')
+    expect(n.body).not.toBe('Nyt svar')
+  })
+
+  it('answer_ready -> stadig "Jarvis svarede"', () => {
+    const n = buildNotification({ kind: 'answer_ready', preview: 'hej' }, null)
+    expect(n.title).toBe('Jarvis svarede')
+    expect(n.body).toBe('hej')
+  })
 })

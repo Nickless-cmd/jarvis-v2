@@ -34,8 +34,15 @@ interface MessageListProps {
    */
   bottomInset?: number
   onResend?: (text: string) => void
-  /** Kaldes ved scroll-aktivitet (bruges til at vise Save Rail mens man scroller). */
-  onScrollActivity?: () => void
+  /**
+   * Kaldes med afstanden fra bunden af traaden.
+   *
+   * Listen er INVERTERET, saa offset 0 = nyeste besked nederst. En voksende
+   * offset betyder at man har rullet OP i historikken. Vi sender tallet videre
+   * i stedet for bare «der skete scroll», fordi rul-til-bunden-knappen skal
+   * kende positionen — ikke aktiviteten.
+   */
+  onScrollOffset?: (fromBottom: number) => void
 }
 
 type Row =
@@ -140,7 +147,7 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollActivity, thinking, bottomInset = 0 },
+  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0 },
   ref
 ) {
   const flatRef = useRef<FlatList>(null)
@@ -241,7 +248,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       data={ordered}
       keyExtractor={(item) => item.key}
       onContentSizeChange={(_w, h) => { contentLenRef.current = h }}
-      onScroll={onScrollActivity ? () => onScrollActivity() : undefined}
+      onScroll={onScrollOffset ? (e) => onScrollOffset(e.nativeEvent.contentOffset.y) : undefined}
       scrollEventThrottle={120}
       onViewableItemsChanged={onViewable}
       onScrollToIndexFailed={(info) => {

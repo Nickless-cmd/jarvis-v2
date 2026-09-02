@@ -64,7 +64,7 @@ export function Composer({
 
   return (
     <View style={[styles.outer, resting && styles.outerResting]}>
-      <View style={[styles.card, focused ? styles.cardResting : null]}>
+      <View style={[styles.card, resting ? styles.cardResting : null]}>
         {attachment ? (
           <View style={styles.attachChip}>
             <Image source={{ uri: attachment.uri }} style={styles.attachThumb} />
@@ -159,6 +159,11 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spacing.sm
   },
   // Hvileform: én række, 48 dp høj, indholdet centreret lodret.
+  // BEMÆRK: denne stil hører til `resting` — IKKE til `focused`. Den har
+  // været bundet til `focused` og nulstillede derfor kortets polstring
+  // præcis når feltet var i brug: teksten klistrede til øverste venstre
+  // hjørne, og send-knappens bund ramte kortets bundkant (målt: 1 px fra).
+  // Hvile = smal, én række. Fokus = høj, to rækker med luft.
   cardResting: {
     minHeight: 48,
     paddingTop: 0,
@@ -188,8 +193,12 @@ const styles = StyleSheet.create({
     maxHeight: 140,
     color: tokens.color.fg1,
     fontSize: 16,
-    paddingHorizontal: tokens.spacing.xs,
-    paddingTop: tokens.spacing.xs
+    // Rettet ind efter [+]-knappen nedenunder: den er 34 bred og starter ved
+    // kortets kant, saa dens ikon staar 6 px inde. Teksten skal staa samme
+    // sted — ellers hopper venstrekanten mellem de to raekker.
+    paddingHorizontal: 6,
+    paddingTop: 4,
+    paddingBottom: 2
   },
   controls: {
     flexDirection: 'row',
@@ -222,7 +231,7 @@ const styles = StyleSheet.create({
   modelText: { color: tokens.color.fg2, fontSize: 13, fontWeight: '600', flexShrink: 1 },
   modelChev: { color: tokens.color.fg3, fontSize: 11 },
   sendBtn: {
-    width: 38,
+    width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',

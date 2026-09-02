@@ -12,7 +12,7 @@ import { ErrorBanner } from '../components/ErrorBanner'
 import { ErrorCard } from '../components/ErrorCard'
 import { GreetingHero } from '../components/GreetingHero'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
-import { SaveRail } from '../components/SaveRail'
+import { ScrollToBottom } from '../components/ScrollToBottom'
 import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { SidePanel } from '../components/SidePanel'
 import { SettingsScreen } from './SettingsScreen'
@@ -93,20 +93,17 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   }, [panelOpen, config])
   const unreadIds = computeUnread(sessions.sessions ?? [], lastSeen, sessions.activeId)
   const listRef = useRef<MessageListHandle>(null)
-  // Save Rail: skjult som standard, vises ved scroll-aktivitet, gemmer sig efter
-  // ~2,8s uden aktivitet (lang nok til at man kan ramme knapperne; rail-tryk/scrub
-  // scroller selv → nulstiller timeren).
-  const [railVisible, setRailVisible] = useState(false)
+  // Rul-til-bunden: vises naar man har rullet OP i traaden. Listen er inverteret,
+  // saa offset 0 = nederst ved det nyeste. Taerskel paa en halv skaerm — under det
+  // er man reelt stadig i bunden, og en knap ville bare staa og blinke.
+  const [scrolledUp, setScrolledUp] = useState(false)
   // Chatboble: kun vis "flyt til boble"-knap hvis enheden understøtter Bubbles API.
   const [bubbleSupported, setBubbleSupported] = useState(false)
   useEffect(() => { void bubble.isSupported().then(setBubbleSupported) }, [])
-  const railTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const bumpRail = () => {
-    setRailVisible(true)
-    if (railTimer.current) clearTimeout(railTimer.current)
-    railTimer.current = setTimeout(() => setRailVisible(false), 2800)
+  const onScrollOffset = (fromBottom: number) => {
+    const up = fromBottom > 260
+    setScrolledUp((prev) => (prev === up ? prev : up))
   }
-  useEffect(() => () => { if (railTimer.current) clearTimeout(railTimer.current) }, [])
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [attachMenuOpen, setAttachMenuOpen] = useState(false)
@@ -362,20 +359,20 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
               messages={sessions.messages}
               blocks={stream.state.blocks}
               onResend={(text) => void ensureSessionAndSend(text)}
-              onScrollActivity={bumpRail}
+              onScrollOffset={onScrollOffset}
               thinking={stream.state.status === 'working' || serverBusy}
               bottomInset={liftPadding}
             />
           )}
         </Animated.View>
         {!showGreeting ? (
-          <SaveRail
-            visible={railVisible && sessions.messages.length >= 2}
-            onJumpTop={() => listRef.current?.jumpTop()}
-            onJumpBottom={() => listRef.current?.jumpBottom()}
-            onOlderUser={() => listRef.current?.jumpOlderUser()}
-            onNewerUser={() => listRef.current?.jumpNewerUser()}
-            onScrub={(f) => listRef.current?.scrubTo(f)}
+          <ScrollToBottom
+            visible={scrolledUp && sessions.messages.length >= 2}
+            bottom={liftPadding + 84}
+            onPress={() => {
+              listRef.current?.jumpBottom()
+              setScrolledUp(false)
+            }}
           />
         ) : null}
         {canRetry ? (

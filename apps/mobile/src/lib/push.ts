@@ -45,10 +45,29 @@ export function buildNotification(data: PushData, fetchedBody: string | null) {
     // faldt team-invites igennem til "Jarvis svarede" (Mikkel-test 2026-06-20).
     return { title: data.title ?? 'Invitation til team', body: data.preview ?? 'Du er blevet inviteret til et team', data }
   }
-  // answer_ready: vis appens egen HTTPS-hentede svar; fald tilbage til serverens
-  // medsendte preview hvis fetchLatest fejler (fx udløbet baggrunds-token) — så man
-  // ser DET FAKTISKE svar i stedet for et intetsigende "Nyt svar" (Bjørn 3. jul).
-  return { title: 'Jarvis svarede', body: fetchedBody ?? data.preview ?? 'Nyt svar', data }
+  if (data.kind === 'answer_ready') {
+    // Vis appens egen HTTPS-hentede svar; fald tilbage til serverens medsendte
+    // preview hvis fetchLatest fejler (fx udløbet baggrunds-token) — så man ser
+    // DET FAKTISKE svar i stedet for et intetsigende "Nyt svar" (Bjørn 3. jul).
+    return { title: 'Jarvis svarede', body: fetchedBody ?? data.preview ?? 'Nyt svar', data }
+  }
+  // Alt ANDET: sig hvad serveren faktisk sendte.
+  //
+  // Her stod før en catch-all der gav ENHVER ukendt kind titlen «Jarvis svarede».
+  // Serveren sender også `central_flag` og `infra_security` (infra-vagtens flag)
+  // med felterne `title`/`message` — som den gamle gren slet ikke læste. Resultatet
+  // var en strøm af «Jarvis svarede / Nyt svar» hver halve time, hvor Jarvis i
+  // virkeligheden meldte om diskpres og en unåelig host. Målt på enheden
+  // 2026-09-02: title=«Jarvis svarede», body=«Nyt svar», mens serveren ikke havde
+  // afsendt ét eneste answer_ready i fire timer.
+  //
+  // En notifikation må aldrig påstå noget andet end det, den bærer. Kender vi ikke
+  // arten, viser vi serverens egen ordlyd og en neutral titel.
+  return {
+    title: data.title ?? 'Jarvis',
+    body: data.message ?? data.preview ?? 'Der er noget nyt.',
+    data
+  }
 }
 
 async function fetchLatest(config: ApiConfig, sessionId: string): Promise<string | null> {

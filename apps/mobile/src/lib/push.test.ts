@@ -9,11 +9,19 @@ jest.mock('@react-native-firebase/messaging', () => ({
 }))
 jest.mock('@notifee/react-native', () => ({
   __esModule: true,
-  default: { createChannel: jest.fn(), displayNotification: jest.fn() },
+  default: {
+    createChannel: jest.fn(),
+    displayNotification: jest.fn(),
+    getInitialNotification: jest.fn(),
+    onForegroundEvent: jest.fn(() => () => {})
+  },
   AndroidImportance: { HIGH: 4 },
+  AndroidStyle: { BIGTEXT: 'bigtext' },
+  EventType: { PRESS: 1 },
 }))
 
-import { buildNotification } from './push'
+import notifee from '@notifee/react-native'
+import { buildNotification, isApprovalPush, openedFromApprovalPush } from './push'
 
 describe('buildNotification', () => {
   it('answer_ready -> titel + body fra hentet besked', () => {
@@ -68,5 +76,52 @@ describe('buildNotification', () => {
     const n = buildNotification({ kind: 'error', severity: 'critical', message: 'Kerne-fejl' }, null)
     expect(n.title).toMatch(/kritisk/i)
     expect(n.body).toContain('Kerne-fejl')
+  })
+})
+
+describe('approval_requested (fase 1s leverance-kriterie)', () => {
+  it('bruger serverens egen titel — ikke «Jarvis svarede»', () => {
+    const n = buildNotification(
+      {
+        kind: 'approval_requested',
+        request_id: 'cap-1',
+        title: 'Godkendelse kræves',
+        preview: 'run non-destructive command'
+      },
+      null
+    )
+    expect(n.title).toBe('Godkendelse kræves')
+    expect(n.body).toBe('run non-destructive command')
+  })
+
+  it('har en titel selv hvis serveren glemmer at sende en', () => {
+    const n = buildNotification({ kind: 'approval_requested' }, null)
+    expect(n.title).toBe('Godkendelse kræves')
+  })
+
+  it('falder tilbage på kapabilitetsnavnet, så beskeden aldrig bliver intetsigende', () => {
+    const n = buildNotification(
+      { kind: 'approval_requested', capability_name: 'run non-destructive command' },
+      null
+    )
+    expect(n.body).toBe('run non-destructive command')
+  })
+
+  it('kendes fra andre kinds', () => {
+    expect(isApprovalPush({ kind: 'approval_requested' })).toBe(true)
+    expect(isApprovalPush({ kind: 'answer_ready' })).toBe(false)
+    expect(isApprovalPush(null)).toBe(false)
+  })
+
+  it('opstart fra en godkendelses-notifikation kan aflæses', async () => {
+    ;(notifee.getInitialNotification as jest.Mock).mockResolvedValueOnce({
+      notification: { data: { kind: 'approval_requested' } }
+    })
+    await expect(openedFromApprovalPush()).resolves.toBe(true)
+  })
+
+  it('en fejlende notifee må ikke vælte opstarten', async () => {
+    ;(notifee.getInitialNotification as jest.Mock).mockRejectedValueOnce(new Error('nede'))
+    await expect(openedFromApprovalPush()).resolves.toBe(false)
   })
 })

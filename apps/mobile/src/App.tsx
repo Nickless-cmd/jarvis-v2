@@ -6,7 +6,12 @@ import { ChatScreen } from './screens/ChatScreen'
 import { WorkScreen } from './screens/WorkScreen'
 import { TopBar, type AppMode } from './components/TopBar'
 import { LoginScreen } from './screens/LoginScreen'
-import { registerForPush, attachForegroundHandler } from './lib/push'
+import {
+  attachApprovalTapHandler,
+  attachForegroundHandler,
+  openedFromApprovalPush,
+  registerForPush
+} from './lib/push'
 import { startPresenceReporting } from './lib/presence'
 import { checkForUpdate, type UpdateManifest } from './lib/appUpdate'
 import { downloadAndInstall } from './lib/installApk'
@@ -41,6 +46,16 @@ function AppBody() {
       stopPresence()
     }
   }, [config?.authToken])
+
+  // Et tryk på en godkendelses-notifikation skal lande i Arbejde → Godkend,
+  // ikke i Snak. Ellers fører notifikationen hen til det forkerte rum, og
+  // Bjørn skal selv finde det der ventede.
+  useEffect(() => {
+    void openedFromApprovalPush().then((yes) => {
+      if (yes) setMode('arbejde')
+    })
+    return attachApprovalTapHandler(() => setMode('arbejde'))
+  }, [])
 
   // Auto-updater: check ved opstart + når app vender tilbage til forgrunden.
   useEffect(() => {

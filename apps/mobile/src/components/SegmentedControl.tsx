@@ -56,20 +56,21 @@ const makeStyles = (compact: boolean) =>
   StyleSheet.create({
     container: {
       flexDirection: 'row',
-      backgroundColor: tokens.color.bg2,
-      borderRadius: 999,
+      // Beholderen er LYSERE end den aktive pille — målt på R2.
+      backgroundColor: tokens.color.segmentTrack,
+      borderRadius: tokens.radius.pill,
       padding: 3
     },
     segment: {
       flex: 1,
       paddingVertical: compact ? 5 : 7,
       paddingHorizontal: compact ? 10 : 16,
-      borderRadius: 999,
+      borderRadius: tokens.radius.pill,
       alignItems: 'center',
       justifyContent: 'center'
     },
     segmentActive: {
-      backgroundColor: tokens.color.bg3
+      backgroundColor: tokens.color.segmentActive
     },
     labelRow: {
       flexDirection: 'row',

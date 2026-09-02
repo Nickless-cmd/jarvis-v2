@@ -1,5 +1,5 @@
 import messaging from '@react-native-firebase/messaging'
-import notifee, { AndroidImportance, AndroidStyle } from '@notifee/react-native'
+import notifee, { AndroidImportance, AndroidStyle, EventType } from '@notifee/react-native'
 import type { ApiConfig } from './types'
 import { ackNotification } from './presence'
 import { replyToSession } from './replyToSession'
@@ -7,7 +7,7 @@ import { replyToSession } from './replyToSession'
 /** id på notifikationens "Svar"-action (Direct Reply / RemoteInput). */
 export const REPLY_ACTION_ID = 'jarvis-reply'
 
-export type PushData = { kind: string; session_id?: string; run_id?: string; title?: string; preview?: string; notif_id?: string; severity?: string; message?: string }
+export type PushData = { kind: string; session_id?: string; run_id?: string; title?: string; preview?: string; notif_id?: string; severity?: string; message?: string; request_id?: string; capability_name?: string }
 
 /** Pure: byg notifikations-felter ud fra data + (evt.) hentet beskedtekst. Testbar. */
 export function buildNotification(data: PushData, fetchedBody: string | null) {
@@ -26,6 +26,19 @@ export function buildNotification(data: PushData, fetchedBody: string | null) {
   }
   if (data.kind === 'initiative') {
     return { title: 'Jarvis', body: data.preview ?? 'Jarvis vil sige noget', data }
+  }
+  if (data.kind === 'approval_requested') {
+    // Fase 1's leverance-kriterie: Bjørn skal kunne have appen LUKKET og
+    // stadig få at vide at noget venter på ham. Uden titel-fallback ville
+    // en godkendelse se ud som «Jarvis svarede» og blive læst som småsnak.
+    // Serveren sender selv title="Godkendelse kræves" og preview=capability_name
+    // (push_dispatcher.on_approval_requested). Brug dem — ellers overskriver
+    // klienten serverens ordlyd, og de to kan drive fra hinanden.
+    return {
+      title: data.title ?? 'Godkendelse kræves',
+      body: data.preview ?? data.capability_name ?? 'En handling kræver din godkendelse',
+      data
+    }
   }
   if (data.kind === 'team_invite') {
     // Backend sender title+preview i payload (commit 45eea82f). Uden denne case
@@ -66,6 +79,43 @@ async function fetchLatest(config: ApiConfig, sessionId: string): Promise<string
   }
 }
 
+
+/** Er dette en push om en ventende godkendelse? */
+export function isApprovalPush(data: { kind?: string } | null | undefined): boolean {
+  return String(data?.kind ?? '') === 'approval_requested'
+}
+
+/**
+ * Blev appen åbnet ved at trykke på en godkendelses-notifikation?
+ *
+ * Kaldes ved opstart. Bruges til at lande direkte i Arbejde → Godkend frem for
+ * i Snak, så trykket fører hen til dét der ventede. Self-safe: kan notifee ikke
+ * svare, åbner appen bare normalt.
+ */
+export async function openedFromApprovalPush(): Promise<boolean> {
+  try {
+    const initial = await notifee.getInitialNotification()
+    return isApprovalPush(initial?.notification?.data as { kind?: string } | undefined)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Lyt efter tryk på en godkendelses-notifikation mens appen er åben.
+ * Returnerer en afmelder.
+ */
+export function attachApprovalTapHandler(onOpen: () => void): () => void {
+  try {
+    return notifee.onForegroundEvent(({ type, detail }) => {
+      if (type !== EventType.PRESS) return
+      if (isApprovalPush(detail.notification?.data as { kind?: string } | undefined)) onOpen()
+    })
+  } catch {
+    return () => {}
+  }
+}
+
 export async function display(config: ApiConfig, data: PushData) {
   const body = data.session_id ? await fetchLatest(config, data.session_id) : null
   const n = buildNotification(data, body)
@@ -86,13 +136,17 @@ export async function display(config: ApiConfig, data: PushData) {
       // — så man kan se hvad man svarer på.
       style: { type: AndroidStyle.BIGTEXT, text: n.body },
       // Direct Reply: svar Jarvis direkte fra statusbaren uden at åbne appen.
-      actions: [
-        {
-          title: 'Svar',
-          pressAction: { id: REPLY_ACTION_ID },
-          input: { allowFreeFormInput: true, placeholder: 'Skriv til Jarvis…' }
-        }
-      ]
+      // IKKE på godkendelser: et fritekstsvar er ikke et ja/nej, og en
+      // «Svar»-knap dér ville love noget serveren ikke kan tage imod.
+      actions: isApprovalPush(data)
+        ? []
+        : [
+            {
+              title: 'Svar',
+              pressAction: { id: REPLY_ACTION_ID },
+              input: { allowFreeFormInput: true, placeholder: 'Skriv til Jarvis…' }
+            }
+          ]
     },
   })
   // Device-awareness: kvittér så serveren ved beskeden nåede mobilen (annullerer

@@ -35,7 +35,7 @@ Arbejde-rummet kigger bare på det arbejde der allerede findes.
 4. **Genbrug serveren.** Mission-control API'et findes allerede
    (`/mc/runs`, `/mc/approvals`, `/mc/overview`, `/mc/events` med 3s-cache).
    Appen skal begynde at *bruge* det — ikke få bygget et nyt. Undtagelsen er
-   push: der kræves ét nyt server-stykke (se Server-verifikation).
+   push: der kræves ét nyt server-stykke, plus en limit-fix på `/mc/approvals` (se Server-verifikation).
 5. **Godkendelse er ikke en chat-besked.** Når noget kræver Bjørn, skal det
    ligge i en kø der overlever app-lukning og bliver til en notifikation.
 
@@ -392,7 +392,11 @@ Designet byggede på to server-antagelser. Begge er nu verificeret i koden:
 
 Desuden verificeret: `/mc/approvals` læser den samme overflade (recent
 approval-requests) som appen skal vise, og eksisterende approve/execute-
-endpoints findes under `/mc/capability-approval-requests/{id}/...`.
+endpoints findes under `/mc/capability-approval-requests/{id}/...`. To
+yderligere fund, foldet ind i fase 1-planen: (a) overfladen capper
+approval-requests ved 5 — planen tilføjer en limit-fix så køen kan vise flere;
+(b) push-modtageren skal falde tilbage på `_owner_of_run(run_id)` når
+`scheduled_for_user_id` er tom, ellers får autonome runs ingen notifikation.
 
 ## Data-flow
 

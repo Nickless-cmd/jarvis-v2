@@ -60,7 +60,7 @@ tilstanden `mode: 'snak' | 'arbejde'` bor i App.tsx (AppBody).
 
 `GET /mc/overview` → `{ ok, visible_run: {...}, visible_execution: {...}, runtime: {...} }`
 `GET /mc/runs?limit=N` → `{ active_run, last_outcome, recent_runs: [...], summary: { active, recent_count, failed_count } }`
-`GET /mc/approvals?limit=N` → `{ requests: [...], recent_invocations, summary: { pending_count, approved_count, request_count } }`
+`GET /mc/approvals?limit=N` → `{ requests: [...], recent_invocations, recent_events, summary: { pending_count, approved_count, request_count } }`
 `POST /mc/capability-approval-requests/{request_id}/approve` → `{ ok, request }` (404 hvis ukendt)
 
 ### Capability-approval-request-objekt (felter appen renderer)
@@ -164,7 +164,7 @@ App (branch codex/jarvis-mobile-companion-v1, apps/mobile/src):
 **Filer:** `core/services/push_dispatcher.py`, `core/tools/workspace_capabilities.py`
 **Interfaces:** `push_dispatcher.on_approval_requested(user_id, *, request_id, run_id, capability_name, preview)` → dispatcher data-only push med `kind: "approval_requested"` (samme mønster som `_dispatch_run_done`: data-only, ingen title — notifee tap-nav bevares). Hook i `_persist_capability_approval_request` efter `conn.commit()`: læs `scheduled_for_user_id` fra den indsatte række (findes i INSERT), kald `on_approval_requested` guarded i try/except (push må aldrig kunne vælte persist).
 
-- [ ] 1. Tilføj `on_approval_requested()` i push_dispatcher.py (kind `approval_requested`, preview = `proposal_reason`/`proposal_content_summary` ≤160 tegn; modtager = scheduled_for_user_id)
+- [ ] 1. Tilføj `on_approval_requested()` i push_dispatcher.py (kind `approval_requested`, preview = `proposal_reason`/`proposal_content_summary` ≤160 tegn; modtager = scheduled_for_user_id, fallback `_owner_of_run(run_id)` når tom/None — ellers får autonome B-runs uden workspace-kontekst ingen push)
 - [ ] 2. Hook i `_persist_capability_approval_request` efter commit
 - [ ] 3. Test: enhedstest der mock'er `_fcm_send`, verificerer data-only payload + kind; test at hook-fejl ikke bryder persist (try/except)
 - [ ] 4. Kør core-tests (pytest apps/tests + core/tests, relevant udsnit)

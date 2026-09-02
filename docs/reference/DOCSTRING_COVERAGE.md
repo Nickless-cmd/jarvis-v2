@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6557/13165 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6568/13184 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6557/13165 functions/methods documented (49%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 579 | 765 | 75% |
+| `apps.api.jarvis_api.routes` | 582 | 768 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,7 +24,7 @@ Generated from source. 6557/13165 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 553 | 1030 | 53% |
-| `core.services` | 4357 | 9146 | 47% |
+| `core.services` | 4365 | 9162 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,9 +40,9 @@ Generated from source. 6557/13165 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1882)
+## Undocumented public functions (1883)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L142)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L143)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -783,6 +783,7 @@ Generated from source. 6557/13165 functions/methods documented (49%). The list b
 - `core/services/collective_pulse_daemon.py` :: `run_pulse` (L192)
 - `core/services/collective_pulse_daemon.py` :: `tick` (L233)
 - `core/services/commit_attribution.py` :: `CommitAttribution.as_trailers` (L46)
+- `core/services/companion_initiative.py` :: `Offer.as_dict` (L49)
 - `core/services/compass_engine.py` :: `build_compass_surface` (L65)
 - `core/services/completion_satisfaction.py` :: `build_completion_satisfaction_surface` (L45)
 - `core/services/completion_satisfaction.py` :: `detect_completion_satisfaction` (L8)

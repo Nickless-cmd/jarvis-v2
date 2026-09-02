@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_self_state_summary.py`
+_Visible-chat self-state summary — let Jarvis answer questions about_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_decision_summary` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L29) |
+| function | `_goals_summary` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L56) |
+| function | `_recent_tick_quality` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L87) |
+| function | `build_self_state_block` | `()` | Return a short prompt section. Empty string when nothing useful to add. | [src](../../../core/services/visible_self_state_summary.py#L112) |
+
+## `core/services/visible_stream_gate.py`
+_In-process real-time gate: is a VISIBLE turn actively assembling/streaming right now?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `visible_streaming` | `()` | True hvis mindst én synlig tur i øjeblikket assembler/streamer i denne proces. | [src](../../../core/services/visible_stream_gate.py#L27) |
+| function | `enter_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L38) |
+| function | `exit_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L44) |
+| function | `visible_stream` | `()` | Context manager: markér at en synlig tur er aktiv i dens levetid. Self-safe — | [src](../../../core/services/visible_stream_gate.py#L52) |
+
 ## `core/services/visible_thinking_trace.py`
 _Hvor længe tænkte han? — målt ét sted, læst ét sted._
 

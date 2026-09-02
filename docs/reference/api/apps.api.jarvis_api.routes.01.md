@@ -514,6 +514,15 @@ _Mission Control endpoints for cheap_lane_balancer telemetry + controls._
 | function | `enable` | `(slot_id)` | Restore a manually-disabled slot to selection eligibility. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L33) |
 | function | `refresh` | `()` | Rebuild slot pool from provider_router.json. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L40) |
 
+## `apps/api/jarvis_api/routes/companion.py`
+_Companion-endpoints — Jarvis' tre ønsker til mobil-appen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `companion_presence` | `()` | Er han vågen — og hvad lavede han sidst? | [src](../../../apps/api/jarvis_api/routes/companion.py#L27) |
+| function | `companion_senses` | `(limit=…)` | Sansernes Arkiv — hvad Jarvis har set i hjemmet. KUN owner. | [src](../../../apps/api/jarvis_api/routes/companion.py#L38) |
+| function | `companion_thoughts` | `(limit=…)` | Jarvis' initiativer — også dem der blev holdt tilbage. | [src](../../../apps/api/jarvis_api/routes/companion.py#L56) |
+
 ## `apps/api/jarvis_api/routes/connectors.py`
 _Connectors-API til jarvis-desk Marketplace (16. jun 2026)._
 
@@ -604,27 +613,4 @@ _Internal loopback endpoint for canonical error reports (Fase 0)._
 | function | `_build_envelope` | `(*, kind, origin_cluster, run_id, detail, scope)` | Byg en ErrorEnvelope fra kind. Foretrækker Fase-0-udvidelsen envelope_from_kind | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L66) |
 | function | `_route_into_central` | `(report)` | Router én canonical fejl ind i eksisterende Central-maskineri. Returnerer | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L80) |
 | function | `report_error` | `(report, request)` | Modtag én canonical fejl og router den ind i Central. Returnerer 202. | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L166) |
-
-## `apps/api/jarvis_api/routes/internal_runtime_surface.py`
-_Internal runtime-surface endpoint — proxy-mål for Centralens self/mind-flader._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_require_loopback` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L25) |
-| function | `_living_executive` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L33) |
-| function | `_self_model` | `()` | LIGHT self-model: kun top-level tællere, ikke den 255KB nestede payload | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L38) |
-| function | `_world_model` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L56) |
-| function | `_inner_life` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L63) |
-| function | `_affect` | `()` | Nervesystemets affektive fordeling — læses i RUNTIME-processen hvor | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L68) |
-| function | `_hardware_body` | `()` | Live hardware-krop (CPU/temp/disk/RAM/GPU) — læses i runtime hvor psutil-samlingen sker. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L75) |
-| function | `_soul` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L82) |
-| function | `_dark_products` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L87) |
-| function | `_light` | `(surface)` | §24.4-reduktion: udled KUN skalarer + længder fra en fuld surface. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L92) |
-| function | `_open_loops` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L118) |
-| function | `_runtime_awareness` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L125) |
-| function | `_runtime_self_knowledge` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L132) |
-| function | `_counterfactual` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L139) |
-| function | `_autonomous_history` | `()` | Jarvis' autonome historie grupperet pr. oprindelse (drøm/råd/arbejde/…): antal | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L146) |
-| function | `_gate_verdicts` | `()` | Persistent verdict-fordeling pr. governet gate (survives restart). DB-backed → | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L154) |
-| function | `get_runtime_surface` | `(name, request)` | Return the named runtime-surface builder's output (raw). Loopback-only, self-safe. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L182) |
 

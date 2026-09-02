@@ -4,8 +4,11 @@ import { SegmentedControl } from '../components/SegmentedControl'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { tokens } from '../theme/tokens'
 import { useAuth } from '../state/AuthContext'
-import { fetchApprovals, fetchRuns, pendingApprovals } from '../lib/mcClient'
+import { approveRequest, approveToolIntent, fetchApprovals, fetchRuns, pendingApprovals } from '../lib/mcClient'
+import { isToolIntent } from '../lib/mcTypes'
 import type { Approval, McRun } from '../lib/mcTypes'
+import { WorkTaskCard, isActive } from '../components/WorkTaskCard'
+import { WorkApprovalCard } from '../components/WorkApprovalCard'
 
 export type WorkTab = 'tasks' | 'approve'
 
@@ -32,6 +35,11 @@ export function WorkScreen({ syncSignal = 0, onPendingCount }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  // Sprunget over = lokal afvisning. Serveren har ingen 'denied'-status for
+  // capability-requests, så kortet forbliver pending server-side. Den
+  // asynkrone model gør at intet run blokerer imens.
+  const [skipped, setSkipped] = useState<string[]>([])
 
   const load = useCallback(async () => {
     if (!config) return
@@ -58,7 +66,32 @@ export function WorkScreen({ syncSignal = 0, onPendingCount }: Props) {
     return () => clearInterval(id)
   }, [])
 
-  const pending = pendingApprovals(approvals)
+  const pending = pendingApprovals(approvals).filter((a) => !skipped.includes(a.request_id))
+
+  const onApprove = useCallback(
+    async (a: Approval) => {
+      if (!config) return
+      setBusyId(a.request_id)
+      try {
+        // De to systemer har hver sit endpoint — diskriminanten afgør hvilket.
+        if (isToolIntent(a)) {
+          await approveToolIntent(config)
+        } else {
+          await approveRequest(config, a.request_id)
+        }
+        await load()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Godkendelse mislykkedes')
+      } finally {
+        setBusyId(null)
+      }
+    },
+    [config, load]
+  )
+
+  const onSkip = useCallback((a: Approval) => {
+    setSkipped((prev) => (prev.includes(a.request_id) ? prev : [...prev, a.request_id]))
+  }, [])
 
   useEffect(() => {
     onPendingCount?.(pending.length)
@@ -94,9 +127,14 @@ export function WorkScreen({ syncSignal = 0, onPendingCount }: Props) {
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
           {tab === 'tasks' ? (
-            <TasksPlaceholder runs={runs} />
+            <TasksView runs={runs} />
           ) : (
-            <ApprovePlaceholder count={pending.length} />
+            <ApproveView
+              approvals={pending}
+              busyId={busyId}
+              onApprove={(a) => void onApprove(a)}
+              onSkip={onSkip}
+            />
           )}
         </ScrollView>
       )}
@@ -104,22 +142,60 @@ export function WorkScreen({ syncSignal = 0, onPendingCount }: Props) {
   )
 }
 
-function TasksPlaceholder({ runs }: { runs: McRun[] }) {
+function TasksView({ runs }: { runs: McRun[] }) {
   if (runs.length === 0) {
     return <Text style={styles.empty}>Intet arbejde lige nu.</Text>
   }
+  const aktive = runs.filter(isActive)
+  const afsluttede = runs.filter((r) => !isActive(r))
   return (
-    <Text style={styles.empty} testID="tasks-count">
-      {runs.length} kørsler
-    </Text>
+    <>
+      {aktive.length > 0 ? (
+        <>
+          <Text style={styles.groupLabel}>Aktive</Text>
+          {aktive.map((r) => (
+            <WorkTaskCard key={r.run_id} run={r} />
+          ))}
+        </>
+      ) : null}
+      {afsluttede.length > 0 ? (
+        <>
+          <Text style={styles.groupLabel}>Afsluttet</Text>
+          {afsluttede.map((r) => (
+            <WorkTaskCard key={r.run_id} run={r} />
+          ))}
+        </>
+      ) : null}
+    </>
   )
 }
 
-function ApprovePlaceholder({ count }: { count: number }) {
+function ApproveView({
+  approvals,
+  busyId,
+  onApprove,
+  onSkip
+}: {
+  approvals: Approval[]
+  busyId: string | null
+  onApprove: (a: Approval) => void
+  onSkip: (a: Approval) => void
+}) {
+  if (approvals.length === 0) {
+    return <Text style={styles.empty}>Ingen ventende godkendelser.</Text>
+  }
   return (
-    <Text style={styles.empty} testID="approve-count">
-      {count === 0 ? 'Ingen ventende godkendelser.' : `${count} venter på dig`}
-    </Text>
+    <>
+      {approvals.map((a) => (
+        <WorkApprovalCard
+          key={a.request_id}
+          approval={a}
+          busy={busyId === a.request_id}
+          onApprove={onApprove}
+          onSkip={onSkip}
+        />
+      ))}
+    </>
   )
 }
 
@@ -128,5 +204,13 @@ const styles = StyleSheet.create({
   subTabs: { paddingHorizontal: tokens.spacing.lg, paddingBottom: tokens.spacing.sm },
   list: { padding: tokens.spacing.lg, gap: tokens.spacing.md },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  groupLabel: {
+    color: tokens.color.fg3,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: tokens.spacing.sm
+  },
   empty: { color: tokens.color.fg2, fontSize: 14, textAlign: 'center', marginTop: tokens.spacing.xl }
 })

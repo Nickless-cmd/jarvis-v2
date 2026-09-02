@@ -25,7 +25,10 @@ it('viser kun en prik når der er noget at vise', async () => {
 
   const med = await render(
     <SegmentedControl
-      options={[options[0], { ...options[1], badge: true }]}
+      options={[
+        { value: 'snak', label: 'Snak' },
+        { value: 'arbejde', label: 'Arbejde', badge: true }
+      ]}
       value="snak"
       onChange={() => {}}
     />

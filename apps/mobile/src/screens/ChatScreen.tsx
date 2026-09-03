@@ -20,6 +20,7 @@ import { CameraCapture, type CapturedPhoto } from './CameraCapture'
 import { AttachMenu } from '../components/AttachMenu'
 import { pickDocuments, pickImagesFromGallery } from '../lib/imagePicker'
 import { describeUploadError } from '../lib/uploadError'
+import { cardSpacerStyle } from '../lib/floatingClearance'
 import { fetchPresence, type Presence } from '../lib/companionClient'
 import { livesInHousehold } from '../lib/household'
 import { SensesScreen } from './SensesScreen'
@@ -408,6 +409,9 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const lastUserMessage = [...sessions.messages].reverse().find((message) => message.role === 'user')
   const canRetry =
     !!lastUserMessage && (stream.state.status === 'interrupted' || stream.state.status === 'error')
+  // Er der overhovedet et kort at gøre plads til? Afgør om afstandsklodsen
+  // nedenfor findes — en klods uden noget at holde afstand fra er bare et hul.
+  const hasCard = canRetry || Boolean(stream.approval && config)
 
   return (
     <View style={styles.root}>
@@ -446,8 +450,17 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             onPress={jumpToBottom}
           />
         ) : null}
-        {/* Kortene skal stå OVER den svævende komponist, ikke bag den. */}
-        <View style={{ marginBottom: composerHeight + liftPadding }} pointerEvents="box-none">
+        {/* Kortene skal stå OVER den svævende komponist, ikke bag den.
+            Men KUN når der faktisk er et kort. Første udgave gav indpakningen
+            bundmargen ubetinget, og så åd en tom kasse pladsen mellem tråden og
+            komponisten — og med tastaturet fremme voksede marginen med
+            tastaturets højde og skubbede hele tråden ud af skærmen.
+            En afstandsklods skal kun findes, når der er noget at holde afstand
+            fra. */}
+        <View
+          style={cardSpacerStyle(hasCard, composerHeight, liftPadding)}
+          pointerEvents="box-none"
+        >
         {canRetry ? (
           stream.streamError && stream.streamError.kind ? (
             // Kanonisk fejl (Canonical Error System, Fase 2): rigt kort med titel,

@@ -43,6 +43,14 @@ function AppBody() {
   const [pendingWork, setPendingWork] = useState(0)
   const [menuSignal, setMenuSignal] = useState(0)
   const [syncing, setSyncing] = useState(false)
+  // Headeren SVÆVER. Alt der ligger i den almindelige kolonne starter derfor
+  // øverst på skærmen — altså BAG bjælken. Tråden må gerne rulle bagved (det er
+  // med vilje), men en opdaterings- eller fejlbesked må ikke gemme sig der:
+  // Bjørn kunne se at der stod noget, men ikke læse eller trykke på det.
+  //
+  // Højden MÅLES, ikke gættes: bjælken har allerede skiftet højde én gang
+  // (44 → 40 dp), og en konstant ville tie stille næste gang den gør det.
+  const [headerHeight, setHeaderHeight] = useState(72)
 
   // FCM: registrér device-token efter login + lyt på data-only i forgrunden.
   // Uden for tidlig return (hooks må ikke være betingede); guardet på authToken.
@@ -106,6 +114,7 @@ function AppBody() {
     <SessionProvider key={JSON.stringify([config.apiBaseUrl, config.authToken])}>
       <StreamProvider>
         {update && !updDismissed ? (
+          <View style={{ marginTop: headerHeight + insets.top }}>
           <UpdateBanner
             manifest={update}
             busy={updBusy}
@@ -113,13 +122,21 @@ function AppBody() {
             onUpdate={onUpdate}
             onDismiss={() => setUpdDismissed(true)}
           />
+          </View>
         ) : null}
         {/* TopBar SVÆVER over indholdet: tråden ruller BAG den, som i
             ChatGPT-appen. En bjælke der skubber indholdet ned stjæler en
             skærmhøjde man hellere vil læse i — og overgangen mellem «under»
             og «bag» er dét der får fladen til at føles rolig frem for
             opdelt. */}
-        <View style={[styles.floatTop, { top: insets.top }]} pointerEvents="box-none">
+        <View
+          style={[styles.floatTop, { top: insets.top }]}
+          pointerEvents="box-none"
+          onLayout={(e) => {
+            const h = Math.round(e.nativeEvent.layout.height)
+            setHeaderHeight((prev) => (Math.abs(prev - h) > 1 ? h : prev))
+          }}
+        >
           <TopBar
             mode={mode}
             onModeChange={setMode}
@@ -150,6 +167,7 @@ function AppBody() {
         <View style={mode === 'arbejde' ? styles.visible : styles.hidden}>
           <ErrorBoundary label="arbejde">
             <WorkScreen
+              topInset={headerHeight + insets.top}
               syncSignal={mode === 'arbejde' ? syncSignal : 0}
               onPendingCount={setPendingWork}
               onSyncDone={() => setSyncing(false)}

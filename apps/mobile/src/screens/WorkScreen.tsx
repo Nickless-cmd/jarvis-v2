@@ -15,6 +15,9 @@ import { fetchThoughts, type Thought } from '../lib/companionClient'
 export type WorkTab = 'tasks' | 'approve'
 
 interface Props {
+  /** Plads til den svævende header. Måles i App og gives videre — et fast tal
+      ville tie stille næste gang bjælken skifter højde. */
+  topInset?: number
   /** Stiger når brugeren trykker sync i TopBar. */
   syncSignal?: number
   /** Løftes til AppBody så Arbejde-segmentet kan bære en prik. */
@@ -31,7 +34,7 @@ const POLL_MS = 4000
  * State bor på serveren — skærmen abonnerer, den ejer intet. Taber telefonen
  * forbindelsen, dør intet.
  */
-export function WorkScreen({ syncSignal = 0, onPendingCount, onSyncDone }: Props) {
+export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSyncDone }: Props) {
   const { config } = useAuth()
   const [tab, setTab] = useState<WorkTab>('tasks')
   const [runs, setRuns] = useState<McRun[]>([])
@@ -114,7 +117,7 @@ export function WorkScreen({ syncSignal = 0, onPendingCount, onSyncDone }: Props
   }, [pending.length, onPendingCount])
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: topInset }]}>
       <View style={styles.subTabs}>
         <SegmentedControl<WorkTab>
           compact

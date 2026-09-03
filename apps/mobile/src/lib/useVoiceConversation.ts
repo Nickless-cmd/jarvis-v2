@@ -136,7 +136,19 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     const full = deps.extractText(deps.blocks)
     if (deps.status === 'working') {
       sawWorkingRef.current = true
-      if (full) lastTextRef.current = full
+      if (full) {
+        // Et svar med værktøjskald kommer i FLERE runder, og hver runde
+        // nulstiller blokkene (`message_start` → `blocks: []`). Teksten
+        // begynder altså forfra, mens min optælling af «hvor langt er jeg
+        // nået» pegede ind i den forrige runde. Resultatet var at intet blev
+        // sagt undervejs — og at slutningen kunne blive læst op fra midten.
+        //
+        // Kendetegnet er at den nye tekst ikke er en forlængelse af den gamle.
+        if (!full.startsWith(lastTextRef.current.slice(0, takenRef.current))) {
+          takenRef.current = 0
+        }
+        lastTextRef.current = full
+      }
       const r = takeSpeakable(lastTextRef.current, takenRef.current, false)
       takenRef.current = r.taken
       if (r.chunks.length) {
@@ -151,7 +163,12 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     if (sawWorkingRef.current) {
       awaitingRef.current = false
       sawWorkingRef.current = false
-      const r = takeSpeakable(full || lastTextRef.current, takenRef.current, true)
+      const final = full || lastTextRef.current
+      // Samme vagt ved afslutningen: peger optællingen ud over den tekst der
+      // faktisk står her, ville resten blive sprunget over i stilhed.
+      const from = final.startsWith(lastTextRef.current.slice(0, takenRef.current))
+        ? takenRef.current : 0
+      const r = takeSpeakable(final, from, true)
       r.chunks.forEach(speech.enqueue)
       takenRef.current = 0
       lastTextRef.current = ''

@@ -24,6 +24,11 @@ export interface VoiceOverlayProps {
   level?: Animated.Value
   /** Hvorfor det gik i stå. Tom = intet at melde. */
   problem?: string
+  /** Hvad han er i gang med lige nu — «kører bash», «læser fil». Et svar med
+   *  værktøjskald har LANG tavshed hvor der intet er at læse op, fordi der
+   *  endnu ikke er skrevet et ord. Uden noget at se på ligner den tavshed en
+   *  fejl; med den ser man at der arbejdes. */
+  workingStep?: string | null
   mode: VoiceMode
   lastProvider: string
   setMode: (m: VoiceMode) => void
@@ -89,6 +94,9 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
             <VoiceOrb state={p.state} level={p.level} size={asking ? 128 : 232} />
           </Pressable>
           <Text style={s.state}>{asking ? 'Jeg venter på dit svar' : LABEL[p.state]}</Text>
+          {!asking && p.workingStep && (p.state === 'thinking' || p.state === 'speaking') ? (
+            <Text style={s.step} numberOfLines={2}>{p.workingStep}</Text>
+          ) : null}
           {p.problem ? <Text style={s.problem}>{p.problem}</Text> : null}
           {asking && p.approval ? (
             <View style={s.approval}>
@@ -127,6 +135,10 @@ const makes = (tokens: Theme) => StyleSheet.create({
   top: { alignItems: 'flex-end', paddingHorizontal: 22 },
   middle: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 26 },
   state: { color: tokens.color.fg2, fontSize: 15, minHeight: 20 },
+  step: {
+    color: tokens.color.fg3, fontSize: 13, marginTop: -14,
+    textAlign: 'center', paddingHorizontal: 40,
+  },
   problem: {
     color: tokens.color.warn, fontSize: 13.5, lineHeight: 20,
     textAlign: 'center', paddingHorizontal: 40,

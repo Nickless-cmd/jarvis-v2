@@ -633,6 +633,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         level={voice.level}
         problem={voice.problem}
         interrupt={voice.interrupt}
+        workingStep={stream.state.workingStep}
         approval={stream.approval && config ? stream.approval : null}
         onApprove={config ? () => void stream.approve(config) : undefined}
         onDeny={config ? () => void stream.deny(config) : undefined}

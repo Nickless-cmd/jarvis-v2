@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6580/13201 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6592/13220 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6580/13201 functions/methods documented (49%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 33 | 35 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 582 | 768 | 75% |
+| `apps.api.jarvis_api.routes` | 586 | 772 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,7 +24,7 @@ Generated from source. 6580/13201 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 554 | 1031 | 53% |
-| `core.services` | 4374 | 9174 | 47% |
+| `core.services` | 4382 | 9189 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6580/13201 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1885)
+## Undocumented public functions (1886)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L143)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -502,6 +502,7 @@ Generated from source. 6580/13201 functions/methods documented (49%). The list b
 - `core/runtime/settings.py` :: `update_visible_execution_settings` (L1042)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
+- `core/services/account_data_controls.py` :: `export_json` (L269)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)
 - `core/services/action_router.py` :: `recent_actions` (L609)
 - `core/services/action_router.py` :: `recent_proactive` (L613)

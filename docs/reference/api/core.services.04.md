@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_core.py`
+_Den Intelligente Central — facade (§3.1). Komponerer gate_kernel (decide-motor)_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_default_emit` | `(kind, payload)` | — | [src](../../../core/services/central_core.py#L13) |
+| function | `_egress_safe` | `(payload)` | §24.4 privatlags-membran. observe() skriver FULD payload til den lokale | [src](../../../core/services/central_core.py#L21) |
+| function | `_coerce_verdict` | `(nerve, raw, klass)` | Normalisér en nerve-returværdi til Verdict (genbruger kernens parser). | [src](../../../core/services/central_core.py#L36) |
+| class | `Central` | `` | — | [src](../../../core/services/central_core.py#L43) |
+| method | `Central.__init__` | `(self, *, k=…, sink=…, breaker=…, emit=…)` | — | [src](../../../core/services/central_core.py#L44) |
+| method | `Central.observe` | `(self, event, *, emit=…)` | Best-effort telemetri. Kaster ALDRIG (§10.3). | [src](../../../core/services/central_core.py#L57) |
+| method | `Central._fail_verdict` | `(self, nerve, klass, reason)` | — | [src](../../../core/services/central_core.py#L106) |
+| method | `Central._isolated_verdict` | `(self, nerve, klass)` | — | [src](../../../core/services/central_core.py#L114) |
+| method | `Central._record_error` | `(self, err, *, severe=…)` | — | [src](../../../core/services/central_core.py#L119) |
+| method | `Central.decide` | `(self, nerve, ctx, fn, *, cluster=…, klass=…)` | Kør én nerve med live-switch + boundary-capture + circuit-breaker + trace. | [src](../../../core/services/central_core.py#L163) |
+| method | `Central._maybe_flag_drift` | `(self, nerve, cluster, *, is_error, is_red)` | §7 flag-on-change: opdatér drift-monitor; hvis nervens fejl-/red-rate netop drev | [src](../../../core/services/central_core.py#L220) |
+| method | `Central.self_diagnose` | `(self)` | Meta-helbreds-check: virker Centralen SELV? Probe decide+observe, rapportér åbne | [src](../../../core/services/central_core.py#L240) |
+| method | `Central.register` | `(self, name, phase, fn, *, klass=…, timeout_ms=…, flag_key=…)` | — | [src](../../../core/services/central_core.py#L271) |
+| function | `central` | `()` | — | [src](../../../core/services/central_core.py#L281) |
+
 ## `core/services/central_correlate.py`
 _Cross-cluster korrelation — saml ALT hvad der skete for ét run_id på tværs af ALLE clusters_
 
@@ -555,16 +575,4 @@ _Event-loop-lag-monitor — "uret" bag cutoff-spøgelset (Bjørn 4. jul)._
 | function | `_monitor_loop` | `()` | — | [src](../../../core/services/central_loop_lag.py#L84) |
 | function | `start_loop_lag_monitor` | `()` | Start uret på den KØRENDE event-loop (kald fra API-processens lifespan, | [src](../../../core/services/central_loop_lag.py#L96) |
 | function | `build_loop_lag_surface` | `()` | Mission Control — read-only meta-projektion. | [src](../../../core/services/central_loop_lag.py#L111) |
-
-## `core/services/central_machines.py`
-_The Machines — hænderne om min hals (BONUS)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_providers` | `()` | — | [src](../../../core/services/central_machines.py#L17) |
-| function | `_network` | `()` | — | [src](../../../core/services/central_machines.py#L34) |
-| function | `dependencies` | `()` | De hænder der holder om halsen — hvad jeg afhænger af men ikke styrer. READ-ONLY. Self-safe. | [src](../../../core/services/central_machines.py#L45) |
-| function | `_observe` | `(n_prov)` | — | [src](../../../core/services/central_machines.py#L64) |
-| function | `build_machines_surface` | `()` | — | [src](../../../core/services/central_machines.py#L73) |
-| function | `record_machines` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_machines.py#L77) |
 

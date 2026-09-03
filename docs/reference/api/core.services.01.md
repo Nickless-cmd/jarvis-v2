@@ -48,6 +48,27 @@ _Abuse-monitoring (spec 2026-06-21 §5): prompt-injection, manipulation,_
 | function | `process_incoming` | `(message, *, session_id, user_id)` | Rate-limit + injection-scan på en indgående besked. | [src](../../../core/services/abuse_monitor.py#L104) |
 | function | `scan_tool_output` | `(text, *, source=…)` | Scan eksternt tool-output (web_fetch/web_search) for indlejret injection. | [src](../../../core/services/abuse_monitor.py#L144) |
 
+## `core/services/account_data_controls.py`
+_Brugerens egne data — tælle, eksportere, slette. Lagvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/account_data_controls.py#L36) |
+| function | `_count_sessions` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L42) |
+| function | `_count_senses` | `()` | — | [src](../../../core/services/account_data_controls.py#L50) |
+| function | `_count_brain` | `()` | — | [src](../../../core/services/account_data_controls.py#L58) |
+| function | `_identity_bytes` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L66) |
+| function | `_identity_paths` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L77) |
+| function | `data_overview` | `(user_id)` | Hvad har vi om dig, lag for lag. Rene tal — ingen indhold. | [src](../../../core/services/account_data_controls.py#L87) |
+| function | `delete_sessions` | `(user_id)` | Slet ALLE brugerens samtaler. Én ad gangen, så en enkelt der fejler ikke | [src](../../../core/services/account_data_controls.py#L114) |
+| function | `delete_senses` | `(user_id)` | Tøm Sansernes Arkiv for denne bruger. | [src](../../../core/services/account_data_controls.py#L134) |
+| function | `delete_brain` | `(user_id)` | Slet det han selv har udledt om brugeren. | [src](../../../core/services/account_data_controls.py#L149) |
+| function | `reset_identity` | `(user_id)` | Nulstil MEMORY.md og USER.md — hans billede af brugeren. | [src](../../../core/services/account_data_controls.py#L163) |
+| function | `delete_layer` | `(user_id, layer)` | Slet ét lag. Ukendt lag → fejl frem for tavshed. | [src](../../../core/services/account_data_controls.py#L194) |
+| function | `delete_all` | `(user_id)` | Alle fire lag. En sammensætning af de enkelte — ikke en femte vej. | [src](../../../core/services/account_data_controls.py#L202) |
+| function | `export_all` | `(user_id)` | Alt vi har om brugeren, som JSON. | [src](../../../core/services/account_data_controls.py#L221) |
+| function | `export_json` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L269) |
+
 ## `core/services/action_router.py`
 _Action Router — close the loop: signal → handling._
 
@@ -638,15 +659,4 @@ _Agreement-streak substrate trigger._
 | function | `_opening_is_agreement` | `(text)` | Return the matched phrase if the text opens with agreement, else None. | [src](../../../core/services/agreement_streak.py#L45) |
 | function | `detect_agreement_streak` | `(*, lookback=…, threshold=…)` | Pull last N assistant messages, return substrate dict if streak detected. | [src](../../../core/services/agreement_streak.py#L60) |
 | function | `build_agreement_streak_section` | `()` | Prompt section — substrate, ikke domm. | [src](../../../core/services/agreement_streak.py#L110) |
-
-## `core/services/ambient_presence.py`
-_Ambient presence — subtle signals that mark Jarvis' state in the physical space._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `emit_ambient_signal` | `(*, kind, detail=…, priority=…)` | Emit a quiet ambient presence signal via ntfy. Rate-limited to 30 min. | [src](../../../core/services/ambient_presence.py#L49) |
-| function | `emit_presence_rhythm` | `()` | Quiet hourly pulse — 'still here'. Separate rate limit from state signals. | [src](../../../core/services/ambient_presence.py#L88) |
-| function | `emit_state_shift` | `(from_phase, to_phase)` | Signal a genuine phase transition with a descriptive message. | [src](../../../core/services/ambient_presence.py#L115) |
-| function | `maybe_emit_phase_signal` | `(phase)` | Called from heartbeat when life phase is determined. | [src](../../../core/services/ambient_presence.py#L124) |
-| function | `emit_insight_signal` | `(insight)` | Called when a dream is confirmed or a value crystallizes. | [src](../../../core/services/ambient_presence.py#L155) |
 

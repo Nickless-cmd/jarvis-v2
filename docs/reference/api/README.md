@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13201 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13220 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -27,29 +27,29 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13201 functions/
 - [`core.plugins`](core.plugins.md)
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_runtime_browser`
 - [`core.runtime.02`](core.runtime.02.md) — `db_runtime_chronicle` … `workspace_paths`
-- [`core.services.01`](core.services.01.md) — `__init__` … `ambient_presence`
-- [`core.services.02`](core.services.02.md) — `ambient_sound_daemon` … `boredom_curiosity_bridge`
-- [`core.services.03`](core.services.03.md) — `boredom_engine` … `central_core`
-- [`core.services.04`](core.services.04.md) — `central_correlate` … `central_machines`
-- [`core.services.05`](core.services.05.md) — `central_matrix_ensemble` … `central_signal_health`
-- [`core.services.06`](core.services.06.md) — `central_soul_digest` … `cognitive_architecture_surface`
-- [`core.services.07`](core.services.07.md) — `cognitive_chronicle` … `counterfactual_engine`
-- [`core.services.08`](core.services.08.md) — `counterfactual_engine_runtime` … `decision_weight`
-- [`core.services.09`](core.services.09.md) — `decisions_journal` … `dream_motif_daemon`
-- [`core.services.10`](core.services.10.md) — `dreaming_session` … `fact_gate`
-- [`core.services.11`](core.services.11.md) — `fcm_gateway` … `ground_truth_registry`
-- [`core.services.12`](core.services.12.md) — `guided_learning_runtime` … `interlanguage_practice`
-- [`core.services.13`](core.services.13.md) — `internal_cadence` … `memory_density`
-- [`core.services.14`](core.services.14.md) — `memory_emotional_context` … `non_visible_fallback`
-- [`core.services.15`](core.services.15.md) — `non_visible_lane_execution` … `pressure_threshold_gate`
-- [`core.services.16`](core.services.16.md) — `priors_feedback` … `push_dispatcher`
-- [`core.services.17`](core.services.17.md) — `pushback` … `runtime_action_executor`
-- [`core.services.18`](core.services.18.md) — `runtime_action_outcome_tracking` … `self_model_signal_tracking`
-- [`core.services.19`](core.services.19.md) — `self_monitor` … `signal_delta_trigger`
-- [`core.services.20`](core.services.20.md) — `signal_network_visualizer` … `temperament_tendency_signal_tracking`
-- [`core.services.21`](core.services.21.md) — `temporal_body` … `unconscious_modulation`
-- [`core.services.22`](core.services.22.md) — `unconscious_temperature_field` … `visible_runs_sse_v2`
-- [`core.services.23`](core.services.23.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
+- [`core.services.01`](core.services.01.md) — `__init__` … `agreement_streak`
+- [`core.services.02`](core.services.02.md) — `ambient_presence` … `body_memory`
+- [`core.services.03`](core.services.03.md) — `boredom_curiosity_bridge` … `central_convene_judge`
+- [`core.services.04`](core.services.04.md) — `central_core` … `central_loop_lag`
+- [`core.services.05`](core.services.05.md) — `central_machines` … `central_shadow`
+- [`core.services.06`](core.services.06.md) — `central_signal_health` … `code_aesthetic_daemon`
+- [`core.services.07`](core.services.07.md) — `cognitive_architecture_surface` … `council_runtime`
+- [`core.services.08`](core.services.08.md) — `counterfactual_engine` … `decision_signals`
+- [`core.services.09`](core.services.09.md) — `decision_weight` … `dream_insight_daemon`
+- [`core.services.10`](core.services.10.md) — `dream_motif_daemon` … `fabricated_tool_result_gate`
+- [`core.services.11`](core.services.11.md) — `fact_gate` … `gratitude_tracker`
+- [`core.services.12`](core.services.12.md) — `ground_truth_registry` … `inner_voice_shadow`
+- [`core.services.13`](core.services.13.md) — `interlanguage_practice` … `memory_decay_daemon`
+- [`core.services.14`](core.services.14.md) — `memory_density` … `network_health`
+- [`core.services.15`](core.services.15.md) — `non_visible_fallback` … `precision_bias`
+- [`core.services.16`](core.services.16.md) — `pressure_threshold_gate` … `provider_self_heal`
+- [`core.services.17`](core.services.17.md) — `push_dispatcher` … `run_follow`
+- [`core.services.18`](core.services.18.md) — `runtime_action_executor` … `self_model_predictive`
+- [`core.services.19`](core.services.19.md) — `self_model_signal_tracking` … `signal_decay_daemon`
+- [`core.services.20`](core.services.20.md) — `signal_delta_trigger` … `telegram_gateway`
+- [`core.services.21`](core.services.21.md) — `temperament_tendency_signal_tracking` … `ui_panel_store`
+- [`core.services.22`](core.services.22.md) — `unconscious_modulation` … `visible_runs_outcomes`
+- [`core.services.23`](core.services.23.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

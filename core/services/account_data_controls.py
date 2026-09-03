@@ -10,6 +10,13 @@ HVORFOR LAGVIS OG IKKE ÉN KNAP. Jarvis' hukommelse er ikke ét sted. Den er fir
     viden      private_brain_records — hvad han har udledt om dig
     identitet  MEMORY.md / USER.md — hvem du ER for ham
 
+KRYPTERING OG ENDELIGHED. Alle workspaces UNDTAGEN ownerens er krypterede
+(§16.2): filerne hedder `MEMORY.md.enc` og læses gennem workspace_crypto. Det
+har to følger her. For det første skal både plaintext og .enc-formen tælles og
+tømmes, ellers rammer sletningen intet for alle andre end Bjørn. For det andet
+er sletning ENDELIG — der ligger ingen læsbar kopi at fortryde fra. Det skal
+brugeren have at vide FØR han trykker, ikke bagefter.
+
 En enkelt «slet alt»-knap ville dække over fire meget forskellige tab. At slette
 sine samtaler er noget andet end at få ham til at glemme hvem man er, og
 brugeren skal kunne vælge det ene uden det andet. Derfor tæller og sletter hvert
@@ -95,13 +102,22 @@ def _count_brain(user_id: str = "") -> int:
 
 
 def _identity_bytes(user_id: str) -> int:
+    """Størrelsen af hans billede af brugeren.
+
+    KRYPTEREDE WORKSPACES. Alle andre end owner har filerne som `MEMORY.md.enc`
+    (JARVISX_ENCRYPT_WORKSPACES=1, verificeret i drift: 30 .enc-filer). Ser man
+    kun efter plaintext, står tallet på nul for ALLE andre end Bjørn — og en
+    sletteknap ved siden af et falsk nul er værre end ingen knap.
+    """
     total = 0
     for path in _identity_paths(user_id):
-        try:
-            if path.exists():
-                total += path.stat().st_size
-        except Exception:
-            continue
+        for candidate in (path, path.with_name(path.name + ".enc")):
+            try:
+                if candidate.exists():
+                    total += candidate.stat().st_size
+                    break
+            except Exception:
+                continue
     return total
 
 
@@ -202,12 +218,20 @@ def reset_identity(user_id: str) -> dict[str, Any]:
     autonomt. Det værn gælder HAM, ikke brugeren: at bede om at blive glemt er
     ikke det samme som at systemet glemmer af sig selv.
     """
+    from core.services.workspace_crypto import write_text_for_path
+
     cleared, failed = [], []
     for path in _identity_paths(user_id):
+        enc = path.with_name(path.name + ".enc")
+        if not path.exists() and not enc.exists():
+            continue
         try:
-            if path.exists():
-                path.write_text("", encoding="utf-8")
-                cleared.append(path.name)
+            # Gennem krypto-laget, ikke direkte til disk: for en member skal den
+            # tomme fil skrives som .enc med hendes egen nøgle. Skrev vi
+            # plaintext, ville vi efterlade DEN KRYPTEREDE fil urørt ved siden af
+            # en tom — altså se ud som om vi havde slettet uden at have gjort det.
+            write_text_for_path(path, "")
+            cleared.append(path.name)
         except Exception:
             failed.append(path.name)
     return {"layer": "identity", "cleared": cleared, "failed": failed,

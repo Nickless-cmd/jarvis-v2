@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6593/13219 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6594/13219 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6593/13219 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 554 | 1031 | 53% |
-| `core.services` | 4384 | 9189 | 47% |
+| `core.services` | 4385 | 9189 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -502,7 +502,7 @@ Generated from source. 6593/13219 functions/methods documented (49%). The list b
 - `core/runtime/settings.py` :: `update_visible_execution_settings` (L1042)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
-- `core/services/account_data_controls.py` :: `export_json` (L311)
+- `core/services/account_data_controls.py` :: `export_json` (L335)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)
 - `core/services/action_router.py` :: `recent_actions` (L609)
 - `core/services/action_router.py` :: `recent_proactive` (L613)

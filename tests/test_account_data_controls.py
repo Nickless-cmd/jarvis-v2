@@ -232,3 +232,15 @@ def test_eksporten_tier_ikke_om_afkortning(monkeypatch):
     out = adc.export_all("u1")
     assert "brain_truncated" in out
     assert out["brain_truncated"]["limit"] > 100_000
+
+
+def test_identitet_taelles_i_tegn_ikke_bytes(ws, monkeypatch):
+    """En tømt .enc-fil fylder stadig 28 bytes (krypteringens overhead), og
+    tallet stod derfor på «56 tegn» EFTER en sletning — som om noget var
+    tilbage. Målt på en testbruger 3. sept."""
+    import core.services.workspace_crypto as wc
+    monkeypatch.setattr(wc, "read_text_for_path", lambda p, **k: "", raising=False)
+    assert adc._identity_bytes("u1") == 0
+
+    monkeypatch.setattr(wc, "read_text_for_path", lambda p, **k: "abcde", raising=False)
+    assert adc._identity_bytes("u1") == 10  # to filer à 5 tegn

@@ -109,15 +109,21 @@ def _identity_bytes(user_id: str) -> int:
     kun efter plaintext, står tallet på nul for ALLE andre end Bjørn — og en
     sletteknap ved siden af et falsk nul er værre end ingen knap.
     """
+    from core.services.workspace_crypto import read_text_for_path
+
     total = 0
     for path in _identity_paths(user_id):
-        for candidate in (path, path.with_name(path.name + ".enc")):
-            try:
-                if candidate.exists():
-                    total += candidate.stat().st_size
-                    break
-            except Exception:
-                continue
+        try:
+            # DEKRYPTERET længde, ikke filstørrelse. En tømt .enc-fil fylder
+            # stadig 28 bytes på disken (krypteringens eget overhead), og
+            # tallet stod derfor på «56 tegn» EFTER en sletning — som om noget
+            # var tilbage. «Tegn» skal betyde tegn i indholdet, ikke bytes på
+            # disken. Målt på en testbruger 3. sept.
+            text = read_text_for_path(path)
+            if text:
+                total += len(text)
+        except Exception:
+            continue
     return total
 
 

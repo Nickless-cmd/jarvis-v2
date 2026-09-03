@@ -92,7 +92,10 @@ const LIGHT_BASE = {
   fg2: '#5A5A5A',
   fg3: '#8A8A8A',
   codeBg: '#F2F2F2',
-  segmentTrack: '#E0E0E0',
+  // Sporet bag segment-kontrollen. Var #E0E0E0 — 26 trin mørkere end grunden,
+  // mens ChatGPTs kun er 12. Da de omkringliggende flader blev hvide, stod det
+  // tilbage som et mørkt FELT i headeren frem for som et spor bag en knap.
+  segmentTrack: '#EFEFEF',
   segmentActive: '#FFFFFF',
   ok: '#2E7D32',
   error: '#C62828',

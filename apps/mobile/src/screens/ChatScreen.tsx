@@ -4,7 +4,6 @@ import notifee, { EventType } from '@notifee/react-native'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
-import { EdgeFade } from '../components/EdgeFade'
 import { Composer } from '../components/Composer'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { VoiceOverlay } from '../components/VoiceOverlay'
@@ -520,14 +519,6 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             Den løftes selv af tastaturet (bottom: liftPadding) frem for at
             containeren skubbes — ellers ville listen blive kortere og
             rulle-positionen hoppe hver gang tastaturet kom frem. */}
-        {/* Samme udtoning som under headeren: tråden skal opløses i fladen
-            frem for at blive skåret over lige dér hvor komposeren begynder. */}
-        <View
-          style={[styles.floatBottom, { bottom: liftPadding + composerHeight }]}
-          pointerEvents="none"
-        >
-          <EdgeFade edge="bottom" height={36} />
-        </View>
         <View
           style={[styles.floatBottom, { bottom: liftPadding }]}
           pointerEvents="box-none"

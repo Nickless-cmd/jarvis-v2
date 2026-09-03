@@ -16,10 +16,12 @@ import type { AccountProfile, Connector } from '../lib/types'
 import { useAuth } from '../state/AuthContext'
 import { useConnectivity } from '../lib/useConnectivity'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { bubble } from '../lib/bubbleModule'
 import { loadBubblePersist, saveBubblePersist } from '../lib/bubbleSetting'
 import { loadPrecision, savePrecision, type LocationPrecision } from '../lib/location'
 import { NotificationsSection } from '../components/NotificationsSection'
+import { AppearanceSection } from '../components/AppearanceSection'
 
 const CONN_LABEL: Record<string, string> = {
   connected: 'Forbundet til Jarvis ✓',
@@ -47,6 +49,8 @@ export function initials(name: string): string {
 }
 
 export function SettingsScreen({ onClose }: { onClose?: () => void }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { config, signOut, signInWithToken } = useAuth()
   const [dataOpen, setDataOpen] = useState(false)
   const connectivity = useConnectivity(config ?? null)
@@ -169,6 +173,8 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
         </View>
 
         {/* Plugins / connectors */}
+        <AppearanceSection />
+
         <Text style={styles.sectionTitle}>Tilsluttede tjenester</Text>
         <View style={styles.card}>
           {connectorsLoading ? (
@@ -320,7 +326,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   identity: { alignItems: 'center', gap: 6, paddingVertical: tokens.spacing.lg },
   avatar: {
     width: 76, height: 76, borderRadius: 38,
@@ -386,7 +392,7 @@ const styles = StyleSheet.create({
     marginBottom: tokens.spacing.xs
   },
   value: { color: tokens.color.fg1 },
-  ok: { color: tokens.color.accent, fontWeight: '700' },
+  ok: { color: tokens.color.accentText, fontWeight: '700' },
   connLine: { marginTop: tokens.spacing.sm, fontSize: 13, fontWeight: '700' },
   connBad: { color: tokens.color.error },
   connWarn: { color: tokens.color.warn },

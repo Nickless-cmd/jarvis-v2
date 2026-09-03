@@ -4,6 +4,7 @@ import { Eye, X } from 'lucide-react-native'
 import { fetchSenses, relativeAge, type SenseItem } from '../lib/companionClient'
 import { useAuth } from '../state/AuthContext'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
  * Sansernes Arkiv — hvad Jarvis har set i hjemmet.
@@ -18,6 +19,8 @@ import { tokens } from '../theme/tokens'
  * og «du må ikke se det» er to forskellige ting, og de skal ikke ligne hinanden.
  */
 export function SensesScreen({ onClose }: { onClose: () => void }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { config } = useAuth()
   const [items, setItems] = useState<SenseItem[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -88,7 +91,7 @@ function whenLabel(iso: string): string {
   return relativeAge(Math.max(0, Math.round((Date.now() - t) / 1000)))
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.color.bg0, paddingTop: 48 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

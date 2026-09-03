@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Animated, Easing, LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native'
 import { ChevronDown, ChevronRight, Code2 } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { summarizeRound, type ToolItem } from '../lib/toolGroup'
 
@@ -21,6 +22,8 @@ interface Props {
  * Bevægelse betyder «i gang». En linje der pulser efter den er færdig, lyver.
  */
 export function InlineToolGroup({ items }: Props) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [open, setOpen] = useState(false)
   const pulse = useRef(new Animated.Value(1)).current
   const reduced = useReducedMotion()
@@ -101,7 +104,7 @@ export function InlineToolGroup({ items }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: { paddingHorizontal: tokens.spacing.lg },
   row: {
     flexDirection: 'row',

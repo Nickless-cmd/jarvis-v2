@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { apiFetch } from '../lib/apiClient'
 import type { ApiConfig } from '../lib/types'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 type Channel = 'auto' | 'mobile' | 'desktop' | 'push' | 'discord' | 'telegram'
 interface Prefs {
@@ -25,6 +26,8 @@ const TYPES: { key: keyof Prefs; label: string }[] = [
 /** Notifikations-routing (spec §6): vælg hvor proaktive notifikationer lander +
  *  quiet hours. Gemmer via /notifications/preferences. */
 export function NotificationsSection({ config }: { config: ApiConfig | null }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [prefs, setPrefs] = useState<Prefs | null>(null)
   const [status, setStatus] = useState('')
 
@@ -98,7 +101,7 @@ export function NotificationsSection({ config }: { config: ApiConfig | null }) {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: { borderTopColor: tokens.color.line, borderTopWidth: 1, paddingTop: tokens.spacing.md, marginTop: tokens.spacing.md },
   heading: { color: tokens.color.fg3, fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
   muted: { color: tokens.color.fg3, fontSize: 12 },
@@ -111,5 +114,5 @@ const styles = StyleSheet.create({
   chipTxtOn: { color: tokens.color.bg0, fontWeight: '700' },
   quiet: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   time: { color: tokens.color.fg1, backgroundColor: tokens.color.bg1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, minWidth: 64, textAlign: 'center' },
-  msg: { color: tokens.color.accent, marginTop: 6, fontSize: 12 },
+  msg: { color: tokens.color.accentText, marginTop: 6, fontSize: 12 },
 })

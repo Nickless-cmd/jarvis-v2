@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 // Oversæt stream-status til en farvet prik + dansk etiket (labeled status,
 // som "Dispatch ● Idle" i Claude-appen).
@@ -13,6 +14,8 @@ const STATUS: Record<string, { dot: string; label: string }> = {
 }
 
 export function ConnectionPill({ label }: { label: string }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const s = STATUS[label] ?? { dot: tokens.color.fg3, label }
   return (
     <View style={styles.root}>
@@ -22,7 +25,7 @@ export function ConnectionPill({ label }: { label: string }) {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     flexDirection: 'row',
     alignItems: 'center',

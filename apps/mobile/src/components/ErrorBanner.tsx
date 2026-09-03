@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 export function ErrorBanner({
   title,
@@ -15,6 +16,8 @@ export function ErrorBanner({
   /** Luk-knap (×). Når sat, vises en virkende dismiss. */
   onDismiss?: () => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   return (
     <View style={styles.root}>
       <View style={styles.copy}>
@@ -35,7 +38,7 @@ export function ErrorBanner({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -67,7 +70,7 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   actionText: {
-    color: tokens.color.accent,
+    color: tokens.color.accentText,
     fontWeight: '700'
   },
   dismiss: {

@@ -10,6 +10,7 @@ import {
 } from '../lib/accountData'
 import { useAuth } from '../state/AuthContext'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
  * Datastyring — hvad Jarvis har om dig, og hvordan du får det væk.
@@ -26,6 +27,8 @@ import { tokens } from '../theme/tokens'
  * at gætte hvad de mister.
  */
 export function DataControlsScreen({ onClose }: { onClose: () => void }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { config } = useAuth()
   const [layers, setLayers] = useState<DataLayer[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -187,7 +190,7 @@ export function DataControlsScreen({ onClose }: { onClose: () => void }) {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.color.bg0, paddingTop: 48 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

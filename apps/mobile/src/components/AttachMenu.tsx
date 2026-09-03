@@ -16,6 +16,7 @@ import {
 import * as MediaLibrary from 'expo-media-library/legacy'
 import { Camera, Check, Images, Upload, X } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import type { CapturedPhoto } from '../screens/CameraCapture'
 
 /**
@@ -51,6 +52,8 @@ export function AttachMenu({
   onPick?: (photos: CapturedPhoto[]) => void
   onClose: () => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [assets, setAssets] = useState<MediaLibrary.Asset[]>([])
   // Flere billeder ad gangen. Med kun ét valg skulle man åbne fladen igen for
   // hvert billede, og rækkefølgen blev umulig at styre.
@@ -242,7 +245,7 @@ export function AttachMenu({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.color.bg0, paddingTop: 48 },
   header: {
     flexDirection: 'row',

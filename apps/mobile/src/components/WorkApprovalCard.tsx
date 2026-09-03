@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Terminal } from 'lucide-react-native'
 import { formatRelativeTime } from '../lib/relativeDate'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { approvalDetail, approvalReason, approvalTag, approvalTitle, isActionable, isToolIntent } from '../lib/mcTypes'
 import type { Approval } from '../lib/mcTypes'
 
@@ -43,6 +44,8 @@ function alwaysRule(a: Approval): string | null {
  *      som en pille inde i det.
  */
 export function WorkApprovalCard({ approval, busy, onApprove, onAlways, onSkip, now }: Props) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const actionable = isActionable(approval)
   const reason = approvalReason(approval)
   const detail = approvalDetail(approval)
@@ -138,7 +141,7 @@ export function WorkApprovalCard({ approval, busy, onApprove, onAlways, onSkip, 
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: { gap: tokens.spacing.sm },
   tagRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm },
   tagIcon: {

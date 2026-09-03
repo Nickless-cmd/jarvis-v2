@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useTheme, type Theme } from '../theme/ThemeContext'
 
 export interface SegmentOption<T extends string> {
   value: T
@@ -25,7 +26,8 @@ interface Props<T extends string> {
  * der driver fra hinanden.
  */
 export function SegmentedControl<T extends string>({ options, value, onChange, compact }: Props<T>) {
-  const styles = useMemo(() => makeStyles(Boolean(compact)), [compact])
+  const t = useTheme()
+  const styles = useMemo(() => makeStyles(Boolean(compact), t), [compact, t])
   return (
     <View style={styles.container} accessibilityRole="tablist">
       {options.map((opt) => {
@@ -52,7 +54,11 @@ export function SegmentedControl<T extends string>({ options, value, onChange, c
   )
 }
 
-const makeStyles = (compact: boolean) =>
+// Tager temaet ind, ligesom alle andre ark. Den havde ALLEREDE en fabrik
+// (for `compact`), og blev derfor sprunget over af den maskinelle
+// tema-migrering — den ledte efter `const X = StyleSheet.create(`.
+// Resultatet var en segment-kontrol der blev mørk i lyst tema.
+const makeStyles = (compact: boolean, tokens: Theme) =>
   StyleSheet.create({
     container: {
       flexDirection: 'row',

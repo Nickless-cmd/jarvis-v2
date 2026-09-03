@@ -3,6 +3,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import { describePresence, type Presence } from '../lib/companionClient'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
  * Livstegn — «han er her», også mellem svar.
@@ -26,6 +27,9 @@ export function PresenceDot({ presence, onPress }: {
   presence: Presence
   onPress?: () => void
 }) {
+  const tokens = useTheme()
+  const STATE_STYLE = useStyles(makeSTATE_STYLE)
+  const styles = useStyles(makestyles)
   const pulse = useRef(new Animated.Value(0)).current
   const reduced = useReducedMotion()
   const working = presence.state === 'working'
@@ -69,7 +73,7 @@ export function PresenceDot({ presence, onPress }: {
   )
 }
 
-const STATE_STYLE = StyleSheet.create({
+const makeSTATE_STYLE = (tokens: Theme) => StyleSheet.create({
   working: { backgroundColor: tokens.color.accent, borderColor: tokens.color.accent },
   awake: { backgroundColor: tokens.color.accent, borderColor: tokens.color.accent },
   quiet: { backgroundColor: tokens.color.fg3, borderColor: tokens.color.fg3 },
@@ -77,7 +81,7 @@ const STATE_STYLE = StyleSheet.create({
   unknown: { backgroundColor: 'transparent', borderColor: tokens.color.fg3 }
 })
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   dot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1.5 },
   label: { color: tokens.color.fg3, fontSize: 12.5, flexShrink: 1 }

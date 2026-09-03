@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { formatRelativeTime } from '../lib/relativeDate'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import type { McRun } from '../lib/mcTypes'
 
 /**
@@ -25,11 +26,19 @@ const SOURCE_LABEL: Record<RunSource, string> = {
   agent: 'Agent'
 }
 
-export function statusColor(status: string): string {
-  if (status === 'running' || status === 'active') return tokens.color.accent
-  if (status === 'failed' || status === 'error') return tokens.color.error
-  if (status === 'cancelled' || status === 'interrupted') return tokens.color.warn
-  return tokens.color.fg3
+/**
+ * Statusfarven TAGER temaet frem for at læse den statiske palet.
+ *
+ * En hjælpefunktion kan ikke bruge hooks — den kaldes også uden for en render.
+ * Læste den i stedet den importerede `tokens`, ville status-prikkerne blive
+ * siddende i mørkt tema med den oprindelige grønne, uanset hvad brugeren har
+ * valgt. Så temaet kommer ind ad døren i stedet.
+ */
+export function statusColor(status: string, t: Theme = tokens as unknown as Theme): string {
+  if (status === 'running' || status === 'active') return t.color.accent
+  if (status === 'failed' || status === 'error') return t.color.error
+  if (status === 'cancelled' || status === 'interrupted') return t.color.warn
+  return t.color.fg3
 }
 
 export function isActive(run: McRun): boolean {
@@ -48,13 +57,15 @@ interface Props {
  * end ingen knap. Kortet er et vindue, ikke en fjernbetjening (endnu).
  */
 export function WorkTaskCard({ run, now }: Props) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const source = sourceOf(run)
   const model = (run.model ?? '').trim()
   const preview = (run.text_preview ?? '').trim()
   return (
     <View style={styles.card} accessibilityRole="summary" accessibilityLabel={`Kørsel ${run.status}`}>
       <View style={styles.head}>
-        <View style={[styles.dot, { backgroundColor: statusColor(run.status) }]} testID="status-dot" />
+        <View style={[styles.dot, { backgroundColor: statusColor(run.status, tokens) }]} testID="status-dot" />
         <Text style={styles.tag}>{SOURCE_LABEL[source]}</Text>
         {model ? (
           <Text style={styles.model} numberOfLines={1}>
@@ -72,7 +83,7 @@ export function WorkTaskCard({ run, now }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   card: {
     backgroundColor: tokens.color.bg1,
     borderRadius: tokens.radius.lg,

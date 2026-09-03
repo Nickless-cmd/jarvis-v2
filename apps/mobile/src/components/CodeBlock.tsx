@@ -4,6 +4,7 @@ import { Check, Copy } from 'lucide-react-native'
 import * as Clipboard from 'expo-clipboard'
 import { highlight, type SpanKind } from '../lib/highlight'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
 
@@ -21,6 +22,8 @@ const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'mon
  * skubbe hele tråden sidelæns.
  */
 export function CodeBlock({ code, language }: { code: string; language?: string }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [copied, setCopied] = useState(false)
   const body = String(code ?? '').replace(/\n$/, '')
   // Timeren ryddes ved unmount: bliver blokken fjernet mens kvitteringen står,
@@ -73,7 +76,7 @@ const COLOR: Record<SpanKind, { color: string }> = {
   kw: { color: '#79C0FF' }
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: {
     backgroundColor: tokens.color.codeBg,
     borderRadius: tokens.radius.lg,

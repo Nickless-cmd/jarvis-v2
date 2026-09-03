@@ -26,8 +26,12 @@ import { AuthProvider, useAuth } from './state/AuthContext'
 import { SessionProvider } from './state/SessionContext'
 import { StreamProvider } from './state/StreamContext'
 import { tokens } from './theme/tokens'
+import { ThemeProvider } from './theme/ThemeContext'
+import { useStyles, useTheme, type Theme } from './theme/ThemeContext'
 
 function AppBody() {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { config, loading } = useAuth()
   // En absolut placeret child slipper uden om SafeAreaViews polstring —
   // top: 0 ville lægge bjælken op i statusbaren. Insettet skal med.
@@ -179,22 +183,41 @@ function AppBody() {
   )
 }
 
+/**
+ * Fladen under alt. Skilt ud fra App, fordi den skal LÆSE temaet — og en
+ * provider kan ikke bruge sin egen context i samme komponent.
+ *
+ * Statusbjælken vender med: lyse ikoner på mørk flade, mørke på lys. Uden det
+ * ville uret og batteriet forsvinde i lyst tema.
+ */
+function Shell() {
+  const t = useTheme()
+  const styles = useStyles(makestyles)
+  return (
+    <SafeAreaView style={[styles.root, { backgroundColor: t.color.bg0 }]}>
+      <StatusBar barStyle={t.scheme === 'light' ? 'dark-content' : 'light-content'} />
+      <AppBody />
+    </SafeAreaView>
+  )
+}
+
 export default function App() {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   return (
     <ErrorBoundary label="app">
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-        <AuthProvider>
-          <SafeAreaView style={styles.root}>
-            <StatusBar barStyle="light-content" />
-            <AppBody />
-          </SafeAreaView>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <Shell />
+          </AuthProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: tokens.color.bg0

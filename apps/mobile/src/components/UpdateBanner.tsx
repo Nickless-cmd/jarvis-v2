@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import type { UpdateManifest } from '../lib/appUpdate'
 
 /** Banner i toppen når en opdatering er fundet. Viser version + noter +
@@ -17,6 +18,8 @@ export function UpdateBanner({
   onUpdate: () => void
   onDismiss: () => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   return (
     <View style={styles.root}>
       <View style={styles.textCol}>
@@ -58,7 +61,7 @@ export function UpdateBanner({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     flexDirection: 'row',
     alignItems: 'center',

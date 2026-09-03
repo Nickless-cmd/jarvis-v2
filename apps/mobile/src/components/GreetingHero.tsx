@@ -4,6 +4,7 @@ import { greetingFor } from '../lib/greeting'
 import { PresenceDot } from './PresenceDot'
 import type { Presence } from '../lib/companionClient'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
  * Tom-session-skærm: tids-bevidst greeting + presence-ring tonet efter
@@ -16,6 +17,8 @@ export function GreetingHero({ userName, presence }: {
       er her» — den tomme skærm er dér man ellers møder et input-felt der venter. */
   presence?: Presence
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   // Random men stabil pr. mount (varierer mellem opstart — "random greeting").
   const g = useMemo(() => greetingFor(new Date(), Math.floor(Math.random() * 1000)), [])
 
@@ -37,7 +40,7 @@ export function GreetingHero({ userName, presence }: {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   presence: { marginTop: tokens.spacing.sm },
   root: {
     flex: 1,

@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react-native'
 import { useAuth } from '../state/AuthContext'
 import type { PersistedBlock } from '../lib/persistedBlocks'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
  * Vedhæftninger på en brugerbesked — tegnet OVER boblen, ikke inde i den.
@@ -18,6 +19,8 @@ import { tokens } from '../theme/tokens'
  * hver gang.
  */
 export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { config } = useAuth()
   if (!items.length) return null
 
@@ -76,7 +79,7 @@ export function formatSize(bytes: number): string {
   return `${text} ${units[i]}`
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: {
     alignSelf: 'flex-end',
     alignItems: 'flex-end',

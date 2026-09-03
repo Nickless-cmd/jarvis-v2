@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 export interface CapturedPhoto {
   uri: string
@@ -21,6 +22,8 @@ export function CameraCapture({
   onCapture: (photo: CapturedPhoto) => void | Promise<void>
   onClose: () => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [permission, requestPermission] = useCameraPermissions()
   const [busy, setBusy] = useState(false)
   const cam = useRef<CameraView>(null)
@@ -75,7 +78,7 @@ export function CameraCapture({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tokens.spacing.xl, backgroundColor: tokens.color.bg0, gap: tokens.spacing.md },
   title: { color: tokens.color.fg1, fontSize: 22, fontWeight: '700' },

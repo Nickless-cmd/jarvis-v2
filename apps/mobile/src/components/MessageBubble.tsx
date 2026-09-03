@@ -8,6 +8,7 @@ import { Animated, Platform, Pressable, Share, StyleSheet, Text, View } from 're
 import { CodeBlock } from './CodeBlock'
 import type { ChatMessage } from '../lib/types'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 // breaks:true → enkelt \n bliver et linjeskift (Jarvis emitterer inkonsistente
 // newlines; uden dette kollapser markdown dem til mellemrum = én lang smøre).
@@ -34,6 +35,9 @@ export function MessageBubble({
    */
   hideActions?: boolean
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
+  const markdownStyles = useStyles(makemarkdownStyles)
   const isUser = message.role === 'user'
   const [speaking, setSpeaking] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -187,7 +191,7 @@ export function MessageBubble({
 /** Handlingsrækkens ikoner. Bjørn bad om et nummer mindre end de målte 19. */
 const ICON = 17
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     marginHorizontal: tokens.spacing.lg,
     marginVertical: tokens.spacing.sm,
@@ -225,24 +229,24 @@ const styles = StyleSheet.create({
 
 // Fuld mørk-tema markdown-styling. Uden dette defaulter kode-blokke til lys
 // baggrund (= hvid boks med næsten-hvid tekst) og afsnit klistrer sammen.
-const markdownStyles = StyleSheet.create({
+const makemarkdownStyles = (tokens: Theme) => StyleSheet.create({
   body: { color: tokens.color.fg1, fontSize: 16.5, lineHeight: 26 },
   paragraph: { marginTop: 0, marginBottom: tokens.spacing.sm },
   text: { color: tokens.color.fg1 },
   strong: { color: tokens.color.fg1, fontWeight: '700' },
   em: { fontStyle: 'italic' },
-  link: { color: tokens.color.accent, textDecorationLine: 'underline' },
+  link: { color: tokens.color.accentText, textDecorationLine: 'underline' },
   heading1: { color: tokens.color.fg1, fontSize: 22, fontWeight: '700', marginTop: tokens.spacing.sm, marginBottom: tokens.spacing.xs },
   heading2: { color: tokens.color.fg1, fontSize: 19, fontWeight: '700', marginTop: tokens.spacing.sm, marginBottom: tokens.spacing.xs },
   heading3: { color: tokens.color.fg1, fontSize: 17, fontWeight: '700', marginTop: tokens.spacing.sm, marginBottom: tokens.spacing.xs },
   bullet_list: { marginBottom: tokens.spacing.sm },
   ordered_list: { marginBottom: tokens.spacing.sm },
   list_item: { marginBottom: tokens.spacing.xs },
-  bullet_list_icon: { color: tokens.color.accent },
-  ordered_list_icon: { color: tokens.color.accent },
+  bullet_list_icon: { color: tokens.color.accentText },
+  ordered_list_icon: { color: tokens.color.accentText },
   code_inline: {
     backgroundColor: tokens.color.codeBg,
-    color: tokens.color.accent,
+    color: tokens.color.accentText,
     fontFamily: MONO,
     fontSize: 14,
     borderRadius: tokens.radius.sm,

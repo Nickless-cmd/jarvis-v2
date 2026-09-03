@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
 import { parseToolMessage, toolPreview } from '../lib/toolMessage'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 // Lille glyf pr. værktøjstype — holder det genkendeligt uden ikon-bibliotek.
 function glyphFor(tool: string): string {
@@ -36,6 +37,8 @@ export function ToolResultCard({
   body?: string
   running?: boolean
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [open, setOpen] = useState(false)
   const parsed = content != null ? parseToolMessage(content) : null
   const tool = toolName ?? parsed?.tool ?? 'tool'
@@ -77,7 +80,7 @@ export function ToolResultCard({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: {
     marginHorizontal: tokens.spacing.md,
     marginVertical: tokens.spacing.xs,
@@ -107,7 +110,7 @@ const styles = StyleSheet.create({
   },
   glyph: { fontSize: 14 },
   tool: {
-    color: tokens.color.accent,
+    color: tokens.color.accentText,
     fontWeight: '700',
     fontSize: 13,
     flex: 1

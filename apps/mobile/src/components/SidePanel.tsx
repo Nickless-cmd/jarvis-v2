@@ -6,6 +6,7 @@ import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { TeamsPanel } from './TeamsPanel'
 
 const PANEL_WIDTH = Math.min(360, Math.round(Dimensions.get('window').width * 0.86))
@@ -50,6 +51,8 @@ export function SidePanel({
   bubbleSupported?: boolean
   config?: import('../lib/types').ApiConfig | null
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const insets = useSafeAreaInsets()
   const translateX = useRef(new Animated.Value(-PANEL_WIDTH)).current
   const [mounted, setMounted] = useState(open)
@@ -217,7 +220,7 @@ export function SidePanel({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   overlay: { flex: 1, flexDirection: 'row' },
   // Målt i ChatGPT-appen (R4 + live 2026-09-02): panelet er SORT som resten af
   // appen, ikke en lysere flade, og der er hverken kant mod chatten eller

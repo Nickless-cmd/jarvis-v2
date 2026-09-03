@@ -4,6 +4,7 @@ import { googleLoginResult, googleLoginStart, type GoogleLoginResult } from '../
 import { DEFAULT_API_BASE_URL } from '../lib/types'
 import { useAuth } from '../state/AuthContext'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { QrScanScreen } from './QrScanScreen'
 
 const GOOGLE_LOGIN_APP_ID = 'jarvis-mobile'
@@ -15,6 +16,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 export function LoginScreen() {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { signInWithToken } = useAuth()
   const [apiBaseUrl, setApiBaseUrl] = useState(DEFAULT_API_BASE_URL)
   const [token, setToken] = useState('')
@@ -136,7 +139,7 @@ export function LoginScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     flex: 1,
     justifyContent: 'center',

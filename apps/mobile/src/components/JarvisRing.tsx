@@ -1,7 +1,10 @@
 import { StyleSheet, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 export function JarvisRing() {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   return (
     <View style={styles.outer}>
       <View style={styles.inner} />
@@ -9,7 +12,7 @@ export function JarvisRing() {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   outer: {
     width: 28,
     height: 28,

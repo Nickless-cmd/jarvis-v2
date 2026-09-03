@@ -4,6 +4,7 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'ex
 import { redeemPairingCode } from '../lib/apiClient'
 import { parsePairingPayload } from '../lib/pairing'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
  * QR-pairing-scanner. Scanner QR'en fra desktop-appen ({url, code}), indløser
@@ -18,6 +19,8 @@ export function QrScanScreen({
   onPaired: (url: string, token: string) => void | Promise<void>
   onClose: () => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [permission, requestPermission] = useCameraPermissions()
   const [status, setStatus] = useState('Ret kameraet mod QR-koden i Jarvis-desk')
   const [busy, setBusy] = useState(false)
@@ -93,7 +96,7 @@ export function QrScanScreen({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tokens.spacing.xl, backgroundColor: tokens.color.bg0, gap: tokens.spacing.md },
   title: { color: tokens.color.fg1, fontSize: 22, fontWeight: '700' },

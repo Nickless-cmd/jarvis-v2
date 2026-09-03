@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { ChevronDown, ChevronRight } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
  * «Tænkte i 14 s ›» — tænkningen forsvinder ikke, den folder sig sammen.
@@ -16,6 +17,8 @@ import { tokens } from '../theme/tokens'
  * «Tænkte» — så ville vi påstå noget vi ikke har målt.
  */
 export function ThinkingSummary({ seconds, text }: { seconds?: number; text?: string }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [open, setOpen] = useState(false)
   const hasText = !!(text ?? '').trim()
 
@@ -56,7 +59,7 @@ function formatSeconds(s: number): string {
   return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace('.', ',')
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: { marginBottom: tokens.spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   label: { color: tokens.color.fg3, fontSize: 13.5 },

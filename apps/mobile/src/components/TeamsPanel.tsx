@@ -7,11 +7,14 @@ import {
   type Team, type TeamSession, type PendingInvite,
 } from '../lib/teamsApi'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /** Teams i mobil-drawer'en: list teams + delte sessioner, opret team/session,
  *  acceptér invite-kode. En team-session åbnes via onSelectSession (samme som en
  *  almindelig session — synlig for alle medlemmer via scoping-regel B). */
 export function TeamsPanel({ config, onSelectSession }: { config: ApiConfig | null; onSelectSession: (sessionId: string) => void }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [teams, setTeams] = useState<Team[]>([])
   const [openId, setOpenId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Record<string, TeamSession[]>>({})
@@ -119,7 +122,7 @@ export function TeamsPanel({ config, onSelectSession }: { config: ApiConfig | nu
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: { borderTopColor: tokens.color.line, borderTopWidth: 1, paddingTop: tokens.spacing.md, marginTop: tokens.spacing.md },
   heading: { color: tokens.color.fg3, fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
   muted: { color: tokens.color.fg3, fontSize: 13, paddingVertical: 4 },
@@ -130,10 +133,10 @@ const styles = StyleSheet.create({
   sessRow: { paddingVertical: 6 },
   sess: { color: tokens.color.fg1 },
   mini: { backgroundColor: tokens.color.bg1, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, alignSelf: 'flex-start' },
-  miniTxt: { color: tokens.color.accent, fontSize: 13 },
+  miniTxt: { color: tokens.color.accentText, fontSize: 13 },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   input: { flex: 1, color: tokens.color.fg1, backgroundColor: tokens.color.bg1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
-  msg: { color: tokens.color.accent, marginTop: 6, fontSize: 12 },
+  msg: { color: tokens.color.accentText, marginTop: 6, fontSize: 12 },
   inviteCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     gap: 8, paddingVertical: 8, paddingHorizontal: 10, marginVertical: 4,
     borderWidth: 1, borderColor: tokens.color.accent, borderRadius: 8 },

@@ -34,6 +34,7 @@ import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 // Rolle-bevidst model-valg (spejler desktop-composeren):
 // member er LÅST til Standard/Pro (= ollama deepseek flash/pro, mappes
@@ -54,6 +55,8 @@ interface ChatScreenProps {
 }
 
 export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: ChatScreenProps) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { config } = useAuth()
   const sessions = useSessions()
   const stream = useStream()
@@ -636,7 +639,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: tokens.color.bg0
@@ -656,7 +659,7 @@ const styles = StyleSheet.create({
     // Samme halvgennemsigtige flade som TopBar. Uden den lækkede tråden ud
     // NEDEN UNDER komponisten i skærmens sidste par millimeter — teksten
     // rullede korrekt bagved, men fortsatte forbi pillens underkant.
-    backgroundColor: 'rgba(0,0,0,0.72)'
+    backgroundColor: tokens.color.scrim
   },
   connBanner: {
     paddingVertical: tokens.spacing.xs,

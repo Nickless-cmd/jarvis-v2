@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { Lightbulb } from 'lucide-react-native'
 import { relativeAge, type Thought } from '../lib/companionClient'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
  * Jarvis' tanker — dem han delte uden at blive spurgt.
@@ -14,6 +15,8 @@ import { tokens } from '../theme/tokens'
  * uden dem kan man ikke se om grænserne er sat rigtigt — kun at der er stille.
  */
 export function ThoughtsList({ items }: { items: Thought[] }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   if (!items.length) {
     return (
       <View style={styles.empty}>
@@ -48,7 +51,7 @@ function whenLabel(iso: string): string {
   return relativeAge(Math.max(0, Math.round((Date.now() - t) / 1000)))
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   card: {
     backgroundColor: tokens.color.bg2,
     borderRadius: tokens.radius.lg,

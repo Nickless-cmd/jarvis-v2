@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 export interface ApprovalViewModel {
   approvalId: string
@@ -30,6 +31,8 @@ export function ApprovalCard({
   onApprove: () => void
   onDeny: () => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [expanded, setExpanded] = useState(false)
   const detail = approval.detail ?? ''
   // Kun tilbyd udvidelse når der faktisk er noget skjult — ellers er knappen støj.
@@ -79,7 +82,7 @@ export function ApprovalCard({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     margin: tokens.spacing.md,
     padding: tokens.spacing.md,
@@ -111,7 +114,7 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spacing.xs
   },
   expandText: {
-    color: tokens.color.accent,
+    color: tokens.color.accentText,
     fontWeight: '600'
   },
   actions: {

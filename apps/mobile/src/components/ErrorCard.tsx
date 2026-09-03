@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import type { StreamErrorInfo, StreamErrorRecoverable } from '../state/StreamContext'
 
 /** "Hvad gjorde systemet" — udledt af recoverable. Dansk, ærlig. */
@@ -65,6 +66,8 @@ export function ErrorCard({
   onRetry?: () => void
   onDismiss: () => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const action = systemActionText(error.recoverable)
   const showRetry = error.retryable && !!onRetry
   const accent = SEVERITY_COLOR[error.severity]
@@ -91,7 +94,7 @@ export function ErrorCard({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     paddingHorizontal: tokens.spacing.md,
     paddingVertical: tokens.spacing.sm,
@@ -141,7 +144,7 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   retryText: {
-    color: tokens.color.accent,
+    color: tokens.color.accentText,
     fontWeight: '700'
   },
   dismiss: {

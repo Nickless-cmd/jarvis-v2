@@ -8,10 +8,13 @@ import { AuthProvider, useAuth } from '../state/AuthContext'
 import { SessionProvider, useSessions } from '../state/SessionContext'
 import { StreamProvider, useStream } from '../state/StreamContext'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /** Kompakt 1-session-chat. Henter sessionen, viser beskeder + composer,
  *  sender via samme stream som hovedappen (server-autoritativ session). */
 function BubbleChat({ sessionId, title }: { sessionId: string; title: string }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { config } = useAuth()
   const sessions = useSessions()
   const stream = useStream()
@@ -45,6 +48,8 @@ function BubbleChat({ sessionId, title }: { sessionId: string; title: string }) 
 }
 
 function BubbleBody({ sessionId, title }: { sessionId: string; title: string }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { config, loading } = useAuth()
   if (loading) {
     return (
@@ -72,6 +77,8 @@ function BubbleBody({ sessionId, title }: { sessionId: string; title: string }) 
 /** Root-komponent registreret som "JarvisBubble". Modtager initialProps
  *  {sessionId, title} fra BubbleActivity. */
 export function BubbleChatRoot(props: { sessionId?: string; title?: string }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <AuthProvider>
@@ -86,7 +93,7 @@ export function BubbleChatRoot(props: { sessionId?: string; title?: string }) {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.color.bg0 },
   chat: { flex: 1 },
   title: {

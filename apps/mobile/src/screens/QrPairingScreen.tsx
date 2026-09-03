@@ -1,7 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 export function QrPairingScreen() {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   return (
     <View style={styles.root}>
       <Text style={styles.title}>QR pairing</Text>
@@ -12,7 +15,7 @@ export function QrPairingScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: tokens.color.bg0,

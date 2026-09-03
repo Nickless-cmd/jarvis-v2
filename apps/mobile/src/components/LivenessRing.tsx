@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Animated, Easing, StyleSheet, View } from 'react-native'
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
 
 type Liveness = 'idle' | 'working' | 'error'
@@ -12,6 +13,8 @@ type Liveness = 'idle' | 'working' | 'error'
  * Glød = ægte svg RadialGradient (blød fade, 1:1 med design-mockup, §3.1).
  */
 export function LivenessRing({ status = 'idle', size = 28 }: { status?: Liveness; size?: number }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const pulse = useRef(new Animated.Value(0)).current
   const reduced = useReducedMotion()
 
@@ -62,7 +65,7 @@ export function LivenessRing({ status = 'idle', size = 28 }: { status?: Liveness
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   halo: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   ring: { borderWidth: 2, alignItems: 'center', justifyContent: 'center' }
 })

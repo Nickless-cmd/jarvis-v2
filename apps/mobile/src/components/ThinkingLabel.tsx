@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
 
 interface Props {
@@ -20,6 +21,8 @@ interface Props {
  * står PÅ SIN PLADS i samtalen frem for oppe i en header.
  */
 export function ThinkingLabel({ label = 'Tænker' }: Props) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const sweep = useRef(new Animated.Value(0)).current
   const reduced = useReducedMotion()
 
@@ -67,7 +70,7 @@ export function ThinkingLabel({ label = 'Tænker' }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   row: { paddingVertical: tokens.spacing.sm },
   word: {
     color: tokens.color.fg1,

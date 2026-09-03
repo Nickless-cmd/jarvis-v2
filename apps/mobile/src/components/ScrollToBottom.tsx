@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Animated, Pressable, StyleSheet } from 'react-native'
 import { ChevronDown } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
  * Rul-til-bunden — målt i ChatGPT-appen: en lille mørk cirkel med en pil ned,
@@ -19,6 +20,8 @@ export function ScrollToBottom({ visible, bottom, onPress }: {
   bottom: number
   onPress: () => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const fade = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
@@ -48,7 +51,7 @@ export function ScrollToBottom({ visible, bottom, onPress }: {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: {
     position: 'absolute',
     left: 0,

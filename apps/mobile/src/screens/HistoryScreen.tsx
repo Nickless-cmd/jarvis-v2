@@ -2,8 +2,11 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { ApiConfig, ChatSession } from '../lib/types'
 import { useSessions } from '../state/SessionContext'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 export function HistoryScreen({ config }: { config: ApiConfig }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { sessions, activeId, select } = useSessions()
 
   const renderItem = ({ item }: { item: ChatSession }) => (
@@ -30,7 +33,7 @@ export function HistoryScreen({ config }: { config: ApiConfig }) {
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: tokens.color.bg0,

@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { SegmentedControl } from '../components/SegmentedControl'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useAuth } from '../state/AuthContext'
 import { approveRequest, approveToolIntent, fetchApprovals, fetchRuns, pendingApprovals } from '../lib/mcClient'
 import { isToolIntent } from '../lib/mcTypes'
@@ -35,6 +36,8 @@ const POLL_MS = 4000
  * forbindelsen, dør intet.
  */
 export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSyncDone }: Props) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const { config } = useAuth()
   const [tab, setTab] = useState<WorkTab>('tasks')
   const [runs, setRuns] = useState<McRun[]>([])
@@ -168,6 +171,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
 }
 
 function TasksView({ runs }: { runs: McRun[] }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   if (runs.length === 0) {
     return <Text style={styles.empty}>Intet arbejde lige nu.</Text>
   }
@@ -206,6 +211,8 @@ function ApproveView({
   onApprove: (a: Approval) => void
   onSkip: (a: Approval) => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   if (approvals.length === 0) {
     return <Text style={styles.empty}>Ingen ventende godkendelser.</Text>
   }
@@ -224,7 +231,7 @@ function ApproveView({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.color.bg0 },
   subTabs: { paddingHorizontal: tokens.spacing.lg, paddingBottom: tokens.spacing.sm },
   list: { padding: tokens.spacing.lg, gap: tokens.spacing.md },

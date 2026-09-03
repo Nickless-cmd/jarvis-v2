@@ -1,5 +1,6 @@
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 export interface ModelChoice {
   model: string // konkret id (owner) eller 'standard'|'pro' (member)
@@ -24,6 +25,8 @@ export function ModelPicker({
   onSelect: (c: ModelChoice) => void
   onClose: () => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   return (
     <Modal transparent visible={open} animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose}>
@@ -60,7 +63,7 @@ export function ModelPicker({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: tokens.color.bg1,
@@ -91,7 +94,7 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.7 },
   rowLabel: { color: tokens.color.fg1, fontSize: 16, flexShrink: 1 },
-  rowActive: { color: tokens.color.accent, fontWeight: '700' },
-  check: { color: tokens.color.accent, fontSize: 16, fontWeight: '700' },
+  rowActive: { color: tokens.color.accentText, fontWeight: '700' },
+  check: { color: tokens.color.accentText, fontSize: 16, fontWeight: '700' },
   empty: { color: tokens.color.fg3, paddingVertical: tokens.spacing.lg, textAlign: 'center' }
 })

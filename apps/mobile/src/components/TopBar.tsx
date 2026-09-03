@@ -2,6 +2,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
 import { Menu, RefreshCw } from 'lucide-react-native'
 import { SegmentedControl } from './SegmentedControl'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 export type AppMode = 'snak' | 'arbejde'
 
@@ -40,6 +41,8 @@ const EDGE = 14
 const SEGMENT_W = 172
 
 export function TopBar({ mode, onModeChange, onMenu, onSync, pendingWork, syncing }: Props) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   return (
     <View style={styles.bar}>
       <Pressable
@@ -84,7 +87,7 @@ export function TopBar({ mode, onModeChange, onMenu, onSync, pendingWork, syncin
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -94,7 +97,7 @@ const styles = StyleSheet.create({
     // Halvgennemsigtig: tråden ANES bagved frem for at blive klippet af
     // en massiv bjælke. Det er dét der giver følelsen af ét sammenhængende
     // rum i stedet for tre etager.
-    backgroundColor: 'rgba(0,0,0,0.72)'
+    backgroundColor: tokens.color.scrim
   },
   // Fylder hele bjælken og lader tryk gå igennem til cirklerne udenfor.
   centerWrap: {

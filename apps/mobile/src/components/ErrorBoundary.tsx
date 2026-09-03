@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { ErrorCard } from './ErrorCard'
 import type { StreamErrorInfo } from '../state/StreamContext'
 
@@ -75,28 +76,16 @@ export class ErrorBoundary extends Component<Props, State> {
     }
 
     return (
-      <View style={styles.root}>
-        <Text style={styles.title}>Visningen ramte en fejl</Text>
-        <Text style={styles.body}>
-          Appen kører stadig, og chatten fortsætter på serveren. Tryk Prøv igen — eller kopiér fejlen herunder til Claude.
-        </Text>
-        <ScrollView style={styles.pre} contentContainerStyle={styles.preContent}>
-          <Text style={styles.preText}>
-            {String(error.message)}
-            {'\n\n'}
-            {String(error.stack || '').slice(0, 2000)}
-            {componentStack ? `\n\n--- component stack ---\n${componentStack.slice(0, 1500)}` : ''}
-          </Text>
-        </ScrollView>
-        <Pressable accessibilityRole="button" onPress={this.reset} style={styles.retry}>
-          <Text style={styles.retryText}>Prøv igen</Text>
-        </Pressable>
-      </View>
+      <FallbackView
+        error={error}
+        componentStack={componentStack}
+        onReset={this.reset}
+      />
     )
   }
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   root: {
     flex: 1,
     padding: tokens.spacing.lg,
@@ -143,3 +132,40 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   }
 })
+
+
+/**
+ * Fejlskærmens udseende, skilt ud fra klassen.
+ *
+ * En ErrorBoundary SKAL være en klasse (componentDidCatch findes ikke som
+ * hook), og klasser kan ikke bruge hooks. Uden denne opdeling ville
+ * fejlskærmen sidde fast i mørkt tema — og en fejlskærm i forkert tema ser ud
+ * som om appen er gået helt i stykker, oven i den fejl der faktisk skete.
+ */
+function FallbackView({ error, componentStack, onReset }: {
+  error: Error
+  componentStack: string
+  onReset: () => void
+}) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
+  return (
+    <View style={styles.root}>
+      <Text style={styles.title}>Visningen ramte en fejl</Text>
+      <Text style={styles.body}>
+        Appen kører stadig, og chatten fortsætter på serveren. Tryk Prøv igen — eller kopiér fejlen herunder til Claude.
+      </Text>
+      <ScrollView style={styles.pre} contentContainerStyle={styles.preContent}>
+        <Text style={styles.preText}>
+          {String(error.message)}
+          {'\n\n'}
+          {String(error.stack || '').slice(0, 2000)}
+          {componentStack ? `\n\n--- component stack ---\n${componentStack.slice(0, 1500)}` : ''}
+        </Text>
+      </ScrollView>
+      <Pressable accessibilityRole="button" onPress={onReset} style={styles.retry}>
+        <Text style={styles.retryText}>Prøv igen</Text>
+      </Pressable>
+    </View>
+    )
+}

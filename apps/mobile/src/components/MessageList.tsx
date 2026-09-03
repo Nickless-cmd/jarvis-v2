@@ -5,6 +5,7 @@ import { denseBlocks } from '../lib/blockHelpers'
 import type { ChatMessage } from '../lib/types'
 import type { PersistedBlock } from '../lib/persistedBlocks'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
 import { InlineToolGroup } from './InlineToolGroup'
@@ -158,6 +159,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0 },
   ref
 ) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const flatRef = useRef<FlatList>(null)
   const visibleRef = useRef(0)   // ordered-index øverst i viewport (inverted)
   const contentLenRef = useRef(0)
@@ -315,6 +318,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
 })
 
 function ThinkingLabelRow() {
+  const styles = useStyles(makestyles)
   return (
     <View style={styles.thinkingRow}>
       <ThinkingLabel />
@@ -335,7 +339,7 @@ function ThinkingLabelRow() {
 const BOTTOM_CLEARANCE = 124
 const TOP_CLEARANCE = 72
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   thinkingRow: { paddingHorizontal: tokens.spacing.lg },
   content: {
     // paddingTop sættes dynamisk (BOTTOM_CLEARANCE + tastaturhøjde) — se

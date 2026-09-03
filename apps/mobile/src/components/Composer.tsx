@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { ArrowUp, AudioLines, ChevronDown, Cpu, FileText, Mic, Plus, Square } from 'lucide-react-native'
 import { shortModelLabel } from '../lib/modelLabel'
 import { tokens } from '../theme/tokens'
+import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
  * Komponisten har TO former — begge målt i ChatGPT-appen (densitet 2,625):
@@ -49,6 +50,8 @@ export function Composer({
   showJumpToBottom?: boolean
   onJumpToBottom?: () => void
 }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
   const [text, setText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -236,7 +239,7 @@ export function Composer({
   )
 }
 
-const styles = StyleSheet.create({
+const makestyles = (tokens: Theme) => StyleSheet.create({
   outer: {
     // I brug: 12 dp margen (målt på R1 → 387 dp bred).
     paddingHorizontal: 12,

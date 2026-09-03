@@ -84,12 +84,20 @@ jest.mock('expo-audio', () => ({
     record: jest.fn(),
     stop: jest.fn(async () => undefined),
   })),
-  createAudioPlayer: jest.fn(() => ({
-    addListener: jest.fn(),
-    pause: jest.fn(),
-    play: jest.fn(),
-    remove: jest.fn(),
-  })),
+  // Afspilleren skal MELDE at lyden er færdig. Uden det kan en kø af replikker
+  // aldrig komme videre til den næste, og en test af strømmende oplæsning ville
+  // se ud som en fejl i køen frem for i mocken.
+  createAudioPlayer: jest.fn(() => {
+    const listeners = []
+    return {
+      addListener: jest.fn((_evt, cb) => { listeners.push(cb) }),
+      pause: jest.fn(),
+      play: jest.fn(() => {
+        setTimeout(() => listeners.forEach((cb) => cb({ didJustFinish: true })), 0)
+      }),
+      remove: jest.fn(),
+    }
+  }),
   requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
   setAudioModeAsync: jest.fn(async () => undefined),
 }))

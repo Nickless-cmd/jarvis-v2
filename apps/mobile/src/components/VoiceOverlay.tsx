@@ -1,23 +1,24 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { X } from 'lucide-react-native'
 import type { VoiceState, VoiceMode } from '../lib/useVoiceConversation'
+import { VoiceOrb } from './VoiceOrb'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
-/** Samtale-mode overlay (Trin 3, mobil). Push-to-talk: hold mic. Hænderfri: tryk. */
+/** Samtale-mode. Push-to-talk: hold kuglen. Hænderfri: den lytter selv videre. */
 
 const LABEL: Record<VoiceState, string> = {
-  idle: 'Klar — tryk for at tale',
-  listening: 'Lytter…',
-  transcribing: 'Hører hvad du sagde…',
-  thinking: 'Jarvis tænker…',
-  speaking: 'Jarvis taler…',
-}
-const COLOR: Record<VoiceState, string> = {
-  idle: '#8a8a8e', listening: '#e0245e', transcribing: '#f5a623', thinking: '#7b61ff', speaking: '#2ecc71',
+  idle: '',
+  listening: 'Jeg lytter',
+  transcribing: 'Hører hvad du sagde',
+  thinking: 'Tænker',
+  speaking: 'Tryk for at afbryde',
 }
 
 export interface VoiceOverlayProps {
   active: boolean
   state: VoiceState
+  /** 0..1 — hvor kraftigt der tales lige nu. */
+  level?: number
   /** Hvorfor det gik i stå. Tom = intet at melde. */
   problem?: string
   mode: VoiceMode
@@ -25,92 +26,97 @@ export interface VoiceOverlayProps {
   setMode: (m: VoiceMode) => void
   startListening: () => void
   stopListening: () => void
+  interrupt: () => void
   exit: () => void
 }
 
 export function VoiceOverlay(p: VoiceOverlayProps) {
-  const t = useTheme()
+  const tokens = useTheme()
   const s = useStyles(makes)
-  const busy = p.state === 'transcribing' || p.state === 'thinking' || p.state === 'speaking'
-  const micDown = () => { if (p.mode === 'push' && !busy) p.startListening() }
-  // Slip ALTID, uden at spørge om tilstanden først. Et kort tryk kan nå at
-  // blive sluppet før optageren er oppe, og så stod her 'listening' endnu ikke
-  // — knappen gjorde ingenting, og optagelsen kørte videre. Hook'en holder
-  // selv styr på om der faktisk optages.
-  const micUp = () => { if (p.mode === 'push') p.stopListening() }
-  const micTap = () => {
+  const busy = p.state === 'transcribing' || p.state === 'thinking'
+
+  // I push-to-talk holder man kuglen. I hænderfri trykker man kun for at gribe
+  // ind — starte, stoppe, eller afbryde ham midt i et svar.
+  const down = () => { if (p.mode === 'push' && !busy && p.state !== 'speaking') p.startListening() }
+  const up = () => { if (p.mode === 'push') p.stopListening() }
+  const tap = () => {
+    if (p.state === 'speaking') { p.interrupt(); return }
     if (p.mode !== 'hands-free') return
     if (p.state === 'listening') p.stopListening()
     else if (!busy) p.startListening()
   }
-  const providerLabel = p.lastProvider === 'elevenlabs' ? 'ElevenLabs' : p.lastProvider === 'edge' ? 'edge-tts' : p.lastProvider === 'device' ? 'enhed' : p.lastProvider
+
+  const providerLabel = p.lastProvider === 'elevenlabs' ? 'ElevenLabs'
+    : p.lastProvider === 'edge' ? 'edge-tts'
+      : p.lastProvider === 'device' ? 'telefonens stemme' : ''
+
+  const hint = p.mode === 'push'
+    ? 'Hold kuglen mens du taler'
+    : 'Tal frit — jeg sender når du holder pause'
 
   return (
-    <Modal visible={p.active} transparent animationType="fade" onRequestClose={p.exit}>
-      <View style={s.overlay}>
-        <View style={s.panel}>
-          <View style={s.header}>
-            <Text style={s.title}>🎙️ Samtale med Jarvis</Text>
-            <Pressable onPress={p.exit} hitSlop={12}><Text style={s.close}>✕</Text></Pressable>
-          </View>
+    <Modal visible={p.active} transparent={false} animationType="fade" onRequestClose={p.exit}>
+      <View style={s.screen}>
+        <View style={s.top}>
+          <Pressable onPress={p.exit} hitSlop={16} accessibilityRole="button" accessibilityLabel="Luk samtale">
+            <X size={24} color={tokens.color.fg2} strokeWidth={2} />
+          </Pressable>
+        </View>
 
-          {p.problem ? (
-            /* Grunden STÅR der. Før satte hver fejl-gren bare tilstanden til
-               idle, og et overlay der blinker tilbage uden et ord efterlader
-               kun én mulig konklusion: «det virker ikke». */
-            <Text style={s.problem}>{p.problem}</Text>
-          ) : null}
+        {/* Kuglen ER grænsefladen. Alt andet holder sig i udkanten, så der er
+            noget at hvile øjnene på mens man taler. */}
+        <View style={s.middle}>
+          <Pressable
+            onPressIn={down}
+            onPressOut={up}
+            onPress={tap}
+            accessibilityRole="button"
+            accessibilityLabel={p.state === 'speaking' ? 'Afbryd Jarvis' : 'Tal med Jarvis'}
+          >
+            <VoiceOrb state={p.state} level={p.level ?? 0} />
+          </Pressable>
+          <Text style={s.state}>{LABEL[p.state]}</Text>
+          {p.problem ? <Text style={s.problem}>{p.problem}</Text> : null}
+        </View>
 
+        <View style={s.bottom}>
           <View style={s.modeRow}>
-            {(['push', 'hands-free'] as VoiceMode[]).map((m) => (
+            {(['hands-free', 'push'] as VoiceMode[]).map((m) => (
               <Pressable
                 key={m}
                 onPress={() => { if (!busy && p.state !== 'listening') p.setMode(m) }}
                 style={[s.modeBtn, p.mode === m && s.modeBtnActive]}
               >
-                <Text style={[s.modeTxt, p.mode === m && s.modeTxtActive]}>{m === 'push' ? 'Push-to-talk' : 'Hænderfri'}</Text>
+                <Text style={[s.modeTxt, p.mode === m && s.modeTxtActive]}>
+                  {m === 'push' ? 'Push-to-talk' : 'Hænderfri'}
+                </Text>
               </Pressable>
             ))}
           </View>
-
-          <Pressable
-            onPressIn={micDown}
-            onPressOut={micUp}
-            onPress={micTap}
-            style={[s.mic, { borderColor: COLOR[p.state] }, p.state === 'listening' && s.micActive]}
-          >
-            <Text style={s.micIcon}>{p.state === 'speaking' ? '🔊' : '🎤'}</Text>
-          </Pressable>
-
-          <Text style={[s.state, { color: COLOR[p.state] }]}>{LABEL[p.state]}</Text>
-          <Text style={s.hint}>
-            {p.mode === 'push' ? 'Hold knappen mens du taler.' : 'Tal frit — jeg sender når du holder pause.'}
-            {p.lastProvider ? `  ·  stemme: ${providerLabel}` : ''}
-          </Text>
+          <Text style={s.hint}>{hint}{providerLabel ? `  ·  ${providerLabel}` : ''}</Text>
         </View>
       </View>
     </Modal>
   )
 }
 
-// Overlayet var hårdkodet i sine egne farver — blandt andet en lilla (#7b61ff)
-// fra dengang accenten var lilla. Den fulgte hverken tema eller brugerens
-// farvevalg, og stod tilbage som det eneste sted i appen med en fremmed farve.
 const makes = (tokens: Theme) => StyleSheet.create({
-  overlay: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.scrim },
-  panel: { alignItems: 'center', gap: 16, padding: 28, borderRadius: tokens.radius.xl, minWidth: 300, backgroundColor: tokens.color.bg2 },
-  header: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: tokens.color.fg1, fontWeight: '600', fontSize: 16 },
-  close: { color: tokens.color.fg3, fontSize: 20 },
-  problem: { color: tokens.color.warn, fontSize: 13.5, lineHeight: 20, marginBottom: tokens.spacing.sm, textAlign: 'center' },
+  screen: { flex: 1, backgroundColor: tokens.color.bg0, paddingTop: 52, paddingBottom: 34 },
+  top: { alignItems: 'flex-end', paddingHorizontal: 22 },
+  middle: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 26 },
+  state: { color: tokens.color.fg2, fontSize: 15, minHeight: 20 },
+  problem: {
+    color: tokens.color.warn, fontSize: 13.5, lineHeight: 20,
+    textAlign: 'center', paddingHorizontal: 40,
+  },
+  bottom: { alignItems: 'center', gap: 14, paddingHorizontal: 24 },
   modeRow: { flexDirection: 'row', gap: 8 },
-  modeBtn: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1, borderColor: tokens.color.line },
+  modeBtn: {
+    paddingVertical: 7, paddingHorizontal: 18, borderRadius: 999,
+    borderWidth: 1, borderColor: tokens.color.line,
+  },
   modeBtnActive: { backgroundColor: tokens.color.accent, borderColor: tokens.color.accent },
   modeTxt: { color: tokens.color.fg2, fontSize: 13 },
   modeTxtActive: { color: tokens.color.onAccent },
-  mic: { width: 104, height: 104, borderRadius: 52, borderWidth: 3, backgroundColor: tokens.color.bg1, alignItems: 'center', justifyContent: 'center' },
-  micActive: { backgroundColor: tokens.color.accentGhost },
-  micIcon: { fontSize: 44 },
-  state: { fontWeight: '500', minHeight: 20, color: tokens.color.fg1 },
-  hint: { color: tokens.color.fg3, fontSize: 12, textAlign: 'center', maxWidth: 280 },
+  hint: { color: tokens.color.fg3, fontSize: 12, textAlign: 'center' },
 })

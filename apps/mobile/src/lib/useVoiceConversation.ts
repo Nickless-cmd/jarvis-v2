@@ -1,19 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  useAudioRecorder, createAudioPlayer, setAudioModeAsync,
+  useAudioRecorder, setAudioModeAsync,
   requestRecordingPermissionsAsync, RecordingPresets,
 } from 'expo-audio'
-import type { AudioPlayer, RecordingStatus } from 'expo-audio'
-import * as Speech from 'expo-speech'
-import { clampForSpeech, stripForSpeech } from './speechText'
+import type { RecordingStatus } from 'expo-audio'
+import { takeSpeakable } from './speechQueue'
+import { useSpeechPlayer } from './useSpeechPlayer'
 import type { ApiConfig } from './types'
 import type { ContentBlock } from './sseProtocol'
-import { transcribeAudio, synthesizeTtsToFile } from './voiceApi'
+import { transcribeAudio } from './voiceApi'
 
-/** Samtale-mode (Trin 3, mobil). expo-audio (New-Arch-kompatibel — expo-av crashede under
- *  newArchEnabled). Tilstandsmaskine hvile→lyt→transskriber→tænk→tal→(loop). STT→/transcribe,
- *  TTS-fil→/api/tts (ElevenLabs), expo-speech da-DK som device-fallback. Push-to-talk + VAD.
- *  Self-safe: fejl → idle, brækker aldrig UI. */
+/** Samtale-mode. Tilstandsmaskine hvile→lyt→transskriber→tænk→tal→(loop).
+ *  STT→/transcribe, TTS→ElevenLabs via useSpeechPlayer. Push-to-talk + hænderfri
+ *  med VAD. Fejl → idle MED en grund; brækker aldrig UI. */
 
 export type VoiceState = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking'
 export type VoiceMode = 'push' | 'hands-free'
@@ -21,6 +20,18 @@ export type VoiceMode = 'push' | 'hands-free'
 const _SILENCE_MS = 1300
 const _MAX_UTTERANCE_MS = 30000
 const _SPEECH_DB = -35
+/** Hvor mange tomme runder hænderfri prøver igen efter, før den holder inde.
+ *  Nul ville betyde at én pause afsluttede samtalen — så var den ikke
+ *  hænderfri. Uendeligt ville betyde en mikrofon der står åben i stuen resten
+ *  af dagen. Én ekstra runde er pausen man holder når man tænker. */
+const _EMPTY_ROUNDS = 1
+
+/** Måleren kommer i dB (-160..0). Tale ligger typisk mellem -45 og -10, så
+ *  det er DET spænd kuglen skal reagere på — ikke hele skalaen, hvor almindelig
+ *  tale ville se ud som næsten ingenting. */
+function levelFromDb(db: number): number {
+  return Math.max(0, Math.min(1, (db + 48) / 38))
+}
 
 export interface VoiceStreamDeps {
   status: string
@@ -31,16 +42,15 @@ export interface VoiceStreamDeps {
 
 export function useVoiceConversation(config: ApiConfig | null | undefined, deps: VoiceStreamDeps) {
   const [state, setState] = useState<VoiceState>('idle')
-  const [mode, setMode] = useState<VoiceMode>('push')
+  const [mode, setMode] = useState<VoiceMode>('hands-free')
   const [active, setActive] = useState(false)
-  const [lastProvider, setLastProvider] = useState('')
+  const [level, setLevel] = useState(0)
+  const [problem, setProblem] = useState<string>('')
 
-  const playerRef = useRef<AudioPlayer | null>(null)
   const awaitingRef = useRef(false)
   const sawWorkingRef = useRef(false)
   const activeRef = useRef(active)
   const modeRef = useRef(mode)
-  const stateRef = useRef<VoiceState>(state)
   const sawSpeechRef = useRef(false)
   // Optageren KØRER (native), uafhængigt af hvad React har nået at rendere.
   // Og: brugeren HOLDER knappen. De to skal spørges med refs, ikke med state —
@@ -49,18 +59,31 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   const wantRef = useRef(false)
   const silenceAtRef = useRef(0)
   const startedAtRef = useRef(0)
+  const emptyRoundsRef = useRef(0)
   const stopListeningRef = useRef<(() => Promise<void>) | undefined>(undefined)
   const startListeningRef = useRef<(() => Promise<void>) | undefined>(undefined)
 
   useEffect(() => { activeRef.current = active }, [active])
   useEffect(() => { modeRef.current = mode }, [mode])
-  useEffect(() => { stateRef.current = state }, [state])
 
-  // VAD-status-listener (hænderfri): auto-stop efter tale + stilhed. Best-effort.
+  // Talen er færdig. I hænderfri lytter vi igen med det samme — det er dét der
+  // gør det til en samtale frem for en række enkeltbeskeder.
+  const onSpoken = useCallback(() => {
+    setState('idle')
+    if (activeRef.current && modeRef.current === 'hands-free') {
+      setTimeout(() => { void startListeningRef.current?.() }, 350)
+    }
+  }, [])
+  const speech = useSpeechPlayer(config, onSpoken)
+
+  // VAD-status-listener (hænderfri): auto-stop efter tale + stilhed. Samme
+  // strøm giver niveauet til kuglen.
   const onRecStatus = useCallback((status: RecordingStatus) => {
-    if (modeRef.current !== 'hands-free' || !recordingRef.current) return
-    const now = Date.now()
+    if (!recordingRef.current) return
     const db = (status as unknown as { metering?: number }).metering ?? -160
+    setLevel(levelFromDb(db))
+    if (modeRef.current !== 'hands-free') return
+    const now = Date.now()
     if (db > _SPEECH_DB) { sawSpeechRef.current = true; silenceAtRef.current = 0 }
     else if (sawSpeechRef.current) {
       if (!silenceAtRef.current) silenceAtRef.current = now
@@ -70,87 +93,61 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   }, [])
 
   const recorder = useAudioRecorder(
-    { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true },
+    {
+      ...RecordingPresets.HIGH_QUALITY,
+      isMeteringEnabled: true,
+      // Androids optagekilde til TALEGENKENDELSE. Standardkilden («mic») kører
+      // automatisk niveaustyring beregnet på musik og optagelser, og den
+      // pumper baggrundsstøj op i pauserne — netop dét whisper tager fejl af.
+      // `voice_recognition` slår den styring fra og lader støjreduktionen stå.
+      android: { ...RecordingPresets.HIGH_QUALITY.android, audioSource: 'voice_recognition' },
+    },
     onRecStatus,
   )
 
-  // HVORFOR det gik i stå. Hver fejl-gren satte før bare state='idle', så
-  // overlayet blinkede tilbage uden et ord — og «det virker ikke» er den
-  // eneste konklusion man kan drage af tavshed. Nu står grunden på skærmen.
-  const [problem, setProblem] = useState<string>('')
-
-  const _speakNative = useCallback((text: string, onDone: () => void) => {
-    try { setLastProvider('device'); Speech.speak(text, { language: 'da-DK', onDone, onError: onDone }) }
-    catch { onDone() }
-  }, [])
-
-  const _speak = useCallback(async (text: string) => {
-    if (!text) { setState('idle'); return }
-    setState('speaking')
-    const onDone = () => {
-      setState('idle')
-      if (activeRef.current && modeRef.current === 'hands-free') {
-        setTimeout(() => { void startListeningRef.current?.() }, 300)
-      }
-    }
-    try {
-      if (!config) throw new Error('no config')
-      // Renset FØR syntesen. Uden dette siger han «stjerne stjerne vigtigt» og
-      // staver kodeblokke — samme fejl som oplæsningsknappen havde.
-      // Slip optage-tilstanden FØR afspilning. Bliver allowsRecording stående
-      // på true, holder systemet lydsessionen i optage-mode, og svaret kommer
-      // ud af øresneglen i stedet for højttaleren — hørbart som «han svarer
-      // ikke», selv når alt andet virker.
-      try { await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }) }
-      catch { /* ikke fatalt — afspil alligevel */ }
-      const { uri, provider } = await synthesizeTtsToFile(config, clampForSpeech(stripForSpeech(text)))
-      setLastProvider(provider)
-      try { playerRef.current?.remove() } catch { /* noop */ }
-      const player = createAudioPlayer({ uri })
-      playerRef.current = player
-      player.addListener('playbackStatusUpdate', (s) => {
-        if (s.didJustFinish) { try { player.remove() } catch { /* noop */ } onDone() }
-      })
-      player.play()
-    } catch {
-      _speakNative(clampForSpeech(stripForSpeech(text)), onDone)
-    }
-  }, [config, _speakNative])
-
-  // Completion-watch: tal svaret når et run vi startede falder fra 'working'.
+  // Svaret læses højt MENS det skrives. Det er ikke pynt: på et langt svar er
+  // ventetiden ellers mange sekunders tavshed, og i en samtale ligner tavshed
+  // at noget er gået i stykker.
   //
-  // TEKSTEN SKAL OPSAMLES MENS DEN STRØMMER. Da svaret var færdigt, læste jeg
-  // det ud af stream-tilstanden — men klienten rydder blokkene i SAMME
+  // Teksten skal opsamles undervejs, for klienten rydder blokkene i SAMME
   // opdatering som den sætter status til 'done' (persistAssistantSnapshot:
-  // `{ ...prev, status, blocks: [] }`), fordi svaret dér flyttes over i den
-  // persisterede historik. Så var der intet tilbage at læse: stemmen fik en
-  // tom streng og tav, mens svaret dukkede op i chatten. Der blev aldrig
-  // engang bedt om lyd — derfor stod der heller ingenting i serverloggen.
+  // `{ ...prev, status, blocks: [] }`) — svaret flyttes over i den persisterede
+  // historik. Læser man først dér, er der intet tilbage.
   const lastTextRef = useRef('')
+  const takenRef = useRef(0)
   useEffect(() => {
     if (!awaitingRef.current) return
+    const full = deps.extractText(deps.blocks)
     if (deps.status === 'working') {
       sawWorkingRef.current = true
-      const partial = deps.extractText(deps.blocks)
-      if (partial) lastTextRef.current = partial
+      if (full) lastTextRef.current = full
+      const r = takeSpeakable(lastTextRef.current, takenRef.current, false)
+      takenRef.current = r.taken
+      if (r.chunks.length) {
+        r.chunks.forEach(speech.enqueue)
+        setState('speaking')
+      }
       return
     }
-    // ALT andet end 'working' er slut. Før stod her kun 'done' og 'idle', så et
-    // afbrudt eller fejlet run efterlod stemmen ventende for evigt — og det
-    // næste svar ville blive talt i stedet for dette.
+    // ALT andet end 'working' er slut. Kun 'done' og 'idle' ville efterlade
+    // stemmen ventende for evigt på et afbrudt eller fejlet run — og NÆSTE
+    // svar ville så blive talt i stedet for dette.
     if (sawWorkingRef.current) {
       awaitingRef.current = false
       sawWorkingRef.current = false
-      const said = lastTextRef.current || deps.extractText(deps.blocks)
+      const r = takeSpeakable(full || lastTextRef.current, takenRef.current, true)
+      r.chunks.forEach(speech.enqueue)
+      takenRef.current = 0
       lastTextRef.current = ''
-      void _speak(said)
+      speech.finish()
     }
-  }, [deps.status, deps.blocks, deps, _speak])
+  }, [deps.status, deps.blocks, deps, speech])
 
   const stopListening = useCallback(async () => {
     wantRef.current = false
     if (!recordingRef.current) return
     recordingRef.current = false
+    setLevel(0)
     try {
       await recorder.stop()
       const uri = recorder.uri
@@ -160,22 +157,31 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
       }
       setState('transcribing')
       const r = await transcribeAudio(config, uri)
-      // «Tom optagelse» og «du sagde ikke noget» så ens ud herinde, og det er
-      // netop forskellen på en fejl og på stilhed. Serveren skelner allerede —
-      // den svarer status='error' med en grund når filen intet indeholder —
-      // så den grund skal med op, ellers fejlsøger man i blinde.
+      // «Tom optagelse» og «du sagde ikke noget» så ens ud, og det er netop
+      // forskellen på en fejl og på stilhed. Serveren skelner allerede.
       if (r.status !== 'ok') {
         setProblem(`Lyden nåede frem, men kunne ikke bruges (${r.error || 'ukendt grund'}).`)
         setState('idle'); return
       }
       const text = (r.text || '').trim()
       if (!text) {
-        // Tomt resultat er IKKE en fejl — man kan have tiet. Men brugeren skal
-        // vide at der ikke blev opfattet noget, ellers ligner det en død knap.
-        setProblem('Jeg hørte ikke noget. Prøv igen.')
-        setState('idle'); return
+        setProblem('Jeg hørte ikke noget.')
+        setState('idle')
+        // En pause må ikke afslutte samtalen — men mikrofonen må heller ikke
+        // stå åben i det uendelige, så der er en grænse.
+        if (activeRef.current && modeRef.current === 'hands-free'
+            && emptyRoundsRef.current < _EMPTY_ROUNDS) {
+          emptyRoundsRef.current += 1
+          setTimeout(() => { void startListeningRef.current?.() }, 400)
+        } else {
+          emptyRoundsRef.current = 0
+        }
+        return
       }
+      emptyRoundsRef.current = 0
       setState('thinking')
+      takenRef.current = 0
+      lastTextRef.current = ''
       awaitingRef.current = true
       deps.sendMessage(text)
     } catch (e) {
@@ -189,13 +195,16 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     if (!config || recordingRef.current) return
     // Trykket registreres FØR den asynkrone opstart. At bede om
     // mikrofon-tilladelse og forberede optageren tager et øjeblik, og et kort
-    // tryk kunne nå at blive sluppet inden da. stopListening spurgte React'
+    // tryk kunne nå at blive sluppet inden da. stopListening spurgte før React'
     // tilstand, som endnu stod på 'idle', og gjorde derfor ingenting — så
     // optagelsen kørte videre for evigt bag et overlay der sagde «Lytter…».
     // Et hurtigt tryk er den mest almindelige måde at trykke på en knap.
     wantRef.current = true
-    try { playerRef.current?.pause() } catch { /* noop */ }
-    try { Speech.stop() } catch { /* noop */ }
+    // At begynde at lytte er også at afbryde. Køen smides væk her, så et svar
+    // han er blevet træt af ikke fortsætter oven i det næste spørgsmål.
+    speech.stop()
+    awaitingRef.current = false
+    sawWorkingRef.current = false
     setProblem('')
     try {
       const perm = await requestRecordingPermissionsAsync()
@@ -220,20 +229,40 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
       setProblem(`Kunne ikke starte optagelsen (${(e as Error)?.name || 'ukendt fejl'}).`)
       setState('idle')
     }
-  }, [config, recorder])
+  }, [config, recorder, speech])
   useEffect(() => { startListeningRef.current = startListening }, [startListening])
+
+  /** Afbryd ham midt i et svar. I hænderfri går vi direkte over til at lytte —
+   *  det er dét man vil, når man afbryder nogen. */
+  const interrupt = useCallback(() => {
+    speech.stop()
+    awaitingRef.current = false
+    sawWorkingRef.current = false
+    takenRef.current = 0
+    lastTextRef.current = ''
+    setState('idle')
+    if (modeRef.current === 'hands-free') void startListeningRef.current?.()
+  }, [speech])
 
   const enter = useCallback(() => { setActive(true); setProblem(''); setState('idle') }, [])
   const exit = useCallback(() => {
     setActive(false)
     awaitingRef.current = false
     sawWorkingRef.current = false
+    takenRef.current = 0
     lastTextRef.current = ''
-    try { playerRef.current?.pause() } catch { /* noop */ }
-    try { Speech.stop() } catch { /* noop */ }
+    speech.stop()
     void stopListeningRef.current?.()
     setState('idle')
-  }, [])
+  }, [speech])
 
-  return { active, state, mode, lastProvider, problem, setMode, enter, exit, startListening, stopListening }
+  // Afspilningen ejer 'speaking'. Uden dette ville kuglen falde til ro mellem
+  // to sætninger, selv om han stadig er midt i et svar.
+  const shown: VoiceState = speech.speaking && state !== 'listening' ? 'speaking' : state
+
+  return {
+    active, state: shown, mode, level, problem,
+    lastProvider: speech.provider,
+    setMode, enter, exit, interrupt, startListening, stopListening,
+  }
 }

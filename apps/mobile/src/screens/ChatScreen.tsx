@@ -630,7 +630,9 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         state={voice.state}
         mode={voice.mode}
         lastProvider={voice.lastProvider}
+        level={voice.level}
         problem={voice.problem}
+        interrupt={voice.interrupt}
         setMode={voice.setMode}
         startListening={voice.startListening}
         stopListening={voice.stopListening}

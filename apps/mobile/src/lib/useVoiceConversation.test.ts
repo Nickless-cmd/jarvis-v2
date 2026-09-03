@@ -33,6 +33,9 @@ describe('push-to-talk', () => {
   it('stopper optagelsen selv når knappen slippes før mikrofonen er oppe', async () => {
     const rec = slowRecorder(40)
     const { result } = await renderHook(() => useVoiceConversation(config, deps))
+    // Standarden er hænderfri; dét her handler om push-to-talk, hvor et slip
+    // SKAL stoppe optagelsen — også hvis det kom før mikrofonen var oppe.
+    await act(async () => { result.current.setMode('push') })
 
     await act(async () => {
       const started = result.current.startListening()
@@ -158,5 +161,84 @@ describe('svaret bliver talt', () => {
 
     await waitFor(() => expect(api.synthesizeTtsToFile).toHaveBeenCalled())
     expect(api.synthesizeTtsToFile.mock.calls[0][1]).toContain('Halvt svar')
+  })
+})
+
+describe('oplæsning mens svaret skrives', () => {
+  const text = (blocks: { type?: string; text?: string }[]) =>
+    blocks.filter((b) => b.type === 'text').map((b) => b.text || '').join(' ').trim()
+
+  function live() {
+    let cur: { status: string; blocks: { type: string; text: string }[] } =
+      { status: 'idle', blocks: [] }
+    const d = {
+      get status() { return cur.status },
+      get blocks() { return cur.blocks as never },
+      sendMessage: jest.fn(),
+      extractText: text as never,
+    }
+    return { d, set: (status: string, t: string) => { cur = { status, blocks: t ? [{ type: 'text', text: t }] : [] } } }
+  }
+
+  // Kernen i ønsket: han skal begynde at læse op MENS han skriver, ikke først
+  // når hele svaret står færdigt.
+  it('siger første sætning før svaret er færdigt', async () => {
+    slowRecorder(0)
+    const api = jest.requireMock('./voiceApi') as { synthesizeTtsToFile: jest.Mock }
+    const { d, set } = live()
+    const { result, rerender } = await renderHook(() => useVoiceConversation(config, d))
+    await act(async () => { await result.current.startListening() })
+    await act(async () => { await result.current.stopListening() })
+
+    set('working', 'Jeg har kigget på containeren i nat. Og der er')
+    await act(async () => { rerender({}) })
+
+    await waitFor(() => expect(api.synthesizeTtsToFile).toHaveBeenCalled())
+    expect(api.synthesizeTtsToFile.mock.calls[0][1]).toBe('Jeg har kigget på containeren i nat.')
+  })
+
+  it('siger ikke den samme sætning igen når resten kommer', async () => {
+    slowRecorder(0)
+    const api = jest.requireMock('./voiceApi') as { synthesizeTtsToFile: jest.Mock }
+    const { d, set } = live()
+    const { result, rerender } = await renderHook(() => useVoiceConversation(config, d))
+    await act(async () => { await result.current.startListening() })
+    await act(async () => { await result.current.stopListening() })
+
+    set('working', 'Første hele sætning står her nu. Anden')
+    await act(async () => { rerender({}) })
+    set('working', 'Første hele sætning står her nu. Anden hele sætning er også klar nu.')
+    await act(async () => { rerender({}) })
+    set('done', '')
+    await act(async () => { rerender({}) })
+
+    await waitFor(() => expect(api.synthesizeTtsToFile.mock.calls.length).toBeGreaterThanOrEqual(2))
+    const spoken = api.synthesizeTtsToFile.mock.calls.map((c: unknown[]) => c[1] as string)
+    expect(spoken[0]).toBe('Første hele sætning står her nu.')
+    expect(spoken[1]).toBe('Anden hele sætning er også klar nu.')
+    expect(spoken.join(' ')).not.toMatch(/Første hele sætning står her nu\..*Første hele/)
+  })
+})
+
+describe('hænderfri holder samtalen i gang', () => {
+  // En pause hvor man tænker må ikke afslutte samtalen. Men mikrofonen må
+  // heller ikke stå åben i stuen resten af dagen, så der er en grænse.
+  it('lytter igen efter én tom runde — og holder så inde', async () => {
+    const rec = slowRecorder(0)
+    const api = jest.requireMock('./voiceApi') as { transcribeAudio: jest.Mock }
+    const { result } = await renderHook(() => useVoiceConversation(config, deps))
+    await act(async () => { result.current.enter() })
+
+    api.transcribeAudio.mockResolvedValue({ status: 'ok', text: '' })
+    await act(async () => { await result.current.startListening() })
+    await act(async () => { await result.current.stopListening() })
+
+    await waitFor(() => expect(rec.record).toHaveBeenCalledTimes(2))
+    await act(async () => { await result.current.stopListening() })
+
+    // Anden tomme runde: nu holder den inde i stedet for at blive ved.
+    await new Promise((r) => setTimeout(r, 600))
+    expect(rec.record).toHaveBeenCalledTimes(2)
+    expect(result.current.problem).toMatch(/hørte ikke noget/)
   })
 })

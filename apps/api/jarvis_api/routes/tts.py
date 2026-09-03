@@ -31,6 +31,11 @@ def _elevenlabs_voice_id() -> str:
     to sandheder om samme ting, hvor den ene kun ses udefra. Havde de drevet
     fra hinanden, ville headeren roligt have oplyst en anden stemme end den der
     faktisk talte — og dét er præcis den slags fejl man leder længe efter.
+
+    Jarvis fandt selv den samme fejl samme dag og valgte at synkronisere kopien
+    med kommentaren «holdes i sync manuelt». Det virker lige nu, men beskriver
+    også præcis den fremtid hvor nogen glemmer det. Derfor er kopien væk i
+    stedet for opdateret.
     """
     from core.skills.voice.tts import ELEVENLABS_VOICE_ID
     return ELEVENLABS_VOICE_ID

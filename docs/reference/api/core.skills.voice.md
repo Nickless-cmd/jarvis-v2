@@ -29,14 +29,14 @@ _Text-to-speech — ElevenLabs (primary) with edge-tts fallback._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_get_elevenlabs_key` | `()` | — | [src](../../../core/skills/voice/tts.py#L34) |
-| function | `_synthesize_elevenlabs` | `(text)` | Generate MP3 via ElevenLabs API. Returns path to temp file. | [src](../../../core/skills/voice/tts.py#L44) |
-| function | `_synthesize_edge` | `(text)` | Generate MP3 via edge-tts. Returns path to temp file. | [src](../../../core/skills/voice/tts.py#L64) |
-| function | `_pipewire_env` | `()` | — | [src](../../../core/skills/voice/tts.py#L73) |
-| function | `play_audio` | `(path)` | Play an audio file through PipeWire/PulseAudio default sink. | [src](../../../core/skills/voice/tts.py#L78) |
-| function | `_run_edge_tts_in_thread` | `(text)` | Run edge-tts in a dedicated thread+loop (handles both sync/async callers). | [src](../../../core/skills/voice/tts.py#L109) |
-| function | `_edge_fallback` | `(text)` | Synthesize via edge-tts, handling both sync and async callers. | [src](../../../core/skills/voice/tts.py#L133) |
-| function | `say` | `(text, blocking=…)` | Synthesize and play text. ElevenLabs primary, edge-tts fallback. | [src](../../../core/skills/voice/tts.py#L144) |
+| function | `_get_elevenlabs_key` | `()` | — | [src](../../../core/skills/voice/tts.py#L37) |
+| function | `_synthesize_elevenlabs` | `(text)` | Generate MP3 via ElevenLabs API. Returns path to temp file. | [src](../../../core/skills/voice/tts.py#L47) |
+| function | `_synthesize_edge` | `(text)` | Generate MP3 via edge-tts. Returns path to temp file. | [src](../../../core/skills/voice/tts.py#L67) |
+| function | `_pipewire_env` | `()` | — | [src](../../../core/skills/voice/tts.py#L76) |
+| function | `play_audio` | `(path)` | Play an audio file through PipeWire/PulseAudio default sink. | [src](../../../core/skills/voice/tts.py#L81) |
+| function | `_run_edge_tts_in_thread` | `(text)` | Run edge-tts in a dedicated thread+loop (handles both sync/async callers). | [src](../../../core/skills/voice/tts.py#L112) |
+| function | `_edge_fallback` | `(text)` | Synthesize via edge-tts, handling both sync and async callers. | [src](../../../core/skills/voice/tts.py#L136) |
+| function | `say` | `(text, blocking=…)` | Synthesize and play text. ElevenLabs primary, edge-tts fallback. | [src](../../../core/skills/voice/tts.py#L147) |
 
 ## `core/skills/voice/voice_daemon_worker.py`
 _Voice daemon worker — runs the Hey Jarvis loop, called by voice_daemon.py._

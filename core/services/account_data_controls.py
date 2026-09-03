@@ -47,18 +47,49 @@ def _count_sessions(user_id: str) -> int:
         return 0
 
 
-def _count_senses() -> int:
+def _count_senses(user_id: str = "") -> int:
+    """Antal sanse-indtryk. Tælles direkte med brugerens scope frem for via
+    db_sensory's _scope(), som læser en context-variabel der ikke nødvendigvis
+    er sat i den tråd overblikket bygges i."""
+    from core.runtime.db import connect
+    uid = (user_id or "").strip()
     try:
-        from core.runtime.db_sensory import count_sensory_memories
-        return int(count_sensory_memories() or 0)
+        with connect() as conn:
+            if uid:
+                row = conn.execute(
+                    "SELECT count(*) FROM sensory_memories WHERE user_id = ?",
+                    (uid,)).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT count(*) FROM sensory_memories "
+                    "WHERE user_id IS NULL OR user_id = ''").fetchone()
+        return int(row[0] if row else 0)
     except Exception:
         return 0
 
 
-def _count_brain() -> int:
+def _count_brain(user_id: str = "") -> int:
+    """Antal brain-poster for brugeren — via COUNT, ikke ved at hente dem.
+
+    Første udgave gjorde `len(list_private_brain_records(limit=100_000))`. Målt
+    på Bjørns runtime er der 128.550 poster: loftet ville have LØJET (100.000),
+    og hvert eneste besøg i indstillingerne ville have hentet hundredtusind
+    rækker for at vise ét tal. Et tal man kan tælle i databasen, skal tælles i
+    databasen.
+    """
+    from core.runtime.db import connect
+    uid = (user_id or "").strip()
     try:
-        from core.runtime.db_private_brain import list_private_brain_records
-        return len(list_private_brain_records(limit=100_000) or [])
+        with connect() as conn:
+            if uid:
+                row = conn.execute(
+                    "SELECT count(*) FROM private_brain_records WHERE user_id = ?",
+                    (uid,)).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT count(*) FROM private_brain_records "
+                    "WHERE user_id IS NULL OR user_id = ''").fetchone()
+        return int(row[0] if row else 0)
     except Exception:
         return 0
 
@@ -96,10 +127,10 @@ def data_overview(user_id: str) -> dict[str, Any]:
              "count": _count_sessions(user_id), "unit": "samtaler",
              "detail": "Alt du og Jarvis har sagt til hinanden."},
             {"key": "senses", "label": "Sansernes Arkiv",
-             "count": _count_senses(), "unit": "indtryk",
+             "count": _count_senses(user_id), "unit": "indtryk",
              "detail": "Hvad Jarvis har set og noteret i hjemmet."},
             {"key": "brain", "label": "Hans viden om dig",
-             "count": _count_brain(), "unit": "poster",
+             "count": _count_brain(user_id), "unit": "poster",
              "detail": "Det han selv har udledt og gemt undervejs."},
             {"key": "identity", "label": "Hvem du er",
              "count": _identity_bytes(user_id), "unit": "tegn",

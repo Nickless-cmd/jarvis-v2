@@ -55,19 +55,19 @@ _Brugerens egne data — tælle, eksportere, slette. Lagvis._
 |---|---|---|---|---|
 | function | `_now` | `()` | — | [src](../../../core/services/account_data_controls.py#L36) |
 | function | `_count_sessions` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L42) |
-| function | `_count_senses` | `()` | — | [src](../../../core/services/account_data_controls.py#L50) |
-| function | `_count_brain` | `()` | — | [src](../../../core/services/account_data_controls.py#L58) |
-| function | `_identity_bytes` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L66) |
-| function | `_identity_paths` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L77) |
-| function | `data_overview` | `(user_id)` | Hvad har vi om dig, lag for lag. Rene tal — ingen indhold. | [src](../../../core/services/account_data_controls.py#L87) |
-| function | `delete_sessions` | `(user_id)` | Slet ALLE brugerens samtaler. Én ad gangen, så en enkelt der fejler ikke | [src](../../../core/services/account_data_controls.py#L114) |
-| function | `delete_senses` | `(user_id)` | Tøm Sansernes Arkiv for denne bruger. | [src](../../../core/services/account_data_controls.py#L134) |
-| function | `delete_brain` | `(user_id)` | Slet det han selv har udledt om brugeren. | [src](../../../core/services/account_data_controls.py#L149) |
-| function | `reset_identity` | `(user_id)` | Nulstil MEMORY.md og USER.md — hans billede af brugeren. | [src](../../../core/services/account_data_controls.py#L163) |
-| function | `delete_layer` | `(user_id, layer)` | Slet ét lag. Ukendt lag → fejl frem for tavshed. | [src](../../../core/services/account_data_controls.py#L194) |
-| function | `delete_all` | `(user_id)` | Alle fire lag. En sammensætning af de enkelte — ikke en femte vej. | [src](../../../core/services/account_data_controls.py#L202) |
-| function | `export_all` | `(user_id)` | Alt vi har om brugeren, som JSON. | [src](../../../core/services/account_data_controls.py#L221) |
-| function | `export_json` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L269) |
+| function | `_count_senses` | `(user_id=…)` | Antal sanse-indtryk. Tælles direkte med brugerens scope frem for via | [src](../../../core/services/account_data_controls.py#L50) |
+| function | `_count_brain` | `(user_id=…)` | Antal brain-poster for brugeren — via COUNT, ikke ved at hente dem. | [src](../../../core/services/account_data_controls.py#L71) |
+| function | `_identity_bytes` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L97) |
+| function | `_identity_paths` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L108) |
+| function | `data_overview` | `(user_id)` | Hvad har vi om dig, lag for lag. Rene tal — ingen indhold. | [src](../../../core/services/account_data_controls.py#L118) |
+| function | `delete_sessions` | `(user_id)` | Slet ALLE brugerens samtaler. Én ad gangen, så en enkelt der fejler ikke | [src](../../../core/services/account_data_controls.py#L145) |
+| function | `delete_senses` | `(user_id)` | Tøm Sansernes Arkiv for denne bruger. | [src](../../../core/services/account_data_controls.py#L165) |
+| function | `delete_brain` | `(user_id)` | Slet det han selv har udledt om brugeren. | [src](../../../core/services/account_data_controls.py#L180) |
+| function | `reset_identity` | `(user_id)` | Nulstil MEMORY.md og USER.md — hans billede af brugeren. | [src](../../../core/services/account_data_controls.py#L194) |
+| function | `delete_layer` | `(user_id, layer)` | Slet ét lag. Ukendt lag → fejl frem for tavshed. | [src](../../../core/services/account_data_controls.py#L225) |
+| function | `delete_all` | `(user_id)` | Alle fire lag. En sammensætning af de enkelte — ikke en femte vej. | [src](../../../core/services/account_data_controls.py#L233) |
+| function | `export_all` | `(user_id)` | Alt vi har om brugeren, som JSON. | [src](../../../core/services/account_data_controls.py#L252) |
+| function | `export_json` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L300) |
 
 ## `core/services/action_router.py`
 _Action Router — close the loop: signal → handling._

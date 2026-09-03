@@ -27,8 +27,8 @@ def ws(tmp_path, monkeypatch):
 
 def test_overblik_har_alle_fire_lag(ws, monkeypatch):
     monkeypatch.setattr(adc, "_count_sessions", lambda uid: 3)
-    monkeypatch.setattr(adc, "_count_senses", lambda: 7)
-    monkeypatch.setattr(adc, "_count_brain", lambda: 11)
+    monkeypatch.setattr(adc, "_count_senses", lambda uid="": 7)
+    monkeypatch.setattr(adc, "_count_brain", lambda uid="": 11)
 
     out = adc.data_overview("u1")
     keys = [layer["key"] for layer in out["layers"]]
@@ -42,8 +42,8 @@ def test_hvert_lag_har_et_tal_og_en_forklaring(ws, monkeypatch):
     """En sletteknap uden et tal ved siden af beder folk om at gætte hvad de
     mister."""
     monkeypatch.setattr(adc, "_count_sessions", lambda uid: 0)
-    monkeypatch.setattr(adc, "_count_senses", lambda: 0)
-    monkeypatch.setattr(adc, "_count_brain", lambda: 0)
+    monkeypatch.setattr(adc, "_count_senses", lambda uid="": 0)
+    monkeypatch.setattr(adc, "_count_brain", lambda uid="": 0)
     for layer in adc.data_overview("u1")["layers"]:
         assert isinstance(layer["count"], int)
         assert layer["detail"].strip()
@@ -172,3 +172,24 @@ def test_et_daarligt_lag_vaelter_ikke_hele_eksporten(ws, monkeypatch):
 def test_eksport_er_gyldig_json(ws):
     parsed = json.loads(adc.export_json("u1"))
     assert parsed["user_id"] == "u1"
+
+
+def test_taelling_henter_ikke_raekker_for_at_taelle(monkeypatch):
+    """Målt på Bjørns runtime: 128.550 brain-poster. Første udgave gjorde
+    len(list(limit=100_000)) — loftet ville have LØJET, og hvert besøg i
+    indstillingerne ville have hentet hundredtusind rækker for ét tal."""
+    import sqlite3
+    db = sqlite3.connect(":memory:")
+    db.execute("CREATE TABLE private_brain_records (id INTEGER PRIMARY KEY, user_id TEXT)")
+    db.executemany("INSERT INTO private_brain_records (user_id) VALUES (?)",
+                   [("u1",)] * 5 + [("u2",)] * 3)
+    db.commit()
+
+    class _Ctx:
+        def __enter__(self): return db
+        def __exit__(self, *a): return False
+    import core.runtime.db as _db
+    monkeypatch.setattr(_db, "connect", lambda *a, **k: _Ctx(), raising=False)
+
+    assert adc._count_brain("u1") == 5
+    assert adc._count_brain("u2") == 3

@@ -82,7 +82,25 @@ def erase_user(user_id: str, *, mode: str = "soft", actor: str = "owner",
 
     swept: dict[str, int] = {}
     workspace_wiped = False
+    layers: dict[str, object] = {}
     if mode == "hard":
+        # De fire hukommelses-lag FØRST, gennem deres egne API'er.
+        #
+        # Fejesken nedenfor finder tabeller på en user_id-kolonne, og det er en
+        # god regel — men den efterlod `chat_sessions` urørt, fordi DEN tabel
+        # ikke har kolonnen. En hård sletning fjernede altså beskederne og lod
+        # samtalerne stå tilbage som tomme skaller (verificeret 3. sept.:
+        # chat_messages DÆKKET, chat_sessions IKKE).
+        #
+        # delete_all rydder sessionerne gennem delete_chat_session og
+        # identitetsfilerne gennem workspace_crypto — begge dele kan fejesken
+        # ikke gøre. Rækkefølgen er bevidst: den brede fejning bagefter fanger
+        # hvad de målrettede kald måtte have misset, aldrig omvendt.
+        try:
+            from core.services.account_data_controls import delete_all
+            layers = delete_all(uid)
+        except Exception as exc:
+            layers = {"error": f"{type(exc).__name__}: {exc}"}
         swept = _sweep_user_tables(uid, connect=connect)
         workspace_wiped = _wipe_workspace(uid)
 
@@ -96,4 +114,5 @@ def erase_user(user_id: str, *, mode: str = "soft", actor: str = "owner",
         "revoked_connectors": revoked,
         "swept_tables": swept,
         "workspace_wiped": workspace_wiped,
+        "memory_layers": layers,
     }

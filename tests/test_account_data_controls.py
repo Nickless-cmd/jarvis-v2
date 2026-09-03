@@ -244,3 +244,37 @@ def test_identitet_taelles_i_tegn_ikke_bytes(ws, monkeypatch):
 
     monkeypatch.setattr(wc, "read_text_for_path", lambda p, **k: "abcde", raising=False)
     assert adc._identity_bytes("u1") == 10  # to filer à 5 tegn
+
+
+def test_haard_kontosletning_rydder_ogsaa_samtalerne(monkeypatch):
+    """Fejesken finder tabeller på en user_id-kolonne, men `chat_sessions` HAR
+    ikke den kolonne (verificeret 3. sept.). En hård sletning fjernede derfor
+    beskederne og lod samtalerne stå tilbage som tomme skaller. De to veje er
+    nu bundet sammen."""
+    import core.services.data_erasure as de
+
+    calls = []
+    monkeypatch.setattr(de, "_sweep_user_tables", lambda uid, connect=None: {"x": 1})
+    monkeypatch.setattr(de, "_wipe_workspace", lambda uid: True)
+    monkeypatch.setattr("core.identity.user_db.delete_user",
+                        lambda uid, mode, actor: True, raising=False)
+    monkeypatch.setattr(adc, "delete_all",
+                        lambda uid: calls.append(uid) or {"results": [{"layer": "sessions", "deleted": 3}]})
+
+    out = de.erase_user("u1", mode="hard", actor="owner")
+    assert calls == ["u1"], "lagene blev ikke ryddet"
+    assert out["memory_layers"]["results"][0]["layer"] == "sessions"
+
+
+def test_soft_sletning_roerer_ikke_hukommelsen(monkeypatch):
+    """Soft er reversibel og må derfor IKKE tømme lagene — ellers ville
+    «reversibel» være en løgn."""
+    import core.services.data_erasure as de
+
+    calls = []
+    monkeypatch.setattr("core.identity.user_db.delete_user",
+                        lambda uid, mode, actor: True, raising=False)
+    monkeypatch.setattr(adc, "delete_all", lambda uid: calls.append(uid))
+
+    de.erase_user("u1", mode="soft", actor="owner")
+    assert calls == []

@@ -44,16 +44,22 @@ _IPV4 = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
 # offentlige adresse kan skifte. CGNAT-rummet nedenfor dækker WAN-segmentet
 # uanset hvilken adresse ISP'en giver os.
 def _self_ips() -> set[str]:
+    # read_runtime_key kører ALTID str() på værdien, så en JSON-liste kommer
+    # tilbage som sin repr: "['185.107.14.241', '100.75.136.21']". Et naivt
+    # split på komma laver den til "['185.107.14.241'" — og så genkendte vi
+    # ikke vores egen adresse, hvilket var hele pointen. Klip derfor
+    # klammer og anførselstegn af hvert led.
     try:
         from core.runtime.secrets import read_runtime_key
-        v = read_runtime_key("pfsense_self_ips")
-        if isinstance(v, list):
-            return {str(x).strip() for x in v if str(x).strip()}
-        if isinstance(v, str) and v.strip():
-            return {p.strip() for p in v.split(",") if p.strip()}
+        raw = read_runtime_key("pfsense_self_ips")
     except Exception:
-        pass
-    return set()
+        return set()
+    out: set[str] = set()
+    for part in str(raw).split(","):
+        ip = part.strip().strip("[]()").strip().strip("'\"").strip()
+        if _IPV4.match(ip):
+            out.add(ip)
+    return out
 
 
 _lock = threading.Lock()

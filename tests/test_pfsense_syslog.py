@@ -178,3 +178,27 @@ def test_repeat_alerts_back_off_instead_of_repeating_every_ten_minutes():
     for p in range(20):
         m._ingest(_block("198.51.100.7", p), t + m._COOLDOWN_MAX_S)
     assert [d["src"] for d in m.drain_detections()] == ["198.51.100.7"]
+
+
+def test_self_ips_survives_the_string_repr_of_a_json_list(monkeypatch):
+    """read_runtime_key kører altid str() på værdien, så en JSON-liste kommer
+    tilbage som sin repr. Et naivt split på komma gav "['185.107.14.241'" —
+    og så genkendte vi IKKE vores egen adresse, hvilket var hele pointen."""
+    import core.services.pfsense_syslog as m
+    import core.runtime.secrets as secrets
+
+    monkeypatch.setattr(
+        secrets, "read_runtime_key",
+        lambda *a, **k: "['185.107.14.241', '100.75.136.21']",
+    )
+    assert m._self_ips() == {"185.107.14.241", "100.75.136.21"}
+    assert m._is_internal_src("185.107.14.241") is True
+    assert m._is_internal_src("203.0.113.9") is False
+
+
+def test_self_ips_also_accepts_a_plain_comma_list(monkeypatch):
+    import core.services.pfsense_syslog as m
+    import core.runtime.secrets as secrets
+
+    monkeypatch.setattr(secrets, "read_runtime_key", lambda *a, **k: "1.2.3.4, 5.6.7.8")
+    assert m._self_ips() == {"1.2.3.4", "5.6.7.8"}

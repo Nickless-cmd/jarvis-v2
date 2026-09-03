@@ -1224,7 +1224,7 @@ Generated from source. 6595/13222 functions/methods documented (49%). The list b
 - `core/services/personal_project.py` :: `list_projects` (L603)
 - `core/services/personal_project.py` :: `pause_project` (L356)
 - `core/services/personal_project.py` :: `resume_project` (L380)
-- `core/services/pfsense_syslog.py` :: `syslog_stats` (L215)
+- `core/services/pfsense_syslog.py` :: `syslog_stats` (L221)
 - `core/services/plan_proposals.py` :: `list_session_plans` (L479)
 - `core/services/plan_proposals.py` :: `propose_plan` (L49)
 - `core/services/plan_proposals.py` :: `resolve_plan` (L133)

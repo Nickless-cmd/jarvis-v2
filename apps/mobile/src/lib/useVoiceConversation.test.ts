@@ -23,7 +23,17 @@ function slowRecorder(prepareMs = 30) {
   return rec
 }
 
-beforeEach(() => jest.clearAllMocks())
+// clearAllMocks rydder KALDENE, men ikke svar sat med mockResolvedValue. En
+// test der satte «tom transskription» lod den stå og forurenede de næste.
+// Hver test begynder derfor fra den samme kendte tilstand.
+beforeEach(() => {
+  jest.clearAllMocks()
+  const api = jest.requireMock('./voiceApi') as {
+    transcribeAudio: jest.Mock; synthesizeTtsToFile: jest.Mock
+  }
+  api.transcribeAudio.mockResolvedValue({ status: 'ok', text: 'hej Jarvis' })
+  api.synthesizeTtsToFile.mockResolvedValue({ uri: 'file:///tts.mp3', provider: 'elevenlabs' })
+})
 
 describe('push-to-talk', () => {
   // Fejlen: knappen blev sluppet FØR optageren var oppe. stopListening spurgte
@@ -240,5 +250,61 @@ describe('hænderfri holder samtalen i gang', () => {
     await new Promise((r) => setTimeout(r, 600))
     expect(rec.record).toHaveBeenCalledTimes(2)
     expect(result.current.problem).toMatch(/hørte ikke noget/)
+  })
+})
+
+describe('hænderfri stopper af sig selv', () => {
+  /** Optager hvis niveau kan styres udefra — sådan som getStatus() leverer det. */
+  function meteredRecorder() {
+    const rec: {
+      uri: string; prepareToRecordAsync: jest.Mock; record: jest.Mock
+      stop: jest.Mock; db: number; getStatus: () => { isRecording: boolean; metering: number; url: null }
+    } = {
+      uri: 'file:///cache/utterance.m4a',
+      prepareToRecordAsync: jest.fn(async () => undefined),
+      record: jest.fn(),
+      stop: jest.fn(async () => undefined),
+      db: -160,
+      getStatus: () => ({ isRecording: true, metering: rec.db, url: null }),
+    }
+    // Hook'en laver TO optagere: én til det du siger («voice_recognition») og
+    // én der lytter efter om du taler hen over ham («voice_communication»).
+    // De skelnes på deres KILDE og ikke på kaldrækkefølgen — rækkefølgen
+    // holder ikke, fordi komponenten rendres flere gange.
+    const monitorRec = { ...rec, stop: jest.fn(async () => undefined) }
+    ;(audio.useAudioRecorder as jest.Mock).mockImplementation((opts) =>
+      opts?.android?.audioSource === 'voice_communication' ? monitorRec : rec)
+    return rec
+  }
+
+  // Dette er fejlen «samtale mode reagerer han ikke»: stilheds-grænsen lå i
+  // optagerens status-tilbagekald, som ikke bærer metering og først fyrer når
+  // optagelsen SLUTTER. Den blev derfor aldrig nået, og mikrofonen stod åben.
+  it('sender ytringen når du holder pause — uden at nogen trykker', async () => {
+    const rec = meteredRecorder()
+    const { result } = await renderHook(() => useVoiceConversation(config, deps))
+    await act(async () => { await result.current.startListening() })
+    expect(rec.record).toHaveBeenCalled()
+
+    rec.db = -15                                   // du taler
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)) })
+    expect(rec.stop).not.toHaveBeenCalled()
+
+    rec.db = -70                                   // du holder pause
+    await act(async () => { await new Promise((r) => setTimeout(r, 1800)) })
+
+    await waitFor(() => expect(rec.stop).toHaveBeenCalled())
+    expect(deps.sendMessage).toHaveBeenCalledWith('hej Jarvis')
+  })
+
+  it('sender ikke noget afsted når der aldrig blev talt', async () => {
+    const rec = meteredRecorder()
+    const { result } = await renderHook(() => useVoiceConversation(config, deps))
+    await act(async () => { await result.current.startListening() })
+
+    rec.db = -80
+    await act(async () => { await new Promise((r) => setTimeout(r, 2000)) })
+    expect(rec.stop).not.toHaveBeenCalled()
+    await act(async () => { await result.current.exit() })
   })
 })

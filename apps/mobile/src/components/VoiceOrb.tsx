@@ -22,8 +22,9 @@ export type OrbState = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'spe
 
 export interface VoiceOrbProps {
   state: OrbState
-  /** 0..1 — hvor kraftigt der tales lige nu. Kun brugt mens der lyttes. */
-  level?: number
+  /** 0..1 — hvor kraftigt der tales lige nu, som Animated.Value så kuglen kan
+   *  følge stemmen uden at skærmen rendres om ved hver måling. */
+  level?: Animated.Value
   size?: number
 }
 
@@ -36,11 +37,12 @@ const DRIFT_MS: Record<OrbState, number> = {
   speaking: 2600,
 }
 
-export function VoiceOrb({ state, level = 0, size = 232 }: VoiceOrbProps) {
+export function VoiceOrb({ state, level, size = 232 }: VoiceOrbProps) {
   const tokens = useTheme()
   const reduced = useReducedMotion()
   const drift = useRef(new Animated.Value(0)).current
-  const swell = useRef(new Animated.Value(0)).current
+  const own = useRef(new Animated.Value(0)).current
+  const swell = level ?? own
 
   useEffect(() => {
     if (reduced) { drift.stopAnimation(); drift.setValue(0); return }
@@ -57,19 +59,10 @@ export function VoiceOrb({ state, level = 0, size = 232 }: VoiceOrbProps) {
     return () => loop.stop()
   }, [state, drift, reduced])
 
-  // Stemmen skubber til kuglen. Fjederen gør at den følger stemmen frem for at
-  // hakke ved hver måling — måleren kommer i spring, og et spring i størrelse
-  // ville læses som en fejl.
-  useEffect(() => {
-    const target = state === 'listening' ? Math.max(0, Math.min(1, level)) : 0
-    Animated.spring(swell, {
-      toValue: target,
-      damping: 14,
-      stiffness: 110,
-      mass: 0.7,
-      useNativeDriver: true,
-    }).start()
-  }, [level, state, swell])
+  // Kuglen svulmer KUN mens der lyttes. Hook'en nulstiller niveauet når
+  // optagelsen stopper, men her holdes den også fast, så et efterslæb fra
+  // sidste måling ikke får den til at ånde videre mens han tænker.
+  const responsive = state === 'listening'
 
   const accent = tokens.color.accent
   const dark = tokens.scheme === 'dark'
@@ -82,7 +75,9 @@ export function VoiceOrb({ state, level = 0, size = 232 }: VoiceOrbProps) {
   // Bunden må ikke forsvinde helt: i mørkt tema falder en gennemsigtig kant i
   // ét med baggrunden, og kuglen ser afskåret ud i stedet for rund.
   const bodyFloor = dark ? 0.34 : 0.1
-  const scale = swell.interpolate({ inputRange: [0, 1], outputRange: [1, 1.11] })
+  const scale = responsive
+    ? swell.interpolate({ inputRange: [0, 1], outputRange: [1, 1.11] })
+    : 1
   // De to lag deler samme ur men går hver sin vej, så mønsteret aldrig gentager
   // sig helt. Vandringen holdes inden for kuglen — den er klippet af.
   const up = drift.interpolate({ inputRange: [0, 1], outputRange: [size * 0.42, -size * 0.52] })

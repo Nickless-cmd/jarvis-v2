@@ -1,4 +1,4 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { X } from 'lucide-react-native'
 import type { VoiceState, VoiceMode } from '../lib/useVoiceConversation'
 import { VoiceOrb } from './VoiceOrb'
@@ -17,8 +17,10 @@ const LABEL: Record<VoiceState, string> = {
 export interface VoiceOverlayProps {
   active: boolean
   state: VoiceState
-  /** 0..1 — hvor kraftigt der tales lige nu. */
-  level?: number
+  /** 0..1 — hvor kraftigt der tales lige nu. En Animated.Value og ikke et tal:
+   *  niveauet opdateres mange gange i sekundet, og at rendre skærmen så tit for
+   *  at puste en kugle op ville koste mere end den er værd. */
+  level?: Animated.Value
   /** Hvorfor det gik i stå. Tom = intet at melde. */
   problem?: string
   mode: VoiceMode
@@ -73,7 +75,7 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
             accessibilityRole="button"
             accessibilityLabel={p.state === 'speaking' ? 'Afbryd Jarvis' : 'Tal med Jarvis'}
           >
-            <VoiceOrb state={p.state} level={p.level ?? 0} />
+            <VoiceOrb state={p.state} level={p.level} />
           </Pressable>
           <Text style={s.state}>{LABEL[p.state]}</Text>
           {p.problem ? <Text style={s.problem}>{p.problem}</Text> : null}

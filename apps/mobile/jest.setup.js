@@ -78,11 +78,15 @@ jest.mock('expo-location', () => ({
 jest.mock('expo-audio', () => ({
   __esModule: true,
   RecordingPresets: { HIGH_QUALITY: {} },
+  // getStatus() er dér niveauet FAKTISK kommer fra. Status-tilbagekaldet på
+  // useAudioRecorder bærer ikke metering — det fyrer først når optagelsen
+  // slutter — og hænderfri var bygget på det, så den stoppede aldrig selv.
   useAudioRecorder: jest.fn(() => ({
     uri: null,
     prepareToRecordAsync: jest.fn(async () => undefined),
     record: jest.fn(),
     stop: jest.fn(async () => undefined),
+    getStatus: jest.fn(() => ({ isRecording: true, metering: -160, url: null })),
   })),
   // Afspilleren skal MELDE at lyden er færdig. Uden det kan en kø af replikker
   // aldrig komme videre til den næste, og en test af strømmende oplæsning ville

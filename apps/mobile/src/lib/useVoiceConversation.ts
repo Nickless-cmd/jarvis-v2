@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Animated } from 'react-native'
 import {
   useAudioRecorder, setAudioModeAsync,
   requestRecordingPermissionsAsync, RecordingPresets,
 } from 'expo-audio'
-import type { RecordingStatus } from 'expo-audio'
+import {
+  bargeStep, freshLoud, freshWatch, levelFromDb, utteranceStep,
+} from './voiceActivity'
 import { takeSpeakable } from './speechQueue'
 import { useSpeechPlayer } from './useSpeechPlayer'
 import type { ApiConfig } from './types'
@@ -20,18 +23,19 @@ export type VoiceMode = 'push' | 'hands-free'
 const _SILENCE_MS = 1300
 const _MAX_UTTERANCE_MS = 30000
 const _SPEECH_DB = -35
+/** Hvor tit niveauet aflæses. Det SKAL hentes selv med getStatus(): status-
+ *  tilbagekaldet på useAudioRecorder bærer ikke metering og fyrer først når
+ *  optagelsen slutter — hænderfri var bygget på det og stoppede derfor aldrig. */
+const _POLL_MS = 120
+/** Afbrydelses-grænsen ligger HØJERE end tale-grænsen, fordi mikrofonen også
+ *  hører Jarvis' egen stemme fra højttaleren. */
+const _BARGE_DB = -22
+const _BARGE_HOLD_MS = 420
 /** Hvor mange tomme runder hænderfri prøver igen efter, før den holder inde.
  *  Nul ville betyde at én pause afsluttede samtalen — så var den ikke
  *  hænderfri. Uendeligt ville betyde en mikrofon der står åben i stuen resten
  *  af dagen. Én ekstra runde er pausen man holder når man tænker. */
 const _EMPTY_ROUNDS = 1
-
-/** Måleren kommer i dB (-160..0). Tale ligger typisk mellem -45 og -10, så
- *  det er DET spænd kuglen skal reagere på — ikke hele skalaen, hvor almindelig
- *  tale ville se ud som næsten ingenting. */
-function levelFromDb(db: number): number {
-  return Math.max(0, Math.min(1, (db + 48) / 38))
-}
 
 export interface VoiceStreamDeps {
   status: string
@@ -44,21 +48,28 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   const [state, setState] = useState<VoiceState>('idle')
   const [mode, setMode] = useState<VoiceMode>('hands-free')
   const [active, setActive] = useState(false)
-  const [level, setLevel] = useState(0)
   const [problem, setProblem] = useState<string>('')
+  // Niveauet er en Animated.Value og ikke React-tilstand: det opdateres ~8
+  // gange i sekundet, og at rendre hele skærmen så tit for at puste en kugle op
+  // ville koste mere end den er værd.
+  const level = useRef(new Animated.Value(0)).current
 
   const awaitingRef = useRef(false)
   const sawWorkingRef = useRef(false)
   const activeRef = useRef(active)
   const modeRef = useRef(mode)
-  const sawSpeechRef = useRef(false)
   // Optageren KØRER (native), uafhængigt af hvad React har nået at rendere.
   // Og: brugeren HOLDER knappen. De to skal spørges med refs, ikke med state —
   // se startListening for hvorfor.
   const recordingRef = useRef(false)
   const wantRef = useRef(false)
-  const silenceAtRef = useRef(0)
   const startedAtRef = useRef(0)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const bargeRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Blev overvågeren faktisk sat i gang? Uden dette ville stop() blive kaldt på
+  // en optager der aldrig kørte, hver gang samtalen skiftede tilstand.
+  const monitorOnRef = useRef(false)
+  const interruptRef = useRef<(() => void) | undefined>(undefined)
   const emptyRoundsRef = useRef(0)
   const stopListeningRef = useRef<(() => Promise<void>) | undefined>(undefined)
   const startListeningRef = useRef<(() => Promise<void>) | undefined>(undefined)
@@ -76,34 +87,39 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   }, [])
   const speech = useSpeechPlayer(config, onSpoken)
 
-  // VAD-status-listener (hænderfri): auto-stop efter tale + stilhed. Samme
-  // strøm giver niveauet til kuglen.
-  const onRecStatus = useCallback((status: RecordingStatus) => {
-    if (!recordingRef.current) return
-    const db = (status as unknown as { metering?: number }).metering ?? -160
-    setLevel(levelFromDb(db))
-    if (modeRef.current !== 'hands-free') return
-    const now = Date.now()
-    if (db > _SPEECH_DB) { sawSpeechRef.current = true; silenceAtRef.current = 0 }
-    else if (sawSpeechRef.current) {
-      if (!silenceAtRef.current) silenceAtRef.current = now
-      else if (now - silenceAtRef.current > _SILENCE_MS) { void stopListeningRef.current?.() }
-    }
-    if (startedAtRef.current && now - startedAtRef.current > _MAX_UTTERANCE_MS) void stopListeningRef.current?.()
-  }, [])
+  // Optageren der fanger DET DU SIGER. Androids kilde til TALEGENKENDELSE:
+  // standardkilden («mic») kører niveaustyring beregnet på musik og pumper
+  // baggrundsstøj op i pauserne — netop dét whisper tager fejl af.
+  const recorder = useAudioRecorder({
+    ...RecordingPresets.HIGH_QUALITY,
+    isMeteringEnabled: true,
+    android: { ...RecordingPresets.HIGH_QUALITY.android, audioSource: 'voice_recognition' },
+  })
 
-  const recorder = useAudioRecorder(
-    {
-      ...RecordingPresets.HIGH_QUALITY,
-      isMeteringEnabled: true,
-      // Androids optagekilde til TALEGENKENDELSE. Standardkilden («mic») kører
-      // automatisk niveaustyring beregnet på musik og optagelser, og den
-      // pumper baggrundsstøj op i pauserne — netop dét whisper tager fejl af.
-      // `voice_recognition` slår den styring fra og lader støjreduktionen stå.
-      android: { ...RecordingPresets.HIGH_QUALITY.android, audioSource: 'voice_recognition' },
-    },
-    onRecStatus,
-  )
+  // En ANDEN optager, der kun lytter efter om du taler hen over ham. Den bruger
+  // `voice_communication`, som tænder telefonens ekkoannullering — uden den
+  // ville mikrofonen høre Jarvis' egen stemme fra højttaleren og afbryde ham
+  // konstant. De to kører aldrig samtidig: den ene mens du taler, den anden
+  // mens han taler. Derfor to instanser i stedet for én med skiftende kilde,
+  // som ikke kan ændres efter oprettelsen.
+  const monitor = useAudioRecorder({
+    ...RecordingPresets.HIGH_QUALITY,
+    isMeteringEnabled: true,
+    android: { ...RecordingPresets.HIGH_QUALITY.android, audioSource: 'voice_communication' },
+  })
+
+  const meterOf = (r: unknown): number =>
+    (r as { getStatus?: () => { metering?: number } }).getStatus?.().metering ?? -160
+
+  const stopPoll = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }, [])
+  const stopBarge = useCallback(() => {
+    if (bargeRef.current) { clearInterval(bargeRef.current); bargeRef.current = null }
+    if (!monitorOnRef.current) return
+    monitorOnRef.current = false
+    try { void monitor.stop() } catch { /* nåede at stoppe af sig selv */ }
+  }, [monitor])
 
   // Svaret læses højt MENS det skrives. Det er ikke pynt: på et langt svar er
   // ventetiden ellers mange sekunders tavshed, og i en samtale ligner tavshed
@@ -143,11 +159,58 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     }
   }, [deps.status, deps.blocks, deps, speech])
 
+  /**
+   * Pulsslaget mens DU taler. Det henter niveauet selv, fordi optagerens
+   * status-tilbagekald ikke bærer metering — se voiceActivity.ts.
+   *
+   * Maks-længden ligger her og gælder BEGGE tilstande: også et fastholdt tryk
+   * skal have en ende, ellers kan mikrofonen stå åben ubemærket.
+   */
+  const startCapturePoll = useCallback(() => {
+    stopPoll()
+    let watch = freshWatch()
+    let smooth = 0
+    pollRef.current = setInterval(() => {
+      if (!recordingRef.current) { stopPoll(); return }
+      const db = meterOf(recorder)
+      // Udjævnet, fordi målingerne kommer i spring — et spring i kuglens
+      // størrelse ville læses som en fejl frem for som din stemme.
+      smooth += (levelFromDb(db) - smooth) * 0.4
+      level.setValue(smooth)
+      const now = Date.now()
+      if (modeRef.current === 'hands-free') {
+        const r = utteranceStep(watch, db, now, { speechDb: _SPEECH_DB, silenceMs: _SILENCE_MS })
+        watch = r.watch
+        if (r.ended) { void stopListeningRef.current?.(); return }
+      }
+      if (now - startedAtRef.current > _MAX_UTTERANCE_MS) void stopListeningRef.current?.()
+    }, _POLL_MS)
+  }, [recorder, stopPoll, level])
+
+  /** Pulsslaget mens HAN taler: hører efter om du taler hen over ham. */
+  const startBargePoll = useCallback(async () => {
+    if (bargeRef.current) return
+    try {
+      await monitor.prepareToRecordAsync()
+      monitor.record()
+      monitorOnRef.current = true
+    } catch { return }   // kan ikke lytte imens — så kan man trykke i stedet
+    let watch = freshLoud()
+    bargeRef.current = setInterval(() => {
+      const r = bargeStep(watch, meterOf(monitor), Date.now(), {
+        bargeDb: _BARGE_DB, holdMs: _BARGE_HOLD_MS,
+      })
+      watch = r.watch
+      if (r.hit) interruptRef.current?.()
+    }, _POLL_MS)
+  }, [monitor])
+
   const stopListening = useCallback(async () => {
     wantRef.current = false
     if (!recordingRef.current) return
     recordingRef.current = false
-    setLevel(0)
+    stopPoll()
+    level.setValue(0)
     try {
       await recorder.stop()
       const uri = recorder.uri
@@ -188,7 +251,7 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
       setProblem(`Kunne ikke forstå lyden (${(e as Error)?.message || 'ukendt fejl'}).`)
       setState('idle')
     }
-  }, [config, deps, recorder])
+  }, [config, deps, recorder, stopPoll, level])
   useEffect(() => { stopListeningRef.current = stopListening }, [stopListening])
 
   const startListening = useCallback(async () => {
@@ -202,6 +265,7 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     wantRef.current = true
     // At begynde at lytte er også at afbryde. Køen smides væk her, så et svar
     // han er blevet træt af ikke fortsætter oven i det næste spørgsmål.
+    stopBarge()
     speech.stop()
     awaitingRef.current = false
     sawWorkingRef.current = false
@@ -213,14 +277,20 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
         setProblem('Jeg må ikke bruge mikrofonen. Giv appen adgang i telefonens indstillinger.')
         setState('idle'); return
       }
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true })
-      sawSpeechRef.current = false
-      silenceAtRef.current = 0
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+        // Svaret skal ud af HØJTTALEREN. Uden dette kan lyden havne i
+        // øresneglen, når sessionen står i optage-tilstand — hørbart som «han
+        // svarer ikke», selv når alt andet virker.
+        shouldRouteThroughEarpiece: false,
+      })
       startedAtRef.current = Date.now()
       await recorder.prepareToRecordAsync()
       recorder.record()
       recordingRef.current = true
       setState('listening')
+      startCapturePoll()
       // Nået at slippe imens? Så stop nu — ellers hænger optagelsen.
       if (!wantRef.current && modeRef.current === 'push') void stopListeningRef.current?.()
     } catch (e) {
@@ -229,12 +299,23 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
       setProblem(`Kunne ikke starte optagelsen (${(e as Error)?.name || 'ukendt fejl'}).`)
       setState('idle')
     }
-  }, [config, recorder, speech])
+  }, [config, recorder, speech, startCapturePoll, stopBarge])
   useEffect(() => { startListeningRef.current = startListening }, [startListening])
+
+  // Lyt efter afbrydelse KUN mens han taler, og kun i hænderfri. I
+  // push-to-talk holder man alligevel knappen, og en åben mikrofon dér ville
+  // være en overraskelse.
+  useEffect(() => {
+    if (speech.speaking && active && mode === 'hands-free') void startBargePoll()
+    else stopBarge()
+  }, [speech.speaking, active, mode, startBargePoll, stopBarge])
+
+  useEffect(() => () => { stopPoll(); stopBarge() }, [stopPoll, stopBarge])
 
   /** Afbryd ham midt i et svar. I hænderfri går vi direkte over til at lytte —
    *  det er dét man vil, når man afbryder nogen. */
   const interrupt = useCallback(() => {
+    stopBarge()
     speech.stop()
     awaitingRef.current = false
     sawWorkingRef.current = false
@@ -242,11 +323,14 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     lastTextRef.current = ''
     setState('idle')
     if (modeRef.current === 'hands-free') void startListeningRef.current?.()
-  }, [speech])
+  }, [speech, stopBarge])
+  useEffect(() => { interruptRef.current = interrupt }, [interrupt])
 
   const enter = useCallback(() => { setActive(true); setProblem(''); setState('idle') }, [])
   const exit = useCallback(() => {
     setActive(false)
+    stopPoll()
+    stopBarge()
     awaitingRef.current = false
     sawWorkingRef.current = false
     takenRef.current = 0
@@ -254,7 +338,7 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     speech.stop()
     void stopListeningRef.current?.()
     setState('idle')
-  }, [speech])
+  }, [speech, stopPoll, stopBarge])
 
   // Afspilningen ejer 'speaking'. Uden dette ville kuglen falde til ro mellem
   // to sætninger, selv om han stadig er midt i et svar.

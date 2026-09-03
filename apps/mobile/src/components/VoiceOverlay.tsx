@@ -1,6 +1,7 @@
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { X } from 'lucide-react-native'
 import type { VoiceState, VoiceMode } from '../lib/useVoiceConversation'
+import { ApprovalCard, type ApprovalViewModel } from './ApprovalCard'
 import { VoiceOrb } from './VoiceOrb'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
@@ -30,6 +31,12 @@ export interface VoiceOverlayProps {
   stopListening: () => void
   interrupt: () => void
   exit: () => void
+  /** En godkendelse der venter. Samtalen er FULDSKÆRM, så et kort der kun bor i
+   *  chatten er usynligt herinde — man skulle lukke samtalen for at se at der
+   *  overhovedet blev spurgt om noget, og imens stod runnet stille. */
+  approval?: ApprovalViewModel | null
+  onApprove?: () => void
+  onDeny?: () => void
 }
 
 export function VoiceOverlay(p: VoiceOverlayProps) {
@@ -56,6 +63,10 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
     ? 'Hold kuglen mens du taler'
     : 'Tal frit — jeg sender når du holder pause'
 
+  // Kuglen giver plads når der skal træffes en beslutning. Den skal stadig
+  // være der — det er den samme samtale — men den skal ikke fylde mest.
+  const asking = Boolean(p.approval && p.onApprove && p.onDeny)
+
   return (
     <Modal visible={p.active} transparent={false} animationType="fade" onRequestClose={p.exit}>
       <View style={s.screen}>
@@ -75,10 +86,19 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
             accessibilityRole="button"
             accessibilityLabel={p.state === 'speaking' ? 'Afbryd Jarvis' : 'Tal med Jarvis'}
           >
-            <VoiceOrb state={p.state} level={p.level} />
+            <VoiceOrb state={p.state} level={p.level} size={asking ? 128 : 232} />
           </Pressable>
-          <Text style={s.state}>{LABEL[p.state]}</Text>
+          <Text style={s.state}>{asking ? 'Jeg venter på dit svar' : LABEL[p.state]}</Text>
           {p.problem ? <Text style={s.problem}>{p.problem}</Text> : null}
+          {asking && p.approval ? (
+            <View style={s.approval}>
+              <ApprovalCard
+                approval={p.approval}
+                onApprove={() => p.onApprove?.()}
+                onDeny={() => p.onDeny?.()}
+              />
+            </View>
+          ) : null}
         </View>
 
         <View style={s.bottom}>
@@ -111,6 +131,7 @@ const makes = (tokens: Theme) => StyleSheet.create({
     color: tokens.color.warn, fontSize: 13.5, lineHeight: 20,
     textAlign: 'center', paddingHorizontal: 40,
   },
+  approval: { width: '100%', paddingHorizontal: 18 },
   bottom: { alignItems: 'center', gap: 14, paddingHorizontal: 24 },
   modeRow: { flexDirection: 'row', gap: 8 },
   modeBtn: {

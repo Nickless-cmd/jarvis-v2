@@ -106,20 +106,29 @@ jest.mock('expo-audio', () => ({
   setAudioModeAsync: jest.fn(async () => undefined),
 }))
 
+// react-native-svg som Proxy, ikke som en håndholdt liste. Listen manglede
+// `Ellipse`, og det viste sig først da kuglen skulle rendres i en test — som
+// «Element type is invalid» et helt andet sted. En Proxy kan ikke komme bagud
+// i forhold til hvilke figurer komponenterne faktisk bruger.
 jest.mock('react-native-svg', () => {
   const React = require('react')
-  const mk = (name) => (props) => React.createElement(name, props, props.children)
-  return {
-    __esModule: true,
-    default: mk('Svg'),
-    Svg: mk('Svg'),
-    Circle: mk('Circle'),
-    Rect: mk('Rect'),
-    Defs: mk('Defs'),
-    RadialGradient: mk('RadialGradient'),
-    LinearGradient: mk('LinearGradient'),
-    Stop: mk('Stop'),
+  const mk = (name) => {
+    const C = (props) => React.createElement(String(name), props, props.children)
+    C.displayName = String(name)
+    return C
   }
+  const cache = {}
+  return new Proxy(
+    {},
+    {
+      get: (_t, name) => {
+        if (name === '__esModule') return true
+        const key = name === 'default' ? 'Svg' : String(name)
+        cache[key] = cache[key] || mk(key)
+        return cache[key]
+      }
+    }
+  )
 })
 
 // lucide-react-native udgiver ESM (.mjs) som Jest ikke kan parse — uden denne

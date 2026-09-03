@@ -23,8 +23,10 @@ logger = logging.getLogger("uvicorn.error")
 _DEFAULT_VOICE = "da-DK-JeppeNeural"
 _MAX_TEXT_CHARS = 5000  # sanity cap; long Jarvis monologues should be summarized first
 
-# Jarvis' ElevenLabs voice-id (Mathias, dansk) — spejlet fra voice-skillen, env-overstyrbar.
-ELEVENLABS_VOICE_ID = __import__("os").environ.get("JARVIS_TTS_VOICE_ID", "ygiXC2Oa1BiHksD3WkJZ")
+# Jarvis' ElevenLabs voice-id (Mads, dansk) — spejlet fra voice-skillen, env-overstyrbar.
+# NB: selve syntesen importerer ELEVENLABS_VOICE_ID fra core.skills.voice.tts;
+#     denne konstante bruges kun til X-TTS-Voice-headeren og holdes i sync manuelt.
+ELEVENLABS_VOICE_ID = __import__("os").environ.get("JARVIS_TTS_VOICE_ID", "BIWC0507fYMfhPcAEIRP")
 
 
 class TTSRequest(BaseModel):

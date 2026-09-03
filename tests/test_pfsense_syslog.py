@@ -112,3 +112,69 @@ def test_internal_source_not_detected_as_portscan():
     for port in range(1, ps._SCAN_PORTS + 2):
         ps._ingest(ps._parse_filterlog(_line("block", "10.0.0.55", "8.8.8.8", 1000, port)), now=1.0)
     assert ps.drain_detections() == []          # intern port-scan-mønster = ikke angreb
+
+
+# ---------------------------------------------------------------------------
+# Bjørn fik 3/9 en notifikation: «brute_force fra 185.107.14.241» — hans EGEN
+# offentlige adresse. Og «204.76.203.231» fem gange i træk om noget der
+# allerede var blokeret permanent.
+# ---------------------------------------------------------------------------
+
+def _block(src, dport, dst="100.75.136.21"):
+    return {"action": "block", "src": src, "dst": dst, "dport": dport}
+
+
+def test_cgnat_source_is_not_an_attacker(monkeypatch):
+    """Vores WAN sidder SELV i CGNAT-rummet, og pfSense' regel om private
+    netværk logger hver eneste pakke derfra. Uden denne grænse bliver
+    ISP-segmentets almindelige støj til en strøm af trussels-alarmer."""
+    import core.services.pfsense_syslog as m
+
+    m._reset_for_tests()
+    for p in range(60):
+        m._ingest(_block("100.75.136.21", p), 1000.0)
+    assert m.drain_detections() == []
+
+
+def test_own_public_ip_is_not_an_attacker(monkeypatch):
+    """En blok med os selv som kilde er vores egen trafik gennem vores egen
+    firewall — ikke et angreb mod os."""
+    import core.services.pfsense_syslog as m
+
+    monkeypatch.setattr(m, "_self_ips", lambda: {"185.107.14.241"})
+    m._reset_for_tests()
+    for p in range(60):
+        m._ingest(_block("185.107.14.241", p), 1000.0)
+    assert m.drain_detections() == []
+
+    # En fremmed på samme mønster SKAL stadig fanges — vagten må ikke gøre
+    # detektoren blind.
+    m._reset_for_tests()
+    for p in range(60):
+        m._ingest(_block("203.0.113.9", p), 1000.0)
+    assert [d["src"] for d in m.drain_detections()] == ["203.0.113.9"]
+
+
+def test_repeat_alerts_back_off_instead_of_repeating_every_ten_minutes():
+    """En scanner der er blokeret bliver ved i timevis. Med fast dedup gav den
+    seks beskeder i timen om noget der allerede virker som det skal."""
+    import core.services.pfsense_syslog as m
+
+    m._reset_for_tests()
+    t = 1000.0
+    fired = []
+    for _ in range(4):
+        for p in range(20):
+            m._ingest(_block("198.51.100.7", p), t)
+        got = m.drain_detections()
+        if got:
+            fired.append(t)
+        t += m._DETECT_COOLDOWN_S + 1.0     # lige over den FØRSTE ventetid
+
+    # Første alarm kommer straks. De næste gør ikke, fordi ventetiden vokser.
+    assert len(fired) == 1, f"forventede én alarm, fik {len(fired)}"
+
+    # Men den er ikke tavs for evigt — efter den voksede ventetid melder den igen.
+    for p in range(20):
+        m._ingest(_block("198.51.100.7", p), t + m._COOLDOWN_MAX_S)
+    assert [d["src"] for d in m.drain_detections()] == ["198.51.100.7"]

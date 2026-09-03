@@ -666,7 +666,7 @@ _POST /transcribe — diktering-transskription til jarvis-desk's mic-knap._
 | function | `transcribe` | `(file, language=…)` | — | [src](../../../apps/api/jarvis_api/routes/transcribe.py#L22) |
 
 ## `apps/api/jarvis_api/routes/tts.py`
-_TTS synthesis route — backed by Microsoft Edge's read-aloud cloud_
+_TTS synthesis route — ElevenLabs primær (Jarvis' egen stemme, Mads),_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|

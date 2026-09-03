@@ -1,10 +1,10 @@
-"""TTS synthesis route — backed by Microsoft Edge's read-aloud cloud
-voices via the `edge-tts` Python package. Free, no API key, supports
-all Azure Neural voices including the Danish ones (Christel, Jeppe).
+"""TTS synthesis route — ElevenLabs primær (Jarvis' egen stemme, Mads),
+edge-tts som gratis fallback.
 
-Replaces ElevenLabs as the production TTS path now that those credits
-are out. Returns audio/mpeg bytes so callers (operator_speak on the
-JarvisX bridge, future voice modules) can stream-play it.
+ElevenLabs er produktions-stien; edge-tts bruges kun ved eksplicit valg,
+manglende nøgle eller fejl/credit-mangel — ikke som standard. Returns
+audio/mpeg bytes so callers (operator_speak on the JarvisX bridge,
+future voice modules) can stream-play it.
 """
 from __future__ import annotations
 

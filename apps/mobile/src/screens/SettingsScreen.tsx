@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { QrScanScreen } from './QrScanScreen'
+import { DataControlsScreen } from './DataControlsScreen'
 import {
   getAccountMe,
   googleLinkStart,
@@ -36,8 +37,18 @@ function sleep(ms: number): Promise<void> {
 /** Fuld Settings-skærm (Claude-parity): konto · plugins/connectors · Google ·
  *  diagnostik · log ud. Plugins bor HER — ikke i hovedpanelet (spec §"Settings
  *  vs Plugins"). Vises som fuldskærms-modal fra panelets tandhjul. */
+/** «Bjørn Slot» → «BS». Tom/ukendt → «?» frem for en tom cirkel. */
+export function initials(name: string): string {
+  const parts = String(name || '').trim().split(/[\s@._-]+/).filter(Boolean)
+  if (!parts.length) return '?'
+  const first = parts[0]![0] ?? ''
+  const last = parts.length > 1 ? (parts[parts.length - 1]![0] ?? '') : ''
+  return (first + last).toUpperCase() || '?'
+}
+
 export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const { config, signOut, signInWithToken } = useAuth()
+  const [dataOpen, setDataOpen] = useState(false)
   const connectivity = useConnectivity(config ?? null)
   const [qrOpen, setQrOpen] = useState(false)
   const insets = useSafeAreaInsets()
@@ -131,7 +142,21 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
-        {/* Konto */}
+        {/* Konto-hoved. Målt i ChatGPT-appen: avatar og navn ØVERST og
+            centreret, før alt andet. Det svarer på «hvis konto er det her?»
+            før man begynder at ændre noget — og det spørgsmål er værd at
+            besvare først, når appen kan bruges af flere i samme hjem. */}
+        <View style={styles.identity}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials(profile?.name || profile?.email || '?')}</Text>
+          </View>
+          <Text style={styles.identityName}>{profile?.name || profile?.email || 'Konto'}</Text>
+          {profile?.email && profile?.name ? (
+            <Text style={styles.identityMail}>{profile.email}</Text>
+          ) : null}
+        </View>
+
+        <Text style={styles.sectionTitle}>Konto</Text>
         <View style={styles.card}>
           <Text style={styles.cardEmail}>{profile?.email || config?.apiBaseUrl || 'Konto'}</Text>
           <View style={styles.badges}>
@@ -257,10 +282,30 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 
         <NotificationsSection config={config ?? null} />
 
+        {/* Dine data. Egen skærm frem for et par rækker her: sletning er
+            uigenkaldelig og fortjener plads til at forklare hvad man mister. */}
+        <Text style={styles.sectionTitle}>Dine data</Text>
+        <Pressable
+          testID="open-data-controls"
+          accessibilityRole="button"
+          onPress={() => setDataOpen(true)}
+          style={({ pressed }) => [styles.card, styles.rowCard, pressed && styles.pressedRow]}
+        >
+          <View style={styles.rowText}>
+            <Text style={styles.rowLabel}>Datastyring</Text>
+            <Text style={styles.muted}>Se, eksportér eller slet det Jarvis husker om dig.</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+
         <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOut}>
           <Text style={styles.signOutText}>Log ud</Text>
         </Pressable>
       </ScrollView>
+
+      <Modal visible={dataOpen} animationType="slide" onRequestClose={() => setDataOpen(false)}>
+        <DataControlsScreen onClose={() => setDataOpen(false)} />
+      </Modal>
 
       <Modal visible={qrOpen} animationType="slide" onRequestClose={() => setQrOpen(false)}>
         <QrScanScreen
@@ -276,6 +321,20 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  identity: { alignItems: 'center', gap: 6, paddingVertical: tokens.spacing.lg },
+  avatar: {
+    width: 76, height: 76, borderRadius: 38,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: tokens.color.accent
+  },
+  avatarText: { color: tokens.color.bg0, fontSize: 26, fontWeight: '700' },
+  identityName: { color: tokens.color.fg1, fontSize: 17, fontWeight: '700' },
+  identityMail: { color: tokens.color.fg3, fontSize: 13 },
+  rowCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowText: { flexShrink: 1, gap: 3 },
+  rowLabel: { color: tokens.color.fg1, fontSize: 16 },
+  chevron: { color: tokens.color.fg3, fontSize: 22, paddingLeft: tokens.spacing.sm },
+  pressedRow: { opacity: 0.7 },
   root: { flex: 1, backgroundColor: tokens.color.bg0 },
   bubbleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   locRow: { flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 8 },

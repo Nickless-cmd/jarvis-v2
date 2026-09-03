@@ -42,6 +42,8 @@ export interface ChatMessage {
 
 export interface AccountProfile {
   user_id: string
+  /** Visningsnavn fra users.json. Kan være tom — emailen er det ofte også. */
+  name?: string
   email: string
   email_verified: boolean
   language: string

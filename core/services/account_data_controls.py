@@ -277,13 +277,24 @@ def export_all(user_id: str) -> dict[str, Any]:
 
     try:
         from core.runtime.db_sensory import list_sensory_memories
-        out["senses"] = list_sensory_memories(limit=100_000) or []
+        out["senses"] = list_sensory_memories(limit=1_000_000) or []
     except Exception as exc:
         out["senses"] = {"error": f"{type(exc).__name__}: {exc}"}
 
+    # Loftet er sat HØJT og kontrolleres bagefter. Første udgave brugte 100.000
+    # og tav om resten: målt på Bjørns runtime var der 128.550 poster, så
+    # eksporten tabte 28.550 UDEN at sige det. En eksport der stiltiende er
+    # ufuldstændig, er værre end en der siger fra — man opdager det aldrig.
     try:
         from core.runtime.db_private_brain import list_private_brain_records
-        out["brain"] = list_private_brain_records(limit=100_000) or []
+        cap = 1_000_000
+        rows = list_private_brain_records(limit=cap) or []
+        out["brain"] = rows
+        if len(rows) >= cap:
+            out["brain_truncated"] = {
+                "limit": cap,
+                "note": "Eksporten ramte loftet. Kontakt ejeren for resten.",
+            }
     except Exception as exc:
         out["brain"] = {"error": f"{type(exc).__name__}: {exc}"}
 

@@ -502,7 +502,7 @@ Generated from source. 6593/13219 functions/methods documented (49%). The list b
 - `core/runtime/settings.py` :: `update_visible_execution_settings` (L1042)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
-- `core/services/account_data_controls.py` :: `export_json` (L300)
+- `core/services/account_data_controls.py` :: `export_json` (L311)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)
 - `core/services/action_router.py` :: `recent_actions` (L609)
 - `core/services/action_router.py` :: `recent_proactive` (L613)

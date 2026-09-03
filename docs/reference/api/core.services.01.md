@@ -67,7 +67,7 @@ _Brugerens egne data — tælle, eksportere, slette. Lagvis._
 | function | `delete_layer` | `(user_id, layer)` | Slet ét lag. Ukendt lag → fejl frem for tavshed. | [src](../../../core/services/account_data_controls.py#L225) |
 | function | `delete_all` | `(user_id)` | Alle fire lag. En sammensætning af de enkelte — ikke en femte vej. | [src](../../../core/services/account_data_controls.py#L233) |
 | function | `export_all` | `(user_id)` | Alt vi har om brugeren, som JSON. | [src](../../../core/services/account_data_controls.py#L252) |
-| function | `export_json` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L300) |
+| function | `export_json` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L311) |
 
 ## `core/services/action_router.py`
 _Action Router — close the loop: signal → handling._

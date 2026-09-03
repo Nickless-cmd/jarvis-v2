@@ -218,3 +218,17 @@ def test_eksporten_indeholder_hukommelses_lagene(monkeypatch):
     for key in ("sessions", "senses", "brain", "identity"):
         assert key in out
     assert "forespørgsel" not in (out.get("note") or "")
+
+
+def test_eksporten_tier_ikke_om_afkortning(monkeypatch):
+    """En eksport der stiltiende er ufuldstændig, er værre end en der siger fra
+    — man opdager det aldrig. Målt: 128.550 poster mod et loft på 100.000."""
+    import core.runtime.db_private_brain as pb
+    monkeypatch.setattr(pb, "list_private_brain_records",
+                        lambda limit=0, **k: [{"id": i} for i in range(limit)],
+                        raising=False)
+    monkeypatch.setattr("core.services.chat_sessions.list_chat_sessions",
+                        lambda **k: [], raising=False)
+    out = adc.export_all("u1")
+    assert "brain_truncated" in out
+    assert out["brain_truncated"]["limit"] > 100_000

@@ -256,7 +256,8 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   // fokus — fladen ligger stille, og kun send-knappen bærer farve. Det er en
   // del af hvorfor deres komponist virker rolig.
   card: {
-    backgroundColor: tokens.color.bg2,
+    backgroundColor: tokens.color.bgFloat,
+    ...tokens.elevation,
     borderRadius: 28,
     paddingHorizontal: tokens.spacing.lg,
     paddingTop: tokens.spacing.md,

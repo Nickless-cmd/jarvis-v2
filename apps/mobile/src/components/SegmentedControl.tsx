@@ -65,6 +65,9 @@ const makeStyles = (compact: boolean, tokens: Theme) =>
       // Beholderen er LYSERE end den aktive pille — målt på R2.
       backgroundColor: tokens.color.segmentTrack,
       borderRadius: tokens.radius.pill,
+      // Den svæver over tråden ligesom komposeren, så den skal løftes på samme
+      // måde — ellers ser den ud som et hul i baggrunden frem for en knap.
+      ...tokens.elevation,
       padding: 3
     },
     segment: {

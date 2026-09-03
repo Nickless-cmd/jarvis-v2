@@ -21,6 +21,7 @@ import { startPresenceReporting } from './lib/presence'
 import { checkForUpdate, type UpdateManifest } from './lib/appUpdate'
 import { downloadAndInstall } from './lib/installApk'
 import { UpdateBanner } from './components/UpdateBanner'
+import { EdgeFade } from './components/EdgeFade'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AuthProvider, useAuth } from './state/AuthContext'
 import { SessionProvider } from './state/SessionContext'
@@ -133,6 +134,12 @@ function AppBody() {
             skærmhøjde man hellere vil læse i — og overgangen mellem «under»
             og «bag» er dét der får fladen til at føles rolig frem for
             opdelt. */}
+        {/* Tråden ruller ind UNDER bjælken. Uden en udtoning bliver teksten
+            skåret tværs over midt i en linje lige dér hvor bjælken begynder —
+            det ligner et uheld frem for to lag. */}
+        <View style={[styles.floatTop, { top: 0 }]} pointerEvents="none">
+          <EdgeFade edge="top" height={headerHeight + insets.top + 28} />
+        </View>
         <View
           style={[styles.floatTop, { top: insets.top }]}
           pointerEvents="box-none"

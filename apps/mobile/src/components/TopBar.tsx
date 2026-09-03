@@ -114,7 +114,8 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     width: CIRCLE,
     height: CIRCLE,
     borderRadius: CIRCLE / 2,
-    backgroundColor: tokens.color.bg2,
+    backgroundColor: tokens.color.bgFloat,
+    ...tokens.elevation,
     alignItems: 'center',
     justifyContent: 'center'
   }

@@ -3,8 +3,7 @@ import { Appearance, StyleSheet } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
 import {
   ACCENTS, accentByName, onAccent, paletteFor,
-  type Accent, type AccentName, type Scheme, type ThemeMode
-} from './palettes'
+  type Accent, type AccentName, type Scheme, type ThemeMode, elevation } from './palettes'
 import { tokens as baseTokens } from './tokens'
 
 /**
@@ -27,6 +26,8 @@ export interface Theme {
   radius: typeof baseTokens.radius
   spacing: typeof baseTokens.spacing
   motion: typeof baseTokens.motion
+  /** Stil der får en flade til at ligge OVENPÅ resten. Se elevation(). */
+  elevation: ReturnType<typeof elevation>
 }
 
 const MODE_KEY = 'jarvis_theme_mode'
@@ -40,6 +41,7 @@ export function buildTheme(mode: ThemeMode, accentName: AccentName, systemScheme
     scheme,
     accent,
     color: { ...paletteFor(scheme, accent), onAccent: onAccent(accent) },
+    elevation: elevation(scheme),
     radius: baseTokens.radius,
     spacing: baseTokens.spacing,
     motion: baseTokens.motion

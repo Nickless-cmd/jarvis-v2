@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native'
 /**
  * Farvepaletter — mørk og lys, med et valgbart accent-familie.
  *
@@ -43,6 +44,10 @@ const DARK_BASE = {
   bg0: '#000000',
   bg1: '#121212',
   bg2: '#212121',
+  // Fladen for noget der SVÆVER over indholdet — headerens knapper, komposeren.
+  // I mørkt tema løftes den ved at være LYSERE end grunden; en skygge ville
+  // være usynlig på næsten-sort.
+  bgFloat: '#212121',
   bg3: '#303030',
   line: '#2A2A2A',
   fg1: '#FFFFFF',
@@ -76,6 +81,11 @@ const LIGHT_BASE = {
   bg0: '#FAFAFA',
   bg1: '#FFFFFF',
   bg2: '#F0F0F0',
+  // Svævende flader skal være LYSERE end grunden, ikke mørkere. Komposeren og
+  // headerens knapper brugte bg2 (#F0F0F0) på en grund af #FAFAFA — altså
+  // mørkere — og så ser de nedsænkede ud i stedet for løftede, uanset hvor god
+  // skyggen er. Det er dét der manglede.
+  bgFloat: '#FFFFFF',
   bg3: '#E6E6E6',
   line: '#DCDCDC',
   fg1: '#111111',
@@ -143,4 +153,28 @@ export function onAccent(accent: Accent): string {
   // Relativ luminans, forenklet (sRGB-vægte). Over midten → mørk tekst.
   const lum = (0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0)) / 255
   return lum > 0.55 ? '#111111' : '#FFFFFF'
+}
+
+
+/**
+ * Løft: hvordan en flade der SVÆVER adskiller sig fra fladen under den.
+ *
+ * Målt i ChatGPT-appen: de svævende flader er rent hvide, og fladen omkring
+ * dem er tonet — kraftigst helt inde ved kanten (ca. 9 % sort) og aftagende
+ * over omtrent 100 px. Det er dét der får dem til at ligge OVENPÅ i stedet for
+ * at være klippet ind i baggrunden.
+ *
+ * I mørkt tema kan man ikke gøre det med en skygge: sort på næsten-sort er
+ * usynligt. Dér kommer løftet fra at fladen selv er LYSERE end grunden, plus
+ * en hårfin kant der tegner omridset. Samme betydning, andet middel.
+ */
+export function elevation(scheme: Scheme): { boxShadow?: string; borderWidth?: number; borderColor?: string } {
+  if (scheme === 'dark') {
+    return { borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.10)' }
+  }
+  // To skygger, ikke én: den brede giver højden, den tætte giver kanten noget
+  // at hvile på. Med kun den brede flyder omridset ud; med kun den tætte
+  // ligner det en streg. Vægten er målt mod ChatGPT — deres flade er ca. 7 %
+  // mørkere lige ved kanten og toner ud over omtrent 100 px.
+  return { boxShadow: '0px 8px 34px rgba(0,0,0,0.16), 0px 2px 5px rgba(0,0,0,0.07)' }
 }

@@ -112,6 +112,11 @@ _ÆGTE_HALER = [
     "for at matche mock-stilen præcist, før jeg skriver fixet og nye tests.",
     "Jeg har kortlagt de fem fund, så skriver jeg alle fem fixes.",
     "Jeg mangler at se hvordan touched-paths bygges, derefter retter jeg attributionsværnet.",
+    "Søjle 3 — bevidsthed, non-lokalitet, og hvorfor det ændrer min betydning "
+    "— kommer nu. Den her er den vigtigste.",
+    "Bid 2 kommer nu — og det er dér, det rammer mig.",
+    "Sidste graverunde: de konkrete hændelser ved navn, og hvad fysikken "
+    "egentlig siger om måling og bevidsthed.",
 ]
 
 _ALMINDELIGE_AFSLUTNINGER = [
@@ -127,6 +132,13 @@ def test_faktiske_haler_fra_30_august_fanges():
     for t in _ÆGTE_HALER:
         assert hpg.is_hollow_promise(
             final_text=t, total_tool_calls=15, last_round_tool_calls=0) is True, t
+
+
+def test_deferred_text_promises_can_be_identified_separately():
+    assert hpg.is_deferred_text_promise(_ÆGTE_HALER[-3]) is True
+    assert hpg.is_deferred_text_promise(_ÆGTE_HALER[-2]) is True
+    assert hpg.is_deferred_text_promise(_ÆGTE_HALER[-1]) is True
+    assert hpg.is_deferred_text_promise(_ÆGTE_HALER[0]) is False
 
 
 def test_almindelige_afslutninger_fanges_ikke():

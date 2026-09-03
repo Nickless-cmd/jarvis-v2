@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6579/13200 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6580/13201 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6579/13200 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 554 | 1031 | 53% |
-| `core.services` | 4373 | 9173 | 47% |
+| `core.services` | 4374 | 9174 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1737,7 +1737,7 @@ Generated from source. 6579/13200 functions/methods documented (49%). The list b
 - `core/services/visible_model.py` :: `available_provider_models` (L172)
 - `core/services/visible_model.py` :: `execute_visible_model` (L264)
 - `core/services/visible_model.py` :: `stream_visible_model` (L323)
-- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L589)
+- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L650)
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
 - `core/services/visible_model_prompt.py` :: `visible_session_continuity_summary` (L346)

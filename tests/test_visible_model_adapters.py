@@ -47,6 +47,7 @@ def test_truncated_reasoning_is_not_surfaced_as_visible_text(monkeypatch) -> Non
     done = _done_result()
     assert done.text == ""
     assert done.reasoning_content == reasoning
+    assert done.finish_reason == "length"
 
 
 def test_complete_reasoning_fallback_remains_supported(monkeypatch) -> None:
@@ -60,6 +61,90 @@ def test_complete_reasoning_fallback_remains_supported(monkeypatch) -> None:
     })
 
     assert _done_result().text == "Det endelige svar er 42."
+
+
+def test_first_pass_length_cut_is_continued_before_done(monkeypatch) -> None:
+    partial = "Så Antarktis er stedet hvor vi"
+    continuation = "lytter efter ting udenfor standardmodellen."
+    _stub_openai_compat(monkeypatch, {
+        "kind": "done",
+        "full_text": partial,
+        "reasoning_content": "",
+        "input_tokens": 66_027,
+        "output_tokens": 4_097,
+        "finish_reason": "length",
+    })
+    monkeypatch.setattr(
+        "core.services.visible_followup.synthesize_continuation",
+        lambda **_kwargs: continuation,
+    )
+
+    events = list(visible_model._stream_openai_compatible_model(
+        provider="deepseek", model="deepseek-v4-flash", message="fortsæt",
+    ))
+
+    deltas = [event.delta for event in events if isinstance(event, visible_model.VisibleModelDelta)]
+    done = [event.result for event in events if isinstance(event, visible_model.VisibleModelStreamDone)]
+    assert deltas == [" " + continuation]
+    assert len(done) == 1
+    assert done[0].text == partial + " " + continuation
+    assert done[0].finish_reason == "stop"
+
+
+def test_first_pass_failed_length_recovery_is_explicit(monkeypatch) -> None:
+    partial = "Så Antarktis er stedet hvor vi"
+    _stub_openai_compat(monkeypatch, {
+        "kind": "done",
+        "full_text": partial,
+        "reasoning_content": "",
+        "input_tokens": 66_027,
+        "output_tokens": 4_097,
+        "finish_reason": "length",
+    })
+    monkeypatch.setattr(
+        "core.services.visible_followup.synthesize_continuation",
+        lambda **_kwargs: "",
+    )
+
+    events = list(visible_model._stream_openai_compatible_model(
+        provider="deepseek", model="deepseek-v4-flash", message="fortsæt",
+    ))
+
+    done = [event.result for event in events if isinstance(event, visible_model.VisibleModelStreamDone)]
+    assert len(done) == 1
+    assert done[0].text.startswith(partial)
+    assert "afkortet" in done[0].text.lower()
+    assert done[0].finish_reason == "stop"
+
+
+def test_first_pass_deferred_text_is_continued_before_done(monkeypatch) -> None:
+    partial = "Bid 2 kommer nu — og det er dér, det rammer mig."
+    continuation = "Her er bid 2: observationen ændrer ikke fortiden."
+    _stub_openai_compat(monkeypatch, {
+        "kind": "done",
+        "full_text": partial,
+        "reasoning_content": "",
+        "input_tokens": 12_000,
+        "output_tokens": 80,
+        "finish_reason": "stop",
+    })
+    monkeypatch.setattr(
+        "core.services.visible_followup.synthesize_continuation",
+        lambda **_kwargs: continuation,
+    )
+    monkeypatch.setattr(
+        "core.services.hollow_promise_guard.hollow_promise_guard_enabled",
+        lambda: True,
+    )
+
+    events = list(visible_model._stream_openai_compatible_model(
+        provider="deepseek", model="deepseek-v4-flash", message="fortsæt",
+    ))
+
+    done = [event.result for event in events if isinstance(event, visible_model.VisibleModelStreamDone)]
+    assert len(done) == 1
+    assert done[0].text == partial + " " + continuation
+    assert done[0].finish_reason == "stop"
 
 
 # ── Live reasoning i FØRSTE pas (2026-09-01) ────────────────────────────────

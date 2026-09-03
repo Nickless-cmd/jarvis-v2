@@ -767,6 +767,10 @@ def test_rescue_swaps_to_nonthinking_chat_and_collects_text(
         yield vf.FollowupDone(text="Her er svaret.", reasoning_content="")
 
     monkeypatch.setattr(vf, "stream_visible_followup", _fake_stream)
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime.deepseek_model_for_thinking_mode",
+        lambda _model, _mode: "deepseek-chat",
+    )
 
     out = vf.synthesize_nonthinking_rescue(
         provider="deepseek", model="deepseek-v4-flash",
@@ -905,6 +909,25 @@ def test_continuation_empty_when_synthesis_empty(
         yield vf.FollowupDone(text="", reasoning_content="")
 
     monkeypatch.setattr(vf, "stream_visible_followup", _empty)
+    out = vf.synthesize_continuation(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[], exchanges=[], partial_text="afkortet",
+    )
+    assert out == ""
+
+
+def test_continuation_rejects_a_second_length_cut(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """En fortsættelse der selv afkortes er ikke en komplet recovery."""
+    def _cut_again(**_kw):
+        yield vf.FollowupDone(
+            text="fortsættelsen blev også afkortet",
+            reasoning_content="",
+            finish_reason="length",
+        )
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _cut_again)
     out = vf.synthesize_continuation(
         provider="deepseek", model="deepseek-v4-flash",
         base_messages=[], exchanges=[], partial_text="afkortet",

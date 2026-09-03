@@ -431,6 +431,66 @@ def _stream_openai_compatible_model(
                         _observe_content_empty_thinking_fallback(
                             provider, model, "openai_compat_first_pass", len(_reasoning),
                         )
+                _output_tokens = int(
+                    ev.get("output_tokens") or _estimate_tokens(full_text)
+                )
+                # First-pass streams used to lose finish_reason here. Also, the
+                # agentic hollow-promise guard is not reached by a tool-free first
+                # pass. Recover both cases before emitting one terminal result.
+                _deferred_text = False
+                if full_text and not collected_tool_calls and _finish_reason != "length":
+                    try:
+                        from core.services.hollow_promise_guard import (
+                            hollow_promise_guard_enabled,
+                            is_deferred_text_promise,
+                        )
+                        _deferred_text = (
+                            hollow_promise_guard_enabled()
+                            and is_deferred_text_promise(full_text)
+                        )
+                    except Exception:
+                        _deferred_text = False
+                if (
+                    (_finish_reason == "length" or _deferred_text)
+                    and full_text
+                    and not collected_tool_calls
+                ):
+                    try:
+                        from core.services.visible_followup import synthesize_continuation
+                        _continued = synthesize_continuation(
+                            provider=provider,
+                            model=model,
+                            base_messages=chat_messages,
+                            exchanges=[],
+                            partial_text=full_text,
+                            continuation_instruction=(
+                                "Du afsluttede med at love næste tekstafsnit. Skriv det "
+                                "lovede afsnit nu og afslut hele svaret i denne tur. "
+                                "Gentag ikke teksten ovenfor."
+                                if _deferred_text else ""
+                            ),
+                        ).strip()
+                    except Exception:
+                        _continued = ""
+                    if _continued:
+                        _joiner = "" if full_text[-1:].isspace() else " "
+                        _continuation_delta = _joiner + _continued
+                        yield VisibleModelDelta(delta=_continuation_delta)
+                        full_text += _continuation_delta
+                        _output_tokens += _estimate_tokens(_continued)
+                        _finish_reason = "stop"
+                    else:
+                        _failure_note = (
+                            "\n\nJeg lovede en fortsættelse, men den automatiske "
+                            "fortsættelse fejlede i denne tur."
+                            if _deferred_text else
+                            "\n\nMit svar blev afkortet af providerens outputgrænse, "
+                            "og jeg kunne ikke hente resten automatisk."
+                        )
+                        yield VisibleModelDelta(delta=_failure_note)
+                        full_text += _failure_note
+                        _output_tokens += _estimate_tokens(_failure_note)
+                        _finish_reason = "stop"
                 # 2026-05-22 (Claude): pull cache_hit/miss from the streaming
                 # done-event. cheap_provider_runtime already yields them
                 # (search for "cache_hit_tokens" in that file's done-yield),
@@ -441,11 +501,12 @@ def _stream_openai_compatible_model(
                     result=VisibleModelResult(
                         text=full_text,
                         input_tokens=int(ev.get("input_tokens") or _estimate_tokens(message)),
-                        output_tokens=int(ev.get("output_tokens") or _estimate_tokens(full_text)),
+                        output_tokens=_output_tokens,
                         cost_usd=float(ev.get("cost_usd") or 0.0),
                         reasoning_content=str(ev.get("reasoning_content") or ""),
                         cache_hit_tokens=int(ev.get("cache_hit_tokens") or 0),
                         cache_miss_tokens=int(ev.get("cache_miss_tokens") or 0),
+                        finish_reason=_finish_reason,
                     )
                 )
                 return

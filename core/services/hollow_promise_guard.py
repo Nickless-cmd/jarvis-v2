@@ -30,6 +30,11 @@ HOLLOW_PROMISE_NUDGE = (
 
 # Løfte-om-imminent-handling (dansk + engelsk). Bevidst SNÆVERT: selv + handlings-verbum +
 # nu-adverbium — ikke passivt/hypotetisk — for at undgå falske positive på normale svar.
+_DEFERRED_TEXT_PATTERNS = [
+    r"\b(søjle|bid|del)\s+\d+\b[^.]{0,160}\bkommer nu\b",
+    r"\bsidste graverunde\s*:",
+]
+
 _PROMISE_PATTERNS = [
     r"\bjeg (kører|starter|gør|går i gang med|igangsætter|udfører|fortsætter|tjekker|kigger på|"
     r"retter|fikser|opdaterer|committer|kalder|henter|læser)\b[^.]{0,40}\b(nu|lige nu|med det samme|straks)\b",
@@ -63,8 +68,12 @@ _PROMISE_PATTERNS = [
     r"\b(før|inden) jeg (skriver|kører|retter|fikser|committer|implementerer|tilføjer)\b",
     r"\bjeg (læser|skriver|retter|fikser|implementerer|tilføjer|verificerer)\b[^.]{0,60}"
     r"\b(før|inden) jeg\b",
+    # Live 2. sep: svaret annoncerede næste tekstbid uden et tool-call. Et visible
+    # run kan ikke spontant sende den bagefter, så det er samme tomme løfteklasse.
+    *_DEFERRED_TEXT_PATTERNS,
 ]
 _PROMISE_RE = [re.compile(p, re.IGNORECASE) for p in _PROMISE_PATTERNS]
+_DEFERRED_TEXT_RE = [re.compile(p, re.IGNORECASE) for p in _DEFERRED_TEXT_PATTERNS]
 
 # Billig negativ-guard: slutter svaret på et spørgsmål → afventer brugeren (ikke tom løfte).
 _QUESTION_TAIL = re.compile(r"[?]\s*$")
@@ -81,6 +90,17 @@ def is_promise_of_action(text: str) -> bool:
         if _QUESTION_TAIL.search(t):     # spørgsmål-hale = afventer bruger, ikke løfte
             return False
         return any(rx.search(t) for rx in _PROMISE_RE)
+    except Exception:
+        return False
+
+
+def is_deferred_text_promise(text: str) -> bool:
+    """True for a promise to emit another prose section after this run ends."""
+    try:
+        t = (text or "").strip()
+        return bool(t) and not _QUESTION_TAIL.search(t) and any(
+            rx.search(t) for rx in _DEFERRED_TEXT_RE
+        )
     except Exception:
         return False
 

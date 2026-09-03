@@ -367,6 +367,7 @@ def synthesize_continuation(
     base_messages: list[dict],
     exchanges: list["ToolExchange"],
     partial_text: str,
+    continuation_instruction: str = "",
 ) -> str:
     """CUT-OFF-FORTSÆTTELSE (2026-08-20): når provideren lukkede streamen med
     finish_reason="length" (afkortet svar), tving modellen til at FORTSÆTTE præcis
@@ -407,15 +408,19 @@ def synthesize_continuation(
         except Exception:
             pass
         # Delvist svar + eksplicit fortsæt-instruktion (append-only).
+        _instruction = continuation_instruction.strip() or (
+            "Dit svar blev afkortet midt i sætningen. Fortsæt PRÆCIS der hvor "
+            "du slap — afslut sætningen og svaret. Duplikér ikke noget af det "
+            "du allerede har skrevet ovenfor; fortsæt bare derfra."
+        )
         _cont_msgs = list(base_messages) + [
             {"role": "assistant", "content": partial_text},
-            {"role": "user", "content": (
-                "Dit svar blev afkortet midt i sætningen. Fortsæt PRÆCIS der hvor "
-                "du slap — afslut sætningen og svaret. Duplikér ikke noget af det "
-                "du allerede har skrevet ovenfor; fortsæt bare derfra.")},
+            {"role": "user", "content": _instruction},
         ]
         _delta_parts: list[str] = []
         _done_text = ""
+        _done_finish_reason = ""
+        _failed = False
         for _ev in stream_visible_followup(
             provider=provider,
             model=_use_model,
@@ -431,8 +436,12 @@ def synthesize_continuation(
                 _delta_parts.append(_ev.delta)
             elif isinstance(_ev, FollowupDone):
                 _done_text = str(_ev.text or "")
+                _done_finish_reason = str(_ev.finish_reason or "").strip()
             elif isinstance(_ev, FollowupFailed):
+                _failed = True
                 break
+        if _failed or _done_finish_reason == "length":
+            return ""
         return (_done_text or "".join(_delta_parts)).strip()
     except Exception:
         return ""

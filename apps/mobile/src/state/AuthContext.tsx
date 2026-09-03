@@ -73,3 +73,17 @@ export function useAuth(): AuthContextValue {
 
   return ctx
 }
+
+/**
+ * Auth UDEN krav om en provider.
+ *
+ * `useAuth` kaster hvis den bruges uden for træet, og det er rigtigt for alt
+ * der ikke kan fungere uden en konto. Men en besked-boble KAN: den bruger kun
+ * config til at læse op med Jarvis' stemme, og uden den falder den tilbage på
+ * telefonens. At kaste dér ville gøre komponenten umulig at rendere alene —
+ * i en test, i en fejlskærm, i et fremtidigt preview.
+ */
+export function useAuthOptional(): { config: ApiConfig | null } {
+  const ctx = useContext(AuthContext)
+  return { config: ctx?.config ?? null }
+}

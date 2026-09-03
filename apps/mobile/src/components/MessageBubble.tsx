@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
 import * as Clipboard from 'expo-clipboard'
-import * as Speech from 'expo-speech'
+import { readAloud as readAloudText, stopReading } from '../lib/readAloud'
+import { useAuthOptional } from '../state/AuthContext'
 import { Animated, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import { CodeBlock } from './CodeBlock'
 import type { ChatMessage } from '../lib/types'
@@ -38,6 +39,7 @@ export function MessageBubble({
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const markdownStyles = useStyles(makemarkdownStyles)
+  const { config } = useAuthOptional()
   const isUser = message.role === 'user'
   const [speaking, setSpeaking] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -82,17 +84,14 @@ export function MessageBubble({
 
   const readAloud = () => {
     if (speaking) {
-      Speech.stop()
+      stopReading()
       setSpeaking(false)
       return
     }
     setSpeaking(true)
-    Speech.speak(message.content, {
-      language: 'da-DK',
-      onDone: () => setSpeaking(false),
-      onStopped: () => setSpeaking(false),
-      onError: () => setSpeaking(false)
-    })
+    // Jarvis' egen stemme, og på RENSET tekst — ikke rå markdown. Se
+    // lib/readAloud.ts for hvorfor telefonens stemme kun er rede.
+    void readAloudText(config, message.content, () => setSpeaking(false))
   }
 
   return (

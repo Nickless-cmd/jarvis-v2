@@ -5,6 +5,7 @@ import {
 } from 'expo-audio'
 import type { AudioPlayer, RecordingStatus } from 'expo-audio'
 import * as Speech from 'expo-speech'
+import { clampForSpeech, stripForSpeech } from './speechText'
 import type { ApiConfig } from './types'
 import type { ContentBlock } from './sseProtocol'
 import { transcribeAudio, synthesizeTtsToFile } from './voiceApi'
@@ -68,6 +69,11 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     onRecStatus,
   )
 
+  // HVORFOR det gik i stå. Hver fejl-gren satte før bare state='idle', så
+  // overlayet blinkede tilbage uden et ord — og «det virker ikke» er den
+  // eneste konklusion man kan drage af tavshed. Nu står grunden på skærmen.
+  const [problem, setProblem] = useState<string>('')
+
   const _speakNative = useCallback((text: string, onDone: () => void) => {
     try { setLastProvider('device'); Speech.speak(text, { language: 'da-DK', onDone, onError: onDone }) }
     catch { onDone() }
@@ -84,7 +90,9 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     }
     try {
       if (!config) throw new Error('no config')
-      const { uri, provider } = await synthesizeTtsToFile(config, text)
+      // Renset FØR syntesen. Uden dette siger han «stjerne stjerne vigtigt» og
+      // staver kodeblokke — samme fejl som oplæsningsknappen havde.
+      const { uri, provider } = await synthesizeTtsToFile(config, clampForSpeech(stripForSpeech(text)))
       setLastProvider(provider)
       try { playerRef.current?.remove() } catch { /* noop */ }
       const player = createAudioPlayer({ uri })
@@ -94,7 +102,7 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
       })
       player.play()
     } catch {
-      _speakNative(text, onDone)
+      _speakNative(clampForSpeech(stripForSpeech(text)), onDone)
     }
   }, [config, _speakNative])
 
@@ -114,15 +122,24 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     try {
       await recorder.stop()
       const uri = recorder.uri
-      if (!uri || !config) { setState('idle'); return }
+      if (!uri || !config) {
+        setProblem('Der kom ingen optagelse ud af mikrofonen.')
+        setState('idle'); return
+      }
       setState('transcribing')
       const r = await transcribeAudio(config, uri)
       const text = (r.status === 'ok' ? r.text : '').trim()
-      if (!text) { setState('idle'); return }
+      if (!text) {
+        // Tomt resultat er IKKE en fejl — man kan have tiet. Men brugeren skal
+        // vide at der ikke blev opfattet noget, ellers ligner det en død knap.
+        setProblem('Jeg hørte ikke noget. Prøv igen.')
+        setState('idle'); return
+      }
       setState('thinking')
       awaitingRef.current = true
       deps.sendMessage(text)
-    } catch {
+    } catch (e) {
+      setProblem(`Kunne ikke forstå lyden (${(e as Error)?.message || 'ukendt fejl'}).`)
       setState('idle')
     }
   }, [config, deps, recorder])
@@ -132,9 +149,13 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     if (!config || stateRef.current === 'listening') return
     try { playerRef.current?.pause() } catch { /* noop */ }
     try { Speech.stop() } catch { /* noop */ }
+    setProblem('')
     try {
       const perm = await requestRecordingPermissionsAsync()
-      if (!perm.granted) { setState('idle'); return }
+      if (!perm.granted) {
+        setProblem('Jeg må ikke bruge mikrofonen. Giv appen adgang i telefonens indstillinger.')
+        setState('idle'); return
+      }
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true })
       sawSpeechRef.current = false
       silenceAtRef.current = 0
@@ -142,13 +163,14 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
       await recorder.prepareToRecordAsync()
       recorder.record()
       setState('listening')
-    } catch {
+    } catch (e) {
+      setProblem(`Kunne ikke starte optagelsen (${(e as Error)?.name || 'ukendt fejl'}).`)
       setState('idle')
     }
   }, [config, recorder])
   useEffect(() => { startListeningRef.current = startListening }, [startListening])
 
-  const enter = useCallback(() => { setActive(true); setState('idle') }, [])
+  const enter = useCallback(() => { setActive(true); setProblem(''); setState('idle') }, [])
   const exit = useCallback(() => {
     setActive(false)
     awaitingRef.current = false
@@ -158,5 +180,5 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     setState('idle')
   }, [])
 
-  return { active, state, mode, lastProvider, setMode, enter, exit, startListening, stopListening }
+  return { active, state, mode, lastProvider, problem, setMode, enter, exit, startListening, stopListening }
 }

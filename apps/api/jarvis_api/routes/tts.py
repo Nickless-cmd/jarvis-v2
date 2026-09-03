@@ -23,8 +23,17 @@ logger = logging.getLogger("uvicorn.error")
 _DEFAULT_VOICE = "da-DK-JeppeNeural"
 _MAX_TEXT_CHARS = 5000  # sanity cap; long Jarvis monologues should be summarized first
 
-# Jarvis' ElevenLabs voice-id (Mathias, dansk) — spejlet fra voice-skillen, env-overstyrbar.
-ELEVENLABS_VOICE_ID = __import__("os").environ.get("JARVIS_TTS_VOICE_ID", "ygiXC2Oa1BiHksD3WkJZ")
+def _elevenlabs_voice_id() -> str:
+    """Jarvis' stemme-id — ÉT sted, nemlig i voice-skillen.
+
+    Her stod før en kopi af id'et med kommentaren «spejlet fra voice-skillen».
+    Syntesen nedenfor brugte skillens værdi, mens svar-headeren brugte kopien:
+    to sandheder om samme ting, hvor den ene kun ses udefra. Havde de drevet
+    fra hinanden, ville headeren roligt have oplyst en anden stemme end den der
+    faktisk talte — og dét er præcis den slags fejl man leder længe efter.
+    """
+    from core.skills.voice.tts import ELEVENLABS_VOICE_ID
+    return ELEVENLABS_VOICE_ID
 
 
 class TTSRequest(BaseModel):
@@ -143,7 +152,7 @@ async def synthesize(req: TTSRequest) -> Response:
         headers={
             "Content-Disposition": "inline; filename=tts.mp3",
             "X-TTS-Provider": used,
-            "X-TTS-Voice": (ELEVENLABS_VOICE_ID if used == "elevenlabs" else voice),
+            "X-TTS-Voice": (_elevenlabs_voice_id() if used == "elevenlabs" else voice),
             "X-TTS-Bytes": str(len(audio)),
         },
     )

@@ -70,3 +70,17 @@ def test_pipewire_env_inherits_path():
     env = _pipewire_env()
     assert "PATH" in env
     assert env["PATH"] == os.environ.get("PATH", "")
+
+
+def test_route_and_skill_agree_on_the_voice():
+    """Stemme-id'et skal have ÉT hjem.
+
+    Ruten havde sin egen kopi med kommentaren «spejlet fra voice-skillen».
+    Syntesen brugte skillens værdi, mens svar-headeren brugte kopien — så hvis
+    de drev fra hinanden, ville headeren roligt oplyse en anden stemme end den
+    der faktisk talte. Den slags fejl leder man længe efter.
+    """
+    from apps.api.jarvis_api.routes.tts import _elevenlabs_voice_id
+    from core.skills.voice.tts import ELEVENLABS_VOICE_ID
+
+    assert _elevenlabs_voice_id() == ELEVENLABS_VOICE_ID

@@ -168,6 +168,12 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   // navigationslinjen i edge-to-edge → det dobbelt-fratrak og lod composeren
   // ligge lidt skjult. Fuld højde sikrer den altid er fri af tastaturet.)
   const liftPadding = keyboardHeight
+  // Komponisten SVÆVER over indholdet. Godkendelses- og fejlkort ligger i den
+  // almindelige kolonne og endte derfor UNDER den — Bjørn kunne se kortet, men
+  // ikke nå knapperne (3. sept.). Vi måler komponistens faktiske højde frem for
+  // at gætte en konstant: den skifter mellem hvileform, arbejdsform og
+  // vedhæftnings-chips, og et fast tal ville være forkert i mindst én af dem.
+  const [composerHeight, setComposerHeight] = useState(96)
 
   const didRestore = useRef(false)
 
@@ -440,6 +446,8 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             onPress={jumpToBottom}
           />
         ) : null}
+        {/* Kortene skal stå OVER den svævende komponist, ikke bag den. */}
+        <View style={{ marginBottom: composerHeight + liftPadding }} pointerEvents="box-none">
         {canRetry ? (
           stream.streamError && stream.streamError.kind ? (
             // Kanonisk fejl (Canonical Error System, Fase 2): rigt kort med titel,
@@ -490,11 +498,19 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             onDeny={() => void stream.deny(config)}
           />
         ) : null}
+        </View>
         {/* Komponisten SVÆVER: tråden ruller bag den, som i ChatGPT-appen.
             Den løftes selv af tastaturet (bottom: liftPadding) frem for at
             containeren skubbes — ellers ville listen blive kortere og
             rulle-positionen hoppe hver gang tastaturet kom frem. */}
-        <View style={[styles.floatBottom, { bottom: liftPadding }]} pointerEvents="box-none">
+        <View
+          style={[styles.floatBottom, { bottom: liftPadding }]}
+          pointerEvents="box-none"
+          onLayout={(e) => {
+            const h = Math.round(e.nativeEvent.layout.height)
+            setComposerHeight((prev) => (Math.abs(prev - h) > 1 ? h : prev))
+          }}
+        >
         <Composer
           disabled={!config}
           working={stream.state.status === 'working' || serverBusy}

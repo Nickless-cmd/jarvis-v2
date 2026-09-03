@@ -193,3 +193,28 @@ def test_taelling_henter_ikke_raekker_for_at_taelle(monkeypatch):
 
     assert adc._count_brain("u1") == 5
     assert adc._count_brain("u2") == 3
+
+
+def test_eksporten_har_ingen_dublet_rute():
+    """Jeg tilføjede et /account/export uden at tjekke om der allerede var ét.
+    FastAPI tager den FØRSTE match, så min blev registreret og aldrig kaldt —
+    en hel funktion der så ud til at virke og ikke gjorde. Testen holder fast i
+    at der kun er én."""
+    from apps.api.jarvis_api.routes.account import router
+    exports = [r for r in router.routes if getattr(r, "path", "") == "/account/export"]
+    assert len(exports) == 1
+
+
+def test_eksporten_indeholder_hukommelses_lagene(monkeypatch):
+    """Noten sagde før at hukommelse «kan udleveres på forespørgsel». Portabilitet
+    betyder at man FÅR sine data, ikke at man skal bede om dem."""
+    from apps.api.jarvis_api.routes.account import build_data_export
+
+    monkeypatch.setattr(adc, "export_all", lambda uid: {
+        "sessions": [{"id": "s1"}], "senses": [], "brain": [],
+        "identity": {"USER.md": "x"}, "exported_at": "nu",
+    })
+    out = build_data_export("u1", get_user=lambda u: {}, get_tier=lambda u: "free")
+    for key in ("sessions", "senses", "brain", "identity"):
+        assert key in out
+    assert "forespørgsel" not in (out.get("note") or "")

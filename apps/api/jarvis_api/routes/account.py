@@ -7,10 +7,9 @@ bruger ser kun sig selv; ingen cross-bruger-opslag her.
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
 from typing import Any, Callable
 
-from fastapi import APIRouter, Body, HTTPException, Response
+from fastapi import APIRouter, Body, HTTPException
 
 from core.identity import user_db
 from core.identity.workspace_context import current_context_snapshot
@@ -480,15 +479,29 @@ def build_data_export(
         notes = list_notes(user_id, limit=100).get("notes", [])
     except Exception:
         pass
+    # De fire hukommelses-lag hører MED i eksporten. Noten herunder sagde før at
+    # chat-historik og hukommelse «kan udleveres på forespørgsel» — men
+    # portabilitet betyder at man FÅR sine data, ikke at man skal bede om dem.
+    # Fejler et lag, bærer det sin egen fejl-note: en delvis eksport er mere
+    # værd end ingen.
+    data: dict[str, Any] = {}
+    try:
+        from core.services.account_data_controls import export_all
+        data = export_all(user_id)
+    except Exception as exc:
+        data = {"error": f"{type(exc).__name__}: {exc}"}
+
     return {
         "exported_for": user_id or "owner",
         "profile": profile,
         "connectors": connectors,
         "notes": notes,
-        "note": (
-            "Chat-historik og hukommelse ligger server-side pr. bruger og kan "
-            "udleveres på forespørgsel. Connector-tokens er bevidst udeladt af eksporten."
-        ),
+        "sessions": data.get("sessions"),
+        "senses": data.get("senses"),
+        "brain": data.get("brain"),
+        "identity": data.get("identity"),
+        "exported_at": data.get("exported_at"),
+        "note": "Connector-tokens er bevidst udeladt af eksporten.",
     }
 
 
@@ -604,23 +617,3 @@ async def account_delete_layer(layer: str) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/export")
-async def account_export() -> Response:
-    """Alt vi har om dig, som JSON-fil (GDPR: dataportabilitet).
-
-    Serveres som download frem for et JSON-svar, så den kan gemmes direkte fra
-    en browser eller deles fra telefonen.
-    """
-    snap = current_context_snapshot()
-    user_id = snap.get("user_id") or ""
-    from core.services.account_data_controls import export_json
-
-    body = await asyncio.to_thread(export_json, user_id)
-    stamp = datetime.now(UTC).strftime("%Y%m%d")
-    return Response(
-        content=body,
-        media_type="application/json",
-        headers={
-            "Content-Disposition": f'attachment; filename="jarvis-data-{stamp}.json"'
-        },
-    )

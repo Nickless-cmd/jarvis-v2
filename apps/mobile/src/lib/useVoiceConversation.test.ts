@@ -94,3 +94,69 @@ describe('push-to-talk', () => {
     expect(result.current.state).toBe('idle')
   })
 })
+
+describe('svaret bliver talt', () => {
+  const text = (blocks: { type?: string; text?: string }[]) =>
+    blocks.filter((b) => b.type === 'text').map((b) => b.text || '').join(' ').trim()
+
+  /** Klienten rydder blokkene i SAMME opdatering som status bliver 'done' —
+   *  svaret flyttes over i den persisterede historik. Læser man først dér, er
+   *  der intet tilbage, og stemmen tier mens svaret står i chatten. */
+  function play(statuses: { status: string; blocks: { type: string; text: string }[] }[]) {
+    const api = jest.requireMock('./voiceApi') as { synthesizeTtsToFile: jest.Mock }
+    return { api, statuses }
+  }
+
+  it('taler svaret selv om blokkene ryddes i samme øjeblik som status bliver done', async () => {
+    slowRecorder(0)
+    const { api } = play([])
+    let live: { status: string; blocks: { type: string; text: string }[] } =
+      { status: 'idle', blocks: [] }
+    const d = {
+      get status() { return live.status },
+      get blocks() { return live.blocks as never },
+      sendMessage: jest.fn(),
+      extractText: text as never,
+    }
+    const { result, rerender } = await renderHook(() => useVoiceConversation(config, d))
+
+    await act(async () => { await result.current.startListening() })
+    await act(async () => { await result.current.stopListening() })
+    expect(d.sendMessage).toHaveBeenCalledWith('hej Jarvis')
+
+    live = { status: 'working', blocks: [{ type: 'text', text: 'Ja, det kan jeg godt.' }] }
+    await act(async () => { rerender({}) })
+    // Præcis som klienten gør det: status og tømning i ÉN opdatering.
+    live = { status: 'done', blocks: [] }
+    await act(async () => { rerender({}) })
+
+    await waitFor(() => expect(api.synthesizeTtsToFile).toHaveBeenCalled())
+    expect(api.synthesizeTtsToFile.mock.calls[0][1]).toContain('Ja, det kan jeg godt.')
+  })
+
+  // Et afbrudt run efterlod før stemmen ventende for evigt — og NÆSTE svar
+  // ville så blive talt i stedet for dette.
+  it('bliver ikke hængende når et run afbrydes', async () => {
+    slowRecorder(0)
+    const api = jest.requireMock('./voiceApi') as { synthesizeTtsToFile: jest.Mock }
+    let live: { status: string; blocks: { type: string; text: string }[] } =
+      { status: 'idle', blocks: [] }
+    const d = {
+      get status() { return live.status },
+      get blocks() { return live.blocks as never },
+      sendMessage: jest.fn(),
+      extractText: text as never,
+    }
+    const { result, rerender } = await renderHook(() => useVoiceConversation(config, d))
+    await act(async () => { await result.current.startListening() })
+    await act(async () => { await result.current.stopListening() })
+
+    live = { status: 'working', blocks: [{ type: 'text', text: 'Halvt svar' }] }
+    await act(async () => { rerender({}) })
+    live = { status: 'interrupted', blocks: [] }
+    await act(async () => { rerender({}) })
+
+    await waitFor(() => expect(api.synthesizeTtsToFile).toHaveBeenCalled())
+    expect(api.synthesizeTtsToFile.mock.calls[0][1]).toContain('Halvt svar')
+  })
+})

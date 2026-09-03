@@ -118,13 +118,32 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   }, [config, _speakNative])
 
   // Completion-watch: tal svaret når et run vi startede falder fra 'working'.
+  //
+  // TEKSTEN SKAL OPSAMLES MENS DEN STRØMMER. Da svaret var færdigt, læste jeg
+  // det ud af stream-tilstanden — men klienten rydder blokkene i SAMME
+  // opdatering som den sætter status til 'done' (persistAssistantSnapshot:
+  // `{ ...prev, status, blocks: [] }`), fordi svaret dér flyttes over i den
+  // persisterede historik. Så var der intet tilbage at læse: stemmen fik en
+  // tom streng og tav, mens svaret dukkede op i chatten. Der blev aldrig
+  // engang bedt om lyd — derfor stod der heller ingenting i serverloggen.
+  const lastTextRef = useRef('')
   useEffect(() => {
     if (!awaitingRef.current) return
-    if (deps.status === 'working') { sawWorkingRef.current = true; return }
-    if (sawWorkingRef.current && (deps.status === 'done' || deps.status === 'idle')) {
+    if (deps.status === 'working') {
+      sawWorkingRef.current = true
+      const partial = deps.extractText(deps.blocks)
+      if (partial) lastTextRef.current = partial
+      return
+    }
+    // ALT andet end 'working' er slut. Før stod her kun 'done' og 'idle', så et
+    // afbrudt eller fejlet run efterlod stemmen ventende for evigt — og det
+    // næste svar ville blive talt i stedet for dette.
+    if (sawWorkingRef.current) {
       awaitingRef.current = false
       sawWorkingRef.current = false
-      void _speak(deps.extractText(deps.blocks))
+      const said = lastTextRef.current || deps.extractText(deps.blocks)
+      lastTextRef.current = ''
+      void _speak(said)
     }
   }, [deps.status, deps.blocks, deps, _speak])
 
@@ -208,6 +227,8 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   const exit = useCallback(() => {
     setActive(false)
     awaitingRef.current = false
+    sawWorkingRef.current = false
+    lastTextRef.current = ''
     try { playerRef.current?.pause() } catch { /* noop */ }
     try { Speech.stop() } catch { /* noop */ }
     void stopListeningRef.current?.()

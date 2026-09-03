@@ -155,7 +155,30 @@ def _loop(*, name: str, startup_recovery_requested: bool) -> None:
             # INFO, ikke debug. Se modulets docstring: uden dette tal kan en
             # tavs tråd ikke skelnes fra en tråd der kører uden at udrette
             # noget — og den forskel afgør hvor man skal lede.
-            logger.info("HEARTBEAT-LOOP: iteration=%s name=%s", _ITERATION, name)
+            #
+            # Tælleren alene var ikke nok. Natten 2.-3. sept. viste den at
+            # løkken kørte 1011 gange på ni timer (~32 s pr. gennemløb, altså
+            # sund) mens kun FEM slag faldt — og /mc/heartbeat svarede samtidig
+            # `due: true`. Så spørgsmålet flyttede sig: hvad ser TRÅDEN?
+            #
+            # Derfor logges nu trådens EGEN beregning ved siden af tælleren.
+            # Den koster en ekstra cheap-path-beregning pr. gennemløb; det er
+            # en midlertidig pris for at kunne sammenligne trådens billede med
+            # det en HTTP-forespørgsel får, i stedet for at gætte på forskellen.
+            seen = {}
+            try:
+                seen = hb._cheap_heartbeat_schedule_state(name) or {}
+            except Exception as diag_exc:
+                seen = {"fejl": f"{type(diag_exc).__name__}: {diag_exc}"}
+            logger.info(
+                "HEARTBEAT-LOOP: iteration=%s name=%s due=%s schedule=%s interval=%s next=%s",
+                _ITERATION,
+                name,
+                seen.get("due"),
+                seen.get("schedule_state"),
+                seen.get("interval_minutes"),
+                seen.get("next_tick_at"),
+            )
             hb.poll_heartbeat_schedule(name=name)
         except Exception as exc:
             logger.exception("heartbeat scheduler iteration failed name=%s", name)

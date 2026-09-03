@@ -33,7 +33,11 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
   const s = useStyles(makes)
   const busy = p.state === 'transcribing' || p.state === 'thinking' || p.state === 'speaking'
   const micDown = () => { if (p.mode === 'push' && !busy) p.startListening() }
-  const micUp = () => { if (p.mode === 'push' && p.state === 'listening') p.stopListening() }
+  // Slip ALTID, uden at spørge om tilstanden først. Et kort tryk kan nå at
+  // blive sluppet før optageren er oppe, og så stod her 'listening' endnu ikke
+  // — knappen gjorde ingenting, og optagelsen kørte videre. Hook'en holder
+  // selv styr på om der faktisk optages.
+  const micUp = () => { if (p.mode === 'push') p.stopListening() }
   const micTap = () => {
     if (p.mode !== 'hands-free') return
     if (p.state === 'listening') p.stopListening()

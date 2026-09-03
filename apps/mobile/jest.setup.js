@@ -46,6 +46,17 @@ jest.mock('expo-file-system/legacy', () => ({
   getContentUriAsync: jest.fn(async () => 'content://app.apk'),
 }))
 
+// expo-file-system (ny API). Lyd-uploadet går NATIVT gennem File.upload —
+// ikke gennem fetch — fordi Expos fetch ikke kan læse en fil-uri i FormData.
+jest.mock('expo-file-system', () => ({
+  __esModule: true,
+  UploadType: { BINARY_CONTENT: 0, MULTIPART: 1 },
+  File: jest.fn().mockImplementation((uri) => ({
+    uri,
+    upload: jest.fn(async () => ({ status: 200, body: '{"status":"ok","text":"hej"}', headers: {} })),
+  })),
+}))
+
 jest.mock('expo-intent-launcher', () => ({
   __esModule: true,
   startActivityAsync: jest.fn(async () => undefined),

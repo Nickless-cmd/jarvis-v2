@@ -7,9 +7,10 @@ bruger ser kun sig selv; ingen cross-bruger-opslag her.
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from typing import Any, Callable
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Response
 
 from core.identity import user_db
 from core.identity.workspace_context import current_context_snapshot
@@ -25,8 +26,13 @@ def build_account_profile(
     get_tier: Callable[[str], str],
     is_google_linked: Callable[[str], bool] | None = None,
     get_identity_role: Callable[[str], str | None] | None = None,
+    get_identity_name: Callable[[str], str | None] | None = None,
 ) -> dict[str, Any]:
     """Ren projektion — testbar uden HTTP. Owner (uid='') har ingen række.
+
+    get_identity_name: visningsnavn fra users.json. Profilen havde intet navn,
+    kun en email der ofte er tom — så indstillings-hovedet kunne ikke svare på
+    «hvis konto er det her?». Navnet står i users.json og koster ét opslag.
 
     get_identity_role: fallback-rolle fra users.json (samme kilde som whoami).
     Nødvendig fordi users.json-only brugere (fx owner Bjørn) IKKE står i
@@ -34,9 +40,11 @@ def build_account_profile(
     'member'. Vi konsulterer derfor identitets-laget når SQLite-rækken mangler.
     """
     linked = bool(is_google_linked(user_id)) if is_google_linked else False
+    name = (get_identity_name(user_id) if get_identity_name else None) or ""
     if not user_id:
         return {
             "user_id": "",
+            "name": name,
             "email": "",
             "email_verified": True,
             "language": "da",
@@ -48,6 +56,7 @@ def build_account_profile(
     role = row.get("role") or (get_identity_role(user_id) if get_identity_role else None) or "member"
     return {
         "user_id": user_id,
+        "name": name or (row.get("name") or ""),
         "email": row.get("email", "") or "",
         "email_verified": bool(row.get("email_verified")),
         "language": row.get("language") or "da",
@@ -55,6 +64,16 @@ def build_account_profile(
         "tier": get_tier(user_id) or (row.get("tier") or "free"),
         "google_linked": linked,
     }
+
+
+def _identity_name(user_id: str) -> str | None:
+    """Visningsnavn fra users.json — None hvis ukendt."""
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(str(user_id))
+        return getattr(u, "name", None) if u else None
+    except Exception:
+        return None
 
 
 def _identity_role(user_id: str) -> str | None:
@@ -82,6 +101,7 @@ async def account_me() -> dict[str, Any]:
         get_tier=quota_store.get_tier,
         is_google_linked=user_db.has_google_link,
         get_identity_role=_identity_role,
+        get_identity_name=_identity_name,
     )
 
 
@@ -539,3 +559,68 @@ async def account_erase(payload: dict = Body(default={})) -> dict[str, Any]:
 
     from core.services.data_erasure import erase_user
     return await asyncio.to_thread(erase_user, uid, mode=mode, actor="self")
+
+
+# ── Datakontrol (GDPR) ───────────────────────────────────────────────────────
+#
+# Bjørn 3. sept.: appen manglede kontoinfo og muligheden for at slette sine
+# sessioner og sin hukommelse, «lige som GDPR-loven foreskriver».
+#
+# Sletning er LAGVIS med vilje. «Slet alt» findes, men som en sammensætning af
+# de fire lag — ikke som en femte, skjult vej. Se
+# core/services/account_data_controls.py for hvorfor.
+
+
+@router.get("/data")
+async def account_data_overview() -> dict[str, Any]:
+    """Hvad har vi om dig, lag for lag. Rene tal — intet indhold.
+
+    Tallene skal stå ved siden af sletteknappen: en knap uden et tal beder folk
+    om at gætte hvad de mister.
+    """
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    from core.services.account_data_controls import data_overview
+    return await asyncio.to_thread(data_overview, user_id)
+
+
+@router.delete("/data/{layer}")
+async def account_delete_layer(layer: str) -> dict[str, Any]:
+    """Slet ét lag: sessions | senses | brain | identity — eller `all`.
+
+    Uigenkaldeligt. Bekræftelsen hører hjemme i klienten; her udføres den.
+    Alt er user-scopet: en bruger kan aldrig ramme en andens data.
+    """
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    from core.services.account_data_controls import delete_all, delete_layer
+
+    key = str(layer or "").strip().lower()
+    if key == "all":
+        return await asyncio.to_thread(delete_all, user_id)
+    try:
+        return await asyncio.to_thread(delete_layer, user_id, key)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/export")
+async def account_export() -> Response:
+    """Alt vi har om dig, som JSON-fil (GDPR: dataportabilitet).
+
+    Serveres som download frem for et JSON-svar, så den kan gemmes direkte fra
+    en browser eller deles fra telefonen.
+    """
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    from core.services.account_data_controls import export_json
+
+    body = await asyncio.to_thread(export_json, user_id)
+    stamp = datetime.now(UTC).strftime("%Y%m%d")
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="jarvis-data-{stamp}.json"'
+        },
+    )

@@ -72,11 +72,42 @@ _PROMISE_PATTERNS = [
     # run kan ikke spontant sende den bagefter, så det er samme tomme løfteklasse.
     *_DEFERRED_TEXT_PATTERNS,
 ]
+# ── Omskrevet 04-09-2026 efter tredje runde af misser ────────────────────────
+# Listen ovenfor opremser ORDSTILLINGER: "jeg læser … nu", "nu læser jeg".
+# Dansk tillader flere, og hver gang Bjørn blev ladt i stikken var det en ny:
+#   «Den læser jeg nu præcist.»              ← verbum, subjekt, adverbium
+#   «Først åbner jeg en session …»           ← adverbial, verbum, subjekt
+#   «Lad mig læse resten (linje 350-520).»   ← verbet stod ikke i lad-mig-listen
+# At tilføje endnu et mønster ville bare udskyde den fjerde.
+#
+# Det der ER fælles: FØRSTEPERSON tæt på et KONKRET handlingsverbum. Ordstilling
+# er ligegyldig. Én liste over verber, ét nærhedskrav — så holder det for de
+# ordstillinger jeg ikke har set endnu.
+_ACTION_VERB = (
+    r"(?:læs(?:er|e)?|skriv(?:er|e)?|kør(?:er|e)?|åbn(?:er|e)?|find(?:er|e)?|"
+    r"tjekk(?:er|e)?|se(?:r)?|kigg(?:er|e)?|gennemgå(?:r|e)?|ret(?:ter|te)?|"
+    r"fiks(?:er|e)?|opdater(?:er|e)?|committ?(?:er|e)?|kald(?:er|e)?|hent(?:er|e)?|"
+    r"verificer(?:er|e)?|implementer(?:er|e)?|tilføj(?:er|e)?|start(?:er|e)?|"
+    r"udfør(?:er|e)?|undersøg(?:er|e)?|analyser(?:er|e)?|bygg(?:er|e)?|test(?:er|e)?)"
+)
+# «jeg» inden for få ord fra verbet — i begge retninger, så ordstillingen er fri.
+_FIRST_PERSON_ACTION = [
+    re.compile(rf"\bjeg\s+(?:\w+\s+){{0,2}}{_ACTION_VERB}\b", re.IGNORECASE),
+    re.compile(rf"\b{_ACTION_VERB}\s+jeg\b", re.IGNORECASE),
+    re.compile(rf"\blad\s+mig\s+(?:lige\s+)?(?:\w+\s+){{0,1}}{_ACTION_VERB}\b", re.IGNORECASE),
+]
+
 _PROMISE_RE = [re.compile(p, re.IGNORECASE) for p in _PROMISE_PATTERNS]
 _DEFERRED_TEXT_RE = [re.compile(p, re.IGNORECASE) for p in _DEFERRED_TEXT_PATTERNS]
 
 # Billig negativ-guard: slutter svaret på et spørgsmål → afventer brugeren (ikke tom løfte).
 _QUESTION_TAIL = re.compile(r"[?]\s*$")
+
+
+def _last_sentence(text: str) -> str:
+    """Sidste hele sætning. Løftet står dér — det er dét man efterlades med."""
+    parts = [p for p in re.split(r"(?<=[.!?])\s+", text.strip()) if p.strip()]
+    return parts[-1] if parts else text.strip()
 
 
 def is_promise_of_action(text: str) -> bool:
@@ -89,7 +120,13 @@ def is_promise_of_action(text: str) -> bool:
             return False
         if _QUESTION_TAIL.search(t):     # spørgsmål-hale = afventer bruger, ikke løfte
             return False
-        return any(rx.search(t) for rx in _PROMISE_RE)
+        if any(rx.search(t) for rx in _PROMISE_RE):
+            return True
+        # Kun den SIDSTE sætning tæller. Et langt svar der undervejs siger «jeg
+        # læste filen» er ikke et løfte — det er en beretning. Løftet står til
+        # sidst, som dét man efterlades med.
+        tail = _last_sentence(t)
+        return any(rx.search(tail) for rx in _FIRST_PERSON_ACTION)
     except Exception:
         return False
 

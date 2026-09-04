@@ -1,6 +1,8 @@
 """Tests for hollow_promise_guard — fang 'lovede handling, kaldte intet værktøj'."""
 from __future__ import annotations
 
+import pytest
+
 import core.services.hollow_promise_guard as hpg
 
 
@@ -158,3 +160,59 @@ def test_bagudkompatibel_uden_sidste_runde():
     t = _ÆGTE_HALER[0]
     assert hpg.is_hollow_promise(final_text=t, total_tool_calls=15) is False
     assert hpg.is_hollow_promise(final_text=t, total_tool_calls=0) is True
+
+
+# ---------------------------------------------------------------------------
+# 4. sep 2026: «vores cutoff bug er vendt tilbage». Det var ikke et cut — det
+# var tre tomme løfter i træk, hver med en ordstilling mønster-listen ikke
+# kendte. Haler taget ordret fra Bjørns samtale samme morgen.
+# ---------------------------------------------------------------------------
+
+REELLE_HALER = [
+    "Først åbner jeg en session og finder hvad der scanner output for tidsclaims.",
+    "Den læser jeg nu præcist.",
+    "Lad mig læse resten (linje ~350-520) præcist.",
+]
+
+
+@pytest.mark.parametrize("hale", REELLE_HALER)
+def test_faktiske_haler_fra_samtalen_fanges(hale):
+    from core.services.hollow_promise_guard import is_promise_of_action
+
+    assert is_promise_of_action(hale) is True
+
+
+@pytest.mark.parametrize("hale", REELLE_HALER)
+def test_samme_haler_er_tomme_loefter_naar_intet_vaerktoej_koerte(hale):
+    from core.services.hollow_promise_guard import is_hollow_promise
+
+    assert is_hollow_promise(hale, total_tool_calls=12, last_round_tool_calls=0) is True
+    # Handlede han faktisk i sidste runde, er det ikke et tomt løfte.
+    assert is_hollow_promise(hale, total_tool_calls=12, last_round_tool_calls=1) is False
+
+
+def test_beretning_i_datid_er_ikke_et_loefte():
+    """«Jeg læste filen» er en beretning om noget der ER sket. Fanges den,
+    bliver hvert eneste afsluttet svar til et falsk tomt løfte."""
+    from core.services.hollow_promise_guard import is_promise_of_action
+
+    assert is_promise_of_action("Jeg læste filen, og der var tre fejl. Dem har jeg rettet.") is False
+    assert is_promise_of_action("Jeg åbnede sessionen og fandt fejlen. Den er rettet nu.") is False
+
+
+def test_kun_sidste_saetning_taeller():
+    """Et langt svar der undervejs nævner hvad han gjorde er ikke et løfte —
+    løftet står til sidst, som dét man efterlades med."""
+    from core.services.hollow_promise_guard import is_promise_of_action
+
+    beretning = (
+        "Jeg kigger på filen og finder tre steder der skal rettes. "
+        "Alle tre er rettet, og testene er grønne."
+    )
+    assert is_promise_of_action(beretning) is False
+
+
+def test_spoergsmaal_til_sidst_er_stadig_ikke_et_loefte():
+    from core.services.hollow_promise_guard import is_promise_of_action
+
+    assert is_promise_of_action("Jeg kan læse resten af filen — skal jeg det?") is False

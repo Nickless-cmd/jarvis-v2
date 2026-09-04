@@ -177,8 +177,15 @@ class OllamaFollowupAdapter:
             _asst: dict[str, object] = {
                 "role": "assistant",
                 "content": exch.text,
-                "tool_calls": self._normalize_tool_calls(list(exch.tool_calls)),
             }
+            # 4. sep 2026 (empty-tool_calls-jagten): en tekst-runde uden tool-kald
+            # (hollow-promise-nudge, opsummering) blev replayet som
+            # `"tool_calls": []` → DeepSeek/OpenAI-spec afviser HTTP 400
+            # "Invalid 'messages[N].tool_calls': empty array" → hele runden
+            # afbrudt (10×/dag). Tekst-kun assistant-beskeder har INGEN nøgle.
+            _tcs = self._normalize_tool_calls(list(exch.tool_calls))
+            if _tcs:
+                _asst["tool_calls"] = _tcs
             # Replay thinking-modellens ræsonnering tilbage så deepseek/GLM/...
             # beholder sin tankerække mellem tool-runder (ellers re-tænker den
             # forfra hver runde → tool-spam → tabt svar). Ollama accepterer
@@ -684,10 +691,14 @@ class OpenAICompatFollowupAdapter:
             assistant_msg: dict[str, object] = {
                 "role": "assistant",
                 "content": exch.text,
-                "tool_calls": self._normalize_assistant_tool_calls(
-                    list(exch.tool_calls)
-                ),
             }
+            # 4. sep 2026: aldrig `"tool_calls": []` — se OllamaFollowupAdapter.
+            # Roden: hollow-promise-nudgen appender en ToolExchange(tool_calls=[])
+            # og fortsætter; næste runde replayer den → DeepSeek HTTP 400 →
+            # "followup-round-N-provider-error" → turen interrupted.
+            _tcs = self._normalize_assistant_tool_calls(list(exch.tool_calls))
+            if _tcs:
+                assistant_msg["tool_calls"] = _tcs
             # Thinking-mode replay: Deepseek v4-pro/reasoner requires the
             # reasoning_content from the prior assistant turn to be sent
             # back verbatim, otherwise the API rejects with

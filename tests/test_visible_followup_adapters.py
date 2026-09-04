@@ -987,3 +987,30 @@ def test_normalize_assistant_tool_calls_always_adds_type_function() -> None:
     assert flat[0]["type"] == "function"
     assert flat[0]["function"]["name"] == "search"
     assert "name" not in flat[0]  # flyttet ind i function
+
+
+# ── 4. sep 2026: "Invalid 'messages[N].tool_calls': empty array" ─────────────
+
+
+def test_openai_serialize_omits_tool_calls_key_for_text_only_exchange():
+    """Hollow-promise-nudgen appender ToolExchange(tool_calls=[]); replay som
+    `"tool_calls": []` fik DeepSeek til at afvise hele runden med HTTP 400."""
+    a = vf.OpenAICompatFollowupAdapter(provider_id="deepseek")
+    msgs = a._serialize_exchanges([vf.ToolExchange(text="jeg kører nu", tool_calls=[], results=[])])
+    assert msgs == [{"role": "assistant", "content": "jeg kører nu"}]
+
+
+def test_openai_serialize_keeps_tool_calls_when_present():
+    a = vf.OpenAICompatFollowupAdapter(provider_id="deepseek")
+    exch = vf.ToolExchange(
+        text="", tool_calls=[{"id": "c1", "function": {"name": "x", "arguments": {}}}],
+        results=[vf.ToolResult(tool_call_id="c1", tool_name="x", content="y")],
+    )
+    asst = a._serialize_exchanges([exch])[0]
+    assert asst["tool_calls"] and asst["tool_calls"][0]["type"] == "function"
+
+
+def test_ollama_serialize_omits_tool_calls_key_for_text_only_exchange():
+    a = vf.OllamaFollowupAdapter()
+    asst = a._serialize_exchanges([vf.ToolExchange(text="opsummering", tool_calls=[], results=[])])[0]
+    assert "tool_calls" not in asst and asst["content"] == "opsummering"

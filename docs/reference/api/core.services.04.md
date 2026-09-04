@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_convene_judge.py`
+_core/services/central_convene_judge.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_convene_judge.py#L51) |
+| function | `current_mode` | `()` | — | [src](../../../core/services/central_convene_judge.py#L60) |
+| function | `_movement_from_signal` | `(name, surface)` | Normalise ONE signal surface to a 0..1 'how much is this moving' reading. | [src](../../../core/services/central_convene_judge.py#L69) |
+| function | `_read_flowing_values` | `(surfaces)` | Read the flowing values: signal movement + affective valence + agenda hint. | [src](../../../core/services/central_convene_judge.py#L96) |
+| function | `_mood_to_valence` | `(mood)` | Map a coarse mood word to a signed valence in [-1, 1]. Unknown → 0. | [src](../../../core/services/central_convene_judge.py#L155) |
+| function | `_derive_topic_hint` | `(movement, latest_wonder, agenda_hint, mood)` | Build a short subject hint from what is actually moving — fed to derive_topic. | [src](../../../core/services/central_convene_judge.py#L171) |
+| function | `_observe` | `(verdict, mode)` | — | [src](../../../core/services/central_convene_judge.py#L193) |
+| function | `judge_convene` | `(*, surfaces, top_signals, score, score_override=…)` | Decide whether there is a real reason to convene the council now. | [src](../../../core/services/central_convene_judge.py#L211) |
+
 ## `core/services/central_core.py`
 _Den Intelligente Central — facade (§3.1). Komponerer gate_kernel (decide-motor)_
 
@@ -563,16 +577,4 @@ _Samlet LLM-egress-observation — "har vi styr på ALLE udgående kald?" (Bjør
 | function | `classify_cheap_eligible` | `(*, lane, purpose, autonomous)` | Rolle-bevidst: kunne dette kald have taget en billigere model uden kvalitetstab? | [src](../../../core/services/central_llm_egress.py#L28) |
 | function | `observe` | `(*, lane, provider, model, purpose=…, input_tokens=…, output_tokens=…, cost_usd=…, autonomous=…, source=…)` | Rapportér ét udgående LLM-kald til Centralens samlede egress-billede. Kald fra | [src](../../../core/services/central_llm_egress.py#L46) |
 | function | `build_llm_egress_surface` | `()` | Mission Control — read-only meta-projektion. | [src](../../../core/services/central_llm_egress.py#L91) |
-
-## `core/services/central_loop_lag.py`
-_Event-loop-lag-monitor — "uret" bag cutoff-spøgelset (Bjørn 4. jul)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_record` | `(lag_ms)` | — | [src](../../../core/services/central_loop_lag.py#L35) |
-| function | `current_lag_ms` | `()` | Seneste målte event-loop-lag i ms (API-processen). Self-safe. | [src](../../../core/services/central_loop_lag.py#L60) |
-| function | `recent_peak_ms` | `(window_s=…)` | Højeste lag i de sidste ``window_s`` sekunder — brug denne til at tagge et | [src](../../../core/services/central_loop_lag.py#L68) |
-| function | `_monitor_loop` | `()` | — | [src](../../../core/services/central_loop_lag.py#L84) |
-| function | `start_loop_lag_monitor` | `()` | Start uret på den KØRENDE event-loop (kald fra API-processens lifespan, | [src](../../../core/services/central_loop_lag.py#L96) |
-| function | `build_loop_lag_surface` | `()` | Mission Control — read-only meta-projektion. | [src](../../../core/services/central_loop_lag.py#L111) |
 

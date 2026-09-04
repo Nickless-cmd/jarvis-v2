@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/proposal_classifier.py`
+_Proposal classifier — detects action impulses in thought fragments and scores destructiveness._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_fragment` | `(fragment)` | Classify a thought fragment for action impulses. | [src](../../../core/services/proposal_classifier.py#L59) |
+
 ## `core/services/proprioception_metrics.py`
 _Proprioception Metrics — process-level body sense._
 
@@ -692,25 +699,4 @@ _Remembered-fact signal tracking — migrated onto signal_tracking_framework._
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/remembered_fact_signal_tracking.py#L356) |
 | function | `_contains_any` | `(text, needles)` | — | [src](../../../core/services/remembered_fact_signal_tracking.py#L368) |
 | function | `_rank_confidence` | `(confidence)` | — | [src](../../../core/services/remembered_fact_signal_tracking.py#L372) |
-
-## `core/services/repeated_requests.py`
-_Gentagne anmodninger → regel-forslag (lærings-sløjfe 2026-09-04, blok C)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/repeated_requests.py#L59) |
-| function | `_stems` | `(text)` | Betydningsbærende ord, forkortet til deres første `_STEM_CHARS` tegn. | [src](../../../core/services/repeated_requests.py#L63) |
-| function | `normalize` | `(text)` | Anmodningens stammer, sorteret — noeglen en anmodning gemmes under. | [src](../../../core/services/repeated_requests.py#L79) |
-| function | `similarity` | `(a, b)` | Jaccard mellem to anmodningers stammer (0-1). | [src](../../../core/services/repeated_requests.py#L84) |
-| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/repeated_requests.py#L92) |
-| function | `_row` | `(r)` | — | [src](../../../core/services/repeated_requests.py#L116) |
-| function | `_sessions` | `(raw)` | — | [src](../../../core/services/repeated_requests.py#L120) |
-| function | `note_request` | `(*, text, session_id=…, kind=…)` | Tæl én anmodning. Returnerer rækken plus ``matured`` når den nu er en regel-kandidat. | [src](../../../core/services/repeated_requests.py#L124) |
-| function | `build_question` | `(*, text, mention_count, session_count, kind)` | Det ene spørgsmål Bjørn får at se. Konkret, med tallet der udløste det. | [src](../../../core/services/repeated_requests.py#L188) |
-| function | `mark_asked` | `(request_id)` | — | [src](../../../core/services/repeated_requests.py#L203) |
-| function | `record_decision` | `(*, request_id, accepted)` | Bjørns svar. Ja → linjen skrives i `## Kerne` med begrundelse. | [src](../../../core/services/repeated_requests.py#L215) |
-| function | `surface_matured` | `(result, *, kind=…)` | Læg et modnet regel-forslag i den proaktive kø. Ét spørgsmål, én gang. | [src](../../../core/services/repeated_requests.py#L250) |
-| function | `note_and_surface` | `(*, text, session_id=…, kind=…)` | Tæl, og stil spørgsmålet hvis anmodningen netop modnede. Self-safe. | [src](../../../core/services/repeated_requests.py#L273) |
-| function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L285) |
-| function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L295) |
 

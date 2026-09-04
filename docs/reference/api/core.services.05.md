@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_loop_lag.py`
+_Event-loop-lag-monitor — "uret" bag cutoff-spøgelset (Bjørn 4. jul)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_record` | `(lag_ms)` | — | [src](../../../core/services/central_loop_lag.py#L35) |
+| function | `current_lag_ms` | `()` | Seneste målte event-loop-lag i ms (API-processen). Self-safe. | [src](../../../core/services/central_loop_lag.py#L60) |
+| function | `recent_peak_ms` | `(window_s=…)` | Højeste lag i de sidste ``window_s`` sekunder — brug denne til at tagge et | [src](../../../core/services/central_loop_lag.py#L68) |
+| function | `_monitor_loop` | `()` | — | [src](../../../core/services/central_loop_lag.py#L84) |
+| function | `start_loop_lag_monitor` | `()` | Start uret på den KØRENDE event-loop (kald fra API-processens lifespan, | [src](../../../core/services/central_loop_lag.py#L96) |
+| function | `build_loop_lag_surface` | `()` | Mission Control — read-only meta-projektion. | [src](../../../core/services/central_loop_lag.py#L111) |
+
 ## `core/services/central_machines.py`
 _The Machines — hænderne om min hals (BONUS)._
 
@@ -596,16 +608,4 @@ _Seraph — portvagt for hypotese-modenhed._
 | function | `record_seraph` | `(*, trigger=…, last_visible_at=…)` | Cadence (30 min): test hypotese-modenhed → GREEN/RED (shadow — observerer kun). Self-safe. | [src](../../../core/services/central_seraph.py#L174) |
 | function | `_seraph_enforced` | `()` | gate_enforce.seraph default OFF (shadow) — læs råt fra shared_cache, unset = shadow. | [src](../../../core/services/central_seraph.py#L188) |
 | function | `may_surface_dream_hypothesis` | `(hyp_id)` | Seraphs dør: må denne dream-hypotese præsenteres for Bjørn nu? True i shadow (uændret). | [src](../../../core/services/central_seraph.py#L203) |
-
-## `core/services/central_shadow.py`
-_core/services/central_shadow.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_record_shadow` | `(nerve, payload)` | Skriv en shadow-observation til trace (owner-HUD) + tidsserie. Self-safe. | [src](../../../core/services/central_shadow.py#L39) |
-| function | `shadow_reactions` | `()` | Hvad Centralen VILLE gøre (fra reviewbare forslag) — logget som skygge, aldrig gjort. | [src](../../../core/services/central_shadow.py#L50) |
-| function | `_trend_worsening` | `(cluster, nerve, higher_is_worse)` | (forværres, seneste_gns, tidligere_gns) fra en value-serie. Self-safe. | [src](../../../core/services/central_shadow.py#L67) |
-| function | `predict_trends` | `()` | Tidlig-varsel: nerver hvis trend forværres MOD tærsklen, før de bryder. Skygge. | [src](../../../core/services/central_shadow.py#L85) |
-| function | `run_shadow_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: beregn skygge-reaktioner + prædiktioner. ANVENDER ALDRIG. Self-safe. | [src](../../../core/services/central_shadow.py#L105) |
-| function | `register_shadow_producer` | `()` | Registrér skygge-laget som cadence-producer (~hvert 5 min). Observe-only, anvender aldrig. | [src](../../../core/services/central_shadow.py#L116) |
 

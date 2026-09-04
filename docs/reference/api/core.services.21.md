@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/structured_content_flag.py`
+_Governed kill-switch for struktureret content-persist + wire. Default ON._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/structured_content_flag.py#L12) |
+| function | `structured_content_v2_enabled` | `()` | True medmindre eksplicit slået fra ('off'/'0'/'false'/'no'). Læse-fejl → True | [src](../../../core/services/structured_content_flag.py#L18) |
+
 ## `core/services/subagent_digest.py`
 _Surface recently-completed subagents into the visible prompt._
 
@@ -612,15 +620,4 @@ _Tool pattern miner — discover repeating tool sequences as composite candidate
 | function | `find_candidate_composites` | `(*, hours=…, min_repeat=…, max_results=…)` | Mine tool history for repeating sequences worth composing. | [src](../../../core/services/tool_pattern_miner.py#L82) |
 | function | `composite_candidates_section` | `()` | Awareness section listing top 3 candidate composites. | [src](../../../core/services/tool_pattern_miner.py#L124) |
 | function | `_exec_mine_tool_patterns` | `(args)` | — | [src](../../../core/services/tool_pattern_miner.py#L137) |
-
-## `core/services/tool_result_aging.py`
-_Provider-agnostic tool-result aging for the visible agentic loop._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `aging_trigger_tokens` | `()` | Configured full-content token trigger for aging. Default 120k. Self-safe. | [src](../../../core/services/tool_result_aging.py#L38) |
-| function | `tool_result_aging_mode` | `()` | Current aging mode: 'off' | 'shadow' | 'active'. Default 'shadow'. | [src](../../../core/services/tool_result_aging.py#L49) |
-| function | `_clear_placeholder` | `(n)` | — | [src](../../../core/services/tool_result_aging.py#L66) |
-| function | `_is_already_aged` | `(content)` | — | [src](../../../core/services/tool_result_aging.py#L70) |
-| function | `age_tool_results` | `(exchanges, *, keep_full=…, mode, strength, round_index, compress_fn=…, trigger_tokens=…)` | Age tool-result content on exchanges older than the ``keep_full`` most recent. | [src](../../../core/services/tool_result_aging.py#L74) |
 

@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/repeated_requests.py`
+_Gentagne anmodninger → regel-forslag (lærings-sløjfe 2026-09-04, blok C)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/repeated_requests.py#L59) |
+| function | `_stems` | `(text)` | Betydningsbærende ord, forkortet til deres første `_STEM_CHARS` tegn. | [src](../../../core/services/repeated_requests.py#L63) |
+| function | `normalize` | `(text)` | Anmodningens stammer, sorteret — noeglen en anmodning gemmes under. | [src](../../../core/services/repeated_requests.py#L79) |
+| function | `similarity` | `(a, b)` | Jaccard mellem to anmodningers stammer (0-1). | [src](../../../core/services/repeated_requests.py#L84) |
+| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/repeated_requests.py#L92) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/repeated_requests.py#L116) |
+| function | `_sessions` | `(raw)` | — | [src](../../../core/services/repeated_requests.py#L120) |
+| function | `note_request` | `(*, text, session_id=…, kind=…)` | Tæl én anmodning. Returnerer rækken plus ``matured`` når den nu er en regel-kandidat. | [src](../../../core/services/repeated_requests.py#L124) |
+| function | `build_question` | `(*, text, mention_count, session_count, kind)` | Det ene spørgsmål Bjørn får at se. Konkret, med tallet der udløste det. | [src](../../../core/services/repeated_requests.py#L188) |
+| function | `mark_asked` | `(request_id)` | — | [src](../../../core/services/repeated_requests.py#L203) |
+| function | `record_decision` | `(*, request_id, accepted)` | Bjørns svar. Ja → linjen skrives i `## Kerne` med begrundelse. | [src](../../../core/services/repeated_requests.py#L215) |
+| function | `surface_matured` | `(result, *, kind=…)` | Læg et modnet regel-forslag i den proaktive kø. Ét spørgsmål, én gang. | [src](../../../core/services/repeated_requests.py#L250) |
+| function | `note_and_surface` | `(*, text, session_id=…, kind=…)` | Tæl, og stil spørgsmålet hvis anmodningen netop modnede. Self-safe. | [src](../../../core/services/repeated_requests.py#L273) |
+| function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L285) |
+| function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L295) |
+
 ## `core/services/resonance_decay.py`
 _Resonance Decay — how emotional signals persist and fade over time._
 
@@ -730,21 +751,4 @@ _Seed System — prospective memory / dormant intentions._
 | function | `build_seed_surface` | `()` | — | [src](../../../core/services/seed_system.py#L109) |
 | function | `auto_plant_seeds_from_conversation` | `(*, user_message)` | Scan user message for future-intent markers and auto-plant seeds. | [src](../../../core/services/seed_system.py#L123) |
 | function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/seed_system.py#L160) |
-
-## `core/services/selective_attention.py`
-_Selective Attention — metacognitive focus modulation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `FocusDirective` | `` | A single attention directive — what to amplify or attenuate. | [src](../../../core/services/selective_attention.py#L48) |
-| class | `AttentionSpotlight` | `` | Current attention spotlight — a set of focus directives. | [src](../../../core/services/selective_attention.py#L57) |
-| function | `compute_selective_attention` | `()` | Compute current attention spotlight. | [src](../../../core/services/selective_attention.py#L124) |
-| function | `get_attention_spotlight_line` | `()` | Convenience: compute spotlight and return prompt-ready string. | [src](../../../core/services/selective_attention.py#L237) |
-| function | `get_attention_spotlight_detail` | `()` | Return full spotlight state for MC transparency. | [src](../../../core/services/selective_attention.py#L249) |
-| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/selective_attention.py#L274) |
-| function | `_detect_context_cue` | `(family_pressures, dominant_pressures)` | Heuristic: detect the operational context from signal patterns. | [src](../../../core/services/selective_attention.py#L285) |
-| function | `_generate_directives` | `(base_pressures, attention_weights)` | Generate focus directives by comparing base vs adjusted weights. | [src](../../../core/services/selective_attention.py#L319) |
-| function | `_compute_focus_width` | `(attention_weights, directive_count)` | Compute how narrow or broad the attention spotlight is. | [src](../../../core/services/selective_attention.py#L380) |
-| function | `build_selective_attention_surface` | `()` | Returns current attention spotlight if any. | [src](../../../core/services/selective_attention.py#L414) |
-| function | `_emit_spotlight_event` | `(label)` | — | [src](../../../core/services/selective_attention.py#L430) |
 

@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/markdown_structure.py`
+_Rekonstruér markdown-blokstruktur fra inline-markører._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_split_cells` | `(region)` | Split en `|`-afgrænset region i celler; drop ydre tomme (før første / | [src](../../../core/services/markdown_structure.py#L60) |
+| function | `_reflow_line_table` | `(line)` | Hvis `line` indeholder en HEL tabel mast sammen på én linje | [src](../../../core/services/markdown_structure.py#L71) |
+| function | `_reflow_crammed_tables` | `(text)` | Genskab tabeller hvis hele rækken er mast sammen på én linje. | [src](../../../core/services/markdown_structure.py#L120) |
+| function | `_is_bullet_line` | `(line)` | — | [src](../../../core/services/markdown_structure.py#L131) |
+| function | `_ensure_blank_before_lists` | `(text)` | Indsæt en blank linje før første bullet i en liste der følger prosa, så | [src](../../../core/services/markdown_structure.py#L136) |
+| function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L150) |
+| function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L169) |
+
 ## `core/services/mcp_registry.py`
 _MCP-server-registry (§4.6) — brugerens konfigurerede MCP-endpoints._
 
@@ -606,12 +619,4 @@ _My Projects — auto-start + watchdog for Jarvis' own background processes._
 |---|---|---|---|---|
 | function | `ensure_my_projects_running` | `()` | Called at runtime boot. Spawn any of my 4 projects that aren't running. | [src](../../../core/services/my_projects.py#L52) |
 | function | `tick_my_projects_watchdog` | `()` | Check all 4 projects are alive; restart any that died. | [src](../../../core/services/my_projects.py#L104) |
-
-## `core/services/narrative_identity.py`
-_Narrative Identity — periodisk "Hvem er jeg lige nu?" selvfortælling._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `generate_narrative_identity` | `()` | Generate a "who am I right now?" narrative from accumulated state. | [src](../../../core/services/narrative_identity.py#L21) |
-| function | `build_narrative_identity_surface` | `()` | — | [src](../../../core/services/narrative_identity.py#L85) |
 

@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_wakeup.py`
+_Eventbus → visible-prompt wake-up digest._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_notable` | `(kind)` | — | [src](../../../core/services/session_wakeup.py#L58) |
+| function | `_load_marks` | `()` | — | [src](../../../core/services/session_wakeup.py#L71) |
+| function | `_save_marks` | `(marks)` | — | [src](../../../core/services/session_wakeup.py#L84) |
+| function | `last_seen_event_id` | `(session_id)` | — | [src](../../../core/services/session_wakeup.py#L88) |
+| function | `mark_seen` | `(session_id, event_id)` | — | [src](../../../core/services/session_wakeup.py#L92) |
+| function | `_format_event` | `(ev)` | — | [src](../../../core/services/session_wakeup.py#L100) |
+| function | `wakeup_digest` | `(session_id)` | Return a short digest of notable events since this session last saw, | [src](../../../core/services/session_wakeup.py#L116) |
+
 ## `core/services/shadow_experiment_registry.py`
 _core/services/shadow_experiment_registry.py_
 
@@ -576,12 +589,4 @@ _Stream-cluster — observabilitet for SSE-lanen. IKKE en blokerende gate: strea
 | function | `_sweep_stalled` | `(timeout_s=…)` | message_start uden message_stop i >timeout_s → ægte zombie → flag ÉN gang pr. run | [src](../../../core/services/stream_sentinel.py#L88) |
 | function | `sweep` | `()` | Eksternt-kaldbar stall-sweep (fx fra heartbeat-kadence). Returnér antal live streams. | [src](../../../core/services/stream_sentinel.py#L115) |
 | function | `live_count` | `()` | — | [src](../../../core/services/stream_sentinel.py#L125) |
-
-## `core/services/structured_content_flag.py`
-_Governed kill-switch for struktureret content-persist + wire. Default ON._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/structured_content_flag.py#L12) |
-| function | `structured_content_v2_enabled` | `()` | True medmindre eksplicit slået fra ('off'/'0'/'false'/'no'). Læse-fejl → True | [src](../../../core/services/structured_content_flag.py#L18) |
 

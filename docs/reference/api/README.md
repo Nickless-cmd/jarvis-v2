@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13438 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13452 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -28,28 +28,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13438 functions/
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_private_signals`
 - [`core.runtime.02`](core.runtime.02.md) — `db_private_states` … `workspace_paths`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agreement_streak`
-- [`core.services.02`](core.services.02.md) — `ambient_presence` … `body_memory`
-- [`core.services.03`](core.services.03.md) — `boredom_curiosity_bridge` … `central_convene_judge`
-- [`core.services.04`](core.services.04.md) — `central_core` … `central_loop_lag`
-- [`core.services.05`](core.services.05.md) — `central_machines` … `central_shadow`
-- [`core.services.06`](core.services.06.md) — `central_signal_health` … `code_aesthetic_daemon`
-- [`core.services.07`](core.services.07.md) — `cognitive_architecture_surface` … `council_runtime`
-- [`core.services.08`](core.services.08.md) — `counterfactual_engine` … `decision_signals`
-- [`core.services.09`](core.services.09.md) — `decision_weight` … `dream_influence_runtime`
-- [`core.services.10`](core.services.10.md) — `dream_insight_daemon` … `experiment_runner`
-- [`core.services.11`](core.services.11.md) — `fabricated_tool_result_gate` … `google_login`
-- [`core.services.12`](core.services.12.md) — `governance_bootstrap` … `inner_visible_support_signal_tracking`
-- [`core.services.13`](core.services.13.md) — `inner_voice_daemon` … `markdown_structure`
-- [`core.services.14`](core.services.14.md) — `mcp_registry` … `narrative_identity`
-- [`core.services.15`](core.services.15.md) — `narrative_summary_daemon` … `personality_vector`
-- [`core.services.16`](core.services.16.md) — `pfsense_syslog` … `proposal_classifier`
-- [`core.services.17`](core.services.17.md) — `proprioception_metrics` … `repeated_requests`
-- [`core.services.18`](core.services.18.md) — `resonance_decay` … `selective_attention`
-- [`core.services.19`](core.services.19.md) — `selective_consolidation_daemon` … `session_wakeup`
-- [`core.services.20`](core.services.20.md) — `shadow_experiment_registry` … `structured_content_flag`
-- [`core.services.21`](core.services.21.md) — `subagent_digest` … `tool_result_aging`
-- [`core.services.22`](core.services.22.md) — `tool_result_store` … `visible_model_prompt`
-- [`core.services.23`](core.services.23.md) — `visible_model_sse` … `world_model_signal_tracking`
+- [`core.services.02`](core.services.02.md) — `ambient_presence` … `behavioral_decisions`
+- [`core.services.03`](core.services.03.md) — `body_memory` … `central_continuity_healer`
+- [`core.services.04`](core.services.04.md) — `central_convene_judge` … `central_llm_egress`
+- [`core.services.05`](core.services.05.md) — `central_loop_lag` … `central_seraph`
+- [`core.services.06`](core.services.06.md) — `central_shadow` … `cluster_daemon_families`
+- [`core.services.07`](core.services.07.md) — `code_aesthetic_daemon` … `council_memory_service`
+- [`core.services.08`](core.services.08.md) — `council_runtime` … `decision_signal_telemetry`
+- [`core.services.09`](core.services.09.md) — `decision_signals` … `dream_influence_proposal_tracking`
+- [`core.services.10`](core.services.10.md) — `dream_influence_runtime` … `experiential_runtime_context`
+- [`core.services.11`](core.services.11.md) — `experiment_runner` … `google_connector`
+- [`core.services.12`](core.services.12.md) — `google_login` … `inner_dialectic_engine`
+- [`core.services.13`](core.services.13.md) — `inner_visible_support_signal_tracking` … `malware_scan`
+- [`core.services.14`](core.services.14.md) — `markdown_structure` … `my_projects`
+- [`core.services.15`](core.services.15.md) — `narrative_identity` … `personality_drift`
+- [`core.services.16`](core.services.16.md) — `personality_vector` … `prompt_variant_tracker`
+- [`core.services.17`](core.services.17.md) — `proposal_classifier` … `remembered_fact_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `repeated_requests` … `seed_system`
+- [`core.services.19`](core.services.19.md) — `selective_attention` … `session_topic_tracker`
+- [`core.services.20`](core.services.20.md) — `session_wakeup` … `stream_sentinel`
+- [`core.services.21`](core.services.21.md) — `structured_content_flag` … `tool_pattern_miner`
+- [`core.services.22`](core.services.22.md) — `tool_result_aging` … `visible_model_ollama`
+- [`core.services.23`](core.services.23.md) — `visible_model_prompt` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

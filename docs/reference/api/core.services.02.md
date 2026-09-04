@@ -544,6 +544,26 @@ _Autonomous Work Daemon — Jarvis works on his own when Bjørn is away._
 | function | `_surface_summary` | `(pending, all_items)` | — | [src](../../../core/services/autonomous_work_daemon.py#L310) |
 | function | `build_autonomous_work_prompt_section` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L318) |
 
+## `core/services/autonomy_budget.py`
+_Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_get` | `(key, default=…)` | — | [src](../../../core/services/autonomy_budget.py#L41) |
+| function | `_state_set` | `(key, value)` | — | [src](../../../core/services/autonomy_budget.py#L50) |
+| function | `daily_budget` | `()` | — | [src](../../../core/services/autonomy_budget.py#L58) |
+| function | `set_daily_budget` | `(value)` | — | [src](../../../core/services/autonomy_budget.py#L65) |
+| function | `_today` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L71) |
+| function | `_spent_today` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L75) |
+| function | `remaining` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L86) |
+| function | `may_act` | `(action=…, *, now=…)` | Er der plads i dagens budget? Fail-open: enhver fejl → ja. | [src](../../../core/services/autonomy_budget.py#L90) |
+| function | `note_action` | `(action, *, now=…)` | Registrér en selvvalgt handling. Synlig log, ikke en tavs bremse. | [src](../../../core/services/autonomy_budget.py#L102) |
+| function | `note_silence` | `(*, outcome, reason_code=…)` | Han valgte at tie. Tæl det — det er den eneste måde vægten kan vurderes. | [src](../../../core/services/autonomy_budget.py#L122) |
+| function | `silence_counts` | `()` | — | [src](../../../core/services/autonomy_budget.py#L135) |
+| function | `build_weekly_summary` | `()` | Ugens stilhed i én linje — "" når han ikke har tiet nævneværdigt. | [src](../../../core/services/autonomy_budget.py#L142) |
+| function | `run_weekly_review` | `(*, force=…, now=…)` | Ugentligt: læg stilheds-resuméet i den proaktive kø og nulstil tælleren. | [src](../../../core/services/autonomy_budget.py#L161) |
+| function | `build_autonomy_budget_surface` | `()` | — | [src](../../../core/services/autonomy_budget.py#L190) |
+
 ## `core/services/autonomy_pressure_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -615,15 +635,4 @@ _Behavioral decisions — closing the reflection→behavior loop._
 | function | `list_all_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L217) |
 | function | `format_active_decisions_for_heartbeat` | `(*, max_items=…)` | Compact line of top active commitments for heartbeat injection. | [src](../../../core/services/behavioral_decisions.py#L221) |
 | function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L240) |
-
-## `core/services/body_memory.py`
-_Body Memory — Jarvis' physical sensation snapshots._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_body_snapshot` | `(context, sensation=…, intensity=…)` | — | [src](../../../core/services/body_memory.py#L9) |
-| function | `describe_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L20) |
-| function | `format_body_for_prompt` | `()` | — | [src](../../../core/services/body_memory.py#L26) |
-| function | `reset_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L32) |
-| function | `build_body_memory_surface` | `()` | — | [src](../../../core/services/body_memory.py#L36) |
 

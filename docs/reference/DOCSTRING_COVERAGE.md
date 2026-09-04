@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6690/13438 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6695/13452 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6690/13438 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4428 | 9285 | 47% |
+| `core.services` | 4433 | 9299 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 87 | 157 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6690/13438 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1943)
+## Undocumented public functions (1948)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -627,6 +627,11 @@ Generated from source. 6690/13438 functions/methods documented (49%). The list b
 - `core/services/autonomous_work_daemon.py` :: `build_autonomous_work_surface` (L291)
 - `core/services/autonomous_work_daemon.py` :: `list_proposals` (L268)
 - `core/services/autonomous_work_daemon.py` :: `tick` (L253)
+- `core/services/autonomy_budget.py` :: `build_autonomy_budget_surface` (L190)
+- `core/services/autonomy_budget.py` :: `daily_budget` (L58)
+- `core/services/autonomy_budget.py` :: `remaining` (L86)
+- `core/services/autonomy_budget.py` :: `set_daily_budget` (L65)
+- `core/services/autonomy_budget.py` :: `silence_counts` (L135)
 - `core/services/autonomy_pressure_signal_tracking.py` :: `build_runtime_autonomy_pressure_signal_surface` (L170)
 - `core/services/autonomy_pressure_signal_tracking.py` :: `track_runtime_autonomy_pressure_signals_for_visible_turn` (L60)
 - `core/services/autonomy_proposal_queue.py` :: `get_registered_proposal_kinds` (L54)

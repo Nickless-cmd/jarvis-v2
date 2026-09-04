@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dream_influence_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_dream_influence_runtime_surface` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L10) |
+| function | `_build_dream_influence_runtime_surface_uncached` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L18) |
+| function | `build_dream_influence_runtime_from_sources` | `(*, dream_articulation, guided_learning, adaptive_learning, adaptive_reasoning, affective_meta_state, epistemic_runtime_state, prompt_evolution)` | — | [src](../../../core/services/dream_influence_runtime.py#L30) |
+| function | `build_dream_influence_prompt_section` | `(surface=…)` | — | [src](../../../core/services/dream_influence_runtime.py#L139) |
+| function | `_derive_influence_state` | `(*, dream_summary, guided_learning, adaptive_learning, epistemic)` | — | [src](../../../core/services/dream_influence_runtime.py#L165) |
+| function | `_derive_influence_target` | `(*, influence_state, dream_summary, guided_learning, adaptive_learning, prompt_summary, affective)` | — | [src](../../../core/services/dream_influence_runtime.py#L186) |
+| function | `_derive_influence_mode` | `(*, influence_target, dream_summary, guided_learning, adaptive_learning, reasoning, affective, epistemic)` | — | [src](../../../core/services/dream_influence_runtime.py#L212) |
+| function | `_derive_influence_strength` | `(*, influence_state, dream_summary, adaptive_learning, prompt_summary, epistemic)` | — | [src](../../../core/services/dream_influence_runtime.py#L239) |
+| function | `_derive_influence_hint` | `(*, influence_state, influence_target, influence_mode, guided_learning, adaptive_learning, prompt_summary, dream_artifact)` | — | [src](../../../core/services/dream_influence_runtime.py#L259) |
+| function | `_derive_confidence` | `(*, influence_state, influence_strength, epistemic, prompt_summary)` | — | [src](../../../core/services/dream_influence_runtime.py#L289) |
+| function | `_source_contributors` | `(*, dream_summary, dream_artifact, guided_learning, adaptive_learning, reasoning, affective, epistemic, prompt_summary)` | — | [src](../../../core/services/dream_influence_runtime.py#L305) |
+| function | `_safe_dream_articulation` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L378) |
+| function | `_safe_guided_learning` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L388) |
+| function | `_safe_adaptive_learning` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L398) |
+| function | `_safe_adaptive_reasoning` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L408) |
+| function | `_safe_affective_meta_state` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L418) |
+| function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L428) |
+| function | `_safe_prompt_evolution` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L438) |
+
 ## `core/services/dream_insight_daemon.py`
 _Dream insight daemon — persists dream articulation output as private brain records._
 
@@ -642,19 +665,4 @@ _Experiential Memory — not just facts, but lived experiences with emotion._
 | function | `_influence_narrative` | `(bearing, posture, initiative, continuity)` | One compact sentence explaining how experience shapes inner bearing. | [src](../../../core/services/experiential_runtime_context.py#L571) |
 | function | `_derive_experiential_support` | `(influence)` | Derive a bounded support surface from experiential influence. | [src](../../../core/services/experiential_runtime_context.py#L634) |
 | function | `_support_narrative` | `(posture, bias, mode)` | One compact sentence for how experiential support shapes conductor posture. | [src](../../../core/services/experiential_runtime_context.py#L687) |
-
-## `core/services/experiment_runner.py`
-_Experiment runner — controlled A/B trials of prompt variants._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/experiment_runner.py#L35) |
-| function | `_save` | `(d)` | — | [src](../../../core/services/experiment_runner.py#L42) |
-| function | `start_experiment` | `(*, scope, variant_a_label, variant_a_text, variant_b_label, variant_b_text, trials_target=…)` | Begin a new A/B experiment for a scope. | [src](../../../core/services/experiment_runner.py#L46) |
-| function | `get_active_variant` | `(scope)` | Return the variant currently scheduled for this scope, or None. | [src](../../../core/services/experiment_runner.py#L80) |
-| function | `conclude_experiment` | `(experiment_id)` | Analyze an experiment's data via prompt_variant_tracker, declare winner. | [src](../../../core/services/experiment_runner.py#L112) |
-| function | `list_experiments` | `(*, status=…)` | — | [src](../../../core/services/experiment_runner.py#L177) |
-| function | `_exec_start_experiment` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L185) |
-| function | `_exec_conclude_experiment` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L196) |
-| function | `_exec_list_experiments` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L200) |
 

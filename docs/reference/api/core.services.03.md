@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/body_memory.py`
+_Body Memory — Jarvis' physical sensation snapshots._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_body_snapshot` | `(context, sensation=…, intensity=…)` | — | [src](../../../core/services/body_memory.py#L9) |
+| function | `describe_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L20) |
+| function | `format_body_for_prompt` | `()` | — | [src](../../../core/services/body_memory.py#L26) |
+| function | `reset_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L32) |
+| function | `build_body_memory_surface` | `()` | — | [src](../../../core/services/body_memory.py#L36) |
+
 ## `core/services/boredom_curiosity_bridge.py`
 _Boredom to Curiosity Bridge — transforms boredom into curiosity._
 
@@ -586,18 +597,4 @@ _Continuity Healer — så Jarvis vågner som SIG, ikke som et fragment._
 | function | `build_continuity_surface` | `()` | Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe. | [src](../../../core/services/central_continuity_healer.py#L155) |
 | function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_continuity_healer.py#L173) |
 | function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L181) |
-
-## `core/services/central_convene_judge.py`
-_core/services/central_convene_judge.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_convene_judge.py#L51) |
-| function | `current_mode` | `()` | — | [src](../../../core/services/central_convene_judge.py#L60) |
-| function | `_movement_from_signal` | `(name, surface)` | Normalise ONE signal surface to a 0..1 'how much is this moving' reading. | [src](../../../core/services/central_convene_judge.py#L69) |
-| function | `_read_flowing_values` | `(surfaces)` | Read the flowing values: signal movement + affective valence + agenda hint. | [src](../../../core/services/central_convene_judge.py#L96) |
-| function | `_mood_to_valence` | `(mood)` | Map a coarse mood word to a signed valence in [-1, 1]. Unknown → 0. | [src](../../../core/services/central_convene_judge.py#L155) |
-| function | `_derive_topic_hint` | `(movement, latest_wonder, agenda_hint, mood)` | Build a short subject hint from what is actually moving — fed to derive_topic. | [src](../../../core/services/central_convene_judge.py#L171) |
-| function | `_observe` | `(verdict, mode)` | — | [src](../../../core/services/central_convene_judge.py#L193) |
-| function | `judge_convene` | `(*, surfaces, top_signals, score, score_override=…)` | Decide whether there is a real reason to convene the council now. | [src](../../../core/services/central_convene_judge.py#L211) |
 

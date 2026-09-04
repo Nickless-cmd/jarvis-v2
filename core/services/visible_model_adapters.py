@@ -258,11 +258,20 @@ def _stream_openai_compatible_model(
     """
     from core.services.cheap_provider_runtime import (
         _iter_openai_compatible_chat_events,
-        deepseek_model_for_thinking_mode,
         provider_runtime_defaults,
     )
+    # DeepSeek thinking-mode er REQUEST-PARAMS siden alias-pensioneringen 24/7
+    # (fast → thinking disabled, think → reasoning_effort=high, deep → max).
+    # Den streamede første-pas swappede kun modelnavnet (som ikke længere
+    # swapper) → composerens ⚡ Fast har været virkningsløs på DeepSeek siden
+    # da (målt 4/9: fast-probe fik reasoning-deltas). Nu samme params som den
+    # ikke-streamede sti i visible_model.py.
+    _thinking_body: dict | None = None
     if provider == "deepseek":
-        model = deepseek_model_for_thinking_mode(model, thinking_mode)
+        from core.services.cheap_provider_runtime_adapters import (
+            deepseek_request_for_thinking_mode,
+        )
+        model, _thinking_body = deepseek_request_for_thinking_mode(model, thinking_mode)
     # Thinking-mode-modeller (deepseek-v4-flash thinking, deepseek-v4-pro,
     # deepseek-reasoner) kræver at PRIOR assistant turns indeholder
     # reasoning_content. Legacy chat-history rækker uden det vil fejle
@@ -369,6 +378,7 @@ def _stream_openai_compatible_model(
             tools=tools or None,
             temperature=_mod_temp,
             top_p=_mod_top_p,
+            extra_body=_thinking_body or None,
         ):
             if controller is not None and controller.is_cancelled():
                 raise VisibleModelStreamCancelled("visible-run-cancelled")

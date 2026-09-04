@@ -1765,7 +1765,7 @@ Generated from source. 6653/13381 functions/methods documented (49%). The list b
 - `core/services/visible_model.py` :: `available_provider_models` (L172)
 - `core/services/visible_model.py` :: `execute_visible_model` (L264)
 - `core/services/visible_model.py` :: `stream_visible_model` (L323)
-- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L650)
+- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L660)
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
 - `core/services/visible_model_prompt.py` :: `visible_session_continuity_summary` (L346)

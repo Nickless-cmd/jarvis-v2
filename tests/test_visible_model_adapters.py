@@ -178,6 +178,46 @@ def _stream(events: list[dict]) -> list:
         provider="deepseek", model="deepseek-v4-flash", message="hej"))
 
 
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize("mode,expected", [
+    ("fast", {"thinking": {"type": "disabled"}}),
+    ("think", {"reasoning_effort": "high", "thinking": {"type": "enabled"}}),
+    ("deep", {"reasoning_effort": "max", "thinking": {"type": "enabled"}}),
+])
+def test_first_pass_sends_deepseek_thinking_params(monkeypatch, mode, expected) -> None:
+    """Composerens ⚡ Fast nåede aldrig DeepSeek i den streamede første pas:
+    adapteren swappede kun modelnavn (dødt siden alias-pensioneringen 24/7).
+    Målt 4/9: fast-probe fik reasoning-deltas. Nu request-params."""
+    seen: dict = {}
+    _stub_stream(monkeypatch, [{"kind": "done", "full_text": "ok", "reasoning_content": ""}])
+
+    def _capture(**kw):
+        seen.update(kw)
+        return iter([{"kind": "done", "full_text": "ok", "reasoning_content": ""}])
+
+    monkeypatch.setattr(cheap, "_iter_openai_compatible_chat_events", _capture)
+    list(visible_model._stream_openai_compatible_model(
+        provider="deepseek", model="deepseek-v4-flash", message="hej", thinking_mode=mode))
+    assert seen["model"] == "deepseek-v4-flash"
+    assert seen["extra_body"] == expected
+
+
+def test_first_pass_non_deepseek_sends_no_thinking_params(monkeypatch) -> None:
+    seen: dict = {}
+    _stub_stream(monkeypatch, [])
+
+    def _capture(**kw):
+        seen.update(kw)
+        return iter([{"kind": "done", "full_text": "ok", "reasoning_content": ""}])
+
+    monkeypatch.setattr(cheap, "_iter_openai_compatible_chat_events", _capture)
+    list(visible_model._stream_openai_compatible_model(
+        provider="groq", model="llama", message="hej", thinking_mode="fast"))
+    assert seen.get("extra_body") is None
+
+
 def test_first_pass_reasoning_is_streamed_live(monkeypatch) -> None:
     _stub_stream(monkeypatch, [
         {"kind": "reasoning_delta", "text": "Lad mig se paa "},

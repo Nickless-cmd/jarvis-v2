@@ -11,7 +11,8 @@ _(no top-level classes or functions)_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_runtime_services_enabled` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L138) |
-| function | `create_app` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L143) |
+| function | `wire_root_logging` | `()` | Giv modul-loggere et sted at lande. Uden dette er de ALLE stumme. | [src](../../../apps/api/jarvis_api/app.py#L143) |
+| function | `create_app` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L183) |
 
 ## `apps/api/jarvis_api/mcp_server.py`
 _Jarvis MCP server — exposes memory, identity, state, and chat via Streamable HTTP._

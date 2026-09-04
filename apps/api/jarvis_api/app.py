@@ -140,6 +140,46 @@ def _runtime_services_enabled() -> bool:
     return raw not in {"0", "false", "no", "off"}
 
 
+def wire_root_logging() -> dict[str, int]:
+    """Giv modul-loggere et sted at lande. Uden dette er de ALLE stumme.
+
+    uvicorn opsætter kun sine EGNE loggere (`uvicorn`, `uvicorn.error`,
+    `uvicorn.access`). Der er ingen rod-konfiguration i processen, så enhver
+    `logging.getLogger(__name__)` — 364 moduler i core/services alene — skriver
+    ud i ingenting. Ikke som en fejl; som tavshed.
+
+    Det kostede konkret: det agentiske loop har hele tiden skrevet
+    «agentic-loop-exit run_id=… reason=…» ved HVER kørsel, og den linje er gået
+    i gulvet hver gang. Bjørn jagtede «cutoff» i dagevis mens systemet regnede
+    årsagen ud og smed den væk.
+
+    Fikset ét sted frem for i 364 filer: rod-loggeren låner uvicorns handlers,
+    så modulnavne bevares (de er brugbare at filtrere på) og linjerne faktisk
+    kommer ud. Tredjeparts-biblioteker holdes på WARNING — ellers drukner vores
+    egne linjer i deres, og så har vi byttet én slags tavshed for en anden.
+    """
+    root = logging.getLogger()
+    uv = logging.getLogger("uvicorn.error")
+    if not uv.handlers:
+        return {"added": 0, "quieted": 0}
+    seen = {id(h) for h in root.handlers}
+    added = 0
+    for h in uv.handlers:
+        if id(h) not in seen:
+            root.addHandler(h)
+            added += 1
+    if root.level in (logging.NOTSET, 0) or root.level > logging.INFO:
+        root.setLevel(logging.INFO)
+    _NOISY = (
+        "httpx", "httpcore", "urllib3", "asyncio", "botocore", "boto3",
+        "openai", "anthropic", "PIL", "markdown_it", "multipart",
+        "watchfiles", "filelock", "chardet", "charset_normalizer",
+    )
+    for name in _NOISY:
+        logging.getLogger(name).setLevel(logging.WARNING)
+    return {"added": added, "quieted": len(_NOISY)}
+
+
 def create_app() -> FastAPI:
     ensure_runtime_dirs()
     init_db()
@@ -150,7 +190,12 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         runtime_services_enabled = _runtime_services_enabled()
+        # FØRST: giv alle modul-loggere et sted at lande. Alt hvad der logges
+        # herefter i opstarten ville ellers være tabt.
+        _wired = wire_root_logging()
         logger.info("jarvis api startup begin")
+        logger.info("root-logging wired handlers=%s quieted=%s",
+                    _wired.get("added"), _wired.get("quieted"))
         logger.info(
             "jarvis api startup mode runtime_services_enabled=%s",
             runtime_services_enabled,

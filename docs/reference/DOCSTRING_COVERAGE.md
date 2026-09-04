@@ -1,12 +1,12 @@
 # Docstring coverage
 
-Generated from source. 6600/13228 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6601/13229 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
 | Package | Documented | Functions | % |
 |---|---|---|---|
-| `apps.api.jarvis_api` | 33 | 35 | 94% |
+| `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
 | `apps.api.jarvis_api.routes` | 586 | 772 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
@@ -42,7 +42,7 @@ Generated from source. 6600/13228 functions/methods documented (49%). The list b
 
 ## Undocumented public functions (1886)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L143)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L183)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)

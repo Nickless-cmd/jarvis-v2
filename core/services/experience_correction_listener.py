@@ -167,6 +167,35 @@ def _extract_user_message(payload: dict) -> tuple[str, str]:
     return (session_id, content)
 
 
+def _previous_assistant_text(session_id: str) -> str:
+    """The assistant message Bjørn is most likely correcting (newest before his)."""
+    try:
+        from core.services.chat_sessions import recent_chat_session_messages
+        rows = recent_chat_session_messages(session_id, limit=8) or []
+    except Exception:
+        return ""
+    last_assistant = ""
+    for row in rows:
+        role = str(row.get("role") or "")
+        if role == "assistant":
+            last_assistant = str(row.get("content") or "")
+    return last_assistant
+
+
+def _record_correction_lesson(session_id: str, content: str) -> None:
+    """2026-09-04 (memory repair, R4): before, the correction text was thrown
+    away and only ``user_corrected=1`` survived. Now the words become a lesson."""
+    try:
+        from core.services.lessons import record_correction
+        record_correction(
+            session_id=session_id,
+            user_words=content,
+            jarvis_words=_previous_assistant_text(session_id),
+        )
+    except Exception as exc:
+        logger.debug("experience_correction: lesson record failed: %s", exc)
+
+
 def _listener_loop(q) -> None:
     while _listener_running:
         try:
@@ -186,6 +215,7 @@ def _listener_loop(q) -> None:
             if not _looks_like_correction(content):
                 continue
             _mark_recent_episode_corrected(session_id)
+            _record_correction_lesson(session_id, content)
         except Exception as exc:
             logger.debug("experience_correction: listener error: %s", exc)
 

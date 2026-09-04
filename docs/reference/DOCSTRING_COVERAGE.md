@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6625/13287 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6628/13290 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6625/13287 functions/methods documented (49%). The list b
 | `core.memory` | 51 | 135 | 37% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4388 | 9209 | 47% |
+| `core.services` | 4391 | 9212 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 74 | 130 | 56% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -596,7 +596,7 @@ Generated from source. 6625/13287 functions/methods documented (49%). The list b
 - `core/services/approval_outbox.py` :: `make_approval_notification_due` (L93)
 - `core/services/approval_outbox.py` :: `pending_approval_notifications` (L68)
 - `core/services/approval_outbox.py` :: `start_approval_outbox_dispatcher` (L164)
-- `core/services/arc_rule_extractor.py` :: `extract_rules_for_unprocessed_arcs` (L151)
+- `core/services/arc_rule_extractor.py` :: `extract_rules_for_unprocessed_arcs` (L161)
 - `core/services/arc_rule_extractor.py` :: `extract_rules_from_arc` (L74)
 - `core/services/attachment_topology_signal_tracking.py` :: `build_runtime_attachment_topology_signal_surface` (L85)
 - `core/services/attachment_topology_signal_tracking.py` :: `refresh_runtime_attachment_topology_signal_statuses` (L81)
@@ -963,7 +963,7 @@ Generated from source. 6625/13287 functions/methods documented (49%). The list b
 - `core/services/executive_contradiction_signal_tracking.py` :: `track_runtime_executive_contradiction_signals_for_visible_turn` (L36)
 - `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L163)
 - `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L159)
-- `core/services/experience_correction_listener.py` :: `stop_listener` (L215)
+- `core/services/experience_correction_listener.py` :: `stop_listener` (L245)
 - `core/services/experienced_time_daemon.py` :: `build_experienced_time_surface` (L149)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L64)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_surface` (L30)
@@ -1340,8 +1340,8 @@ Generated from source. 6625/13287 functions/methods documented (49%). The list b
 - `core/services/reflective_critic_tracking.py` :: `build_runtime_reflective_critic_surface` (L99)
 - `core/services/reflective_critic_tracking.py` :: `refresh_runtime_reflective_critic_statuses` (L69)
 - `core/services/reflective_critic_tracking.py` :: `track_runtime_reflective_critics_for_visible_turn` (L27)
-- `core/services/regret_engine.py` :: `list_regrets` (L291)
-- `core/services/regret_engine.py` :: `summarize_regrets` (L314)
+- `core/services/regret_engine.py` :: `list_regrets` (L303)
+- `core/services/regret_engine.py` :: `summarize_regrets` (L326)
 - `core/services/regulation_homeostasis_signal_tracking.py` :: `build_runtime_regulation_homeostasis_signal_surface` (L81)
 - `core/services/regulation_homeostasis_signal_tracking.py` :: `refresh_runtime_regulation_homeostasis_signal_statuses` (L77)
 - `core/services/regulation_homeostasis_signal_tracking.py` :: `track_runtime_regulation_homeostasis_signals_for_visible_turn` (L43)
@@ -1533,8 +1533,8 @@ Generated from source. 6625/13287 functions/methods documented (49%). The list b
 - `core/services/self_review_signal_tracking.py` :: `build_runtime_self_review_signal_surface` (L53)
 - `core/services/self_review_signal_tracking.py` :: `refresh_runtime_self_review_signal_statuses` (L49)
 - `core/services/self_review_signal_tracking.py` :: `track_runtime_self_review_signals_for_visible_turn` (L41)
-- `core/services/self_review_unified.py` :: `build_self_review_surface` (L349)
-- `core/services/self_review_unified.py` :: `list_self_reviews` (L330)
+- `core/services/self_review_unified.py` :: `build_self_review_surface` (L357)
+- `core/services/self_review_unified.py` :: `list_self_reviews` (L338)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
 - `core/services/self_wakeup.py` :: `list_wakeups` (L181)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)

@@ -168,6 +168,9 @@ def render_entry_markdown(entry: BrainEntry) -> str:
         "trigger": entry.trigger,
         "salience_base": entry.salience_base,
         "salience_bumps": entry.salience_bumps,
+        # 2026-09-04: recall_count blev aldrig skrevet til filen (kun læst), så
+        # hvert bump læste 0 tilbage → index stod på 1 for evigt.
+        "recall_count": entry.recall_count,
         "importance": entry.importance,
         "related": entry.related,
         "tags": entry.tags,
@@ -639,12 +642,44 @@ def search_brain(
     Temporal boost (B4 Phase 2, 2026-06-09): entries with strong temporal edges
     to other entries get a lift of up to +0.15 on their final score.
     """
+    scored = search_brain_scored(
+        query_text=query_text, kinds=kinds, visibility_ceiling=visibility_ceiling,
+        limit=limit, domain=domain, tags=tags, include_archived=include_archived,
+        now=now, use_temporal_boost=use_temporal_boost, min_score=min_score,
+        min_cosine=min_cosine,
+    )
+    return [read_entry(eid) for _, eid in scored]
+
+
+def search_brain_scored(
+    *,
+    query_text: str,
+    kinds: list[str] | None = None,
+    visibility_ceiling: str = "personal",
+    limit: int = 5,
+    domain: str | None = None,
+    tags: list[str] | None = None,
+    include_archived: bool = False,
+    now: datetime | None = None,
+    use_temporal_boost: bool = True,
+    min_score: float = 0.0,
+    min_cosine: float = 0.0,
+) -> list[tuple[float, str]]:
+    """Som search_brain, men returnerer (score, entry_id) uden at læse filerne.
+
+    2026-09-04 (memory repair, R1): den inline-beregnede salience manglede
+    importance-loftet fra compute_effective_salience. En post med 17.794 bumps
+    bidrog derfor 1,26 til scoren mens cosinus maksimalt bidrager 0,7 — de samme
+    11 poster vandt uanset spørgsmål. Nu: eff = min(raw, importance), så
+    salience-leddet kan højst give 0,3·importance.
+    """
     now = now or datetime.now(timezone.utc)
     qv = _embed_text(query_text)
     ceiling_lvl = _VIS_LEVEL[visibility_ceiling]
 
     sql = """SELECT id, kind, visibility, salience_base, salience_bumps,
-                    last_used_at, embedding, embedding_dim, created_at, tags
+                    last_used_at, embedding, embedding_dim, created_at, tags,
+                    importance
              FROM brain_index
              WHERE embedding IS NOT NULL"""
     params: list = []
@@ -669,6 +704,10 @@ def search_brain(
     for row in rows:
         entry_id, kind, vis, sal_base, bumps, last_used, emb_blob, emb_dim, created_at = row[:9]
         entry_tags_raw = row[9] if len(row) > 9 else "[]"
+        try:
+            importance = float(row[10]) if len(row) > 10 and row[10] is not None else 1.0
+        except (TypeError, ValueError):
+            importance = 1.0
         if _VIS_LEVEL[vis] > ceiling_lvl:
             continue
 
@@ -699,7 +738,10 @@ def search_brain(
         halflife = _HALFLIFE_DAYS[kind]
         decay = 1.0 if math.isinf(halflife) else math.exp(-days / halflife)
         bumps_factor = math.log2(1 + bumps) if bumps > 0 else 0.0
-        eff = max(_SALIENCE_FLOOR, sal_base * decay * (1.0 + 0.3 * bumps_factor))
+        raw_eff = sal_base * decay * (1.0 + 0.3 * bumps_factor)
+        # Importance-loft — samme regel som compute_effective_salience. Uden
+        # loftet var bumps en positiv feedback-loop (R1, 2026-09-04).
+        eff = max(_SALIENCE_FLOOR, min(raw_eff, importance))
 
         score = 0.7 * cos + 0.3 * eff
         scored.append((score, entry_id))
@@ -719,8 +761,7 @@ def search_brain(
     # støjen (score = 0.7*cos + 0.3*eff). Default 0.0 = bagudkompatibel (intet filter).
     if min_score > 0.0:
         scored = [(s, eid) for s, eid in scored if s >= min_score]
-    top = scored[:limit]
-    return [read_entry(eid) for _, eid in top]
+    return scored[:limit]
 
 
 # Den ENESTE tærskel der bestemmer om en temporal edge nogensinde bliver LÆST.
@@ -777,7 +818,12 @@ def _compute_search_temporal_boost(
     return boosts
 
 
-def bump_salience(entry_id: str, now: datetime | None = None) -> None:
+def bump_salience(
+    entry_id: str,
+    now: datetime | None = None,
+    *,
+    min_interval_hours: float = 24.0,
+) -> None:
     """Increments salience_bumps + recall_count + opdaterer last_used_at i index OG fil.
 
     Filen er sandhed; index opdateres synkront. Hvis fil-update fejler,
@@ -786,10 +832,22 @@ def bump_salience(entry_id: str, now: datetime | None = None) -> None:
     2026-06-08 (Memory Fix Phase 1): adds recall_count increment alongside
     salience_bumps. recall_count tracks total reads (search hits + direct
     reads), while salience_bumps tracks search-surface frequency specifically.
+
+    2026-09-04 (memory repair, R1): salience_bumps stiger højst én gang pr.
+    ``min_interval_hours`` pr. post. recall_count og last_used_at opdateres
+    altid. Før kunne én post samle 17.794 bumps ved at blive returneret hver tur.
     """
     now = now or datetime.now(timezone.utc)
     entry = read_entry(entry_id)
-    entry.salience_bumps += 1
+    _last = entry.last_used_at
+    if _last is not None and _last.tzinfo is None:
+        _last = _last.replace(tzinfo=timezone.utc)
+    _recent = (
+        _last is not None
+        and (now - _last).total_seconds() < float(min_interval_hours) * 3600.0
+    )
+    if not _recent:
+        entry.salience_bumps += 1
     entry.recall_count += 1
     entry.last_used_at = now
     entry.updated_at = now

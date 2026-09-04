@@ -2153,6 +2153,21 @@ def _build_visible_chat_prompt_assembly_impl(
     _awareness_flushed_upto = len(_awareness)
     if _dropped:
         derived_inputs.append(f"awareness budget dropped: {', '.join(_dropped)}")
+        # HVAD BLEV KLEMT UD DENNE TUR — skrevet ud, ikke kun registreret.
+        #
+        # Awareness-blokken har et loft på 6000 tegn, og alt undtagen «pinned
+        # identity context» kan droppes. Vi har MÅLT at
+        # `Visible_session_continuity` gik fra 1095 tegn til 0 mellem to
+        # på hinanden følgende ture — altså at dét afsnit der bærer «hvad lavede
+        # vi sidst» kan tabe kampen om pladsen.
+        #
+        # Uden denne linje ligner det at han har glemt. Med den kan man se at
+        # han fik det ikke at vide.
+        _sys_mod.stderr.write(
+            "prompt-awareness-dropped budget=%d %s\n" % (
+                _AWARENESS_BUDGET, " ".join(str(d).replace(" ", "_") for d in _dropped))
+        )
+        _sys_mod.stderr.flush()
     # Prompt-cluster: ét central.observe pr. build → trace af hvad der kom med + hvorfor noget
     # blev droppet (disabled via switch vs budget-evicted). Self-safe; ingen latency-effekt.
     try:

@@ -31,6 +31,16 @@ _Tool-scoping policy — hvilke værktøjer er tilgængelige pr. rolle og mode._
 | function | `_fn_name` | `(td)` | — | [src](../../../core/tools/tool_scoping.py#L302) |
 | function | `filter_tool_definitions` | `(defs, *, role, scope)` | Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope). | [src](../../../core/tools/tool_scoping.py#L306) |
 
+## `core/tools/tool_text_render.py`
+_Læsbar `text`-form for strukturerede tool-resultater._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_cell` | `(value, limit=…)` | — | [src](../../../core/tools/tool_text_render.py#L31) |
+| function | `render_daemons` | `(daemons)` | Én linje pr. dæmon: navn, om den kører, kadence, hvornår sidst. | [src](../../../core/tools/tool_text_render.py#L37) |
+| function | `render_events` | `(events)` | Én linje pr. hændelse: tid, art, og begyndelsen af payload. | [src](../../../core/tools/tool_text_render.py#L77) |
+| function | `render_rows` | `(columns, rows, *, capped=…)` | Et resultatsæt som en justeret tabel. | [src](../../../core/tools/tool_text_render.py#L102) |
+
 ## `core/tools/ui_panel_tools.py`
 _open_ui_panel-tool (spec §8.2, Fase 6 #3)._
 

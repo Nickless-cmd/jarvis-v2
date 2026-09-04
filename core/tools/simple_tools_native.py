@@ -1866,7 +1866,11 @@ def _exec_cancel_agent(args: dict[str, Any]) -> dict[str, Any]:
 
 def _exec_daemon_status(_args: dict[str, Any]) -> dict[str, Any]:
     from core.services.daemon_manager import get_all_daemon_states
-    return {"daemons": get_all_daemon_states()}
+    from core.tools.tool_text_render import render_daemons
+    daemons = get_all_daemon_states()
+    # `text` er ikke pynt: uden den dumpes 67 dæmoner som JSON og cappes ved
+    # 8000 tegn — se tool_text_render.
+    return {"daemons": daemons, "text": render_daemons(daemons)}
 
 
 def _exec_control_daemon(args: dict[str, Any]) -> dict[str, Any]:
@@ -1903,7 +1907,8 @@ def _exec_eventbus_recent(args: dict[str, Any]) -> dict[str, Any]:
     if kind_filter:
         events = [e for e in events if str(e.get("kind", "")).startswith(kind_filter)]
         events = events[:limit]
-    return {"events": events, "count": len(events)}
+    from core.tools.tool_text_render import render_events
+    return {"events": events, "count": len(events), "text": render_events(events)}
 
 
 _SENSITIVE_SETTING_PATTERNS = [
@@ -2350,12 +2355,15 @@ def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
                 ]
             finally:
                 conn.row_factory = _prev_factory  # never leave the shared conn poisoned
+        from core.tools.tool_text_render import render_rows
+        _capped = len(result_rows) == 200
         return {
             "columns": cols,
             "rows": result_rows,
             "row_count": len(result_rows),
-            "capped": len(result_rows) == 200,
+            "capped": _capped,
             "status": "ok",
+            "text": render_rows(cols, result_rows, capped=_capped),
         }
     except Exception as exc:
         return {"error": str(exc), "status": "error"}

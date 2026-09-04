@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
@@ -521,13 +522,44 @@ def _candidate_dimension_key(candidate: dict[str, object]) -> str:
     return ":".join(parts[:2])
 
 
+# Bevis-klasse → dansk kilde-mærkat i USER.md-linjen (blok A, 2026-09-04).
+_EVIDENCE_LABELS = {
+    "explicit_user_statement": "sagt eksplicit",
+    "explicit_assistant_confirmation": "bekræftet",
+    "repeated_cross_session": "gentaget",
+    "single_session_pattern": "set i én samtale",
+    "runtime-inference": "udledt",
+    "runtime_support_only": "udledt",
+}
+
+
+def _stamp_learned_line(line: str, candidate: dict[str, object]) -> str:
+    """Tilføj "(dato, kilde)" så en Lært-linje bærer sin egen proveniens.
+
+    Uden datoen kan hverken Jarvis eller kuratoren se om en præference er fra
+    i går eller fra marts, og uden kilden kan «udledt» ikke skelnes fra
+    «sagt eksplicit» når Bjørn læser filen.
+    """
+    body = " ".join(str(line or "").split()).strip()
+    if not body or body.endswith(")") and re.search(r"\(\d{4}-\d{2}-\d{2}", body):
+        return body
+    label = _EVIDENCE_LABELS.get(str(candidate.get("evidence_class") or ""), "")
+    stamp = datetime.now(UTC).strftime("%Y-%m-%d")
+    return f"{body} ({stamp}, {label})" if label else f"{body} ({stamp})"
+
+
 def _candidate_write_material(candidate: dict[str, object]) -> dict[str, str]:
     target_file = str(candidate.get("target_file") or "")
     proposed_value = str(candidate.get("proposed_value") or "").strip()
     if target_file == "USER.md":
+        # 2026-09-04 (lærings-sløjfe, blok A): «## Durable Preferences» lå på
+        # linje 70 af 202 og blev ALDRIG læst af prompten — hverken af de gamle
+        # «første 40 linjer» eller af Kerne-mekanismen. 146 lærte præferencer
+        # nåede ham aldrig. «## Lært» er relevans-udvalgt pr. tur i [HUKOMMELSE].
         return {
-            "section_heading": str(candidate.get("write_section") or "## Durable Preferences"),
-            "content_line": proposed_value or _user_line_from_key(candidate),
+            "section_heading": str(candidate.get("write_section") or "## Lært"),
+            "content_line": _stamp_learned_line(
+                proposed_value or _user_line_from_key(candidate), candidate),
         }
     if target_file == "MEMORY.md":
         return {

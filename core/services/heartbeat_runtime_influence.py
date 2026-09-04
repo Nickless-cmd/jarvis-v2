@@ -1108,6 +1108,16 @@ def _build_influence_trace(
     except Exception:
         logger.debug("retention-sweep fejlede i heartbeat", exc_info=True)
 
+    # Kerne-kurator (lærings-sløjfe 4/9, blok A) — holder USER.md `## Kerne`
+    # under 25 linjer og løfter det han faktisk bruger op fra `## Lært`.
+    # Self-throttlende (1×/uge) og forslags-only via den proaktive kø.
+    try:
+        from core.services.kerne_curator import run_kerne_curator
+        run_kerne_curator()
+    except Exception:
+        logger.debug("kerne-kurator fejlede i heartbeat", exc_info=True)
+
+
     # Signal decay daemon — archive and delete stale signals
     if _dm.is_enabled("signal_decay"):
         try:

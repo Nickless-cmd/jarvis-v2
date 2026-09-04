@@ -427,7 +427,9 @@ def _persist_memory_candidates(
             updated_at=now,
             status_reason="Candidate proposed by bounded end-of-run local memory consolidation.",
             proposed_value=item["line"],
-            write_section="## Durable Preferences" if target == "USER.md" else "## Curated Memory",
+            # 2026-09-04 (blok A): «## Lært» læses relevans-udvalgt pr. tur;
+            # «## Durable Preferences» blev aldrig læst af nogen prompt.
+            write_section="## Lært" if target == "USER.md" else "## Curated Memory",
         )
         persisted.append(candidate)
     return persisted

@@ -44,7 +44,11 @@ DIAGNOSTIC_NOISE_LABELS: frozenset[str] = frozenset({
     "conversation continuity (always-on)",  # "Ny samtale ×5" tells him nothing
     "loop-compliance self-check",          # heed-rate telemetry, not for him
     "cross-session arc",                    # "Ny samtale ×5" tells him nothing
-    "session topics (always-on)",           # keyword counts ("NEJ ×14") ≠ awareness
+    # 2026-09-04 (lærings-sløjfe, blok A): "session topics (always-on)" er TAGET
+    # AF listen. Dommen fra 22/6 ("NEJ ×14") ramte formatet, ikke signalet:
+    # session_topic_tracker har skrevet 5.112 rækker med gentagelses-tællere som
+    # INTET har læst siden. Gentagelse på tværs af samtaler er hele grundlaget
+    # for blok C. Slå den fra live med set_section hvis den viser sig at støje.
     "forgetting nudge",                     # a rule, belongs in guidance not signal
     "meta-learning weekly retrospective teaser",  # unread memo, don't burn tokens
     "rules learned from arcs",              # repeated retrospective noise

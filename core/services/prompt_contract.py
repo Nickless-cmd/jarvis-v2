@@ -2823,6 +2823,31 @@ def _build_visible_chat_prompt_assembly_impl(
             derived_inputs.append("lessons (memory group)")
     except Exception as _e:
         _sec_err("lessons", _e)
+    # ── LÆRT OM BJØRN (lærings-sløjfe 4/9, blok A) ──────────────────────────
+    # `## Lært` i USER.md er læsesiden for alt konsolideringen har lært om ham.
+    # Målt 4/9: 146 lærte præferencer stod i `## Durable Preferences` (linje 70
+    # af 202) og nåede ALDRIG prompten — hverken via "første 40 linjer" eller
+    # via Kerne. Her udvælges de 3 mest relevante for det han lige skrev.
+    try:
+        from core.services.prompt_sections.learned_about_user import (
+            build_learned_section as _bls_learned,
+        )
+        _learned_text = _bls_learned(user_message, workspace_dir=workspace_dir)
+        if _learned_text:
+            _dyn_memory_recall.append(_learned_text)
+            derived_inputs.append("learned about user (memory group)")
+    except Exception as _e:
+        _sec_err("learned about user", _e)
+    # Bruger-modellen (kommunikationsstil, målt hvert 10. minut) nåede kun
+    # heartbeat-prompten. Den hører til i samtalen — det er DER stilen bruges.
+    try:
+        from core.services.user_model_daemon import build_user_model_prompt_line as _bump
+        _um_line = _bump()
+        if _um_line:
+            _dyn_memory_recall.append(_um_line)
+            derived_inputs.append("user model (memory group)")
+    except Exception as _e:
+        _sec_err("user model", _e)
     # Redesign 4/9: én "Siden sidst"-linje når en proaktiv kandidat er relevant.
     try:
         from core.services.proactive_candidates import build_since_last_line as _bsl

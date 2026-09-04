@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6668/13404 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6670/13406 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -20,11 +20,11 @@ Generated from source. 6668/13404 functions/methods documented (49%). The list b
 | `core.context` | 53 | 67 | 79% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 9 | 22 | 40% |
-| `core.identity` | 65 | 158 | 41% |
+| `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4408 | 9253 | 47% |
+| `core.services` | 4409 | 9254 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 86 | 156 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -235,12 +235,12 @@ Generated from source. 6668/13404 functions/methods documented (49%). The list b
 - `core/eventbus/events.py` :: `Event.family` (L202)
 - `core/eventbus/events.py` :: `Event.from_record` (L212)
 - `core/eventbus/events.py` :: `Event.validate` (L223)
-- `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L309)
-- `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L110)
-- `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L42)
-- `core/identity/candidate_workflow.py` :: `auto_apply_safe_memory_md_candidates` (L269)
-- `core/identity/candidate_workflow.py` :: `auto_apply_safe_user_md_candidates` (L229)
-- `core/identity/candidate_workflow.py` :: `reject_runtime_contract_candidate` (L86)
+- `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L310)
+- `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L111)
+- `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L43)
+- `core/identity/candidate_workflow.py` :: `auto_apply_safe_memory_md_candidates` (L270)
+- `core/identity/candidate_workflow.py` :: `auto_apply_safe_user_md_candidates` (L230)
+- `core/identity/candidate_workflow.py` :: `reject_runtime_contract_candidate` (L87)
 - `core/identity/email_verify.py` :: `create_token` (L37)
 - `core/identity/email_verify.py` :: `send_verification_email` (L79)
 - `core/identity/household.py` :: `is_valid_role` (L50)
@@ -1296,13 +1296,13 @@ Generated from source. 6668/13404 functions/methods documented (49%). The list b
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3233)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3081)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3370)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3258)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3106)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3395)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4588)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4613)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)

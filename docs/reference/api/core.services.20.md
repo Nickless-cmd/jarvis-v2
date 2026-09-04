@@ -2,19 +2,6 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
-## `core/services/signal_baseline.py`
-_Persisted signal-baseline with cold-start guard (Task C1)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_store_key` | `(scope)` | Durable KV key for ``scope``. None/empty → the global key, unchanged. | [src](../../../core/services/signal_baseline.py#L47) |
-| function | `_load` | `(scope=…)` | Read the whole baseline dict for ``scope``. Fail-closed to {}. | [src](../../../core/services/signal_baseline.py#L55) |
-| function | `_save` | `(baselines, scope=…)` | — | [src](../../../core/services/signal_baseline.py#L74) |
-| function | `get_baseline` | `(signal, scope=…)` | Last recorded value for ``signal`` in ``scope``; None if never recorded. | [src](../../../core/services/signal_baseline.py#L84) |
-| function | `set_baseline` | `(signal, value, scope=…)` | Persist ``value`` durably as the new baseline for ``signal`` in ``scope``. | [src](../../../core/services/signal_baseline.py#L95) |
-| function | `is_cold_start` | `(min_signals=…, scope=…)` | True until ``min_signals`` distinct baselines exist *within* ``scope``. | [src](../../../core/services/signal_baseline.py#L115) |
-| function | `clear_all` | `(scope=…)` | Drop all baselines in ``scope`` (test helper). Self-safe. | [src](../../../core/services/signal_baseline.py#L134) |
-
 ## `core/services/signal_decay_daemon.py`
 _Signal decay daemon — archive and delete stale signals across all signal tables._
 
@@ -95,11 +82,11 @@ _Signal Surface Router — maps surface names to build functions._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_build_router` | `()` | Build name → function mapping. Local imports stay lazy. | [src](../../../core/services/signal_surface_router.py#L11) |
-| function | `_get_router` | `()` | — | [src](../../../core/services/signal_surface_router.py#L267) |
-| function | `get_surface_names` | `()` | — | [src](../../../core/services/signal_surface_router.py#L274) |
-| function | `resolve_surface` | `(name)` | — | [src](../../../core/services/signal_surface_router.py#L278) |
-| function | `read_surface` | `(name)` | Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names. | [src](../../../core/services/signal_surface_router.py#L282) |
-| function | `list_all_surfaces` | `()` | Call all registered surfaces. Per-surface exceptions caught and returned as errors. | [src](../../../core/services/signal_surface_router.py#L294) |
+| function | `_get_router` | `()` | — | [src](../../../core/services/signal_surface_router.py#L265) |
+| function | `get_surface_names` | `()` | — | [src](../../../core/services/signal_surface_router.py#L272) |
+| function | `resolve_surface` | `(name)` | — | [src](../../../core/services/signal_surface_router.py#L276) |
+| function | `read_surface` | `(name)` | Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names. | [src](../../../core/services/signal_surface_router.py#L280) |
+| function | `list_all_surfaces` | `()` | Call all registered surfaces. Per-surface exceptions caught and returned as errors. | [src](../../../core/services/signal_surface_router.py#L292) |
 
 ## `core/services/signal_tracking_framework.py`
 _Spec-driven framework for the ``*_signal_tracking`` family._
@@ -620,4 +607,16 @@ _Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
 | function | `_suggested_agency_files` | `(*, scope, edge)` | — | [src](../../../core/services/task_worker.py#L346) |
 | function | `_suggested_observability_files` | `(*, scope, service)` | — | [src](../../../core/services/task_worker.py#L382) |
 | function | `_suggested_theater_files` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L396) |
+
+## `core/services/taste_profile.py`
+_Taste Profile — accumulating aesthetic preferences for code, design, and communication._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `update_taste_from_run` | `(*, run_id, user_message, was_corrected, outcome_status)` | Update taste profile based on a visible run interaction. | [src](../../../core/services/taste_profile.py#L67) |
+| function | `update_taste_async` | `(*, run_id, user_message, was_corrected, outcome_status)` | — | [src](../../../core/services/taste_profile.py#L125) |
+| function | `get_crystallized_tastes` | `()` | Return taste dimensions that have moved decisively (>0.72 or <0.28). | [src](../../../core/services/taste_profile.py#L140) |
+| function | `build_taste_profile_surface` | `()` | — | [src](../../../core/services/taste_profile.py#L155) |
+| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/taste_profile.py#L167) |
+| function | `_safe_json` | `(value, default)` | — | [src](../../../core/services/taste_profile.py#L174) |
 

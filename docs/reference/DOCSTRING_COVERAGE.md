@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6630/13293 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6622/13281 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6630/13293 functions/methods documented (49%). The list b
 | `core.memory` | 51 | 135 | 37% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4391 | 9208 | 47% |
+| `core.services` | 4383 | 9196 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 76 | 137 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1576,8 +1576,8 @@ Generated from source. 6630/13293 functions/methods documented (49%). The list b
 - `core/services/signal_noise_guard.py` :: `normalize_signal_text` (L110)
 - `core/services/signal_noise_guard.py` :: `stable_signal_slug` (L172)
 - `core/services/signal_noise_guard.py` :: `strip_signal_wrappers` (L114)
-- `core/services/signal_surface_router.py` :: `get_surface_names` (L274)
-- `core/services/signal_surface_router.py` :: `resolve_surface` (L278)
+- `core/services/signal_surface_router.py` :: `get_surface_names` (L272)
+- `core/services/signal_surface_router.py` :: `resolve_surface` (L276)
 - `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.ev` (L152)
 - `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.new_signal_id` (L155)
 - `core/services/silence_detector.py` :: `build_silence_surface` (L62)

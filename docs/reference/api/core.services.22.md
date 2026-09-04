@@ -2,17 +2,6 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
-## `core/services/turn_trace.py`
-_core/services/turn_trace.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sentinel` | `()` | — | [src](../../../core/services/turn_trace.py#L29) |
-| function | `active` | `()` | — | [src](../../../core/services/turn_trace.py#L36) |
-| function | `start` | `(label=…)` | Nulstil tidslinjen ved request-in. No-op uden sentinel. | [src](../../../core/services/turn_trace.py#L40) |
-| function | `mark` | `(kind, label=…, dur_ms=…)` | Tilføj ét event + print en LIVE-linje til stderr (så ruten kan følges i | [src](../../../core/services/turn_trace.py#L58) |
-| function | `dump` | `(reason=…)` | Skriv hele tidslinjen til latest.json + kompakt stderr-resumé, og sluk. | [src](../../../core/services/turn_trace.py#L79) |
-
 ## `core/services/ui_panel_store.py`
 _Pending UI-panel-kald (spec §8.2, Fase 6 #3, opdateret 2026-06-16 med scope)._
 
@@ -678,4 +667,13 @@ _Post-run learning signals for a visible run (extracted from visible_runs.py,_
 |---|---|---|---|---|
 | function | `tool_names` | `(collected_native_tool_calls)` | Names of the native tool calls in order (objects or OpenAI-style dicts). | [src](../../../core/services/visible_runs_learning_signals.py#L22) |
 | function | `record_visible_run_learning_signals` | `(*, run_ref, collected_native_tool_calls, outcome_status, outcome_error, followup_text, output_tokens)` | — | [src](../../../core/services/visible_runs_learning_signals.py#L40) |
+
+## `core/services/visible_runs_memory.py`
+_Memory/continuity post-processing for visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_recent_internal_tool_context` | `(session_id, *, limit=…)` | — | [src](../../../core/services/visible_runs_memory.py#L24) |
+| function | `_run_memory_postprocess` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_memory.py#L50) |
+| function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L229) |
 

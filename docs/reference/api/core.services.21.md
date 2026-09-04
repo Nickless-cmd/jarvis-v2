@@ -2,18 +2,6 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
-## `core/services/taste_profile.py`
-_Taste Profile — accumulating aesthetic preferences for code, design, and communication._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_taste_from_run` | `(*, run_id, user_message, was_corrected, outcome_status)` | Update taste profile based on a visible run interaction. | [src](../../../core/services/taste_profile.py#L67) |
-| function | `update_taste_async` | `(*, run_id, user_message, was_corrected, outcome_status)` | — | [src](../../../core/services/taste_profile.py#L125) |
-| function | `get_crystallized_tastes` | `()` | Return taste dimensions that have moved decisively (>0.72 or <0.28). | [src](../../../core/services/taste_profile.py#L140) |
-| function | `build_taste_profile_surface` | `()` | — | [src](../../../core/services/taste_profile.py#L155) |
-| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/taste_profile.py#L167) |
-| function | `_safe_json` | `(value, default)` | — | [src](../../../core/services/taste_profile.py#L174) |
-
 ## `core/services/telegram_gateway.py`
 _Telegram gateway — bidirectional messaging via Telegram Bot API._
 
@@ -580,4 +568,15 @@ _End-of-turn changelog — auto-summarize what this turn changed._
 | function | `build_turn_changelog` | `(*, run_id=…, started_at=…, repo_root=…)` | — | [src](../../../core/services/turn_changelog.py#L67) |
 | function | `previous_turn_changelog_section` | `(session_id)` | Look at the most recent visible run for this session and surface the | [src](../../../core/services/turn_changelog.py#L80) |
 | function | `format_changelog` | `(changelog)` | Render a compact human-readable summary, or None if empty. | [src](../../../core/services/turn_changelog.py#L129) |
+
+## `core/services/turn_trace.py`
+_core/services/turn_trace.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sentinel` | `()` | — | [src](../../../core/services/turn_trace.py#L29) |
+| function | `active` | `()` | — | [src](../../../core/services/turn_trace.py#L36) |
+| function | `start` | `(label=…)` | Nulstil tidslinjen ved request-in. No-op uden sentinel. | [src](../../../core/services/turn_trace.py#L40) |
+| function | `mark` | `(kind, label=…, dur_ms=…)` | Tilføj ét event + print en LIVE-linje til stderr (så ruten kan følges i | [src](../../../core/services/turn_trace.py#L58) |
+| function | `dump` | `(reason=…)` | Skriv hele tidslinjen til latest.json + kompakt stderr-resumé, og sluk. | [src](../../../core/services/turn_trace.py#L79) |
 

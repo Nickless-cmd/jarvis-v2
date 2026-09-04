@@ -129,7 +129,7 @@ def poll_pfsense() -> dict[str, Any]:
     out: dict[str, Any] = {}
     try:
         from core.runtime.secrets import read_runtime_key
-        key = read_runtime_key("pfsense_api_key")
+        key = read_runtime_key("pfsense_api_key", env_override="JARVIS_PFSENSE_API_KEY")
     except Exception:
         key = None
     if not key:
@@ -269,7 +269,7 @@ def _pfsense_syslogd_running() -> bool | None:
     (Service-status-endpointet er upålideligt — rapporterer False mens processen kører.)"""
     try:
         from core.runtime.secrets import read_runtime_key
-        key = read_runtime_key("pfsense_api_key")
+        key = read_runtime_key("pfsense_api_key", env_override="JARVIS_PFSENSE_API_KEY")
     except Exception:
         key = None
     if not key:
@@ -292,7 +292,7 @@ def _pfsense_restart_syslogd() -> bool:
     (kun logging-daemon, ingen regel-ændring) — bag _SYSLOGD_AUTOHEAL-flag + Bjørns samtykke."""
     try:
         from core.runtime.secrets import read_runtime_key
-        key = read_runtime_key("pfsense_api_key")
+        key = read_runtime_key("pfsense_api_key", env_override="JARVIS_PFSENSE_API_KEY")
     except Exception:
         key = None
     if not key:

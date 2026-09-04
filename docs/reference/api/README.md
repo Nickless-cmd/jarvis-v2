@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13409 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13425 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -43,13 +43,13 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13409 functions/
 - [`core.services.14`](core.services.14.md) — `meaning_significance_signal_tracking` … `narrative_summary_daemon`
 - [`core.services.15`](core.services.15.md) — `negotiation_engine` … `pfsense_syslog`
 - [`core.services.16`](core.services.16.md) — `plan_proposals` … `proprioception_metrics`
-- [`core.services.17`](core.services.17.md) — `prose_tool_calls` … `retention`
-- [`core.services.18`](core.services.18.md) — `rhythm_engine` … `selective_forgetting_candidate_tracking`
-- [`core.services.19`](core.services.19.md) — `self_authored_prompt_proposal_tracking` … `shadow_scan_daemon`
-- [`core.services.20`](core.services.20.md) — `share_guard_store` … `subagent_ecology`
-- [`core.services.21`](core.services.21.md) — `subjective_time` … `tool_router`
-- [`core.services.22`](core.services.22.md) — `tool_router_runtime` … `visible_model_types`
-- [`core.services.23`](core.services.23.md) — `visible_runs` … `world_model_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `prose_tool_calls` … `resonance_decay`
+- [`core.services.18`](core.services.18.md) — `retention` … `selective_consolidation_daemon`
+- [`core.services.19`](core.services.19.md) — `selective_forgetting_candidate_tracking` … `shadow_experiment_registry`
+- [`core.services.20`](core.services.20.md) — `shadow_scan_daemon` … `subagent_digest`
+- [`core.services.21`](core.services.21.md) — `subagent_ecology` … `tool_result_store`
+- [`core.services.22`](core.services.22.md) — `tool_router` … `visible_model_sse`
+- [`core.services.23`](core.services.23.md) — `visible_model_types` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

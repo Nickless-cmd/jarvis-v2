@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6673/13409 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6682/13425 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6673/13409 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4412 | 9257 | 47% |
+| `core.services` | 4421 | 9273 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 86 | 156 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6673/13409 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1938)
+## Undocumented public functions (1942)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1386,6 +1386,10 @@ Generated from source. 6673/13409 functions/methods documented (49%). The list b
 - `core/services/remembered_fact_signal_tracking.py` :: `build_runtime_remembered_fact_signal_surface` (L88)
 - `core/services/remembered_fact_signal_tracking.py` :: `refresh_runtime_remembered_fact_signal_statuses` (L84)
 - `core/services/remembered_fact_signal_tracking.py` :: `track_runtime_remembered_fact_signals_for_visible_turn` (L42)
+- `core/services/repeated_requests.py` :: `build_repeated_requests_surface` (L295)
+- `core/services/repeated_requests.py` :: `counts` (L285)
+- `core/services/repeated_requests.py` :: `ensure_table` (L92)
+- `core/services/repeated_requests.py` :: `mark_asked` (L203)
 - `core/services/resonance_decay.py` :: `build_resonance_decay_surface` (L410)
 - `core/services/rhythm_engine.py` :: `build_rhythm_surface` (L73)
 - `core/services/rule_engine.py` :: `RuleEngine.add_rule` (L84)

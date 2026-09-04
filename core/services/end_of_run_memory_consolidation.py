@@ -104,6 +104,11 @@ def consolidate_run_memory(
         result["skipped_reason"] = "no-new-memory-items"
         return _finish()
 
+    # Blok C: spørgsmål 2 og 3 tælles på tværs af sessioner. Tredje gang samme
+    # anmodning (anden gang samme rettelse) bliver den til ét regel-forslag i
+    # den proaktive kø i stedet for at Bjørn skal blive ved med at gentage sig.
+    result["rule_proposals"] = _count_repeated_asks(items, session_id=session_id)
+
     persisted = _persist_memory_candidates(
         items=items,
         session_id=session_id,
@@ -151,6 +156,8 @@ def _publish_consolidation_event(
             "skipped_reason": result.get("skipped_reason"),
             "auto_applied_user_count": int(result.get("auto_applied_user_count") or 0),
             "auto_applied_memory_count": int(result.get("auto_applied_memory_count") or 0),
+            # Blok C: hvor mange gentagelser der netop blev til et regel-forslag.
+            "rule_proposals": int(result.get("rule_proposals") or 0),
         },
     )
 
@@ -475,6 +482,30 @@ def _persist_memory_candidates(
         )
         persisted.append(candidate)
     return persisted
+
+
+def _count_repeated_asks(items: list[dict[str, str]], *, session_id: str) -> int:
+    """Tæl anmodninger (spm. 2) og rettelser (spm. 3). Returnerer antal
+    forslag der netop modnede. Self-safe — må aldrig vælte konsolideringen."""
+    surfaced = 0
+    try:
+        from core.services.repeated_requests import note_and_surface
+    except Exception:
+        return 0
+    for item in items:
+        if item.get("target") == "REQUEST":
+            text, kind = str(item.get("request") or ""), "request"
+        elif str(item.get("kind") or "") == "correction":
+            text, kind = str(item.get("summary") or "") or str(item.get("line") or ""), "correction"
+        else:
+            continue
+        try:
+            res = note_and_surface(text=text, session_id=str(session_id or ""), kind=kind)
+            if res.get("surfaced"):
+                surfaced += 1
+        except Exception:
+            continue
+    return surfaced
 
 
 def _seen_in_another_session(

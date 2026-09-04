@@ -4336,6 +4336,29 @@ async def _stream_visible_run(
                 _real_answer = str(followup_text or "").strip()
                 if _real_answer in ("[tool calls only]", "[Completed]", "[tool calls only]."):
                     _real_answer = ""
+                try:
+                    from core.services.post_tool_answer_guard import (
+                        is_hollow_post_tool_answer,
+                        should_replace_with_synthesis,
+                    )
+                    _fu_ex_guard = locals().get("_followup_exchanges") or []
+                    if is_hollow_post_tool_answer(_real_answer, _fu_ex_guard):
+                        _synth_guard = await asyncio.to_thread(
+                            _vf.synthesize_final_answer,
+                            provider=run.provider, model=run.model,
+                            base_messages=locals().get("base_messages") or [],
+                            exchanges=_fu_ex_guard,
+                        )
+                        if should_replace_with_synthesis(_real_answer, _synth_guard):
+                            followup_text = _synth_guard
+                            _real_answer = _synth_guard
+                            if not run.autonomous:
+                                yield _sse("delta", {
+                                    "type": "delta", "run_id": run.run_id,
+                                    "delta": _synth_guard,
+                                })
+                except Exception:
+                    pass
                 if not _real_answer and _final_run_status == "completed":
                     _fu_ex = locals().get("_followup_exchanges") or []
                     _tools_ct = sum(len(getattr(_ex, "tool_calls", []) or [])
@@ -4408,6 +4431,15 @@ async def _stream_visible_run(
                 total_cache_hit_tokens = getattr(result, "cache_hit_tokens", 0)
                 total_cache_miss_tokens = getattr(result, "cache_miss_tokens", 0)
                 visible_output_text = followup_text
+                try:
+                    from core.services.prompt_section_impact import observe_last_prompt_answer_impact
+                    observe_last_prompt_answer_impact(
+                        session_id=run.session_id or "",
+                        run_id=run.run_id or "",
+                        answer_text=followup_text,
+                    )
+                except Exception:
+                    pass
 
                 set_last_visible_run_outcome(
                     run,

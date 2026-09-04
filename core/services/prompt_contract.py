@@ -2330,6 +2330,15 @@ def _build_visible_chat_prompt_assembly_impl(
             _dyn_memory_recall.append(recall_bundle)
             derived_inputs.append("bounded memory recall bundle (user-msg tail)")
 
+        try:
+            from core.services.past_context_router import build_past_context_section
+            past_context = build_past_context_section(user_message, session_id=session_id)
+            if past_context:
+                _dyn_memory_recall.append(past_context)
+                derived_inputs.append("past conversation context (user-msg tail)")
+        except Exception as _e:
+            _sec_err("past conversation context", _e)
+
     if relevance.include_guidance:
         for filename in ("TOOLS.md", "SKILLS.md"):
             section = _workspace_guidance_section(
@@ -2349,6 +2358,14 @@ def _build_visible_chat_prompt_assembly_impl(
                 # svar når beskeden er tool/skill-relevant — naturlig placering.
                 _tail_add(f"{filename} guidance", section)
                 conditional_files.append(filename)
+
+    try:
+        from core.tools.tool_scoping import tool_routing_hint
+        _tool_hint = tool_routing_hint(user_message)
+        if _tool_hint:
+            _tail_add("tool routing hint", _tool_hint)
+    except Exception as _e:
+        _sec_err("tool routing hint", _e)
 
     # --- Budget-controlled runtime sections ---
     # Workspace files (SOUL, IDENTITY, memory, rules, transcript) are
@@ -2532,6 +2549,14 @@ def _build_visible_chat_prompt_assembly_impl(
         if _catalog_text:
             parts.append(_catalog_text)
             derived_inputs.append("tool catalog (compact)")
+    except Exception:
+        pass
+    try:
+        from core.services.prompt_section_impact import remember_prompt_sections
+        remember_prompt_sections(
+            session_id=session_id or "",
+            sections=[(_label_of(part), part) for part in parts if part],
+        )
     except Exception:
         pass
 

@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/share_guard_store.py`
+_Pending cross-user share-beslutninger — DB-backed kø (spec §4.4, Fase 6 #1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/share_guard_store.py#L19) |
+| function | `_save` | `(items)` | — | [src](../../../core/services/share_guard_store.py#L24) |
+| function | `record_pending` | `(*, decision_id, session_id, current_user_id, mentioned_users, text_preview, created_at)` | Registrér en pending share-beslutning. Returnér recorden. | [src](../../../core/services/share_guard_store.py#L28) |
+| function | `list_pending` | `()` | Alle uafgjorte share-beslutninger (til Cowork-køen). | [src](../../../core/services/share_guard_store.py#L53) |
+| function | `resolve` | `(decision_id, *, shared)` | Afgør en beslutning: shared=True (okay at dele) / False (hold privat). | [src](../../../core/services/share_guard_store.py#L58) |
+
 ## `core/services/shared_cache.py`
 _SQLite-backed shared cache for cross-process state._
 
@@ -567,12 +578,4 @@ _Surface recently-completed subagents into the visible prompt._
 | function | `_safe_loop_runtime` | `()` | — | [src](../../../core/services/subagent_ecology.py#L401) |
 | function | `_safe_prompt_evolution` | `()` | — | [src](../../../core/services/subagent_ecology.py#L411) |
 | function | `_safe_quiet_initiative` | `()` | — | [src](../../../core/services/subagent_ecology.py#L421) |
-
-## `core/services/subjective_time.py`
-_Subjective Time — how time FEELS, not just passes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_subjective_time_perception` | `(*, tick_count_last_hour=…, conversation_intensity=…, novelty_score=…, idle_hours=…)` | — | [src](../../../core/services/subjective_time.py#L9) |
-| function | `build_subjective_time_surface` | `()` | — | [src](../../../core/services/subjective_time.py#L29) |
 

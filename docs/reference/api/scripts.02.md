@@ -250,6 +250,15 @@ _One-shot bootstrap: generate tool tags via cheap LLM and warm embedding cache._
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/tool_router_bootstrap.py#L22) |
 
+## `scripts/user_md_learned_migration.py`
+_Flyt USER.md «## Durable Preferences» ind i «## Lært» (lærings-sløjfe, blok A)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_user_md_path` | `(workspace)` | — | [src](../../../scripts/user_md_learned_migration.py#L40) |
+| function | `migrate` | `(*, workspace, apply)` | — | [src](../../../scripts/user_md_learned_migration.py#L48) |
+| function | `main` | `()` | — | [src](../../../scripts/user_md_learned_migration.py#L118) |
+
 ## `scripts/validate_commit_attribution.py`
 _Validate commit attribution for commit-msg and pre-push hooks._
 

@@ -138,6 +138,23 @@ _Post-web-search nudge — encourages remember_this after Jarvis uses web tools.
 |---|---|---|---|---|
 | function | `build_brain_post_web_nudge` | `(*, recent_tool_messages)` | Returnér nudge-tekst hvis seneste tool-message har URL-indhold, ellers "". | [src](../../../core/services/prompt_sections/jarvis_brain_nudge.py#L24) |
 
+## `core/services/prompt_sections/learned_about_user.py`
+_Det Jarvis har LÆRT om Bjørn — læsesiden (lærings-sløjfe 2026-09-04, blok A)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_terms` | `(text)` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L54) |
+| function | `lexical_coverage` | `(query, text)` | Andel af beskedens betydningsbærende ord der findes i linjen (0-1). | [src](../../../core/services/prompt_sections/learned_about_user.py#L66) |
+| function | `_read_user_md` | `(workspace_dir)` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L74) |
+| function | `section_body` | `(text, headings)` | Brødteksten under den første overskrift i ``headings`` — "" hvis ingen. | [src](../../../core/services/prompt_sections/learned_about_user.py#L93) |
+| function | `parse_line` | `(raw)` | Én Lært-linje → {text, date, source}. Suffikset er valgfrit. | [src](../../../core/services/prompt_sections/learned_about_user.py#L113) |
+| function | `learned_lines` | `(workspace_dir)` | Alle linjer i `## Lært`, nyeste sidst (filens rækkefølge). | [src](../../../core/services/prompt_sections/learned_about_user.py#L125) |
+| function | `core_lines` | `(workspace_dir)` | Linjerne i `## Kerne` — dem der altid er i prompten. | [src](../../../core/services/prompt_sections/learned_about_user.py#L138) |
+| function | `note_selected` | `(texts)` | Tæl at disse linjer blev valgt ind. Kuratorens signal. Self-safe. | [src](../../../core/services/prompt_sections/learned_about_user.py#L148) |
+| function | `selection_counts` | `()` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L167) |
+| function | `select_learned_lines` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…, min_coverage=…, count_selection=…)` | De mest relevante `## Lært`-linjer for det Bjørn lige skrev. | [src](../../../core/services/prompt_sections/learned_about_user.py#L178) |
+| function | `build_learned_section` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…)` | Prompt-linjen til `[HUKOMMELSE]` — "" når intet er relevant. | [src](../../../core/services/prompt_sections/learned_about_user.py#L225) |
+
 ## `core/services/prompt_sections/loop_compliance.py`
 _Loop-compliance self-check section._
 

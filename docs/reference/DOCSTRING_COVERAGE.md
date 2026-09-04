@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6653/13381 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6668/13404 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,9 +24,9 @@ Generated from source. 6653/13381 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4401 | 9244 | 47% |
+| `core.services` | 4408 | 9253 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 78 | 145 | 53% |
+| `core.services.prompt_sections` | 86 | 156 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
@@ -35,12 +35,12 @@ Generated from source. 6653/13381 functions/methods documented (49%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 178 | 336 | 52% |
+| `scripts` | 178 | 339 | 52% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1935)
+## Undocumented public functions (1938)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1324,6 +1324,7 @@ Generated from source. 6653/13381 functions/methods documented (49%). The list b
 - `core/services/prompt_section_impact.py` :: `remember_prompt_sections` (L75)
 - `core/services/prompt_sections/cross_session_arc.py` :: `invalidate_cache` (L157)
 - `core/services/prompt_sections/dead_skills.py` :: `dead_skills_section` (L23)
+- `core/services/prompt_sections/learned_about_user.py` :: `selection_counts` (L167)
 - `core/services/prompt_sections/pattern_counterfactuals.py` :: `invalidate_cache` (L94)
 - `core/services/prompt_sections/transcript_sections.py` :: `chat_session_messages_since_last_compact` (L48)
 - `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L69)
@@ -1973,6 +1974,8 @@ Generated from source. 6653/13381 functions/methods documented (49%). The list b
 - `scripts/tag_untagged_skills.py` :: `main` (L155)
 - `scripts/tool_result_cleanup.py` :: `main` (L6)
 - `scripts/tool_router_bootstrap.py` :: `main` (L22)
+- `scripts/user_md_learned_migration.py` :: `main` (L118)
+- `scripts/user_md_learned_migration.py` :: `migrate` (L48)
 - `scripts/validate_commit_attribution.py` :: `main` (L122)
 - `scripts/verify_fase_a.py` :: `check_balancer_floor_no_raise` (L21)
 - `scripts/verify_fase_a.py` :: `check_central_visibility` (L33)

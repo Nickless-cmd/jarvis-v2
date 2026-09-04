@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/meaning_significance_signal_tracking.py`
+_Meaning/significance signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_meaning_significance_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L39) |
+| function | `refresh_runtime_meaning_significance_signal_statuses` | `()` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L65) |
+| function | `build_runtime_meaning_significance_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L69) |
+| function | `_extract_meaning_significance_candidates` | `(*, run_id)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L73) |
+| function | `_build_candidate` | `(*, run_id, focus, relation_continuity, chronicle_brief, chronicle_proposal, executive_contradiction, temporal_promotion, regulation)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L103) |
+| function | `_latest_chronicle_brief` | `(*, run_id, focus_key)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L240) |
+| function | `_latest_chronicle_proposal` | `(*, run_id, focus_key)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L252) |
+| function | `_latest_executive_contradiction` | `(*, run_id, focus_key)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L264) |
+| function | `_latest_temporal_promotion` | `(*, run_id, focus_key)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L276) |
+| function | `_latest_regulation` | `(*, run_id, focus_key)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L288) |
+| function | `_focus_key` | `(item)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L300) |
+| function | `_derive_meaning_type` | `(*, has_proposal, continuity_state, contradiction_pressure, promotion_pull)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L308) |
+| function | `_derive_meaning_weight` | `(*, chronicle_weight, continuity_weight, contradiction_pressure, promotion_pull)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L324) |
+| function | `_derive_status` | `(*, proposal_status, brief_status, continuity_status)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L343) |
+| function | `_grounding_mode` | `(*, has_brief, has_proposal, has_contradiction, has_promotion, has_regulation)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L351) |
+| function | `_meaning_summary` | `(*, focus, meaning_type, meaning_weight, continuity_alignment, continuity_watchfulness, regulation_pressure)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L373) |
+| function | `_value` | `(*values, default=…)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L390) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L398) |
+| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L409) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L421) |
+| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L433) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L450) |
+| function | `_meaning_significance_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L493) |
+| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L513) |
+| function | `_grounding_mode_from_support_summary` | `(value)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L520) |
+| function | `_weight_from_summary` | `(value, *, canonical_key)` | — | [src](../../../core/services/meaning_significance_signal_tracking.py#L528) |
+
 ## `core/services/memory_breathing.py`
 _Memory Breathing — use-strengthens, disuse-fades._
 
@@ -586,12 +618,4 @@ _Narrative summary daemon — Phase 2.5 of causal graph._
 | function | `run_summary_cycle` | `()` | One cycle: find anchor, build chain, call LLM, persist event. | [src](../../../core/services/narrative_summary_daemon.py#L149) |
 | function | `tick_narrative_summary_daemon` | `()` | Daemon-manager entry: run one cycle if cadence elapsed. | [src](../../../core/services/narrative_summary_daemon.py#L227) |
 | function | `build_narrative_summary_surface` | `()` | Mission Control surface for the latest narrative summary. | [src](../../../core/services/narrative_summary_daemon.py#L246) |
-
-## `core/services/negotiation_engine.py`
-_Negotiation Engine — internal trade offers between subsystems._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `propose_trade` | `(*, proposer, counterparty, requested_decision, confidence, rationale, evidence=…)` | Propose an internal trade between subsystems. | [src](../../../core/services/negotiation_engine.py#L22) |
-| function | `build_negotiation_surface` | `()` | — | [src](../../../core/services/negotiation_engine.py#L57) |
 

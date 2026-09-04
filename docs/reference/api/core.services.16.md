@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/plan_proposals.py`
+_Plan mode — propose, wait for approval, then execute._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_all` | `()` | — | [src](../../../core/services/plan_proposals.py#L38) |
+| function | `_save_all` | `(data)` | — | [src](../../../core/services/plan_proposals.py#L45) |
+| function | `propose_plan` | `(*, session_id, title, why, steps, skill_data=…)` | — | [src](../../../core/services/plan_proposals.py#L49) |
+| function | `resolve_plan` | `(plan_id, *, decision)` | — | [src](../../../core/services/plan_proposals.py#L133) |
+| function | `_plan_todo_auto_create_enabled` | `()` | — | [src](../../../core/services/plan_proposals.py#L263) |
+| function | `revise_plan` | `(*, plan_id, session_id, reason, new_steps)` | Propose a revision of an existing approved plan. | [src](../../../core/services/plan_proposals.py#L270) |
+| function | `_plan_revision_enabled` | `()` | — | [src](../../../core/services/plan_proposals.py#L371) |
+| function | `mark_step_completed` | `(plan_id, step_index)` | Append step_index to plan's completed_step_indices (idempotent, sorted). | [src](../../../core/services/plan_proposals.py#L378) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/plan_proposals.py#L423) |
+| function | `replan_signal_for_plan` | `(rec, *, now=…, stale_days=…)` | Return a non-mutating backtracking signal for an approved stale plan. | [src](../../../core/services/plan_proposals.py#L436) |
+| function | `list_session_plans` | `(session_id)` | — | [src](../../../core/services/plan_proposals.py#L479) |
+| function | `pending_plan_section` | `(session_id)` | Surface plans relevant to the current session. | [src](../../../core/services/plan_proposals.py#L484) |
+| function | `format_cross_session_plans_for_awareness` | `(current_session_id, *, max_plans=…, max_age_days=…)` | Return awareness-block text for approved+incomplete plans owned by | [src](../../../core/services/plan_proposals.py#L557) |
+| function | `all_pending_plans_section` | `()` | Show ALL pending plans (incl. auto-improvement proposals from | [src](../../../core/services/plan_proposals.py#L617) |
+| function | `_exec_propose_plan` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L644) |
+| function | `_exec_approve_plan` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L653) |
+| function | `_exec_dismiss_plan` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L657) |
+| function | `_exec_list_plans` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L661) |
+
 ## `core/services/plugin_ruleset.py`
 _Plugin-regelsæt — brugerdefinerede kanal-regler der IKKE kan tilsidesættes._
 
@@ -728,12 +752,4 @@ _Proprioception Metrics — process-level body sense._
 | function | `_surface_summary` | `(current, rss_trend)` | — | [src](../../../core/services/proprioception_metrics.py#L171) |
 | function | `build_proprioception_metrics_prompt_section` | `()` | Only surfaces when something is actively worth noticing. | [src](../../../core/services/proprioception_metrics.py#L187) |
 | function | `reset_proprioception_metrics` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L207) |
-
-## `core/services/prose_tool_calls.py`
-_Parser for prosa-emitterede tool-kald (cluster: tool-leak-fix 2026-06-21)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_match_json_object` | `(s, start)` | s[start] skal være '{'. Returnér (objekt-streng, slut-index) via brace-matching | [src](../../../core/services/prose_tool_calls.py#L26) |
-| function | `extract_prose_tool_calls` | `(text, valid_tool_names)` | Find `[navn]: {json}`-prosa-kald hvor navn er et kendt tool og args er et | [src](../../../core/services/prose_tool_calls.py#L55) |
 

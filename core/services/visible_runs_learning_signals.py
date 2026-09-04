@@ -82,6 +82,14 @@ def record_visible_run_learning_signals(
         except Exception:
             logger.debug("learning_signals: record_tool_error failed", exc_info=True)
 
+    # Redesign 4/9: en vist "Siden sidst"-kandidat tæller som leveret når svaret nævner den.
+    try:
+        from core.services.proactive_candidates import mark_mentioned_if_overlap
+        mark_mentioned_if_overlap(session_id=str(run_ref.session_id or ""),
+                                  answer_text=followup_text or "", run_id=str(run_ref.run_id or ""))
+    except Exception:
+        logger.debug("learning_signals: mark_mentioned failed", exc_info=True)
+
     try:
         from core.services.theory_of_mind_engine import record_theory_of_mind_update
 

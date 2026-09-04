@@ -67,3 +67,20 @@ def test_no_memory_group_header_when_nothing_to_recall(isolated_runtime, monkeyp
     # A contentless greeting with an empty MEMORY.md may still carry a recall
     # bundle; the header must appear at most once and never twice.
     assert text.count("[HUKOMMELSE]") <= 1
+
+
+def test_nudge_well_gone_midway_and_since_last_present(isolated_runtime, monkeypatch) -> None:
+    """Redesign 4/9: ingen 'Pending nudges … mark_sent' i diagnostik-blokken; Bjørns
+    mid-run-beskeder som egen sektion i halen; én 'Siden sidst'-linje i [HUKOMMELSE]."""
+    prompt_contract = isolated_runtime.prompt_contract
+    from core.services import outbound_nudges as ob
+    from core.services import proactive_candidates as pc
+    monkeypatch.setattr(ob, "format_midway_for_prompt", lambda **kw: "Beskeder fra Bjørn undervejs (sendt mens du arbejdede — svar på dem nu):\n  - [19:05] og husk pfsense")
+    monkeypatch.setattr(pc, "build_since_last_line", lambda msg, session_id="": "Siden sidst (relevant for det du skriver — nævn det hvis det passer ind): 3 ucommittede filer i repoet")
+    text = _build(prompt_contract, "er der ucommittede filer i repoet?").text
+    assert "Pending nudges" not in text and "mark_sent(nudge_id)" not in text
+    assert "Beskeder fra Bjørn undervejs" in text
+    head = text.index("[HUKOMMELSE]")
+    assert text.index("Siden sidst") > head
+    diag = text.find("INTERN DIAGNOSTIK")
+    assert diag < 0 or text.index("Beskeder fra Bjørn undervejs") > diag

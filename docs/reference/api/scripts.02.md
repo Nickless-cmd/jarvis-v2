@@ -52,6 +52,15 @@ _Mint a JarvisX bearer token for a user._
 | function | `_append_registry` | `(entry)` | Append a token-issue entry to the audit registry. Best-effort. | [src](../../../scripts/mint_jarvisx_token.py#L40) |
 | function | `main` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L52) |
 
+## `scripts/nudge_well_cleanup.py`
+_Drain the two dead nudge wells (redesign 2026-09-04). Dry-run by default._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `clean_outbound` | `(apply)` | — | [src](../../../scripts/nudge_well_cleanup.py#L24) |
+| function | `clean_broend` | `(apply, path=…)` | — | [src](../../../scripts/nudge_well_cleanup.py#L64) |
+| function | `main` | `()` | — | [src](../../../scripts/nudge_well_cleanup.py#L85) |
+
 ## `scripts/peer_models.py`
 _Peer model adapters for interlanguage validation experiment._
 

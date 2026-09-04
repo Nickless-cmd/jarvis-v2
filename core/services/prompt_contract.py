@@ -1239,11 +1239,15 @@ def _build_visible_chat_prompt_assembly_impl(
     # outbound_nudges instead of sending directly. Priority 4 — even higher
     # than loop-compliance (7) and identity pins (5) because these are
     # PENDING context that Jarvis needs to know about before he speaks.
+    # Redesign 4. sep 2026: brønd-sektionen ("Pending nudges … mark_sent(nudge_id)")
+    # er fjernet — 0 sendt nogensinde, tool'et fandtes ikke, og den lå under "citér
+    # ALDRIG". Bjørns mid-run-beskeder vises som egen operationel sektion (halen),
+    # og relevante proaktive kandidater som ÉN "Siden sidst"-linje i [HUKOMMELSE].
     try:
-        from core.services.outbound_nudges import format_pending_for_awareness
-        _awareness_add(4, "pending outbound nudges", format_pending_for_awareness() or None)
+        from core.services.outbound_nudges import format_midway_for_prompt
+        _tail_add("midway user messages", format_midway_for_prompt() or None)
     except Exception as _e:
-        _sec_err("pending outbound nudges", _e)
+        _sec_err("midway user messages", _e)
 
     # Matrix-ensemblet — hans indre karakterer, med deres EGNE ord i stedet for et tal.
     # Prio 6: lige efter pending nudges, før identity-pins. Sektionen er None når ingen
@@ -2819,6 +2823,15 @@ def _build_visible_chat_prompt_assembly_impl(
             derived_inputs.append("lessons (memory group)")
     except Exception as _e:
         _sec_err("lessons", _e)
+    # Redesign 4/9: én "Siden sidst"-linje når en proaktiv kandidat er relevant.
+    try:
+        from core.services.proactive_candidates import build_since_last_line as _bsl
+        _since_line = _bsl(user_message, session_id=str(session_id or ""))
+        if _since_line:
+            _dyn_memory_recall.append(_since_line)
+            derived_inputs.append("since-last candidate (memory group)")
+    except Exception as _e:
+        _sec_err("since-last candidate", _e)
     # Morgentråden (session_continuity) havde ingen læser i nogen prompt-builder.
     try:
         from core.services.session_continuity import get_latest_morning_thread as _glmt

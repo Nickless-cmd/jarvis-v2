@@ -166,6 +166,13 @@ def collect_candidates() -> list[dict[str, Any]]:
                         "ts": str(it.get("detected_at") or "")})
     except Exception:
         pass
+    # Redesign 4. sep 2026: den fælles kø for alt daemons vil sige Bjørn
+    # (run_closure_gate, mail, wakeups, outreach, indre stemmer …).
+    try:
+        from core.services.proactive_candidates import bridge_candidates
+        out.extend(bridge_candidates())
+    except Exception:
+        pass
     try:
         from core.services.existential_wonder_daemon import get_latest_wonder
         w = (get_latest_wonder() or "").strip()
@@ -211,6 +218,14 @@ def _persist_as_chat(uid: str, text: str) -> str:
 def _mark_sent_items_acted(items: list[dict[str, Any]]) -> None:
     """Markér afsendte initiativer som acted, så de ikke sendes igen senere (før kun
     cap+cooldown beskyttede mod gentagelse). Self-safe — ukendte id'er returnerer False."""
+    try:
+        from core.services.proactive_candidates import mark as _pc_mark
+        _pc_ids = [str(it.get("source_id") or "") for it in (items or [])
+                   if str(it.get("source") or "") == "proactive_candidates" and it.get("source_id")]
+        if _pc_ids:
+            _pc_mark(_pc_ids, "surfaced")
+    except Exception:
+        pass
     for it in items or []:
         if str(it.get("source") or "") != "initiative_queue":
             continue

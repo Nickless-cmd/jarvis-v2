@@ -20,6 +20,11 @@ from core.runtime.db import approve_runtime_initiative, reject_runtime_initiativ
 
 _MAX_QUEUE_SIZE = 8
 _EXPIRE_MINUTES = 90
+# 2026-09-04 (blok E): 90 minutter gjaldt ALLE prioriteter. En lav-prioritets
+# nysgerrighed opstaar sjaeldent i det vindue hvor den ogsaa kan handles paa —
+# maalt over 30 dage udloeb 782 af 985 initiativer. Lav prioritet lever nu et
+# doegn; medium/high er uaendret, saa det haastende stadig er haastende.
+_EXPIRE_MINUTES_LOW = 24 * 60
 _RETRY_DELAY_MINUTES = 10
 _LONG_TERM_REASSESS_DAYS = 14
 _MAX_ACTIVE_LONG_TERM_INTENTIONS = 3
@@ -36,7 +41,7 @@ def push_initiative(
     """Push a new initiative to the queue. Returns the initiative_id.
 
     Mood dialer gating:
-    - level 0 (distressed): afviser nye initiativer — retur tom streng
+    - level 0 (distressed): nedgraderer til low (slettede foer 2026-09-04)
     - level 1 (melancholic): downgrader priority til low
     - level 2 (neutral): passerer uændret
     - level 3-4 (content/euphoric): kan upgradere low→medium
@@ -56,12 +61,15 @@ def push_initiative(
             from core.services.mood_dialer import derive_from_v2_mood
             params = derive_from_v2_mood()
             if params.mood_level == 0:
-                # Distressed: refuse new initiatives entirely
+                # 2026-09-04 (blok E): distressed SLETTEDE impulsen — den blev
+                # aldrig set igen, og ingen kunne se hvad der forsvandt. En
+                # dårlig dag er ikke det samme som en dårlig idé. Nu nedgraderes
+                # den til low i stedet, så den kan hentes frem når humøret vender.
+                normalized_priority = "low"
                 event_bus.publish("heartbeat.initiative_gated", {
                     "focus": normalized_focus[:100], "reason": "mood_distressed",
-                    "mood_level": 0,
+                    "mood_level": 0, "action": "downgraded_to_low",
                 })
-                return ""
             elif params.mood_level == 1 and normalized_priority == "medium":
                 normalized_priority = "low"
             elif params.mood_level >= 3 and normalized_priority == "low":
@@ -382,6 +390,7 @@ def get_initiative_queue_state() -> dict[str, object]:
 def _expire_stale(now: datetime) -> None:
     """Expire initiatives older than _EXPIRE_MINUTES. Must hold _QUEUE_LOCK."""
     cutoff = now - timedelta(minutes=_EXPIRE_MINUTES)
+    cutoff_low = now - timedelta(minutes=_EXPIRE_MINUTES_LOW)
     for item in runtime_db.list_runtime_initiatives(
         status="pending",
         limit=_MAX_QUEUE_SIZE + 100,
@@ -389,7 +398,10 @@ def _expire_stale(now: datetime) -> None:
         if str(item.get("initiative_type") or "initiative") == "long_term_intention":
             continue
         detected = _parse_iso(str(item.get("detected_at") or ""))
-        if detected is not None and detected < cutoff:
+        item_cutoff = (
+            cutoff_low if str(item.get("priority") or "medium") == "low" else cutoff
+        )
+        if detected is not None and detected < item_cutoff:
             runtime_db.update_runtime_initiative(
                 str(item.get("initiative_id") or ""),
                 status="expired",

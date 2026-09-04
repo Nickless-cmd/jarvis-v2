@@ -1126,6 +1126,15 @@ def _build_influence_trace(
     except Exception:
         logger.debug("udviklings-ritual fejlede i heartbeat", exc_info=True)
 
+    # Ugentligt stilheds-resumé (blok E) — hvor tit valgte han at holde igen,
+    # og hvorfor. Materialet til at skrue paa vaegten med belaeg i stedet for
+    # fornemmelse. Self-throttlende 1x/uge.
+    try:
+        from core.services.autonomy_budget import run_weekly_review
+        run_weekly_review()
+    except Exception:
+        logger.debug("autonomi-ugerapport fejlede i heartbeat", exc_info=True)
+
 
     # Signal decay daemon — archive and delete stale signals
     if _dm.is_enabled("signal_decay"):

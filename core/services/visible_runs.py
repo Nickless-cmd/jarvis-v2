@@ -6,7 +6,20 @@ import logging
 import re
 import time
 
-logger = logging.getLogger(__name__)
+# BEVIDST "uvicorn.error" — den ENESTE logger i processen der har handlers.
+#
+# 4. sep 2026: Bjørn havde jagtet «cutoff» i dagevis, og hver gang endte det i
+# gætteri. Løkken skriver ellers præcis det svar der manglede:
+#
+#     logger.info("agentic-loop-exit run_id=%s reason=%s rounds_done=%d", ...)
+#
+# Den linje er blevet skrevet for HVER eneste kørsel — og er gået i gulvet hver
+# eneste gang, fordi et modulnavn ikke har nogen handler. Systemet regnede
+# årsagen ud og smed den væk, mens vi ledte efter den.
+#
+# Samme fælde er dokumenteret i heartbeat_scheduler.py: «Et modulnavn — hvilket
+# som helst — går i gulvet.» Den kostede to fejlslagne forsøg dér også.
+logger = logging.getLogger("uvicorn.error")
 from datetime import UTC, datetime
 from dataclasses import dataclass, field
 from typing import AsyncIterator
@@ -5119,7 +5132,7 @@ async def _stream_visible_run(
         # and send a proper failed SSE so the browser gets a clean error instead of
         # an abrupt connection close ("Error in input stream").
         import logging as _outer_log
-        _outer_log.getLogger(__name__).error(
+        _outer_log.getLogger("uvicorn.error").error(
             "visible-run unhandled exception: %s", _outer_exc, exc_info=True
         )
         _outer_error = str(_outer_exc) or "unexpected-run-error"

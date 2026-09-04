@@ -430,18 +430,25 @@ def inject_memory_into_prompt(
         ),
     }
 
-    # Find den sidste system-besked og indsæt efter den
-    # (så den primære system instruction bevares som den første)
-    last_system_idx = -1
-    for i, msg in enumerate(chat_messages):
-        if msg.get("role") == "system":
-            last_system_idx = i
-
-    if last_system_idx >= 0:
-        chat_messages.insert(last_system_idx + 1, guard_message)
+    # INDSÆT SENT — lige før den aktuelle brugerbesked.
+    #
+    # Før lå den efter den primære system-instruktion, altså på plads 1: midt
+    # inde i det STABILE præfiks. Guarden fyrer kun på faktuelle spørgsmål, så
+    # prompten havde reelt to former, og alt efter indstikket forskød sig fra
+    # tur til tur. DeepSeeks cache matcher fra begyndelsen og kræver et FULDT
+    # match af præfiks-enheden — «A+B» efterfulgt af «A+C» rammer ikke. Det er
+    # dét der fik hit-raten til at svinge mellem 12 og 79 % i stedet for at
+    # ligge fast.
+    #
+    # Sent placeret er præfikset byte-identisk uanset om guarden fyrer. Og
+    # indholdet står nu ved siden af det spørgsmål det skal besvare i stedet
+    # for 40.000 tegn før det — hvilket er den bedre plads i forvejen.
+    for index in range(len(chat_messages) - 1, -1, -1):
+        if chat_messages[index].get("role") == "user":
+            chat_messages.insert(index, guard_message)
+            break
     else:
-        # Ingen system-besked — indsæt før user message
-        chat_messages.insert(0, guard_message)
+        chat_messages.append(guard_message)
 
     # Log: tæller sektioner via heading-markører, ikke characters.
     # 2026-05-22 (Claude): tidligere log brugte len(relevant) (char count)

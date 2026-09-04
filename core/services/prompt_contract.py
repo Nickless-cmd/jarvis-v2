@@ -2886,11 +2886,16 @@ def _build_visible_chat_prompt_assembly_impl(
     _total_chars = len(_assembled_text)
     _approx_tokens = _total_chars // 4  # rough heuristic — close enough for triage
     _per_part_chars = [len(p) for p in parts if p]
-    _largest = sorted(
+    # Hele fordelingen, ikke kun de otte største. «Hvor går de 44.000 tegn hen»
+    # kunne ikke besvares før, fordi halen blev klippet af FØR den blev skrevet
+    # ud — og det er halen der afgør hvad der kan skæres. Ren observation:
+    # prompten ændres ikke, så cache-præfikset er urørt.
+    _ranked = sorted(
         ((label, len(parts[i]) if i < len(parts) else 0)
          for i, label in enumerate(derived_inputs)),
         key=lambda kv: kv[1], reverse=True,
-    )[:8]
+    )
+    _largest = _ranked[:8]
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish("prompt.assembly_size", {
@@ -2909,6 +2914,16 @@ def _build_visible_chat_prompt_assembly_impl(
     print(
         f"prompt-assembly-size chars={_total_chars} approx_tokens={_approx_tokens} "
         f"parts={len(_per_part_chars)}",
+        file=_sys_mod.stderr,
+        flush=True,
+    )
+    # Fordelingen på ÉN linje, så et døgns journal kan summeres uden at parse
+    # flere linjer sammen. Nul-dele tages med: en del der altid er tom er lige
+    # så interessant som en der fylder.
+    print(
+        "prompt-assembly-parts " + " ".join(
+            f"{str(label).replace(' ', '_')}={chars}" for label, chars in _ranked
+        ),
         file=_sys_mod.stderr,
         flush=True,
     )

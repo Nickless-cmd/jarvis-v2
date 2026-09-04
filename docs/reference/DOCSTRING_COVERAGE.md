@@ -496,7 +496,7 @@ Generated from source. 6603/13231 functions/methods documented (49%). The list b
 - `core/runtime/provider_router.py` :: `provider_router_summary` (L125)
 - `core/runtime/provider_router.py` :: `resolve_provider_router_target` (L254)
 - `core/runtime/provider_router.py` :: `select_main_agent_target` (L200)
-- `core/runtime/secrets.py` :: `mail_config` (L96)
+- `core/runtime/secrets.py` :: `mail_config` (L103)
 - `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L486)
 - `core/runtime/settings.py` :: `load_settings` (L591)
 - `core/runtime/settings.py` :: `update_visible_execution_settings` (L1042)

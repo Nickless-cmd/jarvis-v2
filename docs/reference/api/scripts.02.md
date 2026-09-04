@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/mint_jarvisx_token.py`
+_Mint a JarvisX bearer token for a user._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_registry_path` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L35) |
+| function | `_append_registry` | `(entry)` | Append a token-issue entry to the audit registry. Best-effort. | [src](../../../scripts/mint_jarvisx_token.py#L40) |
+| function | `main` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L52) |
+
 ## `scripts/peer_models.py`
 _Peer model adapters for interlanguage validation experiment._
 

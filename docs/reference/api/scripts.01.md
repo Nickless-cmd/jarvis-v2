@@ -73,6 +73,14 @@ _Block local branch rewrites that can preserve stale actor attribution._
 | function | `_is_ancestor` | `(old, new)` | — | [src](../../../scripts/block_unattributed_ref_rewrite.py#L14) |
 | function | `main` | `(argv=…, *, input_text=…)` | — | [src](../../../scripts/block_unattributed_ref_rewrite.py#L24) |
 
+## `scripts/brain_salience_reset.py`
+_One-off: cap runaway salience_bumps in Jarvis' brain (memory repair 2026-09-04, R1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `reset_salience_bumps` | `(*, cap=…, apply=…)` | Cap ``salience_bumps`` at ``cap`` for every entry above it. | [src](../../../scripts/brain_salience_reset.py#L21) |
+| function | `main` | `()` | — | [src](../../../scripts/brain_salience_reset.py#L65) |
+
 ## `scripts/cache_rate_monitor.py`
 _Cache hit rate monitor._
 
@@ -445,13 +453,4 @@ _One-shot migration: copy memory_emotional_context rows into emotional_memory_an
 |---|---|---|---|---|
 | function | `migrate` | `(*, batch_size=…)` | Migrate legacy rows into the new table. | [src](../../../scripts/migrate_emotional_memory.py#L32) |
 | function | `_legacy_table_exists` | `(conn)` | — | [src](../../../scripts/migrate_emotional_memory.py#L77) |
-
-## `scripts/mint_jarvisx_token.py`
-_Mint a JarvisX bearer token for a user._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_registry_path` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L35) |
-| function | `_append_registry` | `(entry)` | Append a token-issue entry to the audit registry. Best-effort. | [src](../../../scripts/mint_jarvisx_token.py#L40) |
-| function | `main` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L52) |
 

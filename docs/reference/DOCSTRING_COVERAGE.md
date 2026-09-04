@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6603/13231 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6605/13234 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6603/13231 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 554 | 1031 | 53% |
-| `core.services` | 4386 | 9192 | 47% |
+| `core.services` | 4387 | 9193 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -35,12 +35,12 @@ Generated from source. 6603/13231 functions/methods documented (49%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 172 | 304 | 56% |
+| `scripts` | 173 | 306 | 56% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1886)
+## Undocumented public functions (1887)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1061,8 +1061,8 @@ Generated from source. 6603/13231 functions/methods documented (49%). The list b
 - `core/services/irony_daemon.py` :: `build_irony_surface` (L56)
 - `core/services/irony_daemon.py` :: `get_latest_irony_observation` (L52)
 - `core/services/irony_daemon.py` :: `tick_irony_daemon` (L20)
-- `core/services/jarvis_brain.py` :: `connect_index` (L314)
-- `core/services/jarvis_brain.py` :: `index_db_path` (L310)
+- `core/services/jarvis_brain.py` :: `connect_index` (L317)
+- `core/services/jarvis_brain.py` :: `index_db_path` (L313)
 - `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L324)
 - `core/services/jarvisx_bridge.py` :: `BridgeRegistry.get_bridge` (L388)
 - `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L300)
@@ -1274,13 +1274,13 @@ Generated from source. 6603/13231 functions/methods documented (49%). The list b
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3134)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2982)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3271)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3149)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2997)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3286)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L148)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L96)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L123)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4653)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4668)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
@@ -1848,6 +1848,7 @@ Generated from source. 6603/13231 functions/methods documented (49%). The list b
 - `scripts/block_literal_credentials.py` :: `check` (L125)
 - `scripts/block_unattributed_rebase.py` :: `main` (L9)
 - `scripts/block_unattributed_ref_rewrite.py` :: `main` (L24)
+- `scripts/brain_salience_reset.py` :: `main` (L65)
 - `scripts/cache_rate_monitor.py` :: `append_log` (L118)
 - `scripts/cache_rate_monitor.py` :: `main` (L124)
 - `scripts/capabilities_gen.py` :: `collect` (L35)

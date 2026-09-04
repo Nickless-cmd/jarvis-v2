@@ -168,8 +168,10 @@ def stream_visible_followup(
             http_status=None,
         )
         return
-    # Only the OllamaFollowupAdapter currently honors thinking_mode; the
-    # OpenAI-compat adapter ignores unknown kwargs gracefully if added later.
+    # thinking_mode: ollama (think=False / reasoning_effort) OG openai-compat
+    # (DeepSeek: thinking enabled/disabled + reasoning_effort som request-params).
+    # Før nåede den kun ollama → DeepSeek-følgerunder, #1453-rescue og syntese
+    # kørte ALTID i think-mode uanset composer-valg (fundet 4/9-2026).
     _kwargs: dict = dict(
         model=model,
         base_messages=base_messages,
@@ -177,7 +179,7 @@ def stream_visible_followup(
         tool_definitions=tool_definitions,
         round_index=round_index,
     )
-    if isinstance(adapter, OllamaFollowupAdapter):
+    if isinstance(adapter, (OllamaFollowupAdapter, OpenAICompatFollowupAdapter)):
         _kwargs["thinking_mode"] = thinking_mode
     # Temperatur/top_p honoreres af de to sampling-providere (ollama + openai-
     # compat). Codex/Copilot-adapterne tager dem ikke → send kun hvor de findes.
@@ -233,11 +235,11 @@ def synthesize_nonthinking_rescue(
             return ""
         if model not in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"):
             return ""
-        from core.services.cheap_provider_runtime import deepseek_model_for_thinking_mode
-        _chat_model = deepseek_model_for_thinking_mode(model, "fast")
-        if _chat_model == model:
-            # Intet ægte swap (uventet) → drop hellere end at gentage thinking-kaldet.
-            return ""
+        # Siden alias-pensioneringen 24/7 findes intet chat-alias at swappe til:
+        # non-thinking er et REQUEST-param som adapteren sætter ud fra
+        # thinking_mode="fast" nedenfor. Den gamle guard "intet swap → return"
+        # gjorde denne rescue DØD i seks uger (swap var altid identisk).
+        _chat_model = model
         # FollowupDone.text == "".join(deltas) i adapterne — så brug Done.text som
         # autoritativ (undgå dobling), fald tilbage på akkumulerede deltas hvis
         # runden afsluttede uden et eksplicit Done (fejl/afbrud).

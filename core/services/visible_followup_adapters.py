@@ -752,15 +752,18 @@ class OpenAICompatFollowupAdapter:
             _merge_openai_tool_call_deltas,
         )
 
-        # Deepseek thinking-mode toggles via model-name swap, ikke via
-        # request-param. "fast" → swap til deepseek-chat (non-thinking
-        # compat-alias). Andre openai-compat providere har ikke thinking-
-        # mode og returneres uændret.
+        # DeepSeek thinking-mode er REQUEST-PARAMS siden alias-pensioneringen
+        # 24/7 (deepseek-chat/-reasoner dør): fast → thinking disabled, think →
+        # reasoning_effort=high, deep → max. Første pas sendte dem; følge-
+        # runderne swappede kun modelnavnet (som ikke længere swapper) → fast/
+        # deep gjaldt kun runde 0, og #1453-rescue + syntese kørte MED thinking.
+        # Nu samme params som første pas, hele turen. Andre providere: uændret.
+        _mode_body: dict | None = None
         if self.provider_id == "deepseek":
-            from core.services.cheap_provider_runtime import (
-                deepseek_model_for_thinking_mode,
+            from core.services.cheap_provider_runtime_adapters import (
+                deepseek_request_for_thinking_mode,
             )
-            model = deepseek_model_for_thinking_mode(model, thinking_mode)
+            model, _mode_body = deepseek_request_for_thinking_mode(model, thinking_mode)
 
         # Legacy assistant-turns uden reasoning_content: Deepseek thinking-mode
         # afviser hele requesten hvis feltet mangler. Tidligere strippede vi
@@ -836,7 +839,8 @@ class OpenAICompatFollowupAdapter:
             req = self._build_request(
                 model=model, messages=messages, tool_definitions=tool_definitions,
                 temperature=temperature, top_p=top_p, tool_choice=tool_choice,
-                extra_body=nonthinking_retry_body() if _length_retry else None,
+                extra_body={**(_mode_body or {}),
+                            **(nonthinking_retry_body() if _length_retry else {})} or None,
             )
         except Exception as e:
             _log.error(

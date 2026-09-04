@@ -750,8 +750,9 @@ def test_ollama_followup_omits_temperature_when_none(
 def test_rescue_swaps_to_nonthinking_chat_and_collects_text(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Rescue skal kalde deepseek-chat (non-thinking), UDEN tools, og returnere
-    den syntetiserede tekst."""
+    """Rescue skal kalde SAMME model med thinking_mode="fast" (adapteren sender
+    thinking disabled som request-param — deepseek-chat-aliaset døde 24/7),
+    UDEN tools, og returnere den syntetiserede tekst."""
     seen: dict[str, object] = {}
 
     def _fake_stream(*, provider, model, base_messages, exchanges,
@@ -767,20 +768,16 @@ def test_rescue_swaps_to_nonthinking_chat_and_collects_text(
         yield vf.FollowupDone(text="Her er svaret.", reasoning_content="")
 
     monkeypatch.setattr(vf, "stream_visible_followup", _fake_stream)
-    monkeypatch.setattr(
-        "core.services.cheap_provider_runtime.deepseek_model_for_thinking_mode",
-        lambda _model, _mode: "deepseek-chat",
-    )
 
     out = vf.synthesize_nonthinking_rescue(
         provider="deepseek", model="deepseek-v4-flash",
         base_messages=[{"role": "user", "content": "hej"}],
         exchanges=[],
     )
-    assert out == "Her er svaret."          # ikke doblet
-    assert seen["model"] == "deepseek-chat"  # swappet til non-thinking
-    assert seen["tool_definitions"] is None  # force-prose
-    assert seen["thinking_mode"] == "fast"
+    assert out == "Her er svaret."               # ikke doblet
+    assert seen["model"] == "deepseek-v4-flash"  # intet alias-swap længere
+    assert seen["tool_definitions"] is None      # force-prose
+    assert seen["thinking_mode"] == "fast"       # non-thinking via request-param
 
 
 def test_rescue_skips_non_deepseek_providers(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1057,7 +1054,61 @@ def test_deepseek_followup_budget_fits_reasoning_plus_answer(monkeypatch) -> Non
         provider="deepseek", model="deepseek-v4-flash",
         base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
     assert bodies[0]["max_tokens"] == 32_768
-    assert "thinking" not in bodies[0]
+    assert bodies[0]["thinking"] == {"type": "enabled"}  # default think-mode, som første pas
+
+
+@pytest.mark.parametrize("mode,expected", [
+    ("think", {"reasoning_effort": "high", "thinking": {"type": "enabled"}}),
+    ("deep", {"reasoning_effort": "max", "thinking": {"type": "enabled"}}),
+    ("fast", {"thinking": {"type": "disabled"}}),
+])
+def test_deepseek_followup_sends_thinking_mode_params_like_first_pass(monkeypatch, mode, expected) -> None:
+    """Siden alias-pensioneringen 24/7 er thinking-mode request-params; følge-
+    runderne swappede kun modelnavnet → fast/deep gjaldt kun runde 0."""
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"ok"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+    list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash", thinking_mode=mode,
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    body = bodies[0]
+    assert body["model"] == "deepseek-v4-flash"
+    for k, v in expected.items():
+        assert body[k] == v
+    if mode == "fast":
+        assert "reasoning_effort" not in body
+
+
+def test_deepseek_v4_pro_followup_sends_no_thinking_params(monkeypatch) -> None:
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"ok"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+    list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-pro", thinking_mode="fast",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    assert "thinking" not in bodies[0] and "reasoning_effort" not in bodies[0]
+
+
+def test_nonthinking_rescue_runs_with_thinking_disabled(monkeypatch) -> None:
+    """#1453-rescue bailede paa 'intet swap' siden alias-pensioneringen 24/7 →
+    den var død. Nu: samme model, thinking disabled via request-param, prosa."""
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"reddet svar"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+    out = vf.synthesize_nonthinking_rescue(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}],
+        exchanges=[vf.ToolExchange(
+            text="", tool_calls=[{"id": "c1", "function": {"name": "x", "arguments": {}}}],
+            results=[vf.ToolResult(tool_call_id="c1", tool_name="x", content="y")])])
+    assert out == "reddet svar"
+    assert len(bodies) == 1
+    assert bodies[0]["model"] == "deepseek-v4-flash"
+    assert bodies[0]["thinking"] == {"type": "disabled"}
+    assert "tools" not in bodies[0]
 
 
 def test_reasoning_exhausted_round_retries_once_without_thinking(monkeypatch) -> None:
@@ -1073,8 +1124,9 @@ def test_reasoning_exhausted_round_retries_once_without_thinking(monkeypatch) ->
         provider="deepseek", model="deepseek-v4-flash",
         base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
     assert len(bodies) == 2
-    assert "thinking" not in bodies[0]
+    assert bodies[0]["thinking"] == {"type": "enabled"}
     assert bodies[1]["thinking"] == {"type": "disabled"}
+    assert "reasoning_effort" not in bodies[1]
     assert bodies[1]["messages"] == bodies[0]["messages"]
     done = [e for e in events if isinstance(e, vf.FollowupDone)]
     assert len(done) == 1 and done[0].text == "her er svaret" and done[0].finish_reason == "stop"

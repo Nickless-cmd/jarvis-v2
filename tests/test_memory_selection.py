@@ -46,3 +46,14 @@ def test_section_path_used_for_memory_md(tmp_path):
         )
     assert sel is not None and sel.backend_name == "section-embedding"
     assert sel.lines == ["§ pfSense: nøglen i .env"]
+
+
+def test_answer_gate_keeps_three_letter_topic_words():
+    """'GPU', 'PVE', 'API' are real topic words; the gate must not drop them (2026-09-04)."""
+    from core.services.prompt_sections.memory_selection import _filter_answer_changing_memory
+
+    lines = ["§ GPU — genaktiveret i container: GTX 1070, 8GB VRAM, ollama embeddings"]
+    assert _filter_answer_changing_memory("hvilken GPU har jeg og hvad bruges den til?", lines) == lines
+    assert _filter_answer_changing_memory("hvad ved du om PVE-værtens PSU?", ["§ PVE PSU: mistænkt svag strømforsyning"]) != []
+    # pure filler still yields nothing
+    assert _filter_answer_changing_memory("har jeg det?", lines) == []

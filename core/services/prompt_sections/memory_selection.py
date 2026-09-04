@@ -25,10 +25,20 @@ from core.services.prompt_sections.memory_scoring import (
 
 import re
 
-_TOKEN_RE = re.compile(r"[A-Za-zÆØÅæøå0-9_]{4,}")
+# 2026-09-04 (efter merge): mindst 3 tegn, ikke 4 — ellers taeller "GPU", "PVE",
+# "PSU", "API", "SSH", "LXC", "VPN", "DNS", "iOS" ikke som emneord, og
+# "hvilken GPU har jeg" mistede sin MEMORY.md-sektion. Korte fyldord er i stedet
+# paa stoplisten.
+_TOKEN_RE = re.compile(r"[A-Za-zÆØÅæøå0-9_]{3,}")
 _GENERIC_MEMORY_WORDS = frozenset({
     "skal", "ikke", "eller", "hvis", "this", "that", "with", "from", "user",
     "memory", "jarvis", "bjørn",
+    # korte fyldord (3 tegn) — dansk + engelsk
+    "har", "jeg", "dig", "mig", "den", "det", "der", "til", "for", "med", "kan",
+    "vil", "var", "sig", "min", "dit", "din", "sin", "sit", "men", "som", "nok",
+    "the", "and", "you", "are", "was", "our", "its", "can", "did", "how", "why",
+    "hvad", "hvor", "hvem", "hvordan", "hvorfor", "hvilken", "hvilket", "hvilke",
+    "bruges", "bruger", "brugt",
 })
 
 

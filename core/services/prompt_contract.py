@@ -2551,14 +2551,6 @@ def _build_visible_chat_prompt_assembly_impl(
             derived_inputs.append("tool catalog (compact)")
     except Exception:
         pass
-    try:
-        from core.services.prompt_section_impact import remember_prompt_sections
-        remember_prompt_sections(
-            session_id=session_id or "",
-            sections=[(_label_of(part), part) for part in parts if part],
-        )
-    except Exception:
-        pass
 
     # jarvis-code Path B: tilføj surfaces EGEN 3-lags-toolbox-forklaring (native=Bjørns
     # maskine / runtime_*=container / operator_*=bro). Desk-katalogen ovenfor forklarer
@@ -3029,6 +3021,19 @@ def _build_visible_chat_prompt_assembly_impl(
         file=_sys_mod.stderr,
         flush=True,
     )
+
+    # Impact-telemetri (prompt.section_answer_impact): husk sektionerne HER, hvor
+    # _label_of er defineret. Den oprindelige placering (før transcript/katalog)
+    # kaldte den nested def før den var bundet → UnboundLocalError, fanget stille
+    # → 0 events nogensinde (verificeret live 4/9 efter to ægte ture).
+    try:
+        from core.services.prompt_section_impact import remember_prompt_sections
+        remember_prompt_sections(
+            session_id=session_id or "",
+            sections=[(_label_of(part), part) for part in parts if part],
+        )
+    except Exception:
+        pass
 
     # TEMP-DIAG: gated system-prompt dump (touch /tmp/jarvis-prompt-dump), rotates
     # latest→prev so two consecutive assemblies can be diffed to find what MUTATES

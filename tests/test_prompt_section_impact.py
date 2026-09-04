@@ -29,3 +29,24 @@ def test_observe_last_prompt_answer_impact_publishes(monkeypatch):
 
     assert impacts
     assert events[0][0] == "prompt.section_answer_impact"
+
+
+def test_visible_prompt_build_remembers_sections_for_impact(isolated_runtime):
+    """Regression (2026-09-04): remember_prompt_sections ran before the nested
+    _label_of was bound → UnboundLocalError swallowed → no impact events ever."""
+    from core.services import prompt_section_impact as psi
+
+    prompt_contract = isolated_runtime.prompt_contract
+    psi._LAST_SECTIONS.clear()
+    prompt_contract.build_visible_chat_prompt_assembly(
+        provider="openai", model="gpt-5", user_message="hvilken GPU har jeg?", session_id="s-impact",
+    )
+    assert "s-impact" in psi._LAST_SECTIONS
+    _ts, sections = psi._LAST_SECTIONS["s-impact"]
+    assert len(sections) > 5
+    labels = [lbl for lbl, _ in sections]
+    assert any("SOUL" in lbl for lbl in labels)
+    impacts = psi.observe_last_prompt_answer_impact(
+        session_id="s-impact", run_id="r", answer_text="Du har en GTX 1070 til embeddings",
+    )
+    assert impacts and all("impact_score" in i for i in impacts)

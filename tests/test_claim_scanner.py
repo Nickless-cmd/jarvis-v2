@@ -415,3 +415,41 @@ def test_shadow_natural_language_not_caught():
     # "ændret min holdning" må ALDRIG fanges (det er pointen med shadow-first).
     assert detect_shadow_claims("Jeg har ændret min holdning til det", []) == []
     assert detect_shadow_claims("Jeg har tilføjet en pointe", []) == []
+
+
+# ── 2026-09-04: fortidig hændelsestid skal IKKE flagges (Bjørn) ────────────
+# Rod-årsag: "blev leveret kl. 07:36" er en FORTIDIG hændelsestid (sendetid),
+# ikke et "hvad er klokken nu"-claim. Før vendte gaten logikken forkert:
+# _is_planned_time_context sprang kun over planlagt/fremtid, så fortid faldt
+# mellem to stole og blev sammenlignet mod uret → falsk positiv fodnote.
+# Nu: kun EKSPLICIT aktuel-tid-claims verificeres mod uret.
+
+def test_scan_response_past_event_time_not_flagged():
+    """Fortidig hændelsestid ('blev leveret kl. 07:36') må IKKE få tids-fodnote."""
+    from core.services.claim_scanner import scan_response
+    text = "Morgenbriefen blev leveret til din app-session kl. 07:36."
+    out = scan_response(text)
+    # Ingen tidskorrektion — teksten bevares ordret, ingen ✋-fodnote.
+    assert "Tidsangivelse uverificeret" not in out, f"Fortid blev flagget: {out!r}"
+    assert "kl. 07:36" in out
+
+
+def test_scan_response_future_planned_time_not_flagged():
+    """Planlagt/fremtidig tid ('kl. 10 dansk tid') må IKKE få tids-fodnote."""
+    from core.services.claim_scanner import scan_response
+    text = "Reminderen fyrer kl. 10 dansk tid."
+    out = scan_response(text)
+    assert "Tidsangivelse uverificeret" not in out, f"Planlagt blev flagget: {out!r}"
+
+
+def test_scan_response_explicit_now_claim_still_flagged():
+    """Eksplicit aktuel-tid-claim ('klokken er 14:32') SKAL stadig verificeres."""
+    from core.services.claim_scanner import scan_response
+    from datetime import UTC, datetime
+    from zoneinfo import ZoneInfo
+    now_local = datetime.now(UTC).astimezone(ZoneInfo("Europe/Copenhagen"))
+    # Vælg en tid der er langt fra nu → verificering fejler → fodnote.
+    far_h = (now_local.hour + 6) % 24
+    text = f"Klokken er {far_h:02d}:00 lige nu."
+    out = scan_response(text)
+    assert "Tidsangivelse uverificeret" in out, f"Nu-claim blev ikke flagget: {out!r}"

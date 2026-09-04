@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_critique_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_resolve_self_critique_interval_days` | `()` | Read base interval, modulate by dream-bias self_critique_volume. | [src](../../../core/services/self_critique_runtime.py#L34) |
+| function | `read_self_docs` | `(*, doc_id=…, include_history=…, max_chars_per_doc=…)` | — | [src](../../../core/services/self_critique_runtime.py#L68) |
+| function | `run_self_critique_cycle` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/self_critique_runtime.py#L115) |
+| function | `run_ontological_revision_check` | `()` | Check if a 90-day revision is due. If yes, append 'Er du stadig enig?' response. | [src](../../../core/services/self_critique_runtime.py#L229) |
+| function | `build_self_critique_surface` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L321) |
+| function | `self_critique_path` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L347) |
+| function | `_self_doc_manifest` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L352) |
+| function | `_render_manifest` | `(manifest)` | — | [src](../../../core/services/self_critique_runtime.py#L370) |
+| function | `_render_doc` | `(item, *, max_chars)` | — | [src](../../../core/services/self_critique_runtime.py#L377) |
+| function | `_render_recent_chronicles` | `(entries)` | — | [src](../../../core/services/self_critique_runtime.py#L387) |
+| function | `_render_recent_chronicles_extended` | `(entries)` | Extended rendering for blind-angle prompt — more entries, includes lessons too. | [src](../../../core/services/self_critique_runtime.py#L399) |
+| function | `_append_self_critique_entry` | `(*, entry_id, created_at, next_review_at, prompt, critique, source_docs, cycle_type=…)` | — | [src](../../../core/services/self_critique_runtime.py#L416) |
+| function | `_latest_entry_preview` | `(text)` | — | [src](../../../core/services/self_critique_runtime.py#L449) |
+| function | `_self_critique_enabled` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L456) |
+| function | `_state` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L461) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/self_critique_runtime.py#L466) |
+| function | `_extract_key_words` | `(text)` | Extract meaningful Danish/English words (5+ chars) from text. | [src](../../../core/services/self_critique_runtime.py#L494) |
+| function | `_check_absence_links` | `(*, entry_id, critique_text, now)` | After a blind-angle critique, look for convergence with recent absence signals. | [src](../../../core/services/self_critique_runtime.py#L501) |
+| function | `get_absence_trace_links` | `()` | Return stored absence × blind-angle convergence records. | [src](../../../core/services/self_critique_runtime.py#L576) |
+
 ## `core/services/self_deception_guard.py`
 _Bounded self-deception guard — deterministic truth-constraint on user-facing stance._
 
@@ -729,13 +753,4 @@ _SQLite-backed shared cache for cross-process state._
 | function | `stats` | `()` | Return basic cache stats for MC visibility. | [src](../../../core/services/shared_cache.py#L230) |
 | function | `build_shared_cache_surface` | `()` | MC surface — read-only meta-projection. | [src](../../../core/services/shared_cache.py#L259) |
 | function | `_emit_shared_cache_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/shared_cache.py#L274) |
-
-## `core/services/shared_language.py`
-_Shared Language — tracks shorthand terms that develop between Jarvis and user._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `scan_for_shared_terms` | `(*, user_message, assistant_response, run_id=…)` | Scan conversation for potential shared language terms. | [src](../../../core/services/shared_language.py#L25) |
-| function | `build_shared_language_surface` | `()` | — | [src](../../../core/services/shared_language.py#L61) |
-| function | `_is_common_phrase` | `(phrase)` | — | [src](../../../core/services/shared_language.py#L82) |
 

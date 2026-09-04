@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/surprise_detector.py`
+_Surprise detector — anomaly signals for the proactive/autonomous lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_state` | `()` | — | [src](../../../core/services/surprise_detector.py#L39) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/surprise_detector.py#L44) |
+| function | `_publish` | `(kind, summary, detail=…)` | — | [src](../../../core/services/surprise_detector.py#L48) |
+| function | `_check_error_burst` | `()` | — | [src](../../../core/services/surprise_detector.py#L63) |
+| function | `_check_first_of_its_kind` | `()` | Track every event kind we've ever seen; new ones become surprises. | [src](../../../core/services/surprise_detector.py#L87) |
+| function | `_check_approval_starvation` | `()` | Check pending_approvals state for cards older than threshold. | [src](../../../core/services/surprise_detector.py#L116) |
+| function | `check_surprises` | `()` | Run all anomaly checks; return a summary of what fired. | [src](../../../core/services/surprise_detector.py#L151) |
+| function | `_exec_check_surprises` | `(_args)` | — | [src](../../../core/services/surprise_detector.py#L160) |
+
 ## `core/services/sustained_attention.py`
 _Sustained Attention — ongoing projects that survive across ticks._
 
@@ -605,18 +619,4 @@ _Tool tag taxonomy._
 | function | `get_pinned_set` | `()` | — | [src](../../../core/services/tool_tagger.py#L75) |
 | function | `invalidate_cache` | `()` | — | [src](../../../core/services/tool_tagger.py#L80) |
 | function | `bootstrap_tags` | `(*, dry_run=…)` | Use cheap-lane LLM to generate domain tags for every registered tool. | [src](../../../core/services/tool_tagger.py#L85) |
-
-## `core/services/tool_usage_store.py`
-_Tools-cluster Phase 2 — persistent forbrugs-statistik (DB-backed, cross-proces)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/tool_usage_store.py#L29) |
-| function | `record_use` | `(tool, *, kind=…, ok=…)` | UPSERT-increment forbrugs-tæller for ét tool-kald. Best-effort, hot-path-sikker. | [src](../../../core/services/tool_usage_store.py#L41) |
-| function | `usage_stats` | `()` | {tool: {count, errors, kind, last_used}} for alle tools der ER blevet kaldt. | [src](../../../core/services/tool_usage_store.py#L67) |
-| function | `_bucket_for` | `(count)` | — | [src](../../../core/services/tool_usage_store.py#L85) |
-| function | `usage_buckets` | `(registered=…)` | Klassificér tools i most/often/sometimes/rare/never. Hvis `registered` gives, indgår | [src](../../../core/services/tool_usage_store.py#L92) |
-| function | `tool_order` | `(registered)` | Ordn registrerede tools efter forbrug: mest-brugte FØRST, aldrig-brugte SIDST. | [src](../../../core/services/tool_usage_store.py#L106) |
-| function | `dead_tools` | `(registered)` | Registrerede tools der ALDRIG er kaldt (count 0). Vises sidst / kandidater til at | [src](../../../core/services/tool_usage_store.py#L116) |
-| function | `observe_stats` | `(registered=…)` | Periodisk (cadence): central.observe forbrugs-summary + flag antal døde tools. | [src](../../../core/services/tool_usage_store.py#L123) |
 

@@ -771,29 +771,32 @@ def _observe_autonomous_run(*, run, session_id: str, outcome: str,
     # awareness) så han bliver bevidst når et run slutter — hvad det gjorde, status,
     # fejl-id (run_id) og en review-invitation. Fejl/afbrud ALTID; completed kun når
     # der faktisk skete noget (frames>0), så trivielle ticks ikke oversvømmer brønden.
+    # Redesign 4. sep 2026: "run færdig" er TELEMETRI (event + Central), ikke en
+    # besked til Bjørn — 89 % af brøndens 506 nudges/uge var denne linje, 0 blev
+    # sendt. Kun fejl/afbrud bliver en proaktiv kandidat (medium → digest når
+    # Bjørn har været væk), leveret af proactivity_bridge.
     try:
-        from core.services import nudge_broend
         _focus = str(getattr(run, "user_message", "") or "")[:160]
         _rid = str(getattr(run, "run_id", "") or "")
-        _push = True
-        if outcome == "completed" and int(frames or 0) > 0:
-            _msg = f"Autonom run ✓ færdig: {_focus} — vil du reviewe? (run {_rid})"
-            _imp = "normal"
-        elif outcome == "failed":
+        try:
+            from core.eventbus.bus import event_bus as _eb_ar
+            _eb_ar.publish("runtime.autonomous_run_finished", {
+                "run_id": _rid, "outcome": str(outcome or ""), "frames": int(frames or 0),
+                "error": str(error or "")[:200], "focus": _focus,
+            })
+        except Exception:
+            pass
+        if outcome == "failed":
             _msg = (f"Autonom run ✗ FEJLET [err_id={_rid}]: {_focus} — "
                     f"{str(error or 'ukendt fejl')[:120]} — reviewe?")
-            _imp = "high"
         elif outcome in ("interrupted", "looped", "burned"):
             _msg = f"Autonom run ⏸ {outcome} [id={_rid}]: {_focus} — reviewe?"
-            _imp = "high"
         else:
-            _push = False  # trivielt/tomt completed-tick → ingen nudge
-        if _push:
-            nudge_broend.push(
-                source="autonomous_run", kind="autonomous_run",
-                message=_msg, importance=_imp,
-                raw_payload={"run_id": _rid, "outcome": outcome,
-                             "frames": int(frames or 0), "error": str(error or "")[:200]})
+            _msg = ""
+        if _msg:
+            from core.services.proactive_candidates import add_candidate
+            add_candidate(source="autonomous_run", kind="autonomous_run_failure",
+                          text=_msg, priority="medium")
     except Exception:
         pass
     # #3 supervision: vurdér runnet (korrelér + fang løgn/loop/forbindelsesfejl) + flag.
@@ -2316,6 +2319,8 @@ async def _stream_visible_run(
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
                 _hollow_promise_nudged = False  # hollow-promise-guard: cap ÉT nudge pr. run
+                _hollow_force_next = False      # redesign 4/9: næste runde tvinges m. tool_choice=required
+                _hollow_await_outcome = False   # udfald af den tvungne runde skal persisteres
                 # Eskalerende synthese-pause (Bjørn 2026-06-17 "spinner→død"-roden):
                 # når Jarvis spiraler i tavse tool-runder (fx læser filer én-ad-gangen),
                 # tving ham til at OPSUMMERE efter N runder ved at fjerne tools i ÉN runde.
@@ -2575,7 +2580,15 @@ async def _stream_visible_run(
                     # afslutte på en tvunget tom runde) er uændret.
                     _force_summary = _is_last_round or _tool_pause_active
                     _round_tool_definitions = _agentic_tools
-                    _round_tool_choice = "none" if _force_summary else None
+                    # Redesign 4/9: efter et tomt løfte TVINGES et tool-kald på
+                    # openai-compat-lanes (tool_choice="required") i stedet for at bede.
+                    from core.services.hollow_promise_round import next_round_tool_choice as _nrtc
+                    _round_tool_choice = _nrtc(
+                        force_summary=_force_summary, hollow_force=_hollow_force_next,
+                        provider=str(_active_provider or ""),
+                    )
+                    _hollow_forced_this_round = _round_tool_choice == "required"
+                    _hollow_force_next = False
                     # ── HARNESS-GARANTI: adapter-AGNOSTISK tvungen finalize (Bjørn 4. jul) ──
                     # Roden til "modellen skipper tekst" er RUNTIME, ikke modellen:
                     # tool_choice="none" er (a) KUN plumbet til openai-compat-adapteren
@@ -3470,6 +3483,20 @@ async def _stream_visible_run(
                             pass
                         break
 
+                    # Redesign 4/9: persistér udfaldet af runden EFTER et tomt løfte —
+                    # blev der kaldt et værktøj (resolved) eller ej (still_hollow)?
+                    if _hollow_await_outcome:
+                        _hollow_await_outcome = False
+                        try:
+                            from core.services.hollow_promise_round import note_outcome as _hp_out
+                            _hp_out(run_id=run.run_id, provider=str(_active_provider or ""),
+                                    model=str(_active_model or ""), round_index=_agentic_round + 1,
+                                    session_id=str(run.session_id or ""),
+                                    forced=bool(_hollow_forced_this_round),
+                                    tool_calls=len(_a_tool_calls or []))
+                        except Exception:
+                            pass
+
                     if not _a_tool_calls:
                         # Tvungen synthese-pause: tools var fjernet, så manglende
                         # tool-kald betyder "Jarvis opsummerede" — IKKE "færdig". Løft
@@ -3521,15 +3548,21 @@ async def _stream_visible_run(
                                         text=_exchange_text(), tool_calls=[], results=[]))
                                 base_messages.append(
                                     {"role": "user", "content": HOLLOW_PROMISE_NUDGE})
+                                # Redesign 4/9: næste runde tvinger et tool-kald og udfaldet
+                                # persisteres (runtime.hollow_promise_detected/outcome).
+                                _hollow_force_next = True
+                                _hollow_await_outcome = True
                                 try:
-                                    from core.services import followup_observer as _fu_hp
-                                    _fu_hp.note_hollow_promise(
-                                        run.run_id, provider=run.provider, model=run.model,
-                                        round_index=_agentic_round + 1,
-                                        session_id=run.session_id)
+                                    from core.services.hollow_promise_round import (
+                                        note_detected as _hp_det, supports_forced_tool_choice as _hp_sup,
+                                    )
+                                    _hp_det(run_id=run.run_id, provider=str(_active_provider or ""),
+                                            model=str(_active_model or ""), round_index=_agentic_round + 1,
+                                            session_id=str(run.session_id or ""),
+                                            forced=_hp_sup(str(_active_provider or "")))
                                 except Exception:
                                     pass
-                                continue  # tving ÉN mere runde med nudge'en
+                                continue  # tving ÉN mere runde — nu med tool_choice=required
                         except Exception:
                             pass  # fail-open → normal break nedenfor
                         # No more tool calls — this round produced the final response.

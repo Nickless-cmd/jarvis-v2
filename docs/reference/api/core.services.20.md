@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shared_language.py`
+_Shared Language — tracks shorthand terms that develop between Jarvis and user._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `scan_for_shared_terms` | `(*, user_message, assistant_response, run_id=…)` | Scan conversation for potential shared language terms. | [src](../../../core/services/shared_language.py#L25) |
+| function | `build_shared_language_surface` | `()` | — | [src](../../../core/services/shared_language.py#L61) |
+| function | `_is_common_phrase` | `(phrase)` | — | [src](../../../core/services/shared_language.py#L82) |
+
 ## `core/services/shared_language_extended.py`
 _Shared Language Extended — shorthand-udvikling og -resolution._
 
@@ -571,18 +580,4 @@ _Surprise daemon — first-person surprise when Jarvis's reactions diverge from 
 | function | `_generate_surprise` | `(mode, energy, divergence)` | — | [src](../../../core/services/surprise_daemon.py#L209) |
 | function | `_store_surprise` | `(phrase, divergence)` | — | [src](../../../core/services/surprise_daemon.py#L238) |
 | function | `_classify_surprise` | `(phrase)` | — | [src](../../../core/services/surprise_daemon.py#L293) |
-
-## `core/services/surprise_detector.py`
-_Surprise detector — anomaly signals for the proactive/autonomous lane._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_state` | `()` | — | [src](../../../core/services/surprise_detector.py#L39) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/surprise_detector.py#L44) |
-| function | `_publish` | `(kind, summary, detail=…)` | — | [src](../../../core/services/surprise_detector.py#L48) |
-| function | `_check_error_burst` | `()` | — | [src](../../../core/services/surprise_detector.py#L63) |
-| function | `_check_first_of_its_kind` | `()` | Track every event kind we've ever seen; new ones become surprises. | [src](../../../core/services/surprise_detector.py#L87) |
-| function | `_check_approval_starvation` | `()` | Check pending_approvals state for cards older than threshold. | [src](../../../core/services/surprise_detector.py#L116) |
-| function | `check_surprises` | `()` | Run all anomaly checks; return a summary of what fired. | [src](../../../core/services/surprise_detector.py#L151) |
-| function | `_exec_check_surprises` | `(_args)` | — | [src](../../../core/services/surprise_detector.py#L160) |
 

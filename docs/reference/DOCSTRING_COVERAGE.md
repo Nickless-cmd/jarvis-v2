@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6628/13290 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6630/13293 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,9 +24,9 @@ Generated from source. 6628/13290 functions/methods documented (49%). The list b
 | `core.memory` | 51 | 135 | 37% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4391 | 9212 | 47% |
+| `core.services` | 4391 | 9208 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 74 | 130 | 56% |
+| `core.services.prompt_sections` | 76 | 137 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
@@ -40,7 +40,7 @@ Generated from source. 6628/13290 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1896)
+## Undocumented public functions (1897)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1280,13 +1280,13 @@ Generated from source. 6628/13290 functions/methods documented (49%). The list b
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3167)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3015)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3304)
-- `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L148)
-- `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L96)
-- `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L123)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4717)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3183)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3031)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3320)
+- `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
+- `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
+- `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4538)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
@@ -1753,20 +1753,21 @@ Generated from source. 6628/13290 functions/methods documented (49%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L347)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L344)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L354)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6258)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6283)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6487)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6496)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6483)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6254)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6396)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6448)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6365)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6306)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6338)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6224)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6506)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6269)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6223)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6248)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6452)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6461)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6448)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6219)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6361)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6413)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6330)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6271)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6303)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6189)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6471)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6234)
+- `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L40)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L432)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)

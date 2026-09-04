@@ -4536,55 +4536,20 @@ async def _stream_visible_run(
                             )
                         except Exception:
                             pass
-                        # Experience-episode collector (Lag 1 of Runtime
-                        # Decision Policy — added 2026-05-09). Append-only
-                        # log feeds embedding-retrieval substrate via
-                        # _experience_substrate_section in prompt_contract.
+                        # Experience-episode + lektie ved tool-fejl + theory-of-mind —
+                        # udskilt til visible_runs_learning_signals.py (Boy Scout,
+                        # 2026-09-04, memory repair R4).
                         try:
-                            from core.services.experience_episodes import record_episode
-                            _tool_seq = []
-                            for _tc in _collected_native_tool_calls or []:
-                                _name = ""
-                                try:
-                                    _name = (
-                                        getattr(_tc, "name", None)
-                                        or (_tc.get("name") if isinstance(_tc, dict) else "")
-                                        or (
-                                            _tc.get("function", {}).get("name", "")
-                                            if isinstance(_tc, dict) else ""
-                                        )
-                                    )
-                                except Exception:
-                                    _name = ""
-                                if _name:
-                                    _tool_seq.append(str(_name))
-                            _outcome_signals = {
-                                "status": str(_outcome_status or ""),
-                                "tool_errors": int(
-                                    1 if (_outcome_error or "") else 0
-                                ),
-                                "tool_count": len(_tool_seq),
-                                "output_tokens": int(_tokens[1] or 0),
-                                "assistant_chars": len(_followup_text or ""),
-                            }
-                            record_episode(
-                                session_id=_run_ref.session_id,
-                                turn_id=_run_ref.run_id,
-                                intent=str(_run_ref.user_message or "")[:240],
-                                tool_sequence=_tool_seq,
-                                outcome_signals=_outcome_signals,
-                                user_corrected=False,  # enriched later
-                                session_phase="mid-task",
+                            from core.services.visible_runs_learning_signals import (
+                                record_visible_run_learning_signals,
                             )
-                        except Exception:
-                            pass
-                        try:
-                            from core.services.theory_of_mind_engine import record_theory_of_mind_update
-                            record_theory_of_mind_update(
-                                user_message=_run_ref.user_message,
-                                assistant_text=_followup_text,
+                            record_visible_run_learning_signals(
+                                run_ref=_run_ref,
+                                collected_native_tool_calls=_collected_native_tool_calls,
                                 outcome_status=_outcome_status,
-                                source_run_id=_run_ref.run_id,
+                                outcome_error=_outcome_error,
+                                followup_text=_followup_text,
+                                output_tokens=int(_tokens[1] or 0),
                             )
                         except Exception:
                             pass

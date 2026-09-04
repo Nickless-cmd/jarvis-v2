@@ -182,6 +182,20 @@ _core/services/prompt_sections/memory_scoring.py_
 | function | `_heuristic_relevant_memory_entries` | `(entries, *, user_message, max_lines)` | — | [src](../../../core/services/prompt_sections/memory_scoring.py#L81) |
 | function | `_merge_ordered_memory_entries` | `(primary, secondary, *, max_lines)` | — | [src](../../../core/services/prompt_sections/memory_scoring.py#L104) |
 
+## `core/services/prompt_sections/memory_selection.py`
+_MEMORY.md line/section selection for the visible prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MemorySectionSelection` | `` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L28) |
+| function | `_track_memory_selection` | `(selection, mode, candidate_count)` | Telemetry lives in prompt_contract (module-level history); lazy import avoids a cycle. | [src](../../../core/services/prompt_sections/memory_selection.py#L40) |
+| function | `_workspace_memory_section` | `(path, *, label, user_message, max_lines, max_chars, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L49) |
+| function | `_today_daily_memory_lines` | `(*, limit=…)` | Read today's daily memory lines for injection into visible prompts. | [src](../../../core/services/prompt_sections/memory_selection.py#L107) |
+| function | `_recent_daily_memory_lines` | `(*, limit=…, days=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L120) |
+| function | `_workspace_memory_entries` | `(path)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L129) |
+| function | `_select_relevant_memory_entries` | `(entries, *, user_message, max_lines, max_chars, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L146) |
+| function | `_bounded_nl_memory_selection` | `(*, user_message, entries, max_lines, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L237) |
+
 ## `core/services/prompt_sections/pattern_counterfactuals.py`
 _Surface pattern-counterfactual hypotheses in the prompt._
 

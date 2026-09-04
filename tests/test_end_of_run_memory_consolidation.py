@@ -103,7 +103,12 @@ def test_end_of_run_memory_consolidation_reruns_with_full_context_when_model_req
     )
 
     workspace = ensure_default_workspace()
-    memory_md = (workspace / "MEMORY.md").read_text(encoding="utf-8")
+    # 2026-07-10 vækst-værn: MEMORY.md-promoveringer routes til curated-memory-
+    # TOPIC'en, ikke til MEMORY.md selv. Testen ledte stadig i MEMORY.md og har
+    # derfor fejlet siden vækst-værnet landede (fundet 2026-09-04).
+    from core.memory.memory_topic_store import curated_path_for
+    curated = curated_path_for("curated-memory")
+    memory_md = curated.read_text(encoding="utf-8") if curated and curated.exists() else ""
     daily_memory = next((workspace / "memory" / "daily").glob("*.md"))
     daily_text = daily_memory.read_text(encoding="utf-8")
 

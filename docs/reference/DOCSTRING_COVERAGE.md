@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6670/13406 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6673/13409 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6670/13406 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4409 | 9254 | 47% |
+| `core.services` | 4412 | 9257 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 86 | 156 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -235,12 +235,12 @@ Generated from source. 6670/13406 functions/methods documented (49%). The list b
 - `core/eventbus/events.py` :: `Event.family` (L202)
 - `core/eventbus/events.py` :: `Event.from_record` (L212)
 - `core/eventbus/events.py` :: `Event.validate` (L223)
-- `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L310)
-- `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L111)
-- `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L43)
-- `core/identity/candidate_workflow.py` :: `auto_apply_safe_memory_md_candidates` (L270)
-- `core/identity/candidate_workflow.py` :: `auto_apply_safe_user_md_candidates` (L230)
-- `core/identity/candidate_workflow.py` :: `reject_runtime_contract_candidate` (L87)
+- `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L318)
+- `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L119)
+- `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L51)
+- `core/identity/candidate_workflow.py` :: `auto_apply_safe_memory_md_candidates` (L278)
+- `core/identity/candidate_workflow.py` :: `auto_apply_safe_user_md_candidates` (L238)
+- `core/identity/candidate_workflow.py` :: `reject_runtime_contract_candidate` (L95)
 - `core/identity/email_verify.py` :: `create_token` (L37)
 - `core/identity/email_verify.py` :: `send_verification_email` (L79)
 - `core/identity/household.py` :: `is_valid_role` (L50)
@@ -504,9 +504,9 @@ Generated from source. 6670/13406 functions/methods documented (49%). The list b
 - `core/runtime/provider_router.py` :: `resolve_provider_router_target` (L254)
 - `core/runtime/provider_router.py` :: `select_main_agent_target` (L200)
 - `core/runtime/secrets.py` :: `mail_config` (L103)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L488)
-- `core/runtime/settings.py` :: `load_settings` (L593)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1044)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L495)
+- `core/runtime/settings.py` :: `load_settings` (L600)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1051)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
 - `core/services/account_data_controls.py` :: `export_json` (L341)

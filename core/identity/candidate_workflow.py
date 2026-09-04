@@ -26,6 +26,14 @@ _AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS = {
     "user-workstyle:direction:stable-threading",
     "user-preference:reminders:assumption-caution",
 }
+# Bevis-niveauer der må skrives med det samme. «runtime_inference» (udledt) er
+# BEVIDST udenfor: den tælles, og skrives først når den samme konklusion dukker
+# op i en anden session — så er den `repeated_cross_session`.
+_AUTO_APPLY_EVIDENCE_CLASSES = {
+    "explicit_user_statement",
+    "explicit_assistant_confirmation",
+    "repeated_cross_session",
+}
 _AUTO_APPLY_SAFE_MEMORY_MD_PREFIX = "workspace-memory:stable-context:"
 _AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS = {
     "workspace-memory:remembered-fact:project-anchor",
@@ -402,14 +410,18 @@ def _candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> bool:
     source_kind = str(candidate.get("source_kind") or "")
     evidence_class = str(candidate.get("evidence_class") or "")
     if canonical_key not in _AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS:
+        # 2026-09-04 (lærings-sløjfe, blok B): gaten og skriveren brugte to
+        # FORSKELLIGE ordlister for evidence_class. Skriveren udsendte
+        # {explicit_user_statement, single_session_pattern, runtime_support_only};
+        # gaten krævede {explicit_user_statement, explicit_assistant_confirmation,
+        # runtime-inference}. To af tre bevis-niveauer kunne derfor strukturelt
+        # ALDRIG auto-anvendes. Nu ét sæt, tre niveauer, og «udledt» skrives
+        # bevidst IKKE — den tælles, og skrives først når den gentager sig i en
+        # anden session (så er den `repeated_cross_session`).
         if not (
             source_mode == "end_of_run_memory_consolidation"
             and source_kind in {"user-explicit", "runtime-inference"}
-            and evidence_class in {
-                "explicit_user_statement",
-                "explicit_assistant_confirmation",
-                "runtime-inference",
-            }
+            and evidence_class in _AUTO_APPLY_EVIDENCE_CLASSES
         ):
             return False
     readiness = candidate_apply_readiness(candidate)

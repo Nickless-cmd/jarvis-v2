@@ -320,6 +320,13 @@ class RuntimeSettings:
     # beskeder tilbage" med lange beskeder; 80k holder ~2× mere historik og compacter
     # blidere (ned til 35k, ikke 15k). Stadig langt fra 1M — bevidst lille arbejdsvindue
     # for svarkvalitet, men rummeligt nok til at han ikke taber nær kontekst.
+    # ── Lærings-sløjfe (2026-09-04, blok B) ──────────────────────────────────
+    # De gamle ordmønster-detektorer (user_understanding, user_md-forslag,
+    # memory_md-forslag) skrev hver tur og lærte intet: over 30 dage 1.756
+    # forkastede USER.md-kandidater mod 9 anvendte, og 19.145 forkastede
+    # MEMORY.md-kandidater med Bjørns egen besked ordret som titel. Slukket;
+    # end_of_run_memory_consolidation gør arbejdet. Sæt True for at tænde igen.
+    legacy_regex_learning_detectors_enabled: bool = False
     context_attention_budget_tokens: int = 80_000     # high-water: trigger her
     context_attention_low_water_tokens: int = 35_000  # compact ned til ~dette
     # Model-BEVIDST sikkerhedsloft (backstop). Hvis transcript på trods af budgettet

@@ -10,39 +10,39 @@ _(no top-level classes or functions)_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `approve_runtime_contract_candidate` | `(candidate_id, *, status_reason_override=…)` | — | [src](../../../core/identity/candidate_workflow.py#L43) |
-| function | `reject_runtime_contract_candidate` | `(candidate_id)` | — | [src](../../../core/identity/candidate_workflow.py#L87) |
-| function | `apply_runtime_contract_candidate` | `(candidate_id, *, status_reason_override=…)` | — | [src](../../../core/identity/candidate_workflow.py#L111) |
-| function | `_should_auto_apply` | `(candidate, kind)` | Memory-cluster (2026-06-22): rut promotion-beslutningen gennem den GRADEREDE | [src](../../../core/identity/candidate_workflow.py#L211) |
-| function | `auto_apply_safe_user_md_candidates` | `()` | — | [src](../../../core/identity/candidate_workflow.py#L230) |
-| function | `auto_apply_safe_memory_md_candidates` | `()` | — | [src](../../../core/identity/candidate_workflow.py#L270) |
-| function | `apply_approved_runtime_contract_candidates` | `(*, target_files=…, limit=…)` | — | [src](../../../core/identity/candidate_workflow.py#L310) |
-| function | `_require_candidate` | `(candidate_id)` | — | [src](../../../core/identity/candidate_workflow.py#L356) |
-| function | `_require_status` | `(candidate, *, allowed)` | — | [src](../../../core/identity/candidate_workflow.py#L365) |
-| function | `_latest_equivalent_applied_candidate` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L371) |
-| function | `_candidate_eligible_for_auto_apply` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L390) |
-| function | `_memory_candidate_eligible_for_auto_apply` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L436) |
-| function | `_candidate_dimension_key` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L517) |
-| function | `_stamp_learned_line` | `(line, candidate)` | Tilføj "(dato, kilde)" så en Lært-linje bærer sin egen proveniens. | [src](../../../core/identity/candidate_workflow.py#L536) |
-| function | `_candidate_write_material` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L551) |
-| function | `_user_line_from_key` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L579) |
-| function | `_memory_line_from_key` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L590) |
-| function | `_canonical_self_line_from_key` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L598) |
-| function | `_chronicle_write_material` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L602) |
-| function | `_default_approval_status_reason` | `(candidate, *, superseded)` | — | [src](../../../core/identity/candidate_workflow.py#L624) |
-| function | `_default_apply_status_reason` | `(candidate, *, write_status)` | — | [src](../../../core/identity/candidate_workflow.py#L649) |
-| function | `_fuzzy_line_match` | `(line, existing_text, threshold=…)` | Check if *line* is already present in *existing_text* (fuzzy). | [src](../../../core/identity/candidate_workflow.py#L668) |
-| function | `_append_curated_topic_line` | `(content_line)` | Route en MEMORY.md-promovering til curated-memory-TOPIC'en i stedet for at | [src](../../../core/identity/candidate_workflow.py#L706) |
-| function | `_append_workspace_contract_line` | `(*, target_file, section_heading, content_line)` | — | [src](../../../core/identity/candidate_workflow.py#L742) |
-| function | `_append_workspace_contract_line_raw` | `(*, target_file, section_heading, content_line)` | — | [src](../../../core/identity/candidate_workflow.py#L761) |
-| function | `_append_workspace_contract_block` | `(*, target_file, section_heading, content_block)` | — | [src](../../../core/identity/candidate_workflow.py#L814) |
-| function | `_insert_under_heading` | `(text, heading, content_line)` | — | [src](../../../core/identity/candidate_workflow.py#L854) |
-| function | `_insert_block_under_heading` | `(text, heading, content_block)` | — | [src](../../../core/identity/candidate_workflow.py#L877) |
-| function | `_apply_chronicle_runtime_contract_candidate` | `(candidate, *, status_reason_override=…)` | — | [src](../../../core/identity/candidate_workflow.py#L900) |
-| function | `_chronicle_entry_shape` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L995) |
-| function | `_single_line` | `(value)` | — | [src](../../../core/identity/candidate_workflow.py#L1003) |
-| function | `_now_iso` | `()` | — | [src](../../../core/identity/candidate_workflow.py#L1007) |
-| function | `_check_repeat_writer_trap` | `(target_file, content_line)` | Check if the same content has been written too many times. Alarm if stuck. | [src](../../../core/identity/candidate_workflow.py#L1025) |
+| function | `approve_runtime_contract_candidate` | `(candidate_id, *, status_reason_override=…)` | — | [src](../../../core/identity/candidate_workflow.py#L51) |
+| function | `reject_runtime_contract_candidate` | `(candidate_id)` | — | [src](../../../core/identity/candidate_workflow.py#L95) |
+| function | `apply_runtime_contract_candidate` | `(candidate_id, *, status_reason_override=…)` | — | [src](../../../core/identity/candidate_workflow.py#L119) |
+| function | `_should_auto_apply` | `(candidate, kind)` | Memory-cluster (2026-06-22): rut promotion-beslutningen gennem den GRADEREDE | [src](../../../core/identity/candidate_workflow.py#L219) |
+| function | `auto_apply_safe_user_md_candidates` | `()` | — | [src](../../../core/identity/candidate_workflow.py#L238) |
+| function | `auto_apply_safe_memory_md_candidates` | `()` | — | [src](../../../core/identity/candidate_workflow.py#L278) |
+| function | `apply_approved_runtime_contract_candidates` | `(*, target_files=…, limit=…)` | — | [src](../../../core/identity/candidate_workflow.py#L318) |
+| function | `_require_candidate` | `(candidate_id)` | — | [src](../../../core/identity/candidate_workflow.py#L364) |
+| function | `_require_status` | `(candidate, *, allowed)` | — | [src](../../../core/identity/candidate_workflow.py#L373) |
+| function | `_latest_equivalent_applied_candidate` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L379) |
+| function | `_candidate_eligible_for_auto_apply` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L398) |
+| function | `_memory_candidate_eligible_for_auto_apply` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L448) |
+| function | `_candidate_dimension_key` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L529) |
+| function | `_stamp_learned_line` | `(line, candidate)` | Tilføj "(dato, kilde)" så en Lært-linje bærer sin egen proveniens. | [src](../../../core/identity/candidate_workflow.py#L548) |
+| function | `_candidate_write_material` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L563) |
+| function | `_user_line_from_key` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L591) |
+| function | `_memory_line_from_key` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L602) |
+| function | `_canonical_self_line_from_key` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L610) |
+| function | `_chronicle_write_material` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L614) |
+| function | `_default_approval_status_reason` | `(candidate, *, superseded)` | — | [src](../../../core/identity/candidate_workflow.py#L636) |
+| function | `_default_apply_status_reason` | `(candidate, *, write_status)` | — | [src](../../../core/identity/candidate_workflow.py#L661) |
+| function | `_fuzzy_line_match` | `(line, existing_text, threshold=…)` | Check if *line* is already present in *existing_text* (fuzzy). | [src](../../../core/identity/candidate_workflow.py#L680) |
+| function | `_append_curated_topic_line` | `(content_line)` | Route en MEMORY.md-promovering til curated-memory-TOPIC'en i stedet for at | [src](../../../core/identity/candidate_workflow.py#L718) |
+| function | `_append_workspace_contract_line` | `(*, target_file, section_heading, content_line)` | — | [src](../../../core/identity/candidate_workflow.py#L754) |
+| function | `_append_workspace_contract_line_raw` | `(*, target_file, section_heading, content_line)` | — | [src](../../../core/identity/candidate_workflow.py#L773) |
+| function | `_append_workspace_contract_block` | `(*, target_file, section_heading, content_block)` | — | [src](../../../core/identity/candidate_workflow.py#L826) |
+| function | `_insert_under_heading` | `(text, heading, content_line)` | — | [src](../../../core/identity/candidate_workflow.py#L866) |
+| function | `_insert_block_under_heading` | `(text, heading, content_block)` | — | [src](../../../core/identity/candidate_workflow.py#L889) |
+| function | `_apply_chronicle_runtime_contract_candidate` | `(candidate, *, status_reason_override=…)` | — | [src](../../../core/identity/candidate_workflow.py#L912) |
+| function | `_chronicle_entry_shape` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L1007) |
+| function | `_single_line` | `(value)` | — | [src](../../../core/identity/candidate_workflow.py#L1015) |
+| function | `_now_iso` | `()` | — | [src](../../../core/identity/candidate_workflow.py#L1019) |
+| function | `_check_repeat_writer_trap` | `(target_file, content_line)` | Check if the same content has been written too many times. Alarm if stuck. | [src](../../../core/identity/candidate_workflow.py#L1037) |
 
 ## `core/identity/email_verify.py`
 _Email-verifikation (spec 2026-06-15 §5). Token-store i runtime_state_kv,_

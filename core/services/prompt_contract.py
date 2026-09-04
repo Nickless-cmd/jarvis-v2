@@ -2934,9 +2934,16 @@ def _build_visible_chat_prompt_assembly_impl(
     # Fordelingen på ÉN linje, så et døgns journal kan summeres uden at parse
     # flere linjer sammen. Nul-dele tages med: en del der altid er tom er lige
     # så interessant som en der fylder.
+    # I ASSEMBLY-RÆKKEFØLGE, ikke sorteret efter størrelse.
+    #
+    # Størrelsen siger hvad der fylder; RÆKKEFØLGEN siger hvad der ødelægger
+    # cachen. DeepSeek matcher fra begyndelsen, så en del der skifter størrelse
+    # — eller kommer og går — forskyder alt EFTER sig. Ligger den tidligt, er
+    # hele præfikset tabt hver tur; ligger den sidst, koster den ingenting.
+    # Sorterer man listen, kan man ikke se forskel på de to tilfælde.
     print(
         "prompt-assembly-parts " + " ".join(
-            f"{str(label).replace(' ', '_')}={chars}" for label, chars in _ranked
+            f"{_label_of(part)}={len(part)}" for part in parts if part
         ),
         file=_sys_mod.stderr,
         flush=True,

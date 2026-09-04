@@ -12,6 +12,14 @@ _TikTok auto-uploader integration tools for Jarvis._
 | function | `_exec_tiktok_show` | `(args)` | List saved TikTok cookie profiles and available videos. | [src](../../../core/tools/tiktok_tools.py#L185) |
 | function | `_get_display` | `()` | Return a DISPLAY value for browser operations. | [src](../../../core/tools/tiktok_tools.py#L217) |
 
+## `core/tools/tool_limits.py`
+_Grænser for værktøjs-kørsel — ét sted, så de to bash-stier ikke driver fra hinanden._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `bash_timeout_s` | `()` | Sekunder en enkelt bash-kommando må tage. Overstyres i runtime.json som | [src](../../../core/tools/tool_limits.py#L22) |
+| function | `timeout_note` | `(seconds, command=…)` | Besked når en kommando løber tør for tid. | [src](../../../core/tools/tool_limits.py#L35) |
+
 ## `core/tools/tool_scoping.py`
 _Tool-scoping policy — hvilke værktøjer er tilgængelige pr. rolle og mode._
 

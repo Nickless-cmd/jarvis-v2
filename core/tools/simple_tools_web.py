@@ -44,7 +44,9 @@ MAX_SEARCH_RESULTS = 60
 MAX_SEARCH_LINE_CHARS = 200
 MAX_FIND_RESULTS = 100
 MAX_BASH_OUTPUT_CHARS = 16000
-MAX_BASH_SECONDS = 15
+from core.tools.tool_limits import bash_timeout_s as _bash_timeout_s  # noqa: E402
+# Ét sted, konfigurerbart. To kopier af samme tal driver fra hinanden.
+MAX_BASH_SECONDS = _bash_timeout_s()
 MAX_WEB_FETCH_CHARS = 24000
 
 # Mapper der ALDRIG traverseres af find_files' **-glob (matcher find-subprocess-grenens

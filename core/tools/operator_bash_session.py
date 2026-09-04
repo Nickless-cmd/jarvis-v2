@@ -100,11 +100,17 @@ def _exec_operator_bash_session_run(args: dict[str, Any]) -> dict[str, Any]:
     if isinstance(inner, dict):
         new_cwd, cleaned = _extract_cwd(str(inner.get("stdout") or ""))
         inner["stdout"] = cleaned
-        if new_cwd:
-            with _LOCK:
-                if sid in _SESSIONS:
+        with _LOCK:
+            if sid in _SESSIONS:
+                # AT BRUGE SESSIONEN HOLDER DEN I LIVE. Før lå denne linje inde
+                # i `if new_cwd`, så et kald hvor cwd-markøren ikke kunne
+                # udtrækkes — en fejlet kommando, et uventet output — talte som
+                # ingen aktivitet. Sessionen kunne altså ældes ihjel MENS den
+                # var i brug, og næste kald svarede «unknown session_id
+                # (udløbet?)» midt i et stykke arbejde. (Jarvis 4. sep.)
+                _SESSIONS[sid]["last"] = _now()
+                if new_cwd:
                     _SESSIONS[sid]["cwd"] = new_cwd
-                    _SESSIONS[sid]["last"] = _now()
         if isinstance(res, dict):
             res["text"] = _render_text(inner)
     return res

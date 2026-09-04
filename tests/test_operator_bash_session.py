@@ -121,3 +121,28 @@ def test_stderr_and_nonzero_exit_are_reported_but_a_clean_run_is_quiet(monkeypat
     )
     t2 = m._exec_operator_bash_session_run({"session_id": "s1", "command": "x"})["text"]
     assert t2 == "fint" and "exit" not in t2
+
+
+def test_et_kald_uden_cwd_markoer_holder_stadig_sessionen_i_live(monkeypatch):
+    """«unknown session_id (udløbet?)» midt i et stykke arbejde (Jarvis 4. sep).
+
+    Levetiden er 30 min — rigelig. Men `last` blev kun opdateret når
+    cwd-markøren kunne udtrækkes. En fejlet kommando eller et uventet output
+    talte derfor som INGEN aktivitet, og sessionen kunne ældes ihjel mens den
+    var i brug.
+    """
+    import core.tools.operator_bash_session as m
+
+    m._SESSIONS.clear()
+    m._SESSIONS["s1"] = {"user_id": "u", "cwd": "/tmp", "last": 1000.0}
+    monkeypatch.setattr(m, "_now", lambda: 2000.0)
+    # Output UDEN cwd-markør — fx en kommando der fejlede.
+    monkeypatch.setattr(
+        "core.tools.simple_tools._exec_operator_bash",
+        lambda a: {"status": "ok", "result": {
+            "stdout": "bash: kommando ikke fundet\n", "stderr": "", "exit_code": 127,
+            "timed_out": False}},
+    )
+    m._exec_operator_bash_session_run({"session_id": "s1", "command": "findes-ikke"})
+    assert m._SESSIONS["s1"]["last"] == 2000.0, "brug SKAL holde sessionen i live"
+    assert m._SESSIONS["s1"]["cwd"] == "/tmp", "cwd må ikke ændres af et output uden markør"

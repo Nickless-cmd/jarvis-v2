@@ -597,7 +597,9 @@ MAX_SEARCH_RESULTS = 60
 MAX_SEARCH_LINE_CHARS = 200
 MAX_FIND_RESULTS = 100
 MAX_BASH_OUTPUT_CHARS = 16000
-MAX_BASH_SECONDS = 15
+from core.tools.tool_limits import bash_timeout_s as _bash_timeout_s  # noqa: E402
+# Ét sted, konfigurerbart. To kopier af samme tal driver fra hinanden.
+MAX_BASH_SECONDS = _bash_timeout_s()
 MAX_WEB_FETCH_CHARS = 24000
 # Ord/linje-sikker klipning (mod voldsom tool-trunkering): bevar HOVED+HALE så resultat/fejl/exit
 # i slutningen af output ikke smides væk. Se core/services/text_clip.py.
@@ -1887,7 +1889,8 @@ def _force_bash(args: dict[str, Any]) -> dict[str, Any]:
             cwd=str(PROJECT_ROOT),
         )
     except subprocess.TimeoutExpired:
-        return {"error": f"Command timed out after {MAX_BASH_SECONDS}s", "status": "error"}
+        from core.tools.tool_limits import timeout_note as _tnote
+        return {"error": _tnote(MAX_BASH_SECONDS, command), "status": "error"}
     output = result.stdout.strip()
     if result.stderr.strip():
         output = (output + "\n" + result.stderr.strip()).strip()

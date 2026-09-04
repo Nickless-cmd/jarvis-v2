@@ -472,6 +472,20 @@ _DB helpers for emotional_memory_anchors table._
 | function | `delete_emotional_memory_anchor` | `(anchor_type, anchor_id)` | — | [src](../../../core/runtime/db_emotional_memory.py#L234) |
 | function | `_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_emotional_memory.py#L244) |
 
+## `core/runtime/db_fts.py`
+_FTS5 full-text search over session summaries and chat messages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `fts5_available` | `(conn)` | — | [src](../../../core/runtime/db_fts.py#L34) |
+| function | `_base_table_exists` | `(conn, table)` | — | [src](../../../core/runtime/db_fts.py#L43) |
+| function | `ensure_fts_tables` | `(conn)` | Create the FTS tables + sync triggers for every base table that exists. | [src](../../../core/runtime/db_fts.py#L50) |
+| function | `rebuild_fts` | `()` | Rebuild every FTS table from its base table. Returns row counts. | [src](../../../core/runtime/db_fts.py#L96) |
+| function | `to_match_query` | `(query, *, max_terms=…)` | Turn free text into a tolerant FTS5 MATCH expression. | [src](../../../core/runtime/db_fts.py#L109) |
+| function | `_bm25_to_score` | `(rank)` | FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]. | [src](../../../core/runtime/db_fts.py#L128) |
+| function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries. Each hit: id, session_id, run_id, | [src](../../../core/runtime/db_fts.py#L136) |
+| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages. Each hit: id, message_id, session_id, | [src](../../../core/runtime/db_fts.py#L166) |
+
 ## `core/runtime/db_gate_verdicts.py`
 _Gate-verdict-ledger — PERSISTENT optælling af hvert governet gate-udfald._
 
@@ -574,6 +588,25 @@ _DB layer for interlanguage validation blind-dommer UI._
 | function | `store_free_text_observations` | `(*, session_id, text)` | Gem free-text noter ved slutningen af session. | [src](../../../core/runtime/db_interlanguage_blind.py#L237) |
 | function | `get_confusion_matrix` | `(*, session_id)` | Confusion-matrix for α-trials: true_peer × user_answer counts. | [src](../../../core/runtime/db_interlanguage_blind.py#L257) |
 
+## `core/runtime/db_lessons.py`
+_`lessons` — the one store for what Jarvis learns from mistakes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_lessons.py#L44) |
+| function | `signature_key` | `(signature)` | Lowercase, punctuation-free, stopword-free, first 12 tokens. | [src](../../../core/runtime/db_lessons.py#L48) |
+| function | `ensure_lessons_table` | `(conn)` | — | [src](../../../core/runtime/db_lessons.py#L54) |
+| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_lessons.py#L77) |
+| function | `_jaccard` | `(a, b)` | — | [src](../../../core/runtime/db_lessons.py#L87) |
+| function | `_find_match` | `(conn, key)` | — | [src](../../../core/runtime/db_lessons.py#L94) |
+| function | `upsert_lesson` | `(*, signature, lesson, source, user_words=…, jarvis_words=…, activate=…, now=…)` | Insert or reinforce a lesson. Returns the stored row plus ``outcome``: | [src](../../../core/runtime/db_lessons.py#L110) |
+| function | `get_lesson` | `(lesson_id)` | — | [src](../../../core/runtime/db_lessons.py#L167) |
+| function | `list_lessons` | `(*, status=…, limit=…, source=…)` | — | [src](../../../core/runtime/db_lessons.py#L174) |
+| function | `count_lessons` | `(*, status=…)` | — | [src](../../../core/runtime/db_lessons.py#L194) |
+| function | `find_similar_lessons` | `(text, *, limit=…, status=…)` | Active lessons most similar to ``text`` (BM25 over signature + lesson). | [src](../../../core/runtime/db_lessons.py#L204) |
+| function | `record_repeat` | `(lesson_id, *, now=…)` | — | [src](../../../core/runtime/db_lessons.py#L231) |
+| function | `retire_stale` | `(*, days=…, min_evidence=…, now=…)` | Retire proposed/active lessons with evidence < min_evidence, no repeat, | [src](../../../core/runtime/db_lessons.py#L244) |
+
 ## `core/runtime/db_private_brain.py`
 _Private brain records — Jarvis' EGNE private lag (private-carry-erindringer med_
 
@@ -628,30 +661,7 @@ _Persistence for the private inner-life signal tables._
 | function | `get_private_temporal_promotion_signal` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L357) |
 | function | `_norm_retained` | `(value)` | Normalisér til novelty-sammenligning: trim, lowercase, kollaps whitespace. | [src](../../../core/runtime/db_private_signals.py#L393) |
 | function | `record_private_retained_memory_record` | `(*, record_id, source, run_id, work_id, retained_value, retained_kind, retention_scope, retention_horizon, confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L398) |
-| function | `update_private_retained_memory_record_enriched` | `(*, run_id, enriched_value)` | Replace template retained_value with LLM-enriched lesson text. | [src](../../../core/runtime/db_private_signals.py#L456) |
-| function | `get_private_retained_memory_record` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L468) |
-| function | `recent_private_retained_memory_records` | `(limit=…)` | — | [src](../../../core/runtime/db_private_signals.py#L504) |
-
-## `core/runtime/db_private_states.py`
-_Persistence for the private self-model / mood / promotion-decision tables._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_private_states_tables` | `(conn)` | — | [src](../../../core/runtime/db_private_states.py#L14) |
-| function | `record_private_self_model` | `(*, model_id, source, identity_focus, preferred_work_mode, recurring_tension, growth_direction, confidence, created_at, updated_at)` | — | [src](../../../core/runtime/db_private_states.py#L64) |
-| function | `get_private_self_model` | `()` | — | [src](../../../core/runtime/db_private_states.py#L109) |
-| function | `record_private_state` | `(*, state_id, source, frustration, fatigue, confidence, curiosity, created_at, updated_at)` | — | [src](../../../core/runtime/db_private_states.py#L143) |
-| function | `get_private_state` | `()` | — | [src](../../../core/runtime/db_private_states.py#L185) |
-| function | `record_private_promotion_decision` | `(*, decision_id, source, run_id, work_id, promotion_target, promotion_action, promotion_scope, confidence, created_at)` | — | [src](../../../core/runtime/db_private_states.py#L217) |
-| function | `get_private_promotion_decision` | `()` | — | [src](../../../core/runtime/db_private_states.py#L262) |
-
-## `core/runtime/db_runtime_browser.py`
-_Persistence for the `runtime_browser_bodies` table — Jarvis' browser bodies._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_runtime_browser_tables` | `(conn)` | — | [src](../../../core/runtime/db_runtime_browser.py#L13) |
-| function | `get_runtime_browser_body` | `(body_id)` | — | [src](../../../core/runtime/db_runtime_browser.py#L41) |
-| function | `upsert_runtime_browser_body` | `(*, body_id, profile_name, status, active_task_id=…, active_flow_id=…, focused_tab_id=…, tabs_json=…, last_url=…, last_title=…, summary=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_browser.py#L82) |
-| function | `list_runtime_browser_bodies` | `(limit=…)` | — | [src](../../../core/runtime/db_runtime_browser.py#L149) |
+| function | `update_private_retained_memory_record_enriched` | `(*, run_id, enriched_value)` | Replace template retained_value with LLM-enriched lesson text. | [src](../../../core/runtime/db_private_signals.py#L464) |
+| function | `get_private_retained_memory_record` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L476) |
+| function | `recent_private_retained_memory_records` | `(limit=…)` | — | [src](../../../core/runtime/db_private_signals.py#L512) |
 

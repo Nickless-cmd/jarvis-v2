@@ -374,11 +374,11 @@ _Visible Jarvis' værktøjer til hjernen._
 | function | `_exec_adopt_brain_proposal` | `(args)` | Executor for adopt_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L212) |
 | function | `_exec_discard_brain_proposal` | `(args)` | Executor for discard_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L220) |
 | function | `remember_this` | `(*, kind, title, content, visibility, domain, session_id, turn_id, related=…, tags=…, source_url=…, source_chronicle=…, importance=…)` | Skriv en post i Jarvis' egen hjerne. | [src](../../../core/tools/jarvis_brain_tools.py#L233) |
-| function | `search_jarvis_brain` | `(*, query, session_visibility_ceiling=…, kinds=…, limit=…, domain=…, tags=…, include_archived=…)` | Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content. | [src](../../../core/tools/jarvis_brain_tools.py#L308) |
-| function | `read_brain_entry` | `(entry_id)` | Hent fuld content for én brain entry. | [src](../../../core/tools/jarvis_brain_tools.py#L381) |
-| function | `archive_brain_entry` | `(entry_id, *, reason=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/tools/jarvis_brain_tools.py#L408) |
-| function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L420) |
-| function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L496) |
+| function | `search_jarvis_brain` | `(*, query, session_visibility_ceiling=…, kinds=…, limit=…, domain=…, tags=…, include_archived=…, min_cosine=…)` | Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content. | [src](../../../core/tools/jarvis_brain_tools.py#L308) |
+| function | `read_brain_entry` | `(entry_id)` | Hent fuld content for én brain entry. | [src](../../../core/tools/jarvis_brain_tools.py#L388) |
+| function | `archive_brain_entry` | `(entry_id, *, reason=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/tools/jarvis_brain_tools.py#L415) |
+| function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L427) |
+| function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L503) |
 
 ## `core/tools/jc_tool_catalog.py`
 _Single source of truth for what jarvis-code (jc) presents as tools._
@@ -433,8 +433,8 @@ _Memory duplicate-check and safe-write tools for MEMORY.md._
 | function | `_normalize` | `(heading)` | — | [src](../../../core/tools/memory_tools.py#L80) |
 | function | `_exec_memory_check_duplicate` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L84) |
 | function | `_exec_memory_upsert_section` | `(args)` | Write or update a section in MEMORY.md. Replaces existing section if heading matches. | [src](../../../core/tools/memory_tools.py#L121) |
-| function | `_exec_memory_list_headings` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L195) |
-| function | `_exec_memory_consolidate` | `(args)` | Find fuzzy-overlapping sections in MEMORY.md and propose/execute merges. | [src](../../../core/tools/memory_tools.py#L205) |
+| function | `_exec_memory_list_headings` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L186) |
+| function | `_exec_memory_consolidate` | `(args)` | Find fuzzy-overlapping sections in MEMORY.md and propose/execute merges. | [src](../../../core/tools/memory_tools.py#L196) |
 
 ## `core/tools/memory_topic_tools.py`
 _Kuraterede memory-topic-tools (spec 2026-07-10 Spec B)._

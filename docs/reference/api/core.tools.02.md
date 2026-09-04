@@ -217,6 +217,13 @@ _Semantic recall tools — Jarvis-facing recall across all memory surfaces._
 | function | `_timestamp_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L43) |
 | function | `_exec_recall_memories` | `(args)` | — | [src](../../../core/tools/recall_memory_tools.py#L53) |
 
+## `core/tools/recall_tool.py`
+_`recall` — the one memory-search tool (memory repair 2026-09-04, R5)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_recall` | `(args)` | — | [src](../../../core/tools/recall_tool.py#L52) |
+
 ## `core/tools/recurring_scheduler_tools.py`
 _Recurring scheduler tools — Jarvis can schedule repeating tasks._
 
@@ -308,19 +315,19 @@ _Simple, general-purpose tools for Jarvis visible lane._
 | function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L950) |
 | function | `execute_tool_force` | `(name, arguments)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1090) |
 | function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1171) |
-| function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1821) |
-| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1845) |
-| function | `_force_bash` | `(args)` | Run bash command bypassing approval (blocked still blocked). | [src](../../../core/tools/simple_tools.py#L1875) |
-| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1908) |
-| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1913) |
-| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1918) |
-| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1923) |
-| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1928) |
-| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1933) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L1994) |
-| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/simple_tools.py#L2032) |
-| function | `_json_safe_default` | `(o)` | json.dumps default= — GARANTERER at serialisering af et tool-resultat | [src](../../../core/tools/simple_tools.py#L2081) |
-| function | `format_tool_result_for_model` | `(name, result)` | Format a tool result as text for the model's context. | [src](../../../core/tools/simple_tools.py#L2097) |
+| function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1823) |
+| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1847) |
+| function | `_force_bash` | `(args)` | Run bash command bypassing approval (blocked still blocked). | [src](../../../core/tools/simple_tools.py#L1877) |
+| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1910) |
+| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1915) |
+| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1920) |
+| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1925) |
+| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1930) |
+| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1935) |
+| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L1996) |
+| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/simple_tools.py#L2034) |
+| function | `_json_safe_default` | `(o)` | json.dumps default= — GARANTERER at serialisering af et tool-resultat | [src](../../../core/tools/simple_tools.py#L2083) |
+| function | `format_tool_result_for_model` | `(name, result)` | Format a tool result as text for the model's context. | [src](../../../core/tools/simple_tools.py#L2099) |
 
 ## `core/tools/simple_tools_definitions.py`
 _Tool definitions catalog for Jarvis' visible-lane tools._
@@ -653,16 +660,4 @@ _Stripe integration tools — balance, transactions, and Issuing virtual cards._
 | function | `_exec_stripe_transactions` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L118) |
 | function | `_exec_stripe_payouts` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L150) |
 | function | `_exec_stripe_create_issuing_card` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L181) |
-
-## `core/tools/tiktok_analytics_tools.py`
-_TikTok analytics tools for Jarvis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_saved_cookies` | `(username)` | Load session cookies from TK_cookies_{username}.json (tiktokautouploader format). | [src](../../../core/tools/tiktok_analytics_tools.py#L47) |
-| function | `_fetch_profile` | `(username)` | Scrape profile stats + secUid + userId from UNIVERSAL_DATA. | [src](../../../core/tools/tiktok_analytics_tools.py#L67) |
-| function | `_get_tiktok_cookies` | `(seed_cookies)` | Run headless Playwright to generate msToken and session cookies. | [src](../../../core/tools/tiktok_analytics_tools.py#L91) |
-| function | `_fetch_video_list` | `(sec_uid, cookies, count)` | Call TikTok's internal video list API. | [src](../../../core/tools/tiktok_analytics_tools.py#L115) |
-| function | `_parse_video` | `(v)` | — | [src](../../../core/tools/tiktok_analytics_tools.py#L136) |
-| function | `_exec_tiktok_analytics` | `(args)` | Fetch TikTok video statistics for a user. | [src](../../../core/tools/tiktok_analytics_tools.py#L155) |
 

@@ -167,10 +167,11 @@ _Arc rule extractor — turns narrative arcs into actionable rules._
 | function | `_build_extraction_prompt` | `(arc_text, period)` | — | [src](../../../core/services/arc_rule_extractor.py#L43) |
 | function | `_parse_rules` | `(text)` | — | [src](../../../core/services/arc_rule_extractor.py#L59) |
 | function | `extract_rules_from_arc` | `(arc_path)` | — | [src](../../../core/services/arc_rule_extractor.py#L74) |
-| function | `_mark_processed` | `(arc_path)` | — | [src](../../../core/services/arc_rule_extractor.py#L128) |
-| function | `_is_processed` | `(arc_name)` | — | [src](../../../core/services/arc_rule_extractor.py#L141) |
-| function | `extract_rules_for_unprocessed_arcs` | `()` | — | [src](../../../core/services/arc_rule_extractor.py#L151) |
-| function | `arc_rules_section` | `(*, max_lines=…)` | Render most recent extracted rules as prompt awareness section. | [src](../../../core/services/arc_rule_extractor.py#L170) |
+| function | `_mark_processed` | `(arc_path)` | — | [src](../../../core/services/arc_rule_extractor.py#L138) |
+| function | `_is_processed` | `(arc_name)` | — | [src](../../../core/services/arc_rule_extractor.py#L151) |
+| function | `extract_rules_for_unprocessed_arcs` | `()` | — | [src](../../../core/services/arc_rule_extractor.py#L161) |
+| function | `arc_rules_section` | `(*, max_lines=…)` | Retired 2026-09-04 (memory repair, R4): arc rules reach the prompt only | [src](../../../core/services/arc_rule_extractor.py#L180) |
+| function | `_legacy_arc_rules_section` | `(*, max_lines=…)` | Pre-2026-09-04 renderer, kept for reference/tests of the file format. | [src](../../../core/services/arc_rule_extractor.py#L188) |
 
 ## `core/services/assembly_prewarm.py`
 _core/services/assembly_prewarm.py_

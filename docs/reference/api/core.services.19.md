@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_model_predictive.py`
+_Predictive self-model — frequencies, not aspirations._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tick_quality_stats` | `(days=…)` | — | [src](../../../core/services/self_model_predictive.py#L32) |
+| function | `_mood_baseline` | `(days=…)` | — | [src](../../../core/services/self_model_predictive.py#L48) |
+| function | `_decision_adherence` | `()` | — | [src](../../../core/services/self_model_predictive.py#L56) |
+| function | `_crisis_frequency` | `(days=…)` | — | [src](../../../core/services/self_model_predictive.py#L64) |
+| function | `_productive_idle_ratio` | `(days=…)` | Fraction of ticks that ran productive idle vs all ticks. | [src](../../../core/services/self_model_predictive.py#L84) |
+| function | `build_predictive_self_model` | `(days=…)` | Compute the empirical self-model. Cheap; fresh each call. | [src](../../../core/services/self_model_predictive.py#L111) |
+| function | `_maybe_record_from_model` | `(model)` | Uddrag en verificerbar prediktion fra modellen og persistér den. | [src](../../../core/services/self_model_predictive.py#L136) |
+| function | `predictive_self_model_section` | `()` | Render predictive self-model as a prompt awareness section. | [src](../../../core/services/self_model_predictive.py#L179) |
+| function | `_load_predictions` | `()` | Læs udestående/scorede prediktions-records. Aldrig kast. | [src](../../../core/services/self_model_predictive.py#L253) |
+| function | `_save_predictions` | `(preds)` | Persistér prediktions-records (kompakt, capped). Aldrig kast. | [src](../../../core/services/self_model_predictive.py#L263) |
+| function | `_observe_actual` | `(metric)` | Hent den FAKTISKE observerede værdi for en metric — samme kilde som | [src](../../../core/services/self_model_predictive.py#L272) |
+| function | `_absorb` | `(cluster, nerve, value, **kwargs)` | Indirektion over central_absorb.absorb — patchbar i test, self-safe. | [src](../../../core/services/self_model_predictive.py#L286) |
+| function | `record_prediction` | `(metric, threshold, predicted_above, probability, made_at=…)` | Persistér en kompakt prediktions-record. Skalar, self-safe, aldrig kast. | [src](../../../core/services/self_model_predictive.py#L295) |
+| function | `_age_hours` | `(made_at)` | — | [src](../../../core/services/self_model_predictive.py#L329) |
+| function | `score_predictions` | `(min_age_hours=…)` | Scor modne, uscorede prediktioner mod virkeligheden. Aldrig kast. | [src](../../../core/services/self_model_predictive.py#L339) |
+| function | `build_self_model_predictive_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/self_model_predictive.py#L400) |
+
 ## `core/services/self_model_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -286,9 +308,9 @@ _Self-Review Unified — periodisk samlet selv-audit._
 | function | `_build_review_prompt` | `(inputs)` | — | [src](../../../core/services/self_review_unified.py#L143) |
 | function | `_extract_review_json` | `(raw)` | — | [src](../../../core/services/self_review_unified.py#L174) |
 | function | `run_self_review` | `(*, period=…)` | Generate and persist a self-review. Returns the review dict. | [src](../../../core/services/self_review_unified.py#L200) |
-| function | `maybe_run_self_review` | `(*, min_hours_between=…)` | Run a review if it's been at least N hours since the last. | [src](../../../core/services/self_review_unified.py#L309) |
-| function | `list_self_reviews` | `(*, limit=…)` | — | [src](../../../core/services/self_review_unified.py#L330) |
-| function | `build_self_review_surface` | `()` | — | [src](../../../core/services/self_review_unified.py#L349) |
+| function | `maybe_run_self_review` | `(*, min_hours_between=…)` | Run a review if it's been at least N hours since the last. | [src](../../../core/services/self_review_unified.py#L317) |
+| function | `list_self_reviews` | `(*, limit=…)` | — | [src](../../../core/services/self_review_unified.py#L338) |
+| function | `build_self_review_surface` | `()` | — | [src](../../../core/services/self_review_unified.py#L357) |
 
 ## `core/services/self_surprise_detection.py`
 _Self-Surprise Detection — "Huh, det havde jeg ikke forventet af mig selv."_
@@ -383,8 +405,8 @@ _Semantic indexer — auto-embedding of new memory records._
 | function | `_sweeper_loop` | `()` | Every N minutes, run backfill_all to catch new rows without events. | [src](../../../core/services/semantic_indexer.py#L81) |
 | function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/semantic_indexer.py#L109) |
 | function | `_handle_sensory` | `(payload)` | — | [src](../../../core/services/semantic_indexer.py#L140) |
-| function | `_handle_private_brain` | `(payload)` | — | [src](../../../core/services/semantic_indexer.py#L160) |
-| function | `build_semantic_indexer_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_indexer.py#L186) |
+| function | `_handle_private_brain` | `(payload)` | — | [src](../../../core/services/semantic_indexer.py#L163) |
+| function | `build_semantic_indexer_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_indexer.py#L193) |
 
 ## `core/services/semantic_memory.py`
 _Semantic memory — unified embedding + cosine search across memory surfaces._
@@ -409,9 +431,9 @@ _Semantic memory — unified embedding + cosine search across memory surfaces._
 | function | `_extract_content_for_row` | `(table, row)` | Return (content_text, modality) for a raw row from a known table. | [src](../../../core/services/semantic_memory.py#L422) |
 | function | `_row_id` | `(table, row)` | — | [src](../../../core/services/semantic_memory.py#L437) |
 | function | `backfill_all` | `(*, max_per_table=…)` | Embed every unindexed row across registered source tables. | [src](../../../core/services/semantic_memory.py#L445) |
-| function | `_content_hash_unchanged` | `(table, source_id, new_content)` | — | [src](../../../core/services/semantic_memory.py#L520) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/semantic_memory.py#L529) |
-| function | `build_semantic_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_memory.py#L542) |
+| function | `_content_hash_unchanged` | `(table, source_id, new_content)` | — | [src](../../../core/services/semantic_memory.py#L522) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/semantic_memory.py#L531) |
+| function | `build_semantic_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_memory.py#L544) |
 
 ## `core/services/sensory_archive.py`
 _Sansernes Arkiv — service layer for sensory memories._
@@ -490,14 +512,14 @@ _Session distillation and private brain continuity._
 | function | `distill_session_carry` | `(*, session_id, run_id)` | Classify runtime evidence into private-brain / workspace-memory / discard. | [src](../../../core/services/session_distillation.py#L171) |
 | function | `_analyze_session_for_cognitive_systems` | `(*, session_id, run_id)` | Analyze a completed session for cognitive accumulation systems. | [src](../../../core/services/session_distillation.py#L387) |
 | function | `_scrub_continuity_text` | `(text)` | Read-time-rens af LAGRET continuity-tekst (Jarvis-spec 2026-06-23 #2): ældre | [src](../../../core/services/session_distillation.py#L456) |
-| function | `build_private_brain_context` | `(*, limit=…)` | Build a bounded read of recent private brain records suitable for | [src](../../../core/services/session_distillation.py#L483) |
-| function | `_classify_continuity_mode` | `(excerpts, by_type)` | Classify the semantic intention of a continuity pass. | [src](../../../core/services/session_distillation.py#L550) |
-| function | `run_private_brain_continuity` | `(*, trigger=…)` | Lightweight continuity pass for the private brain. | [src](../../../core/services/session_distillation.py#L605) |
-| function | `run_private_brain_lifecycle` | `()` | Run a bounded, AGE-based lifecycle pass over private brain records. | [src](../../../core/services/session_distillation.py#L776) |
-| function | `build_private_brain_surface` | `(*, limit=…)` | Return the current private brain state for observability. | [src](../../../core/services/session_distillation.py#L858) |
-| function | `build_session_distillation_surface` | `(*, limit=…)` | Return recent distillation records for observability. | [src](../../../core/services/session_distillation.py#L879) |
-| function | `generate_session_summary` | `(*, session_id, run_id=…, user_message=…, assistant_response=…)` | Generate and store a compact conversation summary for the given session. | [src](../../../core/services/session_distillation.py#L899) |
-| function | `build_previous_session_summaries` | `(*, limit=…)` | Build a text block with recent session summaries for prompt injection. | [src](../../../core/services/session_distillation.py#L994) |
+| function | `build_private_brain_context` | `(*, limit=…)` | Build a bounded read of recent private brain records suitable for | [src](../../../core/services/session_distillation.py#L489) |
+| function | `_classify_continuity_mode` | `(excerpts, by_type)` | Classify the semantic intention of a continuity pass. | [src](../../../core/services/session_distillation.py#L556) |
+| function | `run_private_brain_continuity` | `(*, trigger=…)` | Lightweight continuity pass for the private brain. | [src](../../../core/services/session_distillation.py#L611) |
+| function | `run_private_brain_lifecycle` | `()` | Run a bounded, AGE-based lifecycle pass over private brain records. | [src](../../../core/services/session_distillation.py#L782) |
+| function | `build_private_brain_surface` | `(*, limit=…)` | Return the current private brain state for observability. | [src](../../../core/services/session_distillation.py#L864) |
+| function | `build_session_distillation_surface` | `(*, limit=…)` | Return recent distillation records for observability. | [src](../../../core/services/session_distillation.py#L885) |
+| function | `generate_session_summary` | `(*, session_id, run_id=…, user_message=…, assistant_response=…)` | Generate and store a compact conversation summary for the given session. | [src](../../../core/services/session_distillation.py#L905) |
+| function | `build_previous_session_summaries` | `(*, limit=…)` | Build a text block with recent session summaries for prompt injection. | [src](../../../core/services/session_distillation.py#L1000) |
 
 ## `core/services/session_inbox.py`
 _Session inbox — gates daemon notifications during active sessions._
@@ -708,13 +730,4 @@ _Persisted signal-baseline with cold-start guard (Task C1)._
 | function | `set_baseline` | `(signal, value, scope=…)` | Persist ``value`` durably as the new baseline for ``signal`` in ``scope``. | [src](../../../core/services/signal_baseline.py#L95) |
 | function | `is_cold_start` | `(min_signals=…, scope=…)` | True until ``min_signals`` distinct baselines exist *within* ``scope``. | [src](../../../core/services/signal_baseline.py#L115) |
 | function | `clear_all` | `(scope=…)` | Drop all baselines in ``scope`` (test helper). Self-safe. | [src](../../../core/services/signal_baseline.py#L134) |
-
-## `core/services/signal_decay_daemon.py`
-_Signal decay daemon — archive and delete stale signals across all signal tables._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_signal_decay_daemon` | `()` | Run signal decay if cadence elapsed. Returns stats dict. | [src](../../../core/services/signal_decay_daemon.py#L35) |
-| function | `get_signal_decay_stats` | `()` | — | [src](../../../core/services/signal_decay_daemon.py#L91) |
-| function | `build_signal_decay_surface` | `()` | — | [src](../../../core/services/signal_decay_daemon.py#L98) |
 

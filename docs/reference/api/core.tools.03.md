@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/tiktok_analytics_tools.py`
+_TikTok analytics tools for Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_saved_cookies` | `(username)` | Load session cookies from TK_cookies_{username}.json (tiktokautouploader format). | [src](../../../core/tools/tiktok_analytics_tools.py#L47) |
+| function | `_fetch_profile` | `(username)` | Scrape profile stats + secUid + userId from UNIVERSAL_DATA. | [src](../../../core/tools/tiktok_analytics_tools.py#L67) |
+| function | `_get_tiktok_cookies` | `(seed_cookies)` | Run headless Playwright to generate msToken and session cookies. | [src](../../../core/tools/tiktok_analytics_tools.py#L91) |
+| function | `_fetch_video_list` | `(sec_uid, cookies, count)` | Call TikTok's internal video list API. | [src](../../../core/tools/tiktok_analytics_tools.py#L115) |
+| function | `_parse_video` | `(v)` | — | [src](../../../core/tools/tiktok_analytics_tools.py#L136) |
+| function | `_exec_tiktok_analytics` | `(args)` | Fetch TikTok video statistics for a user. | [src](../../../core/tools/tiktok_analytics_tools.py#L155) |
+
 ## `core/tools/tiktok_content_tools.py`
 _TikTok content generation tool — wraps jarvis_pollinations_pipeline._
 

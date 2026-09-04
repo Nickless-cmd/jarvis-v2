@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6606/13242 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6633/13322 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -21,26 +21,26 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 9 | 22 | 40% |
 | `core.identity` | 65 | 158 | 41% |
-| `core.memory` | 45 | 127 | 35% |
+| `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 554 | 1031 | 53% |
-| `core.services` | 4388 | 9195 | 47% |
+| `core.runtime` | 565 | 1053 | 53% |
+| `core.services` | 4385 | 9199 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 73 | 128 | 57% |
+| `core.services.prompt_sections` | 77 | 138 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 377 | 825 | 45% |
+| `core.tools` | 377 | 826 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 172 | 304 | 56% |
+| `scripts` | 177 | 332 | 53% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1887)
+## Undocumented public functions (1914)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -276,6 +276,7 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/identity/workspace_context.py` :: `current_context_snapshot` (L74)
 - `core/identity/workspace_context.py` :: `current_user_display_name` (L70)
 - `core/identity/workspace_context.py` :: `reset_context` (L185)
+- `core/memory/memory_md_writer.py` :: `find_section` (L73)
 - `core/memory/private_development_state.py` :: `build_private_development_state_payload` (L25)
 - `core/memory/private_growth_note.py` :: `build_private_growth_note_payload` (L27)
 - `core/memory/private_initiative_tension.py` :: `build_private_initiative_tension` (L28)
@@ -359,6 +360,7 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/runtime/db_embeddings.py` :: `get_embedding` (L78)
 - `core/runtime/db_emotional_memory.py` :: `delete_emotional_memory_anchor` (L234)
 - `core/runtime/db_emotional_memory.py` :: `get_emotional_memory_anchor` (L141)
+- `core/runtime/db_fts.py` :: `fts5_available` (L34)
 - `core/runtime/db_goals.py` :: `count_goals` (L281)
 - `core/runtime/db_goals.py` :: `create_goal` (L75)
 - `core/runtime/db_goals.py` :: `delete_goal` (L268)
@@ -385,6 +387,11 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/runtime/db_heartbeat.py` :: `record_heartbeat_runtime_tick` (L598)
 - `core/runtime/db_heartbeat.py` :: `upsert_heartbeat_runtime_state` (L421)
 - `core/runtime/db_instrument.py` :: `set_file_hash` (L68)
+- `core/runtime/db_lessons.py` :: `count_lessons` (L194)
+- `core/runtime/db_lessons.py` :: `ensure_lessons_table` (L54)
+- `core/runtime/db_lessons.py` :: `get_lesson` (L167)
+- `core/runtime/db_lessons.py` :: `list_lessons` (L174)
+- `core/runtime/db_lessons.py` :: `record_repeat` (L231)
 - `core/runtime/db_private_brain.py` :: `get_private_brain_record` (L293)
 - `core/runtime/db_private_brain.py` :: `insert_private_brain_record` (L122)
 - `core/runtime/db_private_brain.py` :: `list_private_brain_records` (L162)
@@ -399,10 +406,10 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/runtime/db_private_signals.py` :: `ensure_private_signals_tables` (L16)
 - `core/runtime/db_private_signals.py` :: `get_private_development_state` (L237)
 - `core/runtime/db_private_signals.py` :: `get_private_reflective_selection` (L271)
-- `core/runtime/db_private_signals.py` :: `get_private_retained_memory_record` (L468)
+- `core/runtime/db_private_signals.py` :: `get_private_retained_memory_record` (L476)
 - `core/runtime/db_private_signals.py` :: `get_private_temporal_promotion_signal` (L357)
 - `core/runtime/db_private_signals.py` :: `recent_private_reflective_selections` (L152)
-- `core/runtime/db_private_signals.py` :: `recent_private_retained_memory_records` (L504)
+- `core/runtime/db_private_signals.py` :: `recent_private_retained_memory_records` (L512)
 - `core/runtime/db_private_signals.py` :: `record_private_development_state` (L192)
 - `core/runtime/db_private_signals.py` :: `record_private_reflective_selection` (L101)
 - `core/runtime/db_private_signals.py` :: `record_private_retained_memory_record` (L398)
@@ -590,7 +597,7 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/approval_outbox.py` :: `make_approval_notification_due` (L93)
 - `core/services/approval_outbox.py` :: `pending_approval_notifications` (L68)
 - `core/services/approval_outbox.py` :: `start_approval_outbox_dispatcher` (L164)
-- `core/services/arc_rule_extractor.py` :: `extract_rules_for_unprocessed_arcs` (L151)
+- `core/services/arc_rule_extractor.py` :: `extract_rules_for_unprocessed_arcs` (L161)
 - `core/services/arc_rule_extractor.py` :: `extract_rules_from_arc` (L74)
 - `core/services/attachment_topology_signal_tracking.py` :: `build_runtime_attachment_topology_signal_surface` (L85)
 - `core/services/attachment_topology_signal_tracking.py` :: `refresh_runtime_attachment_topology_signal_statuses` (L81)
@@ -958,7 +965,7 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/executive_contradiction_signal_tracking.py` :: `track_runtime_executive_contradiction_signals_for_visible_turn` (L36)
 - `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L163)
 - `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L159)
-- `core/services/experience_correction_listener.py` :: `stop_listener` (L215)
+- `core/services/experience_correction_listener.py` :: `stop_listener` (L245)
 - `core/services/experienced_time_daemon.py` :: `build_experienced_time_surface` (L149)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L64)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_surface` (L30)
@@ -1062,8 +1069,8 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/irony_daemon.py` :: `build_irony_surface` (L56)
 - `core/services/irony_daemon.py` :: `get_latest_irony_observation` (L52)
 - `core/services/irony_daemon.py` :: `tick_irony_daemon` (L20)
-- `core/services/jarvis_brain.py` :: `connect_index` (L314)
-- `core/services/jarvis_brain.py` :: `index_db_path` (L310)
+- `core/services/jarvis_brain.py` :: `connect_index` (L317)
+- `core/services/jarvis_brain.py` :: `index_db_path` (L313)
 - `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L324)
 - `core/services/jarvisx_bridge.py` :: `BridgeRegistry.get_bridge` (L388)
 - `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L300)
@@ -1117,8 +1124,8 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/memory_density.py` :: `mark_promoted` (L185)
 - `core/services/memory_emotional_context.py` :: `get_mood_for_heading` (L61)
 - `core/services/memory_maintenance_daemon.py` :: `build_memory_maintenance_surface` (L104)
-- `core/services/memory_md_update_proposal_tracking.py` :: `build_runtime_memory_md_update_proposal_surface` (L79)
-- `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L48)
+- `core/services/memory_md_update_proposal_tracking.py` :: `build_runtime_memory_md_update_proposal_surface` (L94)
+- `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L58)
 - `core/services/memory_md_update_proposal_tracking.py` :: `track_runtime_memory_md_update_proposals_for_visible_turn` (L26)
 - `core/services/memory_pruning_daemon.py` :: `build_memory_pruning_surface` (L207)
 - `core/services/memory_tattoos.py` :: `build_memory_tattoos_surface` (L35)
@@ -1275,13 +1282,13 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3156)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3004)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3293)
-- `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L148)
-- `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L96)
-- `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L123)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4675)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3190)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3038)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3327)
+- `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
+- `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
+- `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4545)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
@@ -1316,6 +1323,7 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/reasoning_interceptor.py` :: `intercept_round` (L152)
 - `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L206)
 - `core/services/reboot_awareness_daemon.py` :: `get_last_boot_event` (L202)
+- `core/services/recall.py` :: `empty_message` (L223)
 - `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L221)
 - `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L229)
 - `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L336)
@@ -1334,8 +1342,8 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/reflective_critic_tracking.py` :: `build_runtime_reflective_critic_surface` (L99)
 - `core/services/reflective_critic_tracking.py` :: `refresh_runtime_reflective_critic_statuses` (L69)
 - `core/services/reflective_critic_tracking.py` :: `track_runtime_reflective_critics_for_visible_turn` (L27)
-- `core/services/regret_engine.py` :: `list_regrets` (L291)
-- `core/services/regret_engine.py` :: `summarize_regrets` (L314)
+- `core/services/regret_engine.py` :: `list_regrets` (L303)
+- `core/services/regret_engine.py` :: `summarize_regrets` (L326)
 - `core/services/regulation_homeostasis_signal_tracking.py` :: `build_runtime_regulation_homeostasis_signal_surface` (L81)
 - `core/services/regulation_homeostasis_signal_tracking.py` :: `refresh_runtime_regulation_homeostasis_signal_statuses` (L77)
 - `core/services/regulation_homeostasis_signal_tracking.py` :: `track_runtime_regulation_homeostasis_signals_for_visible_turn` (L43)
@@ -1527,8 +1535,8 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/self_review_signal_tracking.py` :: `build_runtime_self_review_signal_surface` (L53)
 - `core/services/self_review_signal_tracking.py` :: `refresh_runtime_self_review_signal_statuses` (L49)
 - `core/services/self_review_signal_tracking.py` :: `track_runtime_self_review_signals_for_visible_turn` (L41)
-- `core/services/self_review_unified.py` :: `build_self_review_surface` (L349)
-- `core/services/self_review_unified.py` :: `list_self_reviews` (L330)
+- `core/services/self_review_unified.py` :: `build_self_review_surface` (L357)
+- `core/services/self_review_unified.py` :: `list_self_reviews` (L338)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
 - `core/services/self_wakeup.py` :: `list_wakeups` (L181)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)
@@ -1536,7 +1544,7 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
-- `core/services/semantic_memory.py` :: `get_stats` (L529)
+- `core/services/semantic_memory.py` :: `get_stats` (L531)
 - `core/services/sensory_archive.py` :: `count` (L209)
 - `core/services/sensory_archive.py` :: `get` (L205)
 - `core/services/sensory_archive.py` :: `list_recent` (L184)
@@ -1570,8 +1578,8 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/signal_noise_guard.py` :: `normalize_signal_text` (L110)
 - `core/services/signal_noise_guard.py` :: `stable_signal_slug` (L172)
 - `core/services/signal_noise_guard.py` :: `strip_signal_wrappers` (L114)
-- `core/services/signal_surface_router.py` :: `get_surface_names` (L274)
-- `core/services/signal_surface_router.py` :: `resolve_surface` (L278)
+- `core/services/signal_surface_router.py` :: `get_surface_names` (L272)
+- `core/services/signal_surface_router.py` :: `resolve_surface` (L276)
 - `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.ev` (L152)
 - `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.new_signal_id` (L155)
 - `core/services/silence_detector.py` :: `build_silence_surface` (L62)
@@ -1664,8 +1672,8 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/text_resonance.py` :: `recent_resonances` (L139)
 - `core/services/text_resonance.py` :: `reset_text_resonance` (L185)
 - `core/services/theater_audit.py` :: `build_theater_audit_surface` (L85)
-- `core/services/theory_of_mind.py` :: `recent_facts` (L272)
-- `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L457)
+- `core/services/theory_of_mind.py` :: `recent_facts` (L286)
+- `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L471)
 - `core/services/theory_of_mind_engine.py` :: `build_theory_of_mind_prompt_section` (L53)
 - `core/services/thought_action_proposal_daemon.py` :: `build_proposal_surface` (L142)
 - `core/services/thought_action_proposal_daemon.py` :: `get_pending_proposals` (L138)
@@ -1747,20 +1755,21 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L347)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L344)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L354)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6258)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6283)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6487)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6496)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6483)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6254)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6396)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6448)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6365)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6306)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6338)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6224)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6506)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6269)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6223)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6248)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6452)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6461)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6448)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6219)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6361)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6413)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6330)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6271)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6303)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6189)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6471)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6234)
+- `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L40)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L432)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
@@ -1849,6 +1858,7 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `scripts/block_literal_credentials.py` :: `check` (L125)
 - `scripts/block_unattributed_rebase.py` :: `main` (L9)
 - `scripts/block_unattributed_ref_rewrite.py` :: `main` (L24)
+- `scripts/brain_salience_reset.py` :: `main` (L65)
 - `scripts/cache_rate_monitor.py` :: `append_log` (L118)
 - `scripts/cache_rate_monitor.py` :: `main` (L124)
 - `scripts/capabilities_gen.py` :: `collect` (L35)
@@ -1893,6 +1903,23 @@ Generated from source. 6606/13242 functions/methods documented (49%). The list b
 - `scripts/measure_prompt_payload.py` :: `main` (L80)
 - `scripts/measure_turn_latency.py` :: `probe` (L134)
 - `scripts/measure_turn_latency.py` :: `watch` (L101)
+- `scripts/memory_md_dedupe_headings.py` :: `dedupe_file` (L78)
+- `scripts/memory_md_dedupe_headings.py` :: `main` (L92)
+- `scripts/memory_noise_cleanup.py` :: `main` (L256)
+- `scripts/memory_noise_cleanup.py` :: `run` (L241)
+- `scripts/memory_noise_cleanup.py` :: `step_brain_salience` (L50)
+- `scripts/memory_noise_cleanup.py` :: `step_embeddings_released` (L123)
+- `scripts/memory_noise_cleanup.py` :: `step_experiential_empty` (L89)
+- `scripts/memory_noise_cleanup.py` :: `step_fts_rebuild` (L183)
+- `scripts/memory_noise_cleanup.py` :: `step_md_proposals_stale` (L161)
+- `scripts/memory_noise_cleanup.py` :: `step_memory_md_dedupe` (L190)
+- `scripts/memory_noise_cleanup.py` :: `step_partner_facts` (L104)
+- `scripts/memory_noise_cleanup.py` :: `step_policies_dedupe` (L56)
+- `scripts/memory_noise_cleanup.py` :: `step_retained_templates` (L140)
+- `scripts/memory_probe.py` :: `format_report` (L140)
+- `scripts/memory_probe.py` :: `load_probes` (L24)
+- `scripts/memory_probe.py` :: `main` (L155)
+- `scripts/memory_probe.py` :: `score_probe` (L29)
 - `scripts/mint_jarvisx_token.py` :: `main` (L52)
 - `scripts/peer_practice_runner.py` :: `main` (L106)
 - `scripts/phase5_analyze.py` :: `choice_of` (L58)

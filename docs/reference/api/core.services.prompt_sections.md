@@ -147,6 +147,14 @@ _Loop-compliance self-check section._
 | function | `_r2_telemetry_signal` | `()` | Return (heed_rate, surfaced_total, heeded_total) over last 24h. | [src](../../../core/services/prompt_sections/loop_compliance.py#L54) |
 | function | `loop_compliance_section` | `()` | Render the compliance self-check when warnings are being ignored. | [src](../../../core/services/prompt_sections/loop_compliance.py#L80) |
 
+## `core/services/prompt_sections/memory_md_selection.py`
+_MEMORY.md selection by SECTION for the visible prompt (memory repair 2026-09-04, R2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_render` | `(section, text, *, max_chars)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L24) |
+| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L33) |
+
 ## `core/services/prompt_sections/memory_recall.py`
 _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._
 
@@ -173,6 +181,20 @@ _core/services/prompt_sections/memory_scoring.py_
 | function | `_memory_line_relevance_score` | `(entry, user_message)` | — | [src](../../../core/services/prompt_sections/memory_scoring.py#L16) |
 | function | `_heuristic_relevant_memory_entries` | `(entries, *, user_message, max_lines)` | — | [src](../../../core/services/prompt_sections/memory_scoring.py#L81) |
 | function | `_merge_ordered_memory_entries` | `(primary, secondary, *, max_lines)` | — | [src](../../../core/services/prompt_sections/memory_scoring.py#L104) |
+
+## `core/services/prompt_sections/memory_selection.py`
+_MEMORY.md line/section selection for the visible prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MemorySectionSelection` | `` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L28) |
+| function | `_track_memory_selection` | `(selection, mode, candidate_count)` | Telemetry lives in prompt_contract (module-level history); lazy import avoids a cycle. | [src](../../../core/services/prompt_sections/memory_selection.py#L40) |
+| function | `_workspace_memory_section` | `(path, *, label, user_message, max_lines, max_chars, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L49) |
+| function | `_today_daily_memory_lines` | `(*, limit=…)` | Read today's daily memory lines for injection into visible prompts. | [src](../../../core/services/prompt_sections/memory_selection.py#L107) |
+| function | `_recent_daily_memory_lines` | `(*, limit=…, days=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L120) |
+| function | `_workspace_memory_entries` | `(path)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L129) |
+| function | `_select_relevant_memory_entries` | `(entries, *, user_message, max_lines, max_chars, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L146) |
+| function | `_bounded_nl_memory_selection` | `(*, user_message, entries, max_lines, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L237) |
 
 ## `core/services/prompt_sections/pattern_counterfactuals.py`
 _Surface pattern-counterfactual hypotheses in the prompt._
@@ -269,8 +291,9 @@ _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._
 |---|---|---|---|---|
 | function | `_effective_size` | `(path)` | Byte-størrelse af workspace-fil, encryption-aware. | [src](../../../core/services/prompt_sections/workspace_files.py#L33) |
 | function | `_resolve_with_shared_fallback` | `(path)` | Hvis `path` peger på en stub-tynd identitets-fil og shared/<navn> | [src](../../../core/services/prompt_sections/workspace_files.py#L51) |
-| function | `_workspace_file_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L75) |
-| function | `_workspace_guidance_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L103) |
-| function | `_ws_exists` | `(path)` | Eksistens-tjek encryption-aware (.enc tæller for member-filer). | [src](../../../core/services/prompt_sections/workspace_files.py#L119) |
-| function | `_workspace_optional_file_section` | `(path, *, fallback_path, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L127) |
+| function | `_core_section_text` | `(text)` | Body of a `## Kerne` (or `## Core`) section, or "" when absent. | [src](../../../core/services/prompt_sections/workspace_files.py#L78) |
+| function | `_workspace_file_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L98) |
+| function | `_workspace_guidance_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L132) |
+| function | `_ws_exists` | `(path)` | Eksistens-tjek encryption-aware (.enc tæller for member-filer). | [src](../../../core/services/prompt_sections/workspace_files.py#L148) |
+| function | `_workspace_optional_file_section` | `(path, *, fallback_path, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L156) |
 

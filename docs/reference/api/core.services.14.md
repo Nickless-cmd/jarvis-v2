@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/memory_decay_daemon.py`
+_Memory decay daemon — selective forgetting and re-discovery._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_memory_decay_daemon` | `()` | Run daily decay cycle. Returns {decayed, records_updated}. | [src](../../../core/services/memory_decay_daemon.py#L58) |
+| function | `hold_fast` | `(record_id)` | Prevent a memory from decaying by resetting its salience to 1.0. | [src](../../../core/services/memory_decay_daemon.py#L96) |
+| function | `maybe_rediscover` | `(force=…)` | Possibly surface a near-forgotten memory into the re-discovery buffer. | [src](../../../core/services/memory_decay_daemon.py#L101) |
+| function | `get_latest_rediscovery` | `()` | — | [src](../../../core/services/memory_decay_daemon.py#L142) |
+| function | `build_memory_decay_surface` | `()` | — | [src](../../../core/services/memory_decay_daemon.py#L146) |
+
 ## `core/services/memory_density.py`
 _Memory Density — memories with emotional weight, not just facts._
 
@@ -85,25 +96,26 @@ _Memory maintenance daemon — periodic dedup and health of MEMORY.md._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `track_runtime_memory_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L26) |
-| function | `refresh_runtime_memory_md_update_proposal_statuses` | `()` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L48) |
-| function | `build_runtime_memory_md_update_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L79) |
-| function | `_extract_memory_md_update_proposals` | `()` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L107) |
-| function | `_persist_memory_md_update_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L288) |
-| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L357) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L367) |
-| function | `_build_proposed_update` | `(*, proposal_type, domain_key, item=…)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L378) |
-| function | `_build_proposal_reason` | `(*, proposal_type, source_summary, proposal_confidence)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L390) |
-| function | `_build_proposal_confidence` | `(*, source_confidence, proposal_type)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L400) |
-| function | `_build_source_anchor` | `(*, source_type, domain_key, support_summary)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L410) |
-| function | `_build_status_reason` | `(*, proposal_type, source_status)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L415) |
-| function | `_title_suffix` | `(domain_key)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L429) |
-| function | `_domain_from_canonical_key` | `(canonical_key)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L433) |
-| function | `_memory_kind_from_canonical_key` | `(canonical_key)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L438) |
-| function | `_source_anchor_from_support_summary` | `(support_summary)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L450) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L457) |
-| function | `_stronger_confidence` | `(left, right)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L467) |
-| function | `_rank_confidence` | `(value)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L471) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L475) |
+| function | `_looks_like_sentence` | `(domain_key)` | A slugified user message ("det-er-fordi-du-prompt-er-rodet") — not a topic. | [src](../../../core/services/memory_md_update_proposal_tracking.py#L52) |
+| function | `refresh_runtime_memory_md_update_proposal_statuses` | `()` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L58) |
+| function | `build_runtime_memory_md_update_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L94) |
+| function | `_extract_memory_md_update_proposals` | `()` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L122) |
+| function | `_persist_memory_md_update_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L307) |
+| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L376) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L386) |
+| function | `_build_proposed_update` | `(*, proposal_type, domain_key, item=…)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L397) |
+| function | `_build_proposal_reason` | `(*, proposal_type, source_summary, proposal_confidence)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L409) |
+| function | `_build_proposal_confidence` | `(*, source_confidence, proposal_type)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L419) |
+| function | `_build_source_anchor` | `(*, source_type, domain_key, support_summary)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L429) |
+| function | `_build_status_reason` | `(*, proposal_type, source_status)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L434) |
+| function | `_title_suffix` | `(domain_key)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L448) |
+| function | `_domain_from_canonical_key` | `(canonical_key)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L452) |
+| function | `_memory_kind_from_canonical_key` | `(canonical_key)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L457) |
+| function | `_source_anchor_from_support_summary` | `(support_summary)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L469) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L476) |
+| function | `_stronger_confidence` | `(left, right)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L486) |
+| function | `_rank_confidence` | `(value)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L490) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L494) |
 
 ## `core/services/memory_pruning_daemon.py`
 _Memory pruning daemon — arkiverer entries med meget lav salience._
@@ -136,7 +148,7 @@ _Unified memory recall — bridge across all memory sources with mood-weighting.
 | function | `_observe_recall_quality` | `(top, sources)` | Fase 3 (§23.3 #4): meld recall-KVALITET til Centralen — kun scalar-metadata, aldrig | [src](../../../core/services/memory_recall_engine.py#L667) |
 | function | `multi_signal_recall` | `(*, query, sources=…, limit_per_source=…, total_limit=…, with_mood=…, min_score=…)` | Multi-signal recall: BM25 + entity fusion + embedding + recency. | [src](../../../core/services/memory_recall_engine.py#L695) |
 | function | `multi_signal_recall_section` | `(query, *, max_results=…)` | Format multi-signal recall as a prompt-awareness section. | [src](../../../core/services/memory_recall_engine.py#L864) |
-| function | `_exec_unified_recall` | `(args)` | — | [src](../../../core/services/memory_recall_engine.py#L913) |
+| function | `_exec_unified_recall` | `(args)` | — | [src](../../../core/services/memory_recall_engine.py#L911) |
 
 ## `core/services/memory_recall_telemetry.py`
 _Memory recall telemetry — Phase 2 data collection for Lag 11 forgetting._
@@ -170,24 +182,25 @@ _Semantic memory search — embeddings-based search over Jarvis's workspace memo
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `Chunk` | `` | — | [src](../../../core/services/memory_search.py#L32) |
-| function | `_workspace_dir` | `()` | — | [src](../../../core/services/memory_search.py#L38) |
-| function | `_memory_files` | `()` | — | [src](../../../core/services/memory_search.py#L43) |
-| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/memory_search.py#L58) |
-| function | `_chunk_markdown` | `(text, source)` | Split markdown into chunks, tracking the nearest heading. | [src](../../../core/services/memory_search.py#L65) |
-| function | `_embed_ollama` | `(texts)` | Embed a list of texts via Ollama. Returns (N, D) array or None on failure. | [src](../../../core/services/memory_search.py#L91) |
-| function | `_embed_single` | `(text)` | — | [src](../../../core/services/memory_search.py#L146) |
-| function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L158) |
-| function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L166) |
-| function | `_cache_path` | `()` | — | [src](../../../core/services/memory_search.py#L197) |
-| function | `_chunk_all_files` | `(files)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L205) |
-| function | `_load_cached_vectors` | `()` | chunk-tekst → vektor fra den eksisterende cache, til INKREMENTEL reindex. | [src](../../../core/services/memory_search.py#L222) |
-| function | `_build_and_cache_index` | `(files, current_mtimes)` | Byg indeks og skriv cache. Kaldes KUN fra baggrunds-tråden. | [src](../../../core/services/memory_search.py#L245) |
-| function | `_schedule_background_rebuild` | `(files, current_mtimes)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L298) |
-| function | `_load_or_build_index` | `()` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L327) |
-| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L368) |
-| function | `search_memory` | `(query, *, limit=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L387) |
-| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L445) |
-| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L454) |
+| function | `_workspace_dir` | `()` | Workspace for the current user, falling back to the owner's workspace. | [src](../../../core/services/memory_search.py#L38) |
+| function | `_memory_files` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L52) |
+| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/memory_search.py#L71) |
+| function | `_chunk_markdown` | `(text, source)` | Split markdown into chunks, tracking the nearest heading. | [src](../../../core/services/memory_search.py#L78) |
+| function | `_embed_ollama` | `(texts)` | Embed a list of texts via Ollama. Returns (N, D) array or None on failure. | [src](../../../core/services/memory_search.py#L104) |
+| function | `_embed_single` | `(text)` | — | [src](../../../core/services/memory_search.py#L159) |
+| function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L171) |
+| function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L179) |
+| function | `_cache_path` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L210) |
+| function | `_chunk_all_files` | `(files, ws=…)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L218) |
+| function | `_load_cached_vectors` | `(ws=…)` | chunk-tekst → vektor fra den eksisterende cache, til INKREMENTEL reindex. | [src](../../../core/services/memory_search.py#L235) |
+| function | `_build_and_cache_index` | `(files, current_mtimes, ws=…)` | Byg indeks og skriv cache. Kaldes KUN fra baggrunds-tråden. | [src](../../../core/services/memory_search.py#L258) |
+| function | `_schedule_background_rebuild` | `(files, current_mtimes, ws=…)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L321) |
+| function | `_load_or_build_index` | `(ws=…)` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L352) |
+| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L396) |
+| function | `_source_matches` | `(chunk_source, sources)` | — | [src](../../../core/services/memory_search.py#L415) |
+| function | `search_memory` | `(query, *, limit=…, sources=…, workspace_dir=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L422) |
+| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L498) |
+| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L507) |
 
 ## `core/services/memory_tattoos.py`
 _Memory Tattoos — emotional marks._
@@ -624,16 +637,4 @@ _Selv-registrerende nerve-arkitektur — Fase B + Fase C (spec 2026-07-13)._
 | method | `GovernedPluginLoader._audit` | `(self, event, name, tier, *, approver=…, errors=…)` | Bedste-indsats audit til Centralen. Self-safe — audit må aldrig vælte loaderen. | [src](../../../core/services/nerve_registry.py#L684) |
 | function | `loader` | `()` | — | [src](../../../core/services/nerve_registry.py#L704) |
 | function | `seed_known_nerves` | `(*, now=…)` | Registrér de par EKSISTERENDE nerver ovenfor mod kontrakten — proof-of-adapter. | [src](../../../core/services/nerve_registry.py#L755) |
-
-## `core/services/network_health.py`
-_core/services/network_health.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `measure_api_latency` | `(url=…, timeout=…)` | (ok, latency_ms) for den lokale API. TCP+HTTP round-trip mod /health. Self-safe. | [src](../../../core/services/network_health.py#L55) |
-| function | `_latest` | `(cluster, nerve)` | Seneste tidsserie-værdi for en nerve (samme proces). None hvis tom. | [src](../../../core/services/network_health.py#L71) |
-| function | `_hosts_down` | `()` | Hosts hvis seneste reachability-sample er 'nede' (infra_sense skriver -1.0 ved nede). | [src](../../../core/services/network_health.py#L80) |
-| function | `run_network_health_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: fuse netværks-telemetri → ét signal. Bulletproof — kaster ALDRIG. | [src](../../../core/services/network_health.py#L95) |
-| function | `_reset_for_tests` | `()` | Testhjælper — nulstil debounce-state. Ikke til produktionsbrug. | [src](../../../core/services/network_health.py#L171) |
-| function | `register_network_health_producer` | `()` | Registrér netværks-helbred som cadence-producer (~hvert 2 min). Read-only, self-safe. | [src](../../../core/services/network_health.py#L179) |
 

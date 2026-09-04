@@ -190,7 +190,8 @@ def build_lean_base_messages(
 # ── Kill-switch: AGENTIC_LEAN_PROMPT (spec §4.7, I7) ─────────────────────────
 #
 # Den ENE sandhedskilde for om lean agentic-round-prompten (runde ≥2) er aktiv.
-# DEFAULT OFF (fail-closed) → byte-identisk med i dag (full prompt hver runde).
+# DEFAULT ON efter CC-parity audit (2026-09-04): runde 0 er stadig fuld prompt,
+# men runde ≥2 dropper den tunge per-turn-hale for at undgå gentaget bloat.
 # Samme dual-læsnings-mønster som ``agentic_round_retry_enabled()``:
 #   1. env ``JARVIS_AGENTIC_LEAN_PROMPT`` vinder når sat til en sandheds-værdi.
 #   2. ellers runtime-config ``settings.extra["agentic_lean_prompt_enabled"]``.
@@ -205,7 +206,7 @@ _FALSY = ("0", "false", "no", "off")
 
 
 def agentic_lean_prompt_enabled() -> bool:
-    """Er lean agentic-round-prompt (runde ≥2, spec §4.7) slået til? Default False.
+    """Er lean agentic-round-prompt (runde ≥2, spec §4.7) slået til? Default True.
 
     Env-override (``JARVIS_AGENTIC_LEAN_PROMPT``) vinder over runtime-config.
     Selv-sikker: enhver fejl → False (fail-closed → full prompt hver runde)."""
@@ -219,6 +220,6 @@ def agentic_lean_prompt_enabled() -> bool:
         # Ukendt env-værdi → fald tilbage til config (ignorér uparselbart env).
     try:
         from core.runtime.settings import load_settings
-        return bool(load_settings().extra.get("agentic_lean_prompt_enabled", False))
+        return bool(load_settings().extra.get("agentic_lean_prompt_enabled", True))
     except Exception:
-        return False
+        return True

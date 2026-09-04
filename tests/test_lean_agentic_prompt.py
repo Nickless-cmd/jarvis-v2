@@ -180,13 +180,13 @@ def test_lean_empty_is_noop():
     assert lean == []
 
 
-# ── (c) kill-switch: default OFF, env + config gating ──
+# ── (c) kill-switch: default ON, env + config gating ──
 
 
-def test_flag_default_off(monkeypatch):
+def test_flag_default_on(monkeypatch):
     monkeypatch.delenv(vf._AGENTIC_LEAN_PROMPT_ENV, raising=False)
-    # Settings-extra default kan ikke have feltet → False.
-    assert vf.agentic_lean_prompt_enabled() is False
+    # Settings-extra default kan ikke have feltet → True.
+    assert vf.agentic_lean_prompt_enabled() is True
 
 
 def test_flag_env_on(monkeypatch):
@@ -203,8 +203,8 @@ def test_flag_env_off_wins(monkeypatch):
 
 def test_flag_unknown_env_falls_through_to_config(monkeypatch):
     monkeypatch.setenv(vf._AGENTIC_LEAN_PROMPT_ENV, "maybe")
-    # Uparselbart env → config (som default mangler feltet) → False. Aldrig crash.
-    assert vf.agentic_lean_prompt_enabled() is False
+    # Uparselbart env → config (som default mangler feltet) → True. Aldrig crash.
+    assert vf.agentic_lean_prompt_enabled() is True
 
 
 # ── (e) compose with round-retry: snapshot reused → byte-identical per attempt ──

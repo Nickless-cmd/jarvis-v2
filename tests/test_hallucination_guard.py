@@ -342,3 +342,40 @@ def test_guarden_lander_lige_foer_spoergsmaalet(guard_kan_laese):
     assert ud[-1]["content"] == _FAKTA, "brugerbeskeden skal stadig være sidst"
     assert ud[-2]["role"] == "system", "guarden skal ligge lige før den"
     assert "MEMORY.md" in ud[-2]["content"]
+
+
+# ---------------------------------------------------------------------------
+# Guarden var reelt DØD på dansk. Kilderne blev 22. maj udvidet fra MEMORY.md
+# til SOUL/IDENTITY/USER netop for identitets- og brugerspørgsmål — men
+# mønstrene og nøgleordene fulgte ikke med. Nul guard-hændelser i basen på 14
+# dage. (Fundet 4. sep 2026.)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("spg", [
+    "hvem er Bjørn?",
+    "hvad er din rolle?",
+    "hvad foretrækker Bjørn?",
+    "hvem er Michelle?",
+    "hvad står der i dine stående ordrer?",
+])
+def test_danske_identitetsspoergsmaal_naar_frem_til_guarden(spg):
+    """Før faldt de ud som `casual`, mens den ENGELSKE «what is your role?»
+    var `factual`. Guarden kunne læse de rigtige filer, men blev aldrig
+    spurgt."""
+    assert classify_question(spg) == "factual", spg
+    import core.services.hallucination_guard as hg
+    assert hg._section_keywords_for_message(spg), (
+        "uden nøgleord returnerer den med `no_keywords` og gør ingenting"
+    )
+
+
+@pytest.mark.parametrize("spg", [
+    "hej, hvordan går det?",
+    "fedt, tak for det",
+    "jeg er lidt træt i dag",
+    "haha den var god",
+])
+def test_smalltalk_udloeser_stadig_ikke_guarden(spg):
+    """Vagten må ikke blive grådig. Fyrer den på almindelig samtale, får hver
+    replik et «svar KUN ud fra dette»-tillæg — og så bliver han stiv."""
+    assert classify_question(spg) != "factual", spg

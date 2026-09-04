@@ -39,3 +39,20 @@ def test_memory_md_falls_back_to_shared_without_uid(monkeypatch, tmp_path):
     monkeypatch.setattr(m, "shared_dir", lambda: tmp_path / "shared")
     p = m._memory_md()
     assert p == tmp_path / "shared" / "MEMORY.md"
+
+
+# ── 2026-09-04 (memory repair, R7): section writes go through memory_md_writer ──
+
+
+def test_upsert_section_matches_heading_case_insensitively(tmp_path, monkeypatch):
+    from core.tools import memory_tools as mt
+
+    p = tmp_path / "MEMORY.md"
+    p.write_text("# MEMORY\n\n## Decisions\n- gammel\n", encoding="utf-8")
+    monkeypatch.setattr(mt, "_memory_md", lambda user_id=None: p)
+    monkeypatch.setattr(mt, "_read_memory", lambda: p.read_text(encoding="utf-8"))
+    monkeypatch.setattr("core.services.memory_write_queue.enqueue_write", lambda *a, **k: None)
+    out = mt._exec_memory_upsert_section({"heading": "decisions", "content": "- ny"})
+    assert out["status"] == "ok" and out["action"] == "updated"
+    text = p.read_text(encoding="utf-8")
+    assert text.count("## ") == 1 and "- ny" in text and "- gammel" not in text

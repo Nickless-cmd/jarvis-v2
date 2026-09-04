@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6622/13281 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6627/13289 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -21,12 +21,12 @@ Generated from source. 6622/13281 functions/methods documented (49%). The list b
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 9 | 22 | 40% |
 | `core.identity` | 65 | 158 | 41% |
-| `core.memory` | 51 | 135 | 37% |
+| `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
 | `core.services` | 4383 | 9196 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 76 | 137 | 55% |
+| `core.services.prompt_sections` | 77 | 138 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
@@ -40,7 +40,7 @@ Generated from source. 6622/13281 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1897)
+## Undocumented public functions (1898)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -276,6 +276,7 @@ Generated from source. 6622/13281 functions/methods documented (49%). The list b
 - `core/identity/workspace_context.py` :: `current_context_snapshot` (L74)
 - `core/identity/workspace_context.py` :: `current_user_display_name` (L70)
 - `core/identity/workspace_context.py` :: `reset_context` (L185)
+- `core/memory/memory_md_writer.py` :: `find_section` (L73)
 - `core/memory/private_development_state.py` :: `build_private_development_state_payload` (L25)
 - `core/memory/private_growth_note.py` :: `build_private_growth_note_payload` (L27)
 - `core/memory/private_initiative_tension.py` :: `build_private_initiative_tension` (L28)

@@ -72,6 +72,29 @@ def _resolve_with_shared_fallback(path: Path) -> Path:
     return path
 
 
+_CORE_HEADINGS = frozenset({"kerne", "core", "kerne (altid i prompten)"})
+
+
+def _core_section_text(text: str) -> str:
+    """Body of a `## Kerne` (or `## Core`) section, or "" when absent."""
+    out: list[str] = []
+    inside = False
+    level = 0
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line.startswith("#"):
+            hashes = len(line) - len(line.lstrip("#"))
+            title = line.lstrip("#").strip().lower()
+            if inside and hashes <= level:
+                break
+            if title in _CORE_HEADINGS:
+                inside, level = True, hashes
+                continue
+        if inside:
+            out.append(raw)
+    return "\n".join(out).strip()
+
+
 def _workspace_file_section(
     path: Path,
     *,
@@ -84,6 +107,12 @@ def _workspace_file_section(
     text = read_text_for_path(path)
     if text is None:
         return None
+    # 2026-09-04 (memory repair, R7): USER.md var 23 KB uden protokol for hvad
+    # der er kerne og hvad der er historik — prompten fik de første ~3 KB. Hvis
+    # filen har en "## Kerne"-sektion, er DET indholdet der læses ind.
+    core_text = _core_section_text(text)
+    if core_text:
+        text = core_text
     lines: list[str] = []
     for raw in text.splitlines():
         line = raw.strip()

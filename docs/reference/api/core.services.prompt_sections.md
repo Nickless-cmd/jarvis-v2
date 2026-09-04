@@ -291,8 +291,9 @@ _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._
 |---|---|---|---|---|
 | function | `_effective_size` | `(path)` | Byte-størrelse af workspace-fil, encryption-aware. | [src](../../../core/services/prompt_sections/workspace_files.py#L33) |
 | function | `_resolve_with_shared_fallback` | `(path)` | Hvis `path` peger på en stub-tynd identitets-fil og shared/<navn> | [src](../../../core/services/prompt_sections/workspace_files.py#L51) |
-| function | `_workspace_file_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L75) |
-| function | `_workspace_guidance_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L103) |
-| function | `_ws_exists` | `(path)` | Eksistens-tjek encryption-aware (.enc tæller for member-filer). | [src](../../../core/services/prompt_sections/workspace_files.py#L119) |
-| function | `_workspace_optional_file_section` | `(path, *, fallback_path, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L127) |
+| function | `_core_section_text` | `(text)` | Body of a `## Kerne` (or `## Core`) section, or "" when absent. | [src](../../../core/services/prompt_sections/workspace_files.py#L78) |
+| function | `_workspace_file_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L98) |
+| function | `_workspace_guidance_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L132) |
+| function | `_ws_exists` | `(path)` | Eksistens-tjek encryption-aware (.enc tæller for member-filer). | [src](../../../core/services/prompt_sections/workspace_files.py#L148) |
+| function | `_workspace_optional_file_section` | `(path, *, fallback_path, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L156) |
 

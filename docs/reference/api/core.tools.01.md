@@ -425,8 +425,8 @@ _Memory duplicate-check and safe-write tools for MEMORY.md._
 | function | `_normalize` | `(heading)` | — | [src](../../../core/tools/memory_tools.py#L80) |
 | function | `_exec_memory_check_duplicate` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L84) |
 | function | `_exec_memory_upsert_section` | `(args)` | Write or update a section in MEMORY.md. Replaces existing section if heading matches. | [src](../../../core/tools/memory_tools.py#L121) |
-| function | `_exec_memory_list_headings` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L195) |
-| function | `_exec_memory_consolidate` | `(args)` | Find fuzzy-overlapping sections in MEMORY.md and propose/execute merges. | [src](../../../core/tools/memory_tools.py#L205) |
+| function | `_exec_memory_list_headings` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L186) |
+| function | `_exec_memory_consolidate` | `(args)` | Find fuzzy-overlapping sections in MEMORY.md and propose/execute merges. | [src](../../../core/tools/memory_tools.py#L196) |
 
 ## `core/tools/memory_topic_tools.py`
 _Kuraterede memory-topic-tools (spec 2026-07-10 Spec B)._

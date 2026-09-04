@@ -755,17 +755,15 @@ def _append_workspace_contract_line_raw(
             "content_line": normalized_line,
         }
 
-    lines = existing.splitlines()
-    heading = str(section_heading or "").strip()
-    if not lines:
-        next_text = f"{heading}\n\n{normalized_line}\n"
-    elif heading not in existing:
-        base = existing.rstrip()
-        next_text = f"{base}\n\n{heading}\n\n{normalized_line}\n"
-    else:
-        next_text = _insert_under_heading(existing, heading, normalized_line)
-
-    path.write_text(next_text, encoding="utf-8")
+    # 2026-09-04 (memory repair, R7): samme skriver som memory_upsert_section —
+    # normaliseret overskrift, append uden dubletter, atomisk.
+    from core.memory.memory_md_writer import upsert_section
+    heading_text = str(section_heading or "").strip()
+    level = len(heading_text) - len(heading_text.lstrip("#")) or 2
+    upsert_section(
+        path, heading_text.lstrip("#").strip() or "Curated Memory", normalized_line,
+        level=max(1, min(6, level)), mode="append",
+    )
 
     # Lag 4: Repeat-writer trap — emit eventbus alarm if same canonical_key
     # content has been written 3+ times in 24h (sign of a stuck writer).

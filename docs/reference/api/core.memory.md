@@ -36,6 +36,19 @@ _Async LLM enrichment for private memory pipeline layers._
 | function | `_enrich_worker` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Sequentially enrich 3 layers via cheap LLM, updating DB in-place. | [src](../../../core/memory/inner_llm_enrichment.py#L694) |
 | function | `enrich_private_layers_async` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Fire-and-forget: spawn daemon thread to enrich private layer payloads via LLM. | [src](../../../core/memory/inner_llm_enrichment.py#L813) |
 
+## `core/memory/memory_md_writer.py`
+_One writer for MEMORY.md-style section files (memory repair 2026-09-04, R7)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `normalize_heading` | `(heading)` | Key used to decide that two headings name the same section: | [src](../../../core/memory/memory_md_writer.py#L29) |
+| function | `_atomic_write` | `(path, text)` | — | [src](../../../core/memory/memory_md_writer.py#L39) |
+| function | `parse_sections` | `(text)` | Split markdown into [{level, heading, body_lines, start, end}] by heading line. | [src](../../../core/memory/memory_md_writer.py#L54) |
+| function | `find_section` | `(text, heading, *, level=…)` | — | [src](../../../core/memory/memory_md_writer.py#L73) |
+| function | `_render` | `(sections)` | — | [src](../../../core/memory/memory_md_writer.py#L87) |
+| function | `upsert_section` | `(path, heading, body, *, level=…, mode=…)` | Write ``body`` under ``heading`` in ``path``. | [src](../../../core/memory/memory_md_writer.py#L97) |
+| function | `merge_duplicate_headings` | `(text)` | Merge sections whose normalized heading repeats: first keeps its place, | [src](../../../core/memory/memory_md_writer.py#L149) |
+
 ## `core/memory/memory_size_guard.py`
 _MEMORY.md størrelses-værn (spec C, 2026-07-10)._
 

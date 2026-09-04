@@ -147,6 +147,14 @@ _Loop-compliance self-check section._
 | function | `_r2_telemetry_signal` | `()` | Return (heed_rate, surfaced_total, heeded_total) over last 24h. | [src](../../../core/services/prompt_sections/loop_compliance.py#L54) |
 | function | `loop_compliance_section` | `()` | Render the compliance self-check when warnings are being ignored. | [src](../../../core/services/prompt_sections/loop_compliance.py#L80) |
 
+## `core/services/prompt_sections/memory_md_selection.py`
+_MEMORY.md selection by SECTION for the visible prompt (memory repair 2026-09-04, R2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_render` | `(section, text, *, max_chars)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L24) |
+| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L33) |
+
 ## `core/services/prompt_sections/memory_recall.py`
 _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._
 

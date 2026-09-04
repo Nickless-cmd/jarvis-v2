@@ -428,6 +428,16 @@ _Mål Jarvis' svartid — fra send til svar._
 | function | `_api` | `(path, payload=…, stream=…)` | — | [src](../../../scripts/measure_turn_latency.py#L123) |
 | function | `probe` | `(rounds, message)` | — | [src](../../../scripts/measure_turn_latency.py#L134) |
 
+## `scripts/memory_md_dedupe_headings.py`
+_Merge duplicate `## ` headings in a MEMORY.md (memory repair 2026-09-04, R7)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_norm` | `(heading)` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L24) |
+| function | `dedupe_headings` | `(text)` | Return (new_text, merged_count). Only `## ` headings are merged. | [src](../../../scripts/memory_md_dedupe_headings.py#L28) |
+| function | `dedupe_file` | `(path, *, apply)` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L78) |
+| function | `main` | `()` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L92) |
+
 ## `scripts/meta_evne_healthcheck.py`
 _Meta-evne healthcheck — read-only snapshot of all new tracker stacks._
 
@@ -445,12 +455,4 @@ _Meta-evne healthcheck — read-only snapshot of all new tracker stacks._
 | function | `probe_visible_runs` | `(conn)` | Sanity check: is the runtime actually producing visible runs? | [src](../../../scripts/meta_evne_healthcheck.py#L236) |
 | function | `render_text` | `(report)` | Render the report dict as a human-readable text block. | [src](../../../scripts/meta_evne_healthcheck.py#L266) |
 | function | `main` | `()` | CLI entry point: run all tracker probes and print the report. | [src](../../../scripts/meta_evne_healthcheck.py#L325) |
-
-## `scripts/migrate_emotional_memory.py`
-_One-shot migration: copy memory_emotional_context rows into emotional_memory_anchors._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `migrate` | `(*, batch_size=…)` | Migrate legacy rows into the new table. | [src](../../../scripts/migrate_emotional_memory.py#L32) |
-| function | `_legacy_table_exists` | `(conn)` | — | [src](../../../scripts/migrate_emotional_memory.py#L77) |
 

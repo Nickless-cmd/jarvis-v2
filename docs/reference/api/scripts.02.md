@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/migrate_emotional_memory.py`
+_One-shot migration: copy memory_emotional_context rows into emotional_memory_anchors._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `migrate` | `(*, batch_size=…)` | Migrate legacy rows into the new table. | [src](../../../scripts/migrate_emotional_memory.py#L32) |
+| function | `_legacy_table_exists` | `(conn)` | — | [src](../../../scripts/migrate_emotional_memory.py#L77) |
+
 ## `scripts/mint_jarvisx_token.py`
 _Mint a JarvisX bearer token for a user._
 

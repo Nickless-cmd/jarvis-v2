@@ -299,6 +299,12 @@ def _permissive_relevance(mode: str = "visible_chat") -> "PromptRelevanceDecisio
         backend_status="phase_timeout")
 
 
+MEMORY_GROUP_HEADER = (
+    "[HUKOMMELSE] — det du husker om dette emne (MEMORY.md, din hjerne, recall). "
+    "Brug det når det er relevant; sig det hvis noget her modsiger samtalen."
+)
+
+
 @dataclass(slots=True)
 class MemorySectionSelection:
     lines: list[str]
@@ -1316,7 +1322,11 @@ def _build_visible_chat_prompt_assembly_impl(
                 threshold=getattr(_bs, "jarvis_brain_auto_inject_threshold", 0.55),
             )
             if _facts_text:
-                _awareness_add(8, "jarvis brain facts (auto-inject)", _facts_text)
+                # 2026-09-04 (memory repair, R2): hukommelse hører til i
+                # [HUKOMMELSE]-gruppen i halen — ikke under "INTERN DIAGNOSTIK
+                # … citér det ALDRIG", og ikke i 6000-tegns awareness-puljen.
+                _dyn_memory_recall.append(_facts_text)
+                derived_inputs.append("jarvis brain facts (memory group)")
 
             # Post-web-search nudge — if last tool message had URL content,
             # encourage remember_this. Heuristic; max one per turn since we
@@ -1779,7 +1789,9 @@ def _build_visible_chat_prompt_assembly_impl(
                 _busy_msr = _sid_msr in _MSR_INFLIGHT
             # Serve last cached result immediately (non-blocking).
             if _c_msr and (_now_msr - _c_msr[0]) < _RBA_TTL_S and _c_msr[1]:
-                _awareness_add(28, "multi-signal recall (BM25+entity+embedding)", _c_msr[1])
+                # 2026-09-04 (memory repair, R2): til [HUKOMMELSE]-gruppen.
+                _dyn_memory_recall.append(_c_msr[1])
+                derived_inputs.append("multi-signal recall (memory group)")
             # Refresh in background for the next turn (deduped per session).
             if not _busy_msr and _sid_msr:
                 with _RBA_LOCK:
@@ -2246,8 +2258,10 @@ def _build_visible_chat_prompt_assembly_impl(
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
             user_message=user_message,
-            max_lines=3 if compact else 4,
-            max_chars=200 if compact else 280,
+            # 2026-09-04 (memory repair, R2): sektioner, ikke linjer. Før: 4 linjer
+            # à 280 tegn uden overskrift, fallback = filens sidste 4 linjer.
+            max_lines=2 if compact else 3,
+            max_chars=900 if compact else 1500,
             workspace_dir=workspace_dir,
             mode="visible_chat",
         )
@@ -2781,6 +2795,10 @@ def _build_visible_chat_prompt_assembly_impl(
     # ── MEMORY group (audit #3, 2026-07-22): MEMORY.md + recall bundle together,
     # right after the diagnostics. He speaks from his state, not from recall — so
     # recall sits here, not at the top (Jarvis-review 2026-06-22).
+    # 2026-09-04 (memory repair, R2): én overskrift for hele gruppen, så
+    # hukommelsen ikke arver diagnostik-blokkens "citér det ALDRIG".
+    if _dyn_memory_recall:
+        _dyn_tail.append(MEMORY_GROUP_HEADER)
     _dyn_tail.extend(_dyn_memory_recall)
     # ── OPERATIONAL group: per-turn dynamic ops (model-pools, subagent completions,
     # recent self-changes, daily notes, background events) + device presence (below).
@@ -3704,6 +3722,37 @@ def _workspace_memory_section(
     entries = _workspace_memory_entries(path)
     if not entries:
         return None
+    # 2026-09-04 (memory repair, R2): vælg SEKTIONER via det eksisterende
+    # memory_search-indeks (overskrift + brødtekst, embedding/tf-idf) før den
+    # gamle linje-heuristik, som kun kender ~10 nøgleord og ellers tager filens
+    # sidste linjer.
+    if path.name == "MEMORY.md":
+        try:
+            from core.services.prompt_sections.memory_md_selection import (
+                select_memory_md_sections,
+            )
+            section_lines = select_memory_md_sections(
+                user_message,
+                workspace_dir=workspace_dir,
+                max_sections=max(1, int(max_lines)),
+                max_chars=max(200, int(max_chars)),
+            )
+        except Exception:
+            section_lines = []
+        if section_lines:
+            selection = MemorySectionSelection(
+                lines=section_lines,
+                backend_attempted=True,
+                backend_success=True,
+                fallback_used=False,
+                backend_name="section-embedding",
+                backend_provider=None,
+                backend_model=None,
+                backend_status="ok",
+                prompt_file_used=False,
+            )
+            _track_memory_selection(selection, mode, len(entries))
+            return selection
     selection = _select_relevant_memory_entries(
         entries,
         user_message=user_message,

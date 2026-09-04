@@ -48,9 +48,9 @@ _Thin wrapper for compact summarisation._
 |---|---|---|---|---|
 | function | `_in_pytest` | `()` | Testværn: et betalt provider-kald må ALDRIG fyre fra en test. Fundet | [src](../../../core/context/compact_llm.py#L26) |
 | function | `_call_primary` | `(prompt, *, max_tokens)` | Summarise via the PRIMARY (visible) lane — the model that defines Jarvis. | [src](../../../core/context/compact_llm.py#L36) |
-| function | `_call_cheap_no_groq` | `(prompt)` | Try cheap lane providers, skipping Groq. Returns text or None. | [src](../../../core/context/compact_llm.py#L75) |
-| function | `_call_heartbeat_llm_simple` | `(prompt, max_tokens)` | — | [src](../../../core/context/compact_llm.py#L86) |
-| function | `call_compact_llm` | `(prompt, *, max_tokens=…)` | Summarise prompt. Tries non-Groq cheap providers first, Groq as fallback. | [src](../../../core/context/compact_llm.py#L91) |
+| function | `_call_cheap_no_groq` | `(prompt)` | Try cheap lane providers, skipping Groq. Returns text or None. | [src](../../../core/context/compact_llm.py#L76) |
+| function | `_call_heartbeat_llm_simple` | `(prompt, max_tokens)` | — | [src](../../../core/context/compact_llm.py#L87) |
+| function | `call_compact_llm` | `(prompt, *, max_tokens=…)` | Summarise prompt. Tries non-Groq cheap providers first, Groq as fallback. | [src](../../../core/context/compact_llm.py#L92) |
 
 ## `core/context/compaction_policy.py`
 _Model-aware, round-atomic compaction policy (PURE — no DB, no clock, no LLM)._
@@ -70,6 +70,19 @@ _Model-aware, round-atomic compaction policy (PURE — no DB, no clock, no LLM).
 | function | `build_structured_summary_prompt` | `(old_messages, *, focus=…, ground_truth=…, max_transcript_chars=…)` | Structured, thread-preserving summary prompt over the OLD messages. | [src](../../../core/context/compaction_policy.py#L265) |
 | function | `extract_summary` | `(raw)` | Pull the usable summary out of a raw model response: drop any <thinking> scratchpad, | [src](../../../core/context/compaction_policy.py#L298) |
 | function | `summary_looks_valid` | `(summary_text, *, min_chars=…)` | Quality gate on the EXTRACTED summary. Rejects empty/too-short, the mechanical-fallback | [src](../../../core/context/compaction_policy.py#L309) |
+
+## `core/context/microcompact.py`
+_Time-gap microcompaction for visible transcript tool results._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_utc` | `()` | — | [src](../../../core/context/microcompact.py#L18) |
+| function | `_enabled` | `()` | — | [src](../../../core/context/microcompact.py#L22) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/context/microcompact.py#L30) |
+| function | `_latest_assistant_at` | `(messages)` | — | [src](../../../core/context/microcompact.py#L43) |
+| function | `_is_stubbed` | `(content)` | — | [src](../../../core/context/microcompact.py#L52) |
+| function | `_stub_tool_result` | `(message)` | — | [src](../../../core/context/microcompact.py#L56) |
+| function | `apply_time_gap_microcompact` | `(messages, *, now=…, gap_minutes=…, keep_recent_tools=…)` | Stub old tool results after a long quiet gap. | [src](../../../core/context/microcompact.py#L63) |
 
 ## `core/context/session_compact.py`
 _Session-level context compaction._

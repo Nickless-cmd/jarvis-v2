@@ -33,9 +33,19 @@ def test_memory_md_uses_workspace_when_uid_resolved(monkeypatch, tmp_path):
     assert p == tmp_path / "workspaces" / "bjorn" / "MEMORY.md"
 
 
-def test_memory_md_falls_back_to_shared_without_uid(monkeypatch, tmp_path):
+def test_memory_md_falls_back_to_owner_without_uid(monkeypatch, tmp_path):
     import core.tools.memory_tools as m
     monkeypatch.setattr(m, "_resolve_memory_uid", lambda user_id=None: "")
+    monkeypatch.setattr("core.identity.users.get_owner", lambda: type("Owner", (), {"discord_id": "owner-uid"})())
+    monkeypatch.setattr(m, "workspace_dir", lambda uid: tmp_path / "workspaces" / uid)
+    p = m._memory_md()
+    assert p == tmp_path / "workspaces" / "owner-uid" / "MEMORY.md"
+
+
+def test_memory_md_falls_back_to_shared_when_owner_unresolved(monkeypatch, tmp_path):
+    import core.tools.memory_tools as m
+    monkeypatch.setattr(m, "_resolve_memory_uid", lambda user_id=None: "")
+    monkeypatch.setattr("core.identity.users.get_owner", lambda: None)
     monkeypatch.setattr(m, "shared_dir", lambda: tmp_path / "shared")
     p = m._memory_md()
     assert p == tmp_path / "shared" / "MEMORY.md"

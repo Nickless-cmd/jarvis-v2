@@ -86,6 +86,62 @@ def test_search_memory_source_filter(ws):
     assert all(h["source"] == "MEMORY.md" for h in hits)
 
 
+def test_selector_promotes_exact_match_over_semantic_noise(monkeypatch, tmp_path):
+    def fake_search_memory(*args, **kwargs):
+        return [
+            {
+                "section": "visible_output_text guard",
+                "text": "Hukommelsen blev amputeret af tomme svar i agentiske runder.",
+                "score": 0.95,
+            },
+            {
+                "section": "Hardware",
+                "text": "GPU-maskine LXC 107 kører Ollama med GTX 1070 passthrough.",
+                "score": 0.40,
+            },
+        ]
+
+    monkeypatch.setattr(memory_search, "search_memory", fake_search_memory)
+
+    lines = select_memory_md_sections(
+        "hvilken GPU har jeg og hvad bruges den til?",
+        workspace_dir=tmp_path,
+        max_sections=1,
+    )
+
+    assert lines == ["§ Hardware: GPU-maskine LXC 107 kører Ollama med GTX 1070 passthrough."]
+
+
+def test_selector_falls_back_to_lexical_memory_scan(monkeypatch, tmp_path):
+    (tmp_path / "MEMORY.md").write_text(
+        "# MEMORY\n\n"
+        "## Runtime støj\n"
+        "- Tomme svar i agentiske runder.\n\n"
+        "## Hardware\n"
+        "- GPU-maskine LXC 107 kører Ollama med GTX 1070 passthrough.\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        memory_search,
+        "search_memory",
+        lambda *args, **kwargs: [
+            {
+                "section": "Runtime støj",
+                "text": "Tomme svar i agentiske runder.",
+                "score": 0.90,
+            }
+        ],
+    )
+
+    lines = select_memory_md_sections(
+        "hvilken GPU har jeg og hvad bruges den til?",
+        workspace_dir=tmp_path,
+        max_sections=1,
+    )
+
+    assert lines == ["§ Hardware: GPU-maskine LXC 107 kører Ollama med GTX 1070 passthrough."]
+
+
 def test_curated_files_are_picked_by_mtime_not_name(tmp_path):
     ws = tmp_path / "ws2"
     (ws / "memory" / "curated").mkdir(parents=True)

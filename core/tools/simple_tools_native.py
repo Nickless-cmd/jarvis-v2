@@ -27,9 +27,7 @@ from urllib import request as urllib_request
 from core.eventbus.bus import event_bus
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
 from core.runtime.workspace_paths import shared_dir as _shared_dir
-# _tool_load_more_tools slår tool-navne op i det kanoniske katalog. Importeret
-# fra samme kilde som simple_tools (ingen dobbelt-sandhed).
-from core.tools.simple_tools_definitions import TOOL_DEFINITIONS  # noqa: F401
+from core.tools.load_more_tools import _tool_load_more_tools  # noqa: F401
 from core.tools.simple_tools_web import _read_api_key  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -2507,99 +2505,6 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
             "Præsenter IKKE URL'en for brugeren — den virker ikke."
         )
     return result
-
-
-# ── Handler registry ───────────────────────────────────────────────────
-
-def _tool_load_more_tools(arguments: dict) -> dict:
-    """Resolve which tools to add to the next round. Logs to DB + events."""
-    import json as _json
-    from core.eventbus.bus import event_bus
-    from core.runtime.db import connect
-
-    names = list(arguments.get("names") or [])
-    query = (arguments.get("query") or "").strip()
-
-    all_names = {
-        ((d.get("function") or {}).get("name") or d.get("name") or "")
-        for d in (TOOL_DEFINITIONS or [])
-    }
-
-    resolved: list[str] = []
-    unknown: list[str] = []
-    for n in names:
-        if n in all_names:
-            resolved.append(n)
-        else:
-            unknown.append(n)
-
-    if query and not resolved:
-        try:
-            from core.services.tool_embeddings import top_k_similar
-            hits = top_k_similar(query, k=10)
-            resolved = [n for n, _ in hits if n in all_names][:5]
-        except Exception:
-            resolved = []
-
-    if not resolved and unknown:
-        return {
-            "status": "error",
-            "error": f"tools not found: {unknown}. Use names from the TOOL CATALOG.",
-        }
-
-    if not resolved:
-        return {
-            "status": "ok",
-            "added": [],
-            "message": "no strong matches",
-        }
-
-    try:
-        event_bus.publish("tool_router.load_more_fired", {
-            "requested_names": names,
-            "requested_query": query,
-            "resolved_names": resolved,
-        })
-    except Exception:
-        pass
-
-    try:
-        with connect() as c:
-            c.execute(
-                "INSERT INTO tool_router_load_more("
-                "requested_names_json, requested_query, resolved_names_json, created_at) "
-                "VALUES (?,?,?, datetime('now'))",
-                (_json.dumps(names), query, _json.dumps(resolved)),
-            )
-            c.commit()
-    except Exception:
-        pass
-
-    # 2026-06-22: return the FULL schema for each resolved tool so the model can
-    # call it correctly *immediately* — params, types, required, enums — instead
-    # of getting only the name and guessing at the call shape ("try 10 times").
-    schemas: list[dict] = []
-    for d in (TOOL_DEFINITIONS or []):
-        fn = d.get("function") or d
-        nm = (fn.get("name") or d.get("name") or "")
-        if nm in resolved:
-            schemas.append(
-                {
-                    "name": nm,
-                    "description": fn.get("description"),
-                    "parameters": fn.get("parameters"),
-                }
-            )
-
-    return {
-        "status": "ok",
-        "added": resolved,
-        "schemas": schemas,
-        "message": (
-            f"Added {len(resolved)} tool(s). Full schema below — call directly "
-            "using exactly these parameter names; do not guess."
-        ),
-    }
 
 
 def _exec_github_list_issues(args: dict[str, Any]) -> dict[str, Any]:

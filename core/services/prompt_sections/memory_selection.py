@@ -23,6 +23,14 @@ from core.services.prompt_sections.memory_scoring import (
     _merge_ordered_memory_entries,
 )
 
+import re
+
+_TOKEN_RE = re.compile(r"[A-Za-zÆØÅæøå0-9_]{4,}")
+_GENERIC_MEMORY_WORDS = frozenset({
+    "skal", "ikke", "eller", "hvis", "this", "that", "with", "from", "user",
+    "memory", "jarvis", "bjørn",
+})
+
 
 @dataclass(slots=True)
 class MemorySectionSelection:
@@ -76,6 +84,8 @@ def _workspace_memory_section(
             )
         except Exception:
             section_lines = []
+        if section_lines:
+            section_lines = _filter_answer_changing_memory(user_message, section_lines)
         if section_lines:
             selection = MemorySectionSelection(
                 lines=section_lines,
@@ -214,6 +224,7 @@ def _select_relevant_memory_entries(
             user_message=user_message,
             max_lines=max_lines,
         )
+    ordered = _filter_answer_changing_memory(user_message, ordered)
 
     clipped: list[str] = []
     for entry in ordered:
@@ -232,6 +243,30 @@ def _select_relevant_memory_entries(
         backend_status=backend_attempt.status,
         prompt_file_used=prompt_file_used,
     )
+
+
+def memory_could_change_answer(user_message: str, memory_text: str) -> bool:
+    """Cheap gate: inject memory only when it can affect this answer's substance."""
+    msg_terms = {
+        t.lower() for t in _TOKEN_RE.findall(str(user_message or ""))
+        if t.lower() not in _GENERIC_MEMORY_WORDS
+    }
+    mem_terms = {
+        t.lower() for t in _TOKEN_RE.findall(str(memory_text or ""))
+        if t.lower() not in _GENERIC_MEMORY_WORDS
+    }
+    if not msg_terms or not mem_terms:
+        return False
+    if msg_terms & mem_terms:
+        return True
+    return bool(
+        any(ch.isdigit() for ch in str(user_message or ""))
+        and any(ch.isdigit() for ch in str(memory_text or ""))
+    )
+
+
+def _filter_answer_changing_memory(user_message: str, lines: list[str]) -> list[str]:
+    return [line for line in lines if memory_could_change_answer(user_message, line)]
 
 
 def _bounded_nl_memory_selection(

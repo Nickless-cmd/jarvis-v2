@@ -14,14 +14,14 @@ def test_workspace_memory_entries_strips_headings_and_bullets(tmp_path):
     assert entries == ["første linje", "anden linje"]
 
 
-def test_heuristic_fallback_takes_last_lines_when_nothing_matches(tmp_path):
+def test_heuristic_fallback_drops_lines_that_cannot_change_answer(tmp_path):
     entries = ["a b c", "d e f", "g h i", "j k l", "m n o"]
     with patch("core.runtime.db_core.get_runtime_state_value", lambda key, default=None: True), \
          patch("core.services.workspace_crypto.read_text_for_path", lambda path: None):
         sel = MS._select_relevant_memory_entries(
             entries, user_message="zzz", max_lines=2, max_chars=50, workspace_dir=tmp_path,
         )
-    assert sel.lines == ["j k l", "m n o"]
+    assert sel.lines == []
     assert sel.backend_status == "skipped-visible-hotpath"
     assert sel.fallback_used is True
 

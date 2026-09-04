@@ -18,10 +18,22 @@ from __future__ import annotations
 
 import contextvars
 import logging
+import re
 from contextlib import contextmanager
 from typing import Any, Iterable, Iterator
 
 logger = logging.getLogger(__name__)
+
+_PERSONAL_CONTEXT_RE = re.compile(
+    r"\b(min|mit|mine|vores|jarvis|workspace|memory|hukommelse|huske|aftalt|"
+    r"besluttet|my|our|remember|decided)\b",
+    re.IGNORECASE,
+)
+_EXTERNAL_CONTEXT_RE = re.compile(
+    r"\b(web|internet|nyheder|latest|seneste|pris|kurs|weather|news|google|"
+    r"website|url|http|external|third[- ]party)\b",
+    re.IGNORECASE,
+)
 
 try:  # defensiv — undgå circular-import-brud ved boot
     from core.identity.workspace_context import current_user_id
@@ -260,6 +272,33 @@ def allowed_tool_names(
         result = result - LOCAL_EXEC_ONLY_TOOLS
 
     return _apply_computer_use_policy(result)
+
+
+def preferred_tools_for_user_message(user_message: str) -> list[str]:
+    """Order hint for tool choice; does not grant or revoke permissions."""
+    text = str(user_message or "")
+    if _PERSONAL_CONTEXT_RE.search(text) and not _EXTERNAL_CONTEXT_RE.search(text):
+        return ["recall", "search_memory", "search_jarvis_brain", "read_self_state"]
+    if _EXTERNAL_CONTEXT_RE.search(text):
+        return ["web_search", "web_fetch", "recall"]
+    return []
+
+
+def tool_routing_hint(user_message: str) -> str:
+    """Prompt hint for personal/internal vs external lookup intent."""
+    preferred = preferred_tools_for_user_message(user_message)
+    if not preferred:
+        return ""
+    if preferred[0] == "web_search":
+        return (
+            "Tool routing: brug eksterne web/data-tools kun når brugeren beder om "
+            "aktuel/offentlig/ekstern viden; ellers prøv Jarvis' egne kilder først."
+        )
+    return (
+        "Tool routing: dette ligner personlig/intern kontekst. Prøv recall/"
+        "search_memory/Jarvis brain før web_search; brug tredjeparts-kilder kun ved "
+        "eksplicit ekstern/aktuel forespørgsel."
+    )
 
 
 def is_tool_allowed(*, role: str, scope: str, name: str) -> bool:

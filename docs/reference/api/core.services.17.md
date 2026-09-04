@@ -183,6 +183,24 @@ _Reboot Awareness Daemon — proprioception: "I feel when I restart"._
 | function | `_surface_summary` | `(event, uptime)` | — | [src](../../../core/services/reboot_awareness_daemon.py#L229) |
 | function | `build_reboot_awareness_prompt_section` | `()` | Announce recent reboot once; stays silent after first ~10 min. | [src](../../../core/services/reboot_awareness_daemon.py#L252) |
 
+## `core/services/recall.py`
+_One recall path over every memory source (memory repair 2026-09-04, R5)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L35) |
+| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L40) |
+| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L48) |
+| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L64) |
+| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L83) |
+| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L108) |
+| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L126) |
+| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L140) |
+| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L154) |
+| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L184) |
+| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L223) |
+| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L227) |
+
 ## `core/services/recall_scheduler.py`
 _core/services/recall_scheduler.py_
 
@@ -700,17 +718,4 @@ _In-memory, append-only, offset-indekseret event-log PR. RUN._
 | function | `mark_consumed` | `(run_id)` | En subscriber yieldede message_stop -> nogen saa runnet til ende. | [src](../../../core/services/run_event_log.py#L282) |
 | function | `was_consumed_or_active` | `(run_id)` | True hvis en levende subscriber saa/ser runnet til ende -> undertryk push. | [src](../../../core/services/run_event_log.py#L290) |
 | function | `claim_or_create` | `(session_id, stale_cap_s=…)` | Atomisk find-eller-opret pr. session — under én laas, saa samtidige POSTs | [src](../../../core/services/run_event_log.py#L299) |
-
-## `core/services/run_follow.py`
-_Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `begin_follow` | `(session_id, run_id=…)` | Nulstil buffer for en NY run i sessionen (catch-up starter forfra). | [src](../../../core/services/run_follow.py#L38) |
-| function | `publish_follow_frame` | `(session_id, frame)` | Append en v2-SSE-frame til sessionens buffer (kaldt fra run-tråden). | [src](../../../core/services/run_follow.py#L52) |
-| function | `end_follow` | `(session_id)` | Markér sessionens follow-stream som færdig → pollende endpoint stopper | [src](../../../core/services/run_follow.py#L66) |
-| function | `_snapshot` | `(session_id, from_idx)` | Returnér (nye frames fra from_idx, done). | [src](../../../core/services/run_follow.py#L78) |
-| function | `has_active_follow` | `(session_id)` | True hvis der findes en (ikke-afsluttet) follow-buffer for sessionen. | [src](../../../core/services/run_follow.py#L88) |
-| function | `session_is_live` | `(session_id, max_idle_s=…)` | Autoritativ: kører der et run i denne session LIGE NU? (ikke done OG | [src](../../../core/services/run_follow.py#L95) |
-| function | `live_sessions` | `(max_idle_s=…)` | Alle sessioner med et run der aktivt streamer lige nu (desktop-prikker + | [src](../../../core/services/run_follow.py#L106) |
 

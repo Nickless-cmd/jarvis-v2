@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/signal_decay_daemon.py`
+_Signal decay daemon — archive and delete stale signals across all signal tables._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_signal_decay_daemon` | `()` | Run signal decay if cadence elapsed. Returns stats dict. | [src](../../../core/services/signal_decay_daemon.py#L35) |
+| function | `get_signal_decay_stats` | `()` | — | [src](../../../core/services/signal_decay_daemon.py#L91) |
+| function | `build_signal_decay_surface` | `()` | — | [src](../../../core/services/signal_decay_daemon.py#L98) |
+
 ## `core/services/signal_delta_trigger.py`
 _Signal-delta trigger (C2) — pure, NON-LLM event-driven dispatch decision._
 
@@ -610,28 +619,4 @@ _Taste Profile — accumulating aesthetic preferences for code, design, and comm
 | function | `build_taste_profile_surface` | `()` | — | [src](../../../core/services/taste_profile.py#L155) |
 | function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/taste_profile.py#L167) |
 | function | `_safe_json` | `(value, default)` | — | [src](../../../core/services/taste_profile.py#L174) |
-
-## `core/services/telegram_gateway.py`
-_Telegram gateway — bidirectional messaging via Telegram Bot API._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_config` | `()` | — | [src](../../../core/services/telegram_gateway.py#L43) |
-| function | `is_configured` | `()` | — | [src](../../../core/services/telegram_gateway.py#L57) |
-| function | `get_status` | `()` | — | [src](../../../core/services/telegram_gateway.py#L61) |
-| function | `_api` | `(token, method, payload)` | — | [src](../../../core/services/telegram_gateway.py#L67) |
-| function | `_api_get` | `(token, method, payload)` | HTTP GET to Telegram Bot API (used for getFile). | [src](../../../core/services/telegram_gateway.py#L77) |
-| function | `_api_post_file` | `(token, method, data, files)` | HTTP POST multipart/form-data to Telegram Bot API (sendPhoto etc.). | [src](../../../core/services/telegram_gateway.py#L87) |
-| function | `_resolve_telegram_file_url` | `(*, token, file_id)` | Call getFile to get a download URL for a Telegram file_id. | [src](../../../core/services/telegram_gateway.py#L120) |
-| function | `_extract_telegram_media` | `(msg)` | Extract media items from a Telegram message dict. | [src](../../../core/services/telegram_gateway.py#L135) |
-| function | `_download_tg_attachment` | `(url, filename, mime, size, session_id)` | — | [src](../../../core/services/telegram_gateway.py#L179) |
-| function | `_build_telegram_attachment_prefix` | `(media_items, *, token, session_id)` | — | [src](../../../core/services/telegram_gateway.py#L193) |
-| function | `_validate_send_path` | `(path)` | — | [src](../../../core/services/telegram_gateway.py#L220) |
-| function | `send_telegram_file` | `(text, file_path, chat_id=…)` | Send a file to owner (or chat_id) via Telegram. | [src](../../../core/services/telegram_gateway.py#L225) |
-| function | `send_message` | `(text, chat_id=…, parse_mode=…)` | Send a message to owner (or specific chat_id). Returns status dict. | [src](../../../core/services/telegram_gateway.py#L267) |
-| function | `_get_or_create_session` | `(chat_id)` | — | [src](../../../core/services/telegram_gateway.py#L302) |
-| function | `_poll_loop` | `(token, owner_chat_id)` | — | [src](../../../core/services/telegram_gateway.py#L313) |
-| function | `_eventbus_subscriber_loop` | `()` | Buffer assistant responses per session, flush when run completes. | [src](../../../core/services/telegram_gateway.py#L408) |
-| function | `start_telegram_gateway` | `()` | — | [src](../../../core/services/telegram_gateway.py#L464) |
-| function | `stop_telegram_gateway` | `()` | — | [src](../../../core/services/telegram_gateway.py#L495) |
 

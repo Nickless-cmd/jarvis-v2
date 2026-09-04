@@ -911,6 +911,13 @@ def init_db() -> None:
         _ensure_user_scope_154(conn)
         _ensure_skill_audit_table(conn)
         _ensure_skill_usage_table(conn)
+        # 2026-09-04 (memory repair, R5): FTS5 over session_summaries + chat_messages.
+        # Best-effort — søgefunktionerne sikrer også tabellerne lazily.
+        try:
+            from core.runtime.db_fts import ensure_fts_tables
+            ensure_fts_tables(conn)
+        except Exception:
+            pass
         conn.commit()
 
 def _ensure_decision_trigger_column(conn: sqlite3.Connection) -> None:

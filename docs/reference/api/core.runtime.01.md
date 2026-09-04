@@ -472,6 +472,20 @@ _DB helpers for emotional_memory_anchors table._
 | function | `delete_emotional_memory_anchor` | `(anchor_type, anchor_id)` | — | [src](../../../core/runtime/db_emotional_memory.py#L234) |
 | function | `_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_emotional_memory.py#L244) |
 
+## `core/runtime/db_fts.py`
+_FTS5 full-text search over session summaries and chat messages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `fts5_available` | `(conn)` | — | [src](../../../core/runtime/db_fts.py#L33) |
+| function | `_base_table_exists` | `(conn, table)` | — | [src](../../../core/runtime/db_fts.py#L42) |
+| function | `ensure_fts_tables` | `(conn)` | Create the FTS tables + sync triggers for every base table that exists. | [src](../../../core/runtime/db_fts.py#L49) |
+| function | `rebuild_fts` | `()` | Rebuild every FTS table from its base table. Returns row counts. | [src](../../../core/runtime/db_fts.py#L91) |
+| function | `to_match_query` | `(query, *, max_terms=…)` | Turn free text into a tolerant FTS5 MATCH expression. | [src](../../../core/runtime/db_fts.py#L104) |
+| function | `_bm25_to_score` | `(rank)` | FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]. | [src](../../../core/runtime/db_fts.py#L123) |
+| function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries. Each hit: id, session_id, run_id, | [src](../../../core/runtime/db_fts.py#L131) |
+| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages. Each hit: id, message_id, session_id, | [src](../../../core/runtime/db_fts.py#L161) |
+
 ## `core/runtime/db_gate_verdicts.py`
 _Gate-verdict-ledger — PERSISTENT optælling af hvert governet gate-udfald._
 
@@ -644,14 +658,4 @@ _Persistence for the private self-model / mood / promotion-decision tables._
 | function | `get_private_state` | `()` | — | [src](../../../core/runtime/db_private_states.py#L185) |
 | function | `record_private_promotion_decision` | `(*, decision_id, source, run_id, work_id, promotion_target, promotion_action, promotion_scope, confidence, created_at)` | — | [src](../../../core/runtime/db_private_states.py#L217) |
 | function | `get_private_promotion_decision` | `()` | — | [src](../../../core/runtime/db_private_states.py#L262) |
-
-## `core/runtime/db_runtime_browser.py`
-_Persistence for the `runtime_browser_bodies` table — Jarvis' browser bodies._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_runtime_browser_tables` | `(conn)` | — | [src](../../../core/runtime/db_runtime_browser.py#L13) |
-| function | `get_runtime_browser_body` | `(body_id)` | — | [src](../../../core/runtime/db_runtime_browser.py#L41) |
-| function | `upsert_runtime_browser_body` | `(*, body_id, profile_name, status, active_task_id=…, active_flow_id=…, focused_tab_id=…, tabs_json=…, last_url=…, last_title=…, summary=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_browser.py#L82) |
-| function | `list_runtime_browser_bodies` | `(limit=…)` | — | [src](../../../core/runtime/db_runtime_browser.py#L149) |
 

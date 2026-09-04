@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6616/13252 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6624/13273 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,15 +23,15 @@ Generated from source. 6616/13252 functions/methods documented (49%). The list b
 | `core.identity` | 65 | 158 | 41% |
 | `core.memory` | 51 | 135 | 37% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 555 | 1032 | 53% |
-| `core.services` | 4389 | 9196 | 47% |
+| `core.runtime` | 561 | 1040 | 53% |
+| `core.services` | 4391 | 9208 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 74 | 130 | 56% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 377 | 824 | 45% |
+| `core.tools` | 377 | 825 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -40,7 +40,7 @@ Generated from source. 6616/13252 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1889)
+## Undocumented public functions (1891)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -359,6 +359,7 @@ Generated from source. 6616/13252 functions/methods documented (49%). The list b
 - `core/runtime/db_embeddings.py` :: `get_embedding` (L78)
 - `core/runtime/db_emotional_memory.py` :: `delete_emotional_memory_anchor` (L234)
 - `core/runtime/db_emotional_memory.py` :: `get_emotional_memory_anchor` (L141)
+- `core/runtime/db_fts.py` :: `fts5_available` (L33)
 - `core/runtime/db_goals.py` :: `count_goals` (L281)
 - `core/runtime/db_goals.py` :: `create_goal` (L75)
 - `core/runtime/db_goals.py` :: `delete_goal` (L268)
@@ -1315,6 +1316,7 @@ Generated from source. 6616/13252 functions/methods documented (49%). The list b
 - `core/services/reasoning_interceptor.py` :: `intercept_round` (L152)
 - `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L206)
 - `core/services/reboot_awareness_daemon.py` :: `get_last_boot_event` (L202)
+- `core/services/recall.py` :: `empty_message` (L223)
 - `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L221)
 - `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L229)
 - `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L336)

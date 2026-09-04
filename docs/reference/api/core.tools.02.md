@@ -200,6 +200,13 @@ _Semantic recall tools — Jarvis-facing recall across all memory surfaces._
 | function | `_timestamp_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L43) |
 | function | `_exec_recall_memories` | `(args)` | — | [src](../../../core/tools/recall_memory_tools.py#L53) |
 
+## `core/tools/recall_tool.py`
+_`recall` — the one memory-search tool (memory repair 2026-09-04, R5)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_recall` | `(args)` | — | [src](../../../core/tools/recall_tool.py#L52) |
+
 ## `core/tools/recurring_scheduler_tools.py`
 _Recurring scheduler tools — Jarvis can schedule repeating tasks._
 
@@ -649,11 +656,4 @@ _TikTok analytics tools for Jarvis._
 | function | `_fetch_video_list` | `(sec_uid, cookies, count)` | Call TikTok's internal video list API. | [src](../../../core/tools/tiktok_analytics_tools.py#L115) |
 | function | `_parse_video` | `(v)` | — | [src](../../../core/tools/tiktok_analytics_tools.py#L136) |
 | function | `_exec_tiktok_analytics` | `(args)` | Fetch TikTok video statistics for a user. | [src](../../../core/tools/tiktok_analytics_tools.py#L155) |
-
-## `core/tools/tiktok_content_tools.py`
-_TikTok content generation tool — wraps jarvis_pollinations_pipeline._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_tiktok_generate_video` | `(args)` | — | [src](../../../core/tools/tiktok_content_tools.py#L21) |
 

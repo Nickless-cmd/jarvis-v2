@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13252 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13273 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -25,8 +25,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13252 functions/
 - [`core.identity`](core.identity.md)
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
-- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_runtime_browser`
-- [`core.runtime.02`](core.runtime.02.md) — `db_runtime_chronicle` … `workspace_paths`
+- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_private_states`
+- [`core.runtime.02`](core.runtime.02.md) — `db_runtime_browser` … `workspace_paths`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agreement_streak`
 - [`core.services.02`](core.services.02.md) — `ambient_presence` … `body_memory`
 - [`core.services.03`](core.services.03.md) — `boredom_curiosity_bridge` … `central_convene_judge`
@@ -43,13 +43,13 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13252 functions/
 - [`core.services.14`](core.services.14.md) — `memory_density` … `network_health`
 - [`core.services.15`](core.services.15.md) — `non_visible_fallback` … `precision_bias`
 - [`core.services.16`](core.services.16.md) — `pressure_threshold_gate` … `provider_self_heal`
-- [`core.services.17`](core.services.17.md) — `push_dispatcher` … `run_follow`
-- [`core.services.18`](core.services.18.md) — `runtime_action_executor` … `self_model_predictive`
-- [`core.services.19`](core.services.19.md) — `self_model_signal_tracking` … `signal_decay_daemon`
-- [`core.services.20`](core.services.20.md) — `signal_delta_trigger` … `telegram_gateway`
-- [`core.services.21`](core.services.21.md) — `temperament_tendency_signal_tracking` … `ui_panel_store`
-- [`core.services.22`](core.services.22.md) — `unconscious_modulation` … `visible_runs_outcomes`
-- [`core.services.23`](core.services.23.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `push_dispatcher` … `run_event_log`
+- [`core.services.18`](core.services.18.md) — `run_follow` … `self_model_distiller`
+- [`core.services.19`](core.services.19.md) — `self_model_predictive` … `signal_baseline`
+- [`core.services.20`](core.services.20.md) — `signal_decay_daemon` … `taste_profile`
+- [`core.services.21`](core.services.21.md) — `telegram_gateway` … `turn_trace`
+- [`core.services.22`](core.services.22.md) — `ui_panel_store` … `visible_runs_memory`
+- [`core.services.23`](core.services.23.md) — `visible_runs_outcomes` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -57,8 +57,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13252 functions/
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `notify_out_tools`
-- [`core.tools.02`](core.tools.02.md) — `nudge_broend_tools` … `tiktok_content_tools`
-- [`core.tools.03`](core.tools.03.md) — `tiktok_tools` … `world_model_tools`
+- [`core.tools.02`](core.tools.02.md) — `nudge_broend_tools` … `tiktok_analytics_tools`
+- [`core.tools.03`](core.tools.03.md) — `tiktok_content_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.util`](core.util.md)

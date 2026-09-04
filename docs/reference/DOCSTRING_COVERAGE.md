@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6603/13232 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6605/13235 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6603/13232 functions/methods documented (49%). The list b
 | `core.memory` | 45 | 127 | 35% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 554 | 1031 | 53% |
-| `core.services` | 4386 | 9192 | 47% |
+| `core.services` | 4388 | 9195 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 73 | 128 | 57% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6603/13232 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1886)
+## Undocumented public functions (1887)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -704,7 +704,8 @@ Generated from source. 6603/13232 functions/methods documented (49%). The list b
 - `core/services/central_matrix_ensemble.py` :: `reset_unaddressed` (L54)
 - `core/services/central_merovingian.py` :: `list_challenges` (L324)
 - `core/services/central_mourning.py` :: `list_epitaphs` (L131)
-- `core/services/central_prompt_composer.py` :: `is_live_enabled` (L97)
+- `core/services/central_prompt_composer.py` :: `is_live_enabled` (L114)
+- `core/services/central_prompt_composer.py` :: `is_tail_live_enabled` (L118)
 - `core/services/central_prompt_explore.py` :: `is_explore_live` (L54)
 - `core/services/central_rca.py` :: `list_rca` (L117)
 - `core/services/central_red_dress.py` :: `build_red_dress_surface` (L67)
@@ -1274,13 +1275,13 @@ Generated from source. 6603/13232 functions/methods documented (49%). The list b
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3149)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L2997)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3286)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3156)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3004)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3293)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L148)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L96)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L123)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4668)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4675)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)

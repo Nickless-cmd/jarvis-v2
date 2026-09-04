@@ -46,6 +46,19 @@ def test_live_gating_drops_low_weight():
     assert pc.should_include("kode", "ukendt") is True
 
 
+def test_tail_relevance_drops_default_low_value_context():
+    assert pc.should_include_tail("samtale", "causal patterns") is False
+    assert pc.should_include_tail("spørgsmål", "pattern counterfactuals") is False
+    assert pc.should_include_tail("kode", "causal patterns") is True
+    assert pc.should_include_tail("opgave", "TOOLS.md guidance") is True
+    assert pc.should_include_tail("samtale", "ukendt tail") is True
+
+
+def test_tail_relevance_never_gates_frozen_sections():
+    pc._kv_set(pc._WEIGHTS_KEY, {"samtale|identity tail": 0.0})
+    assert pc.should_include_tail("samtale", "identity tail") is True
+
+
 def test_observe_composition_egress_free(isolated_runtime, monkeypatch):
     import core.services.central_private_observe as cpo
     recs = []

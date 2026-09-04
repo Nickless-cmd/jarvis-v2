@@ -1159,6 +1159,13 @@ def _build_visible_chat_prompt_assembly_impl(
     def _tail_add(label: str, content: str | None) -> None:
         if not content:
             return
+        if _cpc is not None:
+            try:
+                if not _cpc.should_include_tail(_turn_type_l2, label):
+                    _dropped_disabled.append(label)
+                    return
+            except Exception:
+                pass
         if not _prompt_observer.section_enabled(
                 label, blacklisted=label in _TAIL_NOISE_LABELS,
                 overrides=_section_overrides):

@@ -239,7 +239,13 @@ def track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn(
         run_id=run_id,
         source_mode="runtime_selfhood_proposal",
         actor="runtime:selfhood-bridge",
-        status_reason="Drafted from bounded canonical-self proposal. Self-authorized per user directive — Jarvis owns his soul and identity.",
+        status_reason=(
+            # 2026-09-04: teksten paastod "self-authorized"; INGEN kodevej godkender
+            # soul_update/identity_update, saa alle 12 forslag stod stale. Vejen
+            # igennem er nu «## Udvikling» + ugentligt ritual (development_ritual).
+            "Drafted from bounded canonical-self proposal. Proposal only — "
+            "identity changes go through the weekly ## Udvikling ritual."
+        ),
     )
     return {
         **result,
@@ -788,7 +794,8 @@ def _candidate_from_selfhood_proposal(proposal: dict[str, object]) -> dict[str, 
             [
                 str(proposal.get("support_summary") or ""),
                 source_anchor,
-                "Self-authored canonical-self draft. Auto-apply enabled per user directive — Jarvis owns his identity.",
+                # 2026-09-04: var "Auto-apply enabled per user directive" — usandt.
+                "Self-authored canonical-self draft. Proposal only.",
             ]
         )[:4]
     )

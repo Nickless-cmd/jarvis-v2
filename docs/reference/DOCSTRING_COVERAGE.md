@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6689/13437 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6690/13438 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 6689/13437 functions/methods documented (49%). The list b
 | `core.runtime` | 565 | 1053 | 53% |
 | `core.services` | 4428 | 9285 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 86 | 156 | 55% |
+| `core.services.prompt_sections` | 87 | 157 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
@@ -245,10 +245,10 @@ Generated from source. 6689/13437 functions/methods documented (49%). The list b
 - `core/identity/email_verify.py` :: `send_verification_email` (L79)
 - `core/identity/household.py` :: `is_valid_role` (L50)
 - `core/identity/project_context.py` :: `reset_project_root` (L38)
-- `core/identity/runtime_candidates.py` :: `build_runtime_candidate_workflows` (L125)
-- `core/identity/runtime_candidates.py` :: `build_runtime_candidate_write_history` (L255)
-- `core/identity/runtime_candidates.py` :: `candidate_apply_readiness` (L350)
-- `core/identity/runtime_candidates.py` :: `total_pending_runtime_candidates` (L248)
+- `core/identity/runtime_candidates.py` :: `build_runtime_candidate_workflows` (L134)
+- `core/identity/runtime_candidates.py` :: `build_runtime_candidate_write_history` (L264)
+- `core/identity/runtime_candidates.py` :: `candidate_apply_readiness` (L359)
+- `core/identity/runtime_candidates.py` :: `total_pending_runtime_candidates` (L257)
 - `core/identity/runtime_contract.py` :: `build_runtime_contract_state` (L82)
 - `core/identity/user_db.py` :: `create_user` (L80)
 - `core/identity/user_db.py` :: `find_user_by_email` (L104)
@@ -660,11 +660,11 @@ Generated from source. 6689/13437 functions/methods documented (49%). The list b
 - `core/services/cache_maintenance_daemon.py` :: `build_cache_maintenance_surface` (L187)
 - `core/services/cache_maintenance_daemon.py` :: `get_cache_maintenance_stats` (L180)
 - `core/services/calm_anchor.py` :: `build_calm_anchor_surface` (L215)
-- `core/services/candidate_tracking.py` :: `auto_apply_safe_memory_md_candidates_for_visible_turn` (L290)
-- `core/services/candidate_tracking.py` :: `auto_apply_safe_user_md_candidates_for_visible_turn` (L281)
+- `core/services/candidate_tracking.py` :: `auto_apply_safe_memory_md_candidates_for_visible_turn` (L296)
+- `core/services/candidate_tracking.py` :: `auto_apply_safe_user_md_candidates_for_visible_turn` (L287)
 - `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_for_session_review` (L73)
 - `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_for_visible_turn` (L42)
-- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn` (L250)
+- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn` (L256)
 - `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn` (L162)
 - `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_visible_turn` (L191)
 - `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn` (L220)

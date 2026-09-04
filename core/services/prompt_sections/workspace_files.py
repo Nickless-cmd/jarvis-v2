@@ -73,6 +73,28 @@ def _resolve_with_shared_fallback(path: Path) -> Path:
 
 
 _CORE_HEADINGS = frozenset({"kerne", "core", "kerne (altid i prompten)"})
+# Den ene sektion i SOUL.md/IDENTITY.md som Jarvis selv må skrive i (blok D).
+DEVELOPMENT_HEADINGS = frozenset({"udvikling", "development"})
+
+
+def _development_section_text(text: str) -> str:
+    """Body of a `## Udvikling` section, or "" when absent."""
+    out: list[str] = []
+    inside = False
+    level = 0
+    for raw in str(text or "").splitlines():
+        line = raw.strip()
+        if line.startswith("#"):
+            hashes = len(line) - len(line.lstrip("#"))
+            title = line.lstrip("#").strip().lower()
+            if inside and hashes <= level:
+                break
+            if title in DEVELOPMENT_HEADINGS:
+                inside, level = True, hashes
+                continue
+        if inside:
+            out.append(raw)
+    return "\n".join(out).strip()
 
 
 def _core_section_text(text: str) -> str:
@@ -110,6 +132,7 @@ def _workspace_file_section(
     # 2026-09-04 (memory repair, R7): USER.md var 23 KB uden protokol for hvad
     # der er kerne og hvad der er historik — prompten fik de første ~3 KB. Hvis
     # filen har en "## Kerne"-sektion, er DET indholdet der læses ind.
+    full_text = text
     core_text = _core_section_text(text)
     if core_text:
         text = core_text
@@ -124,6 +147,23 @@ def _workspace_file_section(
         lines.append(f"- {normalized}")
         if len(lines) >= max_lines:
             break
+    # 2026-09-04 (lærings-sløjfe, blok D): «## Udvikling» i SOUL.md/IDENTITY.md
+    # er den ENE sektion han selv må skrive i. Den ligger nederst i filen og
+    # ville derfor altid falde uden for line-loftet. Reservér plads til den, så
+    # hans egen udvikling ikke er det første der skæres væk.
+    dev_text = _development_section_text(full_text)
+    if dev_text:
+        dev_lines = [
+            f"- {' '.join(raw.split())}"
+            for raw in dev_text.splitlines()
+            if raw.strip() and not raw.strip().startswith("#")
+        ][:3]
+        dev_lines = [ln if len(ln) <= max_chars else ln[: max_chars - 1].rstrip() + "…"
+                     for ln in dev_lines]
+        fresh = [ln for ln in dev_lines if ln not in lines]
+        if fresh:
+            keep = max(0, max_lines - len(fresh))
+            lines = lines[:keep] + fresh
     if not lines:
         return None
     return "\n".join([f"{label}:", *lines])

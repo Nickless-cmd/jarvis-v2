@@ -1117,6 +1117,15 @@ def _build_influence_trace(
     except Exception:
         logger.debug("kerne-kurator fejlede i heartbeat", exc_info=True)
 
+    # Ugentligt udviklings-ritual (blok D) — ét afsnit om hvad han lærte om sig
+    # selv, som forslag til «## Udvikling» i SOUL.md med 24 timers veto.
+    # Tavshed er et ja. Self-throttlende; skriver højst én linje om ugen.
+    try:
+        from core.services.development_ritual import run_development_ritual
+        run_development_ritual()
+    except Exception:
+        logger.debug("udviklings-ritual fejlede i heartbeat", exc_info=True)
+
 
     # Signal decay daemon — archive and delete stale signals
     if _dm.is_enabled("signal_decay"):

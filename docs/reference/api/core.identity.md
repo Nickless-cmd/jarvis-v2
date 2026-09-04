@@ -103,13 +103,13 @@ _Project context — current "where am I working" as set by JarvisX._
 |---|---|---|---|---|
 | function | `_extract_proposal_types` | `(items, target_file)` | — | [src](../../../core/identity/runtime_candidates.py#L56) |
 | function | `_observe_candidate_workflows` | `(counts)` | Egress-fri puls til Centralen (§24.4) — cluster=identity. KUN antal foreslåede | [src](../../../core/identity/runtime_candidates.py#L98) |
-| function | `build_runtime_candidate_workflows` | `()` | — | [src](../../../core/identity/runtime_candidates.py#L125) |
-| function | `total_pending_runtime_candidates` | `(workflows)` | — | [src](../../../core/identity/runtime_candidates.py#L248) |
-| function | `build_runtime_candidate_write_history` | `()` | — | [src](../../../core/identity/runtime_candidates.py#L255) |
-| function | `_workflow_state` | `(*, workflow_id, label, target_file, proposed_count, approved_count, rejected_count, applied_count, superseded_count, items, proposal_types=…, is_canonical_self=…)` | — | [src](../../../core/identity/runtime_candidates.py#L282) |
-| function | `_with_apply_readiness` | `(item)` | — | [src](../../../core/identity/runtime_candidates.py#L342) |
-| function | `candidate_apply_readiness` | `(item)` | — | [src](../../../core/identity/runtime_candidates.py#L350) |
-| function | `_workflow_apply_readiness_summary` | `(items)` | — | [src](../../../core/identity/runtime_candidates.py#L440) |
+| function | `build_runtime_candidate_workflows` | `()` | — | [src](../../../core/identity/runtime_candidates.py#L134) |
+| function | `total_pending_runtime_candidates` | `(workflows)` | — | [src](../../../core/identity/runtime_candidates.py#L257) |
+| function | `build_runtime_candidate_write_history` | `()` | — | [src](../../../core/identity/runtime_candidates.py#L264) |
+| function | `_workflow_state` | `(*, workflow_id, label, target_file, proposed_count, approved_count, rejected_count, applied_count, superseded_count, items, proposal_types=…, is_canonical_self=…)` | — | [src](../../../core/identity/runtime_candidates.py#L291) |
+| function | `_with_apply_readiness` | `(item)` | — | [src](../../../core/identity/runtime_candidates.py#L351) |
+| function | `candidate_apply_readiness` | `(item)` | — | [src](../../../core/identity/runtime_candidates.py#L359) |
+| function | `_workflow_apply_readiness_summary` | `(items)` | — | [src](../../../core/identity/runtime_candidates.py#L449) |
 
 ## `core/identity/runtime_contract.py`
 

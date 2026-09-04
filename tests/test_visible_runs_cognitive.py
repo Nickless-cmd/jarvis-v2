@@ -63,3 +63,26 @@ def test_enabled_detectors_still_run(monkeypatch):
     VRC._track_runtime_candidates(_run(), "et svar")
     assert "track_runtime_user_understanding_signals_for_visible_turn" in called
     assert "track_runtime_user_md_update_proposals_for_visible_turn" in called
+
+
+def test_heartbeat_contract_writes_honours_the_same_kill_switch():
+    """Kill-switchen skal daekke BEGGE kaldeveje. Maalt efter deploy 4/9:
+    heartbeat skrev 1.511 forkastede MEMORY.md-kandidater paa fem minutter
+    bag ryggen af den slukkede synlige sti."""
+    import inspect
+    from core.services import heartbeat_runtime
+    src = inspect.getsource(heartbeat_runtime)
+    marker = 'if action_type == "process_contract_writes":'
+    block = src[src.index(marker): src.index(marker) + 3000]
+    assert "_legacy_regex_detectors_enabled()" in block
+    for name in (
+        "track_runtime_user_md_update_proposals_for_visible_turn(",
+        "track_runtime_memory_md_update_proposals_for_visible_turn(",
+        "track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(",
+        "track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(",
+    ):
+        call = block.index(name, block.index("_legacy_regex_detectors_enabled()"))
+        assert call > 0, f"{name} skal ligge bag gaten"
+    # Selfhood-forslag (blok D) og auto-apply maa IKKE vaere slukket.
+    guard_end = block.index("selfhood_proposals = ")
+    assert "auto_apply_safe_user_md_candidates()" in block[guard_end:]

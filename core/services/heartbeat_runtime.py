@@ -5198,23 +5198,36 @@ def _execute_heartbeat_internal_action(
             apply_approved_runtime_contract_candidates,
         )
 
-        user_proposals = track_runtime_user_md_update_proposals_for_visible_turn(
-            session_id=None,
-            run_id=tick_id,
-        )
-        memory_proposals = track_runtime_memory_md_update_proposals_for_visible_turn(
-            session_id=None,
-            run_id=tick_id,
-        )
+        # 2026-09-04 (lærings-sløjfe, blok B): de ordmønster-afledte forslag er
+        # slukket her SOM i den synlige tur — ellers skriver heartbeat dem videre
+        # bag ryggen af kill-switchen. Målt efter deploy: 1.511 forkastede
+        # MEMORY.md-kandidater på fem minutter, alene fra denne sti.
+        # Selfhood-forslagene (blok D) og selve auto-apply/approve bliver.
+        from core.services.visible_runs_cognitive import _legacy_regex_detectors_enabled
+        _empty: dict[str, object] = {"created": 0, "skipped": "legacy-detectors-off"}
+        if _legacy_regex_detectors_enabled():
+            user_proposals = track_runtime_user_md_update_proposals_for_visible_turn(
+                session_id=None,
+                run_id=tick_id,
+            )
+            memory_proposals = track_runtime_memory_md_update_proposals_for_visible_turn(
+                session_id=None,
+                run_id=tick_id,
+            )
+            user_candidates = track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
+                session_id=None,
+                run_id=tick_id,
+            )
+            memory_candidates = track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
+                session_id=None,
+                run_id=tick_id,
+            )
+        else:
+            user_proposals = dict(_empty)
+            memory_proposals = dict(_empty)
+            user_candidates = dict(_empty)
+            memory_candidates = dict(_empty)
         selfhood_proposals = track_runtime_selfhood_proposals_for_visible_turn(
-            session_id=None,
-            run_id=tick_id,
-        )
-        user_candidates = track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
-            session_id=None,
-            run_id=tick_id,
-        )
-        memory_candidates = track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
             session_id=None,
             run_id=tick_id,
         )

@@ -106,9 +106,6 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
 # central().observe/_emit → kan aldrig lække til Discord/abonnenter. Metadata-only (kind, aldrig
 # payload-tekst). Dette låser inner-life-synlighed op UDEN at bryde privatlags-invarianten.
 PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
-    # 4. sep 2026: prompt-telemetri (section_answer_impact/assembly_size) — familien er
-    # privat (prompt-indhold), saa den routes EGRESS-FRIT: kun trace-sink + tidsserie.
-    "prompt": ("prompt", "telemetry"),
     "cognitive_state": ("cognition", "cognitive_state"),  # 59 subtyper (emergent_goal/flow/gratitude/...)
     "cognitive_seed": ("cognition", "seed"),              # seed_system: frø/intentioner
     # LivingNeuron felt-krop-planet (2026-07-01): somatik/affekt/gut/mood — Jarvis' FØLTE krop. Privat

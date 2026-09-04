@@ -18,7 +18,6 @@ def clean_runtime_state(tmp_path, monkeypatch):
     engine_mods = (
         "core.services.contradiction_engine",
         "core.services.emergence",
-        "core.services.prospective_memory",
     )
 
     def _reload_chain():
@@ -88,25 +87,6 @@ def test_emergence_surface_reads_persisted_patterns(clean_runtime_state):
     assert "do_not_treat_candidate_as_identity_truth" in surface["allowed_effects"]
 
 
-def test_prospective_memory_surface_shows_planted_seed(clean_runtime_state):
-    from core.services import prospective_memory as pm
-
-    planted = pm.plant_seed(
-        title="Check calibration drift",
-        summary="Look again when a calibration event arrives.",
-        activate_on_event=["world_model_signal.prediction_resolved"],
-        relevance_score=0.8,
-    )
-    assert planted["outcome"] == "completed"
-
-    surface = pm.build_prospective_memory_surface()
-
-    assert surface["active"] is True
-    assert surface["summary"]["planted"] == 1
-    assert surface["items"][0]["title"] == "Check calibration drift"
-    assert "do_not_auto_execute_seed" in surface["allowed_effects"]
-
-
 def test_jarvis_brain_reflection_surface_has_bounded_preview(monkeypatch):
     from core.services import jarvis_brain_reflection as reflection
 
@@ -133,4 +113,4 @@ def test_latent_surfaces_registered_in_signal_surface_router():
     assert "contradiction_engine" in names
     assert "emergence" in names
     assert "jarvis_brain_reflection" in names
-    assert "prospective_memory" in names
+    assert "prospective_memory" not in names  # 2026-09-04: død parallel-implementering fjernet

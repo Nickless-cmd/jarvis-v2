@@ -119,7 +119,6 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
     from core.services.jarvis_brain_reflection import (
         build_jarvis_brain_reflection_surface,
     )
-    from core.services.prospective_memory import build_prospective_memory_surface
     from core.services.self_model_signal_tracking import (
         build_runtime_self_model_signal_surface,
     )
@@ -218,7 +217,6 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
         "interlanguage_practice": build_interlanguage_practice_surface,
         "emergence": build_emergence_surface,
         "jarvis_brain_reflection": build_jarvis_brain_reflection_surface,
-        "prospective_memory": build_prospective_memory_surface,
         "self_model": build_runtime_self_model_signal_surface,
         "runtime_awareness": build_runtime_awareness_signal_surface,
         "consolidation_target": build_runtime_consolidation_target_signal_surface,

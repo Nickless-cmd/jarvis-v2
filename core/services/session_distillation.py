@@ -461,13 +461,19 @@ def _scrub_continuity_text(text: str) -> str:
     Split på ' + ', drop maskin-id-segmenter, dedupliker, saml igen — så ingen historisk
     garbage når den synlige prompt selvom skrive-guards først renser fremadrettet."""
     raw = str(text or "")
+    from core.memory.promotion_substance import (
+        is_telemetry_fragment,
+        strip_telemetry_fragments,
+    )
     if " + " not in raw:
-        return raw
+        # 2026-09-04 (memory repair, R6): et enkelt telemetri-fragment
+        # ("Current conductor mode: clarify") er ikke continuity.
+        return strip_telemetry_fragments(raw)
     seen: set[str] = set()
     keep: list[str] = []
     for seg in raw.split(" + "):
-        s = seg.strip()
-        if not s:
+        s = strip_telemetry_fragments(seg.strip())
+        if not s or is_telemetry_fragment(s):
             continue
         core = s.split(":", 1)[-1].strip()
         if core and " " not in core and core.count("_") >= 2:

@@ -13,6 +13,7 @@ and the search functions return [].
 from __future__ import annotations
 
 import logging
+import os
 import re
 import sqlite3
 from typing import Any
@@ -54,6 +55,10 @@ def ensure_fts_tables(conn: sqlite3.Connection) -> list[str]:
     existing rows become searchable immediately.
     """
     ready: list[str] = []
+    # Read-only probes (scripts/memory_probe.py mod en live DB) må ikke oprette
+    # tabeller/triggere: JARVIS_FTS_READONLY=1 → brug kun det der allerede findes.
+    if os.environ.get("JARVIS_FTS_READONLY") == "1":
+        return [fts for fts, _b, _r, _c in _FTS_SPECS if _base_table_exists(conn, fts)]
     if not fts5_available(conn):
         logger.warning("db_fts: FTS5 not available in this SQLite build")
         return ready

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6627/13289 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6630/13310 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,12 +35,12 @@ Generated from source. 6627/13289 functions/methods documented (49%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 174 | 310 | 56% |
+| `scripts` | 177 | 331 | 53% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1898)
+## Undocumented public functions (1913)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -360,7 +360,7 @@ Generated from source. 6627/13289 functions/methods documented (49%). The list b
 - `core/runtime/db_embeddings.py` :: `get_embedding` (L78)
 - `core/runtime/db_emotional_memory.py` :: `delete_emotional_memory_anchor` (L234)
 - `core/runtime/db_emotional_memory.py` :: `get_emotional_memory_anchor` (L141)
-- `core/runtime/db_fts.py` :: `fts5_available` (L33)
+- `core/runtime/db_fts.py` :: `fts5_available` (L34)
 - `core/runtime/db_goals.py` :: `count_goals` (L281)
 - `core/runtime/db_goals.py` :: `create_goal` (L75)
 - `core/runtime/db_goals.py` :: `delete_goal` (L268)
@@ -1904,6 +1904,21 @@ Generated from source. 6627/13289 functions/methods documented (49%). The list b
 - `scripts/measure_turn_latency.py` :: `watch` (L101)
 - `scripts/memory_md_dedupe_headings.py` :: `dedupe_file` (L78)
 - `scripts/memory_md_dedupe_headings.py` :: `main` (L92)
+- `scripts/memory_noise_cleanup.py` :: `main` (L256)
+- `scripts/memory_noise_cleanup.py` :: `run` (L241)
+- `scripts/memory_noise_cleanup.py` :: `step_brain_salience` (L50)
+- `scripts/memory_noise_cleanup.py` :: `step_embeddings_released` (L123)
+- `scripts/memory_noise_cleanup.py` :: `step_experiential_empty` (L89)
+- `scripts/memory_noise_cleanup.py` :: `step_fts_rebuild` (L183)
+- `scripts/memory_noise_cleanup.py` :: `step_md_proposals_stale` (L161)
+- `scripts/memory_noise_cleanup.py` :: `step_memory_md_dedupe` (L190)
+- `scripts/memory_noise_cleanup.py` :: `step_partner_facts` (L104)
+- `scripts/memory_noise_cleanup.py` :: `step_policies_dedupe` (L56)
+- `scripts/memory_noise_cleanup.py` :: `step_retained_templates` (L140)
+- `scripts/memory_probe.py` :: `format_report` (L125)
+- `scripts/memory_probe.py` :: `load_probes` (L24)
+- `scripts/memory_probe.py` :: `main` (L140)
+- `scripts/memory_probe.py` :: `score_probe` (L29)
 - `scripts/mint_jarvisx_token.py` :: `main` (L52)
 - `scripts/peer_practice_runner.py` :: `main` (L106)
 - `scripts/phase5_analyze.py` :: `choice_of` (L58)

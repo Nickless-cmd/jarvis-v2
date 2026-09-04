@@ -438,21 +438,22 @@ _Merge duplicate `## ` headings in a MEMORY.md (memory repair 2026-09-04, R7)._
 | function | `dedupe_file` | `(path, *, apply)` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L78) |
 | function | `main` | `()` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L92) |
 
-## `scripts/meta_evne_healthcheck.py`
-_Meta-evne healthcheck — read-only snapshot of all new tracker stacks._
+## `scripts/memory_noise_cleanup.py`
+_One-off data cleanup after the memory repair (2026-09-04, Task 8)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_connect` | `()` | — | [src](../../../scripts/meta_evne_healthcheck.py#L30) |
-| function | `_count` | `(conn, sql, params=…)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L36) |
-| function | `_table_exists` | `(conn, name)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L44) |
-| function | `_hours_ago` | `(iso)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L51) |
-| function | `probe_metacognition` | `(conn)` | Probe the metacognition_signals tracker. | [src](../../../scripts/meta_evne_healthcheck.py#L66) |
-| function | `probe_theory_of_mind` | `(conn)` | Probe the partner_knowledge_facts ledger. | [src](../../../scripts/meta_evne_healthcheck.py#L103) |
-| function | `probe_spatial_entity` | `(conn)` | Probe the room_entity_observations ledger. | [src](../../../scripts/meta_evne_healthcheck.py#L140) |
-| function | `probe_session_inbox` | `(conn)` | Probe the session_inbox daemon gate. | [src](../../../scripts/meta_evne_healthcheck.py#L166) |
-| function | `probe_inner_voice_shadow` | `(conn)` | Probe the inner_voice_shadow pilot. | [src](../../../scripts/meta_evne_healthcheck.py#L190) |
-| function | `probe_visible_runs` | `(conn)` | Sanity check: is the runtime actually producing visible runs? | [src](../../../scripts/meta_evne_healthcheck.py#L236) |
-| function | `render_text` | `(report)` | Render the report dict as a human-readable text block. | [src](../../../scripts/meta_evne_healthcheck.py#L266) |
-| function | `main` | `()` | CLI entry point: run all tracker probes and print the report. | [src](../../../scripts/meta_evne_healthcheck.py#L325) |
+| function | `_table_exists` | `(conn, name)` | — | [src](../../../scripts/memory_noise_cleanup.py#L43) |
+| function | `step_brain_salience` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L50) |
+| function | `step_policies_dedupe` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L56) |
+| function | `step_experiential_empty` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L89) |
+| function | `step_partner_facts` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L104) |
+| function | `step_embeddings_released` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L123) |
+| function | `step_retained_templates` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L140) |
+| function | `step_md_proposals_stale` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L161) |
+| function | `step_fts_rebuild` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L183) |
+| function | `step_memory_md_dedupe` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L190) |
+| function | `backup` | `(backup_dir)` | Consistent SQLite backup (sqlite3 backup API, safe with WAL) + MEMORY.md copy. | [src](../../../scripts/memory_noise_cleanup.py#L216) |
+| function | `run` | `(*, apply, only=…, backup_dir=…)` | — | [src](../../../scripts/memory_noise_cleanup.py#L241) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/memory_noise_cleanup.py#L256) |
 

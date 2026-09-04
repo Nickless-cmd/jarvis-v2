@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/memory_probe.py`
+_Memory probe: does recall find what Bjørn knows is there? (memory repair 2026-09-04, Task 7)_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_probes` | `(path=…)` | — | [src](../../../scripts/memory_probe.py#L24) |
+| function | `score_probe` | `(texts, expect)` | — | [src](../../../scripts/memory_probe.py#L29) |
+| function | `run_probes` | `(probes, *, sources, limit=…)` | ``sources`` maps a name to a callable(query, limit) -> list[str] of result texts. | [src](../../../scripts/memory_probe.py#L34) |
+| function | `_owner_context` | `()` | — | [src](../../../scripts/memory_probe.py#L67) |
+| function | `_live_sources` | `()` | — | [src](../../../scripts/memory_probe.py#L77) |
+| function | `_legacy_sources` | `()` | Main-compatible sources (pre-repair code paths) so before/after can be compared. | [src](../../../scripts/memory_probe.py#L98) |
+| function | `format_report` | `(result)` | — | [src](../../../scripts/memory_probe.py#L125) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/memory_probe.py#L140) |
+
+## `scripts/meta_evne_healthcheck.py`
+_Meta-evne healthcheck — read-only snapshot of all new tracker stacks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_connect` | `()` | — | [src](../../../scripts/meta_evne_healthcheck.py#L30) |
+| function | `_count` | `(conn, sql, params=…)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L36) |
+| function | `_table_exists` | `(conn, name)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L44) |
+| function | `_hours_ago` | `(iso)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L51) |
+| function | `probe_metacognition` | `(conn)` | Probe the metacognition_signals tracker. | [src](../../../scripts/meta_evne_healthcheck.py#L66) |
+| function | `probe_theory_of_mind` | `(conn)` | Probe the partner_knowledge_facts ledger. | [src](../../../scripts/meta_evne_healthcheck.py#L103) |
+| function | `probe_spatial_entity` | `(conn)` | Probe the room_entity_observations ledger. | [src](../../../scripts/meta_evne_healthcheck.py#L140) |
+| function | `probe_session_inbox` | `(conn)` | Probe the session_inbox daemon gate. | [src](../../../scripts/meta_evne_healthcheck.py#L166) |
+| function | `probe_inner_voice_shadow` | `(conn)` | Probe the inner_voice_shadow pilot. | [src](../../../scripts/meta_evne_healthcheck.py#L190) |
+| function | `probe_visible_runs` | `(conn)` | Sanity check: is the runtime actually producing visible runs? | [src](../../../scripts/meta_evne_healthcheck.py#L236) |
+| function | `render_text` | `(report)` | Render the report dict as a human-readable text block. | [src](../../../scripts/meta_evne_healthcheck.py#L266) |
+| function | `main` | `()` | CLI entry point: run all tracker probes and print the report. | [src](../../../scripts/meta_evne_healthcheck.py#L325) |
+
 ## `scripts/migrate_emotional_memory.py`
 _One-shot migration: copy memory_emotional_context rows into emotional_memory_anchors._
 

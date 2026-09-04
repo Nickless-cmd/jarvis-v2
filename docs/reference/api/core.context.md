@@ -71,6 +71,19 @@ _Model-aware, round-atomic compaction policy (PURE — no DB, no clock, no LLM).
 | function | `extract_summary` | `(raw)` | Pull the usable summary out of a raw model response: drop any <thinking> scratchpad, | [src](../../../core/context/compaction_policy.py#L298) |
 | function | `summary_looks_valid` | `(summary_text, *, min_chars=…)` | Quality gate on the EXTRACTED summary. Rejects empty/too-short, the mechanical-fallback | [src](../../../core/context/compaction_policy.py#L309) |
 
+## `core/context/microcompact.py`
+_Time-gap microcompaction for visible transcript tool results._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_utc` | `()` | — | [src](../../../core/context/microcompact.py#L18) |
+| function | `_enabled` | `()` | — | [src](../../../core/context/microcompact.py#L22) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/context/microcompact.py#L30) |
+| function | `_latest_assistant_at` | `(messages)` | — | [src](../../../core/context/microcompact.py#L43) |
+| function | `_is_stubbed` | `(content)` | — | [src](../../../core/context/microcompact.py#L52) |
+| function | `_stub_tool_result` | `(message)` | — | [src](../../../core/context/microcompact.py#L56) |
+| function | `apply_time_gap_microcompact` | `(messages, *, now=…, gap_minutes=…, keep_recent_tools=…)` | Stub old tool results after a long quiet gap. | [src](../../../core/context/microcompact.py#L63) |
+
 ## `core/context/session_compact.py`
 _Session-level context compaction._
 

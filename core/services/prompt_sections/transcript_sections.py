@@ -281,6 +281,16 @@ def _build_structured_transcript_messages(
     if not history:
         return []
 
+    # CC-style time-gap microcompact: after a quiet gap, provider caches are
+    # already cold enough that carrying full old tool payloads is wasteful.
+    # Apply before rendering so old tool rows become deterministic short stubs,
+    # while the newest tool results stay intact for local continuity.
+    try:
+        from core.context.microcompact import apply_time_gap_microcompact
+        history, _microcompact_stats = apply_time_gap_microcompact(history)
+    except Exception:
+        pass
+
     # Phase 1: Merge consecutive tool messages into the preceding assistant turn.
     # Tool results become a short "[tool_name: status/summary]" annotation.
     window = history

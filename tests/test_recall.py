@@ -63,3 +63,28 @@ def test_default_sources_exclude_chat_and_unknown_sources_ignored():
         assert out["sources"] == ["chat"]
         out2 = R.recall("x y z")
         assert "chat" not in out2["sources"]
+
+
+def test_context_questions_include_chat_by_default():
+    with patch.dict(R.SOURCE_FUNCS, {k: _stub(k, []) for k in R.ALL_SOURCES}, clear=True):
+        out = R.recall("hvad besluttede vi om Kai og jarvis-ai?")
+    assert "chat" in out["sources"]
+
+
+def test_fuse_promotes_exact_low_native_history_over_irrelevant_high_native():
+    cands = [
+        {
+            "source": "brain",
+            "score": 0.95,
+            "text": "ChiefOne er Proxmox host med Home Assistant og pfSense",
+            "ref": "brain-noise",
+        },
+        {
+            "source": "chat",
+            "score": 0.10,
+            "text": "Kai var forgængeren i jarvis-ai og analysen pegede på selvstyring.",
+            "ref": "chat-hit",
+        },
+    ]
+    out = R.fuse("hvad lærte vi af forgængeren Kai jarvis-ai?", cands)
+    assert out[0]["ref"] == "chat-hit"

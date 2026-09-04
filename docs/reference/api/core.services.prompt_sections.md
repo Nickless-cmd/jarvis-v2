@@ -152,8 +152,13 @@ _MEMORY.md selection by SECTION for the visible prompt (memory repair 2026-09-04
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_render` | `(section, text, *, max_chars)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L24) |
-| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L33) |
+| function | `_render` | `(section, text, *, max_chars)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L32) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L41) |
+| function | `_lexical_coverage` | `(query, section, text)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L53) |
+| function | `_memory_md_sections` | `(workspace_dir)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L61) |
+| function | `_focused_excerpt` | `(msg, text, *, max_chars=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L94) |
+| function | `_lexical_candidates` | `(msg, workspace_dir, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L124) |
+| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L140) |
 
 ## `core/services/prompt_sections/memory_recall.py`
 _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._

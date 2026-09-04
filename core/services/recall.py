@@ -24,12 +24,31 @@ logger = logging.getLogger(__name__)
 DEFAULT_SOURCES: tuple[str, ...] = ("workspace", "brain", "private_brain", "session_summary", "chronicle")
 ALL_SOURCES: tuple[str, ...] = DEFAULT_SOURCES + ("chat", "sensory")
 
-_NATIVE_WEIGHT = 0.6
-_BM25_WEIGHT = 0.4
+_NATIVE_WEIGHT = 0.45
+_BM25_WEIGHT = 0.25
+_LEXICAL_WEIGHT = 0.30
 _DEDUPE_CHARS = 80
 _TEXT_CAP = 500
 
 _ACTIVE_PRIVATE_BRAIN = frozenset({"active", "settling", "fading", "completed"})
+_CONTEXT_CUE_RE = re.compile(
+    r"\b("
+    r"hvad\s+(besluttede|sagde|lærte|aftalte)|"
+    r"hvor(når|dan)\s+(blev|var|gjorde)|"
+    r"vores|vi\s+(besluttede|aftalte|lærte|sagde)|"
+    r"do\s+you\s+remember|what\s+did\s+we|when\s+did\s+we"
+    r")\b",
+    re.IGNORECASE,
+)
+_TERM_RE = re.compile(r"[0-9A-Za-zÆØÅæøå]+")
+_STOP_TERMS = frozenset({
+    "hvad", "hvor", "hvilken", "hvilket", "hvilke", "hvorfor", "hvornår",
+    "hvordan", "blev", "var", "har", "havde", "det", "der", "den", "til",
+    "fra", "med", "for", "som", "jeg", "mig", "du", "dig", "vores", "mine",
+    "dine", "siger", "sagde", "besluttede", "aftalte", "lærte", "bruges", "om", "og",
+    "the", "what", "when", "where", "why", "how", "did", "does", "was",
+    "were", "about", "with", "from", "your", "ours",
+})
 
 
 def _clip(text: str, cap: int = _TEXT_CAP) -> str:
@@ -40,6 +59,33 @@ def _clip(text: str, cap: int = _TEXT_CAP) -> str:
 def _dedupe_key(text: str) -> str:
     t = re.sub(r"[^0-9a-zæøå]+", " ", str(text or "").lower())
     return " ".join(t.split())[:_DEDUPE_CHARS]
+
+
+def _terms(text: str) -> set[str]:
+    terms: set[str] = set()
+    for raw in _TERM_RE.findall(str(text or "").replace("-", " ")):
+        term = raw.lower()
+        if len(term) < 2 or term in _STOP_TERMS:
+            continue
+        terms.add(term)
+        if len(term) > 4 and term.endswith("s"):
+            terms.add(term[:-1])
+    return terms
+
+
+def _lexical_coverage(query: str, text: str) -> float:
+    q_terms = _terms(query)
+    if not q_terms:
+        return 0.0
+    overlap = len(q_terms & _terms(text))
+    return min(1.0, overlap / max(1, min(len(q_terms), 5)))
+
+
+def _default_sources_for_query(query: str) -> list[str]:
+    sources = list(DEFAULT_SOURCES)
+    if _CONTEXT_CUE_RE.search(str(query or "")):
+        sources.append("chat")
+    return sources
 
 
 # ── sources ─────────────────────────────────────────────────────────────
@@ -211,7 +257,12 @@ def fuse(query: str, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
         item = dict(c)
         item["native_score"] = round(native, 4)
         item["bm25"] = round(bm, 4)
-        item["score"] = round(_NATIVE_WEIGHT * native + _BM25_WEIGHT * bm, 4)
+        lexical = _lexical_coverage(query, str(c.get("text") or ""))
+        item["lexical"] = round(lexical, 4)
+        item["score"] = round(
+            _NATIVE_WEIGHT * native + _BM25_WEIGHT * bm + _LEXICAL_WEIGHT * lexical,
+            4,
+        )
         fused.append(item)
     fused.sort(key=lambda x: x["score"], reverse=True)
     return fused
@@ -243,7 +294,8 @@ def recall(
     if not q:
         return {"status": "error", "error": "query is required", "results": [], "count": 0}
     limit = max(1, min(50, int(limit or 8)))
-    wanted = [s for s in (sources or DEFAULT_SOURCES) if s in SOURCE_FUNCS]
+    source_names = sources if sources is not None else _default_sources_for_query(q)
+    wanted = [s for s in source_names if s in SOURCE_FUNCS]
     if not wanted:
         wanted = list(DEFAULT_SOURCES)
     k = per_source or max(3, limit)

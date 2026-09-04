@@ -87,3 +87,13 @@ class TestPrimaryLanens_egne_vaern:
         assert out == "resumé"
         assert ex.call_args.kwargs["temperature"] <= 0.5, "resumé skal være trofast, ikke kreativt"
         assert ex.call_args.kwargs["max_tokens"] == 2500
+
+    def test_tom_visible_auth_profile_bliver_default_for_primary(self):
+        with patch.object(cl, "_in_pytest", return_value=False), \
+             patch("core.runtime.db_core.get_runtime_state_bool", return_value=True), \
+             patch("core.runtime.settings.load_settings", return_value=self._settings()), \
+             patch("core.services.heartbeat_provider_fallback.execute_openai_compat_heartbeat_prompt",
+                   return_value={"text": "resumé"}) as ex:
+            assert cl._call_primary("p", max_tokens=2500) == "resumé"
+
+        assert ex.call_args.kwargs["target"]["auth_profile"] == "default"

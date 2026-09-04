@@ -227,18 +227,21 @@ _One recall path over every memory source (memory repair 2026-09-04, R5)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L35) |
-| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L40) |
-| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L48) |
-| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L64) |
-| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L83) |
-| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L108) |
-| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L126) |
-| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L140) |
-| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L154) |
-| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L184) |
-| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L223) |
-| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L227) |
+| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L54) |
+| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L59) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/recall.py#L64) |
+| function | `_lexical_coverage` | `(query, text)` | — | [src](../../../core/services/recall.py#L76) |
+| function | `_default_sources_for_query` | `(query)` | — | [src](../../../core/services/recall.py#L84) |
+| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L94) |
+| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L110) |
+| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L129) |
+| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L154) |
+| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L172) |
+| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L186) |
+| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L200) |
+| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L230) |
+| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L274) |
+| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L278) |
 
 ## `core/services/recall_scheduler.py`
 _core/services/recall_scheduler.py_

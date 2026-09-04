@@ -14,11 +14,19 @@ responsibility) when the index yields nothing.
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 _MIN_SCORE = 0.30
+_TERM_RE = re.compile(r"[0-9A-Za-zÆØÅæøå]+")
+_STOP_TERMS = frozenset({
+    "hvad", "hvor", "hvilken", "hvilket", "hvilke", "hvorfor", "hvornår",
+    "hvordan", "blev", "var", "har", "havde", "det", "der", "den", "til",
+    "fra", "med", "for", "som", "jeg", "mig", "du", "dig", "vores", "mine",
+    "dine", "siger", "sagde", "besluttede", "aftalte", "lærte", "bruges", "om", "og",
+})
 
 
 def _render(section: str, text: str, *, max_chars: int) -> str:
@@ -28,6 +36,105 @@ def _render(section: str, text: str, *, max_chars: int) -> str:
     if len(line) > max_chars:
         line = line[: max_chars - 1].rstrip() + "…"
     return line
+
+
+def _terms(text: str) -> set[str]:
+    terms: set[str] = set()
+    for raw in _TERM_RE.findall(str(text or "").replace("-", " ")):
+        term = raw.lower()
+        if len(term) < 2 or term in _STOP_TERMS:
+            continue
+        terms.add(term)
+        if len(term) > 4 and term.endswith("s"):
+            terms.add(term[:-1])
+    return terms
+
+
+def _lexical_coverage(query: str, section: str, text: str) -> float:
+    q_terms = _terms(query)
+    if not q_terms:
+        return 0.0
+    haystack = f"{section} {text}"
+    return min(1.0, len(q_terms & _terms(haystack)) / max(1, min(len(q_terms), 5)))
+
+
+def _memory_md_sections(workspace_dir: Path) -> list[tuple[str, str]]:
+    path = workspace_dir / "MEMORY.md"
+    try:
+        from core.services.workspace_crypto import read_text_for_path
+
+        raw = read_text_for_path(path)
+    except Exception:
+        raw = path.read_text(encoding="utf-8") if path.exists() else ""
+    if not raw:
+        return []
+
+    sections: list[tuple[str, str]] = []
+    heading = ""
+    lines: list[str] = []
+
+    def flush() -> None:
+        nonlocal lines
+        text = "\n".join(line.strip().lstrip("-* ").strip() for line in lines if line.strip())
+        if text:
+            sections.append((heading, text))
+        lines = []
+
+    for line in str(raw).splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            flush()
+            heading = stripped.lstrip("#").strip()
+        else:
+            lines.append(stripped)
+    flush()
+    return sections
+
+
+def _focused_excerpt(msg: str, text: str, *, max_chars: int = 900) -> str:
+    body = str(text or "").strip()
+    if len(body) <= max_chars:
+        return body
+    parts: list[str] = []
+    for line in body.splitlines():
+        clean = " ".join(line.split())
+        if clean:
+            parts.append(clean)
+    if len(parts) <= 1:
+        parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+", body) if p.strip()]
+    scored = sorted(
+        parts,
+        key=lambda p: (_lexical_coverage(msg, "", p), -len(p)),
+        reverse=True,
+    )
+    chosen: list[str] = []
+    used = 0
+    for part in scored:
+        if _lexical_coverage(msg, "", part) <= 0.0:
+            continue
+        if used + len(part) > max_chars and chosen:
+            break
+        chosen.append(part)
+        used += len(part)
+        if used >= max_chars:
+            break
+    return " ".join(chosen).strip() or body[:max_chars].strip()
+
+
+def _lexical_candidates(msg: str, workspace_dir: Path, *, limit: int) -> list[dict[str, object]]:
+    out: list[dict[str, object]] = []
+    for section, text in _memory_md_sections(workspace_dir):
+        coverage = _lexical_coverage(msg, section, text)
+        if coverage <= 0.0:
+            continue
+        out.append({
+            "section": section,
+            "text": _focused_excerpt(msg, text),
+            "score": min(1.0, 0.30 + 0.70 * coverage),
+            "_lexical_fallback": True,
+        })
+    out.sort(key=lambda h: float(h.get("score") or 0.0), reverse=True)
+    return out[:limit]
 
 
 def select_memory_md_sections(
@@ -52,18 +159,28 @@ def select_memory_md_sections(
         from core.services.memory_search import search_memory
 
         hits = search_memory(
-            msg, limit=max(max_sections * 3, 6), sources=["MEMORY.md"],
+            msg, limit=max(max_sections * 8, 24), sources=["MEMORY.md"],
             workspace_dir=workspace_dir,
         )
     except Exception as exc:
         logger.debug("memory_md_selection: search failed: %s", exc)
-        return []
+        hits = []
+
+    hits = list(hits or []) + _lexical_candidates(msg, workspace_dir, limit=max(max_sections * 4, 12))
 
     per_line_cap = max(200, max_chars // 2)
     out: list[str] = []
     seen: set[str] = set()
     used = 0
-    for h in hits:
+    ranked_hits = sorted(
+        hits,
+        key=lambda h: (
+            0.35 * float(h.get("score") or 0.0)
+            + 0.65 * _lexical_coverage(msg, str(h.get("section") or ""), str(h.get("text") or ""))
+        ),
+        reverse=True,
+    )
+    for h in ranked_hits:
         if float(h.get("score") or 0.0) < min_score:
             continue
         section = str(h.get("section") or "")

@@ -48,9 +48,9 @@ _Thin wrapper for compact summarisation._
 |---|---|---|---|---|
 | function | `_in_pytest` | `()` | Testværn: et betalt provider-kald må ALDRIG fyre fra en test. Fundet | [src](../../../core/context/compact_llm.py#L26) |
 | function | `_call_primary` | `(prompt, *, max_tokens)` | Summarise via the PRIMARY (visible) lane — the model that defines Jarvis. | [src](../../../core/context/compact_llm.py#L36) |
-| function | `_call_cheap_no_groq` | `(prompt)` | Try cheap lane providers, skipping Groq. Returns text or None. | [src](../../../core/context/compact_llm.py#L75) |
-| function | `_call_heartbeat_llm_simple` | `(prompt, max_tokens)` | — | [src](../../../core/context/compact_llm.py#L86) |
-| function | `call_compact_llm` | `(prompt, *, max_tokens=…)` | Summarise prompt. Tries non-Groq cheap providers first, Groq as fallback. | [src](../../../core/context/compact_llm.py#L91) |
+| function | `_call_cheap_no_groq` | `(prompt)` | Try cheap lane providers, skipping Groq. Returns text or None. | [src](../../../core/context/compact_llm.py#L76) |
+| function | `_call_heartbeat_llm_simple` | `(prompt, max_tokens)` | — | [src](../../../core/context/compact_llm.py#L87) |
+| function | `call_compact_llm` | `(prompt, *, max_tokens=…)` | Summarise prompt. Tries non-Groq cheap providers first, Groq as fallback. | [src](../../../core/context/compact_llm.py#L92) |
 
 ## `core/context/compaction_policy.py`
 _Model-aware, round-atomic compaction policy (PURE — no DB, no clock, no LLM)._

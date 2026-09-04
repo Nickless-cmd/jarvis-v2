@@ -232,6 +232,15 @@ def record_fact(
         return None
 
 
+_MAX_FACTS_PER_MESSAGE = 3
+_AUTONOMOUS_SESSION_PREFIXES = ("auto-", "autonomous-", "auto_", "heartbeat", "dream", "wakeup")
+
+
+def _is_autonomous_session(session_id: str | None) -> bool:
+    sid = str(session_id or "").strip().lower()
+    return bool(sid) and sid.startswith(_AUTONOMOUS_SESSION_PREFIXES)
+
+
 def record_message(
     *,
     role: str,
@@ -247,11 +256,16 @@ def record_message(
     """
     if role == "assistant":
         origin = ORIGIN_TOLD_BY_JARVIS
+        # 2026-09-04 (memory repair, R6): 51.648 "told-by-jarvis"-rækker. Hans
+        # egne sætninger i AUTONOME runs (ingen partner til stede) er ikke
+        # noget han har fortalt dig. Kun rigtige samtaler tæller.
+        if _is_autonomous_session(session_id):
+            return []
     elif role == "user":
         origin = ORIGIN_STATED_BY_PARTNER
     else:
         return []
-    sentences = _split_factual_sentences(content)
+    sentences = _split_factual_sentences(content)[:_MAX_FACTS_PER_MESSAGE]
     results = []
     for sent in sentences:
         outcome = record_fact(

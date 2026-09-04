@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6615/13250 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6616/13252 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6615/13250 functions/methods documented (49%). The list b
 | `core.memory` | 51 | 135 | 37% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 555 | 1032 | 53% |
-| `core.services` | 4388 | 9194 | 47% |
+| `core.services` | 4389 | 9196 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 74 | 130 | 56% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1116,8 +1116,8 @@ Generated from source. 6615/13250 functions/methods documented (49%). The list b
 - `core/services/memory_density.py` :: `mark_promoted` (L185)
 - `core/services/memory_emotional_context.py` :: `get_mood_for_heading` (L61)
 - `core/services/memory_maintenance_daemon.py` :: `build_memory_maintenance_surface` (L104)
-- `core/services/memory_md_update_proposal_tracking.py` :: `build_runtime_memory_md_update_proposal_surface` (L79)
-- `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L48)
+- `core/services/memory_md_update_proposal_tracking.py` :: `build_runtime_memory_md_update_proposal_surface` (L94)
+- `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L58)
 - `core/services/memory_md_update_proposal_tracking.py` :: `track_runtime_memory_md_update_proposals_for_visible_turn` (L26)
 - `core/services/memory_pruning_daemon.py` :: `build_memory_pruning_surface` (L207)
 - `core/services/memory_tattoos.py` :: `build_memory_tattoos_surface` (L35)
@@ -1535,7 +1535,7 @@ Generated from source. 6615/13250 functions/methods documented (49%). The list b
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
-- `core/services/semantic_memory.py` :: `get_stats` (L529)
+- `core/services/semantic_memory.py` :: `get_stats` (L531)
 - `core/services/sensory_archive.py` :: `count` (L209)
 - `core/services/sensory_archive.py` :: `get` (L205)
 - `core/services/sensory_archive.py` :: `list_recent` (L184)
@@ -1663,8 +1663,8 @@ Generated from source. 6615/13250 functions/methods documented (49%). The list b
 - `core/services/text_resonance.py` :: `recent_resonances` (L139)
 - `core/services/text_resonance.py` :: `reset_text_resonance` (L185)
 - `core/services/theater_audit.py` :: `build_theater_audit_surface` (L85)
-- `core/services/theory_of_mind.py` :: `recent_facts` (L272)
-- `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L457)
+- `core/services/theory_of_mind.py` :: `recent_facts` (L286)
+- `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L471)
 - `core/services/theory_of_mind_engine.py` :: `build_theory_of_mind_prompt_section` (L53)
 - `core/services/thought_action_proposal_daemon.py` :: `build_proposal_surface` (L142)
 - `core/services/thought_action_proposal_daemon.py` :: `get_pending_proposals` (L138)

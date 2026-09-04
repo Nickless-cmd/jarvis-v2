@@ -55,6 +55,10 @@ def create_experiential_memory_from_run(
 
     # Key lesson (deterministic)
     key_lesson = _extract_lesson(outcome_status, user_mood, user_message)
+    # 2026-09-04 (memory repair, R6): 37.586 rækker, 95 % uden lektie, narrativ
+    # "Standard arbejdstilstand. Emne: X. Opgaven blev løst." — ikke en erfaring.
+    if not key_lesson:
+        return None
 
     # Importance: higher for corrections, failures, enthusiasm
     importance = _calculate_importance(user_mood, outcome_status)

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6682/13425 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6689/13437 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6682/13425 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4421 | 9273 | 47% |
+| `core.services` | 4428 | 9285 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 86 | 156 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6682/13425 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1942)
+## Undocumented public functions (1943)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -897,6 +897,7 @@ Generated from source. 6682/13425 functions/methods documented (49%). The list b
 - `core/services/development_focus_tracking.py` :: `track_runtime_development_focuses_for_visible_turn` (L32)
 - `core/services/development_narrative_daemon.py` :: `build_development_narrative_surface` (L104)
 - `core/services/development_narrative_daemon.py` :: `get_latest_development_narrative` (L100)
+- `core/services/development_ritual.py` :: `build_development_ritual_surface` (L214)
 - `core/services/developmental_valence.py` :: `build_developmental_valence_surface` (L257)
 - `core/services/device_presence.py` :: `prune` (L189)
 - `core/services/device_presence.py` :: `rank` (L130)

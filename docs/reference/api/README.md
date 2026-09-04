@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13425 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13437 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,21 +35,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13425 functions/
 - [`core.services.06`](core.services.06.md) — `central_signal_health` … `code_aesthetic_daemon`
 - [`core.services.07`](core.services.07.md) — `cognitive_architecture_surface` … `council_runtime`
 - [`core.services.08`](core.services.08.md) — `counterfactual_engine` … `decision_signals`
-- [`core.services.09`](core.services.09.md) — `decision_weight` … `dream_insight_daemon`
-- [`core.services.10`](core.services.10.md) — `dream_motif_daemon` … `fabricated_tool_result_gate`
-- [`core.services.11`](core.services.11.md) — `fact_gate` … `governance_bootstrap`
-- [`core.services.12`](core.services.12.md) — `gratitude_tracker` … `inner_voice_daemon`
-- [`core.services.13`](core.services.13.md) — `inner_voice_notifier` … `mcp_registry`
-- [`core.services.14`](core.services.14.md) — `meaning_significance_signal_tracking` … `narrative_summary_daemon`
-- [`core.services.15`](core.services.15.md) — `negotiation_engine` … `pfsense_syslog`
-- [`core.services.16`](core.services.16.md) — `plan_proposals` … `proprioception_metrics`
-- [`core.services.17`](core.services.17.md) — `prose_tool_calls` … `resonance_decay`
-- [`core.services.18`](core.services.18.md) — `retention` … `selective_consolidation_daemon`
-- [`core.services.19`](core.services.19.md) — `selective_forgetting_candidate_tracking` … `shadow_experiment_registry`
-- [`core.services.20`](core.services.20.md) — `shadow_scan_daemon` … `subagent_digest`
-- [`core.services.21`](core.services.21.md) — `subagent_ecology` … `tool_result_store`
-- [`core.services.22`](core.services.22.md) — `tool_router` … `visible_model_sse`
-- [`core.services.23`](core.services.23.md) — `visible_model_types` … `world_model_signal_tracking`
+- [`core.services.09`](core.services.09.md) — `decision_weight` … `dream_influence_runtime`
+- [`core.services.10`](core.services.10.md) — `dream_insight_daemon` … `experiment_runner`
+- [`core.services.11`](core.services.11.md) — `fabricated_tool_result_gate` … `google_login`
+- [`core.services.12`](core.services.12.md) — `governance_bootstrap` … `inner_visible_support_signal_tracking`
+- [`core.services.13`](core.services.13.md) — `inner_voice_daemon` … `markdown_structure`
+- [`core.services.14`](core.services.14.md) — `mcp_registry` … `narrative_identity`
+- [`core.services.15`](core.services.15.md) — `narrative_summary_daemon` … `personality_vector`
+- [`core.services.16`](core.services.16.md) — `pfsense_syslog` … `proposal_classifier`
+- [`core.services.17`](core.services.17.md) — `proprioception_metrics` … `repeated_requests`
+- [`core.services.18`](core.services.18.md) — `resonance_decay` … `selective_attention`
+- [`core.services.19`](core.services.19.md) — `selective_consolidation_daemon` … `session_wakeup`
+- [`core.services.20`](core.services.20.md) — `shadow_experiment_registry` … `structured_content_flag`
+- [`core.services.21`](core.services.21.md) — `subagent_digest` … `tool_result_aging`
+- [`core.services.22`](core.services.22.md) — `tool_result_store` … `visible_model_prompt`
+- [`core.services.23`](core.services.23.md) — `visible_model_sse` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

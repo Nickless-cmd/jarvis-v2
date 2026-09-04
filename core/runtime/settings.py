@@ -336,8 +336,10 @@ class RuntimeSettings:
     # på disk (read_tool_result); den nuværende turs resultater er stadig fulde via
     # followup-exchanges (Claude Codes hot-tail/cold-storage-mønster).
     tool_result_history_max_chars: int = 1500
-    # Tool-result lifecycle (spec 2026-07-16). Default OFF = today's behavior exactly.
-    tool_result_lifecycle_enabled: bool = False
+    # Tool-result lifecycle (spec 2026-07-16). Default ON after CC-parity audit
+    # (2026-09-04): old tool outputs move to stable cold stubs only at compaction
+    # epochs or hard ceilings, preserving DeepSeek's cacheable prefix between turns.
+    tool_result_lifecycle_enabled: bool = True
     tool_warm_run_window: int = 8          # keep last N user-turns warm
     tool_warm_token_ceiling: int = 40000   # ceiling on warm tool-result tokens
     tool_warm_hysteresis: float = 0.25     # advance margin (no thrash)

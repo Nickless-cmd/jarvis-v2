@@ -164,3 +164,34 @@ def test_workspace_file_section_decrypts_member_enc(isolated_runtime, tmp_path, 
     section = _workspace_file_section(mem, label="MEMORY.md", max_lines=2, max_chars=200)
     assert section is not None
     assert "Mikkels hemmelige hukommelse" in section
+
+
+# ── 2026-09-04 (memory repair, R7): "## Kerne" wins for identity files ──
+
+
+def test_core_section_is_rendered_instead_of_file_head(tmp_path, monkeypatch):
+    from core.services.prompt_sections import workspace_files as wf
+
+    p = tmp_path / "USER.md"
+    p.write_text(
+        "# USER\n- historik linje 1\n- historik linje 2\n\n## Kerne\n- Bjørn bor i Svendborg\n- Svar på dansk\n\n"
+        "## Historik\n- gammel note\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(wf, "_resolve_with_shared_fallback", lambda path: path)
+    monkeypatch.setattr("core.services.workspace_crypto.read_text_for_path", lambda path: path.read_text(encoding="utf-8"))
+    section = wf._workspace_file_section(p, label="USER.md", max_lines=10, max_chars=200)
+    assert section is not None
+    assert "Svendborg" in section and "Svar på dansk" in section
+    assert "historik linje 1" not in section and "gammel note" not in section
+
+
+def test_without_core_section_head_is_used(tmp_path, monkeypatch):
+    from core.services.prompt_sections import workspace_files as wf
+
+    p = tmp_path / "USER.md"
+    p.write_text("# USER\n- første\n- anden\n", encoding="utf-8")
+    monkeypatch.setattr(wf, "_resolve_with_shared_fallback", lambda path: path)
+    monkeypatch.setattr("core.services.workspace_crypto.read_text_for_path", lambda path: path.read_text(encoding="utf-8"))
+    section = wf._workspace_file_section(p, label="USER.md", max_lines=10, max_chars=200)
+    assert "første" in section and "anden" in section

@@ -26,6 +26,9 @@ from core.services.prompt_relevance_backend import (
     run_bounded_nl_memory_entry_selection,
     run_bounded_nl_prompt_relevance,
 )
+from core.services.prompt_sections.memory_selection import (  # noqa: F401
+    MemorySectionSelection,
+)
 
 _RELEVANCE_DECISION_HISTORY: list[dict[str, object]] = []
 _RELEVANCE_DECISION_HISTORY_LIMIT = 8
@@ -299,17 +302,10 @@ def _permissive_relevance(mode: str = "visible_chat") -> "PromptRelevanceDecisio
         backend_status="phase_timeout")
 
 
-@dataclass(slots=True)
-class MemorySectionSelection:
-    lines: list[str]
-    backend_attempted: bool
-    backend_success: bool
-    fallback_used: bool
-    backend_name: str | None
-    backend_provider: str | None
-    backend_model: str | None
-    backend_status: str
-    prompt_file_used: bool
+MEMORY_GROUP_HEADER = (
+    "[HUKOMMELSE] — det du husker om dette emne (MEMORY.md, din hjerne, recall). "
+    "Brug det når det er relevant; sig det hvis noget her modsiger samtalen."
+)
 
 
 @dataclass(slots=True)
@@ -1323,7 +1319,11 @@ def _build_visible_chat_prompt_assembly_impl(
                 threshold=getattr(_bs, "jarvis_brain_auto_inject_threshold", 0.55),
             )
             if _facts_text:
-                _awareness_add(8, "jarvis brain facts (auto-inject)", _facts_text)
+                # 2026-09-04 (memory repair, R2): hukommelse hører til i
+                # [HUKOMMELSE]-gruppen i halen — ikke under "INTERN DIAGNOSTIK
+                # … citér det ALDRIG", og ikke i 6000-tegns awareness-puljen.
+                _dyn_memory_recall.append(_facts_text)
+                derived_inputs.append("jarvis brain facts (memory group)")
 
             # Post-web-search nudge — if last tool message had URL content,
             # encourage remember_this. Heuristic; max one per turn since we
@@ -1786,7 +1786,9 @@ def _build_visible_chat_prompt_assembly_impl(
                 _busy_msr = _sid_msr in _MSR_INFLIGHT
             # Serve last cached result immediately (non-blocking).
             if _c_msr and (_now_msr - _c_msr[0]) < _RBA_TTL_S and _c_msr[1]:
-                _awareness_add(28, "multi-signal recall (BM25+entity+embedding)", _c_msr[1])
+                # 2026-09-04 (memory repair, R2): til [HUKOMMELSE]-gruppen.
+                _dyn_memory_recall.append(_c_msr[1])
+                derived_inputs.append("multi-signal recall (memory group)")
             # Refresh in background for the next turn (deduped per session).
             if not _busy_msr and _sid_msr:
                 with _RBA_LOCK:
@@ -2253,8 +2255,10 @@ def _build_visible_chat_prompt_assembly_impl(
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
             user_message=user_message,
-            max_lines=3 if compact else 4,
-            max_chars=200 if compact else 280,
+            # 2026-09-04 (memory repair, R2): sektioner, ikke linjer. Før: 4 linjer
+            # à 280 tegn uden overskrift, fallback = filens sidste 4 linjer.
+            max_lines=2 if compact else 3,
+            max_chars=900 if compact else 1500,
             workspace_dir=workspace_dir,
             mode="visible_chat",
         )
@@ -2788,6 +2792,36 @@ def _build_visible_chat_prompt_assembly_impl(
     # ── MEMORY group (audit #3, 2026-07-22): MEMORY.md + recall bundle together,
     # right after the diagnostics. He speaks from his state, not from recall — so
     # recall sits here, not at the top (Jarvis-review 2026-06-22).
+    # 2026-09-04 (memory repair, R4): lektier fra rettelser/tool-fejl/self-review
+    # — de mest lignende først, så de stærkeste. Ind i hukommelsesgruppen.
+    try:
+        from core.services.lessons import build_lessons_section as _bls
+        _lessons_text = _bls(user_message)
+        if _lessons_text:
+            _dyn_memory_recall.append(_lessons_text)
+            derived_inputs.append("lessons (memory group)")
+    except Exception as _e:
+        _sec_err("lessons", _e)
+    # Morgentråden (session_continuity) havde ingen læser i nogen prompt-builder.
+    try:
+        from core.services.session_continuity import get_latest_morning_thread as _glmt
+        _mt = _glmt() or {}
+        _mt_text = str(_mt.get("thread_text") or "").strip()
+        if _mt_text:
+            import datetime as _mt_dt
+            _mt_created = _mt_dt.datetime.fromisoformat(
+                str(_mt.get("created_at") or "").replace("Z", "+00:00")
+            )
+            if _mt_created.tzinfo is None:
+                _mt_created = _mt_created.replace(tzinfo=_mt_dt.timezone.utc)
+            if (_mt_dt.datetime.now(_mt_dt.timezone.utc) - _mt_created) < _mt_dt.timedelta(hours=6):
+                _tail_add("morning thread", f"[morgentråd]: {_mt_text[:200]}")
+    except Exception:
+        pass
+    # 2026-09-04 (memory repair, R2): én overskrift for hele gruppen, så
+    # hukommelsen ikke arver diagnostik-blokkens "citér det ALDRIG".
+    if _dyn_memory_recall:
+        _dyn_tail.append(MEMORY_GROUP_HEADER)
     _dyn_tail.extend(_dyn_memory_recall)
     # ── OPERATIONAL group: per-turn dynamic ops (model-pools, subagent completions,
     # recent self-changes, daily notes, background events) + device presence (below).
@@ -3698,53 +3732,6 @@ from core.services.prompt_sections.workspace_files import (  # noqa: E402
 )
 
 
-def _workspace_memory_section(
-    path: Path,
-    *,
-    label: str,
-    user_message: str,
-    max_lines: int,
-    max_chars: int,
-    workspace_dir: Path,
-    mode: str = "visible_chat",
-) -> MemorySectionSelection | None:
-    entries = _workspace_memory_entries(path)
-    if not entries:
-        return None
-    selection = _select_relevant_memory_entries(
-        entries,
-        user_message=user_message,
-        max_lines=max_lines,
-        max_chars=max_chars,
-        workspace_dir=workspace_dir,
-        mode=mode,
-    )
-    if not selection.lines:
-        return None
-    _track_memory_selection(selection, mode, len(entries))
-    return selection
-
-
-def _today_daily_memory_lines(*, limit: int = 10) -> list[str]:
-    """Read today's daily memory lines for injection into visible prompts.
-
-    Wraps read_daily_memory_lines with exception safety so prompt
-    builders never fail because the daily file is missing, empty, or
-    briefly unreadable.
-    """
-    try:
-        return read_daily_memory_lines(limit=limit)
-    except Exception:
-        return []
-
-
-def _recent_daily_memory_lines(*, limit: int = 12, days: int = 7) -> list[str]:
-    try:
-        return read_recent_daily_memory_lines(days=days, limit=limit)
-    except Exception:
-        return _today_daily_memory_lines(limit=limit)
-
-
 # Memory recall section helpers — udskilt til core/services/prompt_sections/memory_recall.py
 from core.services.prompt_sections.memory_recall import (  # noqa: E402
     _clip_line,
@@ -3762,135 +3749,18 @@ from core.services.prompt_sections.memory_scoring import (  # noqa: E402,F401
     _merge_ordered_memory_entries,
 )
 
-
-def _workspace_memory_entries(path: Path) -> list[str]:
-    from core.services.workspace_crypto import read_text_for_path
-    text = read_text_for_path(path)
-    if text is None:
-        return []
-    entries: list[str] = []
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        normalized = " ".join(line.lstrip("-").split()).strip()
-        if not normalized:
-            continue
-        entries.append(normalized)
-    return entries
-
-
-def _select_relevant_memory_entries(
-    entries: list[str],
-    *,
-    user_message: str,
-    max_lines: int,
-    max_chars: int,
-    workspace_dir: Path,
-    mode: str = "visible_chat",
-) -> MemorySectionSelection:
-    # Skip the LLM re-ranking on the visible hot path (2026-07-22, 4-agent latency audit;
-    # mirrors the existing relevance_skip_nl_on_visible precedent). _bounded_nl_memory_selection
-    # is a ~1s deepseek call (up to the 4s _HOT_RESOLVE_CAP) that BLOCKS the assembly, while the
-    # heuristic scorer (~3µs, already the fallback below at "else") picks sensible lines.
-    # AWARENESS-NEUTRAL: memory is still injected; only the LLM's re-ranking of the last 8
-    # MEMORY.md lines is dropped. Flag-gated (memory_selection_skip_nl_on_visible, default True)
-    # → instant rollback if memory-selection quality regresses.
-    _skip_nl = False
-    if mode == "visible_chat":
-        # Live kill-switch (runtime-state, default True) — flip to False instantly if
-        # memory-selection quality regresses, no redeploy. Bjørn cares about memory quality
-        # (it's why selection was a MODEL not embeddings) → keep it reversible.
-        try:
-            from core.runtime.db_core import get_runtime_state_value as _grs_msel
-            _flag = _grs_msel("memory_selection_skip_nl_on_visible", True)
-            _skip_nl = True if _flag is None else bool(_flag)
-        except Exception:
-            _skip_nl = True
-    if _skip_nl:
-        backend_attempt = BoundedMemorySelectionAttempt(
-            attempted=False, success=False, backend="skipped-visible-hotpath",
-            provider=None, model=None, status="skipped-visible-hotpath", result=None,
-        )
-    else:
-        backend_attempt = _bounded_nl_memory_selection(
-            user_message=user_message,
-            entries=entries,
-            max_lines=max_lines,
-            workspace_dir=workspace_dir,
-            mode=mode,
-        )
-    ordered: list[str]
-    from core.services.workspace_crypto import read_text_for_path
-    prompt_file_used = bool(
-        read_text_for_path(workspace_dir / "VISIBLE_MEMORY_SELECTION.md") is not None
-        or (TEMPLATE_DIR / "VISIBLE_MEMORY_SELECTION.md").exists()
-    )
-
-    if backend_attempt.success and backend_attempt.result is not None:
-        bounded_entries = entries[-8:]
-        selected_indexes = backend_attempt.result.selected_indexes
-        backend_ordered = [
-            bounded_entries[index]
-            for index in selected_indexes
-            if 0 <= index < len(bounded_entries)
-        ]
-        heuristic_ordered = _heuristic_relevant_memory_entries(
-            entries,
-            user_message=user_message,
-            max_lines=max_lines,
-        )
-        ordered = _merge_ordered_memory_entries(
-            heuristic_ordered,
-            backend_ordered,
-            max_lines=max_lines,
-        )
-    else:
-        ordered = _heuristic_relevant_memory_entries(
-            entries,
-            user_message=user_message,
-            max_lines=max_lines,
-        )
-
-    clipped: list[str] = []
-    for entry in ordered:
-        text = entry
-        if len(text) > max_chars:
-            text = text[: max_chars - 1].rstrip() + "…"
-        clipped.append(text)
-    return MemorySectionSelection(
-        lines=clipped,
-        backend_attempted=backend_attempt.attempted,
-        backend_success=backend_attempt.success,
-        fallback_used=not backend_attempt.success,
-        backend_name=backend_attempt.backend,
-        backend_provider=backend_attempt.provider,
-        backend_model=backend_attempt.model,
-        backend_status=backend_attempt.status,
-        prompt_file_used=prompt_file_used,
-    )
-
-
-def _bounded_nl_memory_selection(
-    *,
-    user_message: str,
-    entries: list[str],
-    max_lines: int,
-    workspace_dir: Path,
-    mode: str = "visible_chat",
-) -> BoundedMemorySelectionAttempt:
-    return run_bounded_nl_memory_entry_selection(
-        user_message=user_message,
-        entries=entries,
-        max_lines=max_lines,
-        workspace_dir=workspace_dir,
-        mode=mode,
-    )
-
-
-# _memory_line_relevance_score, _contains_any, _heuristic_relevant_memory_entries,
-# _merge_ordered_memory_entries er udskilt til prompt_sections/memory_scoring.py (Boy Scout) —
-# re-importeret nedenfor for bagudkompatibilitet.
+# MEMORY.md-udvælgelse (_workspace_memory_section, _select_relevant_memory_entries,
+# _workspace_memory_entries, daily-lines, MemorySectionSelection) — udskilt til
+# prompt_sections/memory_selection.py (Boy Scout, 2026-09-04). Re-importeret her:
+# tests og kaldere patcher navnene på prompt_contract-namespacet.
+from core.services.prompt_sections.memory_selection import (  # noqa: E402,F401
+    _bounded_nl_memory_selection,
+    _recent_daily_memory_lines,
+    _select_relevant_memory_entries,
+    _today_daily_memory_lines,
+    _workspace_memory_entries,
+    _workspace_memory_section,
+)
 
 
 def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:

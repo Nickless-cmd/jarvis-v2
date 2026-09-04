@@ -5098,6 +5098,15 @@ async def _stream_visible_run(
         # message in the DB (avoids the "message disappears" race condition).
         if visible_output_text:
             try:
+                from core.services.prompt_section_impact import observe_last_prompt_answer_impact
+                observe_last_prompt_answer_impact(
+                    session_id=str(run.session_id or ""),
+                    run_id=str(run.run_id or ""),
+                    answer_text=visible_output_text,
+                )
+            except Exception:
+                pass
+            try:
                 _persist_session_assistant_message(
                     run, visible_output_text,
                     reasoning_content=str(locals().get("_persist_reasoning", "") or ""),

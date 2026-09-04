@@ -228,7 +228,8 @@ _Pre-commit hook: catch kitchen-sink commits._
 |---|---|---|---|---|
 | function | `_staged_files` | `()` | — | [src](../../../scripts/enforce_commit_hygiene.py#L53) |
 | function | `_classify` | `(path)` | — | [src](../../../scripts/enforce_commit_hygiene.py#L63) |
-| function | `main` | `()` | — | [src](../../../scripts/enforce_commit_hygiene.py#L68) |
+| function | `_merge_in_progress` | `()` | A merge commit combines commits that already passed this gate one by | [src](../../../scripts/enforce_commit_hygiene.py#L68) |
+| function | `main` | `()` | — | [src](../../../scripts/enforce_commit_hygiene.py#L80) |
 
 ## `scripts/enforce_test_coverage.py`
 _Pre-commit hook: enforces test coverage for core/ code changes._

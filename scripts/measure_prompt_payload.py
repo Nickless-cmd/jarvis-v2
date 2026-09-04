@@ -130,8 +130,13 @@ def main() -> int:
     tool_defs: list = []
     try:
         from core.tools.simple_tools import get_tool_definitions
+        from core.tools.copilot_tool_pruning import select_tools_for_visible
 
-        tool_defs = list(get_tool_definitions() or [])
+        tool_defs = list(select_tools_for_visible(
+            get_tool_definitions() or [],
+            user_message=args.user_message,
+            session_id=args.session_id,
+        ) or [])
     except Exception as exc:
         tool_defs = []
         tool_defs_error = str(exc)

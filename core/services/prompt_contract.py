@@ -2886,13 +2886,27 @@ def _build_visible_chat_prompt_assembly_impl(
     _total_chars = len(_assembled_text)
     _approx_tokens = _total_chars // 4  # rough heuristic — close enough for triage
     _per_part_chars = [len(p) for p in parts if p]
-    # Hele fordelingen, ikke kun de otte største. «Hvor går de 44.000 tegn hen»
-    # kunne ikke besvares før, fordi halen blev klippet af FØR den blev skrevet
-    # ud — og det er halen der afgør hvad der kan skæres. Ren observation:
-    # prompten ændres ikke, så cache-præfikset er urørt.
+    # NAVNET AFLEDES AF INDHOLDET, ikke af et indeks i en parallel liste.
+    #
+    # Den gamle udgave zippede `derived_inputs` mod `parts` på indeks — men de
+    # to lister vokser IKKE i takt (25 `parts.append` mod 42
+    # `derived_inputs.append` i samme funktion, plus `extend`). Hvert navn sad
+    # derfor på et vilkårligt andet stykke, og telemetrien har peget forkert så
+    # længe den har eksisteret. Den fejl er værre end ingen måling: et kort der
+    # peger forkert får en til at skære det forkerte sted.
+    #
+    # Tegnet på at noget var galt: `quick_facts` blev målt til 7051 tegn, mens
+    # dens egen builder har et loft på 1800.
+    #
+    # Første linje af et stykke ER dets overskrift i praksis, og den kan ikke
+    # komme ud af trit med sit eget indhold.
+    def _label_of(text: str) -> str:
+        head = (text or "").lstrip().split("\n", 1)[0].strip()
+        head = head.lstrip("#").strip().rstrip(":").strip()
+        return (head[:48] or "(uden overskrift)").replace(" ", "_")
+
     _ranked = sorted(
-        ((label, len(parts[i]) if i < len(parts) else 0)
-         for i, label in enumerate(derived_inputs)),
+        ((_label_of(part), len(part)) for part in parts if part),
         key=lambda kv: kv[1], reverse=True,
     )
     _largest = _ranked[:8]

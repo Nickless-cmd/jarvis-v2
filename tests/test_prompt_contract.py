@@ -435,3 +435,31 @@ class TestToolResultRenderingIsRecencyIndependent:
         a = next(m["content"] for m in self._render(monkeypatch, few) if m["content"].startswith("A"))
         b = next(m["content"] for m in self._render(monkeypatch, many) if m["content"].startswith("A"))
         assert a == b
+
+
+def test_delfordelingens_navne_kan_ikke_komme_ud_af_trit_med_indholdet():
+    """Telemetrien zippede `derived_inputs` mod `parts` på INDEKS — men de to
+    lister vokser ikke i takt (25 `parts.append` mod 42 `derived_inputs.append`
+    i samme funktion, plus `extend`). Hvert navn sad derfor på et vilkårligt
+    andet stykke.
+
+    Et kort der peger forkert er værre end intet kort: man skærer det forkerte
+    sted. Tegnet var at `quick_facts` blev målt til 7051 tegn, mens dens egen
+    builder har et loft på 1800.
+
+    Navnet afledes nu af stykkets FØRSTE LINJE, som ikke kan komme ud af trit
+    med sit eget indhold.
+    """
+    import re
+    import pathlib
+
+    kilde = pathlib.Path("core/services/prompt_contract.py").read_text()
+    afsnit = kilde[kilde.index("NAVNET AFLEDES AF INDHOLDET"):]
+    afsnit = afsnit[: afsnit.index("_largest = _ranked[:8]")]
+
+    assert "_label_of(part) " in afsnit or "_label_of(part)," in afsnit, (
+        "navnet skal komme fra stykket selv"
+    )
+    assert "enumerate(derived_inputs)" not in afsnit, (
+        "indeks-zip mod en liste der ikke vokser i takt må ikke komme tilbage"
+    )

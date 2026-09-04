@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6640/13347 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6645/13365 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6640/13347 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4388 | 9213 | 47% |
+| `core.services` | 4393 | 9231 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 78 | 145 | 53% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6640/13347 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1921)
+## Undocumented public functions (1930)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1261,6 +1261,15 @@ Generated from source. 6640/13347 functions/methods documented (49%). The list b
 - `core/services/private_temporal_promotion_signal_tracking.py` :: `build_runtime_private_temporal_promotion_signal_surface` (L73)
 - `core/services/private_temporal_promotion_signal_tracking.py` :: `refresh_runtime_private_temporal_promotion_signal_statuses` (L69)
 - `core/services/private_temporal_promotion_signal_tracking.py` :: `track_runtime_private_temporal_promotion_signals_for_visible_turn` (L35)
+- `core/services/proactive_candidates.py` :: `build_proactive_candidates_surface` (L297)
+- `core/services/proactive_candidates.py` :: `counts` (L204)
+- `core/services/proactive_candidates.py` :: `ensure_table` (L77)
+- `core/services/proactive_candidates.py` :: `expire_stale` (L191)
+- `core/services/proactive_candidates.py` :: `lexical_coverage` (L66)
+- `core/services/proactive_candidates.py` :: `list_pending` (L156)
+- `core/services/proactive_candidates.py` :: `mark` (L170)
+- `core/services/proactive_candidates.py` :: `normalize_priority` (L107)
+- `core/services/proactive_candidates.py` :: `remember_shown` (L228)
 - `core/services/proactive_context_governor.py` :: `list_context_versions` (L301)
 - `core/services/proactive_context_governor.py` :: `recall_context_version` (L316)
 - `core/services/proactive_loop_lifecycle_tracking.py` :: `build_runtime_proactive_loop_lifecycle_surface` (L159)

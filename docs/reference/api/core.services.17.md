@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_error_guard.py`
+_Provider-fejl-vagt — fang "providerens fejlbesked blev til Jarvis' svar"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `looks_like_provider_error` | `(text)` | True hvis `text` ligner en udbyders fejlbesked frem for Jarvis' svar. | [src](../../../core/services/provider_error_guard.py#L72) |
+| function | `describe` | `(text)` | Kort, sikker beskrivelse til incident-beskeden. Lækker ikke hele teksten. | [src](../../../core/services/provider_error_guard.py#L96) |
+
 ## `core/services/provider_health_check.py`
 _Provider health check — periodic ping to detect outages early._
 
@@ -674,12 +682,4 @@ _Role registry — runtime-extensible agent roles._
 | function | `register_custom_role` | `(*, role, title, system_prompt, default_tool_policy=…, extends=…, tags=…)` | Persist a new custom role to disk. Idempotent on (role) name. | [src](../../../core/services/role_registry.py#L79) |
 | function | `_exec_list_roles` | `(args)` | — | [src](../../../core/services/role_registry.py#L119) |
 | function | `_exec_register_custom_role` | `(args)` | — | [src](../../../core/services/role_registry.py#L138) |
-
-## `core/services/rule_definitions.py`
-_Rule definitions — production rules feeding the rule_engine._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_get` | `(s, *keys, default=…)` | Walk a nested dict; return default if any step is missing. | [src](../../../core/services/rule_definitions.py#L25) |
-| function | `_len` | `(s, surface, key=…)` | Count items in a surface list field. | [src](../../../core/services/rule_definitions.py#L38) |
 

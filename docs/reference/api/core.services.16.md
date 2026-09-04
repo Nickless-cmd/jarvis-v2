@@ -215,6 +215,30 @@ _Private temporal-promotion signal tracking — migrated onto signal_tracking_fr
 | function | `_title_target` | `(title)` | — | [src](../../../core/services/private_temporal_promotion_signal_tracking.py#L337) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/private_temporal_promotion_signal_tracking.py#L345) |
 
+## `core/services/proactive_candidates.py`
+_Proactive candidates — the ONE queue for "Jarvis wants to tell Bjørn something"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/proactive_candidates.py#L53) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L57) |
+| function | `lexical_coverage` | `(query, text)` | — | [src](../../../core/services/proactive_candidates.py#L66) |
+| function | `_norm_text` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L73) |
+| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/proactive_candidates.py#L77) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/proactive_candidates.py#L99) |
+| function | `normalize_priority` | `(importance)` | — | [src](../../../core/services/proactive_candidates.py#L107) |
+| function | `add_candidate` | `(*, source, text, priority=…, kind=…)` | Queue a message for Bjørn. Deduped on normalized text within 24 h. | [src](../../../core/services/proactive_candidates.py#L116) |
+| function | `list_pending` | `(*, limit=…, priorities=…)` | — | [src](../../../core/services/proactive_candidates.py#L156) |
+| function | `mark` | `(candidate_ids, status, *, run_id=…)` | — | [src](../../../core/services/proactive_candidates.py#L170) |
+| function | `expire_stale` | `(*, days=…)` | — | [src](../../../core/services/proactive_candidates.py#L191) |
+| function | `counts` | `()` | — | [src](../../../core/services/proactive_candidates.py#L204) |
+| function | `relevant_for` | `(user_message, *, limit=…, min_coverage=…)` | Pending items lexically relevant to what Bjørn just wrote (best first). | [src](../../../core/services/proactive_candidates.py#L214) |
+| function | `remember_shown` | `(session_id, candidate_ids)` | — | [src](../../../core/services/proactive_candidates.py#L228) |
+| function | `build_since_last_line` | `(user_message, *, session_id=…)` | At most ONE line: 'Siden sidst: …' when a pending item is relevant to the message. | [src](../../../core/services/proactive_candidates.py#L239) |
+| function | `mark_mentioned_if_overlap` | `(*, session_id, answer_text, run_id=…, min_coverage=…)` | Auto-deliver: the shown item counts as delivered when Jarvis' answer overlaps it. | [src](../../../core/services/proactive_candidates.py#L254) |
+| function | `bridge_candidates` | `()` | Shape expected by proactivity_bridge.collect_candidates(). | [src](../../../core/services/proactive_candidates.py#L282) |
+| function | `build_proactive_candidates_surface` | `()` | — | [src](../../../core/services/proactive_candidates.py#L297) |
+
 ## `core/services/proactive_context_governor.py`
 _Proactive context governor — auto-trigger compaction + sub-agent slicing._
 
@@ -743,12 +767,4 @@ _Provider circuit breaker — skip primaries that have been failing recently._
 | function | `pp_is_open` | `(provider_id)` | Er ``provider_id``'s delte breaker OPEN lige nu? (Fail-open.) | [src](../../../core/services/provider_circuit_breaker.py#L374) |
 | function | `pp_snapshot` | `(provider_id)` | Debug/observe-snapshot af den delte per-provider breaker. | [src](../../../core/services/provider_circuit_breaker.py#L379) |
 | function | `pp_reset_all` | `()` | Test/admin: nulstil HELE den delte per-provider breaker. | [src](../../../core/services/provider_circuit_breaker.py#L384) |
-
-## `core/services/provider_error_guard.py`
-_Provider-fejl-vagt — fang "providerens fejlbesked blev til Jarvis' svar"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `looks_like_provider_error` | `(text)` | True hvis `text` ligner en udbyders fejlbesked frem for Jarvis' svar. | [src](../../../core/services/provider_error_guard.py#L72) |
-| function | `describe` | `(text)` | Kort, sikker beskrivelse til incident-beskeden. Lækker ikke hele teksten. | [src](../../../core/services/provider_error_guard.py#L96) |
 

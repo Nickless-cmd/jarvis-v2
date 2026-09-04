@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13377 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13381 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -37,19 +37,19 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13377 functions/
 - [`core.services.08`](core.services.08.md) — `counterfactual_engine` … `decision_signals`
 - [`core.services.09`](core.services.09.md) — `decision_weight` … `dream_insight_daemon`
 - [`core.services.10`](core.services.10.md) — `dream_motif_daemon` … `fabricated_tool_result_gate`
-- [`core.services.11`](core.services.11.md) — `fact_gate` … `gratitude_tracker`
-- [`core.services.12`](core.services.12.md) — `ground_truth_registry` … `inner_voice_notifier`
-- [`core.services.13`](core.services.13.md) — `inner_voice_shadow` … `memory_breathing`
-- [`core.services.14`](core.services.14.md) — `memory_consolidation_nudge` … `negotiation_pipeline`
-- [`core.services.15`](core.services.15.md) — `nerve_registry` … `plugin_ruleset`
-- [`core.services.16`](core.services.16.md) — `plugin_ruleset_store` … `provider_autodiscovery`
-- [`core.services.17`](core.services.17.md) — `provider_circuit_breaker` … `role_model_resolver`
-- [`core.services.18`](core.services.18.md) — `role_registry` … `self_compassion`
-- [`core.services.19`](core.services.19.md) — `self_critique_runtime` … `shared_cache`
-- [`core.services.20`](core.services.20.md) — `shared_language` … `surprise_daemon`
-- [`core.services.21`](core.services.21.md) — `surprise_detector` … `tool_tagger`
-- [`core.services.22`](core.services.22.md) — `tool_usage_store` … `visible_runs_approvals`
-- [`core.services.23`](core.services.23.md) — `visible_runs_capabilities` … `world_model_signal_tracking`
+- [`core.services.11`](core.services.11.md) — `fact_gate` … `governance_bootstrap`
+- [`core.services.12`](core.services.12.md) — `gratitude_tracker` … `inner_voice_daemon`
+- [`core.services.13`](core.services.13.md) — `inner_voice_notifier` … `meaning_significance_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `memory_breathing` … `negotiation_engine`
+- [`core.services.15`](core.services.15.md) — `negotiation_pipeline` … `plan_proposals`
+- [`core.services.16`](core.services.16.md) — `plugin_ruleset` … `prose_tool_calls`
+- [`core.services.17`](core.services.17.md) — `provider_autodiscovery` … `rhythm_engine`
+- [`core.services.18`](core.services.18.md) — `role_model_resolver` … `self_authored_prompt_proposal_tracking`
+- [`core.services.19`](core.services.19.md) — `self_compassion` … `share_guard_store`
+- [`core.services.20`](core.services.20.md) — `shared_cache` … `subjective_time`
+- [`core.services.21`](core.services.21.md) — `surprise_daemon` … `tool_router_runtime`
+- [`core.services.22`](core.services.22.md) — `tool_tagger` … `visible_runs`
+- [`core.services.23`](core.services.23.md) — `visible_runs_approvals` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

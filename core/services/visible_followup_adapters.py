@@ -558,7 +558,7 @@ class OpenAICompatFollowupAdapter:
     def _build_request(
         self, *, model: str, messages: list[dict], tool_definitions: list[dict] | None,
         temperature: float | None = None, top_p: float | None = None,
-        tool_choice: str | None = None,
+        tool_choice: str | None = None, extra_body: dict | None = None,
     ) -> urllib_request.Request:
         if self.provider_id == "github-copilot":
             # Lazy imports: these modules pull in auth state we don't want to
@@ -629,15 +629,24 @@ class OpenAICompatFollowupAdapter:
             profile=_auth_profile, provider=self.provider_id
         )
         api_key = str(credentials.get("api_key") or "").strip()
+        from core.services.followup_output_budget import followup_max_tokens
+
         payload: dict[str, object] = {
             "model": model,
             "messages": messages,
             "stream": True,
             # Without explicit max_tokens, MiniMax/OpenCode caps at ~512 and
-            # cuts the assistant off mid-sentence. 4096 is plenty for any
-            # follow-up turn while staying within the free quota.
-            "max_tokens": 4096,
+            # cuts the assistant off mid-sentence; 4096 is plenty for them.
+            # DeepSeek thinking-mode counts REASONING against max_tokens, so
+            # 4096 there meant "think for ~32 s, then finish_reason=length with
+            # zero text" (Bjørn's cutoff ghost, measured 2026-09-04) — DeepSeek
+            # gets a budget that fits reasoning + answer. See
+            # followup_output_budget.
+            "max_tokens": followup_max_tokens(self.provider_id, model),
         }
+        if extra_body:
+            payload.update(dict(extra_body))
+        self._last_payload = payload
         # include_usage → DeepSeek sender en afsluttende chunk med usage (inkl.
         # prompt_cache_hit/miss_tokens) så cache_telemetri kan måle hver RUNDE.
         # Kun deepseek (native cache); andre providere rører vi ikke.
@@ -732,6 +741,7 @@ class OpenAICompatFollowupAdapter:
         tool_choice: str | None = None,
         run_id: str = "",
         autonomous: bool = False,
+        _length_retry: bool = False,
     ) -> Iterator[FollowupEvent]:
         from core.services.visible_model import (
             _chat_completion_stream_is_terminal,
@@ -822,9 +832,11 @@ class OpenAICompatFollowupAdapter:
                 )
 
         try:
+            from core.services.followup_output_budget import nonthinking_retry_body
             req = self._build_request(
                 model=model, messages=messages, tool_definitions=tool_definitions,
                 temperature=temperature, top_p=top_p, tool_choice=tool_choice,
+                extra_body=nonthinking_retry_body() if _length_retry else None,
             )
         except Exception as e:
             _log.error(
@@ -989,7 +1001,10 @@ class OpenAICompatFollowupAdapter:
                     if _m.get("role") == "system":
                         _sys = str(_m.get("content") or "")
                         break
-                _sha, _plen = prefix_signature(_sys, payload.get("tools"))
+                # `payload` lever i _build_request — her hed den ALDRIG noget
+                # (NameError slugt af except → per-runde cache-telemetri var død).
+                _sha, _plen = prefix_signature(
+                    _sys, (getattr(self, "_last_payload", None) or {}).get("tools"))
                 _ch = int((_usage or {}).get("prompt_cache_hit_tokens") or 0)
                 _cm = int((_usage or {}).get("prompt_cache_miss_tokens") or 0)
                 record_visible_cache(
@@ -1025,6 +1040,50 @@ class OpenAICompatFollowupAdapter:
                 })
             except Exception:
                 pass
+        # ── BACKSTOP (2026-09-04): reasoning ate the whole budget ─────────────
+        # finish_reason=length with NO text and NO tool call = the model thought
+        # until max_tokens and never answered. The agentic loop cannot continue
+        # an empty round (its "fortsæt" needs partial text) and would exit
+        # completed-truncated → Bjørn sees the previous round's "henter det
+        # sidste stykke:" and then nothing. Re-run this round ONCE with thinking
+        # disabled: same messages, same tools, an answer instead of silence.
+        try:
+            from core.services.followup_output_budget import (
+                reasoning_exhausted, supports_nonthinking_retry,
+            )
+            _do_retry = (
+                not _length_retry
+                and reasoning_exhausted(
+                    finish_reason=_finish_reason, text="".join(parts), tool_calls=tool_calls)
+                and supports_nonthinking_retry(self.provider_id, model)
+            )
+        except Exception:
+            _do_retry = False
+        if _do_retry:
+            _log.warning(
+                "%s followup round=%d reasoning exhausted max_tokens (reasoning_chars=%d, "
+                "finish_reason=length, no text/tool) → retry once with thinking disabled",
+                self.provider_id, round_index, sum(len(r) for r in reasoning_parts),
+            )
+            try:
+                from core.services.central_core import central as _central_rx
+                _central_rx().observe({
+                    "cluster": "followup", "nerve": "reasoning_budget_exhausted",
+                    "run_id": str(run_id or ""), "provider": str(self.provider_id or ""),
+                    "model": str(model or ""), "round": int(round_index),
+                    "reasoning_chars": sum(len(r) for r in reasoning_parts),
+                    "retry": "nonthinking",
+                })
+            except Exception:
+                pass
+            yield from self.stream_followup(
+                model=model, base_messages=base_messages, exchanges=exchanges,
+                tool_definitions=tool_definitions, round_index=round_index,
+                thinking_mode="fast", temperature=temperature, top_p=top_p,
+                tool_choice=tool_choice, run_id=run_id, autonomous=autonomous,
+                _length_retry=True,
+            )
+            return
         if tool_calls:
             yield FollowupToolCalls(tool_calls=tool_calls)
         yield FollowupDone(

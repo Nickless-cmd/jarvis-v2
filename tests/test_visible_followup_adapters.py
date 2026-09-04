@@ -1014,3 +1014,92 @@ def test_ollama_serialize_omits_tool_calls_key_for_text_only_exchange():
     a = vf.OllamaFollowupAdapter()
     asst = a._serialize_exchanges([vf.ToolExchange(text="opsummering", tool_calls=[], results=[])])[0]
     assert "tool_calls" not in asst and asst["content"] == "opsummering"
+
+
+# ── 4. sep 2026: reasoning åd max_tokens → finish_reason=length, nul tekst ──
+
+
+def _stub_deepseek_compat(monkeypatch):
+    import core.services.cheap_provider_runtime as cpr
+    monkeypatch.setattr(cpr, "provider_runtime_defaults",
+                        lambda pid: {"base_url": "https://api.deepseek.com/v1"}, raising=False)
+    monkeypatch.setattr(cpr, "_require_credentials",
+                        lambda **kw: {"api_key": "fake-test-key"}, raising=False)  # pragma: allowlist secret
+
+
+def _sse(*chunks: bytes) -> list[bytes]:
+    out: list[bytes] = []
+    for c in chunks:
+        out.extend([c, b"\n"])
+    out.extend([b"data: [DONE]\n", b"\n"])
+    return out
+
+
+def _sequenced_urlopen(monkeypatch, responses: list[list[bytes]]) -> list[dict]:
+    bodies: list[dict] = []
+
+    def fake_urlopen(req, timeout=None):  # noqa: ARG001
+        bodies.append(json.loads(req.data.decode("utf-8")))
+        return _FakeResponse(responses.pop(0) if len(responses) > 1 else responses[0])
+
+    monkeypatch.setattr(vf.urllib_request, "urlopen", fake_urlopen)
+    return bodies
+
+
+def test_deepseek_followup_budget_fits_reasoning_plus_answer(monkeypatch) -> None:
+    """4096 var MiniMax/OpenCode-loftet; på DeepSeek tæller ræsonneringen med →
+    4 af Bjørns ture døde 4/9 med length efter ~32 s tænkning og nul tekst."""
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"ok"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+    list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    assert bodies[0]["max_tokens"] == 32_768
+    assert "thinking" not in bodies[0]
+
+
+def test_reasoning_exhausted_round_retries_once_without_thinking(monkeypatch) -> None:
+    """length + nul tekst + nul tool-kald → præcis ÉN ekstra runde med
+    thinking disabled; svaret kommer fra retry-runden, ikke tomt."""
+    _stub_deepseek_compat(monkeypatch)
+    first = _sse(b'data: {"choices":[{"delta":{"reasoning_content":"taenker og taenker"}}]}',
+                 b'data: {"choices":[{"delta":{},"finish_reason":"length"}]}')
+    second = _sse(b'data: {"choices":[{"delta":{"content":"her er svaret"}}]}',
+                  b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')
+    bodies = _sequenced_urlopen(monkeypatch, [first, second])
+    events = list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    assert len(bodies) == 2
+    assert "thinking" not in bodies[0]
+    assert bodies[1]["thinking"] == {"type": "disabled"}
+    assert bodies[1]["messages"] == bodies[0]["messages"]
+    done = [e for e in events if isinstance(e, vf.FollowupDone)]
+    assert len(done) == 1 and done[0].text == "her er svaret" and done[0].finish_reason == "stop"
+
+
+def test_length_with_partial_text_does_not_retry(monkeypatch) -> None:
+    """Delvis tekst + length håndteres af loopets fortsæt-runde — ikke her."""
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"halvt sv"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"length"}]}')])
+    events = list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    assert len(bodies) == 1
+    assert [e for e in events if isinstance(e, vf.FollowupDone)][0].finish_reason == "length"
+
+
+def test_reasoning_exhausted_retry_never_loops(monkeypatch) -> None:
+    """Hvis retry-runden OGSÅ ender length/tom → ingen tredje runde."""
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{},"finish_reason":"length"}]}')])
+    events = list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    assert len(bodies) == 2
+    assert [e for e in events if isinstance(e, vf.FollowupDone)][0].finish_reason == "length"

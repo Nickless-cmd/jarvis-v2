@@ -872,9 +872,9 @@ def multi_signal_recall_section(query: str, *, max_results: int = 4) -> str | No
 
     def _do_recall() -> None:
         try:
-            _box["result"] = multi_signal_recall(
-                query=query, total_limit=max_results, with_mood=True,
-                sources=["workspace", "chronicle"], min_score=0.32)
+            # 2026-09-04 (memory repair, R5): samme fusionerede recall som tool'et.
+            from core.services.recall import recall as _recall
+            _box["result"] = _recall(query, limit=max_results, min_score=0.32)
         except Exception as _exc:
             _box["error"] = _exc
 
@@ -899,14 +899,12 @@ def multi_signal_recall_section(query: str, *, max_results: int = 4) -> str | No
     items = result.get("results") or []
     if not items:
         return None
-    lines = ["🔀 Multi-signal hukommelser (BM25 + entity + embedding):"]
+    lines = ["🔀 Recall på tværs af kilder (embedding + BM25):"]
     for r in items:
         src = str(r.get("source", "?"))
-        ms = r.get("multi_signal_score", 0.0)
-        sig = r.get("signals", {})
-        sig_str = f"B={sig.get('bm25', 0):.2f} E={sig.get('entity', 0):.2f}"
-        text = str(r.get("text", ""))[:120].replace("\n", " ")
-        lines.append(f"  • [{src}] (score={ms:.2f}, {sig_str}) {text}")
+        ms = float(r.get("score", 0.0) or 0.0)
+        text = str(r.get("text", ""))[:160].replace("\n", " ")
+        lines.append(f"  • [{src}] (score={ms:.2f}) {text}")
     return "\n".join(lines)
 
 

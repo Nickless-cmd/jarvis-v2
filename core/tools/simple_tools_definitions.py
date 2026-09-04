@@ -105,6 +105,7 @@ from core.tools.webhook_tools import (WEBHOOK_TOOL_DEFINITIONS)
 from core.tools.health_monitor_tools import (HEALTH_MONITOR_TOOL_DEFINITIONS)
 from core.tools.sensory_tools import (SENSORY_TOOL_DEFINITIONS)
 from core.tools.recall_memory_tools import (RECALL_MEMORY_TOOL_DEFINITIONS)
+from core.tools.recall_tool import RECALL_TOOL_DEFINITIONS
 from core.tools.goals_tools import (GOAL_TOOL_DEFINITIONS)
 from core.tools.decisions_tools import (DECISION_TOOL_DEFINITIONS)
 from core.tools.composites_tools import (COMPOSITE_TOOL_DEFINITIONS)
@@ -1896,6 +1897,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "search_memory",
             "description": (
+                "Prefer `recall` (searches ALL memory sources at once). This one is "
+                "workspace-files only. "
                 "Semantic search across your workspace memory files (MEMORY.md, USER.md, "
                 "SOUL.md, STANDING_ORDERS.md, SKILLS.md, and curated/daily memory notes). "
                 "Uses embeddings for true semantic recall — finds relevant context even when "
@@ -3218,6 +3221,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
     *SENSORY_TOOL_DEFINITIONS,
     *RECALL_MEMORY_TOOL_DEFINITIONS,
+    # 2026-09-04 (memory repair, R5): ét recall-tool over alle kilder.
+    *RECALL_TOOL_DEFINITIONS,
     *GOAL_TOOL_DEFINITIONS,
     *DECISION_TOOL_DEFINITIONS,
     *COMPOSITE_TOOL_DEFINITIONS,

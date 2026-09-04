@@ -36,12 +36,21 @@ class Chunk(NamedTuple):
 
 
 def _workspace_dir() -> Path:
-    from core.runtime.workspace_paths import workspace_dir as _ws_dir
-    return _ws_dir()
+    """Workspace for the current user, falling back to the owner's workspace.
+
+    2026-09-04 (memory repair, R5): autonomous/heartbeat runs have no user
+    context, and ``search_memory`` crashed with NoUserContextError instead of
+    searching Jarvis' own (= owner's) workspace.
+    """
+    from core.runtime.workspace_paths import workspace_dir_or_owner
+    return workspace_dir_or_owner()
 
 
-def _memory_files() -> list[Path]:
-    ws = _workspace_dir()
+_CURATED_FILE_LIMIT = 30
+
+
+def _memory_files(ws: Path | None = None) -> list[Path]:
+    ws = ws or _workspace_dir()
     files: list[Path] = []
     for name in ["MEMORY.md", "USER.md", "SOUL.md", "STANDING_ORDERS.md", "SKILLS.md"]:
         p = ws / name
@@ -50,8 +59,12 @@ def _memory_files() -> list[Path]:
     for subdir in ["memory/curated", "memory/daily"]:
         d = ws / subdir
         if d.is_dir():
-            for f in sorted(d.glob("*.md"))[-30:]:  # last 30 files
-                files.append(f)
+            # 2026-09-04 (memory repair, R3): newest 30 by MTIME. Sorting by
+            # name silently dropped curated-memory.md (the promotion target,
+            # 3.460 lines) because "c" sorts before "sansernes-arkiv-…".
+            candidates = [f for f in d.glob("*.md") if f.is_file()]
+            candidates.sort(key=_file_mtime)
+            files.extend(candidates[-_CURATED_FILE_LIMIT:])
     return files
 
 
@@ -194,21 +207,21 @@ def _tfidf_search(query: str, chunks: list[Chunk], limit: int) -> list[dict]:
 _INDEX_CACHE_PATH_NAME = "runtime/memory_search_index.pkl"
 
 
-def _cache_path() -> Path:
-    return _workspace_dir() / _INDEX_CACHE_PATH_NAME
+def _cache_path(ws: Path | None = None) -> Path:
+    return (ws or _workspace_dir()) / _INDEX_CACHE_PATH_NAME
 
 
 _REBUILD_LOCK = threading.Lock()
 _REBUILD_ACTIVE = False
 
 
-def _chunk_all_files(files: list[Path]) -> list[Chunk]:
+def _chunk_all_files(files: list[Path], ws: Path | None = None) -> list[Chunk]:
     """Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding."""
     all_chunks: list[Chunk] = []
+    ws = ws or _workspace_dir()
     for f in files:
         try:
             text = f.read_text(encoding="utf-8", errors="replace")
-            ws = _workspace_dir()
             try:
                 rel = str(f.relative_to(ws))
             except ValueError:
@@ -219,14 +232,14 @@ def _chunk_all_files(files: list[Path]) -> list[Chunk]:
     return all_chunks
 
 
-def _load_cached_vectors() -> dict[str, "np.ndarray"]:
+def _load_cached_vectors(ws: Path | None = None) -> dict[str, "np.ndarray"]:
     """chunk-tekst → vektor fra den eksisterende cache, til INKREMENTEL reindex.
 
     Tom dict betyder "ingen brugbar cache" → kalderen laver en fuld embed.
     Modelskift invaliderer alt (vektorer fra to modeller må aldrig blandes).
     Self-safe: enhver fejl → {} → fuld embed, som før."""
     try:
-        cache = _cache_path()
+        cache = _cache_path(ws) if ws is not None else _cache_path()
         if not cache.exists():
             return {}
         with open(cache, "rb") as fh:
@@ -242,7 +255,9 @@ def _load_cached_vectors() -> dict[str, "np.ndarray"]:
         return {}
 
 
-def _build_and_cache_index(files: list[Path], current_mtimes: dict[str, float]) -> None:
+def _build_and_cache_index(
+    files: list[Path], current_mtimes: dict[str, float], ws: Path | None = None
+) -> None:
     """Byg indeks og skriv cache. Kaldes KUN fra baggrunds-tråden.
 
     INKREMENTEL siden 2026-08-20 (Bjørn: "kold start tog over 40 sek?"). FØR blev
@@ -256,10 +271,18 @@ def _build_and_cache_index(files: list[Path], current_mtimes: dict[str, float]) 
     Nu genbruges vektoren for hver chunk hvis TEKST er uændret; kun ægte nye/ændrede
     chunks embeddes. Typisk tur: 1-5 embeds i stedet for 658. Resultatet er
     bit-identisk med en fuld rebuild (samme model, samme tekst → samme vektor)."""
-    all_chunks = _chunk_all_files(files)
-    if not all_chunks:
-        return
-    reuse = _load_cached_vectors()
+    # Legacy-compatible: only pass the workspace down when the caller gave one
+    # (tests monkeypatch _chunk_all_files/_cache_path with the old signatures).
+    if ws is None:
+        all_chunks = _chunk_all_files(files)
+        if not all_chunks:
+            return
+        reuse = _load_cached_vectors()
+    else:
+        all_chunks = _chunk_all_files(files, ws)
+        if not all_chunks:
+            return
+        reuse = _load_cached_vectors(ws)
     todo = [i for i, c in enumerate(all_chunks) if c.text not in reuse]
     embeddings: "np.ndarray | None"
     if not reuse:
@@ -281,7 +304,7 @@ def _build_and_cache_index(files: list[Path], current_mtimes: dict[str, float]) 
             logger.info("memory_search: inkrementel reindex — %d genbrugt, %d embeddet",
                         len(all_chunks) - len(todo), len(todo))
     try:
-        cache = _cache_path()
+        cache = _cache_path(ws) if ws is not None else _cache_path()
         cache.parent.mkdir(parents=True, exist_ok=True)
         with open(cache, "wb") as fh:
             pickle.dump({
@@ -295,7 +318,9 @@ def _build_and_cache_index(files: list[Path], current_mtimes: dict[str, float]) 
         logger.warning("memory_search: cache save failed: %s", exc)
 
 
-def _schedule_background_rebuild(files: list[Path], current_mtimes: dict[str, float]) -> None:
+def _schedule_background_rebuild(
+    files: list[Path], current_mtimes: dict[str, float], ws: Path | None = None
+) -> None:
     """Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning
     ALDRIG blokerer på et fuldt re-embed (Bjørn 9. jul: 'search_memory hænger' — hver memory-fil-
     ændring invaliderede HELE indekset → inline re-embed af alle chunks = minutter → run/stream-hang)."""
@@ -314,7 +339,7 @@ def _schedule_background_rebuild(files: list[Path], current_mtimes: dict[str, fl
     def _run() -> None:
         global _REBUILD_ACTIVE
         try:
-            _build_and_cache_index(files, current_mtimes)
+            _build_and_cache_index(files, current_mtimes, ws)
         except Exception as exc:
             logger.warning("memory_search: background rebuild failed: %s", exc)
         finally:
@@ -324,7 +349,9 @@ def _schedule_background_rebuild(files: list[Path], current_mtimes: dict[str, fl
     threading.Thread(target=lambda: ctx.run(_run), name="memory-search-reindex", daemon=True).start()
 
 
-def _load_or_build_index() -> tuple[list[Chunk], np.ndarray | None, dict[str, float]]:
+def _load_or_build_index(
+    ws: Path | None = None,
+) -> tuple[list[Chunk], np.ndarray | None, dict[str, float]]:
     """Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed:
       - frisk cache → brug den (semantisk søgning).
       - FORÆLDET cache → server den STRAKS + genopbyg i baggrunden (let-forældet ≫ hængende).
@@ -338,9 +365,10 @@ def _load_or_build_index() -> tuple[list[Chunk], np.ndarray | None, dict[str, fl
     pr. tur = den næststørste synlige svartid-post efter experience-embedderen. Nu unpickles
     kun når .pkl'en faktisk skifter (mtime); ellers genbruges den in-memory-kopi. Awareness-
     neutralt (identisk indhold/resultat)."""
-    files = _memory_files()
+    ws = ws or _workspace_dir()
+    files = _memory_files(ws)
     current_mtimes = {str(f): _file_mtime(f) for f in files}
-    cache = _cache_path()
+    cache = _cache_path(ws)
     if cache.exists():
         try:
             key = str(cache)
@@ -355,13 +383,13 @@ def _load_or_build_index() -> tuple[list[Chunk], np.ndarray | None, dict[str, fl
             if cached.get("mtimes") == current_mtimes and cached.get("model") == _EMBED_MODEL:
                 return cached["chunks"], cached.get("embeddings"), current_mtimes
             # Forældet → server den gamle index straks, genopbyg async.
-            _schedule_background_rebuild(files, current_mtimes)
+            _schedule_background_rebuild(files, current_mtimes, ws)
             return cached.get("chunks", []), cached.get("embeddings"), cached.get("mtimes", current_mtimes)
         except Exception as exc:
             logger.warning("memory_search: cache load failed: %s", exc)
     # Ingen/brudt cache: chunk hurtigt (ingen embed) → tfidf-fallback nu; embed i baggrunden.
-    all_chunks = _chunk_all_files(files)
-    _schedule_background_rebuild(files, current_mtimes)
+    all_chunks = _chunk_all_files(files, ws)
+    _schedule_background_rebuild(files, current_mtimes, ws)
     return all_chunks, None, current_mtimes
 
 
@@ -384,7 +412,20 @@ def _is_quarantined(text: str) -> bool:
     return "[QUARANTINED" in text or "[QUARANTINE NOTE" in text
 
 
-def search_memory(query: str, *, limit: int = 5) -> list[dict]:
+def _source_matches(chunk_source: str, sources: list[str] | None) -> bool:
+    if not sources:
+        return True
+    name = chunk_source.replace("\\", "/").split("/")[-1]
+    return chunk_source in sources or name in sources
+
+
+def search_memory(
+    query: str,
+    *,
+    limit: int = 5,
+    sources: list[str] | None = None,
+    workspace_dir: Path | None = None,
+) -> list[dict]:
     """Search workspace memory files by semantic similarity.
 
     Returns a list of matching chunks with source, section, and score.
@@ -392,16 +433,28 @@ def search_memory(query: str, *, limit: int = 5) -> list[dict]:
     Quarantined chunks (containing "[QUARANTINED" or "[QUARANTINE NOTE"
     markers) are excluded — they remain in the source files for audit
     but cannot resurface as evidence in recall.
+
+    ``sources`` (2026-09-04): restrict to these file names / relative paths,
+    e.g. ``["MEMORY.md"]``. ``workspace_dir``: search an explicit workspace
+    instead of resolving it from the user context.
     """
     query = query.strip()
     if not query:
         return []
 
     with _INDEX_LOCK:
-        chunks, embeddings, _ = _load_or_build_index()
+        chunks, embeddings, _ = _load_or_build_index(workspace_dir)
 
     if not chunks:
         return []
+
+    if sources:
+        keep = [i for i, c in enumerate(chunks) if _source_matches(c.source, sources)]
+        if not keep:
+            return []
+        chunks = [chunks[i] for i in keep]
+        if embeddings is not None:
+            embeddings = embeddings[keep]
 
     if embeddings is not None:
         # Semantic search

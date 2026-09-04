@@ -28,3 +28,26 @@ def test_skips_when_fix_does_not_resolve_syntax():
     bad = "def f(:\n    pass\n"
     out, note = guard_py_escapes(bad, "x.py")
     assert out == bad and note is None
+
+
+def test_navnet_er_faktisk_bundet_i_simple_tools():
+    """Værnet blev tilføjet 15. juli SAMMEN med sine kaldsteder — men importen
+    manglede. `write_file`/`edit_file` fejlede derfor med
+    «name '_guard_py_escapes' is not defined» hver gang de skrev en .py-fil,
+    og det blev først opdaget 4. sep. Et kald uden binding er en fejl der kun
+    viser sig når linjen faktisk køres.
+    """
+    import core.tools.simple_tools as st
+
+    assert hasattr(st, "_guard_py_escapes"), "kaldsteder uden import = NameError i drift"
+    assert st._guard_py_escapes("x = 1\n", "/tmp/a.py") == ("x = 1\n", None)
+
+
+def test_skrivning_af_en_py_fil_gaar_igennem_uden_nameerror(tmp_path):
+    """Ende-til-ende på selve stien der var brudt."""
+    import core.tools.simple_tools as st
+
+    mål = tmp_path / "ny.py"
+    res = st._force_write_file({"path": str(mål), "content": "def f():\n    return 1\n"})
+    assert res.get("status") == "ok", res
+    assert mål.read_text() == "def f():\n    return 1\n"

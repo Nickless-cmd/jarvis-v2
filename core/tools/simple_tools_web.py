@@ -143,8 +143,35 @@ def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
         line if len(line) <= MAX_SEARCH_LINE_CHARS else _clip_text(line, limit=MAX_SEARCH_LINE_CHARS)
         for line in lines
     ]
-    text = "\n".join(bounded) if bounded else "[no matches]"
-    return {"text": text, "match_count": len(bounded), "status": "ok"}
+    if bounded:
+        return {"text": "\n".join(bounded), "match_count": len(bounded), "status": "ok"}
+    # NUL TRÆFFERE SKAL SIGE HVOR DER BLEV LEDT.
+    #
+    # 4. sep 2026 (Jarvis): «search returnerer [no matches] for strenge der ER i
+    # repoet» — det kostede en halv times fejlslutning, fordi han konkluderede
+    # at koden ikke fandtes. Jeg kunne ikke genskabe fejlen bagefter: samme
+    # mønstre gav træffere på både workstation og container.
+    #
+    # Så det er sandsynligvis IKKE motoren der fejler — det er at «[no matches]»
+    # ikke skelner mellem «findes ikke» og «du ledte et andet sted end du tror».
+    # En nul-træffer uden kontekst er en påstand man ikke kan efterprøve. Nu
+    # står roden, glob'en og motoren i svaret, så man ser forskellen med det
+    # samme i stedet for at drage en konklusion om koden.
+    hvor = [f"rod={search_path}"]
+    if file_glob:
+        hvor.append(f"glob={file_glob}")
+    hvor.append("motor=rg" if have_rg else "motor=grep")
+    if case_insensitive:
+        hvor.append("ignore_case")
+    if multiline:
+        hvor.append("multiline")
+    return {
+        "text": f"[no matches] — søgt i {', '.join(hvor)} efter {pattern!r}",
+        "match_count": 0,
+        "searched_root": search_path,
+        "engine": "rg" if have_rg else "grep",
+        "status": "ok",
+    }
 
 
 def _exec_find_files(args: dict[str, Any]) -> dict[str, Any]:

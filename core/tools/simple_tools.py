@@ -602,6 +602,12 @@ MAX_WEB_FETCH_CHARS = 24000
 # Ord/linje-sikker klipning (mod voldsom tool-trunkering): bevar HOVED+HALE så resultat/fejl/exit
 # i slutningen af output ikke smides væk. Se core/services/text_clip.py.
 from core.services.text_clip import clip_head_tail as _clip_head_tail, clip_text as _clip_text  # noqa: E402
+# 4. sep 2026: kaldene på linje ~1819/1856 fandtes, men NAVNET blev aldrig
+# bundet — `write_file`/`edit_file` fejlede med «name '_guard_py_escapes' is not
+# defined» hver gang de skrev en .py-fil. Værnet blev tilføjet 15. juli sammen
+# med sine kaldsteder; kun importen manglede. Samme fejlklasse som
+# `_clip_head_tail` i simple_tools_web.py, der ramte ethvert bash-kald over 16k.
+from core.tools.py_source_guard import guard_py_escapes as _guard_py_escapes  # noqa: E402
 WORKSPACE_DIR = shared_dir()
 
 # Paths that can be written without user approval.

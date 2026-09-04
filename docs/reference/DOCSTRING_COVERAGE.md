@@ -42,7 +42,7 @@ Generated from source. 6601/13229 functions/methods documented (49%). The list b
 
 ## Undocumented public functions (1886)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L183)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)

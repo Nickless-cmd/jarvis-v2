@@ -19,7 +19,7 @@ def _ryd(root: logging.Logger, gemt) -> None:
 def test_et_modulnavn_naar_frem_naar_roden_er_koblet(caplog):
     root = logging.getLogger()
     gemt = list(root.handlers)
-    uv = logging.getLogger("uvicorn.error")
+    uv = logging.getLogger("uvicorn")
     uv_gemt = list(uv.handlers)
     try:
         h = logging.StreamHandler()
@@ -37,7 +37,7 @@ def test_kalder_man_to_gange_faar_man_ikke_dobbelte_linjer():
     """En genstart eller to lifespans må ikke give hver log-linje to gange."""
     root = logging.getLogger()
     gemt = list(root.handlers)
-    uv = logging.getLogger("uvicorn.error")
+    uv = logging.getLogger("uvicorn")
     uv_gemt = list(uv.handlers)
     try:
         h = logging.StreamHandler()
@@ -54,7 +54,7 @@ def test_kalder_man_to_gange_faar_man_ikke_dobbelte_linjer():
 
 def test_tredjepart_holdes_nede_saa_vores_egne_linjer_kan_ses():
     """Ellers bytter vi én slags tavshed for en anden: vores linjer drukner."""
-    uv = logging.getLogger("uvicorn.error")
+    uv = logging.getLogger("uvicorn")
     uv_gemt = list(uv.handlers)
     root = logging.getLogger()
     gemt = list(root.handlers)
@@ -71,7 +71,7 @@ def test_tredjepart_holdes_nede_saa_vores_egne_linjer_kan_ses():
 def test_uden_uvicorn_handlers_goer_den_intet():
     """I en test- eller CLI-proces findes uvicorn ikke — så skal den tie stille
     frem for at kaste."""
-    uv = logging.getLogger("uvicorn.error")
+    uv = logging.getLogger("uvicorn")
     gemt = list(uv.handlers)
     try:
         uv.handlers[:] = []

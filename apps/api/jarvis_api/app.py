@@ -159,12 +159,27 @@ def wire_root_logging() -> dict[str, int]:
     egne linjer i deres, og så har vi byttet én slags tavshed for en anden.
     """
     root = logging.getLogger()
-    uv = logging.getLogger("uvicorn.error")
-    if not uv.handlers:
+    # Handleren sidder på «uvicorn», IKKE på «uvicorn.error». Sidstnævnte har en
+    # tom .handlers og propagerer op — derfor virker den at logge på, og derfor
+    # gav et naivt opslag på «uvicorn.error» nul handlers at låne. Gå op ad
+    # kæden og tag den første der faktisk HAR nogen.
+    handlers: list[logging.Handler] = []
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        lg: logging.Logger | None = logging.getLogger(name)
+        # Stop FØR roden. Går man hele vejen op, låner roden sine egne handlers
+        # af sig selv — det ser ud som om det lykkedes, og ændrer intet.
+        while lg is not None and lg is not root:
+            if lg.handlers:
+                handlers = list(lg.handlers)
+                break
+            lg = lg.parent
+        if handlers:
+            break
+    if not handlers:
         return {"added": 0, "quieted": 0}
     seen = {id(h) for h in root.handlers}
     added = 0
-    for h in uv.handlers:
+    for h in handlers:
         if id(h) not in seen:
             root.addHandler(h)
             added += 1

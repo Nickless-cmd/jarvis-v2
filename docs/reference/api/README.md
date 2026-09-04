@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13322 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13337 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,15 +41,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13322 functions/
 - [`core.services.12`](core.services.12.md) — `ground_truth_registry` … `inner_voice_shadow`
 - [`core.services.13`](core.services.13.md) — `interlanguage_practice` … `memory_consolidation_nudge`
 - [`core.services.14`](core.services.14.md) — `memory_decay_daemon` … `nerve_registry`
-- [`core.services.15`](core.services.15.md) — `network_health` … `policy_abstraction`
-- [`core.services.16`](core.services.16.md) — `precision_bias` … `provider_self_heal`
-- [`core.services.17`](core.services.17.md) — `push_dispatcher` … `run_event_log`
-- [`core.services.18`](core.services.18.md) — `run_follow` … `self_model_distiller`
-- [`core.services.19`](core.services.19.md) — `self_model_predictive` … `signal_baseline`
-- [`core.services.20`](core.services.20.md) — `signal_decay_daemon` … `taste_profile`
-- [`core.services.21`](core.services.21.md) — `telegram_gateway` … `turn_trace`
-- [`core.services.22`](core.services.22.md) — `ui_panel_store` … `visible_runs_memory`
-- [`core.services.23`](core.services.23.md) — `visible_runs_outcomes` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `network_health` … `plugin_ruleset_store`
+- [`core.services.16`](core.services.16.md) — `policy_abstraction` … `provider_error_guard`
+- [`core.services.17`](core.services.17.md) — `provider_health_check` … `rule_definitions`
+- [`core.services.18`](core.services.18.md) — `rule_engine` … `self_deception_guard`
+- [`core.services.19`](core.services.19.md) — `self_experiments` … `shared_language_extended`
+- [`core.services.20`](core.services.20.md) — `shutdown_window_daemon` … `sustained_attention`
+- [`core.services.21`](core.services.21.md) — `system_cartographer` … `totp_verifier`
+- [`core.services.22`](core.services.22.md) — `truth_gate_v2` … `visible_runs_cognitive`
+- [`core.services.23`](core.services.23.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

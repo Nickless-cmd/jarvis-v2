@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6633/13322 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6638/13337 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,14 +24,14 @@ Generated from source. 6633/13322 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4385 | 9199 | 47% |
+| `core.services` | 4387 | 9209 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 77 | 138 | 55% |
+| `core.services.prompt_sections` | 78 | 140 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 377 | 826 | 45% |
+| `core.tools` | 379 | 829 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -40,7 +40,7 @@ Generated from source. 6633/13322 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1914)
+## Undocumented public functions (1921)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1238,6 +1238,9 @@ Generated from source. 6633/13322 functions/methods documented (49%). The list b
 - `core/services/plan_proposals.py` :: `resolve_plan` (L133)
 - `core/services/policy_abstraction.py` :: `is_enabled` (L71)
 - `core/services/policy_abstraction.py` :: `set_enabled` (L75)
+- `core/services/post_tool_answer_guard.py` :: `is_hollow_post_tool_answer` (L17)
+- `core/services/post_tool_answer_guard.py` :: `should_replace_with_synthesis` (L26)
+- `core/services/post_tool_answer_guard.py` :: `tool_call_count` (L13)
 - `core/services/precision_bias.py` :: `build_precision_bias_surface` (L285)
 - `core/services/priors_feedback.py` :: `priors_feedback_section` (L118)
 - `core/services/private_initiative_tension_signal_tracking.py` :: `build_runtime_private_initiative_tension_signal_surface` (L75)
@@ -1282,13 +1285,13 @@ Generated from source. 6633/13322 functions/methods documented (49%). The list b
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3190)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3038)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3327)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3215)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3063)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3352)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4545)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4570)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
@@ -1304,6 +1307,10 @@ Generated from source. 6633/13322 functions/methods documented (49%). The list b
 - `core/services/prompt_relevance_backend.py` :: `load_visible_relevance_prompt` (L658)
 - `core/services/prompt_relevance_backend.py` :: `run_bounded_nl_memory_entry_selection` (L581)
 - `core/services/prompt_relevance_backend.py` :: `run_bounded_nl_prompt_relevance` (L485)
+- `core/services/prompt_section_impact.py` :: `estimate_section_impact` (L35)
+- `core/services/prompt_section_impact.py` :: `observe_answer_impact` (L50)
+- `core/services/prompt_section_impact.py` :: `observe_last_prompt_answer_impact` (L86)
+- `core/services/prompt_section_impact.py` :: `remember_prompt_sections` (L75)
 - `core/services/prompt_sections/cross_session_arc.py` :: `invalidate_cache` (L157)
 - `core/services/prompt_sections/dead_skills.py` :: `dead_skills_section` (L23)
 - `core/services/prompt_sections/pattern_counterfactuals.py` :: `invalidate_cache` (L94)
@@ -1755,20 +1762,20 @@ Generated from source. 6633/13322 functions/methods documented (49%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L347)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L344)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L354)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6223)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6248)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6452)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6461)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6448)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6219)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6361)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6413)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6330)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6271)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6303)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6189)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6471)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6234)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6255)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6280)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6484)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6493)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6480)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6251)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6393)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6445)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6362)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6303)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6335)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6221)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6503)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6266)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L40)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L432)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
@@ -1840,10 +1847,10 @@ Generated from source. 6633/13322 functions/methods documented (49%). The list b
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1055)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L254)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L164)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L182)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L160)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L187)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L176)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L194)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L172)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L199)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

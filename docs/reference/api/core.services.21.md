@@ -2,6 +2,78 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/system_cartographer.py`
+_System Cartographer — broad map of Jarvis' runtime and inner layers._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_system_cartographer_surface` | `(*, auto_enqueue=…)` | — | [src](../../../core/services/system_cartographer.py#L42) |
+| function | `start_system_cartographer_daemon` | `()` | — | [src](../../../core/services/system_cartographer.py#L123) |
+| function | `stop_system_cartographer_daemon` | `()` | — | [src](../../../core/services/system_cartographer.py#L133) |
+| function | `_observe_to_central` | `(surface)` | System-cluster: MELD kartografens kort til Den Intelligente Central (self-safe). | [src](../../../core/services/system_cartographer.py#L137) |
+| function | `_observe_gaps_to_central` | `(surface)` | Jarvis' handlingsordre (docs/notes/2026-07-01-cartographer-to-central.md, P1): meld | [src](../../../core/services/system_cartographer.py#L170) |
+| function | `_loop` | `()` | — | [src](../../../core/services/system_cartographer.py#L227) |
+| function | `_service_files` | `()` | — | [src](../../../core/services/system_cartographer.py#L241) |
+| function | `_service_node` | `(path, text)` | — | [src](../../../core/services/system_cartographer.py#L257) |
+| function | `_daemon_nodes` | `()` | — | [src](../../../core/services/system_cartographer.py#L284) |
+| function | `_surface_nodes` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L307) |
+| function | `_event_family_nodes` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L319) |
+| function | `_edges` | `(*, services, daemons, surfaces, event_families, causal)` | — | [src](../../../core/services/system_cartographer.py#L331) |
+| function | `_causal_runtime_evidence` | `(limit=…)` | — | [src](../../../core/services/system_cartographer.py#L362) |
+| function | `_dark_edges` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L421) |
+| function | `_rank_dark_edges` | `(dark_edges, *, causal, daemons)` | — | [src](../../../core/services/system_cartographer.py#L435) |
+| function | `_coverage_summary` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L475) |
+| function | `_is_pure_utility` | `(service)` | Detect services that are pure helpers — no observable state, no IO, | [src](../../../core/services/system_cartographer.py#L498) |
+| function | `_coverage_score` | `(service)` | — | [src](../../../core/services/system_cartographer.py#L524) |
+| function | `_system_health_from_jarvis_perspective` | `(*, dark_edges, coverage, theater, recommended)` | — | [src](../../../core/services/system_cartographer.py#L554) |
+| function | `_dark_edge_score` | `(*, service, kind, is_daemon, has_causal_family)` | — | [src](../../../core/services/system_cartographer.py#L584) |
+| function | `_priority_label` | `(score)` | — | [src](../../../core/services/system_cartographer.py#L608) |
+| function | `_observability_task_from_dark_edge` | `(edge)` | — | [src](../../../core/services/system_cartographer.py#L616) |
+| function | `_maybe_enqueue_observability_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L634) |
+| function | `_find_existing_observability_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L681) |
+| function | `_maybe_enqueue_theater_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L698) |
+| function | `_find_existing_theater_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L745) |
+| function | `_runtime_task_priority` | `(priority)` | — | [src](../../../core/services/system_cartographer.py#L763) |
+| function | `_theater_audit_surface` | `()` | — | [src](../../../core/services/system_cartographer.py#L770) |
+| function | `_tool_count` | `()` | — | [src](../../../core/services/system_cartographer.py#L783) |
+| function | `_classify_service` | `(*, name, text)` | — | [src](../../../core/services/system_cartographer.py#L792) |
+
+## `core/services/task_worker.py`
+_Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `claim_next_task` | `(kinds=…)` | Claim the next queued task and mark it `running`. | [src](../../../core/services/task_worker.py#L33) |
+| function | `_handle_initiative_followup` | `(task)` | — | [src](../../../core/services/task_worker.py#L51) |
+| function | `_handle_heartbeat_followup` | `(task)` | — | [src](../../../core/services/task_worker.py#L56) |
+| function | `_handle_open_loop_followup` | `(task)` | — | [src](../../../core/services/task_worker.py#L61) |
+| function | `_handle_agency_bridge_repair` | `(task)` | Prepare a repair brief for a weak agency bridge. | [src](../../../core/services/task_worker.py#L66) |
+| function | `_handle_observability_bridge_repair` | `(task)` | — | [src](../../../core/services/task_worker.py#L107) |
+| function | `_handle_theater_refactor` | `(task)` | — | [src](../../../core/services/task_worker.py#L138) |
+| function | `_execute_task` | `(task)` | Execute a single task and persist its final status. Never raises. | [src](../../../core/services/task_worker.py#L177) |
+| function | `tick_task_worker` | `(budget=…)` | Run one worker tick: claim and execute up to ``budget`` tasks. | [src](../../../core/services/task_worker.py#L240) |
+| function | `_matching_agency_edge` | `(*, scope, goal)` | — | [src](../../../core/services/task_worker.py#L278) |
+| function | `_edge_by_id` | `(edges, edge_id)` | — | [src](../../../core/services/task_worker.py#L300) |
+| function | `_store_agency_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L307) |
+| function | `_store_observability_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L315) |
+| function | `_store_theater_refactor_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L323) |
+| function | `_matching_theater_file` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L331) |
+| function | `_suggested_agency_files` | `(*, scope, edge)` | — | [src](../../../core/services/task_worker.py#L346) |
+| function | `_suggested_observability_files` | `(*, scope, service)` | — | [src](../../../core/services/task_worker.py#L382) |
+| function | `_suggested_theater_files` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L396) |
+
+## `core/services/taste_profile.py`
+_Taste Profile — accumulating aesthetic preferences for code, design, and communication._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `update_taste_from_run` | `(*, run_id, user_message, was_corrected, outcome_status)` | Update taste profile based on a visible run interaction. | [src](../../../core/services/taste_profile.py#L67) |
+| function | `update_taste_async` | `(*, run_id, user_message, was_corrected, outcome_status)` | — | [src](../../../core/services/taste_profile.py#L125) |
+| function | `get_crystallized_tastes` | `()` | Return taste dimensions that have moved decisively (>0.72 or <0.28). | [src](../../../core/services/taste_profile.py#L140) |
+| function | `build_taste_profile_surface` | `()` | — | [src](../../../core/services/taste_profile.py#L155) |
+| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/taste_profile.py#L167) |
+| function | `_safe_json` | `(value, default)` | — | [src](../../../core/services/taste_profile.py#L174) |
+
 ## `core/services/telegram_gateway.py`
 _Telegram gateway — bidirectional messaging via Telegram Bot API._
 
@@ -540,43 +612,4 @@ _TOTP-verifikation (RFC 6238) til owner-override — ren stdlib, ingen dependenc
 | function | `provisioning_uri` | `(seed, *, account, issuer=…)` | Byg en otpauth://-URI som authenticator-apps (Google Authenticator, Authy, | [src](../../../core/services/totp_verifier.py#L94) |
 | function | `revoke` | `(_old_seed=…)` | Returnér en ny seed. Caller (owner-session) persisterer den + smider den gamle. | [src](../../../core/services/totp_verifier.py#L106) |
 | function | `record_attempt` | `(session_id, *, now=…)` | Registrér et override-forsøg. True hvis tilladt, False hvis rate-limited. | [src](../../../core/services/totp_verifier.py#L120) |
-
-## `core/services/truth_gate_v2.py`
-_Evidens-baseret TruthGate v2 (Fase 2). Detekterer handlings-påstande og verificerer_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ActionClaim` | `` | — | [src](../../../core/services/truth_gate_v2.py#L35) |
-| function | `detect_action_claims` | `(text)` | Deterministisk: find handlings-påstande. commit_hash tæller kun i commit/git/log- | [src](../../../core/services/truth_gate_v2.py#L45) |
-| function | `_run_result_text` | `(followup_exchanges)` | — | [src](../../../core/services/truth_gate_v2.py#L101) |
-| function | `verify_claim` | `(claim, executed_tool_names, followup_exchanges)` | In-run evidens: kørte et tool i kategorien? + (for citeret output/hash) matcher | [src](../../../core/services/truth_gate_v2.py#L109) |
-| function | `classify_severity` | `(claims)` | — | [src](../../../core/services/truth_gate_v2.py#L154) |
-| function | `_footnote_for` | `(claim)` | Byg én fodnote-linje for et uverificeret claim i den konsistente stil. | [src](../../../core/services/truth_gate_v2.py#L158) |
-| function | `_annotate` | `(text, claims)` | Bevar teksten + append fodnote(r) i bunden (én pr. claim, adskilt fra | [src](../../../core/services/truth_gate_v2.py#L168) |
-| function | `_annotate_soft` | `(text, claims=…)` | Bagudkompatibel: bløde påstande → fodnote. (claims valgfri; uden dem | [src](../../../core/services/truth_gate_v2.py#L177) |
-| function | `_llm_judge` | `(text)` | Spørg billig lane om teksten påstår en handling der kræver tool-evidens. | [src](../../../core/services/truth_gate_v2.py#L192) |
-| function | `_maybe_llm_claim` | `(text)` | LLM-dommer KUN hvis teksten har et handlings-hint men intet deterministisk match. | [src](../../../core/services/truth_gate_v2.py#L207) |
-| function | `truth_gate_v2` | `(ctx)` | ctx: {text, executed_tool_names, followup_exchanges, run_id, session_id}. | [src](../../../core/services/truth_gate_v2.py#L221) |
-
-## `core/services/turn_changelog.py`
-_End-of-turn changelog — auto-summarize what this turn changed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_calls_during` | `(run_id, started_at)` | — | [src](../../../core/services/turn_changelog.py#L27) |
-| function | `_git_changed_files` | `(repo)` | — | [src](../../../core/services/turn_changelog.py#L50) |
-| function | `build_turn_changelog` | `(*, run_id=…, started_at=…, repo_root=…)` | — | [src](../../../core/services/turn_changelog.py#L67) |
-| function | `previous_turn_changelog_section` | `(session_id)` | Look at the most recent visible run for this session and surface the | [src](../../../core/services/turn_changelog.py#L80) |
-| function | `format_changelog` | `(changelog)` | Render a compact human-readable summary, or None if empty. | [src](../../../core/services/turn_changelog.py#L129) |
-
-## `core/services/turn_trace.py`
-_core/services/turn_trace.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sentinel` | `()` | — | [src](../../../core/services/turn_trace.py#L29) |
-| function | `active` | `()` | — | [src](../../../core/services/turn_trace.py#L36) |
-| function | `start` | `(label=…)` | Nulstil tidslinjen ved request-in. No-op uden sentinel. | [src](../../../core/services/turn_trace.py#L40) |
-| function | `mark` | `(kind, label=…, dur_ms=…)` | Tilføj ét event + print en LIVE-linje til stderr (så ruten kan følges i | [src](../../../core/services/turn_trace.py#L58) |
-| function | `dump` | `(reason=…)` | Skriv hele tidslinjen til latest.json + kompakt stderr-resumé, og sluk. | [src](../../../core/services/turn_trace.py#L79) |
 

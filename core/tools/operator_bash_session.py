@@ -105,7 +105,48 @@ def _exec_operator_bash_session_run(args: dict[str, Any]) -> dict[str, Any]:
                 if sid in _SESSIONS:
                     _SESSIONS[sid]["cwd"] = new_cwd
                     _SESSIONS[sid]["last"] = _now()
+        if isinstance(res, dict):
+            res["text"] = _render_text(inner)
     return res
+
+
+def _render_text(inner: dict[str, Any]) -> str:
+    """Læsbart output som en `text`-nøgle — og dét er ikke kosmetik.
+
+    Uden den falder resultatet igennem til JSON-dumpet i
+    `format_tool_result_for_model`, som er cappet ved 8000 tegn. Søsteren
+    `bash_session_run` returnerer `{"text": ...}` og slipper derfor udenom med
+    16000. Samme slags kommando gav altså to vidt forskellige lofter, alene
+    fordi den ene svarede i en anden FORM.
+
+    Målt 4. sep: en læsning på 9665 tegn fik 1534 tegn skåret ud af MIDTEN.
+    Jarvis så starten og slutningen af koden, opdagede selv at midten manglede
+    («midten af scan_response blev udeladt»), lovede at læse resten — og turen
+    sluttede. Bjørn oplevede det som at han blev cuttet efter en værktøjsrunde.
+    Han blev ikke cuttet; han havde fået en fil med et hul i.
+
+    Oveni læste han et rå JSON-dump med `\n` som bogstaver. Koden dér foreslår
+    selv rettelsen: «Tilføj en 'text'-nøgle i toolets exec for et rent resumé.»
+    """
+    from core.tools.simple_tools import MAX_BASH_OUTPUT_CHARS
+    from core.services.text_clip import clip_head_tail
+
+    parts: list[str] = []
+    out = str(inner.get("stdout") or "").rstrip()
+    err = str(inner.get("stderr") or "").rstrip()
+    if out:
+        parts.append(out)
+    if err:
+        parts.append(f"[stderr]\n{err}")
+    rc = inner.get("exit_code")
+    # Exit-koden nævnes kun når den betyder noget. En 0 i hver eneste besked er
+    # støj der skubber rigtigt indhold ud af vinduet.
+    if rc not in (None, 0):
+        parts.append(f"[exit={rc}]")
+    if inner.get("timed_out"):
+        parts.append("[timeout]")
+    text = "\n".join(parts).strip() or "[no output]"
+    return clip_head_tail(text, limit=MAX_BASH_OUTPUT_CHARS)
 
 
 def _exec_operator_bash_session_close(args: dict[str, Any]) -> dict[str, Any]:

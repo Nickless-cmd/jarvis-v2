@@ -31,8 +31,9 @@ _operator_bash_session — vedvarende-FØLELSE bash-session på operatorens mask
 | function | `_extract_cwd` | `(out)` | Pluk cwd-markøren ud af stdout og fjern den fra det Jarvis ser. | [src](../../../core/tools/operator_bash_session.py#L41) |
 | function | `_exec_operator_bash_session_open` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L52) |
 | function | `_exec_operator_bash_session_run` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L65) |
-| function | `_exec_operator_bash_session_close` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L111) |
-| function | `_exec_operator_bash_session_list` | `(_args)` | — | [src](../../../core/tools/operator_bash_session.py#L127) |
+| function | `_render_text` | `(inner)` | Læsbart output som en `text`-nøgle — og dét er ikke kosmetik. | [src](../../../core/tools/operator_bash_session.py#L113) |
+| function | `_exec_operator_bash_session_close` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L152) |
+| function | `_exec_operator_bash_session_list` | `(_args)` | — | [src](../../../core/tools/operator_bash_session.py#L168) |
 
 ## `core/tools/operator_tools.py`
 _Operator-side tools — execute on operator's desktop via JarvisX bridge._

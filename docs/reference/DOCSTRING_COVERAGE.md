@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6609/13242 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6615/13250 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -21,7 +21,7 @@ Generated from source. 6609/13242 functions/methods documented (49%). The list b
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 9 | 22 | 40% |
 | `core.identity` | 65 | 158 | 41% |
-| `core.memory` | 45 | 127 | 35% |
+| `core.memory` | 51 | 135 | 37% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 555 | 1032 | 53% |
 | `core.services` | 4388 | 9194 | 47% |
@@ -399,10 +399,10 @@ Generated from source. 6609/13242 functions/methods documented (49%). The list b
 - `core/runtime/db_private_signals.py` :: `ensure_private_signals_tables` (L16)
 - `core/runtime/db_private_signals.py` :: `get_private_development_state` (L237)
 - `core/runtime/db_private_signals.py` :: `get_private_reflective_selection` (L271)
-- `core/runtime/db_private_signals.py` :: `get_private_retained_memory_record` (L468)
+- `core/runtime/db_private_signals.py` :: `get_private_retained_memory_record` (L476)
 - `core/runtime/db_private_signals.py` :: `get_private_temporal_promotion_signal` (L357)
 - `core/runtime/db_private_signals.py` :: `recent_private_reflective_selections` (L152)
-- `core/runtime/db_private_signals.py` :: `recent_private_retained_memory_records` (L504)
+- `core/runtime/db_private_signals.py` :: `recent_private_retained_memory_records` (L512)
 - `core/runtime/db_private_signals.py` :: `record_private_development_state` (L192)
 - `core/runtime/db_private_signals.py` :: `record_private_reflective_selection` (L101)
 - `core/runtime/db_private_signals.py` :: `record_private_retained_memory_record` (L398)

@@ -169,14 +169,21 @@ def _source_sensory(query: str, limit: int) -> list[dict[str, Any]]:
     return out
 
 
+def _rank_score(index: int) -> float:
+    """FTS5 bm25() giver 0,05-0,09 efter 1/(1+|rank|) — aldrig konkurrencedygtig
+    mod cosinus 0,8. Rækkefølgen inden for kilden er det der bærer mening, saa
+    rang → 1,0, 0,9, 0,8 … (gulv 0,4). Fusionen afgør resten via leksikalsk daekning."""
+    return max(0.4, 1.0 - 0.1 * int(index))
+
+
 def _source_session_summary(query: str, limit: int) -> list[dict[str, Any]]:
     from core.runtime.db_fts import search_session_summaries
 
     out = []
-    for r in search_session_summaries(query, limit=limit):
+    for i, r in enumerate(search_session_summaries(query, limit=limit)):
         out.append({
             "source": "session_summary",
-            "score": max(0.0, min(1.0, float(r.get("score") or 0.0))),
+            "score": _rank_score(i),
             "text": _clip(f"[{str(r.get('created_at') or '')[:10]}] {r.get('summary') or ''}"),
             "ref": str(r.get("session_id") or ""),
         })
@@ -187,10 +194,10 @@ def _source_chat(query: str, limit: int) -> list[dict[str, Any]]:
     from core.runtime.db_fts import search_chat_messages
 
     out = []
-    for r in search_chat_messages(query, limit=limit):
+    for i, r in enumerate(search_chat_messages(query, limit=limit)):
         out.append({
             "source": "chat",
-            "score": max(0.0, min(1.0, float(r.get("score") or 0.0))),
+            "score": _rank_score(i),
             "text": _clip(f"[{str(r.get('created_at') or '')[:10]} {r.get('role')}] {r.get('content') or ''}"),
             "ref": str(r.get("message_id") or ""),
         })
@@ -298,7 +305,11 @@ def recall(
     wanted = [s for s in source_names if s in SOURCE_FUNCS]
     if not wanted:
         wanted = list(DEFAULT_SOURCES)
-    k = per_source or max(3, limit)
+    # 2026-09-04 (samfundstjeneste-probe): kandidatpuljen pr. kilde var 3 ved
+    # limit=3. nomic giver flade cosinus (0,87 for alt) paa sjaeldne danske ord,
+    # saa den rigtige post kom aldrig ind i puljen og BM25/leksikalsk fusion
+    # havde intet at loefte. Pulje = mindst 10 pr. kilde.
+    k = per_source or max(10, limit * 3)
 
     candidates: list[dict[str, Any]] = []
     errors: dict[str, str] = {}

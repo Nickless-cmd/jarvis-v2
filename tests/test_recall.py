@@ -88,3 +88,19 @@ def test_fuse_promotes_exact_low_native_history_over_irrelevant_high_native():
     ]
     out = R.fuse("hvad lærte vi af forgængeren Kai jarvis-ai?", cands)
     assert out[0]["ref"] == "chat-hit"
+
+
+def test_fts_sources_use_rank_scores_and_pool_is_wide():
+    """2026-09-04: bm25-afledte 0,05-scorer kunne aldrig konkurrere; puljen pr. kilde var 3."""
+    seen: dict = {}
+
+    def stub(query, limit):
+        seen["limit"] = limit
+        return []
+
+    with patch.dict(R.SOURCE_FUNCS, {"workspace": stub}, clear=True):
+        R.recall("samfundstjeneste", sources=["workspace"], limit=3)
+    assert seen["limit"] >= 10
+    with patch("core.runtime.db_fts.search_session_summaries", return_value=[{"summary": "a", "created_at": "2026-09-03", "session_id": "s", "score": 0.08}, {"summary": "b", "created_at": "2026-09-03", "session_id": "s", "score": 0.07}]):
+        rows = R._source_session_summary("x", 5)
+    assert [r["score"] for r in rows] == [1.0, 0.9]

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6639/13346 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6640/13347 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6639/13346 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4387 | 9212 | 47% |
+| `core.services` | 4388 | 9213 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 78 | 145 | 53% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1330,7 +1330,7 @@ Generated from source. 6639/13346 functions/methods documented (49%). The list b
 - `core/services/reasoning_interceptor.py` :: `intercept_round` (L152)
 - `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L206)
 - `core/services/reboot_awareness_daemon.py` :: `get_last_boot_event` (L202)
-- `core/services/recall.py` :: `empty_message` (L274)
+- `core/services/recall.py` :: `empty_message` (L281)
 - `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L221)
 - `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L229)
 - `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L336)

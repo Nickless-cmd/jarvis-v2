@@ -236,12 +236,13 @@ _One recall path over every memory source (memory repair 2026-09-04, R5)._
 | function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L110) |
 | function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L129) |
 | function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L154) |
-| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L172) |
-| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L186) |
-| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L200) |
-| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L230) |
-| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L274) |
-| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L278) |
+| function | `_rank_score` | `(index)` | FTS5 bm25() giver 0,05-0,09 efter 1/(1+|rank|) — aldrig konkurrencedygtig | [src](../../../core/services/recall.py#L172) |
+| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L179) |
+| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L193) |
+| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L207) |
+| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L237) |
+| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L281) |
+| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L285) |
 
 ## `core/services/recall_scheduler.py`
 _core/services/recall_scheduler.py_

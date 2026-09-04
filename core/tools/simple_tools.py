@@ -1303,6 +1303,7 @@ from core.tools.simple_tools_web import (  # noqa: E402,F401
 # council/agenter/daemon/settings/project/central + load_more_tools + google/notes/hf.
 # Modulet ejer egen state (_DISCORD_*/_convene_council_*/_SENSITIVE_*). Re-importeret
 # her (dispatch-dict + tests). _convene_council_daily_* (muterbar) ejes af undermodulet.
+from core.tools.recall_tool import _exec_recall  # noqa: E402
 from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_list_initiatives,
     _exec_push_initiative,
@@ -1495,6 +1496,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_mood": _exec_read_mood,
     "adjust_mood": _exec_adjust_mood,
     "search_memory": _exec_search_memory,
+    "recall": _exec_recall,
     "memory_graph_query": _exec_memory_graph_query,
     "resurface_old_memory": _exec_resurface_old_memory,
     "propose_source_edit": _exec_propose_source_edit,

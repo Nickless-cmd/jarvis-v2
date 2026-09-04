@@ -86,8 +86,8 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
     # Vision
     "analyze_image",
-    # Hukommelse — read
-    "search_memory", "memory_graph_query", "resurface_old_memory",
+    # Hukommelse — read (2026-09-04: `recall` = ét tool over alle kilder)
+    "recall", "search_memory", "memory_graph_query", "resurface_old_memory",
     "search_jarvis_brain", "read_brain_entry",
     # Hukommelse — write (egen + brugerens)
     "remember_this", "memory_upsert_section", "adjust_mood",

@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-08-19 — 442 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-04 — 443 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -266,6 +266,7 @@
 | `read_tool_result` | native | no |
 | `read_visual_memory` | native | no |
 | `reasoning_classify` | native | no |
+| `recall` | native | no |
 | `recall_before_act` | native | no |
 | `recall_context_version` | native | no |
 | `recall_council_conclusions` | native | no |

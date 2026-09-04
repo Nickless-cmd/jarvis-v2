@@ -33,6 +33,9 @@ ALLOWED_EVENT_FAMILIES = {
     # ── Rådets fund #4 (9. jul): PROTECTED CORE tamper/capability — publish RAISEDE stille (uregistreret)
     #    så file_awareness.change/composite.* nåede ALDRIG frem; nu routed OG allowed (invariant kræver begge). ──
     "file_awareness",    # file_awareness.change — ekstern ændring af Jarvis' egen kode (tamper-signal)
+    # ── 4. sep 2026: prompt-telemetri var latent afvist ──
+    "prompt",            # prompt.section_answer_impact (Codex' impact-telemetri) + prompt.assembly_size
+                         # (prompt_contract) — publish RAISEDE stille, 0 events nogensinde
     "composite",         # composite.{invoked,revoked,deleted} — capability-overflade-mutation
     # ── Døde routes lukket 6. jul: disse 15 stod i FAMILY_ROUTES (egress-OK) men manglede HER →
     # enhver publish RAISEDE stille. Flere HAVDE publishers (anomaly/telegram/decision_gate/veto_gate/

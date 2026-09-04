@@ -50,3 +50,13 @@ def test_visible_prompt_build_remembers_sections_for_impact(isolated_runtime):
         session_id="s-impact", run_id="r", answer_text="Du har en GTX 1070 til embeddings",
     )
     assert impacts and all("impact_score" in i for i in impacts)
+
+
+def test_prompt_family_is_publishable():
+    """2026-09-04: 'prompt' manglede i ALLOWED_EVENT_FAMILIES → publish raisede stille →
+    prompt.section_answer_impact (og prompt.assembly_size) landede aldrig i events."""
+    from core.eventbus.events import ALLOWED_EVENT_FAMILIES, Event
+
+    assert "prompt" in ALLOWED_EVENT_FAMILIES
+    Event.create("prompt.section_answer_impact", {"run_id": "r", "answer_chars": 1, "sections": []})
+    Event.create("prompt.assembly_size", {"chars": 1})

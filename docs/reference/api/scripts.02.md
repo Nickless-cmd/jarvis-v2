@@ -11,11 +11,11 @@ _Memory probe: does recall find what Bjørn knows is there? (memory repair 2026-
 | function | `score_probe` | `(texts, expect)` | — | [src](../../../scripts/memory_probe.py#L29) |
 | function | `run_probes` | `(probes, *, sources, limit=…)` | ``sources`` maps a name to a callable(query, limit) -> list[str] of result texts. | [src](../../../scripts/memory_probe.py#L34) |
 | function | `_owner_context` | `()` | — | [src](../../../scripts/memory_probe.py#L67) |
-| function | `_live_sources` | `()` | — | [src](../../../scripts/memory_probe.py#L77) |
-| function | `_ws` | `()` | — | [src](../../../scripts/memory_probe.py#L97) |
-| function | `_legacy_sources` | `()` | Main-compatible sources (pre-repair code paths) so before/after can be compared. | [src](../../../scripts/memory_probe.py#L106) |
-| function | `format_report` | `(result)` | — | [src](../../../scripts/memory_probe.py#L132) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/memory_probe.py#L147) |
+| function | `_live_sources` | `()` | — | [src](../../../scripts/memory_probe.py#L85) |
+| function | `_ws` | `()` | — | [src](../../../scripts/memory_probe.py#L105) |
+| function | `_legacy_sources` | `()` | Main-compatible sources (pre-repair code paths) so before/after can be compared. | [src](../../../scripts/memory_probe.py#L114) |
+| function | `format_report` | `(result)` | — | [src](../../../scripts/memory_probe.py#L140) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/memory_probe.py#L155) |
 
 ## `scripts/meta_evne_healthcheck.py`
 _Meta-evne healthcheck — read-only snapshot of all new tracker stacks._

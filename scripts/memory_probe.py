@@ -70,8 +70,16 @@ def _owner_context() -> None:
 
     owner = get_owner()
     uid = str(getattr(owner, "discord_id", "") or "").strip() if owner else ""
-    if uid:
-        set_context(workspace_name="default", role="owner", user_id=uid)
+    if not uid:
+        return
+    # The owner's REAL workspace name (e.g. "bjorn"). "default" would make
+    # ensure_default_workspace() bootstrap a stub workspace next to the real one.
+    try:
+        from core.runtime.workspace_paths import _user_id_to_workspace_name
+        ws_name = _user_id_to_workspace_name(uid) or "default"
+    except Exception:
+        ws_name = "default"
+    set_context(workspace_name=ws_name, role="owner", user_id=uid)
 
 
 def _live_sources() -> dict[str, Callable[[str, int], list[str]]]:

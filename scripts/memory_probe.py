@@ -80,9 +80,8 @@ def _live_sources() -> dict[str, Callable[[str, int], list[str]]]:
         return [str(r.get("text") or "") for r in recall(query, limit=limit).get("results") or []]
 
     def _memory_md(query: str, limit: int) -> list[str]:
-        from core.runtime.workspace_paths import workspace_dir_or_owner
         from core.services.prompt_sections.memory_md_selection import select_memory_md_sections
-        return select_memory_md_sections(query, workspace_dir=workspace_dir_or_owner(), max_sections=limit, max_chars=4000)
+        return select_memory_md_sections(query, workspace_dir=_ws(), max_sections=limit, max_chars=4000)
 
     def _brain(query: str, limit: int) -> list[str]:
         from core.services import jarvis_brain
@@ -95,6 +94,15 @@ def _live_sources() -> dict[str, Callable[[str, int], list[str]]]:
     return {"recall": _recall, "memory_md": _memory_md, "brain": _brain}
 
 
+def _ws() -> Path:
+    try:
+        from core.runtime.workspace_paths import workspace_dir_or_owner
+        return workspace_dir_or_owner()
+    except ImportError:  # main-tree (pre-repair) has no owner fallback; context is set
+        from core.runtime.workspace_paths import workspace_dir
+        return workspace_dir()
+
+
 def _legacy_sources() -> dict[str, Callable[[str, int], list[str]]]:
     """Main-compatible sources (pre-repair code paths) so before/after can be compared."""
 
@@ -103,9 +111,8 @@ def _legacy_sources() -> dict[str, Callable[[str, int], list[str]]]:
         return [f"§ {r.get('section', '')}: {r.get('text', '')}" for r in search_memory(query, limit=limit) or []]
 
     def _memory_md_lines(query: str, limit: int) -> list[str]:
-        from core.runtime.workspace_paths import workspace_dir_or_owner
         from core.services import prompt_contract as pc
-        ws = workspace_dir_or_owner()
+        ws = _ws()
         entries = pc._workspace_memory_entries(ws / "MEMORY.md")
         sel = pc._select_relevant_memory_entries(
             entries, user_message=query, max_lines=limit, max_chars=280, workspace_dir=ws,

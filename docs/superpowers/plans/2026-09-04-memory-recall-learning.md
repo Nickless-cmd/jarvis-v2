@@ -46,25 +46,25 @@
 
 **Files:** `core/services/memory_search.py` (`search_memory(query, *, limit, sources=None, workspace_dir=None)`, `_memory_files` by mtime), `core/services/prompt_sections/memory_md_selection.py` (`select_memory_md_sections`), `core/services/prompt_contract.py` (section selector, caps 3/1500; brain facts + multi-signal → `_dyn_memory_recall`; `[HUKOMMELSE]` header), `scripts/memory_md_dedupe_headings.py`, tests.
 
-- [ ] Tests: section selection picks the matching section; dedupe merges duplicate headings with backup; prompt renders `[HUKOMMELSE]` once, brain facts not under `INTERN DIAGNOSTIK`.
+- [x] Tests: section selection picks the matching section; dedupe merges duplicate headings with backup; prompt renders `[HUKOMMELSE]` once, brain facts not under `INTERN DIAGNOSTIK`.
 
 ### Task 3: Silence the noise writers
 
 **Files:** `core/memory/promotion_substance.py` (`has_substance`, `is_telemetry_fragment`, `strip_telemetry_fragments`), `core/memory/private_layer_pipeline.py`, `core/runtime/db_private_signals.py`, `core/services/prompt_support_signals.py`, `core/services/memory_md_update_proposal_tracking.py` (sentence-like domain keys dropped; fresh > 7d → stale), `core/services/policy_abstraction.py` (reinforce instead of insert), `core/services/experiential_memory.py` (no empty lesson), `core/services/theory_of_mind.py` (user only), `core/services/semantic_indexer.py` + `semantic_memory.py` (skip released), `core/services/session_distillation.py` (strip telemetry), tests.
 
-- [ ] Tests per gate.
+- [x] Tests per gate (tests/test_noise_writers.py, test_promotion_substance.py, test_policy_abstraction.py, test_private_layer_pipeline.py, test_prompt_support_signals.py).
 
 ### Task 4: One recall path
 
 **Files:** `core/runtime/workspace_paths.py` (`workspace_dir_or_owner`), `core/services/memory_search.py`, `core/runtime/db_fts.py` (FTS5 over session_summaries + chat_messages), `core/services/recall.py` (`recall()` fused ranking), `core/tools/recall_tool.py` + registration + chat scope, delete `core/services/unified_recall.py`, `memory_recall_engine.multi_signal_recall_section` delegates, tests.
 
-- [ ] Tests: FTS keyword hit; fused ordering; empty message + event; owner fallback; chat scope; dead module gone.
+- [x] Tests: FTS keyword hit; fused ordering; empty message + event; owner fallback; chat scope; dead module gone.
 
 ### Task 5: Lessons — learn from mistakes end to end
 
 **Files:** `core/runtime/db_lessons.py`, `core/services/lessons.py`, hooks in `experience_correction_listener.py`, `visible_runs.py` (tool errors), `self_review_unified.py`, `regret_engine.py`, `arc_rule_extractor.py` (rules → proposed lessons; section returns ""), `prompt_contract.py` (lessons section + morning thread in tail), tests.
 
-- [ ] Tests: upsert/evidence/repeat; correction stores words; section shape; arc rules proposed.
+- [x] Tests: upsert/evidence/repeat; correction stores words; section shape; arc rules proposed. Boy Scout: prompt_sections/memory_selection.py og visible_runs_learning_signals.py udskilt.
 
 ### Task 6: Hygiene — one MEMORY.md writer, USER.md core, dead duplicates
 
@@ -85,3 +85,24 @@
 1. Affected test files green; `python -m compileall core apps/api scripts` clean.
 2. On CT105, read-only: clone branch to `/tmp/jarvis-branch`, run `scripts/memory_probe.py` against the live DB (no restart, no writes) → hit@3 before vs after.
 3. Report to Bjørn; deploy + cleanup only on his go.
+
+---
+
+## Status 2026-09-04 (aften)
+
+Alle 8 tasks implementeret på `fix/memory-recall-learning` (13 commits), 474 tests grønne
+i de berørte suiter, `compileall` ren. Præeksisterende fejl (ikke fra denne branch):
+`test_ollama_prompt_path` (3), `test_prompt_contract_injection_gate` (2),
+`test_memory_tools::test_memory_md_falls_back_to_shared_without_uid` (miljø: owner resolves).
+
+Før/efter målt READ-ONLY på CT105 mod live data (scripts/memory_probe.py, hit@3, 20 probes):
+
+| kilde | før (main) | efter (branch) |
+|---|---|---|
+| samlet recall | 65 % (kun workspace-søgning) | **80 %** (recall()) |
+| MEMORY.md ind i prompten | 5 % (sidste-4-linjer) | **55 %** (sektioner) |
+| hjerne | 20 % (runaway) | **50 %** |
+
+Ikke gjort (kræver Bjørns go): deploy til CT105, `scripts/memory_noise_cleanup.py --apply`,
+`scripts/brain_salience_reset.py --apply`, `scripts/memory_md_dedupe_headings.py --apply`,
+og at skrive en `## Kerne`-sektion i USER.md.

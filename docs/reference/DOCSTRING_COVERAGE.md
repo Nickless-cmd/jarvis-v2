@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6630/13310 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6630/13311 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,7 +35,7 @@ Generated from source. 6630/13310 functions/methods documented (49%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 177 | 331 | 53% |
+| `scripts` | 177 | 332 | 53% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -1915,9 +1915,9 @@ Generated from source. 6630/13310 functions/methods documented (49%). The list b
 - `scripts/memory_noise_cleanup.py` :: `step_partner_facts` (L104)
 - `scripts/memory_noise_cleanup.py` :: `step_policies_dedupe` (L56)
 - `scripts/memory_noise_cleanup.py` :: `step_retained_templates` (L140)
-- `scripts/memory_probe.py` :: `format_report` (L125)
+- `scripts/memory_probe.py` :: `format_report` (L132)
 - `scripts/memory_probe.py` :: `load_probes` (L24)
-- `scripts/memory_probe.py` :: `main` (L140)
+- `scripts/memory_probe.py` :: `main` (L147)
 - `scripts/memory_probe.py` :: `score_probe` (L29)
 - `scripts/mint_jarvisx_token.py` :: `main` (L52)
 - `scripts/peer_practice_runner.py` :: `main` (L106)

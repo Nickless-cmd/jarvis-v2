@@ -128,8 +128,8 @@ SEED_BINDINGS: dict[str, str] = {
     # under 0.7. De 6 genuint nye begreber (truth/mutation/skill/council/self_repair/trading) +
     # process_watcher (intet ærligt eksisterende ord) forbliver BEVIDST ubundne = ærlige huller. ──
     "decision_gate": "valg", "veto_gate": "spejl", "tool_router": "handling", "tool_tagger": "handling",
-    "coding_lane": "handling", "mail_checker": "relation", "tiktok_content_daemon": "relation",
-    "tiktok_research_daemon": "relation", "prompt_relevance_backend": "kald",
+    "coding_lane": "handling", "mail_checker": "relation",
+    "prompt_relevance_backend": "kald",
     "agent_skill_distiller": "læring", "tick_quality": "rytme",
     "diagnosis": "krop", "compaction": "kontinuitet", "ambient_sound": "lys",
     "session": "kontinuitet", "arc_rules": "mønster", "weekly_manifest": "spejl",

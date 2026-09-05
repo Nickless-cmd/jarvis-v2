@@ -1215,31 +1215,7 @@ def _build_influence_trace(
         except Exception:
             pass
 
-    if _dm.is_enabled("tiktok_content"):
-        try:
-            import importlib
-            import core.services.tiktok_content_daemon
-            importlib.reload(core.services.tiktok_content_daemon)
-            from core.services.tiktok_content_daemon import tick_tiktok_content_daemon
-            _tc_result = _hb._daemon_tick_with_deadline(
-                "tiktok_content", tick_tiktok_content_daemon, deadline_seconds=30.0,
-            )
-            _dm.record_daemon_tick("tiktok_content", _tc_result or {})
-        except Exception:
-            pass
 
-    if _dm.is_enabled("tiktok_research"):
-        try:
-            import importlib
-            import core.services.tiktok_research_daemon
-            importlib.reload(core.services.tiktok_research_daemon)
-            from core.services.tiktok_research_daemon import tick_tiktok_research_daemon
-            _tr_result = _hb._daemon_tick_with_deadline(
-                "tiktok_research", tick_tiktok_research_daemon, deadline_seconds=30.0,
-            )
-            _dm.record_daemon_tick("tiktok_research", _tr_result or {})
-        except Exception:
-            pass
 
     if _dm.is_enabled("mail_checker"):
         try:

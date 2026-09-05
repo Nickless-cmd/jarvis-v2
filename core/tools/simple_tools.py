@@ -63,10 +63,6 @@ from core.tools.hf_inference_tools import (
     _exec_hf_zero_shot_classify,
     _exec_hf_vision_analyze,
 )
-from core.tools.tiktok_content_tools import (
-    TIKTOK_CONTENT_TOOL_DEFINITIONS,
-    _exec_tiktok_generate_video,
-)
 from core.tools.mic_listen_tool import (
     MIC_LISTEN_TOOL_DEFINITIONS,
     _exec_mic_listen,
@@ -86,16 +82,6 @@ from core.tools.voice_journal_tool import (
 from core.tools.wake_word_tool import (
     WAKE_WORD_TOOL_DEFINITIONS,
     _exec_wake_word,
-)
-from core.tools.tiktok_tools import (
-    TIKTOK_TOOL_DEFINITIONS,
-    _exec_tiktok_upload,
-    _exec_tiktok_login,
-    _exec_tiktok_show,
-)
-from core.tools.tiktok_analytics_tools import (
-    TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
-    _exec_tiktok_analytics,
 )
 from core.tools.restart_self_tools import (
     RESTART_SELF_TOOL_DEFINITIONS,
@@ -1600,7 +1586,6 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "hf_zero_shot_classify": _exec_hf_zero_shot_classify,
     "hf_vision_analyze": _exec_hf_vision_analyze,
     # End-to-end TikTok video (pollinations image + Ken Burns zoom + text)
-    "tiktok_generate_video": _exec_tiktok_generate_video,
     # Active mic listening + transcription
     "mic_listen": _exec_mic_listen,
     # Text-to-speech: speak aloud through system speakers
@@ -1611,10 +1596,6 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Wake-word listener ('Hey Jarvis' via ElevenLabs STT)
     "wake_word": _exec_wake_word,
     # TikTok tools
-    "tiktok_upload": _exec_tiktok_upload,
-    "tiktok_login": _exec_tiktok_login,
-    "tiktok_show": _exec_tiktok_show,
-    "tiktok_analytics": _exec_tiktok_analytics,
     # Mail tools
     "send_mail": _exec_send_mail,
     "read_mail": _exec_read_mail,

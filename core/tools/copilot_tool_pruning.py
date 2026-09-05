@@ -70,8 +70,7 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "recall_memories", "recall_sensory_memories", "schedule_self_wakeup", "schedule_task",
     "search", "search_chat_history", "search_memory", "search_sessions",
     "semantic_search_code", "send_discord_dm", "send_ntfy", "send_webchat_message",
-    "service_status", "smart_outline", "spawn_agent_task", "tiktok_analytics",
-    "tiktok_login", "tiktok_show", "tiktok_upload", "todo_update_status",
+    "service_status", "smart_outline", "spawn_agent_task", "todo_update_status",
     "trigger_heartbeat_tick", "verify_file_contains", "web_fetch", "web_scrape",
     "web_search", "wolfram_query", "write_file",
 })
@@ -112,11 +111,6 @@ TIER_2_CATEGORIES: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
         ("kamera", "webcam", "billede", "image", "foto", "photo", "vision",
          "se rummet", "look around", "analyse af billede", "analyse image"),
         ("look_around", "analyze_image", "hf_vision_analyze"),
-    ),
-    "tiktok": (
-        ("tiktok",),
-        ("tiktok_generate_video", "tiktok_upload", "tiktok_login",
-         "tiktok_show", "tiktok_analytics"),
     ),
     "comfyui": (
         ("comfyui", "comfy", "workflow", "stable diffusion", "sdxl"),

@@ -1194,6 +1194,18 @@ def _run_affect_nonllm_members(snap: dict, result: dict[str, Any]) -> None:
         result["members_ran"].append("emotion_repair_bridge")
     except Exception as exc:
         result["member_errors"]["emotion_repair_bridge"] = f"{type(exc).__name__}: {exc}"
+    # current_pull — Lag 5: det ugentlige begaersfelt, hvad der traekker i Jarvis
+    # lige nu. Self-throttler internt (ugentlig + staleness-tjek hver 12. time), saa
+    # familien kalder hver tick og daemonen afgoer selv. Stod [PENSIONERET] 15/7 uden
+    # efterfoelger; 23 filer laeste dens overflade og fik "Ingen aktiv pull" tilbage.
+    # Genindsat 5/9-2026 efter daekningsrevisionen.
+    try:
+        from core.services.current_pull import tick_current_pull_daemon
+        out = tick_current_pull_daemon()
+        result["outputs"]["current_pull"] = out
+        result["members_ran"].append("current_pull")
+    except Exception as exc:
+        result["member_errors"]["current_pull"] = f"{type(exc).__name__}: {exc}"
 
 
 def tick_cluster_affect(snapshot: dict | None = None, *, shadow: bool | None = None) -> dict[str, Any]:
@@ -1582,10 +1594,22 @@ def _cog_dream_insight_live(_snap: dict) -> dict[str, Any]:
     return {"persisted": False, "reason": "no-articulation-candidate"}
 
 
+def _cog_autonomous_council_live(_snap: dict) -> dict[str, Any]:
+    """Spontan selv-udloest raadsdeliberation via signal-scoring. Self-throttler
+    INTERNT (_CADENCE_MINUTES = 30 + _last_council_at), saa familien kalder hver
+    tick og daemonen afgoer selv om der er grund til at samle raadet.
+
+    Stod maerket [PENSIONERET] 15/7 uden at nogen familie tog den, saa evnen var
+    reelt vaek. Genindsat 5/9-2026 efter daekningsrevisionen."""
+    from core.services.autonomous_council_daemon import tick_autonomous_council_daemon
+    return tick_autonomous_council_daemon()
+
+
 _COGNITION_UNCONDITIONAL = (
     ("causal_inference", _cog_causal_inference_live),
     ("dream_insight", _cog_dream_insight_live),
     ("active_sensing", _cog_active_sensing_live),
+    ("autonomous_council", _cog_autonomous_council_live),
 )
 
 

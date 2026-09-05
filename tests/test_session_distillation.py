@@ -649,7 +649,7 @@ def test_update_private_brain_record_status(_ensure_tables) -> None:
 # ---------------------------------------------------------------------------
 # NOTE: _build_influence_trace is no longer a pure input-categoriser. It has
 # grown into the heartbeat tick body (~1300 lines) that runs every enabled
-# daemon (somatic/desire/council_memory/tiktok/…) via _daemon_tick_with_deadline,
+# daemon (somatic/desire/council_memory/…) via _daemon_tick_with_deadline,
 # hits live LLM providers and DB tables, and takes minutes. The present/absent
 # input counts are now non-deterministic (extra council/circadian/optional-layer
 # entries). These two cases therefore require live infra — marked integration

@@ -40,9 +40,9 @@ _EventContext — ContextVar holding the current parent event_id._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `Event` | `` | — | [src](../../../core/eventbus/events.py#L196) |
-| method | `Event.family` | `(self)` | — | [src](../../../core/eventbus/events.py#L202) |
-| method | `Event.create` | `(cls, kind, payload=…)` | — | [src](../../../core/eventbus/events.py#L206) |
-| method | `Event.from_record` | `(cls, *, kind, payload, created_at)` | — | [src](../../../core/eventbus/events.py#L212) |
-| method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L223) |
+| class | `Event` | `` | — | [src](../../../core/eventbus/events.py#L195) |
+| method | `Event.family` | `(self)` | — | [src](../../../core/eventbus/events.py#L201) |
+| method | `Event.create` | `(cls, kind, payload=…)` | — | [src](../../../core/eventbus/events.py#L205) |
+| method | `Event.from_record` | `(cls, *, kind, payload, created_at)` | — | [src](../../../core/eventbus/events.py#L211) |
+| method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L222) |
 

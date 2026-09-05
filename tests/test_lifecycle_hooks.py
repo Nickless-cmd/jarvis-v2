@@ -133,3 +133,30 @@ class TestAerlighedOmHvadDerErKoblet:
         """Den almindelige vej — ingen hooks konfigureret — må ikke koste noget."""
         monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
         assert lh.fire("PreToolUse", {"tool": "bash"})["action"] == "allow"
+
+
+class TestKoblingen:
+    """`UserPromptSubmit` er den første af de ni der kobles. Stedet er valgt
+    fordi BEGGE domme kan honoreres: `run.user_message` er stadig foranderlig,
+    og intet er bygget endnu."""
+
+    def test_userpromptsubmit_er_erklaeret_koblet(self):
+        assert "UserPromptSubmit" in lh.WIRED_EVENTS
+
+    def test_kun_koblede_haendelser_erklaeres(self):
+        """Erklæringen må ikke love mere end koden gør."""
+        assert lh.WIRED_EVENTS <= set(lh.HOOK_EVENTS)
+
+    def test_de_oevrige_er_IKKE_erklaeret_endnu(self):
+        """En PreToolUse der svarer «block» og bliver ignoreret ville være
+        værre end ingen hook — den ser ud til at virke."""
+        for e in ("PreToolUse", "PostToolUse", "Stop", "PreCompact"):
+            assert e not in lh.WIRED_EVENTS
+
+    def test_koden_kalder_faktisk_fire_for_den(self):
+        """Erklæringen alene er ikke nok — dagens dyreste lære er kode der ser
+        levende ud uden at være koblet."""
+        import pathlib
+        kilde = pathlib.Path("core/services/visible_runs.py").read_text()
+        assert '"UserPromptSubmit"' in kilde
+        assert "WIRED_EVENTS" in kilde

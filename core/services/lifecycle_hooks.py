@@ -42,7 +42,9 @@ HOOK_EVENTS: tuple[str, ...] = (
 
 # Hvad der FAKTISK er koblet i det synlige loop lige nu. Alt andet kan
 # konfigureres men fyrer ikke — og det skal staa her, ikke i en TODO.
-WIRED_EVENTS: frozenset[str] = frozenset()
+# `UserPromptSubmit` koblet 5/9: begge domme kan honoreres dér — `block`
+# afslutter turen, `inject` haefter kontekst paa foer prompt-assembly.
+WIRED_EVENTS: frozenset[str] = frozenset({"UserPromptSubmit"})
 
 _ALLOW: dict[str, Any] = {"action": "allow", "message": "", "context": None}
 

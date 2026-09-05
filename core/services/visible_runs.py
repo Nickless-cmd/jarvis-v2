@@ -1172,6 +1172,36 @@ async def _stream_visible_run(
     if run.user_message.strip().lower() == "/compact":
         run.user_message = _handle_compact_command(run)
 
+    # ── UserPromptSubmit-hook ────────────────────────────────────────────
+    # Foerste af jarvis-codes ni livscyklus-hooks der kobles. Stedet er valgt
+    # fordi BEGGE domme kan honoreres her: `run.user_message` er stadig
+    # foranderlig, og intet er bygget endnu. `block` afslutter turen med
+    # hookens egen besked; `inject` haefter kontekst paa foer prompt-assembly.
+    #
+    # Vi kobler kun det vi kan honorere — se `lifecycle_hooks.WIRED_EVENTS`.
+    try:
+        from core.services import lifecycle_hooks as _lh
+        if "UserPromptSubmit" in _lh.WIRED_EVENTS:
+            _hook_dom = _lh.fire(
+                "UserPromptSubmit",
+                {"prompt": run.user_message, "session_id": str(run.session_id or "")},
+                user_id=str(force_user_id or ""))
+            if _hook_dom.get("action") == "block":
+                _besked = str(_hook_dom.get("message") or
+                              "Turen blev stoppet af en hook.")
+                _persist_session_assistant_message(run, _besked)
+                yield _sse("delta", {"type": "delta", "run_id": run.run_id,
+                                     "delta": _besked})
+                yield _sse("done", {"type": "done", "run_id": run.run_id,
+                                    "status": "blocked_by_hook",
+                                    "input_tokens": 0, "output_tokens": 0})
+                return
+            if _hook_dom.get("action") == "inject" and _hook_dom.get("message"):
+                run.user_message = (
+                    f"{run.user_message}\n\n[HOOK]\n{_hook_dom['message']}")
+    except Exception as _lh_exc:
+        logger.debug("UserPromptSubmit-hook fejlede: %s", _lh_exc)
+
     # ── Social labilizer (Fase 2 of generative autonomy) ─────────────────
     # Modulate pressure-vectors based on user input BEFORE prompt assembly
     # so cognitive_state sees the updated weather. A kind word flattens

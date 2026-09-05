@@ -16,8 +16,11 @@ import { WorkDecisionCard } from '../components/WorkDecisionCard'
 import { actOnDecision, fetchDecisions, type Decision, type DecisionAction } from '../lib/decisionsApi'
 import { WorkReviewCard } from '../components/WorkReviewCard'
 import { fetchWorkReviews, type WorkReview } from '../lib/workReviewApi'
+import { NewWorkTaskSheet, type NewWorkMode } from '../components/NewWorkTaskSheet'
+import { useSessions } from '../state/SessionContext'
+import { useStream } from '../state/StreamContext'
 
-export type WorkTab = 'tasks' | 'approve' | 'review'
+export type WorkTab = 'tasks' | 'approve' | 'review' | 'new'
 
 interface Props {
   /** Plads til den svævende header. Måles i App og gives videre — et fast tal
@@ -59,6 +62,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const { config } = useAuth()
+  const sessions = useSessions()
+  const stream = useStream()
   const [tab, setTab] = useState<WorkTab>('tasks')
   const [runs, setRuns] = useState<McRun[]>([])
   const [approvals, setApprovals] = useState<Approval[]>([])
@@ -84,6 +89,7 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
   const [decisions, setDecisions] = useState<Decision[]>([])
   const [ubesvarede, setUbesvarede] = useState(0)
   const [reviews, setReviews] = useState<WorkReview[]>([])
+  const [startingTask, setStartingTask] = useState(false)
 
   const load = useCallback(async () => {
     if (!config) return
@@ -172,6 +178,21 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
     setSkipped((prev) => (prev.includes(a.request_id) ? prev : [...prev, a.request_id]))
   }, [])
 
+  const onStartTask = useCallback(async (task: { prompt: string; mode: NewWorkMode }) => {
+    if (!config) return
+    setStartingTask(true)
+    try {
+      const session = await sessions.create(config)
+      stream.send(config, session.id, task.prompt, { mode: task.mode })
+      setTab('tasks')
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Kunne ikke starte opgave')
+    } finally {
+      setStartingTask(false)
+    }
+  }, [config, sessions, stream, load])
+
   const initiativer = decisions.filter((d) => d.kind === 'initiative')
   const projekter = decisions.filter((d) => d.kind === 'life_project')
   const venter = tælVentende(pending.length, decisions)
@@ -188,7 +209,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
           options={[
             { value: 'tasks', label: 'Tasks' },
             { value: 'approve', label: 'Godkend', badge: venter > 0 },
-            { value: 'review', label: 'Review', badge: tælReviewVentende(reviews) > 0 }
+            { value: 'review', label: 'Review', badge: tælReviewVentende(reviews) > 0 },
+            { value: 'new', label: 'Ny' }
           ]}
           value={tab}
           onChange={setTab}
@@ -230,12 +252,26 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
               onDecide={(d, action) => void onDecide(d, action)}
             />
           ) : (
-            <ReviewView reviews={reviews} />
+            tab === 'review' ? (
+              <ReviewView reviews={reviews} />
+            ) : (
+              <NewTaskView busy={startingTask} onStart={onStartTask} />
+            )
           )}
         </ScrollView>
       )}
     </View>
   )
+}
+
+function NewTaskView({
+  busy,
+  onStart
+}: {
+  busy: boolean
+  onStart: (task: { prompt: string; mode: NewWorkMode }) => void
+}) {
+  return <NewWorkTaskSheet busy={busy} onSubmit={onStart} />
 }
 
 function ReviewView({ reviews }: { reviews: WorkReview[] }) {

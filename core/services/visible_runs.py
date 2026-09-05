@@ -1820,32 +1820,32 @@ async def _stream_visible_run(
                 from core.services.first_pass_recovery import first_pass_is_hollow
                 if first_pass_is_hollow(getattr(result, "text", ""), 0):
                     _first_pass_hollow_retried = True
-                    from core.services.hollow_promise_guard import HOLLOW_PROMISE_NUDGE
-                    from core.services.visible_model import (
-                        execute_visible_model as _exec_hp,
-                    )
                     from core.services import followup_observer as _fo_hp
+                    from core.services.hollow_promise_round import note_detected as _hp_det
+                    # MAALT, ikke kureret — og det er en bevidst forskel.
+                    #
+                    # Foerste udgave gen-spurgte via `execute_visible_model` med
+                    # nudget i beskeden. Den vej har INGEN tools-parameter: det er
+                    # en ren tekst-completion, saa `tool_calls` er tom pr.
+                    # konstruktion og kuren kunne aldrig lykkes. Den brugte et fuldt
+                    # modelkald pr. tomt loefte til ingenting — samme klasse fejl som
+                    # den den skulle rette: kode der ser levende ud og strukturelt
+                    # ikke kan gøre noget. Maalt: 3 forsoeg, 0 loest.
+                    #
+                    # Et aegte nudge skal gaa gennem followup-loopet, som annoncerer
+                    # tools og kan tvinge tool_choice (dér virker det 4 af 4). Indtil
+                    # den vej er bygget, REGISTRERER vi kun — saa Centralen kan taelle
+                    # dem aerligt frem for at vi lader som om de bliver kureret.
+                    _hp_det(run_id=run.run_id, provider=str(run.provider or ""),
+                            model=str(run.model or ""), round_index=0,
+                            session_id=str(run.session_id or ""), forced=False)
                     _fo_hp.note_hollow_promise(
                         run.run_id, provider=run.provider, model=run.model,
                         round_index=0, session_id=str(run.session_id or ""),
                         resolved=False)
-                    _hp = await asyncio.to_thread(
-                        _exec_hp,
-                        message=f"{run.user_message}\n\n{HOLLOW_PROMISE_NUDGE}",
-                        provider=run.provider, model=run.model,
-                        session_id=run.session_id)
-                    _hp_calls = list(getattr(_hp, "tool_calls", []) or [])
                     logger.warning(
-                        "first-pass-hollow-promise run_id=%s model=%s → %d tool-kald "
-                        "efter nudge", run.run_id, run.model, len(_hp_calls))
-                    if _hp_calls:
-                        # Han handlede. Brug det svar i stedet for løftet.
-                        _collected_native_tool_calls = _hp_calls
-                        result = _hp
-                        _fo_hp.note_hollow_promise(
-                            run.run_id, provider=run.provider, model=run.model,
-                            round_index=0, session_id=str(run.session_id or ""),
-                            resolved=True)
+                        "first-pass-hollow-promise run_id=%s model=%s (registreret, "
+                        "ikke nudget — foelgerunde-vejen udestaar)", run.run_id, run.model)
             except Exception as _hp_exc:
                 logger.debug("first-pass-hollow-kur fejlede: %s", _hp_exc)
 

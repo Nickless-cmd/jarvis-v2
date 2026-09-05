@@ -183,6 +183,14 @@ _File Watch Daemon — proprioception: "I feel when my own files change"._
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/finitude_runtime.py#L846) |
 | function | `_now` | `()` | — | [src](../../../core/services/finitude_runtime.py#L859) |
 
+## `core/services/first_pass_recovery.py`
+_Hvad gør vi når FØRSTE pas kom tilbage ubrugelig?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resend_target` | `(provider, model)` | (provider, model, thinking_mode) til ét gen-spørg efter et TOMT første pas. | [src](../../../core/services/first_pass_recovery.py#L35) |
+| function | `first_pass_is_hollow` | `(text, tool_calls)` | Lovede første pas en handling uden at kalde ét eneste værktøj? | [src](../../../core/services/first_pass_recovery.py#L57) |
+
 ## `core/services/flow_state_detection.py`
 _Flow State Detection — when everything clicks._
 
@@ -529,12 +537,4 @@ _Gmail-connector — API-klient + tool-handlers (vertical: search + list)._
 | function | `search` | `(user_id, query, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L142) |
 | function | `list_inbox` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L148) |
 | function | `send_message` | `(user_id, to, subject, body)` | Send en mail på brugerens vegne. KRÆVER approval-flow før den eksponeres som tool. | [src](../../../core/services/gmail_connector.py#L152) |
-
-## `core/services/goal_signal_synthesizer.py`
-_Goal signal synthesizer — surface candidate goals from dreams/reflections._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_gather_signals` | `()` | Collect recent introspective signals as text for LLM. | [src](../../../core/services/goal_signal_synthesizer.py#L23) |
-| function | `synthesize_candidate_goals` | `(*, max_candidates=…)` | Run one synthesis pass — propose new goals from recent signals. | [src](../../../core/services/goal_signal_synthesizer.py#L46) |
 

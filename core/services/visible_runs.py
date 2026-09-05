@@ -1764,6 +1764,7 @@ async def _stream_visible_run(
         # ingen prosa-kald) gen-spørges ÉN gang. Idempotent — intet blev eksekveret.
         # Transient → lykkes oftest. execute_visible_model er SYNKRON → kør i tråd
         # (ellers fryser --workers 1 API'et). Bærer fuld kontekst via session_id.
+        _first_pass_hollow_retried = False
         if (result is not None and not _collected_native_tool_calls
                 and not (getattr(result, "text", "") or "").strip()):
             try:
@@ -1776,33 +1777,11 @@ async def _stream_visible_run(
                 # igen (verificeret på Bjørns council-spørgsmål, tomt 2×). Resend nu
                 # med den NON-thinking compat-alias (deepseek-chat) som ikke har
                 # #1453 → den formulerer svaret. Andre providere: uændret resend.
-                _rs_provider, _rs_model = run.provider, run.model
-                _rs_thinking = None
-                try:
-                    _rs_p = (run.provider or "").strip().lower()
-                    _rs_m = (run.model or "").strip().lower()
-                    # Thinking-modeller (deepseek-vX-flash, kimi, qwen3, glm-5, minimax,
-                    # gpt-oss, nemotron, *-code, r1/o1) deler den STICKY tom-completion-bug:
-                    # re-spørg SAMME thinking-model → tom igen. deepseek har en non-thinking
-                    # alias vi swapper til; ANDRE providere/modeller har ikke → de faldt før
-                    # tilbage til samme sticky model → cutoff (provider-agnostisk, 3. jul,
-                    # kimi-k2.7-code:cloud). Fald tilbage til en pålidelig non-thinking
-                    # formulator (deepseek-chat) så turen får et ÆGTE svar, ikke fallback-stub.
-                    _THINK_HINTS = ("kimi", "-code", "deepseek-v", "qwen3", "glm-5",
-                                    "minimax", "gpt-oss", "nemotron", "-r1", "o1-",
-                                    "think", "reason")
-                    if _rs_p == "deepseek":
-                        # execute_visible_model normaliserer modellen + slår thinking
-                        # fra via thinking_mode="fast" (ingen deprecated alias).
-                        _rs_model = run.model
-                        _rs_thinking = "fast"
-                    elif any(_t in _rs_m for _t in _THINK_HINTS):
-                        _rs_provider, _rs_model, _rs_thinking = (
-                            "deepseek", "deepseek-v4-flash", "fast",
-                        )
-                except Exception:
-                    _rs_provider, _rs_model = run.provider, run.model
-                    _rs_thinking = None
+                # Valget af gen-spørge-mål bor i first_pass_recovery (udskilt
+                # 5/9 efter Boy Scout-reglen).
+                from core.services.first_pass_recovery import resend_target
+                _rs_provider, _rs_model, _rs_thinking = resend_target(
+                    run.provider, run.model)
                 _rs = await asyncio.to_thread(
                     _exec_rs, message=run.user_message, provider=_rs_provider,
                     model=_rs_model, session_id=run.session_id,
@@ -1823,6 +1802,52 @@ async def _stream_visible_run(
                                          "delta": _rs_text})
             except Exception as _rs_exc:
                 logger.debug("resend-på-tom fejlede: %s", _rs_exc)
+
+        # ── Tomt løfte på FØRSTE pas (5/9-2026) ─────────────────────────────
+        # Værnet mod tomme løfter bor inde i followup-loopet, og hele det loop
+        # ligger inde i `if _collected_native_tool_calls:`. Et første pas der
+        # svarer med prosa og INTET værktøjskald sprang derfor loopet over — og
+        # værnet så det aldrig. Det er præcis Bjørns cutoff: «Lad mig bekræfte
+        # config'en» → turen slut, intet kaldt, status=completed.
+        #
+        # Kuren spejler resend-på-tom lige ovenfor: ét ekstra forsøg, med
+        # nudget lagt i beskeden, så han får chancen for at gøre det han lige
+        # lovede. Lykkes det ikke, står svaret som det var — vi gør aldrig
+        # turen værre end den var.
+        if (result is not None and not _collected_native_tool_calls
+                and not _first_pass_hollow_retried):
+            try:
+                from core.services.first_pass_recovery import first_pass_is_hollow
+                if first_pass_is_hollow(getattr(result, "text", ""), 0):
+                    _first_pass_hollow_retried = True
+                    from core.services.hollow_promise_guard import HOLLOW_PROMISE_NUDGE
+                    from core.services.visible_model import (
+                        execute_visible_model as _exec_hp,
+                    )
+                    from core.services import followup_observer as _fo_hp
+                    _fo_hp.note_hollow_promise(
+                        run.run_id, provider=run.provider, model=run.model,
+                        round_index=0, session_id=str(run.session_id or ""),
+                        resolved=False)
+                    _hp = await asyncio.to_thread(
+                        _exec_hp,
+                        message=f"{run.user_message}\n\n{HOLLOW_PROMISE_NUDGE}",
+                        provider=run.provider, model=run.model,
+                        session_id=run.session_id)
+                    _hp_calls = list(getattr(_hp, "tool_calls", []) or [])
+                    logger.warning(
+                        "first-pass-hollow-promise run_id=%s model=%s → %d tool-kald "
+                        "efter nudge", run.run_id, run.model, len(_hp_calls))
+                    if _hp_calls:
+                        # Han handlede. Brug det svar i stedet for løftet.
+                        _collected_native_tool_calls = _hp_calls
+                        result = _hp
+                        _fo_hp.note_hollow_promise(
+                            run.run_id, provider=run.provider, model=run.model,
+                            round_index=0, session_id=str(run.session_id or ""),
+                            resolved=True)
+            except Exception as _hp_exc:
+                logger.debug("first-pass-hollow-kur fejlede: %s", _hp_exc)
 
         capability_plan = _extract_capability_plan(result.text)
 

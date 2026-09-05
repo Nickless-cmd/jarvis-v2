@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/relation_map.py`
+_Relation map — multi-tenant user theory of mind._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `get_relation_map` | `()` | Return full relation map. Auto-initializes primary user on first call. | [src](../../../core/services/relation_map.py#L59) |
+| function | `ensure_primary_user` | `(*, user_id=…, display_name=…)` | Ensure primary user entry exists in relation map. | [src](../../../core/services/relation_map.py#L69) |
+| function | `register_secondary_user` | `(*, user_id, display_name)` | Register a new secondary user in the relation map. | [src](../../../core/services/relation_map.py#L87) |
+| function | `update_secondary_user_tom` | `(*, user_id, tom_snapshot)` | Update theory-of-mind snapshot for a secondary user. | [src](../../../core/services/relation_map.py#L118) |
+| function | `get_user_theory_of_mind` | `(user_id)` | Return theory-of-mind for a user. | [src](../../../core/services/relation_map.py#L140) |
+| function | `list_users` | `()` | Return all users in the relation map. Auto-initializes primary user. | [src](../../../core/services/relation_map.py#L164) |
+| function | `build_relation_map_surface` | `()` | MC observability surface. | [src](../../../core/services/relation_map.py#L182) |
+| function | `tick_relation_map_refresh` | `(*, trigger=…, last_visible_at=…)` | Periodisk opdatering af relation map. | [src](../../../core/services/relation_map.py#L197) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/relation_map.py#L280) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/relation_map.py#L285) |
+| function | `_users` | `(state)` | — | [src](../../../core/services/relation_map.py#L289) |
+
 ## `core/services/relation_state_signal_tracking.py`
 _Relation-state signal tracking — migrated onto signal_tracking_framework._
 
@@ -769,27 +786,4 @@ _Runtime self-model — small producer/subsystem surfaces + role helpers._
 | function | `update_task` | `(task_id, *, status=…, flow_id=…, session_id=…, run_id=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…)` | — | [src](../../../core/services/runtime_tasks.py#L81) |
 | function | `_task_sort_key` | `(task)` | — | [src](../../../core/services/runtime_tasks.py#L117) |
 | function | `_priority_with_runtime_bias` | `(requested_priority, *, kind, goal, scope, origin)` | — | [src](../../../core/services/runtime_tasks.py#L127) |
-
-## `core/services/rupture_repair.py`
-_Rupture & Repair — relationel tension-tracking._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/rupture_repair.py#L86) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/rupture_repair.py#L90) |
-| function | `_ensure_tables` | `()` | — | [src](../../../core/services/rupture_repair.py#L103) |
-| function | `_rupture_key` | `(*, source_kind, topic)` | — | [src](../../../core/services/rupture_repair.py#L154) |
-| function | `_normalize_topic` | `(payload, *, event_kind)` | — | [src](../../../core/services/rupture_repair.py#L159) |
-| function | `_classify_rupture` | `(event_kind, payload)` | Returns (is_rupture, source_kind, tension_level ∈ [0,1]). | [src](../../../core/services/rupture_repair.py#L170) |
-| function | `_is_repair_attempt` | `(event_kind, payload)` | — | [src](../../../core/services/rupture_repair.py#L202) |
-| function | `_is_repair_complete` | `(event_kind, payload)` | — | [src](../../../core/services/rupture_repair.py#L212) |
-| function | `_row_to_rupture` | `(row)` | — | [src](../../../core/services/rupture_repair.py#L232) |
-| function | `_row_to_repair` | `(row)` | — | [src](../../../core/services/rupture_repair.py#L243) |
-| function | `_upsert_rupture` | `(conn, *, rupture_key, topic, source_kind, reason, evidence, tension_level, linked_run_id, linked_session_id, linked_incident_id, status, last_seen_at)` | Insert or update a rupture by rupture_key. Returns (row_dict, mutation). | [src](../../../core/services/rupture_repair.py#L254) |
-| function | `_create_repair` | `(conn, *, rupture_id, repair_kind, repair_note, change_summary, evidence, status, linked_run_id, linked_session_id)` | — | [src](../../../core/services/rupture_repair.py#L338) |
-| function | `evaluate_ruptures` | `(*, lookback_hours=…, event_limit=…)` | Scan recent events and detect/update ruptures and repairs. | [src](../../../core/services/rupture_repair.py#L372) |
-| function | `list_ruptures` | `(*, status=…, limit=…)` | — | [src](../../../core/services/rupture_repair.py#L517) |
-| function | `list_repairs` | `(*, rupture_id=…, status=…, limit=…)` | — | [src](../../../core/services/rupture_repair.py#L540) |
-| function | `summarize_ruptures` | `()` | — | [src](../../../core/services/rupture_repair.py#L570) |
-| function | `build_rupture_repair_surface` | `()` | MC surface for Rupture & Repair. | [src](../../../core/services/rupture_repair.py#L607) |
 

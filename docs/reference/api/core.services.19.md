@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/rupture_repair.py`
+_Rupture & Repair — relationel tension-tracking._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/rupture_repair.py#L86) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/rupture_repair.py#L90) |
+| function | `_ensure_tables` | `()` | — | [src](../../../core/services/rupture_repair.py#L103) |
+| function | `_rupture_key` | `(*, source_kind, topic)` | — | [src](../../../core/services/rupture_repair.py#L154) |
+| function | `_normalize_topic` | `(payload, *, event_kind)` | — | [src](../../../core/services/rupture_repair.py#L159) |
+| function | `_classify_rupture` | `(event_kind, payload)` | Returns (is_rupture, source_kind, tension_level ∈ [0,1]). | [src](../../../core/services/rupture_repair.py#L170) |
+| function | `_is_repair_attempt` | `(event_kind, payload)` | — | [src](../../../core/services/rupture_repair.py#L202) |
+| function | `_is_repair_complete` | `(event_kind, payload)` | — | [src](../../../core/services/rupture_repair.py#L212) |
+| function | `_row_to_rupture` | `(row)` | — | [src](../../../core/services/rupture_repair.py#L232) |
+| function | `_row_to_repair` | `(row)` | — | [src](../../../core/services/rupture_repair.py#L243) |
+| function | `_upsert_rupture` | `(conn, *, rupture_key, topic, source_kind, reason, evidence, tension_level, linked_run_id, linked_session_id, linked_incident_id, status, last_seen_at)` | Insert or update a rupture by rupture_key. Returns (row_dict, mutation). | [src](../../../core/services/rupture_repair.py#L254) |
+| function | `_create_repair` | `(conn, *, rupture_id, repair_kind, repair_note, change_summary, evidence, status, linked_run_id, linked_session_id)` | — | [src](../../../core/services/rupture_repair.py#L338) |
+| function | `evaluate_ruptures` | `(*, lookback_hours=…, event_limit=…)` | Scan recent events and detect/update ruptures and repairs. | [src](../../../core/services/rupture_repair.py#L372) |
+| function | `list_ruptures` | `(*, status=…, limit=…)` | — | [src](../../../core/services/rupture_repair.py#L517) |
+| function | `list_repairs` | `(*, rupture_id=…, status=…, limit=…)` | — | [src](../../../core/services/rupture_repair.py#L540) |
+| function | `summarize_ruptures` | `()` | — | [src](../../../core/services/rupture_repair.py#L570) |
+| function | `build_rupture_repair_surface` | `()` | MC surface for Rupture & Repair. | [src](../../../core/services/rupture_repair.py#L607) |
+
 ## `core/services/scheduled_job_windows.py`
 _Scheduled Job Windows — time-window batch scheduling with provider preferences._
 
@@ -758,24 +781,4 @@ _Session Continuity — kontinuitet der føles, ikke kun opslås._
 | function | `detect_echo_themes` | `(*, lookback_days=…)` | Find recurring themes in recent inner voices + chat messages. | [src](../../../core/services/session_continuity.py#L467) |
 | function | `get_echo_signals_for_prompt` | `()` | Return a quiet one-liner of recurring themes for prompt injection. | [src](../../../core/services/session_continuity.py#L532) |
 | function | `build_session_continuity_surface` | `()` | — | [src](../../../core/services/session_continuity.py#L560) |
-
-## `core/services/session_distillation.py`
-_Session distillation and private brain continuity._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_near_duplicate` | `(summary, record_type, recent_records)` | Return True if a record with very similar summary + same type exists | [src](../../../core/services/session_distillation.py#L89) |
-| function | `_record_type_to_domain` | `(record_type)` | Map a private brain record_type to its decay domain. | [src](../../../core/services/session_distillation.py#L118) |
-| function | `_try_insert_guarded` | `(*, record_type, layer, session_id, run_id, focus, summary, detail, source_signals, confidence, now, recent_records)` | Insert a private brain record if it passes anti-spam guard. | [src](../../../core/services/session_distillation.py#L131) |
-| function | `distill_session_carry` | `(*, session_id, run_id)` | Classify runtime evidence into private-brain / workspace-memory / discard. | [src](../../../core/services/session_distillation.py#L171) |
-| function | `_analyze_session_for_cognitive_systems` | `(*, session_id, run_id)` | Analyze a completed session for cognitive accumulation systems. | [src](../../../core/services/session_distillation.py#L387) |
-| function | `_scrub_continuity_text` | `(text)` | Read-time-rens af LAGRET continuity-tekst (Jarvis-spec 2026-06-23 #2): ældre | [src](../../../core/services/session_distillation.py#L456) |
-| function | `build_private_brain_context` | `(*, limit=…)` | Build a bounded read of recent private brain records suitable for | [src](../../../core/services/session_distillation.py#L489) |
-| function | `_classify_continuity_mode` | `(excerpts, by_type)` | Classify the semantic intention of a continuity pass. | [src](../../../core/services/session_distillation.py#L556) |
-| function | `run_private_brain_continuity` | `(*, trigger=…)` | Lightweight continuity pass for the private brain. | [src](../../../core/services/session_distillation.py#L611) |
-| function | `run_private_brain_lifecycle` | `()` | Run a bounded, AGE-based lifecycle pass over private brain records. | [src](../../../core/services/session_distillation.py#L782) |
-| function | `build_private_brain_surface` | `(*, limit=…)` | Return the current private brain state for observability. | [src](../../../core/services/session_distillation.py#L864) |
-| function | `build_session_distillation_surface` | `(*, limit=…)` | Return recent distillation records for observability. | [src](../../../core/services/session_distillation.py#L885) |
-| function | `generate_session_summary` | `(*, session_id, run_id=…, user_message=…, assistant_response=…)` | Generate and store a compact conversation summary for the given session. | [src](../../../core/services/session_distillation.py#L905) |
-| function | `build_previous_session_summaries` | `(*, limit=…)` | Build a text block with recent session summaries for prompt injection. | [src](../../../core/services/session_distillation.py#L1000) |
 

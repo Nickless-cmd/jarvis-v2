@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/goal_signal_synthesizer.py`
+_Goal signal synthesizer — surface candidate goals from dreams/reflections._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gather_signals` | `()` | Collect recent introspective signals as text for LLM. | [src](../../../core/services/goal_signal_synthesizer.py#L23) |
+| function | `synthesize_candidate_goals` | `(*, max_candidates=…)` | Run one synthesis pass — propose new goals from recent signals. | [src](../../../core/services/goal_signal_synthesizer.py#L46) |
+
 ## `core/services/goal_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -619,24 +627,4 @@ _core/services/infra_sense.py_
 | function | `_safe` | `(fn)` | — | [src](../../../core/services/infra_sense.py#L403) |
 | function | `run_infra_sense_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sans huset read-only. Bulletproof — kaster ALDRIG. | [src](../../../core/services/infra_sense.py#L410) |
 | function | `register_infra_sense_producer` | `()` | Registrér infra-sansningen som cadence-producer (~hvert 3 min). Read-only. | [src](../../../core/services/infra_sense.py#L426) |
-
-## `core/services/infra_weather_daemon.py`
-_Infra Weather Daemon — "The atmosphere of my system"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_psutil` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L36) |
-| function | `_system_load` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L44) |
-| function | `_disk_pressure` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L59) |
-| function | `_network_latency` | `()` | Lightweight network health check. | [src](../../../core/services/infra_weather_daemon.py#L79) |
-| function | `_api_cost_today` | `()` | Sum of today's API costs via the costs ledger. | [src](../../../core/services/infra_weather_daemon.py#L122) |
-| function | `_process_health` | `()` | Check some expected child processes / threads are alive. | [src](../../../core/services/infra_weather_daemon.py#L143) |
-| function | `_weather_label` | `(load, disk_pct, cost)` | Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical. | [src](../../../core/services/infra_weather_daemon.py#L162) |
-| function | `_compose_report` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L179) |
-| function | `_maybe_emit_critical` | `(report)` | — | [src](../../../core/services/infra_weather_daemon.py#L211) |
-| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L243) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/infra_weather_daemon.py#L253) |
-| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L257) |
-| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L273) |
-| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L282) |
 

@@ -127,6 +127,17 @@ export async function cancelRun(config: ApiConfig, runId: string): Promise<void>
   })
 }
 
+export async function cancelRunById(config: ApiConfig, runId: string): Promise<void> {
+  await cancelRun(config, runId)
+}
+
+export async function steerRun(config: ApiConfig, runId: string, content: string): Promise<void> {
+  await apiFetch(config, `/chat/runs/${encodeURIComponent(runId)}/steer`, {
+    method: 'POST',
+    body: { content }
+  })
+}
+
 /** Sessioner med et aktivt run lige nu (server-side). Bruges til at vise
  * "arbejder" og forhindre at man sender ind i et kørende svar (= nudge-swallow). */
 export async function getActiveRuns(config: ApiConfig): Promise<string[]> {

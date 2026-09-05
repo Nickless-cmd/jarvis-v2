@@ -19,6 +19,7 @@ import { fetchWorkReviews, type WorkReview } from '../lib/workReviewApi'
 import { NewWorkTaskSheet, type NewWorkMode } from '../components/NewWorkTaskSheet'
 import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
+import { cancelRunById, steerRun } from '../lib/apiClient'
 
 export type WorkTab = 'tasks' | 'approve' | 'review' | 'new'
 
@@ -193,6 +194,32 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
     }
   }, [config, sessions, stream, load])
 
+  const onSteerRun = useCallback(async (run: McRun, content: string) => {
+    if (!config) return
+    setBusyId(run.run_id)
+    try {
+      await steerRun(config, run.run_id, content)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Kunne ikke styre opgaven')
+    } finally {
+      setBusyId(null)
+    }
+  }, [config, load])
+
+  const onCancelRun = useCallback(async (run: McRun) => {
+    if (!config) return
+    setBusyId(run.run_id)
+    try {
+      await cancelRunById(config, run.run_id)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Kunne ikke stoppe opgaven')
+    } finally {
+      setBusyId(null)
+    }
+  }, [config, load])
+
   const initiativer = decisions.filter((d) => d.kind === 'initiative')
   const projekter = decisions.filter((d) => d.kind === 'life_project')
   const venter = tælVentende(pending.length, decisions)
@@ -234,7 +261,12 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
         <ScrollView contentContainerStyle={styles.list}>
           {tab === 'tasks' ? (
             <>
-              <TasksView runs={runs} />
+              <TasksView
+                runs={runs}
+                busyId={busyId}
+                onSteer={onSteerRun}
+                onCancel={onCancelRun}
+              />
               {/* Jarvis' egne tanker hører til i Arbejde-rummet: det er dét rum
                   hvor noget venter på én, uden at det er en samtale. */}
               <Text style={styles.groupLabel}>Fra Jarvis</Text>
@@ -289,7 +321,17 @@ function ReviewView({ reviews }: { reviews: WorkReview[] }) {
   )
 }
 
-function TasksView({ runs }: { runs: McRun[] }) {
+function TasksView({
+  runs,
+  busyId,
+  onSteer,
+  onCancel
+}: {
+  runs: McRun[]
+  busyId?: string | null
+  onSteer?: (run: McRun, content: string) => void
+  onCancel?: (run: McRun) => void
+}) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   if (runs.length === 0) {
@@ -303,7 +345,13 @@ function TasksView({ runs }: { runs: McRun[] }) {
         <>
           <Text style={styles.groupLabel}>Aktive</Text>
           {aktive.map((r) => (
-            <WorkTaskCard key={r.run_id} run={r} />
+            <WorkTaskCard
+              key={r.run_id}
+              run={r}
+              busy={busyId === r.run_id}
+              onSteer={onSteer}
+              onCancel={onCancel}
+            />
           ))}
         </>
       ) : null}

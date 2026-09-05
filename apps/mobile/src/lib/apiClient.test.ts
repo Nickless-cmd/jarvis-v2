@@ -9,6 +9,8 @@ import {
   googleLoginStart,
   health,
   listSessions,
+  cancelRunById,
+  steerRun,
   whoami
 } from './apiClient'
 import type { ApiConfig } from './types'
@@ -125,6 +127,31 @@ it('posts explicit approval decisions', async () => {
   expect(global.fetch).toHaveBeenNthCalledWith(
     2,
     expect.stringContaining('/chat/approvals/approval%202/deny'),
+    expect.objectContaining({ method: 'POST' })
+  )
+})
+
+it('styrer og afbryder aktive runs via run-id endpoints', async () => {
+  ;(global.fetch as jest.Mock).mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ ok: true })
+  })
+
+  await steerRun(config, 'run/1', 'brug den lille løsning')
+  await cancelRunById(config, 'run/1')
+
+  expect(global.fetch).toHaveBeenNthCalledWith(
+    1,
+    expect.stringContaining('/chat/runs/run%2F1/steer'),
+    expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ content: 'brug den lille løsning' })
+    })
+  )
+  expect(global.fetch).toHaveBeenNthCalledWith(
+    2,
+    expect.stringContaining('/chat/runs/run%2F1/cancel'),
     expect.objectContaining({ method: 'POST' })
   )
 })

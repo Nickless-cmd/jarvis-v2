@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { useState } from 'react'
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { formatRelativeTime } from '../lib/relativeDate'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -48,6 +49,9 @@ export function isActive(run: McRun): boolean {
 interface Props {
   run: McRun
   now?: Date
+  busy?: boolean
+  onSteer?: (run: McRun, content: string) => void
+  onCancel?: (run: McRun) => void
 }
 
 /**
@@ -56,12 +60,24 @@ interface Props {
  * Bevidst: en knap der antyder cancel eller steer, men ikke virker, er værre
  * end ingen knap. Kortet er et vindue, ikke en fjernbetjening (endnu).
  */
-export function WorkTaskCard({ run, now }: Props) {
+export function WorkTaskCard({ run, now, busy, onSteer, onCancel }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const [steering, setSteering] = useState(false)
+  const [steerText, setSteerText] = useState('')
   const source = sourceOf(run)
   const model = (run.model ?? '').trim()
   const preview = (run.text_preview ?? '').trim()
+  const active = isActive(run)
+  const canSteer = active && Boolean(onSteer)
+  const canCancel = active && Boolean(onCancel)
+  const submitSteer = () => {
+    const text = steerText.trim()
+    if (!text || !onSteer) return
+    onSteer(run, text)
+    setSteerText('')
+    setSteering(false)
+  }
   return (
     <View style={styles.card} accessibilityRole="summary" accessibilityLabel={`Kørsel ${run.status}`}>
       <View style={styles.head}>
@@ -79,6 +95,50 @@ export function WorkTaskCard({ run, now }: Props) {
         {preview || 'Ingen opsummering endnu.'}
       </Text>
       <Text style={styles.status}>{run.status}</Text>
+      {canSteer || canCancel ? (
+        <View style={styles.actions}>
+          {canSteer ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy}
+              onPress={() => setSteering((v) => !v)}
+              style={styles.action}
+            >
+              <Text style={styles.actionText}>Styr</Text>
+            </Pressable>
+          ) : null}
+          {canCancel ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy}
+              onPress={() => onCancel?.(run)}
+              style={styles.action}
+            >
+              <Text style={styles.actionText}>Stop</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+      {steering ? (
+        <View style={styles.steerBox}>
+          <TextInput
+            testID="work-steer-input"
+            value={steerText}
+            onChangeText={setSteerText}
+            placeholder="Giv en ny instruks"
+            placeholderTextColor={tokens.color.fg3}
+            style={styles.steerInput}
+          />
+          <Pressable
+            accessibilityRole="button"
+            disabled={!steerText.trim() || busy}
+            onPress={submitSteer}
+            style={[styles.sendSteer, (!steerText.trim() || busy) && styles.disabled]}
+          >
+            <Text style={styles.sendSteerText}>Send</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -99,5 +159,39 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   spacer: { flex: 1 },
   age: { color: tokens.color.fg3, fontSize: 11 },
   preview: { color: tokens.color.fg1, fontSize: 13, lineHeight: 18 },
-  status: { color: tokens.color.fg3, fontSize: 11 }
+  status: { color: tokens.color.fg3, fontSize: 11 },
+  actions: {
+    flexDirection: 'row',
+    gap: tokens.spacing.sm,
+    marginTop: tokens.spacing.xs
+  },
+  action: {
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: 7,
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.color.bg2
+  },
+  actionText: { color: tokens.color.fg1, fontWeight: '700', fontSize: 13 },
+  steerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.sm,
+    backgroundColor: tokens.color.bg2,
+    borderRadius: tokens.radius.md,
+    padding: tokens.spacing.xs
+  },
+  steerInput: {
+    flex: 1,
+    color: tokens.color.fg1,
+    paddingHorizontal: tokens.spacing.sm,
+    paddingVertical: 6
+  },
+  sendSteer: {
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: 7,
+    borderRadius: tokens.radius.sm,
+    backgroundColor: tokens.color.accent
+  },
+  sendSteerText: { color: tokens.color.bg0, fontWeight: '700' },
+  disabled: { opacity: 0.5 }
 })

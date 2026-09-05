@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+import core.services.first_pass_recovery as fpr
 from core.services.first_pass_recovery import first_pass_is_hollow, resend_target
 
 
@@ -62,3 +63,68 @@ class TestFirstPassIsHollow:
     def test_slukket_vaern_griber_ikke_ind(self, monkeypatch):
         monkeypatch.setenv("JARVIS_HOLLOW_PROMISE_GUARD", "0")
         assert first_pass_is_hollow("Lad mig tjekke config'en.", 0) is False
+
+
+class TestNudgeForToolCalls:
+    """Nudget skal gå ad en vej der ANNONCERER værktøjer.
+
+    Første udgave brugte `execute_visible_model`, som ikke har en
+    tools-parameter overhovedet — så `tool_calls` var tom pr. konstruktion og
+    kuren kunne aldrig lykkes. Målt: 3 forsøg, 0 løst.
+    """
+
+    def _stub(self, monkeypatch, items, spion=None):
+        import core.services.visible_model as vm
+
+        def _fake(**kw):
+            if spion is not None:
+                spion.update(kw)
+            return iter(items)
+
+        monkeypatch.setattr(vm, "stream_visible_model", _fake)
+
+    def test_tool_kald_fra_nudget_gives_videre(self, monkeypatch):
+        from core.services.visible_model_types import VisibleModelToolCalls
+        self._stub(monkeypatch, [VisibleModelToolCalls(tool_calls=[{"name": "bash"}])])
+        got = fpr.nudge_for_tool_calls(
+            message="tjek config", provider="deepseek", model="m",
+            session_id="s", thinking_mode="think")
+        assert got == [{"name": "bash"}]
+
+    def test_nudget_haeftes_paa_beskeden(self, monkeypatch):
+        from core.services.hollow_promise_guard import HOLLOW_PROMISE_NUDGE
+        spion: dict = {}
+        self._stub(monkeypatch, [], spion)
+        fpr.nudge_for_tool_calls(
+            message="tjek config", provider="deepseek", model="m",
+            session_id="s", thinking_mode="think")
+        assert "tjek config" in spion["message"]
+        assert HOLLOW_PROMISE_NUDGE in spion["message"]
+
+    def test_ingen_kald_giver_tom_liste_ikke_en_fejl(self, monkeypatch):
+        """Turen skal stå som den var — aldrig værre."""
+        self._stub(monkeypatch, [])
+        assert fpr.nudge_for_tool_calls(
+            message="x", provider="p", model="m",
+            session_id=None, thinking_mode="think") == []
+
+    def test_en_kastende_stroem_vaelter_ikke_turen(self, monkeypatch):
+        import core.services.visible_model as vm
+        monkeypatch.setattr(vm, "stream_visible_model",
+                            lambda **kw: (_ for _ in ()).throw(RuntimeError("nede")))
+        assert fpr.nudge_for_tool_calls(
+            message="x", provider="p", model="m",
+            session_id=None, thinking_mode="think") == []
+
+    def test_tool_scope_re_asserteres(self, monkeypatch):
+        """ContextVar TABES over trådgrænsen; uden re-assertion bygges alle 126
+        værktøjer i stedet for scopets få. Se reference_tool_scope_ctxvar_lost."""
+        sat: dict = {}
+        import core.tools.tool_scoping as ts
+        monkeypatch.setattr(ts, "set_tool_scope", lambda v: sat.update(scope=v))
+        monkeypatch.setattr(ts, "set_local_exec", lambda v: sat.update(local=v))
+        self._stub(monkeypatch, [])
+        fpr.nudge_for_tool_calls(
+            message="x", provider="p", model="m", session_id=None,
+            thinking_mode="think", tool_scope="code", local_exec=True)
+        assert sat == {"scope": "code", "local": True}

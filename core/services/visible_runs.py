@@ -1838,14 +1838,39 @@ async def _stream_visible_run(
                     # dem aerligt frem for at vi lader som om de bliver kureret.
                     _hp_det(run_id=run.run_id, provider=str(run.provider or ""),
                             model=str(run.model or ""), round_index=0,
-                            session_id=str(run.session_id or ""), forced=False)
+                            session_id=str(run.session_id or ""), forced=True)
+                    # Nudget gaar ad `stream_visible_model` — samme vej som foerste
+                    # pas, og dermed den ENESTE der annoncerer vaerktoejer. Falder der
+                    # kald ud, overtager maskineriet nedenfor dem som var de kommet
+                    # med det samme; ellers staar svaret som det var.
+                    from core.services.first_pass_recovery import nudge_for_tool_calls
+                    _hp_calls = await asyncio.to_thread(
+                        nudge_for_tool_calls,
+                        message=run.user_message, provider=run.provider,
+                        model=run.model, session_id=run.session_id,
+                        thinking_mode=run.thinking_mode,
+                        tool_scope=tool_scope or "",
+                        local_exec=bool(getattr(run, "local_tool_exec", False)))
+                    _hp_resolved = bool(_hp_calls)
+                    if _hp_resolved:
+                        _collected_native_tool_calls = _hp_calls
                     _fo_hp.note_hollow_promise(
                         run.run_id, provider=run.provider, model=run.model,
                         round_index=0, session_id=str(run.session_id or ""),
-                        resolved=False)
+                        resolved=_hp_resolved)
+                    try:
+                        from core.services.hollow_promise_round import (
+                            note_outcome as _hp_out,
+                        )
+                        _hp_out(run_id=run.run_id, provider=str(run.provider or ""),
+                                model=str(run.model or ""), round_index=0,
+                                session_id=str(run.session_id or ""), forced=True,
+                                tool_calls=len(_hp_calls))
+                    except Exception:
+                        pass
                     logger.warning(
-                        "first-pass-hollow-promise run_id=%s model=%s (registreret, "
-                        "ikke nudget — foelgerunde-vejen udestaar)", run.run_id, run.model)
+                        "first-pass-hollow-promise run_id=%s model=%s → %d tool-kald "
+                        "efter nudge", run.run_id, run.model, len(_hp_calls))
             except Exception as _hp_exc:
                 logger.debug("first-pass-hollow-kur fejlede: %s", _hp_exc)
 

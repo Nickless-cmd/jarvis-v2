@@ -267,3 +267,48 @@ def test_adfaerd_faar_ikke_sprogkritikerens_saetning():
 def test_sproget_beholder_sin_egen_saetning():
     line = e._voice("comment", "det er ikke", 15.0, "phrase")
     assert "Varier" in line
+
+
+# ── August-fejlen kom tilbage ad en anden dør, 05-09-2026 ───────────────────
+# `phrase:i stedet for` var klatret til Trin 2 (BIND = prio-85-direktiv) på en
+# helt almindelig dansk vending. Ikke via spike denne gang — via `_is_self_bound`,
+# der matchede ren delstreng begge veje. FEM af Jarvis' 77 egne løfter indeholder
+# ordene «i stedet for».
+
+_ÆGTE_LØFTER = [
+    "bekræft retningen på 'jegskal'-tråden ved næste naturlige åbning i stedet "
+    "for at antage den.",
+    "brug recall_before_act eller et verifikation-tool (bash, read_file, "
+    "search_memory) før jeg svarer på spørgsmål om systemet i stedet for at gætte",
+]
+
+
+def test_en_almindelig_vending_bliver_ikke_selv_lovet_af_tilfaeldig_omtale():
+    """At et løfte INDEHOLDER nogle ord betyder ikke at løftet handler om dem."""
+    cfg = _cfg(self_commitments=_ÆGTE_LØFTER)
+    assert _is_self_bound("i stedet for", {}, cfg) is False
+    assert _is_self_bound("i stedet for at", {}, cfg) is False
+
+
+def test_et_moenster_loeftet_FAKTISK_angaar_er_stadig_selv_lovet():
+    """Filteret må ikke gøre selv-binding umulig — så var Smith afvæbnet."""
+    cfg = _cfg(self_commitments=["gæt på systemet i stedet for at slå det op"])
+    assert _is_self_bound("gæt på systemet i stedet for at slå det op", {}, cfg) is True
+
+
+def test_loeftets_cue_inde_i_moensteret_taeller_stadig():
+    cfg = _cfg(self_commitments=["antage den"])
+    assert _is_self_bound("phrase:jeg vil antage den uden at spørge", {}, cfg) is True
+
+
+def test_benigne_handlinger_kan_aldrig_selv_bindes():
+    """Listen har eksisteret siden august og blev ALDRIG anvendt — dødt værn."""
+    cfg = _cfg(self_commitments=["brug search og read i stedet for at gætte"])
+    assert _is_self_bound("search", {}, cfg) is False
+    assert _is_self_bound("read", {}, cfg) is False
+
+
+def test_et_eksplicit_self_bound_flag_slaar_stadig_igennem():
+    """Adfærds-mønstre bærer flaget direkte og må ikke rammes af stramningen."""
+    cfg = _cfg(self_commitments=[])
+    assert _is_self_bound("tomme løfter", {"self_bound": True}, cfg) is True

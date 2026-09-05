@@ -133,9 +133,34 @@ def _is_self_bound(label: str, entry: dict[str, Any], cfg: dict[str, Any]) -> bo
         return False
     if bool(entry.get("self_bound")):
         return True
+    # BENIGNE handlings-typer kan aldrig blive selv-bundet ved tilfaeldig omtale.
+    # Listen har eksisteret siden august-fixet og blev ALDRIG anvendt — den stod
+    # i default_config() og blev laest af ingen. Doedt vaern.
+    if _matches_any(lab, cfg.get("benign_terms")):
+        return False
     for c in (cfg.get("self_commitments") or []):
         c = str(c).lower().strip()
-        if c and (c in lab or lab in c):
+        if not c:
+            continue
+        if c in lab:
+            return True          # loeftets cue ER i moensteret → han bandt sig til DET
+        # Den omvendte retning er farlig. Maalt 5/9: FEM af Jarvis' 77 egne
+        # loefter indeholder ordene «i stedet for» — en helt almindelig dansk
+        # vending — og ren delstreng gjorde derfor frasen «selv-lovet». Den var
+        # klatret til Trin 2. Det er august-fejlen tilbage ad en anden doer:
+        # ikke via spike, men via tilfaeldig omtale.
+        #
+        # At et loefte INDEHOLDER nogle ord betyder ikke at loeftet handler om
+        # dem. Kraev at moensteret fylder en reel del af saetningen — saa er det
+        # dét loeftet angaar, ikke et praeposition-led inde i den. Ratio frem for
+        # endnu en ordliste: en ordliste ville bare udskyde den naeste vending.
+        #
+        # Taerskelen er sat af to VIRKELIGE eksempler, og margenen er smal:
+        #   «stop med at spoerge vil du have» ⊃ «vil du have»   = 0,37  ← AEGTE
+        #   93-tegns loefte              ⊃ «i stedet for»       = 0,13  ← tilfaeldig
+        # Begge staar som tests, saa en fremtidig justering braekker dem synligt
+        # frem for at flytte grænsen i stilhed.
+        if lab in c and len(lab) >= 0.30 * len(c):
             return True
     return False
 

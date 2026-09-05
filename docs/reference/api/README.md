@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13484 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13487 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -46,10 +46,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13484 functions/
 - [`core.services.17`](core.services.17.md) — `prompt_section_reevaluation` … `relational_warmth`
 - [`core.services.18`](core.services.18.md) — `relationship_texture` … `scheduled_task_runner`
 - [`core.services.19`](core.services.19.md) — `scheduled_tasks` … `session_milestones`
-- [`core.services.20`](core.services.20.md) — `session_persistence_flag` … `state_file_retention`
-- [`core.services.21`](core.services.21.md) — `state_flag_store` … `tool_observer`
-- [`core.services.22`](core.services.22.md) — `tool_outcome_memory` … `visible_model`
-- [`core.services.23`](core.services.23.md) — `visible_model_adapters` … `world_model_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `session_persistence_flag` … `standing_orders_registry`
+- [`core.services.21`](core.services.21.md) — `state_file_retention` … `tool_intent_runtime`
+- [`core.services.22`](core.services.22.md) — `tool_observer` … `visible_inner_life`
+- [`core.services.23`](core.services.23.md) — `visible_model` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

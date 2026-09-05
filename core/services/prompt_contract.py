@@ -786,6 +786,16 @@ def _build_visible_chat_prompt_assembly_impl(
         "cognitive_state",
         _safe_build_cognitive_state_for_prompt, compact=compact,
     )
+    # Skill-opslaget koster ~750 ms (semantisk match mod alle installerede
+    # skills). Det submittes HER så det overlapper memory_selection (~1500 ms)
+    # og frame (~940 ms) i stedet for at lægge sig oveni. Se
+    # skill_relevance_surface.py for hvorfor opslaget flyttede fra prompten til
+    # runtimen: to af hans laveste adherence-beslutninger var ritualer om at
+    # huske at slå op.
+    from core.services.skill_relevance_surface import relevant_skills_section
+    future_skill_relevance = _measured_submit(
+        "skill_relevance", relevant_skills_section, user_message,
+    )
     future_self_state = _measured_submit("self_state", _safe_build_self_state_block)
     future_frame = _measured_submit("frame", frame_fn)
     future_self_report = _measured_submit(
@@ -1539,6 +1549,13 @@ def _build_visible_chat_prompt_assembly_impl(
         _awareness_add(24, "R2 gate telemetry", telemetry_section())
     except Exception as _e:
         _sec_err("R2 gate telemetry", _e)
+    try:
+        _awareness_add(
+            20, "relevant skills",
+            _timed_result(future_skill_relevance, "skill_relevance", default=""),
+        )
+    except Exception as _e:
+        _sec_err("relevant skills", _e)
     try:
         from core.services.decision_adherence_gate import decision_adherence_section
         _awareness_add(25, "decision adherence gate", decision_adherence_section())

@@ -145,3 +145,50 @@ def test_gammelt_skrald_vises_ikke_som_beslutning(monkeypatch):
     d = H._build_decisions()
     tekster = [i["text"] for i in d["items"]]
     assert tekster == ["Ryd op i de temporale kanter i brain-grafen"]
+
+
+# ── Godkendte initiativer kom tilbage med det samme, 05-09-2026 ─────────────
+# Bjørn godkendte tre i desk; alle tre dukkede op igen straks. Svaret BLEV gemt
+# (outcome='approved' + user_approved_at), men status bliver med vilje stående
+# på 'pending' fordi heartbeat'en først skal handle på den bagefter. Læsesiden
+# viste alt der var pending og så derfor aldrig svaret.
+
+def _kø(items):
+    return {"pending": items, "pending_count": len(items), "expired_count": 0,
+            "approved_count": 0, "rejected_count": 0, "life_projects": []}
+
+
+def test_et_godkendt_initiativ_stilles_ikke_igen(monkeypatch):
+    import core.services.central_hub as hub
+    import core.services.initiative_queue as iq
+    monkeypatch.setattr(
+        iq, "get_initiative_queue_state",
+        lambda: _kø([
+            {"initiative_id": "i1", "focus": "Slå det seneste bash-run op og sammenhold det med loggen", "status": "pending"},
+            {"initiative_id": "i2", "focus": "Læse det gemte notat for at genfinde tråden", "status": "pending",
+             "outcome": "approved", "user_approved_at": "2026-09-05T17:43:02+00:00"},
+        ]), raising=False)
+    ids = [d["id"] for d in hub._build_decisions()["items"] if d["kind"] == "initiative"]
+    assert ids == ["i1"]
+
+
+def test_et_afvist_initiativ_stilles_heller_ikke_igen(monkeypatch):
+    import core.services.central_hub as hub
+    import core.services.initiative_queue as iq
+    monkeypatch.setattr(
+        iq, "get_initiative_queue_state",
+        lambda: _kø([{"initiative_id": "i1", "focus": "Slå det seneste bash-run op og sammenhold det med loggen", "status": "pending",
+                      "outcome": "rejected"}]), raising=False)
+    assert [d for d in hub._build_decisions()["items"] if d["kind"] == "initiative"] == []
+
+
+def test_et_ubesvaret_initiativ_staar_stadig(monkeypatch):
+    """Filteret må ikke tømme køen — så ville fanen se løst ud uden at være det."""
+    import core.services.central_hub as hub
+    import core.services.initiative_queue as iq
+    monkeypatch.setattr(
+        iq, "get_initiative_queue_state",
+        lambda: _kø([{"initiative_id": "i1", "focus": "Slå det seneste bash-run op og sammenhold det med loggen", "status": "pending"}]),
+        raising=False)
+    ids = [d["id"] for d in hub._build_decisions()["items"] if d["kind"] == "initiative"]
+    assert ids == ["i1"]

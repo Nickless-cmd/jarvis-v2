@@ -167,6 +167,17 @@ def _build_decisions() -> dict[str, Any]:
             # venter. De udloeber af sig selv; indtil da vises de bare ikke.
             if _er_ikke_et_initiativ(str(i.get("focus") or "")):
                 continue
+            # Bjoern 5/9: «naar jeg forsoeger at godkende dukker de op igen med det
+            # samme». Svaret BLEV gemt — `approve_initiative` saetter
+            # `outcome='approved'` + `user_approved_at` — men status bliver med
+            # VILJE staaende paa 'pending', fordi heartbeat'en foerst maa handle
+            # paa den bagefter. Laesesiden viste alt der var pending og saa derfor
+            # aldrig svaret. Et spoergsmaal man har besvaret skal ikke stilles igen:
+            # den venter nu paa JARVIS, ikke paa Bjoern.
+            if str(i.get("outcome") or "") in ("approved", "rejected"):
+                continue
+            if str(i.get("user_approved_at") or "").strip():
+                continue
             ventende.append({
                 "kind": "initiative",
                 "id": str(i.get("initiative_id") or ""),

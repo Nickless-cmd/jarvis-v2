@@ -409,11 +409,23 @@ def _exec_operator_run_in_background(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "command is required", "status": "error"}
     user_id = _operator_user_id(args)
     from core.tools.operator_background import start_async
-    return _run_operator_async(
+    out = _run_operator_async(
         lambda: start_async(command=command, cwd=str(args.get("cwd") or ""),
                             user_id=user_id),
         tool_name="operator_run_in_background",
     )
+    # Knyt shell'en til sessionen, saa turen kan foelge den. Uden det er
+    # vaerktoejet ubrugeligt: man starter en kommando, turen slutter, og man ser
+    # aldrig resultatet.
+    try:
+        if isinstance(out, dict) and out.get("shell_id"):
+            from core.services.background_resume import note_started
+            note_started(str(args.get("_runtime_session_id")
+                             or args.get("_session_id") or ""),
+                         str(out["shell_id"]))
+    except Exception:
+        pass
+    return out
 
 
 def _exec_operator_bash_output(args: dict[str, Any]) -> dict[str, Any]:

@@ -1765,6 +1765,9 @@ async def _stream_visible_run(
         # Transient → lykkes oftest. execute_visible_model er SYNKRON → kør i tråd
         # (ellers fryser --workers 1 API'et). Bærer fuld kontekst via session_id.
         _first_pass_hollow_retried = False
+        # Genoptag HOEJST én gang pr. tur paa baggrunds-output. Uden loftet
+        # kunne en snakkesalig shell holde turen i live i det uendelige.
+        _bg_resumed_this_turn = False
         if (result is not None and not _collected_native_tool_calls
                 and not (getattr(result, "text", "") or "").strip()):
             try:
@@ -3739,6 +3742,30 @@ async def _stream_visible_run(
                                     pass
                         except Exception:
                             pass  # fail-open → normal break nedenfor
+                        # ── Baggrunds-shells: slut ikke mens noget koerer ──
+                        # `operator_run_in_background` er ubrugelig uden det her:
+                        # man starter en kommando, turen slutter, og resultatet
+                        # ses aldrig. KUN aegte aendring genoptager (nyt output
+                        # eller netop afsluttet) — ellers ville en tur med en
+                        # koerende shell aldrig kunne slutte.
+                        try:
+                            from core.services.background_resume import poll_async
+                            _bg_note = await poll_async(
+                                str(run.session_id or ""), str(force_user_id or ""))
+                            if _bg_note and not _bg_resumed_this_turn:
+                                _bg_resumed_this_turn = True
+                                base_messages.append(
+                                    {"role": "user", "content": _bg_note})
+                                _followup_exchanges.append(
+                                    _vf.ToolExchange(text=_exchange_text(),
+                                                     tool_calls=[], results=[]))
+                                logger.warning(
+                                    "background-resume run_id=%s — nyt fra "
+                                    "baggrunds-shell, turen fortsaetter", run.run_id)
+                                continue
+                        except Exception as _bg_exc:
+                            logger.debug("background-resume fejlede: %s", _bg_exc)
+
                         # No more tool calls — this round produced the final response.
                         break
 

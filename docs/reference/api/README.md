@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13548 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13555 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -28,28 +28,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13548 functions/
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_private_signals`
 - [`core.runtime.02`](core.runtime.02.md) — `db_private_states` … `workspace_paths`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agreement_streak`
-- [`core.services.02`](core.services.02.md) — `ambient_presence` … `behavioral_decisions`
-- [`core.services.03`](core.services.03.md) — `body_memory` … `central_continuity_healer`
-- [`core.services.04`](core.services.04.md) — `central_convene_judge` … `central_llm_egress`
-- [`core.services.05`](core.services.05.md) — `central_loop_lag` … `central_seraph`
-- [`core.services.06`](core.services.06.md) — `central_shadow` … `cluster_daemon_families`
-- [`core.services.07`](core.services.07.md) — `cluster_family_scheduler` … `council_memory_daemon`
-- [`core.services.08`](core.services.08.md) — `council_memory_service` … `decision_review_prompter`
-- [`core.services.09`](core.services.09.md) — `decision_signal_staging` … `dream_hypothesis_generator`
-- [`core.services.10`](core.services.10.md) — `dream_hypothesis_signal_tracking` … `experienced_time_daemon`
-- [`core.services.11`](core.services.11.md) — `experiential_memory` … `gmail_connector`
-- [`core.services.12`](core.services.12.md) — `goal_signal_synthesizer` … `infra_sense`
-- [`core.services.13`](core.services.13.md) — `infra_weather_daemon` … `long_arc_synthesizer`
-- [`core.services.14`](core.services.14.md) — `long_horizon_goals` … `monitor_streams`
-- [`core.services.15`](core.services.15.md) — `mood_dialer` … `pattern_counterfactual_daemon`
-- [`core.services.16`](core.services.16.md) — `pdf_connector` … `prompt_heartbeat_self_knowledge`
-- [`core.services.17`](core.services.17.md) — `prompt_mutation_loop` … `relation_continuity_signal_tracking`
-- [`core.services.18`](core.services.18.md) — `relation_dynamics` … `runtime_surface_cache`
-- [`core.services.19`](core.services.19.md) — `runtime_tasks` … `session_boot_reconciler`
-- [`core.services.20`](core.services.20.md) — `session_continuity` … `source_confidence_gate`
-- [`core.services.21`](core.services.21.md) — `spaced_repetition` … `tool_chip_payload`
-- [`core.services.22`](core.services.22.md) — `tool_concurrency` … `visible_followup`
-- [`core.services.23`](core.services.23.md) — `visible_followup_adapters` … `world_model_signal_tracking`
+- [`core.services.02`](core.services.02.md) — `ambient_presence` … `background_resume`
+- [`core.services.03`](core.services.03.md) — `behavioral_decisions` … `central_construct`
+- [`core.services.04`](core.services.04.md) — `central_continuity_healer` … `central_lexicon`
+- [`core.services.05`](core.services.05.md) — `central_llm_egress` … `central_sequence`
+- [`core.services.06`](core.services.06.md) — `central_seraph` … `cluster_daemon`
+- [`core.services.07`](core.services.07.md) — `cluster_daemon_families` … `council_deliberation_controller`
+- [`core.services.08`](core.services.08.md) — `council_memory_daemon` … `decision_review_daemon`
+- [`core.services.09`](core.services.09.md) — `decision_review_prompter` … `dream_hypothesis_forced`
+- [`core.services.10`](core.services.10.md) — `dream_hypothesis_generator` … `experience_substrate`
+- [`core.services.11`](core.services.11.md) — `experienced_time_daemon` … `global_workspace`
+- [`core.services.12`](core.services.12.md) — `gmail_connector` … `in_flight_runs`
+- [`core.services.13`](core.services.13.md) — `infra_sense` … `local_tool_broker`
+- [`core.services.14`](core.services.14.md) — `long_arc_synthesizer` … `modulator_witness`
+- [`core.services.15`](core.services.15.md) — `monitor_streams` … `paste_store`
+- [`core.services.16`](core.services.16.md) — `pattern_counterfactual_daemon` … `prompt_evolution_runtime`
+- [`core.services.17`](core.services.17.md) — `prompt_heartbeat_self_knowledge` … `regulation_homeostasis_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `relation_continuity_signal_tracking` … `runtime_self_model_surfaces`
+- [`core.services.19`](core.services.19.md) — `runtime_surface_cache` … `sensory_perception_bridge`
+- [`core.services.20`](core.services.20.md) — `session_boot_reconciler` … `somatic_runtime_body`
+- [`core.services.21`](core.services.21.md) — `source_confidence_gate` … `tool_catalog`
+- [`core.services.22`](core.services.22.md) — `tool_chip_payload` … `visible_first_pass_text`
+- [`core.services.23`](core.services.23.md) — `visible_followup` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

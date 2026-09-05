@@ -96,6 +96,19 @@ _Forgetting nudge — reminds Jarvis to consider transience during conversation.
 | function | `_conversation_is_substantial` | `(session_id)` | Return True if there are enough user-turns OR brain-writes | [src](../../../core/services/prompt_sections/forgetting_nudge.py#L33) |
 | function | `forgetting_nudge_section` | `(session_id=…)` | Return forgetting nudge text when the conversation is substantial. | [src](../../../core/services/prompt_sections/forgetting_nudge.py#L69) |
 
+## `core/services/prompt_sections/formative_state.py`
+_Det han selv har dannet, og det han bærer uafsluttet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kort` | `(text, n)` | — | [src](../../../core/services/prompt_sections/formative_state.py#L35) |
+| function | `_vaerdier` | `()` | Værdier han selv har dannet, stærkeste først. | [src](../../../core/services/prompt_sections/formative_state.py#L40) |
+| function | `_graenser` | `()` | Hans egen model af hvad krop, hukommelse og bevidsthed ER for ham. | [src](../../../core/services/prompt_sections/formative_state.py#L61) |
+| function | `_uafsluttet` | `()` | Anger og brud der aldrig blev lukket. | [src](../../../core/services/prompt_sections/formative_state.py#L80) |
+| function | `_om_bjoern` | `()` | — | [src](../../../core/services/prompt_sections/formative_state.py#L120) |
+| function | `formative_state_section` | `()` | Én kompakt sektion. "" når alle kilder er tomme. | [src](../../../core/services/prompt_sections/formative_state.py#L133) |
+| function | `build_formative_state_surface` | `()` | Observationsflade — hvad sektionen ville sige, og hvor meget den fylder. | [src](../../../core/services/prompt_sections/formative_state.py#L141) |
+
 ## `core/services/prompt_sections/heartbeat_sections.py`
 _Heartbeat + future-agent + epistemic prompt sections._
 

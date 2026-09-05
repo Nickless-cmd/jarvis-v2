@@ -54,8 +54,8 @@ _Baggrunds-shells paa operatoerens maskine — paritet med jarvis-code._
 | function | `_new_id` | `()` | — | [src](../../../core/tools/operator_background.py#L35) |
 | function | `_valid` | `(shell_id)` | Kun vores egne id'er. Uden det kunne et id smugle sti-fragmenter ind i | [src](../../../core/tools/operator_background.py#L39) |
 | function | `start_async` | `(*, command, user_id, cwd=…, timeout_s=…)` | Start en loesrevet baggrunds-shell. Returnerer {shell_id, pid}. | [src](../../../core/tools/operator_background.py#L45) |
-| function | `read_async` | `(*, shell_id, user_id, since=…, timeout_s=…)` | Laes NYT output siden byte-offset `since`. | [src](../../../core/tools/operator_background.py#L68) |
-| function | `kill_async` | `(*, shell_id, user_id, timeout_s=…)` | Draeb en baggrunds-shell. Idempotent: en allerede doed shell er ikke en fejl. | [src](../../../core/tools/operator_background.py#L108) |
+| function | `read_async` | `(*, shell_id, user_id, since=…, timeout_s=…)` | Laes NYT output siden byte-offset `since`. | [src](../../../core/tools/operator_background.py#L73) |
+| function | `kill_async` | `(*, shell_id, user_id, timeout_s=…)` | Draeb en baggrunds-shell. Idempotent: en allerede doed shell er ikke en fejl. | [src](../../../core/tools/operator_background.py#L113) |
 
 ## `core/tools/operator_bash_session.py`
 _operator_bash_session — vedvarende-FØLELSE bash-session på operatorens maskine._

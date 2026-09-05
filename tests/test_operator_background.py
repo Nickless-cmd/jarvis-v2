@@ -54,6 +54,17 @@ class TestStart:
         assert r["pid"] == "4242" and ob._valid(r["shell_id"])
 
     @pytest.mark.asyncio
+    async def test_mkdir_koerer_FOER_baggrunden(self, monkeypatch):
+        """`&` binder løsere end `&&`, så «mkdir && setsid ... &» sender HELE
+        kæden i baggrunden — og «echo $!» løber før mappen findes. Fanget på
+        den første ægte kørsel: loggen blev skrevet, .pid gjorde ikke, og så var
+        både kill_shell og «kører stadig» stille ubrugelige."""
+        f = _bash(monkeypatch, {"stdout": "1\n"})
+        await ob.start_async(command="ls", user_id="u1")
+        assert "mkdir -p /tmp/jarvis-bg;" in f["command"]
+        assert "&& setsid" not in f["command"]
+
+    @pytest.mark.asyncio
     async def test_kommandoen_citeres(self, monkeypatch):
         """Ellers ville et semikolon i kommandoen brække boot-linjen."""
         f = _bash(monkeypatch, {"stdout": "1\n"})

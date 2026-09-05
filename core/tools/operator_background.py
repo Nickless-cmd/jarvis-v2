@@ -54,8 +54,13 @@ async def start_async(*, command: str, user_id: str, cwd: str = "",
 
     sid = _new_id()
     cd = f"cd {shlex.quote(cwd)} && " if cwd else ""
+    # `;` og IKKE `&&` foran setsid. `&` binder loesere end `&&`, saa
+    # «mkdir -p X && setsid ... &» sender HELE kaeden i baggrunden — og
+    # «echo $!» loeb saa foer mappen fandtes. Et kapløb der tabte paa den
+    # foerste aegte koersel: loggen blev skrevet, .pid gjorde ikke, og
+    # dermed var baade kill_shell og «koerer stadig» stille ubrugelige.
     boot = (
-        f"mkdir -p {_ROOT} && {cd}"
+        f"mkdir -p {_ROOT}; {cd}"
         f"setsid sh -c {shlex.quote(command)} > {_ROOT}/{sid}.log 2>&1 "
         f"& echo $! > {_ROOT}/{sid}.pid; cat {_ROOT}/{sid}.pid"
     )

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6722/13491 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6730/13499 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,8 +23,8 @@ Generated from source. 6722/13491 functions/methods documented (49%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4468 | 9348 | 47% |
+| `core.runtime` | 566 | 1053 | 53% |
+| `core.services` | 4475 | 9356 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 87 | 157 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6722/13491 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1954)
+## Undocumented public functions (1953)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -396,8 +396,7 @@ Generated from source. 6722/13491 functions/methods documented (49%). The list b
 - `core/runtime/db_private_brain.py` :: `insert_private_brain_record` (L122)
 - `core/runtime/db_private_brain.py` :: `list_private_brain_records` (L162)
 - `core/runtime/db_private_notes.py` :: `ensure_private_notes_tables` (L15)
-- `core/runtime/db_private_notes.py` :: `get_protected_inner_voice` (L367)
-- `core/runtime/db_private_notes.py` :: `list_recent_protected_inner_voices` (L403)
+- `core/runtime/db_private_notes.py` :: `list_recent_protected_inner_voices` (L409)
 - `core/runtime/db_private_notes.py` :: `recent_private_growth_notes` (L269)
 - `core/runtime/db_private_notes.py` :: `recent_private_inner_notes` (L164)
 - `core/runtime/db_private_notes.py` :: `record_private_growth_note` (L206)
@@ -791,7 +790,7 @@ Generated from source. 6722/13491 functions/methods documented (49%). The list b
 - `core/services/cluster_daemon_families.py` :: `memory_family` (L152)
 - `core/services/cluster_daemon_families.py` :: `projects_family` (L872)
 - `core/services/cluster_daemon_families.py` :: `relation_family` (L671)
-- `core/services/cluster_family_scheduler.py` :: `stop` (L215)
+- `core/services/cluster_family_scheduler.py` :: `stop` (L226)
 - `core/services/cluster_family_scheduler.py` :: `stop_event` (L80)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
 - `core/services/code_aesthetic_daemon.py` :: `get_latest_aesthetic_reflection` (L64)

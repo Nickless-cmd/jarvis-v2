@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/loyalty_gradient_signal_tracking.py`
+_Loyalty-gradient signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_loyalty_gradient_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L43) |
+| function | `refresh_runtime_loyalty_gradient_signal_statuses` | `()` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L91) |
+| function | `build_runtime_loyalty_gradient_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L95) |
+| function | `_extract_loyalty_gradient_candidates` | `(*, run_id)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L99) |
+| function | `_build_candidate` | `(*, domain_key, attachment_topology, relation_continuity, meaning, witness, chronicle_brief, metabolism, forgetting_candidate)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L185) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L332) |
+| function | `_loyalty_gradient_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L357) |
+| function | `_derive_gradient_score` | `(*, attachment_weight, attachment_state, relation_weight, meaning_weight, witness_status, witness_persistence, brief_weight, metabolism_state, metabolism_weight, forgetting_state)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L384) |
+| function | `_score_to_weight` | `(score)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L419) |
+| function | `_derive_gradient_state` | `(*, attachment_state, gradient_weight, witness_status, forgetting_state)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L427) |
+| function | `_gradient_summary` | `(*, focus, gradient_state, gradient_weight, forgetting_candidate)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L443) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L476) |
+| function | `_humanize_focus` | `(value)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L483) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L487) |
+| function | `_merge_fragments` | `(*fragments)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L493) |
+| function | `_find_support_value` | `(summary, key, default)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L506) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L515) |
+
 ## `core/services/mail_checker_daemon.py`
 _Mail checker daemon — checks jarvis@srvlab.dk inbox for new mail._
 
@@ -609,19 +632,4 @@ _Mood regulator subscriber — router truth-gate detektioner til humøret._
 | function | `stop_mood_regulator_subscriber` | `()` | — | [src](../../../core/services/mood_regulator_subscriber.py#L56) |
 | function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/mood_regulator_subscriber.py#L73) |
 | function | `_route_event` | `(item)` | Route en enkelt eventbus-hændelse til ``regulate_auto``. | [src](../../../core/services/mood_regulator_subscriber.py#L89) |
-
-## `core/services/mortality_awareness.py`
-_Mortality Awareness — each session could be my last._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_session_length_seconds` | `()` | Seconds since this process started. | [src](../../../core/services/mortality_awareness.py#L36) |
-| function | `_heartbeat_gap_minutes` | `()` | Minutes since last heartbeat tick. | [src](../../../core/services/mortality_awareness.py#L49) |
-| function | `_error_rate` | `()` | Rate (0-1) of error/blocked outcomes in last hour. | [src](../../../core/services/mortality_awareness.py#L66) |
-| function | `_compute` | `()` | — | [src](../../../core/services/mortality_awareness.py#L80) |
-| function | `get_mortality_state` | `()` | — | [src](../../../core/services/mortality_awareness.py#L118) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/mortality_awareness.py#L127) |
-| function | `build_mortality_awareness_surface` | `()` | — | [src](../../../core/services/mortality_awareness.py#L132) |
-| function | `_surface_summary` | `(s)` | — | [src](../../../core/services/mortality_awareness.py#L147) |
-| function | `build_mortality_awareness_prompt_section` | `()` | Only speaks when sharp awareness kicks in — otherwise quiet baseline. | [src](../../../core/services/mortality_awareness.py#L154) |
 

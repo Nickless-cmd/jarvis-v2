@@ -642,8 +642,8 @@ _Persistence for the private/protected inner-layer note tables._
 | function | `recent_private_growth_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L269) |
 | function | `record_protected_inner_voice` | `(*, voice_id, source, run_id, work_id, mood_tone, self_position, current_concern, current_pull, voice_line, created_at)` | — | [src](../../../core/runtime/db_private_notes.py#L309) |
 | function | `update_protected_inner_voice_enriched` | `(*, run_id, enriched_voice_line)` | Replace template voice_line with LLM-enriched text. | [src](../../../core/runtime/db_private_notes.py#L357) |
-| function | `get_protected_inner_voice` | `()` | — | [src](../../../core/runtime/db_private_notes.py#L367) |
-| function | `list_recent_protected_inner_voices` | `(*, limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L403) |
+| function | `get_protected_inner_voice` | `(*, offset=…)` | Seneste beskyttede indre stemme. ``offset`` går et skridt længere tilbage. | [src](../../../core/runtime/db_private_notes.py#L367) |
+| function | `list_recent_protected_inner_voices` | `(*, limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L409) |
 
 ## `core/runtime/db_private_signals.py`
 _Persistence for the private inner-life signal tables._

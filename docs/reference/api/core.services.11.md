@@ -106,6 +106,18 @@ _FCM HTTP v1 gateway — data-only push. Google ser kun et vaekke-signal._
 | function | `_build_message` | `(token, data)` | — | [src](../../../core/services/fcm_gateway.py#L51) |
 | function | `send` | `(token, data)` | Send data-only push. Returnerer (ok, code). code='invalid' => slet token. | [src](../../../core/services/fcm_gateway.py#L68) |
 
+## `core/services/felt_surface_store.py`
+_Delt lager for de følte overflader — så de overlever en procesgrænse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_key` | `(name)` | — | [src](../../../core/services/felt_surface_store.py#L40) |
+| function | `is_empty_payload` | `(payload)` | Er overfladen reelt tom? | [src](../../../core/services/felt_surface_store.py#L44) |
+| function | `save_surface` | `(name, payload)` | Gem en overflade så andre processer kan læse den. Aldrig kastende. | [src](../../../core/services/felt_surface_store.py#L71) |
+| function | `load_surface` | `(name)` | Læs en gemt overflade. {} hvis der intet er, eller ved enhver fejl. | [src](../../../core/services/felt_surface_store.py#L85) |
+| function | `shared_surface` | `(name, local_builder)` | Overfladen som den skal se ud, uanset hvilken proces der spørger. | [src](../../../core/services/felt_surface_store.py#L96) |
+| function | `persist_local_surfaces` | `()` | Gem de følte overflader som DENNE proces kan se dem. | [src](../../../core/services/felt_surface_store.py#L128) |
+
 ## `core/services/file_awareness_daemon.py`
 _File Awareness Daemon — proprioception: "I feel when my files change."_
 
@@ -525,29 +537,4 @@ _Goal signal synthesizer — surface candidate goals from dreams/reflections._
 |---|---|---|---|---|
 | function | `_gather_signals` | `()` | Collect recent introspective signals as text for LLM. | [src](../../../core/services/goal_signal_synthesizer.py#L23) |
 | function | `synthesize_candidate_goals` | `(*, max_candidates=…)` | Run one synthesis pass — propose new goals from recent signals. | [src](../../../core/services/goal_signal_synthesizer.py#L46) |
-
-## `core/services/goal_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_goal_signals_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/goal_signal_tracking.py#L23) |
-| function | `refresh_runtime_goal_signal_statuses` | `()` | — | [src](../../../core/services/goal_signal_tracking.py#L64) |
-| function | `build_runtime_goal_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/goal_signal_tracking.py#L101) |
-| function | `_extract_goal_candidates` | `(*, user_message, completed_domains)` | — | [src](../../../core/services/goal_signal_tracking.py#L126) |
-| function | `_goal_from_active_focus` | `(focus, *, user_message, completed_domains)` | — | [src](../../../core/services/goal_signal_tracking.py#L152) |
-| function | `_persist_goal_signals` | `(*, goals, session_id, run_id)` | — | [src](../../../core/services/goal_signal_tracking.py#L225) |
-| function | `_apply_completion_signals` | `(domains)` | — | [src](../../../core/services/goal_signal_tracking.py#L292) |
-| function | `_supersede_replaced_goal_signals` | `(persisted_item, *, updated_at)` | — | [src](../../../core/services/goal_signal_tracking.py#L347) |
-| function | `_completed_goal_domains` | `(message)` | — | [src](../../../core/services/goal_signal_tracking.py#L377) |
-| function | `_blocking_state_for_domain` | `(domain_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L385) |
-| function | `_has_completed_goal_history` | `(domain_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L430) |
-| function | `_domain_key_from_focus` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L439) |
-| function | `_domain_key_from_critic` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L454) |
-| function | `_domain_key_from_self_model` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L463) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L472) |
-| function | `_message_domain_key` | `(text)` | — | [src](../../../core/services/goal_signal_tracking.py#L476) |
-| function | `_goal_title` | `(domain_key, fallback)` | — | [src](../../../core/services/goal_signal_tracking.py#L485) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/goal_signal_tracking.py#L493) |
-| function | `_rank` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L502) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L506) |
 

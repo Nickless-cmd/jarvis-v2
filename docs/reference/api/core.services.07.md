@@ -15,9 +15,9 @@ _Cluster-familiernes egen løkke — tråden der spørger «hvilken familie er d
 | function | `_is_due` | `(family, cadence_minutes, last_run_at)` | Er familien forfalden efter sin egen kadence? | [src](../../../core/services/cluster_family_scheduler.py#L114) |
 | function | `run_due_families` | `()` | Kør de familier der er forfaldne. Returnerer hvad der skete — også til test. | [src](../../../core/services/cluster_family_scheduler.py#L130) |
 | function | `_loop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L177) |
-| function | `start` | `()` | Start løkken. Kører den allerede, sker der ingenting. | [src](../../../core/services/cluster_family_scheduler.py#L200) |
-| function | `stop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L215) |
-| function | `build_cluster_family_scheduler_surface` | `()` | Hvad løkken laver — til Central og til at svare på «kører de?». | [src](../../../core/services/cluster_family_scheduler.py#L225) |
+| function | `start` | `()` | Start løkken. Kører den allerede, sker der ingenting. | [src](../../../core/services/cluster_family_scheduler.py#L211) |
+| function | `stop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L226) |
+| function | `build_cluster_family_scheduler_surface` | `()` | Hvad løkken laver — til Central og til at svare på «kører de?». | [src](../../../core/services/cluster_family_scheduler.py#L236) |
 
 ## `core/services/code_aesthetic_daemon.py`
 _Code aesthetic daemon — weekly aesthetic reflection on the codebase._

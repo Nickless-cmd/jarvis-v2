@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/permission_classifier.py`
+_LLM permission-classifier (harness Part E, shadow-first + earned trust)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `PermissionPrediction` | `` | — | [src](../../../core/services/permission_classifier.py#L41) |
+| function | `is_mutating` | `(tool)` | — | [src](../../../core/services/permission_classifier.py#L47) |
+| function | `permission_classifier_mode` | `()` | 'off' | 'shadow' | 'active'. Default 'shadow'. Env wins. Self-safe. | [src](../../../core/services/permission_classifier.py#L51) |
+| function | `_args_signature` | `(tool, arguments)` | — | [src](../../../core/services/permission_classifier.py#L66) |
+| function | `_clip_args` | `(arguments, limit=…)` | — | [src](../../../core/services/permission_classifier.py#L75) |
+| function | `_parse_prediction` | `(raw)` | — | [src](../../../core/services/permission_classifier.py#L83) |
+| function | `classify_action` | `(tool, arguments, ctx=…)` | Predict whether the owner would approve this mutating action. Cheap-lane LLM, | [src](../../../core/services/permission_classifier.py#L99) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/permission_classifier.py#L125) |
+| function | `record_prediction_outcome` | `(tool, *, predicted, actual, is_owner_gold)` | Record one prediction vs actual. Bootstrap (is_owner_gold=False, dense) or gold (True). | [src](../../../core/services/permission_classifier.py#L140) |
+| function | `classifier_trust` | `(tool)` | 'trusted' | 'untrusted' for a tool. Fail-open 'untrusted'. | [src](../../../core/services/permission_classifier.py#L176) |
+| function | `should_auto_allow` | `(tool, prediction, *, gates_green, role)` | Pure predicate for the DEFERRED active mode — NOT wired into the approval path this round. | [src](../../../core/services/permission_classifier.py#L187) |
+| function | `stash_prediction` | `(action_id, tool, predicted)` | Stash a prediction by approval/action id for gold lookup at resolution. Bounded TTL. Self-safe. | [src](../../../core/services/permission_classifier.py#L202) |
+| function | `pop_prediction` | `(action_id)` | Pop a stashed prediction (once). None if absent/expired. Self-safe. | [src](../../../core/services/permission_classifier.py#L216) |
+| function | `build_permission_classifier_surface` | `()` | Owner view: per-tool prediction counts, accuracy, gold, trust, mode. Self-safe. | [src](../../../core/services/permission_classifier.py#L228) |
+
 ## `core/services/permission_engine.py`
 _Permission engine — rollebaseret tool-adgang pr. mode (fail-closed)._
 
@@ -757,16 +777,4 @@ _Prompt-cluster (Den Intelligente Central) — Phase 1: live on/off + trace for 
 | function | `_parse_memory_selection_response` | `(text, *, entry_count, max_lines)` | — | [src](../../../core/services/prompt_relevance_backend.py#L795) |
 | function | `_bounded_memory_candidates` | `(entries)` | — | [src](../../../core/services/prompt_relevance_backend.py#L846) |
 | function | `_coerce_bool` | `(value)` | — | [src](../../../core/services/prompt_relevance_backend.py#L857) |
-
-## `core/services/prompt_section_impact.py`
-_Lightweight prompt-section answer-impact telemetry._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SectionImpact` | `` | — | [src](../../../core/services/prompt_section_impact.py#L19) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/prompt_section_impact.py#L27) |
-| function | `estimate_section_impact` | `(label, section_text, answer_text)` | — | [src](../../../core/services/prompt_section_impact.py#L35) |
-| function | `observe_answer_impact` | `(*, run_id, answer_text, sections)` | — | [src](../../../core/services/prompt_section_impact.py#L50) |
-| function | `remember_prompt_sections` | `(*, session_id, sections)` | — | [src](../../../core/services/prompt_section_impact.py#L75) |
-| function | `observe_last_prompt_answer_impact` | `(*, session_id, run_id, answer_text)` | — | [src](../../../core/services/prompt_section_impact.py#L86) |
 

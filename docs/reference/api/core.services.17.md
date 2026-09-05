@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_section_impact.py`
+_Lightweight prompt-section answer-impact telemetry._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SectionImpact` | `` | — | [src](../../../core/services/prompt_section_impact.py#L19) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/prompt_section_impact.py#L27) |
+| function | `estimate_section_impact` | `(label, section_text, answer_text)` | — | [src](../../../core/services/prompt_section_impact.py#L35) |
+| function | `observe_answer_impact` | `(*, run_id, answer_text, sections)` | — | [src](../../../core/services/prompt_section_impact.py#L50) |
+| function | `remember_prompt_sections` | `(*, session_id, sections)` | — | [src](../../../core/services/prompt_section_impact.py#L75) |
+| function | `observe_last_prompt_answer_impact` | `(*, session_id, run_id, answer_text)` | — | [src](../../../core/services/prompt_section_impact.py#L86) |
+
 ## `core/services/prompt_section_reevaluation.py`
 _Revurderings-løkke for slukkede prompt-sektioner._
 
@@ -667,22 +679,4 @@ _Relation-state signal tracking — migrated onto signal_tracking_framework._
 | function | `_value` | `(*values, default)` | — | [src](../../../core/services/relation_state_signal_tracking.py#L465) |
 | function | `_grounding_mode_from_support_summary` | `(value)` | — | [src](../../../core/services/relation_state_signal_tracking.py#L473) |
 | function | `_source_anchor_from_support_summary` | `(value)` | — | [src](../../../core/services/relation_state_signal_tracking.py#L481) |
-
-## `core/services/relational_warmth.py`
-_Relational Warmth — felt quality of who I'm talking to._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/relational_warmth.py#L55) |
-| function | `_load` | `()` | — | [src](../../../core/services/relational_warmth.py#L60) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/relational_warmth.py#L106) |
-| function | `_has_cue` | `(text, cues)` | — | [src](../../../core/services/relational_warmth.py#L118) |
-| function | `observe_incoming_text` | `(text, *, relation_id=…)` | Register an incoming text from the user. Returns signal breakdown. | [src](../../../core/services/relational_warmth.py#L123) |
-| function | `observe_outgoing_text` | `(text, *, relation_id=…)` | Register an outgoing text from Jarvis. Detects care signals. | [src](../../../core/services/relational_warmth.py#L155) |
-| function | `_decay_over_time` | `(rel)` | Slowly decay playfulness and trust if no recent interaction. | [src](../../../core/services/relational_warmth.py#L176) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/relational_warmth.py#L194) |
-| function | `get_relation` | `(relation_id=…)` | — | [src](../../../core/services/relational_warmth.py#L209) |
-| function | `build_relational_warmth_surface` | `()` | — | [src](../../../core/services/relational_warmth.py#L214) |
-| function | `_surface_summary` | `(rel)` | — | [src](../../../core/services/relational_warmth.py#L229) |
-| function | `build_relational_warmth_prompt_section` | `()` | Surface register-shaping hint only when it should change tone. | [src](../../../core/services/relational_warmth.py#L237) |
 

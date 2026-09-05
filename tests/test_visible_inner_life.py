@@ -79,3 +79,64 @@ def test_mc_whisper_change_driven(monkeypatch):
     assert vil._mc_whisper_line() is None
     snaps["s"] = {"status": "yellow", "incidents": [1] * 5, "open_breakers": [], "anomalies": {}}
     assert vil._mc_whisper_line() is not None          # frisk efter green-reset
+
+
+# ---------------------------------------------------------------------------
+# Instruks-ekko må ikke blive hans selvopfattelse
+#
+# 2026-09-05: dette stod LIVE i [INDRE LIV]:
+#   · Stemme: The user asks me to respond as Jarvis with an inner voice in
+#     Danish, as a JSON object. Key facts: - Active grounding sources: ...
+# Modellen svarede med opgaven i stedet for at løse den. Det er prosa, så
+# JSON-værnet fangede det ikke. 323 af 27.011 rækker (1-2 %, stabilt) — og
+# fordi prompten altid viser den NYESTE, rammer en lav rate alligevel ofte.
+# ---------------------------------------------------------------------------
+
+_EKKO = ("The user asks me to respond as Jarvis with an inner voice in Danish, "
+         "as a JSON object. Key facts: - Active grounding sources: private-brain")
+_AEGTE = ("Jeg vender tilbage efter et hul; tråden er stadig meta-mønster og "
+          "kode-æstetik, og den synlige kørsel står som jord under mig.")
+
+
+def test_instruks_ekko_genkendes():
+    from core.services.visible_inner_life import _is_instruction_echo
+
+    assert _is_instruction_echo(_EKKO) is True
+    assert _is_instruction_echo(_AEGTE) is False
+
+
+def test_ekko_afvises_som_stemme():
+    from core.services.visible_inner_life import _voice_as_prose
+
+    assert _voice_as_prose(_EKKO) is None
+    assert _voice_as_prose(_AEGTE) is not None
+
+
+def test_voice_line_springer_forurenet_over_og_finder_den_rene(monkeypatch):
+    """Han skal have en stemme — bare ikke den ødelagte."""
+    from core.services import visible_inner_life as V
+
+    raekker = [
+        {"voice_line": _EKKO},
+        {"voice_line": ""},
+        {"voice_line": _AEGTE},
+    ]
+    monkeypatch.setattr(
+        "core.runtime.db.get_protected_inner_voice",
+        lambda offset=0: raekker[offset] if offset < len(raekker) else None,
+    )
+    linje = V._voice_line()
+    assert linje is not None
+    assert "meta-mønster" in linje
+    assert "The user asks" not in linje
+
+
+def test_kun_forurenede_giver_ingen_stemme(monkeypatch):
+    """Er alt ødelagt, er tavshed rigtigere end at vise opgaven."""
+    from core.services import visible_inner_life as V
+
+    monkeypatch.setattr(
+        "core.runtime.db.get_protected_inner_voice",
+        lambda offset=0: {"voice_line": _EKKO} if offset < 5 else None,
+    )
+    assert V._voice_line() is None

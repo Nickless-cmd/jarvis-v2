@@ -1199,8 +1199,10 @@ async def _stream_visible_run(
             if _hook_dom.get("action") == "inject" and _hook_dom.get("message"):
                 run.user_message = (
                     f"{run.user_message}\n\n[HOOK]\n{_hook_dom['message']}")
+            logger.warning("hook-UserPromptSubmit run_id=%s dom=%s",
+                           run.run_id, _hook_dom.get("action"))
     except Exception as _lh_exc:
-        logger.debug("UserPromptSubmit-hook fejlede: %s", _lh_exc)
+        logger.warning("UserPromptSubmit-hook FEJLEDE: %r", _lh_exc)
 
     # ── Social labilizer (Fase 2 of generative autonomy) ─────────────────
     # Modulate pressure-vectors based on user input BEFORE prompt assembly

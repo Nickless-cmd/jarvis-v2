@@ -149,6 +149,11 @@ def sinks(monkeypatch: pytest.MonkeyPatch) -> _Recorder:
     monkeypatch.setattr(mcd, "_mark_as_seen", lambda uids: len(uids))
     monkeypatch.setattr(mcd, "insert_private_brain_record", lambda **kw: None)
     monkeypatch.setattr(mcd.event_bus, "publish", lambda *a, **kw: None)
+    # Den delte tilstand (2026-09-05) gaar til den RIGTIGE runtime-state. Uden
+    # disse to stubs ville testene skrive deres syntetiske message-ids ind i
+    # produktionens seen-liste — og derefter se deres egen post som allerede læst.
+    monkeypatch.setattr(mcd, "_load_mail_state", lambda: {})
+    monkeypatch.setattr(mcd, "_save_mail_state", lambda **kw: None)
     mcd._seen_ids = set()
     mcd._auto_responded_ids = set()
     return rec
@@ -203,3 +208,70 @@ def test_tick_still_reacts_to_a_single_real_mail(monkeypatch: pytest.MonkeyPatch
     assert len(sinks.nudges) == 1
     assert len(sinks.notifications) == 1
     assert sinks.llm_calls == ["kan du tjekke noget?"]
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-05: tilstanden laa i modul-globaler, og daemonen koerer i en ANDEN
+# proces end den der bygger prompten. build_mail_checker_surface() i api'en
+# svarede derfor altid last_check_at="" selvom tjekket koerte hvert andet minut.
+# ---------------------------------------------------------------------------
+
+from datetime import UTC, datetime, timedelta
+
+
+def _flade(monkeypatch, **felter):
+    from core.services import mail_checker_daemon as M
+
+    monkeypatch.setattr(M, "build_mail_checker_surface", lambda: felter)
+    return M
+
+
+def test_delt_tilstand_vinder_over_tomme_globaler(monkeypatch):
+    """Netop det api-processen ikke kunne se foer."""
+    from core.services import mail_checker_daemon as M
+
+    monkeypatch.setattr(
+        M, "_load_mail_state",
+        lambda: {"last_check_at": "2026-09-05T10:00:00+00:00", "last_new_count": 2,
+                 "last_senders": ["a@b.dk"], "last_subjects": ["Faktura"],
+                 "seen_ids": ["x", "y"]},
+    )
+    ud = M.build_mail_checker_surface()
+    assert ud["last_new_count"] == 2
+    assert ud["seen_ids_count"] == 2
+
+
+def test_ingen_ny_post_giver_tom_sektion(monkeypatch):
+    M = _flade(monkeypatch, last_new_count=0, last_check_at=datetime.now(UTC).isoformat())
+    assert M.mail_awareness_section() == ""
+
+
+def test_ny_post_naevner_afsender_og_emne(monkeypatch):
+    M = _flade(
+        monkeypatch,
+        last_new_count=2,
+        last_check_at=datetime.now(UTC).isoformat(),
+        last_senders=["revisor@firma.dk", "kirsten@example.com"],
+        last_subjects=["Årsregnskab 2026", "Frokost på fredag?"],
+    )
+    ud = M.mail_awareness_section()
+    assert "[NY POST]" in ud
+    assert "revisor@firma.dk" in ud and "Årsregnskab 2026" in ud
+    assert "kirsten@example.com" in ud
+
+
+def test_gammelt_fund_staar_ikke_som_nyt(monkeypatch):
+    """Et døgn gammelt tjek må ikke stå i prompten som om posten lige kom."""
+    gammel = (datetime.now(UTC) - timedelta(hours=30)).isoformat()
+    M = _flade(monkeypatch, last_new_count=3, last_check_at=gammel,
+               last_senders=["a@b.dk"], last_subjects=["Gammelt"])
+    assert M.mail_awareness_section() == ""
+
+
+def test_sektionen_paaminder_ikke_om_at_tjekke(monkeypatch):
+    """Minimum teater: kendsgerninger, ingen opfordring."""
+    M = _flade(monkeypatch, last_new_count=1, last_check_at=datetime.now(UTC).isoformat(),
+               last_senders=["a@b.dk"], last_subjects=["Emne"])
+    ud = M.mail_awareness_section().lower()
+    for nag in ("husk", "du bør", "glem ikke", "remember"):
+        assert nag not in ud

@@ -1550,6 +1550,14 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("R2 gate telemetry", _e)
     try:
+        # Ny post som kendsgerning. Daemonen tjekker hvert andet minut i
+        # cluster_infra; det der manglede var at resultatet naaede ham.
+        # Sektionen er tom naar der ingen ny post er — ingen paamindelse.
+        from core.services.mail_checker_daemon import mail_awareness_section
+        _awareness_add(15, "new mail", mail_awareness_section())
+    except Exception as _e:
+        _sec_err("new mail", _e)
+    try:
         _awareness_add(
             20, "relevant skills",
             _timed_result(future_skill_relevance, "skill_relevance", default=""),

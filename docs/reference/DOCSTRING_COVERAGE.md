@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6718/13487 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6722/13491 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6718/13487 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4464 | 9344 | 47% |
+| `core.services` | 4468 | 9348 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 87 | 157 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6718/13487 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1955)
+## Undocumented public functions (1954)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -795,7 +795,7 @@ Generated from source. 6718/13487 functions/methods documented (49%). The list b
 - `core/services/cluster_family_scheduler.py` :: `stop_event` (L80)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
 - `core/services/code_aesthetic_daemon.py` :: `get_latest_aesthetic_reflection` (L64)
-- `core/services/cognitive_episodes.py` :: `build_cognitive_episode_prompt_section` (L325)
+- `core/services/cognitive_episodes.py` :: `build_cognitive_episode_prompt_section` (L327)
 - `core/services/collective_pulse_daemon.py` :: `build_collective_pulse_surface` (L246)
 - `core/services/collective_pulse_daemon.py` :: `run_pulse` (L192)
 - `core/services/collective_pulse_daemon.py` :: `tick` (L233)
@@ -872,10 +872,9 @@ Generated from source. 6718/13487 functions/methods documented (49%). The list b
 - `core/services/curiosity_consolidation.py` :: `ensure_schema` (L27)
 - `core/services/curiosity_daemon.py` :: `build_curiosity_surface` (L136)
 - `core/services/curiosity_daemon.py` :: `get_latest_curiosity` (L132)
-- `core/services/curiosity_hypothesis_debt.py` :: `build_curiosity_debt_prompt_section` (L87)
-- `core/services/curiosity_hypothesis_debt.py` :: `build_curiosity_debt_surface` (L74)
-- `core/services/curiosity_hypothesis_debt.py` :: `maybe_register_from_text` (L53)
-- `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L15)
+- `core/services/curiosity_hypothesis_debt.py` :: `build_curiosity_debt_prompt_section` (L113)
+- `core/services/curiosity_hypothesis_debt.py` :: `build_curiosity_debt_surface` (L100)
+- `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L16)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
 - `core/services/daemon_manager.py` :: `get_daemon_names` (L789)
 - `core/services/daemon_manager.py` :: `set_daemon_enabled` (L836)
@@ -1306,13 +1305,13 @@ Generated from source. 6718/13487 functions/methods documented (49%). The list b
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3275)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3123)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3412)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3283)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3131)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3420)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4630)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4638)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)

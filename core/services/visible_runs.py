@@ -2116,6 +2116,7 @@ async def _stream_visible_run(
                             session_id=run.session_id,
                             role="tool",
                             content=result_text,
+                            full_content=str(sr.get("result_text_full") or ""),
                             tool_name=str(sr.get("tool_name") or ""),
                             tool_arguments=dict(sr.get("arguments") or {}),
                         )
@@ -4172,6 +4173,7 @@ async def _stream_visible_run(
                                 session_id=run.session_id,
                                 role="tool",
                                 content=_a_rt,
+                                full_content=str(_a_sr.get("result_text_full") or ""),
                                 tool_name=str(_a_sr.get("tool_name") or ""),
                                 tool_arguments=dict(_a_sr.get("arguments") or {}),
                             )

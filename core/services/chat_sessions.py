@@ -407,6 +407,7 @@ def append_chat_message(
     created_at: str | None = None,
     tool_name: str | None = None,
     tool_arguments: dict[str, object] | None = None,
+    full_content: str | None = None,
     user_id: str | None = None,
     workspace_name: str | None = None,
     reasoning_content: str = "",
@@ -477,10 +478,15 @@ def append_chat_message(
 
     if normalized_role == "tool" and not parse_tool_result_reference(normalized_content):
         normalized_tool_name = (tool_name or _infer_tool_name_from_content(normalized_content) or "tool").strip()
+        # 5/9-2026: STOREN faar hele resultatet, samtalen faar det klippede.
+        # Referencen der laegges i samtalen lover «Use read_tool_result ... to
+        # inspect the full output»; indtil nu blev kun den klippede tekst gemt,
+        # saa midten (i ét maalt tilfaelde 131.200 tegn) fandtes ingen steder.
+        _stored = str(full_content or "").strip() or normalized_content
         result_id = save_tool_result(
             normalized_tool_name,
             tool_arguments or {},
-            normalized_content,
+            _stored,
             created_at=timestamp,
         )
         normalized_content = build_tool_result_reference(

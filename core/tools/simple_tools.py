@@ -2096,8 +2096,22 @@ def _json_safe_default(o: Any) -> str:
     return str(o)
 
 
-def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
-    """Format a tool result as text for the model's context."""
+def format_tool_result_for_model(
+    name: str, result: dict[str, Any], *, clip: bool = True,
+) -> str:
+    """Format a tool result as text for the model's context.
+
+    ``clip=False`` springer laengde-loftet over og returnerer HELE resultatet.
+    Bruges kun til det der PERSISTERES i tool-result-storen, aldrig til det der
+    laegges i samtalen — se `save_tool_result`-kaldet i chat_sessions.
+
+    Baggrund (5/9-2026): et resultat uden `text`-noegle dumpes som JSON og
+    klippes ved 8.000 tegn med hoved+hale bevaret. Bjoern saa gentagne gange
+    "midten mangler" — maalt: 728 gemte tool-resultater har et hul, i dag ét paa
+    131.200 tegn ud af 143.770. Beskeden i samtalen lover
+    "Use read_tool_result ... to inspect the full output", men den KLIPPEDE
+    tekst var det eneste der nogensinde blev gemt. Midten fandtes ingen steder.
+    """
     status = result.get("status", "unknown")
 
     if status == "error":
@@ -2130,7 +2144,7 @@ def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
             _dumped = json.dumps(
                 _filtered, ensure_ascii=False, indent=2, default=_json_safe_default
             )
-            if len(_dumped) <= _MAX_FALLBACK_CHARS:
+            if not clip or len(_dumped) <= _MAX_FALLBACK_CHARS:
                 text = _dumped
             else:
                 # Bevar HOVED+HALE (ikke kun head) ved linje-grænser — slutningen af et struktureret

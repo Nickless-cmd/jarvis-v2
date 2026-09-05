@@ -109,8 +109,24 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
     signature = token["signature"]
     soft_warn = token["soft_warn"]
     result_text = exec_fmt(name, raw_result)
+    # ── HELE resultatet til storen (5/9-2026) ────────────────────────────────
+    # `result_text` er det KLIPPEDE — det der skal i samtalen. Men beskeden der
+    # ledsager det lover «Use read_tool_result ... to inspect the full output»,
+    # og indtil nu var den klippede tekst det eneste der nogensinde blev gemt.
+    # Målt: 728 gemte resultater med et hul i midten, ét i dag på 131.200 tegn.
+    # Nu følger den fulde tekst med, så løftet holder.
+    result_text_full = result_text
+    try:
+        _full = exec_fmt(name, raw_result, clip=False)
+        if _full and len(_full) > len(result_text):
+            result_text_full = _full
+    except TypeError:
+        pass  # ældre/monkeypatchet formatter uden clip-parameter
+    except Exception:
+        pass
     if soft_warn:
         result_text = f"⚠ {soft_warn}\n\n{result_text}"
+        result_text_full = f"⚠ {soft_warn}\n\n{result_text_full}"
     if controller and raw_result.get("status") == "ok":
         controller.seen_simple_tool_call_signatures.add(signature)
         # ── VERIFIKATION EFTER SKRIVNING (2026-09-05) ────────────────────────
@@ -143,7 +159,8 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
     except Exception:
         pass
     return {"tool_name": name, "arguments": arguments, "result": raw_result,
-            "result_text": result_text, "status": raw_result.get("status", "ok")}
+            "result_text": result_text, "result_text_full": result_text_full,
+            "status": raw_result.get("status", "ok")}
 
 
 def _execute_simple_tool_calls(

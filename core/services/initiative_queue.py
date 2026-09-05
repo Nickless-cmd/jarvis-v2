@@ -573,6 +573,42 @@ def abandon_long_term_intention(initiative_id: str, *, note: str = "") -> dict[s
     return updated
 
 
+def endorse_long_term_intention(initiative_id: str, *, note: str = "") -> dict[str, object] | None:
+    """Bjørn siger «det er i orden» til et livsprojekt.
+
+    Bjørn 5/9-2026: «i mobil arbejds rum kan jeg kun vælge læg den fra dig …
+    mangler det er iorden knap». Et livsprojekt er ikke en anmodning om lov —
+    det er noget han HAR sat sig for. Da den eneste knap var «læg den fra dig»,
+    kunne man kun forholde sig afvisende til hans langsigtede hensigter.
+
+    Modsat abandon ændres status IKKE: projektet lever videre. Det der sættes er
+    `user_approved_at` — feltet fandtes i forvejen — så det er registreret at et
+    menneske har set det og sagt god for det.
+    """
+    now = datetime.now(UTC).isoformat()
+    with _QUEUE_LOCK:
+        existing = runtime_db.get_runtime_initiative(initiative_id)
+        if not existing or str(existing.get("initiative_type") or "") != "long_term_intention":
+            return None
+        updated = runtime_db.update_runtime_initiative(
+            initiative_id,
+            user_approved_at=now,
+            outcome_note=note[:120],
+            updated_at=now,
+        )
+    if updated:
+        event_bus.publish(
+            "heartbeat.initiative_approved",
+            {
+                "initiative_id": initiative_id,
+                "focus": str(updated.get("focus") or "")[:100],
+                "initiative_type": "long_term_intention",
+                "note": note[:120],
+            },
+        )
+    return updated
+
+
 def _find_active_long_term_intention_by_title(title: str) -> dict[str, object] | None:
     normalized = str(title or "").strip().lower()
     if not normalized:

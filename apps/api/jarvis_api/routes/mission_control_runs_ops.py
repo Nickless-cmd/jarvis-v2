@@ -420,6 +420,16 @@ def mc_life_projects() -> dict:
     return _mc_facade("build_life_projects_surface")()
 
 
+@router.post("/life-projects/{initiative_id}/endorse")
+def mc_endorse_life_project(initiative_id: str, note: str = "") -> dict:
+    """Sig god for en langsigtet hensigt uden at afslutte den."""
+    from core.services.life_projects import endorse_life_project
+    result = endorse_life_project(initiative_id, note=note)
+    if result.get("status") != "ok":
+        return {"ok": False, "error": result.get("error", "unknown error")}
+    return {"ok": True, "life_project": result.get("life_project") or {}}
+
+
 @router.post("/life-projects/{initiative_id}/abandon")
 def mc_abandon_life_project(initiative_id: str, note: str = "") -> dict:
     """Abandon a long-term intention without deleting its record."""

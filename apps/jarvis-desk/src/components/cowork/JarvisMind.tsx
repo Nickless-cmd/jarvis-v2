@@ -130,6 +130,9 @@ interface Beslutning {
 const HANDLING_TEKST: Record<string, string> = {
   approve: 'Godkend',
   reject: 'Afvis',
+  // Et livsprojekt beder ikke om lov — det er noget han HAR sat sig for. Derfor
+  // «det er i orden», ikke «godkend»: man siger god for det, man tillader det ikke.
+  endorse: 'Det er i orden',
   abandon: 'Læg den fra dig',
 }
 

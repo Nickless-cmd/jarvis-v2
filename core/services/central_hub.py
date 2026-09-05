@@ -195,7 +195,10 @@ def _build_decisions() -> dict[str, Any]:
                 "why": str(p_.get("why_text") or "")[:240],
                 "priority": "low",
                 "created_at": str(p_.get("created_at") or ""),
-                "actions": ["abandon"],
+                # «Det er i orden» først: et livsprojekt er ikke en anmodning om
+                # lov, og med KUN «læg den fra dig» kunne man bare forholde sig
+                # afvisende til hans langsigtede hensigter (Bjørn 5/9).
+                "actions": ["endorse", "abandon"],
             })
     except Exception:
         pass

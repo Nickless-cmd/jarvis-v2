@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-04 from app.routes (live) — 524 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-05 from app.routes (live) — 525 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -394,6 +394,7 @@
 | GET | `/mc/learning-curriculum` | dict | mission_control_introspection |
 | GET | `/mc/life-projects` | dict | mission_control_runs_ops |
 | POST | `/mc/life-projects/{initiative_id}/abandon` | dict | mission_control_runs_ops |
+| POST | `/mc/life-projects/{initiative_id}/endorse` | dict | mission_control_runs_ops |
 | GET | `/mc/liveness` | dict | mission_control_runs_ops |
 | GET | `/mc/living-executive` | dict | mission_control_introspection |
 | GET | `/mc/living-heartbeat-cycle` | dict | mission_control_introspection |

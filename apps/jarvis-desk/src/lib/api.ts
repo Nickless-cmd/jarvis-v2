@@ -561,6 +561,7 @@ export async function getMindSection(
 const BESLUTNINGS_RUTER: Record<string, string> = {
   'initiative:approve': '/mc/initiatives/{id}/approve',
   'initiative:reject': '/mc/initiatives/{id}/reject',
+  'life_project:endorse': '/mc/life-projects/{id}/endorse',
   'life_project:abandon': '/mc/life-projects/{id}/abandon',
 }
 

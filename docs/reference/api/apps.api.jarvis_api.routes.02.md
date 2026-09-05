@@ -468,8 +468,9 @@ _Mission Control routes: runs, overview, events, costs, approvals, memory-pipeli
 | function | `mc_approve_initiative` | `(initiative_id, note=…)` | Approve a pending initiative so the heartbeat may act on it. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L398) |
 | function | `mc_reject_initiative` | `(initiative_id, note=…)` | Reject and expire a pending initiative. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L408) |
 | function | `mc_life_projects` | `()` | Mission Control surface for Jarvis-owned long-term intentions. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L418) |
-| function | `mc_abandon_life_project` | `(initiative_id, note=…)` | Abandon a long-term intention without deleting its record. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L424) |
-| function | `mc_operations` | `(limit=…)` | Samlet operations-flade (3s cached): runtime-config, tool-intent, runs, | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L433) |
+| function | `mc_endorse_life_project` | `(initiative_id, note=…)` | Sig god for en langsigtet hensigt uden at afslutte den. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L424) |
+| function | `mc_abandon_life_project` | `(initiative_id, note=…)` | Abandon a long-term intention without deleting its record. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L434) |
+| function | `mc_operations` | `(limit=…)` | Samlet operations-flade (3s cached): runtime-config, tool-intent, runs, | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L443) |
 
 ## `apps/api/jarvis_api/routes/mission_control_runtime_config.py`
 _Mission Control routes: adaptive/tool-intent, runtime-contract, heartbeat, visible-execution, capability-approval_

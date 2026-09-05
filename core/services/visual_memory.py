@@ -403,7 +403,11 @@ _DEFAULT_CAMERA = "stue"
 def _fold(text: str) -> str:
     """Sammenlign navne uden at snuble over æøå, store bogstaver og bindestreger."""
     lowered = str(text or "").strip().lower()
-    lowered = lowered.replace("ø", "o").replace("æ", "ae").replace("å", "aa")
+    # Dansk skrives paa to maader — «hoveddøren» og «hoveddoeren» skal ramme det
+    # samme kamera. Begge former foldes derfor ned til den samme enkle vokal.
+    for dansk, enkel in (("ø", "o"), ("oe", "o"), ("æ", "a"), ("ae", "a"),
+                         ("å", "a"), ("aa", "a")):
+        lowered = lowered.replace(dansk, enkel)
     decomposed = unicodedata.normalize("NFKD", lowered)
     stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
     return "".join(c for c in stripped if c.isalnum())

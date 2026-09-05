@@ -342,25 +342,25 @@ _Visual memory — webcam snapshots beskrevet af vision-model._
 | function | `look_around_now` | `(*, where=…, prompt_override=…)` | On-demand capture — Jarvis chooses to look. Bypasses cadence-limit. | [src](../../../core/services/visual_memory.py#L251) |
 | function | `build_visual_memory_surface` | `()` | MC observability surface. | [src](../../../core/services/visual_memory.py#L338) |
 | function | `_fold` | `(text)` | Sammenlign navne uden at snuble over æøå, store bogstaver og bindestreger. | [src](../../../core/services/visual_memory.py#L403) |
-| function | `known_cameras` | `()` | Alle kendte kameraer — config vinder over det indbyggede kort. | [src](../../../core/services/visual_memory.py#L412) |
-| function | `default_camera` | `()` | Nøglen på det kamera der bruges når ingen har sagt hvor der skal kigges. | [src](../../../core/services/visual_memory.py#L426) |
-| function | `resolve_camera` | `(where=…)` | Slå et menneskeligt stednavn op. Tom streng giver standardkameraet. | [src](../../../core/services/visual_memory.py#L447) |
-| function | `capture_from_camera` | `(where=…)` | Hent et billede. Returnerer (base64-jpeg, kamera-nøgle, læsbart navn). | [src](../../../core/services/visual_memory.py#L491) |
-| function | `describe_cameras` | `()` | Én linje pr. kamera — til værktøjsbeskrivelser og prompten. | [src](../../../core/services/visual_memory.py#L506) |
-| function | `_capture_image` | `(where=…)` | Hent et billede fra et navngivet kamera. Returnerer (base64-jpeg, kameranavn). | [src](../../../core/services/visual_memory.py#L520) |
-| function | `_capture_source` | `()` | Return 'ha_camera' or 'webcam' based on runtime config. | [src](../../../core/services/visual_memory.py#L541) |
-| function | `_ha_camera_entity` | `()` | Return HA camera entity_id from runtime config. | [src](../../../core/services/visual_memory.py#L547) |
-| function | `_capture_ha_camera` | `(entity_id=…)` | Fetch snapshot from Home Assistant camera and return as base64 JPEG string. | [src](../../../core/services/visual_memory.py#L553) |
-| function | `_capture_webcam` | `(device_index=…)` | Capture one frame from webcam and return as base64 JPEG string. | [src](../../../core/services/visual_memory.py#L589) |
-| function | `_describe_image` | `(image_b64, *, model, provider, prompt=…, previous=…)` | Send image to vision model and return description. | [src](../../../core/services/visual_memory.py#L614) |
-| function | `_previous_time_label` | `(captured_at)` | — | [src](../../../core/services/visual_memory.py#L636) |
-| function | `_build_prompt` | `(previous=…, prompt_index=…)` | Assemble the full vision prompt: prefix + rotating focus + optional compare. | [src](../../../core/services/visual_memory.py#L651) |
-| function | `_describe_via_ollama` | `(image_b64, *, model, prompt=…, previous=…)` | Call Ollama generate API with image payload. | [src](../../../core/services/visual_memory.py#L673) |
-| function | `_load_records` | `()` | — | [src](../../../core/services/visual_memory.py#L728) |
-| function | `_prune_old_records` | `()` | — | [src](../../../core/services/visual_memory.py#L735) |
-| function | `_vision_model` | `()` | Return (model_name, provider) — den valgte model vinder over config. | [src](../../../core/services/visual_memory.py#L743) |
-| function | `_enabled` | `()` | — | [src](../../../core/services/visual_memory.py#L776) |
-| function | `_archive_sensory` | `(description, *, metadata)` | Mirror every visual memory into Sansernes Arkiv. Silent on failure. | [src](../../../core/services/visual_memory.py#L781) |
+| function | `known_cameras` | `()` | Alle kendte kameraer — config vinder over det indbyggede kort. | [src](../../../core/services/visual_memory.py#L416) |
+| function | `default_camera` | `()` | Nøglen på det kamera der bruges når ingen har sagt hvor der skal kigges. | [src](../../../core/services/visual_memory.py#L430) |
+| function | `resolve_camera` | `(where=…)` | Slå et menneskeligt stednavn op. Tom streng giver standardkameraet. | [src](../../../core/services/visual_memory.py#L451) |
+| function | `capture_from_camera` | `(where=…)` | Hent et billede. Returnerer (base64-jpeg, kamera-nøgle, læsbart navn). | [src](../../../core/services/visual_memory.py#L495) |
+| function | `describe_cameras` | `()` | Én linje pr. kamera — til værktøjsbeskrivelser og prompten. | [src](../../../core/services/visual_memory.py#L510) |
+| function | `_capture_image` | `(where=…)` | Hent et billede fra et navngivet kamera. Returnerer (base64-jpeg, kameranavn). | [src](../../../core/services/visual_memory.py#L524) |
+| function | `_capture_source` | `()` | Return 'ha_camera' or 'webcam' based on runtime config. | [src](../../../core/services/visual_memory.py#L545) |
+| function | `_ha_camera_entity` | `()` | Return HA camera entity_id from runtime config. | [src](../../../core/services/visual_memory.py#L551) |
+| function | `_capture_ha_camera` | `(entity_id=…)` | Fetch snapshot from Home Assistant camera and return as base64 JPEG string. | [src](../../../core/services/visual_memory.py#L557) |
+| function | `_capture_webcam` | `(device_index=…)` | Capture one frame from webcam and return as base64 JPEG string. | [src](../../../core/services/visual_memory.py#L593) |
+| function | `_describe_image` | `(image_b64, *, model, provider, prompt=…, previous=…)` | Send image to vision model and return description. | [src](../../../core/services/visual_memory.py#L618) |
+| function | `_previous_time_label` | `(captured_at)` | — | [src](../../../core/services/visual_memory.py#L640) |
+| function | `_build_prompt` | `(previous=…, prompt_index=…)` | Assemble the full vision prompt: prefix + rotating focus + optional compare. | [src](../../../core/services/visual_memory.py#L655) |
+| function | `_describe_via_ollama` | `(image_b64, *, model, prompt=…, previous=…)` | Call Ollama generate API with image payload. | [src](../../../core/services/visual_memory.py#L677) |
+| function | `_load_records` | `()` | — | [src](../../../core/services/visual_memory.py#L732) |
+| function | `_prune_old_records` | `()` | — | [src](../../../core/services/visual_memory.py#L739) |
+| function | `_vision_model` | `()` | Return (model_name, provider) — den valgte model vinder over config. | [src](../../../core/services/visual_memory.py#L747) |
+| function | `_enabled` | `()` | — | [src](../../../core/services/visual_memory.py#L780) |
+| function | `_archive_sensory` | `(description, *, metadata)` | Mirror every visual memory into Sansernes Arkiv. Silent on failure. | [src](../../../core/services/visual_memory.py#L785) |
 
 ## `core/services/voice_anchor.py`
 _Voice anchor — combined static seed + auto-refreshed external exemplars._

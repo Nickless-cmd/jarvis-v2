@@ -197,3 +197,12 @@ def test_deepseek_billede_gaar_ikke_til_ollama(monkeypatch):
     ud = VM._describe_image("B64", model="deepseek-v4-flash-vision-exp",
                             provider="deepseek", prompt="hvad ser du?")
     assert ud == "set i stuen"
+
+
+def test_ascii_stavning_rammer_samme_kamera(monkeypatch):
+    """Jarvis skriver dansk paa begge maader — begge skal ramme."""
+    _tom_config(monkeypatch)
+    for skrivemaade in ("hoveddør", "hoveddoer", "hoveddoeren", "hoveddor"):
+        assert VM.resolve_camera(skrivemaade)[0] == "hoveddor", skrivemaade
+    for skrivemaade in ("dørklokke", "doerklokke", "doerklokken"):
+        assert VM.resolve_camera(skrivemaade)[0] == "dorklokke", skrivemaade

@@ -1584,6 +1584,17 @@ def _build_visible_chat_prompt_assembly_impl(
         _awareness_add(15, "new mail", mail_awareness_section())
     except Exception as _e:
         _sec_err("new mail", _e)
+    # 2026-09-05: 68 af backendens /mc-ruter blev aldrig roert af noget UI, og en
+    # haandfuld af dem er ikke observation — de er materiale der burde FORME hans
+    # adfaerd: vaerdier han selv har dannet, hans egen graense-model, aaben anger
+    # med en laert lektie, uhelede brud med Bjoern, og hans model af Bjoern.
+    # Samlet i ÉN kompakt sektion frem for otte; otte ville koste otte gange saa
+    # meget budget og laese som en rapport.
+    try:
+        from core.services.prompt_sections.formative_state import formative_state_section
+        _awareness_add(18, "formative state", formative_state_section())
+    except Exception as _e:
+        _sec_err("formative state", _e)
     try:
         _awareness_add(
             20, "relevant skills",

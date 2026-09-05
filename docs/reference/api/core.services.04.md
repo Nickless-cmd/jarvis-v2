@@ -309,17 +309,18 @@ _Jarvis Mind-hub — Centralen som ÉT samlingspunkt for alt MC viser._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_safe` | `(builder)` | — | [src](../../../core/services/central_hub.py#L37) |
-| function | `_build_overview` | `()` | Centralens egen puls = Jarvis Mind-rygraden (status/dækning/processer/clusters). | [src](../../../core/services/central_hub.py#L46) |
-| function | `_build_observability` | `()` | Det levende vindue: nerve-feed + incidents + anomalier + læring + breakers. | [src](../../../core/services/central_hub.py#L60) |
-| function | `_build_mind` | `()` | De ~70 cognitive surfaces — Jarvis' indre liv. Sender KUN den lette projektion (systems- | [src](../../../core/services/central_hub.py#L74) |
-| function | `_build_agency` | `()` | Agentur-kort: forbundne/manglende agency-broer (loops/agenter/kanaler). | [src](../../../core/services/central_hub.py#L91) |
-| function | `_build_skills` | `()` | Skills-motor + kontrakt-registry. | [src](../../../core/services/central_hub.py#L97) |
-| function | `_build_agency_agents` | `()` | Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald | [src](../../../core/services/central_hub.py#L103) |
-| function | `_build_council` | `()` | Council-fanen (B3): convocations/deadlocks/roller. Empty-safe. | [src](../../../core/services/central_hub.py#L121) |
-| function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L141) |
-| function | `mind_section` | `(section)` | Projektionen for ÉN sektion (læser den cachede kilde, TTL-capped). Self-safe. | [src](../../../core/services/central_hub.py#L158) |
-| function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L181) |
+| function | `_safe` | `(builder)` | — | [src](../../../core/services/central_hub.py#L44) |
+| function | `_build_overview` | `()` | Centralens egen puls = Jarvis Mind-rygraden (status/dækning/processer/clusters). | [src](../../../core/services/central_hub.py#L53) |
+| function | `_build_observability` | `()` | Det levende vindue: nerve-feed + incidents + anomalier + læring + breakers. | [src](../../../core/services/central_hub.py#L67) |
+| function | `_build_mind` | `()` | De ~70 cognitive surfaces — Jarvis' indre liv. Sender KUN den lette projektion (systems- | [src](../../../core/services/central_hub.py#L81) |
+| function | `_build_agency` | `()` | Agentur-kort: forbundne/manglende agency-broer (loops/agenter/kanaler). | [src](../../../core/services/central_hub.py#L98) |
+| function | `_build_skills` | `()` | Skills-motor + kontrakt-registry. | [src](../../../core/services/central_hub.py#L104) |
+| function | `_build_agency_agents` | `()` | Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald | [src](../../../core/services/central_hub.py#L110) |
+| function | `_build_council` | `()` | Council-fanen (B3): convocations/deadlocks/roller. Empty-safe. | [src](../../../core/services/central_hub.py#L128) |
+| function | `_build_decisions` | `()` | Hvad venter paa et menneske — samlet ét sted. | [src](../../../core/services/central_hub.py#L136) |
+| function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L210) |
+| function | `mind_section` | `(section)` | Projektionen for ÉN sektion (læser den cachede kilde, TTL-capped). Self-safe. | [src](../../../core/services/central_hub.py#L227) |
+| function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L250) |
 
 ## `core/services/central_hypothesis_generator.py`
 _core/services/central_hypothesis_generator.py_

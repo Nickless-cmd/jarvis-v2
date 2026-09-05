@@ -1697,6 +1697,16 @@
 .jm-placeholder { color: var(--fg-2); font-size: 14px; gap: 6px; padding: 24px 4px; }
 .jm-tab.pending { opacity: 0.55; }
 
+/* Beslutninger — den ene sektion der venter på et svar frem for at informere. */
+.jm-decision .jm-card-title { text-transform: none; display: block; line-height: 1.4; }
+.jm-decide { display: flex; gap: 8px; margin-top: 10px; padding-top: 9px;
+  border-top: 1px solid var(--line); }
+.jm-decide-btn { font-size: 12px; color: var(--fg-1); background: transparent;
+  border: 1px solid var(--line); border-radius: 7px; padding: 5px 11px; cursor: pointer; }
+.jm-decide-btn:hover:not(:disabled) { background: var(--bg-2); }
+.jm-decide-btn:disabled { opacity: 0.45; cursor: default; }
+.jm-unanswered { margin-top: 14px; font-size: 12px; }
+
 /* Levende puls fra Centralens SSE-stream */
 .jm-pulse { display: flex; align-items: center; gap: 9px; padding: 7px 11px; margin-bottom: 12px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--bg-1); font-size: 12px; }

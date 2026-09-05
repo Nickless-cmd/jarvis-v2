@@ -558,6 +558,30 @@ export async function getMindSection(
   return apiFetch(config, `/central/mind?section=${encodeURIComponent(section)}`)
 }
 
+const BESLUTNINGS_RUTER: Record<string, string> = {
+  'initiative:approve': '/mc/initiatives/{id}/approve',
+  'initiative:reject': '/mc/initiatives/{id}/reject',
+  'life_project:abandon': '/mc/life-projects/{id}/abandon',
+}
+
+/**
+ * Svar på ét af Jarvis' egne forslag.
+ *
+ * Ruterne har eksisteret hele tiden; der var bare ingen knap, og 31 initiativer
+ * udløb ubesvarede. Serveren svarer HTTP 200 med `ok: false` når id'et er væk
+ * (typisk udløbet mens fanen stod åben) — derfor afgør `ok`, ikke status-koden.
+ */
+export async function actOnDecision(
+  config: ApiConfig, kind: string, id: string, action: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const skabelon = BESLUTNINGS_RUTER[`${kind}:${action}`]
+  if (!skabelon) return { ok: false, error: `${action} findes ikke for ${kind}` }
+  const raw = await apiFetch<{ ok?: unknown; error?: unknown }>(
+    config, skabelon.replace('{id}', encodeURIComponent(id)), { method: 'POST' },
+  )
+  return { ok: raw.ok === true, error: typeof raw.error === 'string' ? raw.error : undefined }
+}
+
 /** SSE-live-feed af nerve-fyringer (ægte realtid). fetch-baseret (EventSource kan ikke
  *  sende Authorization). onItem pr. fyring. Returnér {abort}. */
 export function streamCentral(

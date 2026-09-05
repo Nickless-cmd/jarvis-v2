@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6721/13488 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6729/13499 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6721/13488 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4458 | 9334 | 47% |
+| `core.services` | 4466 | 9345 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 87 | 157 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 6721/13488 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1953)
+## Undocumented public functions (1955)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -791,6 +791,8 @@ Generated from source. 6721/13488 functions/methods documented (49%). The list b
 - `core/services/cluster_daemon_families.py` :: `memory_family` (L152)
 - `core/services/cluster_daemon_families.py` :: `projects_family` (L860)
 - `core/services/cluster_daemon_families.py` :: `relation_family` (L659)
+- `core/services/cluster_family_scheduler.py` :: `stop` (L215)
+- `core/services/cluster_family_scheduler.py` :: `stop_event` (L80)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
 - `core/services/code_aesthetic_daemon.py` :: `get_latest_aesthetic_reflection` (L64)
 - `core/services/cognitive_episodes.py` :: `build_cognitive_episode_prompt_section` (L325)

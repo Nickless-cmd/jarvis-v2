@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/my_projects.py`
+_My Projects — auto-start + watchdog for Jarvis' own background processes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_my_projects_running` | `()` | Called at runtime boot. Spawn any of my 4 projects that aren't running. | [src](../../../core/services/my_projects.py#L52) |
+| function | `tick_my_projects_watchdog` | `()` | Check all 4 projects are alive; restart any that died. | [src](../../../core/services/my_projects.py#L104) |
+
 ## `core/services/narrative_identity.py`
 _Narrative Identity — periodisk "Hvem er jeg lige nu?" selvfortælling._
 
@@ -610,28 +618,4 @@ _Permission engine — rollebaseret tool-adgang pr. mode (fail-closed)._
 | function | `is_tool_allowed` | `(tool, *, role, mode)` | True hvis `tool` må kaldes af (rolle, mode). | [src](../../../core/services/permission_engine.py#L127) |
 | function | `requires_workspace_jail` | `(tool, *, role, mode)` | True hvis tool-kaldet skal path-jailes til brugerens eget workspace. | [src](../../../core/services/permission_engine.py#L132) |
 | function | `_all_member_tool_names` | `()` | Alle navne på tværs af member-lister — til drift-test mod registry. | [src](../../../core/services/permission_engine.py#L143) |
-
-## `core/services/personal_project.py`
-_Personal Project — noget der er hans._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/personal_project.py#L56) |
-| function | `_ensure_tables` | `()` | — | [src](../../../core/services/personal_project.py#L60) |
-| function | `_tokens` | `(text)` | — | [src](../../../core/services/personal_project.py#L106) |
-| function | `detect_nomination_candidates` | `(*, lookback_days=…)` | Find themes that have circulated enough to become a nomination. | [src](../../../core/services/personal_project.py#L113) |
-| function | `propose_nomination` | `()` | Ask: "This theme has circulated N times — is it your project?" | [src](../../../core/services/personal_project.py#L192) |
-| function | `declare_project` | `(*, name, why_mine=…, description=…, from_proposal_id=…)` | Jarvis declares (or user offers him to accept) a new active project. | [src](../../../core/services/personal_project.py#L276) |
-| function | `pause_project` | `(*, project_id, reason=…)` | — | [src](../../../core/services/personal_project.py#L356) |
-| function | `resume_project` | `(*, project_id)` | — | [src](../../../core/services/personal_project.py#L380) |
-| function | `complete_project` | `(*, project_id, outcome_note=…)` | — | [src](../../../core/services/personal_project.py#L405) |
-| function | `add_journal_entry` | `(*, project_id, entry_text, source=…, mood_tone=…)` | Add a journal entry. No approval required — it's his space. | [src](../../../core/services/personal_project.py#L438) |
-| function | `list_journal_entries` | `(*, project_id, limit=…)` | — | [src](../../../core/services/personal_project.py#L489) |
-| function | `advance_active_project` | `()` | Autonomous advancement — call from idle heartbeat. Writes a new | [src](../../../core/services/personal_project.py#L504) |
-| function | `get_project` | `(*, project_id)` | — | [src](../../../core/services/personal_project.py#L574) |
-| function | `get_active_project` | `()` | — | [src](../../../core/services/personal_project.py#L583) |
-| function | `get_latest_proposal` | `()` | — | [src](../../../core/services/personal_project.py#L593) |
-| function | `list_projects` | `(*, status=…, limit=…)` | — | [src](../../../core/services/personal_project.py#L603) |
-| function | `get_project_prompt_hint` | `()` | Quiet one-liner for prompt injection: what his current sag is. | [src](../../../core/services/personal_project.py#L622) |
-| function | `build_personal_project_surface` | `()` | — | [src](../../../core/services/personal_project.py#L633) |
 

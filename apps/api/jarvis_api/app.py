@@ -278,6 +278,17 @@ def create_app() -> FastAPI:
             start_mood_regulator_subscriber()
             start_semantic_indexer()
             start_heartbeat_scheduler()
+            # Cluster-familierne har deres EGEN løkke. De sad i den monolitiske
+            # heartbeat-sti som scheduleren blev lagt væk fra 18/5, og kørte derfor
+            # kun når act-fasen tilfældigvis fandt priorities. Se
+            # core/services/cluster_family_scheduler.py for hele historien.
+            try:
+                from core.services.cluster_family_scheduler import (
+                    start as start_cluster_family_scheduler,
+                )
+                start_cluster_family_scheduler()
+            except Exception as _exc:
+                logger.warning("cluster_family_scheduler failed at boot: %s", _exc)
             start_notification_bridge()
             start_scheduled_tasks_service()
             start_recurring_tasks_service()

@@ -4591,7 +4591,14 @@ async def _stream_visible_run(
                             })
                         followup_text = (followup_text + _resume_note).strip()
 
-                total_input_tokens = result.input_tokens * 2
+                # 2026-09-05: var `* 2` — et gaet om at der skete PRAECIS én
+                # foelge-runde. Maalt 4. september: 96 foerste-pas mod 380
+                # agentiske foelge-runder, altsaa ~4 pr. tur. Gaettet var baade
+                # for hoejt (ture uden foelge-runder) og for lavt (ture med ti).
+                # Runderne bogfoerer nu deres egne raekker i
+                # visible_followup_adapters, saa denne skal taelle FOERSTE pas
+                # og kun det — ellers tælles den ene runde to gange.
+                total_input_tokens = result.input_tokens
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
                 # 2026-06-13: denne agentiske completion-gren satte input/output
                 # men IKKE cache-vars — så cost-persistensen kastede

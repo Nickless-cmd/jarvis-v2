@@ -1018,6 +1018,39 @@ class OpenAICompatFollowupAdapter:
                 )
         except Exception:
             pass
+        # ── HOVEDBOGEN SÅ KUN HVER FEMTE KALD (2026-09-05) ───────────────────
+        # `record_cost` blev kaldt for FØRSTE pas, aldrig for de agentiske
+        # følge-runder. Målt 4. september: 96 første-pas mod 380 følge-runder
+        # til DeepSeek — hovedbogen kendte 20 % af kaldene. Hver runde sender
+        # HELE samtalen igen (op til 160k tokens), så de manglende 80 % er ikke
+        # småpenge: bogført $2,28 for 1.-5. sep, mens saldoen faldt ~$12.
+        # Uden dette er ethvert forbrugstal i Centralen 5× for lavt.
+        try:
+            from core.costing.ledger import record_cost
+            from core.services.llm_pricing import compute_cost_usd
+            _u = _usage or {}
+            _in = int(_u.get("prompt_tokens") or 0)
+            _out = int(_u.get("completion_tokens") or 0)
+            _hit = int(_u.get("prompt_cache_hit_tokens") or 0)
+            _miss = int(_u.get("prompt_cache_miss_tokens") or 0)
+            if _in or _out:
+                record_cost(
+                    lane="agentic_round",
+                    provider=self.provider_id,
+                    model=model,
+                    input_tokens=_in,
+                    output_tokens=_out,
+                    cache_hit_tokens=_hit,
+                    cache_miss_tokens=_miss,
+                    cost_usd=compute_cost_usd(
+                        self.provider_id, model,
+                        cache_hit_tokens=_hit, cache_miss_tokens=_miss,
+                        output_tokens=_out, input_tokens=_in,
+                    ),
+                    run_id=str(run_id or ""),
+                )
+        except Exception as _cost_exc:
+            _log.debug("followup round-omkostning ikke bogfoert: %s", _cost_exc)
         # ── DSML-TAIL-FLUSH (Bjørn 4. jul — cutoff-spøgelset) ──────────────────
         # _strip_dsml_leak holder en HALE tilbage der KUNNE være starten på DSML-
         # openeren "<｜｜DSML…" — inkl. et BART "<" (den starter med "<"). Ved

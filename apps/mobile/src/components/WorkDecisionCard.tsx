@@ -12,6 +12,10 @@ interface Props {
 const LABEL: Record<DecisionAction, string> = {
   approve: 'Godkend',
   reject: 'Afvis',
+  // Et livsprojekt beder ikke om lov — det er noget han HAR sat sig for. Derfor
+  // «det er i orden», ikke «godkend»: man siger god for det, man tillader det ikke.
+  // Uden den knap kunne man kun forholde sig afvisende til hans hensigter.
+  endorse: 'Det er i orden',
   abandon: 'Læg den fra dig'
 }
 

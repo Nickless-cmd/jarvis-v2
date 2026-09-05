@@ -68,6 +68,14 @@ describe('fetchDecisions', () => {
     expect(res.items[0]!.actions).toEqual(['abandon'])
   })
 
+  it('beholder BEGGE svarmuligheder på et livsprojekt', async () => {
+    mockFetch({
+      items: [{ kind: 'life_project', id: 'l1', text: 't', actions: ['endorse', 'abandon'] }]
+    })
+    const res = await fetchDecisions(config)
+    expect(res.items[0]!.actions).toEqual(['endorse', 'abandon'])
+  })
+
   it('tåler et svar uden items og uden queue', async () => {
     mockFetch({ section: 'decisions' })
     const res = await fetchDecisions(config)
@@ -99,6 +107,14 @@ describe('actOnDecision', () => {
     const fn = mockFetch({ ok: true })
     await actOnDecision(config, init, 'reject')
     expect(String(fn.mock.calls[0][0])).toContain('/reject')
+  })
+
+  // Bjørn 5/9: «kan kun vælge læg den fra dig … mangler det er iorden knap».
+  // Uden en ja-rute kunne man kun forholde sig afvisende til hans livsprojekter.
+  it('vælger endorse-ruten når han siger god for et livsprojekt', async () => {
+    const fn = mockFetch({ ok: true })
+    await actOnDecision(config, { ...init, kind: 'life_project', id: 'l1' }, 'endorse')
+    expect(String(fn.mock.calls[0][0])).toContain('/mc/life-projects/l1/endorse')
   })
 
   it('vælger life-projects-ruten for abandon', async () => {

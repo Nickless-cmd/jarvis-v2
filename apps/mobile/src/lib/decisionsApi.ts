@@ -14,7 +14,7 @@ import { apiFetch } from './apiClient'
 import type { ApiConfig } from './types'
 
 export type DecisionKind = 'initiative' | 'life_project'
-export type DecisionAction = 'approve' | 'reject' | 'abandon'
+export type DecisionAction = 'approve' | 'reject' | 'endorse' | 'abandon'
 
 export interface Decision {
   kind: DecisionKind
@@ -37,11 +37,16 @@ export interface DecisionsResponse {
 const ACTION_PATHS: Record<string, string> = {
   'initiative:approve': '/mc/initiatives/{id}/approve',
   'initiative:reject': '/mc/initiatives/{id}/reject',
+  'life_project:endorse': '/mc/life-projects/{id}/endorse',
   'life_project:abandon': '/mc/life-projects/{id}/abandon'
 }
 
+const _ACTIONS = ['approve', 'reject', 'endorse', 'abandon'] as const
+
 function asAction(raw: unknown): DecisionAction | null {
-  return raw === 'approve' || raw === 'reject' || raw === 'abandon' ? raw : null
+  return (_ACTIONS as readonly string[]).includes(String(raw))
+    ? (raw as DecisionAction)
+    : null
 }
 
 function normalise(raw: Record<string, unknown>): Decision | null {

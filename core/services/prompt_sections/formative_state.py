@@ -85,6 +85,7 @@ def _uafsluttet() -> str:
     """
     dele: list[str] = []
     lektie = ""
+    brud_grund = ""
     try:
         from core.services.regret_engine import build_regret_engine_surface
         r = build_regret_engine_surface() or {}
@@ -100,8 +101,11 @@ def _uafsluttet() -> str:
     try:
         from core.services.rupture_repair import build_rupture_repair_surface
         rs = (build_rupture_repair_surface() or {}).get("stats") or {}
-        aabne = int(rs.get("open_count") or 0)
-        forsoeg = int(rs.get("repair_attempts") or rs.get("attempts") or 0)
+        brud_grund = str((rs.get("top_open") or {}).get("reason") or "").strip()
+        # Feltet hedder open_ruptures, ikke open_count (som i regret-fladen).
+        # De to overflader har hver sin navngivning; verificeret mod live-DB.
+        aabne = int(rs.get("open_ruptures") or rs.get("open_count") or 0)
+        forsoeg = int(rs.get("repair_attempts") or 0)
         if aabne:
             dele.append(
                 "%d uhelede brud med Bjørn (%s)"
@@ -112,6 +116,8 @@ def _uafsluttet() -> str:
     if not dele:
         return ""
     linje = "Uafsluttet: " + " · ".join(dele)
+    if brud_grund:
+        linje += "\n  Bruddet handler om: «%s»" % _kort(brud_grund, 90)
     if lektie:
         linje += "\n  Den tungeste lærte dig: «%s»" % _kort(lektie, 100)
     return linje

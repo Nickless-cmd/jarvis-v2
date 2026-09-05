@@ -31,6 +31,8 @@ interface StreamContextValue {
       providerChoice?: string
       attachmentIds?: string[]
       mode?: 'chat' | 'cowork' | 'code'
+      thinkingMode?: 'think' | 'fast'
+      approvalMode?: 'ask' | 'trust'
     }
   ) => void
   stop: (config: ApiConfig) => Promise<void>
@@ -183,6 +185,8 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             sessionId,
             message,
             mode: opts?.mode ?? 'chat',
+            thinkingMode: opts?.thinkingMode,
+            approvalMode: opts?.approvalMode,
             model: opts?.model,
             providerChoice: opts?.providerChoice,
             attachmentIds: opts?.attachmentIds

@@ -13,7 +13,7 @@ import { ErrorCard } from '../components/ErrorCard'
 import { GreetingHero } from '../components/GreetingHero'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
 import { ScrollToBottom } from '../components/ScrollToBottom'
-import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
+import { ModelPicker, type ApprovalMode, type ModelChoice, type ThinkingMode } from '../components/ModelPicker'
 import { SidePanel } from '../components/SidePanel'
 import { SettingsScreen } from './SettingsScreen'
 import { CameraCapture, type CapturedPhoto } from './CameraCapture'
@@ -155,6 +155,8 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [model, setModel] = useState<ModelChoice | null>(null)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
   const [researchMode, setResearchMode] = useState(false)
+  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>('think')
+  const [approvalMode, setApprovalMode] = useState<ApprovalMode>('ask')
   // FEATURE 1: gendan sidst valgte model på tværs af app-genstart. Sættes
   // ubetinget når der findes et gemt valg — whoami-defaulten bruger `cur ??`
   // og bevarer derfor det gemte uanset rækkefølge.
@@ -332,7 +334,12 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     const attachmentIds = pendingAttachments.length
       ? pendingAttachments.map((a) => a.id)
       : undefined
-    stream.send(config, sessionId, outgoingChatText(text, researchMode), { ...modelOpts(), attachmentIds })
+    stream.send(config, sessionId, outgoingChatText(text, researchMode), {
+      ...modelOpts(),
+      attachmentIds,
+      thinkingMode,
+      approvalMode
+    })
     setPendingAttachments([])
     if (researchMode) setResearchMode(false)
   }
@@ -567,6 +574,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         open={modelPickerOpen}
         choices={modelChoices}
         selectedLabel={model?.label}
+        thinkingMode={thinkingMode}
+        approvalMode={approvalMode}
+        onThinkingModeChange={setThinkingMode}
+        onApprovalModeChange={setApprovalMode}
         onSelect={(m) => {
           setModel(m)
           void saveModelChoice(m)

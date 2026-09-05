@@ -8,6 +8,9 @@ export interface ModelChoice {
   label: string
 }
 
+export type ThinkingMode = 'think' | 'fast'
+export type ApprovalMode = 'ask' | 'trust'
+
 /**
  * Bottom-sheet model-vælger. Rolle-bevidst indhold leveres af kalderen:
  * owner får hele paletten, member får kun Standard/Pro (= ollama flash/pro).
@@ -16,12 +19,20 @@ export function ModelPicker({
   open,
   choices,
   selectedLabel,
+  thinkingMode,
+  approvalMode,
+  onThinkingModeChange,
+  onApprovalModeChange,
   onSelect,
   onClose
 }: {
   open: boolean
   choices: ModelChoice[]
   selectedLabel?: string
+  thinkingMode?: ThinkingMode
+  approvalMode?: ApprovalMode
+  onThinkingModeChange?: (mode: ThinkingMode) => void
+  onApprovalModeChange?: (mode: ApprovalMode) => void
   onSelect: (c: ModelChoice) => void
   onClose: () => void
 }) {
@@ -33,6 +44,44 @@ export function ModelPicker({
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.grabber} />
           <Text style={styles.title}>Model</Text>
+          {onThinkingModeChange ? (
+            <>
+              <Text style={styles.subTitle}>Tænkning</Text>
+              <View style={styles.segmentRow}>
+                {(['think', 'fast'] as ThinkingMode[]).map((m) => (
+                  <Pressable
+                    key={m}
+                    accessibilityRole="button"
+                    onPress={() => onThinkingModeChange(m)}
+                    style={[styles.segment, thinkingMode === m && styles.segmentOn]}
+                  >
+                    <Text style={[styles.segmentText, thinkingMode === m && styles.segmentTextOn]}>
+                      {m === 'think' ? 'Think' : 'Fast'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : null}
+          {onApprovalModeChange ? (
+            <>
+              <Text style={styles.subTitle}>Godkendelser</Text>
+              <View style={styles.segmentRow}>
+                {(['ask', 'trust'] as ApprovalMode[]).map((m) => (
+                  <Pressable
+                    key={m}
+                    accessibilityRole="button"
+                    onPress={() => onApprovalModeChange(m)}
+                    style={[styles.segment, approvalMode === m && styles.segmentOn]}
+                  >
+                    <Text style={[styles.segmentText, approvalMode === m && styles.segmentTextOn]}>
+                      {m === 'ask' ? 'Ask' : 'Trust'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : null}
           <FlatList
             data={choices}
             keyExtractor={(c) => c.label}
@@ -83,6 +132,19 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     marginBottom: tokens.spacing.md
   },
   title: { color: tokens.color.fg3, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginBottom: tokens.spacing.sm },
+  subTitle: { color: tokens.color.fg3, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', marginTop: tokens.spacing.sm, marginBottom: 6 },
+  segmentRow: { flexDirection: 'row', gap: tokens.spacing.sm, marginBottom: tokens.spacing.xs },
+  segment: {
+    flex: 1,
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.color.bg2
+  },
+  segmentOn: { backgroundColor: tokens.color.accent },
+  segmentText: { color: tokens.color.fg2, fontWeight: '700' },
+  segmentTextOn: { color: tokens.color.bg0 },
   list: { flexGrow: 0 },
   row: {
     flexDirection: 'row',

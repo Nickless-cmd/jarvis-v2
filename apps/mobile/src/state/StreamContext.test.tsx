@@ -40,6 +40,7 @@ function Probe() {
       <Text>{state.activeRunId ?? 'no-run'}</Text>
       <Text>{approval?.message ?? 'no-approval'}</Text>
       <Text onPress={() => send(config, 'session-1', 'Hej Jarvis')}>send</Text>
+      <Text onPress={() => send(config, 'session-1', 'Hej hurtigt', { thinkingMode: 'fast', approvalMode: 'trust' })}>send-controlled</Text>
       <Text onPress={() => void stop(config)}>stop</Text>
       <Text onPress={() => void approve(config)}>approve</Text>
       <Text onPress={() => void deny(config)}>deny</Text>
@@ -55,6 +56,27 @@ beforeEach(() => {
   })
   mockApproveTool.mockResolvedValue(undefined)
   mockDenyTool.mockResolvedValue(undefined)
+})
+
+it('videresender per-turn thinking og approval controls', async () => {
+  const screen = await render(
+    <StreamProvider>
+      <Probe />
+    </StreamProvider>
+  )
+
+  await act(async () => {
+    screen.getByText('send-controlled').props.onPress()
+  })
+
+  expect(mockStartStream).toHaveBeenCalledWith(
+    expect.objectContaining({
+      message: 'Hej hurtigt',
+      thinkingMode: 'fast',
+      approvalMode: 'trust'
+    }),
+    expect.any(Object)
+  )
 })
 
 it('appends a local message and updates state from stream events', async () => {

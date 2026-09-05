@@ -29,7 +29,7 @@ def _active(monkeypatch, state):
     ("deepseek-v4-flash-vision-exp", True),
     ("deepseek-v4-flash", False),
     ("deepseek-v4-pro", False),
-    ("gemma4:31b-cloud", False),
+    ("gemma4:31b-cloud", True),   # familien er multimodal (opdateret 5/9: navnet alene betyder syn)
     ("qwen2.5vl:3b", True),
     ("llava:13b", True),
     ("", False),

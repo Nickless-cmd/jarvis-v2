@@ -48,7 +48,9 @@ _MAX_TOKENS = 400
 # Modeller der selv kan se. En model uden syn kan ikke laane oejne af en tur —
 # saa falder vi tilbage til den konfigurerede vision-model.
 _VISION_CAPABLE = frozenset({"deepseek-v4-flash-vision-exp"})
-_SEEING_NAME_RE = re.compile(r"vision|llava|(?:^|[\d\-_.])vl(?:[:\-_.\d]|$)")
+# gemma4-familien er multimodal i praksis — gemma4:31b-cloud laeste en statusskaerm
+# korrekt 5/9 (se docstring ovenfor), saa navnet alene betyder syn.
+_SEEING_NAME_RE = re.compile(r"vision|llava|gemma4|(?:^|[\d\-_.])vl(?:[:\-_.\d]|$)")
 
 
 def model_can_see(model: str) -> bool:

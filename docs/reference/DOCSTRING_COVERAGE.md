@@ -1808,7 +1808,7 @@ Generated from source. 6739/13510 functions/methods documented (49%). The list b
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)
 - `core/services/visible_stream_gate.py` :: `exit_visible_stream` (L44)
-- `core/services/vision_backend.py` :: `build_vision_backend_surface` (L190)
+- `core/services/vision_backend.py` :: `build_vision_backend_surface` (L192)
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)

@@ -28,6 +28,19 @@ def test_the_model_name_decides_when_nothing_is_configured(no_config, model, exp
     assert VB.resolve_vision_provider(model) == expected
 
 
+@pytest.mark.parametrize("model,expected", [
+    ("gemma4:31b-cloud", True),      # familien er multimodal — navnet alene betyder syn
+    ("gemma4:7b", True),
+    ("deepseek-v4-flash-vision-exp", True),
+    ("qwen2.5vl:3b", True),
+    ("glm-5.3-flash:cloud", False),  # den blinde variant
+    ("gemma3:27b", False),           # kun gemma4-familien
+    ("", False),
+])
+def test_which_models_can_see(model, expected):
+    assert VB.model_can_see(model) == expected
+
+
 def test_an_explicit_choice_wins(monkeypatch):
     monkeypatch.setattr("core.runtime.secrets.read_runtime_key",
                         lambda key, *a, **k: "deepseek" if key == "vision_provider" else None)

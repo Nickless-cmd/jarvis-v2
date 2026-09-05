@@ -1,4 +1,7 @@
-"""Tests for MEMORY.md / USER.md path canonicalization in write/edit tools."""
+"""Tests for MEMORY.md / USER.md path canonicalization in write/edit tools.
+
+Kanonisk mappe = den per-bruger workspace prompten laeser fra (2026-09-05).
+Foer da pegede skrivningerne paa shared/, som prompten aldrig laeser."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,6 +16,13 @@ from core.tools import simple_tools
 def workspace(tmp_path, monkeypatch):
     ws = tmp_path / "workspaces" / "default"
     ws.mkdir(parents=True)
+    # 2026-09-05: kanoniseringen slaar ikke laengere op i simple_tools.WORKSPACE_DIR
+    # (= shared_dir()), men i den PER-BRUGER workspace — samme opslag som prompten
+    # bruger til at LAESE. Kontrakten her er uaendret: en forkert sti omdirigeres til
+    # den kanoniske fil. Kun hvilken mappe der ER kanonisk har flyttet sig, og det er
+    # hele pointen. Se tests/test_identity_file_write_path.py.
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    monkeypatch.setattr("core.runtime.workspace_paths.workspace_dir_or_owner", lambda: ws)
     monkeypatch.setattr(simple_tools, "WORKSPACE_DIR", ws)
     monkeypatch.setattr(simple_tools, "_AUTO_APPROVE_WRITE_PATHS", {
         str(ws / "MEMORY.md"), str(ws / "USER.md"),

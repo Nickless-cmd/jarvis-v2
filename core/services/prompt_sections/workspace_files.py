@@ -18,7 +18,6 @@ shared-versionen vinde. Uden denne fallback læste vi tynde stubs for
 SOUL/IDENTITY/MILESTONES selvom rige versioner lå i shared/.
 """
 from __future__ import annotations
-import os
 from pathlib import Path
 
 # Filer hvor stub-fallback giver mening — identitets-filer som forventes
@@ -63,7 +62,11 @@ def _resolve_with_shared_fallback(path: Path) -> Path:
         own = _effective_size(path)
         if own >= _STUB_THRESHOLD_BYTES:
             return path  # workspace har rigt indhold — brug det
-        shared_dir = Path(os.environ.get("HOME", "/root")) / ".jarvis-v2" / "shared"
+        # 2026-09-05: var haardkodet til $HOME/.jarvis-v2/shared og ignorerede
+        # dermed JARVIS_HOME, som alt andet i workspace_paths respekterer. Det
+        # gjorde laese- og skrivevejen uenige saa snart JARVIS_HOME var sat.
+        from core.runtime.workspace_paths import shared_dir as _shared_dir
+        shared_dir = _shared_dir()
         shared_path = shared_dir / filename
         if shared_path.exists() and shared_path.stat().st_size > own:
             return shared_path

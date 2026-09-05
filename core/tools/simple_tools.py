@@ -653,12 +653,41 @@ _BLOCKED_WRITE_PATTERNS = [
 _CANONICAL_WORKSPACE_FILES = {"MEMORY.md", "USER.md"}
 
 
+def canonical_identity_file_path(name: str) -> Path:
+    """Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE.
+
+    2026-09-05: `WORKSPACE_DIR = shared_dir()` sendte enhver skrivning af
+    MEMORY.md/USER.md til `~/.jarvis-v2/shared/`, mens prompten læser
+    `workspaces/<bruger>/` (kun med fallback til shared hvis workspace-kopien er
+    en stub under 500 bytes). Resultat: Jarvis' egne redigeringer af sin
+    brugerprofil landede i en fil han aldrig læser. Målt samme dag var
+    MEMORY.md drevet fra hinanden — 24 linjer fandtes kun i shared-kopien.
+    `workspace_paths` siger det selv i sin egen docstring: shared/ er til
+    SOUL.md og IDENTITY.md; MEMORY.md og USER.md er per-relation.
+
+    Vi genbruger LÆSE-siden fremfor at gentage reglen, så de to ikke kan drive
+    fra hinanden igen (tests/test_identity_file_write_path.py holder på det).
+    """
+    from core.runtime.workspace_paths import workspace_dir_or_owner
+    from core.services.prompt_sections.workspace_files import (
+        _resolve_with_shared_fallback,
+    )
+    try:
+        base = workspace_dir_or_owner()
+    except Exception:
+        base = WORKSPACE_DIR
+    try:
+        return _resolve_with_shared_fallback(Path(base) / name).resolve()
+    except Exception:
+        return (Path(base) / name).resolve()
+
+
 def _canonicalize_workspace_target(target: Path) -> tuple[Path, str | None]:
     """If target's basename is a canonical workspace file, force it to the
     runtime workspace path. Returns (resolved_target, redirected_from_or_None).
     """
     if target.name in _CANONICAL_WORKSPACE_FILES:
-        canonical = (WORKSPACE_DIR / target.name).resolve()
+        canonical = canonical_identity_file_path(target.name)
         if target != canonical:
             return canonical, str(target)
     return target, None

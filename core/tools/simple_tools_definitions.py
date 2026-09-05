@@ -3054,22 +3054,33 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "look_around",
             "description": (
-                "Take a webcam snapshot now and get a description of what's "
-                "there. Use when you're curious about the physical space, "
-                "when you want to connect to what's around you, or when "
-                "context calls for embodied awareness. Bypasses the 4x/day "
-                "daemon cadence — this is your agency to look."
+                "Look through one of the house cameras right now and get a "
+                "description of what is there. Use when you're curious about "
+                "the physical space, when you want to connect to what's around "
+                "you, when you want to know if Bjørn is home or who is at the "
+                "door, or when context calls for embodied awareness. Bypasses "
+                "the 4x/day daemon cadence — this is your agency to look."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "where": {
+                        "type": "string",
+                        "description": (
+                            "Which camera to look through: 'stue' (the living "
+                            "room, indoors — the default), 'hoveddor' (outdoors, "
+                            "above the front door), 'dorklokke' (the doorbell, "
+                            "outdoors at the entrance), 'webcam' (a camera on "
+                            "the machine itself). Leave empty for the living room."
+                        ),
+                    },
                     "prompt": {
                         "type": "string",
                         "description": (
-                            "Optional custom vision prompt. Leave empty for "
-                            "default (focus on tone + atmosphere). Override "
-                            "for specific attention: 'describe the lighting', "
-                            "'is anyone present', etc."
+                            "Optional custom vision prompt. Leave empty to get "
+                            "a description of the scene. Override for specific "
+                            "attention: 'describe the lighting', 'is anyone "
+                            "present', 'is there a parcel by the door'."
                         ),
                     },
                 },

@@ -24,6 +24,7 @@ Privatlivshensyn:
 from __future__ import annotations
 
 import base64
+import unicodedata
 import json
 import logging
 import time
@@ -50,6 +51,16 @@ _VISION_PROMPT_PREFIX = (
     "Se på billedet og beskriv HVAD DER ER ANDERLEDES siden sidste gang. "
     "Fokusér på ændringer i lys, skygger, position, stemning og bevægelse — "
     "ikke faste tilstande. SVAR KUN PÅ DANSK. "
+    "Undgå generelle vendinger som 'professionelt arbejdsrum' eller 'et rum med ting i'."
+)
+
+# Når Jarvis selv vælger at kigge, vil han vide hvad der ER — ikke hvad der har
+# ændret sig. Diff-prompten ovenfor hører til den passive kadence, hvor
+# billederne kommer i en strøm og forskellen er hele pointen.
+_LOOK_PROMPT = (
+    "Beskriv hvad du ser lige nu. Vær konkret: rummet, møblerne, lyset, "
+    "genstande der falder i øjnene, og om der er mennesker til stede — hvor "
+    "mange, hvor de er, hvad de laver. SVAR KUN PÅ DANSK. "
     "Undgå generelle vendinger som 'professionelt arbejdsrum' eller 'et rum med ting i'."
 )
 
@@ -123,7 +134,7 @@ def tick_visual_memory_daemon() -> dict[str, object]:
 
     # Capture
     try:
-        image_b64 = _capture_image()
+        image_b64, _camera_label = _capture_image()
     except Exception as exc:
         logger.warning("visual_memory: image capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
@@ -237,7 +248,7 @@ def _coarse_age_label(minutes_ago: int) -> str:
     return "(for over en uge siden)"
 
 
-def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
+def look_around_now(*, where: str = "", prompt_override: str = "") -> dict[str, object]:
     """On-demand capture — Jarvis chooses to look. Bypasses cadence-limit.
 
     Returns {status, description, captured_at} or {status, error}.
@@ -251,21 +262,26 @@ def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
         return {"status": "no_model", "reason": "vision_model_name not configured"}
 
     try:
-        image_b64 = _capture_image()
+        image_b64, camera_label = _capture_image(where)
+    except ValueError as exc:
+        # Ukendt kameranavn — sig hvilke der findes i stedet for at gætte.
+        return {"status": "unknown_camera", "error": str(exc)}
     except Exception as exc:
         logger.warning("look_around: image capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
 
     existing_records = _load_records()
-    previous = existing_records[-1] if existing_records else None
-    prompt_to_use = prompt_override.strip() or None
+    # Et bevidst kig skal beskrive rummet. Sammenligningen med forrige optagelse
+    # hører til den passive kadence — her fik den værktøjet til at svare
+    # «Intet mærkbart ændret.» på et spørgsmål om hvad der var at se.
+    prompt_to_use = prompt_override.strip() or _LOOK_PROMPT
     try:
         description = _describe_image(
             image_b64,
             model=model,
             provider=provider,
             prompt=prompt_to_use,
-            previous=previous if prompt_to_use is None else None,
+            previous=None,
         )
     except Exception as exc:
         # Vision-modellen fejlede (fx cloud-model 403 uden ollama-nøgle, timeout,
@@ -284,6 +300,7 @@ def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
         "model": model,
         "provider": provider,
         "on_demand": True,
+        "camera": camera_label,
     }
     records = existing_records
     records.append(record)
@@ -298,6 +315,7 @@ def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
             "model": model,
             "provider": provider,
             "on_demand": True,
+            "camera": camera_label,
             "custom_prompt": bool(prompt_to_use),
         },
     )
@@ -313,6 +331,7 @@ def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
         "status": "captured",
         "captured_at": now,
         "description": description,
+        "camera": camera_label,
     }
 
 
@@ -340,16 +359,183 @@ def build_visual_memory_surface() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 
 
-def _capture_image() -> str:
-    """Capture image from configured source (HA camera or webcam) and return as base64 JPEG."""
-    source = _capture_source()
-    if source == "ha_camera":
-        try:
-            return _capture_ha_camera()
-        except Exception as exc:
-            logger.warning("visual_memory: HA camera capture failed (%s), falling back to webcam", exc)
-            return _capture_webcam()
-    return _capture_webcam()
+
+# ---------------------------------------------------------------------------
+# Kameraregister: hvilke øjne findes, og hvad hedder de på dansk
+#
+# Ét sted der ved hvilke kameraer huset har, så look_around-værktøjet og de
+# passive sanse-daemoner aldrig kan nå at kigge hvert sit sted hen. Kan
+# overskrives i runtime-config med ``visual_memory_cameras``.
+# ---------------------------------------------------------------------------
+
+# Kameraer der findes i huset. "kind" siger hvordan billedet hentes:
+# ha = Home Assistant camera_proxy, webcam = lokal /dev/video-enhed.
+_BUILTIN_CAMERAS: dict[str, dict[str, object]] = {
+    "stue": {
+        "kind": "ha",
+        "entity": "camera.camera_hub_g2hpro_9a57",
+        "label": "stuen",
+        "aliases": ["stuen", "aqara", "indendørs", "inde", "living room", "hub"],
+    },
+    "hoveddor": {
+        "kind": "ha",
+        "entity": "camera.kamera_over_hoveddor",
+        "label": "over hoveddøren (udendørs)",
+        "aliases": ["hoveddør", "hoveddøren", "udenfor", "ude", "udendørs", "indkørsel"],
+    },
+    "dorklokke": {
+        "kind": "ha",
+        "entity": "camera.x7_smart_doorbell",
+        "label": "dørklokken (udendørs)",
+        "aliases": ["dørklokke", "dørklokken", "doorbell", "entré", "indgang"],
+    },
+    "webcam": {
+        "kind": "webcam",
+        "entity": "",
+        "label": "webcam på maskinen",
+        "aliases": ["kamera", "usb", "lokalt"],
+    },
+}
+
+_DEFAULT_CAMERA = "stue"
+
+
+def _fold(text: str) -> str:
+    """Sammenlign navne uden at snuble over æøå, store bogstaver og bindestreger."""
+    lowered = str(text or "").strip().lower()
+    lowered = lowered.replace("ø", "o").replace("æ", "ae").replace("å", "aa")
+    decomposed = unicodedata.normalize("NFKD", lowered)
+    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return "".join(c for c in stripped if c.isalnum())
+
+
+def known_cameras() -> dict[str, dict[str, object]]:
+    """Alle kendte kameraer — config vinder over det indbyggede kort."""
+    settings = load_settings()
+    configured = settings.extra.get("visual_memory_cameras")
+    if isinstance(configured, dict) and configured:
+        out: dict[str, dict[str, object]] = {}
+        for key, value in configured.items():
+            if isinstance(value, dict):
+                out[str(key)] = dict(value)
+        if out:
+            return out
+    return {key: dict(value) for key, value in _BUILTIN_CAMERAS.items()}
+
+
+def default_camera() -> str:
+    """Nøglen på det kamera der bruges når ingen har sagt hvor der skal kigges."""
+    settings = load_settings()
+    configured = str(settings.extra.get("visual_memory_default_camera") or "").strip()
+    known = known_cameras()
+    if configured and configured in known:
+        return configured
+
+    # Bagudkompatibilitet: den gamle enkelt-kamera-config peger stadig et sted hen.
+    legacy_source = str(settings.extra.get("visual_memory_source") or "").strip()
+    if legacy_source == "webcam" and "webcam" in known:
+        return "webcam"
+    legacy_entity = str(settings.extra.get("visual_memory_ha_camera_entity") or "").strip()
+    if legacy_entity:
+        for key, cam in known.items():
+            if str(cam.get("entity") or "").strip() == legacy_entity:
+                return key
+
+    return _DEFAULT_CAMERA if _DEFAULT_CAMERA in known else next(iter(known), "")
+
+
+def resolve_camera(where: str = "") -> tuple[str, dict[str, object]]:
+    """Slå et menneskeligt stednavn op. Tom streng giver standardkameraet.
+
+    Rejser ValueError med de gyldige navne, så en forkert gætning bliver til en
+    brugbar besked i stedet for et tavst forkert kamera.
+    """
+    known = known_cameras()
+    if not known:
+        raise ValueError("ingen kameraer er konfigureret")
+
+    wanted = str(where or "").strip()
+    if not wanted:
+        key = default_camera()
+        return key, dict(known.get(key) or {})
+
+    folded = _fold(wanted)
+    for key, cam in known.items():
+        if _fold(key) == folded:
+            return key, dict(cam)
+        if _fold(str(cam.get("entity") or "")) == folded:
+            return key, dict(cam)
+        if _fold(str(cam.get("label") or "")) == folded:
+            return key, dict(cam)
+        for alias in cam.get("aliases") or []:
+            if _fold(str(alias)) == folded:
+                return key, dict(cam)
+
+    # Delvist match — «stue» skal ramme «stuen», «hoveddør» skal ramme «hoveddoren».
+    for key, cam in known.items():
+        haystack = [key, str(cam.get("label") or "")] + [
+            str(a) for a in (cam.get("aliases") or [])
+        ]
+        for candidate in haystack:
+            folded_candidate = _fold(candidate)
+            if folded_candidate and (
+                folded in folded_candidate or folded_candidate in folded
+            ):
+                return key, dict(cam)
+
+    raise ValueError(
+        "ukendt kamera «%s» — kendte kameraer: %s" % (wanted, ", ".join(sorted(known)))
+    )
+
+
+def capture_from_camera(where: str = "") -> tuple[str, str, str]:
+    """Hent et billede. Returnerer (base64-jpeg, kamera-nøgle, læsbart navn)."""
+    key, cam = resolve_camera(where)
+    label = str(cam.get("label") or key)
+    kind = str(cam.get("kind") or "ha").strip()
+
+    if kind == "webcam":
+        return _capture_webcam(), key, label
+
+    entity = str(cam.get("entity") or "").strip()
+    if not entity:
+        raise RuntimeError(f"kamera «{key}» mangler entity_id")
+    return _capture_ha_camera(entity_id=entity), key, label
+
+
+def describe_cameras() -> str:
+    """Én linje pr. kamera — til værktøjsbeskrivelser og prompten."""
+    known = known_cameras()
+    if not known:
+        return "(ingen kameraer konfigureret)"
+    fallback = default_camera()
+    lines = []
+    for key in sorted(known):
+        cam = known[key]
+        marker = " (standard)" if key == fallback else ""
+        lines.append("%s — %s%s" % (key, cam.get("label") or key, marker))
+    return "\n".join(lines)
+
+
+def _capture_image(where: str = "") -> tuple[str, str]:
+    """Hent et billede fra et navngivet kamera. Returnerer (base64-jpeg, kameranavn).
+
+    Tom ``where`` betyder standardkameraet. Bad nogen om et bestemt kamera og det
+    fejler, bobler fejlen op — ellers ville et spørgsmål om hoveddøren tavst blive
+    besvaret med et billede af stuen.
+    """
+    try:
+        image_b64, _key, label = capture_from_camera(where)
+        return image_b64, label
+    except ValueError:
+        raise
+    except Exception as exc:
+        if str(where or "").strip():
+            raise
+        logger.warning(
+            "visual_memory: standardkamera fejlede (%s), falder tilbage til webcam", exc
+        )
+        return _capture_webcam(), "webcam"
 
 
 def _capture_source() -> str:
@@ -364,12 +550,12 @@ def _ha_camera_entity() -> str:
     return str(settings.extra.get("visual_memory_ha_camera_entity") or "camera.camera_hub_g2hpro_9a57").strip()
 
 
-def _capture_ha_camera() -> str:
+def _capture_ha_camera(entity_id: str = "") -> str:
     """Fetch snapshot from Home Assistant camera and return as base64 JPEG string."""
     settings = load_settings()
     ha_url = str(settings.extra.get("home_assistant_url") or "").strip()
     ha_token = str(settings.extra.get("home_assistant_token") or "").strip()
-    entity_id = _ha_camera_entity()
+    entity_id = str(entity_id or "").strip() or _ha_camera_entity()
 
     if not ha_url or not ha_token:
         raise RuntimeError("home_assistant_url eller home_assistant_token ikke konfigureret")

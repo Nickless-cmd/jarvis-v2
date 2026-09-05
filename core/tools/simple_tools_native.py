@@ -2178,25 +2178,29 @@ def _exec_my_project_declare(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_look_around(args: dict[str, Any]) -> dict[str, Any]:
-    """Take a webcam snapshot now and describe what's there via VLM.
+    """Look through one of the house cameras now and describe what's there.
 
     Jarvis chooses to look — bypasses the 4x/day daemon cadence. Use when
     curious, when you feel a need to connect to the physical space, or
     when context suggests "what is the room like right now".
 
     Args:
+        where: which camera — 'stue', 'hoveddor', 'dorklokke', 'webcam'.
+               Empty means the default (the living room).
         prompt: optional custom prompt (e.g., "focus on atmosphere",
-                "describe any person present", default: tone+atmosphere)
+                "describe any person present", default: describe the scene)
     """
     custom_prompt = str(args.get("prompt") or "").strip()
+    where = str(args.get("where") or "").strip()
     try:
         from core.services.visual_memory import look_around_now
-        result = look_around_now(prompt_override=custom_prompt)
+        result = look_around_now(where=where, prompt_override=custom_prompt)
         if result.get("status") == "captured":
             return {
                 "status": "ok",
                 "description": result.get("description"),
                 "captured_at": result.get("captured_at"),
+                "camera": result.get("camera"),
             }
         return {
             "status": "error",

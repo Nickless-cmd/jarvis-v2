@@ -120,3 +120,22 @@ class TestAugustRegression:
         })
         key = s.pattern_key("phrase", "det er ikke")
         assert detected[key]["corroborated"] is False
+
+
+def test_adfaerds_direktivet_siger_GOER_det_ikke_vaelg_en_anden_vej(monkeypatch):
+    """Direktivet står på prioritet 85 og surfacer hver heartbeat. Sekvens-
+    skabelonen sagde «vælg en anden tilgang» om et tomt løfte — forkert råd:
+    rettelsen er ikke en anden vej, den er at GØRE det han lige sagde."""
+    fanget = {}
+
+    def _fake_create(**kw):
+        fanget.update(kw)
+        return {"decision_id": "dec_test"}
+
+    import core.services.behavioral_decisions as bd
+    monkeypatch.setattr(bd, "create_decision", _fake_create)
+    monkeypatch.setattr(s, "_agent_smith_enforced", lambda: True)
+    s._execute_mint("behaviour:tomme løfter", "tomme løfter", "behaviour", 33.0)
+    assert "anden vej" not in fanget["trigger_cue"]
+    assert "anden tilgang" not in fanget["directive"]
+    assert "kald vaerktoejet" in fanget["trigger_cue"].lower()

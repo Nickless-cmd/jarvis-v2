@@ -385,7 +385,17 @@ def _execute_mint(key: str, label: str, kind: str, metric: float) -> str | None:
         return None
     try:
         from core.services.behavioral_decisions import create_decision
-        if kind == "phrase":
+        if kind == "behaviour":
+            # Adfaerd skal have sin EGEN ordlyd. Sekvens-skabelonen sagde «vaelg en
+            # anden tilgang» og «er der en anden vej?» om et tomt loefte — og det er
+            # ikke bare klodset, det er forkert raad paa prioritet 85: rettelsen er
+            # ikke en anden vej, den er at GOERE det han lige sagde.
+            directive = (f'Du har brudt "{label}" {int(metric)}× — annonceret en handling '
+                         f'og ikke kaldt et vaerktoej. Naeste gang du siger du vil noget: '
+                         f'gør det i samme tur, eller sig ærligt hvorfor du ikke kan.')
+            cue = (f'Før du skriver "jeg tjekker" / "lad mig se" — kald vaerktoejet i '
+                   f'SAMME tur, ellers lad vaere med at love det.')
+        elif kind == "phrase":
             directive = (f'Stop med at gentage frasen "{label}" — Agent Smith har målt den '
                          f'{int(metric)}× i dit nylige output. Bryd mønstret aktivt, ikke bare i ord.')
             cue = f'Før du skriver "{label}" igen — stop og vælg en anden formulering eller handling.'

@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-05 — 439 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-05 — 442 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -384,6 +384,7 @@
 | `write_file` | native | yes |
 | `write_memory_topic` | native | no |
 | `operator_bash` | operator | yes |
+| `operator_bash_output` | operator | no |
 | `operator_bash_session_close` | operator | no |
 | `operator_bash_session_list` | operator | no |
 | `operator_bash_session_open` | operator | no |
@@ -407,6 +408,7 @@
 | `operator_keyboard_press` | operator | no |
 | `operator_keyboard_type` | operator | no |
 | `operator_kill_process` | operator | yes |
+| `operator_kill_shell` | operator | no |
 | `operator_launch_app` | operator | yes |
 | `operator_list_dir` | operator | no |
 | `operator_list_processes` | operator | no |
@@ -428,6 +430,7 @@
 | `operator_read_file` | operator | no |
 | `operator_record_audio` | operator | yes |
 | `operator_reminder` | operator | no |
+| `operator_run_in_background` | operator | no |
 | `operator_scheduled_cancel` | operator | no |
 | `operator_scheduled_list` | operator | no |
 | `operator_screen_size` | operator | no |

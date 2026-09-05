@@ -254,6 +254,61 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_run_in_background",
+            "description": (
+                "Start a long-running command on the OPERATOR'S DESKTOP without "
+                "blocking the turn. Returns {shell_id, pid}. Poll it with "
+                "operator_bash_output, stop it with operator_kill_shell. The "
+                "process is detached: it survives runtime restarts."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "Shell command to run in the background"},
+                    "cwd": {"type": "string", "description": "Working directory (optional)"},
+                },
+                "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_bash_output",
+            "description": (
+                "Read NEW output from a background shell on the operator's "
+                "desktop. Pass the `offset` from the previous call to read "
+                "incrementally. Returns {output, offset, running}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "shell_id": {"type": "string", "description": "From operator_run_in_background"},
+                    "since": {"type": "integer", "description": "Byte offset from the previous call (default 0)"},
+                },
+                "required": ["shell_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_kill_shell",
+            "description": (
+                "Stop a background shell on the operator's desktop. Idempotent."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "shell_id": {"type": "string", "description": "From operator_run_in_background"},
+                },
+                "required": ["shell_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "operator_multi_edit",
             "description": (
                 "Several find-and-replace edits in ONE file on the OPERATOR'S "

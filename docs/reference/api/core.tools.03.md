@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/state_flag_tools.py`
+_State-flag tools (leak-kandidat #1, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_uid` | `()` | — | [src](../../../core/tools/state_flag_tools.py#L16) |
+| function | `_exec_set_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L24) |
+| function | `_exec_get_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L41) |
+| function | `_exec_clear_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L52) |
+| function | `_exec_list_flags` | `(_args)` | — | [src](../../../core/tools/state_flag_tools.py#L63) |
+
 ## `core/tools/stripe_tools.py`
 _Stripe integration tools — balance, transactions, and Issuing virtual cards._
 

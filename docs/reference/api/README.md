@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13540 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13548 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -57,8 +57,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13540 functions/
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `native_tool_gate`
-- [`core.tools.02`](core.tools.02.md) — `notification_tools` … `state_flag_tools`
-- [`core.tools.03`](core.tools.03.md) — `stripe_tools` … `world_model_tools`
+- [`core.tools.02`](core.tools.02.md) — `notification_tools` … `staged_edits_tools`
+- [`core.tools.03`](core.tools.03.md) — `state_flag_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.util`](core.util.md)

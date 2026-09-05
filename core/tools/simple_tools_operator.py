@@ -403,6 +403,44 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _exec_operator_run_in_background(args: dict[str, Any]) -> dict[str, Any]:
+    command = str(args.get("command") or "").strip()
+    if not command:
+        return {"error": "command is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_background import start_async
+    return _run_operator_async(
+        lambda: start_async(command=command, cwd=str(args.get("cwd") or ""),
+                            user_id=user_id),
+        tool_name="operator_run_in_background",
+    )
+
+
+def _exec_operator_bash_output(args: dict[str, Any]) -> dict[str, Any]:
+    shell_id = str(args.get("shell_id") or "").strip()
+    if not shell_id:
+        return {"error": "shell_id is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_background import read_async
+    return _run_operator_async(
+        lambda: read_async(shell_id=shell_id, since=int(args.get("since") or 0),
+                           user_id=user_id),
+        tool_name="operator_bash_output",
+    )
+
+
+def _exec_operator_kill_shell(args: dict[str, Any]) -> dict[str, Any]:
+    shell_id = str(args.get("shell_id") or "").strip()
+    if not shell_id:
+        return {"error": "shell_id is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_background import kill_async
+    return _run_operator_async(
+        lambda: kill_async(shell_id=shell_id, user_id=user_id),
+        tool_name="operator_kill_shell",
+    )
+
+
 def _exec_operator_multi_edit(args: dict[str, Any]) -> dict[str, Any]:
     path = str(args.get("path") or "").strip()
     edits = args.get("edits")
@@ -1389,6 +1427,9 @@ __all__ = [
     "_exec_operator_write_file",
     "_exec_operator_edit_file",
     "_exec_operator_multi_edit",
+    "_exec_operator_run_in_background",
+    "_exec_operator_bash_output",
+    "_exec_operator_kill_shell",
     "_exec_operator_glob",
     "_exec_operator_grep",
     "_exec_operator_list_dir",

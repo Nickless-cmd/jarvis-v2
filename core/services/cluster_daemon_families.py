@@ -455,8 +455,20 @@ def _aesthetic_curiosity_live(snap: dict) -> dict[str, Any]:
 
 
 # (member_name, live_fn) in a stable order.
+def _aesthetic_code_aesthetic_live(_snap: dict) -> dict[str, Any]:
+    """Ugentlig aestetisk refleksion over kodebasen. Self-throttler INTERNT
+    (_CADENCE_HOURS = 168 + _last_tick_at), saa familien kalder hver tick og
+    daemonen afgoer selv om ugen er gaaet.
+
+    Stod [PENSIONERET] 15/7 uden at nogen familie tog den. Genindsat 5/9-2026
+    efter daekningsrevisionen — den var det sidste hul i kortet."""
+    from core.services.code_aesthetic_daemon import tick_code_aesthetic_daemon
+    return tick_code_aesthetic_daemon()
+
+
 _AESTHETIC_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
     ("curiosity", _aesthetic_curiosity_live),
+    ("code_aesthetic", _aesthetic_code_aesthetic_live),
 )
 
 
@@ -1232,6 +1244,18 @@ def _infra_visual_memory_live(_snap: dict) -> dict[str, Any]:
 # tamper-ensure) FIRST; then the two internally-throttled maintenance members; then
 # the family-throttled ones. Each member's per-member try/except means a failing
 # maintenance daemon can NEVER block the others.
+def _infra_provider_autodiscovery_live(_snap: dict) -> dict[str, Any]:
+    """Dagligt /models-scan af alle providers → nye modeller til pending_models.
+    Self-throttler INTERNT (1440 min), så familien kalder hver tick og daemonen
+    afgør selv. Adder ALDRIG automatisk: promotion er manuel og gated.
+
+    Var den ENESTE ægte forældreløse efter 15/7-konsolideringen — hverken mærket
+    pensioneret eller overtaget af en familie, så den faldt bare ud. Fundet ved
+    dækningsrevisionen 5/9-2026."""
+    from core.services.provider_autodiscovery import tick_provider_autodiscovery_daemon
+    return tick_provider_autodiscovery_daemon()
+
+
 _INFRA_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
     ("file_awareness", _infra_file_awareness_live),
     ("cache_maintenance", _infra_cache_maintenance_live),
@@ -1241,6 +1265,7 @@ _INFRA_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
     ("ground_truth_registry", _infra_ground_truth_live),
     ("mail_checker", _infra_mail_checker_live),
     ("visual_memory", _infra_visual_memory_live),
+    ("provider_autodiscovery", _infra_provider_autodiscovery_live),
 )
 
 

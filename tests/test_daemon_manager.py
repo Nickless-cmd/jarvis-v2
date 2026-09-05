@@ -198,3 +198,80 @@ def test_set_interval_requires_minutes_param(tmp_path):
     with patch.object(daemon_manager, "_state_file", return_value=tmp_path / "DAEMON_STATE.json"):
         with pytest.raises(ValueError, match="interval_minutes required"):
             daemon_manager.control_daemon("curiosity", "set_interval")
+
+
+# ---------------------------------------------------------------------------
+# Ingen tavse forældreløse
+#
+# 15/7-2026 blev 55 daemons pensioneret og foldet ind i 11 cluster-familier. Fire
+# af dem blev aldrig samlet op af nogen familie, og det opdagede ingen — evnen var
+# væk, koden lå tilbage, og kortet så komplet ud. Denne test lukker den dør:
+# en pensioneret daemon skal enten NAVNGIVE sin efterfølger eller stå på listen
+# over dem der bevidst er slået fra.
+# ---------------------------------------------------------------------------
+
+# Bevidst slået fra, ikke afløst. Hver post skal bære sin begrundelse i registret.
+_BEVIDST_SLUKKEDE = {
+    "decision_review",  # slået fra 2026-06-11 pga. selv-bias i LLM-self-review
+}
+
+
+def test_hver_pensioneret_daemon_har_en_efterfoelger():
+    from core.services import daemon_manager as dm
+
+    uden_hjem = []
+    for navn, spec in dm._REGISTRY.items():
+        if spec.get("default_enabled", True):
+            continue
+        if navn in _BEVIDST_SLUKKEDE:
+            continue
+        beskrivelse = str(spec.get("description") or "")
+        if "cluster_" not in beskrivelse:
+            uden_hjem.append(navn)
+
+    assert not uden_hjem, (
+        "pensionerede daemons uden efterfølger: %s — enten sæt dem ind i en "
+        "cluster-familie og skriv «→ cluster_X» i description, eller føj dem til "
+        "_BEVIDST_SLUKKEDE med en begrundelse" % ", ".join(sorted(uden_hjem))
+    )
+
+
+def test_bevidst_slukkede_baerer_deres_begrundelse():
+    """En daemon må kun stå på undtagelseslisten hvis registret siger hvorfor."""
+    from core.services import daemon_manager as dm
+
+    for navn in _BEVIDST_SLUKKEDE:
+        spec = dm._REGISTRY.get(navn)
+        assert spec is not None, "%s står på listen men findes ikke i registret" % navn
+        beskrivelse = str(spec.get("description") or "")
+        assert "DEAKTIVERET" in beskrivelse or "PENSIONERET" in beskrivelse, (
+            "%s mangler en begrundelse i sin description" % navn
+        )
+
+
+def test_de_fire_genindsatte_peger_paa_deres_familie():
+    """Vagt mod at 5/9-genindsættelsen stille bliver rullet tilbage."""
+    from core.services import daemon_manager as dm
+
+    forventet = {
+        "provider_autodiscovery": "cluster_infra",
+        "autonomous_council": "cluster_cognition",
+        "current_pull": "cluster_affect",
+        "code_aesthetic": "cluster_aesthetic",
+    }
+    for navn, familie in forventet.items():
+        beskrivelse = str((dm._REGISTRY.get(navn) or {}).get("description") or "")
+        assert familie in beskrivelse, "%s peger ikke på %s" % (navn, familie)
+
+
+def test_familierne_koerer_faktisk_de_genindsatte():
+    """Teksten i registret er ikke nok — medlemmet skal ligge i familiens liste."""
+    from core.services import cluster_daemon as C
+    from core.services import cluster_daemon_families as F
+
+    assert "provider_autodiscovery" in [n for n, _fn in F._INFRA_UNCONDITIONAL]
+    assert "code_aesthetic" in [n for n, _fn in F._AESTHETIC_UNCONDITIONAL]
+    assert "autonomous_council" in [n for n, _fn in C._COGNITION_UNCONDITIONAL]
+    # current_pull køres inline i affect-familiens non-LLM-runner, ikke fra en liste.
+    import inspect
+    assert "current_pull" in inspect.getsource(C._run_affect_nonllm_members)

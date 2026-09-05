@@ -24,6 +24,7 @@ import { cardSpacerStyle } from '../lib/floatingClearance'
 import { fetchPresence, type Presence } from '../lib/companionClient'
 import { livesInHousehold } from '../lib/household'
 import { SensesScreen } from './SensesScreen'
+import { ArtifactsScreen } from './ArtifactsScreen'
 import { cancelActiveRun, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
@@ -124,6 +125,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [isOwner, setIsOwner] = useState(false)
   const [inHousehold, setInHousehold] = useState(false)
   const [sensesOpen, setSensesOpen] = useState(false)
+  const [artifactsOpen, setArtifactsOpen] = useState(false)
   // Livstegn. Hentes ved opstart og hvert minut — hjerteslaget slår ~hvert
   // 15. minut, så tættere polling ville kun koste strøm uden at vise mere.
   const [presence, setPresence] = useState<Presence>({ state: 'unknown' })
@@ -584,6 +586,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             setPanelOpen(false)
             setSensesOpen(true)
           }}
+          onOpenArtifacts={() => {
+            setPanelOpen(false)
+            setArtifactsOpen(true)
+          }}
           onOpenSettings={() => {
             setPanelOpen(false)
             setSettingsOpen(true)
@@ -619,6 +625,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
 
       <Modal visible={sensesOpen} animationType="slide" onRequestClose={() => setSensesOpen(false)}>
         <SensesScreen onClose={() => setSensesOpen(false)} />
+      </Modal>
+
+      <Modal visible={artifactsOpen} animationType="slide" onRequestClose={() => setArtifactsOpen(false)}>
+        <ArtifactsScreen onClose={() => setArtifactsOpen(false)} />
       </Modal>
 
       <Modal visible={cameraOpen} animationType="slide" onRequestClose={() => setCameraOpen(false)}>

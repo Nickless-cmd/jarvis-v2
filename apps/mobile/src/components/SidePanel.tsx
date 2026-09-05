@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Eye, SquarePen } from 'lucide-react-native'
+import { Boxes, Eye, SquarePen } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
@@ -26,6 +26,7 @@ export function SidePanel({
   onNewSession,
   onOpenSettings,
   onOpenSenses,
+  onOpenArtifacts,
   isOwner: inHousehold = false,
   workingIds = [],
   unreadIds = {},
@@ -43,6 +44,7 @@ export function SidePanel({
   onOpenSettings: () => void
   /** Sansernes Arkiv. Kun sat for husstanden — men serveren er den ægte grænse. */
   onOpenSenses?: () => void
+  onOpenArtifacts?: () => void
   /** Bor brugeren i hjemmet (owner eller partner)? Skjuler kun indgangen. */
   isOwner?: boolean
   workingIds?: string[]
@@ -137,6 +139,18 @@ export function SidePanel({
                 style={styles.gear}
               >
                 <Eye size={19} color={tokens.color.fg2} strokeWidth={1.8} />
+              </Pressable>
+            ) : null}
+            {onOpenArtifacts ? (
+              <Pressable
+                testID="open-artifacts"
+                accessibilityRole="button"
+                accessibilityLabel="Artifacts"
+                onPress={onOpenArtifacts}
+                hitSlop={8}
+                style={styles.gear}
+              >
+                <Boxes size={18} color={tokens.color.fg2} strokeWidth={1.8} />
               </Pressable>
             ) : null}
             <Pressable accessibilityRole="button" accessibilityLabel="Indstillinger" onPress={onOpenSettings} hitSlop={8} style={styles.gear}>

@@ -1199,8 +1199,11 @@ async def _stream_visible_run(
             if _hook_dom.get("action") == "inject" and _hook_dom.get("message"):
                 run.user_message = (
                     f"{run.user_message}\n\n[HOOK]\n{_hook_dom['message']}")
-            logger.warning("hook-UserPromptSubmit run_id=%s dom=%s",
-                           run.run_id, _hook_dom.get("action"))
+            # Kun naar en hook faktisk gjorde noget — en linje pr. tur ville
+            # vaere stoej, og den almindelige vej er «ingen hooks».
+            if _hook_dom.get("action") != "allow":
+                logger.info("hook-UserPromptSubmit run_id=%s dom=%s",
+                            run.run_id, _hook_dom.get("action"))
     except Exception as _lh_exc:
         logger.warning("UserPromptSubmit-hook FEJLEDE: %r", _lh_exc)
 

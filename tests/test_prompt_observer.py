@@ -76,7 +76,7 @@ def test_noise_labels_extracted_to_observer():
     handler om HVOR politikken bor, ikke om et bestemt label — så den bruger nu
     et der stadig er slukket.
     """
-    assert "causal alerts" in po.DIAGNOSTIC_NOISE_LABELS
+    assert "curiosity-budget idle-window invitation" in po.DIAGNOSTIC_NOISE_LABELS
     assert "room entities" in po.TAIL_NOISE_LABELS
     assert len(po.DIAGNOSTIC_NOISE_LABELS) > 0
 
@@ -124,9 +124,21 @@ _BEVIDST_TAENDT = {
     # ingen «brain facts»-sektion. 1.171 tegn af hans vidensresumé, tabt.
     "jarvis brain summary",
     # 2026-09-05: bærer nu emne OG udfald, ikke «Ny samtale ×5» som i juni.
+    # (cross-session arc blev slukket IGEN samme dag — den viser stadig mest
+    # maskin-titler, og denne dækker det samme bedre.)
     "conversation continuity (always-on)",
-    "cross-session arc",
     "rule engine conclusions",
+    # 2026-09-05, 2. runde: BETINGEDE ALARMER. De returnerer 0 tegn når intet er
+    # galt — det er ikke død kode, det er tavshed med vilje. At blackliste en
+    # alarm er værre end at blackliste en statusrapport: den forsvinder præcis
+    # når den skulle tale. Og de koster nul tegn når de tier.
+    "self-monitor warnings",
+    "reasoning tier recommendation",
+    "reasoning escalation recommendation",
+    "context window degradation signal",
+    "causal alerts",
+    "forgetting nudge",
+    "priors from your own data",
     # 2026-09-05: diagnostik, ja — men de bærer beskeden om at 71 af 90
     # advarsler blev ignoreret. Systemet vidste det; beskeden var slukket.
     "R2 gate telemetry",
@@ -165,4 +177,31 @@ def test_blacklisten_indeholder_kun_labels_der_findes():
     assert not ukendte, (
         "blacklistede labels som ingen sektion bruger (stavefejl slukker intet): %s"
         % ", ".join(ukendte)
+    )
+
+
+def test_betingede_alarmer_tier_naar_intet_er_galt():
+    """Alarmerne må ikke begynde at larme — de skal returnere tomt i hviletilstand.
+
+    Det var netop derfor de blev blacklistet: nogen så 0 tegn og konkluderede
+    «støj» i stedet for «tavs med vilje».
+    """
+    from core.services.prompt_sections.causal_alerts import causal_alerts_section
+    from core.services.reasoning_classifier import reasoning_tier_section
+
+    assert (reasoning_tier_section("hej") or "") == ""
+    assert (causal_alerts_section() or "") == ""
+
+
+def test_reasoning_tier_taler_paa_en_tung_opgave():
+    """Og de skal tale når betingelsen er opfyldt — ellers er de reelt døde."""
+    from core.services.reasoning_classifier import reasoning_tier_section
+
+    ud = reasoning_tier_section(
+        "design en migrationsplan for at flytte 14 daemoner til delt state "
+        "uden nedetid"
+    ) or ""
+    assert "Reasoning-tier" in ud, (
+        "alarmen fyrer ikke på en tung opgave — så er den reelt død og hører "
+        "ikke hjemme i prompten"
     )

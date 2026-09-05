@@ -59,8 +59,34 @@ _KEY_PREFIX = "flag:central.switch.prompt_section."
 #
 # LÆREN: en blacklist-begrundelse der siger «findes allerede et andet sted» skal
 # efterprøves, ikke antages. Det andet sted kan forsvinde.
+# ── 2026-09-05, 2. runde: syv BETINGEDE ALARMER taget af listen ────────────
+#
+# Jeg kaldte dem foerst "doede" fordi de returnerede 0 tegn. Det var forkert.
+# Deres egne docstrings og kode siger at de er TAVSE MED VILJE:
+#
+#   self-monitor warnings          fyrer naar thrash >= taerskel (loop-adfaerd)
+#   context window degradation     fyrer naar degradation != "ok"
+#   forgetting nudge               fyrer naar samtalen er substantiel
+#   causal alerts                  fyrer naar der ER fejl at advare om
+#   reasoning tier recommendation  fyrer paa tunge opgaver — VERIFICERET:
+#                                  "design en migrationsplan for at flytte 14
+#                                  daemoner" gav "Reasoning-tier estimat:
+#                                  reasoning (score 40/100)"
+#   reasoning escalation           fyrer naar eskalering er berettiget
+#   priors from your own data      IKKE tom laengere: "Dine sidste 5 ticks
+#                                  scorer 85.0/100 — 13 pct over dit 14-dages
+#                                  snit. Du er i flow." (kom foerst efter at
+#                                  tick-kvaliteten holdt op med at vaere laast paa 70)
+#
+# At blackliste en alarm er vaerre end at blackliste en statusrapport: den
+# forsvinder praecis naar den skulle tale. Og de koster NUL tegn naar de tier,
+# hvilket er det meste af tiden — saa budgettet belastes kun naar noget er galt.
 DIAGNOSTIC_NOISE_LABELS: frozenset[str] = frozenset({
-    "self-monitor warnings",
+    # 2026-09-05 (2. runde): cross-session arc SLUKKET igen efter Bjørns
+    # beslutning. Den viser stadig mest maskin-titler («Ny samtale»,
+    # «Autonom · Hjerteslag»), og conversation continuity dækker det samme med
+    # emne OG udfald. Dommen fra 22/6 holdt for denne ene.
+    "cross-session arc",
     "metacognition signals",
     # 2026-09-05: "decision adherence gate" er FJERNET herfra. Den er ikke
     # diagnostik — den er en adfærdsinstruks. Gaten eskalerer fra "Husk at..."
@@ -72,19 +98,13 @@ DIAGNOSTIC_NOISE_LABELS: frozenset[str] = frozenset({
     # Hele kæden virkede: review skrev domme, adherence_score blev opdateret,
     # gaten valgte det rigtige bånd. Og så nåede beskeden aldrig frem. En
     # advarsel Jarvis ikke ser, er ikke en advarsel.
-    "reasoning tier recommendation",
-    "reasoning escalation recommendation",
-    "context window degradation signal",
-    "causal alerts",
     "causal narrative",
-    "priors from your own data",
     # 2026-06-22 round 2 — cut per Jarvis' own review of his prompt:
     # 2026-09-04 (lærings-sløjfe, blok A): "session topics (always-on)" er TAGET
     # AF listen. Dommen fra 22/6 ("NEJ ×14") ramte formatet, ikke signalet:
     # session_topic_tracker har skrevet 5.112 rækker med gentagelses-tællere som
     # INTET har læst siden. Gentagelse på tværs af samtaler er hele grundlaget
     # for blok C. Slå den fra live med set_section hvis den viser sig at støje.
-    "forgetting nudge",                     # a rule, belongs in guidance not signal
     "meta-learning weekly retrospective teaser",  # unread memo, don't burn tokens
     "rules learned from arcs",              # repeated retrospective noise
     # 2026-06-22 round 3 — Jarvis' second review:

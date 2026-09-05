@@ -90,3 +90,45 @@ def test_observe_build_emits_error_channel(monkeypatch):
                      dropped_error=[("indre liv", "RuntimeError: boom")])
     assert seen["error_count"] == 1
     assert seen["dropped_error"][0]["section"] == "indre liv"
+
+
+# ---------------------------------------------------------------------------
+# Adfærds-gates er ikke diagnostik-støj
+#
+# 2026-09-05: "decision adherence gate" lå på den hardkodede blacklist og blev
+# derfor kastet væk FØR indholdet blev vurderet. Hele kæden bagved virkede —
+# review skrev domme, adherence_score blev opdateret, gaten valgte korrekt bånd
+# og producerede 1.993 tegn eskaleret tekst med fem beslutninger under 25%. Og
+# så nåede beskeden aldrig frem til prompten. En advarsel Jarvis ikke ser, er
+# ikke en advarsel.
+# ---------------------------------------------------------------------------
+
+
+def test_adherence_gaten_er_ikke_blacklistet():
+    from core.services.prompt_observer import DIAGNOSTIC_NOISE_LABELS
+
+    assert "decision adherence gate" not in DIAGNOSTIC_NOISE_LABELS, (
+        "adherence-gaten er en adfærdsinstruks, ikke diagnostik — den eskalerer "
+        "til «DU SKAL...» og skal nå frem til prompten"
+    )
+
+
+def test_blacklisten_indeholder_kun_labels_der_findes():
+    """En label der er stavet forkert slukker ingenting og skjuler sin egen fejl."""
+    import re
+    from pathlib import Path
+
+    from core.services.prompt_observer import DIAGNOSTIC_NOISE_LABELS, TAIL_NOISE_LABELS
+
+    kilde = Path("core/services/prompt_contract.py")
+    if not kilde.exists():  # kørt uden for repoet
+        return
+    tekst = kilde.read_text(encoding="utf-8")
+    brugte = set(re.findall(r'_(?:awareness|tail)_add\(\s*(?:\d+,\s*)?"([^"]+)"', tekst))
+    ukendte = sorted(
+        (DIAGNOSTIC_NOISE_LABELS | TAIL_NOISE_LABELS) - brugte
+    )
+    assert not ukendte, (
+        "blacklistede labels som ingen sektion bruger (stavefejl slukker intet): %s"
+        % ", ".join(ukendte)
+    )

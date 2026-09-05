@@ -25,7 +25,13 @@ _HISTORY_MAX = 100
 _history: Deque[dict[str, Any]] = deque(maxlen=_HISTORY_MAX)
 
 _RSS_JUMP_PCT = 10.0   # % increase in one tick → event
-_LATENCY_SLOW_MS = 5000
+# 2026-09-05: 5000 ms mod en maaling der lever paa 0,024 ms — en faktor 208.000.
+# _measure_self_latency_ms laegger tallene 0..999 sammen i en for-loekke og maaler
+# hvor lang tid DET tog. Det er ikke hans responstid; det er CPU-hastighed.
+# Taersklen kunne aldrig braekkes, saa proprioception.response_slow har aldrig
+# fyret. Sat til 5 ms, som er den skala maalingen faktisk lever i — en for-loekke
+# der pludselig tager 200x laengere ER et aegte tegn paa at processen er presset.
+_LATENCY_SLOW_MS = 5
 _FD_LEAK_THRESHOLD = 500
 
 

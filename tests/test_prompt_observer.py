@@ -77,7 +77,7 @@ def test_noise_labels_extracted_to_observer():
     et der stadig er slukket.
     """
     assert "curiosity-budget idle-window invitation" in po.DIAGNOSTIC_NOISE_LABELS
-    assert "room entities" in po.TAIL_NOISE_LABELS
+    assert "pattern counterfactuals" in po.TAIL_NOISE_LABELS
     assert len(po.DIAGNOSTIC_NOISE_LABELS) > 0
 
 

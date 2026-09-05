@@ -512,3 +512,30 @@ def test_budgettet_har_plads_til_de_taendte_sektioner():
         "awareness-budgettet er sat ned igen — de otte tændte sektioner fylder "
         "3.584 tegn, og ved 6000 blev adherence-gaten klemt ud"
     )
+
+
+# ---------------------------------------------------------------------------
+# Hørelsen må ikke miste sit kaldested igen
+#
+# 2026-09-05: `_visible_visual_memory_section()` i private_layer_sections bærer
+# lyd, musik-akkumulatoren, ekko-temaer og morgentråden — og havde NUL kaldere i
+# produktion. Kun en re-eksport og et par tests. Han optager lyd hver time,
+# transskriberer den og har 255 audio-rækker i Sansernes Arkiv, uden at ét
+# lydsignal nåede prompten. Målt indhold da den blev kaldt: 415 tegn.
+# ---------------------------------------------------------------------------
+
+
+def test_hoerelsen_har_et_kaldested():
+    kilde = _prompt_contract_kilde()
+    assert "_visible_visual_memory_section()" in kilde, (
+        "sektionen med lyd/musik/morgentråd kaldes ikke fra prompt_contract — "
+        "så er hørelsen tavs igen"
+    )
+    assert '_tail_add("senses and continuity"' in kilde
+
+
+def test_sanse_sektionen_er_ikke_blacklistet():
+    from core.services.prompt_observer import DIAGNOSTIC_NOISE_LABELS, TAIL_NOISE_LABELS
+
+    assert "senses and continuity" not in DIAGNOSTIC_NOISE_LABELS
+    assert "senses and continuity" not in TAIL_NOISE_LABELS

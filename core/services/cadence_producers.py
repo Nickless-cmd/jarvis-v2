@@ -194,7 +194,14 @@ def produce_signals_from_run(
             upsert_runtime_reflective_critic(
                 critic_id=f"crit-{uuid4().hex[:10]}",
                 critic_type=critic_type,
-                canonical_key=f"critic:{critic_type}:{run_id}",
+                # 2026-09-05: run_id UD af noeglen. Med den var hver kritiker en ny
+                # INSERT i stedet for en merge, saa `support_count` kunne matematisk
+                # aldrig naa 2 — maalt: 965 af 967 kritikere staar paa 1. Og netop
+                # `support_count >= 2` er porten i self_model_signal_tracking:212 der
+                # skal aabne for at et selvmodel-signal overhovedet kan skabes.
+                # Derfor 5 raekker i runtime_self_model_signals paa fem maaneder.
+                # Samme fejlform som verdensmodellens canonical_key.
+                canonical_key=f"critic:{critic_type}",
                 status="active",
                 title=f"Critic: {critic_type}",
                 summary=f"Should have verified before responding to: {user_message[:60]}",

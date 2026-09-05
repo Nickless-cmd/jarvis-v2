@@ -115,7 +115,12 @@ DIAGNOSTIC_NOISE_LABELS: frozenset[str] = frozenset({
 TAIL_NOISE_LABELS: frozenset[str] = frozenset({
     "causal patterns",          # "agentic_round_start → tool.completed (803×)"
     "pattern counterfactuals",  # same family of self-evident repetition
-    "room entities",            # entity *counts*; real room-sense now in [INDRE LIV]
+    # 2026-09-05: "room entities" TAGET AF listen. Begrundelsen — «real room-sense
+    # now in [INDRE LIV]» — er samme type paastand som de to der blev efterproevet
+    # og faldt tidligere i dag, og den holder heller ikke her. [INDRE LIV]s
+    # rum-linje er visual_memory.latest_description, maalt i dag: «Intet maerkbart
+    # aendret.» Den slukkede sektion baerer derimod 1.538 observationer:
+    # lys x1538, vindue x973, sofa x861, dagslys x813, person x712, bord x678.
 })
 
 

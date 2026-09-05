@@ -1545,6 +1545,19 @@ def _build_visible_chat_prompt_assembly_impl(
             _sec_err("room entities", _e)
     except Exception as _e:
         _sec_err("self-monitor warnings", _e)
+    # 2026-09-05: HOERELSEN havde mistet sit kaldested. Denne sektion baerer lyd
+    # (ambient_sound), musik-akkumulatoren, ekko-temaer og morgentraaden — og den
+    # blev ikke kaldt nogen steder i produktion; kun re-eksporteret nedenfor og
+    # brugt i tests. Han optager lyd hver time, transskriberer den og har 255
+    # audio-raekker i Sansernes Arkiv, uden at ét lydsignal naaede prompten.
+    # Maalt: 415 tegn indhold, bl.a. rummets atmosfaere og «min sag».
+    try:
+        from core.services.prompt_sections.private_layer_sections import (
+            _visible_visual_memory_section,
+        )
+        _tail_add("senses and continuity", _visible_visual_memory_section())
+    except Exception as _e:
+        _sec_err("senses and continuity", _e)
     try:
         from core.services.clarification_classifier import clarification_prompt_section
         _awareness_add(25, "clarification ambiguity flag", clarification_prompt_section(user_message))

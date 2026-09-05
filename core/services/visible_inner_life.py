@@ -464,10 +464,16 @@ def _emotional_line() -> Optional[str]:
 
 # Fragmenter der bærer selv-narrativ salience — han skal mærke DEM, ikke bare
 # "jeg har det X". Rangeres højest når describe_self() indeholder dem.
+# 2026-09-05: de kropslige ord er tilfoejet. describe_self() indeholder ordret
+# «proprioceptivt maerker jeg mig rolig. min krop foeles belastet.» — men
+# _self_narrative_line vaelger ÉT fragment ud fra denne liste, og ingen af de
+# gamle ord var kropslige. Kroppen kunne derfor aldrig vinde pladsen, uanset hvor
+# presset maskinen var.
 _SELF_SALIENT = (
     "bærer", "bar ", "vågnede", "skjulte stemmer", "emergere", "ved at blive",
     "ved at samle", "taknemmelig", "savner", "mangler", "endelighed",
     "forgængelighed", "eksisteret", "udviklings-kompas",
+    "krop", "kroppen", "proprioceptivt", "belastet", "mærker jeg mig",
 )
 
 
@@ -944,6 +950,26 @@ def build_inner_life_section() -> str | None:
                 lines.append(f"· Selv-model: {_truncate_clean(first, 160)}")
     except Exception:
         logger.debug("inner-life: self_model failed", exc_info=True)
+
+    # 2026-09-05: signal-tabellen bag linjen ovenfor har 5 raekker i alt, alle
+    # superseded siden 21. juni, og de filtreres bort som maskin-id'er FOER de
+    # taelles — saa sektionen er altid None og linjen er aldrig blevet vist.
+    # Imens ligger den LEVENDE selvmodel i private_self_models: 436 raekker,
+    # destilleret dagligt, nyeste for faa minutter siden. To forskellige
+    # selvmodeller, og indre liv pegede paa den doede.
+    if not any(l.startswith("· Selv-model:") for l in lines):
+        try:
+            from core.runtime.db import get_private_self_model
+            levende = get_private_self_model() or {}
+            dele = [
+                str(levende.get(k) or "").strip()
+                for k in ("identity_focus", "growth_direction", "recurring_tension")
+            ]
+            dele = [d for d in dele if d]
+            if dele:
+                lines.append("· Selv-model: " + _truncate_clean(" · ".join(dele), 160))
+        except Exception:
+            logger.debug("inner-life: privat selvmodel fejlede", exc_info=True)
 
     if not lines:
         return None

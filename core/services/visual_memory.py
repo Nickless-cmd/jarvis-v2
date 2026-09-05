@@ -624,6 +624,12 @@ def _describe_image(
         return _describe_via_ollama(
             image_b64, model=model, prompt=prompt, previous=previous
         )
+    if provider == "deepseek":
+        from core.services.vision_backend import describe_via_deepseek
+
+        if prompt is None:
+            prompt = _build_prompt(previous=previous)
+        return describe_via_deepseek(image_b64, model=model, prompt=prompt)
     raise RuntimeError(f"visual_memory: unsupported vision provider: {provider}")
 
 
@@ -735,7 +741,24 @@ def _prune_old_records() -> None:
 
 
 def _vision_model() -> tuple[str, str]:
-    """Return (model_name, provider) from runtime config or defaults."""
+    """Return (model_name, provider) — den valgte model vinder over config.
+
+    Har Bjørn valgt en syns-model i composeren, skal look_around kigge gennem de
+    øjne han har valgt. Uden et aktivt valg — daemon-stien, hvor ingen tur kører
+    — gælder runtime-config som før.
+    """
+    try:
+        from core.services.vision_backend import (
+            active_visible_target,
+            model_can_see,
+            resolve_vision_provider,
+        )
+        chosen_provider, chosen_model = active_visible_target()
+        if chosen_model and model_can_see(chosen_model):
+            return chosen_model, (chosen_provider or resolve_vision_provider(chosen_model))
+    except Exception:
+        pass
+
     settings = load_settings()
     model = str(settings.extra.get("vision_model_name") or "").strip()
     provider = str(settings.extra.get("vision_model_provider") or "").strip()

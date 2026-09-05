@@ -160,3 +160,40 @@ def test_navngivet_kamera_fejler_hoejlydt(monkeypatch):
     monkeypatch.setattr(VM, "_capture_webcam", lambda: "FALDT TILBAGE")
     with pytest.raises(RuntimeError):
         VM._capture_image("hoveddor")
+
+
+def test_look_around_bruger_den_valgte_synsmodel(monkeypatch):
+    """Har Bjørn valgt syns-modellen, skal look_around kigge gennem den."""
+    from core.services import vision_backend as VB
+
+    monkeypatch.setattr(
+        VB, "active_visible_target",
+        lambda: ("deepseek", "deepseek-v4-flash-vision-exp"),
+    )
+    assert VM._vision_model() == ("deepseek-v4-flash-vision-exp", "deepseek")
+
+
+def test_uden_aktivt_valg_gaelder_config(monkeypatch):
+    """Daemon-stien kører uden tur — så er runtime-config stadig sandheden."""
+    from core.services import vision_backend as VB
+
+    monkeypatch.setattr(VB, "active_visible_target", lambda: ("", ""))
+    monkeypatch.setattr(
+        VM, "load_settings",
+        lambda: _Settings({"vision_model_name": "gemma4:31b-cloud"}),
+    )
+    assert VM._vision_model() == ("gemma4:31b-cloud", "ollama")
+
+
+def test_deepseek_billede_gaar_ikke_til_ollama(monkeypatch):
+    from core.services import vision_backend as VB
+
+    monkeypatch.setattr(
+        VM, "_describe_via_ollama",
+        lambda *a, **k: pytest.fail("DeepSeek-billede må ikke gå til Ollama"),
+    )
+    monkeypatch.setattr(VB, "describe_via_deepseek",
+                        lambda b64, *, model, prompt, run_id="": "set i stuen")
+    ud = VM._describe_image("B64", model="deepseek-v4-flash-vision-exp",
+                            provider="deepseek", prompt="hvad ser du?")
+    assert ud == "set i stuen"

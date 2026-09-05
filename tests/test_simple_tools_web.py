@@ -76,3 +76,68 @@ def test_en_traeffer_svarer_stadig_kort_og_uden_stoej():
     assert r["match_count"] >= 1
     assert "searched_root" not in r
     assert "[no matches]" not in r["text"]
+
+
+# ---------------------------------------------------------------------------
+# analyze_image skal kigge gennem de øjne der er valgt — og ikke sende en
+# DeepSeek-model til Ollama, som ikke har den
+# ---------------------------------------------------------------------------
+
+
+def test_analyze_image_bruger_den_valgte_synsmodel(tmp_path, monkeypatch):
+    from core.services import vision_backend as VB
+    from core.tools import simple_tools_web as W
+
+    billede = tmp_path / "prove.png"
+    billede.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 64)
+
+    monkeypatch.setattr(
+        VB, "resolve_vision_target",
+        lambda: ("deepseek", "deepseek-v4-flash-vision-exp", "selected-model"),
+    )
+    set_kald: list[dict] = []
+
+    def _fanget(**kwargs):
+        set_kald.append(kwargs)
+        return {"text": "et skilt", "provider": "deepseek", "model": kwargs["model"]}
+
+    monkeypatch.setattr(VB, "describe", _fanget)
+    monkeypatch.setattr(
+        W.urllib_request, "urlopen",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("DeepSeek-model må ikke sendes til Ollama")
+        ),
+    )
+
+    svar = W._exec_analyze_image({"image_path": str(billede), "prompt": "hvad ser du?"})
+    assert svar["status"] == "ok"
+    assert svar["analysis"] == "et skilt"
+    assert set_kald and set_kald[0]["provider"] == "deepseek"
+
+
+def test_udtrykkelig_model_vinder_over_valget(tmp_path, monkeypatch):
+    """Beder man om en bestemt model, skal opslaget slet ikke ske."""
+    from core.services import vision_backend as VB
+    from core.tools import simple_tools_web as W
+
+    billede = tmp_path / "prove.png"
+    billede.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 64)
+    monkeypatch.setattr(
+        VB, "resolve_vision_target",
+        lambda: (_ for _ in ()).throw(AssertionError("måtte ikke slå op")),
+    )
+
+    class _Svar:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            import json as _json
+            return _json.dumps({"message": {"content": "en kat"}}).encode()
+
+    monkeypatch.setattr(W.urllib_request, "urlopen", lambda *a, **k: _Svar())
+    svar = W._exec_analyze_image({"image_path": str(billede), "model": "llava:7b"})
+    assert svar == {"analysis": "en kat", "model": "llava:7b", "status": "ok"}

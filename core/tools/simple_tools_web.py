@@ -724,8 +724,18 @@ def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:
     prompt = str(args.get("prompt") or "Describe this image in detail.").strip()
     model = str(args.get("model") or "").strip()
 
+    # Uden en udtrykkelig model kigger vi gennem de øjne der er valgt lige nu —
+    # samme regel som resten af syns-værktøjerne. Er der ikke valgt nogen,
+    # falder resolve_vision_target tilbage til runtime-config.
+    provider = ""
     if not model:
-        # Try to pick a vision-capable model from running Ollama models
+        try:
+            from core.services.vision_backend import resolve_vision_target
+            provider, model, _source = resolve_vision_target()
+        except Exception:
+            provider, model = "", ""
+    if not model:
+        # Sidste udvej: find en synskyndig model blandt dem Ollama har kørende.
         try:
             with urllib_request.urlopen("http://127.0.0.1:11434/api/tags", timeout=5) as resp:
                 tags = json.loads(resp.read())
@@ -761,6 +771,17 @@ def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:
             return {"error": f"Could not fetch image URL: {exc}", "status": "error"}
     else:
         return {"error": "image_path or image_url is required", "status": "error"}
+
+    # Sidder øjnene i DeepSeek, må billedet ikke sendes til Ollama — den har
+    # ikke modellen og svarer 404. Samme fælde som vision_backend faldt i.
+    if provider == "deepseek":
+        try:
+            from core.services.vision_backend import describe
+            out = describe(image_b64=image_b64, model=model, prompt=prompt,
+                           provider="deepseek")
+            return {"analysis": out.get("text", ""), "model": model, "status": "ok"}
+        except Exception as exc:
+            return {"error": f"Vision model call failed: {exc}", "status": "error"}
 
     payload = json.dumps({
         "model": model,

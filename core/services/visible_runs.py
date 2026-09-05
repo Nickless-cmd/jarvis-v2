@@ -1869,6 +1869,15 @@ async def _stream_visible_run(
                     for _lm_n in _lm_added:
                         if _lm_n and _lm_n not in _round_extra_tools:
                             _round_extra_tools.append(str(_lm_n))
+                    # 2026-09-05: udvid præfiks-låsen, så et værktøj han hentede
+                    # frem holder ved til næste tur i stedet for at forsvinde og
+                    # tvinge et nyt load_more_tools (og et nyt præfiks).
+                    if _lm_added:
+                        try:
+                            from core.services.session_tool_pin import extend as _pin_extend
+                            _pin_extend(run.session_id, [str(n) for n in _lm_added])
+                        except Exception:
+                            pass
                 except Exception:
                     pass
 
@@ -2168,11 +2177,28 @@ async def _stream_visible_run(
                         run_id=run.run_id,
                     )
                     if not _selection.fallback_used:
-                        _selected_set = set(_selection.selected_names)
+                        # ── PRÆFIKS-LÅS (2026-09-05) ────────────────────────
+                        # Routeren valgte et NYT sæt pr. besked (målt 4/9: 58,
+                        # 59, 61, 80-88 værktøjer på forskellige ture). Tools-
+                        # arrayet ligger lige efter systembeskeden i DeepSeeks
+                        # template, så et nyt sæt bryder cachen dér og hele
+                        # historikken bagefter — op til 160k tokens — betales
+                        # fuldt hver tur. Hovedbogen viste hit frosset på
+                        # 6.400-8.320 (= systembeskeden) mens miss voksede til
+                        # 76k. Nu bestemmer routeren ÉN gang pr. session.
+                        from core.services.session_tool_pin import resolve as _pin_resolve
+                        _names, _pin_src = _pin_resolve(
+                            run.session_id, list(_selection.selected_names))
+                        _selected_set = set(_names)
                         _agentic_tools = [
                             d for d in _agentic_tools
                             if ((d.get("function") or {}).get("name") or d.get("name") or "") in _selected_set
                         ]
+                        logger.info(
+                            "tool-router run_id=%s valgt=%d sendt=%d kilde=%s",
+                            run.run_id, len(_selection.selected_names),
+                            len(_agentic_tools), _pin_src,
+                        )
                 except Exception:
                     pass  # keep full list on any error
                 _all_followup_parts: list[str] = []

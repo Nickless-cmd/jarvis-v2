@@ -326,6 +326,15 @@ class RuntimeSettings:
     # forkastede USER.md-kandidater mod 9 anvendte, og 19.145 forkastede
     # MEMORY.md-kandidater med Bjørns egen besked ordret som titel. Slukket;
     # end_of_run_memory_consolidation gør arbejdet. Sæt True for at tænde igen.
+    # ── Praefiks-laas paa tool-saettet (2026-09-05) ─────────────────────────
+    # Tool-routeren valgte et NYT saet pr. besked (maalt 4/9: 58-88 vaerktoejer
+    # paa forskellige ture). Tools-arrayet ligger lige efter systembeskeden i
+    # DeepSeeks template, saa et nyt saet bryder cachen dér — og hele
+    # historikken bagefter, op til 160k tokens, betales fuldt hver tur.
+    # Hovedbogen: hit frosset paa 6.400-8.320 (= systembeskeden) mens miss
+    # voksede til 76k. Med laasen bestemmer routeren én gang pr. session.
+    # Saet False for at koere pr. tur igen (gammel adfaerd, uden deploy).
+    session_tool_pin_enabled: bool = True
     legacy_regex_learning_detectors_enabled: bool = False
     context_attention_budget_tokens: int = 80_000     # high-water: trigger her
     context_attention_low_water_tokens: int = 35_000  # compact ned til ~dette

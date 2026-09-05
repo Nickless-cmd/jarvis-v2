@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13458 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13469 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -45,11 +45,11 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13458 functions/
 - [`core.services.16`](core.services.16.md) — `personality_vector` … `prompt_variant_tracker`
 - [`core.services.17`](core.services.17.md) — `proposal_classifier` … `remembered_fact_signal_tracking`
 - [`core.services.18`](core.services.18.md) — `repeated_requests` … `seed_system`
-- [`core.services.19`](core.services.19.md) — `selective_attention` … `session_topic_tracker`
-- [`core.services.20`](core.services.20.md) — `session_wakeup` … `stream_sentinel`
-- [`core.services.21`](core.services.21.md) — `structured_content_flag` … `tool_pattern_miner`
-- [`core.services.22`](core.services.22.md) — `tool_result_aging` … `visible_model_observe`
-- [`core.services.23`](core.services.23.md) — `visible_model_ollama` … `world_model_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `selective_attention` … `session_tool_pin`
+- [`core.services.20`](core.services.20.md) — `session_topic_tracker` … `stream_failure_kind`
+- [`core.services.21`](core.services.21.md) — `stream_sentinel` … `tool_outcome_memory`
+- [`core.services.22`](core.services.22.md) — `tool_pattern_miner` … `visible_model_adapters`
+- [`core.services.23`](core.services.23.md) — `visible_model_observe` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

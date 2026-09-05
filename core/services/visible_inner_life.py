@@ -63,7 +63,13 @@ def _surface_line(name: str, d: object) -> Optional[str]:
         v = d.get(key)
         if isinstance(v, str):
             s = v.strip()
-            if s and not any(j in s.lower() for j in _JUNK):
+            # 2026-09-05: ekko-vaernet daekker nu ALLE foelte overflader, ikke kun
+            # stemmen. Da overfladerne foerst begyndte at naa prompten, kom det
+            # med det samme: «kreativ drift: The user wants me to act as Jarvis
+            # troubleshooting a phone connection...». Modellen svarer nogle gange
+            # med opgaven i stedet for at loese den, og det rammer hver eneste
+            # generator — ikke kun inner_voice_daemon.
+            if s and not any(j in s.lower() for j in _JUNK) and not _is_instruction_echo(s):
                 return f"{_LABELS.get(name, name)}: {s[:110]}"
     return None
 
@@ -214,6 +220,11 @@ def _pulse_line() -> Optional[str]:
             rhythm = "aktiv"
         # Last action summary
         action = last.get("action_summary") or last.get("decision_summary") or ""
+        # Samme ekko-vaern som de foelte overflader: puls-linjen viste
+        # «Acted on initiative: Key facts: - Active grounding source...» —
+        # altsaa opgaven i stedet for handlingen.
+        if action and _is_instruction_echo(action):
+            action = ""
         if action and len(action) > 60:
             action = action[:57] + "..."
         if action:
@@ -749,14 +760,27 @@ def _truncate_clean(text: str, cap: int) -> str:
 #
 # Målt 5/9-2026: 323 af 27.011 gemte voice_line (1-2 %, stabilt over uger). En lav
 # rate rammer alligevel ofte, netop fordi kun den nyeste vises.
+# Mønstrene er bevidst konservative: de rammer sætninger der OMTALER opgaven i
+# tredje person, ikke førstepersons-oplevelse. Et ægte indre-liv-fragment er
+# hans egen stemme — «jeg mærker…», «der ligger en uro…» — aldrig «brugeren
+# vil have mig til at…».
 _INSTRUKS_EKKO = (
     "the user asks",
+    "the user wants",
+    "the user is asking",
+    "the user has",
+    "brugeren beder",
+    "brugeren vil have",
     "as a json object",
     "key facts:",
     "respond as jarvis",
+    "act as jarvis",
+    "acting as jarvis",
     "inner voice in danish",
     "active grounding sources",
+    "anchor instruction",
     "you are jarvis",
+    "you should respond",
     "din opgave er",
     "svar som jarvis",
 )

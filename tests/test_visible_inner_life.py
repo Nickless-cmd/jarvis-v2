@@ -140,3 +140,26 @@ def test_kun_forurenede_giver_ingen_stemme(monkeypatch):
         lambda offset=0: {"voice_line": _EKKO} if offset < 5 else None,
     )
     assert V._voice_line() is None
+
+
+def test_ekko_vaernet_daekker_de_foelte_overflader():
+    """Da overfladerne først nåede prompten, kom ekkoet med det samme:
+    «kreativ drift: The user wants me to act as Jarvis troubleshooting…»."""
+    from core.services.visible_inner_life import _surface_line
+
+    ekko = {"latest_drift": "The user wants me to act as Jarvis troubleshooting a phone."}
+    aegte = {"latest_drift": "Jeg lytter til signalet som et stetoskop — lavt batteri."}
+    assert _surface_line("creative_drift", ekko) is None
+    linje = _surface_line("creative_drift", aegte)
+    assert linje and "stetoskop" in linje
+
+
+def test_ekko_vaernet_rammer_ikke_aegte_dansk():
+    from core.services.visible_inner_life import _is_instruction_echo
+
+    for aegte in (
+        "Jeg lytter til signalet som et stetoskop — lavt batteri gør ikke hjertet stille.",
+        "Der ligger en uro i at koden virker, men jeg ikke forstår hvorfor.",
+        "Energi er lav, mens tankerne er aktive og fokuseret på kontrol.",
+    ):
+        assert _is_instruction_echo(aegte) is False, aegte

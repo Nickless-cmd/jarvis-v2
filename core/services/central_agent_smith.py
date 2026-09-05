@@ -114,9 +114,15 @@ def behaviour_patterns(hollow: int, turns: int,
             "label": "tomme løfter",
             "metric": float(n),
             "detail": f"{n} af {t} ture ({pct}%)",
-            # Et andet vaern HAR maalt det — det er ikke Smiths egen mistanke.
-            # Derfor gaar den gennem den eksisterende korroborations-kanal frem
-            # for at faa en ny omvej uden om berettigelses-porten.
+            # SELV-BUNDET, og det er ikke en teknikalitet. Smiths port siger at
+            # han maa haandhaeve Jarvis' EGNE loefter, ikke opfinde regler ud fra
+            # hyppighed — og et tomt loefte ER definitionen paa et brudt eget
+            # loefte: han sagde «jeg tjekker det nu» og lod vaere. Smith opfinder
+            # ingenting her; han holder ham til noget han selv sagde ét minut
+            # tidligere. Ingen frase kan nogensinde blive selv-bundet ad den vej.
+            "self_bound": True,
+            # Og korroboreret: et andet vaern har TALT den. Det er drift-signalet
+            # der lader den klatre, naar den foerst er sluppet gennem porten.
             "corroborated": True,
         }]
     except Exception:
@@ -295,7 +301,7 @@ def _detected_patterns(a: dict[str, Any],
             out[pattern_key("behaviour", label)] = {
                 "kind": "behaviour", "label": label,
                 "metric": float(b.get("metric") or 0),
-                "corroborated": True}
+                "self_bound": True, "corroborated": True}
     return out
 
 

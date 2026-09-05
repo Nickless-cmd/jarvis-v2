@@ -160,7 +160,7 @@ def _pinned_state(cycles: int) -> dict:
 def test_et_uflytteligt_moenster_slippes_til_sidst():
     st, acts = e.step_escalation(
         _pinned_state(e._CONFRONT_GIVE_UP_CYCLES + 1),
-        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "corroborated": True}},
+        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "self_bound": True, "corroborated": True}},
         "2026-09-05T00:00:00+00:00")
     assert "seq:x" not in st["patterns"]
     assert any(a["type"] == "observe" and a.get("reason") == "unmovable" for a in acts)
@@ -171,7 +171,7 @@ def test_opgivelsen_pensionerer_direktiv_OG_standing_order():
     den dag håndhævelse tændes."""
     _, acts = e.step_escalation(
         _pinned_state(e._CONFRONT_GIVE_UP_CYCLES + 1),
-        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "corroborated": True}},
+        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "self_bound": True, "corroborated": True}},
         "2026-09-05T00:00:00+00:00")
     assert any(a["type"] == "revoke" for a in acts)
     assert any(a["type"] == "deactivate_order" for a in acts)
@@ -180,7 +180,7 @@ def test_opgivelsen_pensionerer_direktiv_OG_standing_order():
 def test_han_lyver_ikke_om_at_have_vundet():
     _, acts = e.step_escalation(
         _pinned_state(e._CONFRONT_GIVE_UP_CYCLES + 1),
-        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "corroborated": True}},
+        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "self_bound": True, "corroborated": True}},
         "2026-09-05T00:00:00+00:00")
     line = next(a["line"] for a in acts if a["type"] == "voice")
     assert "Endelig" not in line
@@ -190,7 +190,7 @@ def test_han_lyver_ikke_om_at_have_vundet():
 def test_under_loftet_bliver_han_staaende():
     st, _ = e.step_escalation(
         _pinned_state(2),
-        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "corroborated": True}},
+        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "self_bound": True, "corroborated": True}},
         "2026-09-05T00:00:00+00:00")
     assert st["patterns"]["seq:x"]["rung"] == e.RUNG_CONFRONT
 
@@ -199,23 +199,46 @@ def test_compliance_gaar_stadig_forud_for_opgivelse():
     """Falder metrikken, er det en SEJR — ikke en opgivelse, uanset cyklusser."""
     _, acts = e.step_escalation(
         _pinned_state(e._CONFRONT_GIVE_UP_CYCLES + 1),
-        {"seq:x": {"kind": "seq", "label": "x", "metric": 0.5, "corroborated": True}},
+        {"seq:x": {"kind": "seq", "label": "x", "metric": 0.5, "self_bound": True, "corroborated": True}},
         "2026-09-05T00:00:00+00:00")
     assert any(a.get("reason") == "weakened" for a in acts)
     assert not any(a.get("reason") == "unmovable" for a in acts)
 
 
 def test_en_maalt_adfaerd_overlever_Trin_1_porten():
-    """Porten findes for at stoppe opfundne «stop X» fra ordhyppighed. Et mønster
-    et andet værn HAR målt er ikke en opfindelse — ellers ville Smiths nye øjne
-    være inerte, fordi «tomme løfter» hverken er et risikabelt ord eller et løfte
-    Jarvis selv har formuleret."""
-    st, acts = e.step_escalation(
+    """Porten kræver at mønsteret er risikabelt ELLER noget Jarvis selv har lovet.
+
+    Et tomt løfte ER definitionen på et brudt eget løfte — han sagde «jeg tjekker
+    det nu» og lod være. Smith opfinder ingenting; han holder ham til noget han
+    selv sagde ét minut tidligere. Derfor `self_bound`, ikke en opblødning af
+    selve porten: august-værnet skal stå urørt."""
+    st, _ = e.step_escalation(
         None,
         {"behaviour:tomme løfter": {"kind": "behaviour", "label": "tomme løfter",
-                                    "metric": 31.0, "corroborated": True}},
+                                    "metric": 31.0, "self_bound": True,
+                                    "corroborated": True}},
         "2026-09-05T00:00:00+00:00")
     assert "behaviour:tomme løfter" in st["patterns"]
+
+
+def test_adfaerden_maa_ogsaa_KLATRE_ikke_bare_spores():
+    """Første forsøg markerede kun `corroborated`, og mønsteret sad fast på Trin 1
+    med «not_self_bound» — hele kanalen var tandløs uden at se sådan ud."""
+    entry = {"kind": "behaviour", "label": "tomme løfter", "metric": 33.0,
+             "self_bound": True, "corroborated": True}
+    pat = {"rung": 1, "cycles_at_rung": 3, "baseline": 33.0, "last_metric": 33.0}
+    may, why = e._may_escalate(pat, 33.0, "tomme løfter", entry, e.default_config())
+    assert may is True and why == "corroborated"
+
+
+def test_korroboration_ALENE_aabner_ikke_porten():
+    """Ellers ville en label i den tunbare korroborations-liste kunne slippe en
+    ren frase igennem — præcis den vej august-fejlen kom ad."""
+    entry = {"kind": "phrase", "label": "det er ikke", "metric": 15.0,
+             "corroborated": True}
+    pat = {"rung": 1, "cycles_at_rung": 3, "baseline": 10.0, "last_metric": 15.0}
+    may, why = e._may_escalate(pat, 15.0, "det er ikke", entry, e.default_config())
+    assert may is False and why == "not_self_bound"
 
 
 def test_en_ren_frase_overlever_stadig_IKKE_porten():
@@ -232,7 +255,8 @@ def test_adfaerd_faar_ikke_sprogkritikerens_saetning():
     _, acts = e.step_escalation(
         None,
         {"behaviour:tomme løfter": {"kind": "behaviour", "label": "tomme løfter",
-                                    "metric": 33.0, "corroborated": True}},
+                                    "metric": 33.0, "self_bound": True,
+                                    "corroborated": True}},
         "2026-09-05T00:00:00+00:00")
     line = next(a["line"] for a in acts if a["type"] == "voice")
     assert "Varier" not in line

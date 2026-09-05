@@ -290,14 +290,8 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
         # og hakkede på danske funktionsord i hver eneste prompt. Er mønsteret hverken
         # noget Jarvis selv har lovet at stoppe eller en risikabel handling, har Smith
         # ingenting at sige om det. Tavshed er den rigtige adfærd, ikke en blødere tone.
-        # 5/9-2026: KORROBORATION taeller ogsaa her. Porten findes for at stoppe
-        # Smith i at opfinde «stop X» ud fra ordhyppighed — men et moenster et
-        # ANDET vaern har maalt er per definition ikke hans egen opfindelse.
-        # `_may_escalate` accepterede det allerede; Trin 1 gjorde ikke, og saa
-        # ville en maalt adfaerd blive smidt vaek foer han naaede at naevne den.
         if not (_matches_any(label, conf.get("risky_terms"))
-                or _is_self_bound(label, d, conf)
-                or _is_corroborated(d)):
+                or _is_self_bound(label, d, conf)):
             seen.discard(key)
             patterns.pop(key, None)
             continue

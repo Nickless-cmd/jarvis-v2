@@ -651,6 +651,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         startListening={voice.startListening}
         stopListening={voice.stopListening}
         exit={voice.exit}
+        onCameraContext={() => {
+          voice.exit()
+          setCameraOpen(true)
+        }}
       />
     </View>
   )

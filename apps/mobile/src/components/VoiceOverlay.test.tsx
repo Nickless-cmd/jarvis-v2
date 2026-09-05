@@ -47,4 +47,14 @@ describe('VoiceOverlay', () => {
     fireEvent.press(getByLabelText('Afbryd Jarvis'))
     expect(interrupt).toHaveBeenCalled()
   })
+
+  it('kan sende brugeren videre til kamera-kontekst uden at kalde det live vision', async () => {
+    const onCameraContext = jest.fn()
+    const { getByText, queryByText } = await wrap({ onCameraContext })
+
+    fireEvent.press(getByText('Kamera'))
+
+    expect(onCameraContext).toHaveBeenCalledTimes(1)
+    expect(queryByText('Live vision')).toBeNull()
+  })
 })

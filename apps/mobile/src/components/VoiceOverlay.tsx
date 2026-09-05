@@ -1,5 +1,5 @@
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import { X } from 'lucide-react-native'
+import { Camera, X } from 'lucide-react-native'
 import type { VoiceState, VoiceMode } from '../lib/useVoiceConversation'
 import { ApprovalCard, type ApprovalViewModel } from './ApprovalCard'
 import { VoiceOrb } from './VoiceOrb'
@@ -42,6 +42,7 @@ export interface VoiceOverlayProps {
   approval?: ApprovalViewModel | null
   onApprove?: () => void
   onDeny?: () => void
+  onCameraContext?: () => void
 }
 
 export function VoiceOverlay(p: VoiceOverlayProps) {
@@ -110,6 +111,17 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
         </View>
 
         <View style={s.bottom}>
+          {p.onCameraContext ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Tilføj kamera-kontekst"
+              onPress={p.onCameraContext}
+              style={s.cameraBtn}
+            >
+              <Camera size={16} color={tokens.color.fg1} strokeWidth={1.9} />
+              <Text style={s.cameraText}>Kamera</Text>
+            </Pressable>
+          ) : null}
           <View style={s.modeRow}>
             {(['hands-free', 'push'] as VoiceMode[]).map((m) => (
               <Pressable
@@ -145,6 +157,16 @@ const makes = (tokens: Theme) => StyleSheet.create({
   },
   approval: { width: '100%', paddingHorizontal: 18 },
   bottom: { alignItems: 'center', gap: 14, paddingHorizontal: 24 },
+  cameraBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    backgroundColor: tokens.color.bg2
+  },
+  cameraText: { color: tokens.color.fg1, fontSize: 13, fontWeight: '700' },
   modeRow: { flexDirection: 'row', gap: 8 },
   modeBtn: {
     paddingVertical: 7, paddingHorizontal: 18, borderRadius: 999,

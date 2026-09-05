@@ -1219,6 +1219,7 @@ from core.tools.simple_tools_operator import (  # noqa: E402,F401
     _operator_file_exists,
     _exec_operator_write_file,
     _exec_operator_edit_file,
+    _exec_operator_multi_edit,
     _exec_operator_glob,
     _exec_operator_grep,
     _exec_operator_list_dir,
@@ -1439,6 +1440,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "operator_read_file": _exec_operator_read_file,
     "operator_write_file": _exec_operator_write_file,
     "operator_edit_file": _exec_operator_edit_file,
+    "operator_multi_edit": _exec_operator_multi_edit,
     "operator_glob": _exec_operator_glob,
     "operator_grep": _exec_operator_grep,
     "operator_list_dir": _exec_operator_list_dir,
@@ -2185,6 +2187,7 @@ try:
     _WRAP_TARGETS = (
         "bash", "write_file", "edit_file",
         "operator_bash", "operator_write_file", "operator_edit_file",
+        "operator_multi_edit",
         "read_file", "operator_read_file",
         "glob", "grep", "operator_glob", "operator_grep", "operator_list_dir",
     )

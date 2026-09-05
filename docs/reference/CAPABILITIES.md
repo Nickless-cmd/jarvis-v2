@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-05 — 438 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-05 — 439 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -416,6 +416,7 @@
 | `operator_mouse_move` | operator | no |
 | `operator_mouse_position` | operator | no |
 | `operator_mouse_scroll` | operator | no |
+| `operator_multi_edit` | operator | no |
 | `operator_notify` | operator | no |
 | `operator_ocr_region` | operator | no |
 | `operator_open_url` | operator | yes |

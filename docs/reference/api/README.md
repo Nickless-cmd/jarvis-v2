@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13521 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13540 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -39,26 +39,26 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13521 functions/
 - [`core.services.10`](core.services.10.md) — `dream_hypothesis_signal_tracking` … `experienced_time_daemon`
 - [`core.services.11`](core.services.11.md) — `experiential_memory` … `gmail_connector`
 - [`core.services.12`](core.services.12.md) — `goal_signal_synthesizer` … `infra_sense`
-- [`core.services.13`](core.services.13.md) — `infra_weather_daemon` … `long_horizon_goals`
-- [`core.services.14`](core.services.14.md) — `longing_signal_daemon` … `mood_dialer`
-- [`core.services.15`](core.services.15.md) — `mood_oscillator` … `pdf_connector`
-- [`core.services.16`](core.services.16.md) — `perceptual_event_engine` … `prompt_mutation_loop`
-- [`core.services.17`](core.services.17.md) — `prompt_observer` … `relation_dynamics`
-- [`core.services.18`](core.services.18.md) — `relation_map` … `runtime_tasks`
-- [`core.services.19`](core.services.19.md) — `rupture_repair` … `session_continuity`
-- [`core.services.20`](core.services.20.md) — `session_distillation` … `spaced_repetition`
-- [`core.services.21`](core.services.21.md) — `spatial_entity_ledger` … `tool_concurrency`
-- [`core.services.22`](core.services.22.md) — `tool_embeddings` … `visible_followup_adapters`
-- [`core.services.23`](core.services.23.md) — `visible_followup_events` … `world_model_signal_tracking`
+- [`core.services.13`](core.services.13.md) — `infra_weather_daemon` … `long_arc_synthesizer`
+- [`core.services.14`](core.services.14.md) — `long_horizon_goals` … `monitor_streams`
+- [`core.services.15`](core.services.15.md) — `mood_dialer` … `pattern_counterfactual_daemon`
+- [`core.services.16`](core.services.16.md) — `pdf_connector` … `prompt_heartbeat_self_knowledge`
+- [`core.services.17`](core.services.17.md) — `prompt_mutation_loop` … `relation_continuity_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `relation_dynamics` … `runtime_surface_cache`
+- [`core.services.19`](core.services.19.md) — `runtime_tasks` … `session_boot_reconciler`
+- [`core.services.20`](core.services.20.md) — `session_continuity` … `source_confidence_gate`
+- [`core.services.21`](core.services.21.md) — `spaced_repetition` … `tool_chip_payload`
+- [`core.services.22`](core.services.22.md) — `tool_concurrency` … `visible_followup`
+- [`core.services.23`](core.services.23.md) — `visible_followup_adapters` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `notification_tools`
-- [`core.tools.02`](core.tools.02.md) — `notify_out_tools` … `stripe_tools`
-- [`core.tools.03`](core.tools.03.md) — `tool_limits` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `native_tool_gate`
+- [`core.tools.02`](core.tools.02.md) — `notification_tools` … `state_flag_tools`
+- [`core.tools.03`](core.tools.03.md) — `stripe_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.util`](core.util.md)

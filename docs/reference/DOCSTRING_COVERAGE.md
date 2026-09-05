@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6750/13521 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6766/13540 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,14 +24,14 @@ Generated from source. 6750/13521 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 566 | 1053 | 53% |
-| `core.services` | 4489 | 9370 | 47% |
+| `core.services` | 4498 | 9380 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 92 | 164 | 56% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 371 | 819 | 45% |
+| `core.tools` | 378 | 828 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -40,7 +40,7 @@ Generated from source. 6750/13521 functions/methods documented (49%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1953)
+## Undocumented public functions (1954)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1856,22 +1856,23 @@ Generated from source. 6750/13521 functions/methods documented (49%). The list b
 - `core/tools/identity_pin_tools.py` :: `remove_pin` (L118)
 - `core/tools/native_tool_gate.py` :: `is_disabled` (L26)
 - `core/tools/notification_tools.py` :: `exec_get_notification_preferences` (L23)
-- `core/tools/operator_tools.py` :: `operator_browser_click_async` (L558)
-- `core/tools/operator_tools.py` :: `operator_browser_close_async` (L649)
-- `core/tools/operator_tools.py` :: `operator_browser_get_links_async` (L549)
-- `core/tools/operator_tools.py` :: `operator_browser_get_text_async` (L536)
-- `core/tools/operator_tools.py` :: `operator_browser_status_async` (L640)
-- `core/tools/operator_tools.py` :: `operator_browser_type_async` (L576)
-- `core/tools/operator_tools.py` :: `operator_process_kill_async` (L1133)
-- `core/tools/operator_tools.py` :: `operator_process_list_async` (L1143)
-- `core/tools/operator_tools.py` :: `operator_process_output_async` (L1121)
-- `core/tools/operator_tools.py` :: `operator_process_spawn_async` (L1096)
-- `core/tools/operator_tools.py` :: `operator_process_status_async` (L1111)
+- `core/tools/operator_tools.py` :: `operator_browser_click_async` (L646)
+- `core/tools/operator_tools.py` :: `operator_browser_close_async` (L737)
+- `core/tools/operator_tools.py` :: `operator_browser_get_links_async` (L637)
+- `core/tools/operator_tools.py` :: `operator_browser_get_text_async` (L624)
+- `core/tools/operator_tools.py` :: `operator_browser_status_async` (L728)
+- `core/tools/operator_tools.py` :: `operator_browser_type_async` (L664)
+- `core/tools/operator_tools.py` :: `operator_multi_edit` (L196)
+- `core/tools/operator_tools.py` :: `operator_process_kill_async` (L1221)
+- `core/tools/operator_tools.py` :: `operator_process_list_async` (L1231)
+- `core/tools/operator_tools.py` :: `operator_process_output_async` (L1209)
+- `core/tools/operator_tools.py` :: `operator_process_spawn_async` (L1184)
+- `core/tools/operator_tools.py` :: `operator_process_status_async` (L1199)
 - `core/tools/operator_tools.py` :: `operator_read_file` (L58)
-- `core/tools/operator_tools.py` :: `operator_reminder_async` (L1042)
-- `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1083)
-- `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1070)
-- `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1055)
+- `core/tools/operator_tools.py` :: `operator_reminder_async` (L1130)
+- `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1171)
+- `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1158)
+- `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1143)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L254)
 - `core/tools/tool_scoping.py` :: `reset_tool_scope` (L176)

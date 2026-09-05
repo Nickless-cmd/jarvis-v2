@@ -251,6 +251,18 @@ _Forgetting tools — Lag 11 self-track._
 |---|---|---|---|---|
 | function | `_exec_release_memory` | `(args)` | Hard-delete a memory and leave an absence-marker. | [src](../../../core/tools/forgetting_tools.py#L15) |
 
+## `core/tools/fuzzy_edit.py`
+_Fuzzy tekst-match til fil-redigering — porteret fra jarvis-code._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exact_find` | `(content, old_text)` | All exact-match spans of old_text in content. [] if none. | [src](../../../core/tools/fuzzy_edit.py#L33) |
+| function | `_whitespace_fuzzy_find` | `(content, old_text)` | Match old_text against content with ALL whitespace (on BOTH sides) | [src](../../../core/tools/fuzzy_edit.py#L48) |
+| function | `_indent_insensitive_find` | `(content, old_text)` | Match old_text LINE-BY-LINE ignoring leading indent — each content | [src](../../../core/tools/fuzzy_edit.py#L81) |
+| function | `_reapply_indent` | `(new_text, indent)` | Re-apply `indent` as a leading prefix on every non-blank line of | [src](../../../core/tools/fuzzy_edit.py#L109) |
+| function | `_difflib_fuzzy_find` | `(content, old_text, threshold=…)` | Best-matching line-window in content vs. old_text, by | [src](../../../core/tools/fuzzy_edit.py#L126) |
+| function | `resolve_edit` | `(content, old_text, new_text, replace_all=…)` | Loes et redigerings-oenske mod filens FAKTISKE indhold. | [src](../../../core/tools/fuzzy_edit.py#L159) |
+
 ## `core/tools/geolocation_tools.py`
 _Native geolocation-tools til Jarvis — geocode, reverse-geocode, routing,_
 
@@ -493,13 +505,4 @@ _Native-tool lås/lås-op — en runtime allowlist Bjørn styrer._
 | function | `disabled_tools` | `()` | Sættet af låste native tool-navne. Fail-open → tom mængde. | [src](../../../core/tools/native_tool_gate.py#L16) |
 | function | `is_disabled` | `(name)` | — | [src](../../../core/tools/native_tool_gate.py#L26) |
 | function | `set_tool_disabled` | `(name, disabled)` | Lås (disabled=True) eller lås-op (False) et native tool. Returnerer det nye sæt. | [src](../../../core/tools/native_tool_gate.py#L30) |
-
-## `core/tools/notification_tools.py`
-_Native tools til notifikations-præferencer (notif-routing spec §4)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_uid` | `(args)` | — | [src](../../../core/tools/notification_tools.py#L12) |
-| function | `exec_get_notification_preferences` | `(args)` | — | [src](../../../core/tools/notification_tools.py#L23) |
-| function | `exec_set_notification_preferences` | `(args)` | Args (alle valgfri): global, briefing, reminder, reach_out, team_invite, | [src](../../../core/tools/notification_tools.py#L36) |
 

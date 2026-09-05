@@ -97,18 +97,106 @@ async def operator_edit_file_async(
     {replacements: int, path}. Errors if old_string not found, or if
     replace_all=False and old_string appears more than once.
     """
-    result = await _bridge_call(
-        tool="operator_edit_file",
-        args={
-            "path": str(path),
-            "old_string": str(old_string),
-            "new_string": str(new_string),
-            "replace_all": bool(replace_all),
-        },
+    # 5/9-2026: matchet loeses SERVER-side. Broen lavede eksakt strengmatch og
+    # fejlede 56 % af gangene (mod operator_bash paa 1,2 %), fordi eksakt match
+    # braekker saa snart indrykning eller mellemrum afviger med ét tegn — og en
+    # model gengiver sjaeldent whitespace praecist.
+    #
+    # Nu laeses filen, `fuzzy_edit` finder stedet med sin fire-trins stige, og
+    # broen faar en FAERDIG fil at skrive. Broen forbliver dum; intelligensen
+    # ligger hvor runtimen er. Findes teksten ikke, fejler vi hoejt frem for at
+    # skrive et forkert sted.
+    try:
+        from core.tools.fuzzy_edit import resolve_edit
+        indhold = await operator_read_file_async(
+            path=path, user_id=user_id, timeout_s=timeout_s)
+        nyt, antal, strategi = resolve_edit(
+            indhold, str(old_string), str(new_string), bool(replace_all))
+    except ValueError as exc:
+        return {"error": str(exc), "path": str(path), "replacements": 0}
+    except Exception:
+        # Kan vi ikke laese filen, falder vi tilbage til broens egen vej frem for
+        # at melde en fejl der maaske ikke findes.
+        result = await _bridge_call(
+            tool="operator_edit_file",
+            args={
+                "path": str(path),
+                "old_string": str(old_string),
+                "new_string": str(new_string),
+                "replace_all": bool(replace_all),
+            },
+            user_id=user_id,
+            timeout_s=timeout_s,
+        )
+        return result or {}
+
+    await _bridge_call(
+        tool="operator_write_file",
+        args={"path": str(path), "content": nyt},
         user_id=user_id,
         timeout_s=timeout_s,
     )
-    return result or {}
+    return {"replacements": antal, "path": str(path), "strategy": strategi}
+
+
+async def operator_multi_edit_async(
+    *,
+    path: str,
+    edits: list,
+    user_id: str,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Flere redigeringer i ÉN fil, ét bro-kald. Findes ikke i jarvis-code's
+    operator-saet — den var et af de fire huller i "det samme paa min maskine".
+
+    ALT-ELLER-INTET: fejler én redigering, skrives intet. En halvt redigeret fil
+    er vaerre end en urørt, fordi man ikke kan se hvor langt den naaede. Hver
+    redigering anvendes paa resultatet af den forrige, saa de kan bygge ovenpaa
+    hinanden.
+
+    `edits`: [{"old_string": ..., "new_string": ..., "replace_all": bool}, ...]
+    """
+    from core.tools.fuzzy_edit import resolve_edit
+
+    if not isinstance(edits, list) or not edits:
+        return {"error": "edits er tom", "path": str(path), "replacements": 0}
+    try:
+        indhold = await operator_read_file_async(
+            path=path, user_id=user_id, timeout_s=timeout_s)
+    except Exception as exc:
+        return {"error": f"kunne ikke laese filen: {exc}", "path": str(path),
+                "replacements": 0}
+
+    ialt, strategier = 0, []
+    for i, e in enumerate(edits):
+        if not isinstance(e, dict):
+            return {"error": f"redigering {i + 1} er ikke et objekt",
+                    "path": str(path), "replacements": 0}
+        try:
+            indhold, n, strat = resolve_edit(
+                indhold, str(e.get("old_string") or ""),
+                str(e.get("new_string") or ""), bool(e.get("replace_all")))
+        except ValueError as exc:
+            # Alt-eller-intet: intet er skrevet endnu, saa filen er urørt.
+            return {"error": f"redigering {i + 1} af {len(edits)}: {exc}",
+                    "path": str(path), "replacements": 0}
+        ialt += n
+        strategier.append(strat)
+
+    await _bridge_call(
+        tool="operator_write_file",
+        args={"path": str(path), "content": indhold},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return {"replacements": ialt, "edits": len(edits), "path": str(path),
+            "strategies": strategier}
+
+
+def operator_multi_edit(*, path: str, edits: list, user_id: str,
+                        timeout_s: float = _DEFAULT_TIMEOUT_S) -> dict[str, Any]:
+    return asyncio.run(operator_multi_edit_async(
+        path=path, edits=edits, user_id=user_id, timeout_s=timeout_s))
 
 
 # ── operator_glob ───────────────────────────────────────────────────────

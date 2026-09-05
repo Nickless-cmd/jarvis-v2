@@ -254,6 +254,40 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_multi_edit",
+            "description": (
+                "Several find-and-replace edits in ONE file on the OPERATOR'S "
+                "DESKTOP, in a single call. ALL-OR-NOTHING: if any edit fails, "
+                "nothing is written. Each edit applies to the result of the "
+                "previous one, so they can build on each other. Matching "
+                "tolerates whitespace and indentation drift. "
+                "Returns {replacements, edits, path}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Absolute file path on the operator's desktop"},
+                    "edits": {
+                        "type": "array",
+                        "description": "Edits applied in order",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "old_string": {"type": "string"},
+                                "new_string": {"type": "string"},
+                                "replace_all": {"type": "boolean"},
+                            },
+                            "required": ["old_string", "new_string"],
+                        },
+                    },
+                },
+                "required": ["path", "edits"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "operator_glob",
             "description": (
                 "Find files matching a glob pattern on the OPERATOR'S DESKTOP. "

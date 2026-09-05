@@ -403,6 +403,55 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _exec_operator_multi_edit(args: dict[str, Any]) -> dict[str, Any]:
+    path = str(args.get("path") or "").strip()
+    edits = args.get("edits")
+    if not path:
+        return {"error": "path is required", "status": "error"}
+    if not isinstance(edits, list) or not edits:
+        return {"error": "edits (non-empty array) is required", "status": "error"}
+    # Samme laes-foer-skriv-vaern som edit_file: redigerer man, skal man have
+    # laest filen i denne session.
+    try:
+        from core.services.gate_execution import check_operator
+        _sid = (args.get("_runtime_session_id") or args.get("_session_id")
+                or "default")
+        _ec = check_operator(path, session_id=str(_sid), file_exists=True)
+        if _ec.classification == "guard_blocked" and _ec.reason:
+            return {
+                "status": "error", "error": _ec.reason,
+                "blocked_by": "read_before_write_guard", "path": path,
+                "hint": ("Kald operator_read_file('" + path + "') først — "
+                         "operator_multi_edit kan ikke edite uden at have læst "
+                         "filen i denne session."),
+            }
+    except Exception:
+        pass
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_multi_edit_async
+    out = _run_operator_async(
+        lambda: operator_multi_edit_async(
+            path=path, edits=edits, user_id=user_id, timeout_s=30.0),
+        tool_name="operator_multi_edit",
+    )
+    if isinstance(out, dict) and out.get("status") == "ok":
+        try:
+            from core.services.read_before_write_guard import (
+                get_session_edit_summary,
+                record_operator_edit,
+            )
+            _sid = (args.get("_runtime_session_id") or args.get("_session_id")
+                    or "default")
+            record_operator_edit(path, session_id=str(_sid), kind="edit")
+            summary = get_session_edit_summary(session_id=str(_sid))
+            if summary:
+                out["_session_summary"] = summary
+        except Exception:
+            pass
+        _record_active_file(path, "write", args)
+    return out
+
+
 def _exec_operator_glob(args: dict[str, Any]) -> dict[str, Any]:
     pattern = str(args.get("pattern") or "").strip()
     if not pattern:
@@ -1339,6 +1388,7 @@ __all__ = [
     "_operator_file_exists",
     "_exec_operator_write_file",
     "_exec_operator_edit_file",
+    "_exec_operator_multi_edit",
     "_exec_operator_glob",
     "_exec_operator_grep",
     "_exec_operator_list_dir",

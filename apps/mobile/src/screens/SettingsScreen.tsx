@@ -3,6 +3,7 @@ import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, S
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { QrScanScreen } from './QrScanScreen'
 import { DataControlsScreen } from './DataControlsScreen'
+import { MemoryScreen } from './MemoryScreen'
 import {
   getAccountMe,
   googleLinkStart,
@@ -53,6 +54,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const styles = useStyles(makestyles)
   const { config, signOut, signInWithToken } = useAuth()
   const [dataOpen, setDataOpen] = useState(false)
+  const [memoryOpen, setMemoryOpen] = useState(false)
   const connectivity = useConnectivity(config ?? null)
   const [qrOpen, setQrOpen] = useState(false)
   const insets = useSafeAreaInsets()
@@ -171,6 +173,19 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
             ● {CONN_LABEL[connectivity]}
           </Text>
         </View>
+
+        <Text style={styles.sectionTitle}>Hukommelse</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setMemoryOpen(true)}
+          style={({ pressed }) => [styles.card, styles.rowCard, pressed && styles.pressedRow]}
+        >
+          <View style={styles.rowText}>
+            <Text style={styles.rowLabel}>Hukommelse</Text>
+            <Text style={styles.muted}>Se hvad Jarvis husker, før du eksporterer eller sletter.</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
 
         {/* Plugins / connectors */}
         <AppearanceSection />
@@ -311,6 +326,16 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 
       <Modal visible={dataOpen} animationType="slide" onRequestClose={() => setDataOpen(false)}>
         <DataControlsScreen onClose={() => setDataOpen(false)} />
+      </Modal>
+
+      <Modal visible={memoryOpen} animationType="slide" onRequestClose={() => setMemoryOpen(false)}>
+        <MemoryScreen
+          onClose={() => setMemoryOpen(false)}
+          onOpenDataControls={() => {
+            setMemoryOpen(false)
+            setDataOpen(true)
+          }}
+        />
       </Modal>
 
       <Modal visible={qrOpen} animationType="slide" onRequestClose={() => setQrOpen(false)}>

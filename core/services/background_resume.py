@@ -19,10 +19,21 @@ uendelige paa "shell'en koerer stadig".
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 _KEY = "background_shells_by_session"
 _MAX_PR_SESSION = 8          # loft: en tur maa ikke drukne i baggrunds-stoej
+
+# Naade naar en shell netop er startet og endnu ikke har naaet at skrive noget.
+# Uden den er funktionen ubrugelig i praksis: en kommando bruger et par sekunder
+# paa sit foerste output, og turen slutter paa under ét — saa er der aldrig en
+# aendring at genoptage paa, og man ser aldrig resultatet. Maalt live: shell'en
+# skrev efter 3 s, turen sluttede efter 2.
+#
+# Bevidst KORT og KUN ÉN gang: vi venter paa at noget begynder, ikke paa at det
+# bliver faerdigt. En lang kommando skal stadig koere videre uden at holde turen.
+_FOERSTE_OUTPUT_NAADE_S = 4.0
 
 
 def _load() -> dict[str, Any]:
@@ -107,6 +118,14 @@ async def poll_async(session_id: str, user_id: str) -> str:
     shells = tracked(sid)
     if not shells:
         return ""
+
+    # Har en netop startet shell endnu ikke skrevet noget, saa giv den ét kort
+    # oejeblik — ellers slutter turen foer det foerste output overhovedet findes.
+    if all(int(s.get("offset") or 0) == 0 and not s.get("done") for s in shells):
+        try:
+            await asyncio.sleep(_FOERSTE_OUTPUT_NAADE_S)
+        except Exception:
+            pass
 
     deltas: list[dict[str, Any]] = []
     aendret = False

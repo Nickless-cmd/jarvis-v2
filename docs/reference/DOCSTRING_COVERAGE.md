@@ -638,7 +638,7 @@ Generated from source. 6774/13555 functions/methods documented (49%). The list b
 - `core/services/autonomy_proposal_queue.py` :: `list_recent_proposals` (L159)
 - `core/services/autonomy_proposal_queue.py` :: `reject_proposal` (L255)
 - `core/services/avoidance_detector.py` :: `build_avoidance_surface` (L161)
-- `core/services/background_resume.py` :: `tracked` (L69)
+- `core/services/background_resume.py` :: `tracked` (L80)
 - `core/services/behavioral_decisions.py` :: `change_status` (L136)
 - `core/services/behavioral_decisions.py` :: `create_decision` (L50)
 - `core/services/behavioral_decisions.py` :: `delete_decision` (L172)

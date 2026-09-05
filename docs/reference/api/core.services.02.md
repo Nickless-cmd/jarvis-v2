@@ -622,11 +622,11 @@ _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/background_resume.py#L28) |
-| function | `_save` | `(state)` | — | [src](../../../core/services/background_resume.py#L37) |
-| function | `note_started` | `(session_id, shell_id)` | Husk at DENNE session har startet den shell. Self-safe. | [src](../../../core/services/background_resume.py#L45) |
-| function | `forget_session` | `(session_id)` | Ryd op naar en session er faerdig, saa staten ikke vokser uendeligt. | [src](../../../core/services/background_resume.py#L59) |
-| function | `tracked` | `(session_id)` | — | [src](../../../core/services/background_resume.py#L69) |
-| function | `build_note` | `(deltas)` | Systemnoten der faar Jarvis til at forholde sig til det nye output. Ren. | [src](../../../core/services/background_resume.py#L73) |
-| function | `poll_async` | `(session_id, user_id)` | Er der nyt fra sessionens baggrunds-shells? Returnerer en note, ellers "". | [src](../../../core/services/background_resume.py#L93) |
+| function | `_load` | `()` | — | [src](../../../core/services/background_resume.py#L39) |
+| function | `_save` | `(state)` | — | [src](../../../core/services/background_resume.py#L48) |
+| function | `note_started` | `(session_id, shell_id)` | Husk at DENNE session har startet den shell. Self-safe. | [src](../../../core/services/background_resume.py#L56) |
+| function | `forget_session` | `(session_id)` | Ryd op naar en session er faerdig, saa staten ikke vokser uendeligt. | [src](../../../core/services/background_resume.py#L70) |
+| function | `tracked` | `(session_id)` | — | [src](../../../core/services/background_resume.py#L80) |
+| function | `build_note` | `(deltas)` | Systemnoten der faar Jarvis til at forholde sig til det nye output. Ren. | [src](../../../core/services/background_resume.py#L84) |
+| function | `poll_async` | `(session_id, user_id)` | Er der nyt fra sessionens baggrunds-shells? Returnerer en note, ellers "". | [src](../../../core/services/background_resume.py#L104) |
 

@@ -20,6 +20,14 @@ def _ren_state(monkeypatch):
                         lambda k, d=None: lager.get(k, d))
     monkeypatch.setattr(db, "set_runtime_state_value",
                         lambda k, v, **kw: lager.__setitem__(k, v))
+
+    # Første-output-nåden er 4 s ægte ventetid. Uden det her ville hver test der
+    # rammer den lægge fire sekunder til suiten — en skat på alle fremtidige
+    # kørsler. De to tests der handler OM nåden overskriver den selv.
+    async def _ingen_ventetid(_t):
+        return None
+
+    monkeypatch.setattr(br.asyncio, "sleep", _ingen_ventetid)
     return lager
 
 
@@ -139,3 +147,44 @@ class TestNoten:
         n = br.build_note([{"shell_id": "bg_a", "output": "x" * 5000,
                             "finished": False}])
         assert "afkortet" in n and len(n) < 2400
+
+
+class TestFoersteOutputNaade:
+    """En kommando bruger et par sekunder på sit første output; turen slutter på
+    under ét. Uden en kort nåde ville der aldrig være en ændring at genoptage
+    på, og funktionen ville være ubrugelig i praksis. Målt live: shell'en skrev
+    efter 3 s, turen sluttede efter 2."""
+
+    @pytest.mark.asyncio
+    async def test_venter_naar_intet_er_skrevet_endnu(self, monkeypatch):
+        ventet = {}
+
+        async def _sov(t):
+            ventet["s"] = t
+
+        monkeypatch.setattr(br.asyncio, "sleep", _sov)
+        br.note_started("s1", "bg_a")
+        _laesning(monkeypatch, {"bg_a": {"output": "sent\n", "offset": 5,
+                                         "running": True}})
+        note = await br.poll_async("s1", "u1")
+        assert ventet["s"] == br._FOERSTE_OUTPUT_NAADE_S
+        assert "sent" in note
+
+    @pytest.mark.asyncio
+    async def test_venter_IKKE_naar_der_allerede_er_output(self, monkeypatch):
+        """Nåden gælder starten, ikke hver runde — ellers ville en lang kommando
+        forsinke turen igen og igen."""
+        ventet = {}
+
+        async def _sov(t):
+            ventet["s"] = t
+
+        monkeypatch.setattr(br.asyncio, "sleep", _sov)
+        br.note_started("s1", "bg_a")
+        st = br._load()
+        st["s1"][0]["offset"] = 12
+        br._save(st)
+        _laesning(monkeypatch, {"bg_a": {"output": "mere\n", "offset": 20,
+                                         "running": True}})
+        await br.poll_async("s1", "u1")
+        assert "s" not in ventet

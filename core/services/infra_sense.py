@@ -156,18 +156,23 @@ SSH_HOSTS: list[tuple[str, str, str]] = [
     ("pve", "root@10.0.0.2",
      "R=$(( $(pct list 2>/dev/null|tail -n+2|grep -cw running) + $(qm list 2>/dev/null|tail -n+2|grep -cw running) ));"
      "T=$(( $(pct list 2>/dev/null|tail -n+2|wc -l) + $(qm list 2>/dev/null|tail -n+2|wc -l) ));"
-     # `df` maaler VAERTENS filsystemer. Det ægte pres paa en hypervisor sidder paa
-     # GAESTERNES volumener, som df slet ikke ser: maalt 5/9 stod pfSense paa 96,9%
-     # og WebServices paa 90,4%, mens vaertens root var paa 40%. Uden guestdisk
-     # ville rettelsen af df have gjort alarmen tavs — og tavs er forkert, for
-     # presset er ægte.
+     # Tre maal, og de er IKKE det samme — det tog to forsoeg at faa rigtigt:
      #
-     # `-x efivarfs` er lige saa vigtig den anden vej: /sys/firmware/efi/efivars er
-     # et par hundrede kilobyte NVRAM der ALTID staar ~94% fuldt, og det var dét tal
-     # alarmen raabte 783 gange. Et rigtigt svar paa et forkert maal.
+     # `maxdisk`  vaertens egne filsystemer. `-x efivarfs` er afgoerende:
+     #            /sys/firmware/efi/efivars er et par hundrede kilobyte NVRAM der
+     #            ALTID staar ~94% fuldt, og dét tal raabte alarmen 783 gange.
+     #
+     # `pooldisk` thin-poolens forbrug — det ENESTE tal der siger om vi kan loebe
+     #            toer. Maalt 5/9: 11%.
+     #
+     # IKKE gaesternes `data_percent`. Foerste rettelse brugte dem, og det var
+     # forkert: for et thin-volumen betyder 96,9% at blokkene er ROERT, ikke brugt.
+     # pfSense stod paa 96,9% mens dens ZFS-pool indeni kun brugte 1,35 af 18,5 GB
+     # (7%). Uden `discard=on` gives blokke aldrig tilbage, saa tallet stiger kun
+     # og ville vaere blevet endnu en alarm der ALTID er hoej. Gaesternes eget
+     # forbrug maa maales INDE i gaesten, ikke paa hypervisoren.
      "echo guests_running=$R guests_total=$T maxdisk=$(df -x tmpfs -x devtmpfs -x efivarfs -x squashfs -x overlay -x fuse.lxcfs --output=pcent 2>/dev/null|tail -n+2|tr -d ' %'|sort -n|tail -1)"
-     " guestdisk=$(lvs --noheadings -o lv_name,data_percent 2>/dev/null|grep -E '^\\s*vm-'|awk '{print int($2)}'|sort -n|tail -1)"
-     " guestdisk_top=$(lvs --noheadings -o lv_name,data_percent 2>/dev/null|grep -E '^\\s*vm-'|sort -k2 -n|tail -1|awk '{print $1}')"
+     " pooldisk=$(lvs --noheadings -o data_percent --select 'lv_attr=~^t' 2>/dev/null|awk '{print int($1)}'|sort -n|tail -1)"
      " load1=$(cut -d' ' -f1 /proc/loadavg)"),
     ("fileserver", "root@10.0.0.10",
      "echo disk=$(df --output=pcent /mnt/shares 2>/dev/null|tail -1|tr -d ' %') "
@@ -211,12 +216,13 @@ def poll_ssh_hosts() -> dict[str, Any]:
         except Exception:
             pass
         # disk-tidsserie (health-proxy, higher=worse) pr. host. Paa en hypervisor
-        # taeller det VAERSTE af vaertens filsystemer og gaesternes volumener —
-        # ellers ville en gaest paa 97% vaere usynlig bag en vaert paa 40%.
+        # taeller det VAERSTE af vaertens filsystemer og thin-poolen — de er begge
+        # ting der kan loebe toer. Gaesternes allokering er IKKE med; se kommentaren
+        # ved SSH_HOSTS for hvorfor den maaler noget andet end den ser ud til.
         disk = kv.get("maxdisk", kv.get("disk"))
-        guest = kv.get("guestdisk")
-        if isinstance(guest, int) and (not isinstance(disk, int) or guest > disk):
-            disk = guest
+        pool = kv.get("pooldisk")
+        if isinstance(pool, int) and (not isinstance(disk, int) or pool > disk):
+            disk = pool
         if isinstance(disk, int):
             central_timeseries.record("infra", f"{name}_disk", value=float(disk), meta=dict(kv))
         if "svc_down" in kv:

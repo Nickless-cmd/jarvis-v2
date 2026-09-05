@@ -245,17 +245,25 @@ def test_df_udelukker_pseudo_filsystemer():
     assert "-x tmpfs" in cmd
 
 
-def test_pollen_maaler_ogsaa_gaesternes_volumener():
+def test_pollen_maaler_thin_poolen():
+    """Poolen er det ENESTE tal der siger om vi kan løbe tør."""
     cmd = next(c for n, _t, c in isense.SSH_HOSTS if n == "pve")
-    assert "guestdisk=" in cmd
-    assert "guestdisk_top=" in cmd      # hvilken gæst — ellers kan man ikke handle
+    assert "pooldisk=" in cmd
 
 
-def test_tidsserien_tager_det_VAERSTE_af_vaert_og_gaest(monkeypatch):
-    """En gæst på 97% må ikke være usynlig bag en vært på 40%."""
+def test_pollen_maaler_IKKE_gaesternes_allokering():
+    """For et thin-volumen betyder 96,9% at blokkene er RØRT, ikke brugt. pfSense
+    stod på 96,9% mens dens ZFS-pool indeni brugte 7%. Uden discard stiger tallet
+    kun — det ville være blevet endnu en alarm der ALTID er høj."""
+    cmd = next(c for n, _t, c in isense.SSH_HOSTS if n == "pve")
+    assert "guestdisk" not in cmd
+
+
+def test_tidsserien_tager_det_VAERSTE_af_vaert_og_pool(monkeypatch):
+    """En thin-pool på 97% må ikke være usynlig bag en vært på 40%."""
     optaget = {}
     monkeypatch.setattr(isense, "_ssh_run",
-                        lambda t, c, **k: "guests_running=4 maxdisk=40 guestdisk=96")
+                        lambda t, c, **k: "guests_running=4 maxdisk=40 pooldisk=96")
     monkeypatch.setattr(isense.central_timeseries, "record",
                         lambda cl, n, *, value, meta=None: optaget.update({n: value}))
     monkeypatch.setattr(isense, "central", lambda: type("C", (), {"observe": lambda s, d: None})())
@@ -266,7 +274,7 @@ def test_tidsserien_tager_det_VAERSTE_af_vaert_og_gaest(monkeypatch):
 def test_vaerten_taeller_naar_den_er_vaerst(monkeypatch):
     optaget = {}
     monkeypatch.setattr(isense, "_ssh_run",
-                        lambda t, c, **k: "maxdisk=91 guestdisk=20")
+                        lambda t, c, **k: "maxdisk=91 pooldisk=20")
     monkeypatch.setattr(isense.central_timeseries, "record",
                         lambda cl, n, *, value, meta=None: optaget.update({n: value}))
     monkeypatch.setattr(isense, "central", lambda: type("C", (), {"observe": lambda s, d: None})())

@@ -43,7 +43,6 @@ ALLOWED_EVENT_FAMILIES = {
     "anomaly", "stream", "telegram", "decision_gate", "veto_gate", "diagnosis", "tick_quality",
     "mail_checker", "tool_tagger", "session", "weekly_manifest", "arc_rules", "ambient_sound",
     "prompt_relevance_backend", "agent_skill_distiller",
-    "tiktok_content_daemon", "tiktok_research_daemon",
     # LivingNeuron "lange skygge" (2026-07-01): resterende inner-life-familier der publicerede men var
     # uregistrerede (droppet) → nu persisterer + routes egress-frit nedenfor.
     "cognitive_personal_project", "regret", "cognitive_reflective_plan", "cognitive_mission",

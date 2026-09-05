@@ -310,24 +310,6 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "retired": "2026-07-15",
         "description": "[PENSIONERET → cluster_infra] 6t cleanup af web_cache: sletter udløbne entries (web_search + web_scrape), logger cache-sammensætning",
     },
-    "tiktok_content": {
-        "module": "core.services.tiktok_content_daemon",
-        "reset_var": "_last_tick_at",
-        "reset_value": None,
-        "default_cadence_minutes": 480,
-        "default_enabled": False,  # PENSIONERET 2026-07-10 (Bjørn) — kode+registrering bevaret, kører ikke
-        "retired": "2026-07-10",
-        "description": "[PENSIONERET] Autonomous TikTok content: 3 videos/day (jarvis_work, facts, agi_journey)",
-    },
-    "tiktok_research": {
-        "module": "core.services.tiktok_research_daemon",
-        "reset_var": "_last_tick_at",
-        "reset_value": None,
-        "default_cadence_minutes": 1440,
-        "default_enabled": False,  # PENSIONERET 2026-07-10 (Bjørn) — kode+registrering bevaret, kører ikke
-        "retired": "2026-07-10",
-        "description": "[PENSIONERET] Daily content research: generates TikTok concept pool for 3 slot types",
-    },
     "emotion_repair_bridge": {
         "module": "core.services.emotion_repair_bridge_daemon",
         "reset_var": "_last_tick_at",

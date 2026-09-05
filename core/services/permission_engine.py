@@ -10,7 +10,7 @@ Sikkerhedsmodel — **fail-closed default-deny**:
 
 Alt der IKKE står på en member-liste er automatisk owner-only. Derfor er Jarvis'
 egen kode (skill_*, bash, git_*, restart_self, dispatch_to_claude_code), native
-indre tools (mood, dream, brain, identitet), finans (stripe_*, tiktok_*) og runtime
+indre tools (mood, dream, brain, identitet), finans (stripe_*) og runtime
 utilgængelige for member uden at vi opremser dem — de er bare ikke her.
 
 **Vigtigt:** dette er tool-adgang, IKKE data-adgang. En member-tilladt `edit_file`

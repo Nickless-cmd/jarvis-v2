@@ -101,7 +101,6 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/tools/memory_tools.py": "tests/runtime/test_workspace_paths.py",
     "core/tools/mic_listen_tool.py": "tests/runtime/test_workspace_paths.py",
     "core/tools/pollinations_tools.py": "tests/runtime/test_workspace_paths.py",
-    "core/tools/tiktok_content_tools.py": "tests/runtime/test_workspace_paths.py",
     # Audit-gap fix — remaining 'default' refs migrated to shared_dir().
     # Pure path refactor; shared_dir() tested via workspace_paths.
     # Mapping added 2026-05-28.

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6729/13499 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6704/13472 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,14 +24,14 @@ Generated from source. 6729/13499 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4466 | 9345 | 47% |
+| `core.services` | 4450 | 9329 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 87 | 157 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 380 | 830 | 45% |
+| `core.tools` | 371 | 819 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -231,10 +231,10 @@ Generated from source. 6729/13499 functions/methods documented (49%). The list b
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L195)
 - `core/eventbus/bus.py` :: `EventBus.subscribe` (L217)
 - `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L223)
-- `core/eventbus/events.py` :: `Event.create` (L206)
-- `core/eventbus/events.py` :: `Event.family` (L202)
-- `core/eventbus/events.py` :: `Event.from_record` (L212)
-- `core/eventbus/events.py` :: `Event.validate` (L223)
+- `core/eventbus/events.py` :: `Event.create` (L205)
+- `core/eventbus/events.py` :: `Event.family` (L201)
+- `core/eventbus/events.py` :: `Event.from_record` (L211)
+- `core/eventbus/events.py` :: `Event.validate` (L222)
 - `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L318)
 - `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L119)
 - `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L51)
@@ -877,8 +877,8 @@ Generated from source. 6729/13499 functions/methods documented (49%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `maybe_register_from_text` (L53)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L15)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L798)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L845)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L780)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L827)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L266)

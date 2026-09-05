@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13499 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13472 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -47,9 +47,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13499 functions/
 - [`core.services.18`](core.services.18.md) — `release_marker_signal_tracking` … `scheduled_tasks`
 - [`core.services.19`](core.services.19.md) — `security_guard` … `session_persistence_flag`
 - [`core.services.20`](core.services.20.md) — `session_prewarm` … `state_flag_store`
-- [`core.services.21`](core.services.21.md) — `stream_degeneration` … `tool_intent_runtime`
-- [`core.services.22`](core.services.22.md) — `tool_observer` … `visible_inner_life`
-- [`core.services.23`](core.services.23.md) — `visible_model` … `world_model_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `stream_degeneration` … `tool_outcome_memory`
+- [`core.services.22`](core.services.22.md) — `tool_pattern_miner` … `visible_model_adapters`
+- [`core.services.23`](core.services.23.md) — `visible_model_observe` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -58,7 +58,7 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13499 functions/
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `notification_tools`
 - [`core.tools.02`](core.tools.02.md) — `notify_out_tools` … `stripe_tools`
-- [`core.tools.03`](core.tools.03.md) — `tiktok_analytics_tools` … `world_model_tools`
+- [`core.tools.03`](core.tools.03.md) — `tool_limits` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.util`](core.util.md)

@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-05 — 443 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-05 — 438 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -350,11 +350,6 @@
 | `tail_log` | native | no |
 | `test_retry_policy` | native | no |
 | `tick_quality_summary` | native | no |
-| `tiktok_analytics` | native | no |
-| `tiktok_generate_video` | native | no |
-| `tiktok_login` | native | no |
-| `tiktok_show` | native | no |
-| `tiktok_upload` | native | no |
 | `todo_add` | native | no |
 | `todo_list` | native | no |
 | `todo_remove` | native | no |

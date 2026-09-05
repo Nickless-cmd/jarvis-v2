@@ -27,6 +27,7 @@ Self-safe hele vejen: en hook maa aldrig braekke et run.
 from __future__ import annotations
 
 import fnmatch
+import logging
 import json
 import os
 import re
@@ -45,6 +46,8 @@ HOOK_EVENTS: tuple[str, ...] = (
 # `UserPromptSubmit` koblet 5/9: begge domme kan honoreres dér — `block`
 # afslutter turen, `inject` haefter kontekst paa foer prompt-assembly.
 WIRED_EVENTS: frozenset[str] = frozenset({"UserPromptSubmit"})
+
+_log = logging.getLogger(__name__)
 
 _ALLOW: dict[str, Any] = {"action": "allow", "message": "", "context": None}
 
@@ -174,21 +177,14 @@ def _run_command_hook(hook: dict[str, Any], context: dict[str, Any],
     timeout = float(hook.get("timeout_s") or 20.0)
 
     if hvor == "operator":
-        try:
-            import asyncio
-
-            from core.tools.operator_tools import operator_bash_async
-            # Konteksten gaar ind som miljoevariabel frem for stdin: bro-kaldet
-            # tager en kommandostreng, ikke en aaben pipe.
-            wrapped = f"JARVIS_HOOK_CONTEXT={json.dumps(nyttelast)} {cmd}"
-            res = asyncio.run(operator_bash_async(
-                command=wrapped, user_id=user_id, timeout_s=timeout))
-            kode = int((res or {}).get("exit_code") or 0)
-            ud = str((res or {}).get("stdout") or "").strip()
-        except Exception as exc:
-            # En doed bro maa ikke blokere en tur.
-            return {"action": "allow", "message": f"hook-bro fejlede: {exc}"[:200],
-                    "context": None}
+        # Operator-hooks skal gaa gennem `fire_async`. Bro-kaldet er en coroutine
+        # paa uvicorns hovedloop, og `fire()` kaldes FRA det loop — at blokere paa
+        # den her ville vente paa noget der har brug for tråden vi holder.
+        # Foerste udgave brugte `asyncio.run()` og fejlede tavst hver gang, fordi
+        # den kaster inde i et koerende loop og undtagelsen blev slugt.
+        _log.warning("hook: where=operator kraever fire_async — sprunget over (%s)",
+                     cmd[:60])
+        return _allow()
     else:
         try:
             import subprocess
@@ -223,6 +219,61 @@ def _run_http_hook(hook: dict[str, Any], context: dict[str, Any]) -> dict[str, A
             handling = "allow"
         return {"action": handling, "message": str(svar.get("message") or ""),
                 "context": svar.get("context")}
+    except Exception:
+        return _allow()
+
+
+async def _run_command_hook_async(hook: dict[str, Any], context: dict[str, Any],
+                                  user_id: str = "") -> dict[str, Any]:
+    """Operator-grenen, kaldt fra det loop broen selv lever paa."""
+    cmd = str(hook.get("command") or "").strip()
+    if not cmd:
+        return _allow()
+    try:
+        from core.tools.operator_tools import operator_bash_async
+        # Konteksten gaar ind som miljoevariabel frem for stdin: bro-kaldet tager
+        # en kommandostreng, ikke en aaben pipe.
+        nyttelast = json.dumps(context, ensure_ascii=False)
+        wrapped = f"JARVIS_HOOK_CONTEXT={json.dumps(nyttelast)} {cmd}"
+        res = await operator_bash_async(
+            command=wrapped, user_id=user_id,
+            timeout_s=float(hook.get("timeout_s") or 20.0))
+        kode = int((res or {}).get("exit_code") or 0)
+        ud = str((res or {}).get("stdout") or "").strip()
+    except Exception as exc:
+        # En doed bro maa ikke blokere en tur — men den skal SES.
+        _log.warning("hook-bro fejlede: %r", exc)
+        return _allow()
+    if kode == 2:
+        return {"action": "block", "message": ud or "blokeret af hook", "context": None}
+    return {"action": "inject", "message": ud, "context": None} if ud else _allow()
+
+
+async def fire_async(event: str, context: dict[str, Any],
+                     user_id: str = "") -> dict[str, Any]:
+    """Som `fire`, men kan koere operator-hooks. Brug denne fra async-kode.
+
+    Container-hooks koeres uaendret gennem den synkrone vej; kun operator-grenen
+    kraever loopet.
+    """
+    try:
+        konfigurerede = hooks_for(event)
+        if not konfigurerede:
+            return _allow()
+        resultater = []
+        for h in konfigurerede:
+            if event in ("PreToolUse", "PostToolUse"):
+                if not matcher_matches(str(h.get("matcher") or "*"),
+                                       str(context.get("tool") or ""),
+                                       str(context.get("command") or "")):
+                    continue
+            if (str(h.get("type") or "command").lower() == "command"
+                    and str(h.get("where") or "container").lower() == "operator"):
+                resultater.append(
+                    await _run_command_hook_async(h, context, user_id=user_id))
+            else:
+                resultater.append(run_hook(event, h, context, user_id=user_id))
+        return decide(resultater)
     except Exception:
         return _allow()
 

@@ -1182,7 +1182,7 @@ async def _stream_visible_run(
     try:
         from core.services import lifecycle_hooks as _lh
         if "UserPromptSubmit" in _lh.WIRED_EVENTS:
-            _hook_dom = _lh.fire(
+            _hook_dom = await _lh.fire_async(
                 "UserPromptSubmit",
                 {"prompt": run.user_message, "session_id": str(run.session_id or "")},
                 user_id=str(force_user_id or ""))

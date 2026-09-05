@@ -160,3 +160,63 @@ class TestKoblingen:
         kilde = pathlib.Path("core/services/visible_runs.py").read_text()
         assert '"UserPromptSubmit"' in kilde
         assert "WIRED_EVENTS" in kilde
+
+
+class TestOperatorHooks:
+    """Hooks skal kunne nå Bjørns maskine — ellers er pariteten ikke reel.
+
+    FEJL FANGET LIVE: første udgave brugte `asyncio.run()` i den synkrone vej.
+    Den kaster inde i et kørende event-loop, og et bredt except slugte det, så
+    operator-hooks fejlede tavst hver gang. Bro-kaldet er en coroutine på
+    uvicorns hovedloop, og hook'en kaldes FRA det loop — man kan ikke blokere
+    på noget der har brug for tråden man holder.
+    """
+
+    def test_synkron_vej_afviser_operator_i_stedet_for_at_fejle_tavst(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+        r = lh.run_hook("Stop", {"type": "command", "where": "operator",
+                                 "command": "echo hej"}, {})
+        assert r["action"] == "allow"
+
+    @pytest.mark.asyncio
+    async def test_fire_async_koerer_operator_hooken(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+        (tmp_path / "config").mkdir()
+        (tmp_path / "config" / "hooks.json").write_text(json.dumps({
+            "hooks": {"Stop": [{"type": "command", "where": "operator",
+                                "command": "echo fra-maskinen"}]}}))
+        fanget = {}
+
+        async def _fake(*, command, user_id, timeout_s=20.0):
+            fanget["command"] = command
+            return {"stdout": "fra-maskinen", "exit_code": 0}
+
+        import core.tools.operator_tools as ot
+        monkeypatch.setattr(ot, "operator_bash_async", _fake)
+        d = await lh.fire_async("Stop", {"x": 1}, user_id="u1")
+        assert d["action"] == "inject" and d["message"] == "fra-maskinen"
+        assert "JARVIS_HOOK_CONTEXT" in fanget["command"]
+
+    @pytest.mark.asyncio
+    async def test_container_hooks_virker_stadig_via_fire_async(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+        (tmp_path / "config").mkdir()
+        (tmp_path / "config" / "hooks.json").write_text(json.dumps({
+            "hooks": {"Stop": [{"type": "command", "command": "echo lokalt"}]}}))
+        d = await lh.fire_async("Stop", {})
+        assert d["action"] == "inject" and d["message"] == "lokalt"
+
+    @pytest.mark.asyncio
+    async def test_doed_bro_stopper_ikke_turen(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+        (tmp_path / "config").mkdir()
+        (tmp_path / "config" / "hooks.json").write_text(json.dumps({
+            "hooks": {"Stop": [{"type": "command", "where": "operator",
+                                "command": "echo x"}]}}))
+        import core.tools.operator_tools as ot
+        monkeypatch.setattr(
+            ot, "operator_bash_async",
+            lambda **kw: (_ for _ in ()).throw(RuntimeError("bro nede")))
+        assert (await lh.fire_async("Stop", {}))["action"] == "allow"

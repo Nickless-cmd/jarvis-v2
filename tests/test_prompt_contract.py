@@ -463,3 +463,52 @@ def test_delfordelingens_navne_kan_ikke_komme_ud_af_trit_med_indholdet():
     assert "enumerate(derived_inputs)" not in afsnit, (
         "indeks-zip mod en liste der ikke vokser i takt må ikke komme tilbage"
     )
+
+
+# ---------------------------------------------------------------------------
+# Adfærds-gates må ikke kunne klemmes ud af budgettet
+#
+# 2026-09-05: otte sektioner blev taget af noise-blacklisten, og awareness-
+# blokken begyndte straks at klippe — i én bygning selve DECISION-ADHERENCE-
+# GATEN, som var blevet tændt samme dag efter at have været tavs i måneder.
+# En advarsel der ryger ud af pladsmangel er lige så tavs som en der stod på
+# en blacklist.
+# ---------------------------------------------------------------------------
+
+
+def _prompt_contract_kilde() -> str:
+    import inspect
+
+    from core.services import prompt_contract
+
+    return inspect.getsource(prompt_contract)
+
+
+def test_adfaerds_gates_er_fredet_mod_budgettet():
+    kilde = _prompt_contract_kilde()
+    i = kilde.find("_NEVER_DROP_LABELS = (")
+    assert i > 0, "_NEVER_DROP_LABELS findes ikke længere — blev fredningen fjernet?"
+    blok = kilde[i:i + 400]
+    for label in ("pinned identity context", "decision adherence gate",
+                  "loop-compliance self-check"):
+        assert label in blok, "%s er ikke fredet mod budget-eviction" % label
+
+
+def test_budgettet_bruger_fredningslisten_og_ikke_ét_label():
+    """Regressionen ville være at falde tilbage til == 'pinned identity context'."""
+    kilde = _prompt_contract_kilde()
+    assert "_never_drop = _label in _NEVER_DROP_LABELS" in kilde
+    assert '_never_drop = _label == "pinned identity context"' not in kilde
+
+
+def test_budgettet_har_plads_til_de_taendte_sektioner():
+    """3.584 tegn blev tændt 5/9; 6000 var ikke længere nok."""
+    kilde = _prompt_contract_kilde()
+    import re
+
+    m = re.search(r"_AWARENESS_BUDGET = (\d+)", kilde)
+    assert m, "budget-konstanten findes ikke"
+    assert int(m.group(1)) >= 9000, (
+        "awareness-budgettet er sat ned igen — de otte tændte sektioner fylder "
+        "3.584 tegn, og ved 6000 blev adherence-gaten klemt ud"
+    )

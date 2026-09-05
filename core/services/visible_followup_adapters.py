@@ -875,6 +875,7 @@ class OpenAICompatFollowupAdapter:
         _ttfb_ms: int | None = None
         _prompt_chars = sum(len(str(m.get("content", ""))) for m in messages)
         _usage: dict | None = None
+        _terminal_seen = False
         _finish_reason = ""
 
         try:
@@ -913,6 +914,19 @@ class OpenAICompatFollowupAdapter:
                             _finish_reason = str(_fr0 or "").strip()
                         except Exception:
                             _finish_reason = ""
+                        # 2026-09-05: FØR brød vi her. Naar runden ender med
+                        # TOOL_CALLS sender DeepSeek sin usage-chunk EFTER
+                        # terminal-chunken — saa `_usage` forblev tom, og baade
+                        # cache-telemetrien og hovedbogen fik nul for praecis de
+                        # runder der fylder mest. Vi draener resten af streamen
+                        # ([DONE] afslutter den alligevel) og bryder foerst naar
+                        # vi ogsaa HAR usage, saa raekkefoelgen ikke er noget vi
+                        # gaetter paa.
+                        if _usage is not None:
+                            break
+                        _terminal_seen = True
+                        continue
+                    if _terminal_seen and _usage is not None:
                         break
         except urllib_error.HTTPError as exc:
             body = ""

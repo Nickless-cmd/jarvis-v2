@@ -97,3 +97,59 @@ def test_reading_an_image_uses_the_selected_model(tmp_path, monkeypatch, no_conf
     assert seen["model"] == "deepseek-v4-flash-vision-exp"
     assert "hvad staar der?" in seen["prompt"]
     assert out["content"] == "et skilt"
+
+
+def test_the_chosen_provider_is_not_thrown_away(monkeypatch, tmp_path):
+    """Live-fejlen 5/9: `describe()` slog provideren op i konfigurationen igen og
+    smed den VALGTE vaek, saa DeepSeeks vision-model blev sendt til ollama —
+    som ikke har den — og svarede 404. Testene fangede det ikke, fordi de
+    stubbede paa et for hoejt niveau. Denne stubber paa transporten."""
+    from core.services import attachment_service as AS
+    path = tmp_path / "x.png"
+    path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 20)
+    monkeypatch.setattr(AS, "_db_get", lambda _id: {
+        "mime_type": "image/png", "local_path": str(path), "filename": "x.png"})
+    # Konfigurationen siger ollama (standarden) — men turen koerer paa en
+    # model der selv kan se, og DEN skal vinde.
+    monkeypatch.setattr("core.runtime.secrets.read_runtime_key",
+                        lambda key, *a, **k: "ollama" if key == "vision_provider" else None)
+    monkeypatch.setattr("core.services.attachment_service._vision_model",
+                        lambda: "gemma4:31b-cloud")
+    _active(monkeypatch, {"active": True, "provider": "deepseek",
+                          "model": "deepseek-v4-flash-vision-exp"})
+
+    called: dict = {}
+    monkeypatch.setattr(VB, "describe_via_deepseek",
+                        lambda b64, *, model, prompt, run_id="": called.update(
+                            path="deepseek", model=model) or "et skilt")
+
+    def _no_ollama(*_a, **_k):
+        raise AssertionError("DeepSeeks model maa ALDRIG sendes til ollama")
+
+    monkeypatch.setattr("core.services.visual_memory._describe_via_ollama", _no_ollama)
+    out = AS.read_attachment_content("a1", question="hvad staar der?")
+    assert called == {"path": "deepseek", "model": "deepseek-v4-flash-vision-exp"}
+    assert out["content"] == "et skilt"
+
+
+def test_the_blind_default_still_goes_to_ollama(monkeypatch, tmp_path):
+    from core.services import attachment_service as AS
+    path = tmp_path / "x.png"
+    path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 20)
+    monkeypatch.setattr(AS, "_db_get", lambda _id: {
+        "mime_type": "image/png", "local_path": str(path), "filename": "x.png"})
+    monkeypatch.setattr("core.runtime.secrets.read_runtime_key", lambda *a, **k: None)
+    monkeypatch.setattr("core.services.attachment_service._vision_model",
+                        lambda: "gemma4:31b-cloud")
+    _active(monkeypatch, {"active": True, "provider": "deepseek",
+                          "model": "deepseek-v4-flash"})
+    called: dict = {}
+    monkeypatch.setattr("core.services.visual_memory._describe_via_ollama",
+                        lambda b64, *, model, prompt=None: called.update(model=model) or "ok")
+
+    def _no_deepseek(*_a, **_k):
+        raise AssertionError("standarden maa ikke koste penge")
+
+    monkeypatch.setattr(VB, "describe_via_deepseek", _no_deepseek)
+    AS.read_attachment_content("a1")
+    assert called == {"model": "gemma4:31b-cloud"}

@@ -166,7 +166,7 @@ def _record_cost(usage: dict[str, Any], *, model: str, run_id: str) -> None:
 
 def describe(
     image_bytes: bytes | None = None, *, image_b64: str = "",
-    model: str, prompt: str, run_id: str = "",
+    model: str, prompt: str, run_id: str = "", provider: str = "",
 ) -> dict[str, Any]:
     """Beskriv/besvar et billede med den valgte backend.
 
@@ -174,7 +174,11 @@ def describe(
     kaldstedet kan sige ærligt at synet svigtede i stedet for at finde på noget.
     """
     b64 = image_b64 or base64.b64encode(image_bytes or b"").decode("ascii")
-    provider = resolve_vision_provider(model)
+    # 2026-09-05: `provider` SKAL kunne gives med. Uden den slog vi op i
+    # konfigurationen igen og smed den valgte provider vaek — saa en DeepSeek-
+    # model blev sendt til ollama, der ikke har den, og svarede 404. Fejlen kom
+    # foerst frem live, fordi testene stubbede paa et for hoejt niveau.
+    provider = str(provider or "").strip().lower() or resolve_vision_provider(model)
     if provider == "deepseek":
         text = describe_via_deepseek(b64, model=model, prompt=prompt, run_id=run_id)
     else:

@@ -196,9 +196,14 @@ def _call_vision(image_b64: str, *, model: str, prompt: str | None = None) -> st
     # kan se — saa oejnene sidder i den model der svarer ham. Ellers den
     # konfigurerede vision-model, som hidtil. `model`-argumentet respekteres
     # stadig, saa kaldsteder der bevidst vaelger en model ikke overrules.
+    provider, target, _src = resolve_vision_target()
     if not model:
-        _provider, model, _src = resolve_vision_target()
-    return describe(image_b64=image_b64, model=model,
+        model = target
+    # Provideren hoerer til modellen: er der givet en ANDEN model end den vi
+    # lige resolvede, skal provideren udledes af DEN — ikke arves.
+    if model != target:
+        provider = ""
+    return describe(image_b64=image_b64, model=model, provider=provider,
                     prompt=prompt or _GENERIC_IMAGE_PROMPT)["text"]
 
 

@@ -325,8 +325,8 @@ _Hvilke øjne bruger han? — valg af vision-model (2026-09-05)._
 | function | `resolve_vision_provider` | `(model)` | `"ollama"` eller `"deepseek"`. Eksplicit konfig vinder over gættet. | [src](../../../core/services/vision_backend.py#L93) |
 | function | `describe_via_deepseek` | `(image_b64, *, model, prompt, run_id=…)` | Send billedet til DeepSeeks vision-model og returnér svaret. | [src](../../../core/services/vision_backend.py#L109) |
 | function | `_record_cost` | `(usage, *, model, run_id)` | — | [src](../../../core/services/vision_backend.py#L144) |
-| function | `describe` | `(image_bytes=…, *, image_b64=…, model, prompt, run_id=…)` | Beskriv/besvar et billede med den valgte backend. | [src](../../../core/services/vision_backend.py#L167) |
-| function | `build_vision_backend_surface` | `()` | — | [src](../../../core/services/vision_backend.py#L186) |
+| function | `describe` | `(image_bytes=…, *, image_b64=…, model, prompt, run_id=…, provider=…)` | Beskriv/besvar et billede med den valgte backend. | [src](../../../core/services/vision_backend.py#L167) |
+| function | `build_vision_backend_surface` | `()` | — | [src](../../../core/services/vision_backend.py#L190) |
 
 ## `core/services/visual_memory.py`
 _Visual memory — webcam snapshots beskrevet af vision-model._

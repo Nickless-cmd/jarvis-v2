@@ -14,8 +14,10 @@ import { ThoughtsList } from '../components/ThoughtsList'
 import { fetchThoughts, type Thought } from '../lib/companionClient'
 import { WorkDecisionCard } from '../components/WorkDecisionCard'
 import { actOnDecision, fetchDecisions, type Decision, type DecisionAction } from '../lib/decisionsApi'
+import { WorkReviewCard } from '../components/WorkReviewCard'
+import { fetchWorkReviews, type WorkReview } from '../lib/workReviewApi'
 
-export type WorkTab = 'tasks' | 'approve'
+export type WorkTab = 'tasks' | 'approve' | 'review'
 
 interface Props {
   /** Plads til den svævende header. Måles i App og gives videre — et fast tal
@@ -41,6 +43,10 @@ const POLL_MS = 4000
  */
 export function tælVentende(pendingApprovals: number, decisions: Decision[]): number {
   return pendingApprovals + decisions.filter((d) => d.kind === 'initiative').length
+}
+
+export function tælReviewVentende(reviews: WorkReview[]): number {
+  return reviews.filter((r) => r.status === 'running').length
 }
 
 /**
@@ -77,6 +83,7 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
   // for at lægge en fejlbjælke over de godkendelser der FAKTISK blokerer et run.
   const [decisions, setDecisions] = useState<Decision[]>([])
   const [ubesvarede, setUbesvarede] = useState(0)
+  const [reviews, setReviews] = useState<WorkReview[]>([])
 
   const load = useCallback(async () => {
     if (!config) return
@@ -86,6 +93,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
         fetchApprovals(config, 20),
         fetchDecisions(config).catch(() => null)
       ])
+      const rev = await fetchWorkReviews(config).catch(() => [])
+      setReviews(rev)
       if (d) {
         setDecisions(d.items)
         setUbesvarede(d.expiredUnanswered)
@@ -178,7 +187,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
           compact
           options={[
             { value: 'tasks', label: 'Tasks' },
-            { value: 'approve', label: 'Godkend', badge: venter > 0 }
+            { value: 'approve', label: 'Godkend', badge: venter > 0 },
+            { value: 'review', label: 'Review', badge: tælReviewVentende(reviews) > 0 }
           ]}
           value={tab}
           onChange={setTab}
@@ -208,7 +218,7 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
               <Text style={styles.groupLabel}>Fra Jarvis</Text>
               <ThoughtsList items={thoughts} />
             </>
-          ) : (
+          ) : tab === 'approve' ? (
             <ApproveView
               approvals={pending}
               initiativer={initiativer}
@@ -219,10 +229,27 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
               onSkip={onSkip}
               onDecide={(d, action) => void onDecide(d, action)}
             />
+          ) : (
+            <ReviewView reviews={reviews} />
           )}
         </ScrollView>
       )}
     </View>
+  )
+}
+
+function ReviewView({ reviews }: { reviews: WorkReview[] }) {
+  const styles = useStyles(makestyles)
+  if (reviews.length === 0) {
+    return <Text style={styles.empty}>Ingen reviews endnu.</Text>
+  }
+  return (
+    <>
+      <Text style={styles.groupLabel}>Kode og ændringer</Text>
+      {reviews.map((r) => (
+        <WorkReviewCard key={r.id} review={r} />
+      ))}
+    </>
   )
 }
 

@@ -1,5 +1,6 @@
 import { tælVentende } from './WorkScreen'
 import type { Decision } from '../lib/decisionsApi'
+import type { WorkReview } from '../lib/workReviewApi'
 
 function d(kind: Decision['kind'], id: string): Decision {
   return { kind, id, text: 't', why: '', priority: '', created_at: '', actions: [] }
@@ -23,5 +24,16 @@ describe('tælVentende', () => {
 
   it('er nul når der intet er', () => {
     expect(tælVentende(0, [])).toBe(0)
+  })
+})
+
+describe('tælReviewVentende', () => {
+  it('tæller kørende reviews som arbejde der fortjener en prik', () => {
+    const { tælReviewVentende } = require('./WorkScreen') as typeof import('./WorkScreen')
+    const items: WorkReview[] = [
+      { id: 'a', kind: 'dispatch', title: 'A', status: 'running', branch: '', updatedAt: '', summary: '', filesChanged: 0, additions: 0, deletions: 0 },
+      { id: 'b', kind: 'dispatch', title: 'B', status: 'completed', branch: '', updatedAt: '', summary: '', filesChanged: 0, additions: 0, deletions: 0 }
+    ]
+    expect(tælReviewVentende(items)).toBe(1)
   })
 })

@@ -145,7 +145,15 @@ def _build_decisions() -> dict[str, Any]:
     try:
         from core.services.initiative_queue import get_initiative_queue_state
         st = get_initiative_queue_state() or {}
+        from core.services.initiative_queue import _er_ikke_et_initiativ
         for i in (st.get("pending") or []):
+            # Porten gaelder ogsaa paa LAESESIDEN. Den stopper nye poster ved
+            # kilden, men koeen rummer stadig det der blev gemt foer den fandtes
+            # — «Use JSON format with thought…» og «What might the next move
+            # be?». De maa ikke staa foran et menneske som beslutninger der
+            # venter. De udloeber af sig selv; indtil da vises de bare ikke.
+            if _er_ikke_et_initiativ(str(i.get("focus") or "")):
+                continue
             ventende.append({
                 "kind": "initiative",
                 "id": str(i.get("initiative_id") or ""),

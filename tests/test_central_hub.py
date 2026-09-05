@@ -124,3 +124,24 @@ def test_sektionen_er_selvsikker_mod_en_doed_kilde(monkeypatch):
     d = H._build_decisions()
     assert d.get("active") is True
     assert isinstance(d.get("items"), list)
+
+
+def test_gammelt_skrald_vises_ikke_som_beslutning(monkeypatch):
+    """Porten stopper nye poster ved kilden — men køen rummer stadig det der
+    blev gemt før den fandtes. Det må ikke stå foran et menneske."""
+    from core.services import central_hub as H
+
+    monkeypatch.setattr(
+        "core.services.initiative_queue.get_initiative_queue_state",
+        lambda: {"pending": [
+            {"initiative_id": "a", "focus": "Use JSON format with thought, initiative"},
+            {"initiative_id": "b", "focus": "What might the next move be?"},
+            {"initiative_id": "c", "focus": "Ryd op i de temporale kanter i brain-grafen"},
+        ], "pending_count": 3, "expired_count": 0},
+    )
+    monkeypatch.setattr(
+        "core.services.life_projects.build_life_projects_surface", lambda: {"items": []},
+    )
+    d = H._build_decisions()
+    tekster = [i["text"] for i in d["items"]]
+    assert tekster == ["Ryd op i de temporale kanter i brain-grafen"]

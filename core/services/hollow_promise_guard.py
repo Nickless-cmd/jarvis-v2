@@ -88,13 +88,37 @@ _ACTION_VERB = (
     r"tjekk(?:er|e)?|se(?:r)?|kigg(?:er|e)?|gennemgå(?:r|e)?|ret(?:ter|te)?|"
     r"fiks(?:er|e)?|opdater(?:er|e)?|committ?(?:er|e)?|kald(?:er|e)?|hent(?:er|e)?|"
     r"verificer(?:er|e)?|implementer(?:er|e)?|tilføj(?:er|e)?|start(?:er|e)?|"
-    r"udfør(?:er|e)?|undersøg(?:er|e)?|analyser(?:er|e)?|bygg(?:er|e)?|test(?:er|e)?)"
+    r"udfør(?:er|e)?|undersøg(?:er|e)?|analyser(?:er|e)?|bygg(?:er|e)?|test(?:er|e)?|"
+    r"bekræft(?:er|e)?|bekraeft(?:er|e)?|gør(?:e)?|sammenhold(?:er|e)?|"
+    r"mål(?:er|e)?|deploy(?:er|e)?|push(?:er|e)?|installer(?:er|e)?|genstart(?:er|e)?)"
 )
+# ── Omvendt default for «lad mig» 05-09-2026, efter fjerde runde af misser ───
+# Bjørn, live: fire ture i traek hvor Jarvis annoncerede og stoppede. Vaernet
+# fangede to. De to der slap igennem sagde begge «Lad mig BEKRAEFTE …» — og
+# `bekraeft` stod ikke i verbelisten. At tilfoeje det ville vaere femte runde af
+# samme trae: listen er nu selv flaskehalsen.
+#
+# «Lad mig <verbum>» ER et loefte om imminent handling i kraft af KONSTRUKTIONEN,
+# uanset verbet. De eneste undtagelser er TALEHANDLINGER — «lad mig forklare»,
+# «lad mig vaere aerlig» — som fuldfoeres i selve beskeden og derfor ikke kan
+# staa tomme. Saa listen vendes: alt fanges undtagen dem.
+#
+# Det flytter risikoen fra «Bjoern efterlades haengende» (den fejl der faktisk er
+# sket fem gange) til «et unoedigt nudge» (et ekstra kald). Den byttehandel er
+# bevidst.
+_SPEECH_ACT_VERB = (
+    r"(?:forklar(?:er|e)?|uddyb(?:er|e)?|opsummer(?:er|e)?|sig(?:er|e)?|"
+    r"svar(?:er|e)?|vaere|være|fortael(?:ler)?|fortæl(?:ler|le)?|naevn(?:er|e)?|"
+    r"nævn(?:er|e)?|pointer(?:er|e)?|understreg(?:er|e)?|indroemm(?:er|e)?|"
+    r"indrømm(?:er|e)?|gaette|gætte|tro(?:r)?|mene|antag(?:er|e)?)"
+)
+
 # «jeg» inden for få ord fra verbet — i begge retninger, så ordstillingen er fri.
 _FIRST_PERSON_ACTION = [
     re.compile(rf"\bjeg\s+(?:\w+\s+){{0,2}}{_ACTION_VERB}\b", re.IGNORECASE),
     re.compile(rf"\b{_ACTION_VERB}\s+jeg\b", re.IGNORECASE),
-    re.compile(rf"\blad\s+mig\s+(?:lige\s+)?(?:\w+\s+){{0,1}}{_ACTION_VERB}\b", re.IGNORECASE),
+    # Konstruktionen baerer loeftet: «lad mig <hvadsomhelst>» — undtagen talehandlinger.
+    re.compile(rf"\blad\s+mig\s+(?:lige\s+)?(?!{_SPEECH_ACT_VERB}\b)\w+", re.IGNORECASE),
 ]
 
 _PROMISE_RE = [re.compile(p, re.IGNORECASE) for p in _PROMISE_PATTERNS]

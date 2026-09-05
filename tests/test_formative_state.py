@@ -85,7 +85,8 @@ def test_uafsluttet_naevner_at_der_ingen_forsoeg_er(monkeypatch):
     _stub(
         monkeypatch,
         regret={"stats": {"open_count": 7, "top_open": {}}},
-        rupture={"stats": {"open_count": 3, "repair_attempts": 0}},
+        rupture={"stats": {"open_ruptures": 3, "repair_attempts": 0,
+                           "top_open": {"reason": "User denied approval for tool write_file"}}},
     )
     ud = F.formative_state_section()
     assert "7 åbne anger" in ud
@@ -93,7 +94,7 @@ def test_uafsluttet_naevner_at_der_ingen_forsoeg_er(monkeypatch):
 
 
 def test_forsoeg_taelles_naar_der_ER_nogen(monkeypatch):
-    _stub(monkeypatch, rupture={"stats": {"open_count": 2, "repair_attempts": 5}})
+    _stub(monkeypatch, rupture={"stats": {"open_ruptures": 2, "repair_attempts": 5}})
     assert "2 uhelede brud med Bjørn (5 forsøg)" in F.formative_state_section()
 
 
@@ -128,11 +129,15 @@ def test_sektionen_er_kompakt(monkeypatch):
         boundary={"model": {"body": "X" * 300, "memory": "Y" * 300,
                             "consciousness": "Z" * 300}},
         regret={"stats": {"open_count": 7, "top_open": {"lesson": "L" * 300}}},
-        rupture={"stats": {"open_count": 3, "repair_attempts": 0}},
+        rupture={"stats": {"open_ruptures": 3, "repair_attempts": 0,
+                           "top_open": {"reason": "User denied approval for tool write_file"}}},
         user={"model": {"patterns": ["P" * 300, "Q" * 300, "R" * 300]}},
     )
     ud = F.formative_state_section()
-    assert len(ud) < 900, "sektionen fylder %d tegn — for meget af budgettet" % len(ud)
+    # Grænsen er 1000 efter at bruddets GRUND kom med (2026-09-05). Live måler
+    # sektionen ~740 tegn; testen bruger 300-tegns kilder for at ramme loftet.
+    # Budgettet er 9000 i alt, så én sektion må ikke tage mere end en niendedel.
+    assert len(ud) < 1000, "sektionen fylder %d tegn — for meget af budgettet" % len(ud)
 
 
 def test_overfladen_rapporterer_hvad_der_er_med(monkeypatch):

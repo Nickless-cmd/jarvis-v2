@@ -65,10 +65,17 @@ def _build_overview() -> dict[str, Any]:
 
 
 def _build_observability() -> dict[str, Any]:
-    """Det levende vindue: nerve-feed + incidents + anomalier + læring + breakers."""
+    """Det levende vindue: nerve-feed + incidents + anomalier + læring + breakers.
+
+    Plus optaellingen af TOMME LOEFTER. Bjoern 5/9-2026: «Centralen skal kunne
+    taelle de tomme loefter.» Indtil da saa den kun `empty_completion` — «tur
+    UDEN svar» — og registrerede ÉN haendelse den dag mod 31 faktiske. Det er
+    observabilitet, ikke en ny fane: en fejlrate hoerer hjemme dér hvor man
+    kigger efter fejlrater.
+    """
     from core.services.central_realtime import realtime_snapshot
     s = realtime_snapshot(trace_limit=40)
-    return {
+    ud = {
         "feed": s.get("feed"),
         "incidents": s.get("incidents"),
         "anomalies": s.get("anomalies"),
@@ -76,6 +83,12 @@ def _build_observability() -> dict[str, Any]:
         "learning": s.get("learning"),
         "active": True,
     }
+    try:
+        from core.services.hollow_promise_census import census
+        ud["hollow_promises"] = census(24)
+    except Exception:
+        pass
+    return ud
 
 
 def _build_mind() -> dict[str, Any]:

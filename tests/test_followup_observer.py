@@ -80,3 +80,65 @@ def test_followup_nerves_in_catalog():
     names = [n.name for n in cc.by_cluster("loop")]
     assert "followup_round" in names and "followup_failed" in names
     assert "followup_loop_complete" in names
+
+
+# ── Tomme løfter når Centralen, 05-09-2026 ──────────────────────────────────
+# Signalet landede KUN i trace-sinken (per-proces ring-buffer, tabt ved genstart).
+# Centralen tæller `central_incidents`, så den kunne ikke se Jarvis' hyppigste
+# fejl: den dag stod der ÉN `empty_completion` mod 31 faktiske tomme løfter.
+
+@pytest.fixture
+def incidents(monkeypatch):
+    """Opsnapper incident-laget uden at røre databasen."""
+    skrevet: list[dict] = []
+    import core.runtime.db_central_incidents as dbi
+    monkeypatch.setattr(dbi, "has_open_incident", lambda **k: False)
+    monkeypatch.setattr(dbi, "bump_open_incident",
+                        lambda **k: skrevet.append({"op": "bump", **k}))
+    monkeypatch.setattr(dbi, "record_central_incident",
+                        lambda **k: skrevet.append({"op": "record", **k}))
+    return skrevet
+
+
+def test_uindloest_loefte_bliver_en_error_incident(captured, incidents):
+    fo.note_hollow_promise("r9", provider="deepseek", model="m", resolved=False)
+    assert len(incidents) == 1
+    i = incidents[0]
+    assert i["nerve"] == "hollow_promise" and i["kind"] == "promise_broken"
+    assert i["severity"] == "error"
+
+
+def test_indloest_loefte_er_info_ikke_error(captured, incidents):
+    """Et nudge der VIRKEDE må ikke larme som en fejl — ellers drukner de gange
+    det ikke virkede, og det er dem der skal handles på."""
+    fo.note_hollow_promise("r9", provider="deepseek", model="m", resolved=True)
+    assert incidents[0]["severity"] == "info"
+    assert incidents[0]["kind"] == "promise_kept"
+
+
+def test_gentagelse_bumper_i_stedet_for_at_dedup_e_vaek(captured, monkeypatch):
+    """Bjørn 29. jun: «centralen fanger det ikke» — tavs dedup skjulte frekvensen."""
+    skrevet: list[dict] = []
+    import core.runtime.db_central_incidents as dbi
+    monkeypatch.setattr(dbi, "has_open_incident", lambda **k: True)
+    monkeypatch.setattr(dbi, "bump_open_incident",
+                        lambda **k: skrevet.append({"op": "bump", **k}))
+    monkeypatch.setattr(dbi, "record_central_incident",
+                        lambda **k: skrevet.append({"op": "record", **k}))
+    fo.note_hollow_promise("r9", provider="deepseek", model="m", resolved=False)
+    assert skrevet[0]["op"] == "bump"
+
+
+def test_trace_signalet_bevares(captured, incidents):
+    """Incidenten er TILFØJET — den gamle observe() må ikke være forsvundet."""
+    fo.note_hollow_promise("r9", provider="deepseek", model="m", resolved=False)
+    assert captured[0]["nerve"] == "hollow_promise"
+    assert captured[0]["path"] == "still_hollow"
+
+
+def test_incident_fejl_vaelter_aldrig_loopet(captured, monkeypatch):
+    import core.runtime.db_central_incidents as dbi
+    monkeypatch.setattr(dbi, "has_open_incident",
+                        lambda **k: (_ for _ in ()).throw(RuntimeError("db nede")))
+    fo.note_hollow_promise("r9", provider="deepseek", model="m", resolved=False)
+    assert captured[0]["nerve"] == "hollow_promise"

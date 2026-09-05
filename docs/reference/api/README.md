@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13510 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13513 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -38,18 +38,18 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13510 functions/
 - [`core.services.09`](core.services.09.md) — `decision_signal_staging` … `dream_hypothesis_generator`
 - [`core.services.10`](core.services.10.md) — `dream_hypothesis_signal_tracking` … `experienced_time_daemon`
 - [`core.services.11`](core.services.11.md) — `experiential_memory` … `goal_signal_synthesizer`
-- [`core.services.12`](core.services.12.md) — `goal_signal_tracking` … `inheritance_seed`
-- [`core.services.13`](core.services.13.md) — `initiative_accumulator` … `loop_runtime`
-- [`core.services.14`](core.services.14.md) — `loyalty_gradient_signal_tracking` … `mood_regulator_subscriber`
-- [`core.services.15`](core.services.15.md) — `mortality_awareness` … `periodic_jobs_scheduler`
-- [`core.services.16`](core.services.16.md) — `permission_classifier` … `prompt_relevance_backend`
-- [`core.services.17`](core.services.17.md) — `prompt_section_impact` … `relation_state_signal_tracking`
-- [`core.services.18`](core.services.18.md) — `relational_warmth` … `scheduled_job_windows`
-- [`core.services.19`](core.services.19.md) — `scheduled_task_runner` … `session_inbox`
-- [`core.services.20`](core.services.20.md) — `session_milestones` … `staged_edits`
-- [`core.services.21`](core.services.21.md) — `standing_orders_registry` … `tool_intent_approval_runtime`
-- [`core.services.22`](core.services.22.md) — `tool_intent_runtime` … `visible_followup_lean`
-- [`core.services.23`](core.services.23.md) — `visible_inner_life` … `world_model_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `goal_signal_tracking` … `infra_weather_daemon`
+- [`core.services.13`](core.services.13.md) — `inheritance_seed` … `longing_signal_daemon`
+- [`core.services.14`](core.services.14.md) — `loop_runtime` … `mood_oscillator`
+- [`core.services.15`](core.services.15.md) — `mood_regulator_subscriber` … `perceptual_event_engine`
+- [`core.services.16`](core.services.16.md) — `periodic_jobs_scheduler` … `prompt_observer`
+- [`core.services.17`](core.services.17.md) — `prompt_relevance_backend` … `relation_map`
+- [`core.services.18`](core.services.18.md) — `relation_state_signal_tracking` … `rupture_repair`
+- [`core.services.19`](core.services.19.md) — `scheduled_job_windows` … `session_distillation`
+- [`core.services.20`](core.services.20.md) — `session_inbox` … `spatial_entity_ledger`
+- [`core.services.21`](core.services.21.md) — `staged_edits` … `tool_embeddings`
+- [`core.services.22`](core.services.22.md) — `tool_intent_approval_runtime` … `visible_followup_events`
+- [`core.services.23`](core.services.23.md) — `visible_followup_lean` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

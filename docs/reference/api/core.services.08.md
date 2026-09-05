@@ -434,20 +434,20 @@ _Daemon Manager — registry, lifecycle control, and state persistence for all d
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_state_file` | `()` | — | [src](../../../core/services/daemon_manager.py#L20) |
-| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L780) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L784) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L794) |
-| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L800) |
-| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L804) |
-| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L812) |
-| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L818) |
-| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L827) |
-| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L832) |
-| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L841) |
-| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L850) |
-| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L862) |
-| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L885) |
-| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L916) |
+| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L789) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L793) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L803) |
+| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L809) |
+| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L813) |
+| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L821) |
+| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L827) |
+| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L836) |
+| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L841) |
+| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L850) |
+| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L859) |
+| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L871) |
+| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L894) |
+| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L925) |
 
 ## `core/services/daemon_memory_safeguard.py`
 _Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
@@ -538,6 +538,17 @@ _Decision enforcement — close the loop between commitment and behavior._
 | function | `_poll_loop` | `()` | — | [src](../../../core/services/decision_enforcement.py#L226) |
 | function | `subscribe` | `()` | — | [src](../../../core/services/decision_enforcement.py#L266) |
 
+## `core/services/decision_evidence.py`
+_Ekstern sandhed til adfærds-reviews — hvad der FAKTISK skete i vinduet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_repo_root` | `()` | Repoets rod, fundet ud fra dette moduls egen placering. | [src](../../../core/services/decision_evidence.py#L38) |
+| function | `_tool_names_since` | `(since, until)` | Hvilke værktøjer blev udført i vinduet, og hvor mange gange. | [src](../../../core/services/decision_evidence.py#L43) |
+| function | `_commits_since` | `(since, until)` | Commits i vinduet, som korte emnelinjer. | [src](../../../core/services/decision_evidence.py#L80) |
+| function | `gather_evidence` | `(*, since, until=…)` | Saml regnskabet for vinduet. Returnerer også en kompakt tekst. | [src](../../../core/services/decision_evidence.py#L103) |
+| function | `evidence_permits_verdict` | `(verdict, evidence)` | Nedgradér en positiv dom der ikke har ydre dækning. | [src](../../../core/services/decision_evidence.py#L152) |
+
 ## `core/services/decision_gate.py`
 _Decision gate — pre-execution decision conflict detection._
 
@@ -583,18 +594,9 @@ _Decision review prompter — closes the adherence loop._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_dedup_gate_enabled` | `()` | Er 24t-skip-gaten aktiv? Default TRUE (den reducerede, tilsigtede adfærd). | [src](../../../core/services/decision_review_prompter.py#L39) |
-| function | `_last_review_time` | `(decision)` | Nyeste review-tidspunkt for en beslutning. | [src](../../../core/services/decision_review_prompter.py#L48) |
-| function | `_build_review_prompt` | `(decision)` | — | [src](../../../core/services/decision_review_prompter.py#L77) |
-| function | `_parse_review` | `(text)` | — | [src](../../../core/services/decision_review_prompter.py#L92) |
-| function | `review_pending_decisions` | `(*, max_reviews=…)` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L113) |
-
-## `core/services/decision_signal_staging.py`
-_Efemer staging af decision-signals til model-kontekst (2026-07-04 runaway-fix)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `compose_signal_note` | `(decision_id, trigger_name, context_summary)` | Den efemere note modellen ser næste runde (omgivet af blanke linjer). | [src](../../../core/services/decision_signal_staging.py#L22) |
-| function | `stage_signal` | `(active, decision_id, note, *, cap=…)` | Dedup pr. decision-id (erstat, akkumulér ALDRIG) + cap antal distinkte | [src](../../../core/services/decision_signal_staging.py#L30) |
-| function | `compose_exchange_text` | `(base_parts, active)` | Assistant-turen til næste rundes model-input = det ægte svar (`base_parts`) | [src](../../../core/services/decision_signal_staging.py#L46) |
+| function | `_dedup_gate_enabled` | `()` | Er 24t-skip-gaten aktiv? Default TRUE (den reducerede, tilsigtede adfærd). | [src](../../../core/services/decision_review_prompter.py#L43) |
+| function | `_last_review_time` | `(decision)` | Nyeste review-tidspunkt for en beslutning. | [src](../../../core/services/decision_review_prompter.py#L52) |
+| function | `_build_review_prompt` | `(decision, evidence=…)` | — | [src](../../../core/services/decision_review_prompter.py#L81) |
+| function | `_parse_review` | `(text)` | — | [src](../../../core/services/decision_review_prompter.py#L104) |
+| function | `review_pending_decisions` | `(*, max_reviews=…)` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L127) |
 

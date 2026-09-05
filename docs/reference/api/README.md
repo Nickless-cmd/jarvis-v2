@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13475 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13480 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -34,22 +34,22 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13475 functions/
 - [`core.services.05`](core.services.05.md) — `central_loop_lag` … `central_seraph`
 - [`core.services.06`](core.services.06.md) — `central_shadow` … `cluster_daemon_families`
 - [`core.services.07`](core.services.07.md) — `cluster_family_scheduler` … `council_memory_daemon`
-- [`core.services.08`](core.services.08.md) — `council_memory_service` … `decision_signal_staging`
-- [`core.services.09`](core.services.09.md) — `decision_signal_telemetry` … `dream_hypothesis_signal_tracking`
-- [`core.services.10`](core.services.10.md) — `dream_influence_proposal_tracking` … `experiential_memory`
-- [`core.services.11`](core.services.11.md) — `experiential_runtime_context` … `good_enough_gate`
-- [`core.services.12`](core.services.12.md) — `google_connector` … `initiative_queue`
-- [`core.services.13`](core.services.13.md) — `inner_dialectic_engine` … `mail_checker_daemon`
-- [`core.services.14`](core.services.14.md) — `malware_scan` … `multi_signal_retrieval`
-- [`core.services.15`](core.services.15.md) — `my_projects` … `permission_engine`
-- [`core.services.16`](core.services.16.md) — `personal_project` … `prompt_section_reevaluation`
-- [`core.services.17`](core.services.17.md) — `prompt_support_signals` … `relationship_texture`
-- [`core.services.18`](core.services.18.md) — `release_marker_signal_tracking` … `scheduled_tasks`
-- [`core.services.19`](core.services.19.md) — `security_guard` … `session_persistence_flag`
-- [`core.services.20`](core.services.20.md) — `session_prewarm` … `state_flag_store`
-- [`core.services.21`](core.services.21.md) — `stream_degeneration` … `tool_outcome_memory`
-- [`core.services.22`](core.services.22.md) — `tool_pattern_miner` … `visible_model_adapters`
-- [`core.services.23`](core.services.23.md) — `visible_model_observe` … `world_model_signal_tracking`
+- [`core.services.08`](core.services.08.md) — `council_memory_service` … `decision_review_prompter`
+- [`core.services.09`](core.services.09.md) — `decision_signal_staging` … `dream_hypothesis_generator`
+- [`core.services.10`](core.services.10.md) — `dream_hypothesis_signal_tracking` … `experienced_time_daemon`
+- [`core.services.11`](core.services.11.md) — `experiential_memory` … `goal_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `good_enough_gate` … `initiative_accumulator`
+- [`core.services.13`](core.services.13.md) — `initiative_queue` … `loyalty_gradient_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `mail_checker_daemon` … `mortality_awareness`
+- [`core.services.15`](core.services.15.md) — `multi_signal_retrieval` … `permission_classifier`
+- [`core.services.16`](core.services.16.md) — `permission_engine` … `prompt_section_impact`
+- [`core.services.17`](core.services.17.md) — `prompt_section_reevaluation` … `relational_warmth`
+- [`core.services.18`](core.services.18.md) — `relationship_texture` … `scheduled_task_runner`
+- [`core.services.19`](core.services.19.md) — `scheduled_tasks` … `session_milestones`
+- [`core.services.20`](core.services.20.md) — `session_persistence_flag` … `state_file_retention`
+- [`core.services.21`](core.services.21.md) — `state_flag_store` … `tool_observer`
+- [`core.services.22`](core.services.22.md) — `tool_outcome_memory` … `visible_model`
+- [`core.services.23`](core.services.23.md) — `visible_model_adapters` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

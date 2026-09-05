@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/permission_engine.py`
+_Permission engine — rollebaseret tool-adgang pr. mode (fail-closed)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_AllTools` | `` | Sentinel for owner — indeholder enhver tool. | [src](../../../core/services/permission_engine.py#L27) |
+| method | `_AllTools.__contains__` | `(self, item)` | — | [src](../../../core/services/permission_engine.py#L30) |
+| method | `_AllTools.__repr__` | `(self)` | — | [src](../../../core/services/permission_engine.py#L33) |
+| function | `allowed_tools` | `(*, role, mode)` | Returnér de tools en (rolle, mode) må bruge. | [src](../../../core/services/permission_engine.py#L111) |
+| function | `is_tool_allowed` | `(tool, *, role, mode)` | True hvis `tool` må kaldes af (rolle, mode). | [src](../../../core/services/permission_engine.py#L127) |
+| function | `requires_workspace_jail` | `(tool, *, role, mode)` | True hvis tool-kaldet skal path-jailes til brugerens eget workspace. | [src](../../../core/services/permission_engine.py#L132) |
+| function | `_all_member_tool_names` | `()` | Alle navne på tværs af member-lister — til drift-test mod registry. | [src](../../../core/services/permission_engine.py#L143) |
+
 ## `core/services/personal_project.py`
 _Personal Project — noget der er hans._
 
@@ -756,21 +769,4 @@ _Lightweight prompt-section answer-impact telemetry._
 | function | `observe_answer_impact` | `(*, run_id, answer_text, sections)` | — | [src](../../../core/services/prompt_section_impact.py#L50) |
 | function | `remember_prompt_sections` | `(*, session_id, sections)` | — | [src](../../../core/services/prompt_section_impact.py#L75) |
 | function | `observe_last_prompt_answer_impact` | `(*, session_id, run_id, answer_text)` | — | [src](../../../core/services/prompt_section_impact.py#L86) |
-
-## `core/services/prompt_section_reevaluation.py`
-_Revurderings-løkke for slukkede prompt-sektioner._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_digest` | `(text)` | — | [src](../../../core/services/prompt_section_reevaluation.py#L54) |
-| function | `_lines` | `(text)` | — | [src](../../../core/services/prompt_section_reevaluation.py#L58) |
-| function | `substance` | `(text)` | Scorer om indholdet er værd at læse. ``{score: 0..1, reasons: [...]}``. | [src](../../../core/services/prompt_section_reevaluation.py#L62) |
-| function | `observe_discarded` | `(label, content)` | Prøvetag indhold som blacklisten netop har forkastet. Gratis og selv-sikker. | [src](../../../core/services/prompt_section_reevaluation.py#L105) |
-| function | `_read_samples` | `()` | — | [src](../../../core/services/prompt_section_reevaluation.py#L148) |
-| function | `evaluate` | `()` | Vurdér alle prøvetagne, slukkede kanaler. Ren læsning — tænder intet. | [src](../../../core/services/prompt_section_reevaluation.py#L173) |
-| function | `_review_enabled` | `()` | — | [src](../../../core/services/prompt_section_reevaluation.py#L225) |
-| function | `_review` | `(candidates)` | Lad Jarvis dømme sine egne slukkede kanaler. Ét billigt kald pr. sweep (≤1/døgn). | [src](../../../core/services/prompt_section_reevaluation.py#L241) |
-| function | `_propose` | `(candidates)` | Læg forslaget hvor Bjørn og Centralen kan se det — med sin egen begrundelse. | [src](../../../core/services/prompt_section_reevaluation.py#L303) |
-| function | `maybe_run_sweep` | `()` | Kør vurderingen højst én gang i døgnet. Ren DB-læsning + aritmetik (~ms). | [src](../../../core/services/prompt_section_reevaluation.py#L337) |
-| function | `reevaluation_surface` | `()` | Overflade til Centralen/MC: hvilke slukkede kanaler fortjener et nyt blik? | [src](../../../core/services/prompt_section_reevaluation.py#L363) |
 

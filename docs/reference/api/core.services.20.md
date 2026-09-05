@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_persistence_flag.py`
+_Governed kill-switch for session-persistence boot-reconciler. Default OFF (shadow)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/session_persistence_flag.py#L18) |
+| function | `session_persistence_enabled` | `()` | True KUN når eksplicit slået til ('on'/'1'/'true'/'yes'). Usat eller | [src](../../../core/services/session_persistence_flag.py#L24) |
+
 ## `core/services/session_prewarm.py`
 _Session-aware DeepSeek prefix cache warming (prewarm-on-return)._
 
@@ -584,19 +592,4 @@ _Rotation af operationel runtime-tilstand i ``~/.jarvis-v2``._
 | function | `prune_all_state_files` | `(*, now=…)` | Kør rotationen på alle filer i ``POLICIES``. Returnér {fil: antal fjernet}. | [src](../../../core/services/state_file_retention.py#L127) |
 | function | `find_orphan_upload_dirs` | `(upload_root, *, session_is_known)` | Mapper hvis session hverken har en række eller beskeder. Ren udvælgelse. | [src](../../../core/services/state_file_retention.py#L151) |
 | function | `cleanup_orphan_uploads` | `()` | Fjern vedhæftnings-mapper for sessioner der hverken har række eller beskeder. | [src](../../../core/services/state_file_retention.py#L176) |
-
-## `core/services/state_flag_store.py`
-_State-flag store (leak-kandidat #1, 2026-07-10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/state_flag_store.py#L22) |
-| function | `_key` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L26) |
-| function | `_load` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L30) |
-| function | `_save` | `(user_id, flags)` | — | [src](../../../core/services/state_flag_store.py#L39) |
-| function | `_prune` | `(flags)` | Fjern udløbne flag. Returnerer den rensede dict (muterer input). | [src](../../../core/services/state_flag_store.py#L43) |
-| function | `set_flag` | `(key, value, *, ttl_minutes=…, user_id=…)` | Sæt/opdatér et flag. ttl_minutes=None/0 → intet udløb. Returnerer den lagrede | [src](../../../core/services/state_flag_store.py#L53) |
-| function | `get_flag` | `(key, *, user_id=…)` | Læs et flag (prune udløbne først). None hvis ukendt/udløbet. | [src](../../../core/services/state_flag_store.py#L70) |
-| function | `clear_flag` | `(key, *, user_id=…)` | Fjern et flag. True hvis det fandtes. | [src](../../../core/services/state_flag_store.py#L81) |
-| function | `list_flags` | `(*, user_id=…)` | Alle aktive (ikke-udløbne) flag. | [src](../../../core/services/state_flag_store.py#L94) |
 

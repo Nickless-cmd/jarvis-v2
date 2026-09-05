@@ -223,6 +223,19 @@ def ensure_default_job_handlers() -> list[str]:
             return {"status": "error", "error": str(exc)}
 
     def _decision_review_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        # Kontakten skal virke paa BEGGE doere. decision_review blev slaaet fra som
+        # daemon 11/6-2026 pga. selv-bias — men den samme funktion koerte videre her
+        # som dagligt job, uden om daemon-gaten. Registret sagde DEAKTIVERET mens
+        # tingen koerte hver dag i tre maaneder. Dobbelt sandhed, og netop derfor
+        # opdagede ingen det. Jobbet respekterer nu daemon-tilstanden.
+        try:
+            from core.services import daemon_manager as _dm
+            if not _dm.is_enabled("decision_review"):
+                return {"status": "ok", "kind": "decision_review",
+                        "result": {"status": "disabled",
+                                   "reason": "daemon_manager.is_enabled(decision_review) er False"}}
+        except Exception:
+            pass  # kan gaten ikke laeses, gaar vi videre — fail-open som resten
         try:
             from core.services.decision_review_prompter import review_pending_decisions
             return {"status": "ok", "kind": "decision_review",

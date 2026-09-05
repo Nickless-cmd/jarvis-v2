@@ -134,9 +134,16 @@ class TestDecisionReviewDaemonRegistry:
         # 2026-06-11 (Bjørn frustration crisis fix C1): DEAKTIVERET. The daemon
         # let Jarvis self-grade adherence to his own behavioral decisions →
         # positive-bias self-validation loop (1.0 adherence while hallucinating
-        # tool-work). It stays registered but default-disabled until replaced by
-        # external-truth review (git-log + tool-history).
-        assert entry["default_enabled"] is False
+        # tool-work). It stayed registered but default-disabled "until replaced
+        # by external-truth review (git-log + tool-history)".
+        #
+        # 2026-09-05: den betingelse er nu opfyldt. decision_evidence.py henter
+        # regnskabet fra eventbus (tool.completed) + git-log, prompten holdes op
+        # mod DET, og en positiv dom uden ydre spor nedgraderes til "unknown".
+        # Derfor er den tændt igen. Vagterne mod tilbagefald ligger i
+        # tests/test_decision_evidence.py og test_decision_review_prompter.py —
+        # særligt at `evidence` aldrig må være en kopi af `note`.
+        assert entry["default_enabled"] is True
 
     def test_alias_tick_exists(self):
         """The module exposes a 'tick' alias for consistent import pattern."""

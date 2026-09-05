@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_section_reevaluation.py`
+_Revurderings-løkke for slukkede prompt-sektioner._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_digest` | `(text)` | — | [src](../../../core/services/prompt_section_reevaluation.py#L54) |
+| function | `_lines` | `(text)` | — | [src](../../../core/services/prompt_section_reevaluation.py#L58) |
+| function | `substance` | `(text)` | Scorer om indholdet er værd at læse. ``{score: 0..1, reasons: [...]}``. | [src](../../../core/services/prompt_section_reevaluation.py#L62) |
+| function | `observe_discarded` | `(label, content)` | Prøvetag indhold som blacklisten netop har forkastet. Gratis og selv-sikker. | [src](../../../core/services/prompt_section_reevaluation.py#L105) |
+| function | `_read_samples` | `()` | — | [src](../../../core/services/prompt_section_reevaluation.py#L148) |
+| function | `evaluate` | `()` | Vurdér alle prøvetagne, slukkede kanaler. Ren læsning — tænder intet. | [src](../../../core/services/prompt_section_reevaluation.py#L173) |
+| function | `_review_enabled` | `()` | — | [src](../../../core/services/prompt_section_reevaluation.py#L225) |
+| function | `_review` | `(candidates)` | Lad Jarvis dømme sine egne slukkede kanaler. Ét billigt kald pr. sweep (≤1/døgn). | [src](../../../core/services/prompt_section_reevaluation.py#L241) |
+| function | `_propose` | `(candidates)` | Læg forslaget hvor Bjørn og Centralen kan se det — med sin egen begrundelse. | [src](../../../core/services/prompt_section_reevaluation.py#L303) |
+| function | `maybe_run_sweep` | `()` | Kør vurderingen højst én gang i døgnet. Ren DB-læsning + aritmetik (~ms). | [src](../../../core/services/prompt_section_reevaluation.py#L337) |
+| function | `reevaluation_surface` | `()` | Overflade til Centralen/MC: hvilke slukkede kanaler fortjener et nyt blik? | [src](../../../core/services/prompt_section_reevaluation.py#L363) |
+
 ## `core/services/prompt_support_signals.py`
 _Bounded inner-layer support signal builders._
 
@@ -668,18 +685,4 @@ _Relational Warmth — felt quality of who I'm talking to._
 | function | `build_relational_warmth_surface` | `()` | — | [src](../../../core/services/relational_warmth.py#L214) |
 | function | `_surface_summary` | `(rel)` | — | [src](../../../core/services/relational_warmth.py#L229) |
 | function | `build_relational_warmth_prompt_section` | `()` | Surface register-shaping hint only when it should change tone. | [src](../../../core/services/relational_warmth.py#L237) |
-
-## `core/services/relationship_texture.py`
-_Relationship Texture — tracks the quality of the relationship over time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_relationship_from_run` | `(*, run_id, user_message, assistant_response, outcome_status, turn_count=…)` | Analyze a run and update relationship texture. | [src](../../../core/services/relationship_texture.py#L45) |
-| function | `update_relationship_async` | `(**kwargs)` | — | [src](../../../core/services/relationship_texture.py#L163) |
-| function | `track_pushback_outcome` | `(*, jarvis_disagreed, user_was_right, topic=…)` | Track when Jarvis disagrees — and who was right. | [src](../../../core/services/relationship_texture.py#L170) |
-| function | `derive_appropriate_autonomy_level` | `()` | Derive autonomy level from trust trajectory. | [src](../../../core/services/relationship_texture.py#L194) |
-| function | `build_relationship_texture_surface` | `()` | — | [src](../../../core/services/relationship_texture.py#L213) |
-| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/relationship_texture.py#L230) |
-| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/relationship_texture.py#L237) |
-| function | `_safe_json_dict` | `(value)` | — | [src](../../../core/services/relationship_texture.py#L250) |
 

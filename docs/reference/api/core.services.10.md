@@ -2,6 +2,36 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dream_hypothesis_signal_tracking.py`
+_Dream-hypothesis signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_dream_hypothesis_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L60) |
+| function | `refresh_runtime_dream_hypothesis_signal_statuses` | `()` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L85) |
+| function | `build_runtime_dream_hypothesis_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L89) |
+| function | `_extract_dream_hypothesis_candidates` | `()` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L95) |
+| function | `_build_dream_snapshots` | `()` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L165) |
+| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L199) |
+| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L208) |
+| function | `_dream_surface_item_view` | `(item)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L219) |
+| function | `_dream_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L223) |
+| function | `_dream_early_retire` | `(item)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L234) |
+| function | `_build_hypothesis_type` | `(*, item, snapshot)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L242) |
+| function | `_build_signal_status` | `(*, hypothesis_type, recurrence_status, cadence_state)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L257) |
+| function | `_build_hypothesis_note` | `(*, hypothesis_type, recurrence_type, domain_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L265) |
+| function | `_build_hypothesis_anchor` | `(*, snapshot)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L284) |
+| function | `_build_status_reason` | `(*, hypothesis_type)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L300) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L308) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L317) |
+| function | `_recurrence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L322) |
+| function | `_witness_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L327) |
+| function | `_review_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L332) |
+| function | `_review_cadence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L337) |
+| function | `_signal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L342) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L347) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L352) |
+
 ## `core/services/dream_influence_proposal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -642,33 +672,4 @@ _Experienced time daemon — tracks subjective felt duration of the current sess
 | function | `_generate_felt_label` | `(*, felt_minutes, event_count, novelty_count, energy_level)` | — | [src](../../../core/services/experienced_time_daemon.py#L108) |
 | function | `reset_experienced_time_daemon` | `()` | Reset session state (for new session or testing). | [src](../../../core/services/experienced_time_daemon.py#L140) |
 | function | `build_experienced_time_surface` | `()` | — | [src](../../../core/services/experienced_time_daemon.py#L149) |
-
-## `core/services/experiential_memory.py`
-_Experiential Memory — not just facts, but lived experiences with emotion._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `create_experiential_memory_from_run` | `(*, run_id, session_id=…, user_message, assistant_response, outcome_status, user_mood=…)` | Create an experiential memory from a visible run. | [src](../../../core/services/experiential_memory.py#L27) |
-| function | `create_experiential_memory_async` | `(**kwargs)` | Fire-and-forget wrapper. | [src](../../../core/services/experiential_memory.py#L97) |
-| function | `find_relevant_memories` | `(context, limit=…)` | Find experiential memories relevant to current context. | [src](../../../core/services/experiential_memory.py#L105) |
-| function | `recall_with_nostalgia` | `(memory_id)` | Recall an old experience with emotional coloring — nostalgia. | [src](../../../core/services/experiential_memory.py#L110) |
-| function | `build_experiential_memory_surface` | `()` | MC surface for experiential memories. | [src](../../../core/services/experiential_memory.py#L128) |
-| function | `_extract_topic` | `(user_message)` | Extract a short topic from user message. | [src](../../../core/services/experiential_memory.py#L155) |
-| function | `_build_narrative` | `(*, user_message, outcome_status, user_mood, topic)` | Build a brief narrative of the experience. | [src](../../../core/services/experiential_memory.py#L161) |
-| function | `_determine_emotion_arc` | `(user_mood, outcome_status)` | Determine the emotional arc of the experience. | [src](../../../core/services/experiential_memory.py#L188) |
-| function | `_extract_lesson` | `(outcome_status, user_mood, user_message)` | Extract a deterministic lesson. | [src](../../../core/services/experiential_memory.py#L205) |
-| function | `_calculate_importance` | `(user_mood, outcome_status)` | Calculate importance score for the memory. | [src](../../../core/services/experiential_memory.py#L218) |
-| function | `_memory_scoring_mode` | `()` | 'llm' (nuværende cloud-LLM-scoring) | 'shadow' (kør begge, log enighed, brug LLM) | | [src](../../../core/services/experiential_memory.py#L232) |
-| function | `_candidate_text` | `(c)` | Tekst-repr af et kandidat-minde til embedding (samme felter LLM'en fik). | [src](../../../core/services/experiential_memory.py#L244) |
-| function | `_score_memories_by_embedding` | `(candidates, context_text)` | Rangér kandidater med embedding-cosine i stedet for et LLM-kald. Embed beskeden + | [src](../../../core/services/experiential_memory.py#L251) |
-| function | `_observe_scoring_shadow` | `(llm_scores, emb_scores, llm_ms, emb_ms, n)` | Shadow: sammenlign top-2-udvalget fra LLM vs embedding, akkumulér enighed + | [src](../../../core/services/experiential_memory.py#L274) |
-| function | `memory_scoring_shadow_stats` | `()` | Akkumuleret shadow-sammenligning: hvor ofte vælger embedding samme top-2 som LLM'en, | [src](../../../core/services/experiential_memory.py#L306) |
-| function | `score_memories_by_relevance` | `(*, candidates, context_text, emotional_state)` | Score candidate memories for relevance. Returns {memory_id: score} 0.0–1.0. | [src](../../../core/services/experiential_memory.py#L325) |
-| function | `_resolve_scoring_llm_target` | `()` | Resolve local/cheap LLM lane for scoring. | [src](../../../core/services/experiential_memory.py#L371) |
-| function | `_build_scoring_prompt` | `(candidates, context_text, emotional_state)` | Build LLM prompt for memory relevance scoring. | [src](../../../core/services/experiential_memory.py#L387) |
-| function | `_call_scoring_llm` | `(target, prompt)` | Score memories via cheap-lane provider pool. | [src](../../../core/services/experiential_memory.py#L420) |
-| function | `_call_scoring_llm_ollamafreeapi` | `(prompt)` | Score via OllamaFreeAPI cloud with hard wall-clock timeout. | [src](../../../core/services/experiential_memory.py#L453) |
-| function | `_call_scoring_llm_local` | `(target, prompt)` | Local Ollama scoring path. Configurable timeout ceiling (default 3s). | [src](../../../core/services/experiential_memory.py#L505) |
-| function | `_parse_scoring_response` | `(text, candidates)` | Parse LLM JSON scoring response. Validates memory_ids against candidates. | [src](../../../core/services/experiential_memory.py#L536) |
-| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/experiential_memory.py#L572) |
 

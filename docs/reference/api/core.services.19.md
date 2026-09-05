@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/scheduled_tasks.py`
+_Scheduled tasks service — lets Jarvis schedule future reminders/actions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `push_scheduled_task` | `(*, focus, delay_minutes, source=…)` | Schedule a task to fire after delay_minutes. Returns task info dict. | [src](../../../core/services/scheduled_tasks.py#L24) |
+| function | `cancel_scheduled_task` | `(task_id)` | Cancel a pending task. Returns True if found and cancelled. | [src](../../../core/services/scheduled_tasks.py#L53) |
+| function | `edit_scheduled_task` | `(task_id, *, focus=…, delay_minutes=…)` | Edit an existing pending task. Returns updated task info or error dict. | [src](../../../core/services/scheduled_tasks.py#L64) |
+| function | `list_pending_for_current_user` | `()` | Return scheduled tasks where scheduled_for_user_id matches current user. | [src](../../../core/services/scheduled_tasks.py#L90) |
+| function | `get_scheduled_tasks_state` | `()` | Return all scheduled tasks for observability. | [src](../../../core/services/scheduled_tasks.py#L120) |
+| function | `_fire_due_tasks` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L137) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L299) |
+| function | `start_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L318) |
+| function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L327) |
+| function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L332) |
+
 ## `core/services/security_guard.py`
 _Identity-verification-guard & abuse-monitoring — kerne (spec 2026-06-21)._
 
@@ -764,12 +780,4 @@ _Session-milepæle (kapitler) til navigations-rail'en — som Claude Code's mark
 | function | `_llm_segment` | `(turns)` | Bed den billige lane segmentere samtalen i kapitler. Returnerer milepæle eller None. | [src](../../../core/services/session_milestones.py#L59) |
 | function | `_generate` | `(turns)` | — | [src](../../../core/services/session_milestones.py#L104) |
 | function | `get_session_milestones` | `(session_id)` | Milepæle for rail'en: [{anchor_id, title}]. Cached pr. session+turn-antal; regenereres | [src](../../../core/services/session_milestones.py#L110) |
-
-## `core/services/session_persistence_flag.py`
-_Governed kill-switch for session-persistence boot-reconciler. Default OFF (shadow)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/session_persistence_flag.py#L18) |
-| function | `session_persistence_enabled` | `()` | True KUN når eksplicit slået til ('on'/'1'/'true'/'yes'). Usat eller | [src](../../../core/services/session_persistence_flag.py#L24) |
 

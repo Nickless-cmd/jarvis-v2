@@ -1060,15 +1060,20 @@ def _exec_read_attachment(args: dict[str, Any]) -> dict[str, Any]:
     attachment_id = str(args.get("attachment_id") or "").strip()
     if not attachment_id:
         return {"status": "error", "text": "attachment_id is required"}
+    question = str(args.get("question") or "").strip()
     try:
         from core.services.attachment_service import read_attachment_content
-        result = read_attachment_content(attachment_id)
+        result = read_attachment_content(attachment_id, question=question)
         if result.get("status") == "error":
             return {"status": "error", "text": f"Attachment error: {result.get('reason')}"}
         content = result.get("content", "")
         atype = result.get("type", "")
         filename = result.get("filename", "")
-        return {"status": "ok", "text": f"[{filename} — {atype}]\n{content}"}
+        asked = str(result.get("question") or "")
+        header = f"[{filename} — {atype}]"
+        if asked:
+            header = f"{header} spørgsmål: {asked}"
+        return {"status": "ok", "text": f"{header}\n{content}"}
     except Exception as exc:
         return {"status": "error", "text": f"read_attachment error: {exc}"}
 

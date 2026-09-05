@@ -2366,10 +2366,14 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read_attachment",
-            "description": "Read the content of a file received via Discord or Telegram. Images are described via vision model. Text/JSON returned directly. PDF extracted as text. Other files return a hex preview.",
+            "description": "Read the content of a file received via Discord or Telegram. Images go to the vision model — pass `question` to ask the IMAGE something specific instead of getting a generic description; call it again with a new question to look again. Text/JSON returned directly. PDF extracted as text. Other files return a hex preview.",
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "Optional. For images: what you want to know from the picture, e.g. 'hvad står der på skiltet?' or 'hvilken række er rød?'. Without it you get a short generic description, and anything it left out is lost.",
+                    },
                     "attachment_id": {
                         "type": "string",
                         "description": "The attachment_id from a '[Fil modtaget: ...]' prefix in an incoming message.",

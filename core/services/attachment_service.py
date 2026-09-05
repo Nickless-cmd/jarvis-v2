@@ -288,13 +288,28 @@ def list_attachments(session_id: str, limit: int = 20) -> list[dict]:
         return []
 
 
-def read_attachment_content(attachment_id: str) -> dict[str, Any]:
+_GENERIC_IMAGE_PROMPT = "Beskriv indholdet af dette billede kortfattet på dansk."
+
+
+def read_attachment_content(
+    attachment_id: str, question: str = "",
+) -> dict[str, Any]:
     """Read attachment content for Jarvis.
 
-    image/*         → vision model description
+    image/*         → vision model answer (see below)
     text/*          → file text (truncated at 8000 chars)
     application/pdf → first 8000 chars via text extraction
     other           → metadata + hex preview
+
+    ``question`` (2026-09-05): stil et konkret spørgsmål til BILLEDET i stedet
+    for at nøjes med den generiske beskrivelse.
+
+    Målt samme dag: han HAR øjne — `gemma4:31b-cloud` via ollama læste både
+    farvekoder og småtekst korrekt på 0,5 s, gratis. Men prompten var hårdkodet
+    til «beskriv kortfattet», så alt hvad Bjørn senere ville vide skulle
+    besvares ud fra ét generisk resumé skrevet før spørgsmålet fandtes. Det er
+    andenhånds syn: kan beskrivelsen ikke det man spørger om, er billedet
+    allerede væk. Med et spørgsmål går det til pixels.
     """
     row = _db_get(attachment_id)
     if row is None:
@@ -309,12 +324,17 @@ def read_attachment_content(attachment_id: str) -> dict[str, Any]:
             data = Path(local_path).read_bytes()
             b64 = base64.b64encode(data).decode("ascii")
             model = _vision_model()
+            asked = " ".join(str(question or "").split()).strip()
             description = _call_vision(
                 b64,
                 model=model,
-                prompt="Beskriv indholdet af dette billede kortfattet på dansk.",
+                prompt=(
+                    f"{asked}\n\nSvar kun ud fra hvad du faktisk kan se i billedet."
+                    if asked else _GENERIC_IMAGE_PROMPT
+                ),
             )
-            return {"status": "ok", "type": "image", "content": description, "filename": filename}
+            return {"status": "ok", "type": "image", "content": description,
+                    "filename": filename, "question": asked}
         except Exception as exc:
             logger.warning("attachment_service: vision failed for %s: %s", attachment_id, exc)
             return {

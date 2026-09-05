@@ -69,9 +69,16 @@ def test_catalog_validates_with_prompt():
 
 # ── Fejl-kanal (2026-06-23): sektion-builder der kaster bliver synlig ─────
 def test_noise_labels_extracted_to_observer():
-    """Boy Scout: noise-policy bor nu her (udskilt fra prompt_contract)."""
-    assert "R2 gate telemetry" in po.DIAGNOSTIC_NOISE_LABELS
+    """Boy Scout: noise-policy bor nu her (udskilt fra prompt_contract).
+
+    Stikprøven var «R2 gate telemetry» indtil 2026-09-05, hvor den blev taget af
+    listen (den bar beskeden om at 71 af 90 advarsler blev ignoreret). Testen
+    handler om HVOR politikken bor, ikke om et bestemt label — så den bruger nu
+    et der stadig er slukket.
+    """
+    assert "causal alerts" in po.DIAGNOSTIC_NOISE_LABELS
     assert "room entities" in po.TAIL_NOISE_LABELS
+    assert len(po.DIAGNOSTIC_NOISE_LABELS) > 0
 
 
 def test_observe_section_error_self_safe(monkeypatch):
@@ -104,12 +111,39 @@ def test_observe_build_emits_error_channel(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_adherence_gaten_er_ikke_blacklistet():
-    from core.services.prompt_observer import DIAGNOSTIC_NOISE_LABELS
+# Sektioner der bevidst er TAGET AF listen efter måling. Hver post har kostet en
+# undersøgelse; de må ikke kunne slukkes igen uden at nogen tager stilling.
+_BEVIDST_TAENDT = {
+    # 2026-09-05: adfærdsinstruks, ikke diagnostik. Eskalerer til «DU SKAL...».
+    "decision adherence gate",
+    # 2026-09-05: begrundelsen «already in guidance rules» var FALSK — hverken
+    # «linjeskift», «EGNE ord» eller «Gentag ALDRIG» fandtes i den byggede prompt.
+    "markdown formatting",
+    "no tool-result echo",
+    # 2026-09-05: begrundelsen «merged into brain facts» var FALSK — der findes
+    # ingen «brain facts»-sektion. 1.171 tegn af hans vidensresumé, tabt.
+    "jarvis brain summary",
+    # 2026-09-05: bærer nu emne OG udfald, ikke «Ny samtale ×5» som i juni.
+    "conversation continuity (always-on)",
+    "cross-session arc",
+    "rule engine conclusions",
+    # 2026-09-05: diagnostik, ja — men de bærer beskeden om at 71 af 90
+    # advarsler blev ignoreret. Systemet vidste det; beskeden var slukket.
+    "R2 gate telemetry",
+    "loop-compliance self-check",
+}
 
-    assert "decision adherence gate" not in DIAGNOSTIC_NOISE_LABELS, (
-        "adherence-gaten er en adfærdsinstruks, ikke diagnostik — den eskalerer "
-        "til «DU SKAL...» og skal nå frem til prompten"
+
+def test_bevidst_taendte_sektioner_er_ikke_blacklistet():
+    from core.services.prompt_observer import DIAGNOSTIC_NOISE_LABELS, TAIL_NOISE_LABELS
+
+    slukket_igen = sorted(
+        _BEVIDST_TAENDT & (set(DIAGNOSTIC_NOISE_LABELS) | set(TAIL_NOISE_LABELS))
+    )
+    assert not slukket_igen, (
+        "sektioner der bevidst blev tændt efter måling er slukket igen: %s — "
+        "hver af dem kostede en undersøgelse, så tag stilling i stedet for at "
+        "føje dem tilbage" % ", ".join(slukket_igen)
     )
 
 

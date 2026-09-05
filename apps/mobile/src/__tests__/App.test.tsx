@@ -77,7 +77,26 @@ jest.mock('../state/StreamContext', () => {
         null,
         ReactLib.createElement(Text, null, 'stream-provider'),
         children
-      )
+      ),
+    useStream: () => ({
+      state: {
+        status: 'idle',
+        blocks: [],
+        activeRunId: null,
+        workingStep: null,
+        workingSince: null
+      },
+      approval: null,
+      lastError: null,
+      reconnecting: false,
+      send: jest.fn(),
+      stop: jest.fn(),
+      approve: jest.fn(),
+      deny: jest.fn(),
+      clearError: jest.fn(),
+      follow: jest.fn(),
+      stopFollow: jest.fn()
+    })
   }
 })
 

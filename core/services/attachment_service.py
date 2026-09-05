@@ -180,9 +180,20 @@ def _attachment_visible_to_user_impl(attachment_id: str, user_id: str | None) ->
     return hit is not None
 
 
+_GENERIC_IMAGE_PROMPT = "Beskriv indholdet af dette billede kortfattet på dansk."
+
+
 def _call_vision(image_b64: str, *, model: str, prompt: str | None = None) -> str:
-    from core.services.visual_memory import _describe_via_ollama
-    return _describe_via_ollama(image_b64, model=model, prompt=prompt)
+    """Send billedet til den VALGTE vision-backend.
+
+    2026-09-05: gik foer altid til ollama. Nu afgoer `vision_provider` i
+    runtime.json det (eller modelnavnet, hvis noeglen ikke er sat), saa Bjoern
+    kan vaelge DeepSeeks vision-variant — samme model som den der svarer ham,
+    bare med syn, til samme pris pr. token. Se core/services/vision_backend.py.
+    """
+    from core.services.vision_backend import describe
+    return describe(image_b64=image_b64, model=model,
+                    prompt=prompt or _GENERIC_IMAGE_PROMPT)["text"]
 
 
 def _vision_model() -> str:
@@ -286,9 +297,6 @@ def list_attachments(session_id: str, limit: int = 20) -> list[dict]:
         return _db_list(session_id, limit)
     except Exception:
         return []
-
-
-_GENERIC_IMAGE_PROMPT = "Beskriv indholdet af dette billede kortfattet på dansk."
 
 
 def read_attachment_content(

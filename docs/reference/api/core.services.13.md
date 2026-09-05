@@ -554,7 +554,7 @@ _Central LLM-pris-tabel + cost-beregner (WS2, 13. jul 2026)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `compute_cost_usd` | `(provider, model, *, cache_hit_tokens=…, cache_miss_tokens=…, output_tokens=…, input_tokens=…)` | Beregn cost_usd fra tokens × pris. Returnerer 0.0 for ukendte (provider, model). | [src](../../../core/services/llm_pricing.py#L22) |
+| function | `compute_cost_usd` | `(provider, model, *, cache_hit_tokens=…, cache_miss_tokens=…, output_tokens=…, input_tokens=…)` | Beregn cost_usd fra tokens × pris. Returnerer 0.0 for ukendte (provider, model). | [src](../../../core/services/llm_pricing.py#L31) |
 
 ## `core/services/local_tool_broker.py`
 _Local-tool broker (Path B — server-owned transcript, client-local execution)._

@@ -314,6 +314,17 @@ _Den kanoniske content-blok-array for en assistent-tur (spec §4)._
 | function | `_build_progress_blocks` | `(tool_calls, tool_results)` | Byg det FLADE progress-spor for en tur (spec §5). | [src](../../../core/services/visible_turn_blocks.py#L42) |
 | function | `_build_turn_blocks` | `(*, text, tool_calls, tool_results, interleave=…, text_segments=…)` | Byg den kanoniske content-blok-array for en assistant-tur (spec §4). | [src](../../../core/services/visible_turn_blocks.py#L88) |
 
+## `core/services/vision_backend.py`
+_Hvilke øjne bruger han? — valg af vision-model (2026-09-05)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resolve_vision_provider` | `(model)` | `"ollama"` eller `"deepseek"`. Eksplicit konfig vinder over gættet. | [src](../../../core/services/vision_backend.py#L37) |
+| function | `describe_via_deepseek` | `(image_b64, *, model, prompt, run_id=…)` | Send billedet til DeepSeeks vision-model og returnér svaret. | [src](../../../core/services/vision_backend.py#L53) |
+| function | `_record_cost` | `(usage, *, model, run_id)` | — | [src](../../../core/services/vision_backend.py#L88) |
+| function | `describe` | `(image_bytes=…, *, image_b64=…, model, prompt, run_id=…)` | Beskriv/besvar et billede med den valgte backend. | [src](../../../core/services/vision_backend.py#L111) |
+| function | `build_vision_backend_surface` | `()` | — | [src](../../../core/services/vision_backend.py#L130) |
+
 ## `core/services/visual_memory.py`
 _Visual memory — webcam snapshots beskrevet af vision-model._
 

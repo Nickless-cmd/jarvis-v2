@@ -31,6 +31,64 @@ _MAX_ACTIVE_LONG_TERM_INTENTIONS = 3
 _QUEUE_LOCK = threading.Lock()
 
 
+# ── Kvalitetsport: er dette et initiativ, eller er det promptens eget indhold? ──
+#
+# Målt 2026-09-05: køen havde 48 poster — 6 ventende, 26 udløbet uden svar, og
+# NUL nogensinde godkendt eller afvist. Da vi læste de seks ventende, var kun ÉN
+# et rigtigt initiativ:
+#
+#   "Choose initiative only if there's a genuine next step."   ← instruksen
+#   "Use JSON format with thought, initiative (null if...)."   ← output-formatet
+#   "What might the next move be?"                             ← et spørgsmål
+#   "Or since mode is clarify and there's an inner-conflict…"   ← tankefragment
+#   "Tråden er stadig i opstartsfase efter pausen…"             ← statusbemærkning
+#   "Slå det seneste bash-run op og sammenhold det med…"        ← ÆGTE
+#
+# Det er samme sygdom som ramte de indre stemmer og curiosity-gælden: modellen
+# svarer med opgaven i stedet for at løse den, og det bliver gemt som indhold.
+# Her gør det mere skade, fordi køen er noget MENNESKER skal tage stilling til.
+# En kø fuld af promptens eget format er værre end en tom kø.
+#
+# Porten er bevidst konservativ. Den afviser kun det der beviseligt ikke er et
+# forslag; tvivlstilfælde slipper igennem.
+
+_IKKE_ET_FORSLAG_PREFIX = ("or ", "eller ", "men ", "and ", "så måske ", "maybe ")
+
+
+def _er_ikke_et_initiativ(focus: str) -> str:
+    """Returnér en grund hvis dette ikke er et forslag. Tom streng = behold."""
+    tekst = str(focus or "").strip()
+    if not tekst:
+        return "tom"
+
+    try:
+        from core.services.visible_inner_life import _is_instruction_echo
+        if _is_instruction_echo(tekst):
+            return "instruks-ekko"
+    except Exception:
+        pass
+
+    try:
+        from core.services.provider_error_guard import looks_like_provider_error
+        if looks_like_provider_error(tekst):
+            return "udbyder-fejl"
+    except Exception:
+        pass
+
+    # Et spørgsmål er ikke et forslag. «What might the next move be?» beder om
+    # et svar; den beder ikke om lov til at handle.
+    if tekst.rstrip().endswith("?"):
+        return "spørgsmål"
+
+    # Et fragment der starter med en konjunktion er et stykke ræsonnement der er
+    # revet ud af sin sammenhæng.
+    lav = tekst.lower()
+    if any(lav.startswith(p) for p in _IKKE_ET_FORSLAG_PREFIX):
+        return "tankefragment"
+
+    return ""
+
+
 def push_initiative(
     *,
     focus: str,
@@ -51,6 +109,19 @@ def push_initiative(
     normalized_focus = focus[:200].strip()
     if not normalized_focus:
         normalized_focus = "Follow up on unspecified initiative"
+
+    # Porten: en kø som mennesker skal svare på, må ikke fyldes med promptens
+    # eget indhold. Afvisningen er synlig i eventbussen — vi taber ikke noget
+    # i tavshed, vi holder det bare ude af det der ligner en beslutning.
+    _afvist = _er_ikke_et_initiativ(normalized_focus)
+    if _afvist:
+        try:
+            event_bus.publish("heartbeat.initiative_rejected", {
+                "focus": normalized_focus[:120], "reason": _afvist, "source": source,
+            })
+        except Exception:
+            pass
+        return ""
     normalized_priority = (
         priority.strip().lower() if priority.strip().lower() in {"low", "medium", "high"} else "medium"
     )

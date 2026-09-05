@@ -785,6 +785,18 @@ _INSTRUKS_EKKO = (
     "you should respond",
     "din opgave er",
     "svar som jarvis",
+    # Output-kontrakten selv. Modellen gengiver nogle gange formatkravet i
+    # stedet for at opfylde det, og saa bliver instruksen gemt som indhold.
+    # Maalt i initiativ-koeen: «Use JSON format with thought, initiative (null
+    # if no real next step), mode (optional).» og «Choose initiative only if
+    # there's a genuine next step.» laa som beslutninger der ventede paa svar.
+    "use json format",
+    "return json",
+    "respond with json",
+    "choose initiative only if",
+    "(null if",
+    "mode (optional)",
+    "brug json-format",
 )
 
 

@@ -80,3 +80,69 @@ class TestInitiativesPromptSection:
             raise RuntimeError("db nede")
         monkeypatch.setattr(iq, "get_pending_initiatives", _boom)
         assert iq.initiatives_prompt_section() is None
+
+
+# ---------------------------------------------------------------------------
+# En kø mennesker skal svare på, må ikke fyldes med promptens eget indhold
+#
+# Målt 2026-09-05: 48 initiativer i køen — 6 ventende, 26 udløbet uden svar,
+# NUL nogensinde godkendt eller afvist. Af de seks ventende var kun ÉN et
+# rigtigt initiativ. To var output-kontrakten («Use JSON format with thought,
+# initiative (null if no real next step), mode (optional).»), ét var et
+# spørgsmål, to var tankefragmenter.
+#
+# Det gør mere skade her end i det indre liv: en kø fuld af promptens format
+# er værre end en tom kø, fordi den ligner beslutninger der venter.
+# ---------------------------------------------------------------------------
+
+from core.services.initiative_queue import _er_ikke_et_initiativ as _port
+
+
+def test_output_kontrakten_er_ikke_et_initiativ():
+    assert _port("Use JSON format with thought, initiative (null if no real next step), mode (optional).")
+    assert _port("Choose initiative only if there's a genuine next step.")
+    assert _port("Return JSON with the following fields")
+
+
+def test_et_spoergsmaal_er_ikke_et_forslag():
+    """«What might the next move be?» beder om et svar, ikke om lov til at handle."""
+    assert _port("What might the next move be?") == "spørgsmål"
+    assert _port("Skal jeg rydde op i brain-grafen?") == "spørgsmål"
+
+
+def test_tankefragment_uden_sammenhaeng_afvises():
+    assert _port("Or since mode is clarify and there's an inner-conflict record") == "tankefragment"
+    assert _port("Eller måske skulle jeg vente med det") == "tankefragment"
+
+
+def test_udbyder_fejl_er_ikke_et_initiativ():
+    assert _port(
+        "Sorry, to prevent abuse of free resources, accounts that have not been "
+        "recharged can only try 10 times."
+    )
+
+
+def test_aegte_initiativer_slipper_igennem():
+    """Porten skal være konservativ — tvivlstilfælde beholdes."""
+    for aegte in (
+        "Slå det seneste bash-run op og sammenhold det med kode-æstetik-noten",
+        "Ryd op i de 2,8 mio. temporale kanter i brain-grafen",
+        "Skriv en opsummering af ugens arbejde til Bjørn",
+        "Undersøg hvorfor cache-hitraten falder om aftenen",
+    ):
+        assert _port(aegte) == "", "afviste et ægte initiativ: %s" % aegte
+
+
+def test_afvisning_returnerer_tom_id_uden_at_kaste(monkeypatch):
+    from core.services import initiative_queue as Q
+
+    hændelser: list = []
+    monkeypatch.setattr(
+        Q.event_bus, "publish",
+        lambda kind, payload: hændelser.append((kind, payload)),
+    )
+    ud = Q.push_initiative(focus="Use JSON format with thought, initiative")
+    assert ud == ""
+    assert any(k == "heartbeat.initiative_rejected" for k, _p in hændelser), (
+        "afvisningen skal være synlig i eventbussen — vi taber ikke noget i tavshed"
+    )

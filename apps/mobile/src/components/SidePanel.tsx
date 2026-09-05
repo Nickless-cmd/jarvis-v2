@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Boxes, Eye, SquarePen } from 'lucide-react-native'
+import { Boxes, Eye, MessageCircle, Search, Settings, SquarePen } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
@@ -123,7 +123,7 @@ export function SidePanel({
                 hitSlop={8}
                 style={styles.gear}
               >
-                <Text style={styles.gearIcon}>🫧</Text>
+                <MessageCircle size={18} color={tokens.color.fg2} strokeWidth={1.8} />
               </Pressable>
             ) : null}
             {inHousehold && onOpenSenses ? (
@@ -154,12 +154,12 @@ export function SidePanel({
               </Pressable>
             ) : null}
             <Pressable accessibilityRole="button" accessibilityLabel="Indstillinger" onPress={onOpenSettings} hitSlop={8} style={styles.gear}>
-              <Text style={styles.gearIcon}>⚙</Text>
+              <Settings size={18} color={tokens.color.fg2} strokeWidth={1.8} />
             </Pressable>
           </View>
 
           <View style={styles.searchWrap}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <Search size={15} color={tokens.color.fg3} strokeWidth={1.8} />
             <TextInput
               value={query}
               onChangeText={setQuery}
@@ -264,7 +264,6 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   ringInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: tokens.color.accent },
   name: { color: tokens.color.fg1, fontSize: 24, fontWeight: '700', flexShrink: 1 },
   gear: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: tokens.color.bg2 },
-  gearIcon: { fontSize: 16 },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -276,7 +275,6 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     borderRadius: tokens.radius.lg,
     backgroundColor: tokens.color.bg2
   },
-  searchIcon: { fontSize: 13 },
   search: { flex: 1, color: tokens.color.fg1, fontSize: 15, padding: 0 },
   body: { padding: tokens.spacing.md, paddingBottom: tokens.spacing.xl },
   dock: {

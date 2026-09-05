@@ -50,6 +50,14 @@ it('viser kilde, model, alder og forsmag', async () => {
   expect(s.getByTestId('status-dot')).toBeTruthy()
 })
 
+it('viser en lille status-timeline saa arbejdet foeles levende', async () => {
+  const s = await render(<WorkTaskCard run={run({ status: 'running', finished_at: null })} now={NOW} />)
+  expect(s.getByText('Plan')).toBeTruthy()
+  expect(s.getByText('Arbejder')).toBeTruthy()
+  expect(s.getByText('Klar')).toBeTruthy()
+  expect(s.getByText('Nu arbejder')).toBeTruthy()
+})
+
 it('tåler en kørsel uden opsummering', async () => {
   const s = await render(<WorkTaskCard run={run({ text_preview: null })} now={NOW} />)
   expect(s.getByText('Ingen opsummering endnu.')).toBeTruthy()

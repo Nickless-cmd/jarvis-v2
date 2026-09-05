@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { Brain, Database, X } from 'lucide-react-native'
+import { Brain, CheckCircle2, Database, Eye, X } from 'lucide-react-native'
 import { fetchMemoryOverview, type MemoryOverview } from '../lib/memoryApi'
 import { useAuth } from '../state/AuthContext'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -42,7 +42,10 @@ export function MemoryScreen({
         <ScrollView contentContainerStyle={styles.list}>
           <View style={styles.summary}>
             <Brain size={18} color={tokens.color.fg2} strokeWidth={1.8} />
-            <Text style={styles.summaryText}>{memory.brainCount} private brain-poster</Text>
+            <View style={styles.summaryCopy}>
+              <Text style={styles.summaryText}>{memory.brainCount} private brain-poster</Text>
+              <Text style={styles.summaryMeta}>Reviewable memory</Text>
+            </View>
           </View>
 
           {memory.identityPreview ? (
@@ -55,7 +58,13 @@ export function MemoryScreen({
           {memory.sections.length ? (
             memory.sections.map((section) => (
               <View key={section.title} style={styles.card}>
-                <Text style={styles.cardTitle}>{section.title}</Text>
+                <View style={styles.cardHead}>
+                  <Text style={styles.cardTitle}>{section.title}</Text>
+                  <View style={styles.contextPill}>
+                    <CheckCircle2 size={13} color={tokens.color.accent} strokeWidth={1.9} />
+                    <Text style={styles.contextText}>Brugt som kontekst</Text>
+                  </View>
+                </View>
                 <Text style={styles.preview}>{section.preview || 'Ingen tekst i sektionen.'}</Text>
               </View>
             ))
@@ -73,6 +82,7 @@ export function MemoryScreen({
               <Text style={styles.dataTitle}>Datastyring</Text>
               <Text style={styles.muted}>Eksportér eller slet lagvis, når noget skal væk.</Text>
             </View>
+            <Eye size={16} color={tokens.color.fg2} strokeWidth={1.8} />
           </Pressable>
         </ScrollView>
       )}
@@ -102,14 +112,28 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     borderRadius: tokens.radius.lg,
     padding: tokens.spacing.md
   },
+  summaryCopy: { flex: 1, gap: 2 },
   summaryText: { color: tokens.color.fg1, fontWeight: '700' },
+  summaryMeta: { color: tokens.color.fg3, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
   card: {
     backgroundColor: tokens.color.bg2,
     borderRadius: tokens.radius.lg,
     padding: tokens.spacing.lg,
     gap: 6
   },
+  cardHead: { gap: tokens.spacing.sm },
   cardTitle: { color: tokens.color.fg1, fontWeight: '700', fontSize: 15 },
+  contextPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.color.accentGhost,
+    paddingHorizontal: tokens.spacing.sm,
+    paddingVertical: 4
+  },
+  contextText: { color: tokens.color.accentText, fontSize: 11, fontWeight: '800' },
   preview: { color: tokens.color.fg2, lineHeight: 20 },
   empty: { color: tokens.color.fg3, textAlign: 'center', paddingVertical: tokens.spacing.lg },
   dataCard: {

@@ -53,3 +53,11 @@ it('opens settings via gear', async () => {
   fireEvent.press(screen.getByLabelText('Indstillinger'))
   expect(onOpenSettings).toHaveBeenCalled()
 })
+
+it('bruger native ikoner i faste controls frem for emoji tekst', async () => {
+  const screen = await wrap(<SidePanel open {...base} bubbleSupported onFloatActive={jest.fn()} />)
+  await waitFor(() => expect(screen.getByPlaceholderText('Søg samtaler')).toBeTruthy())
+  expect(screen.queryByText('⚙')).toBeNull()
+  expect(screen.queryByText('🔍')).toBeNull()
+  expect(screen.queryByText('🫧')).toBeNull()
+})

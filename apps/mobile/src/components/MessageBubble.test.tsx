@@ -65,5 +65,21 @@ describe('handlingsrækken hører til turens SIDSTE afsnit', () => {
     )
     expect(screen.getByTestId('code-copy')).toBeTruthy()
   })
-})
 
+  it('viser kilde-chips naar assistentens svar indeholder links', async () => {
+    const screen = await render(
+      <MessageBubble
+        message={{
+          id: 'm3',
+          role: 'assistant',
+          content: 'Kilde: https://perplexity.ai/hub og https://openai.com/news',
+          created_at: '2026-09-02T18:00:00Z'
+        }}
+      />
+    )
+
+    expect(screen.getByText('Kilder')).toBeTruthy()
+    expect(screen.getByText('perplexity.ai')).toBeTruthy()
+    expect(screen.getByText('openai.com')).toBeTruthy()
+  })
+})

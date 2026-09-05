@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { FileCode2, X } from 'lucide-react-native'
+import { Clock3, FileCode2, Sparkles, X } from 'lucide-react-native'
 import { fetchArtifacts, type ArtifactItem } from '../lib/artifactsApi'
 import { useAuth } from '../state/AuthContext'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -45,12 +45,22 @@ export function ArtifactsScreen({
         <ScrollView contentContainerStyle={styles.list}>
           {items.map((item) => (
             <View key={item.id} style={styles.card}>
-              <View style={styles.row}>
-                <FileCode2 size={17} color={tokens.color.fg2} strokeWidth={1.8} />
-                <Text style={styles.kind}>Patch</Text>
+              <View style={styles.previewBox}>
+                <FileCode2 size={28} color={tokens.color.accent} strokeWidth={1.7} />
+                <Text style={styles.previewLabel}>Preview</Text>
               </View>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.detail}>{item.detail}</Text>
+              <View style={styles.cardBody}>
+                <View style={styles.row}>
+                  <Sparkles size={15} color={tokens.color.fg2} strokeWidth={1.8} />
+                  <Text style={styles.kind}>Patch</Text>
+                </View>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.detail}>{item.detail}</Text>
+                <View style={styles.metaRow}>
+                  <Clock3 size={13} color={tokens.color.fg3} strokeWidth={1.8} />
+                  <Text style={styles.meta}>Senest</Text>
+                </View>
+              </View>
             </View>
           ))}
         </ScrollView>
@@ -75,15 +85,30 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   empty: { color: tokens.color.fg3, fontSize: 15 },
   list: { padding: tokens.spacing.lg, gap: tokens.spacing.sm, paddingBottom: tokens.spacing.xl },
   card: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
     backgroundColor: tokens.color.bg1,
     borderRadius: tokens.radius.lg,
     borderWidth: 1,
     borderColor: tokens.color.line,
-    padding: tokens.spacing.lg,
-    gap: 7
+    overflow: 'hidden'
   },
+  previewBox: {
+    width: 92,
+    minHeight: 108,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.spacing.sm,
+    backgroundColor: tokens.color.accentGhost,
+    borderRightWidth: 1,
+    borderRightColor: tokens.color.glassLine
+  },
+  previewLabel: { color: tokens.color.accentText, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  cardBody: { flex: 1, padding: tokens.spacing.lg, gap: 7 },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm },
   kind: { color: tokens.color.fg2, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
   itemTitle: { color: tokens.color.fg1, fontSize: 15, fontWeight: '700', lineHeight: 21 },
-  detail: { color: tokens.color.fg3, fontSize: 13, lineHeight: 18 }
+  detail: { color: tokens.color.fg3, fontSize: 13, lineHeight: 18 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: tokens.spacing.xs },
+  meta: { color: tokens.color.fg3, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }
 })

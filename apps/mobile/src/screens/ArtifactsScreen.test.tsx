@@ -22,6 +22,9 @@ it('viser artifacts som et bibliotek', async () => {
   expect(screen.getByText('Artifacts')).toBeTruthy()
   expect(screen.getByText('Byg memory-skærm')).toBeTruthy()
   expect(screen.getByText('Patch')).toBeTruthy()
+  expect(screen.getByText('2 files changed')).toBeTruthy()
+  expect(screen.getByText('Preview')).toBeTruthy()
+  expect(screen.getByText('Senest')).toBeTruthy()
 })
 
 it('viser ærlig tom tilstand', async () => {

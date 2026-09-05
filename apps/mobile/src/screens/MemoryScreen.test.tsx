@@ -35,6 +35,8 @@ it('viser memory-sektioner og brain count', async () => {
   expect(screen.getByText('Hukommelse')).toBeTruthy()
   expect(screen.getByText('Preferencer')).toBeTruthy()
   expect(screen.getByText('2 private brain-poster')).toBeTruthy()
+  expect(screen.getByText('Reviewable memory')).toBeTruthy()
+  expect(screen.getByText('Brugt som kontekst')).toBeTruthy()
 })
 
 it('har en tydelig vej til eksport og sletning', async () => {

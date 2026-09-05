@@ -16,6 +16,16 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 const markdownItInstance = MarkdownIt({ typographer: true, linkify: true, breaks: true })
 
 const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
+const SOURCE_RE = /https?:\/\/([^\s/)\]]+)/gi
+
+export function sourceDomains(text: string): string[] {
+  const seen = new Set<string>()
+  for (const match of text.matchAll(SOURCE_RE)) {
+    const domain = match[1]?.replace(/^www\./, '').toLowerCase()
+    if (domain) seen.add(domain)
+  }
+  return [...seen].slice(0, 4)
+}
 
 export function MessageBubble({
   message,
@@ -48,6 +58,7 @@ export function MessageBubble({
   // end ingen knap. Når kanalen findes, sendes den herfra.
   const [vote, setVote] = useState<'up' | 'down' | null>(null)
   const streaming = message.id.startsWith('stream-')
+  const sources = isUser ? [] : sourceDomains(message.content)
 
   // Blød spring-ind ved mount (§3.3): scale 0.96→1 + opacity 0→1.
   const enter = useRef(new Animated.Value(0)).current
@@ -109,6 +120,17 @@ export function MessageBubble({
           {message.content}
         </Markdown>
       )}
+
+      {sources.length ? (
+        <View style={styles.sources}>
+          <Text style={styles.sourcesLabel}>Kilder</Text>
+          <View style={styles.sourceChips}>
+            {sources.map((source) => (
+              <Text key={source} style={styles.sourceChip}>{source}</Text>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       {/* Handlingsrække — KUN ikoner, og kun under assistentens svar.
           Målt i ChatGPT-appen: en vandret række lysegrå omrids-ikoner
@@ -215,6 +237,19 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     flexDirection: 'row',
     gap: 26,
     marginTop: tokens.spacing.md
+  },
+  sources: { marginTop: tokens.spacing.sm, gap: tokens.spacing.xs },
+  sourcesLabel: { color: tokens.color.fg3, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  sourceChips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.xs },
+  sourceChip: {
+    color: tokens.color.accentText,
+    fontSize: 12,
+    fontWeight: '700',
+    backgroundColor: tokens.color.accentGhost,
+    borderRadius: tokens.radius.pill,
+    paddingHorizontal: tokens.spacing.sm,
+    paddingVertical: 4,
+    overflow: 'hidden'
   },
   userActions: {
     flexDirection: 'row',

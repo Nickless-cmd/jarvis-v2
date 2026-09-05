@@ -46,6 +46,12 @@ export function isActive(run: McRun): boolean {
   return !run.finished_at || run.status === 'running' || run.status === 'active'
 }
 
+function statusStep(run: McRun): 0 | 1 | 2 {
+  if (run.status === 'failed' || run.status === 'error' || run.status === 'cancelled' || run.status === 'interrupted') return 1
+  if (!isActive(run)) return 2
+  return 1
+}
+
 interface Props {
   run: McRun
   now?: Date
@@ -69,6 +75,7 @@ export function WorkTaskCard({ run, now, busy, onSteer, onCancel }: Props) {
   const model = (run.model ?? '').trim()
   const preview = (run.text_preview ?? '').trim()
   const active = isActive(run)
+  const step = statusStep(run)
   const canSteer = active && Boolean(onSteer)
   const canCancel = active && Boolean(onCancel)
   const submitSteer = () => {
@@ -94,7 +101,15 @@ export function WorkTaskCard({ run, now, busy, onSteer, onCancel }: Props) {
       <Text style={styles.preview} numberOfLines={2}>
         {preview || 'Ingen opsummering endnu.'}
       </Text>
-      <Text style={styles.status}>{run.status}</Text>
+      <View style={styles.timeline} accessibilityLabel="Status timeline">
+        {['Plan', 'Arbejder', 'Klar'].map((label, index) => (
+          <View key={label} style={styles.step}>
+            <View style={[styles.stepDot, index <= step && styles.stepDotOn]} />
+            <Text style={[styles.stepText, index <= step && styles.stepTextOn]}>{label}</Text>
+          </View>
+        ))}
+      </View>
+      <Text style={styles.status}>{active ? 'Nu arbejder' : run.status}</Text>
       {canSteer || canCancel ? (
         <View style={styles.actions}>
           {canSteer ? (
@@ -159,6 +174,22 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   spacer: { flex: 1 },
   age: { color: tokens.color.fg3, fontSize: 11 },
   preview: { color: tokens.color.fg1, fontSize: 13, lineHeight: 18 },
+  timeline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.sm,
+    paddingTop: tokens.spacing.xs
+  },
+  step: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  stepDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: tokens.color.bg3
+  },
+  stepDotOn: { backgroundColor: tokens.color.accent },
+  stepText: { color: tokens.color.fg3, fontSize: 11, fontWeight: '700' },
+  stepTextOn: { color: tokens.color.fg2 },
   status: { color: tokens.color.fg3, fontSize: 11 },
   actions: {
     flexDirection: 'row',

@@ -317,6 +317,13 @@ class VisibleRun:
     autonomous: bool = False  # True = heartbeat-triggered, no user present
     trust_all: bool = False   # True = auto-approve all tool calls without prompting
     thinking_mode: str = "think"  # "fast" | "think" | "deep" — for reasoning models
+    # True naar tilstanden blev VALGT af resolve_thinking_mode ud fra beskedens
+    # ordlyd, ikke af Bjoern i composeren. Klassifikatoren ser kun brugerens
+    # tekst: et "1" der saetter 11 runders filkirurgi i gang laeses som samtale
+    # og giver "fast" — og siden 4/9 betyder fast reelt INGEN taenkning paa
+    # DeepSeek. Et eksplicit valg respekteres altid; et gaet maa gerne rettes
+    # naar turen viser sig at vaere arbejde (se _thinking_for_round).
+    thinking_adaptive: bool = False
     local_tool_exec: bool = False  # Path B: emit tool_call to client + wait on broker
                                    # instead of running tools server-side (default OFF).
 
@@ -369,6 +376,30 @@ _LAST_VISIBLE_EXECUTION_TRACE: dict[str, object] | None = None
 
 # så et levende men langsomt run ikke fejlagtigt regnes dødt.
 _VISIBLE_RUN_STALE_S = 75.0
+
+
+def _thinking_for_round(run: "VisibleRun", exchanges: list | None) -> str:
+    """Tænknings-tilstand for en agentisk FØLGE-runde.
+
+    2026-09-05: `resolve_thinking_mode` klassificerer på brugerens besked alene.
+    Det var harmløst indtil 4/9, hvor tilstanden faktisk begyndte at nå DeepSeek
+    — før da tænkte modellen på hver tur uanset hvad. Nu betyder «fast» reelt
+    ingen tænkning, og et «1» der vælger mellem to muligheder klassificeres som
+    samtale. Bjørns session 5/9 kl. 06:05 lavede 11 runders filkirurgi på en
+    protected identitets-fil med nul ræsonnering.
+
+    En tur der har kaldt værktøjer ER arbejde, uanset hvordan beskeden lød.
+    Derfor: opgradér «fast» → «think» fra det øjeblik turen har brugt et
+    værktøj — men KUN når tilstanden var et gæt. Vælger Bjørn selv ⚡ Fast,
+    står det ved magt hele turen.
+    """
+    mode = str(getattr(run, "thinking_mode", "think") or "think").strip().lower()
+    if mode != "fast" or not getattr(run, "thinking_adaptive", False):
+        return mode
+    for exchange in exchanges or []:
+        if getattr(exchange, "tool_calls", None):
+            return "think"
+    return mode
 
 
 def is_visible_run_alive(run_id: str) -> bool:
@@ -708,11 +739,14 @@ def start_visible_run(
     # HVER tur — også simpel snak. resolve_thinking_mode skruer kode/opgave→think, resten→
     # fast (−9s TTFT); eksplicit fast/deep fra klienten respekteres. Kill-switch:
     # adaptive_thinking_enabled=False. Self-safe → falder tilbage til requested.
+    _requested_thinking = (thinking_mode or "think").strip().lower()
     try:
         from core.services.central_prompt_composer import resolve_thinking_mode
         _resolved_thinking = resolve_thinking_mode(message or "", thinking_mode)
     except Exception:
-        _resolved_thinking = (thinking_mode or "think").strip().lower()
+        _resolved_thinking = _requested_thinking
+    # Eksplicit fast/deep fra klienten er Bjoerns valg og maa aldrig overskrives.
+    _thinking_was_adaptive = _requested_thinking not in ("fast", "deep")
     run = VisibleRun(
         run_id=f"visible-{uuid4().hex}",
         lane=settings.primary_model_lane,
@@ -722,6 +756,7 @@ def start_visible_run(
         session_id=normalized_session_id,
         trust_all=(approval_mode == "trust"),
         thinking_mode=_resolved_thinking,
+        thinking_adaptive=_thinking_was_adaptive,
         local_tool_exec=bool(local_tool_exec),
     )
     # KERNE-FORRANG (2026-07-22): markér den synlige tur som aktiv i HELE dens levetid
@@ -2689,7 +2724,7 @@ async def _stream_visible_run(
                                     exchanges=_followup_exchanges,
                                     tool_definitions=tool_defs,
                                     round_index=rnd,
-                                    thinking_mode=run.thinking_mode,
+                                    thinking_mode=_thinking_for_round(run, _followup_exchanges),
                                     temperature=pump_temp,
                                     top_p=pump_top_p,
                                     tool_choice=pump_tool_choice,
@@ -3563,6 +3598,68 @@ async def _stream_visible_run(
                                 except Exception:
                                     pass
                                 continue  # tving ÉN mere runde — nu med tool_choice=required
+                            # ── TOMT LØFTE PÅ AFSLUTNINGSRUNDEN (2026-09-05) ────
+                            # Vagten ovenfor er slået fra når `_is_last_round` —
+                            # med god grund: der er ingen runde tilbage at puffe
+                            # med. Men det er PRÆCIS den runde hvor løftet er mest
+                            # sandsynligt: loopet har fjernet værktøjerne og bedt
+                            # om et endeligt svar, og modellen står måske midt i
+                            # arbejdet. Bjørns session 5/9 kl. 06:05 endte sådan:
+                            # «Lad mig læse filen direkte med read_file i stedet.»
+                            # — run afsluttet `completed`, intet spor nogen steder,
+                            # og han måtte selv skrive «Du stoppede?».
+                            # Vi kan ikke puffe, men vi kan lade være med at lyve
+                            # om det: markér runnet, persistér udfaldet, og sig det
+                            # ærligt i svaret.
+                            if (
+                                _is_last_round
+                                and not _hollow_promise_nudged
+                                and hollow_promise_guard_enabled()
+                                and is_hollow_promise(
+                                    final_text="".join(_a_parts),
+                                    total_tool_calls=sum(
+                                        len(getattr(_ex, "tool_calls", []) or [])
+                                        for _ex in _followup_exchanges),
+                                    user_message=run.user_message,
+                                    nudged_already=False,
+                                    last_round_tool_calls=0,
+                                )
+                            ):
+                                _run_degenerated = True
+                                _stop_note = (
+                                    "\n\n_(Jeg stoppede her fordi løkken tvang en "
+                                    "afslutning — ikke fordi jeg var færdig. Sig til, "
+                                    "så tager jeg den derfra.)_"
+                                )
+                                _a_parts.append(_stop_note)
+                                _all_followup_parts.append(_stop_note)
+                                yield _sse("delta", {
+                                    "type": "delta", "run_id": run.run_id,
+                                    "delta": _stop_note,
+                                })
+                                try:
+                                    from core.services.hollow_promise_round import (
+                                        note_detected as _hp_fin,
+                                    )
+                                    _hp_fin(run_id=run.run_id,
+                                            provider=str(_active_provider or ""),
+                                            model=str(_active_model or ""),
+                                            round_index=_agentic_round + 1,
+                                            session_id=str(run.session_id or ""),
+                                            forced=False)
+                                except Exception:
+                                    pass
+                                try:
+                                    from core.services.central_core import central as _c_fin
+                                    _c_fin().observe({
+                                        "cluster": "loop",
+                                        "nerve": "hollow_promise_on_forced_finalize",
+                                        "run_id": str(run.run_id or ""),
+                                        "round": _agentic_round + 1,
+                                        "forced_by_no_progress": bool(_force_finalize_next),
+                                    })
+                                except Exception:
+                                    pass
                         except Exception:
                             pass  # fail-open → normal break nedenfor
                         # No more tool calls — this round produced the final response.
@@ -3828,6 +3925,18 @@ async def _stream_visible_run(
                         _round_sig = frozenset(_sig_items)
                         _no_new = bool(_round_sig) and (
                             _all_dup or _round_sig == _prev_round_sig)
+                        # 2026-09-05: en runde der ÆNDREDE noget har per definition
+                        # gjort fremskridt, uanset hvordan signaturen ser ud. Uden
+                        # dette blev en skrivning efterfulgt af to afviste
+                        # verifikationer læst som "modellen spinner" — og turen
+                        # blev tvunget til at afslutte midt i arbejdet (Bjørns
+                        # session 5/9 kl. 06:05).
+                        try:
+                            from core.services.tool_world_change import round_changed_the_world
+                            if round_changed_the_world(_a_results):
+                                _no_new = False
+                        except Exception:
+                            pass
                         if _no_new:
                             _no_progress_rounds += 1
                         else:

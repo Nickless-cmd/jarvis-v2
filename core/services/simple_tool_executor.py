@@ -113,6 +113,29 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
         result_text = f"⚠ {soft_warn}\n\n{result_text}"
     if controller and raw_result.get("status") == "ok":
         controller.seen_simple_tool_call_signatures.add(signature)
+        # ── VERIFIKATION EFTER SKRIVNING (2026-09-05) ────────────────────────
+        # Dedup-sættet huskede hver signatur for HELE runnet og blev aldrig
+        # ryddet. Så snart Jarvis havde skrevet til en fil, blev enhver
+        # verifikation der genbrugte en tidligere kommando afvist som dublet —
+        # samtidig med at edit-værktøjets egen verify-hint beder om præcis den.
+        # Målt 5/9 kl. 06:05: to afviste verifikationer i træk fik
+        # no-progress-detektoren til at tvinge en afslutning, og turen døde med
+        # «Lad mig læse filen direkte med read_file i stedet».
+        # Når verden HAR ændret sig er en gentagen observation ikke en
+        # gentagelse. Spin-værnet er intakt: no-progress sammenligner
+        # RESULTAT-hashes, så et ægte spin giver stadig identiske signaturer.
+        try:
+            from core.services.tool_world_change import call_changed_the_world
+            if call_changed_the_world(
+                tool_name=name, arguments=arguments,
+                status=str(raw_result.get("status") or "ok"),
+            ):
+                controller.seen_simple_tool_call_signatures.clear()
+                # Selve mutationen forbliver dedupliceret, så et gentaget
+                # identisk skrive-kald ikke udføres to gange.
+                controller.seen_simple_tool_call_signatures.add(signature)
+        except Exception:
+            pass
     try:
         from core.services.agentic_tool_cache import store_result
         store_result(tool_name=name, arguments=arguments, result_text=result_text,

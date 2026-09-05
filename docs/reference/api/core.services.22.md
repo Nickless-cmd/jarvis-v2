@@ -84,6 +84,16 @@ _Tools-cluster Phase 2 — persistent forbrugs-statistik (DB-backed, cross-proce
 | function | `dead_tools` | `(registered)` | Registrerede tools der ALDRIG er kaldt (count 0). Vises sidst / kandidater til at | [src](../../../core/services/tool_usage_store.py#L116) |
 | function | `observe_stats` | `(registered=…)` | Periodisk (cadence): central.observe forbrugs-summary + flag antal døde tools. | [src](../../../core/services/tool_usage_store.py#L123) |
 
+## `core/services/tool_world_change.py`
+_Ændrede dette værktøjskald verden? (loop-fix 2026-09-05)_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_shell_command` | `(arguments)` | — | [src](../../../core/services/tool_world_change.py#L37) |
+| function | `_mutation_tool_names` | `()` | Navne fra verification_gate — ét sted at vedligeholde listen. | [src](../../../core/services/tool_world_change.py#L45) |
+| function | `call_changed_the_world` | `(*, tool_name, arguments=…, status=…)` | True når kaldet reelt ændrede state (og lykkedes). | [src](../../../core/services/tool_world_change.py#L54) |
+| function | `round_changed_the_world` | `(results)` | Ændrede mindst ét kald i denne agentiske runde verden? | [src](../../../core/services/tool_world_change.py#L83) |
+
 ## `core/services/totp_verifier.py`
 _TOTP-verifikation (RFC 6238) til owner-override — ren stdlib, ingen dependency._
 
@@ -635,17 +645,4 @@ _Central-observe helpers + thinking-delimiter cleanup for the visible lane._
 | function | `_observe_content_empty_thinking_fallback` | `(provider, model, path, thinking_len)` | Reasoning-model svarede i `message.thinking` mens `message.content` var TOM | [src](../../../core/services/visible_model_observe.py#L92) |
 | function | `_strip_thinking_delimiters` | `(text)` | Fjern løse thinking-delimiter-tokens hvis et thinking-felt surfaces som svar. | [src](../../../core/services/visible_model_observe.py#L113) |
 | function | `_reasoning_fallback_text` | `(reasoning, *, finish_reason=…)` | Surface reasoning only when the provider completed it cleanly. | [src](../../../core/services/visible_model_observe.py#L128) |
-
-## `core/services/visible_model_ollama.py`
-_Ollama visible-lane adapter (execute + native NDJSON streaming)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_vm` | `()` | Return the ``visible_model`` facade module. | [src](../../../core/services/visible_model_ollama.py#L51) |
-| function | `_execute_ollama_model` | `(*, message, model, session_id=…)` | — | [src](../../../core/services/visible_model_ollama.py#L66) |
-| function | `_apply_thinking_mode` | `(payload, thinking_mode)` | Translate UI thinking-mode label to ollama-chat payload keys. | [src](../../../core/services/visible_model_ollama.py#L170) |
-| function | `_apply_visible_ollama_options` | `(payload)` | Set ollama generation options for the visible lane. | [src](../../../core/services/visible_model_ollama.py#L207) |
-| function | `_stream_ollama_model` | `(*, message, model, session_id=…, controller=…, thinking_mode=…)` | — | [src](../../../core/services/visible_model_ollama.py#L247) |
-| function | `_probe_ollama_visible_target` | `(*, model, base_url)` | — | [src](../../../core/services/visible_model_ollama.py#L563) |
-| function | `_build_ollama_prompt` | `(message, *, model, session_id)` | — | [src](../../../core/services/visible_model_ollama.py#L604) |
 

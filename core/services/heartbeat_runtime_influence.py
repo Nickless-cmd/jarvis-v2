@@ -1135,6 +1135,16 @@ def _build_influence_trace(
     except Exception:
         logger.debug("autonomi-ugerapport fejlede i heartbeat", exc_info=True)
 
+    # Betalt-lane-vagt (5/9): Bjoerns regel er at KUN hans egne ture maa ramme
+    # den betalte deepseek-API. Reglen stod i settings, men lane-sandheden bor i
+    # provider_router.json — og dér var den brudt i ~7 uger uden at nogen saa
+    # det. Vagten retter intet; den goer bruddet synligt.
+    try:
+        from core.services.paid_lane_guard import check_paid_lanes
+        check_paid_lanes()
+    except Exception:
+        logger.debug("betalt-lane-vagt fejlede i heartbeat", exc_info=True)
+
 
     # Signal decay daemon — archive and delete stale signals
     if _dm.is_enabled("signal_decay"):

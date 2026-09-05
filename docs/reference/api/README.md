@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13469 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13474 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,15 +41,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13469 functions/
 - [`core.services.12`](core.services.12.md) — `google_login` … `inner_dialectic_engine`
 - [`core.services.13`](core.services.13.md) — `inner_visible_support_signal_tracking` … `malware_scan`
 - [`core.services.14`](core.services.14.md) — `markdown_structure` … `my_projects`
-- [`core.services.15`](core.services.15.md) — `narrative_identity` … `personality_drift`
-- [`core.services.16`](core.services.16.md) — `personality_vector` … `prompt_variant_tracker`
-- [`core.services.17`](core.services.17.md) — `proposal_classifier` … `remembered_fact_signal_tracking`
-- [`core.services.18`](core.services.18.md) — `repeated_requests` … `seed_system`
-- [`core.services.19`](core.services.19.md) — `selective_attention` … `session_tool_pin`
-- [`core.services.20`](core.services.20.md) — `session_topic_tracker` … `stream_failure_kind`
-- [`core.services.21`](core.services.21.md) — `stream_sentinel` … `tool_outcome_memory`
-- [`core.services.22`](core.services.22.md) — `tool_pattern_miner` … `visible_model_adapters`
-- [`core.services.23`](core.services.23.md) — `visible_model_observe` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `narrative_identity` … `personal_project`
+- [`core.services.16`](core.services.16.md) — `personality_drift` … `prompt_support_signals`
+- [`core.services.17`](core.services.17.md) — `prompt_variant_tracker` … `release_marker_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `remembered_fact_signal_tracking` … `security_guard`
+- [`core.services.19`](core.services.19.md) — `seed_system` … `session_prewarm`
+- [`core.services.20`](core.services.20.md) — `session_tool_pin` … `stream_degeneration`
+- [`core.services.21`](core.services.21.md) — `stream_failure_kind` … `tool_observer`
+- [`core.services.22`](core.services.22.md) — `tool_outcome_memory` … `visible_model`
+- [`core.services.23`](core.services.23.md) — `visible_model_adapters` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

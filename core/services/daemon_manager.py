@@ -502,10 +502,19 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # decision #3 ("Verify before I narrate") — samtidig med at
         # han hallucinerede tool-work i Discord, JarvisX og webchat.
         # Positiv-bias self-validation feedback loop.
-        # Skal erstattes af external-truth review (læser git-log +
-        # tool-history) i fix C3.
-        "default_enabled": False,
-        "description": "[DEAKTIVERET 2026-06-11 — selv-bias problem] 6t adherence-loop: LLM-self-review af behavioral decisions.",
+        #
+        # 2026-09-05: C3 BYGGET, og daemonen er tændt igen. To ting var galt.
+        # (a) Kontakten dækkede kun den ene af to døre: governance_bootstrap
+        #     kørte den SAMME review-funktion som dagligt job, uden om denne
+        #     gate. Registret sagde DEAKTIVERET mens den kørte hver dag i tre
+        #     måneder — 30.867 domme. Jobbet respekterer nu is_enabled.
+        # (b) `evidence` var en kopi af modellens egen `note`. Der var aldrig
+        #     ydre bevis. decision_evidence.py henter nu regnskabet fra
+        #     eventbus (tool.completed) + git-log, lægger det i prompten, og
+        #     nedgraderer "kept"/"partial" til "unknown" hvis der intet spor
+        #     er. "unknown" ignoreres af det rullende adherence-gennemsnit.
+        "default_enabled": True,
+        "description": "6t adherence-loop: review af behavioral decisions mod eksternt regnskab (eventbus + git-log). Positive domme kræver ydre spor — ellers unknown. Se decision_evidence.py.",
     },
     "event_trigger_shadow": {
         "module": "core.services.event_trigger_shadow",

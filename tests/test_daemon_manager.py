@@ -211,9 +211,10 @@ def test_set_interval_requires_minutes_param(tmp_path):
 # ---------------------------------------------------------------------------
 
 # Bevidst slået fra, ikke afløst. Hver post skal bære sin begrundelse i registret.
-_BEVIDST_SLUKKEDE = {
-    "decision_review",  # slået fra 2026-06-11 pga. selv-bias i LLM-self-review
-}
+# 2026-09-05: decision_review er tændt igen — selv-bias'en er lukket med et
+# eksternt regnskab (decision_evidence.py), så den hører ikke længere til her.
+# Listen står tom med vilje: hver ny post skal begrundes i registret.
+_BEVIDST_SLUKKEDE: set[str] = set()
 
 
 def test_hver_pensioneret_daemon_har_en_efterfoelger():

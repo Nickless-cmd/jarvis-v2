@@ -79,11 +79,19 @@ def _load_recent_failed_runs(limit: int = 10) -> list[dict[str, Any]]:
         with connect() as conn:
             rows = conn.execute(
                 """
-                SELECT run_id, outcome_summary, status, created_at
+                -- 2026-09-05: `outcome_summary` og `created_at` FINDES IKKE i
+                -- visible_runs (kolonnerne er run_id, lane, provider, model,
+                -- status, started_at, finished_at, text_preview, error, ...).
+                -- Hvert kald kastede OperationalError, som blev slugt i except-
+                -- blokken nedenfor. Resultat: 0 fejlede runs fundet mod et krav om
+                -- mindst 3 — og cognitive_blind_spots har aldrig haft en eneste
+                -- raekke, mens visible_runs har 250 fejlede.
+                SELECT run_id, error AS outcome_summary, status,
+                       started_at AS created_at
                   FROM visible_runs
                  WHERE status IN ('error', 'failed', 'aborted', 'incomplete')
-                    OR outcome_summary LIKE '%error%'
-                    OR outcome_summary LIKE '%failed%'
+                    OR error LIKE '%error%'
+                    OR error LIKE '%failed%'
                  ORDER BY id DESC LIMIT ?
                 """,
                 (int(limit),),

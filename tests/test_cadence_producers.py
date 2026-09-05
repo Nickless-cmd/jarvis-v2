@@ -36,3 +36,56 @@ def test_tick_frozen_detectors_cadence(isolated_runtime):
     tick_frozen_detectors(0)
     tick_frozen_detectors(20)
     tick_frozen_detectors(30)
+
+
+# ---------------------------------------------------------------------------
+# Verdensmodellen skal kunne merge — ellers er den en logfil
+#
+# canonical_key var `world-model:run:{run_id}` — unik pr. tur. Merge-opslaget
+# sker PÅ canonical_key, så det kunne aldrig finde en eksisterende række. Hver
+# tur gav en ny `active` post, og tabellen voksede til 16.747 rækker hvor 16.746
+# var samme boilerplate. 16.707 af dem kunne ikke nås af nogen kodesti.
+# ---------------------------------------------------------------------------
+
+
+def _kilde() -> str:
+    import inspect
+
+    from core.services import cadence_producers
+
+    return inspect.getsource(cadence_producers)
+
+
+def test_verdensmodellen_noegles_paa_emne_ikke_paa_run():
+    kilde = _kilde()
+    assert 'canonical_key=f"world-model:topic:{topic_slug}"' in kilde, (
+        "verdensmodellens canonical_key er ikke emne-baseret — så kan merge "
+        "aldrig finde en eksisterende antagelse"
+    )
+    assert 'canonical_key=f"world-model:run:{run_id}"' not in kilde, (
+        "run_id er tilbage i canonical_key — det gør nøglen unik pr. tur og "
+        "gør tabellen til en append-only kopi af chat-loggen"
+    )
+
+
+def test_verdensmodellen_gates_paa_at_der_ER_et_emne():
+    """En triviel besked («ok», «tak») er ikke en antagelse om verden."""
+    import re
+
+    kilde = _kilde()
+    i = kilde.find('canonical_key=f"world-model:topic:{topic_slug}"')
+    assert i > 0
+    foran = kilde[max(0, i - 600):i]
+    assert re.search(r"if\s+topic_slug\s*:", foran), (
+        "world-model-blokken er ikke gatet på topic_slug"
+    )
+
+
+def test_titlen_er_emnet_ikke_brugerens_raa_besked():
+    """Titlen blev serveret tilbage som «dominerende verdenstråd» — altså hans
+    samtalepartners sidste sætning præsenteret som en uafhængig observation."""
+    kilde = _kilde()
+    i = kilde.find('canonical_key=f"world-model:topic:{topic_slug}"')
+    blok = kilde[i:i + 900]
+    assert "title=meaningful_topic[:80]" in blok
+    assert "title=user_message[:80]" not in blok

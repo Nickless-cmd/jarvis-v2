@@ -163,3 +163,19 @@ def test_ekko_vaernet_rammer_ikke_aegte_dansk():
         "Energi er lav, mens tankerne er aktive og fokuseret på kontrol.",
     ):
         assert _is_instruction_echo(aegte) is False, aegte
+
+
+def test_udbyder_regning_bliver_ikke_hans_tanke():
+    """«· tanke: Sorry, to prevent abuse of free resources…» stod live i prompten.
+
+    Værnet fandtes allerede i provider_error_guard — det var bare aldrig koblet
+    på det indre liv.
+    """
+    from core.services.visible_inner_life import _surface_line, _voice_as_prose
+
+    kvote = ("Sorry, to prevent abuse of free resources, accounts that have not "
+             "been recharged can only try 10 times.")
+    assert _surface_line("thought_stream", {"latest_fragment": kvote}) is None
+    assert _voice_as_prose(kvote) is None
+    aegte = "Der ligger en uro i at koden virker, men jeg ikke forstår hvorfor."
+    assert _surface_line("thought_stream", {"latest_fragment": aegte}) is not None

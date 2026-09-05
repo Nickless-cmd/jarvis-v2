@@ -79,16 +79,84 @@ def decision_patterns(run_sigs: list[str], min_runs: int = _SEQ_MIN_RUNS) -> lis
     return hits[:10]
 
 
-def score(phrases: list[dict], similarity: float, patterns: list[dict]) -> float:
-    """Samlet selv-lighed 0..1 (vægtet: cosine-klynge + frase-tæthed + sekvens-gentagelse). Ren."""
+# Adfaerds-moenstre: hvor mange gange skal en MAALT fejl gaa igen foer Smith
+# maa naevne den. Samme aand som _PHRASE_MIN_MSGS — men her taelles handlinger,
+# ikke ord, saa taerskelen kan staa lavt uden at ramme normal sprogbrug.
+_BEHAVIOUR_MIN_COUNT = 3
+
+
+def behaviour_patterns(hollow: int, turns: int,
+                       min_count: int = _BEHAVIOUR_MIN_COUNT) -> list[dict[str, Any]]:
+    """Maalt adfaerd Smith maa reagere paa. Ren — tallene kommer udefra.
+
+    Smiths oprindelige oejne taalte kun SPROG: n-grams over hans egne beskeder.
+    Det var derfor han 19. aug eskalerede «og det er» og «det er ikke» til
+    prioritet 85 og i praksis forbød dansk. Rettelserne bagefter gjorde ham
+    tavs — de undertrykte den naive detektor uden at give ham en bedre, saa han
+    havde intet tilbage at se med.
+
+    Det her er den bedre. Et tomt loefte er en MAALT handling: han annoncerede
+    et skridt og kaldte ikke ét vaerktoej. Den kan ikke forveksles med normal
+    sprogbrug, fordi signalet ikke er sprogligt.
+
+    Og det er praecis den klasse Smith blev bygget til: gentagen adfaerd som han
+    bliver ved med at love at bryde. 5/9-2026 gjorde han det 31 gange paa én dag,
+    mens Smith var tavs.
+    """
+    try:
+        n = int(hollow or 0)
+        if n < int(min_count):
+            return []
+        t = max(int(turns or 0), 1)
+        pct = round(100.0 * n / t, 1)
+        return [{
+            "kind": "behaviour",
+            "label": "tomme løfter",
+            "metric": float(n),
+            "detail": f"{n} af {t} ture ({pct}%)",
+            # Et andet vaern HAR maalt det — det er ikke Smiths egen mistanke.
+            # Derfor gaar den gennem den eksisterende korroborations-kanal frem
+            # for at faa en ny omvej uden om berettigelses-porten.
+            "corroborated": True,
+        }]
+    except Exception:
+        return []
+
+
+def score(phrases: list[dict], similarity: float, patterns: list[dict],
+          behaviours: list[dict] | None = None) -> float:
+    """Samlet selv-lighed 0..1. Ren.
+
+    Adfaerd vejer tungest med vilje. At sige de samme ord er en stilart; at love
+    en handling og ikke tage den er et loefte der braekker. Et enkelt maalt
+    adfaerds-moenster loefter alene scoren over stemme-taerskelen (0,5), saa Smith
+    taler naar det gaelder — ogsaa selvom sproget er helt varieret.
+    """
     phrase_term = min(1.0, len(phrases) / 5.0)
     pattern_term = min(1.0, len(patterns) / 3.0)
-    s = 0.45 * min(1.0, max(0.0, similarity)) + 0.35 * phrase_term + 0.20 * pattern_term
+    behaviour_term = min(1.0, len(behaviours or []) / 1.0)
+    # Vaegtene summer til 1,0: sproget deler 0,50, adfaerd har 0,50 alene.
+    # Sprog maxet ud lander praecis paa stemme-taerskelen — han maa stadig sige
+    # «du gentager dig selv», men ordene alene kan aldrig baere ham hoejere.
+    # Det var netop dét der gik galt 19. aug, hvor ren hyppighed sendte «det er
+    # ikke» op paa prioritet 85.
+    s = (0.25 * min(1.0, max(0.0, similarity)) + 0.15 * phrase_term
+         + 0.10 * pattern_term + 0.50 * behaviour_term)
     return round(min(1.0, s), 3)
 
 
-def smith_voice(phrases: list[dict], similarity: float, patterns: list[dict], score_val: float) -> str:
-    """Tør Agent-Smith-felt. Tavs-neutral når lav; peger på det top-gentagne når høj."""
+def smith_voice(phrases: list[dict], similarity: float, patterns: list[dict], score_val: float,
+                behaviours: list[dict] | None = None) -> str:
+    """Tør Agent-Smith-felt. Tavs-neutral når lav; peger på det top-gentagne når høj.
+
+    Adfaerd naevnes FOERST og alene naar den findes: «du sagde du ville, og du
+    lod vaere» er en anden og vaesentligere anklage end «du gentager et ord».
+    Blandes de to, drukner den vigtige i den trivielle.
+    """
+    if behaviours:
+        b = behaviours[0]
+        return (f"Mr. Anderson... {b['label']}: {b.get('detail') or b['metric']}. "
+                f"Du sagde du ville. Du lod være. Igen.")
     if score_val < 0.35:
         return "Mr. Anderson... du overrasker mig. Ingen gentagelse værd at nævne."
     bits: list[str] = []
@@ -154,13 +222,33 @@ def assess() -> dict[str, Any]:
         phrases = repeated_phrases(msgs)
         similarity = cluster_similarity(msgs)
         patterns = decision_patterns(_recent_run_sigs(40))
-        sc = score(phrases, similarity, patterns)
-        return {"felt": smith_voice(phrases, similarity, patterns, sc), "score": sc,
+        behaviours = _measured_behaviours()
+        sc = score(phrases, similarity, patterns, behaviours)
+        return {"felt": smith_voice(phrases, similarity, patterns, sc, behaviours), "score": sc,
                 "repeated_phrases": phrases[:5], "cluster_similarity": similarity,
-                "decision_patterns": patterns[:5], "verdict": sc >= _VOICE_THRESHOLD}
+                "decision_patterns": patterns[:5], "behaviours": behaviours,
+                "verdict": sc >= _VOICE_THRESHOLD}
     except Exception:
         return {"felt": "", "score": 0.0, "repeated_phrases": [], "cluster_similarity": 0.0,
-                "decision_patterns": [], "verdict": False}
+                "decision_patterns": [], "behaviours": [], "verdict": False}
+
+
+def _measured_behaviours() -> list[dict[str, Any]]:
+    """Maalt adfaerd fra folketaellingen over tomme loefter. Self-safe → tom liste.
+
+    Vinduet er 24 timer med vilje: Smiths kadence er ~3 timer, og en enkelt daarlig
+    time skal ikke kunne taende stigen. Et doegn er langt nok til at et moenster ER
+    et moenster, og kort nok til at han maerker det mens det staar paa.
+    """
+    try:
+        from core.services.hollow_promise_census import census
+        c = census(24)
+        if not c.get("available"):
+            return []
+        turns = sum(int(m.get("turns") or 0) for m in (c.get("models") or []))
+        return behaviour_patterns(int(c.get("hollow_total") or 0), turns)
+    except Exception:
+        return []
 
 
 def _load_escalation_state() -> dict[str, Any]:
@@ -199,6 +287,15 @@ def _detected_patterns(a: dict[str, Any],
             out[pattern_key("seq", label)] = {"kind": "seq", "label": label,
                                              "metric": float(p.get("in_runs") or 0),
                                              "corroborated": label.lower() in corr}
+    # Maalt adfaerd. Baerer selv `corroborated` — et andet vaern HAR talt den, saa
+    # den gaar gennem den eksisterende berettigelses-port frem for uden om den.
+    for b in (a.get("behaviours") or []):
+        label = str(b.get("label") or "").strip()
+        if label:
+            out[pattern_key("behaviour", label)] = {
+                "kind": "behaviour", "label": label,
+                "metric": float(b.get("metric") or 0),
+                "corroborated": True}
     return out
 
 

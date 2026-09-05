@@ -228,3 +228,54 @@ def test_syslog_flag_clears_on_resume(monkeypatch):
     isense._syslog_stale_flagged = True  # var flagget → pakker flyder nu → skal ryddes
     isense.poll_syslog()
     assert isense._syslog_stale_flagged is False
+
+
+# ── Diskmålingen pegede på det forkerte, 05-09-2026 ─────────────────────────
+# Centralen råbte «Disk-pres på 'pve': 93%» 783 gange. Tallet kom fra
+# /sys/firmware/efi/efivars — et par hundrede kilobyte NVRAM der ALTID står
+# ~94% fuldt. Værtens rigtige filsystem stod på 40%.
+#
+# MEN presset var ægte: det sad på GÆSTERNES volumener, som `df` slet ikke ser.
+# pfSense stod på 96,9% og WebServices på 90,4%. Havde jeg kun rettet df, var
+# alarmen blevet tavs — og tavs er forkert.
+
+def test_df_udelukker_pseudo_filsystemer():
+    cmd = next(c for n, _t, c in isense.SSH_HOSTS if n == "pve")
+    assert "-x efivarfs" in cmd
+    assert "-x tmpfs" in cmd
+
+
+def test_pollen_maaler_ogsaa_gaesternes_volumener():
+    cmd = next(c for n, _t, c in isense.SSH_HOSTS if n == "pve")
+    assert "guestdisk=" in cmd
+    assert "guestdisk_top=" in cmd      # hvilken gæst — ellers kan man ikke handle
+
+
+def test_tidsserien_tager_det_VAERSTE_af_vaert_og_gaest(monkeypatch):
+    """En gæst på 97% må ikke være usynlig bag en vært på 40%."""
+    optaget = {}
+    monkeypatch.setattr(isense, "_ssh_run",
+                        lambda t, c, **k: "guests_running=4 maxdisk=40 guestdisk=96")
+    monkeypatch.setattr(isense.central_timeseries, "record",
+                        lambda cl, n, *, value, meta=None: optaget.update({n: value}))
+    monkeypatch.setattr(isense, "central", lambda: type("C", (), {"observe": lambda s, d: None})())
+    isense.poll_ssh_hosts()
+    assert optaget["pve_disk"] == 96.0
+
+
+def test_vaerten_taeller_naar_den_er_vaerst(monkeypatch):
+    optaget = {}
+    monkeypatch.setattr(isense, "_ssh_run",
+                        lambda t, c, **k: "maxdisk=91 guestdisk=20")
+    monkeypatch.setattr(isense.central_timeseries, "record",
+                        lambda cl, n, *, value, meta=None: optaget.update({n: value}))
+    monkeypatch.setattr(isense, "central", lambda: type("C", (), {"observe": lambda s, d: None})())
+    isense.poll_ssh_hosts()
+    assert optaget["pve_disk"] == 91.0
+
+
+def test_webservice_er_med_igen_paa_sin_nye_adresse():
+    """Den FLYTTEDE, den forsvandt ikke. At fjerne et mål der er flyttet kurerer
+    symptomet og gør huset usynligt netop dér."""
+    ips = {n: ip for n, ip, _p in isense.HOSTS}
+    assert ips.get("webservice") == "10.0.0.12"

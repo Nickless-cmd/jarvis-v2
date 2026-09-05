@@ -35,11 +35,12 @@ HOSTS: list[tuple[str, str, int]] = [
     ("pihole", "10.0.0.5", 443),
     ("fileserver", "10.0.0.10", 22),
     ("home_assistant", "10.0.0.34", 8123),
-    # 'webservice' (192.168.50.32) er FJERNET 2026-09-02. Adressen lå på det
-    # 192.168.50.x-net der blev pensioneret 30/8; hosten svarer ikke længere
-    # (verificeret med ping). Den flagede derfor UNREACHABLE ved hvert tick og
-    # var den ene halvdel af notifikations-stormen Bjørn så. Et overvågnings-mål
-    # der ALTID er nede måler ikke huset — det måler kun sin egen forældelse.
+    # 'webservice' FLYTTEDE, den forsvandt ikke. Den lå på 192.168.50.32 indtil
+    # det net blev pensioneret 30/8, og blev 2026-09-02 fjernet herfra fordi den
+    # flagede UNREACHABLE ved hvert tick — men det var at kurere symptomet.
+    # Hosten er VM 101 «WebServices» på pve (10.0.0.2) og svarer i dag på
+    # 10.0.0.12:22 (verificeret 5/9 via qemu-agent + tcp-probe).
+    ("webservice", "10.0.0.12", 22),
 ]
 
 _PROBE_TIMEOUT = 3.0
@@ -155,7 +156,19 @@ SSH_HOSTS: list[tuple[str, str, str]] = [
     ("pve", "root@10.0.0.2",
      "R=$(( $(pct list 2>/dev/null|tail -n+2|grep -cw running) + $(qm list 2>/dev/null|tail -n+2|grep -cw running) ));"
      "T=$(( $(pct list 2>/dev/null|tail -n+2|wc -l) + $(qm list 2>/dev/null|tail -n+2|wc -l) ));"
-     "echo guests_running=$R guests_total=$T maxdisk=$(df --output=pcent 2>/dev/null|tail -n+2|tr -d ' %'|sort -n|tail -1) load1=$(cut -d' ' -f1 /proc/loadavg)"),
+     # `df` maaler VAERTENS filsystemer. Det ægte pres paa en hypervisor sidder paa
+     # GAESTERNES volumener, som df slet ikke ser: maalt 5/9 stod pfSense paa 96,9%
+     # og WebServices paa 90,4%, mens vaertens root var paa 40%. Uden guestdisk
+     # ville rettelsen af df have gjort alarmen tavs — og tavs er forkert, for
+     # presset er ægte.
+     #
+     # `-x efivarfs` er lige saa vigtig den anden vej: /sys/firmware/efi/efivars er
+     # et par hundrede kilobyte NVRAM der ALTID staar ~94% fuldt, og det var dét tal
+     # alarmen raabte 783 gange. Et rigtigt svar paa et forkert maal.
+     "echo guests_running=$R guests_total=$T maxdisk=$(df -x tmpfs -x devtmpfs -x efivarfs -x squashfs -x overlay -x fuse.lxcfs --output=pcent 2>/dev/null|tail -n+2|tr -d ' %'|sort -n|tail -1)"
+     " guestdisk=$(lvs --noheadings -o lv_name,data_percent 2>/dev/null|grep -E '^\\s*vm-'|awk '{print int($2)}'|sort -n|tail -1)"
+     " guestdisk_top=$(lvs --noheadings -o lv_name,data_percent 2>/dev/null|grep -E '^\\s*vm-'|sort -k2 -n|tail -1|awk '{print $1}')"
+     " load1=$(cut -d' ' -f1 /proc/loadavg)"),
     ("fileserver", "root@10.0.0.10",
      "echo disk=$(df --output=pcent /mnt/shares 2>/dev/null|tail -1|tr -d ' %') "
      "smb=$(systemctl is-active smbd 2>/dev/null||echo inactive)"),
@@ -197,8 +210,13 @@ def poll_ssh_hosts() -> dict[str, Any]:
             central().observe({"cluster": "infra", "nerve": f"{name}_health", "kind": "observe", **kv})
         except Exception:
             pass
-        # disk-tidsserie (health-proxy, higher=worse) pr. host
+        # disk-tidsserie (health-proxy, higher=worse) pr. host. Paa en hypervisor
+        # taeller det VAERSTE af vaertens filsystemer og gaesternes volumener —
+        # ellers ville en gaest paa 97% vaere usynlig bag en vaert paa 40%.
         disk = kv.get("maxdisk", kv.get("disk"))
+        guest = kv.get("guestdisk")
+        if isinstance(guest, int) and (not isinstance(disk, int) or guest > disk):
+            disk = guest
         if isinstance(disk, int):
             central_timeseries.record("infra", f"{name}_disk", value=float(disk), meta=dict(kv))
         if "svc_down" in kv:

@@ -32,7 +32,9 @@ export function Composer({
   onRemoveAttachment,
   onFocusChange,
   showJumpToBottom,
-  onJumpToBottom
+  onJumpToBottom,
+  researchMode,
+  onResearchModeChange
 }: {
   disabled?: boolean
   working?: boolean
@@ -49,6 +51,8 @@ export function Composer({
   /** Rul-til-bunden flytter IND i komponisten mens man skriver. */
   showJumpToBottom?: boolean
   onJumpToBottom?: () => void
+  researchMode?: boolean
+  onResearchModeChange?: (next: boolean) => void
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -193,6 +197,16 @@ export function Composer({
               >
                 <Cpu size={15} color={tokens.color.fg2} strokeWidth={2} />
                 <Text style={styles.modelText} numberOfLines={1}>{shortModelLabel(modelLabel)}</Text>
+              </Pressable>
+            ) : null}
+            {onResearchModeChange ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: Boolean(researchMode) }}
+                onPress={() => onResearchModeChange(!researchMode)}
+                style={[styles.researchPill, researchMode && styles.researchPillOn]}
+              >
+                <Text style={[styles.researchText, researchMode && styles.researchTextOn]}>Research</Text>
               </Pressable>
             ) : null}
           </View>
@@ -346,6 +360,16 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     flexShrink: 1
   },
   modelText: { color: tokens.color.fg2, fontSize: 12, fontWeight: '600', flexShrink: 1 },
+  researchPill: {
+    height: 30,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    borderRadius: 15,
+    backgroundColor: tokens.color.bg3
+  },
+  researchPillOn: { backgroundColor: tokens.color.accent },
+  researchText: { color: tokens.color.fg2, fontSize: 12, fontWeight: '700' },
+  researchTextOn: { color: tokens.color.bg0 },
   sendBtn: {
     width: 40,
     height: 40,

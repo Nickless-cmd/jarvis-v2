@@ -31,6 +31,7 @@ import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession, loadModelChoice, saveModelChoice } from '../lib/sessionStore'
 import { bubble } from '../lib/bubbleModule'
 import { submitNotificationReply, REPLY_ACTION_ID } from '../lib/push'
+import { outgoingChatText } from '../lib/chatPrompt'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
@@ -153,6 +154,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
   const [model, setModel] = useState<ModelChoice | null>(null)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
+  const [researchMode, setResearchMode] = useState(false)
   // FEATURE 1: gendan sidst valgte model på tværs af app-genstart. Sættes
   // ubetinget når der findes et gemt valg — whoami-defaulten bruger `cur ??`
   // og bevarer derfor det gemte uanset rækkefølge.
@@ -330,8 +332,9 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     const attachmentIds = pendingAttachments.length
       ? pendingAttachments.map((a) => a.id)
       : undefined
-    stream.send(config, sessionId, text, { ...modelOpts(), attachmentIds })
+    stream.send(config, sessionId, outgoingChatText(text, researchMode), { ...modelOpts(), attachmentIds })
     setPendingAttachments([])
+    if (researchMode) setResearchMode(false)
   }
 
   // Samtale-mode (Trin 3): voice-hook. sendMessage=ensureSessionAndSend, text fra text-blocks.
@@ -554,6 +557,8 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           onFocusChange={setComposerFocused}
           showJumpToBottom={scrolledUp && composerFocused}
           onJumpToBottom={jumpToBottom}
+          researchMode={researchMode}
+          onResearchModeChange={setResearchMode}
         />
         </View>
       </View>

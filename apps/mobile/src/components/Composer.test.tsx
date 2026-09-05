@@ -160,4 +160,21 @@ describe('Composer', () => {
     await act(async () => { fireEvent.press(screen.getByTestId('composer-button')) })
     expect(onSend).toHaveBeenCalledWith('')
   })
+
+  it('viser research-toggle og melder skiftet ud', async () => {
+    const onResearchModeChange = jest.fn()
+    const screen = await render(
+      <Composer
+        onSend={jest.fn()}
+        onStop={jest.fn()}
+        researchMode={false}
+        onResearchModeChange={onResearchModeChange}
+      />
+    )
+    await openComposer(screen)
+
+    await act(async () => { fireEvent.press(screen.getByText('Research')) })
+
+    expect(onResearchModeChange).toHaveBeenCalledWith(true)
+  })
 })

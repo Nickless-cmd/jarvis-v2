@@ -69,7 +69,9 @@ def _surface_line(name: str, d: object) -> Optional[str]:
             # troubleshooting a phone connection...». Modellen svarer nogle gange
             # med opgaven i stedet for at loese den, og det rammer hver eneste
             # generator — ikke kun inner_voice_daemon.
-            if s and not any(j in s.lower() for j in _JUNK) and not _is_instruction_echo(s):
+            if (s and not any(j in s.lower() for j in _JUNK)
+                    and not _is_instruction_echo(s)
+                    and not _is_provider_error(s)):
                 return f"{_LABELS.get(name, name)}: {s[:110]}"
     return None
 
@@ -786,6 +788,26 @@ _INSTRUKS_EKKO = (
 )
 
 
+def _is_provider_error(text: str) -> bool:
+    """Er dette en regning fra en udbyder i stedet for en tanke?
+
+    2026-09-05: da de foelte overflader begyndte at naa prompten, stod der
+    «· tanke: Sorry, to prevent abuse of free resources, accounts that have not
+    been recharged can only try 10 times.» — en kvotefejl fra den billige lane,
+    gemt som hans egen tanke.
+
+    Vaernet fandtes allerede (`provider_error_guard.looks_like_provider_error`,
+    bygget efter at en aihubmix-regning stod i [SELF]-ankeret) og genkender
+    teksten korrekt. Det var bare aldrig koblet paa det indre liv. Samme moenster
+    som resten: bygget, virker, ikke kaldt hvor det skulle bruges.
+    """
+    try:
+        from core.services.provider_error_guard import looks_like_provider_error
+        return bool(looks_like_provider_error(text))
+    except Exception:
+        return False
+
+
 def _is_instruction_echo(text: str) -> bool:
     """Er dette opgaven i stedet for svaret?"""
     lav = (text or "").lower()
@@ -802,7 +824,7 @@ def _voice_as_prose(text: str) -> Optional[str]:
     t = (text or "").strip()
     if not t:
         return None
-    if _is_instruction_echo(t):
+    if _is_instruction_echo(t) or _is_provider_error(t):
         return None
     # Strip ledende 'json'/kodehegn-markør.
     body = _re.sub(r"^(?:```\s*)?json\b\s*|^```\s*", "", t, flags=_re.IGNORECASE).strip()

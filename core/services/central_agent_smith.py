@@ -239,16 +239,25 @@ def assess() -> dict[str, Any]:
                 "decision_patterns": [], "behaviours": [], "verdict": False}
 
 
-def _measured_behaviours() -> list[dict[str, Any]]:
-    """Maalt adfaerd fra folketaellingen over tomme loefter. Self-safe → tom liste.
+# Maalevindue for STIGEN. Ikke det samme som Centralens rapporterings-vindue.
+#
+# Foerste forsoeg brugte 24 timer, og det braekker verifikations-loopet: baseline
+# blev 33, og de-eskalering kraever et fald under baseline*0,6 = 19,8. Med et
+# doegns akkumulering kan det tal ikke falde foer gaarsdagens fejl er aldret ud —
+# uanset om Jarvis holder helt op MED DET SAMME. Smith ville klatre til Trin 3 paa
+# forældede tal, og loopet kunne aldrig lukke.
+#
+# Kadencen er ~3 timer, saa vinduet er 3 timer: hver cyklus maaler stort set
+# "siden sidst jeg kiggede". Saa kan en bedring faktisk ses — og det er hele
+# forskellen mellem en kritiker og en plage.
+_LADDER_WINDOW_HOURS = 3
 
-    Vinduet er 24 timer med vilje: Smiths kadence er ~3 timer, og en enkelt daarlig
-    time skal ikke kunne taende stigen. Et doegn er langt nok til at et moenster ER
-    et moenster, og kort nok til at han maerker det mens det staar paa.
-    """
+
+def _measured_behaviours() -> list[dict[str, Any]]:
+    """Maalt adfaerd fra folketaellingen over tomme loefter. Self-safe → tom liste."""
     try:
         from core.services.hollow_promise_census import census
-        c = census(24)
+        c = census(_LADDER_WINDOW_HOURS)
         if not c.get("available"):
             return []
         turns = sum(int(m.get("turns") or 0) for m in (c.get("models") or []))

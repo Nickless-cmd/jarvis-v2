@@ -139,3 +139,10 @@ def test_adfaerds_direktivet_siger_GOER_det_ikke_vaelg_en_anden_vej(monkeypatch)
     assert "anden vej" not in fanget["trigger_cue"]
     assert "anden tilgang" not in fanget["directive"]
     assert "kald vaerktoejet" in fanget["trigger_cue"].lower()
+
+
+def test_stigens_vindue_er_kort_nok_til_at_en_bedring_kan_ses():
+    """Med 24t blev baseline 33, og de-eskalering kræver <19,8. Det tal kan ikke
+    falde før gårsdagens fejl er aldret ud — uanset om han holder op med det
+    samme. Så ville stigen kun kunne klatre, aldrig lukke."""
+    assert s._LADDER_WINDOW_HOURS <= 6

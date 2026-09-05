@@ -12,6 +12,8 @@ import { WorkTaskCard, isActive } from '../components/WorkTaskCard'
 import { WorkApprovalCard } from '../components/WorkApprovalCard'
 import { ThoughtsList } from '../components/ThoughtsList'
 import { fetchThoughts, type Thought } from '../lib/companionClient'
+import { WorkDecisionCard } from '../components/WorkDecisionCard'
+import { actOnDecision, fetchDecisions, type Decision, type DecisionAction } from '../lib/decisionsApi'
 
 export type WorkTab = 'tasks' | 'approve'
 
@@ -28,6 +30,18 @@ interface Props {
 }
 
 const POLL_MS = 4000
+
+/**
+ * Hvor mange ting venter reelt på et svar.
+ *
+ * Livsprojekter tælles IKKE med. De har ligget der i månedsvis og kan kun
+ * «lægges fra sig» — tælles de med, står prikken tændt for altid, og en prik
+ * der aldrig går væk holder op med at betyde noget. Godkendelser blokerer et
+ * kørende run; initiativer er spørgsmål han venter svar på. Kun de to haster.
+ */
+export function tælVentende(pendingApprovals: number, decisions: Decision[]): number {
+  return pendingApprovals + decisions.filter((d) => d.kind === 'initiative').length
+}
 
 /**
  * Arbejde-rummet: Tasks (hvad Jarvis laver) og Approve (hvad der venter på Bjørn).
@@ -59,11 +73,23 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
   // capability-requests, så kortet forbliver pending server-side. Den
   // asynkrone model gør at intet run blokerer imens.
   const [skipped, setSkipped] = useState<string[]>([])
+  // Jarvis' egne spørgsmål. Som tankerne: fejler kaldet, står listen tom frem
+  // for at lægge en fejlbjælke over de godkendelser der FAKTISK blokerer et run.
+  const [decisions, setDecisions] = useState<Decision[]>([])
+  const [ubesvarede, setUbesvarede] = useState(0)
 
   const load = useCallback(async () => {
     if (!config) return
     try {
-      const [r, a] = await Promise.all([fetchRuns(config, 20), fetchApprovals(config, 20)])
+      const [r, a, d] = await Promise.all([
+        fetchRuns(config, 20),
+        fetchApprovals(config, 20),
+        fetchDecisions(config).catch(() => null)
+      ])
+      if (d) {
+        setDecisions(d.items)
+        setUbesvarede(d.expiredUnanswered)
+      }
       const merged = [r.active_run, ...r.recent_runs].filter((x): x is McRun => Boolean(x))
       const seen = new Set<string>()
       setRuns(merged.filter((x) => (seen.has(x.run_id) ? false : (seen.add(x.run_id), true))))
@@ -111,13 +137,39 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
     [config, load]
   )
 
+  const onDecide = useCallback(
+    async (d: Decision, action: DecisionAction) => {
+      if (!config) return
+      setBusyId(d.id)
+      // Fjern kortet med det samme. Serveren er stadig sandheden — næste load
+      // henter listen igen — men et kort der bliver stående efter et tryk
+      // føles som om trykket ikke landede.
+      setDecisions((prev) => prev.filter((x) => x.id !== d.id))
+      try {
+        const res = await actOnDecision(config, d, action)
+        if (!res.ok) setError(res.error || 'Kunne ikke svare på forslaget')
+        await load()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Kunne ikke svare på forslaget')
+        await load()
+      } finally {
+        setBusyId(null)
+      }
+    },
+    [config, load]
+  )
+
   const onSkip = useCallback((a: Approval) => {
     setSkipped((prev) => (prev.includes(a.request_id) ? prev : [...prev, a.request_id]))
   }, [])
 
+  const initiativer = decisions.filter((d) => d.kind === 'initiative')
+  const projekter = decisions.filter((d) => d.kind === 'life_project')
+  const venter = tælVentende(pending.length, decisions)
+
   useEffect(() => {
-    onPendingCount?.(pending.length)
-  }, [pending.length, onPendingCount])
+    onPendingCount?.(venter)
+  }, [venter, onPendingCount])
 
   return (
     <View style={[styles.root, { paddingTop: topInset }]}>
@@ -126,7 +178,7 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
           compact
           options={[
             { value: 'tasks', label: 'Tasks' },
-            { value: 'approve', label: 'Godkend', badge: pending.length > 0 }
+            { value: 'approve', label: 'Godkend', badge: venter > 0 }
           ]}
           value={tab}
           onChange={setTab}
@@ -159,9 +211,13 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
           ) : (
             <ApproveView
               approvals={pending}
+              initiativer={initiativer}
+              projekter={projekter}
+              ubesvarede={ubesvarede}
               busyId={busyId}
               onApprove={(a) => void onApprove(a)}
               onSkip={onSkip}
+              onDecide={(d, action) => void onDecide(d, action)}
             />
           )}
         </ScrollView>
@@ -200,33 +256,93 @@ function TasksView({ runs }: { runs: McRun[] }) {
   )
 }
 
+/**
+ * Alt der venter på et ja eller et nej — uanset hvem der spørger.
+ *
+ * Runtimen spørger om lov til at handle; Jarvis spørger om lov til at ville
+ * noget. For den der svarer er det samme handling, så de deler fane. De står i
+ * hver sin gruppe, fordi hastværket er forskelligt: en godkendelse blokerer et
+ * run lige nu, et forslag kan vente til i aften.
+ */
 function ApproveView({
   approvals,
+  initiativer,
+  projekter,
+  ubesvarede,
   busyId,
   onApprove,
-  onSkip
+  onSkip,
+  onDecide
 }: {
   approvals: Approval[]
+  initiativer: Decision[]
+  projekter: Decision[]
+  ubesvarede: number
   busyId: string | null
   onApprove: (a: Approval) => void
   onSkip: (a: Approval) => void
+  onDecide: (d: Decision, action: DecisionAction) => void
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
-  if (approvals.length === 0) {
+
+  if (approvals.length === 0 && initiativer.length === 0 && projekter.length === 0) {
     return <Text style={styles.empty}>Ingen ventende godkendelser.</Text>
   }
+
   return (
     <>
-      {approvals.map((a) => (
-        <WorkApprovalCard
-          key={a.request_id}
-          approval={a}
-          busy={busyId === a.request_id}
-          onApprove={onApprove}
-          onSkip={onSkip}
-        />
-      ))}
+      {approvals.length > 0 ? (
+        <>
+          <Text style={styles.groupLabel}>Venter på dig</Text>
+          {approvals.map((a) => (
+            <WorkApprovalCard
+              key={a.request_id}
+              approval={a}
+              busy={busyId === a.request_id}
+              onApprove={onApprove}
+              onSkip={onSkip}
+            />
+          ))}
+        </>
+      ) : null}
+
+      {initiativer.length > 0 ? (
+        <>
+          <Text style={styles.groupLabel}>Han foreslår</Text>
+          {initiativer.map((d) => (
+            <WorkDecisionCard
+              key={d.id}
+              decision={d}
+              busy={busyId === d.id}
+              onAct={onDecide}
+            />
+          ))}
+        </>
+      ) : null}
+
+      {projekter.length > 0 ? (
+        <>
+          <Text style={styles.groupLabel}>Det han arbejder hen imod</Text>
+          {projekter.map((d) => (
+            <WorkDecisionCard
+              key={d.id}
+              decision={d}
+              busy={busyId === d.id}
+              onAct={onDecide}
+            />
+          ))}
+        </>
+      ) : null}
+
+      {/* Tallet der gør ondt. Det står til sidst og dæmpet — det er historie,
+          ikke en opgave — men det står der, for det er hele grunden til at
+          denne fane findes. */}
+      {ubesvarede > 0 ? (
+        <Text style={styles.ubesvarede}>
+          {ubesvarede} tidligere forslag udløb uden svar.
+        </Text>
+      ) : null}
     </>
   )
 }
@@ -244,5 +360,11 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: tokens.spacing.sm
   },
-  empty: { color: tokens.color.fg2, fontSize: 14, textAlign: 'center', marginTop: tokens.spacing.xl }
+  empty: { color: tokens.color.fg2, fontSize: 14, textAlign: 'center', marginTop: tokens.spacing.xl },
+  ubesvarede: {
+    color: tokens.color.fg3,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: tokens.spacing.md
+  }
 })

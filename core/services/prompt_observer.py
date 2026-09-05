@@ -32,7 +32,16 @@ DIAGNOSTIC_NOISE_LABELS: frozenset[str] = frozenset({
     "self-monitor warnings",
     "metacognition signals",
     "R2 gate telemetry",
-    "decision adherence gate",
+    # 2026-09-05: "decision adherence gate" er FJERNET herfra. Den er ikke
+    # diagnostik — den er en adfærdsinstruks. Gaten eskalerer fra "Husk at..."
+    # over "DU SKAL..." til en kritisk advarsel med rollback, alt efter hvor
+    # lavt adherence er faldet. Fem aktive beslutninger stod under 25% da vi
+    # målte, og sektionen producerede 1.993 tegn korrekt eskaleret tekst —
+    # som blev kastet væk her, FØR indholdet blev vurderet.
+    #
+    # Hele kæden virkede: review skrev domme, adherence_score blev opdateret,
+    # gaten valgte det rigtige bånd. Og så nåede beskeden aldrig frem. En
+    # advarsel Jarvis ikke ser, er ikke en advarsel.
     "reasoning tier recommendation",
     "reasoning escalation recommendation",
     "context window degradation signal",

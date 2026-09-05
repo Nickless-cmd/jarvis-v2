@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6712/13480 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6715/13484 functions/methods documented (49%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6712/13480 functions/methods documented (49%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 565 | 1053 | 53% |
-| `core.services` | 4458 | 9337 | 47% |
+| `core.services` | 4461 | 9341 | 47% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 87 | 157 | 55% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -556,7 +556,7 @@ Generated from source. 6712/13480 functions/methods documented (49%). The list b
 - `core/services/agent_runtime_surfaces.py` :: `build_council_surface` (L96)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_agent_surface` (L62)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_council_surface` (L120)
-- `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L184)
+- `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L305)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
 - `core/services/agent_todos.py` :: `add_todo` (L196)

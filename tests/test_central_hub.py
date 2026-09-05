@@ -18,15 +18,22 @@ def test_index_lists_all_sections():
     idx = h.mind_index()
     keys = [s["section"] for s in idx]
     assert "overview" in keys and "mind" in keys and "observability" in keys
-    assert len(idx) == 10
+    # 2026-09-05: var et magisk 10-tal og faldt da «decisions» kom til. Tæller
+    # nu mod den faktiske sektionsliste, så en ny fane ikke braekker testen —
+    # den skal fange at en fane FORSVINDER, ikke at der kommer en til.
+    from core.services.central_hub import _SECTION_ORDER
+    assert len(idx) == len(_SECTION_ORDER)
+    assert "decisions" in keys
     # ready-flag matcher byggerne (udvides efterhånden som faner fyldes)
     ready = {s["section"] for s in idx if s["ready"]}
     assert {"overview", "mind", "observability"} <= ready
-    assert "council" not in ready  # endnu pending
+    # 2026-09-05: var "council", men den fik en bygger uden at testen fulgte med
+    # — den har fejlet i et stykke tid. Bruger nu en fane der faktisk er pending.
+    assert "hardening" not in ready  # endnu pending
 
 
 def test_pending_section_is_marked_not_error():
-    r = h.mind_section("council")
+    r = h.mind_section("hardening")
     assert r["pending"] is True and r["active"] is False
     assert "error" not in r
 
@@ -59,3 +66,61 @@ def test_overview_reads_central_pulse(monkeypatch):
                                      "diagnose": {}, "processes": [], "clusters": []})
     r = h.mind_section("overview")
     assert r["status"] == "green" and r["coverage"]["nerves"] == 5 and r["active"] is True
+
+
+# ---------------------------------------------------------------------------
+# Beslutninger skal nå et menneske
+#
+# Målt 2026-09-05: 48 initiativer i køen — 6 ventende, 26 udløbet uden svar,
+# NUL nogensinde godkendt eller afvist. Ruterne fandtes
+# (/mc/initiatives/{id}/approve|reject, /mc/life-projects/{id}/abandon) — der
+# var bare ingen knap nogen steder. Han spurgte 48 gange og fik intet svar,
+# fordi spørgsmålet aldrig nåede et menneske.
+# ---------------------------------------------------------------------------
+
+
+def test_beslutninger_er_en_sektion_i_hubben():
+    from core.services.central_hub import mind_index
+
+    sektioner = [s["section"] for s in mind_index()]
+    assert "decisions" in sektioner, (
+        "beslutnings-sektionen mangler — så er køen usynlig igen"
+    )
+    # Den skal ligge tidligt: den kræver handling, modsat de øvrige som informerer.
+    assert sektioner.index("decisions") <= 2
+
+
+def test_sektionen_projicerer_baade_initiativer_og_livsprojekter():
+    from core.services.central_hub import mind_section
+
+    d = mind_section("decisions")
+    assert d.get("active") is True
+    assert "items" in d and isinstance(d["items"], list)
+    for i in d["items"]:
+        assert i.get("kind") in ("initiative", "life_project")
+        assert i.get("id"), "en post uden id kan man ikke svare på"
+        assert i.get("actions"), "en post uden handlinger er ikke en beslutning"
+
+
+def test_ubesvarede_taelles_og_naevnes():
+    """Tallet der gør ondt skal stå i svaret, ikke skulle graves frem."""
+    from core.services.central_hub import mind_section
+
+    d = mind_section("decisions")
+    koe = d.get("queue") or {}
+    assert "expired_unanswered" in koe
+    if int(koe.get("expired_unanswered") or 0) > 0:
+        assert "udloebet uden svar" in str(d.get("unanswered_note") or "")
+
+
+def test_sektionen_er_selvsikker_mod_en_doed_kilde(monkeypatch):
+    """En fejl i én kilde må ikke koste hele sektionen."""
+    from core.services import central_hub as H
+
+    monkeypatch.setattr(
+        "core.services.initiative_queue.get_initiative_queue_state",
+        lambda: (_ for _ in ()).throw(RuntimeError("nede")),
+    )
+    d = H._build_decisions()
+    assert d.get("active") is True
+    assert isinstance(d.get("items"), list)

@@ -22,6 +22,13 @@ from typing import Any, Callable
 # (placeholder i UI'et) men kendt, så fane-strukturen er komplet fra start.
 _SECTION_ORDER: list[tuple[str, str]] = [
     ("overview", "Oversigt"),
+    # 2026-09-05: «Beslutninger» ligger nummer to med vilje. Maalt samme dag:
+    # 48 initiativer i koeen — 6 ventende, 26 UDLOEBET uden svar, og NUL
+    # nogensinde godkendt eller afvist i systemets levetid. Ruterne fandtes
+    # (/mc/initiatives/{id}/approve|reject, /mc/life-projects/{id}/abandon) —
+    # der var bare ingen knap nogen steder. Han spurgte 48 gange og fik intet
+    # svar, fordi spoergsmaalet aldrig naaede et menneske.
+    ("decisions", "Beslutninger"),
     ("mind", "Sind"),
     ("observability", "Observabilitet"),
     ("agency", "Agentur"),
@@ -126,8 +133,70 @@ def _build_council() -> dict[str, Any]:
     return out
 
 
+def _build_decisions() -> dict[str, Any]:
+    """Hvad venter paa et menneske — samlet ét sted.
+
+    Projicerer eksisterende sandhed (initiativ-koeen, livsprojekter,
+    godkendelser); opfinder ingen ny. Sorteret saa det aeldste staar oeverst —
+    en ting der har ventet i tre uger er mere presserende end en fra i morges.
+    """
+    ventende: list[dict[str, Any]] = []
+
+    try:
+        from core.services.initiative_queue import get_initiative_queue_state
+        st = get_initiative_queue_state() or {}
+        for i in (st.get("pending") or []):
+            ventende.append({
+                "kind": "initiative",
+                "id": str(i.get("initiative_id") or ""),
+                "text": str(i.get("focus") or "")[:200],
+                "why": str(i.get("why_text") or i.get("rationale") or "")[:240],
+                "priority": str(i.get("priority") or "medium"),
+                "created_at": str(i.get("created_at") or ""),
+                "actions": ["approve", "reject"],
+            })
+        koe = {
+            "pending": int(st.get("pending_count") or 0),
+            "expired_unanswered": int(st.get("expired_count") or 0),
+            "answered": int(st.get("approved_count") or 0) + int(st.get("rejected_count") or 0),
+        }
+    except Exception:
+        koe = {}
+
+    try:
+        from core.services.life_projects import build_life_projects_surface
+        lp = build_life_projects_surface() or {}
+        for p_ in (lp.get("items") or []):
+            ventende.append({
+                "kind": "life_project",
+                "id": str(p_.get("initiative_id") or ""),
+                "text": str(p_.get("focus") or "")[:200],
+                "why": str(p_.get("why_text") or "")[:240],
+                "priority": "low",
+                "created_at": str(p_.get("created_at") or ""),
+                "actions": ["abandon"],
+            })
+    except Exception:
+        pass
+
+    ventende.sort(key=lambda x: str(x.get("created_at") or ""))
+    return {
+        "active": True,
+        "count": len(ventende),
+        "queue": koe,
+        # Tallet der goer ondt, og som skal staa oeverst: hvor mange spoergsmaal
+        # der udloeb uden at nogen svarede.
+        "unanswered_note": (
+            "%d initiativer er udloebet uden svar" % int(koe.get("expired_unanswered") or 0)
+            if koe.get("expired_unanswered") else ""
+        ),
+        "items": ventende[:40],
+    }
+
+
 _BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
     "overview": _build_overview,
+    "decisions": _build_decisions,
     "observability": _build_observability,
     "mind": _build_mind,
     "agency": _build_agency_agents,

@@ -302,27 +302,45 @@ def produce_signals_from_run(
         logger.debug("development focus failed: %s", exc)
 
     # 9. World model signal — derive from message context
+    #
+    # 2026-09-05: canonical_key var `world-model:run:{run_id}` — UNIK pr. tur.
+    # Merge-logikken i db_runtime_executive_signals slår op på canonical_key og
+    # kunne derfor ALDRIG finde en eksisterende række. Hver tur gav en ny
+    # `active` post, og tabellen voksede til 16.747 rækker hvor 16.746 var samme
+    # boilerplate: brugerens besked med status=active påklistret. Det var ikke en
+    # verdensmodel, det var en append-only kopi af chat-loggen — og 16.707 af
+    # rækkerne kunne ikke nås af nogen kodesti overhovedet (alle læsninger
+    # bruger limit 3-40 med ORDER BY id DESC).
+    #
+    # Nu nøgles den på EMNE, som witness-signalet få linjer over. Så virker
+    # merge som designet: support_count/session_count/merge_count bliver ægte
+    # gentagelses-evidens, og «3 aktive antagelser» bliver et tal der bevæger sig.
+    # Gatet på emne: en triviel besked er ikke en antagelse om verden.
     try:
-        upsert_runtime_world_model_signal(
-            signal_id=f"wm-{uuid4().hex[:10]}",
-            signal_type="conversational_context",
-            canonical_key=f"world-model:run:{run_id}",
-            status="active",
-            title=user_message[:80],
-            summary=f"Context: {user_message[:120]}",
-            rationale="Bounded situational context from visible turn",
-            source_kind="visible_run",
-            confidence="medium",
-            evidence_summary=user_message[:200],
-            support_summary=f"outcome={outcome_status}",
-            support_count=1,
-            session_count=1,
-            run_id=run_id,
-            session_id=str(session_id or ""),
-            created_at=_now(),
-            updated_at=_now(),
-        )
-        counts["world_model"] += 1
+        if topic_slug:
+            upsert_runtime_world_model_signal(
+                signal_id=f"wm-{uuid4().hex[:10]}",
+                signal_type="conversational_context",
+                canonical_key=f"world-model:topic:{topic_slug}",
+                status="active",
+                # Emnet, ikke beskeden. Titlen blev serveret tilbage til ham som
+                # «dominerende verdenstråd» — altså hans samtalepartners sidste
+                # sætning præsenteret som en uafhængig observation.
+                title=meaningful_topic[:80],
+                summary=f"Tilbagevendende emne i samtalen: {meaningful_topic[:120]}",
+                rationale="Bounded situational context from visible turn",
+                source_kind="visible_run",
+                confidence="medium",
+                evidence_summary=user_message[:200],
+                support_summary=f"outcome={outcome_status}",
+                support_count=1,
+                session_count=1,
+                run_id=run_id,
+                session_id=str(session_id or ""),
+                created_at=_now(),
+                updated_at=_now(),
+            )
+            counts["world_model"] += 1
     except Exception as exc:
         logger.debug("world model signal failed: %s", exc)
 

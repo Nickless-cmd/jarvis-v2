@@ -11,10 +11,20 @@ Så det er ikke et spørgsmål om at betale for noget dyrere — det er et spør
 om at have øjnene i den model der svarer, når det gør en forskel. Og han betaler
 for ollama cloud i forvejen, så ingen af vejene er gratis i egentlig forstand.
 
-Derfor: et valg, ikke en dom. `vision_provider` i runtime.json afgør det;
-uden den gættes provideren ud fra modelnavnet, så det rækker at sætte
-`vision_model_name`. Ollama-modeller bærer et tag (`gemma4:31b-cloud`),
-DeepSeeks gør ikke (`deepseek-v4-flash-vision-exp`).
+Derfor: et valg, ikke en dom — og valget er MODELVÆLGEREN i composeren, ikke en
+skjult nøgle i en konfigfil. Bjørn (5/9): flash UDEN syn er stadig standard; kan
+han vælge flash MED syn i vælgeren, skal syns-værktøjerne følge med. Vælger han
+den blinde, arbejder de som hidtil.
+
+Rækkefølgen er derfor:
+1. Kører der en synlig tur på en model der KAN se? Så bruger værktøjerne DEN —
+   øjnene sidder i den model der svarer ham.
+2. Ellers `vision_provider` / `vision_model_name` i runtime.json (fallback).
+3. Ellers ollama, som hidtil.
+
+Ollama-modeller bærer et tag (`gemma4:31b-cloud`), DeepSeeks API-navne gør ikke
+(`deepseek-v4-flash-vision-exp`) — det er nok til at gætte provideren når kun
+modelnavnet er sat.
 
 Begge veje rapporterer omkostning: DeepSeek-vejen bogfører rigtigt i hovedbogen
 (lane `vision`), ollama-vejen koster ikke pr. token.
@@ -24,6 +34,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import re
 import urllib.request
 from typing import Any
 
@@ -32,6 +43,51 @@ logger = logging.getLogger(__name__)
 _DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 _TIMEOUT = 180
 _MAX_TOKENS = 400
+
+
+# Modeller der selv kan se. En model uden syn kan ikke laane oejne af en tur —
+# saa falder vi tilbage til den konfigurerede vision-model.
+_VISION_CAPABLE = frozenset({"deepseek-v4-flash-vision-exp"})
+_SEEING_NAME_RE = re.compile(r"vision|llava|(?:^|[\d\-_.])vl(?:[:\-_.\d]|$)")
+
+
+def model_can_see(model: str) -> bool:
+    """Kan DENNE model selv se et billede?"""
+    name = str(model or "").strip().lower()
+    if not name:
+        return False
+    if name in _VISION_CAPABLE:
+        return True
+    # Navnekonventioner der i praksis altid betyder syn. «vl» skal staa som sit
+    # eget led (qwen2.5vl:3b, qwen2-vl) og ikke falde over et tilfaeldigt
+    # bogstavpar inde i et andet ord.
+    return bool(_SEEING_NAME_RE.search(name))
+
+
+def active_visible_target() -> tuple[str, str]:
+    """(provider, model) for den synlige tur der koerer lige nu — ("","") hvis ingen."""
+    try:
+        from core.services.visible_runs import _get_active_visible_run_state
+        state = _get_active_visible_run_state() or {}
+    except Exception:
+        return "", ""
+    if not bool(state.get("active")) or bool(state.get("cancelled")):
+        return "", ""
+    return str(state.get("provider") or ""), str(state.get("model") or "")
+
+
+def resolve_vision_target() -> tuple[str, str, str]:
+    """(provider, model, kilde) for syns-vaerktoejerne lige nu.
+
+    kilde er "selected-model" naar oejnene sidder i den model der svarer Bjoern,
+    ellers "config".
+    """
+    provider, model = active_visible_target()
+    if model and model_can_see(model):
+        return (provider or resolve_vision_provider(model)), model, "selected-model"
+    from core.services.attachment_service import _vision_model
+    configured = _vision_model()
+    return resolve_vision_provider(configured), configured, "config"
 
 
 def resolve_vision_provider(model: str) -> str:
@@ -128,13 +184,12 @@ def describe(
 
 
 def build_vision_backend_surface() -> dict[str, Any]:
-    from core.services.attachment_service import _vision_model
-    model = _vision_model()
-    provider = resolve_vision_provider(model)
+    provider, model, source = resolve_vision_target()
     return {
         "active": True,
         "provider": provider,
         "model": model,
+        "source": source,
         "paid": provider == "deepseek",
-        "summary": "syn via %s/%s" % (provider, model),
+        "summary": "syn via %s/%s (%s)" % (provider, model, source),
     }

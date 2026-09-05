@@ -191,7 +191,13 @@ def _call_vision(image_b64: str, *, model: str, prompt: str | None = None) -> st
     kan vaelge DeepSeeks vision-variant — samme model som den der svarer ham,
     bare med syn, til samme pris pr. token. Se core/services/vision_backend.py.
     """
-    from core.services.vision_backend import describe
+    from core.services.vision_backend import describe, resolve_vision_target
+    # 2026-09-05: bruger den model Bjoern har VALGT i composeren naar den selv
+    # kan se — saa oejnene sidder i den model der svarer ham. Ellers den
+    # konfigurerede vision-model, som hidtil. `model`-argumentet respekteres
+    # stadig, saa kaldsteder der bevidst vaelger en model ikke overrules.
+    if not model:
+        _provider, model, _src = resolve_vision_target()
     return describe(image_b64=image_b64, model=model,
                     prompt=prompt or _GENERIC_IMAGE_PROMPT)["text"]
 
@@ -331,7 +337,8 @@ def read_attachment_content(
         try:
             data = Path(local_path).read_bytes()
             b64 = base64.b64encode(data).decode("ascii")
-            model = _vision_model()
+            from core.services.vision_backend import resolve_vision_target
+            _vprov, model, _vsrc = resolve_vision_target()
             asked = " ".join(str(question or "").split()).strip()
             description = _call_vision(
                 b64,

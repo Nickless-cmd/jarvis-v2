@@ -281,6 +281,19 @@ def _build_structured_transcript_messages(
     if not history:
         return []
 
+    # Afbrydelses-noten er en besked til MENNESKET — den maa ikke ind i det
+    # modellen ser. Maalt 5/9: tre stubs i traek i én session fik DeepSeek til at
+    # skrive den SAMME saetning igen paa en almindelig prompt (komplet
+    # delta-stroem, first_pass completed, nul tool-kald). Ét aegte cut avlede
+    # derfra en uendelig raekke af falske. Se `interruption_notice`.
+    try:
+        from core.services.interruption_notice import strip_interruption_notices
+        history = strip_interruption_notices(history)
+        if not history:
+            return []
+    except Exception:
+        pass
+
     # CC-style time-gap microcompact: after a quiet gap, provider caches are
     # already cold enough that carrying full old tool payloads is wasteful.
     # Apply before rendering so old tool rows become deterministic short stubs,

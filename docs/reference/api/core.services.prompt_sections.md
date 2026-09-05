@@ -312,14 +312,14 @@ _Transcript rendering + session compaction for prompts._
 | function | `_recent_transcript_section` | `(session_id, *, limit, include)` | Legacy flat-text fallback — used only when structured messages are not viable. | [src](../../../core/services/prompt_sections/transcript_sections.py#L139) |
 | function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L192) |
 | function | `_build_structured_transcript_messages` | `(session_id, *, limit, include)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L230) |
-| function | `_round_collapse_enabled` | `()` | Kollaps konsekutive COLD tool-results til ÉT rundesummary. Default OFF. | [src](../../../core/services/prompt_sections/transcript_sections.py#L509) |
-| function | `_tool_name_from_stub` | `(stub)` | Træk tool-navnet ud af en cold-stub. Formatet er | [src](../../../core/services/prompt_sections/transcript_sections.py#L546) |
-| function | `_render_collapsed_round` | `(tool_names)` | Ét deterministisk summary for en sekvens af kollapsede cold-results. | [src](../../../core/services/prompt_sections/transcript_sections.py#L557) |
-| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L575) |
-| function | `_ground_truth_for` | `(session_id)` | Best-effort VERIFIED-facts block (git HEAD, recent commits, key files) for the session, | [src](../../../core/services/prompt_sections/transcript_sections.py#L612) |
-| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | Build a summarise_fn(old_messages)->str for compact_session_history. | [src](../../../core/services/prompt_sections/transcript_sections.py#L624) |
-| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det | [src](../../../core/services/prompt_sections/transcript_sections.py#L698) |
-| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L738) |
+| function | `_round_collapse_enabled` | `()` | Kollaps konsekutive COLD tool-results til ÉT rundesummary. Default OFF. | [src](../../../core/services/prompt_sections/transcript_sections.py#L522) |
+| function | `_tool_name_from_stub` | `(stub)` | Træk tool-navnet ud af en cold-stub. Formatet er | [src](../../../core/services/prompt_sections/transcript_sections.py#L559) |
+| function | `_render_collapsed_round` | `(tool_names)` | Ét deterministisk summary for en sekvens af kollapsede cold-results. | [src](../../../core/services/prompt_sections/transcript_sections.py#L570) |
+| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L588) |
+| function | `_ground_truth_for` | `(session_id)` | Best-effort VERIFIED-facts block (git HEAD, recent commits, key files) for the session, | [src](../../../core/services/prompt_sections/transcript_sections.py#L625) |
+| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | Build a summarise_fn(old_messages)->str for compact_session_history. | [src](../../../core/services/prompt_sections/transcript_sections.py#L637) |
+| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det | [src](../../../core/services/prompt_sections/transcript_sections.py#L711) |
+| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L751) |
 
 ## `core/services/prompt_sections/workspace_files.py`
 _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._

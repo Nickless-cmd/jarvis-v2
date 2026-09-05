@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/modulator_witness.py`
+_Witness surface for hidden behavior modulators._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_item` | `(*, name, active, current_effect, evidence, confidence, allowed_effects, source)` | — | [src](../../../core/services/modulator_witness.py#L12) |
+| function | `_safe_call` | `(fn, default)` | — | [src](../../../core/services/modulator_witness.py#L33) |
+| function | `build_modulator_witness_surface` | `(*, workspace_id=…)` | Return active hidden modulators and the effects they are allowed to have. | [src](../../../core/services/modulator_witness.py#L40) |
+
 ## `core/services/monitor_streams.py`
 _Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
 
@@ -615,23 +624,4 @@ _Past-context cue router for visible prompts._
 |---|---|---|---|---|
 | function | `needs_past_context` | `(user_message)` | Return True when a user turn likely depends on prior conversation. | [src](../../../core/services/past_context_router.py#L20) |
 | function | `build_past_context_section` | `(user_message, *, session_id=…, limit=…)` | Render a compact context block from summaries/chat when cues warrant it. | [src](../../../core/services/past_context_router.py#L28) |
-
-## `core/services/paste_store.py`
-_Paste-store: eksternalisér store bruger-pastes med en kompakt reference._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_paste_dir` | `()` | — | [src](../../../core/services/paste_store.py#L32) |
-| function | `_paste_path` | `(paste_id)` | — | [src](../../../core/services/paste_store.py#L36) |
-| function | `_compute_id` | `(text)` | — | [src](../../../core/services/paste_store.py#L40) |
-| function | `_line_count` | `(text)` | — | [src](../../../core/services/paste_store.py#L45) |
-| function | `save_paste` | `(text, *, created_at=…)` | Gem en paste og returnér dens hash-baserede id (idempotent). | [src](../../../core/services/paste_store.py#L54) |
-| function | `get_paste` | `(paste_id)` | Slå en paste op. Returnér {id, text, line_count, created_at} eller None. | [src](../../../core/services/paste_store.py#L84) |
-| function | `build_paste_reference` | `(paste_id, *, line_count)` | Byg reference-strengen `[paste:<id> +N linjer]`. | [src](../../../core/services/paste_store.py#L101) |
-| function | `parse_paste_reference` | `(content)` | Find første paste-reference i `content`. Returnér {paste_id, line_count} eller None. | [src](../../../core/services/paste_store.py#L108) |
-| function | `expand_paste_references` | `(content)` | Erstat alle `[paste:<id> +N linjer]`-referencer med den fulde paste-tekst. | [src](../../../core/services/paste_store.py#L124) |
-| function | `paste_inline_to_model_enabled` | `()` | Flag: skal modellen se den FULDE paste-tekst (default ON) eller referencen (OFF)? | [src](../../../core/services/paste_store.py#L145) |
-| function | `project_paste_for_model` | `(content)` | Projicér en bruger-besked til modellen: ekspandér paste-referencer når flag ON. | [src](../../../core/services/paste_store.py#L165) |
-| function | `cleanup_old_pastes` | `(max_age_days=…)` | Slet pastes ældre end `max_age_days`. Returnér antal slettede (best-effort). | [src](../../../core/services/paste_store.py#L176) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/paste_store.py#L195) |
 

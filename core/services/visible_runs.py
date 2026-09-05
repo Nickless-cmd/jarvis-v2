@@ -5500,10 +5500,10 @@ async def _stream_visible_run(
             # dette i stedet for tavshed eller en dramatisk overlevelses-tekst.
             try:
                 if run.session_id and not run.autonomous and _session_last_role(run.session_id) != "assistant":
-                    _persist_session_assistant_message(
-                        run,
-                        "Jeg blev afbrudt midt i det — svaret nåede ikke helt ud. "
-                        "Skriv bare igen, så samler jeg tråden op.")
+                    from core.services.interruption_notice import (
+                        INTERRUPTION_NOTICE,
+                    )
+                    _persist_session_assistant_message(run, INTERRUPTION_NOTICE)
             except Exception:
                 pass
 

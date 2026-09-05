@@ -1155,3 +1155,60 @@ def test_reasoning_exhausted_retry_never_loops(monkeypatch) -> None:
         base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
     assert len(bodies) == 2
     assert [e for e in events if isinstance(e, vf.FollowupDone)][0].finish_reason == "length"
+
+
+# ---------------------------------------------------------------------------
+# DeepSeek: thinking + tool_choice = HTTP 400
+#
+# Målt 2026-09-05 på et afbrudt run:
+#   followup-round-2-provider-error: HTTP 400
+#   {"error":{"message":"Thinking mode does not support this tool_choice"}}
+#
+# Fejlen kom først frem den dag, fordi thinking-mode indtil da aldrig nåede
+# frem til DeepSeek — rettelsen af DET blottede denne. Symptomet Bjørn så: et
+# tool-kald der blinkede og forsvandt, og så et cut.
+# ---------------------------------------------------------------------------
+
+import json
+
+from core.services import visible_followup_adapters as A
+
+
+def _payload(**kw) -> dict:
+    adapter = A.OpenAICompatFollowupAdapter(provider_id="deepseek")
+    req = adapter._build_request(
+        model="deepseek-v4-flash-vision-exp",
+        messages=[{"role": "user", "content": "hej"}],
+        tool_definitions=[{"type": "function", "function": {"name": "bash", "parameters": {}}}],
+        **kw,
+    )
+    return json.loads(req.data.decode("utf-8"))
+
+
+def test_thinking_slaas_fra_naar_tool_choice_saettes():
+    """Begge mekanismer skal overleve: tool_choice bevares, thinking viger."""
+    p = _payload(tool_choice="none", extra_body={"reasoning_effort": "high",
+                                                 "thinking": {"type": "enabled"}})
+    assert p["tool_choice"] == "none", "tool_choice er selve prosa-mekanismen"
+    assert p["thinking"] == {"type": "disabled"}
+    assert "reasoning_effort" not in p
+
+
+def test_tools_arrayet_bevares_saa_cachen_ikke_braekker():
+    """Pointen med tool_choice='none' er netop at BEHOLDE tools-arrayet."""
+    p = _payload(tool_choice="none", extra_body={"thinking": {"type": "enabled"}})
+    assert p.get("tools"), "tools-arrayet forsvandt — cache-præfikset brækker"
+
+
+def test_thinking_bevares_naar_der_ikke_er_tool_choice():
+    """De almindelige runder skal stadig ræsonnere."""
+    p = _payload(extra_body={"reasoning_effort": "high", "thinking": {"type": "enabled"}})
+    assert p["thinking"] == {"type": "enabled"}
+    assert p["reasoning_effort"] == "high"
+    assert "tool_choice" not in p
+
+
+def test_allerede_slaaet_fra_thinking_roeres_ikke():
+    p = _payload(tool_choice="none", extra_body={"thinking": {"type": "disabled"}})
+    assert p["thinking"] == {"type": "disabled"}
+    assert p["tool_choice"] == "none"

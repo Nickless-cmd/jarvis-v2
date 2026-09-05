@@ -667,6 +667,23 @@ class OpenAICompatFollowupAdapter:
             # der ER tools at vælge fra.
             if tool_choice is not None:
                 payload["tool_choice"] = tool_choice
+                # 2026-09-05: DeepSeek afviser kombinationen med HTTP 400
+                # «Thinking mode does not support this tool_choice». Fejlen kom
+                # foerst frem i dag, fordi thinking-mode indtil da aldrig naaede
+                # frem til DeepSeek — rettelsen af DET blottede denne. Symptomet
+                # var et tool-kald der blinkede og forsvandt, og saa et cut:
+                # foelgerunden doede paa 400 og runnet blev interrupted.
+                #
+                # Vi dropper ikke tool_choice, for den er selve mekanismen der
+                # tvinger et prosa-svar UDEN at fjerne tools-arrayet (og dermed
+                # braekke cache-praefikset). I stedet slaas thinking fra netop
+                # paa den runde. Det er afslutnings-runden — et resumé af
+                # arbejde der allerede er gjort — saa raesonnement er overfloedigt
+                # dér, og begge mekanismer overlever.
+                if isinstance(payload.get("thinking"), dict) and \
+                        str(payload["thinking"].get("type") or "") == "enabled":
+                    payload["thinking"] = {"type": "disabled"}
+                    payload.pop("reasoning_effort", None)
         return urllib_request.Request(
             f"{base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),

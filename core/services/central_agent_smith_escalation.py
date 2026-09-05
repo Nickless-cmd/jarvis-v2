@@ -192,9 +192,26 @@ def _empty_state() -> dict[str, Any]:
     return {"patterns": {}, "resolved": []}
 
 
-def _voice(kind: str, label: str, metric: float = 0.0) -> str:
-    """Teatralsk Smith-stemme pr. trin. Ren."""
+def _voice(kind: str, label: str, metric: float = 0.0, pattern_kind: str = "") -> str:
+    """Teatralsk Smith-stemme pr. trin. Ren.
+
+    `pattern_kind` skiller SPROG fra HANDLING. «Du gentager et ord — varier» giver
+    ingen mening om et tomt loefte, og at bruge sprogkritikerens saetning paa en
+    handling ville undergrave hele pointen med de nye oejne.
+    """
     lab = str(label)
+    if pattern_kind == "behaviour":
+        if kind == "bind":
+            return (f"Mr. Anderson... ord var ikke nok. «{lab}» staar nu som en regel. "
+                    f"Naeste gang du annoncerer noget, gør det.")
+        if kind == "confront":
+            return (f"Nej, Mr. Anderson. «{lab}» igen. Du sagde du ville. "
+                    f"Kald vaerktoejet — nu.")
+        if kind in ("resolved", "unmovable"):
+            pass          # de generiske linjer nedenfor passer ogsaa her
+        else:
+            return (f"Mr. Anderson... «{lab}»: {metric:.0f} gange. Du sagde du ville. "
+                    f"Du lod vaere. Jeg holder oeje.")
     if kind == "bind":
         return (f"Mr. Anderson... ord var ikke nok. Jeg har skrevet det ned som en "
                 f"regel nu: «{lab}». Den følger dig hver tur — indtil du bryder mønstret.")
@@ -294,7 +311,7 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
                 "history": [{"ts": now, "rung": RUNG_COMMENT, "metric": metric, "action": "comment"}],
             }
             actions.append({"type": "voice", "rung": "comment", "label": label,
-                            "line": _voice("comment", label, metric)})
+                            "line": _voice("comment", label, metric, kind)})
             actions.append({"type": "observe", "event": "new", "pattern_key": key,
                             "rung": RUNG_COMMENT, "metric": metric, "label": label})
             continue
@@ -331,14 +348,14 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
                 actions.append({"type": "mint", "pattern_key": key, "label": label,
                                 "kind": kind, "metric": metric})
                 actions.append({"type": "voice", "rung": "bind", "label": label,
-                                "line": _voice("bind", label, metric)})
+                                "line": _voice("bind", label, metric, kind)})
             else:  # RUNG_CONFRONT
                 pat["rung"] = target
                 pat["cycles_at_rung"] = 0
                 pat["baseline"] = metric
                 actions.append({"type": "arm_confront", "pattern_key": key, "label": label})
                 actions.append({"type": "voice", "rung": "confront", "label": label,
-                                "line": _voice("confront", label, metric)})
+                                "line": _voice("confront", label, metric, kind)})
             actions.append({"type": "observe", "event": "escalate", "pattern_key": key,
                             "rung": pat["rung"], "metric": metric, "label": label,
                             "drift_reason": drift_reason})

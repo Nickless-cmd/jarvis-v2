@@ -225,3 +225,21 @@ def test_en_ren_frase_overlever_stadig_IKKE_porten():
         {"phrase:det er ikke": {"kind": "phrase", "label": "det er ikke", "metric": 15.0}},
         "2026-09-05T00:00:00+00:00")
     assert st["patterns"] == {}
+
+
+def test_adfaerd_faar_ikke_sprogkritikerens_saetning():
+    """«Du gentager et ord — varier» giver ingen mening om et tomt løfte."""
+    _, acts = e.step_escalation(
+        None,
+        {"behaviour:tomme løfter": {"kind": "behaviour", "label": "tomme løfter",
+                                    "metric": 33.0, "corroborated": True}},
+        "2026-09-05T00:00:00+00:00")
+    line = next(a["line"] for a in acts if a["type"] == "voice")
+    assert "Varier" not in line
+    assert "Du sagde du ville" in line
+    assert "33" in line
+
+
+def test_sproget_beholder_sin_egen_saetning():
+    line = e._voice("comment", "det er ikke", 15.0, "phrase")
+    assert "Varier" in line

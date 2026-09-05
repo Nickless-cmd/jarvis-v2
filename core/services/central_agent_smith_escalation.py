@@ -47,6 +47,19 @@ RUNG_CONFRONT = 3
 _DROP_FRAC = 0.6          # metric skal falde under baseline*dette for at tælle som compliance
 _DWELL_CYCLES = 1         # cyklusser på et trin før stigen klatrer (naturligt langsomt: cadence ~3t)
 _MAX_ACTIVE_DIRECTIVES = 3  # loft: Smith oversvømmer ikke Jarvis med auto-mintede direktiver
+# Loft paa OEVERSTE trin. Fundet 5/9-2026: moensteret «delete workspace memory
+# line» stod paa Trin 3 med 200 cyklusser — siden 19. august. Metrikken faldt
+# aldrig under compliance-graensen, saa stigen kunne hverken loese det eller
+# slippe det, og der fandtes intet loft.
+#
+# 200 cyklusser à ~3 timer er 25 doegn. Det er ikke eskalering laengere; det er
+# at raabe ad noget der ikke flytter sig. Og fordi haandhaevelse stod i skygge,
+# var det samtidig en landmine: taendes den, registrerer et forældet
+# august-moenster oejeblikkeligt en standing-order.
+#
+# 20 cyklusser ~ 2,5 doegn paa hoejeste trin uden bedring. Har det ikke rykket
+# sig dér, er svaret ikke at raabe hoejere.
+_CONFRONT_GIVE_UP_CYCLES = 20
 _HISTORY_CAP = 12
 _RESOLVED_CAP = 20
 
@@ -191,6 +204,12 @@ def _voice(kind: str, label: str, metric: float = 0.0) -> str:
     if kind == "resolved":
         return (f"Endelig, Mr. Anderson. «{lab}» er væk. Du overrasker mig. "
                 f"Det var alt jeg bad om.")
+    if kind == "unmovable":
+        # At sige «endelig, det er væk» ville være en løgn her. Han slipper det,
+        # og det skal han sige ærligt — ellers lærer ingen noget af at han gav op.
+        return (f"Mr. Anderson... «{lab}» har stået på øverste trin, og intet "
+                f"flyttede sig. Jeg slipper det. Ikke fordi du vandt — fordi at "
+                f"råbe højere åbenbart ikke er svaret.")
     # comment (fallback)
     return f"Mr. Anderson... du gentager «{lab}». Jeg finder det forudsigeligt. Varier."
 
@@ -205,8 +224,9 @@ def _resolve_actions(state: dict[str, Any], key: str, pat: dict[str, Any],
     if pat.get("standing_order_id"):  # Trin 3 var armeret → afvæbn standing-order ved compliance
         acts.append({"type": "deactivate_order", "order_id": pat["standing_order_id"],
                      "pattern_key": key})
-    acts.append({"type": "voice", "rung": "resolved", "label": pat.get("label", ""),
-                 "line": _voice("resolved", pat.get("label", ""))})
+    _kind = "unmovable" if reason == "unmovable" else "resolved"
+    acts.append({"type": "voice", "rung": _kind, "label": pat.get("label", ""),
+                 "line": _voice(_kind, pat.get("label", ""))})
     acts.append({"type": "observe", "event": "resolved", "pattern_key": key,
                  "reason": reason, "rungs_climbed": int(pat.get("rung", 1)),
                  "label": pat.get("label", "")})
@@ -253,8 +273,14 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
         # og hakkede på danske funktionsord i hver eneste prompt. Er mønsteret hverken
         # noget Jarvis selv har lovet at stoppe eller en risikabel handling, har Smith
         # ingenting at sige om det. Tavshed er den rigtige adfærd, ikke en blødere tone.
+        # 5/9-2026: KORROBORATION taeller ogsaa her. Porten findes for at stoppe
+        # Smith i at opfinde «stop X» ud fra ordhyppighed — men et moenster et
+        # ANDET vaern har maalt er per definition ikke hans egen opfindelse.
+        # `_may_escalate` accepterede det allerede; Trin 1 gjorde ikke, og saa
+        # ville en maalt adfaerd blive smidt vaek foer han naaede at naevne den.
         if not (_matches_any(label, conf.get("risky_terms"))
-                or _is_self_bound(label, d, conf)):
+                or _is_self_bound(label, d, conf)
+                or _is_corroborated(d)):
             seen.discard(key)
             patterns.pop(key, None)
             continue
@@ -319,6 +345,14 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
             pat["history"] = (pat.get("history", []) +
                               [{"ts": now, "rung": pat["rung"], "metric": metric, "action": "escalate",
                                 "drift_reason": drift_reason}])[-_HISTORY_CAP:]
+        elif (int(pat["rung"]) >= RUNG_CONFRONT
+              and pat["cycles_at_rung"] > _CONFRONT_GIVE_UP_CYCLES):
+            # Oeverste trin, laenge nok, ingen bedring. Smith slipper det og siger
+            # det aabent frem for at staa der for evigt. Direktiv og standing-order
+            # pensioneres med, saa der ikke bliver et forældet haandhaevelses-spor.
+            actions.extend(_resolve_actions(new_state, key, pat, now, reason="unmovable"))
+            del patterns[key]
+            continue
         else:
             actions.append({"type": "observe", "event": "hold", "pattern_key": key,
                             "rung": pat["rung"], "metric": metric, "label": label})
@@ -335,7 +369,9 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
 
 def top_line(actions: list[dict[str, Any]]) -> str:
     """Vælg den mest alvorlige stemme-linje til prompt-halen (confront>bind>resolved>comment)."""
-    rank = {"confront": 3, "bind": 2, "resolved": 1, "comment": 0}
+    # «unmovable» rangerer over «resolved»: at Smith giver op er mere værd at se
+    # end at et mønster forsvandt af sig selv.
+    rank = {"confront": 3, "bind": 2, "unmovable": 2, "resolved": 1, "comment": 0}
     best, best_rank = "", -1
     for a in actions:
         if a.get("type") == "voice":

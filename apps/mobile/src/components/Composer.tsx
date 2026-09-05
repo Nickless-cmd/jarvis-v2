@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
-import { ArrowUp, AudioLines, ChevronDown, Cpu, FileText, Mic, Plus, Square } from 'lucide-react-native'
+import { ArrowUp, AudioLines, ChevronDown, Code2, Cpu, FileText, MessageCircle, Mic, Plus, Square } from 'lucide-react-native'
 import { shortModelLabel } from '../lib/modelLabel'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -34,7 +34,9 @@ export function Composer({
   showJumpToBottom,
   onJumpToBottom,
   researchMode,
-  onResearchModeChange
+  onResearchModeChange,
+  remoteMode,
+  onRemoteModeChange
 }: {
   disabled?: boolean
   working?: boolean
@@ -53,6 +55,8 @@ export function Composer({
   onJumpToBottom?: () => void
   researchMode?: boolean
   onResearchModeChange?: (next: boolean) => void
+  remoteMode?: 'chat' | 'code'
+  onRemoteModeChange?: (next: 'chat' | 'code') => void
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -178,7 +182,7 @@ export function Composer({
           onBlur={() => { setFocused(false); setWantFocus(false) }}
           multiline
           editable={!disabled}
-          placeholder="Skriv til Jarvis"
+          placeholder={remoteMode === 'code' ? 'Bed Jarvis ændre kode' : 'Skriv til Jarvis'}
           placeholderTextColor={tokens.color.fg3}
           style={styles.input}
         />
@@ -208,6 +212,26 @@ export function Composer({
               >
                 <Text style={[styles.researchText, researchMode && styles.researchTextOn]}>Research</Text>
               </Pressable>
+            ) : null}
+            {onRemoteModeChange ? (
+              <View style={styles.remoteGroup}>
+                {(['chat', 'code'] as const).map((mode) => {
+                  const active = (remoteMode ?? 'chat') === mode
+                  const Icon = mode === 'chat' ? MessageCircle : Code2
+                  return (
+                    <Pressable
+                      key={mode}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      onPress={() => onRemoteModeChange(mode)}
+                      style={[styles.remoteSegment, active && styles.remoteSegmentOn]}
+                    >
+                      <Icon size={13} color={active ? tokens.color.bg0 : tokens.color.fg2} strokeWidth={2} />
+                      <Text style={[styles.remoteText, active && styles.remoteTextOn]}>{mode === 'chat' ? 'Chat' : 'Code'}</Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
             ) : null}
           </View>
           <View style={styles.right}>
@@ -360,6 +384,26 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     flexShrink: 1
   },
   modelText: { color: tokens.color.fg2, fontSize: 12, fontWeight: '600', flexShrink: 1 },
+  // Chat/Code — ét sammenhaengende segment frem for to loese piller, saa det
+  // laeses som ÉT valg med to tilstande og ikke som to knapper der kan vaere
+  // taendt samtidig. Samme hoejde og radius som research-pillen ved siden af.
+  remoteGroup: {
+    flexDirection: 'row',
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: tokens.color.bg3,
+    overflow: 'hidden'
+  },
+  remoteSegment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    height: 30
+  },
+  remoteSegmentOn: { backgroundColor: tokens.color.accent },
+  remoteText: { color: tokens.color.fg2, fontSize: 12, fontWeight: '700' },
+  remoteTextOn: { color: tokens.color.bg0 },
   researchPill: {
     height: 30,
     justifyContent: 'center',

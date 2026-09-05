@@ -155,6 +155,11 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [model, setModel] = useState<ModelChoice | null>(null)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
   const [researchMode, setResearchMode] = useState(false)
+  // Chat/Code — «hvad slags arbejde er det?», ikke «hvordan skal modellen køre?».
+  // Derfor her og ikke i ModelPicker: mode hører til ved composeren, tæt på det
+  // man er ved at skrive. Modsat researchMode nulstilles den IKKE efter afsendelse
+  // — vælger man kode-tilstand, bliver man som regel i den et stykke tid.
+  const [remoteMode, setRemoteMode] = useState<'chat' | 'code'>('chat')
   const [thinkingMode, setThinkingMode] = useState<ThinkingMode>('think')
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>('ask')
   // FEATURE 1: gendan sidst valgte model på tværs af app-genstart. Sættes
@@ -338,7 +343,8 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       ...modelOpts(),
       attachmentIds,
       thinkingMode,
-      approvalMode
+      approvalMode,
+      mode: remoteMode
     })
     setPendingAttachments([])
     if (researchMode) setResearchMode(false)
@@ -566,6 +572,8 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           onJumpToBottom={jumpToBottom}
           researchMode={researchMode}
           onResearchModeChange={setResearchMode}
+          remoteMode={remoteMode}
+          onRemoteModeChange={setRemoteMode}
         />
         </View>
       </View>

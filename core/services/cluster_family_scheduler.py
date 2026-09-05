@@ -179,6 +179,17 @@ def _loop() -> None:
     logger.info("CLUSTER-FAMILY-LOOP: entered interval=%ss", INTERVAL_SECONDS)
     while not _STOP.is_set():
         _ITERATION += 1
+        # Løft de følte overflader over procesgrænsen. Daemonerne bor i DENNE
+        # proces og skriver til modul-globaler; prompten bygges i api-processen,
+        # hvor de globaler altid er tomme. Uden dette kald når thought_stream,
+        # curiosity, ironi og de 11 andre aldrig frem — målt 5/9: 183 fragmenter
+        # på en uge, nul i prompten. Self-safe og billigt: kun ikke-tomme
+        # overflader skrives.
+        try:
+            from core.services.felt_surface_store import persist_local_surfaces
+            persist_local_surfaces()
+        except Exception:
+            pass
         try:
             outcome = run_due_families()
             ran = outcome.get("ran") or []

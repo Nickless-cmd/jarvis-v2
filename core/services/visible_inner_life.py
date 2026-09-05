@@ -734,6 +734,34 @@ def _truncate_clean(text: str, cap: int) -> str:
     return (head[:space].rstrip() if space > 0 else head).rstrip() + " …"
 
 
+# Instruks-ekko: modellen svarer nogle gange med den OPGAVE den fik i stedet for
+# at løse den. Det er prosa, så JSON-værnet nedenfor fanger det ikke — og fordi
+# [INDRE LIV] altid viser den NYESTE stemme, stod dette live i hans selvopfattelse:
+#
+#   · Stemme: The user asks me to respond as Jarvis with an inner voice in
+#     Danish, as a JSON object. Key facts: - Active grounding sources: ...
+#
+# Målt 5/9-2026: 323 af 27.011 gemte voice_line (1-2 %, stabilt over uger). En lav
+# rate rammer alligevel ofte, netop fordi kun den nyeste vises.
+_INSTRUKS_EKKO = (
+    "the user asks",
+    "as a json object",
+    "key facts:",
+    "respond as jarvis",
+    "inner voice in danish",
+    "active grounding sources",
+    "you are jarvis",
+    "din opgave er",
+    "svar som jarvis",
+)
+
+
+def _is_instruction_echo(text: str) -> bool:
+    """Er dette opgaven i stedet for svaret?"""
+    lav = (text or "").lower()
+    return any(m in lav for m in _INSTRUKS_EKKO)
+
+
 def _voice_as_prose(text: str) -> Optional[str]:
     """Stemme-feltet SKAL være prosa, ikke rå JSON (Jarvis-spec 2026-06-23): produceren
     lækkede nogle gange `json {"thought": "..."}` direkte ind. _truncate_clean hjælper
@@ -743,6 +771,8 @@ def _voice_as_prose(text: str) -> Optional[str]:
 
     t = (text or "").strip()
     if not t:
+        return None
+    if _is_instruction_echo(t):
         return None
     # Strip ledende 'json'/kodehegn-markør.
     body = _re.sub(r"^(?:```\s*)?json\b\s*|^```\s*", "", t, flags=_re.IGNORECASE).strip()
@@ -776,11 +806,20 @@ def _voice_line() -> Optional[str]:
     try:
         from core.runtime.db import get_protected_inner_voice
 
-        iv = get_protected_inner_voice()
-        if not iv:
-            return None
-        voice = str(iv.get("voice_line") or "").strip()
-        if not voice:
+        # Gå tilbage til den seneste RENE stemme. En forurenet nyeste må ikke
+        # efterlade ham uden stemme-linje overhovedet — 1-2 % af rækkerne er
+        # instruks-ekko, og prompten viser altid den nyeste.
+        iv = None
+        voice = ""
+        for _spring in range(5):
+            kandidat = get_protected_inner_voice(offset=_spring)
+            if not kandidat:
+                break
+            tekst = str(kandidat.get("voice_line") or "").strip()
+            if tekst and not _is_instruction_echo(tekst):
+                iv, voice = kandidat, tekst
+                break
+        if not iv or not voice:
             return None
         if voice.lower().startswith("[fallback"):
             marker = "experiential_influence_narrative="

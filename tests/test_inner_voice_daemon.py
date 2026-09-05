@@ -787,3 +787,16 @@ def test_deterministic_compose_keeps_open_loop_non_actionable_without_clarify_pr
 
     assert note["mode"] in {"work-steady", "witness-steady", "circling"}
     assert note["initiative"] is None
+
+
+def test_ekko_gemmes_ikke_som_stemme():
+    """Stop forureningen ved kilden — ikke kun ved visningen."""
+    from core.services.inner_voice_daemon import _ren_stemme
+
+    assert _ren_stemme(
+        "The user asks me to respond as Jarvis with an inner voice in Danish, "
+        "as a JSON object."
+    ) == ""
+    aegte = "Der ligger en uro i at koden virker men jeg ikke forstår hvorfor."
+    assert _ren_stemme(aegte) == aegte
+    assert _ren_stemme(None) == ""

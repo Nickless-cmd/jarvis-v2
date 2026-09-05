@@ -278,11 +278,24 @@ def resolve_surface(name: str) -> Callable[[], dict[str, Any]] | None:
 
 
 def read_surface(name: str) -> dict[str, Any]:
-    """Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names."""
+    """Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names.
+
+    2026-09-05: de FØLTE overflader læses gennem det delte lager. Deres daemoner
+    holder tilstand i modul-globaler og kører i jarvis-runtime, mens prompten
+    bygges i jarvis-api — så alle 14 var tomme netop dér hvor de skulle bruges.
+    `shared_surface` bruger de lokale globaler når de bærer noget (producent-
+    processen) og ellers den delte tilstand (prompt-processen).
+    """
     router = _get_router()
     fn = router.get(name)
     if fn is None:
         return {"error": f"unknown surface '{name}'", "valid": sorted(router.keys())}
+    try:
+        from core.services.felt_surface_store import FELT_SURFACE_NAMES, shared_surface
+        if name in FELT_SURFACE_NAMES:
+            return shared_surface(name, fn)
+    except Exception:
+        pass  # fail-open: hellere den lokale overflade end ingen
     try:
         return fn()
     except Exception as exc:

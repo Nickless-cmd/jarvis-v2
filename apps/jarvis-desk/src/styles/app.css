@@ -1707,6 +1707,17 @@
 .jm-decide-btn:disabled { opacity: 0.45; cursor: default; }
 .jm-unanswered { margin-top: 14px; font-size: 12px; }
 
+/* Tomme løfter — «slap forbi» er tallet der betyder noget, så det står først. */
+.jm-hollow { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.jm-hollow-models { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.jm-hollow-row { display: grid; grid-template-columns: 1fr 90px 44px 52px; align-items: center;
+  gap: 10px; font-size: 12px; }
+.jm-hollow-name { color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jm-hollow-bar { height: 5px; border-radius: 3px; background: var(--bg-3); overflow: hidden; }
+.jm-hollow-fill { display: block; height: 100%; background: #e0a33e; }
+.jm-hollow-pct { color: var(--fg-1); text-align: right; font-variant-numeric: tabular-nums; }
+.jm-hollow-abs { text-align: right; font-variant-numeric: tabular-nums; }
+
 /* Levende puls fra Centralens SSE-stream */
 .jm-pulse { display: flex; align-items: center; gap: 9px; padding: 7px 11px; margin-bottom: 12px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--bg-1); font-size: 12px; }

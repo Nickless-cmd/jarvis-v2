@@ -259,6 +259,7 @@ function SectionView({ section, data, config, onActed }: {
     const inc = (data.incidents as { severity: string; nerve: string; message: string }[]) ?? []
     return (
       <>
+        <HollowPromises data={data.hollow_promises as HollowCensus | undefined} />
         <div className="jm-section-sub">{inc.length} uløste flag · seneste fyringer:</div>
         <div className="jm-feed">
           {feed.slice(0, 24).map((f, i) => (
@@ -272,6 +273,59 @@ function SectionView({ section, data, config, onActed }: {
     )
   }
   return <pre className="jm-raw">{JSON.stringify(data, null, 2)}</pre>
+}
+
+interface HollowCensus {
+  available?: boolean
+  window_hours?: number
+  models?: { model: string; turns: number; hollow: number; hollow_pct: number }[]
+  hollow_total?: number
+  guard_detected?: number
+  escaped?: number
+}
+
+/**
+ * Tomme løfter — svar der annoncerer et skridt og ikke tager det.
+ *
+ * Bjørn 5/9-2026: «Centralen skal kunne tælle de tomme løfter.» Backenden
+ * talte dem samme dag, men denne fane renderede kun feed + flag-antal, så
+ * tallet var usynligt uden at folde rå-laget ud. Data uden visning er samme
+ * sygdom som ingen data.
+ *
+ * SLAP FORBI står først og alene. Værnet fanger en del af dem, og et værn der
+ * fanger 12 af 31 ser perfekt ud hvis man kun tæller sine egne fangster — så
+ * differencen er det ene tal der er værd at kigge på.
+ */
+function HollowPromises({ data }: { data?: HollowCensus }) {
+  if (!data?.available) return null
+  const modeller = (data.models ?? []).filter((m) => m.turns >= 3)
+  const slap = Number(data.escaped ?? 0)
+  return (
+    <div className="jm-hollow">
+      <div className="jm-section-sub">
+        Tomme løfter · {data.window_hours ?? 24} t
+      </div>
+      <div className="jm-stats">
+        <Stat label="slap forbi værnet" value={String(slap)} tone={slap > 0 ? 'warn' : 'ok'} />
+        <Stat label="i alt" value={String(data.hollow_total ?? 0)} />
+        <Stat label="grebet" value={String(data.guard_detected ?? 0)} />
+      </div>
+      {modeller.length > 0 && (
+        <div className="jm-hollow-models">
+          {modeller.map((m) => (
+            <div key={m.model} className="jm-hollow-row">
+              <span className="jm-hollow-name">{m.model}</span>
+              <span className="jm-hollow-bar">
+                <span className="jm-hollow-fill" style={{ width: `${Math.min(m.hollow_pct, 100)}%` }} />
+              </span>
+              <span className="jm-hollow-pct">{m.hollow_pct}%</span>
+              <span className="jm-dim jm-hollow-abs">{m.hollow}/{m.turns}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {

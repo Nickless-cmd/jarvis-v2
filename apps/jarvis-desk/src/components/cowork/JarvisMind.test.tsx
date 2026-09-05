@@ -7,6 +7,7 @@ vi.mock('../../lib/api', () => ({
       { section: 'overview', label: 'Oversigt', ready: true },
       { section: 'mind', label: 'Sind', ready: true },
       { section: 'decisions', label: 'Beslutninger', ready: true },
+      { section: 'observability', label: 'Observabilitet', ready: true },
       { section: 'council', label: 'Council', ready: false },
     ],
   }),
@@ -27,6 +28,19 @@ vi.mock('../../lib/api', () => ({
           { kind: 'life_project', id: 'life-1', text: 'Build a steadier inner architecture',
             why: 'I want a longer thread of coherence.', actions: ['abandon'] },
         ],
+      })
+    }
+    if (section === 'observability') {
+      return Promise.resolve({
+        feed: [], incidents: [],
+        hollow_promises: {
+          available: true, window_hours: 24, hollow_total: 31,
+          guard_detected: 12, escaped: 19,
+          models: [
+            { model: 'deepseek-v4-flash-vision-exp', turns: 42, hollow: 24, hollow_pct: 57.1 },
+            { model: 'deepseek-v4-flash', turns: 97, hollow: 7, hollow_pct: 7.2 },
+          ],
+        },
       })
     }
     return Promise.resolve({ status: 'green', coverage: { nerves: 116, clusters: 20 } })
@@ -96,6 +110,18 @@ describe('JarvisMind', () => {
     await waitFor(() => expect(screen.getByRole('tab', { name: 'Beslutninger' })).toBeTruthy())
     await userEvent.click(screen.getByRole('tab', { name: 'Beslutninger' }))
     await waitFor(() => expect(screen.getByText(/31 tidligere forslag udløb uden svar/)).toBeTruthy())
+  })
+
+  // Backenden talte de tomme løfter fra dag ét, men fanen renderede kun feed +
+  // flag-antal — så tallet var usynligt uden at folde rå-laget ud.
+  it('observabilitet VISER de tomme løfter, ikke kun i rå-laget', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    render(<JarvisMind config={CFG} />)
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Observabilitet' })).toBeTruthy())
+    await userEvent.click(screen.getByRole('tab', { name: 'Observabilitet' }))
+    await waitFor(() => expect(screen.getByText('slap forbi værnet')).toBeTruthy())
+    expect(screen.getByText('19')).toBeTruthy()
+    expect(screen.getByText('57.1%')).toBeTruthy()
   })
 
   it('placeholder for pending-faner', async () => {

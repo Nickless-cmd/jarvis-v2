@@ -977,7 +977,21 @@ def _build_visible_chat_prompt_assembly_impl(
     # sections are dropped. Identity (SOUL/IDENTITY/STANDING_ORDERS),
     # nudges, capability truth, etc. are NOT awareness — they live above.
     _awareness: list[tuple[int, str, str]] = []  # (priority, label, content)
-    _AWARENESS_BUDGET = 6000  # chars; ~1.5 KT max for the whole awareness block
+    # 2026-09-05: 6000 → 9000. Otte sektioner blev taget af noise-blacklisten
+    # (3.584 tegn), og blokken begyndte straks at klippe — foerst
+    # rule_engine_conclusions + own_initiatives + central-hypoteser, i naeste
+    # bygning selve DECISION-ADHERENCE-GATEN. En advarsel der bliver smidt ud af
+    # pladsmangel er praecis den fejl vi brugte dagen paa at rette.
+    # ~2.2 KT for hele blokken; halen er alligevel ucachet, saa prisen er ren
+    # per-tur-token og ikke et cache-brud.
+    # Sektioner budgettet ALDRIG maa klippe: identitets-pins han selv har valgt,
+    # og de gates der aendrer hans adfaerd frem for blot at oplyse ham.
+    _NEVER_DROP_LABELS = (
+        "pinned identity context",
+        "decision adherence gate",
+        "loop-compliance self-check",
+    )
+    _AWARENESS_BUDGET = 9000  # chars; ~2.2 KT max for the whole awareness block
 
     # P3.5 (2026-04-29): awareness categories — instead of 30+ flat sections,
     # group by purpose so the model sees a small number of named lanes.
@@ -2165,7 +2179,14 @@ def _build_visible_chat_prompt_assembly_impl(
         _needed = len(_content) + (len(_pending_header) + 2 if _pending_header else 0)
         # Valgt historik (2026-06-22): Jarvis' egne identity-pins har forrang —
         # de droppes aldrig af budgettet. Auto-udvalgte brain-facts fylder resten.
-        _never_drop = _label == "pinned identity context"
+        #
+        # 2026-09-05: adfaerds-gates foejet til. De aendrer hvad han GOER — de
+        # eskalerer fra "Husk at..." over "DU SKAL..." til kritisk advarsel — og
+        # en advarsel der bliver klemt ud af pladsmangel er lige saa tavs som en
+        # der stod paa en blacklist. Vi maalte netop adherence-gaten blive
+        # evicted samme dag den blev tændt. Informationssektioner maa vige for
+        # dem, ikke omvendt.
+        _never_drop = _label in _NEVER_DROP_LABELS
         if not _never_drop and _used > 0 and _used + _needed > _AWARENESS_BUDGET:
             _dropped.append(_label)
             return

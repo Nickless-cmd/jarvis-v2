@@ -45,7 +45,13 @@ HOOK_EVENTS: tuple[str, ...] = (
 # konfigureres men fyrer ikke — og det skal staa her, ikke i en TODO.
 # `UserPromptSubmit` koblet 5/9: begge domme kan honoreres dér — `block`
 # afslutter turen, `inject` haefter kontekst paa foer prompt-assembly.
-WIRED_EVENTS: frozenset[str] = frozenset({"UserPromptSubmit"})
+# `PreToolUse` koblet i `visible_tool_exec.run_tool_batch` — foer annoncering og
+# foer eksekvering, det eneste sted «block» KAN honoreres. Et blokeret kald faar
+# sit eget resultat paa sin egen plads, saa modellen faar at vide HVORFOR.
+# `PostToolUse` samme sted, efter resultaterne: kun `inject` giver mening dér,
+# for vaerktoejet HAR koert.
+WIRED_EVENTS: frozenset[str] = frozenset(
+    {"UserPromptSubmit", "PreToolUse", "PostToolUse"})
 
 _log = logging.getLogger(__name__)
 

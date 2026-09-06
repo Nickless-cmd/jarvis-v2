@@ -147,10 +147,12 @@ class TestKoblingen:
         """Erklæringen må ikke love mere end koden gør."""
         assert lh.WIRED_EVENTS <= set(lh.HOOK_EVENTS)
 
-    def test_de_oevrige_er_IKKE_erklaeret_endnu(self):
-        """En PreToolUse der svarer «block» og bliver ignoreret ville være
-        værre end ingen hook — den ser ud til at virke."""
-        for e in ("PreToolUse", "PostToolUse", "Stop", "PreCompact"):
+    def test_de_endnu_ikke_koblede_er_IKKE_erklaeret(self):
+        """Vagten der holder erklæringen ærlig. En hændelse der svarer «block»
+        og bliver ignoreret ville være værre end ingen hook — den ser ud til at
+        virke. Listen krymper efterhånden som hver enkelt kan HONORERES."""
+        for e in ("SessionStart", "SessionEnd", "Stop", "PreCompact",
+                  "SubagentStop", "Notification"):
             assert e not in lh.WIRED_EVENTS
 
     def test_koden_kalder_faktisk_fire_for_den(self):
@@ -220,3 +222,50 @@ class TestOperatorHooks:
             ot, "operator_bash_async",
             lambda **kw: (_ for _ in ()).throw(RuntimeError("bro nede")))
         assert (await lh.fire_async("Stop", {}))["action"] == "allow"
+
+
+class TestVaerktoejsHooks:
+    """`PreToolUse` er den stærkeste af de ni: den kan stoppe en handling FØR
+    den sker. Derfor er den også den der stiller det største krav — «block»
+    skal kunne honoreres, ellers må hændelsen ikke fyre."""
+
+    def test_begge_er_erklaeret_koblet(self):
+        assert {"PreToolUse", "PostToolUse"} <= lh.WIRED_EVENTS
+
+    def test_koblingen_findes_FAKTISK_i_eksekveringen(self):
+        """Erklæringen alene er ikke nok."""
+        import pathlib
+        kilde = pathlib.Path("core/services/visible_tool_exec.py").read_text()
+        assert '"PreToolUse"' in kilde and '"PostToolUse"' in kilde
+        assert "fire_async" in kilde
+
+    def test_blokeret_kald_udelades_fra_eksekvering(self):
+        """Filteret skal fjerne kaldet, ikke bare undlade at annoncere det."""
+        import pathlib
+        kilde = pathlib.Path("core/services/visible_tool_exec.py").read_text()
+        assert "_kald_til_exec" in kilde
+        assert "_exec_fn,\n                _kald_til_exec," in kilde
+
+    def test_blokeret_kald_faar_et_svar(self):
+        """Uden et resultat ville modellen vente på noget der aldrig kommer."""
+        import pathlib
+        kilde = pathlib.Path("core/services/visible_tool_exec.py").read_text()
+        assert "blokeret af hook" in kilde
+        assert '"status": "blocked"' in kilde
+
+    def test_matcher_gaelder_paa_vaerktoejs_haendelser(self, tmp_path, monkeypatch):
+        """En hook der kun gælder bash må ikke fyre på read_file."""
+        monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+        h = {"type": "command", "command": "exit 2", "matcher": "bash"}
+        assert lh.run_hook("PreToolUse", h, {"tool": "read_file"})["action"] == "allow"
+        assert lh.run_hook("PreToolUse", h, {"tool": "bash"})["action"] == "block"
+
+    @pytest.mark.asyncio
+    async def test_kun_matchende_hooks_koeres_i_fire_async(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+        (tmp_path / "config").mkdir()
+        (tmp_path / "config" / "hooks.json").write_text(json.dumps({
+            "hooks": {"PreToolUse": [
+                {"type": "command", "command": "exit 2", "matcher": "bash"}]}}))
+        assert (await lh.fire_async("PreToolUse", {"tool": "read_file"}))["action"] == "allow"
+        assert (await lh.fire_async("PreToolUse", {"tool": "bash"}))["action"] == "block"

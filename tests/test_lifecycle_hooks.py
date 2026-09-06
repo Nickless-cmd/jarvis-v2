@@ -151,8 +151,7 @@ class TestKoblingen:
         """Vagten der holder erklæringen ærlig. En hændelse der svarer «block»
         og bliver ignoreret ville være værre end ingen hook — den ser ud til at
         virke. Listen krymper efterhånden som hver enkelt kan HONORERES."""
-        for e in ("SessionStart", "SessionEnd", "Stop", "PreCompact",
-                  "SubagentStop", "Notification"):
+        for e in ("SessionEnd", "PreCompact", "SubagentStop", "Notification"):
             assert e not in lh.WIRED_EVENTS
 
     def test_koden_kalder_faktisk_fire_for_den(self):
@@ -269,3 +268,40 @@ class TestVaerktoejsHooks:
                 {"type": "command", "command": "exit 2", "matcher": "bash"}]}}))
         assert (await lh.fire_async("PreToolUse", {"tool": "read_file"}))["action"] == "allow"
         assert (await lh.fire_async("PreToolUse", {"tool": "bash"}))["action"] == "block"
+
+
+class TestStopOgSessionStart:
+    """`Stop` er den eneste hændelse hvor «block» betyder BLIV VED — turen er
+    ved at slutte, så der er intet at forhindre, kun noget at fortsætte."""
+
+    def test_begge_er_erklaeret(self):
+        assert {"Stop", "SessionStart"} <= lh.WIRED_EVENTS
+
+    def test_stop_er_koblet_hvor_turen_slutter(self):
+        import pathlib
+        kilde = pathlib.Path("core/services/visible_runs.py").read_text()
+        stop = kilde.index('"Stop" in _lh_stop.WIRED_EVENTS')
+        brud = kilde.index("# No more tool calls — this round produced")
+        assert stop < brud, "Stop skal fyre FØR turen brydes"
+
+    def test_stop_har_et_loft_paa_én_genoptagelse(self):
+        """En hook der altid siger «bliv ved» må ikke holde turen i live for evigt."""
+        import pathlib
+        kilde = pathlib.Path("core/services/visible_runs.py").read_text()
+        assert "_stop_hook_resumed = False" in kilde
+        assert "not _stop_hook_resumed" in kilde
+
+    def test_sessionstart_honorerer_KUN_inject(self):
+        """At nægte en hel session ved dens første ord er en større magt end en
+        hook bør have — og «bliv ved» hører til Stop."""
+        import pathlib
+        kilde = pathlib.Path("core/services/visible_runs.py").read_text()
+        afsnit = kilde[kilde.index("SessionStart-hook"):kilde.index("UserPromptSubmit-hook")]
+        assert 'action") == "inject"' in afsnit
+        assert 'action") == "block"' not in afsnit
+
+    def test_sessionstart_fyrer_kun_paa_foerste_tur(self):
+        import pathlib
+        kilde = pathlib.Path("core/services/visible_runs.py").read_text()
+        afsnit = kilde[kilde.index("SessionStart-hook"):kilde.index("UserPromptSubmit-hook")]
+        assert "_foerste" in afsnit and "recent_chat_session_messages" in afsnit

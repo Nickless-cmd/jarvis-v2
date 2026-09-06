@@ -50,8 +50,13 @@ HOOK_EVENTS: tuple[str, ...] = (
 # sit eget resultat paa sin egen plads, saa modellen faar at vide HVORFOR.
 # `PostToolUse` samme sted, efter resultaterne: kun `inject` giver mening dér,
 # for vaerktoejet HAR koert.
+# `Stop` koblet ved turens afslutning: «block» betyder BLIV VED — den eneste
+# dom der giver mening naar turen er ved at slutte. Loft paa én genoptagelse.
+# `SessionStart` fyrer paa sessionens foerste tur; kun `inject` honoreres, for
+# at naegte en hel session ved dens foerste ord er en stoerre magt end en hook
+# boer have.
 WIRED_EVENTS: frozenset[str] = frozenset(
-    {"UserPromptSubmit", "PreToolUse", "PostToolUse"})
+    {"UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "SessionStart"})
 
 _log = logging.getLogger(__name__)
 

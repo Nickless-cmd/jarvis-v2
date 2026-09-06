@@ -1172,6 +1172,28 @@ async def _stream_visible_run(
     if run.user_message.strip().lower() == "/compact":
         run.user_message = _handle_compact_command(run)
 
+    # ── SessionStart-hook ────────────────────────────────────────────────
+    # Fyrer paa sessionens FOERSTE tur. `inject` haefter opstart-kontekst paa;
+    # `block` afvises bevidst her — at naegte en hel session ved dens foerste
+    # ord er en stoerre magt end en hook boer have, og «bliv ved»-dommen hoerer
+    # til Stop. Vi honorerer altsaa kun det vi ogsaa mener.
+    try:
+        from core.services import lifecycle_hooks as _lh_ss
+        if "SessionStart" in _lh_ss.WIRED_EVENTS and _lh_ss.hooks_for("SessionStart"):
+            from core.services.chat_sessions import recent_chat_session_messages
+            _tidligere = recent_chat_session_messages(run.session_id, limit=3) or []
+            _foerste = len([m for m in _tidligere
+                            if (m.get("role") if isinstance(m, dict) else "") == "assistant"]) == 0
+            if _foerste:
+                _ssd = await _lh_ss.fire_async(
+                    "SessionStart", {"session_id": str(run.session_id or "")},
+                    user_id=str(force_user_id or ""))
+                if _ssd.get("action") == "inject" and _ssd.get("message"):
+                    run.user_message = (
+                        f"{run.user_message}\n\n[HOOK]\n{_ssd['message']}")
+    except Exception as _ss_exc:
+        logger.warning("SessionStart-hook fejlede: %r", _ss_exc)
+
     # ── UserPromptSubmit-hook ────────────────────────────────────────────
     # Foerste af jarvis-codes ni livscyklus-hooks der kobles. Stedet er valgt
     # fordi BEGGE domme kan honoreres her: `run.user_message` er stadig
@@ -1803,6 +1825,8 @@ async def _stream_visible_run(
         # Genoptag HOEJST én gang pr. tur paa baggrunds-output. Uden loftet
         # kunne en snakkesalig shell holde turen i live i det uendelige.
         _bg_resumed_this_turn = False
+        # Samme loft for Stop-hooken: én genoptagelse pr. tur.
+        _stop_hook_resumed = False
         if (result is not None and not _collected_native_tool_calls
                 and not (getattr(result, "text", "") or "").strip()):
             try:
@@ -3800,6 +3824,43 @@ async def _stream_visible_run(
                                 continue
                         except Exception as _bg_exc:
                             logger.debug("background-resume fejlede: %s", _bg_exc)
+
+                        # ── Stop-hook ────────────────────────────────────
+                        # I jarvis-code betyder «block» paa Stop: bliv ved. Det
+                        # er den eneste dom der giver mening her — turen er ved
+                        # at slutte, saa der er intet at forhindre, kun noget at
+                        # fortsaette. Hookens besked bliver til opgaven.
+                        #
+                        # Loft paa ÉN gang pr. tur, samme grund som baggrunds-
+                        # genoptagelsen: en hook der altid siger «bliv ved» maa
+                        # ikke kunne holde turen i live for evigt.
+                        try:
+                            from core.services import lifecycle_hooks as _lh_stop
+                            if ("Stop" in _lh_stop.WIRED_EVENTS
+                                    and not _stop_hook_resumed
+                                    and _lh_stop.hooks_for("Stop")):
+                                _sd = await _lh_stop.fire_async(
+                                    "Stop",
+                                    {"session_id": str(run.session_id or ""),
+                                     "rounds": _agentic_round + 1,
+                                     "text": _exchange_text()[:2000]},
+                                    user_id=str(force_user_id or ""))
+                                if _sd.get("action") == "block":
+                                    _stop_hook_resumed = True
+                                    base_messages.append({
+                                        "role": "user",
+                                        "content": ("[HOOK] " + str(
+                                            _sd.get("message")
+                                            or "Du er ikke faerdig endnu."))})
+                                    _followup_exchanges.append(
+                                        _vf.ToolExchange(text=_exchange_text(),
+                                                         tool_calls=[], results=[]))
+                                    logger.info(
+                                        "stop-hook run_id=%s — turen fortsaetter",
+                                        run.run_id)
+                                    continue
+                        except Exception as _stop_exc:
+                            logger.warning("Stop-hook fejlede: %r", _stop_exc)
 
                         # No more tool calls — this round produced the final response.
                         break

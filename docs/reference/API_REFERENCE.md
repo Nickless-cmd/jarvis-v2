@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-06 from app.routes (live) — 536 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-06 from app.routes (live) — 537 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -436,6 +436,7 @@
 | GET | `/mc/rhythm` | dict | mission_control_introspection |
 | GET | `/mc/runs` | dict | mission_control_runs_ops |
 | GET | `/mc/runs/{run_id}` | dict | mission_control_dashboard |
+| GET | `/mc/runs/{run_id}/prompt` | dict | mission_control_dashboard |
 | GET | `/mc/runtime` | dict | mission_control_runtime_config |
 | GET | `/mc/runtime-contract` | dict | mission_control_runtime_config |
 | POST | `/mc/runtime-contract/candidates/{candidate_id}/apply` | dict | mission_control_runtime_config |

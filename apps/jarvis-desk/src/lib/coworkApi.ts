@@ -440,3 +440,21 @@ export async function getKrop(config: ApiConfig): Promise<{ krop: Krop | null; t
   const d = await apiFetch<{ body?: Krop; ts?: string }>(config, '/central/body')
   return { krop: d.body ?? null, ts: d.ts ?? '' }
 }
+
+/** Hvad byggede han svaret på? Sektionerne i prompten for ét run.
+ *  `found:false` betyder at posten mangler for netop det run (13 af 200) —
+ *  ikke at prompten var tom. */
+export type PromptSektion = { label: string; chars: number; pct: number }
+export type PromptSammensaetning = {
+  run_id: string
+  found: boolean
+  answer_chars?: number
+  total_chars?: number
+  section_count?: number
+  sections: PromptSektion[]
+}
+export async function getRunPrompt(
+  config: ApiConfig, runId: string,
+): Promise<PromptSammensaetning> {
+  return apiFetch(config, `/mc/runs/${encodeURIComponent(runId)}/prompt`)
+}

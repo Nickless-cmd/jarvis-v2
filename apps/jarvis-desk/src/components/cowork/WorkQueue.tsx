@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AlertTriangle, CheckCircle2, Clock, Eye, Loader2 } from 'lucide-react'
+import { PromptSammensaetning } from './PromptSammensaetning'
 import type { ApiConfig } from '../../lib/api'
 import { useWorkQueue } from '../../hooks/useWorkQueue'
 import type { KoeIndslag } from '../../hooks/useWorkQueue'
@@ -64,7 +65,7 @@ export function WorkQueue({ config }: { config: ApiConfig | undefined }) {
             </button>
             {åben && (
               <ul className="wq-liste">
-                {rows.slice(0, 12).map((r) => <Raekke key={r.id} indslag={r} />)}
+                {rows.slice(0, 12).map((r) => <Raekke key={r.id} indslag={r} config={config} />)}
                 {rows.length > 12 && (
                   <li className="wq-flere">+{rows.length - 12} mere</li>
                 )}
@@ -77,11 +78,34 @@ export function WorkQueue({ config }: { config: ApiConfig | undefined }) {
   )
 }
 
-function Raekke({ indslag }: { indslag: KoeIndslag }) {
+function Raekke({ indslag, config }: { indslag: KoeIndslag; config?: ApiConfig }) {
+  const [aaben, setAaben] = useState(false)
+  // Kun kørsler har en prompt-sammensætning; godkendelser har ingen tur bag sig.
+  const runId = indslag.kilde === 'run'
+    ? String((indslag.raa as { run_id?: string }).run_id ?? '')
+    : ''
+
   return (
     <li className="wq-raekke">
-      <span className="wq-titel" title={indslag.titel}>{indslag.titel}</span>
+      {runId ? (
+        <button
+          type="button"
+          className="wq-titel wq-titel-knap"
+          title="Hvad byggede han svaret på?"
+          aria-expanded={aaben}
+          onClick={() => setAaben((v) => !v)}
+        >
+          {indslag.titel}
+        </button>
+      ) : (
+        <span className="wq-titel" title={indslag.titel}>{indslag.titel}</span>
+      )}
       {indslag.detalje && <span className="wq-detalje">{indslag.detalje}</span>}
+      {aaben && runId && (
+        <div className="wq-udfoldet">
+          <PromptSammensaetning config={config} runId={runId} />
+        </div>
+      )}
     </li>
   )
 }

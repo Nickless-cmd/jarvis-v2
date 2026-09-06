@@ -2764,3 +2764,30 @@
   margin: 8px 0 0; color: var(--fg-2); font-size: 12.5px;
 }
 @media (prefers-reduced-motion: reduce) { .errorcard-alt { transition: none; } }
+
+/* Prompt-sammensætning: hvad byggede han svaret på. Ligger foldet ud under
+   en kø-række, så run_id'et er dét man klikkede på — ikke et gæt. */
+.wq-titel-knap {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: inherit; font: inherit; text-align: left;
+}
+.wq-titel-knap:hover { text-decoration: underline; }
+.wq-udfoldet { flex-basis: 100%; margin-top: 6px; }
+.ps { display: flex; flex-direction: column; gap: 6px; }
+.ps-head {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--fg-3); font-size: 11.5px;
+}
+.ps-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.ps-rk { display: grid; grid-template-columns: minmax(0, 12rem) 1fr 2.6rem; align-items: center; gap: 8px; }
+.ps-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--fg-2); font-size: 12px;
+}
+.ps-bar { height: 5px; background: var(--bg-3); border-radius: 3px; overflow: hidden; }
+.ps-fyld { display: block; height: 100%; background: var(--tint); }
+.ps-tal {
+  color: var(--fg-3); font-size: 11.5px; text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ps-rest, .ps-tom { margin: 2px 0 0; color: var(--fg-3); font-size: 11.5px; }

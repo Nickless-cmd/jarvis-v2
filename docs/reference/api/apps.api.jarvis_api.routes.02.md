@@ -278,7 +278,9 @@ _Mission Control dashboard-endpoints — de tre data-kilder som kontrolcenter-UI
 | function | `mc_scheduled_tasks` | `(limit=…)` | Afventende planlagte/tilbagevendende opgaver for nuværende bruger (owner uden | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L23) |
 | function | `mc_costs_daily` | `(days=…)` | Pris/tokens pr. dag (op til 30 dage bagud) til MC's Cost-panel. Self-safe. | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L35) |
 | function | `_event_to_step` | `(row)` | events-række → kompakt trin til run-detaljens tidslinje/træ. | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L47) |
-| function | `mc_run_detail` | `(run_id, event_limit=…)` | Enkelt-run-detalje: selve run-rækken (visible_runs) + de hændelser der bærer dens | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L69) |
+| function | `_run_synlig_for_kalder` | `(conn, run_id)` | Maa den nuvaerende kalder se dette run? | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L68) |
+| function | `mc_run_detail` | `(run_id, event_limit=…)` | Enkelt-run-detalje: selve run-rækken (visible_runs) + de hændelser der bærer dens | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L91) |
+| function | `mc_run_prompt` | `(run_id)` | Hvad byggede han svaret paa? Sektionerne i prompten for netop dette run. | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L134) |
 
 ## `apps/api/jarvis_api/routes/mission_control_helpers.py`
 _Mission Control: tool/skill/hardening/lab-hjælpere._

@@ -86,7 +86,13 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
   }, [focusSignal, focusTab])
   const [runs, setRuns] = useState<McRun[]>([])
   const [approvals, setApprovals] = useState<Approval[]>([])
-  const [error, setError] = useState<string | null>(null)
+  // En fejl baerer sin EGEN overskrift (6/9-2026). Banneret havde en fast
+  // titel — «Kunne ikke hente arbejde» — uanset hvad der fejlede, og en
+  // «Prøv igen» der altid genhentede listen. En mislykket GODKENDELSE blev
+  // saaledes vist som en hente-fejl med en kur der ikke roerte problemet.
+  // Set live under E2E-proeven: approve gav HTTP 409, og skaermen sagde at
+  // den ikke kunne hente arbejde.
+  const [error, setError] = useState<{ titel: string; detalje: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -137,7 +143,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
       setApprovals(a.requests)
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke hente arbejde')
+      setError({ titel: 'Kunne ikke hente arbejde',
+                 detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
     } finally {
       setLoading(false)
     }
@@ -170,7 +177,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
         }
         await load()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Godkendelse mislykkedes')
+        setError({ titel: 'Godkendelsen gik ikke igennem',
+                   detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
       } finally {
         setBusyId(null)
       }
@@ -188,10 +196,12 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
       setDecisions((prev) => prev.filter((x) => x.id !== d.id))
       try {
         const res = await actOnDecision(config, d, action)
-        if (!res.ok) setError(res.error || 'Kunne ikke svare på forslaget')
+        if (!res.ok) setError({ titel: 'Kunne ikke svare på forslaget',
+                                detalje: res.error || 'Ukendt fejl' })
         await load()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Kunne ikke svare på forslaget')
+        setError({ titel: 'Kunne ikke svare på forslaget',
+                   detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
         await load()
       } finally {
         setBusyId(null)
@@ -213,7 +223,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
       setTab('tasks')
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke starte opgave')
+      setError({ titel: 'Kunne ikke starte opgaven',
+                 detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
     } finally {
       setStartingTask(false)
     }
@@ -226,7 +237,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
       await steerRun(config, run.run_id, content)
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke styre opgaven')
+      setError({ titel: 'Kunne ikke styre opgaven',
+                 detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
     } finally {
       setBusyId(null)
     }
@@ -239,7 +251,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
       await cancelRunById(config, run.run_id)
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke stoppe opgaven')
+      setError({ titel: 'Kunne ikke stoppe opgaven',
+                 detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
     } finally {
       setBusyId(null)
     }
@@ -283,10 +296,14 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
 
       {error ? (
         <ErrorBanner
-          title="Kunne ikke hente arbejde"
-          detail={error}
-          actionLabel="Prøv igen"
-          onAction={() => void load()}
+          title={error.titel}
+          detail={error.detalje}
+          // «Prøv igen» genhenter listen — det giver kun mening naar det VAR
+          // hentningen der fejlede. Ved en mislykket godkendelse kan man
+          // lukke beskeden og trykke Godkend igen.
+          actionLabel={error.titel.startsWith('Kunne ikke hente') ? 'Prøv igen' : undefined}
+          onAction={error.titel.startsWith('Kunne ikke hente') ? () => void load() : undefined}
+          onDismiss={() => setError(null)}
         />
       ) : null}
 

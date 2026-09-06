@@ -188,3 +188,53 @@ class TestFoersteOutputNaade:
                                          "running": True}})
         await br.poll_async("s1", "u1")
         assert "s" not in ventet
+
+
+# ── 30-sekunders-reglen (6/9-2026) ───────────────────────────────────────
+
+def test_kort_koersel_siger_ikke_til(monkeypatch):
+    """Under graensen sad han der stadig — en push ville vaere stoej."""
+    import time as _t
+
+    from core.services import background_resume as br
+    sendt = []
+    monkeypatch.setattr(br, "_LANG_KOERSEL_S", 30.0)
+    monkeypatch.setattr("core.services.ntfy_gateway.is_configured", lambda: True)
+    monkeypatch.setattr("core.services.ntfy_gateway.send_notification",
+                        lambda *a, **k: sendt.append((a, k)))
+    br._sig_til_hvis_lang({"startet": _t.time() - 3.0}, "faerdig")
+    assert sendt == []
+
+
+def test_lang_koersel_siger_til(monkeypatch):
+    import time as _t
+
+    from core.services import background_resume as br
+    sendt = []
+    monkeypatch.setattr("core.services.ntfy_gateway.is_configured", lambda: True)
+    monkeypatch.setattr("core.services.ntfy_gateway.send_notification",
+                        lambda *a, **k: sendt.append((a, k)))
+    br._sig_til_hvis_lang({"startet": _t.time() - 95.0}, "tests bestod")
+    assert len(sendt) == 1
+    assert "95 s" in sendt[0][0][0]
+    assert "tests bestod" in sendt[0][0][0]
+
+
+def test_uden_starttid_siger_den_ikke_til(monkeypatch):
+    """Aeldre poster i staten har ingen `startet` — de maa ikke spamme."""
+    from core.services import background_resume as br
+    sendt = []
+    monkeypatch.setattr("core.services.ntfy_gateway.is_configured", lambda: True)
+    monkeypatch.setattr("core.services.ntfy_gateway.send_notification",
+                        lambda *a, **k: sendt.append(a))
+    br._sig_til_hvis_lang({}, "noget")
+    assert sendt == []
+
+
+def test_note_started_husker_tidspunktet(monkeypatch, tmp_path):
+    from core.services import background_resume as br
+    gemt = {}
+    monkeypatch.setattr(br, "_load", lambda: dict(gemt))
+    monkeypatch.setattr(br, "_save", lambda st: gemt.update(st))
+    br.note_started("s1", "shell-1")
+    assert gemt["s1"][0]["startet"] > 0

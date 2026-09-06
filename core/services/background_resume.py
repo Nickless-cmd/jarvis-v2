@@ -20,7 +20,11 @@ uendelige paa "shell'en koerer stadig".
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 _KEY = "background_shells_by_session"
 _MAX_PR_SESSION = 8          # loft: en tur maa ikke drukne i baggrunds-stoej
@@ -62,7 +66,8 @@ def note_started(session_id: str, shell_id: str) -> None:
     shells = [s for s in (st.get(sid) or []) if isinstance(s, dict)]
     if any(s.get("shell_id") == shell_id for s in shells):
         return
-    shells.append({"shell_id": str(shell_id), "offset": 0, "done": False})
+    shells.append({"shell_id": str(shell_id), "offset": 0, "done": False,
+                   "startet": time.time()})
     st[sid] = shells[-_MAX_PR_SESSION:]
     _save(st)
 
@@ -99,6 +104,35 @@ def build_note(deltas: list[dict[str, Any]]) -> str:
             klippet = tekst if len(tekst) <= 2000 else tekst[:2000] + "\n… (afkortet)"
             linjer.append(f"- {sid} skrev:\n{klippet}")
     return "\n".join(linjer)
+
+
+# En baggrundskoersel der tager laenge nok til at Bjoern gaar fra skaermen
+# skal sige til NAAR den er faerdig — ikke bare efterlade en note i en samtale
+# han ikke sidder i. Under graensen ville en besked bare vaere stoej: han sad
+# der stadig. ntfy foerst, jf. [[outreach_ntfy_blindness]].
+_LANG_KOERSEL_S = 30.0
+
+
+def _sig_til_hvis_lang(shell: dict[str, Any], sidste_output: str) -> None:
+    """Push besked hvis shellen koerte >= 30 s. Self-safe: fejl → tavshed."""
+    try:
+        startet = float(shell.get("startet") or 0.0)
+        if not startet:
+            return
+        varighed = time.time() - startet
+        if varighed < _LANG_KOERSEL_S:
+            return
+        hale = " ".join(str(sidste_output or "").split())[-160:]
+        besked = (
+            f"Baggrundskoersel faerdig efter {int(varighed)} s"
+            + (f": {hale}" if hale else ".")
+        )
+        from core.services.ntfy_gateway import is_configured, send_notification
+        if not is_configured():
+            return
+        send_notification(besked, title="Jarvis", tags=["hourglass_done"])
+    except Exception:
+        logger.debug("background_resume: kunne ikke sige til", exc_info=True)
 
 
 async def poll_async(session_id: str, user_id: str) -> str:
@@ -153,6 +187,7 @@ async def poll_async(session_id: str, user_id: str) -> str:
         if blev_faerdig:
             s["done"] = True
             aendret = True
+            _sig_til_hvis_lang(s, tekst)
 
     if aendret:
         st = _load()

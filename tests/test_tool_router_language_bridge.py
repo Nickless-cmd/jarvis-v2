@@ -69,3 +69,42 @@ def test_ulaeselig_config_lader_broen_vaere_taendt(monkeypatch):
 
     monkeypatch.setattr("core.runtime.settings.load_settings", eksploder)
     assert R._sprog_bro_taendt() is True
+
+
+# ---------------------------------------------------------------------------
+# Tærsklen — kalibreret 6/9 på 189 beskeder over seks måneder
+# ---------------------------------------------------------------------------
+
+
+def test_taersklen_lukker_de_maalte_vaerktoejs_foresporgsler_ind():
+    """Fire ægte forespørgsler, målt eksakt. De tre nederste blev afvist ved 0,40.
+
+    Tallene er confidence fra produktion 6/9-2026 med sprog-broen slået til.
+    Ændres tærsklen op igen, fejler den her — så det bliver et bevidst valg.
+    """
+    from core.runtime.settings import RuntimeSettings
+    t = float(RuntimeSettings().tool_router_threshold)
+    maalte = {
+        "hvad er der i min kalender i morgen": 0.40128,
+        "kan du lægge et møde ind i min kalender på fredag": 0.38016,
+        "kan du læse den fil og rette fejlen": 0.37488,
+        "send en mail til bjorn om netværket": 0.37312,
+    }
+    afvist = [b for b, c in maalte.items() if c < t]
+    assert not afvist, f"ægte værktøjs-forespørgsler afvises af tærsklen {t}: {afvist}"
+
+
+def test_taersklen_ligger_under_formlens_loft():
+    """adaptive_floor = max(0,30 · 0,60 − rate·2) er loftet for HELE confidence.
+
+    Ved den nuværende load_more_rate (~0,08) er loftet 0,440. Kommer tærsklen
+    for tæt på, kan intet nogensinde passere — det var netop fejlen ved 0,55,
+    som gav 100 % fallback.
+    """
+    from core.runtime.settings import RuntimeSettings
+    t = float(RuntimeSettings().tool_router_threshold)
+    loft_ved_typisk_rate = max(0.30, 0.60 - 0.08 * 2.0)
+    assert t < loft_ved_typisk_rate * 0.90, (
+        f"tærskel {t} er for tæt på loftet {loft_ved_typisk_rate:.3f} — "
+        "porten ville næsten aldrig åbne"
+    )

@@ -454,7 +454,35 @@ class RuntimeSettings:
     heartbeat_active_chat_gate_minutes: int = 10
     # Tool router (added 2026-05-06)
     tool_router_enabled: bool = True
-    tool_router_threshold: float = 0.40  # 0.55 caused 100% fallback on validation set; nomic-embed cross-language similarity is weaker than expected. Daemon will tune adaptively.
+    # 6/9-2026: 0,40 → 0,375, kalibreret paa 189 beskeder stratificeret over
+    # seks maaneder (op til 40 pr. maaned, saa én lang samtale ikke dominerer).
+    #
+    # Hvorfor 0,40 var for hoejt: confidence-formlens LOFT er adaptive_floor =
+    # max(0,30 · 0,60 − load_more_rate·2) = 0,440 ved den nuvaerende rate. Med et
+    # loft paa 0,440 og en taerskel paa 0,400 er der ti procents luft i HELE
+    # skalaen — porten afgoeres af marginaler. Maalt paa aegte vaerktoejs-
+    # foresp0rgsler:
+    #     0,40128  «hvad er der i min kalender i morgen»   (slap igennem)
+    #     0,38016  «kan du laegge et moede ind i min kalender»
+    #     0,37488  «kan du laese den fil og rette fejlen»
+    #     0,37312  «send en mail til bjorn om netvaerket»
+    # De tre nederste er utvetydige vaerktoejs-opgaver og blev alle afvist.
+    #
+    # 0,370 lukker alle fire ind — sat UNDER den laveste maalte (0,37312), ikke
+    # bare under kalender-beskeden. En graense der lukker kalenderen ind men
+    # holder mailen ude er vilkaarlig. 68 % af turene passerer mod 20 % foer, og
+    # de passerende faar ~90 vaerktoejer mod 70 (~2.600 ekstra prompt-tokens).
+    #
+    # AABENT: signalet selv er skaevt. _clarity_signal giver +0,15 for at vaere
+    # et SPOERGSMAAL, men en vaerktoejs-foresp0rgsel er naesten altid en BEFALING
+    # («vis mig de seneste commits» scorer 0,336 — lavest af alle proever og
+    # under medianen for tilfaeldige beskeder). Taerskelen er en omgaaelse; den
+    # rigtige rettelse er at lade imperativer taelle.
+    #
+    # NB: routeren laeser RuntimeSettings() direkte, ikke load_settings(), saa
+    # runtime.json kan IKKE overstyre den her. Det er ogsaa derfor daemonens
+    # `threshold_proposed` aldrig er blevet anvendt.
+    tool_router_threshold: float = 0.370
     tool_router_always_core_size: int = 70
     tool_router_k_embeddings: int = 30
     tool_router_embedding_model: str = "nomic-embed-text"

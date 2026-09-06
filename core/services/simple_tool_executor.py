@@ -113,6 +113,16 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
     signature = token["signature"]
     soft_warn = token["soft_warn"]
     result_text = exec_fmt(name, raw_result)
+    # ── Terminal-styrekoder ud (6/9-2026) ────────────────────────────────────
+    # Maalt: `printf "\033[31m..."` gennem bash naaede modellen ORDRET. Farver
+    # fra git diff, pytest og npm er tokens han betaler for uden at kunne bruge
+    # dem, og bare kontroltegn kan faa det han LAESER til at afvige fra det et
+    # menneske SAA. Ét sted frem for i hvert vaerktoej: alt gaar igennem her.
+    try:
+        from core.services.terminal_sanitize import strip_terminal_codes
+        result_text = strip_terminal_codes(result_text)
+    except Exception:
+        logger.debug("terminal_sanitize sprunget over", exc_info=True)
     # ── Indhegning af utroet indhold (6/9-2026) ──────────────────────────────
     # En web-side, en subagents opsummering eller et MCP-resultat kan vaere
     # SKREVET til at ligne en instruks. Uindpakket er der intet der fortaeller
@@ -134,6 +144,11 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
     result_text_full = result_text
     try:
         _full = exec_fmt(name, raw_result, clip=False)
+        try:
+            from core.services.terminal_sanitize import strip_terminal_codes
+            _full = strip_terminal_codes(_full)
+        except Exception:
+            pass
         if _full and len(_full) > len(result_text):
             result_text_full = _full
     except TypeError:

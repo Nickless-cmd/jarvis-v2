@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13665 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13666 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -47,10 +47,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13665 functions/
 - [`core.services.18`](core.services.18.md) — `recall_scheduler` … `runtime_learning_signals`
 - [`core.services.19`](core.services.19.md) — `runtime_operational_memory` … `self_review_signal_tracking`
 - [`core.services.20`](core.services.20.md) — `self_review_unified` … `silence_patterns`
-- [`core.services.21`](core.services.21.md) — `simple_tool_executor` … `text_clip`
-- [`core.services.22`](core.services.22.md) — `text_resonance` … `user_model_daemon`
-- [`core.services.23`](core.services.23.md) — `user_scope` … `visual_memory`
-- [`core.services.24`](core.services.24.md) — `voice_anchor` … `world_model_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `simple_tool_executor` … `terminal_sanitize`
+- [`core.services.22`](core.services.22.md) — `text_clip` … `user_md_update_proposal_tracking`
+- [`core.services.23`](core.services.23.md) — `user_model_daemon` … `vision_backend`
+- [`core.services.24`](core.services.24.md) — `visual_memory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

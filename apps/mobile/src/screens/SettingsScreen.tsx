@@ -28,6 +28,8 @@ import { loadCameraPrefs } from '../lib/cameraPrefs'
 import { getOrCreateDeviceIdentity } from '../lib/deviceIdentity'
 import { sensorRowsFromState } from '../lib/sensorPrivacy'
 import { summarizeDevices, type DevicePresenceRow } from '../lib/devicePresenceView'
+import { buildSettingsHealthTiles } from '../lib/settingsHealth'
+import { loadOutbox } from '../lib/offlineOutbox'
 import { NotificationsSection } from '../components/NotificationsSection'
 import { AppearanceSection } from '../components/AppearanceSection'
 
@@ -82,11 +84,13 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const [deviceRows, setDeviceRows] = useState<DevicePresenceRow[]>([])
   const [currentDeviceName, setCurrentDeviceName] = useState('')
   const [routeTargetName, setRouteTargetName] = useState('')
+  const [outboxCount, setOutboxCount] = useState(0)
   useEffect(() => { void bubble.isSupported().then(setBubbleOk) }, [])
   useEffect(() => { void loadBubblePersist().then(setPersistBubble) }, [])
   useEffect(() => { void loadPrecision().then(setLocPrecision) }, [])
   useEffect(() => { void loadBatterySaver().then(setBatterySaver) }, [])
   useEffect(() => { void loadCameraPrefs().then((prefs) => setCameraShutterSound(prefs.shutterSound)) }, [])
+  useEffect(() => { void loadOutbox().then((items) => setOutboxCount(items.length)) }, [])
 
   useEffect(() => {
     if (!config) return
@@ -172,6 +176,16 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   }
 
   const linked = !!profile?.google_linked
+  const healthTiles = buildSettingsHealthTiles({
+    connectivity,
+    pushEnabled: true,
+    microphoneAvailable: true,
+    cameraAvailable: true,
+    locationPrecision: locPrecision,
+    currentDeviceName,
+    routeTargetName,
+    outboxCount
+  })
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -197,6 +211,16 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
           {profile?.email && profile?.name ? (
             <Text style={styles.identityMail}>{profile.email}</Text>
           ) : null}
+        </View>
+
+        <View style={styles.healthGrid}>
+          {healthTiles.map((tile) => (
+            <View key={tile.label} style={styles.healthTile}>
+              <View style={[styles.healthDot, tile.state === 'ok' ? styles.healthOk : tile.state === 'warn' ? styles.healthWarn : styles.healthOff]} />
+              <Text style={styles.healthLabel}>{tile.label}</Text>
+              <Text style={styles.healthValue} numberOfLines={1}>{tile.value}</Text>
+            </View>
+          ))}
         </View>
 
         <Text style={styles.sectionTitle}>Enheder</Text>
@@ -466,6 +490,28 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   avatarText: { color: tokens.color.bg0, fontSize: 26, fontWeight: '700' },
   identityName: { color: tokens.color.fg1, fontSize: 17, fontWeight: '700' },
   identityMail: { color: tokens.color.fg3, fontSize: 13 },
+  healthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: tokens.spacing.sm,
+    marginBottom: tokens.spacing.sm
+  },
+  healthTile: {
+    width: '48%',
+    minHeight: 76,
+    backgroundColor: tokens.color.bg1,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.color.line,
+    padding: tokens.spacing.md,
+    gap: 4
+  },
+  healthDot: { width: 7, height: 7, borderRadius: 4 },
+  healthOk: { backgroundColor: tokens.color.accent },
+  healthWarn: { backgroundColor: tokens.color.warn },
+  healthOff: { backgroundColor: tokens.color.fg3 },
+  healthLabel: { color: tokens.color.fg3, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  healthValue: { color: tokens.color.fg1, fontSize: 14, fontWeight: '700' },
   rowCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowText: { flexShrink: 1, gap: 3 },
   rowLabel: { color: tokens.color.fg1, fontSize: 16 },

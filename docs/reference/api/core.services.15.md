@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/model_trust.py`
+_Central-governed EARNED model-trust (harness refactor Part 1 foundation)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/model_trust.py#L19) |
+| function | `_row` | `(conn, model)` | — | [src](../../../core/services/model_trust.py#L33) |
+| function | `record_run_outcome` | `(model, *, degenerated)` | Record one run's outcome. Clean -> +1 streak (promote at threshold); degeneration -> reset | [src](../../../core/services/model_trust.py#L43) |
+| function | `set_pin` | `(model, pin)` | Owner override: 'weak' | 'strong' | 'auto' (default). Self-safe. | [src](../../../core/services/model_trust.py#L75) |
+| function | `model_strength` | `(model)` | 'strong' | 'weak'. Pin wins; else earned strength. FAILS OPEN to 'weak'. | [src](../../../core/services/model_trust.py#L91) |
+| function | `build_model_trust_surface` | `()` | Central-CLI view: per-model trust state. Self-safe. | [src](../../../core/services/model_trust.py#L105) |
+
 ## `core/services/modulator_witness.py`
 _Witness surface for hidden behavior modulators._
 
@@ -616,12 +628,4 @@ _Parallel Selves — internal sub-selves._
 | function | `describe_self_plural` | `()` | — | [src](../../../core/services/parallel_selves.py#L23) |
 | function | `format_self_for_prompt` | `()` | — | [src](../../../core/services/parallel_selves.py#L26) |
 | function | `build_parallel_selves_surface` | `()` | — | [src](../../../core/services/parallel_selves.py#L29) |
-
-## `core/services/past_context_router.py`
-_Past-context cue router for visible prompts._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `needs_past_context` | `(user_message)` | Return True when a user turn likely depends on prior conversation. | [src](../../../core/services/past_context_router.py#L20) |
-| function | `build_past_context_section` | `(user_message, *, session_id=…, limit=…)` | Render a compact context block from summaries/chat when cues warrant it. | [src](../../../core/services/past_context_router.py#L28) |
 

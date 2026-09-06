@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13560 functions/methods, 49% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13565 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -36,20 +36,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13560 functions/
 - [`core.services.07`](core.services.07.md) — `cluster_daemon_families` … `council_deliberation_controller`
 - [`core.services.08`](core.services.08.md) — `council_memory_daemon` … `decision_review_daemon`
 - [`core.services.09`](core.services.09.md) — `decision_review_prompter` … `dream_hypothesis_forced`
-- [`core.services.10`](core.services.10.md) — `dream_hypothesis_generator` … `experience_substrate`
-- [`core.services.11`](core.services.11.md) — `experienced_time_daemon` … `global_workspace`
-- [`core.services.12`](core.services.12.md) — `gmail_connector` … `in_flight_runs`
-- [`core.services.13`](core.services.13.md) — `infra_sense` … `llm_pricing`
-- [`core.services.14`](core.services.14.md) — `local_tool_broker` … `model_trust`
-- [`core.services.15`](core.services.15.md) — `modulator_witness` … `past_context_router`
-- [`core.services.16`](core.services.16.md) — `paste_store` … `prompt_evolution`
-- [`core.services.17`](core.services.17.md) — `prompt_evolution_runtime` … `regret_engine`
-- [`core.services.18`](core.services.18.md) — `regulation_homeostasis_signal_tracking` … `runtime_self_model_state`
-- [`core.services.19`](core.services.19.md) — `runtime_self_model_surfaces` … `sensory_archive`
-- [`core.services.20`](core.services.20.md) — `sensory_perception_bridge` … `somatic_daemon`
-- [`core.services.21`](core.services.21.md) — `somatic_runtime_body` … `tiny_webchat_execution_pilot`
-- [`core.services.22`](core.services.22.md) — `tool_catalog` … `veto_gate`
-- [`core.services.23`](core.services.23.md) — `visible_first_pass_text` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `dream_hypothesis_generator` … `experience_episodes`
+- [`core.services.11`](core.services.11.md) — `experience_substrate` … `github_connector`
+- [`core.services.12`](core.services.12.md) — `global_workspace` … `impulse_executor`
+- [`core.services.13`](core.services.13.md) — `in_flight_runs` … `living_heartbeat_cycle`
+- [`core.services.14`](core.services.14.md) — `llm_pricing` … `model_context`
+- [`core.services.15`](core.services.15.md) — `model_trust` … `parallel_selves`
+- [`core.services.16`](core.services.16.md) — `past_context_router` … `prompt_contract`
+- [`core.services.17`](core.services.17.md) — `prompt_evolution` … `reflective_critic_tracking`
+- [`core.services.18`](core.services.18.md) — `regret_engine` … `runtime_self_model_identity`
+- [`core.services.19`](core.services.19.md) — `runtime_self_model_state` … `semantic_memory`
+- [`core.services.20`](core.services.20.md) — `sensory_archive` … `social_labilizer`
+- [`core.services.21`](core.services.21.md) — `somatic_daemon` … `tick_cache`
+- [`core.services.22`](core.services.22.md) — `tiny_webchat_execution_pilot` … `verification_gate_telemetry`
+- [`core.services.23`](core.services.23.md) — `veto_gate` … `world_model_auto_extraction`
+- [`core.services.24`](core.services.24.md) — `world_model_signal_tracking` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

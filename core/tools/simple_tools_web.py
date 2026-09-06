@@ -468,6 +468,25 @@ def _html_to_text(raw: str) -> str:
             return ""
 
 
+def _egress_blokeret(url: str) -> dict[str, Any] | None:
+    """Fejl-svaret hvis destinationen er intern, ellers None.
+
+    Fail-OPEN ved en fejl i selve vaernet: et vaern der er i stykker maa ikke
+    goere web-hentning umulig. Det er et bevidst valg — den fejlklasse vi
+    beskytter mod er en model der peger paa 169.254.169.254, ikke en angriber
+    med kodeadgang.
+    """
+    try:
+        from core.services.egress_guard import classify
+        v = classify(url)
+        if v.get("blocked"):
+            return {"status": "error", "error": f"blokeret destination: {v['reason']}",
+                    "blocked_by": "egress_guard", "url": url}
+    except Exception:
+        pass
+    return None
+
+
 def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
     url = str(args.get("url") or "").strip()
     if not url:
@@ -484,6 +503,13 @@ def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
 
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
+
+    # SSRF-vaern. Runtimen havde INGEN destinations-validering foer 5/9-2026:
+    # en hentning kunne pege paa cloud-metadata, pfSense eller Jarvis' eget API.
+    # Vaernet er porteret fra jarvis-code, som havde det.
+    _eg = _egress_blokeret(url)
+    if _eg:
+        return _eg
 
     req = urllib_request.Request(
         url,
@@ -534,6 +560,10 @@ def _exec_web_scrape(args: dict[str, Any]) -> dict[str, Any]:
     url = str(args.get("url") or "").strip()
     if not url:
         return {"error": "url is required", "status": "error"}
+    _eg = _egress_blokeret(url if url.startswith(("http://", "https://"))
+                           else "https://" + url)
+    if _eg:
+        return _eg
     mode = str(args.get("mode") or "auto").strip()
     extract = str(args.get("extract") or "").strip()
     include_links = bool(args.get("include_links", False))

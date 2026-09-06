@@ -155,6 +155,16 @@ _Desire/value arbitration as a compact drive system._
 | function | `build_drive_arbitration_prompt_section` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L69) |
 | function | `_policy_for_top` | `(top)` | — | [src](../../../core/services/drive_arbitration_engine.py#L84) |
 
+## `core/services/egress_guard.py`
+_SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_internal_ip` | `(ip_str)` | Loopback, link-local (inkl. 169.254.169.254), RFC1918, 0.0.0.0. Ren. | [src](../../../core/services/egress_guard.py#L35) |
+| function | `classify` | `(url)` | {"blocked": bool, "reason": str}. Self-safe: uparsbar URL → blokeret. | [src](../../../core/services/egress_guard.py#L46) |
+| function | `is_safe_destination` | `(url)` | {"safe": bool, "reason": str} — laesevenligt alias til `classify`. | [src](../../../core/services/egress_guard.py#L80) |
+| function | `check_redirect_hop` | `(url)` | Samme klassifikation, anvendt paa et OMDIRIGERINGS-maal. | [src](../../../core/services/egress_guard.py#L86) |
+
 ## `core/services/egress_routing.py`
 _Egress routing — which network egress a (provider, auth_profile) slot uses._
 
@@ -666,16 +676,4 @@ _Experience-episode collector + retrieval — embedding-based learning substrate
 | function | `retrieve_similar` | `(*, intent, active_loops=…, last_tools=…, session_phase=…, k=…)` | Return up to K nearest-neighbour past episodes for the current shape. | [src](../../../core/services/experience_episodes.py#L215) |
 | function | `format_episode_for_prompt` | `(ep, *, max_chars=…)` | Compact substrate line describing one retrieved episode. | [src](../../../core/services/experience_episodes.py#L339) |
 | function | `reindex_experience_chroma` | `(*, batch=…)` | Drop + rebuild the chroma collection from the experience_episodes DB rows, | [src](../../../core/services/experience_episodes.py#L384) |
-
-## `core/services/experience_substrate.py`
-_Experience substrate — embedding-retrieval learning layer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_get_chroma_collection` | `()` | Get or create the ChromaDB collection for experience episodes. | [src](../../../core/services/experience_substrate.py#L33) |
-| function | `_get_embedder` | `()` | Get or create the sentence-transformers embedder (lazy load). | [src](../../../core/services/experience_substrate.py#L47) |
-| function | `build_context_for_embedding` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…)` | Build a structured context string for embedding similarity. | [src](../../../core/services/experience_substrate.py#L57) |
-| function | `record_episode` | `(*, session_id, turn_id=…, context_text, context_intent=…, active_loops=…, last_tools=…, session_phase=…, tool_sequence, outcome_signals, user_corrected=…)` | Record a new experience episode: insert to DB + embed to ChromaDB. | [src](../../../core/services/experience_substrate.py#L82) |
-| function | `retrieve_similar_episodes` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, context_text=…, k=…, min_score=…)` | Retrieve top-K similar experience episodes from ChromaDB. | [src](../../../core/services/experience_substrate.py#L170) |
-| function | `build_experience_substrate_section` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, user_message=…, k=…)` | Build the _experience_substrate prompt section. | [src](../../../core/services/experience_substrate.py#L257) |
 

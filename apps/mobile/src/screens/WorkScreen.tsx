@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { tokens } from '../theme/tokens'
@@ -9,11 +9,13 @@ import { approveRequest, approveToolIntent, fetchApprovals, fetchRuns, pendingAp
 import { isToolIntent } from '../lib/mcTypes'
 import type { Approval, McRun } from '../lib/mcTypes'
 import { WorkTaskCard, isActive } from '../components/WorkTaskCard'
+import { TaskThreadScreen } from './TaskThreadScreen'
 import { WorkApprovalCard } from '../components/WorkApprovalCard'
 import { ThoughtsList } from '../components/ThoughtsList'
 import { fetchThoughts, type Thought } from '../lib/companionClient'
 import { WorkDecisionCard } from '../components/WorkDecisionCard'
 import { actOnDecision, fetchDecisions, type Decision, type DecisionAction } from '../lib/decisionsApi'
+import { fetchOperatorChannel, lukOperatorChannel, timerTilbage, type OperatorChannel } from '../lib/workbenchApi'
 import { WorkReviewCard } from '../components/WorkReviewCard'
 import { fetchWorkReviews, type WorkReview } from '../lib/workReviewApi'
 import { NewWorkTaskSheet, type NewWorkMode } from '../components/NewWorkTaskSheet'
@@ -33,6 +35,10 @@ interface Props {
   onPendingCount?: (count: number) => void
   /** Kaldes når en sync-udløst hentning er færdig. */
   onSyncDone?: () => void
+  /** Fane der skal åbnes udefra — fx når et approval-push tappes. */
+  focusTab?: WorkTab
+  /** Tæller op ved hvert tap, så gentagne pushes også virker. */
+  focusSignal?: number
 }
 
 const POLL_MS = 4000
@@ -59,16 +65,34 @@ export function tælReviewVentende(reviews: WorkReview[]): number {
  * State bor på serveren — skærmen abonnerer, den ejer intet. Taber telefonen
  * forbindelsen, dør intet.
  */
-export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSyncDone }: Props) {
+export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSignal = 0,
+                            onPendingCount, onSyncDone }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const { config } = useAuth()
   const sessions = useSessions()
   const stream = useStream()
   const [tab, setTab] = useState<WorkTab>('tasks')
+  // R6: dykke-niveauet. null = listen; et run = traaden ovenpaa.
+  const [aabenOpgave, setAabenOpgave] = useState<McRun | null>(null)
+
+  // Et approval-push skal lande i GODKEND, ikke bare i rummet (6/9-2026).
+  // Før satte App kun mode='arbejde', så man landede på Opgaver og skulle
+  // selv finde fanen — netop det spec'en siger tappet skal spare én for.
+  // `focusSignal` tæller op ved hvert tap, så to pushes i træk begge virker;
+  // uden det ville en fane man selv havde skiftet væk fra aldrig komme igen.
+  useEffect(() => {
+    if (focusSignal > 0 && focusTab) setTab(focusTab)
+  }, [focusSignal, focusTab])
   const [runs, setRuns] = useState<McRun[]>([])
   const [approvals, setApprovals] = useState<Approval[]>([])
-  const [error, setError] = useState<string | null>(null)
+  // En fejl baerer sin EGEN overskrift (6/9-2026). Banneret havde en fast
+  // titel — «Kunne ikke hente arbejde» — uanset hvad der fejlede, og en
+  // «Prøv igen» der altid genhentede listen. En mislykket GODKENDELSE blev
+  // saaledes vist som en hente-fejl med en kur der ikke roerte problemet.
+  // Set live under E2E-proeven: approve gav HTTP 409, og skaermen sagde at
+  // den ikke kunne hente arbejde.
+  const [error, setError] = useState<{ titel: string; detalje: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -91,6 +115,10 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
   const [ubesvarede, setUbesvarede] = useState(0)
   const [reviews, setReviews] = useState<WorkReview[]>([])
   const [startingTask, setStartingTask] = useState(false)
+  // Operator-kanalen (6/9-2026). Er den åben, kører bash på Bjørns EGEN maskine
+  // uden godkendelse pr. kald. Telefonen er dér man opdager at man glemte at
+  // lukke den — derfor står den øverst, ikke i indstillinger.
+  const [kanal, setKanal] = useState<OperatorChannel | null>(null)
 
   const load = useCallback(async () => {
     if (!config) return
@@ -102,6 +130,9 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
       ])
       const rev = await fetchWorkReviews(config).catch(() => [])
       setReviews(rev)
+      // Fejler kaldet, står feltet tomt frem for at lægge en fejlbjælke over
+      // de godkendelser der FAKTISK blokerer et run — samme regel som tankerne.
+      setKanal(await fetchOperatorChannel(config).catch(() => null))
       if (d) {
         setDecisions(d.items)
         setUbesvarede(d.expiredUnanswered)
@@ -112,7 +143,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
       setApprovals(a.requests)
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke hente arbejde')
+      setError({ titel: 'Kunne ikke hente arbejde',
+                 detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
     } finally {
       setLoading(false)
     }
@@ -145,7 +177,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
         }
         await load()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Godkendelse mislykkedes')
+        setError({ titel: 'Godkendelsen gik ikke igennem',
+                   detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
       } finally {
         setBusyId(null)
       }
@@ -163,10 +196,12 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
       setDecisions((prev) => prev.filter((x) => x.id !== d.id))
       try {
         const res = await actOnDecision(config, d, action)
-        if (!res.ok) setError(res.error || 'Kunne ikke svare på forslaget')
+        if (!res.ok) setError({ titel: 'Kunne ikke svare på forslaget',
+                                detalje: res.error || 'Ukendt fejl' })
         await load()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Kunne ikke svare på forslaget')
+        setError({ titel: 'Kunne ikke svare på forslaget',
+                   detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
         await load()
       } finally {
         setBusyId(null)
@@ -188,7 +223,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
       setTab('tasks')
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke starte opgave')
+      setError({ titel: 'Kunne ikke starte opgaven',
+                 detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
     } finally {
       setStartingTask(false)
     }
@@ -201,7 +237,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
       await steerRun(config, run.run_id, content)
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke styre opgaven')
+      setError({ titel: 'Kunne ikke styre opgaven',
+                 detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
     } finally {
       setBusyId(null)
     }
@@ -214,7 +251,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
       await cancelRunById(config, run.run_id)
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke stoppe opgaven')
+      setError({ titel: 'Kunne ikke stoppe opgaven',
+                 detalje: e instanceof Error ? e.message : 'Ukendt fejl' })
     } finally {
       setBusyId(null)
     }
@@ -227,6 +265,18 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
   useEffect(() => {
     onPendingCount?.(venter)
   }, [venter, onPendingCount])
+
+  // Traaden ligger OVENPAA listen frem for at erstatte den: lukker man den,
+  // staar man samme sted i listen som da man dykkede ned.
+  if (aabenOpgave) {
+    return (
+      <TaskThreadScreen
+        run={aabenOpgave}
+        topInset={topInset}
+        onClose={() => setAabenOpgave(null)}
+      />
+    )
+  }
 
   return (
     <View style={[styles.root, { paddingTop: topInset }]}>
@@ -246,10 +296,14 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
 
       {error ? (
         <ErrorBanner
-          title="Kunne ikke hente arbejde"
-          detail={error}
-          actionLabel="Prøv igen"
-          onAction={() => void load()}
+          title={error.titel}
+          detail={error.detalje}
+          // «Prøv igen» genhenter listen — det giver kun mening naar det VAR
+          // hentningen der fejlede. Ved en mislykket godkendelse kan man
+          // lukke beskeden og trykke Godkend igen.
+          actionLabel={error.titel.startsWith('Kunne ikke hente') ? 'Prøv igen' : undefined}
+          onAction={error.titel.startsWith('Kunne ikke hente') ? () => void load() : undefined}
+          onDismiss={() => setError(null)}
         />
       ) : null}
 
@@ -259,6 +313,30 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
+          {/* Åben operator-kanal: øverst, over fanerne, uanset hvilken fane
+              man står på. Den er ikke en indstilling man opsøger — det er en
+              tilstand man skal falde over. */}
+          {kanal?.open && (
+            <View style={styles.kanalBanner}>
+              <View style={styles.kanalTekst}>
+                <Text style={styles.kanalTitel}>Operator-kanalen er åben</Text>
+                <Text style={styles.kanalUnder}>
+                  Jarvis kører kommandoer på din maskine uden at spørge hver gang.
+                  Lukker af sig selv om ca. {timerTilbage(kanal)} t.
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.kanalKnap}
+                onPress={() => {
+                  if (!config) return
+                  void lukOperatorChannel(config).then(setKanal).catch(() => undefined)
+                }}
+              >
+                <Text style={styles.kanalKnapTekst}>Luk</Text>
+              </Pressable>
+            </View>
+          )}
           {tab === 'tasks' ? (
             <>
               <TasksView
@@ -266,6 +344,7 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
                 busyId={busyId}
                 onSteer={onSteerRun}
                 onCancel={onCancelRun}
+                onOpen={setAabenOpgave}
               />
               {/* Jarvis' egne tanker hører til i Arbejde-rummet: det er dét rum
                   hvor noget venter på én, uden at det er en samtale. */}
@@ -325,12 +404,14 @@ function TasksView({
   runs,
   busyId,
   onSteer,
-  onCancel
+  onCancel,
+  onOpen
 }: {
   runs: McRun[]
   busyId?: string | null
   onSteer?: (run: McRun, content: string) => void
   onCancel?: (run: McRun) => void
+  onOpen?: (run: McRun) => void
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -351,6 +432,7 @@ function TasksView({
               busy={busyId === r.run_id}
               onSteer={onSteer}
               onCancel={onCancel}
+              onOpen={onOpen}
             />
           ))}
         </>
@@ -459,6 +541,30 @@ function ApproveView({
 }
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
+  // Advarselsfarve, ikke accent: en åben kanal er en TILSTAND man skal opdage,
+  // ikke en handling man inviteres til.
+  kanalBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.md,
+    padding: tokens.spacing.md,
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: tokens.color.warn,
+    backgroundColor: tokens.color.bg1,
+    marginBottom: tokens.spacing.sm,
+  },
+  kanalTekst: { flex: 1, gap: 2 },
+  kanalTitel: { color: tokens.color.warn, fontSize: 14, fontWeight: '600' },
+  kanalUnder: { color: tokens.color.fg3, fontSize: 12, lineHeight: 16 },
+  kanalKnap: {
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.sm,
+    borderRadius: tokens.radius.sm,
+    borderWidth: 1,
+    borderColor: tokens.color.warn,
+  },
+  kanalKnapTekst: { color: tokens.color.fg1, fontSize: 13, fontWeight: '600' },
   root: { flex: 1, backgroundColor: tokens.color.bg0 },
   subTabs: { paddingHorizontal: tokens.spacing.lg, paddingBottom: tokens.spacing.sm },
   list: { padding: tokens.spacing.lg, gap: tokens.spacing.md },

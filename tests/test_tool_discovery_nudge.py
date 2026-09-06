@@ -289,3 +289,30 @@ def test_sektionen_er_registreret_under_en_label_der_kan_slukkes_live():
     from core.services import prompt_contract as PC
     kilde = inspect.getsource(PC._build_visible_chat_prompt_assembly_impl)
     assert '"tool discovery nudge"' in kilde
+
+
+def test_default_er_SLUKKET_indtil_sprog_spoergsmaalet_er_afgjort(monkeypatch):
+    """Målt 6/9: nomic-embed-text er engelsk-centrisk, Bjørn skriver dansk.
+
+    «kalender»-beskeden gav curiosity_read_dreams (0,694) over
+    calendar_list_events (0,665). Spec'ens egen regel — støj er værre end ingen
+    nudge — afgør sagen, så defaulten er OFF indtil modellen kan dansk.
+    """
+    monkeypatch.undo()
+
+    class TomConfig:
+        extra: dict = {}
+
+    monkeypatch.setattr("core.runtime.settings.load_settings", lambda: TomConfig())
+    assert T._enabled() is False
+
+
+def test_ulaeselig_config_giver_ogsaa_slukket(monkeypatch):
+    """Self-safe den SIKRE vej: kan vi ikke læse flaget, nudger vi ikke."""
+    monkeypatch.undo()
+
+    def eksploder():
+        raise RuntimeError("config nede")
+
+    monkeypatch.setattr("core.runtime.settings.load_settings", eksploder)
+    assert T._enabled() is False

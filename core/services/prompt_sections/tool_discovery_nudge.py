@@ -45,7 +45,33 @@ _MIN_MESSAGE_CHARS = 15
 
 
 def _enabled() -> bool:
-    """Kill-switch. Self-safe: kan config ikke laeses, nudger vi.
+    """Kill-switch. **Default OFF** — se maalingen nedenfor.
+
+    Spec'en satte default True. Maalt mod den aegte embedding-DB 6/9-2026 holder
+    den praemis ikke endnu, fordi modellen (``nomic-embed-text``) er
+    engelsk-centrisk mens Bjoern skriver dansk:
+
+        «create a calendar event for friday meeting»
+            0.706 create_event · 0.657 delete_event · 0.654 list_events
+            → alle fire top-traef er kalender-vaerktoejer. Rent signal.
+
+        «kan du laegge et moede ind i min kalender paa fredag»
+            0.694 curiosity_read_dreams · 0.678 read_learning_memo
+            · 0.674 note_add · 0.665 calendar_list_events
+            → stoej oeverst, det rigtige vaerktoej som nr. 4.
+
+    Scorerne ligger i et smalt baand (0,64-0,75), saa INGEN absolut taerskel kan
+    skille signal fra stoej paa danske beskeder: 0,70 ville lukke
+    ``curiosity_read_dreams`` ind og ``calendar_list_events`` ude. En
+    margin-regel hjaelper heller ikke — selv et korrekt traef som ``gmail_send``
+    (0,753) ligger kun 0,009 over stoejen ``nudge_send`` (0,744).
+
+    Spec'ens egen regel afgoer sagen: stoej er vaerre end ingen nudge, fordi han
+    laerer at ignorere kanalen. Alt er bygget, testet og logget — det kraever ét
+    config-flag at taende, naar sprog-spoergsmaalet er afgjort (flersproget
+    embedding-model, eller normalisering af forespoergslen til engelsk).
+
+    Self-safe: kan config ikke laeses, er svaret OFF.
 
     Samme form som arketypens ``_enabled``. Sektionen faar DERUDOVER den live
     sektion-kontakt gratis, fordi den registreres som en navngiven sektion i
@@ -53,9 +79,9 @@ def _enabled() -> bool:
     """
     try:
         from core.runtime.settings import load_settings
-        return bool(load_settings().extra.get("tool_discovery_nudge_enabled", True))
+        return bool(load_settings().extra.get("tool_discovery_nudge_enabled", False))
     except Exception:
-        return True
+        return False
 
 
 def _er_prewarm(session_id: str) -> bool:

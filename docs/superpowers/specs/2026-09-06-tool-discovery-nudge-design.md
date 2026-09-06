@@ -236,3 +236,45 @@ alle med begrundelse, som Jarvis bad om.
 Ikke implementeret (fase 2 pr. spec'en): feedback-loop og tærskel-justering
 pr. tool. Fase-1-logging (`tool_discovery.nudge`) er på plads, så målingen har
 data fra dag ét.
+
+### 10. Default sat til OFF — fase 1-præmissen holder ikke på dansk (målt)
+
+Spec'en satte kill-switchen til default True og placerede en dedikeret
+klassifikator i **fase 3**: *"hvis embedding-match viser for mange false
+positives"*. Målt mod den ægte embedding-DB (458 vektorer, `nomic-embed-text`)
+viser den det allerede — og årsagen er **sproget**:
+
+```
+«create a calendar event for friday meeting»
+   0.706 create_event · 0.657 delete_event · 0.654 list_events
+   · 0.650 calendar_create_event      ← alle fire er kalender-værktøjer
+
+«kan du lægge et møde ind i min kalender på fredag»
+   0.694 curiosity_read_dreams · 0.678 read_learning_memo
+   · 0.674 note_add · 0.665 calendar_list_events   ← støj øverst
+```
+
+`nomic-embed-text` er engelsk-centrisk, og alle tool-navne og -beskrivelser er
+engelske. Bjørn skriver dansk. **Ingen absolut tærskel kan redde det:**
+scorerne ligger i et smalt bånd (0,64–0,75), så 0,70 ville lukke
+`curiosity_read_dreams` ind og `calendar_list_events` ude. En margin-regel
+hjælper heller ikke — selv et korrekt træf som `gmail_send` (0,753) ligger kun
+**0,009** over støjen `nudge_send` (0,744).
+
+Spec'ens egen regel afgør sagen: *"støj er værre end ingen nudge, fordi Jarvis
+lærer at ignorere kanalen"*. At sende dette i prompten hver tur ville forgifte
+kanalen før den fik en chance.
+
+Alt er derfor bygget, testet, integreret og logget — men **default OFF**.
+Det kræver ét config-flag (`tool_discovery_nudge_enabled`) at tænde, når
+sprog-spørgsmålet er afgjort. To veje, begge uden for denne ændrings scope:
+
+1. **Flersproget embedding-model** (`bge-m3`, `multilingual-e5`) — rører delt
+   infrastruktur: `load_more_tools` bruger samme `top_k_similar`, så en
+   model-udskiftning kræver ny warmup af alle 458 vektorer og bør måles for
+   sig.
+2. **Normalisér forespørgslen til engelsk før embedding** — koster et ekstra
+   kald i prompt-kæden, præcis det spec'en valgte embedding-match for at undgå.
+
+**Åbent spørgsmål til Bjørn/Jarvis:** hvilken vej? Målingen ovenfor er
+reproducerbar med `top_k_similar` mod den nuværende DB.

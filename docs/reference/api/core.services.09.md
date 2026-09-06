@@ -149,16 +149,16 @@ _In-memory device-presence pr. bruger. Efemær — genopbygges af klient-pings._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `DeviceState` | `` | — | [src](../../../core/services/device_presence.py#L40) |
-| function | `reset` | `()` | Kun til tests. | [src](../../../core/services/device_presence.py#L53) |
-| function | `record_ping` | `(user_id, device_key, platform, *, foreground, awake, network, interaction=…, location=…)` | — | [src](../../../core/services/device_presence.py#L59) |
-| function | `_sanitize_location` | `(location)` | Validér og normalisér en indkommen lokation. Returnerer None ved ugyldigt. | [src](../../../core/services/device_presence.py#L98) |
-| class | `RankedDevice` | `` | — | [src](../../../core/services/device_presence.py#L116) |
-| function | `_recency_weight` | `(now, last_interaction_at)` | — | [src](../../../core/services/device_presence.py#L123) |
-| function | `rank` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L130) |
-| function | `prune` | `(user_id=…)` | — | [src](../../../core/services/device_presence.py#L189) |
-| function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L202) |
-| function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L226) |
-| function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L246) |
+| function | `reset` | `()` | Kun til tests. | [src](../../../core/services/device_presence.py#L57) |
+| function | `record_ping` | `(user_id, device_key, platform, *, foreground, awake, network, interaction=…, location=…, push_token=…, device_name=…, active_session_id=…, battery_saver=…)` | — | [src](../../../core/services/device_presence.py#L63) |
+| function | `_sanitize_location` | `(location)` | Validér og normalisér en indkommen lokation. Returnerer None ved ugyldigt. | [src](../../../core/services/device_presence.py#L120) |
+| class | `RankedDevice` | `` | — | [src](../../../core/services/device_presence.py#L138) |
+| function | `_recency_weight` | `(now, last_interaction_at)` | — | [src](../../../core/services/device_presence.py#L145) |
+| function | `rank` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L152) |
+| function | `prune` | `(user_id=…)` | — | [src](../../../core/services/device_presence.py#L215) |
+| function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L228) |
+| function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L252) |
+| function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L272) |
 
 ## `core/services/device_tokens.py`
 _Per-bruger FCM device-tokens. Egen tabel — rører ikke db.py's 33k linjer._

@@ -873,15 +873,18 @@ def chat_active_runs() -> dict:
     if load_settings().server_authoritative_runs:
         import core.services.run_event_log as rel
         sids: list[str] = []
+        sessions: list[dict] = []
         for rid in rel.live_run_ids():
             sid = rel.session_for_run(rid)
             if sid and sid not in sids:
                 sids.append(sid)
-        return {"session_ids": sids}
+                sessions.append({"session_id": sid, "run_id": rid, "status": "working"})
+        return {"session_ids": sids, "sessions": sessions}
     # FLAG OFF -> run_follow.live_sessions (uaendret)
     from core.services.run_follow import live_sessions
     try:
-        return {"session_ids": live_sessions()}
+        sids = live_sessions()
+        return {"session_ids": sids, "sessions": [{"session_id": sid, "run_id": "", "status": "working"} for sid in sids]}
     except Exception:
         return {"session_ids": []}
 

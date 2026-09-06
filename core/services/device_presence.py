@@ -45,6 +45,10 @@ class DeviceState:
     foreground: bool = False
     awake: bool = True
     network: str = "unknown"  # "home" | "away" | "unknown"
+    push_token: str | None = None
+    device_name: str = ""
+    active_session_id: str = ""
+    battery_saver: bool = False
     # Geolocation (opt-in pr. enhed; None når brugeren ikke deler lokation).
     # {"lat": float, "lon": float, "label": str, "source": str, "precision": str}
     location: dict | None = None
@@ -66,6 +70,10 @@ def record_ping(
     network: str,
     interaction: bool = False,
     location: dict | None = None,
+    push_token: str | None = None,
+    device_name: str | None = None,
+    active_session_id: str | None = None,
+    battery_saver: bool | None = None,
 ) -> None:
     uid, key = (user_id or "").strip(), (device_key or "").strip()
     if not uid or not key:
@@ -86,6 +94,20 @@ def record_ping(
         st.foreground = bool(foreground)
         st.awake = bool(awake)
         st.network = network or "unknown"
+        if push_token is not None:
+            st.push_token = (push_token or "").strip() or None
+            try:
+                if st.push_token:
+                    from core.services.device_tokens import register as _register_token
+                    _register_token(uid, st.push_token, "android" if platform == "mobile" else platform)
+            except Exception:
+                pass
+        if device_name is not None:
+            st.device_name = str(device_name or "").strip()[:80]
+        if active_session_id is not None:
+            st.active_session_id = str(active_session_id or "").strip()[:120]
+        if battery_saver is not None:
+            st.battery_saver = bool(battery_saver)
         # location=None i pinget = "ingen ændring" IKKE "ryd" — så en enhed der
         # midlertidigt ikke fik fix beholder sidste kendte. Klienten sender
         # eksplicit {} (tom) når brugeren slår lokation FRA → ryd.
@@ -155,6 +177,10 @@ def rank(user_id: str) -> list[RankedDevice]:
     # altid har ≥1 nåbar kandidat. Dedup mod allerede-rangerede device_keys (for
     # mobil ER device_key == FCM-token, så et aktivt ping vinder over sin egen token).
     seen = {r.device_key for r in out}
+    with _lock:
+        for st in (_PRESENCE.get(uid) or {}).values():
+            if st.push_token:
+                seen.add(st.push_token)
     # (a) registrerede FCM-tokens
     try:
         from core.services.device_tokens import list_for_user as _list_tokens
@@ -255,6 +281,9 @@ def debug_snapshot(user_id: str) -> dict:
                 "foreground": st.foreground,
                 "awake": st.awake,
                 "network": st.network,
+                "device_name": st.device_name,
+                "active_session_id": st.active_session_id,
+                "battery_saver": st.battery_saver,
                 "ping_age_s": round(now - st.last_ping_at, 1),
                 "interaction_age_s": round(now - st.last_interaction_at, 1),
                 "location": st.location,

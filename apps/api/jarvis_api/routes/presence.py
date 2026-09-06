@@ -18,6 +18,10 @@ class PingBody(BaseModel):
     awake: bool = True
     network: str = "unknown"
     interaction: bool = False
+    push_token: str | None = None
+    device_name: str | None = None
+    active_session_id: str | None = None
+    battery_saver: bool | None = None
     # Opt-in geolocation. None = ingen ændring; {} = brugeren slog det FRA (ryd);
     # {lat,lon,label,source,precision} = ny lokation.
     location: dict | None = None
@@ -41,6 +45,10 @@ async def presence_ping(body: PingBody) -> dict:
         uid, body.device_key, body.platform,
         foreground=body.foreground, awake=body.awake,
         network=body.network, interaction=body.interaction,
+        push_token=body.push_token,
+        device_name=body.device_name,
+        active_session_id=body.active_session_id,
+        battery_saver=body.battery_saver,
         location=body.location,
     )
     # Connections-cluster: forbindelses-livscyklus synlig i Centralen (metadata-only).

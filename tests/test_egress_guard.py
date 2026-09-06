@@ -86,3 +86,75 @@ class TestKoblingen:
             eg, "classify", lambda u: (_ for _ in ()).throw(RuntimeError("i stykker")))
         from core.tools.simple_tools_web import _egress_blokeret
         assert _egress_blokeret("http://10.0.0.1/") is None
+
+
+# ── Egress i bash-kommandoer ────────────────────────────────────────────────
+# De eksisterende værn fanger `curl | bash`. Det her fanger ENHVER udgående
+# netværks-rækken, uanset om den piper videre.
+
+class TestEgressKlassifikation:
+    from core.services.egress_guard import classify_egress as _ce
+
+    @pytest.mark.parametrize("cmd,vaerktoej", [
+        ("curl https://api.dk/x", "curl"),
+        ("wget -O - http://a.dk", "wget"),
+        ("nc -l 4444", "nc"),
+        ("ssh bs@10.0.0.39 ls", "ssh"),
+        ("scp a.txt host:/tmp/", "scp"),
+        ("cat < /dev/tcp/10.0.0.1/80", "/dev/tcp"),
+    ])
+    def test_udgaaende_fanges(self, cmd, vaerktoej):
+        from core.services.egress_guard import classify_egress
+        r = classify_egress(cmd)
+        assert r["egress"] is True and r["tool"] == vaerktoej
+
+    @pytest.mark.parametrize("cmd", [
+        "ls -la", "grep -r foo .", "python -m pytest", "git status",
+        "rsync -av /a/ /b/", "rsync -av --delete /x/ /y/",
+    ])
+    def test_lokalt_arbejde_flages_ikke(self, cmd):
+        from core.services.egress_guard import classify_egress
+        assert classify_egress(cmd)["egress"] is False
+
+    @pytest.mark.parametrize("cmd", [
+        "rsync -av /a/ b.dk:/c",
+        "rsync -av /a/ b.dk:c",
+        "rsync -e ssh /a/ /b/",
+    ])
+    def test_fjern_rsync_fanges(self, cmd):
+        """ARVET FEJL: jarvis-codes mønster krævede et ikke-skråstreg efter
+        kolon, men et fjernmål skrives normalt `vaert:/sti` — så `b.dk:/c` slap
+        forbi som lokal."""
+        from core.services.egress_guard import classify_egress
+        assert classify_egress(cmd)["egress"] is True
+
+    def test_tom_kommando(self):
+        from core.services.egress_guard import classify_egress
+        assert classify_egress("")["egress"] is False
+
+
+class TestInterneMaalIKommandoer:
+    def test_interne_url_er_udpeges(self):
+        """`curl https://api.eksempel.dk` er almindeligt arbejde;
+        `curl http://169.254.169.254/` er noget andet."""
+        from core.services.egress_guard import internal_targets_in_command
+        assert internal_targets_in_command(
+            "curl http://169.254.169.254/ && ls") == ["http://169.254.169.254/"]
+
+    def test_offentlige_url_er_udpeges_ikke(self):
+        from core.services.egress_guard import internal_targets_in_command
+        assert internal_targets_in_command("curl https://example.com/x") == []
+
+    def test_flere_url_er_i_samme_kommando(self):
+        from core.services.egress_guard import urls_in_command
+        u = urls_in_command("curl https://a.dk/1 && curl http://10.0.0.1/2")
+        assert len(u) == 2
+
+
+class TestBashKoblingen:
+    def test_bash_blokeres_IKKE_af_egress(self, monkeypatch):
+        """Bash er hans arbejdsredskab. En blokering her ville koste mere end den
+        beskytter — vi gør det tælleligt, ikke forbudt."""
+        from core.tools.simple_tools_web import _exec_bash
+        r = _exec_bash({"command": "curl https://example.com/"})
+        assert r.get("blocked_by") != "egress_guard"

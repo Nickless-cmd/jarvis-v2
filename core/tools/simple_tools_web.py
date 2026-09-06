@@ -305,6 +305,37 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     if not command:
         return {"error": "command is required", "status": "error"}
 
+    # ── Egress-observation (6/9-2026) ────────────────────────────────────────
+    # De eksisterende vaern fanger `curl | bash`. Det her fanger ENHVER udgaaende
+    # netvaerks-raekken, uanset om den piper videre. Vi BLOKERER ikke — bash er
+    # hans arbejdsredskab og en blokering her ville koste mere end den beskytter.
+    # Vi goer det TAELLELIGT, saa et moenster kan ses i Centralen bagefter.
+    #
+    # Undtagelsen er interne maal: `curl https://api.eksempel.dk` er almindeligt
+    # arbejde, `curl http://169.254.169.254/` er noget andet, og dét fortjener en
+    # linje i loggen mens det sker.
+    try:
+        from core.services.egress_guard import (
+            classify_egress, internal_targets_in_command,
+        )
+        _eg = classify_egress(command)
+        if _eg.get("egress"):
+            _interne = internal_targets_in_command(command)
+            try:
+                from core.services.central_core import central
+                central().observe({
+                    "cluster": "security", "nerve": "bash_egress", "kind": "observe",
+                    "tool": _eg.get("tool", ""), "internal_targets": len(_interne),
+                })
+            except Exception:
+                pass
+            if _interne:
+                logger.warning(
+                    "bash-egress mod INTERNT maal: %s (%s)",
+                    ", ".join(_interne[:3]), _eg.get("reason", ""))
+    except Exception:
+        pass
+
     # Execution-cluster 🔒 GENNEM Den Intelligente Central (SECURITY): read-before-write
     # (cp/mv/redirect/tee/sed mod protected-filer) + kommando-klassifikation konsolideret
     # til ÉT traced gate-kald. Rå-signalet bæres tilbage så svar-formerne er uændrede.

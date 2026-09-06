@@ -25,6 +25,7 @@ uden for det her vaerns raekkevidde.
 from __future__ import annotations
 
 import ipaddress
+import re
 import socket
 from typing import Any
 from urllib.parse import urlparse
@@ -91,3 +92,64 @@ def check_redirect_hop(url: str) -> dict[str, Any]:
     foerste tjek uden vaerdi.
     """
     return is_safe_destination(url)
+
+
+
+# ── Egress i bash-kommandoer ─────────────────────────────────────────────
+# Uafhaengig af de «pipe-til-shell»-moenstre der findes i forvejen: de fanger
+# `curl | bash`. Det her fanger ENHVER udgaaende netvaerks-raekken, uanset om
+# den piper videre. Formaalet er ikke at blokere — det er at goere det SYNLIGT
+# at en kommando naar ud af huset, saa en approval-beslutning traeffes paa et
+# oplyst grundlag.
+
+_EGRESS_VAERKTOEJ = re.compile(
+    r"\b(curl|wget|nc|ncat|netcat|scp|sftp|ssh|telnet|ftp)\b", re.IGNORECASE)
+# rsync er kun egress naar den peger paa en FJERN vaert (host:sti, ::modul, -e ssh).
+#
+# ARVET FEJL, rettet i porten: jarvis-codes moenster kraevede et IKKE-skraastreg
+# efter kolon (`[\w.\-]+:[^/]`), men et fjernmaal skrives normalt `vaert:/sti` —
+# saa `rsync -av /a/ b.dk:/c` slap forbi som lokal. Nu er det nok at en
+# whitespace-adskilt token efterfoelges af kolon.
+_RSYNC_FJERN = re.compile(r"\brsync\b[^|;]*\s[\w.\-]+:|\brsync\b.*(::|-e\s+ssh)",
+                          re.IGNORECASE)
+# bash' egne netvaerks-pseudoenheder — nemme at overse i en review.
+_DEVTCP = re.compile(r"/dev/(tcp|udp)/")
+
+
+def classify_egress(command: str) -> dict[str, Any]:
+    """{"egress": bool, "tool": str, "reason": str} for en bash-kommando. Ren."""
+    try:
+        cmd = str(command or "")
+        if not cmd:
+            return {"egress": False, "tool": "", "reason": ""}
+        m = _EGRESS_VAERKTOEJ.search(cmd)
+        if m:
+            t = m.group(1).lower()
+            return {"egress": True, "tool": t,
+                    "reason": f"netvaerks-vaerktoej '{t}' i kommandoen"}
+        if _RSYNC_FJERN.search(cmd):
+            return {"egress": True, "tool": "rsync",
+                    "reason": "rsync peger paa en fjern vaert"}
+        if _DEVTCP.search(cmd):
+            return {"egress": True, "tool": "/dev/tcp",
+                    "reason": "bash netvaerks-omdirigering via /dev/tcp"}
+        return {"egress": False, "tool": "", "reason": ""}
+    except Exception:
+        return {"egress": False, "tool": "", "reason": ""}
+
+
+def urls_in_command(command: str) -> list[str]:
+    """URL'er i en kommando, saa de kan klassificeres hver for sig. Ren."""
+    try:
+        return re.findall(r"https?://[^\s'\"<>|;)]+", str(command or ""))
+    except Exception:
+        return []
+
+
+def internal_targets_in_command(command: str) -> list[str]:
+    """De URL'er i kommandoen der peger INDAD. Ren.
+
+    Det er den interessante delmaengde: `curl https://api.eksempel.dk` er
+    almindeligt arbejde, `curl http://169.254.169.254/` er noget andet.
+    """
+    return [u for u in urls_in_command(command) if classify(u)["blocked"]]

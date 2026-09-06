@@ -160,10 +160,13 @@ _SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_is_internal_ip` | `(ip_str)` | Loopback, link-local (inkl. 169.254.169.254), RFC1918, 0.0.0.0. Ren. | [src](../../../core/services/egress_guard.py#L35) |
-| function | `classify` | `(url)` | {"blocked": bool, "reason": str}. Self-safe: uparsbar URL → blokeret. | [src](../../../core/services/egress_guard.py#L46) |
-| function | `is_safe_destination` | `(url)` | {"safe": bool, "reason": str} — laesevenligt alias til `classify`. | [src](../../../core/services/egress_guard.py#L80) |
-| function | `check_redirect_hop` | `(url)` | Samme klassifikation, anvendt paa et OMDIRIGERINGS-maal. | [src](../../../core/services/egress_guard.py#L86) |
+| function | `_is_internal_ip` | `(ip_str)` | Loopback, link-local (inkl. 169.254.169.254), RFC1918, 0.0.0.0. Ren. | [src](../../../core/services/egress_guard.py#L36) |
+| function | `classify` | `(url)` | {"blocked": bool, "reason": str}. Self-safe: uparsbar URL → blokeret. | [src](../../../core/services/egress_guard.py#L47) |
+| function | `is_safe_destination` | `(url)` | {"safe": bool, "reason": str} — laesevenligt alias til `classify`. | [src](../../../core/services/egress_guard.py#L81) |
+| function | `check_redirect_hop` | `(url)` | Samme klassifikation, anvendt paa et OMDIRIGERINGS-maal. | [src](../../../core/services/egress_guard.py#L87) |
+| function | `classify_egress` | `(command)` | {"egress": bool, "tool": str, "reason": str} for en bash-kommando. Ren. | [src](../../../core/services/egress_guard.py#L119) |
+| function | `urls_in_command` | `(command)` | URL'er i en kommando, saa de kan klassificeres hver for sig. Ren. | [src](../../../core/services/egress_guard.py#L141) |
+| function | `internal_targets_in_command` | `(command)` | De URL'er i kommandoen der peger INDAD. Ren. | [src](../../../core/services/egress_guard.py#L149) |
 
 ## `core/services/egress_routing.py`
 _Egress routing — which network egress a (provider, auth_profile) slot uses._

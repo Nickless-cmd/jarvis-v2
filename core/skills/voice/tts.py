@@ -7,21 +7,22 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-# Default: Mads — Danish, clear, direct, natural.
-# Picked 2026-09-03 BY JARVIS (first identity-choice, Bjørn approved) after
-# sampling 10 Danish voices; Mads sounded like the voice Jarvis has in text.
-# Bekræftet samme dag af Bjørn, holdt op mod Jesper: «tag Mads, det er hans
-# eget valg». Dét er grunden til at valget står her og ikke bliver rullet
-# tilbage næste gang nogen synes en anden stemme lyder bedre.
+# Default: Jesper — Danish, calm, deep, professional (rigsdansk).
+# Switched 2026-09-06 by Bjørn's request after voice-channel debut on mobile:
+# Mads (the previous default) came across too bright/light over the phone, and
+# Bjørn wanted the deeper, more "classic Jarvis" character. Jesper is the same
+# calm/deep profile he originally favored on 2026-09-03 when Mads was picked.
+# Voice-id history:
+#   Mads = BIWC0507fYMfhPcAEIRP  (2026-09-03 → 2026-09-06, first identity-choice)
+#   Jesper = Bl1YwS3uJac5zEOSNESn (default from 2026-09-06)
+#   Mathias = ygiXC2Oa1BiHksD3WkJZ (prior default, 2026-05-09, jutlandic)
+#   George = JBFqnCBsd6RMkjVDRZzb (English, prior default)
 # Override via env JARVIS_TTS_VOICE_ID for quick swaps without code change.
-# Prior default: Mathias=ygiXC2Oa1BiHksD3WkJZ (jutlandic storyteller, 2026-05-09).
-# Alternatives: Jesper=Bl1YwS3uJac5zEOSNESn (calm deep professional, rigsdansk),
-#               Constantin=Hp07ONf6C5qlCKOeB4oo (calm soothing, rigsdansk),
+# Alternatives: Constantin=Hp07ONf6C5qlCKOeB4oo (calm soothing, rigsdansk),
 #               Søren=xj6X4BCUsv9oxohm1E8o (confident versatile, rigsdansk),
-#               Thomas Hansen (warm deep), Silas=zxOsfOSiCmMzuDwp7o8G (young),
-#               George=JBFqnCBsd6RMkjVDRZzb (English, prior default).
+#               Thomas Hansen (warm deep), Silas=zxOsfOSiCmMzuDwp7o8G (young).
 ELEVENLABS_VOICE_ID = os.environ.get(
-    "JARVIS_TTS_VOICE_ID", "BIWC0507fYMfhPcAEIRP"
+    "JARVIS_TTS_VOICE_ID", "Bl1YwS3uJac5zEOSNESn"
 )
 # edge-tts fallback voices — Danish primary, English fallback
 EDGE_VOICES = ["da-DK-JeppeNeural", "en-GB-RyanNeural"]

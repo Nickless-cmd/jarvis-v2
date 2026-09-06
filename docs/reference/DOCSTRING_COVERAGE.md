@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6855/13688 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6856/13689 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -12,7 +12,7 @@ Generated from source. 6855/13688 functions/methods documented (50%). The list b
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
-| `core.auth` | 3 | 48 | 6% |
+| `core.auth` | 4 | 49 | 8% |
 | `core.browser` | 11 | 13 | 84% |
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
@@ -134,10 +134,10 @@ Generated from source. 6855/13688 functions/methods documented (50%). The list b
 - `core/auth/copilot_session.py` :: `invalidate_session_cache` (L115)
 - `core/auth/openai_oauth.py` :: `build_openai_launch_intent` (L147)
 - `core/auth/openai_oauth.py` :: `exchange_openai_callback_code` (L234)
-- `core/auth/openai_oauth.py` :: `get_openai_bearer_token` (L292)
+- `core/auth/openai_oauth.py` :: `get_openai_bearer_token` (L320)
 - `core/auth/openai_oauth.py` :: `get_openai_callback_url` (L142)
 - `core/auth/openai_oauth.py` :: `get_openai_oauth_truth` (L40)
-- `core/auth/openai_oauth.py` :: `import_openai_codex_session` (L321)
+- `core/auth/openai_oauth.py` :: `import_openai_codex_session` (L368)
 - `core/auth/openai_oauth.py` :: `load_openai_oauth_config` (L84)
 - `core/auth/openai_oauth.py` :: `refresh_openai_access_token` (L267)
 - `core/auth/openai_oauth.py` :: `save_openai_callback` (L202)

@@ -37,18 +37,19 @@ _GitHub Copilot session-token exchange._
 | function | `save_openai_callback` | `(*, profile, callback_url)` | — | [src](../../../core/auth/openai_oauth.py#L202) |
 | function | `exchange_openai_callback_code` | `(*, profile)` | — | [src](../../../core/auth/openai_oauth.py#L234) |
 | function | `refresh_openai_access_token` | `(*, profile)` | — | [src](../../../core/auth/openai_oauth.py#L267) |
-| function | `get_openai_bearer_token` | `(*, profile, auto_reimport=…)` | — | [src](../../../core/auth/openai_oauth.py#L292) |
-| function | `import_openai_codex_session` | `(*, profile)` | — | [src](../../../core/auth/openai_oauth.py#L321) |
-| function | `_post_openai_token_request` | `(*, token_url, payload)` | — | [src](../../../core/auth/openai_oauth.py#L358) |
-| function | `_jwt_claim` | `(token, key)` | — | [src](../../../core/auth/openai_oauth.py#L379) |
-| function | `_jwt_expiry_iso` | `(token)` | — | [src](../../../core/auth/openai_oauth.py#L384) |
-| function | `_decode_jwt_payload` | `(token)` | — | [src](../../../core/auth/openai_oauth.py#L392) |
-| function | `_store_openai_token_response` | `(*, profile, credentials, token_data)` | — | [src](../../../core/auth/openai_oauth.py#L408) |
-| function | `_generate_code_verifier` | `()` | — | [src](../../../core/auth/openai_oauth.py#L444) |
-| function | `_pkce_code_challenge` | `(verifier)` | — | [src](../../../core/auth/openai_oauth.py#L448) |
-| function | `_is_expired` | `(expires_at_raw)` | — | [src](../../../core/auth/openai_oauth.py#L453) |
-| function | `execute_codex_responses` | `(*, message, model=…, profile=…, instructions=…, timeout=…)` | Execute a prompt via the Codex Responses API (chatgpt.com). | [src](../../../core/auth/openai_oauth.py#L479) |
-| function | `codex_responses_health_check` | `(*, profile=…)` | Quick health check: verify Codex Responses API is reachable with valid auth. | [src](../../../core/auth/openai_oauth.py#L584) |
+| function | `_glem_token_cache` | `(profile=…)` | Ryd cachen — for én profil, eller alle naar profile er tom. | [src](../../../core/auth/openai_oauth.py#L312) |
+| function | `get_openai_bearer_token` | `(*, profile, auto_reimport=…)` | — | [src](../../../core/auth/openai_oauth.py#L320) |
+| function | `import_openai_codex_session` | `(*, profile)` | — | [src](../../../core/auth/openai_oauth.py#L368) |
+| function | `_post_openai_token_request` | `(*, token_url, payload)` | — | [src](../../../core/auth/openai_oauth.py#L408) |
+| function | `_jwt_claim` | `(token, key)` | — | [src](../../../core/auth/openai_oauth.py#L429) |
+| function | `_jwt_expiry_iso` | `(token)` | — | [src](../../../core/auth/openai_oauth.py#L434) |
+| function | `_decode_jwt_payload` | `(token)` | — | [src](../../../core/auth/openai_oauth.py#L442) |
+| function | `_store_openai_token_response` | `(*, profile, credentials, token_data)` | — | [src](../../../core/auth/openai_oauth.py#L458) |
+| function | `_generate_code_verifier` | `()` | — | [src](../../../core/auth/openai_oauth.py#L494) |
+| function | `_pkce_code_challenge` | `(verifier)` | — | [src](../../../core/auth/openai_oauth.py#L498) |
+| function | `_is_expired` | `(expires_at_raw)` | — | [src](../../../core/auth/openai_oauth.py#L503) |
+| function | `execute_codex_responses` | `(*, message, model=…, profile=…, instructions=…, timeout=…)` | Execute a prompt via the Codex Responses API (chatgpt.com). | [src](../../../core/auth/openai_oauth.py#L529) |
+| function | `codex_responses_health_check` | `(*, profile=…)` | Quick health check: verify Codex Responses API is reachable with valid auth. | [src](../../../core/auth/openai_oauth.py#L634) |
 
 ## `core/auth/profiles.py`
 

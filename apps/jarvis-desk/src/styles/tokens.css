@@ -21,6 +21,23 @@
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
+  --fg-0: #f7f9fc;
+  --ok: #5fcf80;
+  --tint: #6ea8fe;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --mono: var(--font-mono);
+
+  /* Alias-tokens: navne som app.css allerede brugte, men som aldrig var
+     defineret — de faldt tilbage på hardkodede mørke literaler (eller på
+     ingenting, hvilket gjorde `background: var(--bg)` gennemsigtig). */
+  --fg: var(--fg-1);
+  --bg: var(--bg-0);
+  --border: var(--line);
+  --muted: var(--fg-3);
+  --err: var(--error-fg);
+  --danger: var(--error-fg);
+  --warn: var(--warn-fg);
+
 }
 
 /* Lyst tema — invertér baggrunds-/forgrunds-rampen. */
@@ -37,6 +54,12 @@
   --accent: #1f9d63;
   --user-bubble: #e6edf6;
   --code-bg: #f0f2f6;
+  --fg-0: #0b0f16;
+  --ok: #157a4c;
+  --tint: #2563eb;
+  --error-fg: #c0392b;
+  --warn-fg: #8a5c00;
+
 }
 
 /* Høj kontrast — maksimal læsbarhed. */
@@ -53,6 +76,12 @@
   --accent: #00ff95;
   --user-bubble: #1a1a1a;
   --code-bg: #0a0a0a;
+  --fg-0: #ffffff;
+  --ok: #00ff95;
+  --tint: #7cc0ff;
+  --error-fg: #ff6b6b;
+  --warn-fg: #ffd166;
+
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

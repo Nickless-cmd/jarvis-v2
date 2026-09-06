@@ -508,3 +508,28 @@ export async function getReviewAendringer(
 ): Promise<ReviewAendringer> {
   return apiFetch(config, `/review/changes?test_koert=${testKoert ? 'true' : 'false'}`)
 }
+
+/** Lektier: forslag der venter på en dom, og dem der allerede er i brug.
+ *  Godkendelse har en reel virkning — aktive lektier går ind i prompten. */
+export type Lektion = {
+  id: number
+  signature: string
+  lesson: string
+  source: string
+  status: string
+  evidence_count: number
+  repeated_count: number
+  first_at: string
+  last_at: string
+}
+export async function getLektier(
+  config: ApiConfig,
+): Promise<{ proposed: Lektion[]; active: Lektion[] }> {
+  const d = await apiFetch<{ proposed?: Lektion[]; active?: Lektion[] }>(config, '/review/lessons')
+  return { proposed: d.proposed ?? [], active: d.active ?? [] }
+}
+export async function saetLektionStatus(
+  config: ApiConfig, id: number, status: 'active' | 'rejected',
+): Promise<{ status: string; error?: string }> {
+  return apiFetch(config, `/review/lessons/${id}`, { method: 'POST', body: { status } })
+}

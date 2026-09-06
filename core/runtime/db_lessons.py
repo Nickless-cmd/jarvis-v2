@@ -255,3 +255,27 @@ def retire_stale(*, days: int = 30, min_evidence: int = 2, now: datetime | None 
         )
         conn.commit()
         return int(cur.rowcount or 0)
+
+
+def set_lesson_status(lesson_id: int, status: str) -> dict[str, Any] | None:
+    """Saet en lektions status. Returnerer raekken bagefter, eller None.
+
+    Loekken var halv: forslag blev skrevet (`proposed`), og `build_lessons_section`
+    laeser `active` ind i prompten — men intet kunne flytte en lektion fra det ene
+    til det andet. 4 forslag stod fra 4.-5. september uden at nogen kunne se dem.
+
+    Tilladte vaerdier holdes snaevre med vilje: en fri streng her ville kunne
+    parkere en lektion i en status ingen laeser.
+    """
+    tilladt = {"proposed", "active", "rejected", "retired"}
+    s = str(status or "").strip().lower()
+    if s not in tilladt:
+        raise ValueError(f"ukendt status: {status!r} (tilladt: {sorted(tilladt)})")
+    with connect() as conn:
+        ensure_lessons_table(conn)
+        conn.execute(
+            "UPDATE lessons SET status = ?, last_at = ? WHERE id = ?",
+            (s, _now_iso(), int(lesson_id)),
+        )
+        conn.commit()
+    return get_lesson(int(lesson_id))

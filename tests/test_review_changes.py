@@ -70,3 +70,59 @@ def test_manglende_testkoersel_flages_naar_der_ER_aendringer(tmp_path):
 
 def test_intet_flag_naar_der_slet_ingen_aendringer_er(tmp_path):
     assert rv._risici(tmp_path, [], test_koert=False) == []
+
+
+# ── Lektier: løkken var halv ────────────────────────────────────────────────
+
+def test_status_afviser_ukendte_vaerdier(monkeypatch):
+    """En fri streng kunne parkere en lektion i en status ingen læser."""
+    from core.runtime.db_lessons import set_lesson_status
+
+    with pytest.raises(ValueError):
+        set_lesson_status(1, "måske")
+
+
+def test_lektier_deles_i_forslag_og_aktive(monkeypatch):
+    kaldt = []
+
+    def falsk(*, status=None, limit=30, source=None):
+        kaldt.append(status)
+        return [{"id": 1, "lesson": "x", "status": status, "evidence_count": 3,
+                 "repeated_count": 2}]
+
+    monkeypatch.setattr("core.runtime.db_lessons.list_lessons", falsk)
+    monkeypatch.setattr(wc, "current_role", lambda: "owner")
+    d = _app().get("/review/lessons").json()
+    assert kaldt == ["proposed", "active"]
+    # Bevis-tallene skal med — de er forskellen på en anelse og et mønster.
+    assert d["proposed"][0]["evidence_count"] == 3
+    assert d["proposed"][0]["repeated_count"] == 2
+
+
+def test_godkendelse_saetter_active(monkeypatch):
+    sat = {}
+
+    def falsk(lid, status):
+        sat.update(id=lid, status=status)
+        return {"id": lid, "status": status}
+
+    monkeypatch.setattr("core.runtime.db_lessons.set_lesson_status", falsk)
+    monkeypatch.setattr(wc, "current_role", lambda: "owner")
+    r = _app().post("/review/lessons/7", json={"status": "active"}).json()
+    assert sat == {"id": 7, "status": "active"}
+    assert r["status"] == "ok"
+
+
+def test_ukendt_status_giver_en_fejl_ikke_en_tavs_succes(monkeypatch):
+    def falsk(lid, status):
+        raise ValueError("ukendt status")
+
+    monkeypatch.setattr("core.runtime.db_lessons.set_lesson_status", falsk)
+    monkeypatch.setattr(wc, "current_role", lambda: "owner")
+    r = _app().post("/review/lessons/7", json={"status": "vås"}).json()
+    assert r["status"] == "error"
+
+
+def test_lektier_er_ogsaa_ejer_gatet(monkeypatch):
+    monkeypatch.setattr(wc, "current_role", lambda: "member")
+    assert _app().get("/review/lessons").status_code == 403

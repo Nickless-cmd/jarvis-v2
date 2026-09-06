@@ -9,6 +9,7 @@ import { CentralBadge } from '../components/shell/CentralBadge'
 import { WorkQueue } from '../components/cowork/WorkQueue'
 import { AgentWork } from '../components/cowork/AgentWork'
 import { ReviewPanel } from '../components/cowork/ReviewPanel'
+import { Lektier } from '../components/cowork/Lektier'
 import { MarketplacePane } from '../components/cowork/MarketplacePane'
 import { AccountSection } from '../components/settings/AccountSection'
 import { KvoteSection } from '../components/settings/KvoteSection'
@@ -69,6 +70,7 @@ export function CoworkView(
           <WorkQueue config={config} />
           {/* Koeen viser hvad der venter; arbejderne hvad der faktisk KOERTE.
               De to hoerer sammen — begge svarer paa «hvad foregaar der». */}
+          {ownerAuth && <Lektier config={config} />}
           {ownerAuth && <ReviewPanel config={config} />}
           {ownerAuth && <AgentWork config={config} />}
           {missionControl}

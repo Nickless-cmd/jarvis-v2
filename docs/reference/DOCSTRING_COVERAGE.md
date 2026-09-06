@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6870/13705 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6873/13708 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 6870/13705 functions/methods documented (50%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 6 | 16 | 37% |
-| `apps.api.jarvis_api.routes` | 605 | 797 | 75% |
+| `apps.api.jarvis_api.routes` | 607 | 799 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -23,7 +23,7 @@ Generated from source. 6870/13705 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 568 | 1054 | 53% |
+| `core.runtime` | 569 | 1055 | 53% |
 | `core.services` | 4570 | 9500 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 92 | 164 | 56% |

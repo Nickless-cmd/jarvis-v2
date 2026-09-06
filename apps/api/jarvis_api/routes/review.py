@@ -144,3 +144,46 @@ def review_changes(test_koert: bool = False, diff: bool = True) -> dict:
         "diff_truncated": afkortet,
         "risks": _risici(rod, filer, test_koert),
     }
+
+
+@router.get("/lessons")
+def review_lessons(limit: int = 20) -> dict:
+    """Lektier der venter paa en dom — og dem der allerede er i brug.
+
+    Loekken var halv: forslag blev skrevet, og `build_lessons_section` laeser
+    `active` ind i prompten (prompt_contract.py:2923, ingen gate) — men intet
+    kunne flytte en lektion fra det ene til det andet. Fire forslag stod fra
+    4.-5. september uden at nogen kunne se dem.
+
+    `evidence_count` og `repeated_count` sendes med, fordi de er forskellen paa
+    en hypotese og et moenster: set en gang er en anelse, set tre gange er en
+    regel. Den vurdering skal Bjoern kunne traeffe, ikke appen.
+    """
+    from core.runtime.db_lessons import list_lessons
+
+    n = max(1, min(int(limit), 100))
+    try:
+        forslag = list_lessons(status="proposed", limit=n)
+        aktive = list_lessons(status="active", limit=n)
+    except Exception as exc:  # pragma: no cover - defensivt
+        return {"proposed": [], "active": [], "error": str(exc)}
+    return {"proposed": forslag, "active": aktive}
+
+
+@router.post("/lessons/{lesson_id}")
+def review_lesson_set(lesson_id: int, payload: dict | None = None) -> dict:
+    """Godkend (`active`), afvis (`rejected`) eller send tilbage (`proposed`).
+
+    Godkendelse har en reel virkning: aktive lektier gaar ind i prompten. Derfor
+    er det en bevidst handling og ikke noget der sker automatisk.
+    """
+    from core.runtime.db_lessons import set_lesson_status
+
+    status = str((payload or {}).get("status") or "").strip().lower()
+    try:
+        raekke = set_lesson_status(int(lesson_id), status)
+    except ValueError as exc:
+        return {"status": "error", "error": str(exc)}
+    if raekke is None:
+        return {"status": "error", "error": f"lektion {lesson_id} findes ikke"}
+    return {"status": "ok", "lesson": raekke}

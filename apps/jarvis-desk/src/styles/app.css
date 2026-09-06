@@ -2856,3 +2856,38 @@
 }
 .rv-tom { color: var(--fg-3); font-size: 12.5px; margin-top: 12px; }
 @media (prefers-reduced-motion: reduce) { .rv-pil { transition: none; } }
+
+/* Lærings-løkken: forslag → dom → prompt. Bevis-tallene står synligt, fordi
+   forskellen på en anelse og et mønster er hele vurderingen. */
+.lk { margin-top: 14px; }
+.lk-head {
+  display: flex; align-items: center; gap: 7px;
+  margin: 0 0 8px; color: var(--fg-2); font-size: 13px; font-weight: 600;
+}
+.lk-aktive { margin-left: auto; color: var(--fg-3); font-weight: 400; font-size: 11.5px; }
+.lk-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.lk-kort {
+  padding: 10px 11px; background: var(--bg-1);
+  border: 1px solid var(--line); border-radius: var(--radius-md);
+}
+.lk-tekst { margin: 0 0 8px; color: var(--fg-1); font-size: 13px; line-height: 1.45; }
+.lk-fod { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; font-size: 11.5px; }
+.lk-kilde {
+  padding: 1px 6px; background: var(--bg-3); border-radius: 999px; color: var(--fg-3);
+  font-family: var(--font-mono);
+}
+.lk-bevis { color: var(--fg-3); }
+.lk-ja, .lk-nej {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 9px; border-radius: var(--radius-sm);
+  background: transparent; border: 1px solid var(--line);
+  font: inherit; font-size: 11.5px; cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.lk-ja { color: var(--ok); margin-left: auto; }
+.lk-ja:hover:not(:disabled) { border-color: var(--ok); }
+.lk-nej { color: var(--fg-3); }
+.lk-nej:hover:not(:disabled) { color: var(--fg-2); border-color: var(--fg-3); }
+.lk-ja:disabled, .lk-nej:disabled { opacity: .5; cursor: default; }
+.lk-tom { color: var(--fg-3); font-size: 12.5px; }
+@media (prefers-reduced-motion: reduce) { .lk-ja, .lk-nej { transition: none; } }

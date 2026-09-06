@@ -606,6 +606,7 @@ _`lessons` — the one store for what Jarvis learns from mistakes._
 | function | `find_similar_lessons` | `(text, *, limit=…, status=…)` | Active lessons most similar to ``text`` (BM25 over signature + lesson). | [src](../../../core/runtime/db_lessons.py#L204) |
 | function | `record_repeat` | `(lesson_id, *, now=…)` | — | [src](../../../core/runtime/db_lessons.py#L231) |
 | function | `retire_stale` | `(*, days=…, min_evidence=…, now=…)` | Retire proposed/active lessons with evidence < min_evidence, no repeat, | [src](../../../core/runtime/db_lessons.py#L244) |
+| function | `set_lesson_status` | `(lesson_id, status)` | Saet en lektions status. Returnerer raekken bagefter, eller None. | [src](../../../core/runtime/db_lessons.py#L260) |
 
 ## `core/runtime/db_private_brain.py`
 _Private brain records — Jarvis' EGNE private lag (private-carry-erindringer med_

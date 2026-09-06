@@ -624,6 +624,8 @@ _Review: hvad er der faktisk ændret, og hvad bør man kigge efter?_
 | function | `_linjer_i` | `(sti)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L57) |
 | function | `_risici` | `(rod, filer, test_koert)` | Flag udledt af repoets EGNE regler. Ingen regel → intet flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L65) |
 | function | `review_changes` | `(test_koert=…, diff=…)` | Hvad er ændret i arbejdstræet — pr. fil, med diff og regel-baserede flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L107) |
+| function | `review_lessons` | `(limit=…)` | Lektier der venter paa en dom — og dem der allerede er i brug. | [src](../../../apps/api/jarvis_api/routes/review.py#L150) |
+| function | `review_lesson_set` | `(lesson_id, payload=…)` | Godkend (`active`), afvis (`rejected`) eller send tilbage (`proposed`). | [src](../../../apps/api/jarvis_api/routes/review.py#L174) |
 
 ## `apps/api/jarvis_api/routes/sensory.py`
 _Sansernes Arkiv HTTP endpoints._

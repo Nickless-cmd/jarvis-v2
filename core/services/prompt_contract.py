@@ -3195,6 +3195,22 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception:
         pass
 
+    # Hvad gik der ind i turen? (6/9-2026) Gemmes kompakt, saa desk kan vise
+    # en kontekst-drawer ved komponisten UDEN at bygge prompten igen — den
+    # koster sekunder, og en drawer man venter paa er en drawer man lukker.
+    #
+    # Retrospektivt med vilje: «det her brugte han sidste tur» er baade
+    # sandt og en god forudsigelse. Et estimat FOER afsendelse ville vaere
+    # et gaet praesenteret som en maaling.
+    _gem_kontekst_resume(
+        session_id=session_id,
+        included_files=included_files,
+        derived_inputs=derived_inputs,
+        excluded_files=excluded_files,
+        chars=_total_chars,
+        parts=len([p for p in parts if p]),
+    )
+
     return PromptAssembly(
         mode="visible_chat",
         text=_assembled_text,
@@ -4720,3 +4736,41 @@ def prompt_mode_loader_summary() -> dict[str, object]:
         "heartbeat": "loader-ready",
         "future_agent_task": "loader-ready",
     }
+
+_KONTEKST_NOEGLE = "prompt_kontekst_resume"
+_KONTEKST_TTL_S = 3600.0
+
+
+def _gem_kontekst_resume(*, session_id, included_files, derived_inputs,
+                         excluded_files, chars: int, parts: int) -> None:
+    """Kompakt resumé af sidste turs prompt. Self-safe: fejl → ingenting.
+
+    Kun NAVNE og tal — aldrig indhold. Drawer'en skal svare paa «hvad bruger
+    han», ikke gengive hans hukommelse i et sidepanel.
+    """
+    try:
+        from core.services import shared_cache
+        sid = str(session_id or "_default")
+        shared_cache.set(
+            f"{_KONTEKST_NOEGLE}:{sid}",
+            {
+                "filer": [str(f) for f in (included_files or [])][:40],
+                "udeladt": [str(f) for f in (excluded_files or [])][:20],
+                "kilder": [str(d) for d in (derived_inputs or [])][:60],
+                "tegn": int(chars),
+                "dele": int(parts),
+            },
+            ttl_seconds=_KONTEKST_TTL_S,
+        )
+    except Exception:
+        pass
+
+
+def kontekst_resume(session_id: str) -> dict:
+    """Sidste turs prompt-sammensætning. Tom dict hvis der ingen tur var."""
+    try:
+        from core.services import shared_cache
+        v = shared_cache.get(f"{_KONTEKST_NOEGLE}:{str(session_id or '_default')}")
+        return dict(v) if isinstance(v, dict) else {}
+    except Exception:
+        return {}

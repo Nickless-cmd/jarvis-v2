@@ -404,3 +404,25 @@ export function spandForRun(status: string): KoeSpand {
   if (s === 'interrupted') return 'til_gennemsyn'
   return 'faerdig'
 }
+
+/** Kontekst-drawer (6/9-2026): hvad gik der ind i sidste tur? */
+export interface KontekstResume {
+  har_data: boolean
+  filer: string[]
+  udeladt: string[]
+  kilder: string[]
+  tegn: number
+  dele: number
+}
+
+export async function getKontekst(
+  config: ApiConfig, sessionId?: string,
+): Promise<KontekstResume> {
+  const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''
+  const d = await apiFetch<Partial<KontekstResume>>(config, `/workbench/context${q}`)
+  return {
+    har_data: Boolean(d.har_data),
+    filer: d.filer ?? [], udeladt: d.udeladt ?? [], kilder: d.kilder ?? [],
+    tegn: d.tegn ?? 0, dele: d.dele ?? 0,
+  }
+}

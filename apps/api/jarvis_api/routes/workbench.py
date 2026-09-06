@@ -132,3 +132,33 @@ async def switch_set(navn: str, payload: dict = Body(default={})) -> dict[str, A
         raise HTTPException(status_code=404, detail=f"ukendt kontakt: {navn}")
 
     return await asyncio.to_thread(_saet)
+
+
+# ── Kontekst-drawer ─────────────────────────────────────────────────────────
+
+@router.get("/context")
+async def context_summary(session_id: str = "") -> dict[str, Any]:
+    """Hvad gik der ind i sidste tur? Filer, kilder, størrelse.
+
+    Retrospektivt med vilje. Et estimat FØR afsendelse ville være et gæt
+    præsenteret som en måling, og prompten koster sekunder at bygge — en
+    drawer man venter på er en drawer man lukker.
+
+    Kun navne og tal, aldrig indhold: spørgsmålet er «hvad bruger han»,
+    ikke «gengiv hans hukommelse i et sidepanel».
+    """
+    def _hent() -> dict[str, Any]:
+        from core.services.prompt_contract import kontekst_resume
+        sid = session_id or _session_id()
+        r = kontekst_resume(sid)
+        if not r:
+            return {"status": "ok", "har_data": False, "session_id": sid}
+        return {
+            "status": "ok", "har_data": True, "session_id": sid,
+            "filer": r.get("filer") or [],
+            "udeladt": r.get("udeladt") or [],
+            "kilder": r.get("kilder") or [],
+            "tegn": r.get("tegn") or 0,
+            "dele": r.get("dele") or 0,
+        }
+    return await asyncio.to_thread(_hent)

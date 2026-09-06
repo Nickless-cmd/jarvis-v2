@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-06 — 445 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-06 — 446 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -43,6 +43,7 @@
 | `central_query` | native | no |
 | `check_good_enough` | native | no |
 | `check_surprises` | native | no |
+| `checkpoint` | native | no |
 | `classify_clarification` | native | no |
 | `clear_flag` | native | no |
 | `comfyui_history` | native | no |

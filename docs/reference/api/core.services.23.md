@@ -2,6 +2,55 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/user_scope.py`
+_Per-bruger data-scope (SECURITY #154, streng GDPR)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `scope_uid` | `()` | Den bruger-id en privat DB-operation skal scopes til. "" hvis intet kan | [src](../../../core/services/user_scope.py#L15) |
+
+## `core/services/user_temperature_engine.py`
+_User temperature field engine — Lag 10 two-stream pipeline._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_coerce_float` | `(v)` | — | [src](../../../core/services/user_temperature_engine.py#L59) |
+| function | `_now` | `()` | — | [src](../../../core/services/user_temperature_engine.py#L66) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/user_temperature_engine.py#L70) |
+| function | `_punct_density` | `(message)` | — | [src](../../../core/services/user_temperature_engine.py#L77) |
+| function | `_caps_density` | `(message)` | — | [src](../../../core/services/user_temperature_engine.py#L84) |
+| function | `_burst_density` | `(message_at)` | User msgs in last 5 min, normalized: 0 → 0.0, 5+ → 1.0. | [src](../../../core/services/user_temperature_engine.py#L92) |
+| function | `_delay_since_last_jarvis` | `(message_at)` | Seconds since the prior assistant message. None if no prior or > 60min. | [src](../../../core/services/user_temperature_engine.py#L112) |
+| function | `_parse_hour` | `(message_at)` | — | [src](../../../core/services/user_temperature_engine.py#L140) |
+| function | `_compute_raw_signals` | `(*, message, message_at, baseline)` | Map a single message + baseline to 6 normalized signals. | [src](../../../core/services/user_temperature_engine.py#L148) |
+| function | `map_signals_to_field` | `(signals)` | Pure function: 6 raw signals → valens/arousal/texture/confidence. | [src](../../../core/services/user_temperature_engine.py#L194) |
+| function | `_texture_from_circumplex` | `(valens, arousal)` | Pure function: (valens, arousal) → texture key. | [src](../../../core/services/user_temperature_engine.py#L217) |
+| function | `_validate_llm_output` | `(raw)` | — | [src](../../../core/services/user_temperature_engine.py#L241) |
+| function | `combine_streams` | `(*, struct, llm)` | Deterministic merge of structural + LLM streams. | [src](../../../core/services/user_temperature_engine.py#L266) |
+| function | `_is_significant_shift` | `(prior, new)` | Did valens/arousal shift > threshold or texture change? | [src](../../../core/services/user_temperature_engine.py#L334) |
+| function | `_compute_baseline` | `(*, days=…)` | Compute rolling baseline from last N days of user messages. | [src](../../../core/services/user_temperature_engine.py#L348) |
+| function | `get_active_field` | `(*, workspace_id=…)` | Read active field, honoring kill-switch. | [src](../../../core/services/user_temperature_engine.py#L413) |
+| function | `format_temperature_field_for_heartbeat` | `(*, workspace_id=…)` | Render the field as a heartbeat awareness-section block. | [src](../../../core/services/user_temperature_engine.py#L438) |
+| function | `get_response_style_modifiers` | `(*, workspace_id=…)` | Return response-style hints based on active temperature field. | [src](../../../core/services/user_temperature_engine.py#L478) |
+| function | `get_active_field_surface` | `(*, workspace_id=…, force_refresh=…)` | Return MC-friendly surface dict. force_refresh ignored in Phase 1. | [src](../../../core/services/user_temperature_engine.py#L531) |
+| function | `run_structural_stream` | `(*, workspace_id, message, message_at)` | Per-message structural pipeline. Updates struct_* + recomputes field_*. | [src](../../../core/services/user_temperature_engine.py#L562) |
+| function | `_get_or_build_baseline` | `(*, prior, settings)` | Return cached baseline if fresh, else rebuild. | [src](../../../core/services/user_temperature_engine.py#L632) |
+| function | `_has_pending_trigger` | `(*, workspace_id)` | Read trigger flag without consuming. | [src](../../../core/services/user_temperature_engine.py#L684) |
+| function | `run_llm_stream` | `(*, workspace_id=…, force=…)` | Run LLM-based pipeline (4h cadence or on trigger). | [src](../../../core/services/user_temperature_engine.py#L690) |
+
+## `core/services/user_temperature_runtime.py`
+_Daemon for the user-temperature LLM stream (Lag 10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_get_workspace_lock` | `(workspace_id)` | — | [src](../../../core/services/user_temperature_runtime.py#L26) |
+| function | `_run_one_cycle` | `(workspace_id, *, force=…)` | Acquire workspace lock, run LLM stream. Never raises. | [src](../../../core/services/user_temperature_runtime.py#L35) |
+| function | `_list_active_workspaces` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L52) |
+| function | `_resolve_periodic_interval_seconds` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L56) |
+| function | `_loop` | `()` | Two rhythms in one loop: | [src](../../../core/services/user_temperature_runtime.py#L65) |
+| function | `start_user_temperature_runtime` | `()` | Start the daemon. Idempotent. | [src](../../../core/services/user_temperature_runtime.py#L88) |
+| function | `stop_user_temperature_runtime` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L101) |
+
 ## `core/services/user_theory_of_mind.py`
 _User Theory of Mind — model what the user thinks and feels._
 
@@ -633,35 +682,4 @@ _Visual memory — webcam snapshots beskrevet af vision-model._
 | function | `_vision_model` | `()` | Return (model_name, provider) — den valgte model vinder over config. | [src](../../../core/services/visual_memory.py#L747) |
 | function | `_enabled` | `()` | — | [src](../../../core/services/visual_memory.py#L780) |
 | function | `_archive_sensory` | `(description, *, metadata)` | Mirror every visual memory into Sansernes Arkiv. Silent on failure. | [src](../../../core/services/visual_memory.py#L785) |
-
-## `core/services/voice_anchor.py`
-_Voice anchor — combined static seed + auto-refreshed external exemplars._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `read_voice_anchor` | `()` | Return concatenated VOICE.md + VOICE_RECENT.md, or empty string. | [src](../../../core/services/voice_anchor.py#L20) |
-
-## `core/services/voice_curator.py`
-_Voice curator — refresh VOICE_RECENT.md from EXTERNAL output only._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `refresh_voice_recent` | `()` | Rebuild workspace/VOICE_RECENT.md from external output. | [src](../../../core/services/voice_curator.py#L34) |
-| function | `_pick_diverse` | `(*, chat, chronicle, journals)` | Pick up to _TARGET_TOTAL exemplars, max _MAX_PER_SOURCE per source. | [src](../../../core/services/voice_curator.py#L65) |
-| function | `_format_recent` | `(exemplars)` | Render exemplars as a markdown blob for VOICE_RECENT.md. | [src](../../../core/services/voice_curator.py#L96) |
-| function | `_fetch_chat_exemplars` | `(*, limit)` | Pull recent assistant replies from chat_messages (all sessions). | [src](../../../core/services/voice_curator.py#L112) |
-| function | `_fetch_chronicle_exemplars` | `(*, limit)` | Pull recent chronicle narratives as voice exemplars. | [src](../../../core/services/voice_curator.py#L149) |
-| function | `_fetch_journal_exemplars` | `(*, limit)` | Pull recent journal entry bodies as voice exemplars. | [src](../../../core/services/voice_curator.py#L170) |
-| function | `_strip_frontmatter` | `(text)` | Drop a leading `---\n...\n---\n` YAML block if present. | [src](../../../core/services/voice_curator.py#L203) |
-
-## `core/services/voice_daemon.py`
-_Voice daemon — runs the Hey Jarvis voice loop as a background thread._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_voice_enabled` | `()` | Check if voice is enabled via config or env. | [src](../../../core/services/voice_daemon.py#L24) |
-| function | `_run_loop` | `()` | Supervisor thread: start worker, restart on crash until stopped. | [src](../../../core/services/voice_daemon.py#L30) |
-| function | `start_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L60) |
-| function | `stop_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L73) |
-| function | `build_voice_daemon_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/voice_daemon.py#L84) |
 

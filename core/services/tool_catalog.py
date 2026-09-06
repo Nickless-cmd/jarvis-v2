@@ -75,6 +75,8 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
         "operator_bash", "operator_read_file", "operator_write_file",
         # Bygget 5-6/9 og skjult af samme grund som explore: de stod ikke her.
         "operator_edit_file", "operator_multi_edit",
+        # Fortryd en hel runde — automatisk foto foer hver redigering.
+        "checkpoint",
         "operator_run_in_background", "operator_bash_output", "operator_kill_shell",
         "operator_list_dir", "operator_launch_app", "operator_screenshot",
         "operator_browser_open", "operator_keyboard_type", "operator_mouse_click",

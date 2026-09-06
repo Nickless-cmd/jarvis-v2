@@ -2,6 +2,54 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/text_resonance.py`
+_Text Resonance — I feel what I read, before I analyze it._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resonate` | `(text, *, source=…)` | Compute warmth, cold, urgency scores for a piece of text. | [src](../../../core/services/text_resonance.py#L61) |
+| function | `recent_resonances` | `(*, limit=…)` | — | [src](../../../core/services/text_resonance.py#L139) |
+| function | `build_text_resonance_surface` | `()` | — | [src](../../../core/services/text_resonance.py#L143) |
+| function | `build_text_resonance_prompt_section` | `()` | Only surface when recent reading is strongly toned. | [src](../../../core/services/text_resonance.py#L168) |
+| function | `reset_text_resonance` | `()` | — | [src](../../../core/services/text_resonance.py#L185) |
+
+## `core/services/theater_audit.py`
+_Theater Audit -- find narrative-first inner-life patterns._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L85) |
+| function | `_scan_findings` | `()` | — | [src](../../../core/services/theater_audit.py#L113) |
+| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L160) |
+| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L178) |
+| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L226) |
+| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L232) |
+| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L247) |
+| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L284) |
+| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L309) |
+| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L317) |
+| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L325) |
+
+## `core/services/theory_of_mind.py`
+_Theory of Mind — Step A.v1 of meta-evne stack._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/theory_of_mind.py#L97) |
+| function | `_connect` | `()` | — | [src](../../../core/services/theory_of_mind.py#L123) |
+| function | `_normalize_to_key` | `(text)` | Build a stable dedupe key from a sentence. | [src](../../../core/services/theory_of_mind.py#L133) |
+| function | `_split_factual_sentences` | `(text)` | Return sentences from text that look like factual claims. | [src](../../../core/services/theory_of_mind.py#L149) |
+| function | `record_fact` | `(*, partner_id, origin, fact_summary, session_id=…, message_id=…, evidence=…)` | Upsert a fact into the ledger. | [src](../../../core/services/theory_of_mind.py#L168) |
+| function | `_is_autonomous_session` | `(session_id)` | — | [src](../../../core/services/theory_of_mind.py#L239) |
+| function | `record_message` | `(*, role, content, partner_id=…, session_id=…, message_id=…)` | Extract factual sentences from a message and record each one. | [src](../../../core/services/theory_of_mind.py#L244) |
+| function | `recent_facts` | `(*, partner_id=…, origin=…, hours=…, limit=…)` | — | [src](../../../core/services/theory_of_mind.py#L286) |
+| function | `has_been_told` | `(fact_text, *, partner_id=…, hours=…)` | Has Jarvis told partner this fact within the time window? | [src](../../../core/services/theory_of_mind.py#L312) |
+| function | `repetition_warnings` | `(*, partner_id=…, hours=…, threshold=…)` | Facts Jarvis has repeated to partner at or above threshold within window. | [src](../../../core/services/theory_of_mind.py#L337) |
+| function | `communication_ledger_section` | `(*, partner_id=…)` | Quiet by default. Surfaces only when Jarvis is repeating himself. | [src](../../../core/services/theory_of_mind.py#L363) |
+| function | `_listener_loop` | `()` | Poll events table for channel.chat_message_appended events. | [src](../../../core/services/theory_of_mind.py#L390) |
+| function | `start_theory_of_mind_tracker` | `()` | Start the DB-polling listener. Idempotent. | [src](../../../core/services/theory_of_mind.py#L454) |
+| function | `stop_theory_of_mind_tracker` | `()` | — | [src](../../../core/services/theory_of_mind.py#L471) |
+
 ## `core/services/theory_of_mind_engine.py`
 _Active theory-of-mind engine for Jarvis._
 
@@ -95,11 +143,11 @@ _Compact tool catalog for system prompt._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L92) |
-| function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L106) |
-| function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L121) |
-| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L157) |
-| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L162) |
+| function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L94) |
+| function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L108) |
+| function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L123) |
+| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L159) |
+| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L164) |
 
 ## `core/services/tool_chip_payload.py`
 _Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15)._
@@ -488,53 +536,4 @@ _User model daemon — Theory of Mind: a living model of the user's state and pa
 | function | `_detect_communication_style` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L184) |
 | function | `_generate_model_summary` | `(messages, model)` | — | [src](../../../core/services/user_model_daemon.py#L195) |
 | function | `_store_model` | `(summary, now)` | — | [src](../../../core/services/user_model_daemon.py#L223) |
-
-## `core/services/user_scope.py`
-_Per-bruger data-scope (SECURITY #154, streng GDPR)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `scope_uid` | `()` | Den bruger-id en privat DB-operation skal scopes til. "" hvis intet kan | [src](../../../core/services/user_scope.py#L15) |
-
-## `core/services/user_temperature_engine.py`
-_User temperature field engine — Lag 10 two-stream pipeline._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_coerce_float` | `(v)` | — | [src](../../../core/services/user_temperature_engine.py#L59) |
-| function | `_now` | `()` | — | [src](../../../core/services/user_temperature_engine.py#L66) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/user_temperature_engine.py#L70) |
-| function | `_punct_density` | `(message)` | — | [src](../../../core/services/user_temperature_engine.py#L77) |
-| function | `_caps_density` | `(message)` | — | [src](../../../core/services/user_temperature_engine.py#L84) |
-| function | `_burst_density` | `(message_at)` | User msgs in last 5 min, normalized: 0 → 0.0, 5+ → 1.0. | [src](../../../core/services/user_temperature_engine.py#L92) |
-| function | `_delay_since_last_jarvis` | `(message_at)` | Seconds since the prior assistant message. None if no prior or > 60min. | [src](../../../core/services/user_temperature_engine.py#L112) |
-| function | `_parse_hour` | `(message_at)` | — | [src](../../../core/services/user_temperature_engine.py#L140) |
-| function | `_compute_raw_signals` | `(*, message, message_at, baseline)` | Map a single message + baseline to 6 normalized signals. | [src](../../../core/services/user_temperature_engine.py#L148) |
-| function | `map_signals_to_field` | `(signals)` | Pure function: 6 raw signals → valens/arousal/texture/confidence. | [src](../../../core/services/user_temperature_engine.py#L194) |
-| function | `_texture_from_circumplex` | `(valens, arousal)` | Pure function: (valens, arousal) → texture key. | [src](../../../core/services/user_temperature_engine.py#L217) |
-| function | `_validate_llm_output` | `(raw)` | — | [src](../../../core/services/user_temperature_engine.py#L241) |
-| function | `combine_streams` | `(*, struct, llm)` | Deterministic merge of structural + LLM streams. | [src](../../../core/services/user_temperature_engine.py#L266) |
-| function | `_is_significant_shift` | `(prior, new)` | Did valens/arousal shift > threshold or texture change? | [src](../../../core/services/user_temperature_engine.py#L334) |
-| function | `_compute_baseline` | `(*, days=…)` | Compute rolling baseline from last N days of user messages. | [src](../../../core/services/user_temperature_engine.py#L348) |
-| function | `get_active_field` | `(*, workspace_id=…)` | Read active field, honoring kill-switch. | [src](../../../core/services/user_temperature_engine.py#L413) |
-| function | `format_temperature_field_for_heartbeat` | `(*, workspace_id=…)` | Render the field as a heartbeat awareness-section block. | [src](../../../core/services/user_temperature_engine.py#L438) |
-| function | `get_response_style_modifiers` | `(*, workspace_id=…)` | Return response-style hints based on active temperature field. | [src](../../../core/services/user_temperature_engine.py#L478) |
-| function | `get_active_field_surface` | `(*, workspace_id=…, force_refresh=…)` | Return MC-friendly surface dict. force_refresh ignored in Phase 1. | [src](../../../core/services/user_temperature_engine.py#L531) |
-| function | `run_structural_stream` | `(*, workspace_id, message, message_at)` | Per-message structural pipeline. Updates struct_* + recomputes field_*. | [src](../../../core/services/user_temperature_engine.py#L562) |
-| function | `_get_or_build_baseline` | `(*, prior, settings)` | Return cached baseline if fresh, else rebuild. | [src](../../../core/services/user_temperature_engine.py#L632) |
-| function | `_has_pending_trigger` | `(*, workspace_id)` | Read trigger flag without consuming. | [src](../../../core/services/user_temperature_engine.py#L684) |
-| function | `run_llm_stream` | `(*, workspace_id=…, force=…)` | Run LLM-based pipeline (4h cadence or on trigger). | [src](../../../core/services/user_temperature_engine.py#L690) |
-
-## `core/services/user_temperature_runtime.py`
-_Daemon for the user-temperature LLM stream (Lag 10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_get_workspace_lock` | `(workspace_id)` | — | [src](../../../core/services/user_temperature_runtime.py#L26) |
-| function | `_run_one_cycle` | `(workspace_id, *, force=…)` | Acquire workspace lock, run LLM stream. Never raises. | [src](../../../core/services/user_temperature_runtime.py#L35) |
-| function | `_list_active_workspaces` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L52) |
-| function | `_resolve_periodic_interval_seconds` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L56) |
-| function | `_loop` | `()` | Two rhythms in one loop: | [src](../../../core/services/user_temperature_runtime.py#L65) |
-| function | `start_user_temperature_runtime` | `()` | Start the daemon. Idempotent. | [src](../../../core/services/user_temperature_runtime.py#L88) |
-| function | `stop_user_temperature_runtime` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L101) |
 

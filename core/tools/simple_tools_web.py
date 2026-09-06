@@ -470,9 +470,24 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
         logger.warning("bash: session path errored, falling back to subprocess: %s", err)
 
     # Fallback: legacy one-shot subprocess.
+    #
+    # bwrap-indespaerringen (6/9-2026) sidder KUN her, og det er en aegte
+    # graense vaerd at kende: den normale vej er en PERSISTENT bash-session,
+    # og et fangsel pr. kommando kan ikke laegges om en shell der bliver
+    # staaende mellem kald. jarvis-code kan wrappe hver kommando fordi den
+    # koerer engangs-kommandoer. Her daekker den engangs-vejen.
+    # Slukket som standard; `maybe_wrap` returnerer None og intet aendrer sig.
+    _argv = ["bash", "-c", command]
+    try:
+        from core.services.bash_sandbox import maybe_wrap
+        _spaerret = maybe_wrap(command, str(PROJECT_ROOT))
+        if _spaerret:
+            _argv = _spaerret
+    except Exception:
+        logger.debug("bash_sandbox sprunget over", exc_info=True)
     try:
         result = subprocess.run(
-            ["bash", "-c", command],
+            _argv,
             capture_output=True,
             text=True,
             timeout=MAX_BASH_SECONDS,

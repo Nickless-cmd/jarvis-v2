@@ -2,6 +2,46 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/simple_tool_executor.py`
+_Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-08)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_prepare_call` | `(tc, *, force, run_id, session_id, user_message, controller, round_seen)` | Single-thread prep for one call: parse/stamp args, signature, dedup, cache, | [src](../../../core/services/simple_tool_executor.py#L27) |
+| function | `_finalize_call` | `(token, raw_result, *, controller, exec_fmt)` | Single-thread finalize for one executed call: soft-warn wrap, mark-seen on | [src](../../../core/services/simple_tool_executor.py#L108) |
+| function | `_tag_checkpoint_hvis_redigering` | `(calls, session_id)` | Self-safe: en fejl her maa aldrig forhindre selve redigeringen. | [src](../../../core/services/simple_tool_executor.py#L194) |
+| function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L212) |
+| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L318) |
+
+## `core/services/skill_autosurface.py`
+_Owner-approved allowlist governing jarvis-code skill auto-surfacing (Fase 3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_read_store` | `()` | — | [src](../../../core/services/skill_autosurface.py#L30) |
+| function | `_write_store` | `(data)` | — | [src](../../../core/services/skill_autosurface.py#L46) |
+| function | `_emit_governance_event` | `(kind, payload=…)` | Self-safe eventbus emission — observability must never break approval flow. | [src](../../../core/services/skill_autosurface.py#L54) |
+| function | `list_approved` | `()` | Owner-approved skill names eligible for auto-surfacing. Empty on a fresh/corrupt store. | [src](../../../core/services/skill_autosurface.py#L63) |
+| function | `approve_skill` | `(name, *, role)` | Owner-only. Validates against installed skills (skill_engine.skill_exists). | [src](../../../core/services/skill_autosurface.py#L68) |
+| function | `revoke_skill` | `(name, *, role)` | Owner-only. Removes `name` from the allowlist if present. | [src](../../../core/services/skill_autosurface.py#L91) |
+| function | `filter_to_approved` | `(names)` | Narrow `names` to the owner-approved allowlist, gated by the master flag. | [src](../../../core/services/skill_autosurface.py#L106) |
+
+## `core/services/skill_contract_registry.py`
+_Skill Contract Registry — formal contracts for capabilities._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SkillSpec` | `` | Immutable skill identity. | [src](../../../core/services/skill_contract_registry.py#L23) |
+| class | `SkillPermissionSpec` | `` | Required scopes for a skill to run. | [src](../../../core/services/skill_contract_registry.py#L32) |
+| class | `SkillManifest` | `` | Bundle of spec + permissions + schemas. | [src](../../../core/services/skill_contract_registry.py#L40) |
+| function | `register_skill` | `(manifest)` | Register a skill manifest. Overwrites prior entry with same name. | [src](../../../core/services/skill_contract_registry.py#L54) |
+| function | `get_manifest` | `(name)` | — | [src](../../../core/services/skill_contract_registry.py#L59) |
+| function | `list_manifests` | `()` | — | [src](../../../core/services/skill_contract_registry.py#L63) |
+| function | `check_permissions` | `(name, granted_scopes)` | Evaluate whether granted scopes satisfy a skill's required scopes. | [src](../../../core/services/skill_contract_registry.py#L67) |
+| function | `_auto_register_known_skills` | `()` | Seed registry with contracts for well-known built-in capabilities. | [src](../../../core/services/skill_contract_registry.py#L93) |
+| function | `build_skill_contract_registry_surface` | `()` | Mission Control surface. | [src](../../../core/services/skill_contract_registry.py#L194) |
+| function | `_emit_skill_contract_registry_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/skill_contract_registry.py#L226) |
+
 ## `core/services/skill_engine.py`
 _Skill Engine — SKILL.md loader for Jarvis._
 
@@ -618,52 +658,4 @@ _core/services/text_clip.py_
 | function | `clip_text` | `(value, *, limit, hard=…)` | Klip tekst til <= ~limit tegn UDEN at hugge midt i et ord. | [src](../../../core/services/text_clip.py#L16) |
 | function | `clip_head_tail` | `(value, *, limit, tail_frac=…)` | Bevar HOVED + HALE ved LINJE-grænser når tekst overskrider limit. Til tool-output (bash/read/ | [src](../../../core/services/text_clip.py#L53) |
 | function | `clip_words` | `(value, *, max_words)` | Klip til et antal ORD (ikke tegn) — når ord er den meningsfulde enhed. Self-safe. | [src](../../../core/services/text_clip.py#L88) |
-
-## `core/services/text_resonance.py`
-_Text Resonance — I feel what I read, before I analyze it._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `resonate` | `(text, *, source=…)` | Compute warmth, cold, urgency scores for a piece of text. | [src](../../../core/services/text_resonance.py#L61) |
-| function | `recent_resonances` | `(*, limit=…)` | — | [src](../../../core/services/text_resonance.py#L139) |
-| function | `build_text_resonance_surface` | `()` | — | [src](../../../core/services/text_resonance.py#L143) |
-| function | `build_text_resonance_prompt_section` | `()` | Only surface when recent reading is strongly toned. | [src](../../../core/services/text_resonance.py#L168) |
-| function | `reset_text_resonance` | `()` | — | [src](../../../core/services/text_resonance.py#L185) |
-
-## `core/services/theater_audit.py`
-_Theater Audit -- find narrative-first inner-life patterns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L85) |
-| function | `_scan_findings` | `()` | — | [src](../../../core/services/theater_audit.py#L113) |
-| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L160) |
-| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L178) |
-| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L226) |
-| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L232) |
-| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L247) |
-| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L284) |
-| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L309) |
-| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L317) |
-| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L325) |
-
-## `core/services/theory_of_mind.py`
-_Theory of Mind — Step A.v1 of meta-evne stack._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/theory_of_mind.py#L97) |
-| function | `_connect` | `()` | — | [src](../../../core/services/theory_of_mind.py#L123) |
-| function | `_normalize_to_key` | `(text)` | Build a stable dedupe key from a sentence. | [src](../../../core/services/theory_of_mind.py#L133) |
-| function | `_split_factual_sentences` | `(text)` | Return sentences from text that look like factual claims. | [src](../../../core/services/theory_of_mind.py#L149) |
-| function | `record_fact` | `(*, partner_id, origin, fact_summary, session_id=…, message_id=…, evidence=…)` | Upsert a fact into the ledger. | [src](../../../core/services/theory_of_mind.py#L168) |
-| function | `_is_autonomous_session` | `(session_id)` | — | [src](../../../core/services/theory_of_mind.py#L239) |
-| function | `record_message` | `(*, role, content, partner_id=…, session_id=…, message_id=…)` | Extract factual sentences from a message and record each one. | [src](../../../core/services/theory_of_mind.py#L244) |
-| function | `recent_facts` | `(*, partner_id=…, origin=…, hours=…, limit=…)` | — | [src](../../../core/services/theory_of_mind.py#L286) |
-| function | `has_been_told` | `(fact_text, *, partner_id=…, hours=…)` | Has Jarvis told partner this fact within the time window? | [src](../../../core/services/theory_of_mind.py#L312) |
-| function | `repetition_warnings` | `(*, partner_id=…, hours=…, threshold=…)` | Facts Jarvis has repeated to partner at or above threshold within window. | [src](../../../core/services/theory_of_mind.py#L337) |
-| function | `communication_ledger_section` | `(*, partner_id=…)` | Quiet by default. Surfaces only when Jarvis is repeating himself. | [src](../../../core/services/theory_of_mind.py#L363) |
-| function | `_listener_loop` | `()` | Poll events table for channel.chat_message_appended events. | [src](../../../core/services/theory_of_mind.py#L390) |
-| function | `start_theory_of_mind_tracker` | `()` | Start the DB-polling listener. Idempotent. | [src](../../../core/services/theory_of_mind.py#L454) |
-| function | `stop_theory_of_mind_tracker` | `()` | — | [src](../../../core/services/theory_of_mind.py#L471) |
 

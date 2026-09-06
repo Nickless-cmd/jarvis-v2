@@ -98,6 +98,8 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # MCP: hele oekosystemet af eksterne vaerktoejer. Uden den i scope er
     # registeret en adressebog uden telefon.
     "mcp",
+    # Fortryd en hel redigeringsrunde.
+    "checkpoint",
     # At se. Desk og mobil kan uploade billeder (POST /attachments), men
     # vaerktoejet der kigger paa dem stod i INGEN scope — saa et skaermbillede
     # i chat var noget han kunne modtage og ikke se paa. 6/9-2026.
@@ -141,6 +143,7 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "read_attachment",
     "operator_channel",
     "mcp",
+    "checkpoint",
     "operator_read_file", "operator_write_file", "operator_edit_file",
     "operator_bash", "operator_glob", "operator_grep", "operator_list_dir",
     "operator_bash_session_open", "operator_bash_session_run",

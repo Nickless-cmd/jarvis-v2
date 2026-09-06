@@ -13,6 +13,10 @@ path until flipped.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import copy_context
@@ -175,6 +179,36 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
             "status": raw_result.get("status", "ok")}
 
 
+# Vaerktoejer der aendrer filer. `bash` staar med vilje IKKE her: den bruges
+# overvejende til at laese og koere ting, og et checkpoint pr. bash-kald ville
+# fylde stakken med stoej. Den der redigerer via bash mister fortrydelsen —
+# det er en bevidst afvejning, ikke en forglemmelse.
+_REDIGERENDE_VAERKTOEJER = frozenset({
+    "write_file", "edit_file", "multi_edit", "fuzzy_edit",
+    "operator_write_file", "operator_edit_file", "operator_multi_edit",
+    "operator_edit_file_async", "operator_multi_edit_async",
+    "apply_patch", "propose_source_edit",
+})
+
+
+def _tag_checkpoint_hvis_redigering(calls: list[dict], session_id: str | None) -> None:
+    """Self-safe: en fejl her maa aldrig forhindre selve redigeringen."""
+    try:
+        navne = {
+            str((tc.get("function") or {}).get("name") or tc.get("name") or "")
+            for tc in calls
+        }
+        if not (navne & _REDIGERENDE_VAERKTOEJER):
+            return
+        import os
+
+        from core.services.edit_checkpoint import checkpoint
+        checkpoint(os.getcwd(), str(session_id or ""),
+                   note=", ".join(sorted(navne & _REDIGERENDE_VAERKTOEJER))[:120])
+    except Exception:
+        logger.debug("edit_checkpoint sprunget over", exc_info=True)
+
+
 def _execute_simple_tool_calls(
     tool_calls: list[dict],
     *,
@@ -202,6 +236,14 @@ def _execute_simple_tool_calls(
     controller = get_visible_run_controller(run_id) if run_id else None
     calls = tool_calls[:_MAX_CAPABILITIES_PER_TURN]
     round_seen: set[str] = set()
+
+    # ── Checkpoint foer en redigeringsrunde (6/9-2026) ────────────────────
+    # Ét foto af arbejdstraeet foer runden, saa en daarlig runde kan rulles
+    # tilbage SAMLET — ikke rettelse for rettelse. Automatisk, fordi et
+    # checkpoint man skal huske at tage er et checkpoint man ikke har.
+    # `git stash create` roerer hverken HEAD, index eller stash-listen, saa
+    # det kan ikke forurene hans historik. Rent traae → no-op.
+    _tag_checkpoint_hvis_redigering(calls, session_id)
 
     _parallel = False
     try:

@@ -42,6 +42,8 @@ REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     "operator_channel",
     # Uden den er hele MCP-oekosystemet usynligt i cowork.
     "mcp",
+    # En fortrydelse man ikke kan naa er ingen fortrydelse.
+    "checkpoint",
 )
 
 

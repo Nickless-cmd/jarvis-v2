@@ -2,6 +2,56 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_operational_memory.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_operational_memory_snapshot` | `(*, limit=…)` | — | [src](../../../core/services/runtime_operational_memory.py#L26) |
+| function | `recent_open_loops` | `(*, limit=…)` | — | [src](../../../core/services/runtime_operational_memory.py#L82) |
+| function | `recent_visible_outcomes` | `(*, limit=…)` | — | [src](../../../core/services/runtime_operational_memory.py#L93) |
+| function | `active_internal_pressures` | `(*, limit=…)` | — | [src](../../../core/services/runtime_operational_memory.py#L103) |
+| function | `active_executive_contradictions` | `(*, limit=…)` | — | [src](../../../core/services/runtime_operational_memory.py#L113) |
+| function | `remembered_user_facts` | `(*, limit=…)` | — | [src](../../../core/services/runtime_operational_memory.py#L123) |
+| function | `active_work_context` | `(*, limit=…)` | — | [src](../../../core/services/runtime_operational_memory.py#L141) |
+| function | `queued_initiatives` | `(*, limit=…)` | — | [src](../../../core/services/runtime_operational_memory.py#L157) |
+| function | `recent_executive_feedback` | `(*, limit=…)` | — | [src](../../../core/services/runtime_operational_memory.py#L161) |
+| function | `recent_persisted_learning` | `(*, limit=…)` | — | [src](../../../core/services/runtime_operational_memory.py#L165) |
+| function | `summarize_executive_feedback` | `(items)` | — | [src](../../../core/services/runtime_operational_memory.py#L169) |
+| function | `summarize_note_loop_synergies` | `(*, loops, notes)` | — | [src](../../../core/services/runtime_operational_memory.py#L245) |
+| function | `summarize_runtime_learning_signals` | `(items)` | — | [src](../../../core/services/runtime_operational_memory.py#L307) |
+| function | `summarize_semantic_feedback` | `(items)` | — | [src](../../../core/services/runtime_operational_memory.py#L347) |
+| function | `_feedback_recency_weight` | `(recorded_at, *, now)` | — | [src](../../../core/services/runtime_operational_memory.py#L379) |
+| function | `_feedback_age_seconds` | `(recorded_at, *, now)` | — | [src](../../../core/services/runtime_operational_memory.py#L387) |
+| function | `_parse_iso_datetime` | `(value)` | — | [src](../../../core/services/runtime_operational_memory.py#L394) |
+| function | `_outcome_looks_like_no_change` | `(item)` | — | [src](../../../core/services/runtime_operational_memory.py#L407) |
+| function | `_extract_semantic_signals` | `(item)` | — | [src](../../../core/services/runtime_operational_memory.py#L434) |
+| function | `_accumulate_signal_bucket` | `(buckets, signal_key, signal_weight, signal_count)` | — | [src](../../../core/services/runtime_operational_memory.py#L482) |
+| function | `_domain_key` | `(*, loop_id, canonical_key)` | — | [src](../../../core/services/runtime_operational_memory.py#L499) |
+| function | `_signal_tokens` | `(value)` | — | [src](../../../core/services/runtime_operational_memory.py#L507) |
+
+## `core/services/runtime_resource_signal.py`
+_Runtime resource awareness signal._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_runtime_resource_signal_surface` | `()` | — | [src](../../../core/services/runtime_resource_signal.py#L19) |
+| function | `_derive_pressure` | `(today_total_tokens, today_cost_usd)` | Bounded heuristic for runtime resource pressure. | [src](../../../core/services/runtime_resource_signal.py#L65) |
+| function | `build_runtime_resource_prompt_section` | `()` | — | [src](../../../core/services/runtime_resource_signal.py#L85) |
+
+## `core/services/runtime_self_knowledge.py`
+_Runtime self-knowledge — a bounded map of what Jarvis can do, what_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_runtime_self_knowledge_map` | `(*, heartbeat_state=…)` | Build a bounded self-knowledge map from existing runtime surfaces. | [src](../../../core/services/runtime_self_knowledge.py#L28) |
+| function | `_build_active_capabilities` | `(*, heartbeat_state=…)` | Things Jarvis can actively use right now. | [src](../../../core/services/runtime_self_knowledge.py#L75) |
+| function | `_build_approval_gated` | `()` | Things that exist but require user approval. | [src](../../../core/services/runtime_self_knowledge.py#L217) |
+| function | `_build_passive_inner_forces` | `()` | Things that influence Jarvis but are not directly actionable tools. | [src](../../../core/services/runtime_self_knowledge.py#L265) |
+| function | `_build_structural_constraints` | `()` | Things that are part of Jarvis' nature and boundaries. | [src](../../../core/services/runtime_self_knowledge.py#L522) |
+| function | `_build_unavailable_or_inactive` | `()` | Things in the system that are currently not active. | [src](../../../core/services/runtime_self_knowledge.py#L607) |
+| function | `build_self_knowledge_prompt_section` | `()` | Build a compact self-knowledge section suitable for prompt inclusion. | [src](../../../core/services/runtime_self_knowledge.py#L665) |
+| function | `build_runtime_self_knowledge_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/runtime_self_knowledge.py#L720) |
+
 ## `core/services/runtime_self_model.py`
 _Bounded runtime self-model._
 
@@ -806,39 +856,4 @@ _Self-review signal tracking — migrated onto signal_tracking_framework._
 | function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_signal_tracking.py#L292) |
 | function | `_internal_opposition_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_signal_tracking.py#L297) |
 | function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/self_review_signal_tracking.py#L302) |
-
-## `core/services/self_review_unified.py`
-_Self-Review Unified — periodisk samlet selv-audit._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/self_review_unified.py#L29) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/self_review_unified.py#L33) |
-| function | `_gather_review_inputs` | `()` | Pull signals v2 already has that need to be reflected upon. | [src](../../../core/services/self_review_unified.py#L58) |
-| function | `_base_review` | `(inputs)` | Rule-based review as fallback when LLM unavailable. | [src](../../../core/services/self_review_unified.py#L96) |
-| function | `_build_review_prompt` | `(inputs)` | — | [src](../../../core/services/self_review_unified.py#L143) |
-| function | `_extract_review_json` | `(raw)` | — | [src](../../../core/services/self_review_unified.py#L174) |
-| function | `run_self_review` | `(*, period=…)` | Generate and persist a self-review. Returns the review dict. | [src](../../../core/services/self_review_unified.py#L200) |
-| function | `maybe_run_self_review` | `(*, min_hours_between=…)` | Run a review if it's been at least N hours since the last. | [src](../../../core/services/self_review_unified.py#L317) |
-| function | `list_self_reviews` | `(*, limit=…)` | — | [src](../../../core/services/self_review_unified.py#L338) |
-| function | `build_self_review_surface` | `()` | — | [src](../../../core/services/self_review_unified.py#L357) |
-
-## `core/services/self_surprise_detection.py`
-_Self-Surprise Detection — "Huh, det havde jeg ikke forventet af mig selv."_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `detect_self_surprise` | `(*, actual_outcome, expected_confidence=…, model=…, domain=…, run_id=…)` | Registrér en overraskelse — eller ``None``, hvilket er det normale. | [src](../../../core/services/self_surprise_detection.py#L35) |
-| function | `build_self_surprise_surface` | `()` | Overfladen Jarvis faktisk kan se. | [src](../../../core/services/self_surprise_detection.py#L77) |
-
-## `core/services/self_surprise_expectation.py`
-_Kalibreret forventning til selv-overraskelse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `classify_outcome` | `(outcome)` | ``'success'`` | ``'failure'`` | ``'indecisive'``. | [src](../../../core/services/self_surprise_expectation.py#L42) |
-| function | `_recent_outcomes` | `(model, *, lookback)` | ``(successes, decisive_total)`` fra modellens egne seneste runs. | [src](../../../core/services/self_surprise_expectation.py#L56) |
-| function | `expected_success_rate` | `(model, *, lookback=…)` | Empirisk P(succes) for DENNE model, glattet mod en styrke-baseret prior. | [src](../../../core/services/self_surprise_expectation.py#L91) |
-| function | `expectation_verdict` | `(expected, outcome_kind)` | ``'positive'`` | ``'negative'`` | ``None`` (død zone / uafgjort udfald). | [src](../../../core/services/self_surprise_expectation.py#L110) |
-| function | `is_legacy_degenerate` | `(expected_confidence)` | Sand for de 19.731 rækker fra den defekte detektor. | [src](../../../core/services/self_surprise_expectation.py#L125) |
 

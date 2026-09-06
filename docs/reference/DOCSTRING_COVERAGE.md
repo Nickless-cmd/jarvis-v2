@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6820/13637 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6832/13658 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,14 +24,14 @@ Generated from source. 6820/13637 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 566 | 1053 | 53% |
-| `core.services` | 4542 | 9461 | 48% |
+| `core.services` | 4553 | 9481 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 92 | 164 | 56% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 388 | 844 | 45% |
+| `core.tools` | 389 | 845 | 46% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -40,7 +40,7 @@ Generated from source. 6820/13637 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1970)
+## Undocumented public functions (1975)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -639,6 +639,8 @@ Generated from source. 6820/13637 functions/methods documented (50%). The list b
 - `core/services/autonomy_proposal_queue.py` :: `reject_proposal` (L255)
 - `core/services/avoidance_detector.py` :: `build_avoidance_surface` (L161)
 - `core/services/background_resume.py` :: `tracked` (L85)
+- `core/services/bash_sandbox.py` :: `set_enabled` (L64)
+- `core/services/bash_sandbox.py` :: `status` (L71)
 - `core/services/behavioral_decisions.py` :: `change_status` (L136)
 - `core/services/behavioral_decisions.py` :: `create_decision` (L50)
 - `core/services/behavioral_decisions.py` :: `delete_decision` (L172)
@@ -947,6 +949,9 @@ Generated from source. 6820/13637 functions/methods documented (50%). The list b
 - `core/services/drive_arbitration_engine.py` :: `arbitrate_drives` (L14)
 - `core/services/drive_arbitration_engine.py` :: `build_drive_arbitration_prompt_section` (L69)
 - `core/services/drive_arbitration_engine.py` :: `build_drive_arbitration_surface` (L56)
+- `core/services/edit_checkpoint.py` :: `clear` (L127)
+- `core/services/edit_checkpoint.py` :: `is_git_repo` (L71)
+- `core/services/edit_checkpoint.py` :: `list_checkpoints` (L100)
 - `core/services/embodied_presence.py` :: `build_embodied_presence_surface` (L249)
 - `core/services/embodied_state.py` :: `build_embodied_state_from_facts` (L25)
 - `core/services/embodied_state.py` :: `build_embodied_state_prompt_section` (L91)
@@ -1891,10 +1896,10 @@ Generated from source. 6820/13637 functions/methods documented (50%). The list b
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1143)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L254)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L206)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L224)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L202)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L229)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L209)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L227)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L205)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L232)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

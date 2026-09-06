@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_lexicon.py`
+_core/services/central_lexicon.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_schema` | `()` | Bindings-tabel for VÆKST (seed lever i kode; ceremoni-tilføjelser i DB). Idempotent, self-safe. | [src](../../../core/services/central_lexicon.py#L153) |
+| function | `_db_bindings` | `()` | — | [src](../../../core/services/central_lexicon.py#L174) |
+| function | `active_terms` | `()` | — | [src](../../../core/services/central_lexicon.py#L185) |
+| function | `operators` | `()` | — | [src](../../../core/services/central_lexicon.py#L189) |
+| function | `to_term` | `(name)` | Slå en Central-familie/nerve/cluster op → interlanguage-term. DB-bindinger overstyrer seed. | [src](../../../core/services/central_lexicon.py#L193) |
+| function | `bind` | `(name, term, *, status=…, added_by=…)` | Tilføj/opdatér en binding. En NY term (uden for det frosne vokabular) kræver Bjørn-ceremoni: | [src](../../../core/services/central_lexicon.py#L204) |
+| function | `render_relation` | `(x_name, y_name, *, relation=…)` | Rendér en Central-relation (X, Y) til interlanguage-notation via lexicon-opslag. Returnerer | [src](../../../core/services/central_lexicon.py#L226) |
+| function | `unbound_names` | `(names)` | Hvilke af disse Central-navne kan sproget IKKE sige endnu (kandidater til ceremoni)? Self-safe. | [src](../../../core/services/central_lexicon.py#L236) |
+| function | `propose_word_needs` | `(name_counts, *, min_count=…, top=…)` | Familier der optræder OFTE men er UBUNDNE → Centralen mangler et ord for dem. Model-frit: | [src](../../../core/services/central_lexicon.py#L242) |
+| function | `propose_from_event_stream` | `(*, window=…, min_count=…)` | Scan de seneste events → hvilke UBUNDNE familier sanser Centralen ofte uden at kunne sige dem? | [src](../../../core/services/central_lexicon.py#L254) |
+| function | `_taxonomy_names` | `()` | Alle navne Centralen SKAL kunne sige: clusters + operationelle event-familier. Privat-lag- | [src](../../../core/services/central_lexicon.py#L270) |
+| function | `taxonomy_coverage` | `()` | Hvor stor en del af taksonomien (clusters + familier) kan sproget sige? Plotbart (som Fase 1c). | [src](../../../core/services/central_lexicon.py#L287) |
+| function | `bind_taxonomy` | `()` | Rapportér taksonomi-dækning + de navne der mangler et ord (ceremoni-kandidater, nye ORD Bjørn | [src](../../../core/services/central_lexicon.py#L297) |
+| function | `word_needs_for_ceremony` | `(*, top=…)` | Spec B / Fase B3: ÉN samlet liste over ord Centralen mangler (til Bjørn-ceremoni) — flettet | [src](../../../core/services/central_lexicon.py#L305) |
+| function | `build_central_lexicon_surface` | `()` | Mission Control surface — read-only: vokabular, bindinger, hvad sproget kan/ikke kan sige. | [src](../../../core/services/central_lexicon.py#L325) |
+
 ## `core/services/central_llm_egress.py`
 _Samlet LLM-egress-observation — "har vi styr på ALLE udgående kald?" (Bjørn 4. jul)._
 
@@ -582,22 +603,4 @@ _The Sentinel — en ægte modstander._
 | function | `list_attacks` | `(*, active_only=…, limit=…)` | — | [src](../../../core/services/central_sentinel.py#L140) |
 | function | `build_sentinel_surface` | `()` | Aktive angreb (contested hypoteser der venter på forsvar) + følt linje. Self-safe. | [src](../../../core/services/central_sentinel.py#L151) |
 | function | `run_sentinel` | `(*, trigger=…, last_visible_at=…)` | Prime-cadence (73 min): ét angreb på den stærkeste antagelse (shadow — foreslår kun). Self-safe. | [src](../../../core/services/central_sentinel.py#L160) |
-
-## `core/services/central_sequence.py`
-_core/services/central_sequence.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_sequence.py#L30) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_sequence.py#L39) |
-| function | `ensure_schema` | `()` | — | [src](../../../core/services/central_sequence.py#L47) |
-| function | `_fam` | `(kind)` | — | [src](../../../core/services/central_sequence.py#L67) |
-| function | `learn_from_stream` | `(*, window=…)` | Lær transition-tællinger fra NYE events siden cursor (tæller hver overgang ÉN gang). Aggregatet | [src](../../../core/services/central_sequence.py#L71) |
-| function | `_from_total` | `(c, from_fam)` | — | [src](../../../core/services/central_sequence.py#L116) |
-| function | `transition_prob` | `(from_fam, to_fam)` | P(to | from) fra de lærte tællinger. 0.0 hvis aldrig set. Self-safe. | [src](../../../core/services/central_sequence.py#L122) |
-| function | `predict_next` | `(from_fam, *, top=…)` | Hvad forudsiger modellen følger efter from_fam? (top mest sandsynlige). Self-safe. | [src](../../../core/services/central_sequence.py#L137) |
-| function | `detect_surprises` | `(*, window=…, min_from_total=…, threshold=…)` | Overraskelser: overgange der FAKTISK skete i det seneste vindue, men som modellen forudsagde | [src](../../../core/services/central_sequence.py#L152) |
-| function | `run_sequence_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: lær fra strømmen + detektér overraskelser. Egress-fri observe. Self-safe. | [src](../../../core/services/central_sequence.py#L189) |
-| function | `register_sequence_producer` | `()` | Registrér selv-træningen som cadence-producer (~hvert 15 min). | [src](../../../core/services/central_sequence.py#L204) |
-| function | `build_central_sequence_surface` | `()` | Mission Control surface — read-only: model-størrelse + aktuelle overraskelser. | [src](../../../core/services/central_sequence.py#L216) |
 

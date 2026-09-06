@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dream_hypothesis_forced.py`
+_Forced Dream Hypothesis Generation — 10% probability per heartbeat tick._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `maybe_force_dream_hypothesis` | `()` | Roll 10% chance and if it fires upsert a forced dream hypothesis. | [src](../../../core/services/dream_hypothesis_forced.py#L35) |
+
 ## `core/services/dream_hypothesis_generator.py`
 _Dream Hypothesis Generator — overraskende forbindelser._
 
@@ -154,6 +161,21 @@ _Desire/value arbitration as a compact drive system._
 | function | `build_drive_arbitration_surface` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L56) |
 | function | `build_drive_arbitration_prompt_section` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L69) |
 | function | `_policy_for_top` | `(top)` | — | [src](../../../core/services/drive_arbitration_engine.py#L84) |
+
+## `core/services/edit_checkpoint.py`
+_Git-checkpoint pr. redigeringsrunde — en dårlig runde kan rulles tilbage samlet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/edit_checkpoint.py#L45) |
+| function | `_save` | `(state)` | — | [src](../../../core/services/edit_checkpoint.py#L54) |
+| function | `_git` | `(cwd, *args, timeout=…)` | — | [src](../../../core/services/edit_checkpoint.py#L62) |
+| function | `is_git_repo` | `(cwd)` | — | [src](../../../core/services/edit_checkpoint.py#L71) |
+| function | `_objekt_findes` | `(cwd, sha)` | Er stash-objektet der endnu, eller har `git gc` taget det? | [src](../../../core/services/edit_checkpoint.py#L76) |
+| function | `checkpoint` | `(cwd, session_id, *, note=…)` | Fotografér arbejdstræet. None hvis ikke et git-repo eller træet er rent. | [src](../../../core/services/edit_checkpoint.py#L82) |
+| function | `list_checkpoints` | `(session_id)` | — | [src](../../../core/services/edit_checkpoint.py#L100) |
+| function | `rollback_last` | `(session_id)` | Gendan filerne fra seneste checkpoint. Popper stakken. | [src](../../../core/services/edit_checkpoint.py#L105) |
+| function | `clear` | `(session_id)` | — | [src](../../../core/services/edit_checkpoint.py#L127) |
 
 ## `core/services/egress_guard.py`
 _SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
@@ -651,32 +673,4 @@ _Existential wonder daemon — open, unresolved questions from self-observation.
 | function | `build_existential_wonder_surface` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L163) |
 | function | `_generate_wonder_question` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L176) |
 | function | `_store_wonder` | `(wonder, now)` | — | [src](../../../core/services/existential_wonder_daemon.py#L195) |
-
-## `core/services/experience_correction_listener.py`
-_Experience-episode correction enrichment — closes the negative-signal loop._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_looks_like_correction` | `(text)` | Return True if the message opens with or contains a correction phrase. | [src](../../../core/services/experience_correction_listener.py#L64) |
-| function | `_mark_recent_episode_corrected` | `(session_id)` | Find the most recent un-corrected episode in this session within | [src](../../../core/services/experience_correction_listener.py#L77) |
-| function | `_extract_user_message` | `(payload)` | Return (session_id, content) if this is a role=user chat message. | [src](../../../core/services/experience_correction_listener.py#L156) |
-| function | `_previous_assistant_text` | `(session_id)` | The assistant message Bjørn is most likely correcting (newest before his). | [src](../../../core/services/experience_correction_listener.py#L170) |
-| function | `_record_correction_lesson` | `(session_id, content)` | 2026-09-04 (memory repair, R4): before, the correction text was thrown | [src](../../../core/services/experience_correction_listener.py#L185) |
-| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/experience_correction_listener.py#L199) |
-| function | `start_listener` | `()` | Idempotent — safe to call multiple times. | [src](../../../core/services/experience_correction_listener.py#L223) |
-| function | `stop_listener` | `()` | — | [src](../../../core/services/experience_correction_listener.py#L245) |
-
-## `core/services/experience_episodes.py`
-_Experience-episode collector + retrieval — embedding-based learning substrate._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_embed_one` | `(text)` | Embed one text via the shared ollama-nomic embedder → 768-dim list[float]. | [src](../../../core/services/experience_episodes.py#L59) |
-| function | `_get_chroma_path` | `()` | — | [src](../../../core/services/experience_episodes.py#L67) |
-| function | `_get_collection` | `()` | — | [src](../../../core/services/experience_episodes.py#L76) |
-| function | `build_context_text` | `(*, intent, active_loops=…, last_tools=…, session_phase=…)` | Render the structured situation into the text we embed. | [src](../../../core/services/experience_episodes.py#L96) |
-| function | `record_episode` | `(*, session_id, turn_id, intent, active_loops=…, last_tools=…, session_phase=…, tool_sequence=…, outcome_signals=…, user_corrected=…)` | Persist one episode to DB + chroma. Returns episode_id on success. | [src](../../../core/services/experience_episodes.py#L126) |
-| function | `retrieve_similar` | `(*, intent, active_loops=…, last_tools=…, session_phase=…, k=…)` | Return up to K nearest-neighbour past episodes for the current shape. | [src](../../../core/services/experience_episodes.py#L215) |
-| function | `format_episode_for_prompt` | `(ep, *, max_chars=…)` | Compact substrate line describing one retrieved episode. | [src](../../../core/services/experience_episodes.py#L339) |
-| function | `reindex_experience_chroma` | `(*, batch=…)` | Drop + rebuild the chroma collection from the experience_episodes DB rows, | [src](../../../core/services/experience_episodes.py#L384) |
 

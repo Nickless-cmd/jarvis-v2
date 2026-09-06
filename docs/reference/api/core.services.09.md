@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decision_review_daemon.py`
+_Decision review daemon — closes the adherence loop automatically._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_decision_review_daemon` | `()` | Daemon tick: review overdue behavioral decisions. | [src](../../../core/services/decision_review_daemon.py#L34) |
+
 ## `core/services/decision_review_prompter.py`
 _Decision review prompter — closes the adherence loop._
 
@@ -650,11 +657,4 @@ _Dream Continuum — dreams that mature and "think" between ticks._
 | function | `_dream_residue_enabled` | `()` | — | [src](../../../core/services/dream_distillation_daemon.py#L369) |
 | function | `_state` | `()` | — | [src](../../../core/services/dream_distillation_daemon.py#L374) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/dream_distillation_daemon.py#L379) |
-
-## `core/services/dream_hypothesis_forced.py`
-_Forced Dream Hypothesis Generation — 10% probability per heartbeat tick._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `maybe_force_dream_hypothesis` | `()` | Roll 10% chance and if it fires upsert a forced dream hypothesis. | [src](../../../core/services/dream_hypothesis_forced.py#L35) |
 

@@ -2,6 +2,34 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/experience_correction_listener.py`
+_Experience-episode correction enrichment — closes the negative-signal loop._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_looks_like_correction` | `(text)` | Return True if the message opens with or contains a correction phrase. | [src](../../../core/services/experience_correction_listener.py#L64) |
+| function | `_mark_recent_episode_corrected` | `(session_id)` | Find the most recent un-corrected episode in this session within | [src](../../../core/services/experience_correction_listener.py#L77) |
+| function | `_extract_user_message` | `(payload)` | Return (session_id, content) if this is a role=user chat message. | [src](../../../core/services/experience_correction_listener.py#L156) |
+| function | `_previous_assistant_text` | `(session_id)` | The assistant message Bjørn is most likely correcting (newest before his). | [src](../../../core/services/experience_correction_listener.py#L170) |
+| function | `_record_correction_lesson` | `(session_id, content)` | 2026-09-04 (memory repair, R4): before, the correction text was thrown | [src](../../../core/services/experience_correction_listener.py#L185) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/experience_correction_listener.py#L199) |
+| function | `start_listener` | `()` | Idempotent — safe to call multiple times. | [src](../../../core/services/experience_correction_listener.py#L223) |
+| function | `stop_listener` | `()` | — | [src](../../../core/services/experience_correction_listener.py#L245) |
+
+## `core/services/experience_episodes.py`
+_Experience-episode collector + retrieval — embedding-based learning substrate._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_embed_one` | `(text)` | Embed one text via the shared ollama-nomic embedder → 768-dim list[float]. | [src](../../../core/services/experience_episodes.py#L59) |
+| function | `_get_chroma_path` | `()` | — | [src](../../../core/services/experience_episodes.py#L67) |
+| function | `_get_collection` | `()` | — | [src](../../../core/services/experience_episodes.py#L76) |
+| function | `build_context_text` | `(*, intent, active_loops=…, last_tools=…, session_phase=…)` | Render the structured situation into the text we embed. | [src](../../../core/services/experience_episodes.py#L96) |
+| function | `record_episode` | `(*, session_id, turn_id, intent, active_loops=…, last_tools=…, session_phase=…, tool_sequence=…, outcome_signals=…, user_corrected=…)` | Persist one episode to DB + chroma. Returns episode_id on success. | [src](../../../core/services/experience_episodes.py#L126) |
+| function | `retrieve_similar` | `(*, intent, active_loops=…, last_tools=…, session_phase=…, k=…)` | Return up to K nearest-neighbour past episodes for the current shape. | [src](../../../core/services/experience_episodes.py#L215) |
+| function | `format_episode_for_prompt` | `(ep, *, max_chars=…)` | Compact substrate line describing one retrieved episode. | [src](../../../core/services/experience_episodes.py#L339) |
+| function | `reindex_experience_chroma` | `(*, batch=…)` | Drop + rebuild the chroma collection from the experience_episodes DB rows, | [src](../../../core/services/experience_episodes.py#L384) |
+
 ## `core/services/experience_substrate.py`
 _Experience substrate — embedding-retrieval learning layer._
 
@@ -504,36 +532,4 @@ _Ghost Networks — traces of old patterns._
 | function | `format_ghost_for_prompt` | `()` | — | [src](../../../core/services/ghost_networks.py#L24) |
 | function | `reset_ghost_networks` | `()` | — | [src](../../../core/services/ghost_networks.py#L30) |
 | function | `build_ghost_networks_surface` | `()` | — | [src](../../../core/services/ghost_networks.py#L34) |
-
-## `core/services/git_actions.py`
-_Rolle-aware git-eksekvering for code mode._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_git_container` | `(repo, *a, timeout=…)` | — | [src](../../../core/services/git_actions.py#L24) |
-| function | `_human_attribution` | `()` | — | [src](../../../core/services/git_actions.py#L28) |
-| function | `_commit_container` | `(repo, message)` | — | [src](../../../core/services/git_actions.py#L39) |
-| function | `commit_all_container` | `(repo, message)` | — | [src](../../../core/services/git_actions.py#L47) |
-| function | `_operator_exec` | `(name, args)` | — | [src](../../../core/services/git_actions.py#L65) |
-| function | `_ws_git` | `(root, uid, gitargs, timeout=…)` | Kør `git -C <root> <gitargs>` på brugerens bro. Returnér (rc, stdout, stderr). | [src](../../../core/services/git_actions.py#L70) |
-| function | `_ws_attributed_commit` | `(root, uid, message, *, timeout=…)` | — | [src](../../../core/services/git_actions.py#L80) |
-| function | `commit_all_workstation` | `(root, uid, message)` | — | [src](../../../core/services/git_actions.py#L110) |
-| function | `commit_all` | `(target, container_repo, uid, message)` | — | [src](../../../core/services/git_actions.py#L128) |
-| function | `parse_owner_repo` | `(remote_url)` | — | [src](../../../core/services/git_actions.py#L140) |
-| function | `_ws_git_raw` | `(root, uid, cmd, timeout=…)` | Kør vilkårlig kommando i `root` på brugerens bro (til gh). | [src](../../../core/services/git_actions.py#L151) |
-| function | `create_pr` | `(target, container_repo, uid, title, body)` | Commit → branch hvis på default → push → PR (API, ellers gh-fallback). | [src](../../../core/services/git_actions.py#L161) |
-| function | `_create_pr_gh` | `(ws, root, uid, base, branch, title, body)` | — | [src](../../../core/services/git_actions.py#L201) |
-| function | `_split_gh` | `(args)` | — | [src](../../../core/services/git_actions.py#L215) |
-
-## `core/services/github_connector.py`
-_GitHub-connector — API-klient + tool-handlers (v1: issues + PRs)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_headers` | `(token)` | — | [src](../../../core/services/github_connector.py#L53) |
-| function | `_get` | `(user_id, path, params=…)` | — | [src](../../../core/services/github_connector.py#L61) |
-| function | `list_issues` | `(user_id, repo, *, state=…)` | Issues i `repo` (owner/name). state: open|closed|all. | [src](../../../core/services/github_connector.py#L77) |
-| function | `list_prs` | `(user_id, repo, *, state=…)` | Pull requests i `repo` (owner/name). state: open|closed|all. | [src](../../../core/services/github_connector.py#L92) |
-| function | `_post` | `(user_id, path, payload)` | — | [src](../../../core/services/github_connector.py#L107) |
-| function | `create_pr` | `(user_id, repo, *, head, base, title, body=…)` | Opret PR i `repo` (owner/name). head/base = branch-navne. | [src](../../../core/services/github_connector.py#L123) |
 

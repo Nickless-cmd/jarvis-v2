@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/bash_sandbox.py`
+_bwrap-indespærring om én bash-kommando. SLUKKET som standard._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_available` | `()` | Findes bwrap på DENNE maskine? | [src](../../../core/services/bash_sandbox.py#L49) |
+| function | `is_enabled` | `()` | Eksplicit tændt? Usat betyder SLUKKET — modsat central_switches' default. | [src](../../../core/services/bash_sandbox.py#L54) |
+| function | `set_enabled` | `(on)` | — | [src](../../../core/services/bash_sandbox.py#L64) |
+| function | `status` | `()` | — | [src](../../../core/services/bash_sandbox.py#L71) |
+| function | `wrap_bwrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed. | [src](../../../core/services/bash_sandbox.py#L85) |
+| function | `maybe_wrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | argv hvis sandboxen er tændt OG mulig her — ellers None (kør normalt). | [src](../../../core/services/bash_sandbox.py#L105) |
+
 ## `core/services/behavioral_decisions.py`
 _Behavioral decisions — closing the reflection→behavior loop._
 
@@ -590,14 +602,4 @@ _core/services/central_causal_quality.py_
 | function | `run_causal_quality_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: mål + registrér causal-kvalitet (~hvert 30 min). Self-safe. | [src](../../../core/services/central_causal_quality.py#L137) |
 | function | `register_causal_quality_producer` | `()` | Registrér causal-kvalitets-målingen som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_causal_quality.py#L144) |
 | function | `build_central_causal_quality_surface` | `()` | Mission Control surface — read-only causal-kvalitets-projektion (tier + precision). | [src](../../../core/services/central_causal_quality.py#L156) |
-
-## `core/services/central_construct.py`
-_The Construct — Sentinel's Shadow Self: en sandbox der tester radikale forenklinger MOD_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_construct.py#L24) |
-| function | `simulate_silence` | `(nerve)` | Projicér effekten af at SLUKKE én nerve i 24t — udelukkende fra optaget data. READ-ONLY. | [src](../../../core/services/central_construct.py#L32) |
-| function | `build_construct_surface` | `()` | Sandbox-oversigt: hvilke nerver kunne jeg slukke uden tab (safe) vs hvilke ser noget (risky). | [src](../../../core/services/central_construct.py#L67) |
-| function | `record_construct` | `()` | Cadence: observér sandbox-fundet til nerve system/construct (metadata-only). Self-safe. | [src](../../../core/services/central_construct.py#L92) |
 

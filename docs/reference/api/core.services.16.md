@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/outreach_composer.py`
+_Outreach composer — Spor-1 of generative autonomy._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_runtime_db_path` | `()` | — | [src](../../../core/services/outreach_composer.py#L47) |
+| function | `_hours_since` | `(iso_ts)` | — | [src](../../../core/services/outreach_composer.py#L51) |
+| function | `_last_outreach_timestamp` | `()` | Most recent impulse.outreach.sent event timestamp. | [src](../../../core/services/outreach_composer.py#L63) |
+| function | `_last_user_message_context` | `()` | Gather (preview, hours_since, channel_hint) from latest user turn. | [src](../../../core/services/outreach_composer.py#L81) |
+| function | `_gather_signal_context` | `()` | Top-3 pressures + bearing + affect, for the outreach prompt. | [src](../../../core/services/outreach_composer.py#L113) |
+| function | `_build_outreach_prompt` | `(*, direction, topic, strength, user_ctx, signal_ctx)` | Build the prompt that asks Jarvis-the-LLM to write the message. | [src](../../../core/services/outreach_composer.py#L162) |
+| function | `_call_visible_model` | `(prompt, *, timeout=…)` | Call the visible-lane model (Ollama / GLM cloud) for the message text. | [src](../../../core/services/outreach_composer.py#L199) |
+| function | `_send_message` | `(text, *, channel)` | Send the composed message via the USER's reach_out-kanalvalg (notification_router). | [src](../../../core/services/outreach_composer.py#L246) |
+| function | `_decay_longing_after_outreach` | `(reduction=…)` | When Jarvis has reached out, the longing pressure should drop. | [src](../../../core/services/outreach_composer.py#L282) |
+| function | `compose_and_send_outreach` | `(*, direction, topic, strength)` | Spor-1 entry point. Compose a coherent message and send it. | [src](../../../core/services/outreach_composer.py#L299) |
+
+## `core/services/override_command.py`
+_Owner-override-kommando — delt handler for gateways (Discord/Telegram)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `handle_override_command` | `(text, *, session_id, owner_seed, level=…, now=…)` | Håndtér `!override <kode>` / `!revoke-override` — Auth-cluster GENNEM Centralen (observe). | [src](../../../core/services/override_command.py#L24) |
+| function | `_handle_override_command_impl` | `(text, *, session_id, owner_seed, level=…, now=…)` | Håndtér `!override <kode>` / `!revoke-override`. | [src](../../../core/services/override_command.py#L52) |
+
 ## `core/services/override_store.py`
 _Owner-override-session-store — DB-backed, cross-proces._
 
@@ -137,6 +161,17 @@ _Periodic jobs scheduler — enqueues overdue background jobs._
 |---|---|---|---|---|
 | function | `_extract_last_time` | `(item)` | Pick the most relevant timestamp from a job record. | [src](../../../core/services/periodic_jobs_scheduler.py#L51) |
 | function | `check_and_enqueue_due_periodic_jobs` | `()` | Idempotent — enqueue any periodic jobs whose cadence is exceeded. | [src](../../../core/services/periodic_jobs_scheduler.py#L64) |
+
+## `core/services/permission_axes.py`
+_To akser: hvad et kald MÅ røre, og hvornår et menneske skal spørges._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SandboxProfile` | `` | Evne-aksen. Uafhængig af hvornår der spørges. | [src](../../../core/services/permission_axes.py#L30) |
+| function | `_som_profil` | `(profile)` | — | [src](../../../core/services/permission_axes.py#L45) |
+| function | `resolve_effective` | `(profile, mode)` | Foren de to akser til én beslutning. | [src](../../../core/services/permission_axes.py#L54) |
+| function | `format_axes` | `(profile, mode)` | «profil · tilstand» — begge akser synlige, aldrig kun den ene. | [src](../../../core/services/permission_axes.py#L88) |
+| function | `sandbox_kwargs` | `(profile, mode)` | Oversæt akserne til `bash_sandbox.maybe_wrap`-argumenter. | [src](../../../core/services/permission_axes.py#L93) |
 
 ## `core/services/permission_classifier.py`
 _LLM permission-classifier (harness Part E, shadow-first + earned trust)._
@@ -624,47 +659,4 @@ _Proaktivitets-broen — samler Jarvis' indre spørgsmål/initiativer/undren og 
 | function | `run_proactivity_bridge_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn. Hybrid: urgent straks / ellers digest / ellers observe suppressed. | [src](../../../core/services/proactivity_bridge.py#L250) |
 | function | `register_proactivity_bridge_producer` | `()` | Registrér broen som cadence-producer (~10 min, visible_grace 15 min). | [src](../../../core/services/proactivity_bridge.py#L318) |
 | function | `build_proactivity_bridge_surface` | `()` | Read-only surface til /central/proactivity + jc. Self-safe. | [src](../../../core/services/proactivity_bridge.py#L325) |
-
-## `core/services/procedure_bank.py`
-_Procedure Bank — reusable procedures learned from experience._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_procedure` | `(*, name, trigger_pattern, procedure_text, success_count=…)` | Record or update a learned procedure. | [src](../../../core/services/procedure_bank.py#L19) |
-| function | `build_procedure_surface` | `()` | — | [src](../../../core/services/procedure_bank.py#L45) |
-
-## `core/services/procedure_bank_pipeline.py`
-_Procedure Bank Pipeline — lærte rutiner der kan pin'es og matches._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/procedure_bank_pipeline.py#L35) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/procedure_bank_pipeline.py#L39) |
-| function | `upsert_procedure` | `(*, name, trigger=…, procedure, pinned=…)` | — | [src](../../../core/services/procedure_bank_pipeline.py#L64) |
-| function | `get_procedure` | `(*, procedure_id=…, procedure_name=…)` | — | [src](../../../core/services/procedure_bank_pipeline.py#L116) |
-| function | `list_procedures` | `(*, query=…, pinned_only=…, limit=…)` | — | [src](../../../core/services/procedure_bank_pipeline.py#L136) |
-| function | `set_procedure_pinned` | `(*, procedure_id=…, procedure_name=…, pinned)` | — | [src](../../../core/services/procedure_bank_pipeline.py#L155) |
-| function | `delete_procedure` | `(*, procedure_id=…, procedure_name=…)` | — | [src](../../../core/services/procedure_bank_pipeline.py#L179) |
-| function | `match_procedures_for_text` | `(text, *, limit=…)` | Find procedures whose trigger-string matches given text. | [src](../../../core/services/procedure_bank_pipeline.py#L201) |
-| function | `maybe_record_procedure_from_run` | `(*, session_id, tool_calls)` | LivingNeuron Fase B (surface-only): udled en NAVNGIVEN kandidat-procedure fra en kørsel der | [src](../../../core/services/procedure_bank_pipeline.py#L242) |
-| function | `build_procedure_bank_surface` | `()` | — | [src](../../../core/services/procedure_bank_pipeline.py#L275) |
-
-## `core/services/process_supervisor.py`
-_Process supervisor — track long-running background processes Jarvis spawns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/process_supervisor.py#L44) |
-| function | `_ensure_dirs` | `()` | — | [src](../../../core/services/process_supervisor.py#L48) |
-| function | `_safe_name` | `(name)` | Sanitize a process name for use in filenames. | [src](../../../core/services/process_supervisor.py#L52) |
-| function | `_load_registry` | `()` | — | [src](../../../core/services/process_supervisor.py#L58) |
-| function | `_save_registry` | `(reg)` | — | [src](../../../core/services/process_supervisor.py#L70) |
-| function | `_pid_alive` | `(pid)` | — | [src](../../../core/services/process_supervisor.py#L78) |
-| function | `_read_status` | `(entry)` | Snapshot of a registry entry's live status. | [src](../../../core/services/process_supervisor.py#L93) |
-| function | `spawn_process` | `(*, name, command, cwd=…, env=…, replace_if_running=…)` | Spawn a detached background process under supervision. | [src](../../../core/services/process_supervisor.py#L125) |
-| function | `list_processes` | `(*, include_stopped=…)` | — | [src](../../../core/services/process_supervisor.py#L219) |
-| function | `_stop_locked` | `(reg, name, grace)` | Caller must hold _LOCK. Stops the named process gracefully. | [src](../../../core/services/process_supervisor.py#L229) |
-| function | `stop_process` | `(name, *, grace=…)` | — | [src](../../../core/services/process_supervisor.py#L264) |
-| function | `tail_process_log` | `(name, *, lines=…)` | — | [src](../../../core/services/process_supervisor.py#L271) |
-| function | `remove_process` | `(name)` | Remove an entry from the registry. Refuses if still alive. | [src](../../../core/services/process_supervisor.py#L303) |
 

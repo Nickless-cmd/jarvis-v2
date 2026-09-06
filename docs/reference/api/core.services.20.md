@@ -2,6 +2,41 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_review_unified.py`
+_Self-Review Unified — periodisk samlet selv-audit._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/self_review_unified.py#L29) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/self_review_unified.py#L33) |
+| function | `_gather_review_inputs` | `()` | Pull signals v2 already has that need to be reflected upon. | [src](../../../core/services/self_review_unified.py#L58) |
+| function | `_base_review` | `(inputs)` | Rule-based review as fallback when LLM unavailable. | [src](../../../core/services/self_review_unified.py#L96) |
+| function | `_build_review_prompt` | `(inputs)` | — | [src](../../../core/services/self_review_unified.py#L143) |
+| function | `_extract_review_json` | `(raw)` | — | [src](../../../core/services/self_review_unified.py#L174) |
+| function | `run_self_review` | `(*, period=…)` | Generate and persist a self-review. Returns the review dict. | [src](../../../core/services/self_review_unified.py#L200) |
+| function | `maybe_run_self_review` | `(*, min_hours_between=…)` | Run a review if it's been at least N hours since the last. | [src](../../../core/services/self_review_unified.py#L317) |
+| function | `list_self_reviews` | `(*, limit=…)` | — | [src](../../../core/services/self_review_unified.py#L338) |
+| function | `build_self_review_surface` | `()` | — | [src](../../../core/services/self_review_unified.py#L357) |
+
+## `core/services/self_surprise_detection.py`
+_Self-Surprise Detection — "Huh, det havde jeg ikke forventet af mig selv."_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `detect_self_surprise` | `(*, actual_outcome, expected_confidence=…, model=…, domain=…, run_id=…)` | Registrér en overraskelse — eller ``None``, hvilket er det normale. | [src](../../../core/services/self_surprise_detection.py#L35) |
+| function | `build_self_surprise_surface` | `()` | Overfladen Jarvis faktisk kan se. | [src](../../../core/services/self_surprise_detection.py#L77) |
+
+## `core/services/self_surprise_expectation.py`
+_Kalibreret forventning til selv-overraskelse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_outcome` | `(outcome)` | ``'success'`` | ``'failure'`` | ``'indecisive'``. | [src](../../../core/services/self_surprise_expectation.py#L42) |
+| function | `_recent_outcomes` | `(model, *, lookback)` | ``(successes, decisive_total)`` fra modellens egne seneste runs. | [src](../../../core/services/self_surprise_expectation.py#L56) |
+| function | `expected_success_rate` | `(model, *, lookback=…)` | Empirisk P(succes) for DENNE model, glattet mod en styrke-baseret prior. | [src](../../../core/services/self_surprise_expectation.py#L91) |
+| function | `expectation_verdict` | `(expected, outcome_kind)` | ``'positive'`` | ``'negative'`` | ``None`` (død zone / uafgjort udfald). | [src](../../../core/services/self_surprise_expectation.py#L110) |
+| function | `is_legacy_degenerate` | `(expected_confidence)` | Sand for de 19.731 rækker fra den defekte detektor. | [src](../../../core/services/self_surprise_expectation.py#L125) |
+
 ## `core/services/self_system_code_awareness.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -560,43 +595,4 @@ _Silence Patterns — hvad brugeren IKKE siger._
 | function | `detect_silence_patterns` | `(*, lookback_days=…)` | Detect silence signals from chat history + event stream. | [src](../../../core/services/silence_patterns.py#L119) |
 | function | `render_soft_question` | `(signal)` | Generate a natural Danish follow-up question for a silence signal. | [src](../../../core/services/silence_patterns.py#L253) |
 | function | `build_silence_patterns_surface` | `()` | MC surface for silence patterns. | [src](../../../core/services/silence_patterns.py#L277) |
-
-## `core/services/simple_tool_executor.py`
-_Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-08)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_prepare_call` | `(tc, *, force, run_id, session_id, user_message, controller, round_seen)` | Single-thread prep for one call: parse/stamp args, signature, dedup, cache, | [src](../../../core/services/simple_tool_executor.py#L23) |
-| function | `_finalize_call` | `(token, raw_result, *, controller, exec_fmt)` | Single-thread finalize for one executed call: soft-warn wrap, mark-seen on | [src](../../../core/services/simple_tool_executor.py#L104) |
-| function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L178) |
-| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L276) |
-
-## `core/services/skill_autosurface.py`
-_Owner-approved allowlist governing jarvis-code skill auto-surfacing (Fase 3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_read_store` | `()` | — | [src](../../../core/services/skill_autosurface.py#L30) |
-| function | `_write_store` | `(data)` | — | [src](../../../core/services/skill_autosurface.py#L46) |
-| function | `_emit_governance_event` | `(kind, payload=…)` | Self-safe eventbus emission — observability must never break approval flow. | [src](../../../core/services/skill_autosurface.py#L54) |
-| function | `list_approved` | `()` | Owner-approved skill names eligible for auto-surfacing. Empty on a fresh/corrupt store. | [src](../../../core/services/skill_autosurface.py#L63) |
-| function | `approve_skill` | `(name, *, role)` | Owner-only. Validates against installed skills (skill_engine.skill_exists). | [src](../../../core/services/skill_autosurface.py#L68) |
-| function | `revoke_skill` | `(name, *, role)` | Owner-only. Removes `name` from the allowlist if present. | [src](../../../core/services/skill_autosurface.py#L91) |
-| function | `filter_to_approved` | `(names)` | Narrow `names` to the owner-approved allowlist, gated by the master flag. | [src](../../../core/services/skill_autosurface.py#L106) |
-
-## `core/services/skill_contract_registry.py`
-_Skill Contract Registry — formal contracts for capabilities._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SkillSpec` | `` | Immutable skill identity. | [src](../../../core/services/skill_contract_registry.py#L23) |
-| class | `SkillPermissionSpec` | `` | Required scopes for a skill to run. | [src](../../../core/services/skill_contract_registry.py#L32) |
-| class | `SkillManifest` | `` | Bundle of spec + permissions + schemas. | [src](../../../core/services/skill_contract_registry.py#L40) |
-| function | `register_skill` | `(manifest)` | Register a skill manifest. Overwrites prior entry with same name. | [src](../../../core/services/skill_contract_registry.py#L54) |
-| function | `get_manifest` | `(name)` | — | [src](../../../core/services/skill_contract_registry.py#L59) |
-| function | `list_manifests` | `()` | — | [src](../../../core/services/skill_contract_registry.py#L63) |
-| function | `check_permissions` | `(name, granted_scopes)` | Evaluate whether granted scopes satisfy a skill's required scopes. | [src](../../../core/services/skill_contract_registry.py#L67) |
-| function | `_auto_register_known_skills` | `()` | Seed registry with contracts for well-known built-in capabilities. | [src](../../../core/services/skill_contract_registry.py#L93) |
-| function | `build_skill_contract_registry_surface` | `()` | Mission Control surface. | [src](../../../core/services/skill_contract_registry.py#L194) |
-| function | `_emit_skill_contract_registry_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/skill_contract_registry.py#L226) |
 

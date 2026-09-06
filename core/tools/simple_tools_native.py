@@ -2947,3 +2947,29 @@ def _exec_mcp(args: dict[str, Any]) -> dict[str, Any]:
             return {"status": "error", "error": "server og tool er påkrævet"}
         return mcp_manager.call(server, vaerktoej, args.get("arguments") or {})
     return {"status": "error", "error": f"ukendt action: {handling!r}"}
+
+def _exec_checkpoint(args: dict[str, Any]) -> dict[str, Any]:
+    """Se eller fortryd en redigeringsrunde.
+
+    Der tages automatisk et checkpoint foer hver runde der redigerer filer, saa
+    `list` viser hvad der kan rulles tilbage og `rollback` fortryder den
+    SENESTE runde samlet — ikke rettelse for rettelse.
+    """
+    from core.services import edit_checkpoint as ck
+    from core.services.operator_channel import current_session_id
+    handling = str(args.get("action") or "list").strip().lower()
+    sid = current_session_id()
+    if handling == "list":
+        punkter = ck.list_checkpoints(sid)
+        return {
+            "status": "ok",
+            "antal": len(punkter),
+            "punkter": [{"sha": str(p.get("sha") or "")[:10], "note": p.get("note"),
+                         "cwd": p.get("cwd")} for p in reversed(punkter)][:10],
+        }
+    if handling == "rollback":
+        return ck.rollback_last(sid)
+    if handling == "clear":
+        ck.clear(sid)
+        return {"status": "ok", "text": "checkpoint-stakken er ryddet"}
+    return {"status": "error", "error": f"ukendt action: {handling!r}"}

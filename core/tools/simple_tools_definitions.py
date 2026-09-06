@@ -2499,6 +2499,30 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "checkpoint",
+            "description": (
+                "Fortryd en hel redigeringsrunde. Der tages automatisk et "
+                "git-foto af arbejdstraeet foer hver runde der aendrer filer, "
+                "saa action='rollback' ruller den SENESTE runde tilbage samlet "
+                "— ikke rettelse for rettelse. action='list' viser hvad der kan "
+                "fortrydes. Fotoet roerer aldrig HEAD eller din gren."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list", "rollback", "clear"],
+                        "description": "Default 'list'.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "mcp",
             "description": (
                 "Tal med MCP-servere — det oekosystem af vaerktoejer Bjoern har "

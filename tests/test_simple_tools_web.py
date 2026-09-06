@@ -141,3 +141,28 @@ def test_udtrykkelig_model_vinder_over_valget(tmp_path, monkeypatch):
     monkeypatch.setattr(W.urllib_request, "urlopen", lambda *a, **k: _Svar())
     svar = W._exec_analyze_image({"image_path": str(billede), "model": "llava:7b"})
     assert svar == {"analysis": "en kat", "model": "llava:7b", "status": "ok"}
+
+
+# ── Lange traeffer-linjer (6/9-2026) ─────────────────────────────────────
+
+def test_search_overlever_en_linje_over_grænsen(tmp_path):
+    """`_clip_text` var IKKE importeret i modulet.
+
+    Enhver soegning hvor bare én traeffer-linje var over 200 tegn styrtede
+    med NameError — i et kode-repo sker det hele tiden, og udefra lignede det
+    et tilfaeldigt daarligt resultat. Det var med til at faa explore-agenten
+    til at melde «ingen forekomster, Confidence: Hoej».
+    """
+    from core.tools.simple_tools_web import _exec_search
+    fil = tmp_path / "lang.py"
+    fil.write_text("x = '" + ("a" * 900) + "'  # naal\n", encoding="utf-8")
+    r = _exec_search({"pattern": "naal", "path": str(tmp_path)})
+    assert r.get("status") == "ok", r
+    assert r.get("match_count", 0) >= 1
+    assert all(len(linje) <= 400 for linje in (r.get("text") or "").splitlines())
+
+
+def test_clip_text_er_bundet_i_modulet():
+    """Vaernet mod at importen forsvinder igen."""
+    from core.tools import simple_tools_web as w
+    assert callable(w._clip_text)

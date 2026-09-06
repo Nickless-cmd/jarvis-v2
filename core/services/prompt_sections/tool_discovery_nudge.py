@@ -27,8 +27,13 @@ import re
 
 logger = logging.getLogger(__name__)
 
-# Cosine-taerskel. Spec'en vaelger >= (ikke >) — laast i test.
-_THRESHOLD = 0.45
+# Cosine-taerskel. Spec'en foreslog 0,45; maalt paa 60 aegte beskeder ville den
+# have nudget paa 60 af 60 ture — 100 %. Kalibreret paa data:
+#     0,45 → 60/60 (100 %)   0,70 → 38/60 (63 %)
+#     0,75 →  8/60 ( 13 %)   0,80 →  1/60 (  2 %)
+# 0,75 er den eneste vaerdi med en frekvens der overhovedet kan forsvares.
+# Spec'en vaelger >= (ikke >) — laast i test.
+_THRESHOLD = 0.75
 _TOP_K = 8
 
 # Max ét nudge pr. tur. Stoej er vaerre end ingen nudge: laerer han at kanalen
@@ -181,9 +186,14 @@ def _matches(besked: str) -> list[tuple[str, float]]:
     """``top_k_similar`` returnerer (navn, score)-TUPLER — ikke dicts som
     arketypens matcher. Defensiv udpakning: en misformet raekke springes over
     frem for at vaelte sektionen."""
+    from core.services.query_language_bridge import normalise_for_embedding
     from core.services.tool_embeddings import top_k_similar
+
+    # Broen over sprogforskellen: modellen er engelsk-centrisk, tool-navnene er
+    # engelske, og han skriver dansk. Uden den kom curiosity_read_dreams (0,694)
+    # foer calendar_list_events (0,665) paa en kalender-besked.
     ud: list[tuple[str, float]] = []
-    for r in top_k_similar(besked, k=_TOP_K) or []:
+    for r in top_k_similar(normalise_for_embedding(besked), k=_TOP_K) or []:
         try:
             navn, score = str(r[0] or "").strip(), float(r[1])
         except Exception:

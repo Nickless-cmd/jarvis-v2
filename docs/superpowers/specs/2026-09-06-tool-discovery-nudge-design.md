@@ -278,3 +278,64 @@ sprog-spørgsmålet er afgjort. To veje, begge uden for denne ændrings scope:
 
 **Åbent spørgsmål til Bjørn/Jarvis:** hvilken vej? Målingen ovenfor er
 reproducerbar med `top_k_similar` mod den nuværende DB.
+
+### 11. Sprog-broen bygget — og tærsklen kalibreret på data
+
+Bjørn foreslog «en engine der oversætter dk-beskeden inden den nudger». Målingen
+viser at der ikke skal en engine til: **ren ord-substitution løser
+rangordningen**, deterministisk og uden et eneste ekstra kald.
+
+`core/services/query_language_bridge.py` — `normalise_for_embedding(text)`.
+Ordforrådet er grundet i hans faktiske sprog (1.500 beskeder gennemgået): hans
+fagord er i forvejen engelske (tool, prompt, bash, code, session, container,
+image), så broen behøver kun de ord der er ægte danske.
+
+```
+«kan du lægge et møde ind i min kalender på fredag»
+  før:  0.694 curiosity_read_dreams · 0.678 read_learning_memo
+        · 0.674 note_add · 0.665 calendar_list_events
+  efter: 0.770 calendar_list_events · 0.744 calendar_create_event
+        · 0.668 curiosity_search_sessions
+```
+
+Afstanden til støjen: 0,03 → **0,10**.
+
+**Tærsklen var forkert, og det kunne kun ses på data.** Spec'ens 0,45 målt mod
+60 ægte beskeder:
+
+| tærskel | nudger på |
+|---|---|
+| 0,45 (spec'ens) | **60/60 — 100 %** |
+| 0,70 | 38/60 — 63 % |
+| 0,75 | 8/60 — 13 % |
+| 0,80 | 1/60 — 2 % |
+
+Sat til **0,75**. Scorerne ligger i et højt, smalt bånd, så en tærskel under
+0,7 er reelt ingen tærskel.
+
+**Default forbliver OFF — og nu af en anden grund end sproget.** De 8 nudges
+ved 0,75 blev gennemgået enkeltvis:
+
+- ✅ `git_log` ← «Hent lige git log» — perfekt.
+- ✅ `propose_new_skill` ← «Dit agent explore tool og skillgate…» — rimelig.
+- ❌ `note_list` ← «Tak. Det var så vores første samtale.»
+- ❌ `nudge_send` ← «skriv din besked til claude her»
+- ❌ `resolve_prediction` ← «Research mode: answer with sourced findings»
+- ⚠️ `request_app_action` ×3 — marginale.
+
+Cirka **fem af otte er falske positive**. Broen løste sprog-problemet;
+tilbage står et andet: embedding-lighed kan ikke skelne *«han har brug for et
+værktøj»* fra *«han sagde et ord der ligner et værktøj»*. Et «tak for
+samtalen» ligner `note_list` i vektorrummet.
+
+Det er præcis spec'ens egen **fase 3** — en dedikeret klassifikator — men nu
+med målt belæg frem for en formodning. Fase 1-mekanismen er bygget, testet,
+integreret, logget og kalibreret; den mangler et intent-filter før den kan
+tændes.
+
+**Broen er derimod klar til brug andre steder.** `tool_router._select_inner`
+(linje 313) embedder brugerens besked direkte mod de samme engelske vektorer og
+har samme skævhed i sin rangordning — dér spærrer det ikke porten (`top_sim`
+median 0,695 mod tærskel 0,40), men det påvirker HVILKE 30 værktøjer han får.
+Den ændring er ikke foretaget her: den ændrer live værktøjsvalg og fortjener
+sin egen måling. **Åbent til Bjørn.**

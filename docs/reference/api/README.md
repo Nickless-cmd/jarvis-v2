@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13719 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13721 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -43,14 +43,14 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13719 functions/
 - [`core.services.14`](core.services.14.md) — `liveness_registry` … `meta_learning_retrospective`
 - [`core.services.15`](core.services.15.md) — `meta_reflection_daemon` … `outbound_nudges`
 - [`core.services.16`](core.services.16.md) — `outcome_learning` … `proactive_question_gate_tracking`
-- [`core.services.17`](core.services.17.md) — `proactivity_bridge` … `reboot_awareness_daemon`
-- [`core.services.18`](core.services.18.md) — `recall` … `runtime_hooks`
-- [`core.services.19`](core.services.19.md) — `runtime_learning_signals` … `self_review_record_tracking`
-- [`core.services.20`](core.services.20.md) — `self_review_run_tracking` … `silence_detector`
-- [`core.services.21`](core.services.21.md) — `silence_listener` … `temporal_rhythm`
-- [`core.services.22`](core.services.22.md) — `temporal_self_continuity` … `user_contradiction_tracker`
-- [`core.services.23`](core.services.23.md) — `user_emotional_resonance` … `visible_tool_exec`
-- [`core.services.24`](core.services.24.md) — `visible_turn_blocks` … `world_model_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `proactivity_bridge` … `reasoning_store`
+- [`core.services.18`](core.services.18.md) — `reboot_awareness_daemon` … `runtime_hook_runtime`
+- [`core.services.19`](core.services.19.md) — `runtime_hooks` … `self_review_outcome_tracking`
+- [`core.services.20`](core.services.20.md) — `self_review_record_tracking` … `signal_tracking_framework`
+- [`core.services.21`](core.services.21.md) — `silence_detector` … `temporal_recurrence_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `temporal_rhythm` … `user_activity`
+- [`core.services.23`](core.services.23.md) — `user_contradiction_tracker` … `visible_thinking_trace`
+- [`core.services.24`](core.services.24.md) — `visible_tool_exec` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

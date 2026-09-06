@@ -316,3 +316,17 @@ def test_ulaeselig_config_giver_ogsaa_slukket(monkeypatch):
 
     monkeypatch.setattr("core.runtime.settings.load_settings", eksploder)
     assert T._enabled() is False
+
+
+def test_opslaget_gaar_gennem_sprog_broen(monkeypatch):
+    """Uden broen kom curiosity_read_dreams (0,694) før calendar_list_events
+    (0,665) på en kalender-besked. Den må ikke kunne fjernes i stilhed."""
+    monkeypatch.undo()
+    set_query: list[str] = []
+    from core.services import tool_embeddings as TE
+    monkeypatch.setattr(
+        TE, "top_k_similar",
+        lambda q, k=8: set_query.append(q) or [("calendar_create_event", 0.91)],
+    )
+    T._matches("kan du lægge et møde ind i min kalender")
+    assert set_query == ["kan du lægge et meeting ind i min calendar"]

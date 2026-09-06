@@ -301,17 +301,17 @@ _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikk
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_enabled` | `()` | Kill-switch. **Default OFF** — se maalingen nedenfor. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L47) |
-| function | `_er_prewarm` | `(session_id)` | Prewarm-ture varmer cachen — de skal ikke koste et embedding-kald. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L87) |
-| function | `_registrerede_navne` | `()` | Navne der FAKTISK findes lige nu. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L102) |
-| function | `_katalog_tekst` | `()` | Katalogets klartekst. Tom streng hvis den ikke kan laeses. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L123) |
-| function | `_staar_i_katalog` | `(navn, katalog)` | Staar NAVNET i klartekst i kataloget? Saa behoever han intet nudge. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L133) |
-| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L146) |
-| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L156) |
-| function | `_log_nudge` | `(navn, session_id, score)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L168) |
-| function | `_matches` | `(besked)` | ``top_k_similar`` returnerer (navn, score)-TUPLER — ikke dicts som | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L180) |
-| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L196) |
-| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L255) |
+| function | `_enabled` | `()` | Kill-switch. **Default OFF** — se maalingen nedenfor. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L52) |
+| function | `_er_prewarm` | `(session_id)` | Prewarm-ture varmer cachen — de skal ikke koste et embedding-kald. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L92) |
+| function | `_registrerede_navne` | `()` | Navne der FAKTISK findes lige nu. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L107) |
+| function | `_katalog_tekst` | `()` | Katalogets klartekst. Tom streng hvis den ikke kan laeses. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L128) |
+| function | `_staar_i_katalog` | `(navn, katalog)` | Staar NAVNET i klartekst i kataloget? Saa behoever han intet nudge. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L138) |
+| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L151) |
+| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L161) |
+| function | `_log_nudge` | `(navn, session_id, score)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L173) |
+| function | `_matches` | `(besked)` | ``top_k_similar`` returnerer (navn, score)-TUPLER — ikke dicts som | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L185) |
+| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L206) |
+| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L265) |
 
 ## `core/services/prompt_sections/transcript_sections.py`
 _Transcript rendering + session compaction for prompts._

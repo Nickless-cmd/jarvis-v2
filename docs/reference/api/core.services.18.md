@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recall.py`
+_One recall path over every memory source (memory repair 2026-09-04, R5)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L54) |
+| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L59) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/recall.py#L64) |
+| function | `_lexical_coverage` | `(query, text)` | — | [src](../../../core/services/recall.py#L76) |
+| function | `_default_sources_for_query` | `(query)` | — | [src](../../../core/services/recall.py#L84) |
+| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L94) |
+| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L110) |
+| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L129) |
+| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L154) |
+| function | `_rank_score` | `(index)` | FTS5 bm25() giver 0,05-0,09 efter 1/(1+|rank|) — aldrig konkurrencedygtig | [src](../../../core/services/recall.py#L172) |
+| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L179) |
+| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L193) |
+| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L207) |
+| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L237) |
+| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L281) |
+| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L285) |
+
 ## `core/services/recall_scheduler.py`
 _core/services/recall_scheduler.py_
 
@@ -730,18 +752,4 @@ _Cognitive conductor — Jarvis' bounded mental state assembler._
 | function | `dispatch_unhandled_hook_events` | `(*, limit=…, event_kinds=…)` | — | [src](../../../core/services/runtime_hooks.py#L16) |
 | function | `dispatch_hook_event` | `(event)` | — | [src](../../../core/services/runtime_hooks.py#L41) |
 | function | `_find_active_task` | `(*, kind, goal, scope)` | — | [src](../../../core/services/runtime_hooks.py#L164) |
-
-## `core/services/runtime_learning_signals.py`
-_Runtime learning signal extraction and digest generation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `action_family` | `(action_id)` | — | [src](../../../core/services/runtime_learning_signals.py#L24) |
-| function | `action_domain` | `(*, action_id, outcome)` | — | [src](../../../core/services/runtime_learning_signals.py#L28) |
-| function | `extract_runtime_learning_signals` | `(outcome)` | — | [src](../../../core/services/runtime_learning_signals.py#L50) |
-| function | `_signal` | `(*, outcome_id, source_action_id, signal_key, weight, recorded_at, target_action_id=…, target_family=…, target_domain=…, metadata=…)` | — | [src](../../../core/services/runtime_learning_signals.py#L172) |
-| function | `_extract_semantic_signals` | `(outcome)` | — | [src](../../../core/services/runtime_learning_signals.py#L198) |
-| function | `_outcome_looks_like_no_change` | `(outcome)` | — | [src](../../../core/services/runtime_learning_signals.py#L239) |
-| function | `_coerce_domain_key` | `(value)` | — | [src](../../../core/services/runtime_learning_signals.py#L259) |
-| function | `generate_learning_digest` | `(summary)` | Distil accumulated runtime learning signals into one actionable insight. | [src](../../../core/services/runtime_learning_signals.py#L270) |
 

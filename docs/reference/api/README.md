@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13666 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13670 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -36,21 +36,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13666 functions/
 - [`core.services.07`](core.services.07.md) — `cluster_daemon` … `cost_optimization_daemon`
 - [`core.services.08`](core.services.08.md) — `council_deliberation_controller` … `decision_log`
 - [`core.services.09`](core.services.09.md) — `decision_review_daemon` … `dream_distillation_daemon`
-- [`core.services.10`](core.services.10.md) — `dream_hypothesis_forced` … `existential_wonder_daemon`
-- [`core.services.11`](core.services.11.md) — `experience_correction_listener` … `ghost_networks`
-- [`core.services.12`](core.services.12.md) — `git_actions` … `idle_consolidation`
-- [`core.services.13`](core.services.13.md) — `idle_thinking` … `liveness_registry`
-- [`core.services.14`](core.services.14.md) — `living_executive` … `meta_reflection_daemon`
-- [`core.services.15`](core.services.15.md) — `metabolism_state_signal_tracking` … `outcome_learning`
-- [`core.services.16`](core.services.16.md) — `outreach_composer` … `proactivity_bridge`
-- [`core.services.17`](core.services.17.md) — `procedure_bank` … `recall`
-- [`core.services.18`](core.services.18.md) — `recall_scheduler` … `runtime_learning_signals`
-- [`core.services.19`](core.services.19.md) — `runtime_operational_memory` … `self_review_signal_tracking`
-- [`core.services.20`](core.services.20.md) — `self_review_unified` … `silence_patterns`
-- [`core.services.21`](core.services.21.md) — `simple_tool_executor` … `terminal_sanitize`
-- [`core.services.22`](core.services.22.md) — `text_clip` … `user_md_update_proposal_tracking`
-- [`core.services.23`](core.services.23.md) — `user_model_daemon` … `vision_backend`
-- [`core.services.24`](core.services.24.md) — `visual_memory` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `dream_hypothesis_forced` … `existential_drift`
+- [`core.services.11`](core.services.11.md) — `existential_wonder_daemon` … `gate_verdict_ledger`
+- [`core.services.12`](core.services.12.md) — `ghost_networks` … `identity_sketch`
+- [`core.services.13`](core.services.13.md) — `idle_consolidation` … `lifecycle_hooks`
+- [`core.services.14`](core.services.14.md) — `liveness_registry` … `meta_learning_retrospective`
+- [`core.services.15`](core.services.15.md) — `meta_reflection_daemon` … `outbound_nudges`
+- [`core.services.16`](core.services.16.md) — `outcome_learning` … `proactive_question_gate_tracking`
+- [`core.services.17`](core.services.17.md) — `proactivity_bridge` … `reboot_awareness_daemon`
+- [`core.services.18`](core.services.18.md) — `recall` … `runtime_hooks`
+- [`core.services.19`](core.services.19.md) — `runtime_learning_signals` … `self_review_run_tracking`
+- [`core.services.20`](core.services.20.md) — `self_review_signal_tracking` … `silence_listener`
+- [`core.services.21`](core.services.21.md) — `silence_patterns` … `temporal_self_continuity`
+- [`core.services.22`](core.services.22.md) — `terminal_sanitize` … `user_emotional_resonance`
+- [`core.services.23`](core.services.23.md) — `user_md_update_proposal_tracking` … `visible_turn_blocks`
+- [`core.services.24`](core.services.24.md) — `vision_backend` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

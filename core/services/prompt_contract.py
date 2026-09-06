@@ -2792,6 +2792,23 @@ def _build_visible_chat_prompt_assembly_impl(
             derived_inputs.append("communication guard (action contract)")
     except Exception:
         pass
+    # Hvor staar han? (6/9-2026) — mappe, gren, om traeet er beskidt, seneste
+    # commit. Ingen af de tyve awareness-pladser vidste det foer, og med
+    # checkpoint pr. runde og operator-kanalen betyder det noget om han staar
+    # paa main og om hans sidste redigering landede.
+    #
+    # I HALEN med vilje: git-status aendrer sig ved hver redigering, og i det
+    # stabile praefiks ville den bryde prefix-cachen paa hver tur. ~220 tegn.
+    # Bjoern 6/9: taendt som standard, slukkes med central_switches
+    # ("prompt", "env_block").
+    try:
+        from core.services.env_block import render_env_block as _env_blok
+        _env = _env_blok()
+        if _env:
+            _dyn_tail.append(_env)
+            derived_inputs.append("env (mappe/gren/træ)")
+    except Exception:
+        pass
     # Tool-output hygiene: deepseek-flash tends to parrot the raw tool-result format
     # ([read_file]: …) into its visible reply. It is for the model's eyes only.
     _dyn_tail.append(

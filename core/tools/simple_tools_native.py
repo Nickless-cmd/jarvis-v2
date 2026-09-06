@@ -1061,6 +1061,26 @@ def _exec_read_attachment(args: dict[str, Any]) -> dict[str, Any]:
     if not attachment_id:
         return {"status": "error", "text": "attachment_id is required"}
     question = str(args.get("question") or "").strip()
+    # Egne oejne foerst (2026-09-06): svarer han paa en model der SELV kan se,
+    # skal billedet i HANS kontekst — ikke en beskrivelse en anden model skrev
+    # foer spoergsmaalet fandtes. Kan modellen ikke se, gaar vi vision-vejen
+    # som hidtil. Bjoern besluttede 5/9 at flash UDEN syn er standard, saa den
+    # her gren er stille indtil han vaelger en seende model i vaelgeren.
+    try:
+        from core.services.vision_backend import active_visible_target, model_can_see
+        _prov, _mdl = active_visible_target()
+        if _mdl and model_can_see(_mdl):
+            from core.services.attachment_service import get_attachment, image_data_url
+            _url = image_data_url(attachment_id)
+            if _url:
+                _fn = str((get_attachment(attachment_id) or {}).get("filename") or "")
+                return {
+                    "status": "ok",
+                    "text": f"[{_fn} — billede vedlagt nedenfor; se selv]",
+                    "image_data_url": _url,
+                }
+    except Exception:
+        logger.warning("read_attachment: direkte syn fejlede, falder tilbage", exc_info=True)
     try:
         from core.services.attachment_service import read_attachment_content
         result = read_attachment_content(attachment_id, question=question)

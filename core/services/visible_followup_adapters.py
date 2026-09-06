@@ -49,6 +49,26 @@ _OLLAMA_MAX_TOOL_RESULT_CHARS = 8000
 # ── Ollama adapter (preserves existing /api/chat NDJSON behavior) ────────────
 
 
+def _append_image_message(messages: list[dict], tr) -> None:
+    """Læg pixels ind efter et tool-resultat der bar et billede (2026-09-06).
+
+    Et `tool`-resultat kan ikke selv baere et billede i OpenAI-protokollen —
+    derfor foelger billedet som en user-besked lige efter. Kun `read_attachment`
+    paa en model der SELV kan se saetter feltet, saa for alle andre ture er
+    denne funktion et no-op og beskedstroemmen byte-identisk med foer.
+    """
+    url = str(getattr(tr, "image_data_url", "") or "")
+    if not url:
+        return
+    messages.append({
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "[vedhæftet billede — se selv]"},
+            {"type": "image_url", "image_url": {"url": url}},
+        ],
+    })
+
+
 class OllamaFollowupAdapter:
     """Follow-up via Ollama's ``/api/chat`` streaming NDJSON endpoint.
 
@@ -149,6 +169,7 @@ class OllamaFollowupAdapter:
                         tool_call_id=tr.tool_call_id,
                         tool_name=tr.tool_name,
                         content=content,
+                        image_data_url=tr.image_data_url,
                     )
                 )
             compacted.append(
@@ -203,6 +224,7 @@ class OllamaFollowupAdapter:
                 if tr.tool_name:
                     tool_msg["name"] = tr.tool_name
                 messages.append(tool_msg)
+                _append_image_message(messages, tr)
         return messages
 
     def stream_followup(
@@ -742,6 +764,7 @@ class OpenAICompatFollowupAdapter:
                 if tr.tool_name:
                     tool_msg["name"] = tr.tool_name
                 messages.append(tool_msg)
+                _append_image_message(messages, tr)
         return messages
 
     def stream_followup(

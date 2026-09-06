@@ -92,6 +92,10 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
 CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Undersoegelse — laese-kun agent, aendrer intet
     "explore",
+    # At se. Desk og mobil kan uploade billeder (POST /attachments), men
+    # vaerktoejet der kigger paa dem stod i INGEN scope — saa et skaermbillede
+    # i chat var noget han kunne modtage og ikke se paa. 6/9-2026.
+    "read_attachment",
     # Arbejdshukommelse. Prompten har hele tiden vist hans todos og reglen om
     # max ÉN i gang — uden at han kunne skrive til dem.
     "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
@@ -127,6 +131,8 @@ CHAT_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
 # Code-mode allowlist. Owner = container + workstation + dispatch; member/guest =
 # kun workstation (operator-bridge, sandboxet til deres egen maskine).
 CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
+    # Et skaermbillede af en fejl er ofte den korteste vej til at forstaa den.
+    "read_attachment",
     "operator_read_file", "operator_write_file", "operator_edit_file",
     "operator_bash", "operator_glob", "operator_grep", "operator_list_dir",
     "operator_bash_session_open", "operator_bash_session_run",

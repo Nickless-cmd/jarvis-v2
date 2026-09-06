@@ -2479,7 +2479,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read_attachment",
-            "description": "Read the content of a file received via Discord or Telegram. Images go to the vision model — pass `question` to ask the IMAGE something specific instead of getting a generic description; call it again with a new question to look again. Text/JSON returned directly. PDF extracted as text. Other files return a hex preview.",
+            "description": "Read a file Bj\u00f8rn sent you \u2014 from desk, mobile, Discord or Telegram. Images: if the model you are answering on can see, you get the picture ITSELF and look with your own eyes; otherwise a vision model reads it for you, and then `question` matters \u2014 ask the IMAGE something specific instead of taking a generic description, and call again with a new question to look again. Text/JSON returned directly. PDF extracted as text. Other files return a hex preview.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -2500,7 +2500,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_attachments",
-            "description": "List files received in the current session via Discord or Telegram, newest first.",
+            "description": "List files received in the current session \u2014 desk, mobile, Discord or Telegram \u2014 newest first.",
             "parameters": {
                 "type": "object",
                 "properties": {

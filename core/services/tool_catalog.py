@@ -54,6 +54,9 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
         "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
     ]),
     ("Web", ["web_search", "web_fetch"]),
+    # At se selv: har den model der svarer oejne, faar den pixels direkte;
+    # ellers laeser en vision-model billedet og svarer paa spoergsmaalet.
+    ("Syn", ["read_attachment"]),
     ("Hukommelse", [
         "search_memory", "recall_memories", "remember_this",
         "read_memory_topic", "write_memory_topic",

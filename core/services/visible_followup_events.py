@@ -133,6 +133,11 @@ class ToolResult:
     tool_call_id: str
     tool_name: str
     content: str
+    # Pixels til en model der SELV kan se (2026-09-06). Tom for alt andet.
+    # Et tool-resultat kan ikke baere et billede i OpenAI-protokollen, saa
+    # adapterne sender det som en efterfoelgende user-besked. Aldring rydder
+    # feltet med vilje — gamle billeder skal falde ud af konteksten.
+    image_data_url: str = ""
 
 
 @dataclass(frozen=True, slots=True)

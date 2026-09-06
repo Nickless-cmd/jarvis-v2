@@ -24,7 +24,20 @@ from typing import Iterable
 
 MAX_TOOLS = 128
 VISIBLE_MAX_TOOLS = 48
-REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = ("load_more_tools",)
+# Vaerktoejer der ALTID skal overleve kappen. `load_more_tools` er halen ind til
+# de rare; de oevrige er tilfoejet 6/9-2026 efter en maaling: i cowork-scope er
+# kataloget 452 og kappen 48, og Tier 1 (107 navne) har INGEN intern prioritet —
+# den trunkeres i ankomstraekkefoelge. Derfor faldt netop de vaerktoejer ud som
+# prompten og kataloget ellers peger paa. `explore` er det tydeligste tilfaelde:
+# scope tillod det, kataloget naevnte det, prompten anbefalede det — og pruneren
+# fjernede det fra selve tool-arrayet, saa det aldrig kunne kaldes.
+REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
+    "load_more_tools",
+    "explore",
+    "spawn_agent_task",
+    "read_attachment",
+    "recall_memories",
+)
 
 
 # Tier 1 — tools that are always included in the pruned set, regardless of

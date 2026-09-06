@@ -38,7 +38,8 @@ def test_visible_set_is_deterministic_across_messages():
     )
     # Byte-identical selection regardless of (keyword-heavy) message → cacheable.
     assert _names(a) == _names(b)
-    assert len(a) == ctp.MAX_TOOLS
+    # Den synlige bane har sit eget loft (48), ikke det generelle 128.
+    assert len(a) == ctp.VISIBLE_MAX_TOOLS
 
 
 def test_stable_only_ignores_user_message():
@@ -48,12 +49,29 @@ def test_stable_only_ignores_user_message():
     assert _names(a) == _names(b)
 
 
-def test_tier1_always_included_when_pruned():
-    tools = _make_tools()
+def test_pinned_tools_survive_the_cap():
+    """Tier 1 er 107 navne og kappen 48 — de kan ikke alle overleve.
+
+    Foer 6/9-2026 paastod denne test det modsatte og havde vaeret roed siden
+    kappen blev sat ned 4/9. Det der FAKTISK skal garanteres er de pinnede:
+    uden dem fjerner pruneren vaerktoejer som prompten aktivt peger paa, og
+    saa findes de uden at kunne kaldes.
+    """
+    # Pinning kan kun redde et vaerktoej der ER i kataloget — saa laeg dem i.
+    tools = _make_tools() + [
+        {"function": {"name": n}} for n in ctp.REQUIRED_LAZY_TOOL_NAMES
+    ]
     sel = set(_names(ctp.select_tools_for_visible(tools, user_message="x", session_id="s")))
-    # Every Tier-1 tool present in the catalog survives pruning.
-    for name in ctp.TIER_1_ALWAYS_ON:
-        assert name in sel
+    for name in ctp.REQUIRED_LAZY_TOOL_NAMES:
+        assert name in sel, name
+
+
+def test_tier1_fills_the_rest_of_the_cap():
+    tools = _make_tools()
+    sel = _names(ctp.select_tools_for_visible(tools, user_message="x", session_id="s"))
+    assert len(sel) == ctp.VISIBLE_MAX_TOOLS
+    ikke_pinnet = [n for n in sel if n not in ctp.REQUIRED_LAZY_TOOL_NAMES]
+    assert all(n in ctp.TIER_1_ALWAYS_ON for n in ikke_pinnet)
 
 
 def test_full_catalog_under_cap_returned_unchanged():

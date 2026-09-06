@@ -310,6 +310,35 @@ def list_attachments(session_id: str, limit: int = 20) -> list[dict]:
         return []
 
 
+_MAX_DIRECT_IMAGE_BYTES = 6 * 1024 * 1024
+
+
+def image_data_url(attachment_id: str) -> str | None:
+    """`data:`-URL til et billede — modellens EGNE øjne (2026-09-06).
+
+    Bruges kun når den model der svarer selv kan se. Så skal pixels i hans
+    kontekst, ikke en beskrivelse skrevet af en anden model før spørgsmålet
+    fandtes. Kan han ikke se, er `read_attachment_content` stadig vejen.
+
+    None når attachment ikke findes, ikke er et billede, eller er for stort
+    til at ligge i konteksten.
+    """
+    row = _db_get(attachment_id)
+    if row is None:
+        return None
+    mime = str(row.get("mime_type") or "")
+    if not mime.startswith("image/"):
+        return None
+    try:
+        data = Path(str(row.get("local_path") or "")).read_bytes()
+    except Exception:
+        logger.warning("attachment_service: kunne ikke laese %s", attachment_id)
+        return None
+    if not data or len(data) > _MAX_DIRECT_IMAGE_BYTES:
+        return None
+    return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
+
+
 def read_attachment_content(
     attachment_id: str, question: str = "",
 ) -> dict[str, Any]:

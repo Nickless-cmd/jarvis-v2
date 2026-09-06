@@ -2361,6 +2361,9 @@ async def _stream_visible_run(
                                 tool_call_id=str(_tc.get("id") or ""),
                                 tool_name=_tc_name,
                                 content=_content,
+                                image_data_url=str(
+                                    ((_sr or {}).get("result") or {}).get("image_data_url") or ""
+                                ),
                             )
                         )
                     # #2 Per-runde-nudge (ReAct "Observation → Thought"): append en KORT
@@ -2373,6 +2376,7 @@ async def _stream_visible_run(
                         out[-1] = _vf.ToolResult(
                             tool_call_id=_ln.tool_call_id,
                             tool_name=_ln.tool_name,
+                            image_data_url=_ln.image_data_url,
                             content=(_ln.content.rstrip() + "\n\n(⟳ Før du fortsætter: "
                                      "skriv én kort sætning om hvad disse resultater "
                                      "betyder og hvad du gør nu.)"),

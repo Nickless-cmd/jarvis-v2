@@ -457,3 +457,32 @@ def test_observationsfladen_siger_at_vi_er_i_skygge(monkeypatch):
     _stub(monkeypatch, [("calendar_create_event", 0.91)])
     f = T.build_tool_discovery_nudge_surface(BESKED, "s1")
     assert f["shadow"] is True and f["active"] is False
+
+
+def test_event_familien_er_registreret_saa_maalingen_ikke_er_tavs(monkeypatch):
+    """tool_discovery.nudge blev AFVIST af event-bussen ved første deploy —
+    «Unsupported event family» — og kaldstedets except slugte det til en
+    debug-linje. Skygge-målingen ville have vist 0 events i ugevis, og vi
+    ville have konkluderet at nudgen aldrig fyrer.
+
+    Tre steder skal stemme, ellers er signalet tabt:
+      · ALLOWED_EVENT_FAMILIES         (ellers rejser publish)
+      · PRIVATE_NO_EGRESS_ROUTES       (prompt-telemetri må aldrig ud)
+      · PRIVATE_FAMILIES_EXCLUDED_M0   (invariant: privat = dokumenteret privat)
+    """
+    from core.eventbus.events import ALLOWED_EVENT_FAMILIES
+    from core.services.eventbus_central_bridge import (
+        FAMILY_ROUTES, PRIVATE_FAMILIES_EXCLUDED_M0, PRIVATE_NO_EGRESS_ROUTES,
+    )
+    assert "tool_discovery" in ALLOWED_EVENT_FAMILIES
+    assert "tool_discovery" in PRIVATE_NO_EGRESS_ROUTES
+    assert "tool_discovery" in PRIVATE_FAMILIES_EXCLUDED_M0
+    assert "tool_discovery" not in FAMILY_ROUTES, "egress-læk: prompt-telemetri må ikke ud"
+
+
+def test_publish_afvises_ikke_laengere(monkeypatch):
+    """Ægte kald mod den ægte bus-validering — ikke en attrap."""
+    monkeypatch.undo()
+    from core.eventbus.events import Event
+    e = Event(kind="tool_discovery.nudge", payload={"tool": "x"})
+    assert e.family == "tool_discovery"

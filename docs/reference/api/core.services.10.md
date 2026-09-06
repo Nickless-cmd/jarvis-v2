@@ -615,15 +615,15 @@ _core/services/eventbus_central_bridge.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_get_last_seen` | `()` | — | [src](../../../core/services/eventbus_central_bridge.py#L482) |
-| function | `_set_last_seen` | `(event_id)` | — | [src](../../../core/services/eventbus_central_bridge.py#L494) |
-| function | `_current_max_id` | `()` | — | [src](../../../core/services/eventbus_central_bridge.py#L501) |
-| function | `_observe_one` | `(cluster, nerve, ev)` | Meld ét event til Centralen (metadata-only) + registrér i per-nerve tidsserie. | [src](../../../core/services/eventbus_central_bridge.py#L511) |
-| function | `_observe_private` | `(cluster, nerve, ev)` | EGRESS-FRI observe af privat inner-life-event (§24.4 keystone) via den KANONISKE sink- | [src](../../../core/services/eventbus_central_bridge.py#L540) |
-| function | `_observe_failure_summary` | `(count)` | Meld observe-fejl som en synlig nerve — ALDRIG stille sluge (§24.3). | [src](../../../core/services/eventbus_central_bridge.py#L553) |
-| function | `_observe_skipped_families` | `(skipped_families)` | Rådets fund #3: gør UROUTEDE event-families selv-opdagende i stedet for at tælle dem i én | [src](../../../core/services/eventbus_central_bridge.py#L567) |
-| function | `run_bridge_tick` | `(*, trigger=…, last_visible_at=…)` | Ét poll-tick: læs nye events siden last_seen_id, router hvidlistede → observe. | [src](../../../core/services/eventbus_central_bridge.py#L592) |
-| function | `register_bridge_producer` | `()` | Registrér broen som cadence-producer (poll ~hvert 30s). Observe-only → ingen | [src](../../../core/services/eventbus_central_bridge.py#L681) |
+| function | `_get_last_seen` | `()` | — | [src](../../../core/services/eventbus_central_bridge.py#L486) |
+| function | `_set_last_seen` | `(event_id)` | — | [src](../../../core/services/eventbus_central_bridge.py#L498) |
+| function | `_current_max_id` | `()` | — | [src](../../../core/services/eventbus_central_bridge.py#L505) |
+| function | `_observe_one` | `(cluster, nerve, ev)` | Meld ét event til Centralen (metadata-only) + registrér i per-nerve tidsserie. | [src](../../../core/services/eventbus_central_bridge.py#L515) |
+| function | `_observe_private` | `(cluster, nerve, ev)` | EGRESS-FRI observe af privat inner-life-event (§24.4 keystone) via den KANONISKE sink- | [src](../../../core/services/eventbus_central_bridge.py#L544) |
+| function | `_observe_failure_summary` | `(count)` | Meld observe-fejl som en synlig nerve — ALDRIG stille sluge (§24.3). | [src](../../../core/services/eventbus_central_bridge.py#L557) |
+| function | `_observe_skipped_families` | `(skipped_families)` | Rådets fund #3: gør UROUTEDE event-families selv-opdagende i stedet for at tælle dem i én | [src](../../../core/services/eventbus_central_bridge.py#L571) |
+| function | `run_bridge_tick` | `(*, trigger=…, last_visible_at=…)` | Ét poll-tick: læs nye events siden last_seen_id, router hvidlistede → observe. | [src](../../../core/services/eventbus_central_bridge.py#L596) |
+| function | `register_bridge_producer` | `()` | Registrér broen som cadence-producer (poll ~hvert 30s). Observe-only → ingen | [src](../../../core/services/eventbus_central_bridge.py#L685) |
 
 ## `core/services/events_retention.py`
 _Events-table retention — bound the unbounded ``events`` telemetry table._

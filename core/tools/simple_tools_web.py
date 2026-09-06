@@ -574,10 +574,48 @@ def _egress_blokeret(url: str) -> dict[str, Any] | None:
 # blev bygget 6/9 og aldrig tilsluttet — her er kaldsstedet.
 # Det andet er spild: den samme side blev hentet forfra hver gang. En kort
 # TTL raekker, for gentagelserne ligger inden for samme tur.
-_FETCH_CACHE: dict[str, tuple[float, str]] = {}
+# Cachen ligger i DB'en som `web_scrape`s og `web_search`s — ikke i en
+# modul-global (6/9-2026, anden omgang). Grunden er den samme som for
+# operator-kanalen: runtime er TO processer, saa en global betyder to
+# separate caches der ikke ved af hinanden, og alt gaar tabt ved genstart.
+# De to andre web-vaerktoejer laa allerede i `web_cache`-tabellen; det her
+# var det eneste sted der stak ud.
+#
+# NB: den deles bevidst IKKE med `web_scrape`. Scrape har en
+# Playwright-fallback naar indholdet er tyndt, og genbrugte den denne rene
+# urllib-HTML, ville den springe render-vejen over og blive DAARLIGERE paa
+# JS-tunge sider. To vaerktoejer, to behov.
 _FETCH_CACHE_TTL_S = 900.0
-_FETCH_CACHE_MAX = 32
 _MAX_REDIRECTS = 5
+
+
+def _fetch_cache_get(url: str) -> str | None:
+    try:
+        from core.runtime.db import _ensure_web_cache_table, connect, web_cache_lookup
+        with connect() as conn:
+            _ensure_web_cache_table(conn)
+            hit = web_cache_lookup(conn=conn, cache_key=f"fetch:{url}")
+        return str(hit.get("body")) if hit and hit.get("body") else None
+    except Exception:
+        return None
+
+
+def _fetch_cache_put(url: str, raw: str) -> None:
+    try:
+        from datetime import UTC, datetime, timedelta
+
+        from core.runtime.db import _ensure_web_cache_table, connect, web_cache_store
+        with connect() as conn:
+            _ensure_web_cache_table(conn)
+            web_cache_store(
+                conn=conn, cache_key=f"fetch:{url}", query_raw=url,
+                query_normalized=url, source_url=url, title="", body=raw,
+                ttl_policy="fetch",
+                expires_at=(datetime.now(UTC)
+                            + timedelta(seconds=_FETCH_CACHE_TTL_S)).isoformat(),
+            )
+    except Exception:
+        logger.debug("web_fetch: kunne ikke gemme i cachen", exc_info=True)
 
 
 class _RevaliderendeRedirect(urllib_request.HTTPRedirectHandler):
@@ -600,19 +638,16 @@ class _RevaliderendeRedirect(urllib_request.HTTPRedirectHandler):
 
 def _hent_side(url: str) -> str:
     """Hent en side med redirect-revalidering og kort cache."""
-    naa = time.time()
-    truffet = _FETCH_CACHE.get(url)
-    if truffet and (naa - truffet[0]) < _FETCH_CACHE_TTL_S:
-        return truffet[1]
+    truffet = _fetch_cache_get(url)
+    if truffet is not None:
+        return truffet
     aabner = urllib_request.build_opener(_RevaliderendeRedirect)
     req = urllib_request.Request(
         url, headers={"User-Agent": "Jarvis/2.0 (personal assistant)"},
     )
     with aabner.open(req, timeout=15) as response:
         raw = response.read().decode("utf-8", errors="replace")
-    if len(_FETCH_CACHE) >= _FETCH_CACHE_MAX:
-        _FETCH_CACHE.pop(min(_FETCH_CACHE, key=lambda k: _FETCH_CACHE[k][0]), None)
-    _FETCH_CACHE[url] = (naa, raw)
+    _fetch_cache_put(url, raw)
     return raw
 
 

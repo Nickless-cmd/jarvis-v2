@@ -11,10 +11,14 @@ from core.tools import simple_tools_web as w
 
 
 @pytest.fixture(autouse=True)
-def _ryd_cache():
-    w._FETCH_CACHE.clear()
-    yield
-    w._FETCH_CACHE.clear()
+def _ryd_cache(monkeypatch):
+    """Cachen ligger nu i DB'en (delt mellem api og runtime), saa den
+    neutraliseres her i stedet for at blive ryddet — testene handler om
+    redirect-vaernet og om hentningen sker, ikke om lagringen."""
+    gemt: dict[str, str] = {}
+    monkeypatch.setattr(w, "_fetch_cache_get", lambda u: gemt.get(u))
+    monkeypatch.setattr(w, "_fetch_cache_put", lambda u, r: gemt.__setitem__(u, r))
+    yield gemt
 
 
 def test_redirect_mod_internt_maal_stoppes():
@@ -67,7 +71,7 @@ def test_cachen_sparer_andet_kald(monkeypatch):
 
 
 def test_udloebet_cache_henter_igen(monkeypatch):
-    monkeypatch.setattr(w, "_FETCH_CACHE_TTL_S", 0.0)
+    monkeypatch.setattr(w, "_fetch_cache_get", lambda u: None)  # altid koldt
     kald = {"n": 0}
 
     class _Svar:

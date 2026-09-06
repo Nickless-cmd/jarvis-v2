@@ -52,7 +52,9 @@ class _FakeOpener:
 
 
 def _patch_fetch(monkeypatch, html: str):
-    web._FETCH_CACHE.clear()
+    _gemt: dict[str, str] = {}
+    monkeypatch.setattr(web, "_fetch_cache_get", lambda u: _gemt.get(u))
+    monkeypatch.setattr(web, "_fetch_cache_put", lambda u, r: _gemt.__setitem__(u, r))
     monkeypatch.setattr(web.urllib_request, "build_opener", lambda *a: _FakeOpener(html))
 
 

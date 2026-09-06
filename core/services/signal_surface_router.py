@@ -119,7 +119,6 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
     from core.services.jarvis_brain_reflection import (
         build_jarvis_brain_reflection_surface,
     )
-    from core.services.prospective_memory import build_prospective_memory_surface
     from core.services.self_model_signal_tracking import (
         build_runtime_self_model_signal_surface,
     )
@@ -218,7 +217,6 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
         "interlanguage_practice": build_interlanguage_practice_surface,
         "emergence": build_emergence_surface,
         "jarvis_brain_reflection": build_jarvis_brain_reflection_surface,
-        "prospective_memory": build_prospective_memory_surface,
         "self_model": build_runtime_self_model_signal_surface,
         "runtime_awareness": build_runtime_awareness_signal_surface,
         "consolidation_target": build_runtime_consolidation_target_signal_surface,
@@ -280,11 +278,24 @@ def resolve_surface(name: str) -> Callable[[], dict[str, Any]] | None:
 
 
 def read_surface(name: str) -> dict[str, Any]:
-    """Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names."""
+    """Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names.
+
+    2026-09-05: de FØLTE overflader læses gennem det delte lager. Deres daemoner
+    holder tilstand i modul-globaler og kører i jarvis-runtime, mens prompten
+    bygges i jarvis-api — så alle 14 var tomme netop dér hvor de skulle bruges.
+    `shared_surface` bruger de lokale globaler når de bærer noget (producent-
+    processen) og ellers den delte tilstand (prompt-processen).
+    """
     router = _get_router()
     fn = router.get(name)
     if fn is None:
         return {"error": f"unknown surface '{name}'", "valid": sorted(router.keys())}
+    try:
+        from core.services.felt_surface_store import FELT_SURFACE_NAMES, shared_surface
+        if name in FELT_SURFACE_NAMES:
+            return shared_surface(name, fn)
+    except Exception:
+        pass  # fail-open: hellere den lokale overflade end ingen
     try:
         return fn()
     except Exception as exc:

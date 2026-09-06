@@ -93,7 +93,7 @@ def build_brain_facts_section(
 ) -> str:
     """Return markdown section with top-K relevant fakta, or "" if none.
 
-    Bumper salience for hver returneret entry (use-it-or-lose-it).
+    Bumper IKKE salience (2026-09-04) — se kommentar nederst.
     Fail-soft: any exception → return "" (recall must never block prompt).
     """
     # #3 runde 3: indholdsløs hilsen → ingen brain-sektion (intet at være relevant til).
@@ -130,13 +130,10 @@ def build_brain_facts_section(
     if not results:
         return ""
 
-    # Bump salience (use-it-or-lose-it)
-    now = datetime.now(timezone.utc)
-    for e in results:
-        try:
-            jarvis_brain.bump_salience(e.id, now=now)
-        except Exception:
-            pass
+    # 2026-09-04 (memory repair, R1): INGEN salience-bump her. Auto-inject er
+    # ikke "brug" — den kørte hver tur og bumpede de samme poster til 17.794,
+    # hvorefter de vandt enhver søgning. Bump sker kun når Jarvis selv kalder
+    # search_jarvis_brain/read_brain_entry.
 
     # 2026-06-22 (Jarvis' review): this is now THE single brain section — the
     # generic "Hvad jeg ved nu" summary was dropped (it overlapped and wasn't

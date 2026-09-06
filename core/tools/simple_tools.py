@@ -63,10 +63,6 @@ from core.tools.hf_inference_tools import (
     _exec_hf_zero_shot_classify,
     _exec_hf_vision_analyze,
 )
-from core.tools.tiktok_content_tools import (
-    TIKTOK_CONTENT_TOOL_DEFINITIONS,
-    _exec_tiktok_generate_video,
-)
 from core.tools.mic_listen_tool import (
     MIC_LISTEN_TOOL_DEFINITIONS,
     _exec_mic_listen,
@@ -86,16 +82,6 @@ from core.tools.voice_journal_tool import (
 from core.tools.wake_word_tool import (
     WAKE_WORD_TOOL_DEFINITIONS,
     _exec_wake_word,
-)
-from core.tools.tiktok_tools import (
-    TIKTOK_TOOL_DEFINITIONS,
-    _exec_tiktok_upload,
-    _exec_tiktok_login,
-    _exec_tiktok_show,
-)
-from core.tools.tiktok_analytics_tools import (
-    TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
-    _exec_tiktok_analytics,
 )
 from core.tools.restart_self_tools import (
     RESTART_SELF_TOOL_DEFINITIONS,
@@ -597,11 +583,19 @@ MAX_SEARCH_RESULTS = 60
 MAX_SEARCH_LINE_CHARS = 200
 MAX_FIND_RESULTS = 100
 MAX_BASH_OUTPUT_CHARS = 16000
-MAX_BASH_SECONDS = 15
+from core.tools.tool_limits import bash_timeout_s as _bash_timeout_s  # noqa: E402
+# Ét sted, konfigurerbart. To kopier af samme tal driver fra hinanden.
+MAX_BASH_SECONDS = _bash_timeout_s()
 MAX_WEB_FETCH_CHARS = 24000
 # Ord/linje-sikker klipning (mod voldsom tool-trunkering): bevar HOVED+HALE så resultat/fejl/exit
 # i slutningen af output ikke smides væk. Se core/services/text_clip.py.
 from core.services.text_clip import clip_head_tail as _clip_head_tail, clip_text as _clip_text  # noqa: E402
+# 4. sep 2026: kaldene på linje ~1819/1856 fandtes, men NAVNET blev aldrig
+# bundet — `write_file`/`edit_file` fejlede med «name '_guard_py_escapes' is not
+# defined» hver gang de skrev en .py-fil. Værnet blev tilføjet 15. juli sammen
+# med sine kaldsteder; kun importen manglede. Samme fejlklasse som
+# `_clip_head_tail` i simple_tools_web.py, der ramte ethvert bash-kald over 16k.
+from core.tools.py_source_guard import guard_py_escapes as _guard_py_escapes  # noqa: E402
 WORKSPACE_DIR = shared_dir()
 
 # Paths that can be written without user approval.
@@ -645,12 +639,41 @@ _BLOCKED_WRITE_PATTERNS = [
 _CANONICAL_WORKSPACE_FILES = {"MEMORY.md", "USER.md"}
 
 
+def canonical_identity_file_path(name: str) -> Path:
+    """Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE.
+
+    2026-09-05: `WORKSPACE_DIR = shared_dir()` sendte enhver skrivning af
+    MEMORY.md/USER.md til `~/.jarvis-v2/shared/`, mens prompten læser
+    `workspaces/<bruger>/` (kun med fallback til shared hvis workspace-kopien er
+    en stub under 500 bytes). Resultat: Jarvis' egne redigeringer af sin
+    brugerprofil landede i en fil han aldrig læser. Målt samme dag var
+    MEMORY.md drevet fra hinanden — 24 linjer fandtes kun i shared-kopien.
+    `workspace_paths` siger det selv i sin egen docstring: shared/ er til
+    SOUL.md og IDENTITY.md; MEMORY.md og USER.md er per-relation.
+
+    Vi genbruger LÆSE-siden fremfor at gentage reglen, så de to ikke kan drive
+    fra hinanden igen (tests/test_identity_file_write_path.py holder på det).
+    """
+    from core.runtime.workspace_paths import workspace_dir_or_owner
+    from core.services.prompt_sections.workspace_files import (
+        _resolve_with_shared_fallback,
+    )
+    try:
+        base = workspace_dir_or_owner()
+    except Exception:
+        base = WORKSPACE_DIR
+    try:
+        return _resolve_with_shared_fallback(Path(base) / name).resolve()
+    except Exception:
+        return (Path(base) / name).resolve()
+
+
 def _canonicalize_workspace_target(target: Path) -> tuple[Path, str | None]:
     """If target's basename is a canonical workspace file, force it to the
     runtime workspace path. Returns (resolved_target, redirected_from_or_None).
     """
     if target.name in _CANONICAL_WORKSPACE_FILES:
-        canonical = (WORKSPACE_DIR / target.name).resolve()
+        canonical = canonical_identity_file_path(target.name)
         if target != canonical:
             return canonical, str(target)
     return target, None
@@ -1196,6 +1219,10 @@ from core.tools.simple_tools_operator import (  # noqa: E402,F401
     _operator_file_exists,
     _exec_operator_write_file,
     _exec_operator_edit_file,
+    _exec_operator_multi_edit,
+    _exec_operator_run_in_background,
+    _exec_operator_bash_output,
+    _exec_operator_kill_shell,
     _exec_operator_glob,
     _exec_operator_grep,
     _exec_operator_list_dir,
@@ -1295,6 +1322,7 @@ from core.tools.simple_tools_web import (  # noqa: E402,F401
 # council/agenter/daemon/settings/project/central + load_more_tools + google/notes/hf.
 # Modulet ejer egen state (_DISCORD_*/_convene_council_*/_SENSITIVE_*). Re-importeret
 # her (dispatch-dict + tests). _convene_council_daily_* (muterbar) ejes af undermodulet.
+from core.tools.recall_tool import _exec_recall  # noqa: E402
 from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_list_initiatives,
     _exec_push_initiative,
@@ -1320,6 +1348,9 @@ from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_trigger_heartbeat_tick,
     _exec_send_telegram_message,
     _exec_read_attachment,
+    _exec_operator_channel,
+    _exec_mcp,
+    _exec_checkpoint,
     _exec_list_attachments,
     _exec_query_why,
     _exec_send_ntfy,
@@ -1332,6 +1363,7 @@ from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_convene_council,
     _exec_quick_council_check,
     _exec_spawn_agent_task,
+    _exec_explore,
     _exec_send_message_to_agent,
     _exec_list_agents,
     _exec_relay_to_agent,
@@ -1415,6 +1447,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "operator_read_file": _exec_operator_read_file,
     "operator_write_file": _exec_operator_write_file,
     "operator_edit_file": _exec_operator_edit_file,
+    "operator_multi_edit": _exec_operator_multi_edit,
+    "operator_run_in_background": _exec_operator_run_in_background,
+    "operator_bash_output": _exec_operator_bash_output,
+    "operator_kill_shell": _exec_operator_kill_shell,
     "operator_glob": _exec_operator_glob,
     "operator_grep": _exec_operator_grep,
     "operator_list_dir": _exec_operator_list_dir,
@@ -1487,6 +1523,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_mood": _exec_read_mood,
     "adjust_mood": _exec_adjust_mood,
     "search_memory": _exec_search_memory,
+    "recall": _exec_recall,
     "memory_graph_query": _exec_memory_graph_query,
     "resurface_old_memory": _exec_resurface_old_memory,
     "propose_source_edit": _exec_propose_source_edit,
@@ -1506,6 +1543,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "search_sessions": _exec_search_sessions,
     "send_telegram_message": _exec_send_telegram_message,
     "read_attachment": _exec_read_attachment,
+    "operator_channel": _exec_operator_channel,
+    "mcp": _exec_mcp,
+    "checkpoint": _exec_checkpoint,
     "list_attachments": _exec_list_attachments,
     "send_ntfy": _exec_send_ntfy,
     "query_why": _exec_query_why,
@@ -1517,6 +1557,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "convene_council": _exec_convene_council,
     "quick_council_check": _exec_quick_council_check,
     "spawn_agent_task": _exec_spawn_agent_task,
+    "explore": _exec_explore,
     "send_message_to_agent": _exec_send_message_to_agent,
     "relay_to_agent": _exec_relay_to_agent,
     "list_agents": _exec_list_agents,
@@ -1561,7 +1602,6 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "hf_zero_shot_classify": _exec_hf_zero_shot_classify,
     "hf_vision_analyze": _exec_hf_vision_analyze,
     # End-to-end TikTok video (pollinations image + Ken Burns zoom + text)
-    "tiktok_generate_video": _exec_tiktok_generate_video,
     # Active mic listening + transcription
     "mic_listen": _exec_mic_listen,
     # Text-to-speech: speak aloud through system speakers
@@ -1572,10 +1612,6 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Wake-word listener ('Hey Jarvis' via ElevenLabs STT)
     "wake_word": _exec_wake_word,
     # TikTok tools
-    "tiktok_upload": _exec_tiktok_upload,
-    "tiktok_login": _exec_tiktok_login,
-    "tiktok_show": _exec_tiktok_show,
-    "tiktok_analytics": _exec_tiktok_analytics,
     # Mail tools
     "send_mail": _exec_send_mail,
     "read_mail": _exec_read_mail,
@@ -1865,29 +1901,27 @@ def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _force_bash(args: dict[str, Any]) -> dict[str, Any]:
-    """Run bash command bypassing approval (blocked still blocked)."""
+    """Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig.
+
+    Delegerer til `_exec_bash` (6/9-2026). Før var det en PARALLEL
+    implementation: rå subprocess i PROJECT_ROOT, uden persistent shell, uden
+    operator-kanal, uden bwrap-sandkasse, uden egress-observation og uden at
+    bevare det fulde output til tool-result-storen.
+
+    Det betød at autonome runs kørte en ANDEN bash end synlige ture. Alt hvad
+    der blev bygget på `_exec_bash` — og der er kommet meget til — gjaldt
+    halvdelen af systemet. En kommando kunne opføre sig forskelligt alt efter
+    hvem der kaldte den, hvilket er den slags dobbelt sandhed huset ellers har
+    en regel imod.
+
+    Delegeringen følger samme mønster som operator-force-handlerne nedenfor:
+    ét flag der springer GODKENDELSEN over, og kun den. Gaten for blokerede og
+    guard-blokerede kommandoer sidder før flaget læses.
+    """
     command = str(args.get("command") or "").strip()
     if not command:
         return {"error": "command is required", "status": "error"}
-    from core.services.gate_execution import check_command as _check_command
-    if _check_command(command, blocked_only=True).classification == "blocked":
-        return {"error": f"Command blocked: {command}", "status": "blocked"}
-    try:
-        result = subprocess.run(
-            ["bash", "-c", command],
-            capture_output=True,
-            text=True,
-            timeout=MAX_BASH_SECONDS,
-            cwd=str(PROJECT_ROOT),
-        )
-    except subprocess.TimeoutExpired:
-        return {"error": f"Command timed out after {MAX_BASH_SECONDS}s", "status": "error"}
-    output = result.stdout.strip()
-    if result.stderr.strip():
-        output = (output + "\n" + result.stderr.strip()).strip()
-    if len(output) > MAX_BASH_OUTPUT_CHARS:
-        output = _clip_head_tail(output, limit=MAX_BASH_OUTPUT_CHARS)
-    return {"text": output or "[no output]", "exit_code": result.returncode, "status": "ok"}
+    return _exec_bash({**args, "_runtime_trust_all": True})
 
 
 # ── Force-handlers for operator tools ─────────────────────────────────────
@@ -2085,8 +2119,22 @@ def _json_safe_default(o: Any) -> str:
     return str(o)
 
 
-def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
-    """Format a tool result as text for the model's context."""
+def format_tool_result_for_model(
+    name: str, result: dict[str, Any], *, clip: bool = True,
+) -> str:
+    """Format a tool result as text for the model's context.
+
+    ``clip=False`` springer laengde-loftet over og returnerer HELE resultatet.
+    Bruges kun til det der PERSISTERES i tool-result-storen, aldrig til det der
+    laegges i samtalen — se `save_tool_result`-kaldet i chat_sessions.
+
+    Baggrund (5/9-2026): et resultat uden `text`-noegle dumpes som JSON og
+    klippes ved 8.000 tegn med hoved+hale bevaret. Bjoern saa gentagne gange
+    "midten mangler" — maalt: 728 gemte tool-resultater har et hul, i dag ét paa
+    131.200 tegn ud af 143.770. Beskeden i samtalen lover
+    "Use read_tool_result ... to inspect the full output", men den KLIPPEDE
+    tekst var det eneste der nogensinde blev gemt. Midten fandtes ingen steder.
+    """
     status = result.get("status", "unknown")
 
     if status == "error":
@@ -2098,7 +2146,18 @@ def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
     if status == "approval_needed":
         return f"[Tool {name}: {result.get('message', 'requires user approval')}]"
 
-    text = result.get("text", "")
+    # `text_full` vinder naar hele resultatet skal persisteres (6/9-2026).
+    # bash klipper SIG SELV inde i `_exec_bash` foer resultatet naar hertil,
+    # saa clip=False fik intet at arbejde med: den "fulde" gemte udgave var
+    # ogsaa klippet, og midten fandtes ingen steder. Maalt: 76.950 tegn ->
+    # 16.018, med 60.932 udeladt og ingen vej tilbage til dem. Fixet fra 5/9
+    # daekkede kun vaerktoejer der returnerer hele teksten og lader
+    # formateringen klippe.
+    text = ""
+    if not clip:
+        text = str(result.get("text_full") or "")
+    if not text:
+        text = result.get("text", "")
     if not text:
         # Human-friendly summaries for common tool results
         path = result.get("path", "")
@@ -2119,7 +2178,7 @@ def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
             _dumped = json.dumps(
                 _filtered, ensure_ascii=False, indent=2, default=_json_safe_default
             )
-            if len(_dumped) <= _MAX_FALLBACK_CHARS:
+            if not clip or len(_dumped) <= _MAX_FALLBACK_CHARS:
                 text = _dumped
             else:
                 # Bevar HOVED+HALE (ikke kun head) ved linje-grænser — slutningen af et struktureret
@@ -2150,6 +2209,7 @@ try:
     _WRAP_TARGETS = (
         "bash", "write_file", "edit_file",
         "operator_bash", "operator_write_file", "operator_edit_file",
+        "operator_multi_edit",
         "read_file", "operator_read_file",
         "glob", "grep", "operator_glob", "operator_grep", "operator_list_dir",
     )

@@ -120,7 +120,9 @@ def record_runtime_episode(
         pass
     try:
         from core.services.curiosity_hypothesis_debt import maybe_register_from_text
-        maybe_register_from_text(text=f"{user_message} {fields['summary']}", source="cognitive-episode")
+        # KUN hans egen opsummering. Foer stod `user_message` foran, og da vi
+        # gemmer hovedet af teksten, blev droemme-prompten til «hypotesen».
+        maybe_register_from_text(text=str(fields.get("summary") or ""), source="cognitive-episode")
     except Exception:
         pass
     try:

@@ -49,6 +49,26 @@ _OLLAMA_MAX_TOOL_RESULT_CHARS = 8000
 # ── Ollama adapter (preserves existing /api/chat NDJSON behavior) ────────────
 
 
+def _append_image_message(messages: list[dict], tr) -> None:
+    """Læg pixels ind efter et tool-resultat der bar et billede (2026-09-06).
+
+    Et `tool`-resultat kan ikke selv baere et billede i OpenAI-protokollen —
+    derfor foelger billedet som en user-besked lige efter. Kun `read_attachment`
+    paa en model der SELV kan se saetter feltet, saa for alle andre ture er
+    denne funktion et no-op og beskedstroemmen byte-identisk med foer.
+    """
+    url = str(getattr(tr, "image_data_url", "") or "")
+    if not url:
+        return
+    messages.append({
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "[vedhæftet billede — se selv]"},
+            {"type": "image_url", "image_url": {"url": url}},
+        ],
+    })
+
+
 class OllamaFollowupAdapter:
     """Follow-up via Ollama's ``/api/chat`` streaming NDJSON endpoint.
 
@@ -149,6 +169,7 @@ class OllamaFollowupAdapter:
                         tool_call_id=tr.tool_call_id,
                         tool_name=tr.tool_name,
                         content=content,
+                        image_data_url=tr.image_data_url,
                     )
                 )
             compacted.append(
@@ -177,8 +198,15 @@ class OllamaFollowupAdapter:
             _asst: dict[str, object] = {
                 "role": "assistant",
                 "content": exch.text,
-                "tool_calls": self._normalize_tool_calls(list(exch.tool_calls)),
             }
+            # 4. sep 2026 (empty-tool_calls-jagten): en tekst-runde uden tool-kald
+            # (hollow-promise-nudge, opsummering) blev replayet som
+            # `"tool_calls": []` → DeepSeek/OpenAI-spec afviser HTTP 400
+            # "Invalid 'messages[N].tool_calls': empty array" → hele runden
+            # afbrudt (10×/dag). Tekst-kun assistant-beskeder har INGEN nøgle.
+            _tcs = self._normalize_tool_calls(list(exch.tool_calls))
+            if _tcs:
+                _asst["tool_calls"] = _tcs
             # Replay thinking-modellens ræsonnering tilbage så deepseek/GLM/...
             # beholder sin tankerække mellem tool-runder (ellers re-tænker den
             # forfra hver runde → tool-spam → tabt svar). Ollama accepterer
@@ -196,6 +224,7 @@ class OllamaFollowupAdapter:
                 if tr.tool_name:
                     tool_msg["name"] = tr.tool_name
                 messages.append(tool_msg)
+                _append_image_message(messages, tr)
         return messages
 
     def stream_followup(
@@ -551,7 +580,7 @@ class OpenAICompatFollowupAdapter:
     def _build_request(
         self, *, model: str, messages: list[dict], tool_definitions: list[dict] | None,
         temperature: float | None = None, top_p: float | None = None,
-        tool_choice: str | None = None,
+        tool_choice: str | None = None, extra_body: dict | None = None,
     ) -> urllib_request.Request:
         if self.provider_id == "github-copilot":
             # Lazy imports: these modules pull in auth state we don't want to
@@ -622,15 +651,24 @@ class OpenAICompatFollowupAdapter:
             profile=_auth_profile, provider=self.provider_id
         )
         api_key = str(credentials.get("api_key") or "").strip()
+        from core.services.followup_output_budget import followup_max_tokens
+
         payload: dict[str, object] = {
             "model": model,
             "messages": messages,
             "stream": True,
             # Without explicit max_tokens, MiniMax/OpenCode caps at ~512 and
-            # cuts the assistant off mid-sentence. 4096 is plenty for any
-            # follow-up turn while staying within the free quota.
-            "max_tokens": 4096,
+            # cuts the assistant off mid-sentence; 4096 is plenty for them.
+            # DeepSeek thinking-mode counts REASONING against max_tokens, so
+            # 4096 there meant "think for ~32 s, then finish_reason=length with
+            # zero text" (Bjørn's cutoff ghost, measured 2026-09-04) — DeepSeek
+            # gets a budget that fits reasoning + answer. See
+            # followup_output_budget.
+            "max_tokens": followup_max_tokens(self.provider_id, model),
         }
+        if extra_body:
+            payload.update(dict(extra_body))
+        self._last_payload = payload
         # include_usage → DeepSeek sender en afsluttende chunk med usage (inkl.
         # prompt_cache_hit/miss_tokens) så cache_telemetri kan måle hver RUNDE.
         # Kun deepseek (native cache); andre providere rører vi ikke.
@@ -651,6 +689,23 @@ class OpenAICompatFollowupAdapter:
             # der ER tools at vælge fra.
             if tool_choice is not None:
                 payload["tool_choice"] = tool_choice
+                # 2026-09-05: DeepSeek afviser kombinationen med HTTP 400
+                # «Thinking mode does not support this tool_choice». Fejlen kom
+                # foerst frem i dag, fordi thinking-mode indtil da aldrig naaede
+                # frem til DeepSeek — rettelsen af DET blottede denne. Symptomet
+                # var et tool-kald der blinkede og forsvandt, og saa et cut:
+                # foelgerunden doede paa 400 og runnet blev interrupted.
+                #
+                # Vi dropper ikke tool_choice, for den er selve mekanismen der
+                # tvinger et prosa-svar UDEN at fjerne tools-arrayet (og dermed
+                # braekke cache-praefikset). I stedet slaas thinking fra netop
+                # paa den runde. Det er afslutnings-runden — et resumé af
+                # arbejde der allerede er gjort — saa raesonnement er overfloedigt
+                # dér, og begge mekanismer overlever.
+                if isinstance(payload.get("thinking"), dict) and \
+                        str(payload["thinking"].get("type") or "") == "enabled":
+                    payload["thinking"] = {"type": "disabled"}
+                    payload.pop("reasoning_effort", None)
         return urllib_request.Request(
             f"{base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
@@ -684,10 +739,14 @@ class OpenAICompatFollowupAdapter:
             assistant_msg: dict[str, object] = {
                 "role": "assistant",
                 "content": exch.text,
-                "tool_calls": self._normalize_assistant_tool_calls(
-                    list(exch.tool_calls)
-                ),
             }
+            # 4. sep 2026: aldrig `"tool_calls": []` — se OllamaFollowupAdapter.
+            # Roden: hollow-promise-nudgen appender en ToolExchange(tool_calls=[])
+            # og fortsætter; næste runde replayer den → DeepSeek HTTP 400 →
+            # "followup-round-N-provider-error" → turen interrupted.
+            _tcs = self._normalize_assistant_tool_calls(list(exch.tool_calls))
+            if _tcs:
+                assistant_msg["tool_calls"] = _tcs
             # Thinking-mode replay: Deepseek v4-pro/reasoner requires the
             # reasoning_content from the prior assistant turn to be sent
             # back verbatim, otherwise the API rejects with
@@ -705,6 +764,7 @@ class OpenAICompatFollowupAdapter:
                 if tr.tool_name:
                     tool_msg["name"] = tr.tool_name
                 messages.append(tool_msg)
+                _append_image_message(messages, tr)
         return messages
 
     def stream_followup(
@@ -721,6 +781,7 @@ class OpenAICompatFollowupAdapter:
         tool_choice: str | None = None,
         run_id: str = "",
         autonomous: bool = False,
+        _length_retry: bool = False,
     ) -> Iterator[FollowupEvent]:
         from core.services.visible_model import (
             _chat_completion_stream_is_terminal,
@@ -731,15 +792,18 @@ class OpenAICompatFollowupAdapter:
             _merge_openai_tool_call_deltas,
         )
 
-        # Deepseek thinking-mode toggles via model-name swap, ikke via
-        # request-param. "fast" → swap til deepseek-chat (non-thinking
-        # compat-alias). Andre openai-compat providere har ikke thinking-
-        # mode og returneres uændret.
+        # DeepSeek thinking-mode er REQUEST-PARAMS siden alias-pensioneringen
+        # 24/7 (deepseek-chat/-reasoner dør): fast → thinking disabled, think →
+        # reasoning_effort=high, deep → max. Første pas sendte dem; følge-
+        # runderne swappede kun modelnavnet (som ikke længere swapper) → fast/
+        # deep gjaldt kun runde 0, og #1453-rescue + syntese kørte MED thinking.
+        # Nu samme params som første pas, hele turen. Andre providere: uændret.
+        _mode_body: dict | None = None
         if self.provider_id == "deepseek":
-            from core.services.cheap_provider_runtime import (
-                deepseek_model_for_thinking_mode,
+            from core.services.cheap_provider_runtime_adapters import (
+                deepseek_request_for_thinking_mode,
             )
-            model = deepseek_model_for_thinking_mode(model, thinking_mode)
+            model, _mode_body = deepseek_request_for_thinking_mode(model, thinking_mode)
 
         # Legacy assistant-turns uden reasoning_content: Deepseek thinking-mode
         # afviser hele requesten hvis feltet mangler. Tidligere strippede vi
@@ -811,9 +875,12 @@ class OpenAICompatFollowupAdapter:
                 )
 
         try:
+            from core.services.followup_output_budget import nonthinking_retry_body
             req = self._build_request(
                 model=model, messages=messages, tool_definitions=tool_definitions,
                 temperature=temperature, top_p=top_p, tool_choice=tool_choice,
+                extra_body={**(_mode_body or {}),
+                            **(nonthinking_retry_body() if _length_retry else {})} or None,
             )
         except Exception as e:
             _log.error(
@@ -848,6 +915,7 @@ class OpenAICompatFollowupAdapter:
         _ttfb_ms: int | None = None
         _prompt_chars = sum(len(str(m.get("content", ""))) for m in messages)
         _usage: dict | None = None
+        _terminal_seen = False
         _finish_reason = ""
 
         try:
@@ -886,6 +954,19 @@ class OpenAICompatFollowupAdapter:
                             _finish_reason = str(_fr0 or "").strip()
                         except Exception:
                             _finish_reason = ""
+                        # 2026-09-05: FØR brød vi her. Naar runden ender med
+                        # TOOL_CALLS sender DeepSeek sin usage-chunk EFTER
+                        # terminal-chunken — saa `_usage` forblev tom, og baade
+                        # cache-telemetrien og hovedbogen fik nul for praecis de
+                        # runder der fylder mest. Vi draener resten af streamen
+                        # ([DONE] afslutter den alligevel) og bryder foerst naar
+                        # vi ogsaa HAR usage, saa raekkefoelgen ikke er noget vi
+                        # gaetter paa.
+                        if _usage is not None:
+                            break
+                        _terminal_seen = True
+                        continue
+                    if _terminal_seen and _usage is not None:
                         break
         except urllib_error.HTTPError as exc:
             body = ""
@@ -978,7 +1059,10 @@ class OpenAICompatFollowupAdapter:
                     if _m.get("role") == "system":
                         _sys = str(_m.get("content") or "")
                         break
-                _sha, _plen = prefix_signature(_sys, payload.get("tools"))
+                # `payload` lever i _build_request — her hed den ALDRIG noget
+                # (NameError slugt af except → per-runde cache-telemetri var død).
+                _sha, _plen = prefix_signature(
+                    _sys, (getattr(self, "_last_payload", None) or {}).get("tools"))
                 _ch = int((_usage or {}).get("prompt_cache_hit_tokens") or 0)
                 _cm = int((_usage or {}).get("prompt_cache_miss_tokens") or 0)
                 record_visible_cache(
@@ -988,6 +1072,39 @@ class OpenAICompatFollowupAdapter:
                 )
         except Exception:
             pass
+        # ── HOVEDBOGEN SÅ KUN HVER FEMTE KALD (2026-09-05) ───────────────────
+        # `record_cost` blev kaldt for FØRSTE pas, aldrig for de agentiske
+        # følge-runder. Målt 4. september: 96 første-pas mod 380 følge-runder
+        # til DeepSeek — hovedbogen kendte 20 % af kaldene. Hver runde sender
+        # HELE samtalen igen (op til 160k tokens), så de manglende 80 % er ikke
+        # småpenge: bogført $2,28 for 1.-5. sep, mens saldoen faldt ~$12.
+        # Uden dette er ethvert forbrugstal i Centralen 5× for lavt.
+        try:
+            from core.costing.ledger import record_cost
+            from core.services.llm_pricing import compute_cost_usd
+            _u = _usage or {}
+            _in = int(_u.get("prompt_tokens") or 0)
+            _out = int(_u.get("completion_tokens") or 0)
+            _hit = int(_u.get("prompt_cache_hit_tokens") or 0)
+            _miss = int(_u.get("prompt_cache_miss_tokens") or 0)
+            if _in or _out:
+                record_cost(
+                    lane="agentic_round",
+                    provider=self.provider_id,
+                    model=model,
+                    input_tokens=_in,
+                    output_tokens=_out,
+                    cache_hit_tokens=_hit,
+                    cache_miss_tokens=_miss,
+                    cost_usd=compute_cost_usd(
+                        self.provider_id, model,
+                        cache_hit_tokens=_hit, cache_miss_tokens=_miss,
+                        output_tokens=_out, input_tokens=_in,
+                    ),
+                    run_id=str(run_id or ""),
+                )
+        except Exception as _cost_exc:
+            _log.debug("followup round-omkostning ikke bogfoert: %s", _cost_exc)
         # ── DSML-TAIL-FLUSH (Bjørn 4. jul — cutoff-spøgelset) ──────────────────
         # _strip_dsml_leak holder en HALE tilbage der KUNNE være starten på DSML-
         # openeren "<｜｜DSML…" — inkl. et BART "<" (den starter med "<"). Ved
@@ -1014,6 +1131,50 @@ class OpenAICompatFollowupAdapter:
                 })
             except Exception:
                 pass
+        # ── BACKSTOP (2026-09-04): reasoning ate the whole budget ─────────────
+        # finish_reason=length with NO text and NO tool call = the model thought
+        # until max_tokens and never answered. The agentic loop cannot continue
+        # an empty round (its "fortsæt" needs partial text) and would exit
+        # completed-truncated → Bjørn sees the previous round's "henter det
+        # sidste stykke:" and then nothing. Re-run this round ONCE with thinking
+        # disabled: same messages, same tools, an answer instead of silence.
+        try:
+            from core.services.followup_output_budget import (
+                reasoning_exhausted, supports_nonthinking_retry,
+            )
+            _do_retry = (
+                not _length_retry
+                and reasoning_exhausted(
+                    finish_reason=_finish_reason, text="".join(parts), tool_calls=tool_calls)
+                and supports_nonthinking_retry(self.provider_id, model)
+            )
+        except Exception:
+            _do_retry = False
+        if _do_retry:
+            _log.warning(
+                "%s followup round=%d reasoning exhausted max_tokens (reasoning_chars=%d, "
+                "finish_reason=length, no text/tool) → retry once with thinking disabled",
+                self.provider_id, round_index, sum(len(r) for r in reasoning_parts),
+            )
+            try:
+                from core.services.central_core import central as _central_rx
+                _central_rx().observe({
+                    "cluster": "followup", "nerve": "reasoning_budget_exhausted",
+                    "run_id": str(run_id or ""), "provider": str(self.provider_id or ""),
+                    "model": str(model or ""), "round": int(round_index),
+                    "reasoning_chars": sum(len(r) for r in reasoning_parts),
+                    "retry": "nonthinking",
+                })
+            except Exception:
+                pass
+            yield from self.stream_followup(
+                model=model, base_messages=base_messages, exchanges=exchanges,
+                tool_definitions=tool_definitions, round_index=round_index,
+                thinking_mode="fast", temperature=temperature, top_p=top_p,
+                tool_choice=tool_choice, run_id=run_id, autonomous=autonomous,
+                _length_retry=True,
+            )
+            return
         if tool_calls:
             yield FollowupToolCalls(tool_calls=tool_calls)
         yield FollowupDone(

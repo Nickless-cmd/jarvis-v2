@@ -1,6 +1,7 @@
 """Active curiosity with hypothesis debt."""
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -50,19 +51,44 @@ def register_hypothesis_debt(
     return item
 
 
+# Korte triggere skal matche som ORD. "agi" som substring rammer inde i almindelige
+# ord og gjorde gaeldslisten til stoej; det samme for "could" i sammensaetninger.
+_ORD_TRIGGERE = re.compile(r"\b(agi|perception|learning)\b", re.IGNORECASE)
+_HYPOTESE_TRIGGERE = re.compile(r"(hvad hvis|\bcould\b|hypot)", re.IGNORECASE)
+
+# En hypotese skal vaere hans EGEN tanke. Er teksten kortere end dette, er der
+# ikke noget at forfoelge; er den laengere end det vi gemmer, klippes den.
+_MIN_HYPOTESE_CHARS = 25
+
+
 def maybe_register_from_text(*, text: str, source: str = "") -> dict[str, object] | None:
-    lower = str(text or "").lower()
-    if "hvad hvis" in lower or "could" in lower or "hypot" in lower:
+    """Registrér en aaben hypotese hvis teksten rummer en.
+
+    2026-09-05: to fejl gjorde hele gaeldslisten ubrugelig. Kaldstedet sendte
+    `user_message + summary` ind, og vi gemte `text[:180]` — altsaa HOVEDET af
+    sammenskrivningen. I droemme-koersler er `user_message` selve droemme-
+    prompten, saa hver eneste post blev «Du er i en droemmetilstand — dedikeret,
+    uforstyrret tid til at konsolidere…». Triggeren fyrede paa hans egen summary;
+    det gemte var teksten han havde faaet udleveret. Fem af fem aabne poster var
+    identisk prompt-stoej.
+
+    Og "agi" blev matchet som substring, saa den ramte inde i almindelige ord.
+    """
+    raw = str(text or "").strip()
+    if len(raw) < _MIN_HYPOTESE_CHARS:
+        return None
+    lower = raw.lower()
+    if _HYPOTESE_TRIGGERE.search(lower):
         return register_hypothesis_debt(
-            hypothesis=str(text)[:180],
+            hypothesis=raw[:180],
             why_it_matters="Unresolved counterfactual may change future policy.",
             resolving_observation="Run a small test, ask the user, or compare future outcome.",
             source=source,
             priority="medium",
         )
-    if "agi" in lower or "perception" in lower or "learning" in lower:
+    if _ORD_TRIGGERE.search(lower):
         return register_hypothesis_debt(
-            hypothesis=str(text)[:180],
+            hypothesis=raw[:180],
             why_it_matters="Research thread may reveal a missing cognitive capability.",
             resolving_observation="Observe whether the new primitive changes next-run behavior.",
             source=source,

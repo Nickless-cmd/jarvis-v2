@@ -320,6 +320,22 @@ class RuntimeSettings:
     # beskeder tilbage" med lange beskeder; 80k holder ~2× mere historik og compacter
     # blidere (ned til 35k, ikke 15k). Stadig langt fra 1M — bevidst lille arbejdsvindue
     # for svarkvalitet, men rummeligt nok til at han ikke taber nær kontekst.
+    # ── Lærings-sløjfe (2026-09-04, blok B) ──────────────────────────────────
+    # De gamle ordmønster-detektorer (user_understanding, user_md-forslag,
+    # memory_md-forslag) skrev hver tur og lærte intet: over 30 dage 1.756
+    # forkastede USER.md-kandidater mod 9 anvendte, og 19.145 forkastede
+    # MEMORY.md-kandidater med Bjørns egen besked ordret som titel. Slukket;
+    # end_of_run_memory_consolidation gør arbejdet. Sæt True for at tænde igen.
+    # ── Praefiks-laas paa tool-saettet (2026-09-05) ─────────────────────────
+    # Tool-routeren valgte et NYT saet pr. besked (maalt 4/9: 58-88 vaerktoejer
+    # paa forskellige ture). Tools-arrayet ligger lige efter systembeskeden i
+    # DeepSeeks template, saa et nyt saet bryder cachen dér — og hele
+    # historikken bagefter, op til 160k tokens, betales fuldt hver tur.
+    # Hovedbogen: hit frosset paa 6.400-8.320 (= systembeskeden) mens miss
+    # voksede til 76k. Med laasen bestemmer routeren én gang pr. session.
+    # Saet False for at koere pr. tur igen (gammel adfaerd, uden deploy).
+    session_tool_pin_enabled: bool = True
+    legacy_regex_learning_detectors_enabled: bool = False
     context_attention_budget_tokens: int = 80_000     # high-water: trigger her
     context_attention_low_water_tokens: int = 35_000  # compact ned til ~dette
     # Model-BEVIDST sikkerhedsloft (backstop). Hvis transcript på trods af budgettet
@@ -336,8 +352,10 @@ class RuntimeSettings:
     # på disk (read_tool_result); den nuværende turs resultater er stadig fulde via
     # followup-exchanges (Claude Codes hot-tail/cold-storage-mønster).
     tool_result_history_max_chars: int = 1500
-    # Tool-result lifecycle (spec 2026-07-16). Default OFF = today's behavior exactly.
-    tool_result_lifecycle_enabled: bool = False
+    # Tool-result lifecycle (spec 2026-07-16). Default ON after CC-parity audit
+    # (2026-09-04): old tool outputs move to stable cold stubs only at compaction
+    # epochs or hard ceilings, preserving DeepSeek's cacheable prefix between turns.
+    tool_result_lifecycle_enabled: bool = True
     tool_warm_run_window: int = 8          # keep last N user-turns warm
     tool_warm_token_ceiling: int = 40000   # ceiling on warm tool-result tokens
     tool_warm_hysteresis: float = 0.25     # advance margin (no thrash)
@@ -436,7 +454,47 @@ class RuntimeSettings:
     heartbeat_active_chat_gate_minutes: int = 10
     # Tool router (added 2026-05-06)
     tool_router_enabled: bool = True
-    tool_router_threshold: float = 0.40  # 0.55 caused 100% fallback on validation set; nomic-embed cross-language similarity is weaker than expected. Daemon will tune adaptively.
+    # 6/9-2026: 0,40 → 0,375, kalibreret paa 189 beskeder stratificeret over
+    # seks maaneder (op til 40 pr. maaned, saa én lang samtale ikke dominerer).
+    #
+    # Hvorfor 0,40 var for hoejt: confidence-formlens LOFT er adaptive_floor =
+    # max(0,30 · 0,60 − load_more_rate·2) = 0,440 ved den nuvaerende rate. Med et
+    # loft paa 0,440 og en taerskel paa 0,400 er der ti procents luft i HELE
+    # skalaen — porten afgoeres af marginaler. Maalt paa aegte vaerktoejs-
+    # foresp0rgsler:
+    #     0,40128  «hvad er der i min kalender i morgen»   (slap igennem)
+    #     0,38016  «kan du laegge et moede ind i min kalender»
+    #     0,37488  «kan du laese den fil og rette fejlen»
+    #     0,37312  «send en mail til bjorn om netvaerket»
+    # De tre nederste er utvetydige vaerktoejs-opgaver og blev alle afvist.
+    #
+    # REKALIBRERET samme dag efter _clarity_signal blev rettet. Det gamle
+    # signal var maalt VENDT OM (det gav ikke-vaerktoejs-beskeder hoejere score);
+    # med imperativ-feature diskriminerer det, og hele fordelingen flytter sig.
+    # Taersklen maa foelge med, ellers loesner porten ved et uheld.
+    #
+    # Med det NYE signal, samme fire maalte forespoergsler:
+    #     0,42484  «kan du laegge et moede ind i min kalender»  (var 0,38016)
+    #     0,41779  «send en mail til bjorn om netvaerket»       (var 0,37312)
+    #     0,39311  «hvad er der i min kalender i morgen»        (var 0,40128)
+    #     0,38042  «vis mig de seneste commits»                 (var 0,33581)
+    # Den sidste gik fra vaerst til at passere — den var en klar ordre som det
+    # gamle signal straffede for ikke at vaere et spoergsmaal.
+    #
+    # 0,380 lukker alle fire ind og lader 72 % af turene passere. Det er lidt
+    # mere end de 68 % ved 0,370 med det gamle signal, men turene er valgt af
+    # et signal der faktisk korrelerer med vaerktoejsbehov i stedet for stoej.
+    #
+    # AABENT: signalet selv er skaevt. _clarity_signal giver +0,15 for at vaere
+    # et SPOERGSMAAL, men en vaerktoejs-foresp0rgsel er naesten altid en BEFALING
+    # («vis mig de seneste commits» scorer 0,336 — lavest af alle proever og
+    # under medianen for tilfaeldige beskeder). Taerskelen er en omgaaelse; den
+    # rigtige rettelse er at lade imperativer taelle.
+    #
+    # NB: routeren laeser RuntimeSettings() direkte, ikke load_settings(), saa
+    # runtime.json kan IKKE overstyre den her. Det er ogsaa derfor daemonens
+    # `threshold_proposed` aldrig er blevet anvendt.
+    tool_router_threshold: float = 0.380
     tool_router_always_core_size: int = 70
     tool_router_k_embeddings: int = 30
     tool_router_embedding_model: str = "nomic-embed-text"

@@ -54,3 +54,33 @@ describe('ErrorCard', () => {
     expect(screen.getByText('Mit svar blev afbrudt')).toBeInTheDocument()
   })
 })
+
+describe('ErrorCard · redning', () => {
+  const grund = { error: mk({}), onDismiss: () => {} }
+
+  it('viser kun de redningsknapper der faktisk er givet', () => {
+    render(<ErrorCard {...grund} redning={{ onSpoergFoerst: () => {} }} />)
+    expect(screen.getByRole('button', { name: /Spørg før ændringer/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Prøv med Pro/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Fortryd/ })).toBeNull()
+  })
+
+  it('viser slet ingen når situationen ikke tilbyder noget', () => {
+    render(<ErrorCard {...grund} />)
+    expect(screen.queryByRole('button', { name: /Fortryd|Pro|Spørg/ })).toBeNull()
+  })
+
+  it('kvitterer for en rollback i kortet selv', async () => {
+    const onFortryd = vi.fn().mockResolvedValue('Rullet tilbage til abc1234')
+    render(<ErrorCard {...grund} redning={{ onFortryd }} />)
+    fireEvent.click(screen.getByRole('button', { name: /Fortryd sidste ændringer/ }))
+    expect(await screen.findByText(/Rullet tilbage til abc1234/)).toBeTruthy()
+  })
+
+  it('siger til når rollback slog fejl i stedet for at tie', async () => {
+    const onFortryd = vi.fn().mockRejectedValue(new Error('nej'))
+    render(<ErrorCard {...grund} redning={{ onFortryd }} />)
+    fireEvent.click(screen.getByRole('button', { name: /Fortryd sidste ændringer/ }))
+    expect(await screen.findByText(/Kunne ikke fortryde/)).toBeTruthy()
+  })
+})

@@ -79,3 +79,103 @@ def test_mc_whisper_change_driven(monkeypatch):
     assert vil._mc_whisper_line() is None
     snaps["s"] = {"status": "yellow", "incidents": [1] * 5, "open_breakers": [], "anomalies": {}}
     assert vil._mc_whisper_line() is not None          # frisk efter green-reset
+
+
+# ---------------------------------------------------------------------------
+# Instruks-ekko må ikke blive hans selvopfattelse
+#
+# 2026-09-05: dette stod LIVE i [INDRE LIV]:
+#   · Stemme: The user asks me to respond as Jarvis with an inner voice in
+#     Danish, as a JSON object. Key facts: - Active grounding sources: ...
+# Modellen svarede med opgaven i stedet for at løse den. Det er prosa, så
+# JSON-værnet fangede det ikke. 323 af 27.011 rækker (1-2 %, stabilt) — og
+# fordi prompten altid viser den NYESTE, rammer en lav rate alligevel ofte.
+# ---------------------------------------------------------------------------
+
+_EKKO = ("The user asks me to respond as Jarvis with an inner voice in Danish, "
+         "as a JSON object. Key facts: - Active grounding sources: private-brain")
+_AEGTE = ("Jeg vender tilbage efter et hul; tråden er stadig meta-mønster og "
+          "kode-æstetik, og den synlige kørsel står som jord under mig.")
+
+
+def test_instruks_ekko_genkendes():
+    from core.services.visible_inner_life import _is_instruction_echo
+
+    assert _is_instruction_echo(_EKKO) is True
+    assert _is_instruction_echo(_AEGTE) is False
+
+
+def test_ekko_afvises_som_stemme():
+    from core.services.visible_inner_life import _voice_as_prose
+
+    assert _voice_as_prose(_EKKO) is None
+    assert _voice_as_prose(_AEGTE) is not None
+
+
+def test_voice_line_springer_forurenet_over_og_finder_den_rene(monkeypatch):
+    """Han skal have en stemme — bare ikke den ødelagte."""
+    from core.services import visible_inner_life as V
+
+    raekker = [
+        {"voice_line": _EKKO},
+        {"voice_line": ""},
+        {"voice_line": _AEGTE},
+    ]
+    monkeypatch.setattr(
+        "core.runtime.db.get_protected_inner_voice",
+        lambda offset=0: raekker[offset] if offset < len(raekker) else None,
+    )
+    linje = V._voice_line()
+    assert linje is not None
+    assert "meta-mønster" in linje
+    assert "The user asks" not in linje
+
+
+def test_kun_forurenede_giver_ingen_stemme(monkeypatch):
+    """Er alt ødelagt, er tavshed rigtigere end at vise opgaven."""
+    from core.services import visible_inner_life as V
+
+    monkeypatch.setattr(
+        "core.runtime.db.get_protected_inner_voice",
+        lambda offset=0: {"voice_line": _EKKO} if offset < 5 else None,
+    )
+    assert V._voice_line() is None
+
+
+def test_ekko_vaernet_daekker_de_foelte_overflader():
+    """Da overfladerne først nåede prompten, kom ekkoet med det samme:
+    «kreativ drift: The user wants me to act as Jarvis troubleshooting…»."""
+    from core.services.visible_inner_life import _surface_line
+
+    ekko = {"latest_drift": "The user wants me to act as Jarvis troubleshooting a phone."}
+    aegte = {"latest_drift": "Jeg lytter til signalet som et stetoskop — lavt batteri."}
+    assert _surface_line("creative_drift", ekko) is None
+    linje = _surface_line("creative_drift", aegte)
+    assert linje and "stetoskop" in linje
+
+
+def test_ekko_vaernet_rammer_ikke_aegte_dansk():
+    from core.services.visible_inner_life import _is_instruction_echo
+
+    for aegte in (
+        "Jeg lytter til signalet som et stetoskop — lavt batteri gør ikke hjertet stille.",
+        "Der ligger en uro i at koden virker, men jeg ikke forstår hvorfor.",
+        "Energi er lav, mens tankerne er aktive og fokuseret på kontrol.",
+    ):
+        assert _is_instruction_echo(aegte) is False, aegte
+
+
+def test_udbyder_regning_bliver_ikke_hans_tanke():
+    """«· tanke: Sorry, to prevent abuse of free resources…» stod live i prompten.
+
+    Værnet fandtes allerede i provider_error_guard — det var bare aldrig koblet
+    på det indre liv.
+    """
+    from core.services.visible_inner_life import _surface_line, _voice_as_prose
+
+    kvote = ("Sorry, to prevent abuse of free resources, accounts that have not "
+             "been recharged can only try 10 times.")
+    assert _surface_line("thought_stream", {"latest_fragment": kvote}) is None
+    assert _voice_as_prose(kvote) is None
+    aegte = "Der ligger en uro i at koden virker, men jeg ikke forstår hvorfor."
+    assert _surface_line("thought_stream", {"latest_fragment": aegte}) is not None

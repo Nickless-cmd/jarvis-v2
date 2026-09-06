@@ -26,8 +26,11 @@ from __future__ import annotations
 
 import asyncio
 import contextvars as _ctxvars
+import logging
 import time
 from typing import AsyncIterator
+
+logger = logging.getLogger(__name__)
 
 
 async def run_tool_batch(
@@ -72,8 +75,45 @@ async def run_tool_batch(
 
     _local = bool(getattr(run, "local_tool_exec", False))
 
+    # ── PreToolUse-hook ──────────────────────────────────────────────────
+    # Her — foer annoncering og foer eksekvering — er det eneste sted «block»
+    # KAN honoreres. Et blokeret kald udfoeres ikke, men faar sit eget resultat
+    # paa sin egen plads, saa modellen faar at vide HVORFOR frem for at vente paa
+    # et svar der aldrig kommer.
+    _blokeret: dict[int, str] = {}
+    try:
+        from core.services import lifecycle_hooks as _lh
+        if "PreToolUse" in _lh.WIRED_EVENTS and _lh.hooks_for("PreToolUse"):
+            for _i, _tc0 in enumerate(tool_calls):
+                _n0 = str((_tc0.get("function") or {}).get("name")
+                          or _tc0.get("name") or "")
+                _a0 = _parse_tc_args(_tc0)
+                _dom = await _lh.fire_async(
+                    "PreToolUse",
+                    {"tool": _n0, "command": str(_a0.get("command") or ""),
+                     "arguments": _a0, "session_id": getattr(run, "session_id", "") or ""},
+                    user_id=str(getattr(run, "user_id", "") or ""))
+                if _dom.get("action") == "block":
+                    _blokeret[_i] = str(_dom.get("message") or "blokeret af hook")
+    except Exception as _pre_exc:
+        logger.warning("PreToolUse-hook fejlede: %r", _pre_exc)
+
+    _kald_til_exec = [tc for i, tc in enumerate(tool_calls) if i not in _blokeret]
+
     # ── Announce loop: one working_step per named call (+ Path B register/emit) ──
-    for _tc in tool_calls:
+    for _tc_i, _tc in enumerate(tool_calls):
+        if _tc_i in _blokeret:
+            # Annoncér den som stoppet frem for slet ikke — ellers ser det ud som
+            # om modellen aldrig bad om den.
+            _bn = str((_tc.get("function") or {}).get("name") or _tc.get("name") or "")
+            if _bn:
+                step_counter += 1
+                yield _sse("working_step", {
+                    "type": "working_step", "run_id": run.run_id, "action": _bn,
+                    "detail": "stoppet af hook", "step": step_counter,
+                    "status": "blocked",
+                })
+            continue
         _tc_name = str((_tc.get("function") or {}).get("name") or _tc.get("name") or "")
         if _tc_name:
             step_counter += 1
@@ -148,7 +188,7 @@ async def run_tool_batch(
             None,
             lambda: _ctx_for_exec.run(
                 _exec_fn,
-                tool_calls,
+                _kald_til_exec,
                 force=run.autonomous,
                 run_id=run.run_id,
                 session_id=run.session_id,
@@ -180,6 +220,51 @@ async def run_tool_batch(
             _hb["beat"] = _beats
             yield _sse("heartbeat", _hb)
     _results = await _tool_task
+
+    # Flet de blokerede ind paa deres OPRINDELIGE plads. Raekkefoelgen betyder
+    # noget: resultaterne laeses parvis med kaldene laengere oppe.
+    if _blokeret:
+        _flettet, _it = [], iter(_results)
+        for _i, _tc in enumerate(tool_calls):
+            _n = str((_tc.get("function") or {}).get("name") or _tc.get("name") or "")
+            if _i in _blokeret:
+                _besked = _blokeret[_i]
+                _flettet.append({
+                    "tool_name": _n, "arguments": _parse_tc_args(_tc),
+                    "result": {"status": "blocked", "error": _besked},
+                    "result_text": f"[blokeret af hook] {_besked}",
+                    "result_text_full": f"[blokeret af hook] {_besked}",
+                    "status": "blocked",
+                })
+            else:
+                try:
+                    _flettet.append(next(_it))
+                except StopIteration:
+                    break
+        _results = _flettet
+
+    # ── PostToolUse-hook ─────────────────────────────────────────────────
+    # Kun `inject` giver mening her: vaerktoejet HAR koert, saa der er intet at
+    # blokere. Injektionen haeftes paa resultat-teksten, saa modellen ser den
+    # sammen med det den bad om.
+    try:
+        from core.services import lifecycle_hooks as _lh2
+        if "PostToolUse" in _lh2.WIRED_EVENTS and _lh2.hooks_for("PostToolUse"):
+            for _r in _results:
+                if not isinstance(_r, dict):
+                    continue
+                _d = await _lh2.fire_async(
+                    "PostToolUse",
+                    {"tool": str(_r.get("tool_name") or ""),
+                     "status": str(_r.get("status") or ""),
+                     "result_text": str(_r.get("result_text") or "")[:4000],
+                     "session_id": getattr(run, "session_id", "") or ""},
+                    user_id=str(getattr(run, "user_id", "") or ""))
+                if _d.get("action") == "inject" and _d.get("message"):
+                    _r["result_text"] = (
+                        f"{_r.get('result_text') or ''}\n\n[HOOK] {_d['message']}")
+    except Exception as _post_exc:
+        logger.warning("PostToolUse-hook fejlede: %r", _post_exc)
 
     out["results"] = _results
     out["step_counter"] = step_counter

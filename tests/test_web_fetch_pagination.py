@@ -36,8 +36,26 @@ class _FakeResp:
         return False
 
 
+class _FakeOpener:
+    """Sømmen flyttede 6/9 fra `urlopen` til en opener med redirect-værn.
+
+    Testene går stadig gennem den ægte `_hent_side`, så de nu også dækker
+    cachen — derfor ryddes den for hver test; ellers ville anden test se
+    første tests side.
+    """
+
+    def __init__(self, html: str):
+        self._html = html
+
+    def open(self, req, timeout=15):
+        return _FakeResp(self._html)
+
+
 def _patch_fetch(monkeypatch, html: str):
-    monkeypatch.setattr(web.urllib_request, "urlopen", lambda req, timeout=15: _FakeResp(html))
+    _gemt: dict[str, str] = {}
+    monkeypatch.setattr(web, "_fetch_cache_get", lambda u: _gemt.get(u))
+    monkeypatch.setattr(web, "_fetch_cache_put", lambda u, r: _gemt.__setitem__(u, r))
+    monkeypatch.setattr(web.urllib_request, "build_opener", lambda *a: _FakeOpener(html))
 
 
 def test_web_fetch_paginates_long_page(monkeypatch):

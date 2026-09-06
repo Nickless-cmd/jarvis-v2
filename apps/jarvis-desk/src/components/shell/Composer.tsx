@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { ContextDrawer } from './ContextDrawer'
 import {
   ArrowUp, Square, Plus, Paperclip, ListChecks, Puzzle, ChevronRight,
   ChevronDown, Mic, ShieldCheck, FileText, X, Loader2,
@@ -12,6 +13,7 @@ import {
   pasteLineCount, pasteStoreEnabled, savePaste, shouldExternalizePaste,
 } from '../../lib/pasteStore'
 import { usePermission } from '../../hooks/usePermission'
+import { useFileMention } from '../../hooks/useFileMention'
 
 export interface SentAttachment { id: string; src?: string; name: string; isImage: boolean }
 
@@ -34,9 +36,19 @@ interface PendingAttachment {
   error?: boolean
 }
 
-const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
-  { key: 'ask', label: 'Spørg ved værktøjer' },
-  { key: 'trust', label: 'Fuld adgang' },
+// Navnet siger hvad der sker; linjen under siger hvad det KOSTER (6/9-2026).
+// Codex foreslog fire niveauer — Read only, Ask first, Trusted, Full access.
+// Men serveren har præcis TO: `approval_mode == "trust"` sætter trust_all,
+// alt andet spørger. Fire valg hvor to intet gør ville være værre end to
+// ærlige, så det er konsekvensen der er gjort tydelig i stedet.
+//
+// «Farlige kommandoer blokeres stadig» er efterprøvet samme dag: destruktive
+// kommandoer stoppes selv med trust_all (se test_bash_unified.py).
+const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string; hvad: string }> = [
+  { key: 'ask', label: 'Spørg først',
+    hvad: 'Jarvis beder om lov, før han ændrer noget' },
+  { key: 'trust', label: 'Fuld adgang',
+    hvad: 'Han handler uden at spørge. Farlige kommandoer blokeres stadig' },
 ]
 // Permission-valget overlever genstart via PermissionContext (Bjørn: "fuld
 // adgang" skal huskes). Provider/model-nøgler kommer fra composerPrefs.
@@ -371,12 +383,35 @@ export function Composer({
     }
   }, [compacting, queuedDuringCompact, doSend])
 
+  // @fil-komplettering. Kun for ejeren: endpointet læser værtens disk.
+  const filnavne = useFileMention(config, isOwner)
+
   // Stabile handlers til den memo'd textarea (ellers re-renderer den hvert tick).
   // Bruger-input nulstiller historik-navigationen (man redigerer draften igen).
   const onInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value); setHistIdx(-1)
-  }, [])
+    filnavne.opdater(e.target.value, e.target.selectionStart ?? e.target.value.length)
+  }, [filnavne])
   const onInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Mention-listen skal have tasterne FØR historik og send — ellers
+    // sender Enter beskeden mens man står og vælger en fil.
+    if (filnavne.åben) {
+      if (e.key === 'Escape') { e.preventDefault(); filnavne.luk(); return }
+      if (e.key === 'ArrowDown') { e.preventDefault(); filnavne.flyt(1); return }
+      if (e.key === 'ArrowUp') { e.preventDefault(); filnavne.flyt(-1); return }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+        e.preventDefault()
+        const r = filnavne.vælg(e.currentTarget.value)
+        if (r) {
+          const ta = e.currentTarget
+          setText(r.tekst)
+          requestAnimationFrame(() => {
+            try { ta.selectionStart = ta.selectionEnd = r.caret } catch { /* noop */ }
+          })
+        }
+        return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); return }
     const ta = e.currentTarget
     const caretToEnd = (v: string) => requestAnimationFrame(() => {
@@ -409,7 +444,7 @@ export function Composer({
       }
       return
     }
-  }, [send, histIdx])
+  }, [send, histIdx, filnavne])
 
   // onPaste: store paste (>tærskel) → hold teksten lokalt, vis reference-chip i stedet
   // for at spilde tekst-væggen ind i inputtet. Under tærskel → default (inline).
@@ -435,6 +470,11 @@ export function Composer({
 
   return (
     <div className="composer-shell">
+    {/* Kontekst-drawer (6/9-2026): «hvad bruger Jarvis lige nu» — filer,
+        kilder, størrelse. Tallene er MÅLT paa sidste tur, ikke estimeret.
+        Placeret OVER komponisten, saa man ser den foer man skriver, uden at
+        den stjaeler plads fra selve feltet. */}
+    <ContextDrawer config={config} />
     <div className={`composer ${dragOver ? 'drag-over' : ''}`}>
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
       {ringDenominator > 0 && (
@@ -467,6 +507,27 @@ export function Composer({
                 <X size={12} />
               </button>
             </div>
+          ))}
+        </div>
+      )}
+      {filnavne.åben && (
+        <div className="mention-liste" role="listbox" aria-label="Filer">
+          {filnavne.forslag.map((f, i) => (
+            <button
+              key={f.rel}
+              type="button"
+              role="option"
+              aria-selected={i === filnavne.valgt}
+              className={`mention-rk${i === filnavne.valgt ? ' valgt' : ''}`}
+              onMouseDown={(e) => {
+                e.preventDefault()  // behold fokus i feltet
+                const r = filnavne.vælg(text, i)
+                if (r) { setText(r.tekst); ref.current?.focus() }
+              }}
+            >
+              <span className="mention-navn">{f.rel.slice(f.rel.lastIndexOf('/') + 1)}</span>
+              <span className="mention-sti">{f.rel}</span>
+            </button>
           ))}
         </div>
       )}
@@ -522,10 +583,11 @@ export function Composer({
                   <button
                     key={p.key}
                     type="button"
-                    className={permission === p.key ? 'active' : ''}
+                    className={`perm-valg ${permission === p.key ? 'active' : ''}`}
                     onClick={() => { setPermission(p.key); setPermOpen(false) }}
                   >
-                    {p.label}
+                    <span className="perm-navn">{p.label}</span>
+                    <span className="perm-hvad">{p.hvad}</span>
                   </button>
                 ))}
               </div>

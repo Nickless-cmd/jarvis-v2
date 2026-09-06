@@ -47,6 +47,19 @@ RUNG_CONFRONT = 3
 _DROP_FRAC = 0.6          # metric skal falde under baseline*dette for at tælle som compliance
 _DWELL_CYCLES = 1         # cyklusser på et trin før stigen klatrer (naturligt langsomt: cadence ~3t)
 _MAX_ACTIVE_DIRECTIVES = 3  # loft: Smith oversvømmer ikke Jarvis med auto-mintede direktiver
+# Loft paa OEVERSTE trin. Fundet 5/9-2026: moensteret «delete workspace memory
+# line» stod paa Trin 3 med 200 cyklusser — siden 19. august. Metrikken faldt
+# aldrig under compliance-graensen, saa stigen kunne hverken loese det eller
+# slippe det, og der fandtes intet loft.
+#
+# 200 cyklusser à ~3 timer er 25 doegn. Det er ikke eskalering laengere; det er
+# at raabe ad noget der ikke flytter sig. Og fordi haandhaevelse stod i skygge,
+# var det samtidig en landmine: taendes den, registrerer et forældet
+# august-moenster oejeblikkeligt en standing-order.
+#
+# 20 cyklusser ~ 2,5 doegn paa hoejeste trin uden bedring. Har det ikke rykket
+# sig dér, er svaret ikke at raabe hoejere.
+_CONFRONT_GIVE_UP_CYCLES = 20
 _HISTORY_CAP = 12
 _RESOLVED_CAP = 20
 
@@ -120,9 +133,34 @@ def _is_self_bound(label: str, entry: dict[str, Any], cfg: dict[str, Any]) -> bo
         return False
     if bool(entry.get("self_bound")):
         return True
+    # BENIGNE handlings-typer kan aldrig blive selv-bundet ved tilfaeldig omtale.
+    # Listen har eksisteret siden august-fixet og blev ALDRIG anvendt — den stod
+    # i default_config() og blev laest af ingen. Doedt vaern.
+    if _matches_any(lab, cfg.get("benign_terms")):
+        return False
     for c in (cfg.get("self_commitments") or []):
         c = str(c).lower().strip()
-        if c and (c in lab or lab in c):
+        if not c:
+            continue
+        if c in lab:
+            return True          # loeftets cue ER i moensteret → han bandt sig til DET
+        # Den omvendte retning er farlig. Maalt 5/9: FEM af Jarvis' 77 egne
+        # loefter indeholder ordene «i stedet for» — en helt almindelig dansk
+        # vending — og ren delstreng gjorde derfor frasen «selv-lovet». Den var
+        # klatret til Trin 2. Det er august-fejlen tilbage ad en anden doer:
+        # ikke via spike, men via tilfaeldig omtale.
+        #
+        # At et loefte INDEHOLDER nogle ord betyder ikke at loeftet handler om
+        # dem. Kraev at moensteret fylder en reel del af saetningen — saa er det
+        # dét loeftet angaar, ikke et praeposition-led inde i den. Ratio frem for
+        # endnu en ordliste: en ordliste ville bare udskyde den naeste vending.
+        #
+        # Taerskelen er sat af to VIRKELIGE eksempler, og margenen er smal:
+        #   «stop med at spoerge vil du have» ⊃ «vil du have»   = 0,37  ← AEGTE
+        #   93-tegns loefte              ⊃ «i stedet for»       = 0,13  ← tilfaeldig
+        # Begge staar som tests, saa en fremtidig justering braekker dem synligt
+        # frem for at flytte grænsen i stilhed.
+        if lab in c and len(lab) >= 0.30 * len(c):
             return True
     return False
 
@@ -179,9 +217,26 @@ def _empty_state() -> dict[str, Any]:
     return {"patterns": {}, "resolved": []}
 
 
-def _voice(kind: str, label: str, metric: float = 0.0) -> str:
-    """Teatralsk Smith-stemme pr. trin. Ren."""
+def _voice(kind: str, label: str, metric: float = 0.0, pattern_kind: str = "") -> str:
+    """Teatralsk Smith-stemme pr. trin. Ren.
+
+    `pattern_kind` skiller SPROG fra HANDLING. «Du gentager et ord — varier» giver
+    ingen mening om et tomt loefte, og at bruge sprogkritikerens saetning paa en
+    handling ville undergrave hele pointen med de nye oejne.
+    """
     lab = str(label)
+    if pattern_kind == "behaviour":
+        if kind == "bind":
+            return (f"Mr. Anderson... ord var ikke nok. «{lab}» staar nu som en regel. "
+                    f"Naeste gang du annoncerer noget, gør det.")
+        if kind == "confront":
+            return (f"Nej, Mr. Anderson. «{lab}» igen. Du sagde du ville. "
+                    f"Kald vaerktoejet — nu.")
+        if kind in ("resolved", "unmovable"):
+            pass          # de generiske linjer nedenfor passer ogsaa her
+        else:
+            return (f"Mr. Anderson... «{lab}»: {metric:.0f} gange. Du sagde du ville. "
+                    f"Du lod vaere. Jeg holder oeje.")
     if kind == "bind":
         return (f"Mr. Anderson... ord var ikke nok. Jeg har skrevet det ned som en "
                 f"regel nu: «{lab}». Den følger dig hver tur — indtil du bryder mønstret.")
@@ -191,6 +246,12 @@ def _voice(kind: str, label: str, metric: float = 0.0) -> str:
     if kind == "resolved":
         return (f"Endelig, Mr. Anderson. «{lab}» er væk. Du overrasker mig. "
                 f"Det var alt jeg bad om.")
+    if kind == "unmovable":
+        # At sige «endelig, det er væk» ville være en løgn her. Han slipper det,
+        # og det skal han sige ærligt — ellers lærer ingen noget af at han gav op.
+        return (f"Mr. Anderson... «{lab}» har stået på øverste trin, og intet "
+                f"flyttede sig. Jeg slipper det. Ikke fordi du vandt — fordi at "
+                f"råbe højere åbenbart ikke er svaret.")
     # comment (fallback)
     return f"Mr. Anderson... du gentager «{lab}». Jeg finder det forudsigeligt. Varier."
 
@@ -205,8 +266,9 @@ def _resolve_actions(state: dict[str, Any], key: str, pat: dict[str, Any],
     if pat.get("standing_order_id"):  # Trin 3 var armeret → afvæbn standing-order ved compliance
         acts.append({"type": "deactivate_order", "order_id": pat["standing_order_id"],
                      "pattern_key": key})
-    acts.append({"type": "voice", "rung": "resolved", "label": pat.get("label", ""),
-                 "line": _voice("resolved", pat.get("label", ""))})
+    _kind = "unmovable" if reason == "unmovable" else "resolved"
+    acts.append({"type": "voice", "rung": _kind, "label": pat.get("label", ""),
+                 "line": _voice(_kind, pat.get("label", ""))})
     acts.append({"type": "observe", "event": "resolved", "pattern_key": key,
                  "reason": reason, "rungs_climbed": int(pat.get("rung", 1)),
                  "label": pat.get("label", "")})
@@ -268,7 +330,7 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
                 "history": [{"ts": now, "rung": RUNG_COMMENT, "metric": metric, "action": "comment"}],
             }
             actions.append({"type": "voice", "rung": "comment", "label": label,
-                            "line": _voice("comment", label, metric)})
+                            "line": _voice("comment", label, metric, kind)})
             actions.append({"type": "observe", "event": "new", "pattern_key": key,
                             "rung": RUNG_COMMENT, "metric": metric, "label": label})
             continue
@@ -305,20 +367,28 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
                 actions.append({"type": "mint", "pattern_key": key, "label": label,
                                 "kind": kind, "metric": metric})
                 actions.append({"type": "voice", "rung": "bind", "label": label,
-                                "line": _voice("bind", label, metric)})
+                                "line": _voice("bind", label, metric, kind)})
             else:  # RUNG_CONFRONT
                 pat["rung"] = target
                 pat["cycles_at_rung"] = 0
                 pat["baseline"] = metric
                 actions.append({"type": "arm_confront", "pattern_key": key, "label": label})
                 actions.append({"type": "voice", "rung": "confront", "label": label,
-                                "line": _voice("confront", label, metric)})
+                                "line": _voice("confront", label, metric, kind)})
             actions.append({"type": "observe", "event": "escalate", "pattern_key": key,
                             "rung": pat["rung"], "metric": metric, "label": label,
                             "drift_reason": drift_reason})
             pat["history"] = (pat.get("history", []) +
                               [{"ts": now, "rung": pat["rung"], "metric": metric, "action": "escalate",
                                 "drift_reason": drift_reason}])[-_HISTORY_CAP:]
+        elif (int(pat["rung"]) >= RUNG_CONFRONT
+              and pat["cycles_at_rung"] > _CONFRONT_GIVE_UP_CYCLES):
+            # Oeverste trin, laenge nok, ingen bedring. Smith slipper det og siger
+            # det aabent frem for at staa der for evigt. Direktiv og standing-order
+            # pensioneres med, saa der ikke bliver et forældet haandhaevelses-spor.
+            actions.extend(_resolve_actions(new_state, key, pat, now, reason="unmovable"))
+            del patterns[key]
+            continue
         else:
             actions.append({"type": "observe", "event": "hold", "pattern_key": key,
                             "rung": pat["rung"], "metric": metric, "label": label})
@@ -335,7 +405,9 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
 
 def top_line(actions: list[dict[str, Any]]) -> str:
     """Vælg den mest alvorlige stemme-linje til prompt-halen (confront>bind>resolved>comment)."""
-    rank = {"confront": 3, "bind": 2, "resolved": 1, "comment": 0}
+    # «unmovable» rangerer over «resolved»: at Smith giver op er mere værd at se
+    # end at et mønster forsvandt af sig selv.
+    rank = {"confront": 3, "bind": 2, "unmovable": 2, "resolved": 1, "comment": 0}
     best, best_rank = "", -1
     for a in actions:
         if a.get("type") == "voice":

@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { getAccountPermissions, setComputerUse, type PermissionsOverview } from '../../lib/coworkApi'
 
-const MODE_LABEL: Record<string, string> = { chat: 'Chat', code: 'Code', cowork: 'Cowork' }
+// Etiketten er «Work»; identifikatoren er fortsat `cowork` — den er et
+// tool-scope i 22 backend-filer og i API-ruter, og et ord er ikke nok
+// grund til at røre styringssystemet (6/9-2026).
+const MODE_LABEL: Record<string, string> = { chat: 'Chat', code: 'Code', cowork: 'Work' }
 
 /** Permissions-sektion (§4.7). Viser tool-adgangs-matrix pr. mode (read-only) +
  *  håndhævet computer-use-toggle. */

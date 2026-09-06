@@ -157,6 +157,9 @@ def _handle_sensory(payload: dict[str, Any]) -> None:
     )
 
 
+_INACTIVE_PRIVATE_BRAIN_STATUSES = frozenset({"released", "archived", "superseded", "deleted"})
+
+
 def _handle_private_brain(payload: dict[str, Any]) -> None:
     rid = str(payload.get("record_id") or "").strip()
     if not rid:
@@ -166,6 +169,10 @@ def _handle_private_brain(payload: dict[str, Any]) -> None:
 
     record = get_private_brain_record(rid)
     if not record:
+        return
+    # 2026-09-04 (memory repair, R5): 95 % af 129k private_brain-rækker er
+    # "released" (bevidst glemt). De skal ikke være søgbare.
+    if str(record.get("status") or "") in _INACTIVE_PRIVATE_BRAIN_STATUSES:
         return
     summary = str(record.get("summary") or "").strip()
     detail = str(record.get("detail") or "").strip()

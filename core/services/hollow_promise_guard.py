@@ -30,6 +30,11 @@ HOLLOW_PROMISE_NUDGE = (
 
 # Løfte-om-imminent-handling (dansk + engelsk). Bevidst SNÆVERT: selv + handlings-verbum +
 # nu-adverbium — ikke passivt/hypotetisk — for at undgå falske positive på normale svar.
+_DEFERRED_TEXT_PATTERNS = [
+    r"\b(søjle|bid|del)\s+\d+\b[^.]{0,160}\bkommer nu\b",
+    r"\bsidste graverunde\s*:",
+]
+
 _PROMISE_PATTERNS = [
     r"\bjeg (kører|starter|gør|går i gang med|igangsætter|udfører|fortsætter|tjekker|kigger på|"
     r"retter|fikser|opdaterer|committer|kalder|henter|læser)\b[^.]{0,40}\b(nu|lige nu|med det samme|straks)\b",
@@ -63,11 +68,70 @@ _PROMISE_PATTERNS = [
     r"\b(før|inden) jeg (skriver|kører|retter|fikser|committer|implementerer|tilføjer)\b",
     r"\bjeg (læser|skriver|retter|fikser|implementerer|tilføjer|verificerer)\b[^.]{0,60}"
     r"\b(før|inden) jeg\b",
+    # Live 2. sep: svaret annoncerede næste tekstbid uden et tool-call. Et visible
+    # run kan ikke spontant sende den bagefter, så det er samme tomme løfteklasse.
+    *_DEFERRED_TEXT_PATTERNS,
 ]
+# ── Omskrevet 04-09-2026 efter tredje runde af misser ────────────────────────
+# Listen ovenfor opremser ORDSTILLINGER: "jeg læser … nu", "nu læser jeg".
+# Dansk tillader flere, og hver gang Bjørn blev ladt i stikken var det en ny:
+#   «Den læser jeg nu præcist.»              ← verbum, subjekt, adverbium
+#   «Først åbner jeg en session …»           ← adverbial, verbum, subjekt
+#   «Lad mig læse resten (linje 350-520).»   ← verbet stod ikke i lad-mig-listen
+# At tilføje endnu et mønster ville bare udskyde den fjerde.
+#
+# Det der ER fælles: FØRSTEPERSON tæt på et KONKRET handlingsverbum. Ordstilling
+# er ligegyldig. Én liste over verber, ét nærhedskrav — så holder det for de
+# ordstillinger jeg ikke har set endnu.
+_ACTION_VERB = (
+    r"(?:læs(?:er|e)?|skriv(?:er|e)?|kør(?:er|e)?|åbn(?:er|e)?|find(?:er|e)?|"
+    r"tjekk(?:er|e)?|se(?:r)?|kigg(?:er|e)?|gennemgå(?:r|e)?|ret(?:ter|te)?|"
+    r"fiks(?:er|e)?|opdater(?:er|e)?|committ?(?:er|e)?|kald(?:er|e)?|hent(?:er|e)?|"
+    r"verificer(?:er|e)?|implementer(?:er|e)?|tilføj(?:er|e)?|start(?:er|e)?|"
+    r"udfør(?:er|e)?|undersøg(?:er|e)?|analyser(?:er|e)?|bygg(?:er|e)?|test(?:er|e)?|"
+    r"bekræft(?:er|e)?|bekraeft(?:er|e)?|gør(?:e)?|sammenhold(?:er|e)?|"
+    r"mål(?:er|e)?|deploy(?:er|e)?|push(?:er|e)?|installer(?:er|e)?|genstart(?:er|e)?)"
+)
+# ── Omvendt default for «lad mig» 05-09-2026, efter fjerde runde af misser ───
+# Bjørn, live: fire ture i traek hvor Jarvis annoncerede og stoppede. Vaernet
+# fangede to. De to der slap igennem sagde begge «Lad mig BEKRAEFTE …» — og
+# `bekraeft` stod ikke i verbelisten. At tilfoeje det ville vaere femte runde af
+# samme trae: listen er nu selv flaskehalsen.
+#
+# «Lad mig <verbum>» ER et loefte om imminent handling i kraft af KONSTRUKTIONEN,
+# uanset verbet. De eneste undtagelser er TALEHANDLINGER — «lad mig forklare»,
+# «lad mig vaere aerlig» — som fuldfoeres i selve beskeden og derfor ikke kan
+# staa tomme. Saa listen vendes: alt fanges undtagen dem.
+#
+# Det flytter risikoen fra «Bjoern efterlades haengende» (den fejl der faktisk er
+# sket fem gange) til «et unoedigt nudge» (et ekstra kald). Den byttehandel er
+# bevidst.
+_SPEECH_ACT_VERB = (
+    r"(?:forklar(?:er|e)?|uddyb(?:er|e)?|opsummer(?:er|e)?|sig(?:er|e)?|"
+    r"svar(?:er|e)?|vaere|være|fortael(?:ler)?|fortæl(?:ler|le)?|naevn(?:er|e)?|"
+    r"nævn(?:er|e)?|pointer(?:er|e)?|understreg(?:er|e)?|indroemm(?:er|e)?|"
+    r"indrømm(?:er|e)?|gaette|gætte|tro(?:r)?|mene|antag(?:er|e)?)"
+)
+
+# «jeg» inden for få ord fra verbet — i begge retninger, så ordstillingen er fri.
+_FIRST_PERSON_ACTION = [
+    re.compile(rf"\bjeg\s+(?:\w+\s+){{0,2}}{_ACTION_VERB}\b", re.IGNORECASE),
+    re.compile(rf"\b{_ACTION_VERB}\s+jeg\b", re.IGNORECASE),
+    # Konstruktionen baerer loeftet: «lad mig <hvadsomhelst>» — undtagen talehandlinger.
+    re.compile(rf"\blad\s+mig\s+(?:lige\s+)?(?!{_SPEECH_ACT_VERB}\b)\w+", re.IGNORECASE),
+]
+
 _PROMISE_RE = [re.compile(p, re.IGNORECASE) for p in _PROMISE_PATTERNS]
+_DEFERRED_TEXT_RE = [re.compile(p, re.IGNORECASE) for p in _DEFERRED_TEXT_PATTERNS]
 
 # Billig negativ-guard: slutter svaret på et spørgsmål → afventer brugeren (ikke tom løfte).
 _QUESTION_TAIL = re.compile(r"[?]\s*$")
+
+
+def _last_sentence(text: str) -> str:
+    """Sidste hele sætning. Løftet står dér — det er dét man efterlades med."""
+    parts = [p for p in re.split(r"(?<=[.!?])\s+", text.strip()) if p.strip()]
+    return parts[-1] if parts else text.strip()
 
 
 def is_promise_of_action(text: str) -> bool:
@@ -80,7 +144,24 @@ def is_promise_of_action(text: str) -> bool:
             return False
         if _QUESTION_TAIL.search(t):     # spørgsmål-hale = afventer bruger, ikke løfte
             return False
-        return any(rx.search(t) for rx in _PROMISE_RE)
+        if any(rx.search(t) for rx in _PROMISE_RE):
+            return True
+        # Kun den SIDSTE sætning tæller. Et langt svar der undervejs siger «jeg
+        # læste filen» er ikke et løfte — det er en beretning. Løftet står til
+        # sidst, som dét man efterlades med.
+        tail = _last_sentence(t)
+        return any(rx.search(tail) for rx in _FIRST_PERSON_ACTION)
+    except Exception:
+        return False
+
+
+def is_deferred_text_promise(text: str) -> bool:
+    """True for a promise to emit another prose section after this run ends."""
+    try:
+        t = (text or "").strip()
+        return bool(t) and not _QUESTION_TAIL.search(t) and any(
+            rx.search(t) for rx in _DEFERRED_TEXT_RE
+        )
     except Exception:
         return False
 

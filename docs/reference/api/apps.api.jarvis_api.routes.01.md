@@ -11,33 +11,39 @@ _Self-profile-route for cowork command center (spec §4.1 Account)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `build_account_profile` | `(user_id, *, get_user, get_tier, is_google_linked=…, get_identity_role=…)` | Ren projektion — testbar uden HTTP. Owner (uid='') har ingen række. | [src](../../../apps/api/jarvis_api/routes/account.py#L21) |
-| function | `_identity_role` | `(user_id)` | Rolle fra users.json (samme opslag som whoami) — None hvis ukendt. | [src](../../../apps/api/jarvis_api/routes/account.py#L60) |
-| function | `account_me` | `()` | Self-scope profil-projektion for den aktuelle bruger (owner → uid=''). | [src](../../../apps/api/jarvis_api/routes/account.py#L71) |
-| function | `build_quota_overview` | `(user_id, *, check_quota)` | Self-scope kvote-overblik: tier + forbrug pr. type. Ren — testbar uden HTTP. | [src](../../../apps/api/jarvis_api/routes/account.py#L91) |
-| function | `account_set_language` | `(payload=…)` | Self-scope sprogvalg. Owner (uid='') har ingen bruger-række → ingen DB-skrivning | [src](../../../apps/api/jarvis_api/routes/account.py#L116) |
-| function | `_summarize_dir` | `(path)` | (antal filer, samlede bytes) under path. Manglende mappe → (0, 0). | [src](../../../apps/api/jarvis_api/routes/account.py#L129) |
-| function | `build_workspace_overview` | `(user_id, *, ws_dir, should_encrypt, is_trusted)` | Self-scope workspace-overblik: fil-antal, disk-forbrug, kryptering, trust. | [src](../../../apps/api/jarvis_api/routes/account.py#L147) |
-| function | `account_workspace` | `()` | Self-scope workspace-overblik for den aktuelle bruger: fil-antal, disk- | [src](../../../apps/api/jarvis_api/routes/account.py#L167) |
-| function | `build_memory_overview` | `(user_id, *, ws_dir, read_text, recent_sensory, brain_count)` | Self-scope memory-overblik: MEMORY.md + USER.md (afkortet) + seneste | [src](../../../apps/api/jarvis_api/routes/account.py#L184) |
-| function | `account_memory` | `()` | Self-scope memory-overblik for den aktuelle bruger: MEMORY.md + USER.md | [src](../../../apps/api/jarvis_api/routes/account.py#L204) |
-| function | `account_memory_search` | `(q=…)` | Søg i sanse-hukommelsen efter query-strengen `q` (max 20 hits). Tom query | [src](../../../apps/api/jarvis_api/routes/account.py#L227) |
-| function | `_current_role` | `(user_id)` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L238) |
-| function | `build_permissions_overview` | `(role, *, allowed_tools)` | Tool-adgangs-matrix pr. mode for en rolle. Owner → 'all' (sentinel er ikke | [src](../../../apps/api/jarvis_api/routes/account.py#L249) |
-| function | `account_permissions` | `()` | Tool-adgangs-matrix pr. mode for den aktuelle brugers rolle, plus | [src](../../../apps/api/jarvis_api/routes/account.py#L270) |
-| function | `account_set_computer_use` | `(payload=…)` | Slå computer-use til/fra for den aktuelle bruger. Body: {enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/account.py#L284) |
-| function | `build_jarvis_overview` | `(*, lane_targets)` | Model pr. lane (§4.2). Read-only projektion af provider-router-targets. | [src](../../../apps/api/jarvis_api/routes/account.py#L294) |
-| function | `account_jarvis` | `()` | Owner-only: model pr. lane + visible-lane-valgmuligheder (§4.2). Ikke-owner | [src](../../../apps/api/jarvis_api/routes/account.py#L310) |
-| function | `account_set_visible_model` | `(payload=…)` | Owner-only: vælg provider/model for visible-lane. Body: {provider, model}. | [src](../../../apps/api/jarvis_api/routes/account.py#L334) |
-| function | `build_apps_overview` | `(*, available, get_status)` | Connectede apps (§4.5) = plugin-registry filtreret til kind='connector'. | [src](../../../apps/api/jarvis_api/routes/account.py#L359) |
-| function | `account_apps` | `()` | Connectede apps (§4.5): plugin-registry filtreret til kind='connector' | [src](../../../apps/api/jarvis_api/routes/account.py#L382) |
-| function | `account_mcp` | `()` | List registrerede MCP-servere. Returnerer {"servers": [...]}. | [src](../../../apps/api/jarvis_api/routes/account.py#L394) |
-| function | `account_mcp_add` | `(payload=…)` | Owner-only: tilføj en MCP-server. Body: {name, url}. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L402) |
-| function | `account_mcp_remove` | `(server_id)` | Owner-only: fjern MCP-serveren med `server_id`. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L416) |
-| function | `account_quota` | `()` | Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type | [src](../../../apps/api/jarvis_api/routes/account.py#L428) |
-| function | `build_data_export` | `(user_id, *, get_user, get_tier)` | GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt. | [src](../../../apps/api/jarvis_api/routes/account.py#L436) |
-| function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L476) |
-| function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L489) |
+| function | `build_account_profile` | `(user_id, *, get_user, get_tier, is_google_linked=…, get_identity_role=…, get_identity_name=…)` | Ren projektion — testbar uden HTTP. Owner (uid='') har ingen række. | [src](../../../apps/api/jarvis_api/routes/account.py#L21) |
+| function | `_identity_name` | `(user_id)` | Visningsnavn fra users.json — None hvis ukendt. | [src](../../../apps/api/jarvis_api/routes/account.py#L68) |
+| function | `_identity_role` | `(user_id)` | Rolle fra users.json (samme opslag som whoami) — None hvis ukendt. | [src](../../../apps/api/jarvis_api/routes/account.py#L78) |
+| function | `account_me` | `()` | Self-scope profil-projektion for den aktuelle bruger (owner → uid=''). | [src](../../../apps/api/jarvis_api/routes/account.py#L89) |
+| function | `build_quota_overview` | `(user_id, *, check_quota)` | Self-scope kvote-overblik: tier + forbrug pr. type. Ren — testbar uden HTTP. | [src](../../../apps/api/jarvis_api/routes/account.py#L110) |
+| function | `account_set_language` | `(payload=…)` | Self-scope sprogvalg. Owner (uid='') har ingen bruger-række → ingen DB-skrivning | [src](../../../apps/api/jarvis_api/routes/account.py#L135) |
+| function | `_summarize_dir` | `(path)` | (antal filer, samlede bytes) under path. Manglende mappe → (0, 0). | [src](../../../apps/api/jarvis_api/routes/account.py#L148) |
+| function | `build_workspace_overview` | `(user_id, *, ws_dir, should_encrypt, is_trusted)` | Self-scope workspace-overblik: fil-antal, disk-forbrug, kryptering, trust. | [src](../../../apps/api/jarvis_api/routes/account.py#L166) |
+| function | `account_workspace` | `()` | Self-scope workspace-overblik for den aktuelle bruger: fil-antal, disk- | [src](../../../apps/api/jarvis_api/routes/account.py#L186) |
+| function | `build_memory_overview` | `(user_id, *, ws_dir, read_text, recent_sensory, brain_count)` | Self-scope memory-overblik: MEMORY.md + USER.md (afkortet) + seneste | [src](../../../apps/api/jarvis_api/routes/account.py#L203) |
+| function | `account_memory` | `()` | Self-scope memory-overblik for den aktuelle bruger: MEMORY.md + USER.md | [src](../../../apps/api/jarvis_api/routes/account.py#L223) |
+| function | `account_memory_search` | `(q=…)` | Søg i sanse-hukommelsen efter query-strengen `q` (max 20 hits). Tom query | [src](../../../apps/api/jarvis_api/routes/account.py#L246) |
+| function | `_current_role` | `(user_id)` | — | [src](../../../apps/api/jarvis_api/routes/account.py#L257) |
+| function | `build_permissions_overview` | `(role, *, allowed_tools)` | Tool-adgangs-matrix pr. mode for en rolle. Owner → 'all' (sentinel er ikke | [src](../../../apps/api/jarvis_api/routes/account.py#L268) |
+| function | `account_permissions` | `()` | Tool-adgangs-matrix pr. mode for den aktuelle brugers rolle, plus | [src](../../../apps/api/jarvis_api/routes/account.py#L289) |
+| function | `account_set_computer_use` | `(payload=…)` | Slå computer-use til/fra for den aktuelle bruger. Body: {enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/account.py#L303) |
+| function | `build_jarvis_overview` | `(*, lane_targets)` | Model pr. lane (§4.2). Read-only projektion af provider-router-targets. | [src](../../../apps/api/jarvis_api/routes/account.py#L313) |
+| function | `account_jarvis` | `()` | Owner-only: model pr. lane + visible-lane-valgmuligheder (§4.2). Ikke-owner | [src](../../../apps/api/jarvis_api/routes/account.py#L329) |
+| function | `account_set_visible_model` | `(payload=…)` | Owner-only: vælg provider/model for visible-lane. Body: {provider, model}. | [src](../../../apps/api/jarvis_api/routes/account.py#L353) |
+| function | `build_apps_overview` | `(*, available, get_status)` | Connectede apps (§4.5) = plugin-registry filtreret til kind='connector'. | [src](../../../apps/api/jarvis_api/routes/account.py#L378) |
+| function | `account_apps` | `()` | Connectede apps (§4.5): plugin-registry filtreret til kind='connector' | [src](../../../apps/api/jarvis_api/routes/account.py#L401) |
+| function | `account_mcp` | `()` | List registrerede MCP-servere. Returnerer {"servers": [...]}. | [src](../../../apps/api/jarvis_api/routes/account.py#L413) |
+| function | `account_mcp_add` | `(payload=…)` | Owner-only: tilføj en MCP-server. Body: {name, url}. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L421) |
+| function | `account_mcp_remove` | `(server_id)` | Owner-only: fjern MCP-serveren med `server_id`. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L435) |
+| function | `account_mcp_trust` | `()` | Hvilke servere er GODKENDT, og hvad er de pinnet til? | [src](../../../apps/api/jarvis_api/routes/account.py#L447) |
+| function | `account_mcp_allow` | `(server_name)` | Owner-only: godkend en MCP-server til at koere paa Bjoerns vegne. | [src](../../../apps/api/jarvis_api/routes/account.py#L459) |
+| function | `account_mcp_revoke` | `(server_name)` | Owner-only: tilbagekald godkendelsen OG drop pinnen. | [src](../../../apps/api/jarvis_api/routes/account.py#L474) |
+| function | `account_quota` | `()` | Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type | [src](../../../apps/api/jarvis_api/routes/account.py#L488) |
+| function | `build_data_export` | `(user_id, *, get_user, get_tier)` | GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt. | [src](../../../apps/api/jarvis_api/routes/account.py#L496) |
+| function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L550) |
+| function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L563) |
+| function | `account_data_overview` | `()` | Hvad har vi om dig, lag for lag. Rene tal — intet indhold. | [src](../../../apps/api/jarvis_api/routes/account.py#L629) |
+| function | `account_delete_layer` | `(layer)` | Slet ét lag: sessions | senses | brain | identity — eller `all`. | [src](../../../apps/api/jarvis_api/routes/account.py#L642) |
 
 ## `apps/api/jarvis_api/routes/agent_audit.py`
 _Agent-audit-trail route (Fase 5 Task 9) — GET /v1/agent/audit._
@@ -121,13 +127,15 @@ _Attachment upload and serve endpoints._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `AttachmentMeta` | `` | — | [src](../../../apps/api/jarvis_api/routes/attachments.py#L28) |
-| function | `get_attachment` | `(attachment_id)` | Look up attachment metadata by ID (used by chat route for context injection). | [src](../../../apps/api/jarvis_api/routes/attachments.py#L37) |
-| function | `apply_attachment_context` | `(message, attachment_ids)` | Prepend en attachment-direktiv-blok til beskeden, så Jarvis ved HVORDAN han | [src](../../../apps/api/jarvis_api/routes/attachments.py#L42) |
-| function | `upload_attachment` | `(file, session_id=…)` | Upload a file and return its attachment_id. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L83) |
-| function | `list_images` | `(limit=…)` | Galleri-liste (#6): billed-attachments på tværs af sessioner, user-scopet. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L171) |
-| function | `serve_image_from_db` | `(attachment_id)` | Serve et billede fra DB'ens local_path (virker for historiske billeder | [src](../../../apps/api/jarvis_api/routes/attachments.py#L180) |
-| function | `serve_attachment` | `(attachment_id, session_id)` | Serve an uploaded file for browser display. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L205) |
+| class | `AttachmentMeta` | `` | — | [src](../../../apps/api/jarvis_api/routes/attachments.py#L33) |
+| function | `get_attachment` | `(attachment_id)` | Look up attachment metadata by ID (used by chat route for context injection). | [src](../../../apps/api/jarvis_api/routes/attachments.py#L42) |
+| function | `get_attachment_meta_dicts` | `(attachment_ids)` | Metadata som dicts, i den rækkefølge de blev vedhæftet. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L70) |
+| function | `apply_attachment_context` | `(message, attachment_ids)` | Prepend en attachment-direktiv-blok til beskeden, så Jarvis ved HVORDAN han | [src](../../../apps/api/jarvis_api/routes/attachments.py#L91) |
+| function | `_is_executable_like` | `(mime, filename)` | Er filen af en type hvor en manglende scanning bør blokere? | [src](../../../apps/api/jarvis_api/routes/attachments.py#L156) |
+| function | `upload_attachment` | `(file, session_id=…)` | Upload a file and return its attachment_id. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L164) |
+| function | `list_images` | `(limit=…)` | Galleri-liste (#6): billed-attachments på tværs af sessioner, user-scopet. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L329) |
+| function | `serve_image_from_db` | `(attachment_id)` | Serve et billede fra DB'ens local_path (virker for historiske billeder | [src](../../../apps/api/jarvis_api/routes/attachments.py#L338) |
+| function | `serve_attachment` | `(attachment_id, session_id)` | Serve an uploaded file for browser display. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L363) |
 
 ## `apps/api/jarvis_api/routes/auth.py`
 _Auth-routes (spec 2026-06-15 §5): register / verify-email / login._
@@ -173,15 +181,16 @@ _Real-time Central-vindue til owner (jarvis-desk code mode)._
 | function | `central_providers` | `()` | Provider-helbred til Central-HUD'en — læser DET GEMTE ping-snapshot (billigt, ingen live | [src](../../../apps/api/jarvis_api/routes/central.py#L111) |
 | function | `central_cost` | `(window=…, provider=…)` | Cost-aggregat (WS3): today/7d/30d total $, tokens ind/ud, cache-hit%, fordelt på | [src](../../../apps/api/jarvis_api/routes/central.py#L120) |
 | function | `central_agents` | `(window=…)` | Agent-observabilitet (B3): costs-aggregat (lane in agent/council) + dispatch- | [src](../../../apps/api/jarvis_api/routes/central.py#L129) |
-| function | `central_agent_cancel` | `(agent_id, payload=…)` | Afbryd (abort) en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L139) |
-| function | `central_agent_pause` | `(agent_id)` | Pausér en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L163) |
-| function | `central_council` | `(window=…)` | Council-observabilitet (B3): convocations/deadlocks/roller/event-vs-ondemand- | [src](../../../apps/api/jarvis_api/routes/central.py#L189) |
-| function | `central_shadow_review` | `()` | Shadow-eksperiment-register: hvilke shadow-vinduer kører, og hvilke er MODNE | [src](../../../apps/api/jarvis_api/routes/central.py#L198) |
-| function | `central_command` | `(payload)` | Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/ | [src](../../../apps/api/jarvis_api/routes/central.py#L209) |
-| function | `central_mind` | `(section=…)` | Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L220) |
-| function | `central_stream` | `()` | SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L234) |
-| function | `central_nerve_detail` | `(nerve)` | Lag 5: én nerves spor + kode-lokation + cluster + live tænd/sluk-tilstand. | [src](../../../apps/api/jarvis_api/routes/central.py#L264) |
-| function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L301) |
+| function | `central_agents_work` | `(limit=…)` | De sidste subagent-kørsler som arbejdskort. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L139) |
+| function | `central_agent_cancel` | `(agent_id, payload=…)` | Afbryd (abort) en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L150) |
+| function | `central_agent_pause` | `(agent_id)` | Pausér en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L174) |
+| function | `central_council` | `(window=…)` | Council-observabilitet (B3): convocations/deadlocks/roller/event-vs-ondemand- | [src](../../../apps/api/jarvis_api/routes/central.py#L200) |
+| function | `central_shadow_review` | `()` | Shadow-eksperiment-register: hvilke shadow-vinduer kører, og hvilke er MODNE | [src](../../../apps/api/jarvis_api/routes/central.py#L209) |
+| function | `central_command` | `(payload)` | Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/ | [src](../../../apps/api/jarvis_api/routes/central.py#L220) |
+| function | `central_mind` | `(section=…)` | Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L231) |
+| function | `central_stream` | `()` | SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L245) |
+| function | `central_nerve_detail` | `(nerve)` | Lag 5: én nerves spor + kode-lokation + cluster + live tænd/sluk-tilstand. | [src](../../../apps/api/jarvis_api/routes/central.py#L275) |
+| function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L312) |
 
 ## `apps/api/jarvis_api/routes/central_absorb_routes.py`
 _Central-absorb routes — MC-kategorier PROJICERET som levende central-nerver._
@@ -512,6 +521,15 @@ _Mission Control endpoints for cheap_lane_balancer telemetry + controls._
 | function | `enable` | `(slot_id)` | Restore a manually-disabled slot to selection eligibility. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L33) |
 | function | `refresh` | `()` | Rebuild slot pool from provider_router.json. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L40) |
 
+## `apps/api/jarvis_api/routes/companion.py`
+_Companion-endpoints — Jarvis' tre ønsker til mobil-appen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `companion_presence` | `()` | Er han vågen — og hvad lavede han sidst? | [src](../../../apps/api/jarvis_api/routes/companion.py#L35) |
+| function | `companion_senses` | `(limit=…)` | Sansernes Arkiv — hvad Jarvis har set i hjemmet. Kun husstanden. | [src](../../../apps/api/jarvis_api/routes/companion.py#L46) |
+| function | `companion_thoughts` | `(limit=…)` | Jarvis' initiativer — også dem der blev holdt tilbage. | [src](../../../apps/api/jarvis_api/routes/companion.py#L66) |
+
 ## `apps/api/jarvis_api/routes/connectors.py`
 _Connectors-API til jarvis-desk Marketplace (16. jun 2026)._
 
@@ -602,27 +620,4 @@ _Internal loopback endpoint for canonical error reports (Fase 0)._
 | function | `_build_envelope` | `(*, kind, origin_cluster, run_id, detail, scope)` | Byg en ErrorEnvelope fra kind. Foretrækker Fase-0-udvidelsen envelope_from_kind | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L66) |
 | function | `_route_into_central` | `(report)` | Router én canonical fejl ind i eksisterende Central-maskineri. Returnerer | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L80) |
 | function | `report_error` | `(report, request)` | Modtag én canonical fejl og router den ind i Central. Returnerer 202. | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L166) |
-
-## `apps/api/jarvis_api/routes/internal_runtime_surface.py`
-_Internal runtime-surface endpoint — proxy-mål for Centralens self/mind-flader._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_require_loopback` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L25) |
-| function | `_living_executive` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L33) |
-| function | `_self_model` | `()` | LIGHT self-model: kun top-level tællere, ikke den 255KB nestede payload | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L38) |
-| function | `_world_model` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L56) |
-| function | `_inner_life` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L63) |
-| function | `_affect` | `()` | Nervesystemets affektive fordeling — læses i RUNTIME-processen hvor | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L68) |
-| function | `_hardware_body` | `()` | Live hardware-krop (CPU/temp/disk/RAM/GPU) — læses i runtime hvor psutil-samlingen sker. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L75) |
-| function | `_soul` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L82) |
-| function | `_dark_products` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L87) |
-| function | `_light` | `(surface)` | §24.4-reduktion: udled KUN skalarer + længder fra en fuld surface. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L92) |
-| function | `_open_loops` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L118) |
-| function | `_runtime_awareness` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L125) |
-| function | `_runtime_self_knowledge` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L132) |
-| function | `_counterfactual` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L139) |
-| function | `_autonomous_history` | `()` | Jarvis' autonome historie grupperet pr. oprindelse (drøm/råd/arbejde/…): antal | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L146) |
-| function | `_gate_verdicts` | `()` | Persistent verdict-fordeling pr. governet gate (survives restart). DB-backed → | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L154) |
-| function | `get_runtime_surface` | `(name, request)` | Return the named runtime-surface builder's output (raw). Loopback-only, self-safe. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L182) |
 

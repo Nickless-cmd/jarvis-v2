@@ -656,8 +656,8 @@ def run_bounded_nl_memory_entry_selection(
 
 
 def load_visible_relevance_prompt(*, workspace_dir: Path) -> str | None:
-    from core.services.workspace_crypto import read_text_for_path
-    workspace_text = read_text_for_path(workspace_dir / "VISIBLE_RELEVANCE.md")
+    from core.services.secret_redaction import read_for_prompt
+    workspace_text = read_for_prompt(workspace_dir / "VISIBLE_RELEVANCE.md")
     if workspace_text is not None:
         return workspace_text.strip() or None
 
@@ -670,8 +670,8 @@ def load_visible_relevance_prompt(*, workspace_dir: Path) -> str | None:
 
 
 def load_visible_memory_selection_prompt(*, workspace_dir: Path) -> str | None:
-    from core.services.workspace_crypto import read_text_for_path
-    workspace_text = read_text_for_path(workspace_dir / "VISIBLE_MEMORY_SELECTION.md")
+    from core.services.secret_redaction import read_for_prompt
+    workspace_text = read_for_prompt(workspace_dir / "VISIBLE_MEMORY_SELECTION.md")
     if workspace_text is not None:
         return workspace_text.strip() or None
 

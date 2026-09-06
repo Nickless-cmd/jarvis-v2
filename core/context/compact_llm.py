@@ -57,11 +57,12 @@ def _call_primary(prompt: str, *, max_tokens: int) -> str | None:
         s = load_settings()
         provider = str(getattr(s, "visible_model_provider", "") or "").strip()
         model = str(getattr(s, "visible_model_name", "") or "").strip()
+        auth_profile = str(getattr(s, "visible_auth_profile", "") or "").strip() or "default"
         if not provider or not model or provider not in _OPENAI_COMPAT_PROVIDERS:
             return None
         result = execute_openai_compat_heartbeat_prompt(
             prompt=prompt,
-            target={"provider": provider, "model": model},
+            target={"provider": provider, "model": model, "auth_profile": auth_profile},
             max_tokens=max_tokens,
             temperature=0.3,  # resumé, ikke kreativitet
         )

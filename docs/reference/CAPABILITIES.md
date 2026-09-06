@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-08-19 — 442 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-06 — 446 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -43,6 +43,7 @@
 | `central_query` | native | no |
 | `check_good_enough` | native | no |
 | `check_surprises` | native | no |
+| `checkpoint` | native | no |
 | `classify_clarification` | native | no |
 | `clear_flag` | native | no |
 | `comfyui_history` | native | no |
@@ -108,6 +109,7 @@
 | `edit_file` | native | no |
 | `edit_task` | native | no |
 | `eventbus_recent` | native | no |
+| `explore` | native | no |
 | `find_files` | native | no |
 | `find_symbol` | native | no |
 | `find_usages` | native | no |
@@ -188,6 +190,7 @@
 | `look_around` | native | no |
 | `manage_context_window` | native | no |
 | `mark_wakeup_consumed` | native | no |
+| `mcp` | native | no |
 | `memory_check_duplicate` | native | no |
 | `memory_cold_tier` | native | no |
 | `memory_consolidate` | native | no |
@@ -266,6 +269,7 @@
 | `read_tool_result` | native | no |
 | `read_visual_memory` | native | no |
 | `reasoning_classify` | native | no |
+| `recall` | native | no |
 | `recall_before_act` | native | no |
 | `recall_context_version` | native | no |
 | `recall_council_conclusions` | native | no |
@@ -349,11 +353,6 @@
 | `tail_log` | native | no |
 | `test_retry_policy` | native | no |
 | `tick_quality_summary` | native | no |
-| `tiktok_analytics` | native | no |
-| `tiktok_generate_video` | native | no |
-| `tiktok_login` | native | no |
-| `tiktok_show` | native | no |
-| `tiktok_upload` | native | no |
 | `todo_add` | native | no |
 | `todo_list` | native | no |
 | `todo_remove` | native | no |
@@ -388,6 +387,7 @@
 | `write_file` | native | yes |
 | `write_memory_topic` | native | no |
 | `operator_bash` | operator | yes |
+| `operator_bash_output` | operator | no |
 | `operator_bash_session_close` | operator | no |
 | `operator_bash_session_list` | operator | no |
 | `operator_bash_session_open` | operator | no |
@@ -401,6 +401,7 @@
 | `operator_browser_screenshot` | operator | no |
 | `operator_browser_status` | operator | no |
 | `operator_browser_type` | operator | no |
+| `operator_channel` | operator | no |
 | `operator_clipboard_read` | operator | no |
 | `operator_clipboard_write` | operator | no |
 | `operator_edit_file` | operator | no |
@@ -411,6 +412,7 @@
 | `operator_keyboard_press` | operator | no |
 | `operator_keyboard_type` | operator | no |
 | `operator_kill_process` | operator | yes |
+| `operator_kill_shell` | operator | no |
 | `operator_launch_app` | operator | yes |
 | `operator_list_dir` | operator | no |
 | `operator_list_processes` | operator | no |
@@ -420,6 +422,7 @@
 | `operator_mouse_move` | operator | no |
 | `operator_mouse_position` | operator | no |
 | `operator_mouse_scroll` | operator | no |
+| `operator_multi_edit` | operator | no |
 | `operator_notify` | operator | no |
 | `operator_ocr_region` | operator | no |
 | `operator_open_url` | operator | yes |
@@ -431,6 +434,7 @@
 | `operator_read_file` | operator | no |
 | `operator_record_audio` | operator | yes |
 | `operator_reminder` | operator | no |
+| `operator_run_in_background` | operator | no |
 | `operator_scheduled_cancel` | operator | no |
 | `operator_scheduled_list` | operator | no |
 | `operator_screen_size` | operator | no |

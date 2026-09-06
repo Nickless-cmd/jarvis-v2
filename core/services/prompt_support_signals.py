@@ -97,6 +97,14 @@ def _retained_memory_support_signal_instruction() -> str | None:
     kind = str(projection.get("retained_kind") or "").strip()
     if not focus or not kind:
         return None
+    # 2026-09-04 (memory repair, R3): "hmm"/"open conversation"/telemetri er
+    # ikke et fokus — så hellere intet signal end skabelonstøj i prompten.
+    try:
+        from core.memory.promotion_substance import is_empty_topic
+        if is_empty_topic(focus):
+            return None
+    except Exception:
+        pass
     return "\n".join(
         [
             "Retained memory support signal:",

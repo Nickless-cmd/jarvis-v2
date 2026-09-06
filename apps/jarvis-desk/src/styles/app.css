@@ -1556,115 +1556,141 @@
 .cowork-settings { display: flex; flex-direction: column; gap: 18px; max-width: 720px; margin: 0 auto; }
 
 /* ── Central HUD (JARVIS-design 1:1 — docs/design/jarvis-mind-design-tokens.md) ── */
-.central-hud { background:#0a0e16; border:1px solid #163040; border-radius:12px; padding:16px 18px 18px;
-  color:#c7d4e0; font-family:var(--font-mono); position:relative; overflow:hidden; min-height:100%; }
-.ch-scan { position:absolute; left:0; right:0; top:0; height:2px; background:#1ad9c4; opacity:.45; animation:ch-scan 6s linear infinite; pointer-events:none; }
+.central-hud {
+  /* HUD'en er en bevidst enkelt-tema konsol — cyan på næsten-sort. Den
+     følger ikke app-rampen med vilje, men samler sine farver ét sted, så
+     der ikke er tre grønne og to gule for samme betydning. */
+  --ch-bg: #0a0e16;
+  --ch-panel: #0d1622;
+  --ch-line: #163040;
+  --ch-line-2: #1f3a4a;
+  --ch-edge: #3a5160;
+  --ch-cyan: #1ad9c4;
+  --ch-fg: #c7d4e0;
+  --ch-fg-bright: #eaf6f4;
+  --ch-fg-dim: #6b8295;
+  --ch-fg-dimmer: #566b7d;
+  --ch-green: #3ee08a;
+  --ch-amber: #f5c451;
+  --ch-red: #ff5d5d;
+  --ch-green-line: #1f5a3e;
+  --ch-red-soft: #ff8a87;
+  --ch-fg-term: #a9c6d4;
+  --ch-cell: #13202b;
+  --ch-cell-on: #125043;
+  --ch-dry: #f5a14a;
+}
+.central-hud { background:var(--ch-bg); border:1px solid var(--ch-line); border-radius:12px; padding:16px 18px 18px;
+  color:var(--ch-fg); font-family:var(--font-mono); position:relative; overflow:hidden; min-height:100%; }
+.ch-scan { position:absolute; left:0; right:0; top:0; height:2px; background:var(--ch-cyan); opacity:.45; animation:ch-scan 6s linear infinite; pointer-events:none; }
 @keyframes ch-scan { 0%{transform:translateY(0)} 100%{transform:translateY(900px)} }
-.ch-head { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #163040; padding-bottom:11px; margin-bottom:14px; }
+.ch-head { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--ch-line); padding-bottom:11px; margin-bottom:14px; }
 .ch-title { display:flex; align-items:center; gap:10px; }
 .ch-dot { width:9px; height:9px; border-radius:50%; background:#2a3a48; }
-.ch-dot.on { background:#1ad9c4; box-shadow:0 0 9px #1ad9c4; animation:ch-blink 1.6s ease-in-out infinite; }
-.ch-name { font-size:17px; letter-spacing:3px; color:#eaf6f4; }
-.ch-owner { font-size:11px; letter-spacing:1px; color:#0a0e16; background:#1ad9c4; padding:2px 7px; border-radius:4px; }
-.ch-headr { display:flex; align-items:center; gap:14px; font-size:13px; color:#6b8295; }
-.ch-stat.tone-green{color:#3ee08a} .ch-stat.tone-yellow{color:#f5c451} .ch-stat.tone-red{color:#ff5d5d}
+.ch-dot.on { background:var(--ch-cyan); box-shadow:0 0 9px var(--ch-cyan); animation:ch-blink 1.6s ease-in-out infinite; }
+.ch-name { font-size:17px; letter-spacing:3px; color:var(--ch-fg-bright); }
+.ch-owner { font-size:11px; letter-spacing:1px; color:var(--ch-bg); background:var(--ch-cyan); padding:2px 7px; border-radius:4px; }
+.ch-headr { display:flex; align-items:center; gap:14px; font-size:13px; color:var(--ch-fg-dim); }
+.ch-stat.tone-green{color:var(--ch-green)} .ch-stat.tone-yellow{color:var(--ch-amber)} .ch-stat.tone-red{color:var(--ch-red)}
 .ch-top { display:grid; grid-template-columns:150px 1fr; gap:14px; margin-bottom:14px; }
-.ch-core { border:1px solid #163040; border-radius:10px; padding:12px; text-align:center; }
-.ch-ring { margin:2px auto 8px; width:78px; height:78px; border-radius:50%; border:2px solid #1ad9c4; display:flex; align-items:center; justify-content:center; animation:ch-core 2.6s ease-in-out infinite; }
-.ch-ring.tone-yellow{border-color:#f5c451} .ch-ring.tone-red{border-color:#ff5d5d}
-.ch-ring span { font-size:24px; color:#eaf6f4; }
-.ch-corel { font-size:11px; letter-spacing:2px; color:#6b8295; }
+.ch-core { border:1px solid var(--ch-line); border-radius:10px; padding:12px; text-align:center; }
+.ch-ring { margin:2px auto 8px; width:78px; height:78px; border-radius:50%; border:2px solid var(--ch-cyan); display:flex; align-items:center; justify-content:center; animation:ch-core 2.6s ease-in-out infinite; }
+.ch-ring.tone-yellow{border-color:var(--ch-amber)} .ch-ring.tone-red{border-color:var(--ch-red)}
+.ch-ring span { font-size:24px; color:var(--ch-fg-bright); }
+.ch-corel { font-size:11px; letter-spacing:2px; color:var(--ch-fg-dim); }
 .ch-cores { font-size:12px; margin-top:5px; }
-.ch-cores.tone-green{color:#3ee08a} .ch-cores.tone-yellow{color:#f5c451} .ch-cores.tone-red{color:#ff5d5d}
+.ch-cores.tone-green{color:var(--ch-green)} .ch-cores.tone-yellow{color:var(--ch-amber)} .ch-cores.tone-red{color:var(--ch-red)}
 .ch-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
-.ch-m { border:1px solid #163040; border-radius:8px; padding:9px 6px; text-align:center; }
-.ch-mn { font-size:20px; color:#eaf6f4; }
-.ch-mn.tone-green{color:#3ee08a} .ch-mn.tone-amber{color:#f5c451} .ch-mn.tone-dry{color:#f5a14a} .ch-mn.tone-red{color:#ff5d5d}
-.ch-ml { font-size:11px; letter-spacing:1px; color:#6b8295; margin-top:3px; }
-.ch-label { font-size:11px; letter-spacing:2px; color:#6b8295; margin:0 0 8px; }
+.ch-m { border:1px solid var(--ch-line); border-radius:8px; padding:9px 6px; text-align:center; }
+.ch-mn { font-size:20px; color:var(--ch-fg-bright); }
+.ch-mn.tone-green{color:var(--ch-green)} .ch-mn.tone-amber{color:var(--ch-amber)} .ch-mn.tone-dry{color:var(--ch-dry)} .ch-mn.tone-red{color:var(--ch-red)}
+.ch-ml { font-size:11px; letter-spacing:1px; color:var(--ch-fg-dim); margin-top:3px; }
+.ch-label { font-size:11px; letter-spacing:2px; color:var(--ch-fg-dim); margin:0 0 8px; }
 .ch-clusters { display:grid; grid-template-columns:repeat(10,1fr); gap:6px; margin-bottom:15px; }
 .ch-clusters { grid-template-columns:repeat(8,1fr) !important; }
 .ch-cl { height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; border:1px solid; overflow:hidden; cursor:default; }
-.ch-cl.s-green{background:#0c2218;border-color:#1f5a3e;color:#4fe0a0}
-.ch-cl.s-yellow{background:#241b08;border-color:#5a4416;color:#f5c451}
-.ch-cl.s-red{background:#24100f;border-color:#5a201f;color:#ff8a87}
-.ch-cl.s-idle{background:#10151c;border-color:#283645;color:#6b8295}
+.ch-cl.s-green{background:#0c2218;border-color:var(--ch-green-line);color:#4fe0a0}
+.ch-cl.s-yellow{background:#241b08;border-color:#5a4416;color:var(--ch-amber)}
+.ch-cl.s-red{background:#24100f;border-color:#5a201f;color:var(--ch-red-soft)}
+.ch-cl.s-idle{background:#10151c;border-color:#283645;color:var(--ch-fg-dim)}
 .ch-cl.sec{background:#1a0f24;border-color:#4a2d6b;color:#b98ff0}
 .ch-mid { display:grid; grid-template-columns:1fr 218px; gap:14px; margin-bottom:14px; }
-.ch-panel { border:1px solid #163040; border-radius:10px; padding:10px 12px; }
-.ch-plabel { font-size:11px; letter-spacing:2px; color:#6b8295; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
-.ch-rt { color:#1ad9c4; }
+.ch-panel { border:1px solid var(--ch-line); border-radius:10px; padding:10px 12px; }
+.ch-plabel { font-size:11px; letter-spacing:2px; color:var(--ch-fg-dim); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+.ch-rt { color:var(--ch-cyan); }
 .ch-feed { font-size:13px; line-height:1.6; height:280px; overflow-y:auto; padding-bottom:10px; }
 .ch-ffilter { display:inline-flex; gap:3px; }
-.ch-fbtn { background:transparent; border:1px solid #163040; color:#566b7d; font-family:var(--font-mono); font-size:10.5px; padding:2px 8px; border-radius:5px; cursor:pointer; }
-.ch-fbtn.on { background:#0d1622; border-color:#1f3a4a; color:#1ad9c4; }
-.ch-frun { color:#3a5160; font-size:11px; margin-left:7px; }
-.ch-freason { color:#7a8fa0; font-size:11.5px; margin:1px 0 3px 4px; padding-left:8px; border-left:1px solid #1f3a4a; }
-.ch-frow { display:block; width:100%; text-align:left; background:transparent; border:none; border-left:2px solid transparent; padding:3px 0 3px 8px; cursor:pointer; font-family:var(--font-mono); font-size:13px; color:#c7d4e0; border-radius:0 5px 5px 0; }
-.ch-frow:hover { background:#0d1622; }
-.ch-frow.tone-line-red { border-left-color:#ff5d5d; background:#1a0d0d33; }
-.ch-frow.tone-line-amber { border-left-color:#f5c451; }
+.ch-fbtn { background:transparent; border:1px solid var(--ch-line); color:var(--ch-fg-dimmer); font-family:var(--font-mono); font-size:10.5px; padding:2px 8px; border-radius:5px; cursor:pointer; }
+.ch-fbtn.on { background:var(--ch-panel); border-color:var(--ch-line-2); color:var(--ch-cyan); }
+.ch-frun { color:var(--ch-edge); font-size:11px; margin-left:7px; }
+.ch-freason { color:var(--ch-fg-dim); font-size:11.5px; margin:1px 0 3px 4px; padding-left:8px; border-left:1px solid var(--ch-line-2); }
+.ch-frow { display:block; width:100%; text-align:left; background:transparent; border:none; border-left:2px solid transparent; padding:3px 0 3px 8px; cursor:pointer; font-family:var(--font-mono); font-size:13px; color:var(--ch-fg); border-radius:0 5px 5px 0; }
+.ch-frow:hover { background:var(--ch-panel); }
+.ch-frow.tone-line-red { border-left-color:var(--ch-red); background:#1a0d0d33; }
+.ch-frow.tone-line-amber { border-left-color:var(--ch-amber); }
 .ch-frow.tone-line-cyan { border-left-color:#1ad9c455; }
-.ch-frow.tone-line-green { border-left-color:#1f5a3e; }
+.ch-frow.tone-line-green { border-left-color:var(--ch-green-line); }
 .ch-frow.tone-line-dim { border-left-color:#1a2530; }
 /* Skjult/temaet scroll — matcher HUD'en (smal cyan-tonet, ingen klodset bar) */
-.ch-scrolly { scrollbar-width:thin; scrollbar-color:#1f3a4a transparent; }
+.ch-scrolly { scrollbar-width:thin; scrollbar-color:var(--ch-line-2) transparent; }
 .ch-scrolly::-webkit-scrollbar { width:6px; }
 .ch-scrolly::-webkit-scrollbar-track { background:transparent; }
-.ch-scrolly::-webkit-scrollbar-thumb { background:#1f3a4a; border-radius:3px; }
+.ch-scrolly::-webkit-scrollbar-thumb { background:var(--ch-line-2); border-radius:3px; }
 .ch-scrolly::-webkit-scrollbar-thumb:hover { background:#1ad9c455; }
-.ch-ftime { color:#566b7d; margin-right:8px; }
-.ch-fcl { color:#7fb0c4; } .ch-sep{ color:#3a5160; } .ch-fnv { color:#eaf6f4; }
+.ch-ftime { color:var(--ch-fg-dimmer); margin-right:8px; }
+.ch-fcl { color:var(--ch-fg-term); } .ch-sep{ color:var(--ch-edge); } .ch-fnv { color:var(--ch-fg-bright); }
 .ch-fval { margin-left:8px; }
-.ch-fval.tone-green{color:#3ee08a} .ch-fval.tone-amber{color:#f5c451} .ch-fval.tone-red{color:#ff5d5d} .ch-fval.tone-cyan{color:#1ad9c4}
+.ch-fval.tone-green{color:var(--ch-green)} .ch-fval.tone-amber{color:var(--ch-amber)} .ch-fval.tone-red{color:var(--ch-red)} .ch-fval.tone-cyan{color:var(--ch-cyan)}
 .ch-fd { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; }
-.ch-fd.tone-green{background:#3ee08a} .ch-fd.tone-amber{background:#f5c451} .ch-fd.tone-red{background:#ff5d5d}
-.ch-dim { color:#566b7d; }
+.ch-fd.tone-green{background:var(--ch-green)} .ch-fd.tone-amber{background:var(--ch-amber)} .ch-fd.tone-red{background:var(--ch-red)}
+.ch-dim { color:var(--ch-fg-dimmer); }
 .ch-side { display:flex; flex-direction:column; gap:10px; }
 .ch-prov { font-size:12.5px; line-height:1.85; }
-.ch-prow { color:#a9c6d4; } .ch-prow .ch-dim{ float:right; }
-.ch-dry { color:#f5a14a; margin-top:4px; font-size:11.5px; }
+.ch-prow { color:var(--ch-fg-term); } .ch-prow .ch-dim{ float:right; }
+.ch-dry { color:var(--ch-dry); margin-top:4px; font-size:11.5px; }
 .ch-flag { border-color:#3a2a16; background:#160f06; }
-.ch-flagrow { font-size:12px; color:#e8c89a; line-height:1.6; } .ch-flagrow b{ color:#f5c451; font-weight:400; }
-.ch-flagcount { color:#f5a14a; font-size:14px; }
+.ch-flagrow { font-size:12px; color:#e8c89a; line-height:1.6; } .ch-flagrow b{ color:var(--ch-amber); font-weight:400; }
+.ch-flagcount { color:var(--ch-dry); font-size:14px; }
 .ch-ctrl { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
-.ch-btn { background:#0d1622; border:1px solid #1f3a4a; color:#a9c6d4; font-family:var(--font-mono); font-size:12px; padding:8px 12px; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all .15s; }
-.ch-btn:hover:not(:disabled){ border-color:#1ad9c4; color:#eaf6f4; }
-.ch-btn.busy{ border-color:#1ad9c4; color:#eaf6f4; }
+.ch-btn { background:var(--ch-panel); border:1px solid var(--ch-line-2); color:var(--ch-fg-term); font-family:var(--font-mono); font-size:12px; padding:8px 12px; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all .15s; }
+.ch-btn:hover:not(:disabled){ border-color:var(--ch-cyan); color:var(--ch-fg-bright); }
+.ch-btn.busy{ border-color:var(--ch-cyan); color:var(--ch-fg-bright); }
 /* Konsol: mode-nav (terminal/diagnostik) + indhold */
 .ch-console { margin-bottom:14px; }
 .ch-cnav { display:flex; gap:2px; margin-bottom:8px; }
-.ch-cnavb { background:transparent; border:1px solid #163040; border-bottom:none; color:#6b8295; font-family:var(--font-mono); font-size:12px; padding:6px 14px; border-radius:7px 7px 0 0; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
-.ch-cnavb.on { background:#0d1622; color:#1ad9c4; border-color:#1f3a4a; }
-.ch-term { border:1px solid #163040; border-radius:0 10px 10px 10px; padding:11px 13px; }
+.ch-cnavb { background:transparent; border:1px solid var(--ch-line); border-bottom:none; color:var(--ch-fg-dim); font-family:var(--font-mono); font-size:12px; padding:6px 14px; border-radius:7px 7px 0 0; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.ch-cnavb.on { background:var(--ch-panel); color:var(--ch-cyan); border-color:var(--ch-line-2); }
+.ch-term { border:1px solid var(--ch-line); border-radius:0 10px 10px 10px; padding:11px 13px; }
 .ch-termlog { font-size:12.5px; line-height:1.7; height:108px; overflow-y:auto; margin-bottom:8px; }
 /* Diagnostik-mode: fuldt debug-sted, scrollbart */
-.ch-diag { border:1px solid #163040; border-radius:0 10px 10px 10px; padding:11px 13px; max-height:340px; overflow-y:auto; }
+.ch-diag { border:1px solid var(--ch-line); border-radius:0 10px 10px 10px; padding:11px 13px; max-height:340px; overflow-y:auto; }
 .ch-dsec { margin-bottom:14px; }
-.ch-dlabel { font-size:11px; letter-spacing:2px; color:#6b8295; margin-bottom:7px; }
-.ch-drow { padding:6px 0; border-bottom:1px solid #11202a; font-size:12.5px; color:#c7d4e0; }
-.ch-drow b { color:#7fb0c4; font-weight:400; }
+.ch-dlabel { font-size:11px; letter-spacing:2px; color:var(--ch-fg-dim); margin-bottom:7px; }
+.ch-drow { padding:6px 0; border-bottom:1px solid #11202a; font-size:12.5px; color:var(--ch-fg); }
+.ch-drow b { color:var(--ch-fg-term); font-weight:400; }
 .ch-dtag { display:inline-block; font-size:10.5px; padding:1px 7px; border-radius:4px; margin-right:8px; border:1px solid; }
-.ch-dtag.tone-red { color:#ff8a87; border-color:#5a201f; background:#24100f; }
-.ch-dtag.tone-amber { color:#f5c451; border-color:#5a4416; background:#241b08; }
-.ch-dtag.tone-cyan { color:#1ad9c4; border-color:#1f3a4a; background:#0d1622; }
-.ch-dmsg { color:#8aa0b2; font-size:12px; margin-top:3px; word-break:break-word; }
-.ch-dloc { color:#1ad9c4; font-size:11px; margin-left:8px; }
+.ch-dtag.tone-red { color:var(--ch-red-soft); border-color:#5a201f; background:#24100f; }
+.ch-dtag.tone-amber { color:var(--ch-amber); border-color:#5a4416; background:#241b08; }
+.ch-dtag.tone-cyan { color:var(--ch-cyan); border-color:var(--ch-line-2); background:var(--ch-panel); }
+.ch-dmsg { color:var(--ch-fg-term); font-size:12px; margin-top:3px; word-break:break-word; }
+.ch-dloc { color:var(--ch-cyan); font-size:11px; margin-left:8px; }
 .ch-foldlabel { display:flex; align-items:center; gap:6px; background:transparent; border:none; cursor:pointer; padding:0; margin-bottom:10px; }
 .ch-foldsum { margin-left:8px; font-size:11px; }
-.ch-foldsum .tone-red{color:#ff8a87} .ch-foldsum .tone-amber{color:#f5c451} .ch-foldsum .tone-green{color:#3ee08a}
-.ch-focus { border:1px solid #1f3a4a; border-radius:8px; padding:9px 11px; margin-bottom:12px; background:#0d1622; }
-.tone-red { color:#ff8a87; }
-.ch-termcmd { color:#1ad9c4; margin-top:6px; }
-.ch-termout { color:#a9c6d4; white-space:pre-wrap; }
-.ch-termerr { color:#ff8a87; }
-.ch-terminput { display:flex; align-items:center; gap:8px; border-top:1px solid #163040; padding-top:9px; }
-.ch-prompt { color:#1ad9c4; font-size:14px; }
-.ch-terminput input { flex:1; background:transparent; border:none; outline:none; color:#eaf6f4; font-family:var(--font-mono); font-size:13px; }
-.ch-terminput input::placeholder { color:#3a5160; }
+.ch-foldsum .tone-red{color:var(--ch-red-soft)} .ch-foldsum .tone-amber{color:var(--ch-amber)} .ch-foldsum .tone-green{color:var(--ch-green)}
+.ch-focus { border:1px solid var(--ch-line-2); border-radius:8px; padding:9px 11px; margin-bottom:12px; background:var(--ch-panel); }
+/* Var en bar global selector midt i HUD-blokken og farvede alt i appen
+   med klassen tone-red. Scopet til HUD'en, hvor den hører hjemme. */
+.central-hud .tone-red { color:var(--ch-red-soft); }
+.ch-termcmd { color:var(--ch-cyan); margin-top:6px; }
+.ch-termout { color:var(--ch-fg-term); white-space:pre-wrap; }
+.ch-termerr { color:var(--ch-red-soft); }
+.ch-terminput { display:flex; align-items:center; gap:8px; border-top:1px solid var(--ch-line); padding-top:9px; }
+.ch-prompt { color:var(--ch-cyan); font-size:14px; }
+.ch-terminput input { flex:1; background:transparent; border:none; outline:none; color:var(--ch-fg-bright); font-family:var(--font-mono); font-size:13px; }
+.ch-terminput input::placeholder { color:var(--ch-edge); }
 .ch-mind { display:grid; grid-template-columns:repeat(35,1fr); gap:3px; }
-.ch-cell { height:11px; border-radius:2px; background:#13202b; }
-.ch-cell.on { background:#125043; box-shadow:0 0 4px #1ad9c455; animation:ch-blink 2.6s ease-in-out infinite; }
+.ch-cell { height:11px; border-radius:2px; background:var(--ch-cell); }
+.ch-cell.on { background:var(--ch-cell-on); box-shadow:0 0 4px #1ad9c455; animation:ch-blink 2.6s ease-in-out infinite; }
 @keyframes ch-blink { 0%,100%{opacity:1} 50%{opacity:.4} }
 @keyframes ch-core { 0%,100%{box-shadow:0 0 0 0 #1ad9c433} 50%{box-shadow:0 0 16px 2px #1ad9c455} }
 .ch-clock{font-variant-numeric:tabular-nums}
@@ -1696,6 +1722,27 @@
   border-radius: 10px; padding: 12px; overflow: auto; max-height: 70vh; white-space: pre-wrap; }
 .jm-placeholder { color: var(--fg-2); font-size: 14px; gap: 6px; padding: 24px 4px; }
 .jm-tab.pending { opacity: 0.55; }
+
+/* Beslutninger — den ene sektion der venter på et svar frem for at informere. */
+.jm-decision .jm-card-title { text-transform: none; display: block; line-height: 1.4; }
+.jm-decide { display: flex; gap: 8px; margin-top: 10px; padding-top: 9px;
+  border-top: 1px solid var(--line); }
+.jm-decide-btn { font-size: 12px; color: var(--fg-1); background: transparent;
+  border: 1px solid var(--line); border-radius: 7px; padding: 5px 11px; cursor: pointer; }
+.jm-decide-btn:hover:not(:disabled) { background: var(--bg-2); }
+.jm-decide-btn:disabled { opacity: 0.45; cursor: default; }
+.jm-unanswered { margin-top: 14px; font-size: 12px; }
+
+/* Tomme løfter — «slap forbi» er tallet der betyder noget, så det står først. */
+.jm-hollow { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.jm-hollow-models { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.jm-hollow-row { display: grid; grid-template-columns: 1fr 90px 44px 52px; align-items: center;
+  gap: 10px; font-size: 12px; }
+.jm-hollow-name { color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jm-hollow-bar { height: 5px; border-radius: 3px; background: var(--bg-3); overflow: hidden; }
+.jm-hollow-fill { display: block; height: 100%; background: #e0a33e; }
+.jm-hollow-pct { color: var(--fg-1); text-align: right; font-variant-numeric: tabular-nums; }
+.jm-hollow-abs { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Levende puls fra Centralens SSE-stream */
 .jm-pulse { display: flex; align-items: center; gap: 9px; padding: 7px 11px; margin-bottom: 12px;
@@ -2490,3 +2537,357 @@
 .syshealth-item-cid { font-family: monospace; font-size: 11px; opacity: 0.6; }
 .syshealth-sev-error .syshealth-item-code, .syshealth-sev-critical .syshealth-item-code { color: var(--error-fg); }
 .syshealth-sev-warning .syshealth-item-code { color: var(--warn-fg); }
+
+/* ── Arbejdsbænk: operator-kanal, fortryd-runde, runtime-kontakter (6/9-2026) ── */
+.mcp-trust { font-size: 11px; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
+.mcp-trust.ok { color: var(--ok, #3fa06a); background: color-mix(in srgb, var(--ok, #3fa06a) 12%, transparent); }
+.mcp-trust.nej { color: var(--fg-2); background: color-mix(in srgb, var(--fg-2) 10%, transparent); }
+.mcp-trust-btn { background: none; border: none; color: var(--fg-2); cursor: pointer; padding: 2px; }
+.mcp-trust-btn:hover:not(:disabled) { color: var(--fg-1); }
+.mcp-trust-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* Den åbne kanal skal kunne SES på tværs af rummet — mens den er åben kører
+   bash på Bjørns egen maskine uden godkendelse pr. kald. */
+.wb-channel { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
+.wb-channel.aaben { border-color: var(--warn, #d08a3a);
+  background: color-mix(in srgb, var(--warn, #d08a3a) 10%, transparent); }
+.wb-channel-text { display: flex; flex-direction: column; flex: 1; gap: 2px; }
+.wb-channel-text strong { font-size: 12.5px; }
+.wb-channel-text span { font-size: 11.5px; color: var(--fg-2); }
+
+.wb-row-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.wb-cp-list { list-style: none; padding: 6px 0 0; margin: 0; font-size: 11.5px; color: var(--fg-2); }
+.wb-cp-list li { padding: 2px 0; }
+.wb-cp-list code { font-size: 11px; color: var(--fg-1); }
+.wb-besked { font-size: 11.5px; color: var(--fg-2); padding-top: 6px; }
+.wb-switches { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.wb-switches label { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; }
+
+/* ── Work Queue (6/9-2026): ét sted for alt der venter, kører eller er faldet ── */
+.work-queue { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px;
+  border-bottom: 1px solid var(--border); }
+.wq-head { display: flex; align-items: center; gap: 10px; }
+.wq-head h3 { margin: 0; font-size: 13px; }
+/* Tallet er det eneste der raaber — alt andet i koeen er roligt. */
+.wq-badge { font-size: 11px; padding: 1px 8px; border-radius: 999px;
+  color: var(--warn, #d08a3a);
+  background: color-mix(in srgb, var(--warn, #d08a3a) 14%, transparent); }
+.wq-delvis { font-size: 11.5px; color: var(--fg-2); }
+.wq-tom { font-size: 12.5px; color: var(--fg-2); padding: 8px 0; }
+
+.wq-spand { display: flex; flex-direction: column; gap: 4px; }
+.wq-spand-head { display: flex; align-items: center; gap: 8px; background: none;
+  border: none; padding: 4px 0; cursor: pointer; color: var(--fg-2);
+  font-size: 11.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.4px; }
+.wq-spand-head:hover { color: var(--fg-1); }
+.wq-antal { margin-left: auto; font-weight: 400; letter-spacing: 0; }
+/* «Venter paa dig» er den eneste spand der blokerer noget. */
+.wq-venter_paa_mig .wq-spand-head { color: var(--warn, #d08a3a); }
+.wq-fejlet .wq-spand-head { color: var(--danger, #c9524a); }
+
+.wq-liste { list-style: none; margin: 0; padding: 0; display: flex;
+  flex-direction: column; gap: 2px; }
+.wq-raekke { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px;
+  padding: 3px 0; }
+.wq-titel { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.wq-detalje { margin-left: auto; color: var(--fg-3); font-size: 11px;
+  white-space: nowrap; }
+.wq-flere { font-size: 11.5px; color: var(--fg-3); padding: 2px 0; }
+.wq-spin { animation: wq-rot 1.6s linear infinite; }
+@keyframes wq-rot { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .wq-spin { animation: none; } }
+
+/* ── Kontekst-drawer (6/9-2026): hvad Jarvis brugte sidste tur ───────────── */
+/* Lukket er den én linje. Den skal kunne overses naar man bare vil skrive. */
+.ctx-drawer { display: flex; flex-direction: column; }
+.ctx-head { display: flex; align-items: center; gap: 6px; background: none;
+  border: none; padding: 4px 10px; cursor: pointer; color: var(--fg-3);
+  font-size: 11px; align-self: flex-start; }
+.ctx-head:hover { color: var(--fg-2); }
+.ctx-krop { padding: 6px 10px 10px; display: flex; flex-direction: column; gap: 8px;
+  border-top: 1px solid var(--border); }
+.ctx-note { margin: 0; font-size: 10.5px; color: var(--fg-3); font-style: italic; }
+.ctx-gruppe { display: flex; flex-direction: column; gap: 4px; }
+.ctx-gruppe-titel { font-size: 10.5px; font-weight: 600; color: var(--fg-3);
+  text-transform: uppercase; letter-spacing: 0.4px; }
+.ctx-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ctx-chip { font-size: 11px; padding: 1px 7px; border-radius: 999px;
+  background: var(--bg-2, rgba(127,127,127,0.12)); color: var(--fg-2);
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-mere { font-size: 11px; color: var(--fg-3); align-self: center; }
+
+/* ── Permission-valg: navnet siger hvad, linjen under siger hvad det koster ── */
+.perm-menu .perm-valg { display: flex; flex-direction: column; align-items: flex-start;
+  gap: 2px; text-align: left; padding: 7px 10px; }
+.perm-navn { font-size: 12.5px; }
+.perm-hvad { font-size: 11px; color: var(--fg-3); line-height: 1.35; }
+.perm-menu .perm-valg.active .perm-hvad { color: var(--fg-2); }
+
+/* Startforslag: ting Jarvis faktisk kan paa DENNE flade. */
+.greeting-starters { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  margin: 10px 0 4px; }
+.greeting-starter { font-size: 12px; padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: transparent; color: var(--fg-2);
+  cursor: pointer; transition: border-color .15s, color .15s; }
+.greeting-starter:hover { color: var(--fg-1); border-color: var(--fg-3); }
+
+/* Palette-grupper: «Gå til» over samtaler, saa destinationer ikke drukner. */
+.search-gruppe { font-size: 10.5px; font-weight: 600; color: var(--fg-3);
+  text-transform: uppercase; letter-spacing: 0.4px; padding: 8px 12px 4px; }
+
+/* @fil-komplettering i komposeren. Ligger over feltet, fordi komposeren
+   sidder i bunden af vinduet — en liste nedad ville falde uden for skærmen. */
+.mention-liste {
+  display: flex; flex-direction: column;
+  max-height: 15rem; overflow-y: auto;
+  margin: 0 0 6px; padding: 4px;
+  background: var(--bg-1); border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+}
+.mention-rk {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 6px 9px; border: none; border-radius: var(--radius-sm);
+  background: transparent; color: var(--fg-1);
+  font: inherit; text-align: left; cursor: pointer;
+  transition: background 120ms ease;
+}
+.mention-rk:hover, .mention-rk.valgt { background: var(--bg-3); }
+.mention-rk.valgt { box-shadow: inset 2px 0 0 var(--accent); }
+.mention-navn { font-weight: 600; white-space: nowrap; }
+.mention-sti {
+  color: var(--fg-3); font-size: 0.82em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  direction: rtl; text-align: left;   /* klip fra VENSTRE — halen bærer betydningen */
+}
+@media (prefers-reduced-motion: reduce) { .mention-rk { transition: none; } }
+
+/* Run health i miljø-feltet. Bruger env-rows' egen rytme — det er en
+   udvidelse af feltet, ikke et nyt kort med egen ramme. */
+.rh-rows { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.rh-tryk { color: var(--fg-3); }
+.rh-tryk.rh-medium { color: var(--warn-fg); }
+.rh-tryk.rh-high { color: var(--error-fg); }
+.rh-hoej { color: var(--warn-fg); font-weight: 600; }
+
+/* pause_and_ask — Jarvis standser og spørger. Skal skille sig ud fra
+   almindeligt tool-output: det er ikke noget man scroller forbi. */
+.pauseask {
+  display: flex; flex-direction: column; gap: 9px;
+  padding: 12px 13px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-left: 3px solid var(--tint);
+  border-radius: var(--radius-md);
+}
+.pauseask.haste-high { border-left-color: var(--warn-fg); }
+.pauseask-head {
+  display: flex; align-items: center; gap: 7px;
+  color: var(--fg-3); font-size: 11.5px;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.pauseask-q { margin: 0; color: var(--fg-1); font-size: 15px; line-height: 1.45; }
+.pauseask-ctx {
+  margin: 0; padding: 8px 10px;
+  background: var(--code-bg); border-radius: var(--radius-sm);
+  color: var(--fg-2); font-family: var(--font-mono); font-size: 12px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.pauseask-valg { display: flex; flex-wrap: wrap; gap: 7px; }
+.pauseask-btn {
+  padding: 7px 13px;
+  background: var(--bg-3); color: var(--fg-1);
+  border: 1px solid var(--line); border-radius: 999px;
+  font: inherit; font-size: 13.5px; cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.pauseask-btn:hover { background: var(--bg-4); border-color: var(--tint); }
+.pauseask-btn:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+.pauseask-fri { color: var(--fg-3); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .pauseask-btn { transition: none; } }
+
+/* Agent-tidslinje: «hvad skete der egentlig?» under et assistent-svar.
+   Foldet sammen som standard — resuméet skal kunne læses på ét blik. */
+.runtl { margin: 6px 0 2px; }
+.runtl-head {
+  display: flex; align-items: center; gap: 5px; width: 100%;
+  padding: 3px 0; background: none; border: none; cursor: pointer;
+  color: var(--fg-3); font: inherit; font-size: 12px; text-align: left;
+}
+.runtl-head:hover { color: var(--fg-2); }
+.runtl-pil { flex: 0 0 auto; transition: transform 140ms ease; }
+.runtl-pil.aaben { transform: rotate(90deg); }
+.runtl-resume { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runtl.har-fejl .runtl-resume { color: var(--warn-fg); }
+
+.runtl-liste {
+  list-style: none; margin: 4px 0 0; padding: 0 0 0 5px;
+  border-left: 1px solid var(--line);
+}
+.runtl-fase {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0 4px 11px; color: var(--fg-2); font-size: 12.5px;
+}
+.runtl-prik {
+  position: relative; display: inline-flex; flex: 0 0 auto;
+  color: var(--fg-3);
+}
+.runtl-fase.st-fejl { color: var(--error-fg); }
+.runtl-fase.st-fejl .runtl-prik { color: var(--error-fg); }
+.runtl-mrk { position: absolute; right: -5px; bottom: -3px; }
+.mrk-fejl { color: var(--error-fg); }
+.mrk-ok { color: var(--ok); }
+.mrk-koerer { color: var(--tint); animation: presence-spin 1.1s linear infinite; transform-origin: center; }
+.runtl-detalje {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--fg-3); font-family: var(--font-mono); font-size: 11.5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .runtl-pil { transition: none; }
+  .mrk-koerer { animation: none; }
+}
+
+/* Redningshandlinger i fejlkortet. Sekundære over for «Prøv igen» — de er
+   alternativer, ikke det man normalt vil. */
+.errorcard-alt {
+  padding: 5px 11px;
+  background: transparent; color: var(--fg-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  font: inherit; font-size: 12.5px; cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.errorcard-alt:hover:not(:disabled) { color: var(--fg-1); border-color: var(--fg-3); }
+.errorcard-alt:disabled { opacity: .6; cursor: default; }
+.errorcard-kvittering {
+  margin: 8px 0 0; color: var(--fg-2); font-size: 12.5px;
+}
+@media (prefers-reduced-motion: reduce) { .errorcard-alt { transition: none; } }
+
+/* Prompt-sammensætning: hvad byggede han svaret på. Ligger foldet ud under
+   en kø-række, så run_id'et er dét man klikkede på — ikke et gæt. */
+.wq-titel-knap {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: inherit; font: inherit; text-align: left;
+}
+.wq-titel-knap:hover { text-decoration: underline; }
+.wq-udfoldet { flex-basis: 100%; margin-top: 6px; }
+.ps { display: flex; flex-direction: column; gap: 6px; }
+.ps-head {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--fg-3); font-size: 11.5px;
+}
+.ps-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.ps-rk { display: grid; grid-template-columns: minmax(0, 12rem) 1fr 2.6rem; align-items: center; gap: 8px; }
+.ps-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--fg-2); font-size: 12px;
+}
+.ps-bar { height: 5px; background: var(--bg-3); border-radius: 3px; overflow: hidden; }
+.ps-fyld { display: block; height: 100%; background: var(--tint); }
+.ps-tal {
+  color: var(--fg-3); font-size: 11.5px; text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ps-rest, .ps-tom { margin: 2px 0 0; color: var(--fg-3); font-size: 11.5px; }
+
+/* Subagent-arbejdskort. Ikke skjult intern magi: rolle, udfald, pris. */
+.aw { margin-top: 14px; }
+.aw-head {
+  display: flex; align-items: center; gap: 7px;
+  margin: 0 0 8px; color: var(--fg-2); font-size: 13px; font-weight: 600;
+}
+.aw-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.aw-kort {
+  padding: 9px 11px; background: var(--bg-1);
+  border: 1px solid var(--line); border-left: 2px solid var(--fg-3);
+  border-radius: var(--radius-md);
+}
+.aw-kort.st-completed { border-left-color: var(--ok); }
+.aw-kort.st-failed { border-left-color: var(--error-fg); }
+.aw-kort.st-running { border-left-color: var(--tint); }
+.aw-top { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--fg-2); }
+.aw-rolle { font-weight: 600; color: var(--fg-1); }
+.aw-mode { color: var(--fg-3); font-size: 11.5px; }
+.aw-pris { margin-left: auto; color: var(--fg-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.aw-maal, .aw-ud { margin: 5px 0 0; color: var(--fg-2); font-size: 12.5px; line-height: 1.45; }
+.aw-ud { color: var(--fg-3); }
+.aw-tom { color: var(--fg-3); font-size: 12.5px; margin-top: 12px; }
+
+/* Review: hvad blev ændret, og hvad bør man kigge efter. */
+.rv { margin-top: 14px; }
+.rv-head {
+  display: flex; align-items: center; gap: 7px;
+  margin: 0 0 8px; color: var(--fg-2); font-size: 13px; font-weight: 600;
+}
+.rv-stat { margin-left: auto; font-weight: 400; font-variant-numeric: tabular-nums; }
+.rv-risici { list-style: none; margin: 0 0 9px; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.rv-risiko {
+  display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: 7px;
+  padding: 7px 9px; background: var(--bg-2);
+  border-left: 2px solid var(--warn-fg); border-radius: var(--radius-sm);
+  color: var(--fg-2); font-size: 12.5px;
+}
+.rv-regel { color: var(--warn-fg); font-weight: 600; white-space: nowrap; }
+.rv-note { color: var(--fg-3); }
+.rv-filer { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.rv-fil { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; }
+.rv-sti {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--fg-2); font-family: var(--font-mono); font-size: 12px;
+  direction: rtl; text-align: left;
+}
+.rv-tal, .rv-bin { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rv-bin { color: var(--fg-3); }
+.rv-diffknap {
+  display: flex; align-items: center; gap: 4px; margin-top: 9px;
+  padding: 0; background: none; border: none; cursor: pointer;
+  color: var(--fg-3); font: inherit; font-size: 12px;
+}
+.rv-diffknap:hover { color: var(--fg-2); }
+.rv-pil { transition: transform 140ms ease; }
+.rv-pil.aaben { transform: rotate(90deg); }
+.rv-diff {
+  margin: 7px 0 0; padding: 10px; max-height: 26rem; overflow: auto;
+  background: var(--code-bg); border-radius: var(--radius-sm);
+  color: var(--fg-2); font-family: var(--font-mono); font-size: 11.5px;
+  line-height: 1.5; white-space: pre;
+}
+.rv-tom { color: var(--fg-3); font-size: 12.5px; margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .rv-pil { transition: none; } }
+
+/* Lærings-løkken: forslag → dom → prompt. Bevis-tallene står synligt, fordi
+   forskellen på en anelse og et mønster er hele vurderingen. */
+.lk { margin-top: 14px; }
+.lk-head {
+  display: flex; align-items: center; gap: 7px;
+  margin: 0 0 8px; color: var(--fg-2); font-size: 13px; font-weight: 600;
+}
+.lk-aktive { margin-left: auto; color: var(--fg-3); font-weight: 400; font-size: 11.5px; }
+.lk-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.lk-kort {
+  padding: 10px 11px; background: var(--bg-1);
+  border: 1px solid var(--line); border-radius: var(--radius-md);
+}
+.lk-tekst { margin: 0 0 8px; color: var(--fg-1); font-size: 13px; line-height: 1.45; }
+.lk-fod { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; font-size: 11.5px; }
+.lk-kilde {
+  padding: 1px 6px; background: var(--bg-3); border-radius: 999px; color: var(--fg-3);
+  font-family: var(--font-mono);
+}
+.lk-bevis { color: var(--fg-3); }
+.lk-ja, .lk-nej {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 9px; border-radius: var(--radius-sm);
+  background: transparent; border: 1px solid var(--line);
+  font: inherit; font-size: 11.5px; cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.lk-ja { color: var(--ok); margin-left: auto; }
+.lk-ja:hover:not(:disabled) { border-color: var(--ok); }
+.lk-nej { color: var(--fg-3); }
+.lk-nej:hover:not(:disabled) { color: var(--fg-2); border-color: var(--fg-3); }
+.lk-ja:disabled, .lk-nej:disabled { opacity: .5; cursor: default; }
+.lk-tom { color: var(--fg-3); font-size: 12.5px; }
+@media (prefers-reduced-motion: reduce) { .lk-ja, .lk-nej { transition: none; } }

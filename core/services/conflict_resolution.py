@@ -514,6 +514,16 @@ def apply_conflict_resolution(
 
     Returns a potentially modified decision dict.
     """
+    # 2026-09-04 (blok E): stilheden er et legitimt valg, men den var USYNLIG —
+    # der fandtes intet tal for hvor tit han valgte den, saa vaegten kunne ikke
+    # vurderes. Nu taelles den og opsummeres ugentligt i den proaktive koe.
+    if trace.outcome in ("stay_quiet", "defer", "quiet_hold"):
+        try:
+            from core.services.autonomy_budget import note_silence
+            note_silence(outcome=str(trace.outcome), reason_code=str(trace.reason_code or ""))
+        except Exception:
+            pass
+
     if trace.outcome == "stay_quiet":
         return {
             **decision,

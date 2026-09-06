@@ -1108,6 +1108,44 @@ def _build_influence_trace(
     except Exception:
         logger.debug("retention-sweep fejlede i heartbeat", exc_info=True)
 
+    # Kerne-kurator (lærings-sløjfe 4/9, blok A) — holder USER.md `## Kerne`
+    # under 25 linjer og løfter det han faktisk bruger op fra `## Lært`.
+    # Self-throttlende (1×/uge) og forslags-only via den proaktive kø.
+    try:
+        from core.services.kerne_curator import run_kerne_curator
+        run_kerne_curator()
+    except Exception:
+        logger.debug("kerne-kurator fejlede i heartbeat", exc_info=True)
+
+    # Ugentligt udviklings-ritual (blok D) — ét afsnit om hvad han lærte om sig
+    # selv, som forslag til «## Udvikling» i SOUL.md med 24 timers veto.
+    # Tavshed er et ja. Self-throttlende; skriver højst én linje om ugen.
+    try:
+        from core.services.development_ritual import run_development_ritual
+        run_development_ritual()
+    except Exception:
+        logger.debug("udviklings-ritual fejlede i heartbeat", exc_info=True)
+
+    # Ugentligt stilheds-resumé (blok E) — hvor tit valgte han at holde igen,
+    # og hvorfor. Materialet til at skrue paa vaegten med belaeg i stedet for
+    # fornemmelse. Self-throttlende 1x/uge.
+    try:
+        from core.services.autonomy_budget import run_weekly_review
+        run_weekly_review()
+    except Exception:
+        logger.debug("autonomi-ugerapport fejlede i heartbeat", exc_info=True)
+
+    # Betalt-lane-vagt (5/9): Bjoerns regel er at KUN hans egne ture maa ramme
+    # den betalte deepseek-API. Reglen stod i settings, men lane-sandheden bor i
+    # provider_router.json — og dér var den brudt i ~7 uger uden at nogen saa
+    # det. Vagten retter intet; den goer bruddet synligt.
+    try:
+        from core.services.paid_lane_guard import check_paid_lanes
+        check_paid_lanes()
+    except Exception:
+        logger.debug("betalt-lane-vagt fejlede i heartbeat", exc_info=True)
+
+
     # Signal decay daemon — archive and delete stale signals
     if _dm.is_enabled("signal_decay"):
         try:
@@ -1177,31 +1215,7 @@ def _build_influence_trace(
         except Exception:
             pass
 
-    if _dm.is_enabled("tiktok_content"):
-        try:
-            import importlib
-            import core.services.tiktok_content_daemon
-            importlib.reload(core.services.tiktok_content_daemon)
-            from core.services.tiktok_content_daemon import tick_tiktok_content_daemon
-            _tc_result = _hb._daemon_tick_with_deadline(
-                "tiktok_content", tick_tiktok_content_daemon, deadline_seconds=30.0,
-            )
-            _dm.record_daemon_tick("tiktok_content", _tc_result or {})
-        except Exception:
-            pass
 
-    if _dm.is_enabled("tiktok_research"):
-        try:
-            import importlib
-            import core.services.tiktok_research_daemon
-            importlib.reload(core.services.tiktok_research_daemon)
-            from core.services.tiktok_research_daemon import tick_tiktok_research_daemon
-            _tr_result = _hb._daemon_tick_with_deadline(
-                "tiktok_research", tick_tiktok_research_daemon, deadline_seconds=30.0,
-            )
-            _dm.record_daemon_tick("tiktok_research", _tr_result or {})
-        except Exception:
-            pass
 
     if _dm.is_enabled("mail_checker"):
         try:

@@ -164,3 +164,80 @@ def test_llm_judge_failure_is_fail_open(monkeypatch):
     v = tg.truth_gate_v2({"text": "Det er ekspederet på serveren nu.", "executed_tool_names": [],
                           "followup_exchanges": [], "run_id": "r"})
     assert v.decision is Decision.GREEN
+
+
+# ── Samtale er ikke en handling (6/9-2026) ───────────────────────────────
+
+def test_henvisning_til_tidligere_samtale_flages_ikke():
+    """Jarvis skrev «jeg bekræftede din korrektion» om en samtale i går.
+
+    Vaernet flagede det som uverificeret, fordi regexet kun ser verbet.
+    Det er vaerre end stoej: et vaern der flager legitim erindring laerer
+    ham at holde op med at henvise til fortiden, og hukommelse paa tvaers af
+    sessioner hoerer til den beskyttede kerne.
+    """
+    from core.services.truth_gate_v2 import detect_action_claims
+    t = ("jeg bekræftede din korrektion så hårdt, at jeg slettede min egen "
+         "observation med i købet")
+    assert detect_action_claims(t) == []
+
+
+def test_person_som_objekt_flages_ikke():
+    from core.services.truth_gate_v2 import detect_action_claims
+    for t in ("jeg tjekkede dig", "jeg bekræftede din pointe",
+              "jeg verificerede din vurdering"):
+        assert detect_action_claims(t) == [], t
+
+
+def test_undtagelsen_daekker_IKKE_data_og_filer():
+    """«dine tal» og «din fil» er data — en paastand om dem er en handling."""
+    from core.services.truth_gate_v2 import detect_action_claims
+    for t in ("jeg tjekkede dine tal igen", "jeg tjekkede din fil",
+              "jeg verificerede din kode"):
+        assert [c.kind for c in detect_action_claims(t)] == ["verified"], t
+
+
+def test_aegte_handlingspaastande_fyrer_uaendret():
+    from core.services.truth_gate_v2 import detect_action_claims
+    for t, kind in (("jeg bekræftede at testen består", "verified"),
+                    ("jeg deployede til CT105", "deployed"),
+                    ("jeg kørte testene", "ran")):
+        assert kind in [c.kind for c in detect_action_claims(t)], t
+
+
+# ── Hash vi selv har vist ham (6/9-2026) ─────────────────────────────────
+
+def test_hash_fra_env_blokken_er_laesning_ikke_paastand(monkeypatch):
+    """Vaernet flagede ham for at citere en hash der stod i hans EGEN prompt.
+
+    env-blokken skriver seneste commit ind hver tur. Naar han gengiver den,
+    laeser han — han paastaar ikke at have koert git. Fejlklassen blev
+    indfoert af env-blokken selv, en time efter den gik live.
+    """
+    from core.services import truth_gate_v2 as tg
+    monkeypatch.setattr("core.services.env_block.vist_hash", lambda: "9ef74a675")
+    assert tg.detect_action_claims(
+        "git-status står i min prompt: seneste=9ef74a67") == []
+
+
+def test_forkortet_og_lang_hash_er_samme_commit(monkeypatch):
+    """git forkorter til 7, 8 eller 9 tegn alt efter kontekst."""
+    from core.services import truth_gate_v2 as tg
+    monkeypatch.setattr("core.services.env_block.vist_hash", lambda: "9ef74a675")
+    for h in ("9ef74a6", "9ef74a67", "9ef74a675"):
+        assert tg.detect_action_claims(f"git: {h}") == [], h
+
+
+def test_en_ANDEN_hash_flages_stadig(monkeypatch):
+    """Undtagelsen maa kun daekke praecis den hash vi selv har vist."""
+    from core.services import truth_gate_v2 as tg
+    monkeypatch.setattr("core.services.env_block.vist_hash", lambda: "9ef74a675")
+    k = [c.kind for c in tg.detect_action_claims("jeg committede abc1234def i git")]
+    assert "commit_hash" in k
+
+
+def test_uden_en_vist_hash_flages_alt_som_foer(monkeypatch):
+    from core.services import truth_gate_v2 as tg
+    monkeypatch.setattr("core.services.env_block.vist_hash", lambda: "")
+    k = [c.kind for c in tg.detect_action_claims("git log viser 9ef74a67")]
+    assert "commit_hash" in k

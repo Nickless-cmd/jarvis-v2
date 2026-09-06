@@ -180,9 +180,31 @@ def _attachment_visible_to_user_impl(attachment_id: str, user_id: str | None) ->
     return hit is not None
 
 
+_GENERIC_IMAGE_PROMPT = "Beskriv indholdet af dette billede kortfattet på dansk."
+
+
 def _call_vision(image_b64: str, *, model: str, prompt: str | None = None) -> str:
-    from core.services.visual_memory import _describe_via_ollama
-    return _describe_via_ollama(image_b64, model=model, prompt=prompt)
+    """Send billedet til den VALGTE vision-backend.
+
+    2026-09-05: gik foer altid til ollama. Nu afgoer `vision_provider` i
+    runtime.json det (eller modelnavnet, hvis noeglen ikke er sat), saa Bjoern
+    kan vaelge DeepSeeks vision-variant — samme model som den der svarer ham,
+    bare med syn, til samme pris pr. token. Se core/services/vision_backend.py.
+    """
+    from core.services.vision_backend import describe, resolve_vision_target
+    # 2026-09-05: bruger den model Bjoern har VALGT i composeren naar den selv
+    # kan se — saa oejnene sidder i den model der svarer ham. Ellers den
+    # konfigurerede vision-model, som hidtil. `model`-argumentet respekteres
+    # stadig, saa kaldsteder der bevidst vaelger en model ikke overrules.
+    provider, target, _src = resolve_vision_target()
+    if not model:
+        model = target
+    # Provideren hoerer til modellen: er der givet en ANDEN model end den vi
+    # lige resolvede, skal provideren udledes af DEN — ikke arves.
+    if model != target:
+        provider = ""
+    return describe(image_b64=image_b64, model=model, provider=provider,
+                    prompt=prompt or _GENERIC_IMAGE_PROMPT)["text"]
 
 
 def _vision_model() -> str:
@@ -288,13 +310,54 @@ def list_attachments(session_id: str, limit: int = 20) -> list[dict]:
         return []
 
 
-def read_attachment_content(attachment_id: str) -> dict[str, Any]:
+_MAX_DIRECT_IMAGE_BYTES = 6 * 1024 * 1024
+
+
+def image_data_url(attachment_id: str) -> str | None:
+    """`data:`-URL til et billede — modellens EGNE øjne (2026-09-06).
+
+    Bruges kun når den model der svarer selv kan se. Så skal pixels i hans
+    kontekst, ikke en beskrivelse skrevet af en anden model før spørgsmålet
+    fandtes. Kan han ikke se, er `read_attachment_content` stadig vejen.
+
+    None når attachment ikke findes, ikke er et billede, eller er for stort
+    til at ligge i konteksten.
+    """
+    row = _db_get(attachment_id)
+    if row is None:
+        return None
+    mime = str(row.get("mime_type") or "")
+    if not mime.startswith("image/"):
+        return None
+    try:
+        data = Path(str(row.get("local_path") or "")).read_bytes()
+    except Exception:
+        logger.warning("attachment_service: kunne ikke laese %s", attachment_id)
+        return None
+    if not data or len(data) > _MAX_DIRECT_IMAGE_BYTES:
+        return None
+    return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+def read_attachment_content(
+    attachment_id: str, question: str = "",
+) -> dict[str, Any]:
     """Read attachment content for Jarvis.
 
-    image/*         → vision model description
+    image/*         → vision model answer (see below)
     text/*          → file text (truncated at 8000 chars)
     application/pdf → first 8000 chars via text extraction
     other           → metadata + hex preview
+
+    ``question`` (2026-09-05): stil et konkret spørgsmål til BILLEDET i stedet
+    for at nøjes med den generiske beskrivelse.
+
+    Målt samme dag: han HAR øjne — `gemma4:31b-cloud` via ollama læste både
+    farvekoder og småtekst korrekt på 0,5 s, gratis. Men prompten var hårdkodet
+    til «beskriv kortfattet», så alt hvad Bjørn senere ville vide skulle
+    besvares ud fra ét generisk resumé skrevet før spørgsmålet fandtes. Det er
+    andenhånds syn: kan beskrivelsen ikke det man spørger om, er billedet
+    allerede væk. Med et spørgsmål går det til pixels.
     """
     row = _db_get(attachment_id)
     if row is None:
@@ -308,13 +371,19 @@ def read_attachment_content(attachment_id: str) -> dict[str, Any]:
         try:
             data = Path(local_path).read_bytes()
             b64 = base64.b64encode(data).decode("ascii")
-            model = _vision_model()
+            from core.services.vision_backend import resolve_vision_target
+            _vprov, model, _vsrc = resolve_vision_target()
+            asked = " ".join(str(question or "").split()).strip()
             description = _call_vision(
                 b64,
                 model=model,
-                prompt="Beskriv indholdet af dette billede kortfattet på dansk.",
+                prompt=(
+                    f"{asked}\n\nSvar kun ud fra hvad du faktisk kan se i billedet."
+                    if asked else _GENERIC_IMAGE_PROMPT
+                ),
             )
-            return {"status": "ok", "type": "image", "content": description, "filename": filename}
+            return {"status": "ok", "type": "image", "content": description,
+                    "filename": filename, "question": asked}
         except Exception as exc:
             logger.warning("attachment_service: vision failed for %s: %s", attachment_id, exc)
             return {

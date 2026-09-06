@@ -40,9 +40,18 @@ _EventContext — ContextVar holding the current parent event_id._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `Event` | `` | — | [src](../../../core/eventbus/events.py#L193) |
-| method | `Event.family` | `(self)` | — | [src](../../../core/eventbus/events.py#L199) |
-| method | `Event.create` | `(cls, kind, payload=…)` | — | [src](../../../core/eventbus/events.py#L203) |
-| method | `Event.from_record` | `(cls, *, kind, payload, created_at)` | — | [src](../../../core/eventbus/events.py#L209) |
-| method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L220) |
+| class | `Event` | `` | — | [src](../../../core/eventbus/events.py#L200) |
+| method | `Event.family` | `(self)` | — | [src](../../../core/eventbus/events.py#L206) |
+| method | `Event.create` | `(cls, kind, payload=…)` | — | [src](../../../core/eventbus/events.py#L210) |
+| method | `Event.from_record` | `(cls, *, kind, payload, created_at)` | — | [src](../../../core/eventbus/events.py#L216) |
+| method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L227) |
+
+## `core/eventbus/publish_scan.py`
+_Find hver `publish("familie.navn")` i kildekoden — statisk, uden at koere noget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_repo_root` | `()` | — | [src](../../../core/eventbus/publish_scan.py#L37) |
+| function | `scan_published_families` | `(rod=…)` | familie → liste af "sti:linje" hvor den publiceres. | [src](../../../core/eventbus/publish_scan.py#L41) |
+| function | `unregistered_families` | `(rod=…)` | De publicerede familier der IKKE er tilladt → publish raiser tavst. | [src](../../../core/eventbus/publish_scan.py#L64) |
 

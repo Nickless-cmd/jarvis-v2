@@ -3,8 +3,15 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from core.runtime.config import SETTINGS_FILE
+
+# Indlæs .env fra repo-rod (gitignored) — giver env_override-nøgler til
+# read_runtime_key uden at systemd-units skal sætte EnvironmentFile.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 
 @dataclass(frozen=True, slots=True)

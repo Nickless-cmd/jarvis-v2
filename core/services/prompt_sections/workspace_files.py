@@ -18,7 +18,6 @@ shared-versionen vinde. Uden denne fallback læste vi tynde stubs for
 SOUL/IDENTITY/MILESTONES selvom rige versioner lå i shared/.
 """
 from __future__ import annotations
-import os
 from pathlib import Path
 
 # Filer hvor stub-fallback giver mening — identitets-filer som forventes
@@ -63,13 +62,62 @@ def _resolve_with_shared_fallback(path: Path) -> Path:
         own = _effective_size(path)
         if own >= _STUB_THRESHOLD_BYTES:
             return path  # workspace har rigt indhold — brug det
-        shared_dir = Path(os.environ.get("HOME", "/root")) / ".jarvis-v2" / "shared"
+        # 2026-09-05: var haardkodet til $HOME/.jarvis-v2/shared og ignorerede
+        # dermed JARVIS_HOME, som alt andet i workspace_paths respekterer. Det
+        # gjorde laese- og skrivevejen uenige saa snart JARVIS_HOME var sat.
+        from core.runtime.workspace_paths import shared_dir as _shared_dir
+        shared_dir = _shared_dir()
         shared_path = shared_dir / filename
         if shared_path.exists() and shared_path.stat().st_size > own:
             return shared_path
     except Exception:
         pass
     return path
+
+
+_CORE_HEADINGS = frozenset({"kerne", "core", "kerne (altid i prompten)"})
+# Den ene sektion i SOUL.md/IDENTITY.md som Jarvis selv må skrive i (blok D).
+DEVELOPMENT_HEADINGS = frozenset({"udvikling", "development"})
+
+
+def _development_section_text(text: str) -> str:
+    """Body of a `## Udvikling` section, or "" when absent."""
+    out: list[str] = []
+    inside = False
+    level = 0
+    for raw in str(text or "").splitlines():
+        line = raw.strip()
+        if line.startswith("#"):
+            hashes = len(line) - len(line.lstrip("#"))
+            title = line.lstrip("#").strip().lower()
+            if inside and hashes <= level:
+                break
+            if title in DEVELOPMENT_HEADINGS:
+                inside, level = True, hashes
+                continue
+        if inside:
+            out.append(raw)
+    return "\n".join(out).strip()
+
+
+def _core_section_text(text: str) -> str:
+    """Body of a `## Kerne` (or `## Core`) section, or "" when absent."""
+    out: list[str] = []
+    inside = False
+    level = 0
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line.startswith("#"):
+            hashes = len(line) - len(line.lstrip("#"))
+            title = line.lstrip("#").strip().lower()
+            if inside and hashes <= level:
+                break
+            if title in _CORE_HEADINGS:
+                inside, level = True, hashes
+                continue
+        if inside:
+            out.append(raw)
+    return "\n".join(out).strip()
 
 
 def _workspace_file_section(
@@ -79,11 +127,23 @@ def _workspace_file_section(
     max_lines: int,
     max_chars: int,
 ) -> str | None:
-    from core.services.workspace_crypto import read_text_for_path
+    # Prompt-siden (6/9-2026): hemmeligheder maskeres paa vej ind i konteksten.
+    # En noegle indsat i USER.md eller MEMORY.md ville ellers ligge i HVER
+    # prompt og gaa til en ekstern udbyder hver eneste tur.
+    # Stoerrelses-tjekket ovenfor bruger fortsat read_text_for_path: masken
+    # ville aendre laengden, og det tal skal beskrive filen som den ER.
+    from core.services.secret_redaction import read_for_prompt
     path = _resolve_with_shared_fallback(path)
-    text = read_text_for_path(path)
+    text = read_for_prompt(path)
     if text is None:
         return None
+    # 2026-09-04 (memory repair, R7): USER.md var 23 KB uden protokol for hvad
+    # der er kerne og hvad der er historik — prompten fik de første ~3 KB. Hvis
+    # filen har en "## Kerne"-sektion, er DET indholdet der læses ind.
+    full_text = text
+    core_text = _core_section_text(text)
+    if core_text:
+        text = core_text
     lines: list[str] = []
     for raw in text.splitlines():
         line = raw.strip()
@@ -95,6 +155,23 @@ def _workspace_file_section(
         lines.append(f"- {normalized}")
         if len(lines) >= max_lines:
             break
+    # 2026-09-04 (lærings-sløjfe, blok D): «## Udvikling» i SOUL.md/IDENTITY.md
+    # er den ENE sektion han selv må skrive i. Den ligger nederst i filen og
+    # ville derfor altid falde uden for line-loftet. Reservér plads til den, så
+    # hans egen udvikling ikke er det første der skæres væk.
+    dev_text = _development_section_text(full_text)
+    if dev_text:
+        dev_lines = [
+            f"- {' '.join(raw.split())}"
+            for raw in dev_text.splitlines()
+            if raw.strip() and not raw.strip().startswith("#")
+        ][:3]
+        dev_lines = [ln if len(ln) <= max_chars else ln[: max_chars - 1].rstrip() + "…"
+                     for ln in dev_lines]
+        fresh = [ln for ln in dev_lines if ln not in lines]
+        if fresh:
+            keep = max(0, max_lines - len(fresh))
+            lines = lines[:keep] + fresh
     if not lines:
         return None
     return "\n".join([f"{label}:", *lines])

@@ -2,6 +2,7 @@ import { memo } from 'react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { BlocksRenderer } from './BlocksRenderer'
 import { MessageActions } from './MessageActions'
+import { RunTimeline } from './RunTimeline'
 import { ArtifactAffordance } from './ArtifactAffordance'
 import { detectArtifacts } from '../../lib/artifacts'
 import { blocksToPlainText } from '../../lib/formatTime'
@@ -92,6 +93,9 @@ function MessageRowImpl({
           </InlineErrorBoundary>
         </div>
       </article>
+      {/* Forløbet FØR handlingerne: «hvad skete der egentlig?» besvares
+          bedst lige under svaret, ikke i et panel man skal opsøge. */}
+      {!streaming && <RunTimeline blocks={blocks} />}
       {!streaming && <MessageActions text={blocksToPlainText(blocks)} createdAt={createdAt} />}
     </div>
   )

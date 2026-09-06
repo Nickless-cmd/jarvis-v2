@@ -31,3 +31,178 @@ def test_exec_bash_empty_command_is_guarded():
     out = stw._exec_bash({"command": "   "})
     assert out.get("status") == "error"
     assert "command" in (out.get("error") or "").lower()
+
+
+# ---------------------------------------------------------------------------
+# 4. sep 2026 (Jarvis' brief): «search returnerer [no matches] for strenge der
+# ER i repoet» — og han konkluderede at koden ikke fandtes. Det kostede en halv
+# times fejlsøgning i den forkerte retning.
+#
+# Fejlen kunne ikke genskabes: samme mønstre gav træffere på både workstation
+# og container. Så det er sandsynligvis ikke motoren der fejler — det er at
+# «[no matches]» ikke skelner mellem «findes ikke» og «du ledte et andet sted».
+# ---------------------------------------------------------------------------
+
+def test_nul_traeffere_siger_hvor_der_blev_ledt():
+    from core.tools.simple_tools_web import _exec_search
+
+    # Sammensat ved KØRSEL: skrives mønstret som en literal, står det i denne
+    # fil — og så finder søgningen sig selv. (Det gjorde den.)
+    umuligt = "zzq" + "-findes-ikke-" + "wxy42"
+    r = _exec_search({"pattern": umuligt})
+    assert r["match_count"] == 0
+    assert "[no matches]" in r["text"]
+    assert r["searched_root"], "en nul-træffer uden rod er en påstand man ikke kan efterprøve"
+    assert r["engine"] in ("rg", "grep")
+    assert r["searched_root"] in r["text"]
+    assert umuligt in r["text"], "svaret skal gentage hvad der blev søgt efter"
+
+
+def test_et_glob_der_udelukker_filen_er_synligt_i_svaret():
+    """Præcis Jarvis' fejlmønster: strengen FINDES, men globet udelukkede den.
+    Uden at globet står i svaret ligner det at koden ikke eksisterer."""
+    from core.tools.simple_tools_web import _exec_search
+
+    r = _exec_search({"pattern": "def _exec_search", "glob": "*.md"})
+    assert r["match_count"] == 0
+    assert "glob=*.md" in r["text"], "globet skal fremgå, ellers drager man en forkert konklusion"
+
+
+def test_en_traeffer_svarer_stadig_kort_og_uden_stoej():
+    """Diagnostikken må kun stå der når der INTET blev fundet."""
+    from core.tools.simple_tools_web import _exec_search
+
+    r = _exec_search({"pattern": "def _exec_search"})
+    assert r["match_count"] >= 1
+    assert "searched_root" not in r
+    assert "[no matches]" not in r["text"]
+
+
+# ---------------------------------------------------------------------------
+# analyze_image skal kigge gennem de øjne der er valgt — og ikke sende en
+# DeepSeek-model til Ollama, som ikke har den
+# ---------------------------------------------------------------------------
+
+
+def test_analyze_image_bruger_den_valgte_synsmodel(tmp_path, monkeypatch):
+    from core.services import vision_backend as VB
+    from core.tools import simple_tools_web as W
+
+    billede = tmp_path / "prove.png"
+    billede.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 64)
+
+    monkeypatch.setattr(
+        VB, "resolve_vision_target",
+        lambda: ("deepseek", "deepseek-v4-flash-vision-exp", "selected-model"),
+    )
+    set_kald: list[dict] = []
+
+    def _fanget(**kwargs):
+        set_kald.append(kwargs)
+        return {"text": "et skilt", "provider": "deepseek", "model": kwargs["model"]}
+
+    monkeypatch.setattr(VB, "describe", _fanget)
+    monkeypatch.setattr(
+        W.urllib_request, "urlopen",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("DeepSeek-model må ikke sendes til Ollama")
+        ),
+    )
+
+    svar = W._exec_analyze_image({"image_path": str(billede), "prompt": "hvad ser du?"})
+    assert svar["status"] == "ok"
+    assert svar["analysis"] == "et skilt"
+    assert set_kald and set_kald[0]["provider"] == "deepseek"
+
+
+def test_udtrykkelig_model_vinder_over_valget(tmp_path, monkeypatch):
+    """Beder man om en bestemt model, skal opslaget slet ikke ske."""
+    from core.services import vision_backend as VB
+    from core.tools import simple_tools_web as W
+
+    billede = tmp_path / "prove.png"
+    billede.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 64)
+    monkeypatch.setattr(
+        VB, "resolve_vision_target",
+        lambda: (_ for _ in ()).throw(AssertionError("måtte ikke slå op")),
+    )
+
+    class _Svar:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            import json as _json
+            return _json.dumps({"message": {"content": "en kat"}}).encode()
+
+    monkeypatch.setattr(W.urllib_request, "urlopen", lambda *a, **k: _Svar())
+    svar = W._exec_analyze_image({"image_path": str(billede), "model": "llava:7b"})
+    assert svar == {"analysis": "en kat", "model": "llava:7b", "status": "ok"}
+
+
+# ── Lange traeffer-linjer (6/9-2026) ─────────────────────────────────────
+
+def test_search_overlever_en_linje_over_grænsen(tmp_path):
+    """`_clip_text` var IKKE importeret i modulet.
+
+    Enhver soegning hvor bare én traeffer-linje var over 200 tegn styrtede
+    med NameError — i et kode-repo sker det hele tiden, og udefra lignede det
+    et tilfaeldigt daarligt resultat. Det var med til at faa explore-agenten
+    til at melde «ingen forekomster, Confidence: Hoej».
+    """
+    from core.tools.simple_tools_web import _exec_search
+    fil = tmp_path / "lang.py"
+    fil.write_text("x = '" + ("a" * 900) + "'  # naal\n", encoding="utf-8")
+    r = _exec_search({"pattern": "naal", "path": str(tmp_path)})
+    assert r.get("status") == "ok", r
+    assert r.get("match_count", 0) >= 1
+    assert all(len(linje) <= 400 for linje in (r.get("text") or "").splitlines())
+
+
+def test_clip_text_er_bundet_i_modulet():
+    """Vaernet mod at importen forsvinder igen."""
+    from core.tools import simple_tools_web as w
+    assert callable(w._clip_text)
+
+
+def test_search_accepterer_en_fil_som_path(tmp_path):
+    """En explore-agent proevede tre gange med et FILNAVN og gav op.
+
+    `path` blev brugt raat som cwd, saa en fil gav «[Errno 20] Not a
+    directory». At soege i én fil er en naturlig ting at ville.
+    """
+    from core.tools.simple_tools_web import _exec_search
+    (tmp_path / "a.py").write_text("naal = 1\n", encoding="utf-8")
+    (tmp_path / "b.py").write_text("naal = 2\n", encoding="utf-8")
+    r = _exec_search({"pattern": "naal", "path": str(tmp_path / "a.py")})
+    assert r.get("status") == "ok", r
+    tekst = r.get("text") or ""
+    assert "a.py" in tekst
+    assert "b.py" not in tekst, "en fil som path maa ikke soege i naboerne"
+
+
+def test_search_forstaar_alternation_uden_ripgrep(tmp_path, monkeypatch):
+    """Containeren har ingen ripgrep, og grep uden -E er BASIC regex.
+
+    Der er | ( ) ? og + LITERALER, saa ethvert moenster med alternation gav
+    stille «[no matches]» — aldrig en fejl. Maalt paa CT105: agenten soegte
+    efter 'def |class' i en fil fuld af def'er og fik nul.
+    """
+    import subprocess as _sp
+
+    from core.tools import simple_tools_web as w
+    (tmp_path / "a.py").write_text("def en():\n    pass\nclass To:\n    pass\n",
+                                   encoding="utf-8")
+    # Tving grep-vejen, uanset om maskinen har rg.
+    _rigtig = _sp.run
+    monkeypatch.setattr(
+        w.subprocess, "run",
+        lambda argv, **k: (_sp.CompletedProcess(argv, 1, "", "")
+                           if argv[:2] == ["which", "rg"] else _rigtig(argv, **k)),
+    )
+    r = w._exec_search({"pattern": "def |class", "path": str(tmp_path)})
+    assert r.get("status") == "ok", r
+    assert r.get("match_count", 0) >= 2, r

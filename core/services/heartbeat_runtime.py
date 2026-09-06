@@ -204,8 +204,14 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
 }
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
 _HEARTBEAT_TICK_LOCK = threading.Lock()
-_HEARTBEAT_SCHEDULER_STOP = threading.Event()
-_HEARTBEAT_SCHEDULER_THREAD: threading.Thread | None = None
+# Planlæggerens egen tilstand bor i heartbeat_scheduler efter udskillelsen
+# 2026-09-02. Navnene bliver her som videresendelser, så eksisterende kode og
+# tests ikke brækker på en flytning de ikke burde kunne mærke.
+def _scheduler_stop_event() -> threading.Event:
+    from core.services import heartbeat_scheduler
+    return heartbeat_scheduler.stop_event()
+
+
 _HEARTBEAT_SCHEDULER_INTERVAL_SECONDS = 30
 _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT: dict[str, object] = {}
 _LIVENESS_LAST_LOGGED: tuple[str, str, int] | None = None
@@ -254,57 +260,25 @@ class HeartbeatExecutionResult:
 
 
 def start_heartbeat_scheduler(*, name: str = "default") -> None:
-    global _HEARTBEAT_SCHEDULER_THREAD, _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT
-    if _HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive():
-        return
-    recovery = _prepare_scheduler_startup(name=name)
-    _HEARTBEAT_SCHEDULER_STOP.clear()
-    thread = threading.Thread(
-        target=_heartbeat_scheduler_loop,
-        kwargs={
-            "name": name,
-            "startup_recovery_requested": bool(
-                recovery.get("startup_recovery_requested")
-            ),
-        },
-        name="jarvis-heartbeat-scheduler",
-        daemon=True,
-    )
-    thread.start()
-    _HEARTBEAT_SCHEDULER_THREAD = thread
-    _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT = {
-        "schedule_state": str(recovery.get("schedule_state") or ""),
-        "due": bool(recovery.get("due")),
-    }
-    logger.info(
-        "HEARTBEAT-STATE: scheduler started name=%s due=%s schedule_state=%s recovery_status=%s",
-        name,
-        bool(recovery.get("due")),
-        str(recovery.get("schedule_state") or "unknown"),
-        str(recovery.get("recovery_status") or "idle"),
-    )
-    event_bus.publish(
-        "heartbeat.scheduler_started",
-        {
-            "scheduler_active": True,
-            "schedule_state": recovery.get("schedule_state"),
-            "due": recovery.get("due"),
-            "recovery_status": recovery.get("recovery_status"),
-            "next_tick_at": recovery.get("next_tick_at"),
-        },
-    )
+    """Start planlægger-dæmonen. Selve tråden bor i heartbeat_scheduler.
+
+    Navnet bliver her, fordi apps/api/jarvis_api/app.py importerer det — og en
+    udskillelse må ikke kunne mærkes af kaldestedet.
+    """
+    from core.services import heartbeat_scheduler
+    heartbeat_scheduler.start(name=name)
 
 
 def stop_heartbeat_scheduler(*, name: str = "default") -> None:
-    global _HEARTBEAT_SCHEDULER_THREAD, _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT
-    _HEARTBEAT_SCHEDULER_STOP.set()
-    thread = _HEARTBEAT_SCHEDULER_THREAD
-    if thread and thread.is_alive():
-        thread.join(timeout=1.0)
-    _HEARTBEAT_SCHEDULER_THREAD = None
-    _mark_scheduler_stopped(name=name)
-    _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT = {}
-    logger.info("heartbeat scheduler stopped name=%s", name)
+    from core.services import heartbeat_scheduler
+    heartbeat_scheduler.stop(name=name)
+
+
+def _heartbeat_scheduler_running() -> bool:
+    """Lever planlægger-tråden? Ét sted, så de fire kaldesteder ikke driver fra
+    hinanden. Siger KUN noget om tråden — ikke om den udretter noget."""
+    from core.services import heartbeat_scheduler
+    return heartbeat_scheduler.is_running()
 
 
 def _cheap_heartbeat_schedule_state(name: str) -> dict[str, object]:
@@ -1698,10 +1672,10 @@ def _run_heartbeat_tick_locked(
             "currently_ticking": True,
             "last_trigger_source": trigger,
             "scheduler_active": bool(
-                _HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive()
+                _heartbeat_scheduler_running()
             ),
             "scheduler_health": "active"
-            if (_HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive())
+            if (_heartbeat_scheduler_running())
             else str(persisted.get("scheduler_health") or "manual-only"),
             "updated_at": now.isoformat(),
         },
@@ -5224,23 +5198,36 @@ def _execute_heartbeat_internal_action(
             apply_approved_runtime_contract_candidates,
         )
 
-        user_proposals = track_runtime_user_md_update_proposals_for_visible_turn(
-            session_id=None,
-            run_id=tick_id,
-        )
-        memory_proposals = track_runtime_memory_md_update_proposals_for_visible_turn(
-            session_id=None,
-            run_id=tick_id,
-        )
+        # 2026-09-04 (lærings-sløjfe, blok B): de ordmønster-afledte forslag er
+        # slukket her SOM i den synlige tur — ellers skriver heartbeat dem videre
+        # bag ryggen af kill-switchen. Målt efter deploy: 1.511 forkastede
+        # MEMORY.md-kandidater på fem minutter, alene fra denne sti.
+        # Selfhood-forslagene (blok D) og selve auto-apply/approve bliver.
+        from core.services.visible_runs_cognitive import _legacy_regex_detectors_enabled
+        _empty: dict[str, object] = {"created": 0, "skipped": "legacy-detectors-off"}
+        if _legacy_regex_detectors_enabled():
+            user_proposals = track_runtime_user_md_update_proposals_for_visible_turn(
+                session_id=None,
+                run_id=tick_id,
+            )
+            memory_proposals = track_runtime_memory_md_update_proposals_for_visible_turn(
+                session_id=None,
+                run_id=tick_id,
+            )
+            user_candidates = track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
+                session_id=None,
+                run_id=tick_id,
+            )
+            memory_candidates = track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
+                session_id=None,
+                run_id=tick_id,
+            )
+        else:
+            user_proposals = dict(_empty)
+            memory_proposals = dict(_empty)
+            user_candidates = dict(_empty)
+            memory_candidates = dict(_empty)
         selfhood_proposals = track_runtime_selfhood_proposals_for_visible_turn(
-            session_id=None,
-            run_id=tick_id,
-        )
-        user_candidates = track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
-            session_id=None,
-            run_id=tick_id,
-        )
-        memory_candidates = track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
             session_id=None,
             run_id=tick_id,
         )
@@ -6800,13 +6787,13 @@ def _record_heartbeat_outcome(
         currently_ticking=currently_ticking,
         last_trigger_source=last_trigger_source,
         scheduler_active=bool(
-            _HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive()
+            _heartbeat_scheduler_running()
         ),
         scheduler_started_at=str(persisted.get("scheduler_started_at") or ""),
         scheduler_stopped_at=str(persisted.get("scheduler_stopped_at") or ""),
         scheduler_health=(
             "active"
-            if (_HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive())
+            if (_heartbeat_scheduler_running())
             else str(persisted.get("scheduler_health") or "manual-only")
         ),
         recovery_status=(
@@ -7206,47 +7193,6 @@ def _heartbeat_busy_result(*, name: str, trigger: str) -> HeartbeatExecutionResu
         tick=tick,
         policy=policy,
     )
-
-
-def _heartbeat_scheduler_loop(*, name: str, startup_recovery_requested: bool) -> None:
-    logger.info(
-        "heartbeat scheduler loop entered name=%s startup_recovery_requested=%s interval_seconds=%s",
-        name,
-        startup_recovery_requested,
-        _HEARTBEAT_SCHEDULER_INTERVAL_SECONDS,
-    )
-    try:
-        _poll_heartbeat_schedule_with_trigger(
-            name=name,
-            due_trigger="startup-recovery"
-            if startup_recovery_requested
-            else "scheduled",
-        )
-    except Exception as exc:
-        event_bus.publish(
-            "heartbeat.tick_blocked",
-            {
-                "blocked_reason": "scheduler-error",
-                "detail": str(exc),
-                "trigger": "startup-recovery"
-                if startup_recovery_requested
-                else "scheduled",
-            },
-        )
-    while not _HEARTBEAT_SCHEDULER_STOP.wait(_HEARTBEAT_SCHEDULER_INTERVAL_SECONDS):
-        try:
-            _log_debug("heartbeat scheduler iteration", name=name)
-            poll_heartbeat_schedule(name=name)
-        except Exception as exc:
-            logger.exception("heartbeat scheduler iteration failed name=%s", name)
-            event_bus.publish(
-                "heartbeat.tick_blocked",
-                {
-                    "blocked_reason": "scheduler-error",
-                    "detail": str(exc),
-                    "trigger": "scheduled",
-                },
-            )
 
 
 def _detect_startup_drift(

@@ -125,6 +125,28 @@ def push_nudge(
     if not message:
         return {"status": "error", "error": "empty message"}
 
+    # ── Router (redesign 4. sep 2026) ────────────────────────────────────
+    # Brønden er ikke længere en beslutningsflade Jarvis skal polle.
+    #  • telemetri ("Autonom run ✓ færdig") → event, aldrig en besked
+    #  • mid-run-brugerbeskeder → gemmes her og vises som egen sektion
+    #  • alt andet → proactive_candidates → proactivity_bridge leverer
+    route = route_for(source=source, kind=kind)
+    if route == "telemetry":
+        _publish_routed(source, kind, importance, "telemetry")
+        return {"status": "telemetry", "route": "telemetry"}
+    if route == "bridge":
+        try:
+            from core.services.proactive_candidates import add_candidate
+            res = add_candidate(source=source, kind=kind, text=message,
+                                priority=_bridge_priority(importance))
+        except Exception as exc:
+            logger.debug("outbound_nudges: bridge route failed: %s", exc)
+            res = {"status": "error", "error": str(exc)[:120]}
+        _publish_routed(source, kind, importance, "bridge")
+        return {"status": "ok" if res.get("status") in {"added", "duplicate"} else "error",
+                "route": "bridge", "nudge_id": str(res.get("candidate_id") or ""),
+                "candidate": res}
+
     ensure_schema()
     nudge_id = f"nudge-{uuid4().hex[:12]}"
     now_iso = datetime.now(UTC).isoformat()
@@ -165,6 +187,73 @@ def push_nudge(
         pass
 
     return {"status": "ok", "nudge_id": nudge_id}
+
+
+MIDWAY_SOURCE = "user_midway_followup"
+_TELEMETRY_SOURCES = frozenset({"autonomous_run"})
+_TELEMETRY_KINDS = frozenset({"autonomous_run"})
+
+
+def route_for(*, source: str, kind: str) -> str:
+    """'midway' | 'telemetry' | 'bridge' — pure."""
+    src = str(source or "")
+    knd = str(kind or "")
+    if src == MIDWAY_SOURCE:
+        return "midway"
+    if src in _TELEMETRY_SOURCES or knd in _TELEMETRY_KINDS:
+        return "telemetry"
+    return "bridge"
+
+
+def _bridge_priority(importance: str) -> str:
+    v = str(importance or "").lower()
+    if v in {"critical", "high"}:
+        return "high"
+    if v == "low":
+        return "low"
+    return "medium"
+
+
+def _publish_routed(source: str, kind: str, importance: str, route: str) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("nudge.routed", {"source": source, "kind": kind,
+                                           "importance": importance, "route": route})
+    except Exception:
+        pass
+
+
+def format_midway_for_prompt(*, limit: int = 5) -> str:
+    """Bjørns beskeder sendt MENS et run kørte — de er hans ord, ikke daemon-støj.
+
+    Rendered as its own operational section (never inside the diagnostics
+    block). Consumed via note_shown like before (prewarm never consumes).
+    """
+    if not _enabled():
+        return ""
+    try:
+        pending = [n for n in list_pending(limit=30) if str(n.get("source") or "") == MIDWAY_SOURCE][:limit]
+    except Exception:
+        return ""
+    if not pending:
+        return ""
+    lines = ["Beskeder fra Bjørn undervejs (sendt mens du arbejdede — svar på dem nu):"]
+    ids = []
+    for n in pending:
+        ts = str(n.get("created_at") or "")[11:16]
+        lines.append(f"  - [{ts}] {str(n.get('message') or '')[:300]}")
+        ids.append(str(n.get("nudge_id") or ""))
+    try:
+        from core.services.assembly_prewarm import is_prewarm_active
+        if is_prewarm_active():
+            return "\n".join(lines)
+    except Exception:
+        pass
+    try:
+        note_shown(ids)
+    except Exception:
+        pass
+    return "\n".join(lines)
 
 
 def list_pending(*, limit: int = 10) -> list[dict[str, Any]]:

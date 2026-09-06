@@ -39,11 +39,22 @@ def _msg(mid, role, content="x"):
 
 def test_lifecycle_settings_defaults():
     s = RuntimeSettings()
-    assert s.tool_result_lifecycle_enabled is False
+    assert s.tool_result_lifecycle_enabled is True
     assert s.tool_warm_run_window == 8
     assert s.tool_warm_token_ceiling == 40000
     assert s.tool_warm_hysteresis == 0.25
     assert s.tool_run_hot_budget == 30000
+
+
+def test_lifecycle_settings_can_be_disabled_from_config(tmp_path, monkeypatch):
+    settings_file = tmp_path / "runtime.json"
+    settings_file.write_text('{"tool_result_lifecycle_enabled": false}', encoding="utf-8")
+    monkeypatch.setattr("core.runtime.settings.SETTINGS_FILE", settings_file)
+
+    from core.runtime.settings import load_settings
+
+    s = load_settings()
+    assert s.tool_result_lifecycle_enabled is False
 
 
 def test_user_message_ids_ascending():

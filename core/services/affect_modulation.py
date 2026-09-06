@@ -63,6 +63,47 @@ AGENTIC_BUDGET_DEFAULTS: dict[str, Any] = {
 }
 
 
+
+# ── Kroppens pres ────────────────────────────────────────────────────────
+#
+# Målt 2026-09-05: Jarvis' krop sanses rigt og ægte (CPU, RAM, disk, termik via
+# embodied_state.collect_host_facts) og NÅR hans bevidsthed — men den regulerede
+# ingenting. Denne governor læste udelukkende `fatigue` og `frustration`, som er
+# FØLELSES-akser fra samtalen. Intet forbandt maskinens tilstand til dem.
+#
+# Konkret målt i samme øjeblik: `strain_level: elevated` (13 af 105 GB disk fri)
+# OG `max_tool_calls_per_turn: 36` — den høje indstilling. Maskinen var presset,
+# og governoren skruede OP, fordi confidence >= 0.8 ganger budgettet med 1,2 til
+# sidst. Han kunne sige at han var belastet; intet fik ham til at handle
+# anderledes.
+#
+# Krops-stigen fra embodied_state: steady → loaded → strained → degraded, med
+# recovering som egen tilstand. strain_level: low/elevated/high/critical/easing.
+
+_BODY_PRESSURE = {
+    "low": 0.0,
+    "easing": 0.2,      # på vej ned igen — mærk det, men bremse ikke hårdt
+    "elevated": 0.45,
+    "high": 0.7,
+    "critical": 0.9,
+}
+
+
+def body_pressure() -> tuple[float, str]:
+    """Hvor presset er maskinen, 0..1, og hvilket niveau den melder.
+
+    Self-safe: kan kroppen ikke læses, er svaret 0.0 — vi bremser aldrig på
+    grund af et manglende måltal.
+    """
+    try:
+        from core.services.embodied_state import build_embodied_state_surface
+        flade = build_embodied_state_surface() or {}
+        niveau = str(flade.get("strain_level") or "low").strip().lower()
+    except Exception:
+        return 0.0, "unknown"
+    return _BODY_PRESSURE.get(niveau, 0.0), niveau
+
+
 def compute_affect_modulated_params() -> dict[str, Any]:
     """Compute behavioral parameters adjusted by current emotional state.
 
@@ -120,6 +161,24 @@ def compute_affect_modulated_params() -> dict[str, Any]:
     if snapshot.confidence <= 0.4:
         overrides["investigate_before_answer"] = True
 
+    # Kroppen har SIDSTE ord. Den skal stå efter confidence-opskruningen ovenfor
+    # — det var netop den der gav budget 36 mens disken var 87 % fuld. Et loft
+    # sat af maskinens tilstand må ikke kunne ganges væk af godt humør.
+    _pres, _niveau = body_pressure()
+    if _pres >= 0.7:
+        overrides["max_tool_calls_per_turn"] = min(
+            overrides.get("max_tool_calls_per_turn", DEFAULTS["max_tool_calls_per_turn"]),
+            max(8, int(DEFAULTS["max_tool_calls_per_turn"] * 0.4)),
+        )
+        overrides["response_length_target"] = "concise"
+        overrides["body_strain"] = _niveau
+    elif _pres >= 0.45:
+        overrides["max_tool_calls_per_turn"] = min(
+            overrides.get("max_tool_calls_per_turn", DEFAULTS["max_tool_calls_per_turn"]),
+            max(12, int(DEFAULTS["max_tool_calls_per_turn"] * 0.7)),
+        )
+        overrides["body_strain"] = _niveau
+
     return overrides
 
 
@@ -143,11 +202,25 @@ def compute_agentic_loop_budget(*, resume_context: bool = False) -> dict[str, An
         budget["max_empty_text_rounds"] = 10
         budget["round_total_timeout_s"] = 210.0
 
+    if snapshot is None:
+        # Ingen følelses-snapshot — men kroppen kan stadig være presset, og den
+        # må ikke tabes bare fordi affekt-laget er utilgængeligt.
+        _body_only, _ = body_pressure()
+        if _body_only >= 0.7:
+            budget["max_rounds"] = min(int(budget["max_rounds"]), 12)
+            budget["max_tool_only_rounds"] = min(int(budget["max_tool_only_rounds"]), 8)
+        elif _body_only >= 0.45:
+            budget["max_rounds"] = min(int(budget["max_rounds"]), 20)
+
     if snapshot is not None:
         fatigue = float(getattr(snapshot, "fatigue", 0.0) or 0.0)
         frustration = float(getattr(snapshot, "frustration", 0.0) or 0.0)
         confidence = float(getattr(snapshot, "confidence", 0.0) or 0.0)
-        pressure = max(fatigue, frustration)
+        # Kroppen tæller med i presset — en presset maskin skal give færre
+        # runder, præcis som træthed gør. Uden dette kunne han køre 30 runder
+        # mens værten var ved at gå ned.
+        _body, _ = body_pressure()
+        pressure = max(fatigue, frustration, _body)
         if pressure >= 0.7:
             budget["max_rounds"] = min(int(budget["max_rounds"]), 12)
             budget["max_tool_only_rounds"] = min(int(budget["max_tool_only_rounds"]), 8)
@@ -176,14 +249,22 @@ def affect_modulation_section() -> str | None:
     # 2026-06-22 (Jarvis' review): compact — one terse line ("max_tool_calls=36
     # (affect-sat)") instead of a verbose header + "follow as a standing order"
     # preamble. The constraint stands; the 20 words don't.
+    # body_strain er en GRUND, ikke en parameter — den vises som forklaring i
+    # stedet for at stå i listen som var den en indstilling han kunne følge.
+    krops_niveau = str(overrides.get("body_strain") or "").strip()
     changed = [
         f"{key}={value}"
         for key, value in sorted(overrides.items())
-        if value != DEFAULTS.get(key, "?")
+        if key != "body_strain" and value != DEFAULTS.get(key, "?")
     ]
     if not changed:
         return None  # nothing actually changed
-    lines = ["⚙️ Affect-sat denne tur (følg det): " + ", ".join(changed)]
+    linje = "⚙️ Affect-sat denne tur (følg det): " + ", ".join(changed)
+    if krops_niveau:
+        # Sig HVORFOR. Et loft uden grund ligner vilkårlighed; et loft med grund
+        # er noget han kan mærke som sin egen tilstand.
+        linje += " — maskinen er presset (%s), så du har mindre at gøre godt med" % krops_niveau
+    lines = [linje]
 
     # Emit telemetry
     try:

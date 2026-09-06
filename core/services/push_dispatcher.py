@@ -21,28 +21,42 @@ def _owner_of_run(run_id: str):
     return get_session_owner(sid) if sid else None
 
 
-def _push_to_user(user_id: str, data: dict) -> None:
+def _push_to_user(user_id: str, data: dict) -> bool:
     from core.services import device_tokens as dt
+    sent = False
     for token in dt.list_for_user(user_id):
         try:
             ok, code = _fcm_send(token, data)
+            sent = sent or bool(ok)
             if not ok and code == "invalid":
                 dt.delete(token)
         except Exception as e:
             logger.warning("push: send-fejl for token: %s", e)
+    return sent
 
 
-def _route_or_blast(user_id: str, data: dict, kind: str) -> None:
+def _route_or_blast(user_id: str, data: dict, kind: str) -> bool:
     """Flag ON → intelligent device-routing; OFF → gammel FCM-blast (bagudkompat)."""
     try:
         from core.runtime.settings import load_settings
         if load_settings().device_awareness_enabled:
             from core.services import notification_router
+            # Returværdien blev IGNORERET (6/9-2026): routeren kunne fejle
+            # tavst, og outboxen markerede alligevel notifikationen som
+            # leveret. Målt under en E2E-prøve: dispatcheren meldte
+            # «delivered: 1» uden at nogen havde afsendt noget.
+            #
+            # `route_device_aware` returnerer None ved design (den eskalerer
+            # asynkront), så vi kan ikke få et ja/nej ud af den. Derfor
+            # spørger vi i stedet om der overhovedet ER en enhed at levere
+            # til — er der ingen, er «leveret» en løgn, og outboxen skal
+            # kunne prøve igen.
+            from core.services import device_tokens as _dt
             notification_router.route_device_aware(user_id, data, kind)
-            return
+            return bool(list(_dt.list_for_user(user_id)))
     except Exception as e:
         logger.warning("push: routing-fejl, falder tilbage til blast: %s", e)
-    _push_to_user(user_id, data)
+    return _push_to_user(user_id, data)
 
 
 def _last_assistant_preview(session_id: str, *, width: int = 160) -> str:
@@ -124,3 +138,20 @@ def on_reminder(user_id: str, text: str) -> None:
     if not user_id:
         return
     _route_or_blast(user_id, {"kind": "reminder", "preview": (text or "")[:80]}, "reminder")
+
+
+def on_approval_requested(user_id: str, envelope: dict[str, object]) -> bool:
+    if not user_id:
+        return False
+    request_id = str(envelope.get("request_id") or "")
+    capability_name = str(envelope.get("capability_name") or "Handling")
+    return _route_or_blast(
+        user_id,
+        {
+            "kind": "approval_requested",
+            "request_id": request_id,
+            "title": "Godkendelse kræves",
+            "preview": capability_name,
+        },
+        "approval_requested",
+    )

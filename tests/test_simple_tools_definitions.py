@@ -45,3 +45,52 @@ class TestTaskSubagentSchema:
         for key in ("description", "prompt", "subagent_type"):
             assert key in props, f"task-param {key!r} mangler"
         assert "subagent" in fn["description"].lower()
+
+
+# ── Ensretning af det flettede array (6/9-2026) ──────────────────────────
+
+def test_alle_definitioner_er_openai_formede():
+    """Fire dispatch-vaerktoejer lå i Anthropic-format og var ukaldbare."""
+    from core.tools.simple_tools_definitions import TOOL_DEFINITIONS
+    forkerte = [t for t in TOOL_DEFINITIONS if t.get("type") != "function"
+                or not (t.get("function") or {}).get("name")]
+    assert forkerte == [], forkerte[:3]
+
+
+def test_ingen_dublerede_vaerktoejsnavne():
+    """To definitioner af samme navn = to sandheder; provideren vaelger."""
+    from collections import Counter
+    from core.tools.simple_tools_definitions import TOOL_DEFINITIONS
+    navne = [(t.get("function") or {}).get("name") for t in TOOL_DEFINITIONS]
+    dubletter = [n for n, c in Counter(navne).items() if c > 1]
+    assert dubletter == [], dubletter
+
+
+def test_dispatch_vaerktoejerne_kan_naas():
+    from core.tools.simple_tools_definitions import TOOL_DEFINITIONS
+    navne = {(t.get("function") or {}).get("name") for t in TOOL_DEFINITIONS}
+    for n in ("dispatch_to_claude_code", "dispatch_status", "dispatch_cancel",
+              "dispatch_code_mode_task"):
+        assert n in navne, n
+
+
+def test_anthropic_form_oversaettes_med_skema():
+    from core.tools.simple_tools_definitions import _til_openai_form
+    ud = _til_openai_form({
+        "name": "x", "description": "d",
+        "input_schema": {"type": "object", "properties": {"a": {"type": "string"}}},
+    })
+    assert ud["type"] == "function"
+    assert ud["function"]["name"] == "x"
+    assert ud["function"]["parameters"]["properties"]["a"]["type"] == "string"
+
+
+def test_dedup_beholder_den_sidste():
+    """Handlere registreres sidst-vinder; definitionen skal matche."""
+    from core.tools.simple_tools_definitions import _ensret_tool_definitions
+    ud = _ensret_tool_definitions([
+        {"type": "function", "function": {"name": "g", "description": "gammel"}},
+        {"type": "function", "function": {"name": "g", "description": "ny"}},
+    ])
+    assert len(ud) == 1
+    assert ud[0]["function"]["description"] == "ny"

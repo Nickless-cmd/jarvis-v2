@@ -23,6 +23,28 @@ from typing import Iterable
 
 
 MAX_TOOLS = 128
+VISIBLE_MAX_TOOLS = 48
+# Vaerktoejer der ALTID skal overleve kappen. `load_more_tools` er halen ind til
+# de rare; de oevrige er tilfoejet 6/9-2026 efter en maaling: i cowork-scope er
+# kataloget 452 og kappen 48, og Tier 1 (107 navne) har INGEN intern prioritet —
+# den trunkeres i ankomstraekkefoelge. Derfor faldt netop de vaerktoejer ud som
+# prompten og kataloget ellers peger paa. `explore` er det tydeligste tilfaelde:
+# scope tillod det, kataloget naevnte det, prompten anbefalede det — og pruneren
+# fjernede det fra selve tool-arrayet, saa det aldrig kunne kaldes.
+REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
+    "load_more_tools",
+    "explore",
+    "spawn_agent_task",
+    "read_attachment",
+    "recall_memories",
+    # Uden den kan han ikke AABNE kanalen til sin egen maskine — og saa er alt
+    # arbejde derovre tilbage til ét operator_-kald ad gangen.
+    "operator_channel",
+    # Uden den er hele MCP-oekosystemet usynligt i cowork.
+    "mcp",
+    # En fortrydelse man ikke kan naa er ingen fortrydelse.
+    "checkpoint",
+)
 
 
 # Tier 1 — tools that are always included in the pruned set, regardless of
@@ -68,8 +90,7 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "recall_memories", "recall_sensory_memories", "schedule_self_wakeup", "schedule_task",
     "search", "search_chat_history", "search_memory", "search_sessions",
     "semantic_search_code", "send_discord_dm", "send_ntfy", "send_webchat_message",
-    "service_status", "smart_outline", "spawn_agent_task", "tiktok_analytics",
-    "tiktok_login", "tiktok_show", "tiktok_upload", "todo_update_status",
+    "service_status", "smart_outline", "spawn_agent_task", "todo_update_status",
     "trigger_heartbeat_tick", "verify_file_contains", "web_fetch", "web_scrape",
     "web_search", "wolfram_query", "write_file",
 })
@@ -110,11 +131,6 @@ TIER_2_CATEGORIES: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
         ("kamera", "webcam", "billede", "image", "foto", "photo", "vision",
          "se rummet", "look around", "analyse af billede", "analyse image"),
         ("look_around", "analyze_image", "hf_vision_analyze"),
-    ),
-    "tiktok": (
-        ("tiktok",),
-        ("tiktok_generate_video", "tiktok_upload", "tiktok_login",
-         "tiktok_show", "tiktok_analytics"),
     ),
     "comfyui": (
         ("comfyui", "comfy", "workflow", "stable diffusion", "sdxl"),
@@ -254,6 +270,22 @@ def select_tools_for_copilot(
 
     remaining = max_tools - len(selected_names)
     if remaining <= 0:
+        for required_name in REQUIRED_LAZY_TOOL_NAMES:
+            if required_name in by_name and required_name not in seen:
+                selected_names.append(required_name)
+                seen.add(required_name)
+        if len(selected_names) > max_tools:
+            required = set(REQUIRED_LAZY_TOOL_NAMES)
+            kept_required = [name for name in selected_names if name in required]
+            kept_other = [name for name in selected_names if name not in required]
+            selected_names = kept_other[: max(0, max_tools - len(kept_required))] + kept_required
+        # Katalog-raekkefoelge ogsaa her (6/9-2026). Den anden udgang nedenfor
+        # har altid genoprettet den; DENNE returnerede i udvaelgelsesraekkefoelge,
+        # saa de pinnede navne endte til sidst i arrayet. Det er den udgang der
+        # tages naar Tier 1 alene spraenger kappen — altsaa cowork, hans rige
+        # bane. Se test_visible_tool_pool_keeps_catalog_order_for_deepseek_cache.
+        _kat = {n: i for i, n in enumerate(by_name)}
+        selected_names.sort(key=lambda n: _kat.get(n, 1 << 30))
         return [by_name[n] for n in selected_names[:max_tools]]
 
     # Tier 2 scoring. In stable_only mode the two per-call-variable inputs
@@ -279,7 +311,20 @@ def select_tools_for_copilot(
         selected_names.append(name)
         seen.add(name)
 
-    # Preserve original catalog order for consistent caching/debug
+    # Ensure the lazy schema loader survives aggressive caps. If Tier 1 alone
+    # exceeds the cap, the old slice could drop load_more_tools and strand every
+    # omitted tool until the next user turn.
+    for required_name in REQUIRED_LAZY_TOOL_NAMES:
+        if required_name in by_name and required_name not in seen:
+            selected_names.append(required_name)
+            seen.add(required_name)
+    if len(selected_names) > max_tools:
+        required = set(REQUIRED_LAZY_TOOL_NAMES)
+        kept_required = [name for name in selected_names if name in required]
+        kept_other = [name for name in selected_names if name not in required]
+        selected_names = kept_other[: max(0, max_tools - len(kept_required))] + kept_required
+
+    # Preserve original catalog order for consistent caching/debug.
     original_order: dict[str, int] = {
         (t.get("function", {}).get("name") or ""): i
         for i, t in enumerate(tools)
@@ -299,7 +344,7 @@ def select_tools_for_visible(
     *,
     user_message: str = "",
     session_id: str | None = None,
-    max_tools: int = 128,
+    max_tools: int = VISIBLE_MAX_TOOLS,
 ) -> list[dict]:
     """Provider-neutral pruning wrapper for the visible lane.
 
@@ -312,6 +357,8 @@ def select_tools_for_visible(
         tools; the remaining 25 slots go to keyword-matched Tier 2 plus
         comfort defaults. Saves ~8K tokens per visible-chat call vs 200
         cap, while still leaving keyword-routed headroom.
+      - 48 (2026-09-04) — CC-style small native pool. Rare tools are reached
+        through load_more_tools, which is pinned into the cap.
     """
     return select_tools_for_copilot(
         tools, user_message=user_message, session_id=session_id, max_tools=max_tools,

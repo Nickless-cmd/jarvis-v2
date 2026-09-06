@@ -22,17 +22,26 @@ def _hyp(hyp_id="h1", mechanism="prediction_error", family="a->b"):
 
 
 class TestTilstand:
-    def test_default_er_shadow_ikke_live(self):
-        """Bevis før tillid — samme trust-gate som self_repair_engine."""
+    def test_default_er_live(self):
+        """2026-09-04 (blok E): var shadow "bevis før tillid" — men i shadow
+        skrives der ingen rækker, så beviset kunne aldrig opstå:
+        central_dream_actions har haft NUL rækker siden filen blev skrevet.
+        Vinduet er stadig smalt (én mekanisme, tre pr. tick, auto-stop efter
+        fem fejl) — det kan bare måles nu."""
         with patch("core.runtime.db.get_runtime_state_value", return_value=None):
-            assert ex.mode() == "shadow"
+            assert ex.mode() == "live"
 
-    def test_ukendt_vaerdi_falder_til_shadow(self):
+    def test_ukendt_vaerdi_falder_til_live(self):
         with patch("core.runtime.db.get_runtime_state_value", return_value="banan"):
-            assert ex.mode() == "shadow"
+            assert ex.mode() == "live"
 
-    def test_db_fejl_falder_til_shadow(self):
+    def test_db_fejl_falder_til_live(self):
         with patch("core.runtime.db.get_runtime_state_value", side_effect=RuntimeError):
+            assert ex.mode() == "live"
+
+    def test_shadow_kan_stadig_vaelges(self):
+        """Kill-switchen virker begge veje — sæt nøglen til shadow eller off."""
+        with patch("core.runtime.db.get_runtime_state_value", return_value="shadow"):
             assert ex.mode() == "shadow"
 
     def test_off_gør_intet(self):

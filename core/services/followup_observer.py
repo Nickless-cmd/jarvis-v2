@@ -171,6 +171,36 @@ def note_hollow_promise(run_id: str, *, provider: str = "", model: str = "",
              model=str(model or ""), rounds=int(round_index or 0),
              session_id=str(session_id or ""),
              path=("nudge_resolved" if resolved else "still_hollow"))
+    # 05-09-2026: indtil nu landede signalet KUN i trace-sinken — en per-proces
+    # ring-buffer der taber alt ved genstart. Centralen taeller `central_incidents`,
+    # saa den kunne bogstaveligt talt ikke se Jarvis' hyppigste fejl: den dag stod
+    # der ÉN `empty_completion` mod 31 faktiske tomme loefter.
+    #
+    # Alvorligheden skiller de to udfald: et loefte der blev INDLOEST efter nudget
+    # er `info` — systemet virkede — mens et der stadig staar ubesvaret er `error`.
+    # Ellers ville de gange nudget faktisk redder turen drukne de gange det ikke gjorde.
+    try:
+        from core.runtime.db_central_incidents import (
+            record_central_incident, has_open_incident, bump_open_incident)
+        _n = "hollow_promise"
+        _note = f"{provider}/{model} runde {int(round_index or 0)}"
+        if has_open_incident(cluster=_CLUSTER, nerve=_n):
+            bump_open_incident(cluster=_CLUSTER, nerve=_n, run_id=str(run_id or ""),
+                               session_id=str(session_id or ""),
+                               note=f"{'indløst' if resolved else 'ULØST'} {_note}")
+        else:
+            record_central_incident(
+                cluster=_CLUSTER, nerve=_n,
+                kind="promise_kept" if resolved else "promise_broken",
+                severity=("info" if resolved else "error"),
+                run_id=str(run_id or ""), session_id=str(session_id or ""),
+                message=(
+                    f"Tomt løfte {'indløst efter nudge' if resolved else 'IKKE indløst'} "
+                    f"[{_note}]: svaret annoncerede en handling uden at kalde et værktøj. "
+                    f"Værnet fanger kun en del — den ægte rate står i "
+                    f"observabilitets-fanens optælling (hollow_promises)."))
+    except Exception:
+        pass
 
 
 def note_resend(run_id: str, *, provider: str = "", model: str = "",

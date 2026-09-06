@@ -10,7 +10,9 @@ import { getConnectors, setEnabled, deleteConnector, startConnect } from './conn
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
 
 describe('connectorsApi', () => {
-  beforeEach(() => apiFetch.mockReset())
+  // Krøllede parenteser: mockReset() returnerer mocken, og vitest opfatter en
+  // returneret funktion som teardown — så mocken kaldes efter hver test.
+  beforeEach(() => { apiFetch.mockReset() })
 
   it('getConnectors henter /api/connectors og returnerer listen', async () => {
     apiFetch.mockResolvedValue({ connectors: [{ id: 'github', connected: false }] })

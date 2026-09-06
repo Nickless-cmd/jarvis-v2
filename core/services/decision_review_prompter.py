@@ -19,6 +19,10 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from core.services.decision_evidence import (
+    evidence_permits_verdict,
+    gather_evidence,
+)
 from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
@@ -74,18 +78,26 @@ def _last_review_time(decision: dict[str, Any]) -> datetime | None:
     return latest
 
 
-def _build_review_prompt(decision: dict[str, Any]) -> str:
+def _build_review_prompt(decision: dict[str, Any], evidence: dict[str, Any] | None = None) -> str:
     directive = str(decision.get("directive") or "").strip()
     reason = str(decision.get("reason") or "").strip()
+    regnskab = str((evidence or {}).get("summary") or "").strip()
+    timer = (evidence or {}).get("window_hours")
     return (
         f"{identity_prompt_prefix()}. Du forpligtede dig på en adfærdsbeslutning og skal nu "
-        "ærligt vurdere om du har holdt den siden sidste review.\n\n"
+        "vurdere om du har holdt den siden sidste review.\n\n"
         f"Beslutning: {directive}\n"
         f"Grund: {reason}\n\n"
-        "Vurder objektivt: har du fulgt den, delvist, eller brudt den?\n"
+        f"REGNSKAB for de seneste {timer} timer — dette er hentet fra eventbus og "
+        "git-log, ikke fra din hukommelse:\n"
+        f"  {regnskab}\n\n"
+        "Hold din vurdering op mod regnskabet, ikke mod hvad du mener at have gjort. "
+        "Siger regnskabet at intet skete, kan du ikke have holdt en beslutning der "
+        "kræver handling.\n"
+        "Vurder: fulgte du den, delvist, eller brød du den?\n"
         "Format (præcis to linjer):\n"
         "  VERDICT: kept|partial|broken\n"
-        "  EVIDENCE: <kort sætning om hvad der peger på dette>\n"
+        "  REASONING: <kort sætning om hvorfor>\n"
     )
 
 
@@ -93,7 +105,7 @@ def _parse_review(text: str) -> tuple[str, str] | None:
     if not text:
         return None
     verdict = ""
-    evidence = ""
+    reasoning = ""
     for raw in text.splitlines():
         line = raw.strip()
         upper = line.upper()
@@ -103,11 +115,13 @@ def _parse_review(text: str) -> tuple[str, str] | None:
                 if cand in v:
                     verdict = cand
                     break
-        elif upper.startswith("EVIDENCE:"):
-            evidence = line.split(":", 1)[1].strip()
+        elif upper.startswith("REASONING:") or upper.startswith("EVIDENCE:"):
+            # EVIDENCE beholdes som fallback: aeldre modelsvar bruger stadig det ord.
+            # Uanset hvad, ender teksten i `note` — aldrig i `evidence`.
+            reasoning = line.split(":", 1)[1].strip()
     if not verdict:
         return None
-    return verdict, evidence[:280]
+    return verdict, reasoning[:280]
 
 
 def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any]:
@@ -137,7 +151,7 @@ def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any
     now = datetime.now(UTC)
     cutoff = now - timedelta(hours=_REVIEW_INTERVAL_HOURS)
     gate_on = _dedup_gate_enabled()
-    reviewed = skipped = failed = 0
+    reviewed = skipped = failed = downgraded = 0
     for d in active:
         if max_reviews is not None and reviewed >= max_reviews:
             # Per-tick cap reached — remaining overdue decisions wait for the
@@ -160,7 +174,18 @@ def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any
                 skipped += 1
                 continue
 
-        prompt = _build_review_prompt(full)
+        # C3: hent regnskabet for vinduet SIDEN sidste review — eller det seneste
+        # døgn hvis den aldrig er anmeldt. Det er dette, og ikke modellens
+        # hukommelse, dommen skal holdes op mod.
+        vindue_start = _last_review_time(full) or (now - timedelta(hours=_REVIEW_INTERVAL_HOURS))
+        try:
+            evidence = gather_evidence(since=vindue_start, until=now)
+        except Exception as exc:
+            logger.debug("decision_review: evidens fejlede %s: %s", decision_id, exc)
+            evidence = {"has_evidence": False, "summary": "regnskab utilgængeligt",
+                        "window_hours": _REVIEW_INTERVAL_HOURS}
+
+        prompt = _build_review_prompt(full, evidence)
         try:
             text = daemon_llm_call(
                 prompt, max_len=200, fallback="",
@@ -174,13 +199,23 @@ def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any
         if not parsed:
             failed += 1
             continue
-        verdict, evidence = parsed
+        paastand, reasoning = parsed
+        # Porten: en positiv dom uden ydre spor bliver til "unknown", som det
+        # rullende gennemsnit i append_review ignorerer. "broken" slipper altid
+        # igennem — fraværet af handling ER ofte bruddet.
+        verdict = evidence_permits_verdict(paastand, evidence)
+        if verdict != paastand:
+            downgraded += 1
+            logger.info(
+                "decision_review: %s nedgraderet %s→%s (intet ydre spor i %sh)",
+                decision_id, paastand, verdict, evidence.get("window_hours"),
+            )
         try:
             review_decision(
                 decision_id=decision_id,
                 verdict=verdict,
-                note=evidence or None,
-                evidence=evidence or None,
+                note=reasoning or None,
+                evidence=str(evidence.get("summary") or "") or None,
             )
             reviewed += 1
         except Exception as exc:
@@ -190,7 +225,8 @@ def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any
         from core.services.central_core import central
         central().observe({"cluster": "review", "nerve": "decision_review",
                            "kind": "review_run", "considered": len(active),
-                           "reviewed": reviewed, "failed": failed})
+                           "reviewed": reviewed, "failed": failed,
+                           "downgraded": downgraded})
     except Exception:
         pass
     return {
@@ -199,6 +235,7 @@ def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any
         "reviewed": reviewed,
         "skipped_recent": skipped,
         "failed": failed,
+        "downgraded_no_evidence": downgraded,
     }
 
 

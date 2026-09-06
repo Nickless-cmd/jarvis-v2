@@ -53,8 +53,20 @@ export function ConnectionSection() {
         </label>
         <label>
           <span>Standardmodel</span>
+          {/* Fri tekst med genveje (6/9-2026): vision-varianten fandtes, men
+              intet fortalte at den var der — man skulle vide navnet i forvejen.
+              Feltet er stadig frit, for pooler skifter hurtigere end appen. */}
           <input type="text" value={defaultModel} placeholder="deepseek-v4-flash"
+            list="model-forslag"
             onChange={(e) => setDefaultModel(e.target.value)} />
+          <datalist id="model-forslag">
+            <option value="deepseek-v4-flash">hurtig, uden syn (standard)</option>
+            <option value="deepseek-v4-flash-vision-exp">samme model, MED syn — kan selv se billeder du sender</option>
+            <option value="deepseek-v4-pro">dyrere, stærkere ræsonnement</option>
+          </datalist>
+          {defaultModel.includes('vision')
+            ? <span className="settings-hint">Jarvis ser selv billeder du sender — ingen omvej over en anden model.</span>
+            : <span className="settings-hint">Billeder du sender bliver beskrevet af en anden model. Vælg vision-varianten, hvis han skal se dem selv.</span>}
         </label>
         <label>
           <span>Tænkning</span>

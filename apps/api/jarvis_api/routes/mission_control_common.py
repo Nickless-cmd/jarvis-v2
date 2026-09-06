@@ -586,11 +586,18 @@ def _visible_work_surface() -> dict:
 
 
 def _capability_invocation_surface() -> dict:
+    from core.identity.workspace_context import current_role, current_user_id
+
     truth = get_capability_invocation_truth()
+    user_id = current_user_id() or None
     return {
         **truth,
         "persisted_recent_invocations": recent_capability_invocations(limit=5),
-        "recent_approval_requests": recent_capability_approval_requests(limit=5),
+        "recent_approval_requests": recent_capability_approval_requests(
+            limit=5,
+            user_id=user_id,
+            include_unassigned=current_role() in {"", "owner"},
+        ),
         "recent_events": _recent_capability_invocation_events(),
     }
 

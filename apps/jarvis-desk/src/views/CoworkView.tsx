@@ -6,6 +6,10 @@ import { MissionControl } from '../components/cowork/missioncontrol/MissionContr
 import { CoworkZones } from '../components/cowork/CoworkZones'
 import { JarvisMind } from '../components/cowork/JarvisMind'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { WorkQueue } from '../components/cowork/WorkQueue'
+import { AgentWork } from '../components/cowork/AgentWork'
+import { ReviewPanel } from '../components/cowork/ReviewPanel'
+import { Lektier } from '../components/cowork/Lektier'
 import { MarketplacePane } from '../components/cowork/MarketplacePane'
 import { AccountSection } from '../components/settings/AccountSection'
 import { KvoteSection } from '../components/settings/KvoteSection'
@@ -17,6 +21,7 @@ import { PermissionsSection } from '../components/settings/PermissionsSection'
 import { JarvisSection } from '../components/settings/JarvisSection'
 import { AppsSection } from '../components/settings/AppsSection'
 import { McpSection } from '../components/settings/McpSection'
+import { WorkbenchSection } from '../components/settings/WorkbenchSection'
 import { TotpSetup } from '../components/settings/TotpSetup'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
 import { ConnectionSection } from '../components/settings/ConnectionSection'
@@ -29,7 +34,9 @@ import { AboutPanel } from '../components/AboutPanel'
 
 /** Cowork command center. 'mc'-zonen = det rigtige Mission Control-kontrolcenter;
  *  de øvrige zoner = én settings-sektion hver (flad simpel navigation, Bjørn 2026-07-01). */
-export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'guest' }) {
+export function CoworkView(
+  { role = 'owner', sessionId }: { role?: 'owner' | 'member' | 'guest'; sessionId?: string | null },
+) {
   const { settings, auth } = useSettings()
   const isOwner = role === 'owner'
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
@@ -54,7 +61,21 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
   // samlet scroll. 'settings' (legacy-alias) og ukendte → Konto.
   const zoneContent = (raw: Zone): ReactNode => {
     switch (normalizeZone(raw)) {
-      case 'mc': return missionControl
+      // Work Queue oeverst paa 'mc'-zonen (6/9-2026): det er den flade man
+      // lander paa, og det foerste spoergsmaal er altid «hvad venter paa mig».
+      // Mission Control bliver staaende nedenunder — den er stadig
+      // kontrolpanelet, koeen er bare det man ser foerst.
+      case 'mc': return (
+        <>
+          <WorkQueue config={config} />
+          {/* Koeen viser hvad der venter; arbejderne hvad der faktisk KOERTE.
+              De to hoerer sammen — begge svarer paa «hvad foregaar der». */}
+          {ownerAuth && <Lektier config={config} />}
+          {ownerAuth && <ReviewPanel config={config} />}
+          {ownerAuth && <AgentWork config={config} />}
+          {missionControl}
+        </>
+      )
       case 'marketplace': return <MarketplacePane config={config} />
 
       case 'konto': return wrap(<>
@@ -74,7 +95,13 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
       case 'presence': return wrap(<PresenceSection />)
 
       case 'memory': return wrap(<MemorySection config={config} />)
-      case 'workspace': return wrap(<WorkspaceSection config={config} />)
+      case 'workspace': return wrap(<>
+        <WorkspaceSection config={config} />
+        {/* Operator-kanal, fortryd-runde og runtime-kontakter (6/9-2026).
+            Hoerer til arbejdsomraadet: de handler alle om HVOR og HVORDAN
+            arbejdet udfoeres, ikke om hvem han er. */}
+        {ownerAuth && <WorkbenchSection config={config} sessionId={sessionId} />}
+      </>)
       case 'connections': return wrap(<>
         {ownerAuth && <McpSection config={config} />}
         <AppsSection config={config} />

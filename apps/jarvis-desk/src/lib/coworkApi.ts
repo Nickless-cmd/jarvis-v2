@@ -287,3 +287,249 @@ export async function addMcpServer(config: ApiConfig, name: string, url: string)
 export async function removeMcpServer(config: ApiConfig, id: string): Promise<void> {
   await apiFetch(config, `/account/mcp/${id}`, { method: 'DELETE' })
 }
+
+/** MCP-tillid (6/9-2026). Registeret er en adressebog; det her er beslutningen.
+ *  Uden disse tre kunne man tilføje en server i UI'et og aldrig godkende den
+ *  derfra — altså tilføje noget der aldrig kunne bruges. */
+export type McpTrustRow = {
+  navn: string
+  url?: string
+  godkendt: boolean
+  forbundet: boolean
+  vaerktoejer: number
+}
+export async function getMcpTrust(
+  config: ApiConfig,
+): Promise<{ servere: McpTrustRow[]; pins: Record<string, unknown> }> {
+  return apiFetch(config, '/account/mcp/trust')
+}
+export async function allowMcpServer(config: ApiConfig, navn: string): Promise<void> {
+  await apiFetch(config, `/account/mcp/${encodeURIComponent(navn)}/allow`, { method: 'POST' })
+}
+export async function revokeMcpServer(config: ApiConfig, navn: string): Promise<void> {
+  await apiFetch(config, `/account/mcp/${encodeURIComponent(navn)}/revoke`, { method: 'POST' })
+}
+
+/** Workbench: operator-kanal, checkpoints og runtime-kontakter. */
+export type OperatorChannel = { open: boolean; udloeber_om_s?: number }
+export async function getOperatorChannel(
+  config: ApiConfig, sessionId?: string,
+): Promise<OperatorChannel> {
+  const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''
+  return apiFetch(config, `/workbench/operator-channel${q}`)
+}
+export async function setOperatorChannel(
+  config: ApiConfig, open: boolean, sessionId?: string,
+): Promise<OperatorChannel> {
+  return apiFetch(config, `/workbench/operator-channel/${open ? 'open' : 'close'}`, {
+    method: 'POST',
+    body: sessionId ? { session_id: sessionId } : {},
+  })
+}
+
+export type Checkpoint = { sha: string; note?: string; cwd?: string; tid?: number }
+export async function getCheckpoints(
+  config: ApiConfig, sessionId?: string,
+): Promise<{ antal: number; punkter: Checkpoint[] }> {
+  const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''
+  return apiFetch(config, `/workbench/checkpoints${q}`)
+}
+export async function rollbackCheckpoint(
+  config: ApiConfig, sessionId?: string,
+): Promise<{ status: string; gendannet?: string; error?: string }> {
+  return apiFetch(config, '/workbench/checkpoints/rollback', {
+    method: 'POST',
+    body: sessionId ? { session_id: sessionId } : {},
+  })
+}
+
+export type RuntimeSwitches = {
+  bash_sandbox: { tændt: boolean; bwrap_findes: boolean; aktiv: boolean; note: string }
+  env_block: { tændt: boolean }
+}
+export async function getRuntimeSwitches(config: ApiConfig): Promise<RuntimeSwitches> {
+  return apiFetch(config, '/workbench/switches')
+}
+export async function setRuntimeSwitch(
+  config: ApiConfig, navn: 'bash_sandbox' | 'env_block', enabled: boolean,
+): Promise<void> {
+  await apiFetch(config, `/workbench/switches/${navn}`, { method: 'POST', body: { enabled } })
+}
+
+/** Work Queue (6/9-2026): ét sted for alt der venter, kører eller er faldet.
+ *
+ *  Codex' punkt 2: approvals, runs og tasks lå spredt i flere paneler, så man
+ *  skulle vide HVOR man skulle kigge for at vide hvad der foregik. De fem
+ *  spande er valgt efter hvad man kan GØRE ved dem — ikke efter hvor de kommer
+ *  fra:
+ *
+ *    venter_paa_mig  — blokerer noget indtil du svarer
+ *    aktiv           — kører lige nu, du kan styre eller stoppe
+ *    til_gennemsyn   — færdigt, men nogen bør se på det
+ *    fejlet          — stoppet utilsigtet, kan prøves igen
+ *    faerdig         — historik
+ *
+ *  Serveren scoper allerede efter bruger: owner ser sine egne plus systemets
+ *  ejerløse kørsler, andre kun deres egne (db_visible._run_user_scope).
+ */
+export type KoeSpand = 'venter_paa_mig' | 'aktiv' | 'til_gennemsyn' | 'fejlet' | 'faerdig'
+
+export interface McRunRow {
+  run_id: string
+  lane: string
+  provider: string | null
+  model: string | null
+  status: string
+  started_at: string
+  finished_at: string | null
+  text_preview: string | null
+}
+
+export async function getMcRuns(
+  config: ApiConfig, limit = 30,
+): Promise<{ active_run: McRunRow | null; recent_runs: McRunRow[] }> {
+  const d = await apiFetch<{ active_run?: McRunRow | null; recent_runs?: McRunRow[] }>(
+    config, `/mc/runs?limit=${limit}`,
+  )
+  return { active_run: d.active_run ?? null, recent_runs: d.recent_runs ?? [] }
+}
+
+/** Hvilken spand hører et run til? Ren funktion — testbar uden netværk. */
+export function spandForRun(status: string): KoeSpand {
+  const s = (status || '').toLowerCase()
+  if (s === 'running' || s === 'active' || s === 'streaming') return 'aktiv'
+  if (s === 'failed' || s === 'cancelled' || s === 'error') return 'fejlet'
+  // «interrupted» er hverken fejlet eller færdigt: turen blev afbrudt og
+  // efterlod noget halvt — det fortjener et blik, ikke en fejlmarkering.
+  if (s === 'interrupted') return 'til_gennemsyn'
+  return 'faerdig'
+}
+
+/** Kontekst-drawer (6/9-2026): hvad gik der ind i sidste tur? */
+export interface KontekstResume {
+  har_data: boolean
+  filer: string[]
+  udeladt: string[]
+  kilder: string[]
+  tegn: number
+  dele: number
+}
+
+export async function getKontekst(
+  config: ApiConfig, sessionId?: string,
+): Promise<KontekstResume> {
+  const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''
+  const d = await apiFetch<Partial<KontekstResume>>(config, `/workbench/context${q}`)
+  return {
+    har_data: Boolean(d.har_data),
+    filer: d.filer ?? [], udeladt: d.udeladt ?? [], kilder: d.kilder ?? [],
+    tegn: d.tegn ?? 0, dele: d.dele ?? 0,
+  }
+}
+
+/** Maskinens og hans egen tilstand — 441 bytes, modsat /mc/heartbeat på 149 KB.
+ *  Den store er hele hans indre liv; til et statusfelt er det spild af båndbredde. */
+export type Krop = {
+  cpu_pct: number; ram_pct: number; ram_used_gb: number; ram_total_gb: number
+  disk_free_gb: number; cpu_temp_c?: number | null
+  gpus?: { index: number; util_pct: number; vram_pct: number; temp_c?: number | null }[]
+  pressure: 'low' | 'medium' | 'high' | string
+  energy_level?: string; drain_label?: string; wake_state?: string
+}
+export async function getKrop(config: ApiConfig): Promise<{ krop: Krop | null; ts: string }> {
+  const d = await apiFetch<{ body?: Krop; ts?: string }>(config, '/central/body')
+  return { krop: d.body ?? null, ts: d.ts ?? '' }
+}
+
+/** Hvad byggede han svaret på? Sektionerne i prompten for ét run.
+ *  `found:false` betyder at posten mangler for netop det run (13 af 200) —
+ *  ikke at prompten var tom. */
+export type PromptSektion = { label: string; chars: number; pct: number }
+export type PromptSammensaetning = {
+  run_id: string
+  found: boolean
+  answer_chars?: number
+  total_chars?: number
+  section_count?: number
+  sections: PromptSektion[]
+}
+export async function getRunPrompt(
+  config: ApiConfig, runId: string,
+): Promise<PromptSammensaetning> {
+  return apiFetch(config, `/mc/runs/${encodeURIComponent(runId)}/prompt`)
+}
+
+/** Subagent-kørsler som arbejdskort. Læser agent_runs, hvor arbejdet faktisk
+ *  står — /central/agents' egen `recent` bygger på en dispatch-nerve der
+ *  målt 6/9-2026 producerede nul, mens der lå 383 kørsler ved siden af. */
+export type AgentArbejde = {
+  run_id: string
+  agent_id: string
+  role: string
+  kind: string
+  goal: string
+  status: string
+  execution_mode: string
+  model: string
+  input_summary: string
+  output_summary: string
+  started_at: string
+  finished_at: string
+  tokens: number
+  cost_usd: number
+}
+export async function getAgentArbejde(
+  config: ApiConfig, limit = 20,
+): Promise<{ runs: AgentArbejde[]; antal: number }> {
+  const d = await apiFetch<{ runs?: AgentArbejde[]; antal?: number }>(
+    config, `/central/agents/work?limit=${limit}`,
+  )
+  return { runs: d.runs ?? [], antal: d.antal ?? 0 }
+}
+
+/** Hvad er ændret i arbejdstræet — pr. fil, med diff og regel-baserede flag.
+ *  `testKoert` kommer fra klienten: tidslinjen ved om turen indeholdt en
+ *  testkørsel, og serveren kan ikke se det (tool.completed bærer ikke run_id). */
+export type ReviewFil = {
+  path: string; added: number; removed: number; binary: boolean; lines?: number
+}
+export type ReviewRisiko = { path: string; regel: string; note: string }
+export type ReviewAendringer = {
+  branch: string
+  files: ReviewFil[]
+  added: number
+  removed: number
+  diff: string
+  diff_truncated: boolean
+  risks: ReviewRisiko[]
+}
+export async function getReviewAendringer(
+  config: ApiConfig, testKoert: boolean,
+): Promise<ReviewAendringer> {
+  return apiFetch(config, `/review/changes?test_koert=${testKoert ? 'true' : 'false'}`)
+}
+
+/** Lektier: forslag der venter på en dom, og dem der allerede er i brug.
+ *  Godkendelse har en reel virkning — aktive lektier går ind i prompten. */
+export type Lektion = {
+  id: number
+  signature: string
+  lesson: string
+  source: string
+  status: string
+  evidence_count: number
+  repeated_count: number
+  first_at: string
+  last_at: string
+}
+export async function getLektier(
+  config: ApiConfig,
+): Promise<{ proposed: Lektion[]; active: Lektion[] }> {
+  const d = await apiFetch<{ proposed?: Lektion[]; active?: Lektion[] }>(config, '/review/lessons')
+  return { proposed: d.proposed ?? [], active: d.active ?? [] }
+}
+export async function saetLektionStatus(
+  config: ApiConfig, id: number, status: 'active' | 'rejected',
+): Promise<{ status: string; error?: string }> {
+  return apiFetch(config, `/review/lessons/${id}`, { method: 'POST', body: { status } })
+}

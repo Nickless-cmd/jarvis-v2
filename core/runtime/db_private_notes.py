@@ -364,7 +364,12 @@ def update_protected_inner_voice_enriched(*, run_id: str, enriched_voice_line: s
         conn.commit()
 
 
-def get_protected_inner_voice() -> dict[str, object] | None:
+def get_protected_inner_voice(*, offset: int = 0) -> dict[str, object] | None:
+    """Seneste beskyttede indre stemme. ``offset`` går et skridt længere tilbage.
+
+    Bruges af [INDRE LIV] til at springe en forurenet stemme over i stedet for at
+    efterlade ham helt uden — se `visible_inner_life._voice_line`.
+    """
     with connect() as conn:
         row = conn.execute(
             """
@@ -381,8 +386,9 @@ def get_protected_inner_voice() -> dict[str, object] | None:
                 created_at
             FROM protected_inner_voices
             ORDER BY id DESC
-            LIMIT 1
-            """
+            LIMIT 1 OFFSET ?
+            """,
+            (max(int(offset or 0), 0),),
         ).fetchone()
     if row is None:
         return None

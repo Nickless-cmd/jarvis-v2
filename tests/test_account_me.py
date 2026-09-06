@@ -5,6 +5,10 @@ def test_owner_profile_defaults():
     prof = build_account_profile("", get_user=lambda uid: None, get_tier=lambda uid: "owner")
     assert prof == {
         "user_id": "",
+        # Navnet kom til 3. sept.: profilen havde intet, kun en email der ofte
+        # er tom, så indstillings-hovedet kunne ikke svare på «hvis konto er
+        # det her?». Uden en navne-kilde er det tomt, ikke fraværende.
+        "name": "",
         "email": "",
         "email_verified": True,
         "language": "da",
@@ -12,6 +16,24 @@ def test_owner_profile_defaults():
         "tier": "owner",
         "google_linked": False,
     }
+
+
+def test_navn_hentes_fra_identitetslaget():
+    """users.json er kilden — SQLite-rækken mangler for owner og for brugere
+    der kun findes i identitets-laget."""
+    prof = build_account_profile(
+        "", get_user=lambda uid: None, get_tier=lambda uid: "owner",
+        get_identity_name=lambda uid: "Bjørn",
+    )
+    assert prof["name"] == "Bjørn"
+
+
+def test_navn_falder_tilbage_til_sqlite_raekken():
+    prof = build_account_profile(
+        "u1", get_user=lambda uid: {"name": "Michelle", "role": "partner"},
+        get_tier=lambda uid: "plus",
+    )
+    assert prof["name"] == "Michelle"
 
 
 def test_google_linked_flag_reflects_callback():

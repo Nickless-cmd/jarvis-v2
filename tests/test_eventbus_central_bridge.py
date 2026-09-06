@@ -89,7 +89,7 @@ def test_fase_b_families_routed():
     """Fase B: de nye familier er ikke længere dark (har en rute i én af de to maps)."""
     import core.services.eventbus_central_bridge as br
     all_routed = set(br.FAMILY_ROUTES) | set(br.PRIVATE_NO_EGRESS_ROUTES)
-    fase_b = {"mail_checker","tiktok_content_daemon","tiktok_research_daemon","tool_tagger",
+    fase_b = {"mail_checker","tool_tagger",
               "coding_lane","agent_skill_distiller","arc_rules","ambient_sound",
               "prompt_relevance_backend","weekly_manifest","session","absence","agent_observation",
               "cognitive_chronicle","conflict","decision_review_prompter","development_narrative",
@@ -99,7 +99,7 @@ def test_fase_b_families_routed():
               "cognitive_temperature"}
     assert fase_b <= all_routed, f"stadig dark: {fase_b - all_routed}"
     # de 11 operationelle SKAL være egress-OK, ikke private:
-    operational = {"mail_checker","tiktok_content_daemon","tiktok_research_daemon","tool_tagger",
+    operational = {"mail_checker","tool_tagger",
                    "coding_lane","agent_skill_distiller","arc_rules","ambient_sound",
                    "prompt_relevance_backend","weekly_manifest","session"}
     assert operational <= set(br.FAMILY_ROUTES)

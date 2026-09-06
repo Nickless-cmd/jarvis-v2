@@ -11,12 +11,27 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from apps.api.jarvis_api.routes.jarvisx_common import logger
 
-router = APIRouter(prefix="/api", tags=["jarvisx"])
+def _kun_ejer() -> None:
+    """Disse ruter læser og opremser værtens filsystem.
+
+    Roden må ligge hvor som helst på maskinen — det er med vilje, for et
+    projekt er ikke bundet til ~/.jarvis-v2/workspaces/. Men så er det
+    heller ikke noget en gæst eller et medlem skal kunne: uden denne gate
+    kunne enhver indlogget bruger (fx telefonen) opremse /home/bs og læse
+    filer derfra. Tom rolle = ubundet lokal/CLI-kontekst, ikke en fremmed.
+    """
+    from core.identity.workspace_context import current_role
+
+    if current_role() not in {"", "owner"}:
+        raise HTTPException(status_code=403, detail="project routes are owner only")
+
+
+router = APIRouter(prefix="/api", tags=["jarvisx"], dependencies=[Depends(_kun_ejer)])
 
 
 # ── Project anchor: tree, read, notes ─────────────────────────────
@@ -30,6 +45,17 @@ _PROJECT_TREE_SKIP_DIRS = {
     ".pytest_cache", ".mypy_cache", "target", ".gradle",
 }
 _PROJECT_TREE_MAX_ENTRIES = 5000  # safety cap per request
+
+
+def _skip_dir(navn: str) -> bool:
+    """Sandt for mapper der ikke hoerer til i en projektvisning.
+
+    Skjulte mapper springes over som helhed, ikke kun de faa der stod paa
+    listen. Uden det aad .claude/ (plugin-cache, 8040 filer) hele
+    fladlisten paa 10.000 og skubbede apps/, tests/ og scripts/ ud — saa
+    @fil-kompletteringen kunne ikke finde den kode den var til for.
+    """
+    return navn.startswith(".") or navn in _PROJECT_TREE_SKIP_DIRS
 _PROJECT_READ_MAX_BYTES = 1024 * 1024  # 1 MB ceiling for in-app preview
 
 
@@ -99,12 +125,12 @@ def project_tree(
                 node["truncated"] = True
                 break
             if entry.is_dir():
-                if entry.name in _PROJECT_TREE_SKIP_DIRS or entry.name.startswith(".jarvisx"):
+                if _skip_dir(entry.name):
                     # Skip skiplist + the .jarvisx directory used for notes
                     # to keep noise low. Notes are exposed via /api/project/notes.
                     if entry.name == ".jarvisx":
                         continue
-                    if entry.name in _PROJECT_TREE_SKIP_DIRS:
+                    if _skip_dir(entry.name):
                         # Show as collapsed placeholder so user knows it's there
                         node["children"].append({
                             "name": entry.name,
@@ -154,7 +180,7 @@ def project_list(
             if len(files) >= limit:
                 return
             if entry.is_dir():
-                if entry.name in _PROJECT_TREE_SKIP_DIRS or entry.name.startswith(".jarvisx"):
+                if _skip_dir(entry.name):
                     continue
                 walk(entry)
             elif entry.is_file():

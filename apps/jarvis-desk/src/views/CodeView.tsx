@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge } from 'lucide-react'
+import { onPauseSvar } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
@@ -572,6 +573,14 @@ export function CodeView({
     })
   }
 
+
+  // Et klik paa en pause_and_ask-knap skal blive den NAESTE bruger-besked,
+  // praecis som vaerktoejets kontrakt lover. Ref fordi resend gendannes hver
+  // render — ellers rives abonnementet ned og op konstant.
+  const pauseSvarRef = useRef(resend)
+  pauseSvarRef.current = resend
+  useEffect(() => onPauseSvar((svar) => pauseSvarRef.current(svar)), [])
+
   const trustBanner = trusted === false ? (
     <div className="trust-banner">
       <Lock size={14} />
@@ -709,6 +718,7 @@ export function CodeView({
         {trustBanner}
         <div className="chat-empty">
           <GreetingHero
+            mode="code"
             config={config}
             userName={userName ?? 'Bruger'}
             onOpenMarketplace={() => onOpenMarketplace?.()}
@@ -753,6 +763,7 @@ export function CodeView({
               gitMissing={gitMissing}
               installingTool={installingTool}
               onInstallTool={onInstallTool}
+              komprimerVed={compactAt}
             />
           </div>
         )}

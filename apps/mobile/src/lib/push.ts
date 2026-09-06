@@ -3,6 +3,14 @@ import notifee, { AndroidImportance, AndroidStyle, EventType } from '@notifee/re
 import type { ApiConfig } from './types'
 import { ackNotification } from './presence'
 import { replyToSession } from './replyToSession'
+import { approveTool, cancelRun, denyTool } from './apiClient'
+import {
+  APPROVE_ACTION_ID,
+  DENY_ACTION_ID,
+  OPEN_RUN_ACTION_ID,
+  STOP_RUN_ACTION_ID,
+  notificationActionsFor
+} from './notificationActions'
 
 /** id på notifikationens "Svar"-action (Direct Reply / RemoteInput). */
 export const REPLY_ACTION_ID = 'jarvis-reply'
@@ -158,8 +166,9 @@ export async function display(config: ApiConfig, data: PushData) {
       // IKKE på godkendelser: et fritekstsvar er ikke et ja/nej, og en
       // «Svar»-knap dér ville love noget serveren ikke kan tage imod.
       actions: isApprovalPush(data)
-        ? []
+        ? notificationActionsFor(data)
         : [
+            ...notificationActionsFor(data),
             {
               title: 'Svar',
               pressAction: { id: REPLY_ACTION_ID },
@@ -196,7 +205,8 @@ export async function showRunInProgressNotification(sessionId?: string, runId?: 
         pressAction: { id: 'default' },
         smallIcon: 'ic_notification',
         ongoing: true,
-        autoCancel: false
+        autoCancel: false,
+        actions: notificationActionsFor({ kind: 'run_in_progress', run_id: runId })
       }
     })
   } catch {
@@ -240,6 +250,32 @@ export async function submitNotificationReply(
     data: (detail.notification?.data ?? {}) as Record<string, string>,
     android: { channelId, pressAction: { id: 'default' }, smallIcon: 'ic_notification' }
   })
+}
+
+export async function handleNotificationAction(
+  config: ApiConfig,
+  detail: { notification?: { id?: string; data?: Record<string, unknown> }; pressAction?: { id?: string }; input?: string }
+): Promise<'handled' | 'open' | 'ignored'> {
+  const action = detail.pressAction?.id
+  const data = detail.notification?.data ?? {}
+  if (action === REPLY_ACTION_ID) {
+    await submitNotificationReply(config, detail)
+    return 'handled'
+  }
+  if (action === STOP_RUN_ACTION_ID) {
+    const runId = typeof data.run_id === 'string' ? data.run_id : ''
+    if (runId) await cancelRun(config, runId)
+    return runId ? 'handled' : 'ignored'
+  }
+  if (action === APPROVE_ACTION_ID || action === DENY_ACTION_ID) {
+    const approvalId = typeof data.request_id === 'string' ? data.request_id : ''
+    if (!approvalId) return 'ignored'
+    if (action === APPROVE_ACTION_ID) await approveTool(config, approvalId)
+    else await denyTool(config, approvalId)
+    return 'handled'
+  }
+  if (action === OPEN_RUN_ACTION_ID || action === 'default') return 'open'
+  return 'ignored'
 }
 
 async function postToken(config: ApiConfig, token: string) {

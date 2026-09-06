@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, Animated, AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Animated, AppState, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import notifee, { EventType } from '@notifee/react-native'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
@@ -25,20 +25,23 @@ import { fetchPresence, type Presence } from '../lib/companionClient'
 import { livesInHousehold } from '../lib/household'
 import { SensesScreen } from './SensesScreen'
 import { ArtifactsScreen } from './ArtifactsScreen'
-import { cancelActiveRun, getActiveRunSnapshot, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
+import { ActivityCenterScreen } from './ActivityCenterScreen'
+import { cancelActiveRun, cancelRunById, denyTool, getActiveRunSnapshot, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession, loadModelChoice, saveModelChoice } from '../lib/sessionStore'
 import { bubble } from '../lib/bubbleModule'
 import {
   clearRunInProgressNotification,
+  handleNotificationAction,
   showRunInProgressNotification,
-  submitNotificationReply,
-  REPLY_ACTION_ID
+  submitNotificationReply
 } from '../lib/push'
 import { outgoingChatText } from '../lib/chatPrompt'
 import { computeRuntimePolicy } from '../lib/mobileRuntimePolicy'
 import { loadBatterySaver } from '../lib/batteryPrefs'
+import { enqueueOutboxItem, loadOutbox, removeOutboxItem, markOutboxFailed } from '../lib/offlineOutbox'
+import { intentFromPushData, intentFromUrl, type MobileIntent } from '../lib/deepLink'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
@@ -134,6 +137,9 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [inHousehold, setInHousehold] = useState(false)
   const [sensesOpen, setSensesOpen] = useState(false)
   const [artifactsOpen, setArtifactsOpen] = useState(false)
+  const [activityOpen, setActivityOpen] = useState(false)
+  const [activityRuns, setActivityRuns] = useState<import('../lib/apiClient').ActiveRunSnapshot[]>([])
+  const [outboxCount, setOutboxCount] = useState(0)
   // Livstegn. Hentes ved opstart og hvert minut — hjerteslaget slår ~hvert
   // 15. minut, så tættere polling ville kun koste strøm uden at vise mere.
   const [presence, setPresence] = useState<Presence>({ state: 'unknown' })
@@ -147,6 +153,29 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     const id = setInterval(tick, 60_000)
     return () => { cancelled = true; clearInterval(id) }
   }, [config])
+
+  const routeIntent = useCallback((intent: MobileIntent | null) => {
+    if (!intent || !config) return
+    if ('sessionId' in intent && intent.sessionId) {
+      sessions.select(config, intent.sessionId).catch(() => undefined)
+    }
+    if (intent.kind === 'run' || intent.kind === 'approval') {
+      setActivityOpen(true)
+    } else if (intent.kind === 'artifact') {
+      setArtifactsOpen(true)
+    } else if (intent.kind === 'memory') {
+      setSettingsOpen(true)
+    } else if (intent.kind === 'settings') {
+      setSettingsOpen(true)
+    }
+  }, [config, sessions])
+
+  useEffect(() => {
+    const openUrl = ({ url }: { url: string }) => routeIntent(intentFromUrl(url))
+    const sub = Linking.addEventListener('url', openUrl)
+    void Linking.getInitialURL().then((url) => { if (url) routeIntent(intentFromUrl(url)) }).catch(() => undefined)
+    return () => sub.remove()
+  }, [routeIntent])
   const [cameraOpen, setCameraOpen] = useState(false)
   const [attachMenuOpen, setAttachMenuOpen] = useState(false)
   // FEATURE2/BUG3: valgt/taget billede lægger sig som ventende vedhæftning i
@@ -226,20 +255,68 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       if (id) sessions.select(config, id).catch(() => undefined)
     }
     const unsub = notifee.onForegroundEvent(({ type, detail }) => {
-      if (type === EventType.PRESS) open(detail.notification?.data?.session_id)
+      if (type === EventType.PRESS) {
+        routeIntent(intentFromPushData(detail.notification?.data as Record<string, unknown> | undefined))
+        open(detail.notification?.data?.session_id)
+      }
       // Direct Reply mens appen er i forgrunden (bruger trækker shade ned).
-      if (type === EventType.ACTION_PRESS && detail.pressAction?.id === REPLY_ACTION_ID && config) {
-        void submitNotificationReply(config, detail)
+      if (type === EventType.ACTION_PRESS && config) {
+        void handleNotificationAction(config, detail).then((result) => {
+          if (result === 'open') routeIntent(intentFromPushData(detail.notification?.data as Record<string, unknown> | undefined))
+        })
       }
     })
     void notifee.getInitialNotification().then((n) => {
-      if (!cancelled) open(n?.notification?.data?.session_id)
+      if (!cancelled) {
+        routeIntent(intentFromPushData(n?.notification?.data as Record<string, unknown> | undefined))
+        open(n?.notification?.data?.session_id)
+      }
     })
     return () => {
       cancelled = true
       unsub()
     }
-  }, [config])
+  }, [config, routeIntent])
+
+  useEffect(() => {
+    let cancelled = false
+    const refresh = () => { void loadOutbox().then((items) => { if (!cancelled) setOutboxCount(items.length) }) }
+    refresh()
+    const id = setInterval(refresh, 5000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
+
+  useEffect(() => {
+    if (!config || connectivity !== 'connected') return
+    let cancelled = false
+    const flush = async () => {
+      const items = await loadOutbox()
+      for (const item of items) {
+        if (cancelled) return
+        try {
+          if (item.kind === 'chat_message') {
+            stream.send(config, item.sessionId, item.text, { attachmentIds: item.attachmentIds })
+          } else if (item.kind === 'approval_action') {
+            if (item.action === 'approve') {
+              // Approval-id'er deles mellem chat/work; endpointet er serverens sandhed.
+              const { approveTool } = await import('../lib/apiClient')
+              await approveTool(config, item.approvalId)
+            } else {
+              await denyTool(config, item.approvalId)
+            }
+          } else if (item.kind === 'run_action' && item.action === 'stop') {
+            await cancelRunById(config, item.runId)
+          }
+          await removeOutboxItem(item.id)
+        } catch (e) {
+          await markOutboxFailed(item.id, e instanceof Error ? e.message : 'Kunne ikke sende')
+        }
+      }
+      setOutboxCount((await loadOutbox()).length)
+    }
+    void flush()
+    return () => { cancelled = true }
+  }, [config, connectivity])
 
   useEffect(() => {
     if (!config) return
@@ -363,6 +440,22 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
 
   const ensureSessionAndSend = async (text: string) => {
     if (!config) return
+    if (connectivity === 'offline') {
+      if (!sessions.activeId) {
+        Alert.alert('Offline', 'Åbn en eksisterende samtale før du køer en besked offline.')
+        return
+      }
+      await enqueueOutboxItem({
+        kind: 'chat_message',
+        sessionId: sessions.activeId,
+        text: outgoingChatText(text, researchMode),
+        attachmentIds: pendingAttachments.length ? pendingAttachments.map((a) => a.id) : undefined
+      })
+      setOutboxCount((await loadOutbox()).length)
+      setPendingAttachments([])
+      if (researchMode) setResearchMode(false)
+      return
+    }
     const sessionId = sessions.activeId ?? (await sessions.create(config)).id
     const attachmentIds = pendingAttachments.length
       ? pendingAttachments.map((a) => a.id)
@@ -639,6 +732,14 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             setPanelOpen(false)
             setArtifactsOpen(true)
           }}
+          onOpenActivity={() => {
+            setPanelOpen(false)
+            setActivityOpen(true)
+            if (config) {
+              void getActiveRunSnapshot(config).then(setActivityRuns).catch(() => undefined)
+              void loadOutbox().then((items) => setOutboxCount(items.length))
+            }
+          }}
           onOpenSettings={() => {
             setPanelOpen(false)
             setSettingsOpen(true)
@@ -678,6 +779,15 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
 
       <Modal visible={artifactsOpen} animationType="slide" onRequestClose={() => setArtifactsOpen(false)}>
         <ArtifactsScreen onClose={() => setArtifactsOpen(false)} />
+      </Modal>
+
+      <Modal visible={activityOpen} animationType="slide" onRequestClose={() => setActivityOpen(false)}>
+        <ActivityCenterScreen
+          onClose={() => setActivityOpen(false)}
+          runs={activityRuns}
+          outboxCount={outboxCount}
+          presenceSummary={presence.state}
+        />
       </Modal>
 
       <Modal visible={cameraOpen} animationType="slide" onRequestClose={() => setCameraOpen(false)}>

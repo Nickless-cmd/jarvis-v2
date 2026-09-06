@@ -2,7 +2,7 @@ import { registerRootComponent } from 'expo'
 import messaging from '@react-native-firebase/messaging'
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native'
 import App from './src/App'
-import { display, submitNotificationReply, REPLY_ACTION_ID } from './src/lib/push'
+import { display, handleNotificationAction } from './src/lib/push'
 import { loadAuthConfig } from './src/lib/authStore'
 import { installGlobalErrorHandler } from './src/lib/globalErrorHandler'
 import './src/bubble/registerBubble'
@@ -15,9 +15,9 @@ installGlobalErrorHandler()
 // åbne appen) sender vi teksten til sessionens run. Svaret kommer tilbage som en
 // ny FCM-notifikation. SKAL registreres uden for komponent-træet.
 notifee.onBackgroundEvent(async ({ type, detail }) => {
-  if (type === EventType.ACTION_PRESS && detail.pressAction?.id === REPLY_ACTION_ID) {
+  if (type === EventType.ACTION_PRESS) {
     const config = await loadAuthConfig()
-    if (config && config.authToken) await submitNotificationReply(config, detail)
+    if (config && config.authToken) await handleNotificationAction(config, detail)
   }
 })
 

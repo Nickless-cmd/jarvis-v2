@@ -3290,7 +3290,12 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *CODE_NAVIGATION_TOOL_DEFINITIONS,
     *WORKTREE_TOOL_DEFINITIONS,
     *IDENTITY_PIN_TOOL_DEFINITIONS,
-    *UI_PANEL_TOOL_DEFINITIONS,
+    # open_ui_panel stod DOBBELT i tool-arrayet (6/9-2026): her og i
+    # APP_CONTROL_TOOL_DEFINITIONS. app_control-udgaven er et supersaet (kender
+    # `scope='workstation'`) og vinder i forvejen handler-dict'en, mens denne
+    # blev listet FOERST — saa modellen kunne laese den definition der ikke
+    # kendte scope. Modulet og dets handler bevares for bagudkompatibilitet.
+    # *UI_PANEL_TOOL_DEFINITIONS,
     *STATE_FLAG_TOOL_DEFINITIONS,
     *APP_CONTROL_TOOL_DEFINITIONS,
     *AGENT_TODO_TOOL_DEFINITIONS,
@@ -3454,3 +3459,53 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     *NUDGE_BROEND_TOOL_DEFINITIONS,
 ]
+
+
+# ── Ensretning af det flettede tool-array (6/9-2026) ─────────────────────
+# Arrayet ovenfor er en fletning af ~90 lister fra lige så mange moduler, og
+# den fletning var aldrig valideret. Målt 6/9: 452 poster, 443 unikke navne.
+#
+# To fejlklasser, begge tavse fordi deepseek er tolerant:
+#
+#   1. FIRE dispatch-værktøjer lå i ANTHROPIC-format ({"name","input_schema"})
+#      i stedet for OpenAI-format ({"type","function"}). De kom fra jarvis-code,
+#      hvor formen er rigtig. Her var de malformede — modellen kunne ikke kalde
+#      dem, og en striksere provider ville afvise hele requesten.
+#   2. SEKS navne stod dobbelt, tre af dem med FORSKELLIGE skemaer
+#      (goal_create, goal_list, process_list). Modellen så to sandheder om det
+#      samme værktøj, og hvilken der gjaldt var op til provideren.
+#
+# Begge rettes her frem for i ~90 moduler, så nye tilføjelser også fanges.
+# Dedup-reglen er SIDST-VINDER, fordi handler-dict'en registreres sidst-vinder:
+# definitionen skal beskrive den handler der faktisk kører.
+
+def _til_openai_form(td: dict[str, Any]) -> dict[str, Any]:
+    """Anthropic-formet definition → OpenAI-formet. Andet passerer urørt."""
+    if td.get("function"):
+        return td if td.get("type") == "function" else {"type": "function", **td}
+    if not td.get("name"):
+        return td
+    return {
+        "type": "function",
+        "function": {
+            "name": td["name"],
+            "description": td.get("description", ""),
+            "parameters": td.get("input_schema") or td.get("parameters")
+            or {"type": "object", "properties": {}},
+        },
+    }
+
+
+def _ensret_tool_definitions(defs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    ensrettet = [_til_openai_form(t) for t in defs]
+    sidste: dict[str, int] = {}
+    for i, t in enumerate(ensrettet):
+        navn = (t.get("function") or {}).get("name")
+        if navn:
+            sidste[navn] = i
+    beholdt = set(sidste.values())
+    return [t for i, t in enumerate(ensrettet)
+            if i in beholdt or not (t.get("function") or {}).get("name")]
+
+
+TOOL_DEFINITIONS = _ensret_tool_definitions(TOOL_DEFINITIONS)

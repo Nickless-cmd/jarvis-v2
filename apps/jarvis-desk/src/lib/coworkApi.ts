@@ -486,3 +486,25 @@ export async function getAgentArbejde(
   )
   return { runs: d.runs ?? [], antal: d.antal ?? 0 }
 }
+
+/** Hvad er ændret i arbejdstræet — pr. fil, med diff og regel-baserede flag.
+ *  `testKoert` kommer fra klienten: tidslinjen ved om turen indeholdt en
+ *  testkørsel, og serveren kan ikke se det (tool.completed bærer ikke run_id). */
+export type ReviewFil = {
+  path: string; added: number; removed: number; binary: boolean; lines?: number
+}
+export type ReviewRisiko = { path: string; regel: string; note: string }
+export type ReviewAendringer = {
+  branch: string
+  files: ReviewFil[]
+  added: number
+  removed: number
+  diff: string
+  diff_truncated: boolean
+  risks: ReviewRisiko[]
+}
+export async function getReviewAendringer(
+  config: ApiConfig, testKoert: boolean,
+): Promise<ReviewAendringer> {
+  return apiFetch(config, `/review/changes?test_koert=${testKoert ? 'true' : 'false'}`)
+}

@@ -38,16 +38,22 @@ describe('design-tokens', () => {
   // Lyst tema arvede før de mørke semantiske farver fra :root — gul #ffd166
   // på hvid gav 1,44:1. Kontrast er målbar, så den måles.
   it('holder de semantiske farver læsbare i lyst tema', () => {
-    const blok = tokens.match(/:root\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/)![1]
-    const vaerdi = (navn: string) => blok.match(new RegExp(`${navn}:\\s*(#[0-9a-f]{6})`, 'i'))![1]
+    const m = tokens.match(/:root\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/)
+    expect(m).toBeTruthy()
+    const blok = m?.[1] ?? ''
+    const vaerdi = (navn: string) => {
+      const t = blok.match(new RegExp(`${navn}:\\s*(#[0-9a-f]{6})`, 'i'))
+      expect(t, `${navn} mangler i lyst tema`).toBeTruthy()
+      return t?.[1] ?? '#000000'
+    }
     const lum = (h: string) =>
       [1, 3, 5]
         .map((i) => parseInt(h.substr(i, 2), 16) / 255)
         .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
-        .reduce((a, c, i) => a + [0.2126, 0.7152, 0.0722][i] * c, 0)
+        .reduce((a, c, i) => a + [0.2126, 0.7152, 0.0722][i]! * c, 0)
     const kontrast = (a: string, b: string) => {
-      const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p)
-      return (x + 0.05) / (y + 0.05)
+      const par = [lum(a), lum(b)].sort((p, q) => q - p)
+      return ((par[0] ?? 0) + 0.05) / ((par[1] ?? 0) + 0.05)
     }
     const grund = vaerdi('--bg-0')
     for (const navn of ['--ok', '--error-fg', '--warn-fg']) {

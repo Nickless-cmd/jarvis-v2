@@ -613,6 +613,18 @@ _Push token-registrering. Scoper til den auth'ede bruger._
 | function | `register` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L27) |
 | function | `unregister` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L36) |
 
+## `apps/api/jarvis_api/routes/review.py`
+_Review: hvad er der faktisk ændret, og hvad bør man kigge efter?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kun_ejer` | `()` | Ruten laeser repoets arbejdstrae og filstoerrelser paa vaerten. | [src](../../../apps/api/jarvis_api/routes/review.py#L18) |
+| function | `_repo_root` | `()` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L42) |
+| function | `_kør` | `(rod, *args)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L46) |
+| function | `_linjer_i` | `(sti)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L57) |
+| function | `_risici` | `(rod, filer, test_koert)` | Flag udledt af repoets EGNE regler. Ingen regel → intet flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L65) |
+| function | `review_changes` | `(test_koert=…, diff=…)` | Hvad er ændret i arbejdstræet — pr. fil, med diff og regel-baserede flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L107) |
+
 ## `apps/api/jarvis_api/routes/sensory.py`
 _Sansernes Arkiv HTTP endpoints._
 
@@ -669,16 +681,4 @@ _POST /transcribe — diktering-transskription til jarvis-desk's mic-knap._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `transcribe` | `(file, language=…)` | — | [src](../../../apps/api/jarvis_api/routes/transcribe.py#L22) |
-
-## `apps/api/jarvis_api/routes/tts.py`
-_TTS synthesis route — ElevenLabs primær (Jarvis' egen stemme, Mads),_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_elevenlabs_voice_id` | `()` | Jarvis' stemme-id — ÉT sted, nemlig i voice-skillen. | [src](../../../apps/api/jarvis_api/routes/tts.py#L26) |
-| class | `TTSRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/tts.py#L44) |
-| function | `_elevenlabs_preferred` | `()` | Runtime-flag så credits kan spares uden kode-ændring. Default True (ElevenLabs primær). | [src](../../../apps/api/jarvis_api/routes/tts.py#L68) |
-| function | `_synthesize_elevenlabs_bytes` | `(text)` | Jarvis' egen ElevenLabs-stemme → MP3-bytes. Genbruger nøgle+voice_id fra voice-skillen | [src](../../../apps/api/jarvis_api/routes/tts.py#L80) |
-| function | `synthesize` | `(req)` | Synthesize text → MP3 bytes via edge-tts. | [src](../../../apps/api/jarvis_api/routes/tts.py#L97) |
-| function | `list_voices` | `(lang=…)` | List available Edge-TTS voices, optionally filtered by language tag. | [src](../../../apps/api/jarvis_api/routes/tts.py#L167) |
 

@@ -101,6 +101,7 @@ from apps.api.jarvis_api.routes.workbench import router as workbench_router
 from apps.api.jarvis_api.routes.companion import router as companion_router
 from apps.api.jarvis_api.routes.files import router as files_router
 from apps.api.jarvis_api.routes.chat import router as chat_router
+from apps.api.jarvis_api.routes.review import router as review_router
 from apps.api.jarvis_api.routes.chat_stream_v2 import router as chat_stream_v2_router
 from apps.api.jarvis_api.routes.cowork import router as cowork_router
 from apps.api.jarvis_api.routes.plugins import router as plugins_router
@@ -697,6 +698,7 @@ def create_app() -> FastAPI:
     app.include_router(paste_router)
     app.include_router(files_router)
     app.include_router(chat_router)
+    app.include_router(review_router)
     app.include_router(chat_stream_v2_router)
     from apps.api.jarvis_api.routes.push import router as push_router
     app.include_router(push_router)

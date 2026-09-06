@@ -129,8 +129,15 @@ def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
             argv += ["-i"]
         argv += [pattern, "."]
     else:
+        # `-E` (6/9-2026): grep uden det er BASIC regex, hvor |, (, ), ? og +
+        # er LITERALER. rg bruger moderne regex. Uden ripgrep installeret — og
+        # containeren har den IKKE — fejlede derfor hvert eneste moenster med
+        # alternation stille: «[no matches]», aldrig en fejl. Maalt: agenten
+        # soegte efter 'def |class' i attachment_service.py og fik nul.
+        # Det er formentlig stoerste enkeltaarsag til at agenternes
+        # undersoegelser blev ringe netop dér hvor Jarvis bor.
         argv = [
-            "grep", "-rn", "--color=never",
+            "grep", "-rEn", "--color=never",
             "--exclude-dir=.git", "--exclude-dir=node_modules",
             "--exclude-dir=__pycache__", "--exclude-dir=.claude",
             "--exclude-dir=dist", "--exclude-dir=build",

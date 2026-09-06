@@ -283,3 +283,107 @@ def resume_from_transcript(agent_id: str) -> dict[str, Any] | None:
         "unresolved_tool_calls": unresolved,
         "turn_count": turn_count,
     }
+
+
+# ---------------------------------------------------------------------------
+# Read API (6/9-2026)
+# ---------------------------------------------------------------------------
+# Modulets docstring lover en «resume flow», men indtil nu fandtes KUN
+# skrive-funktioner: syv der skriver, nul der laeser. Samme moenster som det
+# indre liv — skrivesiden enorm, laesesiden et naaleslag.
+#
+# Det koster konkret. En explore-agent svarede «fandt intet, Confidence: Hoej»
+# om filer der laa der, og for at finde ud af hvorfor maatte jeg gaette tre
+# gange. Beviset laa paa disken hele tiden: agenten HAVDE fundet filerne med
+# find_files og tabte dem, fordi de naeste tre kald doede paa en errno.
+#
+# Derfor en laeseside. Den er bevidst en OPSUMMERING, ikke en dump: et raat
+# transkript er tusinder af tegn og hoerer ikke hjemme i en samtale.
+
+def list_agents(limit: int = 20) -> list[dict[str, Any]]:
+    """Seneste agenter med transkript, nyeste foerst."""
+    if not AGENT_TRANSCRIPT_DIR.exists():
+        return []
+    mapper = [d for d in AGENT_TRANSCRIPT_DIR.iterdir() if d.is_dir()]
+    mapper.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    ud: list[dict[str, Any]] = []
+    for d in mapper[: max(1, int(limit or 20))]:
+        meta: dict[str, Any] = {}
+        try:
+            meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        ud.append({
+            "agent_id": d.name,
+            "role": str(meta.get("role") or ""),
+            "goal": str(meta.get("goal") or "")[:160],
+            "model": str(meta.get("model") or ""),
+            "sidst": datetime.fromtimestamp(d.stat().st_mtime, timezone.utc).isoformat(),
+        })
+    return ud
+
+
+def read_events(agent_id: str) -> list[dict[str, Any]]:
+    """Alle events for én agent. Tom liste hvis intet transkript."""
+    sti = _agent_dir(str(agent_id or "").strip()) / "transcript.jsonl"
+    if not sti.exists():
+        return []
+    ud: list[dict[str, Any]] = []
+    for linje in sti.read_text(encoding="utf-8", errors="replace").splitlines():
+        linje = linje.strip()
+        if not linje:
+            continue
+        try:
+            ud.append(json.loads(linje))
+        except Exception:
+            continue
+    return ud
+
+
+def summarize(agent_id: str, *, max_arg_chars: int = 120,
+              max_result_chars: int = 200) -> dict[str, Any]:
+    """Hvad gjorde agenten, og hvad kom der ud af det?
+
+    Formen er valgt efter hvad der faktisk skulle bruges under fejlsoegning:
+    raekkefoelgen af kald med deres ARGUMENTER, om hvert kald lykkedes, og
+    resultatet. Det er dér historien staar — «den fandt filerne og tabte dem
+    igen» kan ikke ses uden argumenterne.
+    """
+    events = read_events(agent_id)
+    if not events:
+        return {"status": "error", "reason": "intet transkript", "agent_id": agent_id}
+
+    resultater = {e.get("tool_call_id"): e for e in events
+                  if e.get("kind") == "tool_result"}
+    kald: list[dict[str, Any]] = []
+    fejlede = 0
+    for e in events:
+        if e.get("kind") != "tool_call":
+            continue
+        svar = resultater.get(e.get("tool_call_id")) or {}
+        indhold = str(svar.get("content") or "")
+        gik_galt = '"error"' in indhold or "[no matches]" in indhold
+        fejlede += 1 if gik_galt else 0
+        kald.append({
+            "navn": e.get("name"),
+            "argumenter": json.dumps(e.get("arguments") or {},
+                                     ensure_ascii=False)[:max_arg_chars],
+            "ok": not gik_galt,
+            "svar": " ".join(indhold.split())[:max_result_chars],
+        })
+
+    svar_tekst = ""
+    for e in reversed(events):
+        if e.get("kind") == "result":
+            svar_tekst = str(e.get("content") or e.get("text") or "")
+            break
+    livscyklus = [e.get("event") for e in events if e.get("kind") == "lifecycle"]
+    return {
+        "status": "ok",
+        "agent_id": agent_id,
+        "tool_kald": len(kald),
+        "fejlede_kald": fejlede,
+        "kald": kald,
+        "livscyklus": livscyklus,
+        "resultat": svar_tekst[:1500],
+    }

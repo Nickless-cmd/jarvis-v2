@@ -182,3 +182,27 @@ def test_search_accepterer_en_fil_som_path(tmp_path):
     tekst = r.get("text") or ""
     assert "a.py" in tekst
     assert "b.py" not in tekst, "en fil som path maa ikke soege i naboerne"
+
+
+def test_search_forstaar_alternation_uden_ripgrep(tmp_path, monkeypatch):
+    """Containeren har ingen ripgrep, og grep uden -E er BASIC regex.
+
+    Der er | ( ) ? og + LITERALER, saa ethvert moenster med alternation gav
+    stille «[no matches]» — aldrig en fejl. Maalt paa CT105: agenten soegte
+    efter 'def |class' i en fil fuld af def'er og fik nul.
+    """
+    import subprocess as _sp
+
+    from core.tools import simple_tools_web as w
+    (tmp_path / "a.py").write_text("def en():\n    pass\nclass To:\n    pass\n",
+                                   encoding="utf-8")
+    # Tving grep-vejen, uanset om maskinen har rg.
+    _rigtig = _sp.run
+    monkeypatch.setattr(
+        w.subprocess, "run",
+        lambda argv, **k: (_sp.CompletedProcess(argv, 1, "", "")
+                           if argv[:2] == ["which", "rg"] else _rigtig(argv, **k)),
+    )
+    r = w._exec_search({"pattern": "def |class", "path": str(tmp_path)})
+    assert r.get("status") == "ok", r
+    assert r.get("match_count", 0) >= 2, r

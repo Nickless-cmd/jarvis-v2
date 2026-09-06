@@ -101,6 +101,17 @@ def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
     if not pattern:
         return {"error": "pattern is required", "status": "error"}
 
+    # `path` maa gerne pege paa en FIL. Foer 6/9-2026 blev den brugt raat som
+    # `cwd`, saa et filnavn gav «[Errno 20] Not a directory» — set i en explore-
+    # agents transkript, hvor den proevede tre gange i traek og gav op. At soege
+    # i én fil er en helt naturlig ting at ville, saa nu bliver mappen til cwd
+    # og filnavnet til glob.
+    _sti = Path(search_path).expanduser()
+    if _sti.is_file():
+        if not file_glob:
+            file_glob = _sti.name
+        search_path = str(_sti.parent)
+
     # Prefer ripgrep when present — much faster, smarter defaults
     # (.gitignore aware, binary-skip, type-detection). Fall back to grep
     # so the tool still works on machines without rg installed.

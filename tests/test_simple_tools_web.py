@@ -166,3 +166,19 @@ def test_clip_text_er_bundet_i_modulet():
     """Vaernet mod at importen forsvinder igen."""
     from core.tools import simple_tools_web as w
     assert callable(w._clip_text)
+
+
+def test_search_accepterer_en_fil_som_path(tmp_path):
+    """En explore-agent proevede tre gange med et FILNAVN og gav op.
+
+    `path` blev brugt raat som cwd, saa en fil gav «[Errno 20] Not a
+    directory». At soege i én fil er en naturlig ting at ville.
+    """
+    from core.tools.simple_tools_web import _exec_search
+    (tmp_path / "a.py").write_text("naal = 1\n", encoding="utf-8")
+    (tmp_path / "b.py").write_text("naal = 2\n", encoding="utf-8")
+    r = _exec_search({"pattern": "naal", "path": str(tmp_path / "a.py")})
+    assert r.get("status") == "ok", r
+    tekst = r.get("text") or ""
+    assert "a.py" in tekst
+    assert "b.py" not in tekst, "en fil som path maa ikke soege i naboerne"

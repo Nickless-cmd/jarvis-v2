@@ -290,9 +290,20 @@ def _run_agent_tool_loop(
                 # Per-agent transcript: log tool call + result
                 try:
                     from core.services.agent_transcript import write_tool_call, write_tool_result
+                    # `arguments` er en JSON-STRENG i OpenAI-formatet, ikke en
+                    # dict — den gamle isinstance-test var derfor altid falsk og
+                    # transkriptet gemte {} for hvert eneste kald. Bevis-fladen
+                    # var halvblind netop naar man skulle bruge den: man kunne se
+                    # AT agenten soegte, aldrig efter hvad.
+                    _raw = (tc.get("function") or {}).get("arguments")
+                    if isinstance(_raw, str):
+                        try:
+                            _raw = json.loads(_raw or "{}")
+                        except Exception:
+                            _raw = {"_uparsed": _raw[:400]}
                     write_tool_call(_aid, _tc_id,
                                     name=str((tc.get("function") or {}).get("name") or ""),
-                                    arguments=dict(tc.get("function", {}).get("arguments", {}) if isinstance(tc.get("function", {}).get("arguments"), dict) else {}))
+                                    arguments=_raw if isinstance(_raw, dict) else {})
                     write_tool_result(_aid, _tc_id, str(tool_out or "")[:2000])
                 except Exception:
                     pass

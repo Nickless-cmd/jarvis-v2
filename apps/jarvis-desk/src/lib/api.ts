@@ -47,6 +47,37 @@ interface FetchOptions {
   signal?: AbortSignal
 }
 
+/**
+ * Serverens EGEN forklaring på en fejl — ikke et statustal, og ikke rå JSON.
+ *
+ * FastAPI svarer `{"detail": "..."}`. Før viste vi `HTTP 409: {"detail":"…"}`,
+ * altså sætningen pakket i krøllede parenteser. Set live på mobilen 6/9-2026:
+ * en godkendelse afvist som «stale and must be recreated» nåede brugeren som
+ * et tal. Serveren forklarer præcist hvad der er galt — det skal frem.
+ *
+ * Kaster aldrig: kan kroppen ikke læses eller er den ikke JSON, rækker koden.
+ */
+export async function serverForklaring(res: Response): Promise<string> {
+  let raw = ''
+  try {
+    raw = await res.text()
+  } catch {
+    return `HTTP ${res.status}`
+  }
+  try {
+    const body = JSON.parse(raw) as { detail?: unknown; error?: unknown }
+    const d = body?.detail ?? body?.error
+    if (typeof d === 'string' && d.trim()) return d.trim()
+    if (Array.isArray(d) && d.length > 0) {
+      return String((d[0] as { msg?: string })?.msg ?? d[0])
+    }
+  } catch {
+    // ikke JSON — vis den rå tekst hvis der er noget brugbart
+  }
+  const t = raw.trim()
+  return t ? `HTTP ${res.status}: ${t.slice(0, 200)}` : `HTTP ${res.status}`
+}
+
 export async function apiFetch<T>(
   config: ApiConfig,
   path: string,
@@ -105,8 +136,7 @@ export async function apiFetch<T>(
         })
       }
       if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new StreamError('unknown', `HTTP ${res.status}: ${text.slice(0, 200)}`, {
+        throw new StreamError('unknown', await serverForklaring(res), {
           retryable: false,
           statusCode: res.status,
         })
@@ -280,7 +310,7 @@ export async function uploadAttachment(
   const headers: Record<string, string> = {}
   if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
   const res = await fetch(url, { method: 'POST', headers, body: form })
-  if (!res.ok) throw new StreamError('unknown', `Upload fejlede: HTTP ${res.status}`, { retryable: false })
+  if (!res.ok) throw new StreamError('unknown', `Upload fejlede: ${await serverForklaring(res)}`, { retryable: false })
   return res.json() as Promise<{ id: string; filename?: string; mime_type?: string }>
 }
 
@@ -296,7 +326,7 @@ export async function transcribeAudio(
   const headers: Record<string, string> = {}
   if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
   const res = await fetch(url, { method: 'POST', headers, body: form })
-  if (!res.ok) throw new StreamError('unknown', `Transskription fejlede: HTTP ${res.status}`, { retryable: false })
+  if (!res.ok) throw new StreamError('unknown', `Transskription fejlede: ${await serverForklaring(res)}`, { retryable: false })
   return res.json() as Promise<{ status: string; text: string; language?: string; error?: string }>
 }
 
@@ -314,7 +344,7 @@ export async function synthesizeTts(
     headers,
     body: JSON.stringify({ text, provider: opts?.provider ?? 'auto' }),
   })
-  if (!res.ok) throw new StreamError('unknown', `TTS fejlede: HTTP ${res.status}`, { retryable: false })
+  if (!res.ok) throw new StreamError('unknown', `TTS fejlede: ${await serverForklaring(res)}`, { retryable: false })
   const provider = res.headers.get('X-TTS-Provider') || 'unknown'
   return { blob: await res.blob(), provider }
 }
@@ -343,7 +373,7 @@ export async function fetchImageObjectUrl(
   const headers: Record<string, string> = {}
   if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
   const res = await fetch(url, { headers })
-  if (!res.ok) throw new StreamError('unknown', `Billede fejlede: HTTP ${res.status}`, { retryable: false })
+  if (!res.ok) throw new StreamError('unknown', `Billede fejlede: ${await serverForklaring(res)}`, { retryable: false })
   return URL.createObjectURL(await res.blob())
 }
 

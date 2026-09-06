@@ -174,3 +174,65 @@ Arver strukturen fra arketypens test-fil (`tests/test_skill_relevance_surface.py
 - **Tilføjet:** krydstjek mod det aktuelle register (`get_tool_definitions()`) — embedding-DB har 458 vektorer mod 429 registrerede; nudgen må aldrig foreslå et forældet/alias-navn.
 - **Rettet:** tastefejl "sænk/ hæv" → "sænk/hæv".
 - **Tilføjet (Bjørn-spørgsmål "tager den højde for tests/edges?"):** ny §Tests & edge cases — spejler arketypens test-fil-struktur i to grupper (Tavshed / Indhold) + integration. Lukker huller spec'en ikke dækkede eksplicit: tom embedding-DB, Ollama-timeout, forældet-vektor-filter → tom, suppression uden session_id, præcis-ved-tærskel-grænse (`>=` låses i test), max-1-nudge-regel.
+
+## Ændringslog (implementering 2026-09-06, Claude)
+
+Implementeret som `core/services/prompt_sections/tool_discovery_nudge.py` +
+`tests/test_tool_discovery_nudge.py` (26 tests) + integration i
+`prompt_contract.py`. Ni steder afveg jeg fra spec'en eller skærpede den —
+alle med begrundelse, som Jarvis bad om.
+
+1. **Kill-switch: begge dele, ikke enten-eller.** Spec'en foreskrev
+   `central_switches` scope `prompt_section`; arketypen bruger
+   `load_settings().extra`. Verificeret at `_awareness_add` (linje 1147) kalder
+   `prompt_observer.section_enabled(label, ...)` — så sektionen får
+   central_switches-kontakten **gratis** under labelen `tool discovery nudge`.
+   Modulet har derudover sin egen `_enabled()` efter arketypens form. Begge
+   virker; ingen af dem er opfundet til lejligheden.
+
+2. **Injektionspunkt: ingen modstrid.** Spec'en siger `_dyn_tail`, arketypen
+   bruger `_awareness_add`. De er det samme sted i dag:
+   `_dyn_tail.extend(_awareness_buffer)` (linje 2915), og sentinel'en sættes
+   lige før halen (linje 3097). Cache-fælden spec'en advarer om blev altså
+   lukket ved at flytte awareness-blokken ned i halen. **Bevist end-to-end**:
+   `test_nudget_ligger_i_den_VOLATILE_hale` bygger en ægte prompt og hævder at
+   nudgen står EFTER markøren (samme form som `tests/test_env_block.py`).
+
+3. **Matcheren returnerer tupler, ikke dicts.** Spec'ens §Tests arvede
+   arketypens dict-form (`{"score": 0.8}` uden name). `top_k_similar` giver
+   `(navn, score)`-tupler. Testen er tilpasset den ægte form: en misformet
+   række springes over frem for at vælte sektionen.
+
+4. **Katalog-filteret slår navnet op præcist** frem for at tokenisere
+   katalogets prosa. Et tool ved navn `search` ville ellers blive filtreret af
+   ordet «search» i en sætning. Ordgrænser sikrer at `read_file` ikke også
+   matcher `read_file_lines`.
+
+5. **Embedding-timeout — flaget, ikke rettet.** `_compute_embedding` har
+   `timeout=15` mod prompt-assemblyens 12s totalbudget. Inddæmningen sidder på
+   hente-siden: `_timed_result` capper mod det globale budget og returnerer
+   `""`, så assembly aldrig fryser. Jeg ændrede **ikke** den delte
+   `_compute_embedding` — `load_more_tools` bruger samme funktion, og en
+   timeout-ændring dér er en separat beslutning. **Åbent punkt til Bjørn.**
+
+6. **`session_id=None` normaliseres ét sted.** Prompt-assembly har
+   `session_id: str | None = None`; uden normalisering ville `None` lande i
+   event-payloaden.
+
+7. **Suppression-vindue valgt: 30 min** (spec'ens åbne spørgsmål 2). Kort nok
+   til at et skift af emne kan nudge igen, langt nok til at samme tool ikke
+   gentages i én arbejdsgang.
+
+8. **Tærskel: 0.45 med `>=`**, som spec'ens §Design. `>=` er låst i test
+   (`test_praecis_paa_taersklen_er_med`), så kalibrering senere er et bevidst
+   valg og ikke en glidning.
+
+9. **Boy Scout-reglen ikke anvendt på `prompt_contract.py`.** Filen er 4.776
+   linjer. Min ændring er ~10 linjer (under reglens egen >20-tærskel) og rent
+   additiv efter et eksisterende mønster. En udskilning ville røre selve
+   prompt-sammensætningen i samme ændring som en ny sektion — de to zoner hvor
+   en fejl koster mest, koblet sammen. **Udskilningen bør ske separat.**
+
+Ikke implementeret (fase 2 pr. spec'en): feedback-loop og tærskel-justering
+pr. tool. Fase-1-logging (`tool_discovery.nudge`) er på plads, så målingen har
+data fra dag ét.

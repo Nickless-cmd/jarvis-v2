@@ -796,6 +796,15 @@ def _build_visible_chat_prompt_assembly_impl(
     future_skill_relevance = _measured_submit(
         "skill_relevance", relevant_skills_section, user_message,
     )
+    # Tool-discovery-nudgen er skill_relevance for TOOLS: 429 registrerede,
+    # 328 aldrig brugt, fordi kataloget kun viser kerne-grupperne i klartekst.
+    # Samme embedding-pris (~ét ollama-kald), så samme sted i puljen.
+    from core.services.prompt_sections.tool_discovery_nudge import (
+        tool_discovery_nudge_section,
+    )
+    future_tool_discovery = _measured_submit(
+        "tool_discovery_nudge", tool_discovery_nudge_section, user_message, session_id,
+    )
     future_self_state = _measured_submit("self_state", _safe_build_self_state_block)
     future_frame = _measured_submit("frame", frame_fn)
     future_self_report = _measured_submit(
@@ -1619,6 +1628,13 @@ def _build_visible_chat_prompt_assembly_impl(
         )
     except Exception as _e:
         _sec_err("relevant skills", _e)
+    try:
+        _awareness_add(
+            21, "tool discovery nudge",
+            _timed_result(future_tool_discovery, "tool_discovery_nudge", default=""),
+        )
+    except Exception as _e:
+        _sec_err("tool discovery nudge", _e)
     try:
         from core.services.decision_adherence_gate import decision_adherence_section
         _awareness_add(25, "decision adherence gate", decision_adherence_section())

@@ -91,8 +91,8 @@ _Session-level context compaction._
 |---|---|---|---|---|
 | class | `CompactResult` | `` | — | [src](../../../core/context/session_compact.py#L18) |
 | function | `compact_session_history` | `(session_id, *, keep_recent=…, keep_recent_tokens=…, summarise_fn, git_sha=…)` | Compact old session history for session_id. | [src](../../../core/context/session_compact.py#L25) |
-| function | `_get_all_session_messages` | `(session_id)` | — | [src](../../../core/context/session_compact.py#L146) |
-| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L151) |
+| function | `_get_all_session_messages` | `(session_id)` | — | [src](../../../core/context/session_compact.py#L163) |
+| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L168) |
 
 ## `core/context/token_estimate.py`
 _Token estimation utilities — heuristic only, no tokenizer required._

@@ -147,12 +147,10 @@ class TestKoblingen:
         """Erklæringen må ikke love mere end koden gør."""
         assert lh.WIRED_EVENTS <= set(lh.HOOK_EVENTS)
 
-    def test_de_endnu_ikke_koblede_er_IKKE_erklaeret(self):
-        """Vagten der holder erklæringen ærlig. En hændelse der svarer «block»
-        og bliver ignoreret ville være værre end ingen hook — den ser ud til at
-        virke. Listen krymper efterhånden som hver enkelt kan HONORERES."""
-        for e in ("SessionEnd", "PreCompact", "SubagentStop", "Notification"):
-            assert e not in lh.WIRED_EVENTS
+    def test_alle_ni_er_koblet(self):
+        """Vagten er nu vendt: hver af de ni skal være koblet ET sted hvor dens
+        dom kan honoreres. Falder en ud, skal det opdages."""
+        assert lh.WIRED_EVENTS == set(lh.HOOK_EVENTS)
 
     def test_koden_kalder_faktisk_fire_for_den(self):
         """Erklæringen alene er ikke nok — dagens dyreste lære er kode der ser
@@ -316,3 +314,54 @@ def test_stop_begraensningen_er_dokumenteret():
     kilde = inspect.getsource(lh)
     assert "VIGTIG BEGRAENSNING" in kilde
     assert "agentiske loop" in kilde
+
+
+class TestDeSidsteFire:
+    """Hver koblet dér hvor dommen KAN honoreres — ikke bare hvor hændelsen sker."""
+
+    def _kilde(self, sti):
+        import pathlib
+        return pathlib.Path(sti).read_text()
+
+    def test_precompact_kan_afvise_compaction(self):
+        """Bagefter er beskederne væk; en hook der «blokerede» dér ville have
+        blokeret ingenting."""
+        k = self._kilde("core/context/session_compact.py")
+        assert '"PreCompact"' in k
+        assert k.index('"PreCompact"') < k.index("keep_recent_tokens is not None") \
+            if "keep_recent_tokens is not None" in k else True
+        assert "return None" in k[k.index('"PreCompact"'):k.index('"PreCompact"') + 900]
+
+    def test_sessionend_kan_afvise_sletning(self):
+        k = self._kilde("core/services/chat_sessions.py")
+        afsnit = k[k.index("def delete_chat_session"):]
+        assert '"SessionEnd"' in afsnit[:1200]
+        assert "return False" in afsnit[:1200]
+
+    def test_notification_kan_stoppe_en_besked(self):
+        """Bagefter er den ude af huset og kan ikke kaldes tilbage."""
+        k = self._kilde("core/services/ntfy_gateway.py")
+        afsnit = k[k.index('"Notification"'):]
+        assert '"status": "blocked"' in afsnit[:900]
+
+    def test_notification_hooken_fyrer_FOER_afsendelse(self):
+        k = self._kilde("core/services/ntfy_gateway.py")
+        assert k.index('"Notification"') < k.index("cfg = _load_config()")
+
+    def test_subagentstop_er_markeret_observationel(self):
+        """Agenten ER færdig når vi når hertil — der er intet at blokere."""
+        assert "SubagentStop" in lh.OBSERVATIONAL_EVENTS
+
+    def test_en_dom_paa_en_observationel_haendelse_siges_HOEJT(
+            self, tmp_path, monkeypatch, caplog):
+        """Tavshed her ville være samme fejl som resten af systemet har lidt af:
+        noget der ser ud til at virke og ikke gør."""
+        monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+        (tmp_path / "config").mkdir()
+        (tmp_path / "config" / "hooks.json").write_text(json.dumps({
+            "hooks": {"SubagentStop": [
+                {"type": "command", "command": "echo nej; exit 2"}]}}))
+        import logging
+        with caplog.at_level(logging.WARNING):
+            lh.fire("SubagentStop", {})
+        assert any("observationel" in r.message for r in caplog.records)

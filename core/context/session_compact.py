@@ -48,6 +48,23 @@ def compact_session_history(
     Lag D: On entry, attempts to resolve any stale/unresolved compact markers
     for this session. This is the boot-time self-healing hook.
     """
+
+    # ── PreCompact-hook ──────────────────────────────────────────────────
+    # Foer historikken klippes: `block` betyder lad vaere. Det er den eneste
+    # dom der giver mening — bagefter er beskederne vaek, og en hook der
+    # «blokerede» ville have blokeret ingenting.
+    try:
+        from core.services import lifecycle_hooks as _lh
+        if "PreCompact" in _lh.WIRED_EVENTS and _lh.hooks_for("PreCompact"):
+            _d = _lh.fire("PreCompact", {"session_id": str(session_id or ""),
+                                         "keep_recent": int(keep_recent or 0)})
+            if _d.get("action") == "block":
+                _log_pc = __import__("logging").getLogger(__name__)
+                _log_pc.info("PreCompact blokeret af hook: %s",
+                             str(_d.get("message") or "")[:120])
+                return None
+    except Exception:
+        pass
     # Lag D: self-heal stale markers before compacting
     try:
         from core.context.compact_ground_truth import resolve_stale_markers_on_load

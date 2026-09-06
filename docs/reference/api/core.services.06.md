@@ -372,12 +372,12 @@ _Kanal-plugin inbound-routing (spec §5.2/§5.3, Fase 5 Lag 1)._
 | function | `recent_chat_tool_messages` | `(session_id, *, limit=…)` | — | [src](../../../core/services/chat_sessions.py#L859) |
 | function | `rename_chat_session` | `(session_id, *, title)` | — | [src](../../../core/services/chat_sessions.py#L884) |
 | function | `delete_chat_session` | `(session_id)` | — | [src](../../../core/services/chat_sessions.py#L898) |
-| function | `_session_summary` | `(row)` | — | [src](../../../core/services/chat_sessions.py#L908) |
-| function | `_normalize_title` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L920) |
-| function | `_preview_text` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L927) |
-| function | `_time_label` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L934) |
-| function | `parse_channel_from_session_title` | `(title)` | Parse channel type and detail from a session title. | [src](../../../core/services/chat_sessions.py#L942) |
-| function | `get_session_owner` | `(session_id)` | Ejeren = user_id paa den seneste besked i sessionen der HAR et stempel. | [src](../../../core/services/chat_sessions.py#L972) |
+| function | `_session_summary` | `(row)` | — | [src](../../../core/services/chat_sessions.py#L920) |
+| function | `_normalize_title` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L932) |
+| function | `_preview_text` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L939) |
+| function | `_time_label` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L946) |
+| function | `parse_channel_from_session_title` | `(title)` | Parse channel type and detail from a session title. | [src](../../../core/services/chat_sessions.py#L954) |
+| function | `get_session_owner` | `(session_id)` | Ejeren = user_id paa den seneste besked i sessionen der HAR et stempel. | [src](../../../core/services/chat_sessions.py#L984) |
 
 ## `core/services/cheap_lane_balancer.py`
 _Cheap Lane Balancer — weighted-random load balancing for daemon LLM calls._

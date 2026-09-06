@@ -62,10 +62,22 @@ HOOK_EVENTS: tuple[str, ...] = (
 # `SessionStart` fyrer paa sessionens foerste tur; kun `inject` honoreres, for
 # at naegte en hel session ved dens foerste ord er en stoerre magt end en hook
 # boer have.
-WIRED_EVENTS: frozenset[str] = frozenset(
-    {"UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "SessionStart"})
+# Alle ni er koblet. Hver enkelt dér hvor dens dom KAN honoreres:
+#   PreCompact    foer historikken klippes   → block = lad vaere at compacte
+#   SessionEnd    foer en session slettes    → block = lad vaere at slette
+#   Notification  foer en besked sendes      → block = send den ikke
+#   SubagentStop  naar en agent er faerdig   → OBSERVATIONEL (se ovenfor)
+WIRED_EVENTS: frozenset[str] = frozenset({
+    "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "SessionStart",
+    "PreCompact", "SessionEnd", "Notification", "SubagentStop",
+})
 
 _log = logging.getLogger(__name__)
+
+# Haendelser hvor der IKKE er noget at honorere: naar de fyrer, er handlingen
+# allerede sket. En hook maa gerne lytte, men en `block` her kan ikke tages
+# alvorligt — og saa skal forfatteren VIDE det frem for at tro at den virkede.
+OBSERVATIONAL_EVENTS: frozenset[str] = frozenset({"SubagentStop"})
 
 _ALLOW: dict[str, Any] = {"action": "allow", "message": "", "context": None}
 
@@ -291,7 +303,9 @@ async def fire_async(event: str, context: dict[str, Any],
                     await _run_command_hook_async(h, context, user_id=user_id))
             else:
                 resultater.append(run_hook(event, h, context, user_id=user_id))
-        return decide(resultater)
+        dom = decide(resultater)
+        _advar_om_uvirksom_dom(event, dom)
+        return dom
     except Exception:
         return _allow()
 
@@ -315,6 +329,19 @@ def run_hook(event: str, hook: dict[str, Any], context: dict[str, Any],
         return _allow()
 
 
+def _advar_om_uvirksom_dom(event: str, dom: dict[str, Any]) -> None:
+    """Sig det hoejt naar en hook doemmer paa en haendelse der ikke kan handle.
+
+    Tavshed her ville vaere praecis den fejl resten af systemet har lidt af:
+    noget der ser ud til at virke og ikke goer. Bedre at forfatteren faar en
+    linje i loggen end at tro at hans «block» stoppede noget.
+    """
+    if event in OBSERVATIONAL_EVENTS and dom.get("action") in ("block", "inject"):
+        _log.warning(
+            "hook: %s er observationel — dommen «%s» har ingen virkning",
+            event, dom.get("action"))
+
+
 def fire(event: str, context: dict[str, Any], user_id: str = "") -> dict[str, Any]:
     """Fyr alle hooks for en haendelse og saml dommen. Self-safe → allow.
 
@@ -325,7 +352,9 @@ def fire(event: str, context: dict[str, Any], user_id: str = "") -> dict[str, An
         konfigurerede = hooks_for(event)
         if not konfigurerede:
             return _allow()
-        return decide([run_hook(event, h, context, user_id=user_id)
-                       for h in konfigurerede])
+        dom = decide([run_hook(event, h, context, user_id=user_id)
+                      for h in konfigurerede])
+        _advar_om_uvirksom_dom(event, dom)
+        return dom
     except Exception:
         return _allow()

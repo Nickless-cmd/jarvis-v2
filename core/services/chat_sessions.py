@@ -896,6 +896,18 @@ def rename_chat_session(session_id: str, *, title: str) -> dict[str, object] | N
 
 
 def delete_chat_session(session_id: str) -> bool:
+    # ── SessionEnd-hook ──────────────────────────────────────────────────
+    # Foer sletningen: `block` betyder behold sessionen. Bagefter findes den
+    # ikke, saa det er her dommen kan gaelde.
+    try:
+        from core.services import lifecycle_hooks as _lh_se
+        if "SessionEnd" in _lh_se.WIRED_EVENTS and _lh_se.hooks_for("SessionEnd"):
+            _d = _lh_se.fire("SessionEnd", {"session_id": str(session_id or "")})
+            if _d.get("action") == "block":
+                return False
+    except Exception:
+        pass
+
     normalized = (session_id or "").strip()
     if not normalized:
         return False

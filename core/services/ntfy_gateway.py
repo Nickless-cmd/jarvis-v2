@@ -49,6 +49,25 @@ def send_notification(
     priority: min / low / default / high / urgent
     tags: ntfy emoji tags e.g. ["robot", "bell"]
     """
+    # ── Notification-hook ────────────────────────────────────────────────
+    # Foer beskeden sendes: `block` betyder send den ikke. Bagefter er den ude
+    # af huset og kan ikke kaldes tilbage — det er her dommen kan gaelde.
+    # `inject` haefter tekst paa, saa en hook kan tilfoeje kontekst til det der
+    # naar telefonen.
+    try:
+        from core.services import lifecycle_hooks as _lh_n
+        if "Notification" in _lh_n.WIRED_EVENTS and _lh_n.hooks_for("Notification"):
+            _d = _lh_n.fire("Notification", {
+                "message": str(message or "")[:2000],
+                "title": str(title or ""), "priority": str(priority or "")})
+            if _d.get("action") == "block":
+                return {"status": "blocked",
+                        "reason": str(_d.get("message") or "blokeret af hook")}
+            if _d.get("action") == "inject" and _d.get("message"):
+                message = f"{message}\n\n{_d['message']}"
+    except Exception:
+        pass
+
     cfg = _load_config()
     if not cfg:
         return {"status": "error", "reason": "ntfy-not-configured"}

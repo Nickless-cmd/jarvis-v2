@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { QrScanScreen } from './QrScanScreen'
 import { DataControlsScreen } from './DataControlsScreen'
 import { MemoryScreen } from './MemoryScreen'
+import { SensorPrivacyScreen } from './SensorPrivacyScreen'
 import {
   getAccountMe,
   googleLinkStart,
@@ -23,6 +24,10 @@ import { bubble } from '../lib/bubbleModule'
 import { loadBubblePersist, saveBubblePersist } from '../lib/bubbleSetting'
 import { loadPrecision, precisionLabel, savePrecision, type LocationPrecision } from '../lib/location'
 import { loadBatterySaver, saveBatterySaver } from '../lib/batteryPrefs'
+import { loadCameraPrefs } from '../lib/cameraPrefs'
+import { getOrCreateDeviceIdentity } from '../lib/deviceIdentity'
+import { sensorRowsFromState } from '../lib/sensorPrivacy'
+import { summarizeDevices, type DevicePresenceRow } from '../lib/devicePresenceView'
 import { NotificationsSection } from '../components/NotificationsSection'
 import { AppearanceSection } from '../components/AppearanceSection'
 
@@ -57,6 +62,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const { config, signOut, signInWithToken } = useAuth()
   const [dataOpen, setDataOpen] = useState(false)
   const [memoryOpen, setMemoryOpen] = useState(false)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
   const connectivity = useConnectivity(config ?? null)
   const [qrOpen, setQrOpen] = useState(false)
   const insets = useSafeAreaInsets()
@@ -72,10 +78,15 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const [bubbleOk, setBubbleOk] = useState(false)
   const [locPrecision, setLocPrecision] = useState<LocationPrecision>('off')
   const [batterySaver, setBatterySaver] = useState(false)
+  const [cameraShutterSound, setCameraShutterSound] = useState(true)
+  const [deviceRows, setDeviceRows] = useState<DevicePresenceRow[]>([])
+  const [currentDeviceName, setCurrentDeviceName] = useState('')
+  const [routeTargetName, setRouteTargetName] = useState('')
   useEffect(() => { void bubble.isSupported().then(setBubbleOk) }, [])
   useEffect(() => { void loadBubblePersist().then(setPersistBubble) }, [])
   useEffect(() => { void loadPrecision().then(setLocPrecision) }, [])
   useEffect(() => { void loadBatterySaver().then(setBatterySaver) }, [])
+  useEffect(() => { void loadCameraPrefs().then((prefs) => setCameraShutterSound(prefs.shutterSound)) }, [])
 
   useEffect(() => {
     if (!config) return
@@ -115,6 +126,11 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
     if (!config) { setPresenceDiagnostic('Ikke forbundet'); return }
     try {
       const snap = await getPresenceDebug(config)
+      const identity = await getOrCreateDeviceIdentity()
+      const deviceSummary = summarizeDevices(snap, identity.deviceId)
+      setDeviceRows(deviceSummary.rows)
+      setCurrentDeviceName(deviceSummary.current?.label ?? identity.deviceName)
+      setRouteTargetName(deviceSummary.routeTarget?.label ?? '')
       const first = snap.devices?.[0]
       const ranked = snap.ranked?.[0]
       setPresenceDiagnostic([
@@ -182,6 +198,35 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
             <Text style={styles.identityMail}>{profile.email}</Text>
           ) : null}
         </View>
+
+        <Text style={styles.sectionTitle}>Enheder</Text>
+        <View style={styles.card}>
+          <Text style={styles.value}>Denne enhed: {currentDeviceName || 'Ikke hentet endnu'}</Text>
+          <Text style={styles.muted}>
+            {routeTargetName ? `Jarvis router lige nu til ${routeTargetName}.` : 'Kør testen for at se hvilken enhed Jarvis vælger.'}
+          </Text>
+          {deviceRows.slice(0, 3).map((row) => (
+            <Text key={row.key} style={styles.deviceLine}>
+              {row.current ? '• ' : ''}{row.label}{row.routeTarget ? ' → valgt' : ''} · {row.detail}
+            </Text>
+          ))}
+          <Pressable accessibilityRole="button" onPress={checkPresence} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Opdater enheder</Text>
+          </Pressable>
+        </View>
+
+        <Text style={styles.sectionTitle}>Sanser & privatliv</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setPrivacyOpen(true)}
+          style={({ pressed }) => [styles.card, styles.rowCard, pressed && styles.pressedRow]}
+        >
+          <View style={styles.rowText}>
+            <Text style={styles.rowLabel}>Sensor-dashboard</Text>
+            <Text style={styles.muted}>Kamera, mikrofon, lokation, baggrund, boble og batteri samlet.</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
 
         <Text style={styles.sectionTitle}>Konto</Text>
         <View style={styles.card}>
@@ -385,6 +430,19 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
         />
       </Modal>
 
+      <Modal visible={privacyOpen} animationType="slide" onRequestClose={() => setPrivacyOpen(false)}>
+        <SensorPrivacyScreen
+          onClose={() => setPrivacyOpen(false)}
+          rows={sensorRowsFromState({
+            cameraShutterSound,
+            locationPrecision: locPrecision,
+            batterySaver,
+            bubbleEnabled: persistBubble,
+            microphoneAvailable: true
+          })}
+        />
+      </Modal>
+
       <Modal visible={qrOpen} animationType="slide" onRequestClose={() => setQrOpen(false)}>
         <QrScanScreen
           onClose={() => setQrOpen(false)}
@@ -469,6 +527,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   connBad: { color: tokens.color.error },
   connWarn: { color: tokens.color.warn },
   muted: { color: tokens.color.fg3 },
+  deviceLine: { color: tokens.color.fg2, fontSize: 13, lineHeight: 19, marginTop: tokens.spacing.sm },
   loader: { paddingVertical: tokens.spacing.sm },
   connectorRow: {
     flexDirection: 'row',

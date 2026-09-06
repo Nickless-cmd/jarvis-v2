@@ -20,9 +20,13 @@ def _grundtilstand(monkeypatch):
     monkeypatch.setattr(T, "_enabled", lambda: True)
     monkeypatch.setattr(T, "_er_prewarm", lambda sid: False)
     monkeypatch.setattr(T, "_katalog_tekst", lambda: "read_file, write_file, bash")
+    # Registret giver nu navn → beskrivelse, saa lag 1 (internt maskineri) kan
+    # doemme paa beskrivelsen frem for paa en navneliste.
     monkeypatch.setattr(
         T, "_registrerede_navne",
-        lambda: {"calendar_create_event", "read_file", "write_file", "bash"},
+        lambda: {"calendar_create_event": "Opret en begivenhed i brugerens kalender",
+                 "read_file": "Læs en fil", "write_file": "Skriv en fil",
+                 "bash": "Kør en kommando"},
     )
     monkeypatch.setattr(T, "_undertrykt", lambda sid, navn: False)
     monkeypatch.setattr(T, "_husk_nudge", lambda sid, navn: None)
@@ -103,7 +107,7 @@ def test_tool_der_allerede_staar_i_kataloget_nudges_ikke(monkeypatch):
 
 def test_uden_register_foreslaar_vi_ingenting(monkeypatch):
     """Kan vi ikke krydstjekke, er tavshed det sikre."""
-    monkeypatch.setattr(T, "_registrerede_navne", lambda: set())
+    monkeypatch.setattr(T, "_registrerede_navne", lambda: {})
     _stub(monkeypatch, [("calendar_create_event", 0.93)])
     assert T.tool_discovery_nudge_section(BESKED) == ""
 
@@ -147,7 +151,8 @@ def test_kun_eet_nudge_selv_med_fire_staerke_matches(monkeypatch):
     ])
     monkeypatch.setattr(
         T, "_registrerede_navne",
-        lambda: {"calendar_create_event", "mail_send", "drive_upload", "contacts_lookup"},
+        lambda: {n: "Gør noget for brugeren"
+                 for n in ("calendar_create_event", "mail_send", "drive_upload", "contacts_lookup")},
     )
     ud = T.tool_discovery_nudge_section(BESKED)
     assert ud.count("load_more_tools") == 1
@@ -157,7 +162,8 @@ def test_kun_eet_nudge_selv_med_fire_staerke_matches(monkeypatch):
 
 def test_naestbedste_bruges_naar_det_bedste_er_undertrykt(monkeypatch):
     monkeypatch.setattr(T, "_undertrykt", lambda sid, navn: navn == "calendar_create_event")
-    monkeypatch.setattr(T, "_registrerede_navne", lambda: {"calendar_create_event", "mail_send"})
+    monkeypatch.setattr(T, "_registrerede_navne",
+                        lambda: {"calendar_create_event": "kalender", "mail_send": "mail"})
     _stub(monkeypatch, [("calendar_create_event", 0.93), ("mail_send", 0.88)])
     assert "mail_send" in T.tool_discovery_nudge_section(BESKED, "s1")
 
@@ -168,7 +174,8 @@ def test_manglende_session_id_giver_stadig_et_nudge(monkeypatch):
     monkeypatch.setattr(T, "_enabled", lambda: True)
     monkeypatch.setattr(T, "_er_prewarm", lambda sid: False)
     monkeypatch.setattr(T, "_katalog_tekst", lambda: "")
-    monkeypatch.setattr(T, "_registrerede_navne", lambda: {"calendar_create_event"})
+    monkeypatch.setattr(T, "_registrerede_navne",
+                        lambda: {"calendar_create_event": "Opret begivenhed i brugerens kalender"})
     monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: None)
     _stub(monkeypatch, [("calendar_create_event", 0.91)])
     assert "calendar_create_event" in T.tool_discovery_nudge_section(BESKED, "")
@@ -234,7 +241,8 @@ def test_nudget_ligger_i_den_VOLATILE_hale(monkeypatch):
     monkeypatch.setattr(T, "_enabled", lambda: True)
     monkeypatch.setattr(T, "_er_prewarm", lambda sid: False)
     monkeypatch.setattr(T, "_katalog_tekst", lambda: "")
-    monkeypatch.setattr(T, "_registrerede_navne", lambda: {"calendar_create_event"})
+    monkeypatch.setattr(T, "_registrerede_navne",
+                        lambda: {"calendar_create_event": "Opret begivenhed i brugerens kalender"})
     monkeypatch.setattr(T, "_undertrykt", lambda sid, navn: False)
     monkeypatch.setattr(T, "_husk_nudge", lambda sid, navn: None)
     monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: None)
@@ -330,3 +338,122 @@ def test_opslaget_gaar_gennem_sprog_broen(monkeypatch):
     )
     T._matches("kan du lægge et møde ind i min kalender")
     assert set_query == ["kan du lægge et meeting ind i min calendar"]
+
+
+# ---------------------------------------------------------------------------
+# Regression mod de FAKTISKE falske positiver (målt på 60 ægte beskeder 6/9)
+# ---------------------------------------------------------------------------
+
+# De otte nudges ved tærskel 0,75, dømt enkeltvis. 3 ægte, 5 støj.
+# (besked, foreslået tool, tool-beskrivelse, skal_nudge)
+MAALTE_OTTE = [
+    # ÆGTE streng med slåfejlen. Min første version skrev «Hent» og bestod
+    # derfor på en besked der ikke fandtes — testen var venligere end verden.
+    ("Hebt lige git log", "git_log",
+     "Show recent git commit history for the Jarvis v2 repo.", True),
+    ("Forresten. Dit agent explore tool og skillgate jeg snakkede om",
+     "propose_new_skill",
+     "Foreslå en ny skill du selv mener du har brug for. Værktøjet validerer navn+content.",
+     True),
+    ("men du skal huske jeg arbejder mest i code mode så du skal skifte",
+     "request_app_action",
+     "Bed jarvis-desk-appen om at skifte tilstand når mode eller permission ikke rækker.",
+     True),
+    # ── støjen ──
+    ("Tak. Det var så vores første samtale.", "note_list",
+     "List brugerens huskesedler (nyeste først).", False),
+    ("skriv din besked til claude her så giver jeg den videre", "nudge_send",
+     "Send en pending nudge til brugeren. Efter inspektion af brønden, brug denne.", False),
+    ("Research mode: answer with sourced findings where possible", "resolve_prediction",
+     "Marker en åben prediction som supported, contradicted, eller uncertain.", False),
+    # Samme selvmodel-familie — dukkede op som næstbedste da resolve_prediction
+    # blev filtreret, og skal fanges af samme lag.
+    ("Research mode: answer with sourced findings where possible", "register_hypothesis",
+     "Promovér en hypotese-kandidat fra et meta-læringsmemo til en aktiv hypotese.", False),
+    ("Tak for i dag", "note_list", "List brugerens huskesedler.", False),
+    ("Perfekt, det var lige det", "note_add", "Tilføj en huskeseddel for brugeren.", False),
+]
+
+
+@pytest.mark.parametrize("besked,tool,beskrivelse,skal", MAALTE_OTTE)
+def test_intent_filteret_paa_de_faktisk_maalte_tilfaelde(
+    monkeypatch, besked, tool, beskrivelse, skal,
+):
+    """Broen løste sproget; disse otte er hvad der var TILBAGE bagefter.
+
+    5 af 8 var falske positive. Hvert lag skal dræbe sin klasse: internt
+    maskineri (nudge_send, resolve_prediction), social tur (note_list på en
+    tak), og manglende handleverbum (resolve_prediction på «Research mode»).
+    """
+    monkeypatch.setattr(T, "_registrerede_navne", lambda: {tool: beskrivelse})
+    monkeypatch.setattr(T, "_katalog_tekst", lambda: "")
+    _stub(monkeypatch, [(tool, 0.79)])
+    ud = T.tool_discovery_nudge_section(besked, "s-regression")
+    if skal:
+        assert tool in ud, f"det ÆGTE træf {tool} blev filtreret væk"
+    else:
+        assert ud == "", f"støjen {tool} slap igennem på «{besked[:40]}»"
+
+
+def test_verbum_porten_er_IKKE_i_brug_som_gate():
+    """Målt på de samme 60 beskeder fjernede den mere signal end støj.
+
+        lag 1+2   → 6 nudges, heraf git_log og propose_new_skill (ægte)
+        + lag 3   → 2 nudges — begge ægte røg, kun én støj fulgte med
+
+    «Hebt lige git log» er grunden: ægte sprog har slåfejl. Listen lever videre
+    som lag 2's undtagelse, men må ikke genindføres som port.
+    """
+    import inspect
+    kilde = inspect.getsource(T.tool_discovery_nudge_section)
+    assert "_er_social(besked)" in kilde
+    assert "not _har_handleverbum(besked)" not in kilde
+
+
+# ---------------------------------------------------------------------------
+# Skygge: mål uden at røre prompten
+# ---------------------------------------------------------------------------
+
+
+def test_skyggen_logger_men_injicerer_ikke(monkeypatch):
+    """Default-OFF uden skygge er en blindgyde: så kommer der aldrig
+    fremadrettet data, og fremadrettet data er den eneste valide test af en
+    tærskel kalibreret på ét datasæt."""
+    set_events: list[tuple] = []
+    monkeypatch.setattr(T, "_enabled", lambda: False)
+    monkeypatch.setattr(T, "_skygge", lambda: True)
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: set_events.append((navn, score)))
+    _stub(monkeypatch, [("calendar_create_event", 0.91)])
+
+    ud = T.tool_discovery_nudge_section(BESKED, "s1")
+    assert ud == "", "skyggen må ALDRIG nå prompten"
+    assert set_events == [("calendar_create_event", 0.91)], "men målingen skal skrives"
+
+
+def test_skyggen_husker_ikke_suppression(monkeypatch):
+    """Suppression hører til den synlige kanal — ellers ville skyggen bruge
+    vinduet op på nudges ingen har set."""
+    husket: list = []
+    monkeypatch.setattr(T, "_enabled", lambda: False)
+    monkeypatch.setattr(T, "_skygge", lambda: True)
+    monkeypatch.setattr(T, "_husk_nudge", lambda sid, navn: husket.append(navn))
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: None)
+    _stub(monkeypatch, [("calendar_create_event", 0.91)])
+    T.tool_discovery_nudge_section(BESKED, "s1")
+    assert husket == []
+
+
+def test_baade_slukket_og_skygge_slukket_koster_intet_opslag(monkeypatch):
+    monkeypatch.setattr(T, "_enabled", lambda: False)
+    monkeypatch.setattr(T, "_skygge", lambda: False)
+    _maa_ikke_slaa_op(monkeypatch)
+    assert T.tool_discovery_nudge_section(BESKED, "s1") == ""
+
+
+def test_observationsfladen_siger_at_vi_er_i_skygge(monkeypatch):
+    monkeypatch.setattr(T, "_enabled", lambda: False)
+    monkeypatch.setattr(T, "_skygge", lambda: True)
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: None)
+    _stub(monkeypatch, [("calendar_create_event", 0.91)])
+    f = T.build_tool_discovery_nudge_surface(BESKED, "s1")
+    assert f["shadow"] is True and f["active"] is False

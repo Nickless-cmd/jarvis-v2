@@ -302,16 +302,20 @@ _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikk
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_enabled` | `()` | Kill-switch. **Default OFF** — se maalingen nedenfor. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L52) |
-| function | `_er_prewarm` | `(session_id)` | Prewarm-ture varmer cachen — de skal ikke koste et embedding-kald. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L92) |
-| function | `_registrerede_navne` | `()` | Navne der FAKTISK findes lige nu. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L107) |
-| function | `_katalog_tekst` | `()` | Katalogets klartekst. Tom streng hvis den ikke kan laeses. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L128) |
-| function | `_staar_i_katalog` | `(navn, katalog)` | Staar NAVNET i klartekst i kataloget? Saa behoever han intet nudge. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L138) |
-| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L151) |
-| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L161) |
-| function | `_log_nudge` | `(navn, session_id, score)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L173) |
-| function | `_matches` | `(besked)` | ``top_k_similar`` returnerer (navn, score)-TUPLER — ikke dicts som | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L185) |
-| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L206) |
-| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L265) |
+| function | `_skygge` | `()` | Skygge-tilstand: REGN nudgen ud og LOG den, men injicér den ikke. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L92) |
+| function | `_er_prewarm` | `(session_id)` | Prewarm-ture varmer cachen — de skal ikke koste et embedding-kald. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L110) |
+| function | `_er_internt` | `(beskrivelse)` | Handler vaerktoejet om HANS indre maskineri frem for Bjoerns verden? | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L173) |
+| function | `_er_social` | `(besked)` | Kort OG socialt. Laengden alene raekker ikke — «send en mail til bjorn og | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L179) |
+| function | `_har_handleverbum` | `(besked)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L197) |
+| function | `_registrerede_navne` | `()` | Navne der FAKTISK findes lige nu. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L202) |
+| function | `_katalog_tekst` | `()` | Katalogets klartekst. Tom streng hvis den ikke kan laeses. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L224) |
+| function | `_staar_i_katalog` | `(navn, katalog)` | Staar NAVNET i klartekst i kataloget? Saa behoever han intet nudge. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L234) |
+| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L247) |
+| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L257) |
+| function | `_log_nudge` | `(navn, session_id, score)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L269) |
+| function | `_matches` | `(besked)` | ``top_k_similar`` returnerer (navn, score)-TUPLER — ikke dicts som | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L281) |
+| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L302) |
+| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L370) |
 
 ## `core/services/prompt_sections/transcript_sections.py`
 _Transcript rendering + session compaction for prompts._

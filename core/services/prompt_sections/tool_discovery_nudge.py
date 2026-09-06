@@ -89,6 +89,24 @@ def _enabled() -> bool:
         return False
 
 
+def _skygge() -> bool:
+    """Skygge-tilstand: REGN nudgen ud og LOG den, men injicér den ikke.
+
+    Uden den er default-OFF en blindgyde: sektionen returnerer tomt foer den
+    logger, saa der kommer aldrig fremadrettet data — og fremadrettet data er
+    den ENESTE valide test af en taerskel der er kalibreret paa ét datasaet
+    (Jarvis' overfit-indvending, 6/9). Skyggen giver maalingen uden at roere
+    prompten. Samme moenster som reasoning_interceptor og Agent Smith.
+
+    Default TIL, netop fordi den ikke koster prompten noget.
+    """
+    try:
+        from core.runtime.settings import load_settings
+        return bool(load_settings().extra.get("tool_discovery_nudge_shadow", True))
+    except Exception:
+        return True
+
+
 def _er_prewarm(session_id: str) -> bool:
     """Prewarm-ture varmer cachen — de skal ikke koste et embedding-kald.
 
@@ -104,7 +122,84 @@ def _er_prewarm(session_id: str) -> bool:
         return False
 
 
-def _registrerede_navne() -> set[str]:
+# ── Intent-filter (Jarvis' gennemgang 6/9) ─────────────────────────────────
+# Broen loeste SPROGET; tilbage stod at embedding-lighed ikke kan skelne «han
+# har brug for et vaerktoej» fra «han sagde et ord der ligner et vaerktoej».
+# Et «tak for samtalen» ligner note_list i vektorrummet. Tre billige,
+# deterministiske lag — ingen model, intet kald — hvert enkelt maalt mod de
+# faktiske falske positiver fra 60 aegte beskeder.
+
+# Lag 1: hans EGET maskineri. Markoerer i beskrivelsen, ikke en navneliste, saa
+# reglen holder naar der kommer nye vaerktoejer til.
+#   nudge_send        «efter inspektion af broenden»   → hans egen nudge-broend
+#   resolve_prediction «marker en aaben prediction»     → selvmodel-bogholderi
+#   curiosity_*       «laes DINE droemme … 1/5 actions» → eget nysgerrighedsbudget
+_INTERNE_MARKOERER = (
+    "curiosity:", "bruger 1/", "bruger 2/", "actions.",
+    "prediction", "hypothesis", "hypotese", "forudsig",
+    "din egen", "dine egne", "dit eget",
+    "selvmodel", "self-model", "broenden", "brønden",
+    "idle-genererede", "autonom", "internt", "internal use",
+)
+
+# Lag 2: sociale ture. «Tak. Det var saa vores foerste samtale.» udloeste
+# note_list — der er ingen opgave i en tak.
+_SOCIALE = (
+    "tak", "takker", "farvel", "hej", "hejsa", "godmorgen", "godnat",
+    "held og lykke", "tillykke", "velbekomme", "ha en god", "hav en god",
+    "super", "perfekt", "fedt", "nice", "godt arbejde", "veludført",
+)
+_SOCIAL_MAX_TEGN = 90
+
+# Handleverber. Var foreslaaet som et selvstaendigt LAG 3 (kraev et verbum foer
+# nudge). Maalt paa de samme 60 beskeder gjorde den mere skade end gavn:
+#     lag 1+2      → 6 nudges, heraf git_log og propose_new_skill (aegte)
+#     + lag 3      → 2 nudges — den draebte BEGGE de aegte og kun én stoej
+# Grunden er at ekstra sprog er skroebeligt: den aegte besked var «Hebt lige git
+# log» med en slaafejl, og «Hebt» er ikke et verbum den kender. Porten er derfor
+# ikke i brug; listen lever videre som lag 2's undtagelse, saa «send en mail og
+# sig tak» ikke tælles som en ren social tur.
+_HANDLEVERBER = (
+    "læg", "lægge", "hent", "henter", "vis", "vise", "send", "sende",
+    "find", "finde", "søg", "søge", "opret", "oprette", "slet", "slette",
+    "skriv", "skrive", "læs", "læse", "kør", "køre", "tjek", "tjekke",
+    "start", "starte", "stop", "stoppe", "ret", "rette", "lav", "lave",
+    "tilføj", "tilføje", "fjern", "fjerne", "book", "booke", "husk",
+    "get", "list", "show", "create", "delete", "run", "check", "add",
+    "remove", "search", "read", "write", "open", "fetch", "make",
+)
+
+
+def _er_internt(beskrivelse: str) -> bool:
+    """Handler vaerktoejet om HANS indre maskineri frem for Bjoerns verden?"""
+    b = str(beskrivelse or "").lower()
+    return any(m in b for m in _INTERNE_MARKOERER)
+
+
+def _er_social(besked: str) -> bool:
+    """Kort OG socialt. Laengden alene raekker ikke — «send en mail til bjorn og
+    sig tak» er kort og indeholder «tak», men er en opgave."""
+    b = str(besked or "").lower().strip()
+    if len(b) > _SOCIAL_MAX_TEGN:
+        return False
+    if not any(re.search(rf"\b{re.escape(o)}\b", b) for o in _SOCIALE):
+        return False
+    # Et handleverbum ophaever det: saa er der en opgave i saetningen.
+    return not _har_handleverbum(b)
+
+
+# Kun AEGTE boejningsendelser. Et frit \w* lod «find» matche «findings» og
+# «list» matche «listen» — saa «Research mode: answer with sourced findings»
+# talte som en opgave.
+_BOEJNING = r"(?:e|er|ede|et|te|de|r)?"
+
+
+def _har_handleverbum(besked: str) -> bool:
+    b = str(besked or "").lower()
+    return any(re.search(rf"\b{re.escape(v)}{_BOEJNING}\b", b) for v in _HANDLEVERBER)
+
+
+def _registrerede_navne() -> dict[str, str]:
     """Navne der FAKTISK findes lige nu.
 
     Embedding-DB'en har 458 vektorer mod 429 registrerede — forskellen er
@@ -114,15 +209,16 @@ def _registrerede_navne() -> set[str]:
     """
     try:
         from core.tools.simple_tools import get_tool_definitions
-        ud: set[str] = set()
+        ud: dict[str, str] = {}
         for d in get_tool_definitions() or []:
-            navn = ((d.get("function") or {}).get("name") or d.get("name") or "")
+            f = d.get("function") or {}
+            navn = str(f.get("name") or d.get("name") or "")
             if navn:
-                ud.add(str(navn))
+                ud[navn] = str(f.get("description") or d.get("description") or "")
         return ud
     except Exception as exc:
         logger.debug("tool_discovery_nudge: kunne ikke laese registret: %s", exc)
-        return set()
+        return {}
 
 
 def _katalog_tekst() -> str:
@@ -218,7 +314,10 @@ def tool_discovery_nudge_section(
     sid = str(session_id or "")
     if _er_prewarm(sid):
         return ""
-    if not _enabled():
+    if not _enabled() and not _skygge():
+        return ""
+    # Lag 2 foer opslaget: en tak skal heller ikke koste et embedding-kald.
+    if _er_social(besked):
         return ""
 
     try:
@@ -241,6 +340,8 @@ def tool_discovery_nudge_section(
             continue                      # sorteret desc → resten er ogsaa under
         if navn not in registreret:
             continue                      # foraeldet/alias-vektor
+        if _er_internt(registreret[navn]):
+            continue                      # hans eget maskineri, ikke Bjoerns verden
         if _staar_i_katalog(navn, katalog):
             continue                      # staar allerede i klartekst
         if _undertrykt(sid, navn):
@@ -253,8 +354,12 @@ def tool_discovery_nudge_section(
         return ""
 
     navn, score = valgt[0]
-    _husk_nudge(sid, navn)
     _log_nudge(navn, sid, score)
+    if not _enabled():
+        # Skygge: maalingen er skrevet, men prompten er urørt. Vi husker heller
+        # ikke nudget — suppression hoerer til den synlige kanal.
+        return ""
+    _husk_nudge(sid, navn)
     return (
         "📎 Vaerktoej uden for din nuvaerende kasse: `%s` — opgaven matcher det "
         "(%.2f). Kald load_more_tools(names=[\"%s\"]) hvis det er relevant."
@@ -270,6 +375,7 @@ def build_tool_discovery_nudge_surface(
     besked = str(user_message or "").strip()
     return {
         "active": _enabled(),
+        "shadow": _skygge() and not _enabled(),
         "message_chars": len(besked),
         "skipped_short": len(besked) < _MIN_MESSAGE_CHARS,
         "threshold": _THRESHOLD,

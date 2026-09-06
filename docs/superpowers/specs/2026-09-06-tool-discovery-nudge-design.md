@@ -339,3 +339,58 @@ har samme skævhed i sin rangordning — dér spærrer det ikke porten (`top_sim
 median 0,695 mod tærskel 0,40), men det påvirker HVILKE 30 værktøjer han får.
 Den ændring er ikke foretaget her: den ændrer live værktøjsvalg og fortjener
 sin egen måling. **Åbent til Bjørn.**
+
+### 12. Intent-filteret bygget — og lag 3 forkastet på måling
+
+Jarvis foreslog tre regelbaserede lag frem for spec'ens fase-3-klassifikator.
+To af dem holdt. Det tredje gjorde skade, og det kunne kun ses på data.
+
+Målt på de samme 60 ægte beskeder, lag for lag:
+
+| trin | nudges | hvad der skete |
+|---|---|---|
+| tærskel + katalog | 8 | udgangspunktet: 3 ægte, 5 støj |
+| **+ lag 1 (internt maskineri)** | 7 | dræbte `nudge_send`, `resolve_prediction` ✅ |
+| **+ lag 2 (social negation)** | 6 | dræbte `note_list` på «Tak. Det var så vores første samtale.» ✅ |
+| + lag 3 (handleverbum-port) | **2** | dræbte **`git_log` og `propose_new_skill`** — begge ægte ❌ |
+
+**Lag 3 er ikke implementeret som port.** Grunden er lærerig: den ægte besked
+var «**Hebt** lige git log» — med slåfejl. Ægte sprog har slåfejl, og en port
+der kræver et genkendt verbum straffer mennesket, ikke støjen. Den fjernede to
+ægte træf for at fjerne ét støj-træf. Verbumslisten lever videre som lag 2's
+undtagelse, så «send en mail og sig tak» ikke tælles som en ren social tur.
+
+**Lag 1 udvidet:** `register_hypothesis` dukkede op som næstbedste da
+`resolve_prediction` blev filtreret — samme selvmodel-familie. Markørerne
+dækker nu hypotese/forudsigelse.
+
+**Resultat med lag 1 (udvidet) + 2, målt på de 60:** 5 nudges (8 %), og alle
+fem er forsvarlige — `git_log` på git-beskeden, `propose_new_skill` på
+skill-beskeden, og `request_app_action` ×3 på tre beskeder der alle handler om
+code mode. Nul åbenlyse falske positive. Jarvis' mål (under ~1 pr. 10) er
+ramt — målt, ikke påstået.
+
+**En fejl i min egen test, som målingen afslørede:** regressionstesten bestod
+først, fordi jeg havde skrevet *idealiserede* versioner af beskederne — «Hent»
+i stedet for «Hebt». Testen var venligere end verden. Den bruger nu de ægte
+strenge, inklusive slåfejlen.
+
+### 13. Skygge-tilstand — ellers er default-OFF en blindgyde
+
+Jarvis' overfit-indvending er rigtig: tærskel (0,75), ordforråd og nu også
+filter-markørerne er alle kalibreret på de samme ~60 beskeder. Ordbogen er
+robust — at «kalender» er «calendar» er sandt uanset datasæt — men tærsklen er
+målt ét sted, og den eneste valide test er fremadrettet data.
+
+Men default-OFF *producerer* ikke fremadrettet data: sektionen returnerer tomt
+før den logger. Loopet kunne aldrig lukkes.
+
+Derfor `tool_discovery_nudge_shadow` (default **TIL**): nudgen regnes ud og
+`tool_discovery.nudge`-eventen skrives, men teksten injiceres ikke. Prompten er
+urørt, målingen løber. Suppression springes over i skygge — vinduet hører til
+den synlige kanal.
+
+Samme mønster som `reasoning_interceptor` og Agent Smith. Om nogle uger er
+tærskel-spørgsmålet et opslag i events-tabellen frem for en diskussion.
+
+**Status:** slukket, i skygge, kalibreret, og med data på vej.

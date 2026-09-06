@@ -2707,3 +2707,44 @@
 .pauseask-btn:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
 .pauseask-fri { color: var(--fg-3); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .pauseask-btn { transition: none; } }
+
+/* Agent-tidslinje: «hvad skete der egentlig?» under et assistent-svar.
+   Foldet sammen som standard — resuméet skal kunne læses på ét blik. */
+.runtl { margin: 6px 0 2px; }
+.runtl-head {
+  display: flex; align-items: center; gap: 5px; width: 100%;
+  padding: 3px 0; background: none; border: none; cursor: pointer;
+  color: var(--fg-3); font: inherit; font-size: 12px; text-align: left;
+}
+.runtl-head:hover { color: var(--fg-2); }
+.runtl-pil { flex: 0 0 auto; transition: transform 140ms ease; }
+.runtl-pil.aaben { transform: rotate(90deg); }
+.runtl-resume { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runtl.har-fejl .runtl-resume { color: var(--warn-fg); }
+
+.runtl-liste {
+  list-style: none; margin: 4px 0 0; padding: 0 0 0 5px;
+  border-left: 1px solid var(--line);
+}
+.runtl-fase {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0 4px 11px; color: var(--fg-2); font-size: 12.5px;
+}
+.runtl-prik {
+  position: relative; display: inline-flex; flex: 0 0 auto;
+  color: var(--fg-3);
+}
+.runtl-fase.st-fejl { color: var(--error-fg); }
+.runtl-fase.st-fejl .runtl-prik { color: var(--error-fg); }
+.runtl-mrk { position: absolute; right: -5px; bottom: -3px; }
+.mrk-fejl { color: var(--error-fg); }
+.mrk-ok { color: var(--ok); }
+.mrk-koerer { color: var(--tint); animation: presence-spin 1.1s linear infinite; transform-origin: center; }
+.runtl-detalje {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--fg-3); font-family: var(--font-mono); font-size: 11.5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .runtl-pil { transition: none; }
+  .mrk-koerer { animation: none; }
+}

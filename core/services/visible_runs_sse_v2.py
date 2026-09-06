@@ -309,6 +309,15 @@ async def translate_to_v2(
         _state["thinking_block_index"] = idx
         await queue.put(ContentBlockStart(index=idx, block_type="thinking").to_sse_line())
         _state["thinking_block_open"] = True
+        # Varigheden måles HER, hvor tænkningen faktisk begynder, og læses ved
+        # persistering. Ræsonneringens tekst blev allerede gemt; tallet manglede,
+        # og uden det kan klienten ikke vise «Tænkte i 14 s ›». Self-safe: en
+        # måling må aldrig kunne vælte en stream.
+        try:
+            from core.services import visible_thinking_trace
+            visible_thinking_trace.mark_start(str(_state.get("run_id") or ""))
+        except Exception:
+            pass
 
     async def _close_thinking_block_if_open() -> None:
         if _state["thinking_block_open"]:
@@ -316,6 +325,11 @@ async def translate_to_v2(
                 index=int(_state["thinking_block_index"]),
             ).to_sse_line())
             _state["thinking_block_open"] = False
+            try:
+                from core.services import visible_thinking_trace
+                visible_thinking_trace.mark_end(str(_state.get("run_id") or ""))
+            except Exception:
+                pass
 
     async def _close_text_block_if_open() -> None:
         if _state["text_block_open"]:

@@ -25,6 +25,7 @@ from typing import Any
 
 _LIVE_FLAG = "prompt_relevance_live_enabled"     # Bjørns switch (default OFF → inkludér alt)
 _WEIGHTS_KEY = "prompt_relevance_weights"        # {"turn_type|section": weight} (runtime_state_kv)
+_TAIL_LIVE_FLAG = "prompt_tail_relevance_live_enabled"
 _INCLUDE_THRESHOLD = 0.3                          # under denne vægt (og live) → udelad sektion
 _DOMAIN = "prompt_relevance"                      # §8.1 isoleret mutations-domæne
 
@@ -32,6 +33,22 @@ _DOMAIN = "prompt_relevance"                      # §8.1 isoleret mutations-dom
 FROZEN_SECTIONS: frozenset[str] = frozenset({
     "soul", "identity", "user", "security", "safety", "system", "core",
 })
+
+# Conservative built-in weights for tail-only context. These labels are already
+# after the cache boundary, but they still inflate every visible prompt. Unknown
+# sections default to 1.0 and are included.
+_DEFAULT_TAIL_WEIGHTS: dict[tuple[str, str], float] = {
+    ("samtale", "causal patterns"): 0.1,
+    ("samtale", "pattern counterfactuals"): 0.1,
+    ("samtale", "room entities"): 0.2,
+    ("samtale", "subagent completion digest"): 0.2,
+    ("samtale", "self mutation lineage"): 0.2,
+    ("spørgsmål", "causal patterns"): 0.1,
+    ("spørgsmål", "pattern counterfactuals"): 0.1,
+    ("spørgsmål", "room entities"): 0.2,
+    ("spørgsmål", "subagent completion digest"): 0.2,
+    ("spørgsmål", "self mutation lineage"): 0.2,
+}
 
 # Tur-type-klassifikation (grov, deterministisk, model-fri). Rækkefølge = prioritet.
 _TURN_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -98,6 +115,10 @@ def is_live_enabled() -> bool:
     return bool(_kv_get(_LIVE_FLAG, False))
 
 
+def is_tail_live_enabled() -> bool:
+    return bool(_kv_get(_TAIL_LIVE_FLAG, True))
+
+
 def get_weight(turn_type: str, section: str) -> float:
     """Relevans-vægt for (tur-type, sektion). Default 1.0 = altid inkludér. Self-safe."""
     try:
@@ -107,6 +128,19 @@ def get_weight(turn_type: str, section: str) -> float:
     except Exception:
         pass
     return 1.0
+
+
+def get_tail_weight(turn_type: str, section: str) -> float:
+    """Tail relevans-vægt. Runtime overrides vinder; default-map er konservativ. Self-safe."""
+    try:
+        w = _kv_get(_WEIGHTS_KEY, {}) or {}
+        if isinstance(w, dict):
+            key = f"{turn_type}|{section}"
+            if key in w:
+                return float(w[key])
+        return float(_DEFAULT_TAIL_WEIGHTS.get((str(turn_type or ""), str(section or "")), 1.0))
+    except Exception:
+        return 1.0
 
 
 def should_include(turn_type: str, section: str, *, threshold: float = _INCLUDE_THRESHOLD) -> bool:
@@ -131,6 +165,23 @@ def should_include(turn_type: str, section: str, *, threshold: float = _INCLUDE_
         return get_weight(turn_type, section) >= float(threshold)
     except Exception:
         return True                             # fail-open på inklusion (aldrig skjul ved fejl)
+
+
+def should_include_tail(turn_type: str, section: str, *, threshold: float = _INCLUDE_THRESHOLD) -> bool:
+    """Live gate kun for tail-anchored dynamisk kontekst.
+
+    Den brede should_include-switch forbliver shadow-default. Tail-gaten er live som default,
+    fordi den kun rammer kendte variable hale-sektioner og failer åbent på ukendte/frosne labels.
+    """
+    try:
+        sl = str(section or "").lower()
+        if any(f in sl for f in FROZEN_SECTIONS):
+            return True
+        if not is_tail_live_enabled():
+            return True
+        return get_tail_weight(str(turn_type or ""), str(section or "")) >= float(threshold)
+    except Exception:
+        return True
 
 
 _FREQ_KEY = "prompt_section_freq"    # {"turn_type|section": count} — hyppigheds-substrat
@@ -207,6 +258,7 @@ def build_central_prompt_composer_surface() -> dict[str, object]:
     low = {k: v for k, v in (w.items() if isinstance(w, dict) else [])
            if isinstance(v, (int, float)) and float(v) < _INCLUDE_THRESHOLD}
     return {"active": True, "live_enabled": is_live_enabled(),
+            "tail_live_enabled": is_tail_live_enabled(),
             "threshold": _INCLUDE_THRESHOLD, "weight_count": len(w) if isinstance(w, dict) else 0,
             "would_drop": low, "frozen_sections": sorted(FROZEN_SECTIONS),
             "relevance_candidates": build_relevance_candidates()}

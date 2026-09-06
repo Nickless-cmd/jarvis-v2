@@ -2,6 +2,159 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/council_deliberation_controller.py`
+_Council Deliberation Controller — active agent dynamics inside deliberation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DeliberationResult` | `` | — | [src](../../../core/services/council_deliberation_controller.py#L28) |
+| function | `_cosine_similarity` | `(a, b)` | Bag-of-words cosine similarity between two strings. Returns 0.0–1.0. | [src](../../../core/services/council_deliberation_controller.py#L37) |
+| function | `_is_deadlocked` | `(round_outputs)` | Return True if round N is semantically similar to round N-2 (1-indexed rounds). | [src](../../../core/services/council_deliberation_controller.py#L54) |
+| function | `_check_witness_escalation` | `(witness_output)` | Return True if the witness is requesting to escalate to active participant. | [src](../../../core/services/council_deliberation_controller.py#L63) |
+| function | `build_witness_prompt` | `(*, transcript)` | Build the system prompt for the witness agent. | [src](../../../core/services/council_deliberation_controller.py#L68) |
+| function | `_call_recruitment_llm` | `(*, topic, transcript)` | — | [src](../../../core/services/council_deliberation_controller.py#L79) |
+| function | `_analyze_recruitment_need` | `(*, topic, transcript, active_members)` | Ask LLM if a new role is needed. Returns role name or None. | [src](../../../core/services/council_deliberation_controller.py#L91) |
+| class | `DeliberationController` | `` | Manages a deliberation with witness escalation, recruitment, and deadlock handling. | [src](../../../core/services/council_deliberation_controller.py#L110) |
+| method | `DeliberationController.__init__` | `(self, *, topic, members, max_rounds=…)` | — | [src](../../../core/services/council_deliberation_controller.py#L113) |
+| method | `DeliberationController.run` | `(self)` | Run the full deliberation. Returns DeliberationResult. | [src](../../../core/services/council_deliberation_controller.py#L130) |
+| method | `DeliberationController._run_round` | `(self)` | Run one round of deliberation. Override in subclasses for real agent execution. | [src](../../../core/services/council_deliberation_controller.py#L207) |
+| method | `DeliberationController._synthesize` | `(self, *, forced=…)` | Produce council conclusion. Override in real integration. | [src](../../../core/services/council_deliberation_controller.py#L211) |
+
+## `core/services/council_memory_daemon.py`
+_Council Memory Daemon — injects relevant past council conclusions into heartbeat context._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_council_memory_daemon` | `(*, recent_context=…)` | Check COUNCIL_LOG.md for relevant past deliberations and inject into context. | [src](../../../core/services/council_memory_daemon.py#L23) |
+| function | `build_council_memory_surface` | `()` | — | [src](../../../core/services/council_memory_daemon.py#L65) |
+| function | `_load_entries` | `()` | — | [src](../../../core/services/council_memory_daemon.py#L75) |
+| function | `_call_similarity_llm` | `(*, recent_context, index_text)` | — | [src](../../../core/services/council_memory_daemon.py#L83) |
+| function | `_parse_indices` | `(response, max_idx)` | Extract valid 1-based indices from LLM response. Returns [] if 'ingen'. | [src](../../../core/services/council_memory_daemon.py#L95) |
+| function | `_format_for_heartbeat` | `(entries)` | Compact representation for heartbeat context injection. | [src](../../../core/services/council_memory_daemon.py#L110) |
+
+## `core/services/council_memory_service.py`
+_Council Memory Service — persists council conclusions to COUNCIL_LOG.md._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_log_file` | `()` | — | [src](../../../core/services/council_memory_service.py#L16) |
+| function | `append_council_conclusion` | `(*, topic, score, members, signals, transcript, conclusion, initiative)` | Append a council conclusion entry to COUNCIL_LOG.md. | [src](../../../core/services/council_memory_service.py#L20) |
+| function | `read_all_entries` | `()` | Parse COUNCIL_LOG.md and return list of entry dicts. | [src](../../../core/services/council_memory_service.py#L51) |
+| function | `_parse_entries` | `(content)` | Parse markdown content into list of entry dicts. | [src](../../../core/services/council_memory_service.py#L64) |
+| function | `_parse_single_entry` | `(block)` | Parse a single markdown entry block. | [src](../../../core/services/council_memory_service.py#L78) |
+| function | `_extract_section` | `(block, heading)` | Extract text content between a heading and the next heading. | [src](../../../core/services/council_memory_service.py#L122) |
+| function | `build_council_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/council_memory_service.py#L129) |
+
+## `core/services/council_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_council_runtime_surface` | `()` | — | [src](../../../core/services/council_runtime.py#L10) |
+| function | `_build_council_runtime_surface_uncached` | `()` | — | [src](../../../core/services/council_runtime.py#L18) |
+| function | `build_council_runtime_from_sources` | `(*, subagent_ecology, affective_meta_state, epistemic_runtime_state, conflict_trace)` | — | [src](../../../core/services/council_runtime.py#L27) |
+| function | `build_council_runtime_prompt_section` | `(surface=…)` | — | [src](../../../core/services/council_runtime.py#L107) |
+| function | `_role_position` | `(*, role, affective, epistemic, conflict)` | — | [src](../../../core/services/council_runtime.py#L134) |
+| function | `_derive_divergence_level` | `(role_positions)` | — | [src](../../../core/services/council_runtime.py#L177) |
+| function | `_derive_recommendation` | `(role_positions)` | — | [src](../../../core/services/council_runtime.py#L188) |
+| function | `_derive_recommendation_reason` | `(*, recommendation, divergence_level, affective, epistemic, conflict)` | — | [src](../../../core/services/council_runtime.py#L203) |
+| function | `_derive_confidence` | `(*, recommendation, divergence_level, role_positions)` | — | [src](../../../core/services/council_runtime.py#L223) |
+| function | `_derive_council_state` | `(*, role_positions, divergence_level)` | — | [src](../../../core/services/council_runtime.py#L237) |
+| function | `_source_contributors` | `(*, ecology, affective, epistemic, conflict)` | — | [src](../../../core/services/council_runtime.py#L255) |
+| function | `_guidance_for_council` | `(*, state)` | — | [src](../../../core/services/council_runtime.py#L305) |
+| function | `_safe_subagent_ecology` | `()` | — | [src](../../../core/services/council_runtime.py#L319) |
+| function | `_safe_affective_meta_state` | `()` | — | [src](../../../core/services/council_runtime.py#L329) |
+| function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/council_runtime.py#L339) |
+| function | `_safe_conflict_trace` | `()` | — | [src](../../../core/services/council_runtime.py#L349) |
+| function | `get_latest_council_conclusion` | `()` | Return the most recent closed council session summary, or None. | [src](../../../core/services/council_runtime.py#L359) |
+
+## `core/services/counterfactual_engine.py`
+_Counterfactual reflection orchestrator._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `run` | `(*, workspace_id=…, dry_run=…)` | One full pipeline cycle. Always returns a summary dict, never raises. | [src](../../../core/services/counterfactual_engine.py#L41) |
+| function | `_dry_run_placeholder` | `(trigger)` | Phase 1: every unique trigger becomes a TODO counterfactual. | [src](../../../core/services/counterfactual_engine.py#L245) |
+| function | `_failed_generation_placeholder` | `(trigger)` | Phase 2+: when LLM call fails, store with a marker so we can see frequency. | [src](../../../core/services/counterfactual_engine.py#L262) |
+| function | `_dedup_filter` | `(triggers)` | Remove triggers whose cf_key is already stored in the DB. | [src](../../../core/services/counterfactual_engine.py#L279) |
+| function | `_extract_json_from_llm` | `(text)` | Strip markdown fences and trim to outermost JSON object. | [src](../../../core/services/counterfactual_engine.py#L322) |
+| function | `_generate_one_via_llm` | `(trigger)` | Single cheap-lane call to produce structured CF fields for one trigger. | [src](../../../core/services/counterfactual_engine.py#L335) |
+| function | `_generate_counterfactuals_via_llm` | `(triggers)` | Phase 2 (2026-05-14): one cheap-lane LLM call per unique trigger. | [src](../../../core/services/counterfactual_engine.py#L389) |
+| function | `_count_similar_trigger_events` | `(event_kind, *, window_days=…)` | Count eventbus rows of ``event_kind`` in the last ``window_days``. | [src](../../../core/services/counterfactual_engine.py#L439) |
+| function | `_modulate_with_apophenia` | `(counterfactuals)` | Phase 3 (2026-05-14): rate each counterfactual via apophenia_guard. | [src](../../../core/services/counterfactual_engine.py#L461) |
+| function | `_store_counterfactual` | `(*, workspace_id, **cf)` | INSERT OR IGNORE — UNIQUE(cf_key) makes this idempotent. | [src](../../../core/services/counterfactual_engine.py#L514) |
+| function | `_publish_event` | `(*, cf_id, workspace_id, cluster_size, final_confidence, status, caused_by_trigger_id=…)` | Publish counterfactual event. If caused_by_trigger_id is given, | [src](../../../core/services/counterfactual_engine.py#L540) |
+| function | `_publish_cycle_complete` | `(summary)` | — | [src](../../../core/services/counterfactual_engine.py#L571) |
+| function | `classify_event_to_counterfactual` | `(event_kind, payload)` | Classify an event into a specific counterfactual, or None if no match. | [src](../../../core/services/counterfactual_engine.py#L637) |
+| function | `generate_classified_counterfactual` | `(event_kind, payload)` | Convenience: classify event → persist counterfactual if matched. | [src](../../../core/services/counterfactual_engine.py#L699) |
+| function | `generate_counterfactual` | `(*, trigger_type, anchor, source=…, confidence=…, cf_question=…, event_kind=…)` | Generate a counterfactual question from a trigger event. | [src](../../../core/services/counterfactual_engine.py#L719) |
+| function | `generate_dream_counterfactual` | `(*, recent_decisions=…)` | Generate a speculative counterfactual during idle time. | [src](../../../core/services/counterfactual_engine.py#L787) |
+| function | `narrativize_regret` | `(*, trigger_type, anchor, actual_outcome=…, time_cost=…)` | Turn a regret into a felt narrative, not just data. | [src](../../../core/services/counterfactual_engine.py#L810) |
+| function | `narrativize_aspiration` | `(*, trigger_type, anchor, actual_outcome=…, positive_effect=…)` | Turn a success/kept-decision into an aspiration narrative. | [src](../../../core/services/counterfactual_engine.py#L834) |
+| function | `build_counterfactual_surface` | `()` | — | [src](../../../core/services/counterfactual_engine.py#L867) |
+
+## `core/services/counterfactual_engine_runtime.py`
+_Daemon for periodic counterfactual reflection cycles._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_get_workspace_lock` | `(workspace_id)` | Lazy per-workspace lock. Same workspace_id always returns same Lock. | [src](../../../core/services/counterfactual_engine_runtime.py#L23) |
+| function | `_run_one_cycle` | `(workspace_id)` | Acquire workspace lock, run engine, release. Never raises. | [src](../../../core/services/counterfactual_engine_runtime.py#L33) |
+| function | `_list_active_workspaces` | `()` | Phase 1: only the default workspace. | [src](../../../core/services/counterfactual_engine_runtime.py#L62) |
+| function | `_loop` | `()` | — | [src](../../../core/services/counterfactual_engine_runtime.py#L70) |
+| function | `start_counterfactual_runtime` | `()` | Start the periodic-evaluation daemon. Idempotent — safe to call multiple times. | [src](../../../core/services/counterfactual_engine_runtime.py#L80) |
+| function | `stop_counterfactual_runtime` | `()` | Signal the loop to exit. | [src](../../../core/services/counterfactual_engine_runtime.py#L93) |
+
+## `core/services/counterfactual_predictions.py`
+_Counterfactual → world-model prediction binding._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_confidence_band` | `(numeric)` | Map a 0..1 confidence to the world-model band strings. | [src](../../../core/services/counterfactual_predictions.py#L68) |
+| function | `bind_counterfactual_to_prediction` | `(*, cf_id, trigger_type, anchor=…, confidence=…, source=…, event_kind=…)` | Record a world-model prediction linked to a counterfactual. | [src](../../../core/services/counterfactual_predictions.py#L77) |
+| function | `list_open_counterfactual_predictions` | `()` | Return all open predictions whose source=='counterfactual'. | [src](../../../core/services/counterfactual_predictions.py#L155) |
+| function | `_is_horizon_expired` | `(prediction, now)` | Check if a prediction's horizon has passed (with grace period). | [src](../../../core/services/counterfactual_predictions.py#L173) |
+| function | `_extract_event_kind` | `(prediction)` | Pull the event_kind tag out of a prediction's evidence list. | [src](../../../core/services/counterfactual_predictions.py#L183) |
+| function | `_frequency_verdict` | `(*, event_kind, created_at)` | Compare event_kind frequency before vs after the prediction's birth. | [src](../../../core/services/counterfactual_predictions.py#L192) |
+| function | `sweep_expired_counterfactual_predictions` | `(*, now=…)` | Auto-resolve counterfactual predictions whose horizon has expired. | [src](../../../core/services/counterfactual_predictions.py#L265) |
+| function | `build_counterfactual_predictions_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/counterfactual_predictions.py#L354) |
+| function | `_emit_counterfactual_predictions_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/counterfactual_predictions.py#L369) |
+
+## `core/services/counterfactual_self_simulation.py`
+_Counterfactual self-simulation for post-run learning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `simulate_from_latest_episode` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L21) |
+| function | `simulate_from_episode` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L28) |
+| function | `build_counterfactual_surface` | `(*, limit=…)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L71) |
+| function | `build_counterfactual_prompt_section` | `(*, limit=…)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L84) |
+| function | `_decode_episode` | `(row)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L101) |
+| function | `_actual_action` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L111) |
+| function | `_alternatives_for_episode` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L119) |
+| function | `_preferred_policy` | `(episode, alternatives)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L157) |
+| function | `_confidence` | `(episode, alternatives)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L166) |
+| function | `_load_records` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L174) |
+| function | `_save_simulation` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L179) |
+| function | `_feed_learning` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L184) |
+
+## `core/services/counterfactual_triggers.py`
+_Trigger detection for counterfactual reflection._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TriggerEvent` | `` | A regret-worthy event normalized for counterfactual processing. | [src](../../../core/services/counterfactual_triggers.py#L22) |
+| function | `_key_self_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L33) |
+| function | `_key_conflict` | `(payload)` | Primary key for conflict.detected events. | [src](../../../core/services/counterfactual_triggers.py#L37) |
+| function | `_key_decision` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L60) |
+| function | `_key_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L64) |
+| function | `_key_goal` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L68) |
+| function | `_key_decision_kept` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L72) |
+| function | `_key_conflict_resolved` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L76) |
+| function | `cf_key` | `(workspace_id, event_type, primary_key)` | First-pass dedup hash. Same workspace+type+key = same hash = skip. | [src](../../../core/services/counterfactual_triggers.py#L99) |
+| function | `_extract_summary` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L105) |
+| function | `fetch_recent_aspiration_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent aspiration-worthy (positive) events. | [src](../../../core/services/counterfactual_triggers.py#L113) |
+| function | `fetch_recent_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent regret-worthy events. | [src](../../../core/services/counterfactual_triggers.py#L164) |
+
 ## `core/services/cowork_dispatch.py`
 _Cowork dispatch — runtime→app instruktioner (spec §18.5)._
 
@@ -252,12 +405,12 @@ _Active curiosity with hypothesis debt._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `register_hypothesis_debt` | `(*, hypothesis, why_it_matters, resolving_observation, source=…, priority=…)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L15) |
-| function | `maybe_register_from_text` | `(*, text, source=…)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L53) |
-| function | `build_curiosity_debt_surface` | `(*, limit=…)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L74) |
-| function | `build_curiosity_debt_prompt_section` | `()` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L87) |
-| function | `_load` | `()` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L98) |
-| function | `_save` | `(state)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L103) |
+| function | `register_hypothesis_debt` | `(*, hypothesis, why_it_matters, resolving_observation, source=…, priority=…)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L16) |
+| function | `maybe_register_from_text` | `(*, text, source=…)` | Registrér en aaben hypotese hvis teksten rummer en. | [src](../../../core/services/curiosity_hypothesis_debt.py#L64) |
+| function | `build_curiosity_debt_surface` | `(*, limit=…)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L100) |
+| function | `build_curiosity_debt_prompt_section` | `()` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L113) |
+| function | `_load` | `()` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L124) |
+| function | `_save` | `(state)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L129) |
 
 ## `core/services/current_pull.py`
 _Current pull — Jarvis' weekly self-set desire field._
@@ -311,20 +464,20 @@ _Daemon Manager — registry, lifecycle control, and state persistence for all d
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_state_file` | `()` | — | [src](../../../core/services/daemon_manager.py#L20) |
-| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L798) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L802) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L812) |
-| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L818) |
-| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L822) |
-| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L830) |
-| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L836) |
-| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L845) |
-| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L850) |
-| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L859) |
-| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L868) |
-| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L880) |
-| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L903) |
-| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L934) |
+| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L789) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L793) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L803) |
+| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L809) |
+| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L813) |
+| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L821) |
+| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L827) |
+| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L836) |
+| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L841) |
+| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L850) |
+| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L859) |
+| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L871) |
+| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L894) |
+| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L925) |
 
 ## `core/services/daemon_memory_safeguard.py`
 _Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
@@ -415,6 +568,17 @@ _Decision enforcement — close the loop between commitment and behavior._
 | function | `_poll_loop` | `()` | — | [src](../../../core/services/decision_enforcement.py#L226) |
 | function | `subscribe` | `()` | — | [src](../../../core/services/decision_enforcement.py#L266) |
 
+## `core/services/decision_evidence.py`
+_Ekstern sandhed til adfærds-reviews — hvad der FAKTISK skete i vinduet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_repo_root` | `()` | Repoets rod, fundet ud fra dette moduls egen placering. | [src](../../../core/services/decision_evidence.py#L38) |
+| function | `_tool_names_since` | `(since, until)` | Hvilke værktøjer blev udført i vinduet, og hvor mange gange. | [src](../../../core/services/decision_evidence.py#L43) |
+| function | `_commits_since` | `(since, until)` | Commits i vinduet, som korte emnelinjer. | [src](../../../core/services/decision_evidence.py#L80) |
+| function | `gather_evidence` | `(*, since, until=…)` | Saml regnskabet for vinduet. Returnerer også en kompakt tekst. | [src](../../../core/services/decision_evidence.py#L103) |
+| function | `evidence_permits_verdict` | `(verdict, evidence)` | Nedgradér en positiv dom der ikke har ydre dækning. | [src](../../../core/services/decision_evidence.py#L152) |
+
 ## `core/services/decision_gate.py`
 _Decision gate — pre-execution decision conflict detection._
 
@@ -447,140 +611,4 @@ _Decision Log — records high-stakes decisions with context, options, and ratio
 |---|---|---|---|---|
 | function | `record_decision` | `(*, title, context=…, options=…, decision=…, why=…, refs=…)` | Record a decision in the log. | [src](../../../core/services/decision_log.py#L20) |
 | function | `build_decision_log_surface` | `()` | — | [src](../../../core/services/decision_log.py#L50) |
-
-## `core/services/decision_review_daemon.py`
-_Decision review daemon — closes the adherence loop automatically._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_decision_review_daemon` | `()` | Daemon tick: review overdue behavioral decisions. | [src](../../../core/services/decision_review_daemon.py#L34) |
-
-## `core/services/decision_review_prompter.py`
-_Decision review prompter — closes the adherence loop._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_dedup_gate_enabled` | `()` | Er 24t-skip-gaten aktiv? Default TRUE (den reducerede, tilsigtede adfærd). | [src](../../../core/services/decision_review_prompter.py#L39) |
-| function | `_last_review_time` | `(decision)` | Nyeste review-tidspunkt for en beslutning. | [src](../../../core/services/decision_review_prompter.py#L48) |
-| function | `_build_review_prompt` | `(decision)` | — | [src](../../../core/services/decision_review_prompter.py#L77) |
-| function | `_parse_review` | `(text)` | — | [src](../../../core/services/decision_review_prompter.py#L92) |
-| function | `review_pending_decisions` | `(*, max_reviews=…)` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L113) |
-
-## `core/services/decision_signal_staging.py`
-_Efemer staging af decision-signals til model-kontekst (2026-07-04 runaway-fix)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `compose_signal_note` | `(decision_id, trigger_name, context_summary)` | Den efemere note modellen ser næste runde (omgivet af blanke linjer). | [src](../../../core/services/decision_signal_staging.py#L22) |
-| function | `stage_signal` | `(active, decision_id, note, *, cap=…)` | Dedup pr. decision-id (erstat, akkumulér ALDRIG) + cap antal distinkte | [src](../../../core/services/decision_signal_staging.py#L30) |
-| function | `compose_exchange_text` | `(base_parts, active)` | Assistant-turen til næste rundes model-input = det ægte svar (`base_parts`) | [src](../../../core/services/decision_signal_staging.py#L46) |
-
-## `core/services/decision_signal_telemetry.py`
-_Decision-signal telemetry — track whether decision signals get heeded._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/decision_signal_telemetry.py#L51) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/decision_signal_telemetry.py#L63) |
-| function | `record_surface` | `(*, decision_id, trigger_name, session_id=…, at=…)` | Record a decision_signal.fired surface for later heed-tracking. | [src](../../../core/services/decision_signal_telemetry.py#L75) |
-| function | `record_heed` | `(*, tool, session_id=…, at=…)` | Mark recent surfaces as heeded if they match the reaction window. | [src](../../../core/services/decision_signal_telemetry.py#L113) |
-| function | `sweep_expired_surfaces` | `()` | Mark surfaces as ignored once they pass window+grace with no heed. | [src](../../../core/services/decision_signal_telemetry.py#L157) |
-| function | `get_telemetry_summary` | `(*, hours=…)` | Aggregate counts + heed-rate over the lookback window. | [src](../../../core/services/decision_signal_telemetry.py#L187) |
-| function | `_poll_db_for_events` | `()` | Poll events table for decision_signal.fired and tool.completed. | [src](../../../core/services/decision_signal_telemetry.py#L230) |
-| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/decision_signal_telemetry.py#L299) |
-| function | `telemetry_section` | `()` | Render telemetry as awareness section. Only when >= 5 surfaces/24h. | [src](../../../core/services/decision_signal_telemetry.py#L312) |
-| function | `build_decision_signal_telemetry_surface` | `()` | MC surface — read-only meta-projection. | [src](../../../core/services/decision_signal_telemetry.py#L329) |
-| function | `_emit_decision_signal_telemetry_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/decision_signal_telemetry.py#L344) |
-
-## `core/services/decision_signals.py`
-_Decisions-as-signals: per-turn evaluation of behavioral decisions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `TriggerContext` | `` | Snapshot of state available to a trigger function. | [src](../../../core/services/decision_signals.py#L25) |
-| class | `TriggerSpec` | `` | — | [src](../../../core/services/decision_signals.py#L38) |
-| class | `FiredDecision` | `` | — | [src](../../../core/services/decision_signals.py#L46) |
-| function | `register` | `(name, fire_fn, *, cooldown_seconds=…, cooldown_turns=…)` | — | [src](../../../core/services/decision_signals.py#L60) |
-| function | `_active_decisions_with_triggers` | `()` | Return active decisions that have a trigger_name set. | [src](../../../core/services/decision_signals.py#L77) |
-| function | `_read_last_fired` | `(decision_id)` | — | [src](../../../core/services/decision_signals.py#L92) |
-| function | `_read_last_fired_seq` | `(decision_id)` | — | [src](../../../core/services/decision_signals.py#L106) |
-| function | `_write_last_fired` | `(decision_id, iso_ts)` | — | [src](../../../core/services/decision_signals.py#L120) |
-| function | `_write_last_fired_seq` | `(decision_id, seq, iso_ts)` | — | [src](../../../core/services/decision_signals.py#L135) |
-| function | `_cooldown_active` | `(spec, decision_id, ctx)` | — | [src](../../../core/services/decision_signals.py#L150) |
-| function | `_publish_fired_event` | `(*, decision_id, trigger_name, ctx)` | — | [src](../../../core/services/decision_signals.py#L171) |
-| function | `evaluate_decision_triggers` | `(ctx)` | Evaluate all active decisions with triggers; return those that fire. | [src](../../../core/services/decision_signals.py#L185) |
-| function | `fired_decisions_section` | `(ctx)` | Build the [FIRED_DECISIONS] section text. None if nothing fired. | [src](../../../core/services/decision_signals.py#L251) |
-| function | `build_trigger_context` | `(*, user_message=…, session_id=…, run_id=…, consecutive_tool_only_rounds=…, recent_tool_calls=…, recent_assistant_text=…, agentic_round_seq=…)` | Build a TriggerContext from explicit fields. Used in tests and as | [src](../../../core/services/decision_signals.py#L262) |
-| function | `get_current_trigger_context_or_build` | `(*, user_message=…, session_id=…)` | Return the bound ContextVar if set, else build a minimal fallback. | [src](../../../core/services/decision_signals.py#L286) |
-| function | `bind_context` | `(ctx)` | Bind the per-run TriggerContext. Caller must reset_token after use. | [src](../../../core/services/decision_signals.py#L301) |
-| function | `reset_context` | `(token)` | — | [src](../../../core/services/decision_signals.py#L306) |
-
-## `core/services/decision_weight.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `classify_decision_weight` | `(action_description)` | Score an action description on a 1–4 risk scale. | [src](../../../core/services/decision_weight.py#L35) |
-
-## `core/services/decisions_journal.py`
-_Decisions Journal — moralsk beslutnings-log (extension of decision_log)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tokens` | `(text)` | — | [src](../../../core/services/decisions_journal.py#L34) |
-| function | `_fingerprint` | `(title, decision)` | — | [src](../../../core/services/decisions_journal.py#L38) |
-| function | `create_decision_record` | `(*, title, context, options, decision, why, regrets=…, refs=…)` | Journalize a decision. Required: title, decision, why. | [src](../../../core/services/decisions_journal.py#L42) |
-| function | `capture_decision_signal` | `(*, event_type, payload, refs=…, strong_signal=…, user_confirmed=…)` | Capture an automatic decision-signal from runtime events. | [src](../../../core/services/decisions_journal.py#L107) |
-| function | `find_relevant_decisions` | `(query, *, limit=…)` | Token-overlap search: find decisions matching the query. | [src](../../../core/services/decisions_journal.py#L177) |
-| function | `build_decisions_journal_surface` | `()` | MC surface for decisions journal (extension view vs decision_log's basic view). | [src](../../../core/services/decisions_journal.py#L198) |
-
-## `core/services/deep_analyzer.py`
-_Deep Analyzer — scoped kodebase-introspection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SelectedFile` | `` | — | [src](../../../core/services/deep_analyzer.py#L43) |
-| function | `_keywords` | `(chunks)` | — | [src](../../../core/services/deep_analyzer.py#L50) |
-| function | `_file_score` | `(path, keywords)` | Score a file by filename + path match against keywords. | [src](../../../core/services/deep_analyzer.py#L59) |
-| function | `_scan_repo` | `(*, root, paths, keywords, max_files, max_file_bytes, max_total_bytes)` | — | [src](../../../core/services/deep_analyzer.py#L68) |
-| function | `_is_ignored` | `(path, root)` | — | [src](../../../core/services/deep_analyzer.py#L133) |
-| function | `_find_first_keyword_line` | `(lines, keywords)` | — | [src](../../../core/services/deep_analyzer.py#L144) |
-| function | `_build_outline` | `(*, goal, question_set, max_sections)` | — | [src](../../../core/services/deep_analyzer.py#L154) |
-| function | `_build_findings` | `(*, scope, selected, keywords, max_findings=…)` | — | [src](../../../core/services/deep_analyzer.py#L169) |
-| function | `_build_risks` | `(findings)` | — | [src](../../../core/services/deep_analyzer.py#L221) |
-| function | `_build_next_steps` | `(*, findings, scope)` | — | [src](../../../core/services/deep_analyzer.py#L241) |
-| function | `run_deep_analysis` | `(*, goal, scope=…, paths=…, question_set=…, repo_root=…, max_files=…, max_file_bytes=…, max_total_bytes=…, max_sections=…)` | Run a scoped deep analysis. Returns {summary, findings, risks, next_steps, meta}. | [src](../../../core/services/deep_analyzer.py#L252) |
-| function | `build_deep_analyzer_surface` | `()` | MC surface — deep analyzer is stateless but advertises capability + recent runs. | [src](../../../core/services/deep_analyzer.py#L318) |
-| function | `evidence_paths_exist` | `(result, repo_root=…)` | Verify all evidence paths referenced in findings actually exist. | [src](../../../core/services/deep_analyzer.py#L334) |
-
-## `core/services/deep_reflection_slot.py`
-_Deep Reflection Slot — real think-time, not tick-to-tick alert._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L36) |
-| function | `_reflection_dir` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L40) |
-| function | `_load` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L44) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/deep_reflection_slot.py#L60) |
-| function | `_chronicle_summary` | `()` | Pull last-24h visible runs + inner thought fragments. | [src](../../../core/services/deep_reflection_slot.py#L74) |
-| function | `_active_dreams` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L112) |
-| function | `_shadow_patterns` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L125) |
-| function | `_signal_surfaces` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L138) |
-| function | `_compose_prompt` | `(chronicle, dreams, shadow, signals)` | — | [src](../../../core/services/deep_reflection_slot.py#L185) |
-| function | `_fallback_content` | `(chronicle, dreams, shadow, signals)` | Structural fallback if LLM is unavailable. | [src](../../../core/services/deep_reflection_slot.py#L213) |
-| function | `_write_reflection_md` | `(reflection_id, text, sources)` | — | [src](../../../core/services/deep_reflection_slot.py#L237) |
-| function | `run_reflection` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L260) |
-| function | `_should_run_now` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L328) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/deep_reflection_slot.py#L357) |
-| function | `list_recent` | `(*, limit=…)` | — | [src](../../../core/services/deep_reflection_slot.py#L364) |
-| function | `build_deep_reflection_surface` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L368) |
-| function | `_surface_summary` | `(latest, all_items)` | — | [src](../../../core/services/deep_reflection_slot.py#L384) |
-| function | `build_deep_reflection_prompt_section` | `()` | Surface newly completed deep reflection for 12h. | [src](../../../core/services/deep_reflection_slot.py#L393) |
-
-## `core/services/delegation_advisor.py`
-_Delegation advisor — inline vs which subagent role._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `advise` | `(task)` | — | [src](../../../core/services/delegation_advisor.py#L46) |
-| function | `_exec_delegation_advisor` | `(args)` | — | [src](../../../core/services/delegation_advisor.py#L114) |
 

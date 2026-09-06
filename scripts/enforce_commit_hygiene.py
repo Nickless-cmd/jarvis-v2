@@ -65,9 +65,24 @@ def _classify(path: Path) -> str:
     return _DOMAINS.get(top, "other")
 
 
+def _merge_in_progress() -> bool:
+    """A merge commit combines commits that already passed this gate one by
+    one; its staged file count is the union of both sides and says nothing
+    about kitchen-sink authoring. (2026-09-04: a 57-file branch merge was
+    blocked although every commit on both sides was focused.)"""
+    result = subprocess.run(
+        ["git", "rev-parse", "-q", "--verify", "MERGE_HEAD"],
+        capture_output=True, text=True, check=False,
+    )
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
 def main() -> int:
     files = _staged_files()
     if not files:
+        return 0
+    if _merge_in_progress():
+        print("commit-hygiene: merge commit — size gate skipped (both sides already gated).")
         return 0
 
     domains = Counter(_classify(f) for f in files)

@@ -69,9 +69,16 @@ def test_catalog_validates_with_prompt():
 
 # ── Fejl-kanal (2026-06-23): sektion-builder der kaster bliver synlig ─────
 def test_noise_labels_extracted_to_observer():
-    """Boy Scout: noise-policy bor nu her (udskilt fra prompt_contract)."""
-    assert "R2 gate telemetry" in po.DIAGNOSTIC_NOISE_LABELS
-    assert "room entities" in po.TAIL_NOISE_LABELS
+    """Boy Scout: noise-policy bor nu her (udskilt fra prompt_contract).
+
+    Stikprøven var «R2 gate telemetry» indtil 2026-09-05, hvor den blev taget af
+    listen (den bar beskeden om at 71 af 90 advarsler blev ignoreret). Testen
+    handler om HVOR politikken bor, ikke om et bestemt label — så den bruger nu
+    et der stadig er slukket.
+    """
+    assert "curiosity-budget idle-window invitation" in po.DIAGNOSTIC_NOISE_LABELS
+    assert "pattern counterfactuals" in po.TAIL_NOISE_LABELS
+    assert len(po.DIAGNOSTIC_NOISE_LABELS) > 0
 
 
 def test_observe_section_error_self_safe(monkeypatch):
@@ -90,3 +97,111 @@ def test_observe_build_emits_error_channel(monkeypatch):
                      dropped_error=[("indre liv", "RuntimeError: boom")])
     assert seen["error_count"] == 1
     assert seen["dropped_error"][0]["section"] == "indre liv"
+
+
+# ---------------------------------------------------------------------------
+# Adfærds-gates er ikke diagnostik-støj
+#
+# 2026-09-05: "decision adherence gate" lå på den hardkodede blacklist og blev
+# derfor kastet væk FØR indholdet blev vurderet. Hele kæden bagved virkede —
+# review skrev domme, adherence_score blev opdateret, gaten valgte korrekt bånd
+# og producerede 1.993 tegn eskaleret tekst med fem beslutninger under 25%. Og
+# så nåede beskeden aldrig frem til prompten. En advarsel Jarvis ikke ser, er
+# ikke en advarsel.
+# ---------------------------------------------------------------------------
+
+
+# Sektioner der bevidst er TAGET AF listen efter måling. Hver post har kostet en
+# undersøgelse; de må ikke kunne slukkes igen uden at nogen tager stilling.
+_BEVIDST_TAENDT = {
+    # 2026-09-05: adfærdsinstruks, ikke diagnostik. Eskalerer til «DU SKAL...».
+    "decision adherence gate",
+    # 2026-09-05: begrundelsen «already in guidance rules» var FALSK — hverken
+    # «linjeskift», «EGNE ord» eller «Gentag ALDRIG» fandtes i den byggede prompt.
+    "markdown formatting",
+    "no tool-result echo",
+    # 2026-09-05: begrundelsen «merged into brain facts» var FALSK — der findes
+    # ingen «brain facts»-sektion. 1.171 tegn af hans vidensresumé, tabt.
+    "jarvis brain summary",
+    # 2026-09-05: bærer nu emne OG udfald, ikke «Ny samtale ×5» som i juni.
+    # (cross-session arc blev slukket IGEN samme dag — den viser stadig mest
+    # maskin-titler, og denne dækker det samme bedre.)
+    "conversation continuity (always-on)",
+    "rule engine conclusions",
+    # 2026-09-05, 2. runde: BETINGEDE ALARMER. De returnerer 0 tegn når intet er
+    # galt — det er ikke død kode, det er tavshed med vilje. At blackliste en
+    # alarm er værre end at blackliste en statusrapport: den forsvinder præcis
+    # når den skulle tale. Og de koster nul tegn når de tier.
+    "self-monitor warnings",
+    "reasoning tier recommendation",
+    "reasoning escalation recommendation",
+    "context window degradation signal",
+    "causal alerts",
+    "forgetting nudge",
+    "priors from your own data",
+    # 2026-09-05: diagnostik, ja — men de bærer beskeden om at 71 af 90
+    # advarsler blev ignoreret. Systemet vidste det; beskeden var slukket.
+    "R2 gate telemetry",
+    "loop-compliance self-check",
+}
+
+
+def test_bevidst_taendte_sektioner_er_ikke_blacklistet():
+    from core.services.prompt_observer import DIAGNOSTIC_NOISE_LABELS, TAIL_NOISE_LABELS
+
+    slukket_igen = sorted(
+        _BEVIDST_TAENDT & (set(DIAGNOSTIC_NOISE_LABELS) | set(TAIL_NOISE_LABELS))
+    )
+    assert not slukket_igen, (
+        "sektioner der bevidst blev tændt efter måling er slukket igen: %s — "
+        "hver af dem kostede en undersøgelse, så tag stilling i stedet for at "
+        "føje dem tilbage" % ", ".join(slukket_igen)
+    )
+
+
+def test_blacklisten_indeholder_kun_labels_der_findes():
+    """En label der er stavet forkert slukker ingenting og skjuler sin egen fejl."""
+    import re
+    from pathlib import Path
+
+    from core.services.prompt_observer import DIAGNOSTIC_NOISE_LABELS, TAIL_NOISE_LABELS
+
+    kilde = Path("core/services/prompt_contract.py")
+    if not kilde.exists():  # kørt uden for repoet
+        return
+    tekst = kilde.read_text(encoding="utf-8")
+    brugte = set(re.findall(r'_(?:awareness|tail)_add\(\s*(?:\d+,\s*)?"([^"]+)"', tekst))
+    ukendte = sorted(
+        (DIAGNOSTIC_NOISE_LABELS | TAIL_NOISE_LABELS) - brugte
+    )
+    assert not ukendte, (
+        "blacklistede labels som ingen sektion bruger (stavefejl slukker intet): %s"
+        % ", ".join(ukendte)
+    )
+
+
+def test_betingede_alarmer_tier_naar_intet_er_galt():
+    """Alarmerne må ikke begynde at larme — de skal returnere tomt i hviletilstand.
+
+    Det var netop derfor de blev blacklistet: nogen så 0 tegn og konkluderede
+    «støj» i stedet for «tavs med vilje».
+    """
+    from core.services.prompt_sections.causal_alerts import causal_alerts_section
+    from core.services.reasoning_classifier import reasoning_tier_section
+
+    assert (reasoning_tier_section("hej") or "") == ""
+    assert (causal_alerts_section() or "") == ""
+
+
+def test_reasoning_tier_taler_paa_en_tung_opgave():
+    """Og de skal tale når betingelsen er opfyldt — ellers er de reelt døde."""
+    from core.services.reasoning_classifier import reasoning_tier_section
+
+    ud = reasoning_tier_section(
+        "design en migrationsplan for at flytte 14 daemoner til delt state "
+        "uden nedetid"
+    ) or ""
+    assert "Reasoning-tier" in ud, (
+        "alarmen fyrer ikke på en tung opgave — så er den reelt død og hører "
+        "ikke hjemme i prompten"
+    )

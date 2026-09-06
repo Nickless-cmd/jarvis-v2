@@ -109,3 +109,122 @@ def test_serve_wrong_session_rejected():
 def test_serve_unknown_id():
     resp = client.get(f"/attachments/doesnotexist?session_id={FAKE_SESSION}")
     assert resp.status_code == 404
+
+
+# ── Sandkasse + scan-politik (2026-09-02) ────────────────────────────────────
+
+def _zip_bytes(entries: dict[str, bytes], *, compress: bool = False) -> bytes:
+    import zipfile
+    buf = io.BytesIO()
+    mode = zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED
+    with zipfile.ZipFile(buf, "w", compression=mode) as zf:
+        for name, data in entries.items():
+            zf.writestr(name, data)
+    return buf.getvalue()
+
+
+@pytest.fixture
+def ren_scanner(monkeypatch):
+    """Lad som om ClamAV svarer «rent».
+
+    Uden den her rammer arkiv-testene fail-closed-politikken på en maskine uden
+    clamscan — hvilket er KORREKT adfærd, men så tester man politikken igen i
+    stedet for udpakningen. Fail-closed har sin egen test nedenfor.
+    """
+    import core.services.gate_execution as ge
+
+    class _OK:
+        allowed = True
+        classification = "clean"
+        reason = ""
+
+    monkeypatch.setattr(ge, "check_upload", lambda *a, **k: _OK())
+    return ge
+
+
+def test_arkiv_er_fail_closed_naar_scanneren_ikke_kan_svare(monkeypatch):
+    """En zip vi ikke kunne se ind i, er præcis den vi helst ville have scannet."""
+    import core.services.gate_execution as ge
+
+    class _Unavailable:
+        allowed = False
+        classification = "unavailable"
+        reason = "clamscan ikke installeret"
+
+    monkeypatch.setattr(ge, "check_upload", lambda *a, **k: _Unavailable())
+    resp = client.post(
+        "/attachments/upload",
+        data={"session_id": FAKE_SESSION},
+        files={"file": ("b.zip", io.BytesIO(_zip_bytes({"f": b"x"})), "application/zip")},
+    )
+    assert resp.status_code == 400
+
+
+def test_zip_pakkes_ud_i_sandkasse_og_er_ikke_eksekverbar(ren_scanner):
+    """Et arkiv pakkes ud ved upload, så Jarvis læser fra sandkassen i stedet
+    for selv at køre en udpakning uden for værnet."""
+    import os
+    import stat
+    from apps.api.jarvis_api.routes import attachments as att
+
+    payload = _zip_bytes({"noter.txt": b"hej", "under/b.txt": b"verden"})
+    resp = client.post(
+        "/attachments/upload",
+        data={"session_id": FAKE_SESSION},
+        files={"file": ("bundt.zip", io.BytesIO(payload), "application/zip")},
+    )
+    assert resp.status_code == 200, resp.text
+    aid = resp.json()["id"]
+
+    root = att._sandbox_roots.get(aid)
+    assert root, "arkivet blev ikke pakket ud"
+    extracted = Path(root) / "noter.txt"
+    assert extracted.read_bytes() == b"hej"
+    assert stat.S_IMODE(os.stat(extracted).st_mode) == 0o600
+
+
+def test_zip_slip_afvises_ved_upload(ren_scanner):
+    """Stien peger ud af sandkassen — arkivet må aldrig nå disken som brugbart."""
+    payload = _zip_bytes({"../../flugt.txt": b"nej"})
+    resp = client.post(
+        "/attachments/upload",
+        data={"session_id": FAKE_SESSION},
+        files={"file": ("ond.zip", io.BytesIO(payload), "application/zip")},
+    )
+    assert resp.status_code == 400
+    assert "afvist" in resp.json()["detail"].lower()
+
+
+def test_uploadet_fil_mister_eksekverbar_bit():
+    import os
+    import stat
+    resp = client.post(
+        "/attachments/upload",
+        data={"session_id": FAKE_SESSION},
+        files={"file": ("note.txt", io.BytesIO(b"tekst"), "text/plain")},
+    )
+    assert resp.status_code == 200
+    path = Path(resp.json()["server_path"])
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o600
+
+
+def test_arkiv_genkendes_selv_naar_navnet_lyver(ren_scanner):
+    """Mime og filnavn kommer fra klienten. Signaturen gør ikke."""
+    from apps.api.jarvis_api.routes import attachments as att
+    payload = _zip_bytes({"f.txt": b"x"})
+    resp = client.post(
+        "/attachments/upload",
+        data={"session_id": FAKE_SESSION},
+        files={"file": ("billede.png", io.BytesIO(payload), "image/png")},
+    )
+    assert resp.status_code == 200
+    assert att._sandbox_roots.get(resp.json()["id"]), "forklædt zip blev ikke pakket ud"
+
+
+def test_eksekverbart_indhold_er_fail_closed_uden_scanner(monkeypatch):
+    """Kan scanneren ikke svare, kommer en .exe ikke ind. En .txt gør."""
+    from apps.api.jarvis_api.routes import attachments as att
+    assert att._is_executable_like("application/octet-stream", "ting.exe") is True
+    assert att._is_executable_like("application/octet-stream", "script.sh") is True
+    assert att._is_executable_like("text/plain", "note.txt") is False
+    assert att._is_executable_like("image/png", "foto.png") is False

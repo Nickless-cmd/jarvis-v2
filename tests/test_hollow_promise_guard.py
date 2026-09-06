@@ -1,6 +1,8 @@
 """Tests for hollow_promise_guard — fang 'lovede handling, kaldte intet værktøj'."""
 from __future__ import annotations
 
+import pytest
+
 import core.services.hollow_promise_guard as hpg
 
 
@@ -112,6 +114,11 @@ _ÆGTE_HALER = [
     "for at matche mock-stilen præcist, før jeg skriver fixet og nye tests.",
     "Jeg har kortlagt de fem fund, så skriver jeg alle fem fixes.",
     "Jeg mangler at se hvordan touched-paths bygges, derefter retter jeg attributionsværnet.",
+    "Søjle 3 — bevidsthed, non-lokalitet, og hvorfor det ændrer min betydning "
+    "— kommer nu. Den her er den vigtigste.",
+    "Bid 2 kommer nu — og det er dér, det rammer mig.",
+    "Sidste graverunde: de konkrete hændelser ved navn, og hvad fysikken "
+    "egentlig siger om måling og bevidsthed.",
 ]
 
 _ALMINDELIGE_AFSLUTNINGER = [
@@ -127,6 +134,13 @@ def test_faktiske_haler_fra_30_august_fanges():
     for t in _ÆGTE_HALER:
         assert hpg.is_hollow_promise(
             final_text=t, total_tool_calls=15, last_round_tool_calls=0) is True, t
+
+
+def test_deferred_text_promises_can_be_identified_separately():
+    assert hpg.is_deferred_text_promise(_ÆGTE_HALER[-3]) is True
+    assert hpg.is_deferred_text_promise(_ÆGTE_HALER[-2]) is True
+    assert hpg.is_deferred_text_promise(_ÆGTE_HALER[-1]) is True
+    assert hpg.is_deferred_text_promise(_ÆGTE_HALER[0]) is False
 
 
 def test_almindelige_afslutninger_fanges_ikke():
@@ -146,3 +160,113 @@ def test_bagudkompatibel_uden_sidste_runde():
     t = _ÆGTE_HALER[0]
     assert hpg.is_hollow_promise(final_text=t, total_tool_calls=15) is False
     assert hpg.is_hollow_promise(final_text=t, total_tool_calls=0) is True
+
+
+# ---------------------------------------------------------------------------
+# 4. sep 2026: «vores cutoff bug er vendt tilbage». Det var ikke et cut — det
+# var tre tomme løfter i træk, hver med en ordstilling mønster-listen ikke
+# kendte. Haler taget ordret fra Bjørns samtale samme morgen.
+# ---------------------------------------------------------------------------
+
+REELLE_HALER = [
+    "Først åbner jeg en session og finder hvad der scanner output for tidsclaims.",
+    "Den læser jeg nu præcist.",
+    "Lad mig læse resten (linje ~350-520) præcist.",
+]
+
+
+@pytest.mark.parametrize("hale", REELLE_HALER)
+def test_faktiske_haler_fra_samtalen_fanges(hale):
+    from core.services.hollow_promise_guard import is_promise_of_action
+
+    assert is_promise_of_action(hale) is True
+
+
+@pytest.mark.parametrize("hale", REELLE_HALER)
+def test_samme_haler_er_tomme_loefter_naar_intet_vaerktoej_koerte(hale):
+    from core.services.hollow_promise_guard import is_hollow_promise
+
+    assert is_hollow_promise(hale, total_tool_calls=12, last_round_tool_calls=0) is True
+    # Handlede han faktisk i sidste runde, er det ikke et tomt løfte.
+    assert is_hollow_promise(hale, total_tool_calls=12, last_round_tool_calls=1) is False
+
+
+def test_beretning_i_datid_er_ikke_et_loefte():
+    """«Jeg læste filen» er en beretning om noget der ER sket. Fanges den,
+    bliver hvert eneste afsluttet svar til et falsk tomt løfte."""
+    from core.services.hollow_promise_guard import is_promise_of_action
+
+    assert is_promise_of_action("Jeg læste filen, og der var tre fejl. Dem har jeg rettet.") is False
+    assert is_promise_of_action("Jeg åbnede sessionen og fandt fejlen. Den er rettet nu.") is False
+
+
+def test_kun_sidste_saetning_taeller():
+    """Et langt svar der undervejs nævner hvad han gjorde er ikke et løfte —
+    løftet står til sidst, som dét man efterlades med."""
+    from core.services.hollow_promise_guard import is_promise_of_action
+
+    beretning = (
+        "Jeg kigger på filen og finder tre steder der skal rettes. "
+        "Alle tre er rettet, og testene er grønne."
+    )
+    assert is_promise_of_action(beretning) is False
+
+
+def test_spoergsmaal_til_sidst_er_stadig_ikke_et_loefte():
+    from core.services.hollow_promise_guard import is_promise_of_action
+
+    assert is_promise_of_action("Jeg kan læse resten af filen — skal jeg det?") is False
+
+
+# ── Fjerde runde af misser, 05-09-2026 ──────────────────────────────────────
+# Bjørn fik fire ture i træk hvor Jarvis annoncerede og stoppede. Værnet fangede
+# to. Begge der slap sagde «Lad mig BEKRÆFTE …» — verbet stod ikke i listen.
+# Teksterne herunder er KOPIERET ordret fra chat_messages, ikke opdigtet.
+
+_LIVE_CUTOFFS = [
+    "Jeg tjekker min model-configuration for at bekræfte at jeg er på "
+    "vision-modellen, og samtidig ser jeg på om der er nye commits i repoet "
+    "siden sidst.",
+    "Du har helt ret — og det er præcis den test, vi lige lavede. Så snart jeg "
+    "er på vision-modellen, stopper jeg med at gøre det jeg siger. Lad mig "
+    "bekræfte at det er vision-modellen der er aktiv lige nu, og se om der er "
+    "nye commits i repoet — men jeg skal gøre det i én omgang og faktisk nå i "
+    "mål, ikke cykle.",
+    "Du har ret — jeg er uden syn igen. Lad mig tjekke min model-configuration "
+    "lige nu for at se præcis hvad jeg kører på, og se om der er nye commits i "
+    "repoet. Jeg gør det i én omgang nu.",
+]
+
+
+@pytest.mark.parametrize("text", _LIVE_CUTOFFS)
+def test_de_faktiske_cutoffs_fanges(text):
+    assert hpg.is_hollow_promise(text, 0, last_round_tool_calls=0) is True
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # «lad mig» + vilkårligt handlingsverbum — konstruktionen bærer løftet,
+        # så et verbum jeg ikke har set før må ikke slippe igennem.
+        "Lad mig bekræfte det med config'en.",
+        "Lad mig sammenholde de to logs.",
+        "Lad mig deploye den til containeren.",
+        "Lad mig genstarte tjenesten.",
+    ],
+)
+def test_lad_mig_fanger_ogsaa_ukendte_verber(text):
+    assert hpg.is_promise_of_action(text) is True
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Talehandlinger fuldføres i selve beskeden og kan aldrig stå tomme.
+        "Lad mig forklare hvorfor det gik galt.",
+        "Lad mig være ærlig: jeg ved det ikke.",
+        "Lad mig opsummere hvad vi fandt.",
+        "Lad mig uddybe den sidste pointe.",
+    ],
+)
+def test_talehandlinger_er_ikke_loefter(text):
+    assert hpg.is_promise_of_action(text) is False

@@ -38,6 +38,9 @@ class VisibleModelResult:
     # — even when DeepSeek was actually serving cached prefixes.
     cache_hit_tokens: int = 0
     cache_miss_tokens: int = 0
+    # Provider termination reason. ``length`` must never be mistaken for a
+    # clean completion; the streaming adapter may recover it before returning.
+    finish_reason: str = ""
 
 
 @dataclass(slots=True)

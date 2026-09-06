@@ -150,23 +150,14 @@ def _exec_memory_upsert_section(args: dict[str, Any]) -> dict[str, Any]:
                 if norm_h != norm_target and len(norm_target) > 5:
                     fuzzy_warnings.append(h)
 
-    if match:
-        # Replace existing section: find start + end of the section
-        pattern = rf"(^#{{{level}}}\s+{re.escape(match)}\s*\n)(.*?)(?=^#|\Z)"
-        replacement = f"{hashes} {heading}\n{content}\n\n"
-        new_text, count = re.subn(pattern, replacement, text, count=1, flags=re.MULTILINE | re.DOTALL)
-        if count == 0:
-            # Fallback: just append
-            new_text = text.rstrip() + f"\n\n{full_heading}\n{content}\n"
-        action = "updated"
-    else:
-        # Append new section
-        new_text = text.rstrip() + f"\n\n{full_heading}\n{content}\n"
-        action = "added"
-
+    # 2026-09-04 (memory repair, R7): én skriver for alle MEMORY.md-sektioner —
+    # normaliseret overskrifts-match (case/dato/tegnsætning) + atomisk skrivning.
+    # Før fandtes fem skrivestier med hver sin dedup-regel → dubletoverskrifter.
+    from core.memory.memory_md_writer import upsert_section
     p = _memory_md()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(new_text, encoding="utf-8")
+    result = upsert_section(p, heading, content, level=level, mode="replace")
+    action = "updated" if result.get("action") == "updated" else "added"
+    _ = (match, full_heading)  # match-info bruges kun til fuzzy-advarslen ovenfor
 
     # Queue side effects (mood capture + graph ingestion) for async
     # processing. The memory_write_queue daemon handles these in the

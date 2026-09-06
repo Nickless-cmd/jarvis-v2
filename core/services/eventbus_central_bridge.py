@@ -72,8 +72,6 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     "veto_gate": ("review", "veto"),           # veto-governance-gate (pass/fail, ikke indhold)
     # ── Fase B (mørke FRAKOBLET+LLM-familier, 5. jul): operationelle → egress-OK ──
     "mail_checker": ("channel", "mail"),
-    "tiktok_content_daemon": ("channel", "tiktok_content"),
-    "tiktok_research_daemon": ("channel", "tiktok_research"),
     "tool_tagger": ("tools", "tagger"),
     "coding_lane": ("tools", "coding_lane"),
     "agent_skill_distiller": ("agents", "skill_distiller"),

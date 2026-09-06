@@ -10,6 +10,7 @@ import email as email_lib
 import imaplib
 import json
 import logging
+from typing import Any
 import re
 import smtplib
 from datetime import UTC, datetime
@@ -268,9 +269,59 @@ def _mark_as_seen(imap_uids: list[str]) -> int:
     return marked
 
 
+
+# ── Tilstand paa tvaers af processer ──────────────────────────────────────
+#
+# 2026-09-05: `_last_check_at` m.fl. var modul-globaler. Daemonen koerer i
+# jarvis-runtime, men prompten bygges i jarvis-api — to processer, hver sit sæt
+# globaler. `build_mail_checker_surface()` i api'en svarede derfor ALTID
+# `last_check_at: ""` selvom tjekket koerte hvert andet minut. Ingen kunne se at
+# posten var tjekket, og intet downstream kunne bruge resultatet.
+#
+# `_seen_ids` havde samme problem med en ekstra tand: den nulstilledes ved hver
+# genstart, saa al post saa ny ud igen.
+#
+# Tilstanden ligger nu i runtime-state, som begge processer deler.
+
+_MAIL_STATE_KEY = "mail_checker.state"
+
+
+def _load_mail_state() -> dict[str, Any]:
+    """Laes delt tilstand. Self-safe: tom dict ved enhver fejl."""
+    try:
+        from core.runtime.db import get_runtime_state_value
+        data = get_runtime_state_value(_MAIL_STATE_KEY)
+        return dict(data) if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_mail_state(*, check_at: str, new_count: int, senders: list[str],
+                     subjects: list[str], seen_ids: set[str]) -> None:
+    """Skriv delt tilstand. Self-safe: en fejl her maa ikke vaelte tick'et."""
+    try:
+        from core.runtime.db import set_runtime_state_value
+        set_runtime_state_value(_MAIL_STATE_KEY, {
+            "last_check_at": check_at,
+            "last_new_count": int(new_count),
+            "last_senders": list(senders)[:10],
+            "last_subjects": list(subjects)[:10],
+            "seen_ids": list(seen_ids)[-_MAX_SEEN_IDS:],
+        })
+    except Exception as exc:
+        logger.debug("mail_checker: kunne ikke gemme delt tilstand: %s", exc)
+
+
 def tick_mail_checker_daemon() -> dict[str, object]:
     """Main daemon tick — check for new mail, publish events for unseen messages."""
     global _seen_ids, _last_check_at, _last_new_count, _last_senders, _last_subjects, _auto_responded_ids
+
+    # Hent den DELTE seen-liste, saa en genstart ikke faar al post til at se ny ud
+    # og saa to processer ikke danner hver sin sandhed.
+    _delt = _load_mail_state()
+    _gemt_seen = _delt.get("seen_ids")
+    if isinstance(_gemt_seen, list) and _gemt_seen:
+        _seen_ids = set(_seen_ids) | {str(x) for x in _gemt_seen}
 
     new_mails: list[dict] = []
     try:
@@ -302,6 +353,10 @@ def tick_mail_checker_daemon() -> dict[str, object]:
     _last_new_count = len(new_mails)
     _last_senders = [m.get("from", "") for m in new_mails]
     _last_subjects = [m.get("subject", "") for m in new_mails]
+    _save_mail_state(
+        check_at=_last_check_at.isoformat(), new_count=_last_new_count,
+        senders=_last_senders, subjects=_last_subjects, seen_ids=_seen_ids,
+    )
 
     # Del posten op FØR vi larmer: kun frisk, menneskelig post fortjener en
     # notifikation, et nudge og et LLM-kald. Resten markeres blot læst.
@@ -471,7 +526,20 @@ def tick_mail_checker_daemon() -> dict[str, object]:
 
 
 def build_mail_checker_surface() -> dict[str, object]:
-    """Return surface state for heartbeat context."""
+    """Return surface state for heartbeat context.
+
+    Laeser DELT tilstand foerst: daemonen koerer i en anden proces end den der
+    bygger prompten, saa modul-globalerne her er tomme i api-processen.
+    """
+    delt = _load_mail_state()
+    if delt.get("last_check_at"):
+        return {
+            "last_check_at": str(delt.get("last_check_at") or ""),
+            "last_new_count": int(delt.get("last_new_count") or 0),
+            "last_senders": list(delt.get("last_senders") or []),
+            "last_subjects": list(delt.get("last_subjects") or []),
+            "seen_ids_count": len(delt.get("seen_ids") or []),
+        }
     return {
         "last_check_at": _last_check_at.isoformat() if _last_check_at else "",
         "last_new_count": _last_new_count,
@@ -489,3 +557,59 @@ def get_latest_mail_info() -> dict[str, object]:
         "subjects": list(_last_subjects),
         "last_check_at": _last_check_at.isoformat() if _last_check_at else "",
     }
+
+
+# Hvor gammelt et tjek maa vaere foer det ikke laengere er "nu". Uden dette ville
+# et doegn gammelt fund staa i prompten som om posten lige var kommet.
+_MAIL_FRESH_HOURS = 12
+
+
+def mail_awareness_section() -> str:
+    """Ny post som en KENDSGERNING i prompten. "" naar der intet er.
+
+    Beslutningen «tjek mails ved ny session og orientér Bjørn» stod paa 0,03 i
+    adherence — et ritual han skulle huske. Daemonen tjekker i forvejen hvert
+    andet minut i cluster_infra; det der manglede var at resultatet naaede ham.
+    Nu staar det der naar der ER noget, og tier naar der ikke er.
+
+    Ingen opfordring, ingen paamindelse. Kun hvem der har skrevet og om hvad.
+    """
+    try:
+        flade = build_mail_checker_surface()
+    except Exception:
+        return ""
+
+    antal = int(flade.get("last_new_count") or 0)
+    if antal <= 0:
+        return ""
+
+    tjekket = str(flade.get("last_check_at") or "")
+    if not tjekket:
+        return ""
+    try:
+        da = datetime.fromisoformat(tjekket.replace("Z", "+00:00")).astimezone(UTC)
+        timer = (datetime.now(UTC) - da).total_seconds() / 3600.0
+    except Exception:
+        return ""
+    if timer > _MAIL_FRESH_HOURS:
+        return ""
+
+    afsendere = [str(x) for x in (flade.get("last_senders") or [])]
+    emner = [str(x) for x in (flade.get("last_subjects") or [])]
+    linjer = ["[NY POST] %d ny%s siden sidste tjek (%s):" % (
+        antal, "" if antal == 1 else "e", _mail_time_label(timer))]
+    for i in range(min(len(afsendere), len(emner), 5)):
+        afsender = afsendere[i].strip() or "(ukendt afsender)"
+        emne = emner[i].strip() or "(intet emne)"
+        linjer.append("  • %s — %s" % (afsender[:60], emne[:80]))
+    if antal > 5:
+        linjer.append("  … og %d mere" % (antal - 5))
+    return "\n".join(linjer)
+
+
+def _mail_time_label(timer: float) -> str:
+    if timer < 1:
+        return "inden for den seneste time"
+    if timer < 2:
+        return "for en time siden"
+    return "for %d timer siden" % int(timer)

@@ -15,8 +15,17 @@ PRICING: dict[tuple[str, str], dict[str, float]] = {
     ("deepseek", "deepseek-v4-pro"): {"cache_hit": 0.003625 / _M, "cache_miss": 0.435 / _M, "output": 0.87 / _M},
 }
 
-# legacy-aliaser → v4-flash-priser
-_ALIAS = {"deepseek-chat": "deepseek-v4-flash", "deepseek-reasoner": "deepseek-v4-flash"}
+# legacy-aliaser → v4-flash-priser.
+# 2026-09-05: `deepseek-v4-flash-vision-exp` er SAMME model med syn, og prisen er
+# den samme med og uden (Bjoerns research; DeepSeeks pris-side lister ikke
+# varianten saerskilt). Uden denne linje ville et vision-kald prises til 0,0 og
+# forsvinde ud af regnskabet — praecis den slags blindt hjoerne vi lige har
+# lukket i hovedbogen. Aliaset holder prisen ét sted.
+_ALIAS = {
+    "deepseek-chat": "deepseek-v4-flash",
+    "deepseek-reasoner": "deepseek-v4-flash",
+    "deepseek-v4-flash-vision-exp": "deepseek-v4-flash",
+}
 
 
 def compute_cost_usd(

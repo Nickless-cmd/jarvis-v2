@@ -66,3 +66,47 @@ def test_binding_is_self_safe(monkeypatch):
     monkeypatch.setattr(cpo, "record_private", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
     res = wm.record_runtime_world_model_prediction(subject="a", expectation="b")
     assert res["status"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# FIFO-loftet må ikke kunne kortslutte falsifikations-sløjfen
+#
+# Målt 2026-09-05: sløjfen der efterprøver Jarvis' forudsigelser var bygget,
+# tilkoblet og kørte dagligt — og havde resolvet NUL forudsigelser i systemets
+# fem måneders levetid. Blokeringen var ren aritmetik:
+#
+#     produktion   ~107 forudsigelser/døgn
+#     horisont     HORIZON_DAYS 7 + GRACE_DAYS 1 = 8 dage
+#     nødvendigt   107 × 8 ≈ 856 pladser
+#     loft         120
+#
+# Hver forudsigelse blev skubbet ud af FIFO'en ~7 dage FØR den blev moden.
+# ---------------------------------------------------------------------------
+
+# Målt produktionsrate 4.-5. september 2026 (120 poster på 27 timer).
+_MAALT_DOEGNRATE = 107
+
+
+def test_fifo_loftet_raekker_til_hele_horisonten():
+    from core.services.counterfactual_predictions import GRACE_DAYS, HORIZON_DAYS
+    from core.services.world_model_signal_tracking import _MAX_PREDICTIONS
+
+    noedvendigt = _MAALT_DOEGNRATE * (HORIZON_DAYS + GRACE_DAYS)
+    assert _MAX_PREDICTIONS >= noedvendigt, (
+        "_MAX_PREDICTIONS=%d rækker ikke til %d dages horisont ved ~%d "
+        "forudsigelser/døgn (kræver %d). Forudsigelserne skubbes ud af FIFO'en "
+        "før de bliver modne, og sløjfen kan aldrig resolve noget."
+        % (_MAX_PREDICTIONS, HORIZON_DAYS + GRACE_DAYS, _MAALT_DOEGNRATE, noedvendigt)
+    )
+
+
+def test_horisonten_maa_ikke_vokse_ud_over_loftet():
+    """Vagten skal virke begge veje — en længere horisont kræver mere plads."""
+    from core.services.counterfactual_predictions import GRACE_DAYS, HORIZON_DAYS
+    from core.services.world_model_signal_tracking import _MAX_PREDICTIONS
+
+    maks_dage = _MAX_PREDICTIONS / float(_MAALT_DOEGNRATE)
+    assert (HORIZON_DAYS + GRACE_DAYS) <= maks_dage, (
+        "horisonten er sat op til %d dage, men loftet rummer kun %.1f dages "
+        "produktion" % (HORIZON_DAYS + GRACE_DAYS, maks_dage)
+    )

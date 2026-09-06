@@ -14,16 +14,17 @@ import os
 # ── Lean agentic-round-prompt (spec §4.7, I7) ────────────────────────────────
 #
 # PROBLEM (kode-bekræftet): hver agentisk followup-runde gen-sender HELE den tunge
-# assembly-prompt. ``_build_visible_input`` (visible_model.py) flytter den per-turn-
+# assembly-prompt. ``_build_visible_input`` (visible_model.py) placerer den per-turn-
 # dynamiske HALE (inder-liv/somatik/mood/diagnostik/awareness/memory-recall/
-# digests/finitude/presence) UD af system-beskeden og NED på den SIDSTE bruger-
-# besked. Den hale framer KUN det FØRSTE svar — under opgave-eksekvering (runde ≥2)
+# digests/finitude/presence) cache-sent som en separat system-besked umiddelbart
+# før den aktuelle brugerturn. Ældre payloads kan stadig have halen flettet ind i
+# den sidste brugerbesked. Halen framer KUN det FØRSTE svar — under runde ≥2
 # er den ren kontekst-bloat: den fortynder vinduet, øger thinking-modellers fejl og
 # kan tippe lange/autonome loops over model-vinduet (Ollama 400 "prompt too long" →
 # tavst svar).
 #
 # LEAN-TRANSFORMEN (runde ≥2): behold den LOAD-BEARING kerne, drop den tunge
-# berigelse fra den sidste bruger-besked:
+# berigelse fra den cache-sene systembesked (eller legacy brugerbesked):
 #   BEHOLD:  system-beskeden (identitet-kerne + tool-katalog-linje + tool-output-
 #            hygiejne — Jarvis' STEMME), HELE samtale-historikken, den oprindelige
 #            bruger-opgave, ALLE tool-exchanges (de ligger i ``exchanges``, røres
@@ -114,7 +115,8 @@ def build_lean_base_messages(
 ) -> tuple[list[dict], dict]:
     """Producér en LEAN udgave af ``base_messages`` til agentiske runder ≥2.
 
-    Drop den tunge per-turn-hale fra den SIDSTE bruger-besked; behold system-
+    Drop den tunge per-turn-hale fra beskeden lige før den aktuelle user-turn
+    (eller fra selve user-turnen for legacy payloads); behold system-
     beskeden (identitet/tools/stemme), historikken, opgaven og de 2 anti-løgn-rækker.
     ``exchanges`` (tool-resultater) ligger UDENFOR ``base_messages`` og røres ALDRIG.
 
@@ -137,16 +139,37 @@ def build_lean_base_messages(
         if _last_user_idx == -1:
             return base_messages, {"changed": False, "before_chars": _before,
                                    "after_chars": _before, "dropped_chars": 0}
-        _orig = str(base_messages[_last_user_idx].get("content") or "")
-        _lean_text, _changed, _dropped = _lean_strip_user_message(_orig)
-        if not _changed:
+        # Legacy-form: halen er flettet ind i den aktuelle user-turn. Ny form:
+        # separat systembesked umiddelbart før user-turnen. Prøv begge uden at
+        # røre ældre system-/historikbeskeder.
+        _candidate_indexes = [_last_user_idx]
+        if (
+            _last_user_idx > 0
+            and str(base_messages[_last_user_idx - 1].get("role") or "") == "system"
+        ):
+            _candidate_indexes.append(_last_user_idx - 1)
+
+        _changed_idx = -1
+        _lean_text = ""
+        _dropped = 0
+        for _idx in _candidate_indexes:
+            _orig = str(base_messages[_idx].get("content") or "")
+            _lean_text, _changed, _dropped = _lean_strip_user_message(_orig)
+            if _changed:
+                _changed_idx = _idx
+                break
+        if _changed_idx == -1:
             return base_messages, {"changed": False, "before_chars": _before,
                                    "after_chars": _before, "dropped_chars": 0}
+
         # Kopiér KUN den besked vi ændrer; resten deles by-reference (uændret).
         _out = list(base_messages)
-        _new_msg = dict(_out[_last_user_idx])
-        _new_msg["content"] = _lean_text
-        _out[_last_user_idx] = _new_msg
+        if _lean_text:
+            _new_msg = dict(_out[_changed_idx])
+            _new_msg["content"] = _lean_text
+            _out[_changed_idx] = _new_msg
+        else:
+            del _out[_changed_idx]
         _after = _before - _dropped
         return _out, {
             "changed": True,
@@ -167,7 +190,8 @@ def build_lean_base_messages(
 # ── Kill-switch: AGENTIC_LEAN_PROMPT (spec §4.7, I7) ─────────────────────────
 #
 # Den ENE sandhedskilde for om lean agentic-round-prompten (runde ≥2) er aktiv.
-# DEFAULT OFF (fail-closed) → byte-identisk med i dag (full prompt hver runde).
+# DEFAULT ON efter CC-parity audit (2026-09-04): runde 0 er stadig fuld prompt,
+# men runde ≥2 dropper den tunge per-turn-hale for at undgå gentaget bloat.
 # Samme dual-læsnings-mønster som ``agentic_round_retry_enabled()``:
 #   1. env ``JARVIS_AGENTIC_LEAN_PROMPT`` vinder når sat til en sandheds-værdi.
 #   2. ellers runtime-config ``settings.extra["agentic_lean_prompt_enabled"]``.
@@ -182,7 +206,7 @@ _FALSY = ("0", "false", "no", "off")
 
 
 def agentic_lean_prompt_enabled() -> bool:
-    """Er lean agentic-round-prompt (runde ≥2, spec §4.7) slået til? Default False.
+    """Er lean agentic-round-prompt (runde ≥2, spec §4.7) slået til? Default True.
 
     Env-override (``JARVIS_AGENTIC_LEAN_PROMPT``) vinder over runtime-config.
     Selv-sikker: enhver fejl → False (fail-closed → full prompt hver runde)."""
@@ -196,6 +220,6 @@ def agentic_lean_prompt_enabled() -> bool:
         # Ukendt env-værdi → fald tilbage til config (ignorér uparselbart env).
     try:
         from core.runtime.settings import load_settings
-        return bool(load_settings().extra.get("agentic_lean_prompt_enabled", False))
+        return bool(load_settings().extra.get("agentic_lean_prompt_enabled", True))
     except Exception:
-        return False
+        return True

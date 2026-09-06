@@ -17,6 +17,7 @@ import { PermissionsSection } from '../components/settings/PermissionsSection'
 import { JarvisSection } from '../components/settings/JarvisSection'
 import { AppsSection } from '../components/settings/AppsSection'
 import { McpSection } from '../components/settings/McpSection'
+import { WorkbenchSection } from '../components/settings/WorkbenchSection'
 import { TotpSetup } from '../components/settings/TotpSetup'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
 import { ConnectionSection } from '../components/settings/ConnectionSection'
@@ -74,7 +75,13 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
       case 'presence': return wrap(<PresenceSection />)
 
       case 'memory': return wrap(<MemorySection config={config} />)
-      case 'workspace': return wrap(<WorkspaceSection config={config} />)
+      case 'workspace': return wrap(<>
+        <WorkspaceSection config={config} />
+        {/* Operator-kanal, fortryd-runde og runtime-kontakter (6/9-2026).
+            Hoerer til arbejdsomraadet: de handler alle om HVOR og HVORDAN
+            arbejdet udfoeres, ikke om hvem han er. */}
+        {ownerAuth && <WorkbenchSection config={config} />}
+      </>)
       case 'connections': return wrap(<>
         {ownerAuth && <McpSection config={config} />}
         <AppsSection config={config} />

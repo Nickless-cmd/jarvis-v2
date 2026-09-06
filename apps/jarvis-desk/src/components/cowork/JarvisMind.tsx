@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Code2 } from 'lucide-react'
 import type { ApiConfig, MindIndexEntry, CentralFeedItem } from '../../lib/api'
-import { getMindIndex, getMindSection } from '../../lib/api'
+import { actOnDecision, getMindIndex, getMindSection } from '../../lib/api'
 import { subscribeCentralStream } from '../../lib/centralStream'
 import { usePollWhenVisible } from '../../hooks/usePollWhenVisible'
 import { PresenceDot } from '../shell/PresenceDot'
@@ -97,7 +97,7 @@ function LivePulseLine({ config, onLive }: { config?: ApiConfig; onLive: (v: boo
 /** Én sektion: ren visning + AVANCERET-toggle (rå projektion). */
 function Section({ config, section, ready }: { config?: ApiConfig; section: string; ready: boolean }) {
   const [advanced, setAdvanced] = useState(false)
-  const { data, loading, error } = usePollWhenVisible(
+  const { data, loading, error, refresh } = usePollWhenVisible(
     () => getMindSection(config!, section), POLL_MS, !!config && ready,
   )
   if (!ready) return <Placeholder section={section} />
@@ -114,13 +114,122 @@ function Section({ config, section, ready }: { config?: ApiConfig; section: stri
       </div>
       {advanced
         ? <pre className="jm-raw">{JSON.stringify(data, null, 2)}</pre>
-        : <SectionView section={section} data={data} />}
+        : <SectionView section={section} data={data} config={config} onActed={refresh} />}
     </div>
   )
 }
 
+interface Beslutning {
+  kind: string
+  id: string
+  text: string
+  why?: string
+  actions?: string[]
+}
+
+const HANDLING_TEKST: Record<string, string> = {
+  approve: 'Godkend',
+  reject: 'Afvis',
+  // Et livsprojekt beder ikke om lov — det er noget han HAR sat sig for. Derfor
+  // «det er i orden», ikke «godkend»: man siger god for det, man tillader det ikke.
+  endorse: 'Det er i orden',
+  abandon: 'Læg den fra dig',
+}
+
+/**
+ * Beslutninger — den ENESTE sektion der ikke bare informerer.
+ *
+ * De øvrige faner viser hvad han tænker; denne venter på et svar. Ruterne har
+ * ligget der hele tiden, men uden knap udløb 31 initiativer ubesvarede. Kortet
+ * fjernes med det samme ved tryk (serveren er stadig sandheden — pollen henter
+ * listen igen), for et kort der bliver stående føles som om trykket ikke landede.
+ */
+function DecisionsView({ data, config, onActed }: {
+  data: Record<string, unknown>
+  config?: ApiConfig
+  onActed?: () => void
+}) {
+  const [svaret, setSvaret] = useState<string[]>([])
+  const [fejl, setFejl] = useState<string | null>(null)
+  const [travl, setTravl] = useState<string | null>(null)
+
+  const alle = (Array.isArray(data.items) ? data.items : []) as Beslutning[]
+  const items = alle.filter((d) => d?.id && d?.text && !svaret.includes(d.id))
+  const initiativer = items.filter((d) => d.kind === 'initiative')
+  const projekter = items.filter((d) => d.kind === 'life_project')
+  const ubesvarede = Number(
+    (data.queue as { expired_unanswered?: unknown } | undefined)?.expired_unanswered ?? 0,
+  )
+
+  async function svar(d: Beslutning, action: string) {
+    if (!config) return
+    setTravl(d.id); setFejl(null)
+    setSvaret((prev) => [...prev, d.id])
+    try {
+      const res = await actOnDecision(config, d.kind, d.id, action)
+      if (!res.ok) setFejl(res.error || 'Kunne ikke svare på forslaget')
+    } catch (e) {
+      setFejl(e instanceof Error ? e.message : 'Kunne ikke svare på forslaget')
+    } finally {
+      setTravl(null); onActed?.()
+    }
+  }
+
+  function kort(d: Beslutning) {
+    return (
+      <div key={d.id} className="jm-card jm-decision">
+        <div className="jm-card-title">{d.text}</div>
+        {d.why && <div className="jm-card-sub">{d.why}</div>}
+        <div className="jm-decide">
+          {(d.actions ?? []).map((a) => (
+            <button key={a} type="button" className="jm-decide-btn"
+              disabled={travl === d.id} onClick={() => void svar(d, a)}>
+              {HANDLING_TEKST[a] ?? a}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (items.length === 0) {
+    return <div className="jm-section-sub">Intet venter på dig lige nu.</div>
+  }
+
+  return (
+    <>
+      {fejl && <div className="jm-error">{fejl}</div>}
+      {initiativer.length > 0 && (
+        <>
+          <div className="jm-section-sub">Han foreslår</div>
+          <div className="jm-grid">{initiativer.map(kort)}</div>
+        </>
+      )}
+      {projekter.length > 0 && (
+        <>
+          <div className="jm-section-sub">Det han arbejder hen imod</div>
+          <div className="jm-grid">{projekter.map(kort)}</div>
+        </>
+      )}
+      {ubesvarede > 0 && (
+        <div className="jm-dim jm-unanswered">
+          {ubesvarede} tidligere forslag udløb uden svar.
+        </div>
+      )}
+    </>
+  )
+}
+
 /** Ren, menneskelig visning pr. sektion. Ukendte former falder til rå (men toggle findes). */
-function SectionView({ section, data }: { section: string; data: Record<string, unknown> }) {
+function SectionView({ section, data, config, onActed }: {
+  section: string
+  data: Record<string, unknown>
+  config?: ApiConfig
+  onActed?: () => void
+}) {
+  if (section === 'decisions') {
+    return <DecisionsView data={data} config={config} onActed={onActed} />
+  }
   if (section === 'mind') {
     const systems = (data.systems as { system: string; active: boolean; summary?: string }[]) ?? []
     return (
@@ -153,6 +262,7 @@ function SectionView({ section, data }: { section: string; data: Record<string, 
     const inc = (data.incidents as { severity: string; nerve: string; message: string }[]) ?? []
     return (
       <>
+        <HollowPromises data={data.hollow_promises as HollowCensus | undefined} />
         <div className="jm-section-sub">{inc.length} uløste flag · seneste fyringer:</div>
         <div className="jm-feed">
           {feed.slice(0, 24).map((f, i) => (
@@ -166,6 +276,59 @@ function SectionView({ section, data }: { section: string; data: Record<string, 
     )
   }
   return <pre className="jm-raw">{JSON.stringify(data, null, 2)}</pre>
+}
+
+interface HollowCensus {
+  available?: boolean
+  window_hours?: number
+  models?: { model: string; turns: number; hollow: number; hollow_pct: number }[]
+  hollow_total?: number
+  guard_detected?: number
+  escaped?: number
+}
+
+/**
+ * Tomme løfter — svar der annoncerer et skridt og ikke tager det.
+ *
+ * Bjørn 5/9-2026: «Centralen skal kunne tælle de tomme løfter.» Backenden
+ * talte dem samme dag, men denne fane renderede kun feed + flag-antal, så
+ * tallet var usynligt uden at folde rå-laget ud. Data uden visning er samme
+ * sygdom som ingen data.
+ *
+ * SLAP FORBI står først og alene. Værnet fanger en del af dem, og et værn der
+ * fanger 12 af 31 ser perfekt ud hvis man kun tæller sine egne fangster — så
+ * differencen er det ene tal der er værd at kigge på.
+ */
+function HollowPromises({ data }: { data?: HollowCensus }) {
+  if (!data?.available) return null
+  const modeller = (data.models ?? []).filter((m) => m.turns >= 3)
+  const slap = Number(data.escaped ?? 0)
+  return (
+    <div className="jm-hollow">
+      <div className="jm-section-sub">
+        Tomme løfter · {data.window_hours ?? 24} t
+      </div>
+      <div className="jm-stats">
+        <Stat label="slap forbi værnet" value={String(slap)} tone={slap > 0 ? 'warn' : 'ok'} />
+        <Stat label="i alt" value={String(data.hollow_total ?? 0)} />
+        <Stat label="grebet" value={String(data.guard_detected ?? 0)} />
+      </div>
+      {modeller.length > 0 && (
+        <div className="jm-hollow-models">
+          {modeller.map((m) => (
+            <div key={m.model} className="jm-hollow-row">
+              <span className="jm-hollow-name">{m.model}</span>
+              <span className="jm-hollow-bar">
+                <span className="jm-hollow-fill" style={{ width: `${Math.min(m.hollow_pct, 100)}%` }} />
+              </span>
+              <span className="jm-hollow-pct">{m.hollow_pct}%</span>
+              <span className="jm-dim jm-hollow-abs">{m.hollow}/{m.turns}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {

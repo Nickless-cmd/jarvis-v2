@@ -139,6 +139,26 @@ def build_user_model_surface() -> dict:
     }
 
 
+def build_user_model_prompt_line(*, max_chars: int = 220) -> str:
+    """Én linje til den SYNLIGE prompt — "" når dæmonen intet har målt endnu.
+
+    2026-09-04 (lærings-sløjfe, blok A): dæmonen har kørt hvert 10. minut siden
+    den blev bygget, men resultatet nåede kun heartbeat-prompten
+    (heartbeat_runtime_influence). Kommunikationsstil hører hjemme dér hvor
+    stilen faktisk bruges: i samtalen.
+    """
+    summary = " ".join(str(_model_summary or "").split()).strip()
+    style = str((_user_model or {}).get("communication_style") or "").strip()
+    if not summary and not style:
+        return ""
+    body = summary or f"kommunikationsstil: {style}"
+    if style and summary and style not in summary:
+        body = f"{body} (stil: {style})"
+    if len(body) > max_chars:
+        body = body[: max_chars - 1].rstrip() + "…"
+    return f"Sådan taler Bjørn for tiden: {body}"
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------

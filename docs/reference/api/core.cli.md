@@ -15,7 +15,7 @@ _(no top-level classes or functions)_
 | function | `cmd_execute_capability_request` | `(args)` | — | [src](../../../core/cli/capability_commands.py#L54) |
 | function | `invoke_capability_truth` | `(capability_id, *, approved=…)` | — | [src](../../../core/cli/capability_commands.py#L72) |
 | function | `approve_capability_request_truth` | `(request_id)` | — | [src](../../../core/cli/capability_commands.py#L92) |
-| function | `execute_capability_request_truth` | `(request_id)` | — | [src](../../../core/cli/capability_commands.py#L110) |
+| function | `execute_capability_request_truth` | `(request_id)` | — | [src](../../../core/cli/capability_commands.py#L112) |
 
 ## `core/cli/copilot_auth.py`
 

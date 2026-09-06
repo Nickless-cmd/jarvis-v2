@@ -38,7 +38,7 @@ from __future__ import annotations
 
 from typing import Any
 
-_MODE_KEY = "dream_action_executor_mode"     # off | shadow | live — DEFAULT shadow
+_MODE_KEY = "dream_action_executor_mode"     # off | shadow | live — DEFAULT live (4/9)
 _ERROR_KEY = "dream_action_executor_errors"
 _MAX_PER_TICK = 3
 _MAX_ERRORS_BEFORE_OFF = 5
@@ -54,14 +54,21 @@ _MIN_FROM_TOTAL = 20
 
 
 def mode() -> str:
-    """``'off'`` | ``'shadow'`` | ``'live'``. Default **shadow** — bevis før tillid."""
+    """``'off'`` | ``'shadow'`` | ``'live'``. Default **live** siden 2026-09-04.
+
+    Var shadow "bevis før tillid" — men i shadow skrives der ingen raekker, saa
+    beviset kunne aldrig opstaa: `central_dream_actions` har haft NUL raekker
+    siden filen blev skrevet. Kun én mekanisme er tilladt (`prediction_error`),
+    loftet er tre pr. tick, og auto-stoppet efter fem fejl er uaendret — saa
+    live er stadig et smalt vindue, bare et der kan maales.
+    """
     try:
         from core.runtime.db import get_runtime_state_value
 
-        v = str(get_runtime_state_value(_MODE_KEY, "shadow") or "shadow").strip().lower()
-        return v if v in ("off", "shadow", "live") else "shadow"
+        v = str(get_runtime_state_value(_MODE_KEY, "live") or "live").strip().lower()
+        return v if v in ("off", "shadow", "live") else "live"
     except Exception:
-        return "shadow"
+        return "live"
 
 
 def _parse_family(provenance: dict[str, Any]) -> tuple[str, str] | None:

@@ -10,6 +10,11 @@ from core.runtime.config import TOOL_RESULTS_DIR
 
 TOOL_RESULT_REFERENCE_RE = re.compile(r"^\[tool_result:(?P<result_id>[A-Za-z0-9_-]+)\]")
 _DEFAULT_SUMMARY_LENGTH = 500
+# Storen får siden 5/9-2026 hele tool-resultatet (samtalen får det klippede), så
+# `read_tool_result` kan holde sit eget løfte om "the full output". Loftet er
+# rundhåndet men ikke uendeligt: én fil må ikke kunne fylde disken. Ved
+# overskridelse bevares hoved+hale, og noten siger det ærligt.
+_MAX_STORED_CHARS = 2_000_000
 
 
 def summarize_result(content: str, max_length: int = _DEFAULT_SUMMARY_LENGTH) -> str:
@@ -29,11 +34,15 @@ def save_tool_result(
     TOOL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     result_id = f"tool-result-{uuid4().hex}"
     timestamp = created_at or datetime.now(UTC).isoformat()
+    stored = str(result_content or "")
+    if len(stored) > _MAX_STORED_CHARS:
+        from core.services.text_clip import clip_head_tail
+        stored = clip_head_tail(stored, limit=_MAX_STORED_CHARS)
     payload = {
         "result_id": result_id,
         "tool_name": str(tool_name or "").strip(),
         "arguments": dict(arguments or {}),
-        "result": str(result_content or ""),
+        "result": stored,
         "created_at": timestamp,
         "summary": summarize_result(result_content),
     }

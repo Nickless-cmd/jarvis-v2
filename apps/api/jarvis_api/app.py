@@ -97,6 +97,8 @@ from core.services.voice_daemon import (
     stop_voice_daemon,
 )
 from apps.api.jarvis_api.routes.attachments import router as attachments_router
+from apps.api.jarvis_api.routes.workbench import router as workbench_router
+from apps.api.jarvis_api.routes.companion import router as companion_router
 from apps.api.jarvis_api.routes.files import router as files_router
 from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.chat_stream_v2 import router as chat_stream_v2_router
@@ -139,6 +141,61 @@ def _runtime_services_enabled() -> bool:
     return raw not in {"0", "false", "no", "off"}
 
 
+def wire_root_logging() -> dict[str, int]:
+    """Giv modul-loggere et sted at lande. Uden dette er de ALLE stumme.
+
+    uvicorn opsætter kun sine EGNE loggere (`uvicorn`, `uvicorn.error`,
+    `uvicorn.access`). Der er ingen rod-konfiguration i processen, så enhver
+    `logging.getLogger(__name__)` — 364 moduler i core/services alene — skriver
+    ud i ingenting. Ikke som en fejl; som tavshed.
+
+    Det kostede konkret: det agentiske loop har hele tiden skrevet
+    «agentic-loop-exit run_id=… reason=…» ved HVER kørsel, og den linje er gået
+    i gulvet hver gang. Bjørn jagtede «cutoff» i dagevis mens systemet regnede
+    årsagen ud og smed den væk.
+
+    Fikset ét sted frem for i 364 filer: rod-loggeren låner uvicorns handlers,
+    så modulnavne bevares (de er brugbare at filtrere på) og linjerne faktisk
+    kommer ud. Tredjeparts-biblioteker holdes på WARNING — ellers drukner vores
+    egne linjer i deres, og så har vi byttet én slags tavshed for en anden.
+    """
+    root = logging.getLogger()
+    # Handleren sidder på «uvicorn», IKKE på «uvicorn.error». Sidstnævnte har en
+    # tom .handlers og propagerer op — derfor virker den at logge på, og derfor
+    # gav et naivt opslag på «uvicorn.error» nul handlers at låne. Gå op ad
+    # kæden og tag den første der faktisk HAR nogen.
+    handlers: list[logging.Handler] = []
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        lg: logging.Logger | None = logging.getLogger(name)
+        # Stop FØR roden. Går man hele vejen op, låner roden sine egne handlers
+        # af sig selv — det ser ud som om det lykkedes, og ændrer intet.
+        while lg is not None and lg is not root:
+            if lg.handlers:
+                handlers = list(lg.handlers)
+                break
+            lg = lg.parent
+        if handlers:
+            break
+    if not handlers:
+        return {"added": 0, "quieted": 0}
+    seen = {id(h) for h in root.handlers}
+    added = 0
+    for h in handlers:
+        if id(h) not in seen:
+            root.addHandler(h)
+            added += 1
+    if root.level in (logging.NOTSET, 0) or root.level > logging.INFO:
+        root.setLevel(logging.INFO)
+    _NOISY = (
+        "httpx", "httpcore", "urllib3", "asyncio", "botocore", "boto3",
+        "openai", "anthropic", "PIL", "markdown_it", "multipart",
+        "watchfiles", "filelock", "chardet", "charset_normalizer",
+    )
+    for name in _NOISY:
+        logging.getLogger(name).setLevel(logging.WARNING)
+    return {"added": added, "quieted": len(_NOISY)}
+
+
 def create_app() -> FastAPI:
     ensure_runtime_dirs()
     init_db()
@@ -149,7 +206,12 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         runtime_services_enabled = _runtime_services_enabled()
+        # FØRST: giv alle modul-loggere et sted at lande. Alt hvad der logges
+        # herefter i opstarten ville ellers være tabt.
+        _wired = wire_root_logging()
         logger.info("jarvis api startup begin")
+        logger.info("root-logging wired handlers=%s quieted=%s",
+                    _wired.get("added"), _wired.get("quieted"))
         logger.info(
             "jarvis api startup mode runtime_services_enabled=%s",
             runtime_services_enabled,
@@ -217,6 +279,17 @@ def create_app() -> FastAPI:
             start_mood_regulator_subscriber()
             start_semantic_indexer()
             start_heartbeat_scheduler()
+            # Cluster-familierne har deres EGEN løkke. De sad i den monolitiske
+            # heartbeat-sti som scheduleren blev lagt væk fra 18/5, og kørte derfor
+            # kun når act-fasen tilfældigvis fandt priorities. Se
+            # core/services/cluster_family_scheduler.py for hele historien.
+            try:
+                from core.services.cluster_family_scheduler import (
+                    start as start_cluster_family_scheduler,
+                )
+                start_cluster_family_scheduler()
+            except Exception as _exc:
+                logger.warning("cluster_family_scheduler failed at boot: %s", _exc)
             start_notification_bridge()
             start_scheduled_tasks_service()
             start_recurring_tasks_service()
@@ -234,6 +307,15 @@ def create_app() -> FastAPI:
             start_discord_gateway()
             start_telegram_gateway()
             start_voice_daemon()
+            try:
+                from core.services.approval_outbox import (
+                    start_approval_outbox_dispatcher,
+                )
+
+                start_approval_outbox_dispatcher()
+                logger.info("approval outbox dispatcher started")
+            except Exception as _exc:
+                logger.warning("approval outbox dispatcher start failed: %s", _exc)
             try:
                 from core.services.my_projects import ensure_my_projects_running
                 _mp_result = ensure_my_projects_running()
@@ -607,6 +689,10 @@ def create_app() -> FastAPI:
     app.add_middleware(ApiConnectionNerveMiddleware)
 
     app.include_router(attachments_router)
+    # Operator-kanal, checkpoints og runtime-kontakter (6/9-2026): bygget som
+    # vaerktoejer, men uden ruter kunne hverken desk eller mobil se dem.
+    app.include_router(workbench_router)
+    app.include_router(companion_router)
     from apps.api.jarvis_api.routes.paste import router as paste_router
     app.include_router(paste_router)
     app.include_router(files_router)

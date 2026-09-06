@@ -182,7 +182,7 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 10080,
         "default_enabled": False,  # PENSIONERET 2026-07-13 (Fase 7) — blind ugentlig LLM-refleksion nedlagt
         "retired": "2026-07-13",
-        "description": "[PENSIONERET] Weekly codebase aesthetic reflection (7 days)",
+        "description": "[PENSIONERET → cluster_aesthetic] Weekly codebase aesthetic reflection (7 days)",
     },
     "memory_decay": {
         "module": "core.services.memory_decay_daemon",
@@ -281,7 +281,7 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 30,
         "default_enabled": False,  # PENSIONERET 2026-07-13 (Lag 6) — convene_judge overtager; motor (convene_council + council_deliberation_controller) bevaret
         "retired": "2026-07-13",
-        "description": "[PENSIONERET] Spontaneous self-triggered council deliberation via signal scoring",
+        "description": "[PENSIONERET → cluster_cognition] Spontaneous self-triggered council deliberation via signal scoring",
     },
     "council_memory": {
         "module": "core.services.council_memory_daemon",
@@ -310,24 +310,6 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "retired": "2026-07-15",
         "description": "[PENSIONERET → cluster_infra] 6t cleanup af web_cache: sletter udløbne entries (web_search + web_scrape), logger cache-sammensætning",
     },
-    "tiktok_content": {
-        "module": "core.services.tiktok_content_daemon",
-        "reset_var": "_last_tick_at",
-        "reset_value": None,
-        "default_cadence_minutes": 480,
-        "default_enabled": False,  # PENSIONERET 2026-07-10 (Bjørn) — kode+registrering bevaret, kører ikke
-        "retired": "2026-07-10",
-        "description": "[PENSIONERET] Autonomous TikTok content: 3 videos/day (jarvis_work, facts, agi_journey)",
-    },
-    "tiktok_research": {
-        "module": "core.services.tiktok_research_daemon",
-        "reset_var": "_last_tick_at",
-        "reset_value": None,
-        "default_cadence_minutes": 1440,
-        "default_enabled": False,  # PENSIONERET 2026-07-10 (Bjørn) — kode+registrering bevaret, kører ikke
-        "retired": "2026-07-10",
-        "description": "[PENSIONERET] Daily content research: generates TikTok concept pool for 3 slot types",
-    },
     "emotion_repair_bridge": {
         "module": "core.services.emotion_repair_bridge_daemon",
         "reset_var": "_last_tick_at",
@@ -353,7 +335,7 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 10080,
         "default_enabled": False,  # PENSIONERET 2026-07-13 (Fase 7) — blind ugentlig LLM-pull nedlagt
         "retired": "2026-07-13",
-        "description": "[PENSIONERET] Lag 5: weekly self-set desire field — what pulls at Jarvis right now",
+        "description": "[PENSIONERET → cluster_affect] Lag 5: weekly self-set desire field — what pulls at Jarvis right now",
     },
     "visual_memory": {
         "module": "core.services.visual_memory",
@@ -520,10 +502,19 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # decision #3 ("Verify before I narrate") — samtidig med at
         # han hallucinerede tool-work i Discord, JarvisX og webchat.
         # Positiv-bias self-validation feedback loop.
-        # Skal erstattes af external-truth review (læser git-log +
-        # tool-history) i fix C3.
-        "default_enabled": False,
-        "description": "[DEAKTIVERET 2026-06-11 — selv-bias problem] 6t adherence-loop: LLM-self-review af behavioral decisions.",
+        #
+        # 2026-09-05: C3 BYGGET, og daemonen er tændt igen. To ting var galt.
+        # (a) Kontakten dækkede kun den ene af to døre: governance_bootstrap
+        #     kørte den SAMME review-funktion som dagligt job, uden om denne
+        #     gate. Registret sagde DEAKTIVERET mens den kørte hver dag i tre
+        #     måneder — 30.867 domme. Jobbet respekterer nu is_enabled.
+        # (b) `evidence` var en kopi af modellens egen `note`. Der var aldrig
+        #     ydre bevis. decision_evidence.py henter nu regnskabet fra
+        #     eventbus (tool.completed) + git-log, lægger det i prompten, og
+        #     nedgraderer "kept"/"partial" til "unknown" hvis der intet spor
+        #     er. "unknown" ignoreres af det rullende adherence-gennemsnit.
+        "default_enabled": True,
+        "description": "6t adherence-loop: review af behavioral decisions mod eksternt regnskab (eventbus + git-log). Positive domme kræver ydre spor — ellers unknown. Se decision_evidence.py.",
     },
     "event_trigger_shadow": {
         "module": "core.services.event_trigger_shadow",
@@ -544,7 +535,7 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # Governed (spec §5.5 Fase C): stager kun nye modeller i pending_models — promotion
         # til routbar pool er MANUEL (smoke + gratis + score-gate). Default OFF; owner tænder.
         "default_enabled": False,
-        "description": "Fase C: dagligt /models-scan af alle providers → nye modeller til pending_models-staging (ALDRIG auto-routbar; promotion manuel/gated)",
+        "description": "[→ cluster_infra] Fase C: dagligt /models-scan af alle providers → nye modeller til pending_models-staging (ALDRIG auto-routbar; promotion manuel/gated)",
     },
     "provider_self_heal": {
         "module": "core.services.provider_self_heal",

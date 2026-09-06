@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/ambient_presence.py`
+_Ambient presence — subtle signals that mark Jarvis' state in the physical space._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `emit_ambient_signal` | `(*, kind, detail=…, priority=…)` | Emit a quiet ambient presence signal via ntfy. Rate-limited to 30 min. | [src](../../../core/services/ambient_presence.py#L49) |
+| function | `emit_presence_rhythm` | `()` | Quiet hourly pulse — 'still here'. Separate rate limit from state signals. | [src](../../../core/services/ambient_presence.py#L88) |
+| function | `emit_state_shift` | `(from_phase, to_phase)` | Signal a genuine phase transition with a descriptive message. | [src](../../../core/services/ambient_presence.py#L115) |
+| function | `maybe_emit_phase_signal` | `(phase)` | Called from heartbeat when life phase is determined. | [src](../../../core/services/ambient_presence.py#L124) |
+| function | `emit_insight_signal` | `(insight)` | Called when a dream is confirmed or a value crystallizes. | [src](../../../core/services/ambient_presence.py#L155) |
+
 ## `core/services/ambient_sound_daemon.py`
 _Ambient Sound daemon — Layer 6½: background acoustic context._
 
@@ -133,6 +144,19 @@ _Pending runtime→app instruktioner (spec §18.5, Fase 2)._
 | function | `stop_approval_feedback_subscriber` | `()` | — | [src](../../../core/services/approval_feedback_subscriber.py#L36) |
 | function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/approval_feedback_subscriber.py#L49) |
 
+## `core/services/approval_outbox.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/approval_outbox.py#L19) |
+| function | `ensure_approval_outbox_table` | `(conn)` | — | [src](../../../core/services/approval_outbox.py#L23) |
+| function | `enqueue_approval_notification` | `(conn, *, request_id, user_id, envelope)` | — | [src](../../../core/services/approval_outbox.py#L48) |
+| function | `pending_approval_notifications` | `(limit=…)` | — | [src](../../../core/services/approval_outbox.py#L68) |
+| function | `make_approval_notification_due` | `(request_id)` | — | [src](../../../core/services/approval_outbox.py#L93) |
+| function | `dispatch_pending_approval_notifications` | `(*, limit=…, deliver=…)` | — | [src](../../../core/services/approval_outbox.py#L106) |
+| function | `_worker` | `()` | — | [src](../../../core/services/approval_outbox.py#L155) |
+| function | `start_approval_outbox_dispatcher` | `()` | — | [src](../../../core/services/approval_outbox.py#L164) |
+
 ## `core/services/arc_rule_extractor.py`
 _Arc rule extractor — turns narrative arcs into actionable rules._
 
@@ -143,10 +167,11 @@ _Arc rule extractor — turns narrative arcs into actionable rules._
 | function | `_build_extraction_prompt` | `(arc_text, period)` | — | [src](../../../core/services/arc_rule_extractor.py#L43) |
 | function | `_parse_rules` | `(text)` | — | [src](../../../core/services/arc_rule_extractor.py#L59) |
 | function | `extract_rules_from_arc` | `(arc_path)` | — | [src](../../../core/services/arc_rule_extractor.py#L74) |
-| function | `_mark_processed` | `(arc_path)` | — | [src](../../../core/services/arc_rule_extractor.py#L128) |
-| function | `_is_processed` | `(arc_name)` | — | [src](../../../core/services/arc_rule_extractor.py#L141) |
-| function | `extract_rules_for_unprocessed_arcs` | `()` | — | [src](../../../core/services/arc_rule_extractor.py#L151) |
-| function | `arc_rules_section` | `(*, max_lines=…)` | Render most recent extracted rules as prompt awareness section. | [src](../../../core/services/arc_rule_extractor.py#L170) |
+| function | `_mark_processed` | `(arc_path)` | — | [src](../../../core/services/arc_rule_extractor.py#L138) |
+| function | `_is_processed` | `(arc_name)` | — | [src](../../../core/services/arc_rule_extractor.py#L151) |
+| function | `extract_rules_for_unprocessed_arcs` | `()` | — | [src](../../../core/services/arc_rule_extractor.py#L161) |
+| function | `arc_rules_section` | `(*, max_lines=…)` | Retired 2026-09-04 (memory repair, R4): arc rules reach the prompt only | [src](../../../core/services/arc_rule_extractor.py#L180) |
+| function | `_legacy_arc_rules_section` | `(*, max_lines=…)` | Pre-2026-09-04 renderer, kept for reference/tests of the file format. | [src](../../../core/services/arc_rule_extractor.py#L188) |
 
 ## `core/services/assembly_prewarm.py`
 _core/services/assembly_prewarm.py_
@@ -203,6 +228,16 @@ _Associative Recall — dormant memories triggered by context._
 | function | `build_associative_recall_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/associative_recall.py#L641) |
 | function | `tick_associative_recall` | `()` | Heartbeat daemon tick — decay + periodic candidate scan. | [src](../../../core/services/associative_recall.py#L664) |
 
+## `core/services/attachment_blocks.py`
+_Vedhæftninger som blokke på brugerens besked._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_attachment_blocks` | `(metas)` | Lav content_json-blokke for en brugerbeskeds vedhæftninger. | [src](../../../core/services/attachment_blocks.py#L30) |
+| function | `user_message_content_json` | `(metas)` | Serialisér blokkene til det felt `append_chat_message` tager. | [src](../../../core/services/attachment_blocks.py#L59) |
+| function | `image_ids_on_message` | `(content_json)` | attachment_id'er for BILLEDER i en besked. Tom liste ved alt andet. | [src](../../../core/services/attachment_blocks.py#L88) |
+| function | `image_content_blocks` | `(content_json, *, limit=…)` | `image_url`-blokke klar til prompten. Tom liste hvis intet kan læses. | [src](../../../core/services/attachment_blocks.py#L104) |
+
 ## `core/services/attachment_service.py`
 _attachment_service — download, store, and read channel attachments._
 
@@ -215,13 +250,14 @@ _attachment_service — download, store, and read channel attachments._
 | function | `list_image_attachments` | `(*, user_id=…, limit=…)` | List billed-attachments på tværs af sessioner til galleriet (#6). | [src](../../../core/services/attachment_service.py#L108) |
 | function | `attachment_visible_to_user` | `(attachment_id, user_id)` | Privacy-cluster GENNEM Centralen (observe): cross-user attachment-adgangs-beslutning | [src](../../../core/services/attachment_service.py#L146) |
 | function | `_attachment_visible_to_user_impl` | `(attachment_id, user_id)` | Må denne bruger se attachment'et? user_id tom → ja (owner/legacy). | [src](../../../core/services/attachment_service.py#L162) |
-| function | `_call_vision` | `(image_b64, *, model, prompt=…)` | — | [src](../../../core/services/attachment_service.py#L183) |
-| function | `_vision_model` | `()` | — | [src](../../../core/services/attachment_service.py#L188) |
-| function | `download_and_store` | `(*, url, filename, mime_type, size_bytes, session_id, channel_type, http_headers=…)` | Download file from URL and persist to uploads/ + DB. | [src](../../../core/services/attachment_service.py#L210) |
-| function | `get_attachment` | `(attachment_id)` | Return attachment metadata dict, or None if not found. | [src](../../../core/services/attachment_service.py#L275) |
-| function | `list_attachments` | `(session_id, limit=…)` | Return recent attachments for session, newest first. | [src](../../../core/services/attachment_service.py#L283) |
-| function | `read_attachment_content` | `(attachment_id)` | Read attachment content for Jarvis. | [src](../../../core/services/attachment_service.py#L291) |
-| function | `validate_send_path` | `(path)` | Return (ok, error_message) for outbound file send. | [src](../../../core/services/attachment_service.py#L371) |
+| function | `_call_vision` | `(image_b64, *, model, prompt=…)` | Send billedet til den VALGTE vision-backend. | [src](../../../core/services/attachment_service.py#L186) |
+| function | `_vision_model` | `()` | — | [src](../../../core/services/attachment_service.py#L210) |
+| function | `download_and_store` | `(*, url, filename, mime_type, size_bytes, session_id, channel_type, http_headers=…)` | Download file from URL and persist to uploads/ + DB. | [src](../../../core/services/attachment_service.py#L232) |
+| function | `get_attachment` | `(attachment_id)` | Return attachment metadata dict, or None if not found. | [src](../../../core/services/attachment_service.py#L297) |
+| function | `list_attachments` | `(session_id, limit=…)` | Return recent attachments for session, newest first. | [src](../../../core/services/attachment_service.py#L305) |
+| function | `image_data_url` | `(attachment_id)` | `data:`-URL til et billede — modellens EGNE øjne (2026-09-06). | [src](../../../core/services/attachment_service.py#L316) |
+| function | `read_attachment_content` | `(attachment_id, question=…)` | Read attachment content for Jarvis. | [src](../../../core/services/attachment_service.py#L342) |
+| function | `validate_send_path` | `(path)` | Return (ok, error_message) for outbound file send. | [src](../../../core/services/attachment_service.py#L440) |
 
 ## `core/services/attachment_topology_signal_tracking.py`
 _Attachment-topology signal tracking — migrated onto signal_tracking_framework._
@@ -511,6 +547,26 @@ _Autonomous Work Daemon — Jarvis works on his own when Bjørn is away._
 | function | `_surface_summary` | `(pending, all_items)` | — | [src](../../../core/services/autonomous_work_daemon.py#L310) |
 | function | `build_autonomous_work_prompt_section` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L318) |
 
+## `core/services/autonomy_budget.py`
+_Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_get` | `(key, default=…)` | — | [src](../../../core/services/autonomy_budget.py#L41) |
+| function | `_state_set` | `(key, value)` | — | [src](../../../core/services/autonomy_budget.py#L50) |
+| function | `daily_budget` | `()` | — | [src](../../../core/services/autonomy_budget.py#L58) |
+| function | `set_daily_budget` | `(value)` | — | [src](../../../core/services/autonomy_budget.py#L65) |
+| function | `_today` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L71) |
+| function | `_spent_today` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L75) |
+| function | `remaining` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L86) |
+| function | `may_act` | `(action=…, *, now=…)` | Er der plads i dagens budget? Fail-open: enhver fejl → ja. | [src](../../../core/services/autonomy_budget.py#L90) |
+| function | `note_action` | `(action, *, now=…)` | Registrér en selvvalgt handling. Synlig log, ikke en tavs bremse. | [src](../../../core/services/autonomy_budget.py#L102) |
+| function | `note_silence` | `(*, outcome, reason_code=…)` | Han valgte at tie. Tæl det — det er den eneste måde vægten kan vurderes. | [src](../../../core/services/autonomy_budget.py#L122) |
+| function | `silence_counts` | `()` | — | [src](../../../core/services/autonomy_budget.py#L135) |
+| function | `build_weekly_summary` | `()` | Ugens stilhed i én linje — "" når han ikke har tiet nævneværdigt. | [src](../../../core/services/autonomy_budget.py#L142) |
+| function | `run_weekly_review` | `(*, force=…, now=…)` | Ugentligt: læg stilheds-resuméet i den proaktive kø og nulstil tælleren. | [src](../../../core/services/autonomy_budget.py#L161) |
+| function | `build_autonomy_budget_surface` | `()` | — | [src](../../../core/services/autonomy_budget.py#L190) |
+
 ## `core/services/autonomy_pressure_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -564,68 +620,17 @@ _Avoidance Detector — unbidden self-observation of patterns over time._
 | function | `_surface_summary` | `(findings)` | — | [src](../../../core/services/avoidance_detector.py#L175) |
 | function | `build_avoidance_prompt_section` | `()` | Only speaks when there's a real pattern to notice. | [src](../../../core/services/avoidance_detector.py#L185) |
 
-## `core/services/behavioral_decisions.py`
-_Behavioral decisions — closing the reflection→behavior loop._
+## `core/services/background_resume.py`
+_Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_normalize_directive` | `(value)` | — | [src](../../../core/services/behavioral_decisions.py#L34) |
-| function | `_commit_observe` | `(outcome, decision_id)` | Commit-cluster instrument: decision_create → central observe (best-effort). | [src](../../../core/services/behavioral_decisions.py#L38) |
-| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/services/behavioral_decisions.py#L50) |
-| function | `review_decision` | `(*, decision_id, verdict, note=…, evidence=…)` | — | [src](../../../core/services/behavioral_decisions.py#L106) |
-| function | `change_status` | `(decision_id, new_status)` | — | [src](../../../core/services/behavioral_decisions.py#L136) |
-| function | `revoke_decision` | `(decision_id, *, reason=…)` | — | [src](../../../core/services/behavioral_decisions.py#L154) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L172) |
-| function | `get_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L182) |
-| function | `get_decision_with_reviews` | `(decision_id, *, review_limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L186) |
-| function | `list_active_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L213) |
-| function | `list_all_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L217) |
-| function | `format_active_decisions_for_heartbeat` | `(*, max_items=…)` | Compact line of top active commitments for heartbeat injection. | [src](../../../core/services/behavioral_decisions.py#L221) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L240) |
-
-## `core/services/body_memory.py`
-_Body Memory — Jarvis' physical sensation snapshots._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_body_snapshot` | `(context, sensation=…, intensity=…)` | — | [src](../../../core/services/body_memory.py#L9) |
-| function | `describe_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L20) |
-| function | `format_body_for_prompt` | `()` | — | [src](../../../core/services/body_memory.py#L26) |
-| function | `reset_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L32) |
-| function | `build_body_memory_surface` | `()` | — | [src](../../../core/services/body_memory.py#L36) |
-
-## `core/services/boredom_curiosity_bridge.py`
-_Boredom to Curiosity Bridge — transforms boredom into curiosity._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Curiosity` | `` | A curiosity that emerges from boredom. | [src](../../../core/services/boredom_curiosity_bridge.py#L22) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L36) |
-| function | `add_boredom` | `(duration)` | Add boredom based on elapsed duration. | [src](../../../core/services/boredom_curiosity_bridge.py#L40) |
-| function | `_spawn_curiosity` | `()` | Spawn a curiosity when boredom is high enough. | [src](../../../core/services/boredom_curiosity_bridge.py#L73) |
-| function | `should_spawn_curiosity` | `()` | Check if curiosity should spawn based on boredom level. | [src](../../../core/services/boredom_curiosity_bridge.py#L113) |
-| function | `get_curiosity_prompt` | `()` | Get the most relevant curiosity prompt. | [src](../../../core/services/boredom_curiosity_bridge.py#L118) |
-| function | `get_active_curiosities` | `()` | Get all active curiosities. | [src](../../../core/services/boredom_curiosity_bridge.py#L127) |
-| function | `clear_curiosities` | `()` | Clear all active curiosities. | [src](../../../core/services/boredom_curiosity_bridge.py#L141) |
-| function | `reset_boredom_curiosity_bridge` | `()` | Reset boredom curiosity bridge state (for testing). | [src](../../../core/services/boredom_curiosity_bridge.py#L147) |
-| function | `get_boredom_curiosity_state` | `()` | Get current state of boredom curiosity bridge. | [src](../../../core/services/boredom_curiosity_bridge.py#L155) |
-| function | `build_boredom_curiosity_bridge_surface` | `()` | Build MC surface for boredom curiosity bridge. | [src](../../../core/services/boredom_curiosity_bridge.py#L165) |
-
-## `core/services/boredom_engine.py`
-_Boredom Engine — productive restlessness as first-class experience._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_boredom_state` | `(*, idle_hours=…, tick_monotony=…, novelty_score=…, open_loop_count=…)` | — | [src](../../../core/services/boredom_engine.py#L11) |
-| function | `get_boredom_state` | `()` | — | [src](../../../core/services/boredom_engine.py#L49) |
-| function | `build_boredom_surface` | `()` | — | [src](../../../core/services/boredom_engine.py#L53) |
-
-## `core/services/boundary_awareness.py`
-_Boundary Awareness — "Where do I end?"_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_boundary_model` | `()` | Build Jarvis' sense of his own boundaries. | [src](../../../core/services/boundary_awareness.py#L8) |
-| function | `format_boundary_for_prompt` | `()` | Compact boundary awareness for prompt injection. | [src](../../../core/services/boundary_awareness.py#L31) |
-| function | `build_boundary_awareness_surface` | `()` | — | [src](../../../core/services/boundary_awareness.py#L40) |
+| function | `_load` | `()` | — | [src](../../../core/services/background_resume.py#L43) |
+| function | `_save` | `(state)` | — | [src](../../../core/services/background_resume.py#L52) |
+| function | `note_started` | `(session_id, shell_id)` | Husk at DENNE session har startet den shell. Self-safe. | [src](../../../core/services/background_resume.py#L60) |
+| function | `forget_session` | `(session_id)` | Ryd op naar en session er faerdig, saa staten ikke vokser uendeligt. | [src](../../../core/services/background_resume.py#L75) |
+| function | `tracked` | `(session_id)` | — | [src](../../../core/services/background_resume.py#L85) |
+| function | `build_note` | `(deltas)` | Systemnoten der faar Jarvis til at forholde sig til det nye output. Ren. | [src](../../../core/services/background_resume.py#L89) |
+| function | `_sig_til_hvis_lang` | `(shell, sidste_output)` | Push besked hvis shellen koerte >= 30 s. Self-safe: fejl → tavshed. | [src](../../../core/services/background_resume.py#L116) |
+| function | `poll_async` | `(session_id, user_id)` | Er der nyt fra sessionens baggrunds-shells? Returnerer en note, ellers "". | [src](../../../core/services/background_resume.py#L138) |
 

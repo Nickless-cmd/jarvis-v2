@@ -42,75 +42,181 @@ _GOAL_STALE_DAYS = 3
 # ── Tick quality scoring ──────────────────────────────────────────
 
 
-def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
-    """Score a phased tick's quality based on observable outputs.
 
-    Heuristic — no LLM call. Scoring rules:
-    - Tick had priorities and dispatched: +30
-    - Productive idle had ≥2 actions: +25
-    - Reflection identified concrete priorities: +15
-    - No errors during tick: +20
-    - Sense gathered ≥5 signal types: +10
-    Max: 100
+# ── Tick-spor: hvad efterlod slaget i verden ──────────────────────
+#
+# 2026-09-05: den gamle scoring gav 70 til 199 af 200 tick. Den målte formen på
+# et tick, ikke udbyttet: +10 for at sanse fem signaltyper (sker altid), +40 for
+# ≥2 idle-handlinger (sker altid — de samme syv hver gang), +20 for sund tid
+# (sker altid). De to poster der KUNNE variere, +15 for priorities og +30 for at
+# dispatche på dem, fyrede aldrig, fordi der aldrig er priorities. 70 var loftet
+# for et tomt slag, og «stable» betød «kan ikke bevæge sig».
+#
+# To kørsler af productive_idle i træk gav præcis den samme handlingsliste
+# (personality_snapshot, personality_drift_tick, tick_elapsed, dreams, wants,
+# boredom, idle_daemon:event_trigger_shadow). At tælle dem måler ingenting.
+#
+# Derfor måler vi nu SPOR: hvilke ikke-strukturelle event-arter der blev skrevet
+# i vinduet mellem dette slag og det forrige. Et slag der får credit_assignment,
+# learning_pipeline og thought_stream til at skrive, har udrettet noget. Et slag
+# hvor kun heartbeat-bogholderiet rører sig, har ikke — og skal kunne ses.
+
+# Arter der hører til bogholderiet eller til Bjørns egne ture — ikke til slagets
+# udbytte. Alt andet tæller som et spor.
+_STRUCTURAL_EVENT_PREFIXES = (
+    "heartbeat.",
+    "prompt.",
+    "tool.",
+    "tool_router.",
+    "runtime.visible_run",
+    "runtime.agentic_round",
+)
+
+
+def _trace_kinds_since(since: datetime, until: datetime) -> list[str]:
+    """Ikke-strukturelle event-arter skrevet i vinduet. Self-safe: [] ved fejl."""
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT kind FROM events WHERE created_at > ? AND created_at <= ?",
+                (since.isoformat(), until.isoformat()),
+            ).fetchall()
+    except Exception as exc:
+        logger.debug("tick_quality: kunne ikke laese spor: %s", exc)
+        return []
+    ud = []
+    for row in rows:
+        kind = str(row["kind"] or "")
+        if kind and not kind.startswith(_STRUCTURAL_EVENT_PREFIXES):
+            ud.append(kind)
+    return sorted(ud)
+
+
+def _previous_eval() -> dict[str, Any] | None:
+    try:
+        tidligere = load_json(_TICK_EVAL_KEY, [])
+        if isinstance(tidligere, list) and tidligere:
+            sidste = tidligere[-1]
+            return sidste if isinstance(sidste, dict) else None
+    except Exception:
+        pass
+    return None
+
+
+def _score_traces(antal: int) -> int:
+    """Bredden af spor. Trapper frem for lineær, så små udsving ikke støjer."""
+    if antal <= 0:
+        return 0
+    if antal <= 2:
+        return 20
+    if antal <= 5:
+        return 35
+    return 50
+
+
+def _score_novelty(nu: list[str], foer: list[str]) -> tuple[int, str]:
+    """Gav dette slag noget ANDET end det forrige?
+
+    Et system der gør præcis det samme hver gang, er ikke produktivt — det
+    kører bare. Uden et forrige slag at måle mod giver vi fuld kredit; vi
+    straffer ikke det første.
+    """
+    if not foer:
+        return 30, "intet forrige slag at sammenligne med"
+    if not nu:
+        return 0, "ingen spor at være ny med"
+    nye = set(nu) - set(foer)
+    andel = len(nye) / max(len(set(nu)), 1)
+    if andel >= 0.5:
+        return 30, f"{len(nye)} af {len(set(nu))} spor var nye"
+    if andel > 0:
+        return 15, f"kun {len(nye)} af {len(set(nu))} spor var nye"
+    return 0, "samme spor som forrige slag"
+
+
+def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
+    """Score et slag på hvad det EFTERLOD — ikke på hvilken form det havde.
+
+    Fire led, max 100:
+      +10  sund tid (0 < elapsed < 180s)
+      +10  slaget handlede overhovedet (≥1 handling)
+      0-50 spor: bredden af ikke-strukturelle event-arter i vinduet siden
+           forrige slag — dvs. hvad slagets arbejde faktisk fik skrevet
+      0-30 nyhed: adskiller sporene sig fra forrige slag, eller kører den
+           samme runde igen?
+
+    Ingen LLM. Se kommentaren over _STRUCTURAL_EVENT_PREFIXES for hvorfor den
+    gamle formbaserede scoring altid gav 70.
     """
     score = 0
     notes: list[str] = []
     phases = tick_result.get("phases") or {}
 
-    sense = phases.get("sense") or {}
-    sense_keys_present = sum(1 for k in (
-        "mood_name", "active_goals", "events_last_hour",
-        "context_pressure_level", "errors_last_hour"
-    ) if k in sense)
-    if sense_keys_present >= 5:
-        score += 10
-        notes.append(f"sense gathered {sense_keys_present} signal types")
-
     reflect = phases.get("reflect") or {}
     priorities = reflect.get("priorities") or []
-    if priorities:
-        score += 15
-        notes.append(f"reflect identified {len(priorities)} priorities")
-
     act = phases.get("act") or {}
     act_kind = str(act.get("kind") or "")
-    if act_kind == "tick_dispatched" and priorities:
-        score += 30
-        notes.append("dispatched tick on warranted priorities")
-    elif act_kind == "productive_idle":
-        # Productive idle is a *valid success state* (no priorities to act on,
-        # so the tick used time on observation/maintenance). It deserves to
-        # cap near the same ceiling as dispatched, not act as a consolation.
-        # Was: +25 for ≥2 actions / +10 for 1. Bumped 2026-05-07 because
-        # productive_idle previously couldn't score above 55 even when
-        # everything went well — that read as "stable but low" tick quality.
-        actions = (act.get("result") or {}).get("actions") or []
-        if len(actions) >= 2:
-            score += 40
-            notes.append(f"productive idle: {len(actions)} actions")
-        elif actions:
-            score += 20
-            notes.append(f"productive idle: {len(actions)} action")
+    actions = (act.get("result") or {}).get("actions") or act.get("actions") or []
 
-    # Healthy elapsed time. Threshold was 30s — set when heartbeat used
-    # faster providers (groq llama-3.1-8b). Now the visible/heartbeat lane
-    # uses glm-5.1:cloud via Ollama which routinely takes 2-3 minutes per
-    # tick. Bumped to 180s (2026-05-07) so legitimate ticks get credit;
-    # >180s still indicates a real stall (provider hung, infinite loop).
+    # 1. Sund tid — ren fornuftskontrol, ikke en kvalitetsdom.
     elapsed_ms = int(tick_result.get("elapsed_ms") or 0)
-    if elapsed_ms > 0 and elapsed_ms < 180_000:
-        score += 20
-        notes.append(f"healthy elapsed time ({elapsed_ms}ms)")
+    if 0 < elapsed_ms < 180_000:
+        score += 10
+        notes.append(f"sund tid ({elapsed_ms}ms)")
+    elif elapsed_ms >= 180_000:
+        notes.append(f"SLAGET HANG ({elapsed_ms}ms)")
 
-    score = min(100, score)
+    # 2. Handlede den overhovedet.
+    if actions:
+        score += 10
+        notes.append(f"{len(actions)} handlinger")
+    else:
+        notes.append("ingen handlinger")
+
+    # 3. Spor — vinduet går fra forrige slags evaluering, så alt der skete
+    #    mellem to slag tilskrives dette. Falder tilbage til elapsed hvis der
+    #    ikke er et forrige slag at måle fra.
+    nu = datetime.now(UTC)
+    forrige = _previous_eval()
+    vindue_start = None
+    if forrige:
+        try:
+            vindue_start = datetime.fromisoformat(
+                str(forrige.get("evaluated_at") or "").replace("Z", "+00:00")
+            ).astimezone(UTC)
+        except Exception:
+            vindue_start = None
+    if vindue_start is None or vindue_start >= nu:
+        vindue_start = nu - timedelta(milliseconds=max(elapsed_ms, 1000))
+
+    trace_kinds = _trace_kinds_since(vindue_start, nu)
+    spor_point = _score_traces(len(trace_kinds))
+    score += spor_point
+    notes.append(f"{len(trace_kinds)} spor-arter → {spor_point}p")
+
+    # 4. Nyhed — gør slaget noget andet end sidst?
+    nyhed_point, nyhed_note = _score_novelty(
+        trace_kinds, list((forrige or {}).get("trace_kinds") or [])
+    )
+    score += nyhed_point
+    notes.append(f"nyhed: {nyhed_note} → {nyhed_point}p")
+
+    score = max(0, min(100, score))
     eval_record = {
         "eval_id": f"teval-{uuid4().hex[:10]}",
-        "evaluated_at": datetime.now(UTC).isoformat(),
+        "evaluated_at": nu.isoformat(),
         "score": score,
         "notes": notes,
         "tick_kind": act_kind,
         "had_priorities": bool(priorities),
         "elapsed_ms": elapsed_ms,
+        # Gemmes så nyheds-målingen har noget at sammenligne med NÆSTE gang —
+        # og så en senere analyse kan se HVAD slaget udrettede, ikke kun et tal.
+        "actions": [str(a)[:80] for a in actions][:20],
+        "trace_kinds": trace_kinds[:40],
+        "window_seconds": round((nu - vindue_start).total_seconds(), 1),
     }
 
     # Persist (rolling window)
@@ -145,14 +251,29 @@ def tick_quality_summary(*, days: int = 7) -> dict[str, Any]:
         trend = "improving"
     elif last_5_avg < avg - 5:
         trend = "degrading"
-    return {
+    # 2026-09-05: spredningen SKAL med ud. Den gamle scoring gav 70 til 199 af
+    # 200 slag, og fladen så ud som "stable" i alle overflader — en konstant der
+    # udgav sig for en måling. Er der kun én værdi i vinduet, måler vi ingenting,
+    # og det skal stå i svaret i stedet for at skulle graves frem.
+    scores = [int(e.get("score") or 0) for e in recent]
+    distinct = sorted(set(scores))
+    laast = len(distinct) == 1 and len(recent) >= 10
+    ud = {
         "status": "ok",
         "count": len(recent),
         "avg_score": round(avg, 1),
         "last_5_avg": round(last_5_avg, 1),
-        "trend": trend,
+        "trend": "locked" if laast else trend,
         "window_days": days,
+        "distinct_scores": len(distinct),
+        "score_range": [min(scores), max(scores)],
     }
+    if laast:
+        ud["warning"] = (
+            "alle %d slag scorede %d — målingen er låst og siger intet"
+            % (len(recent), distinct[0])
+        )
+    return ud
 
 
 # ── Stale goal detection ─────────────────────────────────────────

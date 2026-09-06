@@ -136,7 +136,8 @@ def issue_token(
     if not user_id:
         raise ValueError("user_id required")
     role = (role or "member").strip().lower()
-    if role not in {"owner", "member", "guest"}:
+    from core.identity.household import is_valid_role
+    if not is_valid_role(role):
         raise ValueError(f"invalid role: {role!r}")
     now = datetime.now(UTC)
     # ttl_seconds (§22.6: kortlivede access-tokens, fx 30 min) vinder over ttl_days
@@ -216,7 +217,8 @@ def verify_token(token: str) -> dict[str, Any]:
         except Exception:
             pass  # bloklist utilgængelig → fail-open (verificeret token bevares)
     role = str(claims.get("role") or "member").lower()
-    if role not in {"owner", "member", "guest"}:
+    from core.identity.household import is_valid_role
+    if not is_valid_role(role):
         raise AuthError(f"invalid role in token: {role!r}")
     claims["role"] = role
     claims["app_id"] = str(claims.get("app_id") or "")
@@ -304,5 +306,39 @@ def require_owner(request: Request) -> dict:
         raise HTTPException(
             status_code=403,
             detail=f"owner role required (got role={(role or 'none')!r})",
+        )
+    return claims
+
+
+# ── FastAPI dependency: husstands-gate ─────────────────────────────
+# Til det der er privat for dem der BOR i huset (Sansernes Arkiv).
+# Owner og partner slipper ind; member og guest gør ikke.
+#
+# Dette er IKKE et privilegie-trin mellem member og owner. En partner har
+# nøjagtig medlems-rettigheder overalt ellers — se core/identity/household.py.
+# Grænsen ligger her, på ruten, og ikke i en klient: en fane kan skiftes ud, og
+# en fremtidig desktop-flade skal møde den samme dør.
+
+def require_household(request: Request) -> dict:
+    """Raise 401/403 unless the caller lives in the household (owner|partner).
+
+    Returns the verified claims dict on success.
+    """
+    from fastapi import HTTPException
+
+    from core.identity.household import is_household
+
+    auth = request.headers.get("authorization") or ""
+    if not auth.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="bearer token required")
+    try:
+        claims = verify_token(auth)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"invalid token: {exc!s}"[:200])
+    role = str(claims.get("role") or "").lower()
+    if not is_household(role):
+        raise HTTPException(
+            status_code=403,
+            detail=f"household role required (got role={(role or 'none')!r})",
         )
     return claims

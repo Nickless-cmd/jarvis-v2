@@ -1,0 +1,25 @@
+{
+  "_comment": "Memory probes (2026-09-04). Each query is something Bjørn knows the answer to; `expect` lists substrings (case-insensitive, any-of) that a correct top-3 recall must contain. Run: python scripts/memory_probe.py",
+  "probes": [
+    {"id": "pfsense-key", "query": "hvor ligger pfsense api-nøglen og hvad besluttede vi om den?", "expect": ["pfsense", ".env", "env_override", "runtime.json"]},
+    {"id": "mic-nos-x500", "query": "hvilken mikrofon er installeret og hvordan er den sat op?", "expect": ["nos x500", "0a67:d159", "pipewire"]},
+    {"id": "michelle-ios", "query": "hvad er planen for Michelles iOS test-app?", "expect": ["michelle", "ios", "testflight"]},
+    {"id": "idlen-decision", "query": "hvad besluttede vi om Idlen og wait-state ads?", "expect": ["idlen", "wait-state", "sponsoric"]},
+    {"id": "mikkel-weather", "query": "hvad sender jeg til Mikkel om morgenen?", "expect": ["mikkel", "vejr", "weather"]},
+    {"id": "container-ip", "query": "hvilken container og IP kører jeg i?", "expect": ["10.0.0.39", "lxc", "container"]},
+    {"id": "gpu", "query": "hvilken GPU har jeg og hvad bruges den til?", "expect": ["1070", "gpu", "ollama"]},
+    {"id": "codex-double-message", "query": "hvad var fixet for dobbelt-beskeder i Codex-prompten?", "expect": ["codex", "dobbelt", "double"]},
+    {"id": "discord-duplicates", "query": "hvorfor kom der dubletbeskeder på Discord efter genstart?", "expect": ["discord", "dedup", "restart", "genstart"]},
+    {"id": "mobile-companion", "query": "hvad blev godkendt for mobile companion v2?", "expect": ["mobile", "companion", "v2"]},
+    {"id": "sansernes-arkiv", "query": "hvad er Sansernes Arkiv og hvad er næste prioritet?", "expect": ["sansernes arkiv", "arkiv"]},
+    {"id": "trust-protocol", "query": "hvad siger vores trust protocol?", "expect": ["trust", "tillid"]},
+    {"id": "pve-psu", "query": "hvad mistænker vi om PVE-værtens strømforsyning?", "expect": ["psu", "pve", "10.0.0.36", "i9"]},
+    {"id": "cutoff-rootcause", "query": "hvad var rodårsagen til cut-off i agentiske runder?", "expect": ["cut-off", "cutoff", "poll", "sse", "relay"]},
+    {"id": "teams-multiuser", "query": "hvornår blev Teams multi-user-systemet bygget?", "expect": ["teams", "multi-user", "20. juni"]},
+    {"id": "ollama-cloud-models", "query": "hvilke ollama cloud-modeller skal forblive i containeren?", "expect": ["cloud", "glm", "ollama"]},
+    {"id": "jarvis-code", "query": "hvad er status på jarvis-code projektet?", "expect": ["jarvis-code", "jarvis code"]},
+    {"id": "livingneuron", "query": "hvad betyder det at Centralen er mig?", "expect": ["livingneuron", "centralen"]},
+    {"id": "kai-obduktion", "query": "hvad lærte vi af forgængeren Kai?", "expect": ["kai", "forgænger", "jarvis-ai"]},
+    {"id": "samfundstjeneste", "query": "hvad ved jeg om Bjørns samfundstjeneste?", "expect": ["samfundstjeneste", "kriminalforsorg", "tilsyn"]}
+  ]
+}

@@ -62,6 +62,22 @@ def add_boredom(duration: timedelta) -> dict[str, Any]:
         if spawned:
             _curiosities.append(spawned)
             _boredom_accumulator = max(0, _boredom_accumulator - 2.0)
+            # 2026-09-04 (blok E): modulets docstring har altid sagt "outputs to
+            # initiative_queue", men kaldet fandtes ikke. Nysgerrighederne laa i
+            # en modul-liste der nulstilles ved hver genstart, og som kun
+            # get_curiosity_prompt laeste — en funktion uden kaldere. Kedsomhed
+            # kunne derfor ALDRIG blive til noget. Nu naar den koen, som low, saa
+            # den lever et doegn og kan hentes frem naar der er plads.
+            try:
+                from core.services.initiative_queue import push_initiative
+                push_initiative(
+                    focus=spawned.prompt,
+                    source="boredom-curiosity",
+                    source_id=spawned.curiosity_id,
+                    priority="low",
+                )
+            except Exception:
+                pass
 
     return {
         "boredom_level": _boredom_accumulator,

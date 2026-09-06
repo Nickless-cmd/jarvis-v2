@@ -457,8 +457,10 @@ def backfill_all(*, max_per_table: int | None = None) -> dict[str, Any]:
             "id",
         ),
         "private_brain_records": (
+            # 2026-09-04 (memory repair, R5): kun aktive/settling poster.
             "SELECT record_id FROM private_brain_records "
-            "WHERE status != 'deleted' ORDER BY created_at DESC",
+            "WHERE status NOT IN ('released', 'archived', 'superseded', 'deleted') "
+            "ORDER BY created_at DESC",
             "record_id",
         ),
     }

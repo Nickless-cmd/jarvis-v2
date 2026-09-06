@@ -259,6 +259,14 @@ def run_self_review(*, period: str = "ad-hoc") -> dict[str, Any]:
         review_id = int(cursor.lastrowid)
         conn.commit()
 
+    # 2026-09-04 (memory repair, R4): lektierne endte i "morning thread", hvis
+    # eneste læser aldrig blev kaldt. Nu i lessons-lageret (proposed → active).
+    try:
+        from core.services.lessons import record_review_lessons
+        record_review_lessons(list(review.get("lessons") or []), "self_review")
+    except Exception:
+        pass
+
     try:
         event_bus.publish("cognitive_self_review.completed", {
             "review_id": review_id,

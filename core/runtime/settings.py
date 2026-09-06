@@ -320,6 +320,22 @@ class RuntimeSettings:
     # beskeder tilbage" med lange beskeder; 80k holder ~2× mere historik og compacter
     # blidere (ned til 35k, ikke 15k). Stadig langt fra 1M — bevidst lille arbejdsvindue
     # for svarkvalitet, men rummeligt nok til at han ikke taber nær kontekst.
+    # ── Lærings-sløjfe (2026-09-04, blok B) ──────────────────────────────────
+    # De gamle ordmønster-detektorer (user_understanding, user_md-forslag,
+    # memory_md-forslag) skrev hver tur og lærte intet: over 30 dage 1.756
+    # forkastede USER.md-kandidater mod 9 anvendte, og 19.145 forkastede
+    # MEMORY.md-kandidater med Bjørns egen besked ordret som titel. Slukket;
+    # end_of_run_memory_consolidation gør arbejdet. Sæt True for at tænde igen.
+    # ── Praefiks-laas paa tool-saettet (2026-09-05) ─────────────────────────
+    # Tool-routeren valgte et NYT saet pr. besked (maalt 4/9: 58-88 vaerktoejer
+    # paa forskellige ture). Tools-arrayet ligger lige efter systembeskeden i
+    # DeepSeeks template, saa et nyt saet bryder cachen dér — og hele
+    # historikken bagefter, op til 160k tokens, betales fuldt hver tur.
+    # Hovedbogen: hit frosset paa 6.400-8.320 (= systembeskeden) mens miss
+    # voksede til 76k. Med laasen bestemmer routeren én gang pr. session.
+    # Saet False for at koere pr. tur igen (gammel adfaerd, uden deploy).
+    session_tool_pin_enabled: bool = True
+    legacy_regex_learning_detectors_enabled: bool = False
     context_attention_budget_tokens: int = 80_000     # high-water: trigger her
     context_attention_low_water_tokens: int = 35_000  # compact ned til ~dette
     # Model-BEVIDST sikkerhedsloft (backstop). Hvis transcript på trods af budgettet
@@ -336,8 +352,10 @@ class RuntimeSettings:
     # på disk (read_tool_result); den nuværende turs resultater er stadig fulde via
     # followup-exchanges (Claude Codes hot-tail/cold-storage-mønster).
     tool_result_history_max_chars: int = 1500
-    # Tool-result lifecycle (spec 2026-07-16). Default OFF = today's behavior exactly.
-    tool_result_lifecycle_enabled: bool = False
+    # Tool-result lifecycle (spec 2026-07-16). Default ON after CC-parity audit
+    # (2026-09-04): old tool outputs move to stable cold stubs only at compaction
+    # epochs or hard ceilings, preserving DeepSeek's cacheable prefix between turns.
+    tool_result_lifecycle_enabled: bool = True
     tool_warm_run_window: int = 8          # keep last N user-turns warm
     tool_warm_token_ceiling: int = 40000   # ceiling on warm tool-result tokens
     tool_warm_hysteresis: float = 0.25     # advance margin (no thrash)

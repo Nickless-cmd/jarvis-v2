@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
@@ -24,6 +25,14 @@ _AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS = {
     "user-preference:review-style:challenge-before-settling",
     "user-workstyle:direction:stable-threading",
     "user-preference:reminders:assumption-caution",
+}
+# Bevis-niveauer der må skrives med det samme. «runtime_inference» (udledt) er
+# BEVIDST udenfor: den tælles, og skrives først når den samme konklusion dukker
+# op i en anden session — så er den `repeated_cross_session`.
+_AUTO_APPLY_EVIDENCE_CLASSES = {
+    "explicit_user_statement",
+    "explicit_assistant_confirmation",
+    "repeated_cross_session",
 }
 _AUTO_APPLY_SAFE_MEMORY_MD_PREFIX = "workspace-memory:stable-context:"
 _AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS = {
@@ -401,14 +410,18 @@ def _candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> bool:
     source_kind = str(candidate.get("source_kind") or "")
     evidence_class = str(candidate.get("evidence_class") or "")
     if canonical_key not in _AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS:
+        # 2026-09-04 (lærings-sløjfe, blok B): gaten og skriveren brugte to
+        # FORSKELLIGE ordlister for evidence_class. Skriveren udsendte
+        # {explicit_user_statement, single_session_pattern, runtime_support_only};
+        # gaten krævede {explicit_user_statement, explicit_assistant_confirmation,
+        # runtime-inference}. To af tre bevis-niveauer kunne derfor strukturelt
+        # ALDRIG auto-anvendes. Nu ét sæt, tre niveauer, og «udledt» skrives
+        # bevidst IKKE — den tælles, og skrives først når den gentager sig i en
+        # anden session (så er den `repeated_cross_session`).
         if not (
             source_mode == "end_of_run_memory_consolidation"
             and source_kind in {"user-explicit", "runtime-inference"}
-            and evidence_class in {
-                "explicit_user_statement",
-                "explicit_assistant_confirmation",
-                "runtime-inference",
-            }
+            and evidence_class in _AUTO_APPLY_EVIDENCE_CLASSES
         ):
             return False
     readiness = candidate_apply_readiness(candidate)
@@ -521,13 +534,44 @@ def _candidate_dimension_key(candidate: dict[str, object]) -> str:
     return ":".join(parts[:2])
 
 
+# Bevis-klasse → dansk kilde-mærkat i USER.md-linjen (blok A, 2026-09-04).
+_EVIDENCE_LABELS = {
+    "explicit_user_statement": "sagt eksplicit",
+    "explicit_assistant_confirmation": "bekræftet",
+    "repeated_cross_session": "gentaget",
+    "single_session_pattern": "set i én samtale",
+    "runtime-inference": "udledt",
+    "runtime_support_only": "udledt",
+}
+
+
+def _stamp_learned_line(line: str, candidate: dict[str, object]) -> str:
+    """Tilføj "(dato, kilde)" så en Lært-linje bærer sin egen proveniens.
+
+    Uden datoen kan hverken Jarvis eller kuratoren se om en præference er fra
+    i går eller fra marts, og uden kilden kan «udledt» ikke skelnes fra
+    «sagt eksplicit» når Bjørn læser filen.
+    """
+    body = " ".join(str(line or "").split()).strip()
+    if not body or body.endswith(")") and re.search(r"\(\d{4}-\d{2}-\d{2}", body):
+        return body
+    label = _EVIDENCE_LABELS.get(str(candidate.get("evidence_class") or ""), "")
+    stamp = datetime.now(UTC).strftime("%Y-%m-%d")
+    return f"{body} ({stamp}, {label})" if label else f"{body} ({stamp})"
+
+
 def _candidate_write_material(candidate: dict[str, object]) -> dict[str, str]:
     target_file = str(candidate.get("target_file") or "")
     proposed_value = str(candidate.get("proposed_value") or "").strip()
     if target_file == "USER.md":
+        # 2026-09-04 (lærings-sløjfe, blok A): «## Durable Preferences» lå på
+        # linje 70 af 202 og blev ALDRIG læst af prompten — hverken af de gamle
+        # «første 40 linjer» eller af Kerne-mekanismen. 146 lærte præferencer
+        # nåede ham aldrig. «## Lært» er relevans-udvalgt pr. tur i [HUKOMMELSE].
         return {
-            "section_heading": str(candidate.get("write_section") or "## Durable Preferences"),
-            "content_line": proposed_value or _user_line_from_key(candidate),
+            "section_heading": str(candidate.get("write_section") or "## Lært"),
+            "content_line": _stamp_learned_line(
+                proposed_value or _user_line_from_key(candidate), candidate),
         }
     if target_file == "MEMORY.md":
         return {
@@ -755,17 +799,15 @@ def _append_workspace_contract_line_raw(
             "content_line": normalized_line,
         }
 
-    lines = existing.splitlines()
-    heading = str(section_heading or "").strip()
-    if not lines:
-        next_text = f"{heading}\n\n{normalized_line}\n"
-    elif heading not in existing:
-        base = existing.rstrip()
-        next_text = f"{base}\n\n{heading}\n\n{normalized_line}\n"
-    else:
-        next_text = _insert_under_heading(existing, heading, normalized_line)
-
-    path.write_text(next_text, encoding="utf-8")
+    # 2026-09-04 (memory repair, R7): samme skriver som memory_upsert_section —
+    # normaliseret overskrift, append uden dubletter, atomisk.
+    from core.memory.memory_md_writer import upsert_section
+    heading_text = str(section_heading or "").strip()
+    level = len(heading_text) - len(heading_text.lstrip("#")) or 2
+    upsert_section(
+        path, heading_text.lstrip("#").strip() or "Curated Memory", normalized_line,
+        level=max(1, min(6, level)), mode="append",
+    )
 
     # Lag 4: Repeat-writer trap — emit eventbus alarm if same canonical_key
     # content has been written 3+ times in 24h (sign of a stuck writer).

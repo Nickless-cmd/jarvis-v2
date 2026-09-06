@@ -22,6 +22,21 @@ import core.services.visible_runs as _vr
 logger = logging.getLogger(__name__)
 
 
+def _legacy_regex_detectors_enabled() -> bool:
+    """Er de gamle ordmønster-detektorer stadig tændt? (default: nej)
+
+    Slukket 2026-09-04 (lærings-sløjfe, blok B). De skrev hver tur og lærte
+    intet: 1.756 forkastede USER.md-kandidater mod 9 anvendte, og 19.145
+    forkastede MEMORY.md-kandidater med Bjørns egen besked ordret som titel.
+    Fail-safe: enhver fejl i opslaget → slukket (den nye sløjfe kører alligevel).
+    """
+    try:
+        from core.runtime.settings import load_settings
+        return bool(getattr(load_settings(), "legacy_regex_learning_detectors_enabled", False))
+    except Exception:
+        return False
+
+
 def _track_step_failed() -> None:
     """En tracker i _track_runtime_candidates fejlede.
 
@@ -248,14 +263,23 @@ def _track_runtime_candidates(run: "_vr.VisibleRun", assistant_text: str) -> Non
         )
     except Exception:
         _track_step_failed()
-    try:
-        _vr.track_runtime_user_understanding_signals_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-            user_message=run.user_message,
-        )
-    except Exception:
-        _track_step_failed()
+    # ── REGEX-DETEKTORER (slukket 2026-09-04, lærings-sløjfe blok B) ────────
+    # Målt over 30 dage: user_md-forslagene gav 1.756 forkastede kandidater og
+    # 9 anvendte ("User appears to prefer plain, grounded replies" ni gange);
+    # memory_md-forslagene gav 19.145 forkastede, med Bjørns egen besked ordret
+    # som titel ("MEMORY.md update proposal: Kan Du Ikk Lige Finde Ud Af Hvilke
+    # Ip Vores"). Fire faste ordmønstre kan ikke lære nogen at kende. Sløjfen i
+    # end_of_run_memory_consolidation gør arbejdet nu. Tænd igen med
+    # settings.legacy_regex_learning_detectors_enabled = true.
+    if _legacy_regex_detectors_enabled():
+        try:
+            _vr.track_runtime_user_understanding_signals_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+                user_message=run.user_message,
+            )
+        except Exception:
+            _track_step_failed()
     try:
         _vr.track_runtime_remembered_fact_signals_for_visible_turn(
             session_id=run.session_id,
@@ -453,27 +477,28 @@ def _track_runtime_candidates(run: "_vr.VisibleRun", assistant_text: str) -> Non
         )
     except Exception:
         _track_step_failed()
-    try:
-        _vr.track_runtime_user_md_update_proposals_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        _track_step_failed()
-    try:
-        _vr.track_runtime_memory_md_update_proposals_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        _track_step_failed()
-    try:
-        _vr.track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        _track_step_failed()
+    if _legacy_regex_detectors_enabled():
+        try:
+            _vr.track_runtime_user_md_update_proposals_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception:
+            _track_step_failed()
+        try:
+            _vr.track_runtime_memory_md_update_proposals_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception:
+            _track_step_failed()
+        try:
+            _vr.track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception:
+            _track_step_failed()
     try:
         _vr.auto_apply_safe_memory_md_candidates_for_visible_turn(
             session_id=run.session_id,
@@ -481,13 +506,14 @@ def _track_runtime_candidates(run: "_vr.VisibleRun", assistant_text: str) -> Non
         )
     except Exception:
         _track_step_failed()
-    try:
-        _vr.track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        _track_step_failed()
+    if _legacy_regex_detectors_enabled():
+        try:
+            _vr.track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception:
+            _track_step_failed()
     try:
         _vr.auto_apply_safe_user_md_candidates_for_visible_turn(
             session_id=run.session_id,

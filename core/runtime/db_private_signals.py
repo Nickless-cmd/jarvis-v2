@@ -408,6 +408,14 @@ def record_private_retained_memory_record(
     confidence: str,
     created_at: str,
 ) -> None:
+    # 2026-09-04 (memory repair, R3): substans-gate. Skabelon-værdier uden emne
+    # ("… around hmm", provider-fejl, telemetri) persisteres aldrig.
+    try:
+        from core.memory.promotion_substance import has_substance
+        if not has_substance(retained_value):
+            return
+    except Exception:
+        pass
     # Novelty-gate: en autonom run der promoverer PRÆCIS samme retained_value som den
     # seneste record er bare et ekko (aug 2026: ~20 identiske "keep carrying what
     # helped…"). Skip persist i så fald — udvikling skal være NY for at hobe sig op.

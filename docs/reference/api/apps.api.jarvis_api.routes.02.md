@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/internal_runtime_surface.py`
+_Internal runtime-surface endpoint — proxy-mål for Centralens self/mind-flader._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_require_loopback` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L25) |
+| function | `_living_executive` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L33) |
+| function | `_self_model` | `()` | LIGHT self-model: kun top-level tællere, ikke den 255KB nestede payload | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L38) |
+| function | `_world_model` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L56) |
+| function | `_inner_life` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L63) |
+| function | `_affect` | `()` | Nervesystemets affektive fordeling — læses i RUNTIME-processen hvor | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L68) |
+| function | `_hardware_body` | `()` | Live hardware-krop (CPU/temp/disk/RAM/GPU) — læses i runtime hvor psutil-samlingen sker. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L75) |
+| function | `_soul` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L82) |
+| function | `_dark_products` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L87) |
+| function | `_light` | `(surface)` | §24.4-reduktion: udled KUN skalarer + længder fra en fuld surface. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L92) |
+| function | `_open_loops` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L118) |
+| function | `_runtime_awareness` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L125) |
+| function | `_runtime_self_knowledge` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L132) |
+| function | `_counterfactual` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L139) |
+| function | `_autonomous_history` | `()` | Jarvis' autonome historie grupperet pr. oprindelse (drøm/råd/arbejde/…): antal | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L146) |
+| function | `_gate_verdicts` | `()` | Persistent verdict-fordeling pr. governet gate (survives restart). DB-backed → | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L154) |
+| function | `get_runtime_surface` | `(name, request)` | Return the named runtime-surface builder's output (raw). Loopback-only, self-safe. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L182) |
+
 ## `apps/api/jarvis_api/routes/jarvisx.py`
 _JarvisX-specific routes — small endpoints used by the desktop app._
 
@@ -211,39 +234,39 @@ _Shared foundation for Mission Control routes._
 | function | `_visible_run_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L566) |
 | function | `_visible_work_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L580) |
 | function | `_capability_invocation_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L588) |
-| function | `_private_inner_note_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L598) |
-| function | `_private_growth_note_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L606) |
-| function | `_private_self_model_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L620) |
-| function | `_private_reflective_selection_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L628) |
-| function | `_private_development_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L642) |
-| function | `_private_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L650) |
-| function | `_protected_inner_voice_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L658) |
-| function | `_current_protected_inner_voice` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L666) |
-| function | `_select_current_protected_inner_voice` | `(voices)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L672) |
-| function | `_protected_inner_voice_priority` | `(voice, *, freshness_floor)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L701) |
-| function | `_parse_runtime_iso_datetime` | `(value)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L727) |
-| function | `_private_inner_interplay_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L741) |
-| function | `_private_initiative_tension_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L752) |
-| function | `_private_relation_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L770) |
-| function | `_private_operational_preference_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L781) |
-| function | `_operational_preference_alignment_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L791) |
-| function | `_private_temporal_curiosity_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L801) |
-| function | `_private_temporal_promotion_signal_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L809) |
-| function | `_private_promotion_decision_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L820) |
-| function | `_private_retained_memory_record_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L829) |
-| function | `_private_retained_memory_projection_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L847) |
-| function | `_recent_visible_run_events` | `(limit=…, scan_limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L874) |
-| function | `_recent_capability_invocation_events` | `(limit=…, scan_limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L880) |
-| function | `_jarvis_identity_summary` | `(visible_identity)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L890) |
-| function | `_jarvis_state_signal` | `(protected_voice, initiative_tension, private_state)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L901) |
-| function | `_jarvis_retained_summary` | `(retained_projection, retained_record)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L925) |
-| function | `_jarvis_development_summary` | `(self_model, development_state, development_focuses=…, reflective_critics=…, self_model_signals=…, goal_signals=…, reflection_signals=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L961) |
-| function | `_jarvis_continuity_summary` | `(relation_state, visible_session, promotion_signal, world_model_signals=…, runtime_awareness_signals=…, runtime_work=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1022) |
-| function | `_jarvis_heartbeat_summary` | `(heartbeat)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1074) |
-| function | `_runtime_work_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1123) |
-| function | `_jarvis_emergent_summary` | `(emergent_signals)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1190) |
-| function | `_jarvis_emergent_summary` | `(emergent_signals)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1206) |
-| function | `_preview_text` | `(value, *, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1222) |
+| function | `_private_inner_note_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L605) |
+| function | `_private_growth_note_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L613) |
+| function | `_private_self_model_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L627) |
+| function | `_private_reflective_selection_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L635) |
+| function | `_private_development_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L649) |
+| function | `_private_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L657) |
+| function | `_protected_inner_voice_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L665) |
+| function | `_current_protected_inner_voice` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L673) |
+| function | `_select_current_protected_inner_voice` | `(voices)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L679) |
+| function | `_protected_inner_voice_priority` | `(voice, *, freshness_floor)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L708) |
+| function | `_parse_runtime_iso_datetime` | `(value)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L734) |
+| function | `_private_inner_interplay_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L748) |
+| function | `_private_initiative_tension_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L759) |
+| function | `_private_relation_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L777) |
+| function | `_private_operational_preference_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L788) |
+| function | `_operational_preference_alignment_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L798) |
+| function | `_private_temporal_curiosity_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L808) |
+| function | `_private_temporal_promotion_signal_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L816) |
+| function | `_private_promotion_decision_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L827) |
+| function | `_private_retained_memory_record_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L836) |
+| function | `_private_retained_memory_projection_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L854) |
+| function | `_recent_visible_run_events` | `(limit=…, scan_limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L881) |
+| function | `_recent_capability_invocation_events` | `(limit=…, scan_limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L887) |
+| function | `_jarvis_identity_summary` | `(visible_identity)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L897) |
+| function | `_jarvis_state_signal` | `(protected_voice, initiative_tension, private_state)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L908) |
+| function | `_jarvis_retained_summary` | `(retained_projection, retained_record)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L932) |
+| function | `_jarvis_development_summary` | `(self_model, development_state, development_focuses=…, reflective_critics=…, self_model_signals=…, goal_signals=…, reflection_signals=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L968) |
+| function | `_jarvis_continuity_summary` | `(relation_state, visible_session, promotion_signal, world_model_signals=…, runtime_awareness_signals=…, runtime_work=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1029) |
+| function | `_jarvis_heartbeat_summary` | `(heartbeat)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1081) |
+| function | `_runtime_work_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1130) |
+| function | `_jarvis_emergent_summary` | `(emergent_signals)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1197) |
+| function | `_jarvis_emergent_summary` | `(emergent_signals)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1213) |
+| function | `_preview_text` | `(value, *, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1229) |
 
 ## `apps/api/jarvis_api/routes/mission_control_dashboard.py`
 _Mission Control dashboard-endpoints — de tre data-kilder som kontrolcenter-UI'et_
@@ -436,51 +459,55 @@ _Mission Control routes: runs, overview, events, costs, approvals, memory-pipeli
 | function | `mc_events` | `(limit=…, family=…)` | Seneste events fra event-bussen (op til `limit`), valgfrit filtreret | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L62) |
 | function | `mc_costs` | `(limit=…)` | Cost-flade: telemetri-summering plus de seneste `limit` cost-rækker. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L80) |
 | function | `mc_runs` | `(limit=…)` | Runs-flade: aktiv run, sidste udfald/capability-brug, de seneste | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L89) |
-| function | `mc_approvals` | `(limit=…)` | Approvals-flade: de seneste `limit` approval-requests (med udledt | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L118) |
-| function | `mc_memory_pipeline` | `(limit=…)` | Memory-pipeline status surface (added 2026-06-09). | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L142) |
-| function | `mc_autonomy_proposals` | `(limit=…)` | MC surface for Niveau 2 autonomy proposal queue. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L301) |
-| function | `mc_approve_autonomy_proposal` | `(proposal_id, note=…)` | Godkend et Niveau 2-autonomi-forslag via id, med valgfri resolution-note. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L315) |
-| function | `mc_reject_autonomy_proposal` | `(proposal_id, note=…)` | Afvis et Niveau 2-autonomi-forslag via id, med valgfri resolution-note. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L325) |
-| function | `mc_initiatives` | `(limit=…)` | MC surface for the persistent initiative queue — pending, acted, approved, rejected. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L335) |
-| function | `mc_approve_initiative` | `(initiative_id, note=…)` | Approve a pending initiative so the heartbeat may act on it. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L348) |
-| function | `mc_reject_initiative` | `(initiative_id, note=…)` | Reject and expire a pending initiative. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L358) |
-| function | `mc_life_projects` | `()` | Mission Control surface for Jarvis-owned long-term intentions. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L368) |
-| function | `mc_abandon_life_project` | `(initiative_id, note=…)` | Abandon a long-term intention without deleting its record. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L374) |
-| function | `mc_operations` | `(limit=…)` | Samlet operations-flade (3s cached): runtime-config, tool-intent, runs, | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L383) |
+| function | `mc_approvals` | `(limit=…)` | Approvals-flade: de seneste `limit` approval-requests (med udledt | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L121) |
+| function | `mc_memory_pipeline` | `(limit=…)` | Memory-pipeline status surface (added 2026-06-09). | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L192) |
+| function | `mc_autonomy_proposals` | `(limit=…)` | MC surface for Niveau 2 autonomy proposal queue. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L351) |
+| function | `mc_approve_autonomy_proposal` | `(proposal_id, note=…)` | Godkend et Niveau 2-autonomi-forslag via id, med valgfri resolution-note. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L365) |
+| function | `mc_reject_autonomy_proposal` | `(proposal_id, note=…)` | Afvis et Niveau 2-autonomi-forslag via id, med valgfri resolution-note. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L375) |
+| function | `mc_initiatives` | `(limit=…)` | MC surface for the persistent initiative queue — pending, acted, approved, rejected. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L385) |
+| function | `mc_approve_initiative` | `(initiative_id, note=…)` | Approve a pending initiative so the heartbeat may act on it. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L398) |
+| function | `mc_reject_initiative` | `(initiative_id, note=…)` | Reject and expire a pending initiative. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L408) |
+| function | `mc_life_projects` | `()` | Mission Control surface for Jarvis-owned long-term intentions. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L418) |
+| function | `mc_endorse_life_project` | `(initiative_id, note=…)` | Sig god for en langsigtet hensigt uden at afslutte den. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L424) |
+| function | `mc_abandon_life_project` | `(initiative_id, note=…)` | Abandon a long-term intention without deleting its record. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L434) |
+| function | `mc_operations` | `(limit=…)` | Samlet operations-flade (3s cached): runtime-config, tool-intent, runs, | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L443) |
 
 ## `apps/api/jarvis_api/routes/mission_control_runtime_config.py`
 _Mission Control routes: adaptive/tool-intent, runtime-contract, heartbeat, visible-execution, capability-approval_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `mc_adaptive_planner` | `()` | Return the current bounded adaptive planner runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L14) |
-| function | `mc_adaptive_reasoning` | `()` | Return the current bounded adaptive reasoning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L20) |
-| function | `mc_guided_learning` | `()` | Return the current bounded guided learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L30) |
-| function | `mc_adaptive_learning` | `()` | Return the current bounded adaptive learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L40) |
-| function | `mc_self_system_code_awareness` | `()` | Return the current bounded self system / code awareness runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L50) |
-| function | `mc_tool_intent` | `()` | Return the current bounded approval-gated tool intent runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L56) |
-| function | `mc_approval_feedback` | `()` | Return the approval-feedback surface (learning signal from past approvals/denials). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L62) |
-| function | `mc_approve_tool_intent` | `()` | Approve the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L68) |
-| function | `mc_deny_tool_intent` | `()` | Deny the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L95) |
-| function | `mc_private_brain` | `()` | Return the private-brain overview plus recent session-distillation entries. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L122) |
-| function | `mc_runtime_contract` | `()` | Return the current runtime-contract state (active contract + candidates). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L131) |
-| function | `mc_heartbeat` | `()` | Return the heartbeat runtime surface (current heartbeat state and policy). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L137) |
-| function | `mc_emotional_memory` | `(limit=…)` | Closes cartographer dark-edge (2026-05-13): emotional_memory_engine | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L143) |
-| function | `mc_heartbeat_tick` | `()` | Manually trigger one heartbeat tick and return its resulting state/tick/policy. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L152) |
-| function | `mc_approve_runtime_contract_candidate` | `(candidate_id)` | Approve a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L164) |
-| function | `mc_reject_runtime_contract_candidate` | `(candidate_id)` | Reject a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L177) |
-| function | `mc_apply_runtime_contract_candidate` | `(candidate_id)` | Apply an approved runtime-contract candidate by id; returns the apply result. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L190) |
-| function | `mc_runtime` | `()` | Return the aggregate Mission Control runtime surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L203) |
-| function | `mc_visible_execution` | `()` | Return the visible-execution surface (current visible model/provider/auth) from live settings. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L209) |
-| function | `mc_main_agent_selection` | `()` | Return the current main-agent selection surface (selected provider/model/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L216) |
-| function | `mc_ollama_models` | `()` | Return the Ollama models available for use as the visible target. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L222) |
-| function | `mc_provider_models` | `(provider=…, auth_profile=…)` | Return the models available for the given provider (optionally scoped to an auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L228) |
-| function | `mc_invoke_workspace_capability` | `(capability_id, approved=…, write_content=…, target_path=…, command_text=…)` | Invoke a workspace capability by id, passing through the approval flag and optional | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L242) |
-| function | `mc_approve_capability_request` | `(request_id)` | Approve a capability-approval request by id (stamping approved_at now). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L265) |
-| function | `mc_execute_capability_request` | `(request_id, write_content=…, command_text=…)` | Execute a previously approved capability-approval request. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L285) |
-| function | `mc_complete_development_focus` | `(focus_id)` | Manually mark a development focus as completed. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L393) |
-| function | `mc_update_visible_execution` | `(payload)` | Update the visible-execution settings (visible model provider/name/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L425) |
-| function | `mc_update_main_agent_selection` | `(payload)` | Select the main-agent target (provider/model, optional auth_profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L480) |
+| function | `_capability_request_scope` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L16) |
+| function | `_stored_capability_execution_args` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L23) |
+| function | `mc_adaptive_planner` | `()` | Return the current bounded adaptive planner runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L35) |
+| function | `mc_adaptive_reasoning` | `()` | Return the current bounded adaptive reasoning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L41) |
+| function | `mc_guided_learning` | `()` | Return the current bounded guided learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L51) |
+| function | `mc_adaptive_learning` | `()` | Return the current bounded adaptive learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L61) |
+| function | `mc_self_system_code_awareness` | `()` | Return the current bounded self system / code awareness runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L71) |
+| function | `mc_tool_intent` | `()` | Return the current bounded approval-gated tool intent runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L77) |
+| function | `mc_approval_feedback` | `()` | Return the approval-feedback surface (learning signal from past approvals/denials). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L83) |
+| function | `mc_approve_tool_intent` | `()` | Approve the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L89) |
+| function | `mc_deny_tool_intent` | `()` | Deny the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L116) |
+| function | `mc_private_brain` | `()` | Return the private-brain overview plus recent session-distillation entries. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L143) |
+| function | `mc_runtime_contract` | `()` | Return the current runtime-contract state (active contract + candidates). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L152) |
+| function | `mc_heartbeat` | `()` | Return the heartbeat runtime surface (current heartbeat state and policy). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L158) |
+| function | `mc_emotional_memory` | `(limit=…)` | Closes cartographer dark-edge (2026-05-13): emotional_memory_engine | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L164) |
+| function | `mc_heartbeat_tick` | `()` | Manually trigger one heartbeat tick and return its resulting state/tick/policy. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L173) |
+| function | `mc_approve_runtime_contract_candidate` | `(candidate_id)` | Approve a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L185) |
+| function | `mc_reject_runtime_contract_candidate` | `(candidate_id)` | Reject a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L198) |
+| function | `mc_apply_runtime_contract_candidate` | `(candidate_id)` | Apply an approved runtime-contract candidate by id; returns the apply result. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L211) |
+| function | `mc_runtime` | `()` | Return the aggregate Mission Control runtime surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L224) |
+| function | `mc_visible_execution` | `()` | Return the visible-execution surface (current visible model/provider/auth) from live settings. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L230) |
+| function | `mc_main_agent_selection` | `()` | Return the current main-agent selection surface (selected provider/model/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L237) |
+| function | `mc_ollama_models` | `()` | Return the Ollama models available for use as the visible target. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L243) |
+| function | `mc_provider_models` | `(provider=…, auth_profile=…)` | Return the models available for the given provider (optionally scoped to an auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L249) |
+| function | `mc_invoke_workspace_capability` | `(capability_id, approved=…, write_content=…, target_path=…, command_text=…)` | Invoke a workspace capability by id, passing through the approval flag and optional | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L263) |
+| function | `mc_approve_capability_request` | `(request_id)` | Approve a capability-approval request by id (stamping approved_at now). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L286) |
+| function | `mc_execute_capability_request` | `(request_id, write_content=…, command_text=…)` | Execute a previously approved capability-approval request. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L309) |
+| function | `mc_approve_and_execute_capability_request` | `(request_id)` | Atomically approve, claim and execute a stored capability request once. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L426) |
+| function | `mc_complete_development_focus` | `(focus_id)` | Manually mark a development focus as completed. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L506) |
+| function | `mc_update_visible_execution` | `(payload)` | Update the visible-execution settings (visible model provider/name/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L538) |
+| function | `mc_update_main_agent_selection` | `(payload)` | Select the main-agent target (provider/model, optional auth_profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L593) |
 
 ## `apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py`
 _Mission Control routes: skills, memory, hardening, lab_
@@ -640,25 +667,14 @@ _POST /transcribe — diktering-transskription til jarvis-desk's mic-knap._
 | function | `transcribe` | `(file, language=…)` | — | [src](../../../apps/api/jarvis_api/routes/transcribe.py#L22) |
 
 ## `apps/api/jarvis_api/routes/tts.py`
-_TTS synthesis route — backed by Microsoft Edge's read-aloud cloud_
+_TTS synthesis route — ElevenLabs primær (Jarvis' egen stemme, Mads),_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `TTSRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/tts.py#L30) |
-| function | `_elevenlabs_preferred` | `()` | Runtime-flag så credits kan spares uden kode-ændring. Default True (ElevenLabs primær). | [src](../../../apps/api/jarvis_api/routes/tts.py#L54) |
-| function | `_synthesize_elevenlabs_bytes` | `(text)` | Jarvis' egen ElevenLabs-stemme → MP3-bytes. Genbruger nøgle+voice_id fra voice-skillen | [src](../../../apps/api/jarvis_api/routes/tts.py#L66) |
-| function | `synthesize` | `(req)` | Synthesize text → MP3 bytes via edge-tts. | [src](../../../apps/api/jarvis_api/routes/tts.py#L83) |
-| function | `list_voices` | `(lang=…)` | List available Edge-TTS voices, optionally filtered by language tag. | [src](../../../apps/api/jarvis_api/routes/tts.py#L153) |
-
-## `apps/api/jarvis_api/routes/users.py`
-_Owner-only user-administration (spec 2026-06-15 §4/§6). CRUD + GDPR-erasure._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `PatchUserReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L20) |
-| class | `DeleteUserReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L30) |
-| function | `list_all` | `(claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L35) |
-| function | `get_one` | `(user_id, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L40) |
-| function | `patch_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L48) |
-| function | `delete_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L75) |
+| function | `_elevenlabs_voice_id` | `()` | Jarvis' stemme-id — ÉT sted, nemlig i voice-skillen. | [src](../../../apps/api/jarvis_api/routes/tts.py#L26) |
+| class | `TTSRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/tts.py#L44) |
+| function | `_elevenlabs_preferred` | `()` | Runtime-flag så credits kan spares uden kode-ændring. Default True (ElevenLabs primær). | [src](../../../apps/api/jarvis_api/routes/tts.py#L68) |
+| function | `_synthesize_elevenlabs_bytes` | `(text)` | Jarvis' egen ElevenLabs-stemme → MP3-bytes. Genbruger nøgle+voice_id fra voice-skillen | [src](../../../apps/api/jarvis_api/routes/tts.py#L80) |
+| function | `synthesize` | `(req)` | Synthesize text → MP3 bytes via edge-tts. | [src](../../../apps/api/jarvis_api/routes/tts.py#L97) |
+| function | `list_voices` | `(lang=…)` | List available Edge-TTS voices, optionally filtered by language tag. | [src](../../../apps/api/jarvis_api/routes/tts.py#L167) |
 

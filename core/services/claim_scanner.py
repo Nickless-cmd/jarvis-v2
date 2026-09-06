@@ -222,26 +222,27 @@ def _repair_time_claim(line: str, matched_text: str) -> str:
 # Desuden: spring planlagte/fremtidige tidspunkter over ("kl. 10" i en
 # reminder-kontekst er ikke et krav om hvad klokken er nu).
 
-# Kontekst-ord der indikerer planlagt tid, ikke "hvad er klokken"
-_PLANNED_TIME_CONTEXT = re.compile(
-    r'\b(fyrer|reminder|planlagt|kommende|i morgen|senere|schedule|'
-    r'wakeup|væk|vågn|kl\.?\s+\d{2}:\d{2}\s+(dk|dansk)|'
-    r'dansk tid|om\s+\d+|timer|minutter)',
+# 2026-09-04 (Bjørn): vend logikken. Før: _is_planned_time_context sprang kun
+# over planlagt/fremtid — men fortidige hændelsesstempler ("blev leveret kl.
+# 07:36") faldt mellem to stole og blev fejlagtigt flagget som uverificeret
+# nu-claim (falsk positiv: gaten sammenlignede en fortidig sendetid mod uret).
+# Nu: kun verificér mod uret når linjen EKSPLICIT hævder aktuel tid. Alle
+# andre tidsangivelser (fortid, fremtid, planlagt, hændelsesstempler) er
+# claims om noget andet end nu og skal ikke sammenlignes med uret.
+_CURRENT_TIME_CONTEXT = re.compile(
+    r'\b(lige nu|aktuelle?|current|right now|klokken er|klokken er nu|'
+    r'er klokken|hvad er klokken|nu kl\.?|klokken står på)\b',
     re.IGNORECASE,
 )
 
 
-def _is_planned_time_context(line: str, matched_text: str) -> bool:
-    """True hvis linjen indeholder ord der indikerer at tidspunktet er
-    planlagt/fremtidigt — ikke et krav om hvad klokken er lige nu."""
-    # Først check: er der "lige nu" / "aktuelle" i linjen? → aktuel tid, ikke planlagt
-    _NOW_CONTEXT = re.compile(r'\b(lige nu|aktuelle?|current|right now)\b', re.IGNORECASE)
-    if _NOW_CONTEXT.search(line):
-        return False  # det er et krav om aktuel tid → korriger
-    # Derefter: check for planlagt-tid kontekst-ord
-    if _PLANNED_TIME_CONTEXT.search(line):
-        return True
-    return False
+def _is_current_time_claim(line: str, matched_text: str) -> bool:
+    """True kun hvis linjen EKSPLICIT hævder hvad klokken er lige nu.
+
+    Fortid ('blev leveret kl. 07:36'), fremtid og planlagte tidspunkter er
+    claims om noget andet end nu — de skal ikke verificeres mod uret.
+    """
+    return bool(_CURRENT_TIME_CONTEXT.search(line))
 
 
 def _repair_claim(line: str, category: str, matched_text: str) -> str:
@@ -444,8 +445,10 @@ def scan_response(text: str) -> str:
             verified = verifier(matched_text) if verifier else True
             if not verified:
                 if category == "⏰ tid":
-                    # 2026-07-06 (Bjørn): spring planlagte tidspunkter over
-                    if _is_planned_time_context(line, matched_text):
+                    # 2026-09-04 (Bjørn): kun verificér mod uret når linjen
+                    # EKSPLICIT hævder aktuel tid. Fortid/fremtid/planlagt/
+                    # hændelsesstempler er claims om noget andet end nu.
+                    if not _is_current_time_claim(line, matched_text):
                         continue
                     # Saml korrektion til fodnote — ingen inline replacement
                     from datetime import UTC, datetime as _dt

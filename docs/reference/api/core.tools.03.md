@@ -2,34 +2,69 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
-## `core/tools/tiktok_tools.py`
-_TikTok auto-uploader integration tools for Jarvis._
+## `core/tools/state_flag_tools.py`
+_State-flag tools (leak-kandidat #1, 2026-07-10)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_exec_tiktok_upload` | `(args)` | Upload a video to TikTok using tiktokautouploader. | [src](../../../core/tools/tiktok_tools.py#L38) |
-| function | `_exec_tiktok_login` | `(args)` | Log into TikTok via headless browser using username + password. | [src](../../../core/tools/tiktok_tools.py#L114) |
-| function | `_exec_tiktok_show` | `(args)` | List saved TikTok cookie profiles and available videos. | [src](../../../core/tools/tiktok_tools.py#L185) |
-| function | `_get_display` | `()` | Return a DISPLAY value for browser operations. | [src](../../../core/tools/tiktok_tools.py#L217) |
+| function | `_uid` | `()` | — | [src](../../../core/tools/state_flag_tools.py#L16) |
+| function | `_exec_set_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L24) |
+| function | `_exec_get_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L41) |
+| function | `_exec_clear_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L52) |
+| function | `_exec_list_flags` | `(_args)` | — | [src](../../../core/tools/state_flag_tools.py#L63) |
+
+## `core/tools/stripe_tools.py`
+_Stripe integration tools — balance, transactions, and Issuing virtual cards._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_stripe_unavailable_response` | `()` | — | [src](../../../core/tools/stripe_tools.py#L33) |
+| function | `_load_stripe_key` | `()` | Load the Stripe secret key from runtime config. | [src](../../../core/tools/stripe_tools.py#L47) |
+| function | `_init_stripe` | `()` | Initialise the Stripe SDK with the stored key. Returns mode label. | [src](../../../core/tools/stripe_tools.py#L60) |
+| function | `_to_dict` | `(obj)` | Convert a Stripe object to a plain dict safely. | [src](../../../core/tools/stripe_tools.py#L72) |
+| function | `_exec_stripe_balance` | `(_args)` | Get the Stripe account balance. | [src](../../../core/tools/stripe_tools.py#L86) |
+| function | `_exec_stripe_transactions` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L118) |
+| function | `_exec_stripe_payouts` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L150) |
+| function | `_exec_stripe_create_issuing_card` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L181) |
+
+## `core/tools/tool_limits.py`
+_Grænser for værktøjs-kørsel — ét sted, så de to bash-stier ikke driver fra hinanden._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `bash_timeout_s` | `()` | Sekunder en enkelt bash-kommando må tage. Overstyres i runtime.json som | [src](../../../core/tools/tool_limits.py#L22) |
+| function | `timeout_note` | `(seconds, command=…)` | Besked når en kommando løber tør for tid. | [src](../../../core/tools/tool_limits.py#L35) |
 
 ## `core/tools/tool_scoping.py`
 _Tool-scoping policy — hvilke værktøjer er tilgængelige pr. rolle og mode._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `is_local_execution_tool` | `(name)` | True hvis værktøjet kører lokalt i code mode (resultat forlader ikke maskinen). | [src](../../../core/tools/tool_scoping.py#L144) |
-| function | `current_tool_scope` | `()` | Nuværende tool-scope ("chat" eller "" for ubegrænset). | [src](../../../core/tools/tool_scoping.py#L155) |
-| function | `set_tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L160) |
-| function | `reset_tool_scope` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L164) |
-| function | `current_local_exec` | `()` | True når det aktive run er en jarvis-code Path B lokal-exec-tur. | [src](../../../core/tools/tool_scoping.py#L177) |
-| function | `set_local_exec` | `(on)` | — | [src](../../../core/tools/tool_scoping.py#L182) |
-| function | `tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L187) |
-| function | `_owner_has_live_bridge` | `()` | True hvis der findes en levende desk-bro for nuværende bruger (presence, cross-proces). | [src](../../../core/tools/tool_scoping.py#L195) |
-| function | `allowed_tool_names` | `(*, role, scope, all_names)` | Beregn det tilladte sæt tool-navne for (role, scope). | [src](../../../core/tools/tool_scoping.py#L209) |
-| function | `is_tool_allowed` | `(*, role, scope, name)` | Må (role, scope) eksekvere værktøjet `name`? (Spor A — serverside håndhævelse.) | [src](../../../core/tools/tool_scoping.py#L265) |
-| function | `_apply_computer_use_policy` | `(result)` | Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har | [src](../../../core/tools/tool_scoping.py#L278) |
-| function | `_fn_name` | `(td)` | — | [src](../../../core/tools/tool_scoping.py#L302) |
-| function | `filter_tool_definitions` | `(defs, *, role, scope)` | Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope). | [src](../../../core/tools/tool_scoping.py#L306) |
+| function | `is_local_execution_tool` | `(name)` | True hvis værktøjet kører lokalt i code mode (resultat forlader ikke maskinen). | [src](../../../core/tools/tool_scoping.py#L189) |
+| function | `current_tool_scope` | `()` | Nuværende tool-scope ("chat" eller "" for ubegrænset). | [src](../../../core/tools/tool_scoping.py#L200) |
+| function | `set_tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L205) |
+| function | `reset_tool_scope` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L209) |
+| function | `current_local_exec` | `()` | True når det aktive run er en jarvis-code Path B lokal-exec-tur. | [src](../../../core/tools/tool_scoping.py#L222) |
+| function | `set_local_exec` | `(on)` | — | [src](../../../core/tools/tool_scoping.py#L227) |
+| function | `tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L232) |
+| function | `_owner_has_live_bridge` | `()` | True hvis der findes en levende desk-bro for nuværende bruger (presence, cross-proces). | [src](../../../core/tools/tool_scoping.py#L240) |
+| function | `allowed_tool_names` | `(*, role, scope, all_names)` | Beregn det tilladte sæt tool-navne for (role, scope). | [src](../../../core/tools/tool_scoping.py#L254) |
+| function | `preferred_tools_for_user_message` | `(user_message)` | Order hint for tool choice; does not grant or revoke permissions. | [src](../../../core/tools/tool_scoping.py#L310) |
+| function | `tool_routing_hint` | `(user_message)` | Prompt hint for personal/internal vs external lookup intent. | [src](../../../core/tools/tool_scoping.py#L320) |
+| function | `is_tool_allowed` | `(*, role, scope, name)` | Må (role, scope) eksekvere værktøjet `name`? (Spor A — serverside håndhævelse.) | [src](../../../core/tools/tool_scoping.py#L337) |
+| function | `_apply_computer_use_policy` | `(result)` | Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har | [src](../../../core/tools/tool_scoping.py#L350) |
+| function | `_fn_name` | `(td)` | — | [src](../../../core/tools/tool_scoping.py#L374) |
+| function | `filter_tool_definitions` | `(defs, *, role, scope)` | Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope). | [src](../../../core/tools/tool_scoping.py#L378) |
+
+## `core/tools/tool_text_render.py`
+_Læsbar `text`-form for strukturerede tool-resultater._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_cell` | `(value, limit=…)` | — | [src](../../../core/tools/tool_text_render.py#L31) |
+| function | `render_daemons` | `(daemons)` | Én linje pr. dæmon: navn, om den kører, kadence, hvornår sidst. | [src](../../../core/tools/tool_text_render.py#L37) |
+| function | `render_events` | `(events)` | Én linje pr. hændelse: tid, art, og begyndelsen af payload. | [src](../../../core/tools/tool_text_render.py#L77) |
+| function | `render_rows` | `(columns, rows, *, capped=…)` | Et resultatsæt som en justeret tabel. | [src](../../../core/tools/tool_text_render.py#L102) |
 
 ## `core/tools/ui_panel_tools.py`
 _open_ui_panel-tool (spec §8.2, Fase 6 #3)._
@@ -117,25 +152,31 @@ _Webhook tools — send to and manage external HTTP endpoints._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `load_workspace_capabilities` | `(name=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L138) |
-| function | `build_ollama_tool_definitions` | `(name=…)` | Build Ollama-compatible tool definitions from workspace capabilities. | [src](../../../core/tools/workspace_capabilities.py#L341) |
-| function | `resolve_tool_call_to_capability` | `(tool_name, arguments)` | Map an Ollama tool_call back to capability invocation parameters. | [src](../../../core/tools/workspace_capabilities.py#L373) |
-| function | `invoke_workspace_capability` | `(capability_id, *, name=…, run_id=…, approved=…, write_content=…, target_path=…, command_text=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L397) |
-| function | `get_capability_invocation_truth` | `()` | — | [src](../../../core/tools/workspace_capabilities.py#L549) |
-| function | `_invoke_runnable_capability` | `(*, workspace_dir, section, summary, approved=…, write_content=…, target_path=…, command_text=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L558) |
-| function | `classify_workspace_execution_mode` | `(execution_mode)` | — | [src](../../../core/tools/workspace_capabilities.py#L1864) |
-| function | `_read_bounded_text` | `(path)` | — | [src](../../../core/tools/workspace_capabilities.py#L1964) |
-| function | `_bounded_exec_output` | `(*, stdout, stderr)` | — | [src](../../../core/tools/workspace_capabilities.py#L1971) |
-| function | `_run_bounded_command` | `(*, argv, workspace_dir)` | — | [src](../../../core/tools/workspace_capabilities.py#L1987) |
-| function | `_run_bounded_shell_command` | `(*, command_text, workspace_dir)` | — | [src](../../../core/tools/workspace_capabilities.py#L2008) |
-| function | `_search_file_matches` | `(path, query)` | — | [src](../../../core/tools/workspace_capabilities.py#L2029) |
-| function | `_bounded_excerpt` | `(text, limit=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2049) |
-| function | `_set_last_capability_invocation` | `(invocation, *, invoked_at, capability_id=…, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2056) |
-| function | `_publish_capability_invocation_completed` | `(invocation, *, invoked_at, capability_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2094) |
-| function | `_persist_capability_invocation` | `(invocation, *, invoked_at, finished_at, capability_id=…, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2123) |
-| function | `_persist_capability_approval_request` | `(invocation, *, requested_at, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2177) |
-| function | `_workspace_write_proposal_content` | `(*, summary, write_content)` | — | [src](../../../core/tools/workspace_capabilities.py#L2243) |
-| function | `_now` | `()` | — | [src](../../../core/tools/workspace_capabilities.py#L2290) |
+| function | `load_workspace_capabilities` | `(name=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L144) |
+| function | `build_ollama_tool_definitions` | `(name=…)` | Build Ollama-compatible tool definitions from workspace capabilities. | [src](../../../core/tools/workspace_capabilities.py#L347) |
+| function | `resolve_tool_call_to_capability` | `(tool_name, arguments)` | Map an Ollama tool_call back to capability invocation parameters. | [src](../../../core/tools/workspace_capabilities.py#L379) |
+| function | `invoke_workspace_capability` | `(capability_id, *, name=…, run_id=…, approved=…, write_content=…, target_path=…, command_text=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L403) |
+| function | `get_capability_invocation_truth` | `()` | — | [src](../../../core/tools/workspace_capabilities.py#L555) |
+| function | `_invoke_runnable_capability` | `(*, workspace_dir, section, summary, approved=…, write_content=…, target_path=…, command_text=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L564) |
+| function | `classify_workspace_execution_mode` | `(execution_mode)` | — | [src](../../../core/tools/workspace_capabilities.py#L1870) |
+| function | `_read_bounded_text` | `(path)` | — | [src](../../../core/tools/workspace_capabilities.py#L1970) |
+| function | `_bounded_exec_output` | `(*, stdout, stderr)` | — | [src](../../../core/tools/workspace_capabilities.py#L1977) |
+| function | `_run_bounded_command` | `(*, argv, workspace_dir)` | — | [src](../../../core/tools/workspace_capabilities.py#L1993) |
+| function | `_run_bounded_shell_command` | `(*, command_text, workspace_dir)` | — | [src](../../../core/tools/workspace_capabilities.py#L2014) |
+| function | `_search_file_matches` | `(path, query)` | — | [src](../../../core/tools/workspace_capabilities.py#L2035) |
+| function | `_bounded_excerpt` | `(text, limit=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2055) |
+| function | `_set_last_capability_invocation` | `(invocation, *, invoked_at, capability_id=…, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2062) |
+| function | `_publish_capability_invocation_completed` | `(invocation, *, invoked_at, capability_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2100) |
+| function | `_persist_capability_invocation` | `(invocation, *, invoked_at, finished_at, capability_id=…, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2129) |
+| function | `_now` | `()` | — | [src](../../../core/tools/workspace_capabilities.py#L2183) |
+
+## `core/tools/workspace_capabilities_approval.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_approval_request_user_context` | `()` | — | [src](../../../core/tools/workspace_capabilities_approval.py#L10) |
+| function | `_persist_capability_approval_request` | `(invocation, *, requested_at, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities_approval.py#L20) |
+| function | `_workspace_write_proposal_content` | `(*, summary, write_content)` | — | [src](../../../core/tools/workspace_capabilities_approval.py#L107) |
 
 ## `core/tools/workspace_capabilities_const.py`
 _Delte konstanter for workspace-capabilities._

@@ -1,6 +1,8 @@
 """Tests for hallucination_guard (factual question protection)."""
 from __future__ import annotations
 
+import pytest
+
 from core.services.hallucination_guard import (
     classify_question,
     inject_memory_into_prompt,
@@ -285,3 +287,95 @@ class TestGuardObserveDecision:
         out = inject_memory_into_prompt("hej der", [{"role": "user", "content": "hi"}])
         # Guarden fungerer stadig (returnerer beskeder uændret)
         assert out == [{"role": "user", "content": "hi"}]
+
+
+# ---------------------------------------------------------------------------
+# Cache-disciplin. DeepSeek matcher fra begyndelsen og kræver et FULDT match af
+# præfiks-enheden: «A+B» efterfulgt af «A+C» rammer ikke. Guarden fyrer kun på
+# faktuelle spørgsmål — lå den tidligt, havde prompten to former.
+# ---------------------------------------------------------------------------
+
+_FAKTA = "hvilken ip har serveren og hvilken sti bruger den?"
+_TEKST = "## ip og sti\nIP er 10.0.0.39 og sti er /media/projects.\n"
+
+
+def _prompt(besked: str) -> list[dict[str, str]]:
+    return [
+        {"role": "system", "content": "STABIL INSTRUKTION"},
+        {"role": "user", "content": "tidligere spørgsmål"},
+        {"role": "assistant", "content": "tidligere svar"},
+        {"role": "user", "content": besked},
+    ]
+
+
+@pytest.fixture
+def guard_kan_laese(monkeypatch):
+    """Filerne læses gennem workspace-krypteringen, som ikke kender /tmp."""
+    import core.services.hallucination_guard as hg
+    import core.services.workspace_crypto as wc
+
+    monkeypatch.setattr(hg, "_find_curated_paths", lambda: [("MEMORY.md", "/tmp/MEMORY.md")])
+    monkeypatch.setattr(wc, "read_text_for_path", lambda _p: _TEKST)
+    return hg
+
+
+def test_guarden_roerer_ikke_det_stabile_praefiks(guard_kan_laese):
+    """Alt FØR den aktuelle brugerbesked skal være byte-identisk, uanset om
+    guarden fyrer. Ellers rammer cachen forbi hver gang spørgsmålstypen
+    skifter — og hit-raten svinger, som den gjorde (12-79 %)."""
+    hg = guard_kan_laese
+    faktuelt = hg.inject_memory_into_prompt(_FAKTA, _prompt(_FAKTA))
+    andet = hg.inject_memory_into_prompt("skriv en limerick", _prompt("skriv en limerick"))
+
+    assert len(faktuelt) > len(andet), "forudsætning: guarden fyrer på faktaspørgsmålet"
+    assert [m["content"] for m in faktuelt[:3]] == [m["content"] for m in andet[:3]], (
+        "det stabile præfiks må ikke ændre sig af at guarden fyrer"
+    )
+
+
+def test_guarden_lander_lige_foer_spoergsmaalet(guard_kan_laese):
+    """Indholdet skal stå ved siden af det spørgsmål det besvarer — ikke
+    40.000 tegn før det."""
+    hg = guard_kan_laese
+    ud = hg.inject_memory_into_prompt(_FAKTA, _prompt(_FAKTA))
+
+    assert ud[-1]["content"] == _FAKTA, "brugerbeskeden skal stadig være sidst"
+    assert ud[-2]["role"] == "system", "guarden skal ligge lige før den"
+    assert "MEMORY.md" in ud[-2]["content"]
+
+
+# ---------------------------------------------------------------------------
+# Guarden var reelt DØD på dansk. Kilderne blev 22. maj udvidet fra MEMORY.md
+# til SOUL/IDENTITY/USER netop for identitets- og brugerspørgsmål — men
+# mønstrene og nøgleordene fulgte ikke med. Nul guard-hændelser i basen på 14
+# dage. (Fundet 4. sep 2026.)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("spg", [
+    "hvem er Bjørn?",
+    "hvad er din rolle?",
+    "hvad foretrækker Bjørn?",
+    "hvem er Michelle?",
+    "hvad står der i dine stående ordrer?",
+])
+def test_danske_identitetsspoergsmaal_naar_frem_til_guarden(spg):
+    """Før faldt de ud som `casual`, mens den ENGELSKE «what is your role?»
+    var `factual`. Guarden kunne læse de rigtige filer, men blev aldrig
+    spurgt."""
+    assert classify_question(spg) == "factual", spg
+    import core.services.hallucination_guard as hg
+    assert hg._section_keywords_for_message(spg), (
+        "uden nøgleord returnerer den med `no_keywords` og gør ingenting"
+    )
+
+
+@pytest.mark.parametrize("spg", [
+    "hej, hvordan går det?",
+    "fedt, tak for det",
+    "jeg er lidt træt i dag",
+    "haha den var god",
+])
+def test_smalltalk_udloeser_stadig_ikke_guarden(spg):
+    """Vagten må ikke blive grådig. Fyrer den på almindelig samtale, får hver
+    replik et «svar KUN ud fra dette»-tillæg — og så bliver han stiv."""
+    assert classify_question(spg) != "factual", spg

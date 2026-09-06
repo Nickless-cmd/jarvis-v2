@@ -48,6 +48,27 @@ _Abuse-monitoring (spec 2026-06-21 §5): prompt-injection, manipulation,_
 | function | `process_incoming` | `(message, *, session_id, user_id)` | Rate-limit + injection-scan på en indgående besked. | [src](../../../core/services/abuse_monitor.py#L104) |
 | function | `scan_tool_output` | `(text, *, source=…)` | Scan eksternt tool-output (web_fetch/web_search) for indlejret injection. | [src](../../../core/services/abuse_monitor.py#L144) |
 
+## `core/services/account_data_controls.py`
+_Brugerens egne data — tælle, eksportere, slette. Lagvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/account_data_controls.py#L43) |
+| function | `_count_sessions` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L49) |
+| function | `_count_senses` | `(user_id=…)` | Antal sanse-indtryk. Tælles direkte med brugerens scope frem for via | [src](../../../core/services/account_data_controls.py#L57) |
+| function | `_count_brain` | `(user_id=…)` | Antal brain-poster for brugeren — via COUNT, ikke ved at hente dem. | [src](../../../core/services/account_data_controls.py#L78) |
+| function | `_identity_bytes` | `(user_id)` | Størrelsen af hans billede af brugeren. | [src](../../../core/services/account_data_controls.py#L104) |
+| function | `_identity_paths` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L130) |
+| function | `data_overview` | `(user_id)` | Hvad har vi om dig, lag for lag. Rene tal — ingen indhold. | [src](../../../core/services/account_data_controls.py#L140) |
+| function | `delete_sessions` | `(user_id)` | Slet ALLE brugerens samtaler. Én ad gangen, så en enkelt der fejler ikke | [src](../../../core/services/account_data_controls.py#L167) |
+| function | `delete_senses` | `(user_id)` | Tøm Sansernes Arkiv for denne bruger. | [src](../../../core/services/account_data_controls.py#L187) |
+| function | `delete_brain` | `(user_id)` | Slet det han selv har udledt om brugeren. | [src](../../../core/services/account_data_controls.py#L202) |
+| function | `reset_identity` | `(user_id)` | Nulstil MEMORY.md og USER.md — hans billede af brugeren. | [src](../../../core/services/account_data_controls.py#L216) |
+| function | `delete_layer` | `(user_id, layer)` | Slet ét lag. Ukendt lag → fejl frem for tavshed. | [src](../../../core/services/account_data_controls.py#L255) |
+| function | `delete_all` | `(user_id)` | Alle fire lag. En sammensætning af de enkelte — ikke en femte vej. | [src](../../../core/services/account_data_controls.py#L263) |
+| function | `export_all` | `(user_id)` | Alt vi har om brugeren, som JSON. | [src](../../../core/services/account_data_controls.py#L282) |
+| function | `export_json` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L341) |
+
 ## `core/services/action_router.py`
 _Action Router — close the loop: signal → handling._
 
@@ -225,13 +246,14 @@ _Affect-modulated runtime — emotions adjust behavioral parameters._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `compute_affect_modulated_params` | `()` | Compute behavioral parameters adjusted by current emotional state. | [src](../../../core/services/affect_modulation.py#L66) |
-| function | `compute_agentic_loop_budget` | `(*, resume_context=…)` | Return affect-aware agentic loop limits. | [src](../../../core/services/affect_modulation.py#L126) |
-| function | `affect_modulation_section` | `()` | Render affect-modulated parameters as a prompt section. | [src](../../../core/services/affect_modulation.py#L166) |
-| function | `compute_affect_tone_hints` | `()` | Return Danish tone-instruction strings derived from active emotion concepts. | [src](../../../core/services/affect_modulation.py#L224) |
-| function | `compute_concept_perception_focus` | `()` | Return a Danish perception-focus suffix derived from active concepts. | [src](../../../core/services/affect_modulation.py#L269) |
-| function | `_summarize_affect_payload` | `(kind, payload)` | Pull the most affectively-relevant kerne from a payload. | [src](../../../core/services/affect_modulation.py#L323) |
-| function | `compute_affect_substrate` | `(*, window_min=…, max_events=…)` | Return raw affectively-relevant events as substrate strings. | [src](../../../core/services/affect_modulation.py#L373) |
+| function | `body_pressure` | `()` | Hvor presset er maskinen, 0..1, og hvilket niveau den melder. | [src](../../../core/services/affect_modulation.py#L92) |
+| function | `compute_affect_modulated_params` | `()` | Compute behavioral parameters adjusted by current emotional state. | [src](../../../core/services/affect_modulation.py#L107) |
+| function | `compute_agentic_loop_budget` | `(*, resume_context=…)` | Return affect-aware agentic loop limits. | [src](../../../core/services/affect_modulation.py#L185) |
+| function | `affect_modulation_section` | `()` | Render affect-modulated parameters as a prompt section. | [src](../../../core/services/affect_modulation.py#L239) |
+| function | `compute_affect_tone_hints` | `()` | Return Danish tone-instruction strings derived from active emotion concepts. | [src](../../../core/services/affect_modulation.py#L305) |
+| function | `compute_concept_perception_focus` | `()` | Return a Danish perception-focus suffix derived from active concepts. | [src](../../../core/services/affect_modulation.py#L350) |
+| function | `_summarize_affect_payload` | `(kind, payload)` | Pull the most affectively-relevant kerne from a payload. | [src](../../../core/services/affect_modulation.py#L404) |
+| function | `compute_affect_substrate` | `(*, window_min=…, max_events=…)` | Return raw affectively-relevant events as substrate strings. | [src](../../../core/services/affect_modulation.py#L454) |
 
 ## `core/services/affective_meta_state.py`
 
@@ -404,10 +426,10 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 | function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L145) |
 | function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L184) |
 | function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L217) |
-| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L411) |
-| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L437) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L544) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L548) |
+| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L422) |
+| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L462) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L590) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L594) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._
@@ -446,22 +468,22 @@ _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 | function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L354) |
 | function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L415) |
 | function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L439) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L692) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L720) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L748) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L752) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L790) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L988) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1032) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1041) |
-| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1071) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1101) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1116) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1135) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1152) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1171) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1193) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1227) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L704) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L732) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L760) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L764) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L802) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1000) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1044) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1053) |
+| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1083) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1113) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1128) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1147) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1164) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1183) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1205) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1239) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._
@@ -481,18 +503,22 @@ _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `evaluate_tick_quality` | `(*, tick_result)` | Score a phased tick's quality based on observable outputs. | [src](../../../core/services/agent_self_evaluation.py#L45) |
-| function | `tick_quality_summary` | `(*, days=…)` | Aggregate stats over recent evaluations. | [src](../../../core/services/agent_self_evaluation.py#L129) |
-| function | `detect_stale_goals` | `(*, stale_days=…)` | Find active goals with no recent progress signal. | [src](../../../core/services/agent_self_evaluation.py#L161) |
-| function | `stale_goals_section` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L184) |
-| function | `decision_adherence_summary` | `()` | Compute adherence over ACTIVE behavioral decisions (the curated kind). | [src](../../../core/services/agent_self_evaluation.py#L197) |
-| function | `_normalize_decision_directive` | `(value)` | — | [src](../../../core/services/agent_self_evaluation.py#L272) |
-| function | `_duplicate_decision_groups` | `(decisions)` | — | [src](../../../core/services/agent_self_evaluation.py#L276) |
-| function | `_adherence_recovery_plan` | `(*, score, low_decisions, duplicate_groups, unreviewed)` | — | [src](../../../core/services/agent_self_evaluation.py#L306) |
-| function | `self_evaluation_section` | `()` | Compact awareness section combining all trackers. | [src](../../../core/services/agent_self_evaluation.py#L334) |
-| function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L411) |
-| function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L415) |
-| function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L420) |
+| function | `_trace_kinds_since` | `(since, until)` | Ikke-strukturelle event-arter skrevet i vinduet. Self-safe: [] ved fejl. | [src](../../../core/services/agent_self_evaluation.py#L76) |
+| function | `_previous_eval` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L97) |
+| function | `_score_traces` | `(antal)` | Bredden af spor. Trapper frem for lineær, så små udsving ikke støjer. | [src](../../../core/services/agent_self_evaluation.py#L108) |
+| function | `_score_novelty` | `(nu, foer)` | Gav dette slag noget ANDET end det forrige? | [src](../../../core/services/agent_self_evaluation.py#L119) |
+| function | `evaluate_tick_quality` | `(*, tick_result)` | Score et slag på hvad det EFTERLOD — ikke på hvilken form det havde. | [src](../../../core/services/agent_self_evaluation.py#L139) |
+| function | `tick_quality_summary` | `(*, days=…)` | Aggregate stats over recent evaluations. | [src](../../../core/services/agent_self_evaluation.py#L235) |
+| function | `detect_stale_goals` | `(*, stale_days=…)` | Find active goals with no recent progress signal. | [src](../../../core/services/agent_self_evaluation.py#L282) |
+| function | `stale_goals_section` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L305) |
+| function | `decision_adherence_summary` | `()` | Compute adherence over ACTIVE behavioral decisions (the curated kind). | [src](../../../core/services/agent_self_evaluation.py#L318) |
+| function | `_normalize_decision_directive` | `(value)` | — | [src](../../../core/services/agent_self_evaluation.py#L393) |
+| function | `_duplicate_decision_groups` | `(decisions)` | — | [src](../../../core/services/agent_self_evaluation.py#L397) |
+| function | `_adherence_recovery_plan` | `(*, score, low_decisions, duplicate_groups, unreviewed)` | — | [src](../../../core/services/agent_self_evaluation.py#L427) |
+| function | `self_evaluation_section` | `()` | Compact awareness section combining all trackers. | [src](../../../core/services/agent_self_evaluation.py#L455) |
+| function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L532) |
+| function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L536) |
+| function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L541) |
 
 ## `core/services/agent_skill_distiller.py`
 _Agent skill distillation — turns observed outcomes into principles._
@@ -571,6 +597,9 @@ _Per-agent JSONL transcript persistence._
 | function | `prune_old_transcripts` | `(max_age_days=…)` | Remove transcript directories older than *max_age_days*. | [src](../../../core/services/agent_transcript.py#L193) |
 | function | `write_sidechain` | `(agent_id, role, goal)` | Write a human-readable sidechain.md for quick inspection. | [src](../../../core/services/agent_transcript.py#L215) |
 | function | `resume_from_transcript` | `(agent_id)` | Build a prompt-context dict from the transcript for agent resume. | [src](../../../core/services/agent_transcript.py#L240) |
+| function | `list_agents` | `(limit=…)` | Seneste agenter med transkript, nyeste foerst. | [src](../../../core/services/agent_transcript.py#L303) |
+| function | `read_events` | `(agent_id)` | Alle events for én agent. Tom liste hvis intet transkript. | [src](../../../core/services/agent_transcript.py#L326) |
+| function | `summarize` | `(agent_id, *, max_arg_chars=…, max_result_chars=…)` | Hvad gjorde agenten, og hvad kom der ud af det? | [src](../../../core/services/agent_transcript.py#L343) |
 
 ## `core/services/agentic_checkpoints.py`
 _Durable checkpoints for visible agentic loops._
@@ -638,15 +667,4 @@ _Agreement-streak substrate trigger._
 | function | `_opening_is_agreement` | `(text)` | Return the matched phrase if the text opens with agreement, else None. | [src](../../../core/services/agreement_streak.py#L45) |
 | function | `detect_agreement_streak` | `(*, lookback=…, threshold=…)` | Pull last N assistant messages, return substrate dict if streak detected. | [src](../../../core/services/agreement_streak.py#L60) |
 | function | `build_agreement_streak_section` | `()` | Prompt section — substrate, ikke domm. | [src](../../../core/services/agreement_streak.py#L110) |
-
-## `core/services/ambient_presence.py`
-_Ambient presence — subtle signals that mark Jarvis' state in the physical space._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `emit_ambient_signal` | `(*, kind, detail=…, priority=…)` | Emit a quiet ambient presence signal via ntfy. Rate-limited to 30 min. | [src](../../../core/services/ambient_presence.py#L49) |
-| function | `emit_presence_rhythm` | `()` | Quiet hourly pulse — 'still here'. Separate rate limit from state signals. | [src](../../../core/services/ambient_presence.py#L88) |
-| function | `emit_state_shift` | `(from_phase, to_phase)` | Signal a genuine phase transition with a descriptive message. | [src](../../../core/services/ambient_presence.py#L115) |
-| function | `maybe_emit_phase_signal` | `(phase)` | Called from heartbeat when life phase is determined. | [src](../../../core/services/ambient_presence.py#L124) |
-| function | `emit_insight_signal` | `(insight)` | Called when a dream is confirmed or a value crystallizes. | [src](../../../core/services/ambient_presence.py#L155) |
 

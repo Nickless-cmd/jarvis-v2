@@ -33,9 +33,36 @@ def test_memory_md_uses_workspace_when_uid_resolved(monkeypatch, tmp_path):
     assert p == tmp_path / "workspaces" / "bjorn" / "MEMORY.md"
 
 
-def test_memory_md_falls_back_to_shared_without_uid(monkeypatch, tmp_path):
+def test_memory_md_falls_back_to_owner_without_uid(monkeypatch, tmp_path):
     import core.tools.memory_tools as m
     monkeypatch.setattr(m, "_resolve_memory_uid", lambda user_id=None: "")
+    monkeypatch.setattr("core.identity.users.get_owner", lambda: type("Owner", (), {"discord_id": "owner-uid"})())
+    monkeypatch.setattr(m, "workspace_dir", lambda uid: tmp_path / "workspaces" / uid)
+    p = m._memory_md()
+    assert p == tmp_path / "workspaces" / "owner-uid" / "MEMORY.md"
+
+
+def test_memory_md_falls_back_to_shared_when_owner_unresolved(monkeypatch, tmp_path):
+    import core.tools.memory_tools as m
+    monkeypatch.setattr(m, "_resolve_memory_uid", lambda user_id=None: "")
+    monkeypatch.setattr("core.identity.users.get_owner", lambda: None)
     monkeypatch.setattr(m, "shared_dir", lambda: tmp_path / "shared")
     p = m._memory_md()
     assert p == tmp_path / "shared" / "MEMORY.md"
+
+
+# ── 2026-09-04 (memory repair, R7): section writes go through memory_md_writer ──
+
+
+def test_upsert_section_matches_heading_case_insensitively(tmp_path, monkeypatch):
+    from core.tools import memory_tools as mt
+
+    p = tmp_path / "MEMORY.md"
+    p.write_text("# MEMORY\n\n## Decisions\n- gammel\n", encoding="utf-8")
+    monkeypatch.setattr(mt, "_memory_md", lambda user_id=None: p)
+    monkeypatch.setattr(mt, "_read_memory", lambda: p.read_text(encoding="utf-8"))
+    monkeypatch.setattr("core.services.memory_write_queue.enqueue_write", lambda *a, **k: None)
+    out = mt._exec_memory_upsert_section({"heading": "decisions", "content": "- ny"})
+    assert out["status"] == "ok" and out["action"] == "updated"
+    text = p.read_text(encoding="utf-8")
+    assert text.count("## ") == 1 and "- ny" in text and "- gammel" not in text

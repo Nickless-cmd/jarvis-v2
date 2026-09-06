@@ -54,6 +54,15 @@ def abandon_life_project(initiative_id: str, *, note: str = "") -> dict[str, obj
     return {"status": "ok", "life_project": item}
 
 
+def endorse_life_project(initiative_id: str, *, note: str = "") -> dict[str, object]:
+    """«Det er i orden» — projektet lever videre, nu med et menneskes ja bag sig."""
+    from core.services.initiative_queue import endorse_long_term_intention
+    item = endorse_long_term_intention(initiative_id, note=note)
+    if item is None:
+        return {"status": "error", "error": f"life project {initiative_id!r} not found"}
+    return {"status": "ok", "life_project": item}
+
+
 def tick_life_projects_reassessment(
     *, trigger: str = "heartbeat", last_visible_at: str = ""
 ) -> dict[str, object]:

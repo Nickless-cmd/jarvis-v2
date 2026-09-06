@@ -271,3 +271,42 @@ class TestLocalExecOnlyTools:
     def test_task_is_local_execution_tool(self):
         from core.tools.tool_scoping import is_local_execution_tool
         assert is_local_execution_tool("task") is True
+
+
+# ── Scope-listen er den ægte port, 06-09-2026 ───────────────────────────────
+# Et værktøj kan være bygget, testet, registreret i handler-tabellen OG
+# annonceret i det fulde sæt — og stadig være usynligt for modellen, fordi
+# code-scope kun annoncerer ~25. Fanget live: Jarvis blev bedt om at bruge
+# `explore`, og lavede i stedet 18 bash-kald, fordi værktøjet ikke var i hans
+# liste. Registrering er ikke tilgængelighed.
+
+class TestNyeVaerktoejerErSynlige:
+    def _navne(self, scope):
+        from core.tools.simple_tools import get_tool_definitions
+        from core.tools.tool_scoping import current_tool_scope, set_tool_scope
+        foer = current_tool_scope()
+        try:
+            set_tool_scope(scope)
+            return {t["function"]["name"] for t in get_tool_definitions()
+                    if isinstance(t, dict) and t.get("function")}
+        finally:
+            set_tool_scope(foer or "")
+
+    def test_explore_er_i_BEGGE_modes(self):
+        """Læse-kun undersøgelse ændrer intet og sparer den kontekst en manuel
+        gennemlæsning ville koste — den hører hjemme begge steder."""
+        assert "explore" in self._navne("code")
+        assert "explore" in self._navne("chat")
+
+    def test_de_nye_operator_vaerktoejer_er_i_code_mode(self):
+        navne = self._navne("code")
+        for t in ("operator_multi_edit", "operator_run_in_background",
+                  "operator_bash_output", "operator_kill_shell"):
+            assert t in navne, f"{t} er usynlig i code mode"
+
+    def test_de_gamle_operator_vaerktoejer_er_der_stadig(self):
+        """Tilføjelsen må ikke skubbe noget ud."""
+        navne = self._navne("code")
+        for t in ("operator_bash", "operator_read_file", "operator_edit_file",
+                  "operator_glob", "operator_grep"):
+            assert t in navne

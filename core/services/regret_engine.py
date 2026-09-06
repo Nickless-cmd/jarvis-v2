@@ -150,6 +150,18 @@ def open_or_update_regret(
     safe_decision = str(decision_id or "").strip()
     ctx_json = json.dumps(context or {}, ensure_ascii=False)
     now = _now_iso()
+    # 2026-09-04 (memory repair, R4): en fortrydelse med lektie skal kunne nå
+    # næste samtale — via lessons-lageret, ikke kun dashboardet.
+    if str(lesson or "").strip():
+        try:
+            from core.services.lessons import record_review_lessons
+            record_review_lessons(
+                [f"{str(lesson).strip()} (forventede: {str(expected_outcome)[:80]}; "
+                 f"fik: {str(actual_outcome)[:80]})"],
+                "regret",
+            )
+        except Exception:
+            pass
 
     with connect() as conn:
         existing = None

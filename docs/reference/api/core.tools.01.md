@@ -169,12 +169,12 @@ _Contextual tool pruning for GitHub Copilot / OpenAI-compatible providers._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `record_tool_usage` | `(tool_name)` | Record a tool call timestamp for recent-usage boost. Best-effort. | [src](../../../core/tools/copilot_tool_pruning.py#L180) |
-| function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L186) |
-| function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L196) |
-| function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L212) |
-| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L292) |
-| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L297) |
+| function | `record_tool_usage` | `(tool_name)` | Record a tool call timestamp for recent-usage boost. Best-effort. | [src](../../../core/tools/copilot_tool_pruning.py#L196) |
+| function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L202) |
+| function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L212) |
+| function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L228) |
+| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L337) |
+| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L342) |
 
 ## `core/tools/counterfactual_tools.py`
 _Counterfactual reflection tools — read-only exposition._
@@ -250,6 +250,18 @@ _Forgetting tools — Lag 11 self-track._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_exec_release_memory` | `(args)` | Hard-delete a memory and leave an absence-marker. | [src](../../../core/tools/forgetting_tools.py#L15) |
+
+## `core/tools/fuzzy_edit.py`
+_Fuzzy tekst-match til fil-redigering — porteret fra jarvis-code._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exact_find` | `(content, old_text)` | All exact-match spans of old_text in content. [] if none. | [src](../../../core/tools/fuzzy_edit.py#L33) |
+| function | `_whitespace_fuzzy_find` | `(content, old_text)` | Match old_text against content with ALL whitespace (on BOTH sides) | [src](../../../core/tools/fuzzy_edit.py#L48) |
+| function | `_indent_insensitive_find` | `(content, old_text)` | Match old_text LINE-BY-LINE ignoring leading indent — each content | [src](../../../core/tools/fuzzy_edit.py#L81) |
+| function | `_reapply_indent` | `(new_text, indent)` | Re-apply `indent` as a leading prefix on every non-blank line of | [src](../../../core/tools/fuzzy_edit.py#L109) |
+| function | `_difflib_fuzzy_find` | `(content, old_text, threshold=…)` | Best-matching line-window in content vs. old_text, by | [src](../../../core/tools/fuzzy_edit.py#L126) |
+| function | `resolve_edit` | `(content, old_text, new_text, replace_all=…)` | Loes et redigerings-oenske mod filens FAKTISKE indhold. | [src](../../../core/tools/fuzzy_edit.py#L159) |
 
 ## `core/tools/geolocation_tools.py`
 _Native geolocation-tools til Jarvis — geocode, reverse-geocode, routing,_
@@ -374,11 +386,11 @@ _Visible Jarvis' værktøjer til hjernen._
 | function | `_exec_adopt_brain_proposal` | `(args)` | Executor for adopt_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L212) |
 | function | `_exec_discard_brain_proposal` | `(args)` | Executor for discard_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L220) |
 | function | `remember_this` | `(*, kind, title, content, visibility, domain, session_id, turn_id, related=…, tags=…, source_url=…, source_chronicle=…, importance=…)` | Skriv en post i Jarvis' egen hjerne. | [src](../../../core/tools/jarvis_brain_tools.py#L233) |
-| function | `search_jarvis_brain` | `(*, query, session_visibility_ceiling=…, kinds=…, limit=…, domain=…, tags=…, include_archived=…)` | Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content. | [src](../../../core/tools/jarvis_brain_tools.py#L308) |
-| function | `read_brain_entry` | `(entry_id)` | Hent fuld content for én brain entry. | [src](../../../core/tools/jarvis_brain_tools.py#L381) |
-| function | `archive_brain_entry` | `(entry_id, *, reason=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/tools/jarvis_brain_tools.py#L408) |
-| function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L420) |
-| function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L496) |
+| function | `search_jarvis_brain` | `(*, query, session_visibility_ceiling=…, kinds=…, limit=…, domain=…, tags=…, include_archived=…, min_cosine=…)` | Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content. | [src](../../../core/tools/jarvis_brain_tools.py#L308) |
+| function | `read_brain_entry` | `(entry_id)` | Hent fuld content for én brain entry. | [src](../../../core/tools/jarvis_brain_tools.py#L388) |
+| function | `archive_brain_entry` | `(entry_id, *, reason=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/tools/jarvis_brain_tools.py#L415) |
+| function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L427) |
+| function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L503) |
 
 ## `core/tools/jc_tool_catalog.py`
 _Single source of truth for what jarvis-code (jc) presents as tools._
@@ -394,6 +406,14 @@ _Single source of truth for what jarvis-code (jc) presents as tools._
 | function | `_def_name` | `(d)` | — | [src](../../../core/tools/jc_tool_catalog.py#L120) |
 | function | `_all_native_defs` | `(role)` | Full native tool defs for a role. Wrapped as a module function for test injection. | [src](../../../core/tools/jc_tool_catalog.py#L124) |
 | function | `build_jc_catalog` | `(*, role, unlocked)` | Native-side tool defs jc should present (WITHOUT the 8 local client tools — | [src](../../../core/tools/jc_tool_catalog.py#L130) |
+
+## `core/tools/load_more_tools.py`
+_Lazy tool schema loader for visible-lane tool pruning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tool_name` | `(tool_def)` | — | [src](../../../core/tools/load_more_tools.py#L10) |
+| function | `_tool_load_more_tools` | `(arguments)` | Resolve tools to add to the next round and return their full schemas. | [src](../../../core/tools/load_more_tools.py#L15) |
 
 ## `core/tools/mail_tools.py`
 _Mail tools for Jarvis — jarvis@srvlab.dk_
@@ -425,8 +445,8 @@ _Memory duplicate-check and safe-write tools for MEMORY.md._
 | function | `_normalize` | `(heading)` | — | [src](../../../core/tools/memory_tools.py#L80) |
 | function | `_exec_memory_check_duplicate` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L84) |
 | function | `_exec_memory_upsert_section` | `(args)` | Write or update a section in MEMORY.md. Replaces existing section if heading matches. | [src](../../../core/tools/memory_tools.py#L121) |
-| function | `_exec_memory_list_headings` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L195) |
-| function | `_exec_memory_consolidate` | `(args)` | Find fuzzy-overlapping sections in MEMORY.md and propose/execute merges. | [src](../../../core/tools/memory_tools.py#L205) |
+| function | `_exec_memory_list_headings` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L186) |
+| function | `_exec_memory_consolidate` | `(args)` | Find fuzzy-overlapping sections in MEMORY.md and propose/execute merges. | [src](../../../core/tools/memory_tools.py#L196) |
 
 ## `core/tools/memory_topic_tools.py`
 _Kuraterede memory-topic-tools (spec 2026-07-10 Spec B)._
@@ -485,30 +505,4 @@ _Native-tool lås/lås-op — en runtime allowlist Bjørn styrer._
 | function | `disabled_tools` | `()` | Sættet af låste native tool-navne. Fail-open → tom mængde. | [src](../../../core/tools/native_tool_gate.py#L16) |
 | function | `is_disabled` | `(name)` | — | [src](../../../core/tools/native_tool_gate.py#L26) |
 | function | `set_tool_disabled` | `(name, disabled)` | Lås (disabled=True) eller lås-op (False) et native tool. Returnerer det nye sæt. | [src](../../../core/tools/native_tool_gate.py#L30) |
-
-## `core/tools/notification_tools.py`
-_Native tools til notifikations-præferencer (notif-routing spec §4)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_uid` | `(args)` | — | [src](../../../core/tools/notification_tools.py#L12) |
-| function | `exec_get_notification_preferences` | `(args)` | — | [src](../../../core/tools/notification_tools.py#L23) |
-| function | `exec_set_notification_preferences` | `(args)` | Args (alle valgfri): global, briefing, reminder, reach_out, team_invite, | [src](../../../core/tools/notification_tools.py#L36) |
-
-## `core/tools/notify_out_tools.py`
-_Unified outgoing notification pipeline — ntfy, Discord, Slack, generic webhooks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/tools/notify_out_tools.py#L14) |
-| function | `_save` | `(data)` | — | [src](../../../core/tools/notify_out_tools.py#L21) |
-| function | `_send_ntfy` | `(message, title, priority)` | — | [src](../../../core/tools/notify_out_tools.py#L28) |
-| function | `_send_discord` | `(url, message, title)` | — | [src](../../../core/tools/notify_out_tools.py#L36) |
-| function | `_send_slack` | `(url, message, title)` | — | [src](../../../core/tools/notify_out_tools.py#L49) |
-| function | `_send_generic` | `(url, message, title, extra)` | — | [src](../../../core/tools/notify_out_tools.py#L63) |
-| function | `_dispatch` | `(channel_cfg, message, title, priority)` | — | [src](../../../core/tools/notify_out_tools.py#L80) |
-| function | `_exec_notify_out` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L97) |
-| function | `_exec_notify_channel_add` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L133) |
-| function | `_exec_notify_channel_list` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L157) |
-| function | `_exec_notify_channel_delete` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L168) |
 

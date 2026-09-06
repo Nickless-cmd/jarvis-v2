@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # computed lazily by _users_file() so tests can monkeypatch CONFIG_DIR
 # or HOME safely.
 USERS_FILE = CONFIG_DIR / "users.json"
-_VALID_ROLES = {"owner", "member"}
+from core.identity.household import VALID_ROLES as _VALID_ROLES  # owner|partner|member|guest
 _LOCK = threading.Lock()
 
 

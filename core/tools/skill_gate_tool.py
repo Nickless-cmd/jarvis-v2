@@ -89,6 +89,18 @@ def _build_chain_hint(candidates: list[dict]) -> str:
     )
 
 
+def _skill_summary(result: dict[str, Any], *, max_chars: int = 900) -> str:
+    parts = [
+        str(result.get("description") or "").strip(),
+        str(result.get("use_when") or "").strip(),
+    ]
+    tags = ", ".join(str(t) for t in (result.get("tags") or []) if str(t).strip())
+    if tags:
+        parts.append(f"tags: {tags}")
+    text = " ".join(part for part in parts if part)
+    return text[:max_chars].rstrip()
+
+
 # ── Executor ───────────────────────────────────────────────────────────
 
 def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
@@ -127,6 +139,7 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
         }
 
     force_skill = str(args.get("skill") or "").strip()
+    load_full = bool(args.get("load_full"))
     threshold = args.get("threshold", _INVOKE_THRESHOLD)
     if isinstance(threshold, (int, float)):
         threshold = float(threshold)
@@ -230,6 +243,7 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
 
     instructions = invoke_result.get("instructions", "")
     truncated = len(instructions) > 2000
+    summary = _skill_summary(invoke_result)
 
     result: dict[str, Any] = {
         "status": "ok",
@@ -244,14 +258,17 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
         "skill_description": invoke_result.get("description", ""),
         "skill_use_when": invoke_result.get("use_when", ""),
         "skill_tags": invoke_result.get("tags", []),
+        "skill_summary": summary,
         "has_scripts": invoke_result.get("scripts", []),
         "has_templates": invoke_result.get("templates", []),
+        "instructions_loaded": False,
     }
 
-    if best_score >= _AUTO_USE_THRESHOLD:
+    if best_score >= _AUTO_USE_THRESHOLD or load_full or force_skill:
         result["mode"] = "auto_use"
         result["instructions"] = instructions[:2000] + ("\n\n[...] (truncated)" if truncated else "")
         result["instructions_full_length"] = len(instructions)
+        result["instructions_loaded"] = True
         result["note"] = (
             f"✅ **Skill '{best_name}' invokeret og klar.** "
             f"Score {best_score:.2f} ≥ {_AUTO_USE_THRESHOLD} → auto-brug. "
@@ -259,25 +276,13 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
         )
     else:
         result["mode"] = "suggested"
-        result["instructions"] = instructions[:2000] + ("\n\n[...] (truncated)" if truncated else "")
+        result["instructions"] = ""
         result["instructions_full_length"] = len(instructions)
         result["note"] = (
             f"🔔 **Skill '{best_name}' fundet** (score {best_score:.2f}). "
-            f"Instruktionerne er indlæst — overvej at følge dem for denne opgave."
+            f"Kun summary er indlæst; kald skill_gate igen med load_full=true "
+            f"hvis skillen faktisk skal bruges."
         )
-
-    # ── Read full SKILL.md for complete context ────────────────────
-    try:
-        from pathlib import Path
-        from core.services.skill_engine import SKILLS_ROOT
-        skill_path = SKILLS_ROOT / best_name / "SKILL.md"
-        if not skill_path.exists():
-            skill_path = SKILLS_ROOT / best_name / "skill.md"
-        if skill_path.exists():
-            full_text = skill_path.read_text(encoding="utf-8")
-            result["skilmd_preview"] = full_text[:1500] + ("\n\n[...]" if len(full_text) > 1500 else "")
-    except Exception:
-        pass  # non-critical
 
     # Lag #4: inject chain fields into invoked-result path
     result["chain_candidates"] = chain_candidates
@@ -336,6 +341,13 @@ SKILL_GATE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "description": (
                             "Restrict matching to owner-approved auto-surface skills "
                             "(used by jarvis-code's first-turn auto-call). Default false."
+                        ),
+                    },
+                    "load_full": {
+                        "type": "boolean",
+                        "description": (
+                            "Load full instructions for a selected skill. Default false "
+                            "for borderline suggestions."
                         ),
                     },
                 },

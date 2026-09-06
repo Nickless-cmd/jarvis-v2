@@ -45,14 +45,29 @@ def track_runtime_memory_md_update_proposals_for_visible_turn(
     }
 
 
+_FRESH_STALE_AFTER_DAYS = 7
+_REFRESH_SCAN_LIMIT = 2000
+
+
+def _looks_like_sentence(domain_key: str) -> bool:
+    """A slugified user message ("det-er-fordi-du-prompt-er-rodet") — not a topic."""
+    parts = [p for p in str(domain_key or "").split("-") if p]
+    return len(parts) >= 5
+
+
 def refresh_runtime_memory_md_update_proposal_statuses() -> dict[str, int]:
     now = datetime.now(UTC)
     refreshed = 0
-    for item in list_runtime_memory_md_update_proposals(limit=40):
-        if str(item.get("status") or "") not in {"fresh", "active", "fading"}:
+    # 2026-09-04 (memory repair, R3): scan mere end de 40 nyeste — 1.625 "fresh"
+    # forslag lå for evigt uden for vinduet. "fresh" der aldrig blev "active" på
+    # 7 dage bliver stale.
+    for item in list_runtime_memory_md_update_proposals(limit=_REFRESH_SCAN_LIMIT):
+        status = str(item.get("status") or "")
+        if status not in {"fresh", "active", "fading"}:
             continue
         updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
-        if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
+        window_days = _FRESH_STALE_AFTER_DAYS if status == "fresh" else _STALE_AFTER_DAYS
+        if updated_at is None or updated_at > now - timedelta(days=window_days):
             continue
         refreshed_item = update_runtime_memory_md_update_proposal_status(
             str(item.get("proposal_id") or ""),
@@ -224,6 +239,10 @@ def _extract_memory_md_update_proposals() -> list[dict[str, object]]:
             continue
         domain_key = _domain_from_canonical_key(str(item.get("canonical_key") or ""))
         if not domain_key:
+            continue
+        # 2026-09-04 (memory repair, R3): en domain-key der er en hel brugerbesked
+        # ("nej-check-lige-github-der-skulle-v-re-leake") er ikke stabil kontekst.
+        if _looks_like_sentence(domain_key):
             continue
         proposal_type = "stable-context-update"
         proposal_confidence = _build_proposal_confidence(

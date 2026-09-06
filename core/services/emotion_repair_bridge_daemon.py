@@ -76,7 +76,7 @@ _DEFAULT_PATTERNS: list[dict[str, Any]] = [
         "trigger_event_kind": "emotion.fatigue_high",
         "trigger_match_json": '{"min_concept": "fatigue", "min_intensity": 0.7}',
         "action_type": "pause_heavy_daemons",
-        "action_params_json": '{"daemons": ["tiktok_content", "tiktok_research", "dream_insight"]}',
+        "action_params_json": '{"daemons": ["dream_insight"]}',
         "cooldown_seconds": 1800,
         "max_attempts_per_window": 1,
         "window_seconds": 14400,
@@ -464,7 +464,7 @@ def _execute_repair_action(action_type: str, pattern_id: str) -> None:
             "self_repair.pause_heavy_daemons",
             {
                 "pattern_id": pattern_id,
-                "daemons": ["tiktok_content", "tiktok_research", "dream_insight"],
+                "daemons": ["dream_insight"],
                 "pause_minutes": 120,
             },
         )

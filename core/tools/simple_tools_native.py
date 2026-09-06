@@ -27,9 +27,7 @@ from urllib import request as urllib_request
 from core.eventbus.bus import event_bus
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
 from core.runtime.workspace_paths import shared_dir as _shared_dir
-# _tool_load_more_tools slår tool-navne op i det kanoniske katalog. Importeret
-# fra samme kilde som simple_tools (ingen dobbelt-sandhed).
-from core.tools.simple_tools_definitions import TOOL_DEFINITIONS  # noqa: F401
+from core.tools.load_more_tools import _tool_load_more_tools  # noqa: F401
 from core.tools.simple_tools_web import _read_api_key  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -1062,15 +1060,40 @@ def _exec_read_attachment(args: dict[str, Any]) -> dict[str, Any]:
     attachment_id = str(args.get("attachment_id") or "").strip()
     if not attachment_id:
         return {"status": "error", "text": "attachment_id is required"}
+    question = str(args.get("question") or "").strip()
+    # Egne oejne foerst (2026-09-06): svarer han paa en model der SELV kan se,
+    # skal billedet i HANS kontekst — ikke en beskrivelse en anden model skrev
+    # foer spoergsmaalet fandtes. Kan modellen ikke se, gaar vi vision-vejen
+    # som hidtil. Bjoern besluttede 5/9 at flash UDEN syn er standard, saa den
+    # her gren er stille indtil han vaelger en seende model i vaelgeren.
+    try:
+        from core.services.vision_backend import active_visible_target, model_can_see
+        _prov, _mdl = active_visible_target()
+        if _mdl and model_can_see(_mdl):
+            from core.services.attachment_service import get_attachment, image_data_url
+            _url = image_data_url(attachment_id)
+            if _url:
+                _fn = str((get_attachment(attachment_id) or {}).get("filename") or "")
+                return {
+                    "status": "ok",
+                    "text": f"[{_fn} — billede vedlagt nedenfor; se selv]",
+                    "image_data_url": _url,
+                }
+    except Exception:
+        logger.warning("read_attachment: direkte syn fejlede, falder tilbage", exc_info=True)
     try:
         from core.services.attachment_service import read_attachment_content
-        result = read_attachment_content(attachment_id)
+        result = read_attachment_content(attachment_id, question=question)
         if result.get("status") == "error":
             return {"status": "error", "text": f"Attachment error: {result.get('reason')}"}
         content = result.get("content", "")
         atype = result.get("type", "")
         filename = result.get("filename", "")
-        return {"status": "ok", "text": f"[{filename} — {atype}]\n{content}"}
+        asked = str(result.get("question") or "")
+        header = f"[{filename} — {atype}]"
+        if asked:
+            header = f"{header} spørgsmål: {asked}"
+        return {"status": "ok", "text": f"{header}\n{content}"}
     except Exception as exc:
         return {"status": "error", "text": f"read_attachment error: {exc}"}
 
@@ -1724,7 +1747,12 @@ def _exec_spawn_agent_task(args: dict[str, Any]) -> dict[str, Any]:
     goal = str(args.get("goal") or "").strip()
     if not goal:
         return {"status": "error", "error": "goal is required"}
-    budget = min(int(args.get("budget_tokens") or 2000), 8000)
+    # 0 = ubegraenset, med max_turns (20) som det egentlige net. Vaerktoejs-laget
+    # klemte tidligere til default 2000 / loft 8000 — praecis den strangulering
+    # juli-fixet fjernede i motoren: agenten braendte budgettet paa tool-kald og
+    # naaede aldrig frem til et svar, saa runnet stod «completed men tomt».
+    # Rettelsen var lavet ét lag nede og overlevede ikke herop.
+    budget = max(int(args.get("budget_tokens") or 0), 0)
     persistent = bool(args.get("persistent") or False)
     ttl_seconds = int(args.get("ttl_seconds") or 600)
     # Axis 2 (menu-lock lifted): Jarvis may write the agent's own prompt,
@@ -1761,8 +1789,84 @@ def _exec_spawn_agent_task(args: dict[str, Any]) -> dict[str, Any]:
             "agent_id": str(result.get("agent_id") or ""),
             "role": role,
             "agent_status": str(result.get("status") or ""),
-            "reply": last_reply[:1200] if last_reply else None,
+            # 1200 tegn var en tredjedel af hvad en god agent leverer (maalt:
+            # 3.751 tegn). Man bad om en undersoegelse og fik en trediedel af
+            # svaret — det faar dispatch til at foeles vaerdiloest.
+            "reply": last_reply[:12000] if last_reply else None,
         }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
+    """Bred, laese-kun undersoegelse — ét spoergsmaal ind, fund ud.
+
+    `spawn_agent_task` KAN allerede det her, men for at bruge den godt skal man
+    foerst beslutte sig om `system_prompt`, `role`, `allowed_tools`,
+    `tool_policy` og `budget_tokens`. Maalt: 36 dispatch-koersler i systemets
+    samlede levetid, 35 af dem fra en fejlfindings-session. Motoren fejlede
+    ikke — den blev bare aldrig grebet efter.
+    
+    Det her er samme motor med beslutningerne truffet paa forhaand: laese-kun
+    vaerktoejer, ingen budget-klemme, og ét kraevet felt. Man beskriver hvad man
+    leder efter; resten er ikke ens problem.
+    """
+    query = str(args.get("query") or args.get("goal") or "").strip()
+    if not query:
+        return {"status": "error", "error": "query is required"}
+    bredde = str(args.get("breadth") or "medium").strip().lower()
+    # Bredden styrer kun hvor grundigt agenten bliver BEDT om at lede — ikke et
+    # haardt loft. Et loft ville vaere en ny budget-klemme.
+    _vejledning = {
+        "quick": "Kig ét sted og svar kort.",
+        "medium": "Kig flere steder og sammenhold dem.",
+        "thorough": ("Kig grundigt: flere navnekonventioner, flere mapper, og "
+                     "verificér hvert fund i kilden foer du melder det."),
+    }.get(bredde, "Kig flere steder og sammenhold dem.")
+
+    from core.services.agent_runtime_base import tools_for_policy
+    try:
+        from core.services.agent_runtime import spawn_agent_task
+        result = spawn_agent_task(
+            role="researcher",
+            goal=f"{query}\n\n{_vejledning}",
+            # 6/9-2026: den gamle instruks bad om at «sige hoejt hvis du ikke
+            # fandt noget» — og det er praecis hvad agenten gjorde efter ÉT
+            # mislykket kald: «ingen forekomster, Confidence: Hoej» om filer der
+            # laa der. Et negativ er en langt staerkere paastand end et positiv:
+            # ét tomt soeg beviser ingenting, det kan vaere forkert term, forkert
+            # vaerktoej eller en fejl. Derfor kraeves nu to forskellige veje foer
+            # «findes ikke» overhovedet maa siges, og tilliden skal falde naar
+            # grundlaget er tyndt.
+            system_prompt=(
+                "Du er en undersoegende agent. Du LAESER — du aendrer ingenting. "
+                "Svar med hvad du FANDT, med filsti og linjenummer hvor det giver "
+                "mening. Gaet aldrig: har du ikke set det i en kilde, saa skriv "
+                "at du ikke ved det.\n\n"
+                "ET TOMT SOEG ER IKKE ET SVAR. Foer du siger at noget IKKE "
+                "findes, skal du have proevet mindst to forskellige veje — fx "
+                "`search` paa indhold OG `find_files` paa navne, eller et andet "
+                "soegeord. Fejler et vaerktoej, eller giver det [no matches], saa "
+                "proev en anden vej i stedet for at konkludere. Skriv altid "
+                "hvilke soegninger du faktisk koerte.\n\n"
+                "Tillid: «hoej» kraever at du har SET kilden. Har du kun tomme "
+                "soegninger, er tilliden «lav» — et negativ er en staerkere "
+                "paastand end et positiv og skal baeres af mere."),
+            tool_policy="read-only-runtime",
+            allowed_tools=tools_for_policy("read-only-runtime"),
+            budget_tokens=0,
+            persistent=False,
+            ttl_seconds=0,
+            auto_execute=True,
+        )
+        svar = ""
+        for msg in reversed(result.get("messages") or []):
+            if str(msg.get("direction") or "") == "agent->jarvis":
+                svar = str(msg.get("content") or "")
+                break
+        return {"status": "ok", "findings": svar[:12000] or None,
+                "agent_id": str(result.get("agent_id") or ""),
+                "breadth": bredde}
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -1787,7 +1891,10 @@ def _exec_send_message_to_agent(args: dict[str, Any]) -> dict[str, Any]:
             "status": "ok",
             "agent_id": agent_id,
             "agent_status": str(result.get("status") or ""),
-            "reply": last_reply[:1200] if last_reply else None,
+            # 1200 tegn var en tredjedel af hvad en god agent leverer (maalt:
+            # 3.751 tegn). Man bad om en undersoegelse og fik en trediedel af
+            # svaret — det faar dispatch til at foeles vaerdiloest.
+            "reply": last_reply[:12000] if last_reply else None,
         }
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
@@ -1843,7 +1950,10 @@ def _exec_relay_to_agent(args: dict[str, Any]) -> dict[str, Any]:
             "status": "ok",
             "to_agent_id": to_agent_id,
             "agent_status": str(result.get("status") or ""),
-            "reply": last_reply[:1200] if last_reply else None,
+            # 1200 tegn var en tredjedel af hvad en god agent leverer (maalt:
+            # 3.751 tegn). Man bad om en undersoegelse og fik en trediedel af
+            # svaret — det faar dispatch til at foeles vaerdiloest.
+            "reply": last_reply[:12000] if last_reply else None,
         }
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
@@ -1866,7 +1976,11 @@ def _exec_cancel_agent(args: dict[str, Any]) -> dict[str, Any]:
 
 def _exec_daemon_status(_args: dict[str, Any]) -> dict[str, Any]:
     from core.services.daemon_manager import get_all_daemon_states
-    return {"daemons": get_all_daemon_states()}
+    from core.tools.tool_text_render import render_daemons
+    daemons = get_all_daemon_states()
+    # `text` er ikke pynt: uden den dumpes 67 dæmoner som JSON og cappes ved
+    # 8000 tegn — se tool_text_render.
+    return {"daemons": daemons, "text": render_daemons(daemons)}
 
 
 def _exec_control_daemon(args: dict[str, Any]) -> dict[str, Any]:
@@ -1903,7 +2017,8 @@ def _exec_eventbus_recent(args: dict[str, Any]) -> dict[str, Any]:
     if kind_filter:
         events = [e for e in events if str(e.get("kind", "")).startswith(kind_filter)]
         events = events[:limit]
-    return {"events": events, "count": len(events)}
+    from core.tools.tool_text_render import render_events
+    return {"events": events, "count": len(events), "text": render_events(events)}
 
 
 _SENSITIVE_SETTING_PATTERNS = [
@@ -2170,25 +2285,29 @@ def _exec_my_project_declare(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_look_around(args: dict[str, Any]) -> dict[str, Any]:
-    """Take a webcam snapshot now and describe what's there via VLM.
+    """Look through one of the house cameras now and describe what's there.
 
     Jarvis chooses to look — bypasses the 4x/day daemon cadence. Use when
     curious, when you feel a need to connect to the physical space, or
     when context suggests "what is the room like right now".
 
     Args:
+        where: which camera — 'stue', 'hoveddor', 'dorklokke', 'webcam'.
+               Empty means the default (the living room).
         prompt: optional custom prompt (e.g., "focus on atmosphere",
-                "describe any person present", default: tone+atmosphere)
+                "describe any person present", default: describe the scene)
     """
     custom_prompt = str(args.get("prompt") or "").strip()
+    where = str(args.get("where") or "").strip()
     try:
         from core.services.visual_memory import look_around_now
-        result = look_around_now(prompt_override=custom_prompt)
+        result = look_around_now(where=where, prompt_override=custom_prompt)
         if result.get("status") == "captured":
             return {
                 "status": "ok",
                 "description": result.get("description"),
                 "captured_at": result.get("captured_at"),
+                "camera": result.get("camera"),
             }
         return {
             "status": "error",
@@ -2350,12 +2469,15 @@ def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
                 ]
             finally:
                 conn.row_factory = _prev_factory  # never leave the shared conn poisoned
+        from core.tools.tool_text_render import render_rows
+        _capped = len(result_rows) == 200
         return {
             "columns": cols,
             "rows": result_rows,
             "row_count": len(result_rows),
-            "capped": len(result_rows) == 200,
+            "capped": _capped,
             "status": "ok",
+            "text": render_rows(cols, result_rows, capped=_capped),
         }
     except Exception as exc:
         return {"error": str(exc), "status": "error"}
@@ -2499,99 +2621,6 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
             "Præsenter IKKE URL'en for brugeren — den virker ikke."
         )
     return result
-
-
-# ── Handler registry ───────────────────────────────────────────────────
-
-def _tool_load_more_tools(arguments: dict) -> dict:
-    """Resolve which tools to add to the next round. Logs to DB + events."""
-    import json as _json
-    from core.eventbus.bus import event_bus
-    from core.runtime.db import connect
-
-    names = list(arguments.get("names") or [])
-    query = (arguments.get("query") or "").strip()
-
-    all_names = {
-        ((d.get("function") or {}).get("name") or d.get("name") or "")
-        for d in (TOOL_DEFINITIONS or [])
-    }
-
-    resolved: list[str] = []
-    unknown: list[str] = []
-    for n in names:
-        if n in all_names:
-            resolved.append(n)
-        else:
-            unknown.append(n)
-
-    if query and not resolved:
-        try:
-            from core.services.tool_embeddings import top_k_similar
-            hits = top_k_similar(query, k=10)
-            resolved = [n for n, _ in hits if n in all_names][:5]
-        except Exception:
-            resolved = []
-
-    if not resolved and unknown:
-        return {
-            "status": "error",
-            "error": f"tools not found: {unknown}. Use names from the TOOL CATALOG.",
-        }
-
-    if not resolved:
-        return {
-            "status": "ok",
-            "added": [],
-            "message": "no strong matches",
-        }
-
-    try:
-        event_bus.publish("tool_router.load_more_fired", {
-            "requested_names": names,
-            "requested_query": query,
-            "resolved_names": resolved,
-        })
-    except Exception:
-        pass
-
-    try:
-        with connect() as c:
-            c.execute(
-                "INSERT INTO tool_router_load_more("
-                "requested_names_json, requested_query, resolved_names_json, created_at) "
-                "VALUES (?,?,?, datetime('now'))",
-                (_json.dumps(names), query, _json.dumps(resolved)),
-            )
-            c.commit()
-    except Exception:
-        pass
-
-    # 2026-06-22: return the FULL schema for each resolved tool so the model can
-    # call it correctly *immediately* — params, types, required, enums — instead
-    # of getting only the name and guessing at the call shape ("try 10 times").
-    schemas: list[dict] = []
-    for d in (TOOL_DEFINITIONS or []):
-        fn = d.get("function") or d
-        nm = (fn.get("name") or d.get("name") or "")
-        if nm in resolved:
-            schemas.append(
-                {
-                    "name": nm,
-                    "description": fn.get("description"),
-                    "parameters": fn.get("parameters"),
-                }
-            )
-
-    return {
-        "status": "ok",
-        "added": resolved,
-        "schemas": schemas,
-        "message": (
-            f"Added {len(resolved)} tool(s). Full schema below — call directly "
-            "using exactly these parameter names; do not guess."
-        ),
-    }
 
 
 def _exec_github_list_issues(args: dict[str, Any]) -> dict[str, Any]:
@@ -2864,3 +2893,83 @@ __all__ = [
     "_exec_hf_search_models",
     "_exec_hf_model_info",
 ]
+
+def _exec_operator_channel(args: dict[str, Any]) -> dict[str, Any]:
+    """Aabn/luk/vis operator-kanalen. Owner-only for open/close."""
+    from core.services import operator_channel as oc
+    handling = str(args.get("action") or "status").strip().lower()
+    sid = oc.current_session_id()
+    if handling == "status":
+        return oc.status(sid)
+    ejer = oc.current_is_owner()
+    if handling == "open":
+        return oc.open_channel(sid, is_owner=ejer)
+    if handling == "close":
+        return oc.close_channel(sid, is_owner=ejer)
+    return {"status": "error", "error": f"ukendt action: {handling!r}"}
+
+def _exec_mcp(args: dict[str, Any]) -> dict[str, Any]:
+    """Én indgang til MCP: se, godkend, list vaerktoejer, kald.
+
+    Samlet i ét vaerktoej frem for fem, fordi fem navne i tool-arrayet koster
+    plads i en pulje paa 48 — og fordi de fire foerste kun bruges én gang pr.
+    server, mens `call` bruges hele tiden.
+    """
+    from core.services import mcp_manager, mcp_trust
+    handling = str(args.get("action") or "status").strip().lower()
+    server = str(args.get("server") or "").strip()
+
+    if handling == "status":
+        return mcp_manager.status()
+    if handling == "allow":
+        if not server:
+            return {"status": "error", "error": "server mangler"}
+        # Kun Bjoern kan godkende en fremmed server til at koere paa hans
+        # vegne. Det er den samme graense som operator-kanalen.
+        from core.services.operator_channel import current_is_owner
+        if not current_is_owner():
+            return {"status": "error",
+                    "error": "kun Bjørn kan godkende en MCP-server"}
+        return mcp_trust.allow(server)
+    if handling == "revoke":
+        from core.services.operator_channel import current_is_owner
+        if not current_is_owner():
+            return {"status": "error",
+                    "error": "kun Bjørn kan tilbagekalde en MCP-server"}
+        return mcp_trust.revoke(server)
+    if handling == "tools":
+        if not server:
+            return {"status": "error", "error": "server mangler"}
+        return mcp_manager.list_tools(server)
+    if handling == "call":
+        vaerktoej = str(args.get("tool") or "").strip()
+        if not server or not vaerktoej:
+            return {"status": "error", "error": "server og tool er påkrævet"}
+        return mcp_manager.call(server, vaerktoej, args.get("arguments") or {})
+    return {"status": "error", "error": f"ukendt action: {handling!r}"}
+
+def _exec_checkpoint(args: dict[str, Any]) -> dict[str, Any]:
+    """Se eller fortryd en redigeringsrunde.
+
+    Der tages automatisk et checkpoint foer hver runde der redigerer filer, saa
+    `list` viser hvad der kan rulles tilbage og `rollback` fortryder den
+    SENESTE runde samlet — ikke rettelse for rettelse.
+    """
+    from core.services import edit_checkpoint as ck
+    from core.services.operator_channel import current_session_id
+    handling = str(args.get("action") or "list").strip().lower()
+    sid = current_session_id()
+    if handling == "list":
+        punkter = ck.list_checkpoints(sid)
+        return {
+            "status": "ok",
+            "antal": len(punkter),
+            "punkter": [{"sha": str(p.get("sha") or "")[:10], "note": p.get("note"),
+                         "cwd": p.get("cwd")} for p in reversed(punkter)][:10],
+        }
+    if handling == "rollback":
+        return ck.rollback_last(sid)
+    if handling == "clear":
+        ck.clear(sid)
+        return {"status": "ok", "text": "checkpoint-stakken er ryddet"}
+    return {"status": "error", "error": f"ukendt action: {handling!r}"}

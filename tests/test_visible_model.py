@@ -60,11 +60,17 @@ def test_rate_limited_self_safe(monkeypatch):
 
 def test_apply_visible_ollama_options_caps_num_ctx_to_model_window():
     """Bjørn 2026-06-23: num_ctx må ALDRIG overstige modellens reelle vindue.
-    glm (200k) cappes selv om settings siger 512k; deepseek-flash (1M) urøres."""
+
+    Testen brugte glm-5.2 som «den lille model», men vinduet for netop den
+    blev sat op til 1M i model_context (den er 1M ligesom deepseek-flash).
+    Så testen har været rød uden at kappe-logikken fejlede — det var
+    EKSEMPLET der var forældet, ikke koden. Nu bruges glm-4, der stadig er
+    200k, så testen igen måler det den blev skrevet til.
+    """
     import core.services.visible_model as vm
-    pg = {"model": "glm-5.2:cloud"}
+    pg = {"model": "glm-4:cloud"}
     vm._apply_visible_ollama_options(pg)
-    assert pg["options"]["num_ctx"] <= 200_000  # cappet til glm-vinduet
+    assert pg["options"]["num_ctx"] <= 200_000  # cappet til glm-4-vinduet
 
     pf = {"model": "deepseek-v4-flash:cloud"}
     vm._apply_visible_ollama_options(pf)

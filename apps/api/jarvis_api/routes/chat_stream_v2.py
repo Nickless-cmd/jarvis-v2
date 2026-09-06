@@ -248,11 +248,27 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         _tt_route.mark("request_in", "chat_stream_v2 (desk send registered)")
     except Exception:
         pass
+    # Vedhæftninger som blokke PÅ beskeden. Uden dette forsvandt billeder man
+    # havde sendt, så snart samtalen blev genindlæst: filen lå på disken, men
+    # intet knyttede den til en bestemt besked (channel_attachments har
+    # session_id, ikke message_id). Blokkene bærer kun en reference — billedet
+    # hentes over det user-scopede /attachments/image/{id}.
+    _att_json = None
+    try:
+        from apps.api.jarvis_api.routes.attachments import get_attachment_meta_dicts
+        from core.services.attachment_blocks import user_message_content_json
+        _att_json = user_message_content_json(
+            get_attachment_meta_dicts(list(request.attachment_ids or []))
+        )
+    except Exception:
+        _att_json = None  # aldrig blokere en besked på en visnings-detalje
+
     append_chat_message(
         session_id=session_id,
         role="user",
         content=effective_message,
         user_id=_uid,
+        content_json=_att_json,
     )
 
     # Paste-store (spec 2026-07-09): den PERSISTEREDE besked beholder den kompakte

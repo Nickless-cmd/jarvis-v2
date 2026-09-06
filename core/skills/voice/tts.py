@@ -7,16 +7,22 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-# Default: Mathias — Danish, engaging, natural, warm (jutlandic accent).
-# Picked 2026-05-09 by Bjørn after sampling against Jesper + Constantin.
+# Default: Jesper — Danish, calm, deep, professional (rigsdansk).
+# Switched 2026-09-06 by Bjørn's request after voice-channel debut on mobile:
+# Mads (the previous default) came across too bright/light over the phone, and
+# Bjørn wanted the deeper, more "classic Jarvis" character. Jesper is the same
+# calm/deep profile he originally favored on 2026-09-03 when Mads was picked.
+# Voice-id history:
+#   Mads = BIWC0507fYMfhPcAEIRP  (2026-09-03 → 2026-09-06, first identity-choice)
+#   Jesper = Bl1YwS3uJac5zEOSNESn (default from 2026-09-06)
+#   Mathias = ygiXC2Oa1BiHksD3WkJZ (prior default, 2026-05-09, jutlandic)
+#   George = JBFqnCBsd6RMkjVDRZzb (English, prior default)
 # Override via env JARVIS_TTS_VOICE_ID for quick swaps without code change.
-# Alternatives: Jesper=Bl1YwS3uJac5zEOSNESn (calm deep professional, rigsdansk),
-#               Constantin=Hp07ONf6C5qlCKOeB4oo (calm soothing, rigsdansk),
+# Alternatives: Constantin=Hp07ONf6C5qlCKOeB4oo (calm soothing, rigsdansk),
 #               Søren=xj6X4BCUsv9oxohm1E8o (confident versatile, rigsdansk),
-#               Camilla=4RklGmuxoAskAbGXplXN (female engaging),
-#               George=JBFqnCBsd6RMkjVDRZzb (English, prior default).
+#               Thomas Hansen (warm deep), Silas=zxOsfOSiCmMzuDwp7o8G (young).
 ELEVENLABS_VOICE_ID = os.environ.get(
-    "JARVIS_TTS_VOICE_ID", "ygiXC2Oa1BiHksD3WkJZ"
+    "JARVIS_TTS_VOICE_ID", "Bl1YwS3uJac5zEOSNESn"
 )
 # edge-tts fallback voices — Danish primary, English fallback
 EDGE_VOICES = ["da-DK-JeppeNeural", "en-GB-RyanNeural"]

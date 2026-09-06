@@ -291,6 +291,36 @@ class TestGenerateSessionSummary:
         )
         assert result == ""
 
+    def test_rejects_provider_error_instead_of_persisting_it(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        provider_error = (
+            "Sorry, to prevent abuse of free resources, accounts that have not "
+            "been recharged can only try 10 times. You can increase the free quota "
+            "after recharging; https://console.aihubmix.com/topup"
+        )
+        monkeypatch.setattr(
+            "core.services.daemon_llm.daemon_llm_call",
+            lambda prompt, **kw: provider_error,
+        )
+        stored: list[dict] = []
+        monkeypatch.setattr(
+            "core.runtime.db.session_summary_insert",
+            lambda **kwargs: stored.append(kwargs),
+        )
+
+        from core.services.session_distillation import generate_session_summary
+
+        result = generate_session_summary(
+            session_id="chat-provider-error",
+            run_id="run-provider-error",
+            user_message="Hvad skete der?",
+            assistant_response="Jeg undersøger det.",
+        )
+
+        assert result == ""
+        assert stored == []
+
 
 # ---------------------------------------------------------------------------
 # build_previous_session_summaries
@@ -329,3 +359,32 @@ class TestBuildPreviousSessionSummaries:
 
         result = build_previous_session_summaries(limit=3)
         assert result is None
+
+    def test_omits_preexisting_provider_error_rows(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "core.runtime.db.session_summary_recent",
+            lambda limit=3: [
+                {
+                    "summary": (
+                        "Sorry, to prevent abuse of free resources, accounts that "
+                        "have not been recharged can only try 10 times. Top up at "
+                        "https://console.aihubmix.com/topup"
+                    ),
+                    "created_at": "2026-09-02T18:36:13",
+                },
+                {
+                    "summary": "Emne: Prompt-fejl | Resultat: årsagen blev fundet",
+                    "created_at": "2026-09-02T19:00:00",
+                },
+            ],
+        )
+
+        from core.services.session_distillation import build_previous_session_summaries
+
+        result = build_previous_session_summaries(limit=3)
+
+        assert result is not None
+        assert "Prompt-fejl" in result
+        assert "aihubmix" not in result.lower()

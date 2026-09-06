@@ -133,8 +133,12 @@ def write_private_terminal_layers(
     record_private_state(**private_state)
     record_protected_inner_voice(**protected_inner_voice)
     record_private_temporal_promotion_signal(**private_temporal_promotion_signal)
-    record_private_promotion_decision(**private_promotion_decision)
-    record_private_retained_memory_record(**private_retained_memory_record)
+    # 2026-09-04 (memory repair, R3): persistér KUN promotions med substans.
+    # 16.497 "promote"-beslutninger var skabelonen "I should keep carrying what
+    # helped around hmm" — og det var hvad prompten fik som retained memory.
+    if _promotion_has_substance(private_promotion_decision, private_retained_memory_record):
+        record_private_promotion_decision(**private_promotion_decision)
+        record_private_retained_memory_record(**private_retained_memory_record)
 
     # --- async LLM enrichment (fire-and-forget) ---
     enrich_private_layers_async(
@@ -144,6 +148,17 @@ def write_private_terminal_layers(
         inner_voice_payload=protected_inner_voice,
         recent_chat_context=_extract_recent_chat(user_message_preview, work_preview),
     )
+
+
+def _promotion_has_substance(
+    private_promotion_decision: dict[str, object],
+    private_retained_memory_record: dict[str, object],
+) -> bool:
+    from core.memory.promotion_substance import has_substance
+
+    target = str(private_promotion_decision.get("promotion_target") or "")
+    value = str(private_retained_memory_record.get("retained_value") or "")
+    return has_substance(target) and has_substance(value)
 
 
 def _extract_recent_chat(

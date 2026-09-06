@@ -62,7 +62,10 @@ def get_tier(user_id: str) -> str:
                 return explicit
             if getattr(u, "role", "") == "owner":
                 return "owner"
-            if getattr(u, "role", "") == "member":
+            # `partner` ER en member her. Uden dette ville Michelle falde til
+            # «free» alene fordi hendes rolle fik et andet navn.
+            from core.identity.household import is_member_like
+            if is_member_like(getattr(u, "role", "")):
                 return "plus"
     except Exception:
         pass

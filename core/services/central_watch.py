@@ -53,18 +53,86 @@ def _owner_uid() -> str:
         return ""
 
 
+# Afkøling pr. flag. En tilstand som "disk 94% brugt" eller "host svarer ikke"
+# er sand ved HVERT tick indtil nogen retter den — og et flag der er sandt hele
+# tiden må ikke ringe hele tiden. Incidenten dedupede allerede (record_central_
+# incident(dedup=True)), men notifikationen gjorde ikke: Bjørn fik samme to flag
+# hver halve time i døgndrift (målt 2026-09-02).
+#
+# Afkølingen ligger i runtime-state, ikke i en modul-variabel, fordi api'en
+# genstartes jævnligt — en hukommelses-cache ville nulstilles og begynde forfra.
+_NOTIFY_COOLDOWN_H = 6
+_NOTIFY_STATE_KEY = "central_watch.notified_flags"
+
+
+def _notify_cooldown_active(key: str, now: datetime) -> bool:
+    """True hvis samme flag allerede har ringet inden for afkølingsvinduet.
+
+    Nøglen er cluster/nerve/besked: ÆNDRER beskeden sig — fx fra 94% til 97% —
+    er det et nyt flag og må ringe igen. Det er med vilje: en tilstand der
+    forværres skal kunne trænge igennem sin egen afkøling.
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        seen = get_runtime_state_value(_NOTIFY_STATE_KEY, {}) or {}
+        if not isinstance(seen, dict):
+            return False
+        prev = seen.get(key)
+        if not prev:
+            return False
+        last = datetime.fromisoformat(str(prev).replace("Z", "+00:00"))
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        return (now - last) < timedelta(hours=_NOTIFY_COOLDOWN_H)
+    except Exception:
+        return False  # kan vi ikke afgøre det, hellere notificere end tie
+
+
+def _notify_cooldown_mark(key: str, now: datetime) -> None:
+    try:
+        from core.runtime.db_core import get_runtime_state_value, set_runtime_state_value
+        seen = get_runtime_state_value(_NOTIFY_STATE_KEY, {}) or {}
+        if not isinstance(seen, dict):
+            seen = {}
+        seen[key] = now.isoformat()
+        # Hold kortet lille: smid poster ud der er ældre end to afkølingsvinduer.
+        cutoff = now - timedelta(hours=_NOTIFY_COOLDOWN_H * 2)
+        pruned = {}
+        for k, v in seen.items():
+            try:
+                t = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+                if t.tzinfo is None:
+                    t = t.replace(tzinfo=timezone.utc)
+                if t >= cutoff:
+                    pruned[k] = v
+            except Exception:
+                continue
+        set_runtime_state_value(_NOTIFY_STATE_KEY, pruned)
+    except Exception:
+        pass
+
+
 def _notify_owner(title: str, message: str, importance: str) -> bool:
     uid = _owner_uid()
     if not uid:
+        return False
+    now = datetime.now(timezone.utc)
+    key = f"{title}|{message}"[:300]
+    if _notify_cooldown_active(key, now):
         return False
     try:
         from core.services.notification_router import route_proactive_notification
         res = route_proactive_notification(
             uid, "central_flag",
             {"title": title, "message": message}, importance=importance)
-        return bool(res.get("delivered"))
+        delivered = bool(res.get("delivered"))
     except Exception:
         return False
+    # Markér KUN når den faktisk gik igennem — ellers ville en fejlet levering
+    # tie flaget i seks timer uden at Bjørn nogensinde havde set det.
+    if delivered:
+        _notify_cooldown_mark(key, now)
+    return delivered
 
 
 def _raise_flag(cluster: str, nerve: str, *, severity: str, message: str,

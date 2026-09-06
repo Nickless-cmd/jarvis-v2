@@ -439,6 +439,8 @@ from core.runtime.provider_router import (
 )
 from core.runtime.db import (
     approve_capability_approval_request,
+    claim_capability_approval_request_execution,
+    complete_capability_approval_request_execution,
     connect,
     get_capability_approval_request,
     get_private_development_state,
@@ -451,6 +453,7 @@ from core.runtime.db import (
     list_recent_protected_inner_voices,
     record_capability_approval_request_execution,
     recent_capability_approval_requests,
+    recent_tool_intent_approval_requests,
     recent_capability_invocations,
     recent_private_growth_notes,
     recent_private_inner_notes,
@@ -467,4 +470,3 @@ from core.tools.workspace_capabilities import (
     invoke_workspace_capability,
     load_workspace_capabilities,
 )
-

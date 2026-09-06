@@ -102,8 +102,12 @@ def age_tool_results(
         # append-only intra-run cache until a run genuinely balloons. trigger=0
         # disables the gate (legacy / test behavior).
         if trigger_tokens > 0:
+            # Billeder taeller MED (2026-09-06): et tool-resultat der baerer en
+            # data-URL har kort tekst men tung vaegt. Maalte vi kun teksten,
+            # ville en kontekst fuld af pixels se tom ud for gaten og aldrig
+            # blive aldret.
             full_tokens = sum(
-                len(str(tr.content or "")) // 4
+                (len(str(tr.content or "")) + len(str(tr.image_data_url or ""))) // 4
                 for ex in exchanges
                 for tr in ex.results
                 if not _is_already_aged(str(tr.content or ""))

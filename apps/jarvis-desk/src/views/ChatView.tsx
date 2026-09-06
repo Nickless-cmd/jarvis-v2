@@ -539,6 +539,7 @@ export function ChatView({
         {header}
         <div className="chat-empty">
           <GreetingHero
+            mode="chat"
             config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
             userName={userName}
             onOpenMarketplace={() => onOpenMarketplace?.()}

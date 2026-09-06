@@ -709,6 +709,7 @@ export function CodeView({
         {trustBanner}
         <div className="chat-empty">
           <GreetingHero
+            mode="code"
             config={config}
             userName={userName ?? 'Bruger'}
             onOpenMarketplace={() => onOpenMarketplace?.()}

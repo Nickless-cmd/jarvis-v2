@@ -2592,3 +2592,22 @@
   background: var(--bg-2, rgba(127,127,127,0.12)); color: var(--fg-2);
   max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ctx-mere { font-size: 11px; color: var(--fg-3); align-self: center; }
+
+/* ── Permission-valg: navnet siger hvad, linjen under siger hvad det koster ── */
+.perm-menu .perm-valg { display: flex; flex-direction: column; align-items: flex-start;
+  gap: 2px; text-align: left; padding: 7px 10px; }
+.perm-navn { font-size: 12.5px; }
+.perm-hvad { font-size: 11px; color: var(--fg-3); line-height: 1.35; }
+.perm-menu .perm-valg.active .perm-hvad { color: var(--fg-2); }
+
+/* Startforslag: ting Jarvis faktisk kan paa DENNE flade. */
+.greeting-starters { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  margin: 10px 0 4px; }
+.greeting-starter { font-size: 12px; padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: transparent; color: var(--fg-2);
+  cursor: pointer; transition: border-color .15s, color .15s; }
+.greeting-starter:hover { color: var(--fg-1); border-color: var(--fg-3); }
+
+/* Palette-grupper: «Gå til» over samtaler, saa destinationer ikke drukner. */
+.search-gruppe { font-size: 10.5px; font-weight: 600; color: var(--fg-3);
+  text-transform: uppercase; letter-spacing: 0.4px; padding: 8px 12px 4px; }

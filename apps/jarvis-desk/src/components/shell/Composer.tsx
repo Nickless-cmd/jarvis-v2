@@ -35,9 +35,19 @@ interface PendingAttachment {
   error?: boolean
 }
 
-const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
-  { key: 'ask', label: 'Spørg ved værktøjer' },
-  { key: 'trust', label: 'Fuld adgang' },
+// Navnet siger hvad der sker; linjen under siger hvad det KOSTER (6/9-2026).
+// Codex foreslog fire niveauer — Read only, Ask first, Trusted, Full access.
+// Men serveren har præcis TO: `approval_mode == "trust"` sætter trust_all,
+// alt andet spørger. Fire valg hvor to intet gør ville være værre end to
+// ærlige, så det er konsekvensen der er gjort tydelig i stedet.
+//
+// «Farlige kommandoer blokeres stadig» er efterprøvet samme dag: destruktive
+// kommandoer stoppes selv med trust_all (se test_bash_unified.py).
+const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string; hvad: string }> = [
+  { key: 'ask', label: 'Spørg først',
+    hvad: 'Jarvis beder om lov, før han ændrer noget' },
+  { key: 'trust', label: 'Fuld adgang',
+    hvad: 'Han handler uden at spørge. Farlige kommandoer blokeres stadig' },
 ]
 // Permission-valget overlever genstart via PermissionContext (Bjørn: "fuld
 // adgang" skal huskes). Provider/model-nøgler kommer fra composerPrefs.
@@ -528,10 +538,11 @@ export function Composer({
                   <button
                     key={p.key}
                     type="button"
-                    className={permission === p.key ? 'active' : ''}
+                    className={`perm-valg ${permission === p.key ? 'active' : ''}`}
                     onClick={() => { setPermission(p.key); setPermOpen(false) }}
                   >
-                    {p.label}
+                    <span className="perm-navn">{p.label}</span>
+                    <span className="perm-hvad">{p.hvad}</span>
                   </button>
                 ))}
               </div>

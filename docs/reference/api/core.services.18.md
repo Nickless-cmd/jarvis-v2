@@ -495,6 +495,13 @@ _Role registry — runtime-extensible agent roles._
 | function | `_exec_list_roles` | `(args)` | — | [src](../../../core/services/role_registry.py#L119) |
 | function | `_exec_register_custom_role` | `(args)` | — | [src](../../../core/services/role_registry.py#L138) |
 
+## `core/services/round_budget_notice.py`
+_Fortael ham hvor mange runder han har tilbage, foer doeren smaekker._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `round_budget_notice` | `(*, round_index, max_rounds)` | Varsel til modellen naar rundebudgettet slipper op. "" ellers. | [src](../../../core/services/round_budget_notice.py#L34) |
+
 ## `core/services/rule_definitions.py`
 _Rule definitions — production rules feeding the rule_engine._
 
@@ -755,12 +762,4 @@ _Cognitive conductor — Jarvis' bounded mental state assembler._
 | function | `list_flows` | `(*, status=…, task_id=…, limit=…)` | — | [src](../../../core/services/runtime_flows.py#L48) |
 | function | `update_flow` | `(flow_id, *, status=…, current_step=…, step_state=…, plan=…, next_action=…, last_error=…, attempt_count=…)` | — | [src](../../../core/services/runtime_flows.py#L68) |
 | function | `_decode_flow` | `(flow)` | — | [src](../../../core/services/runtime_flows.py#L103) |
-
-## `core/services/runtime_hook_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start_runtime_hook_runtime` | `()` | — | [src](../../../core/services/runtime_hook_runtime.py#L19) |
-| function | `stop_runtime_hook_runtime` | `()` | — | [src](../../../core/services/runtime_hook_runtime.py#L36) |
-| function | `_hook_runtime_loop` | `(*, subscriber)` | — | [src](../../../core/services/runtime_hook_runtime.py#L49) |
 

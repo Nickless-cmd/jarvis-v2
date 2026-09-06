@@ -2783,6 +2783,29 @@ async def _stream_visible_run(
                     # brudt af tool-fjernelsen på præcis denne ene afsluttende runde (one-shot,
                     # forskningsbekræftet acceptabelt). KUN _is_last_round — IKKE synthese-
                     # pausen (den skal kunne opsummere OG fortsætte med at grave).
+                    # ── VARSEL FØR DØREN SMÆKKER (Bjørn 6/9-2026) ──────────────
+                    # Finalize-runden fjerner tools og kræver prosa — uden varsel.
+                    # Den ene runde arbejder han, den næste er værktøjerne væk.
+                    # Målt: 12 af 658 runs når runde 30, og faldet fra runde 23 er
+                    # blidt — når han først graver, bliver han ved. De sidste fem
+                    # runder får derfor at vide hvor de er, så han kan samle sine
+                    # kald og runde af i stedet for at blive klippet midt i en
+                    # tanke. Append-only trailing tur → cache-præfikset er urørt.
+                    if not _is_last_round:
+                        try:
+                            from core.services.round_budget_notice import (
+                                round_budget_notice as _rbn,
+                            )
+                            _varsel = _rbn(
+                                round_index=_agentic_round,
+                                max_rounds=_AGENTIC_MAX_ROUNDS,
+                            )
+                        except Exception:
+                            _varsel = ""
+                        if _varsel:
+                            _round_base_messages = list(_round_base_messages) + [
+                                {"role": "user", "content": _varsel},
+                            ]
                     if _is_last_round:
                         _round_tool_definitions = None
                         _round_base_messages = list(_round_base_messages) + [{

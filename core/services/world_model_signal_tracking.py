@@ -56,7 +56,23 @@ _SOURCE_KIND_RANKS = {
 }
 _STALE_AFTER_DAYS = 10
 _PREDICTION_STATE_KEY = "runtime_world_model_predictions"
-_MAX_PREDICTIONS = 120
+# 2026-09-05: 120 → 1000. Sløjfen der efterprøver Jarvis' forudsigelser var
+# bygget, tilkoblet og kørte dagligt — og havde aldrig resolvet ÉN eneste
+# forudsigelse i systemets fem måneders levetid. Blokeringen var ren aritmetik:
+#
+#     produktion   ~107 forudsigelser/døgn (næsten alle fra counterfactual_engine)
+#     horisont     HORIZON_DAYS 7 + GRACE_DAYS 1 = 8 dage før den MÅ efterprøves
+#     nødvendigt   107 × 8 ≈ 856 pladser
+#     loft         120
+#
+# Hver forudsigelse blev skubbet ud af FIFO'en ~7 dage FØR den blev moden.
+# Målt: forudsigelser ældre end 8 dage = 0. resolved = 0. supported = 0.
+# contradicted = 0. calibration = None. Nerven world_model_calibration har
+# aldrig eksisteret i tidsserien.
+#
+# Sweeperen (counterfactual_predictions.sweep_expired_counterfactual_predictions)
+# kørte trofast hver dag og fandt aldrig noget at arbejde på.
+_MAX_PREDICTIONS = 1000
 _PREDICTION_ALLOWED_EFFECTS = [
     "prompt_attention",
     "compare_future_observations",

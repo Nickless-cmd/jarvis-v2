@@ -366,10 +366,10 @@ def test_multi_signal_recall_candidate_penalty():
 def test_multi_signal_recall_section_formats_results():
     """Section formatter produces non-None output with results."""
     from core.services.memory_recall_engine import multi_signal_recall_section
-    from core.services.memory_recall_engine import multi_signal_recall
-    with patch("core.services.memory_recall_engine.multi_signal_recall", return_value={
+    with patch("core.services.recall.recall", return_value={
         "results": [{
             "source": "workspace", "multi_signal_score": 0.85,
+            "score": 0.85,
             "signals": {"bm25": 1.2, "entity": 0.8},
             "text": "BM25 test document",
         }],
@@ -387,8 +387,9 @@ def test_multi_signal_recall_section_formats_results():
 def test_multi_signal_recall_section_returns_none_when_empty():
     """Empty results returns None."""
     from core.services.memory_recall_engine import multi_signal_recall_section
-    with patch("core.services.memory_recall_engine.multi_signal_recall",
-               return_value={"results": [], "count": 0, "multi_signal": True}):
+    # 2026-09-04: sektionen bruger nu core.services.recall.recall (én recall-sti).
+    with patch("core.services.recall.recall",
+               return_value={"results": [], "count": 0, "status": "ok"}):
         section = multi_signal_recall_section("anything")
     assert section is None
 

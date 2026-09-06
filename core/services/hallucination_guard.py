@@ -44,6 +44,21 @@ _FACTUAL_PATTERNS: list[re.Pattern] = [
     # Question phrases (multi-word) — \b not meaningful
     re.compile(r"(hvilken mappe|hvor ligger|hvor gemmer|hvad hedder|what is)", re.IGNORECASE),
     re.compile(r"\b(ollama|deepseek|model|GPU|NVIDIA|lxc)\b", re.IGNORECASE),
+    # ── Identitet og bruger (tilføjet 4. sep 2026) ──────────────────────────
+    # Kilderne blev 22. maj udvidet fra MEMORY.md til SOUL/IDENTITY/USER netop
+    # for identitets- og brugerspørgsmål. Mønstrene fulgte ikke med, så guarden
+    # kunne læse de rigtige filer men blev aldrig spurgt: «hvem er Bjørn?» og
+    # «hvad er din rolle?» faldt ud som `casual`, mens den ENGELSKE «what is
+    # your role?» var `factual`. Den var reelt død på dansk — nul hændelser i
+    # basen på 14 dage.
+    re.compile(r"\b(rolle|role|identitet|identity|sj[æa]l|soul)\b", re.IGNORECASE),
+    re.compile(r"\b(bruger|user|ejer|owner|partner|husstand)\b", re.IGNORECASE),
+    re.compile(r"\b(foretr[æa]kker|prefer|pr[æa]ference|vane|plejer)\b", re.IGNORECASE),
+    re.compile(r"(hvem er|hvem har|who is|hvad kan du|what are you)", re.IGNORECASE),
+    re.compile(r"\b(bj[øo]rn|michelle|mikkel|rune|lotte)\b", re.IGNORECASE),
+    # Flertalsformer med: «ordrer», «regler», «rules» — dansk bøjning slipper
+    # ellers forbi et \b efter entalsformen.
+    re.compile(r"\b(st[åa]ende ordrer?|standing orders?|regler?|rules?)\b", re.IGNORECASE),
 ]
 
 # ── Memory-section keywords (what the sections are called in MEMORY.md) ──
@@ -60,6 +75,16 @@ _INFRA_KEYWORDS: tuple[str, ...] = (
     "publish", "upload", "download", "assets", "local",
     "jarvis", "files", "web", "api", "url", "dns",
     "ollama", "deepseek", "model", "gpu", "lxc",
+    # Identitet/bruger — svarer til mønstrene ovenfor. Uden disse fandt
+    # guarden ingen nøgleord og returnerede med `no_keywords`, selv når
+    # spørgsmålet var klassificeret som faktuelt.
+    "rolle", "role", "identitet", "identity", "sjæl", "soul",
+    "bruger", "user", "ejer", "owner", "partner", "husstand",
+    "foretrækker", "prefer", "præference", "vane",
+    "bjørn", "michelle", "mikkel", "rune", "lotte",
+    # «ordrer» står her ved siden af «ordre», fordi nøgleord-matcheren kun
+    # tilføjer (s|er) som flertal — dansk r-flertal falder udenfor.
+    "regel", "regler", "rule", "ordre", "ordrer", "order", "stående",
 )
 
 # Synonym map: Danish ↔ English so one match fetches section words in both languages
@@ -430,18 +455,25 @@ def inject_memory_into_prompt(
         ),
     }
 
-    # Find den sidste system-besked og indsæt efter den
-    # (så den primære system instruction bevares som den første)
-    last_system_idx = -1
-    for i, msg in enumerate(chat_messages):
-        if msg.get("role") == "system":
-            last_system_idx = i
-
-    if last_system_idx >= 0:
-        chat_messages.insert(last_system_idx + 1, guard_message)
+    # INDSÆT SENT — lige før den aktuelle brugerbesked.
+    #
+    # Før lå den efter den primære system-instruktion, altså på plads 1: midt
+    # inde i det STABILE præfiks. Guarden fyrer kun på faktuelle spørgsmål, så
+    # prompten havde reelt to former, og alt efter indstikket forskød sig fra
+    # tur til tur. DeepSeeks cache matcher fra begyndelsen og kræver et FULDT
+    # match af præfiks-enheden — «A+B» efterfulgt af «A+C» rammer ikke. Det er
+    # dét der fik hit-raten til at svinge mellem 12 og 79 % i stedet for at
+    # ligge fast.
+    #
+    # Sent placeret er præfikset byte-identisk uanset om guarden fyrer. Og
+    # indholdet står nu ved siden af det spørgsmål det skal besvare i stedet
+    # for 40.000 tegn før det — hvilket er den bedre plads i forvejen.
+    for index in range(len(chat_messages) - 1, -1, -1):
+        if chat_messages[index].get("role") == "user":
+            chat_messages.insert(index, guard_message)
+            break
     else:
-        # Ingen system-besked — indsæt før user message
-        chat_messages.insert(0, guard_message)
+        chat_messages.append(guard_message)
 
     # Log: tæller sektioner via heading-markører, ikke characters.
     # 2026-05-22 (Claude): tidligere log brugte len(relevant) (char count)

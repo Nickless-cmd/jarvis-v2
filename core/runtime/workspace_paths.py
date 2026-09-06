@@ -62,6 +62,30 @@ def workspace_dir(user_id: str | None = None) -> Path:
     workspace_name = _user_id_to_workspace_name(user_id)
     return _jarvis_home() / "workspaces" / workspace_name
 
+def workspace_dir_or_owner() -> Path:
+    """workspace_dir() with an owner fallback, then shared/ as last resort.
+
+    For Jarvis' own entity-level reads (heartbeat, dreams, autonomous runs)
+    there is no user context; his home is the owner's workspace — the same
+    rule memory_tools._memory_md applies for writes (2026-07-22). Added
+    2026-09-04 (memory repair, R5) so search paths never raise
+    NoUserContextError in autonomous runs.
+    """
+    try:
+        return workspace_dir()
+    except NoUserContextError:
+        pass
+    try:
+        from core.identity.users import get_owner
+        owner = get_owner()
+        owner_id = str(getattr(owner, "discord_id", "") or "").strip() if owner else ""
+        if owner_id:
+            return workspace_dir(owner_id)
+    except Exception:
+        pass
+    return shared_dir()
+
+
 def _user_id_to_workspace_name(user_id: str) -> str:
     """Resolve user_id → workspace folder name.
 

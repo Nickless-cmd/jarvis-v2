@@ -468,7 +468,7 @@ def _build_visible_input(
         user_message=message,
         session_id=session_id,
     )
-    instruction = assembly.text
+    instruction, dynamic_tail = _split_dynamic_tail(assembly.text)
     if not instruction:
         return [
             {
@@ -510,37 +510,13 @@ def _build_visible_input(
     # already the last entry in transcript_messages. Only append explicitly
     # when the transcript is empty or ends with an assistant turn.
     _last_tm = assembly.transcript_messages[-1] if assembly.transcript_messages else None
-    if not (_last_tm and _last_tm.get("role") == "user"):
+    if not _is_current_user_turn(_last_tm, message):
         items.append({
             "role": "user",
             "content": [{"type": "input_text", "text": message}],
         })
 
-    # Cache-fix (2026-06-13, lever #3): flyt HELE den per-turn-dynamiske hale UD af
-    # system-beskeden og ned på den SIDSTE bruger-besked. prompt_contract markerer
-    # halen (finitude/Sessions-alder, wakeup-digest, kausal-mønstre, counterfactuals,
-    # subagent, rum-entiteter, time_pin) med DYNAMIC_TAIL_SENTINEL. Alt efter den
-    # varierer per turn; lå det i system-beskeden cap'ede det cachen FØR historikken.
-    # Flyttet til den nye bruger-tur (altid en miss) → [system + historik] bliver én
-    # stor stabil cachebar prefix. Jarvis ser de live-felter lige før sit svar.
-    if items and items[0].get("role") == "system" and items[0].get("content"):
-        try:
-            from core.services.prompt_contract import DYNAMIC_TAIL_SENTINEL
-            _sys_text = str(items[0]["content"][0].get("text", ""))
-            _sidx = _sys_text.find(DYNAMIC_TAIL_SENTINEL)
-            if _sidx != -1:
-                _tail_block = _sys_text[_sidx + len(DYNAMIC_TAIL_SENTINEL):].strip()
-                items[0]["content"][0]["text"] = _sys_text[:_sidx].rstrip()
-                if _tail_block:
-                    for _it in reversed(items):
-                        if _it.get("role") == "user" and _it.get("content"):
-                            _ut = str(_it["content"][0].get("text", ""))
-                            _it["content"][0]["text"] = (
-                                (_ut.rstrip() + "\n\n" + _tail_block) if _ut else _tail_block
-                            )
-                            break
-        except Exception:
-            pass
+    _insert_typed_system_tail_before_current_user(items, dynamic_tail)
 
     # Cache-sonde (slukket; touch /tmp/jarvis-msgdump). Sammenligner denne turs
     # beskeds-array med forrige turs og printer hvor langt det byte-identiske
@@ -553,6 +529,34 @@ def _build_visible_input(
         pass
 
     return items
+
+
+def _giv_modellen_oejne(messages: list[dict], *, session_id: str | None,
+                        model: str) -> None:
+    """Sæt billed-blokke på den sidste user-besked. Self-safe: fejl → uændret."""
+    try:
+        if not messages or not session_id:
+            return
+        from core.services.vision_backend import model_can_see
+        if not model_can_see(model):
+            return
+        sidste = None
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                sidste = m
+                break
+        if sidste is None or not isinstance(sidste.get("content"), str):
+            return
+        from core.services.attachment_blocks import image_content_blocks
+        from core.services.chat_sessions import latest_user_content_json
+        blokke = image_content_blocks(latest_user_content_json(session_id))
+        if not blokke:
+            return
+        sidste["content"] = [{"type": "text", "text": sidste["content"]}, *blokke]
+        logger.info("visible: %d billede(r) lagt direkte i konteksten (%s ser selv)",
+                    len(blokke), model)
+    except Exception:
+        logger.warning("kunne ikke give modellen øjne", exc_info=True)
 
 
 def _build_visible_chat_messages_for_github(
@@ -576,7 +580,7 @@ def _build_visible_chat_messages_for_github(
         user_message=message,
         session_id=session_id,
     )
-    instruction = assembly.text
+    instruction, dynamic_tail = _split_dynamic_tail(assembly.text)
     if not instruction:
         return [
             {"role": "user", "content": message},
@@ -607,34 +611,26 @@ def _build_visible_chat_messages_for_github(
     except Exception:
         logger.warning("hallucination_guard inject failed", exc_info=True)
 
-    messages.append({"role": "user", "content": message})
+    # The current user message is persisted before prompt assembly and is therefore
+    # already the transcript's final user turn. Appending it unconditionally created
+    # the exact duplicate observed in production.
+    _last_tm = assembly.transcript_messages[-1] if assembly.transcript_messages else None
+    if not _is_current_user_turn(_last_tm, message):
+        messages.append({"role": "user", "content": message})
 
-    # Cache-fix (2026-06-30): port DYNAMIC_TAIL_SENTINEL-splittet fra
-    # _build_visible_input til DENNE builder. Den betjener ALLE openai-compat
-    # visible-providere (deepseek/groq/openrouter/…). Uden splittet sad HELE
-    # den per-tur-dynamiske hale (recall, mood, continuity, time_pin, anchor)
-    # inde i system-beskeden → brød DeepSeek-cachen ~5-15k tokens inde og fik
-    # hele historikken til at misse (målt 2-10% hit i produktion vs 92% potentiale).
-    # Flyt halen efter sentinel'en ud på den SIDSTE bruger-besked → [system +
-    # tools + historik] bliver byte-stabil og cachebar; kun halen+turen misser.
-    if messages and messages[0].get("role") == "system":
-        try:
-            from core.services.prompt_contract import DYNAMIC_TAIL_SENTINEL
-            _sys_text = str(messages[0].get("content") or "")
-            _sidx = _sys_text.find(DYNAMIC_TAIL_SENTINEL)
-            if _sidx != -1:
-                _tail_block = _sys_text[_sidx + len(DYNAMIC_TAIL_SENTINEL):].strip()
-                messages[0]["content"] = _sys_text[:_sidx].rstrip()
-                if _tail_block:
-                    for _it in reversed(messages):
-                        if _it.get("role") == "user":
-                            _ut = str(_it.get("content") or "")
-                            _it["content"] = (
-                                (_ut.rstrip() + "\n\n" + _tail_block) if _ut else _tail_block
-                            )
-                            break
-        except Exception:
-            pass
+    _insert_system_tail_before_current_user(messages, dynamic_tail)
+
+    # ── Hans egne øjne (6/9-2026) ────────────────────────────────────────
+    # Billeder på DENNE tur lægges ind som rigtige indholdsblokke, når den
+    # model der svarer selv kan se. Uden det kunne han kun se et skærmbillede
+    # ved selv at kalde `read_attachment` — altså ved at vide at der var noget
+    # at kigge på og bede om det. Nu ligger det i konteksten som for et
+    # menneske der får en skærm vist.
+    #
+    # KUN den sidste besked røres, så det stabile præfiks er uberørt og
+    # cachen intakt. Kan modellen ikke se, sker der ingenting og
+    # vision-vejen står som før.
+    _giv_modellen_oejne(messages, session_id=session_id, model=model)
 
     # Cache-sonde (slukket; touch /tmp/jarvis-msgdump). DETTE er deepseek-stien
     # — sonden skal sidde efter hale-splittet, så den måler præcis det array der
@@ -647,6 +643,59 @@ def _build_visible_chat_messages_for_github(
         pass
 
     return messages
+
+
+def _split_dynamic_tail(instruction: str) -> tuple[str, str]:
+    """Separate volatile runtime instructions without changing their role."""
+    from core.services.prompt_contract import DYNAMIC_TAIL_SENTINEL
+
+    text = str(instruction or "")
+    index = text.find(DYNAMIC_TAIL_SENTINEL)
+    if index < 0:
+        return text, ""
+    return (
+        text[:index].rstrip(),
+        text[index + len(DYNAMIC_TAIL_SENTINEL):].strip(),
+    )
+
+
+def _is_current_user_turn(message: dict | None, current_text: str) -> bool:
+    """Match the persisted current turn, not merely any user-role runtime item."""
+    if not message or message.get("role") != "user":
+        return False
+    persisted = " ".join(str(message.get("content") or "").split())
+    current = " ".join(str(current_text or "").split())
+    if not current:
+        return persisted == current
+    # Multi-user transcript rendering may prefix the display name ("Bjørn: ...").
+    return persisted == current or persisted.endswith(f": {current}")
+
+
+def _insert_system_tail_before_current_user(
+    messages: list[dict[str, str]], tail: str
+) -> None:
+    """Keep volatile prompt sections cache-late while preserving system attribution."""
+    if not tail:
+        return
+    for index in range(len(messages) - 1, -1, -1):
+        if messages[index].get("role") == "user":
+            messages.insert(index, {"role": "system", "content": tail})
+            return
+    messages.append({"role": "system", "content": tail})
+
+
+def _insert_typed_system_tail_before_current_user(items: list[dict], tail: str) -> None:
+    if not tail:
+        return
+    item = {
+        "role": "system",
+        "content": [{"type": "input_text", "text": tail}],
+    }
+    for index in range(len(items) - 1, -1, -1):
+        if items[index].get("role") == "user":
+            items.insert(index, item)
+            return
+    items.append(item)
 
 
 def _visible_system_instruction_for_provider(

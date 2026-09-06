@@ -265,6 +265,9 @@ def exchange_openai_callback_code(*, profile: str) -> dict[str, Any]:
 
 
 def refresh_openai_access_token(*, profile: str) -> dict[str, Any]:
+    # Ryd udfalds-cachen: skriver vi nye tokens, skal et NEJ fra et minut
+    # siden ikke staa i vejen for at de virker med det samme.
+    _glem_token_cache(profile)
     credentials = get_provider_credentials(profile=profile, provider=PROVIDER_ID) or {}
     config = load_openai_oauth_config()
     client_id = str(config.get("client_id") or "").strip()
@@ -289,20 +292,61 @@ def refresh_openai_access_token(*, profile: str) -> dict[str, Any]:
     return stored
 
 
+# ── Kort cache om udfaldet (6/9-2026) ───────────────────────────────────────
+# `provider_auth_ready` kalder denne funktion som et READINESS-TJEK — og et
+# tjek udfoerte en netvaerks-fornyelse. Kandidat-listen spoerger én gang pr.
+# udbyder, saa ét enkelt daemon-kald gav 22 forsoeg mod auth.openai.com i
+# traek, hver paa ~0,2 s, ALLE med samme svar. Maalt paa CT105: seks tjek =
+# seks kald = 1,03 s, ready=False hver gang.
+#
+# Baade svaret JA og svaret NEJ caches. Det negative er det vigtigste: uden
+# det bliver et daarligt token til et hammer-loop mod en fremmed
+# auth-server. TTL'en er kort, saa en genoprettet legitimation opdages af sig
+# selv inden for et minut — og `_glem_token_cache()` kaldes naar vi selv
+# skriver nye tokens, saa en vellykket import virker med det samme.
+_TOKEN_CACHE_TTL_S = 60.0
+_TOKEN_CACHE_FEJL_TTL_S = 60.0
+_token_cache: dict[str, tuple[float, str | None]] = {}
+
+
+def _glem_token_cache(profile: str = "") -> None:
+    """Ryd cachen — for én profil, eller alle naar profile er tom."""
+    if profile:
+        _token_cache.pop(profile, None)
+    else:
+        _token_cache.clear()
+
+
 def get_openai_bearer_token(*, profile: str, auto_reimport: bool = True) -> str:
+    import time as _time
+
+    _naa = _time.monotonic()
+    _hit = _token_cache.get(profile)
+    if _hit is not None:
+        _sat, _vaerdi = _hit
+        _ttl = _TOKEN_CACHE_TTL_S if _vaerdi else _TOKEN_CACHE_FEJL_TTL_S
+        if (_naa - _sat) < _ttl:
+            if _vaerdi:
+                return _vaerdi
+            raise RuntimeError(
+                "OpenAI credentials missing usable api_key or oauth access_token "
+                "(husket fra et forsøg for under et minut siden — prøver ikke igen)"
+            )
+
     credentials = get_provider_credentials(profile=profile, provider=PROVIDER_ID) or {}
     api_key = str(credentials.get("api_key") or "").strip()
     if api_key:
-        return api_key
+        return api_key   # ikke cachet: den koster intet at slaa op
     access_token = str(credentials.get("access_token") or "").strip()
     expires_at_raw = str(credentials.get("expires_at") or "").strip()
     if access_token and not _is_expired(expires_at_raw):
-        return access_token
+        return access_token   # heller ikke: allerede en lokal opslagsvej
     # Try refresh; on refresh_token_reused error, auto-reimport from Codex CLI
     try:
         refreshed = refresh_openai_access_token(profile=profile)
         refreshed_token = str(refreshed.get("access_token") or "").strip()
         if refreshed_token:
+            _token_cache[profile] = (_naa, refreshed_token)
             return refreshed_token
     except RuntimeError as exc:
         err_msg = str(exc)
@@ -313,12 +357,18 @@ def get_openai_bearer_token(*, profile: str, auto_reimport: bool = True) -> str:
                 imported = import_openai_codex_session(profile=profile)
                 imported_token = str(imported.get("access_token") or "").strip()
                 if imported_token:
+                    _token_cache[profile] = (_naa, imported_token)
                     return imported_token
+        _token_cache[profile] = (_naa, None)
         raise
+    _token_cache[profile] = (_naa, None)
     raise RuntimeError("OpenAI credentials missing usable api_key or oauth access_token")
 
 
 def import_openai_codex_session(*, profile: str) -> dict[str, Any]:
+    # Ryd udfalds-cachen: skriver vi nye tokens, skal et NEJ fra et minut
+    # siden ikke staa i vejen for at de virker med det samme.
+    _glem_token_cache(profile)
     if not _CODEX_AUTH_PATH.exists():
         raise FileNotFoundError(f"Codex auth session not found at {_CODEX_AUTH_PATH}")
 

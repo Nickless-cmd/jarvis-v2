@@ -314,12 +314,17 @@ def search_jarvis_brain(
     domain: str | None = None,
     tags: list[str] | None = None,
     include_archived: bool = False,
+    min_cosine: float = 0.5,
 ) -> dict[str, Any]:
     """Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content.
 
     Filtrér automatisk på visibility ceiling.
-    Bumper salience for hver returneret entry.
+    Bumper salience for hver returneret entry (højst én gang pr. døgn pr. post).
     Inkluderer hidden_by_visibility-count så Jarvis ved at noget blev skjult.
+
+    2026-09-04 (memory repair, R1): ``min_cosine`` (default 0.5, samme gulv som
+    auto-inject) — tool-stien havde intet relevansgulv, så samme tophit kom
+    tilbage uanset spørgsmål.
     """
     from core.services import jarvis_brain
     try:
@@ -331,6 +336,7 @@ def search_jarvis_brain(
             domain=domain,
             tags=tags,
             include_archived=include_archived,
+            min_cosine=float(min_cosine),
         )
     except Exception as exc:
         return {"status": "error", "error": "search_failed", "details": str(exc)}
@@ -354,6 +360,7 @@ def search_jarvis_brain(
                 limit=max(limit * 3, 15),
                 domain=domain,
                 include_archived=include_archived,
+                min_cosine=float(min_cosine),
             )
             full_ids = {e.id for e in full}
             visible_ids = {e.id for e in results}

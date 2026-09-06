@@ -73,6 +73,14 @@ _Block local branch rewrites that can preserve stale actor attribution._
 | function | `_is_ancestor` | `(old, new)` | — | [src](../../../scripts/block_unattributed_ref_rewrite.py#L14) |
 | function | `main` | `(argv=…, *, input_text=…)` | — | [src](../../../scripts/block_unattributed_ref_rewrite.py#L24) |
 
+## `scripts/brain_salience_reset.py`
+_One-off: cap runaway salience_bumps in Jarvis' brain (memory repair 2026-09-04, R1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `reset_salience_bumps` | `(*, cap=…, apply=…)` | Cap ``salience_bumps`` at ``cap`` for every entry above it. | [src](../../../scripts/brain_salience_reset.py#L21) |
+| function | `main` | `()` | — | [src](../../../scripts/brain_salience_reset.py#L65) |
+
 ## `scripts/cache_rate_monitor.py`
 _Cache hit rate monitor._
 
@@ -220,16 +228,17 @@ _Pre-commit hook: catch kitchen-sink commits._
 |---|---|---|---|---|
 | function | `_staged_files` | `()` | — | [src](../../../scripts/enforce_commit_hygiene.py#L53) |
 | function | `_classify` | `(path)` | — | [src](../../../scripts/enforce_commit_hygiene.py#L63) |
-| function | `main` | `()` | — | [src](../../../scripts/enforce_commit_hygiene.py#L68) |
+| function | `_merge_in_progress` | `()` | A merge commit combines commits that already passed this gate one by | [src](../../../scripts/enforce_commit_hygiene.py#L68) |
+| function | `main` | `()` | — | [src](../../../scripts/enforce_commit_hygiene.py#L80) |
 
 ## `scripts/enforce_test_coverage.py`
 _Pre-commit hook: enforces test coverage for core/ code changes._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_is_covered` | `(path)` | Check if a file path falls under a directory we enforce tests for. | [src](../../../scripts/enforce_test_coverage.py#L157) |
-| function | `_expected_test_path` | `(staged_path, repo_root=…)` | Given a staged file path like 'core/services/foo.py', | [src](../../../scripts/enforce_test_coverage.py#L162) |
-| function | `main` | `(argv=…)` | Entry point.  Accept optional --repo-root to override REPO_ROOT. | [src](../../../scripts/enforce_test_coverage.py#L188) |
+| function | `_is_covered` | `(path)` | Check if a file path falls under a directory we enforce tests for. | [src](../../../scripts/enforce_test_coverage.py#L156) |
+| function | `_expected_test_path` | `(staged_path, repo_root=…)` | Given a staged file path like 'core/services/foo.py', | [src](../../../scripts/enforce_test_coverage.py#L161) |
+| function | `main` | `(argv=…)` | Entry point.  Accept optional --repo-root to override REPO_ROOT. | [src](../../../scripts/enforce_test_coverage.py#L187) |
 
 ## `scripts/god_file_map.py`
 _Read-only god-fil-kort: alle egne .py-filer ≥1500 linjer, karakteriseret (linjer, funktioner,_
@@ -420,38 +429,32 @@ _Mål Jarvis' svartid — fra send til svar._
 | function | `_api` | `(path, payload=…, stream=…)` | — | [src](../../../scripts/measure_turn_latency.py#L123) |
 | function | `probe` | `(rounds, message)` | — | [src](../../../scripts/measure_turn_latency.py#L134) |
 
-## `scripts/meta_evne_healthcheck.py`
-_Meta-evne healthcheck — read-only snapshot of all new tracker stacks._
+## `scripts/memory_md_dedupe_headings.py`
+_Merge duplicate `## ` headings in a MEMORY.md (memory repair 2026-09-04, R7)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_connect` | `()` | — | [src](../../../scripts/meta_evne_healthcheck.py#L30) |
-| function | `_count` | `(conn, sql, params=…)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L36) |
-| function | `_table_exists` | `(conn, name)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L44) |
-| function | `_hours_ago` | `(iso)` | — | [src](../../../scripts/meta_evne_healthcheck.py#L51) |
-| function | `probe_metacognition` | `(conn)` | Probe the metacognition_signals tracker. | [src](../../../scripts/meta_evne_healthcheck.py#L66) |
-| function | `probe_theory_of_mind` | `(conn)` | Probe the partner_knowledge_facts ledger. | [src](../../../scripts/meta_evne_healthcheck.py#L103) |
-| function | `probe_spatial_entity` | `(conn)` | Probe the room_entity_observations ledger. | [src](../../../scripts/meta_evne_healthcheck.py#L140) |
-| function | `probe_session_inbox` | `(conn)` | Probe the session_inbox daemon gate. | [src](../../../scripts/meta_evne_healthcheck.py#L166) |
-| function | `probe_inner_voice_shadow` | `(conn)` | Probe the inner_voice_shadow pilot. | [src](../../../scripts/meta_evne_healthcheck.py#L190) |
-| function | `probe_visible_runs` | `(conn)` | Sanity check: is the runtime actually producing visible runs? | [src](../../../scripts/meta_evne_healthcheck.py#L236) |
-| function | `render_text` | `(report)` | Render the report dict as a human-readable text block. | [src](../../../scripts/meta_evne_healthcheck.py#L266) |
-| function | `main` | `()` | CLI entry point: run all tracker probes and print the report. | [src](../../../scripts/meta_evne_healthcheck.py#L325) |
+| function | `_norm` | `(heading)` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L24) |
+| function | `dedupe_headings` | `(text)` | Return (new_text, merged_count). Only `## ` headings are merged. | [src](../../../scripts/memory_md_dedupe_headings.py#L28) |
+| function | `dedupe_file` | `(path, *, apply)` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L78) |
+| function | `main` | `()` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L92) |
 
-## `scripts/migrate_emotional_memory.py`
-_One-shot migration: copy memory_emotional_context rows into emotional_memory_anchors._
+## `scripts/memory_noise_cleanup.py`
+_One-off data cleanup after the memory repair (2026-09-04, Task 8)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `migrate` | `(*, batch_size=…)` | Migrate legacy rows into the new table. | [src](../../../scripts/migrate_emotional_memory.py#L32) |
-| function | `_legacy_table_exists` | `(conn)` | — | [src](../../../scripts/migrate_emotional_memory.py#L77) |
-
-## `scripts/mint_jarvisx_token.py`
-_Mint a JarvisX bearer token for a user._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_registry_path` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L35) |
-| function | `_append_registry` | `(entry)` | Append a token-issue entry to the audit registry. Best-effort. | [src](../../../scripts/mint_jarvisx_token.py#L40) |
-| function | `main` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L52) |
+| function | `_table_exists` | `(conn, name)` | — | [src](../../../scripts/memory_noise_cleanup.py#L43) |
+| function | `step_brain_salience` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L50) |
+| function | `step_policies_dedupe` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L56) |
+| function | `step_experiential_empty` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L89) |
+| function | `step_partner_facts` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L104) |
+| function | `step_embeddings_released` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L123) |
+| function | `step_retained_templates` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L140) |
+| function | `step_md_proposals_stale` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L161) |
+| function | `step_fts_rebuild` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L183) |
+| function | `step_memory_md_dedupe` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L190) |
+| function | `backup` | `(backup_dir)` | Consistent SQLite backup (sqlite3 backup API, safe with WAL) + MEMORY.md copy. | [src](../../../scripts/memory_noise_cleanup.py#L216) |
+| function | `run` | `(*, apply, only=…, backup_dir=…)` | — | [src](../../../scripts/memory_noise_cleanup.py#L241) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/memory_noise_cleanup.py#L256) |
 

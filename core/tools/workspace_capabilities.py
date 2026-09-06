@@ -6,7 +6,6 @@ import subprocess
 from hashlib import sha1
 from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
@@ -130,6 +129,13 @@ from core.tools.workspace_capabilities_verdict import (  # noqa: F401
     _mutating_exec_proposal_content,
     _resolve_target_path_for_sudo_exec,
     _sudo_exec_execution_content,
+)
+
+# Capability-approval persistence is kept in a focused module and re-exported
+# here for compatibility with existing callers.
+from core.tools.workspace_capabilities_approval import (  # noqa: F401
+    _persist_capability_approval_request,
+    _workspace_write_proposal_content,
 )
 
 _LAST_CAPABILITY_INVOCATION: dict[str, object] | None = None
@@ -2172,119 +2178,6 @@ def _persist_capability_invocation(
             ),
         )
         conn.commit()
-
-
-def _persist_capability_approval_request(
-    invocation: dict[str, object],
-    *,
-    requested_at: str,
-    run_id: str | None = None,
-) -> None:
-    capability = invocation.get("capability") or {}
-    approval = invocation.get("approval") or {}
-    proposal_content = invocation.get("proposal_content") or {}
-    # Stamp from workspace_context so capability approval rows carry the requesting user.
-    scheduled_for_user_id: str | None = None
-    initiated_by: str | None = None
-    try:
-        from core.identity.workspace_context import current_user_id
-        uid = current_user_id() or None
-        scheduled_for_user_id = uid
-        initiated_by = f"user:{uid}" if uid else "jarvis-self"
-    except Exception:
-        pass
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO capability_approval_requests (
-                request_id,
-                capability_id,
-                capability_name,
-                capability_kind,
-                execution_mode,
-                approval_policy,
-                run_id,
-                proposal_target_path,
-                proposal_content,
-                proposal_content_summary,
-                proposal_content_fingerprint,
-                proposal_content_source,
-                proposal_reason,
-                requested_at,
-                status,
-                scheduled_for_user_id,
-                initiated_by
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                f"cap-approval-{uuid4().hex}",
-                capability.get("capability_id") or "unknown",
-                capability.get("name"),
-                capability.get("kind"),
-                invocation.get("execution_mode") or "unknown",
-                approval.get("policy"),
-                run_id,
-                proposal_content.get("target"),
-                proposal_content.get("content"),
-                proposal_content.get("summary"),
-                proposal_content.get("fingerprint"),
-                proposal_content.get("source"),
-                proposal_content.get("reason"),
-                requested_at,
-                "pending",
-                scheduled_for_user_id,
-                initiated_by,
-            ),
-        )
-        conn.commit()
-
-
-def _workspace_write_proposal_content(
-    *,
-    summary: dict[str, object],
-    write_content: str | None,
-) -> dict[str, object] | None:
-    if str(summary.get("execution_mode") or "") != "workspace-file-write":
-        return None
-    content = str(write_content or "")
-    if not content:
-        return {
-            "state": "content-missing",
-            "type": "workspace-file-write-proposal",
-            "target": str(summary.get("target_path") or ""),
-            "content": "",
-            "summary": "",
-            "fingerprint": "",
-            "source": "explicit-write-content",
-            "reason": (
-                "Workspace write proposal exists, but no explicit write_content has been attached yet."
-            ),
-            "explicit_approval_required": True,
-            "approval_scope": "workspace-write",
-            "confidence": "low",
-            "target_identity": False,
-            "target_memory": False,
-            "workspace_scoped": True,
-        }
-    return {
-        "state": "bounded-content-ready",
-        "type": "workspace-file-write-proposal",
-        "target": str(summary.get("target_path") or ""),
-        "content": content,
-        "summary": _preview_text(content, limit=160),
-        "fingerprint": _content_fingerprint(content),
-        "source": "explicit-write-content",
-        "reason": (
-            f"Scoped workspace write proposal prepared for {summary.get('target_path') or 'workspace'}."
-        ),
-        "explicit_approval_required": True,
-        "approval_scope": "workspace-write",
-        "confidence": "high",
-        "target_identity": False,
-        "target_memory": False,
-        "workspace_scoped": True,
-    }
 
 
 def _now() -> str:

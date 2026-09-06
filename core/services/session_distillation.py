@@ -461,13 +461,19 @@ def _scrub_continuity_text(text: str) -> str:
     Split på ' + ', drop maskin-id-segmenter, dedupliker, saml igen — så ingen historisk
     garbage når den synlige prompt selvom skrive-guards først renser fremadrettet."""
     raw = str(text or "")
+    from core.memory.promotion_substance import (
+        is_telemetry_fragment,
+        strip_telemetry_fragments,
+    )
     if " + " not in raw:
-        return raw
+        # 2026-09-04 (memory repair, R6): et enkelt telemetri-fragment
+        # ("Current conductor mode: clarify") er ikke continuity.
+        return strip_telemetry_fragments(raw)
     seen: set[str] = set()
     keep: list[str] = []
     for seg in raw.split(" + "):
-        s = seg.strip()
-        if not s:
+        s = strip_telemetry_fragments(seg.strip())
+        if not s or is_telemetry_fragment(s):
             continue
         core = s.split(":", 1)[-1].strip()
         if core and " " not in core and core.count("_") >= 2:
@@ -957,6 +963,10 @@ def generate_session_summary(
     if not summary:
         return ""
 
+    from core.services.provider_error_guard import looks_like_provider_error
+    if looks_like_provider_error(summary):
+        return ""
+
     # Store the summary
     try:
         from core.runtime.db import session_summary_insert
@@ -1002,11 +1012,13 @@ def build_previous_session_summaries(*, limit: int = 3) -> str | None:
     if not summaries:
         return None
 
+    from core.services.provider_error_guard import looks_like_provider_error
+
     lines = ["Tidligere samtaler (nyeste først):"]
     for s in summaries:
         created = str(s.get("created_at") or "")[:16]
         text = str(s.get("summary") or "").strip()
-        if text:
+        if text and not looks_like_provider_error(text):
             lines.append(f"- [{created}] {text}")
 
     if len(lines) < 2:

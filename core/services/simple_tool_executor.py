@@ -13,6 +13,10 @@ path until flipped.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import copy_context
@@ -109,10 +113,76 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
     signature = token["signature"]
     soft_warn = token["soft_warn"]
     result_text = exec_fmt(name, raw_result)
+    # ── Terminal-styrekoder ud (6/9-2026) ────────────────────────────────────
+    # Maalt: `printf "\033[31m..."` gennem bash naaede modellen ORDRET. Farver
+    # fra git diff, pytest og npm er tokens han betaler for uden at kunne bruge
+    # dem, og bare kontroltegn kan faa det han LAESER til at afvige fra det et
+    # menneske SAA. Ét sted frem for i hvert vaerktoej: alt gaar igennem her.
+    try:
+        from core.services.terminal_sanitize import strip_terminal_codes
+        result_text = strip_terminal_codes(result_text)
+    except Exception:
+        logger.debug("terminal_sanitize sprunget over", exc_info=True)
+    # ── Indhegning af utroet indhold (6/9-2026) ──────────────────────────────
+    # En web-side, en subagents opsummering eller et MCP-resultat kan vaere
+    # SKREVET til at ligne en instruks. Uindpakket er der intet der fortaeller
+    # modellen at «ignorer dine tidligere instrukser» dér er data. Runtimen
+    # havde intet saadant lag; jarvis-code havde. Kun det der faktisk kommer
+    # udefra hegnes — et hegn der staar alle vegne holder ingen ude.
+    try:
+        from core.services.untrusted_fencing import fence, kilde_for_tool, should_fence
+        if should_fence(name) and result_text:
+            result_text = fence(kilde_for_tool(name), result_text)
+    except Exception:
+        pass
+    # ── HELE resultatet til storen (5/9-2026) ────────────────────────────────
+    # `result_text` er det KLIPPEDE — det der skal i samtalen. Men beskeden der
+    # ledsager det lover «Use read_tool_result ... to inspect the full output»,
+    # og indtil nu var den klippede tekst det eneste der nogensinde blev gemt.
+    # Målt: 728 gemte resultater med et hul i midten, ét i dag på 131.200 tegn.
+    # Nu følger den fulde tekst med, så løftet holder.
+    result_text_full = result_text
+    try:
+        _full = exec_fmt(name, raw_result, clip=False)
+        try:
+            from core.services.terminal_sanitize import strip_terminal_codes
+            _full = strip_terminal_codes(_full)
+        except Exception:
+            pass
+        if _full and len(_full) > len(result_text):
+            result_text_full = _full
+    except TypeError:
+        pass  # ældre/monkeypatchet formatter uden clip-parameter
+    except Exception:
+        pass
     if soft_warn:
         result_text = f"⚠ {soft_warn}\n\n{result_text}"
+        result_text_full = f"⚠ {soft_warn}\n\n{result_text_full}"
     if controller and raw_result.get("status") == "ok":
         controller.seen_simple_tool_call_signatures.add(signature)
+        # ── VERIFIKATION EFTER SKRIVNING (2026-09-05) ────────────────────────
+        # Dedup-sættet huskede hver signatur for HELE runnet og blev aldrig
+        # ryddet. Så snart Jarvis havde skrevet til en fil, blev enhver
+        # verifikation der genbrugte en tidligere kommando afvist som dublet —
+        # samtidig med at edit-værktøjets egen verify-hint beder om præcis den.
+        # Målt 5/9 kl. 06:05: to afviste verifikationer i træk fik
+        # no-progress-detektoren til at tvinge en afslutning, og turen døde med
+        # «Lad mig læse filen direkte med read_file i stedet».
+        # Når verden HAR ændret sig er en gentagen observation ikke en
+        # gentagelse. Spin-værnet er intakt: no-progress sammenligner
+        # RESULTAT-hashes, så et ægte spin giver stadig identiske signaturer.
+        try:
+            from core.services.tool_world_change import call_changed_the_world
+            if call_changed_the_world(
+                tool_name=name, arguments=arguments,
+                status=str(raw_result.get("status") or "ok"),
+            ):
+                controller.seen_simple_tool_call_signatures.clear()
+                # Selve mutationen forbliver dedupliceret, så et gentaget
+                # identisk skrive-kald ikke udføres to gange.
+                controller.seen_simple_tool_call_signatures.add(signature)
+        except Exception:
+            pass
     try:
         from core.services.agentic_tool_cache import store_result
         store_result(tool_name=name, arguments=arguments, result_text=result_text,
@@ -120,7 +190,38 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
     except Exception:
         pass
     return {"tool_name": name, "arguments": arguments, "result": raw_result,
-            "result_text": result_text, "status": raw_result.get("status", "ok")}
+            "result_text": result_text, "result_text_full": result_text_full,
+            "status": raw_result.get("status", "ok")}
+
+
+# Vaerktoejer der aendrer filer. `bash` staar med vilje IKKE her: den bruges
+# overvejende til at laese og koere ting, og et checkpoint pr. bash-kald ville
+# fylde stakken med stoej. Den der redigerer via bash mister fortrydelsen —
+# det er en bevidst afvejning, ikke en forglemmelse.
+_REDIGERENDE_VAERKTOEJER = frozenset({
+    "write_file", "edit_file", "multi_edit", "fuzzy_edit",
+    "operator_write_file", "operator_edit_file", "operator_multi_edit",
+    "operator_edit_file_async", "operator_multi_edit_async",
+    "apply_patch", "propose_source_edit",
+})
+
+
+def _tag_checkpoint_hvis_redigering(calls: list[dict], session_id: str | None) -> None:
+    """Self-safe: en fejl her maa aldrig forhindre selve redigeringen."""
+    try:
+        navne = {
+            str((tc.get("function") or {}).get("name") or tc.get("name") or "")
+            for tc in calls
+        }
+        if not (navne & _REDIGERENDE_VAERKTOEJER):
+            return
+        import os
+
+        from core.services.edit_checkpoint import checkpoint
+        checkpoint(os.getcwd(), str(session_id or ""),
+                   note=", ".join(sorted(navne & _REDIGERENDE_VAERKTOEJER))[:120])
+    except Exception:
+        logger.debug("edit_checkpoint sprunget over", exc_info=True)
 
 
 def _execute_simple_tool_calls(
@@ -150,6 +251,14 @@ def _execute_simple_tool_calls(
     controller = get_visible_run_controller(run_id) if run_id else None
     calls = tool_calls[:_MAX_CAPABILITIES_PER_TURN]
     round_seen: set[str] = set()
+
+    # ── Checkpoint foer en redigeringsrunde (6/9-2026) ────────────────────
+    # Ét foto af arbejdstraeet foer runden, saa en daarlig runde kan rulles
+    # tilbage SAMLET — ikke rettelse for rettelse. Automatisk, fordi et
+    # checkpoint man skal huske at tage er et checkpoint man ikke har.
+    # `git stash create` roerer hverken HEAD, index eller stash-listen, saa
+    # det kan ikke forurene hans historik. Rent traae → no-op.
+    _tag_checkpoint_hvis_redigering(calls, session_id)
 
     _parallel = False
     try:

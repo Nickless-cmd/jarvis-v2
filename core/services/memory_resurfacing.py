@@ -69,8 +69,8 @@ def _normalize(heading: str) -> str:
 
 def _list_memory_headings() -> list[tuple[str, str]]:
     """Return [(level_str, heading_text), ...] from MEMORY.md."""
-    from core.services.workspace_crypto import read_text_for_path
-    text = read_text_for_path(_memory_md())
+    from core.services.secret_redaction import read_for_prompt
+    text = read_for_prompt(_memory_md())
     if text is None:
         return []
     out = []
@@ -118,8 +118,8 @@ def _recently_resurfaced_headings() -> set[str]:
 
 def _content_for_heading(heading: str) -> str:
     """Return the content under the matching heading (up to next heading or EOF)."""
-    from core.services.workspace_crypto import read_text_for_path
-    text = read_text_for_path(_memory_md())
+    from core.services.secret_redaction import read_for_prompt
+    text = read_for_prompt(_memory_md())
     if text is None:
         return ""
     norm_target = _normalize(heading)

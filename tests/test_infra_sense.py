@@ -86,17 +86,19 @@ def test_parse_kv():
 def test_poll_ssh_hosts_observes(monkeypatch):
     central = _FakeCentral()
     monkeypatch.setattr(isense, "central", lambda: central)
+    # 'webservice' er ude af SSH_HOSTS siden 2026-09-02 (adressen laa paa det
+    # pensionerede 192.168.50.x-net). Fileserveren er nu den anden host.
     fake = {"root@10.0.0.2": "guests_running=6 guests_total=6 maxdisk=45 load1=1.8",
-            "root@192.168.50.32": "disk=19 svc_down=0",
             "root@10.0.0.10": "disk=24 smb=active"}
     monkeypatch.setattr(isense, "_ssh_run", lambda t, c, timeout=8.0: fake.get(t))
     res = isense.poll_ssh_hosts()
     assert res["pve"]["guests_running"] == 6
-    assert res["webservice"]["svc_down"] == 0
+    assert res["fileserver"]["smb"] == "active"
+    assert "webservice" not in res
     # observe pr. host + disk-tidsserie
     assert any(o["nerve"] == "pve_health" for o in central.observed)
     assert central_timeseries.recent("infra", "pve_disk")[-1].value == 45.0
-    assert central_timeseries.recent("infra", "webservice_svc_down")[-1].value == 0.0
+    assert central_timeseries.recent("infra", "fileserver_disk")[-1].value == 24.0
 
 
 def test_poll_ssh_hosts_down_host_skipped(monkeypatch):
@@ -226,3 +228,62 @@ def test_syslog_flag_clears_on_resume(monkeypatch):
     isense._syslog_stale_flagged = True  # var flagget → pakker flyder nu → skal ryddes
     isense.poll_syslog()
     assert isense._syslog_stale_flagged is False
+
+
+# ── Diskmålingen pegede på det forkerte, 05-09-2026 ─────────────────────────
+# Centralen råbte «Disk-pres på 'pve': 93%» 783 gange. Tallet kom fra
+# /sys/firmware/efi/efivars — et par hundrede kilobyte NVRAM der ALTID står
+# ~94% fuldt. Værtens rigtige filsystem stod på 40%.
+#
+# MEN presset var ægte: det sad på GÆSTERNES volumener, som `df` slet ikke ser.
+# pfSense stod på 96,9% og WebServices på 90,4%. Havde jeg kun rettet df, var
+# alarmen blevet tavs — og tavs er forkert.
+
+def test_df_udelukker_pseudo_filsystemer():
+    cmd = next(c for n, _t, c in isense.SSH_HOSTS if n == "pve")
+    assert "-x efivarfs" in cmd
+    assert "-x tmpfs" in cmd
+
+
+def test_pollen_maaler_thin_poolen():
+    """Poolen er det ENESTE tal der siger om vi kan løbe tør."""
+    cmd = next(c for n, _t, c in isense.SSH_HOSTS if n == "pve")
+    assert "pooldisk=" in cmd
+
+
+def test_pollen_maaler_IKKE_gaesternes_allokering():
+    """For et thin-volumen betyder 96,9% at blokkene er RØRT, ikke brugt. pfSense
+    stod på 96,9% mens dens ZFS-pool indeni brugte 7%. Uden discard stiger tallet
+    kun — det ville være blevet endnu en alarm der ALTID er høj."""
+    cmd = next(c for n, _t, c in isense.SSH_HOSTS if n == "pve")
+    assert "guestdisk" not in cmd
+
+
+def test_tidsserien_tager_det_VAERSTE_af_vaert_og_pool(monkeypatch):
+    """En thin-pool på 97% må ikke være usynlig bag en vært på 40%."""
+    optaget = {}
+    monkeypatch.setattr(isense, "_ssh_run",
+                        lambda t, c, **k: "guests_running=4 maxdisk=40 pooldisk=96")
+    monkeypatch.setattr(isense.central_timeseries, "record",
+                        lambda cl, n, *, value, meta=None: optaget.update({n: value}))
+    monkeypatch.setattr(isense, "central", lambda: type("C", (), {"observe": lambda s, d: None})())
+    isense.poll_ssh_hosts()
+    assert optaget["pve_disk"] == 96.0
+
+
+def test_vaerten_taeller_naar_den_er_vaerst(monkeypatch):
+    optaget = {}
+    monkeypatch.setattr(isense, "_ssh_run",
+                        lambda t, c, **k: "maxdisk=91 pooldisk=20")
+    monkeypatch.setattr(isense.central_timeseries, "record",
+                        lambda cl, n, *, value, meta=None: optaget.update({n: value}))
+    monkeypatch.setattr(isense, "central", lambda: type("C", (), {"observe": lambda s, d: None})())
+    isense.poll_ssh_hosts()
+    assert optaget["pve_disk"] == 91.0
+
+
+def test_webservice_er_med_igen_paa_sin_nye_adresse():
+    """Den FLYTTEDE, den forsvandt ikke. At fjerne et mål der er flyttet kurerer
+    symptomet og gør huset usynligt netop dér."""
+    ips = {n: ip for n, ip, _p in isense.HOSTS}
+    assert ips.get("webservice") == "10.0.0.12"

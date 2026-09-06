@@ -18,10 +18,22 @@ from __future__ import annotations
 
 import contextvars
 import logging
+import re
 from contextlib import contextmanager
 from typing import Any, Iterable, Iterator
 
 logger = logging.getLogger(__name__)
+
+_PERSONAL_CONTEXT_RE = re.compile(
+    r"\b(min|mit|mine|vores|jarvis|workspace|memory|hukommelse|huske|aftalt|"
+    r"besluttet|my|our|remember|decided)\b",
+    re.IGNORECASE,
+)
+_EXTERNAL_CONTEXT_RE = re.compile(
+    r"\b(web|internet|nyheder|latest|seneste|pris|kurs|weather|news|google|"
+    r"website|url|http|external|third[- ]party)\b",
+    re.IGNORECASE,
+)
 
 try:  # defensiv — undgå circular-import-brud ved boot
     from core.identity.workspace_context import current_user_id
@@ -78,6 +90,23 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
 # Chat-mode allowlist (gælder ALLE roller i chat). Member/guest får yderligere
 # OWNER_ONLY_TOOLS strippet ovenpå (så fx search_jarvis_brain kun er owner).
 CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
+    # Undersoegelse — laese-kun agent, aendrer intet
+    "explore",
+    # Kanalen til hans egen maskine. Gaten sidder i modulet (owner-only), ikke
+    # her — men uden for scope kunne han slet ikke aabne den.
+    "operator_channel",
+    # MCP: hele oekosystemet af eksterne vaerktoejer. Uden den i scope er
+    # registeret en adressebog uden telefon.
+    "mcp",
+    # Fortryd en hel redigeringsrunde.
+    "checkpoint",
+    # At se. Desk og mobil kan uploade billeder (POST /attachments), men
+    # vaerktoejet der kigger paa dem stod i INGEN scope — saa et skaermbillede
+    # i chat var noget han kunne modtage og ikke se paa. 6/9-2026.
+    "read_attachment",
+    # Arbejdshukommelse. Prompten har hele tiden vist hans todos og reglen om
+    # max ÉN i gang — uden at han kunne skrive til dem.
+    "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
     # Web / viden
     "web_search", "web_fetch", "web_scrape", "get_news",
     # Data
@@ -86,8 +115,8 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
     # Vision
     "analyze_image",
-    # Hukommelse — read
-    "search_memory", "memory_graph_query", "resurface_old_memory",
+    # Hukommelse — read (2026-09-04: `recall` = ét tool over alle kilder)
+    "recall", "search_memory", "memory_graph_query", "resurface_old_memory",
     "search_jarvis_brain", "read_brain_entry",
     # Hukommelse — write (egen + brugerens)
     "remember_this", "memory_upsert_section", "adjust_mood",
@@ -110,10 +139,26 @@ CHAT_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
 # Code-mode allowlist. Owner = container + workstation + dispatch; member/guest =
 # kun workstation (operator-bridge, sandboxet til deres egen maskine).
 CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
+    # Et skaermbillede af en fejl er ofte den korteste vej til at forstaa den.
+    "read_attachment",
+    "operator_channel",
+    "mcp",
+    "checkpoint",
     "operator_read_file", "operator_write_file", "operator_edit_file",
     "operator_bash", "operator_glob", "operator_grep", "operator_list_dir",
     "operator_bash_session_open", "operator_bash_session_run",
     "operator_bash_session_close", "operator_bash_session_list",
+    # 6/9-2026: de nye operator-vaerktoejer skal med her, ellers er de usynlige
+    # netop dér hvor de betyder mest. Det er ikke nok at registrere et vaerktoej
+    # — code-scope annoncerer kun 21, og et vaerktoej uden for listen findes
+    # reelt ikke for modellen.
+    "operator_multi_edit",
+    "operator_run_in_background", "operator_bash_output", "operator_kill_shell",
+    # Laese-kun undersoegelse. Hoerer hjemme i BEGGE modes: den aendrer intet og
+    # sparer den kontekst en manuel gennemlaesning ville koste.
+    "explore",
+    # Arbejdshukommelse — en kode-opgave er praecis dér man har brug for den.
+    "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
     # App-self-control (desk) — foreslå fuld adgang (trust) i code mode
     "request_app_action",
 })
@@ -260,6 +305,33 @@ def allowed_tool_names(
         result = result - LOCAL_EXEC_ONLY_TOOLS
 
     return _apply_computer_use_policy(result)
+
+
+def preferred_tools_for_user_message(user_message: str) -> list[str]:
+    """Order hint for tool choice; does not grant or revoke permissions."""
+    text = str(user_message or "")
+    if _PERSONAL_CONTEXT_RE.search(text) and not _EXTERNAL_CONTEXT_RE.search(text):
+        return ["recall", "search_memory", "search_jarvis_brain", "read_self_state"]
+    if _EXTERNAL_CONTEXT_RE.search(text):
+        return ["web_search", "web_fetch", "recall"]
+    return []
+
+
+def tool_routing_hint(user_message: str) -> str:
+    """Prompt hint for personal/internal vs external lookup intent."""
+    preferred = preferred_tools_for_user_message(user_message)
+    if not preferred:
+        return ""
+    if preferred[0] == "web_search":
+        return (
+            "Tool routing: brug eksterne web/data-tools kun når brugeren beder om "
+            "aktuel/offentlig/ekstern viden; ellers prøv Jarvis' egne kilder først."
+        )
+    return (
+        "Tool routing: dette ligner personlig/intern kontekst. Prøv recall/"
+        "search_memory/Jarvis brain før web_search; brug tredjeparts-kilder kun ved "
+        "eksplicit ekstern/aktuel forespørgsel."
+    )
 
 
 def is_tool_allowed(*, role: str, scope: str, name: str) -> bool:

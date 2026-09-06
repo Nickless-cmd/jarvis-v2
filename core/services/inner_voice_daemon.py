@@ -98,6 +98,24 @@ _voice_last_result: dict[str, object] | None = None
 # Main daemon
 # ---------------------------------------------------------------------------
 
+def _ren_stemme(summary: object) -> str:
+    """Gem ikke opgaven som var den svaret.
+
+    Modellen svarer nogle gange med den instruks den fik («The user asks me to
+    respond as Jarvis … as a JSON object»). Det er prosa, saa JSON-vaernet paa
+    laesesiden fanger det ikke. Maalt 5/9-2026: 323 af 27.011 raekker. Vi gemmer
+    tom streng i stedet — saa gaar laesesiden videre til forrige rene stemme.
+    """
+    tekst = str(summary or "").strip()
+    try:
+        from core.services.visible_inner_life import _is_instruction_echo
+        if _is_instruction_echo(tekst):
+            return ""
+    except Exception:
+        pass
+    return tekst
+
+
 def run_inner_voice_daemon(
     *,
     trigger: str = "heartbeat-idle",
@@ -217,7 +235,7 @@ def run_inner_voice_daemon(
             self_position=note.get("focus", "")[:100],
             current_concern=str(note.get("initiative") or "")[:200],
             current_pull=note.get("focus", "")[:200],
-            voice_line=note.get("summary", "")[:400],
+            voice_line=_ren_stemme(note.get("summary", ""))[:400],
             created_at=now_iso,
         )
     except Exception:

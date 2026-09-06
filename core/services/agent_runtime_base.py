@@ -290,9 +290,20 @@ def _run_agent_tool_loop(
                 # Per-agent transcript: log tool call + result
                 try:
                     from core.services.agent_transcript import write_tool_call, write_tool_result
+                    # `arguments` er en JSON-STRENG i OpenAI-formatet, ikke en
+                    # dict — den gamle isinstance-test var derfor altid falsk og
+                    # transkriptet gemte {} for hvert eneste kald. Bevis-fladen
+                    # var halvblind netop naar man skulle bruge den: man kunne se
+                    # AT agenten soegte, aldrig efter hvad.
+                    _raw = (tc.get("function") or {}).get("arguments")
+                    if isinstance(_raw, str):
+                        try:
+                            _raw = json.loads(_raw or "{}")
+                        except Exception:
+                            _raw = {"_uparsed": _raw[:400]}
                     write_tool_call(_aid, _tc_id,
                                     name=str((tc.get("function") or {}).get("name") or ""),
-                                    arguments=dict(tc.get("function", {}).get("arguments", {}) if isinstance(tc.get("function", {}).get("arguments"), dict) else {}))
+                                    arguments=_raw if isinstance(_raw, dict) else {})
                     write_tool_result(_aid, _tc_id, str(tool_out or "")[:2000])
                 except Exception:
                     pass
@@ -425,8 +436,22 @@ def _role_prompt(intro: str, *, tools: bool = False, structured: bool = True) ->
 # turns a policy into the real read-only tools that exist in the catalog. bash is
 # included: the command gate (gate_execution) blocks destructive commands, so a
 # researcher can still run `ls | wc -l` etc. safely.
-_READ_ONLY_TOOLS = ["read_file", "find_files", "glob", "grep", "search",
-                    "read_tool_result", "bash"]
+# 6/9-2026: `glob` og `grep` fandtes IKKE som runtime-vaerktoejer. De stod her
+# alligevel, saa en spawnet agent fik dem annonceret, kaldte `grep`, fik
+# «Unknown tool: grep» — og konkluderede saa «ingen forekomster» med
+# «Confidence: Hoej». Maalt paa en aegte koersel: 1 tool-kald, 185 output-tokens,
+# og et selvsikkert falsk negativ om en fil der laa lige der.
+#
+# Det er SAMME fejl som kommentaren ovenfor beskriver, et lag laengere inde:
+# foer var allowed_tools tom, nu var den fuld af fantomer. Et fantomvaerktoej er
+# vaerre end ingen, for agenten tror den har ledt.
+#
+# De aegte navne i runtimen er `search` (indhold) og `find_files` (navne);
+# kode-specifikke tilfoejet fordi en undersoegende agent naesten altid leder
+# efter et symbol eller en kaldsside. `operator_*` hoerer ikke til her — de
+# koerer paa Bjoerns maskine, ikke i runtimen.
+_READ_ONLY_TOOLS = ["read_file", "find_files", "search", "semantic_search_code",
+                    "find_symbol", "find_usages", "read_tool_result", "bash"]
 _TOOL_POLICY_SETS: dict[str, list[str]] = {
     "none": [],
     "read-only-runtime": list(_READ_ONLY_TOOLS),
@@ -435,8 +460,29 @@ _TOOL_POLICY_SETS: dict[str, list[str]] = {
 
 
 def tools_for_policy(policy: str) -> list[str]:
-    """Concrete tool-name allowlist for a tool_policy. Unknown/empty → []."""
-    return list(_TOOL_POLICY_SETS.get((policy or "").strip(), []))
+    """Concrete tool-name allowlist for a tool_policy. Unknown/empty → [].
+
+    Navnene tjekkes mod de FAKTISK registrerede handlere. Et navn der ikke
+    findes bliver droppet og logget som fejl — annoncerer man et vaerktoej der
+    ikke eksisterer, leder agenten forgaeves og rapporterer et selvsikkert
+    falsk negativ. Det skete for `grep`/`glob` og var usynligt, fordi
+    «Unknown tool» kun naaede agenten selv.
+    """
+    navne = list(_TOOL_POLICY_SETS.get((policy or "").strip(), []))
+    if not navne:
+        return navne
+    try:
+        from core.tools.simple_tools import _TOOL_HANDLERS
+    except Exception:
+        return navne  # fail-open: hellere annoncere end at staa uden vaerktoejer
+    findes = [n for n in navne if n in _TOOL_HANDLERS]
+    mangler = [n for n in navne if n not in _TOOL_HANDLERS]
+    if mangler:
+        logger.error(
+            "tool_policy %r annoncerer vaerktoejer der ikke findes: %s — droppet",
+            policy, mangler,
+        )
+    return findes
 
 
 AGENT_ROLE_TEMPLATES = {

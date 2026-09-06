@@ -90,9 +90,23 @@ def mc_runs(limit: int = 20) -> dict:
     """Runs-flade: aktiv run, sidste udfald/capability-brug, de seneste
     `limit` persisterede runs (med udledt failed/cancelled-tælling), seneste
     events samt seneste arbejds-enheder/-noter. Read-only projektion."""
-    surface = _visible_run_surface()
-    work = _visible_work_surface()
-    recent_runs = list(surface.get("persisted_recent_runs") or [])[: max(limit, 1)]
+    from core.identity.workspace_context import current_role, current_user_id
+
+    normalized_limit = max(int(limit), 1)
+    surface = _mc_facade("_visible_run_surface")()
+    work = _mc_facade("_visible_work_surface")()
+    # Bruger-scoping (6/9-2026): ruten returnerede ALLE brugeres runs til
+    # enhver autentificeret kalder. Owner ser alt — sine egne plus systemets
+    # egne autonome koersler, der ingen ejer har. Andre ser kun deres egne.
+    # Samme regel som approvals-koeen allerede foelger.
+    recent_runs = list(
+        _mc_facade("recent_visible_runs")(
+            limit=normalized_limit,
+            user_id=current_user_id() or None,
+            include_unassigned=current_role() in {"", "owner"},
+        )
+        or []
+    )
     failed_runs = [
         item
         for item in recent_runs
@@ -118,8 +132,55 @@ def mc_runs(limit: int = 20) -> dict:
 def mc_approvals(limit: int = 20) -> dict:
     """Approvals-flade: de seneste `limit` approval-requests (med udledt
     pending/approved-tælling), seneste persisterede invokationer og events."""
-    surface = _capability_invocation_surface()
-    requests = list(surface.get("recent_approval_requests") or [])[: max(limit, 1)]
+    from core.identity.workspace_context import current_role, current_user_id
+
+    normalized_limit = max(int(limit), 1)
+    surface = _mc_facade("_capability_invocation_surface")()
+    capability_requests = list(
+        _mc_facade("recent_capability_approval_requests")(
+            limit=normalized_limit,
+            user_id=current_user_id() or None,
+            include_unassigned=current_role() in {"", "owner"},
+        )
+        or []
+    )
+    tool_intent_requests = list(
+        _mc_facade("recent_tool_intent_approval_requests")(
+            limit=normalized_limit,
+            user_id=current_user_id() or None,
+            include_unassigned=current_role() in {"", "owner"},
+        )
+        or []
+    )
+    requests = []
+    from core.runtime.db_capability_approval import capability_approval_request_is_stale
+
+    for item in capability_requests:
+        stale = capability_approval_request_is_stale(item)
+        status = "stale" if stale and str(item.get("status") or "") == "pending" else str(item.get("status") or "")
+        requests.append(
+            {
+                **item,
+                "approval_system": "capability",
+                "status": status,
+                "stale": stale,
+                "active": status == "pending",
+            }
+        )
+    for item in tool_intent_requests:
+        status = str(item.get("effective_approval_state") or item.get("approval_state") or "")
+        requests.append(
+            {
+                **item,
+                "request_id": str(item.get("approval_id") or ""),
+                "approval_system": "tool-intent",
+                "status": status,
+                "stale": False,
+                "active": status == "pending",
+            }
+        )
+    requests.sort(key=lambda item: str(item.get("requested_at") or ""), reverse=True)
+    requests = requests[:normalized_limit]
     pending = [item for item in requests if str(item.get("status") or "") == "pending"]
     approved = [
         item for item in requests if str(item.get("status") or "") == "approved"
@@ -127,7 +188,7 @@ def mc_approvals(limit: int = 20) -> dict:
     return {
         "requests": requests,
         "recent_invocations": list(surface.get("persisted_recent_invocations") or [])[
-            : max(limit, 1)
+            : normalized_limit
         ],
         "recent_events": list(surface.get("recent_events") or []),
         "summary": {
@@ -370,6 +431,16 @@ def mc_life_projects() -> dict:
     return _mc_facade("build_life_projects_surface")()
 
 
+@router.post("/life-projects/{initiative_id}/endorse")
+def mc_endorse_life_project(initiative_id: str, note: str = "") -> dict:
+    """Sig god for en langsigtet hensigt uden at afslutte den."""
+    from core.services.life_projects import endorse_life_project
+    result = endorse_life_project(initiative_id, note=note)
+    if result.get("status") != "ok":
+        return {"ok": False, "error": result.get("error", "unknown error")}
+    return {"ok": True, "life_project": result.get("life_project") or {}}
+
+
 @router.post("/life-projects/{initiative_id}/abandon")
 def mc_abandon_life_project(initiative_id: str, note: str = "") -> dict:
     """Abandon a long-term intention without deleting its record."""
@@ -535,5 +606,3 @@ def mc_operations(limit: int = 20) -> dict:
         },
     }
     return _store_cached_mc_payload(cache_key, 3.0, payload)  # type: ignore[return-value]
-
-

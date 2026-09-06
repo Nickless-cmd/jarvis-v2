@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { CanonicalError, CanonicalRecoverable } from '../../lib/canonicalError'
 
 /** "Hvad gjorde systemet" — udledt af recoverable. Dansk, ærlig. */
@@ -40,17 +41,37 @@ function titleFor(err: CanonicalError): string {
  * hvad systemet gjorde (recoverable) · fix_hint · CTA. Falder pænt tilbage når kun
  * legacy-felter er sat.
  */
+/** Redningshandlinger i fejløjeblikket. Hver enkelt vises KUN når den er
+ *  ægte i situationen — en knap der ikke kan gøre noget er værre end ingen
+ *  knap, fordi den koster et klik og et håb. */
+export interface Redning {
+  /** Prøv igen med en stærkere model. Kun meningsfuld for member-tier
+   *  (standard → pro); for owner er «stærkere» ikke defineret, og et gæt
+   *  kunne lige så godt vælge en dårligere model. */
+  onStaerkere?: () => void
+  /** Rul sidste redigeringsrunde tilbage. Kun når sessionen HAR checkpoints.
+   *  Returnerer den linje kortet skal vise bagefter — så resultatet ikke skal
+   *  trådes gennem hele viewet for at blive synligt. */
+  onFortryd?: () => Promise<string>
+  /** Skift til «spørg før ændringer». Kun når man står i trust. */
+  onSpoergFoerst?: () => void
+}
+
 export function ErrorCard({
   error,
   onRetry,
   onDismiss,
   onDetails,
+  redning,
 }: {
   error: CanonicalError
   onRetry?: () => void
   onDismiss: () => void
   onDetails?: () => void
+  redning?: Redning
 }) {
+  const [ruller, setRuller] = useState(false)
+  const [kvittering, setKvittering] = useState('')
   const action = systemActionText(error.recoverable)
   const showRetry = error.retryable && !!onRetry
   return (
@@ -70,12 +91,39 @@ export function ErrorCard({
             Prøv igen
           </button>
         )}
+        {redning?.onStaerkere && (
+          <button type="button" className="errorcard-alt" onClick={redning.onStaerkere}>
+            Prøv med Pro
+          </button>
+        )}
+        {redning?.onFortryd && (
+          <button
+            type="button"
+            className="errorcard-alt"
+            disabled={ruller}
+            onClick={() => {
+              setRuller(true)
+              redning.onFortryd!()
+                .then(setKvittering)
+                .catch(() => setKvittering('Kunne ikke fortryde'))
+                .finally(() => setRuller(false))
+            }}
+          >
+            {ruller ? 'Fortryder…' : 'Fortryd sidste ændringer'}
+          </button>
+        )}
+        {redning?.onSpoergFoerst && (
+          <button type="button" className="errorcard-alt" onClick={redning.onSpoergFoerst}>
+            Spørg før ændringer
+          </button>
+        )}
         {onDetails && (
           <button type="button" className="errorcard-details" onClick={onDetails}>
             Se detaljer
           </button>
         )}
       </div>
+      {kvittering && <p className="errorcard-kvittering">{kvittering}</p>}
     </div>
   )
 }

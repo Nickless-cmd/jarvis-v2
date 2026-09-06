@@ -112,6 +112,16 @@ def extract_rules_from_arc(arc_path: Path) -> dict[str, Any]:
 
     _mark_processed(arc_path)
 
+    # 2026-09-04 (memory repair, R4): reglerne går i lessons-lageret som
+    # "proposed" — de bliver først synlige når de er set to gange. RULES.md
+    # indeholdt bl.a. "deaktiver governance-mekanismer", som aldrig skal stå
+    # i prompten på én arcs ord.
+    try:
+        from core.services.lessons import record_review_lessons
+        record_review_lessons(list(rules), "arc_rule")
+    except Exception:
+        pass
+
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish(
@@ -168,7 +178,15 @@ def extract_rules_for_unprocessed_arcs() -> dict[str, Any]:
 
 
 def arc_rules_section(*, max_lines: int = 6) -> str:
-    """Render most recent extracted rules as prompt awareness section."""
+    """Retired 2026-09-04 (memory repair, R4): arc rules reach the prompt only
+    through the lessons store (core.services.lessons.build_lessons_section),
+    after they have been seen twice. Always returns "".
+    """
+    return ""
+
+
+def _legacy_arc_rules_section(*, max_lines: int = 6) -> str:
+    """Pre-2026-09-04 renderer, kept for reference/tests of the file format."""
     rules_file = _rules_path()
     if not rules_file.exists():
         return ""

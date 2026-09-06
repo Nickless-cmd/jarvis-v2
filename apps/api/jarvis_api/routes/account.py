@@ -25,8 +25,13 @@ def build_account_profile(
     get_tier: Callable[[str], str],
     is_google_linked: Callable[[str], bool] | None = None,
     get_identity_role: Callable[[str], str | None] | None = None,
+    get_identity_name: Callable[[str], str | None] | None = None,
 ) -> dict[str, Any]:
     """Ren projektion — testbar uden HTTP. Owner (uid='') har ingen række.
+
+    get_identity_name: visningsnavn fra users.json. Profilen havde intet navn,
+    kun en email der ofte er tom — så indstillings-hovedet kunne ikke svare på
+    «hvis konto er det her?». Navnet står i users.json og koster ét opslag.
 
     get_identity_role: fallback-rolle fra users.json (samme kilde som whoami).
     Nødvendig fordi users.json-only brugere (fx owner Bjørn) IKKE står i
@@ -34,9 +39,11 @@ def build_account_profile(
     'member'. Vi konsulterer derfor identitets-laget når SQLite-rækken mangler.
     """
     linked = bool(is_google_linked(user_id)) if is_google_linked else False
+    name = (get_identity_name(user_id) if get_identity_name else None) or ""
     if not user_id:
         return {
             "user_id": "",
+            "name": name,
             "email": "",
             "email_verified": True,
             "language": "da",
@@ -48,6 +55,7 @@ def build_account_profile(
     role = row.get("role") or (get_identity_role(user_id) if get_identity_role else None) or "member"
     return {
         "user_id": user_id,
+        "name": name or (row.get("name") or ""),
         "email": row.get("email", "") or "",
         "email_verified": bool(row.get("email_verified")),
         "language": row.get("language") or "da",
@@ -55,6 +63,16 @@ def build_account_profile(
         "tier": get_tier(user_id) or (row.get("tier") or "free"),
         "google_linked": linked,
     }
+
+
+def _identity_name(user_id: str) -> str | None:
+    """Visningsnavn fra users.json — None hvis ukendt."""
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(str(user_id))
+        return getattr(u, "name", None) if u else None
+    except Exception:
+        return None
 
 
 def _identity_role(user_id: str) -> str | None:
@@ -82,6 +100,7 @@ async def account_me() -> dict[str, Any]:
         get_tier=quota_store.get_tier,
         is_google_linked=user_db.has_google_link,
         get_identity_role=_identity_role,
+        get_identity_name=_identity_name,
     )
 
 
@@ -424,6 +443,47 @@ async def account_mcp_remove(server_id: str) -> dict[str, Any]:
     return await asyncio.to_thread(remove_mcp_server, server_id)
 
 
+@router.get("/mcp/trust")
+async def account_mcp_trust() -> dict[str, Any]:
+    """Hvilke servere er GODKENDT, og hvad er de pinnet til?
+
+    Registeret (`/mcp`) er en adressebog; det her er beslutningen. Uden denne
+    rute kunne man tilfoeje en server i UI'et og ALDRIG godkende den derfra —
+    saa var den tilfoejet og ubrugelig.
+    """
+    from core.services.mcp_manager import status as mcp_status
+    return await asyncio.to_thread(mcp_status)
+
+
+@router.post("/mcp/{server_name}/allow")
+async def account_mcp_allow(server_name: str) -> dict[str, Any]:
+    """Owner-only: godkend en MCP-server til at koere paa Bjoerns vegne.
+
+    Samme graense som operator-kanalen: det er en fremmed server der faar lov
+    at handle. Foerste forbindelse pinner maalet (sha256 for stdio, vaert for
+    http); skifter det bagefter, blokeres den indtil den godkendes paa ny.
+    """
+    snap = current_context_snapshot()
+    if _current_role(snap.get("user_id") or "") != "owner":
+        raise HTTPException(status_code=403, detail="Kun owner kan godkende en MCP-server")
+    from core.services.mcp_trust import allow
+    return await asyncio.to_thread(allow, server_name)
+
+
+@router.post("/mcp/{server_name}/revoke")
+async def account_mcp_revoke(server_name: str) -> dict[str, Any]:
+    """Owner-only: tilbagekald godkendelsen OG drop pinnen.
+
+    Pinnen ryger med, saa en genkendelse er en ny beslutning frem for en tavs
+    genoptagelse af den gamle tillid.
+    """
+    snap = current_context_snapshot()
+    if _current_role(snap.get("user_id") or "") != "owner":
+        raise HTTPException(status_code=403, detail="Kun owner kan tilbagekalde en MCP-server")
+    from core.services.mcp_trust import revoke
+    return await asyncio.to_thread(revoke, server_name)
+
+
 @router.get("/quota")
 async def account_quota() -> dict[str, Any]:
     """Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type
@@ -460,15 +520,29 @@ def build_data_export(
         notes = list_notes(user_id, limit=100).get("notes", [])
     except Exception:
         pass
+    # De fire hukommelses-lag hører MED i eksporten. Noten herunder sagde før at
+    # chat-historik og hukommelse «kan udleveres på forespørgsel» — men
+    # portabilitet betyder at man FÅR sine data, ikke at man skal bede om dem.
+    # Fejler et lag, bærer det sin egen fejl-note: en delvis eksport er mere
+    # værd end ingen.
+    data: dict[str, Any] = {}
+    try:
+        from core.services.account_data_controls import export_all
+        data = export_all(user_id)
+    except Exception as exc:
+        data = {"error": f"{type(exc).__name__}: {exc}"}
+
     return {
         "exported_for": user_id or "owner",
         "profile": profile,
         "connectors": connectors,
         "notes": notes,
-        "note": (
-            "Chat-historik og hukommelse ligger server-side pr. bruger og kan "
-            "udleveres på forespørgsel. Connector-tokens er bevidst udeladt af eksporten."
-        ),
+        "sessions": data.get("sessions"),
+        "senses": data.get("senses"),
+        "brain": data.get("brain"),
+        "identity": data.get("identity"),
+        "exported_at": data.get("exported_at"),
+        "note": "Connector-tokens er bevidst udeladt af eksporten.",
     }
 
 
@@ -539,3 +613,48 @@ async def account_erase(payload: dict = Body(default={})) -> dict[str, Any]:
 
     from core.services.data_erasure import erase_user
     return await asyncio.to_thread(erase_user, uid, mode=mode, actor="self")
+
+
+# ── Datakontrol (GDPR) ───────────────────────────────────────────────────────
+#
+# Bjørn 3. sept.: appen manglede kontoinfo og muligheden for at slette sine
+# sessioner og sin hukommelse, «lige som GDPR-loven foreskriver».
+#
+# Sletning er LAGVIS med vilje. «Slet alt» findes, men som en sammensætning af
+# de fire lag — ikke som en femte, skjult vej. Se
+# core/services/account_data_controls.py for hvorfor.
+
+
+@router.get("/data")
+async def account_data_overview() -> dict[str, Any]:
+    """Hvad har vi om dig, lag for lag. Rene tal — intet indhold.
+
+    Tallene skal stå ved siden af sletteknappen: en knap uden et tal beder folk
+    om at gætte hvad de mister.
+    """
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    from core.services.account_data_controls import data_overview
+    return await asyncio.to_thread(data_overview, user_id)
+
+
+@router.delete("/data/{layer}")
+async def account_delete_layer(layer: str) -> dict[str, Any]:
+    """Slet ét lag: sessions | senses | brain | identity — eller `all`.
+
+    Uigenkaldeligt. Bekræftelsen hører hjemme i klienten; her udføres den.
+    Alt er user-scopet: en bruger kan aldrig ramme en andens data.
+    """
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    from core.services.account_data_controls import delete_all, delete_layer
+
+    key = str(layer or "").strip().lower()
+    if key == "all":
+        return await asyncio.to_thread(delete_all, user_id)
+    try:
+        return await asyncio.to_thread(delete_layer, user_id, key)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+

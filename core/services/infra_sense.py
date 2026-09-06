@@ -35,7 +35,12 @@ HOSTS: list[tuple[str, str, int]] = [
     ("pihole", "10.0.0.5", 443),
     ("fileserver", "10.0.0.10", 22),
     ("home_assistant", "10.0.0.34", 8123),
-    ("webservice", "192.168.50.32", 22),
+    # 'webservice' FLYTTEDE, den forsvandt ikke. Den lå på 192.168.50.32 indtil
+    # det net blev pensioneret 30/8, og blev 2026-09-02 fjernet herfra fordi den
+    # flagede UNREACHABLE ved hvert tick — men det var at kurere symptomet.
+    # Hosten er VM 101 «WebServices» på pve (10.0.0.2) og svarer i dag på
+    # 10.0.0.12:22 (verificeret 5/9 via qemu-agent + tcp-probe).
+    ("webservice", "10.0.0.12", 22),
 ]
 
 _PROBE_TIMEOUT = 3.0
@@ -125,7 +130,7 @@ def poll_pfsense() -> dict[str, Any]:
     out: dict[str, Any] = {}
     try:
         from core.runtime.secrets import read_runtime_key
-        key = read_runtime_key("pfsense_api_key")
+        key = read_runtime_key("pfsense_api_key", env_override="JARVIS_PFSENSE_API_KEY")
     except Exception:
         key = None
     if not key:
@@ -151,10 +156,24 @@ SSH_HOSTS: list[tuple[str, str, str]] = [
     ("pve", "root@10.0.0.2",
      "R=$(( $(pct list 2>/dev/null|tail -n+2|grep -cw running) + $(qm list 2>/dev/null|tail -n+2|grep -cw running) ));"
      "T=$(( $(pct list 2>/dev/null|tail -n+2|wc -l) + $(qm list 2>/dev/null|tail -n+2|wc -l) ));"
-     "echo guests_running=$R guests_total=$T maxdisk=$(df --output=pcent 2>/dev/null|tail -n+2|tr -d ' %'|sort -n|tail -1) load1=$(cut -d' ' -f1 /proc/loadavg)"),
-    ("webservice", "root@192.168.50.32",
-     "echo disk=$(df --output=pcent / 2>/dev/null|tail -1|tr -d ' %') "
-     "svc_down=$(systemctl is-active apache2 postfix dovecot mariadb clamav-daemon fail2ban cloudflared 2>/dev/null|grep -vc '^active')"),
+     # Tre maal, og de er IKKE det samme — det tog to forsoeg at faa rigtigt:
+     #
+     # `maxdisk`  vaertens egne filsystemer. `-x efivarfs` er afgoerende:
+     #            /sys/firmware/efi/efivars er et par hundrede kilobyte NVRAM der
+     #            ALTID staar ~94% fuldt, og dét tal raabte alarmen 783 gange.
+     #
+     # `pooldisk` thin-poolens forbrug — det ENESTE tal der siger om vi kan loebe
+     #            toer. Maalt 5/9: 11%.
+     #
+     # IKKE gaesternes `data_percent`. Foerste rettelse brugte dem, og det var
+     # forkert: for et thin-volumen betyder 96,9% at blokkene er ROERT, ikke brugt.
+     # pfSense stod paa 96,9% mens dens ZFS-pool indeni kun brugte 1,35 af 18,5 GB
+     # (7%). Uden `discard=on` gives blokke aldrig tilbage, saa tallet stiger kun
+     # og ville vaere blevet endnu en alarm der ALTID er hoej. Gaesternes eget
+     # forbrug maa maales INDE i gaesten, ikke paa hypervisoren.
+     "echo guests_running=$R guests_total=$T maxdisk=$(df -x tmpfs -x devtmpfs -x efivarfs -x squashfs -x overlay -x fuse.lxcfs --output=pcent 2>/dev/null|tail -n+2|tr -d ' %'|sort -n|tail -1)"
+     " pooldisk=$(lvs --noheadings -o data_percent --select 'lv_attr=~^t' 2>/dev/null|awk '{print int($1)}'|sort -n|tail -1)"
+     " load1=$(cut -d' ' -f1 /proc/loadavg)"),
     ("fileserver", "root@10.0.0.10",
      "echo disk=$(df --output=pcent /mnt/shares 2>/dev/null|tail -1|tr -d ' %') "
      "smb=$(systemctl is-active smbd 2>/dev/null||echo inactive)"),
@@ -196,8 +215,14 @@ def poll_ssh_hosts() -> dict[str, Any]:
             central().observe({"cluster": "infra", "nerve": f"{name}_health", "kind": "observe", **kv})
         except Exception:
             pass
-        # disk-tidsserie (health-proxy, higher=worse) pr. host
+        # disk-tidsserie (health-proxy, higher=worse) pr. host. Paa en hypervisor
+        # taeller det VAERSTE af vaertens filsystemer og thin-poolen — de er begge
+        # ting der kan loebe toer. Gaesternes allokering er IKKE med; se kommentaren
+        # ved SSH_HOSTS for hvorfor den maaler noget andet end den ser ud til.
         disk = kv.get("maxdisk", kv.get("disk"))
+        pool = kv.get("pooldisk")
+        if isinstance(pool, int) and (not isinstance(disk, int) or pool > disk):
+            disk = pool
         if isinstance(disk, int):
             central_timeseries.record("infra", f"{name}_disk", value=float(disk), meta=dict(kv))
         if "svc_down" in kv:
@@ -268,7 +293,7 @@ def _pfsense_syslogd_running() -> bool | None:
     (Service-status-endpointet er upålideligt — rapporterer False mens processen kører.)"""
     try:
         from core.runtime.secrets import read_runtime_key
-        key = read_runtime_key("pfsense_api_key")
+        key = read_runtime_key("pfsense_api_key", env_override="JARVIS_PFSENSE_API_KEY")
     except Exception:
         key = None
     if not key:
@@ -291,7 +316,7 @@ def _pfsense_restart_syslogd() -> bool:
     (kun logging-daemon, ingen regel-ændring) — bag _SYSLOGD_AUTOHEAL-flag + Bjørns samtykke."""
     try:
         from core.runtime.secrets import read_runtime_key
-        key = read_runtime_key("pfsense_api_key")
+        key = read_runtime_key("pfsense_api_key", env_override="JARVIS_PFSENSE_API_KEY")
     except Exception:
         key = None
     if not key:

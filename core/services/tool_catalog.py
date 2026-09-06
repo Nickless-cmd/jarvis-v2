@@ -30,11 +30,35 @@ _HEADER = (
 # (især self_restart/self_wakeup + operator-desktop). Navnene SKAL matche de
 # faktisk registrerede tool-navne, ellers skjules de stille.
 _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
+    # 6/9-2026: `explore` staar FOERST med vilje. Den var bygget, testet,
+    # registreret, synlig i alle scopes OG naevnt i en awareness-vejledning — og
+    # blev stadig ikke brugt: bedt om at finde SSRF-vaernet lavede han 13
+    # bash-kald, 6 soegninger og 4 fil-laesninger. Grunden stod her: hans
+    # kerne-liste sagde read_file/search/find_files/bash, altsaa praecis det han
+    # gjorde, og naevnte aldrig alternativet.
+    #
+    # En vejledning laengere nede i prompten konkurrerer mod 8.256 tegn
+    # cognitive_state; INVENTARET er dét han laeser naar han spoerger sig selv
+    # «hvad kan jeg». Det er loeftestangen, ikke mere instruks-tekst.
     ("Filer & kode", [
+        "explore",
         "read_file", "write_file", "edit_file", "search", "find_files",
         "bash", "run_pytest", "db_query", "git_status",
     ]),
+    # 6/9-2026: todo-vaerktoejerne fandtes med service, fem tools OG en
+    # prompt-sektion der siger «max ÉN maa vaere ▶» — men de var usynlige i
+    # ALLE scopes og fraviaerende her. Prompten mindede ham altsaa om en evne han
+    # ikke kunne naa. Det er vaerre end at mangle den: den peger paa noget der
+    # ikke er der.
+    ("Arbejdshukommelse", [
+        "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
+    ]),
     ("Web", ["web_search", "web_fetch"]),
+    # At se selv: har den model der svarer oejne, faar den pixels direkte;
+    # ellers laeser en vision-model billedet og svarer paa spoergsmaalet.
+    ("Syn", ["read_attachment"]),
+    # Eksterne vaerktoejer via MCP — ét vaerktoej, mange servere bagved.
+    ("MCP (eksterne værktøjer)", ["mcp"]),
     ("Hukommelse", [
         "search_memory", "recall_memories", "remember_this",
         "read_memory_topic", "write_memory_topic",
@@ -45,7 +69,15 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
         "schedule_task", "schedule_recurring",
     ]),
     ("Operator (din egen maskine/desktop)", [
+        # Aabn kanalen, saa gaar `bash` derover af sig selv — i stedet for at
+        # skulle huske operator_-navnene ved hvert eneste kald.
+        "operator_channel",
         "operator_bash", "operator_read_file", "operator_write_file",
+        # Bygget 5-6/9 og skjult af samme grund som explore: de stod ikke her.
+        "operator_edit_file", "operator_multi_edit",
+        # Fortryd en hel runde — automatisk foto foer hver redigering.
+        "checkpoint",
+        "operator_run_in_background", "operator_bash_output", "operator_kill_shell",
         "operator_list_dir", "operator_launch_app", "operator_screenshot",
         "operator_browser_open", "operator_keyboard_type", "operator_mouse_click",
         "operator_reminder", "operator_wakeup", "operator_speak", "operator_notify",

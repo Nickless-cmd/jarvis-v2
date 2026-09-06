@@ -3,7 +3,7 @@ import type { ApiConfig } from '../lib/api'
 import { getQuota, type QuotaOverview } from '../lib/accountApi'
 
 const LABELS: Record<string, string> = {
-  chat: 'Chat', code: 'Kode', cowork: 'Cowork', agent: 'Agent',
+  chat: 'Chat', code: 'Kode', cowork: 'Arbejde', agent: 'Agent',
 }
 
 /** Forbrug & kvote (§5.2): tier + brug pr. type. Read-only, self-scoped. */

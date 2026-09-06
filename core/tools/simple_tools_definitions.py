@@ -17,13 +17,10 @@ from core.tools.browser_tools import (BROWSER_TOOL_DEFINITIONS)
 from core.tools.comfyui_tools import (COMFYUI_TOOL_DEFINITIONS)
 from core.tools.pollinations_tools import (POLLINATIONS_TOOL_DEFINITIONS)
 from core.tools.hf_inference_tools import (HF_INFERENCE_TOOL_DEFINITIONS)
-from core.tools.tiktok_content_tools import (TIKTOK_CONTENT_TOOL_DEFINITIONS)
 from core.tools.mic_listen_tool import (MIC_LISTEN_TOOL_DEFINITIONS)
 from core.tools.screen_tool import (SCREEN_TOOL_DEFINITIONS)
 from core.tools.voice_journal_tool import (VOICE_JOURNAL_TOOL_DEFINITIONS)
 from core.tools.wake_word_tool import (WAKE_WORD_TOOL_DEFINITIONS)
-from core.tools.tiktok_tools import (TIKTOK_TOOL_DEFINITIONS)
-from core.tools.tiktok_analytics_tools import (TIKTOK_ANALYTICS_TOOL_DEFINITIONS)
 from core.tools.restart_self_tools import (RESTART_SELF_TOOL_DEFINITIONS)
 from core.tools.mail_tools import (MAIL_TOOL_DEFINITIONS)
 from core.tools.github_tools import (GITHUB_TOOL_DEFINITIONS)
@@ -105,6 +102,7 @@ from core.tools.webhook_tools import (WEBHOOK_TOOL_DEFINITIONS)
 from core.tools.health_monitor_tools import (HEALTH_MONITOR_TOOL_DEFINITIONS)
 from core.tools.sensory_tools import (SENSORY_TOOL_DEFINITIONS)
 from core.tools.recall_memory_tools import (RECALL_MEMORY_TOOL_DEFINITIONS)
+from core.tools.recall_tool import RECALL_TOOL_DEFINITIONS
 from core.tools.goals_tools import (GOAL_TOOL_DEFINITIONS)
 from core.tools.decisions_tools import (DECISION_TOOL_DEFINITIONS)
 from core.tools.composites_tools import (COMPOSITE_TOOL_DEFINITIONS)
@@ -250,6 +248,122 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "replace_all": {"type": "boolean", "description": "Replace every occurrence (default false = error if more than one match)"},
                 },
                 "required": ["path", "old_string", "new_string"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "explore",
+            "description": (
+                "Send a read-only research agent to look something up for you, "
+                "in parallel with your own work. Give it a question in plain "
+                "words — it reads files, greps, searches, and comes back with "
+                "findings (paths + line numbers where relevant). It changes "
+                "nothing. Use it whenever answering would mean reading across "
+                "several files and you only want the conclusion. Cheaper than "
+                "reading everything yourself into your own context."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "What you want to find out, in plain words"},
+                    "breadth": {
+                        "type": "string",
+                        "enum": ["quick", "medium", "thorough"],
+                        "description": "How hard it should look (default medium)",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_run_in_background",
+            "description": (
+                "Start a long-running command on the OPERATOR'S DESKTOP without "
+                "blocking the turn. Returns {shell_id, pid}. Poll it with "
+                "operator_bash_output, stop it with operator_kill_shell. The "
+                "process is detached: it survives runtime restarts."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "Shell command to run in the background"},
+                    "cwd": {"type": "string", "description": "Working directory (optional)"},
+                },
+                "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_bash_output",
+            "description": (
+                "Read NEW output from a background shell on the operator's "
+                "desktop. Pass the `offset` from the previous call to read "
+                "incrementally. Returns {output, offset, running}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "shell_id": {"type": "string", "description": "From operator_run_in_background"},
+                    "since": {"type": "integer", "description": "Byte offset from the previous call (default 0)"},
+                },
+                "required": ["shell_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_kill_shell",
+            "description": (
+                "Stop a background shell on the operator's desktop. Idempotent."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "shell_id": {"type": "string", "description": "From operator_run_in_background"},
+                },
+                "required": ["shell_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_multi_edit",
+            "description": (
+                "Several find-and-replace edits in ONE file on the OPERATOR'S "
+                "DESKTOP, in a single call. ALL-OR-NOTHING: if any edit fails, "
+                "nothing is written. Each edit applies to the result of the "
+                "previous one, so they can build on each other. Matching "
+                "tolerates whitespace and indentation drift. "
+                "Returns {replacements, edits, path}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Absolute file path on the operator's desktop"},
+                    "edits": {
+                        "type": "array",
+                        "description": "Edits applied in order",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "old_string": {"type": "string"},
+                                "new_string": {"type": "string"},
+                                "replace_all": {"type": "boolean"},
+                            },
+                            "required": ["old_string", "new_string"],
+                        },
+                    },
+                },
+                "required": ["path", "edits"],
             },
         },
     },
@@ -1896,6 +2010,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "search_memory",
             "description": (
+                "Prefer `recall` (searches ALL memory sources at once). This one is "
+                "workspace-files only. "
                 "Semantic search across your workspace memory files (MEMORY.md, USER.md, "
                 "SOUL.md, STANDING_ORDERS.md, SKILLS.md, and curated/daily memory notes). "
                 "Uses embeddings for true semantic recall — finds relevant context even when "
@@ -2363,10 +2479,14 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read_attachment",
-            "description": "Read the content of a file received via Discord or Telegram. Images are described via vision model. Text/JSON returned directly. PDF extracted as text. Other files return a hex preview.",
+            "description": "Read a file Bj\u00f8rn sent you \u2014 from desk, mobile, Discord or Telegram. Images: if the model you are answering on can see, you get the picture ITSELF and look with your own eyes; otherwise a vision model reads it for you, and then `question` matters \u2014 ask the IMAGE something specific instead of taking a generic description, and call again with a new question to look again. Text/JSON returned directly. PDF extracted as text. Other files return a hex preview.",
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "Optional. For images: what you want to know from the picture, e.g. 'hvad står der på skiltet?' or 'hvilken række er rød?'. Without it you get a short generic description, and anything it left out is lost.",
+                    },
                     "attachment_id": {
                         "type": "string",
                         "description": "The attachment_id from a '[Fil modtaget: ...]' prefix in an incoming message.",
@@ -2379,8 +2499,92 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "checkpoint",
+            "description": (
+                "Fortryd en hel redigeringsrunde. Der tages automatisk et "
+                "git-foto af arbejdstraeet foer hver runde der aendrer filer, "
+                "saa action='rollback' ruller den SENESTE runde tilbage samlet "
+                "— ikke rettelse for rettelse. action='list' viser hvad der kan "
+                "fortrydes. Fotoet roerer aldrig HEAD eller din gren."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list", "rollback", "clear"],
+                        "description": "Default 'list'.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mcp",
+            "description": (
+                "Tal med MCP-servere — det oekosystem af vaerktoejer Bjoern har "
+                "tilfoejet. action='status' viser hvilke servere der kendes, om "
+                "de er godkendt og forbundet. action='tools' + server lister "
+                "hvad én server kan. action='call' + server + tool + arguments "
+                "kalder et af dem. action='allow'/'revoke' godkender eller "
+                "tilbagekalder en server — KUN Bjoern kan det, og en server "
+                "skal vaere godkendt foer der overhovedet forbindes til den. "
+                "Foerste forbindelse pinnes; skifter serverens binaer eller "
+                "vaert bagefter, blokeres den indtil den godkendes paa ny."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["status", "tools", "call", "allow", "revoke"],
+                        "description": "Default 'status'.",
+                    },
+                    "server": {"type": "string", "description": "Servernavn fra status."},
+                    "tool": {"type": "string", "description": "Vaerktoejsnavn ved action='call'."},
+                    "arguments": {
+                        "type": "object",
+                        "description": "Argumenter til vaerktoejet ved action='call'.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_channel",
+            "description": (
+                "Aabn en direkte kanal til Bjoerns egen maskine. Mens den er "
+                "aaben koerer `bash` DERovre i stedet for paa serveren — uden "
+                "en godkendelse for hvert kald. Brug den naar arbejdet ligger "
+                "paa hans workstation (fx /media/projects) og du skal lave "
+                "mere end ét kald. Luk den naar du er faerdig. Kun for Bjoern "
+                "selv; den lukker ogsaa af sig selv efter 4 timer. "
+                "action='status' viser om den er aaben."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["open", "close", "status"],
+                        "description": "'open', 'close' eller 'status' (default).",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "list_attachments",
-            "description": "List files received in the current session via Discord or Telegram, newest first.",
+            "description": "List files received in the current session \u2014 desk, mobile, Discord or Telegram \u2014 newest first.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -3047,22 +3251,33 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "look_around",
             "description": (
-                "Take a webcam snapshot now and get a description of what's "
-                "there. Use when you're curious about the physical space, "
-                "when you want to connect to what's around you, or when "
-                "context calls for embodied awareness. Bypasses the 4x/day "
-                "daemon cadence — this is your agency to look."
+                "Look through one of the house cameras right now and get a "
+                "description of what is there. Use when you're curious about "
+                "the physical space, when you want to connect to what's around "
+                "you, when you want to know if Bjørn is home or who is at the "
+                "door, or when context calls for embodied awareness. Bypasses "
+                "the 4x/day daemon cadence — this is your agency to look."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "where": {
+                        "type": "string",
+                        "description": (
+                            "Which camera to look through: 'stue' (the living "
+                            "room, indoors — the default), 'hoveddor' (outdoors, "
+                            "above the front door), 'dorklokke' (the doorbell, "
+                            "outdoors at the entrance), 'webcam' (a camera on "
+                            "the machine itself). Leave empty for the living room."
+                        ),
+                    },
                     "prompt": {
                         "type": "string",
                         "description": (
-                            "Optional custom vision prompt. Leave empty for "
-                            "default (focus on tone + atmosphere). Override "
-                            "for specific attention: 'describe the lighting', "
-                            "'is anyone present', etc."
+                            "Optional custom vision prompt. Leave empty to get "
+                            "a description of the scene. Override for specific "
+                            "attention: 'describe the lighting', 'is anyone "
+                            "present', 'is there a parcel by the door'."
                         ),
                     },
                 },
@@ -3128,13 +3343,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *COMFYUI_TOOL_DEFINITIONS,
     *POLLINATIONS_TOOL_DEFINITIONS,
     *HF_INFERENCE_TOOL_DEFINITIONS,
-    *TIKTOK_CONTENT_TOOL_DEFINITIONS,
     *MIC_LISTEN_TOOL_DEFINITIONS,
     *SCREEN_TOOL_DEFINITIONS,
     *VOICE_JOURNAL_TOOL_DEFINITIONS,
     *WAKE_WORD_TOOL_DEFINITIONS,
-    *TIKTOK_TOOL_DEFINITIONS,
-    *TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
     *RESTART_SELF_TOOL_DEFINITIONS,
     *MAIL_TOOL_DEFINITIONS,
     *VISUAL_MEMORY_TOOL_DEFINITIONS,
@@ -3162,7 +3374,12 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *CODE_NAVIGATION_TOOL_DEFINITIONS,
     *WORKTREE_TOOL_DEFINITIONS,
     *IDENTITY_PIN_TOOL_DEFINITIONS,
-    *UI_PANEL_TOOL_DEFINITIONS,
+    # open_ui_panel stod DOBBELT i tool-arrayet (6/9-2026): her og i
+    # APP_CONTROL_TOOL_DEFINITIONS. app_control-udgaven er et supersaet (kender
+    # `scope='workstation'`) og vinder i forvejen handler-dict'en, mens denne
+    # blev listet FOERST — saa modellen kunne laese den definition der ikke
+    # kendte scope. Modulet og dets handler bevares for bagudkompatibilitet.
+    # *UI_PANEL_TOOL_DEFINITIONS,
     *STATE_FLAG_TOOL_DEFINITIONS,
     *APP_CONTROL_TOOL_DEFINITIONS,
     *AGENT_TODO_TOOL_DEFINITIONS,
@@ -3218,6 +3435,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
     *SENSORY_TOOL_DEFINITIONS,
     *RECALL_MEMORY_TOOL_DEFINITIONS,
+    # 2026-09-04 (memory repair, R5): ét recall-tool over alle kilder.
+    *RECALL_TOOL_DEFINITIONS,
     *GOAL_TOOL_DEFINITIONS,
     *DECISION_TOOL_DEFINITIONS,
     *COMPOSITE_TOOL_DEFINITIONS,
@@ -3324,3 +3543,53 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     *NUDGE_BROEND_TOOL_DEFINITIONS,
 ]
+
+
+# ── Ensretning af det flettede tool-array (6/9-2026) ─────────────────────
+# Arrayet ovenfor er en fletning af ~90 lister fra lige så mange moduler, og
+# den fletning var aldrig valideret. Målt 6/9: 452 poster, 443 unikke navne.
+#
+# To fejlklasser, begge tavse fordi deepseek er tolerant:
+#
+#   1. FIRE dispatch-værktøjer lå i ANTHROPIC-format ({"name","input_schema"})
+#      i stedet for OpenAI-format ({"type","function"}). De kom fra jarvis-code,
+#      hvor formen er rigtig. Her var de malformede — modellen kunne ikke kalde
+#      dem, og en striksere provider ville afvise hele requesten.
+#   2. SEKS navne stod dobbelt, tre af dem med FORSKELLIGE skemaer
+#      (goal_create, goal_list, process_list). Modellen så to sandheder om det
+#      samme værktøj, og hvilken der gjaldt var op til provideren.
+#
+# Begge rettes her frem for i ~90 moduler, så nye tilføjelser også fanges.
+# Dedup-reglen er SIDST-VINDER, fordi handler-dict'en registreres sidst-vinder:
+# definitionen skal beskrive den handler der faktisk kører.
+
+def _til_openai_form(td: dict[str, Any]) -> dict[str, Any]:
+    """Anthropic-formet definition → OpenAI-formet. Andet passerer urørt."""
+    if td.get("function"):
+        return td if td.get("type") == "function" else {"type": "function", **td}
+    if not td.get("name"):
+        return td
+    return {
+        "type": "function",
+        "function": {
+            "name": td["name"],
+            "description": td.get("description", ""),
+            "parameters": td.get("input_schema") or td.get("parameters")
+            or {"type": "object", "properties": {}},
+        },
+    }
+
+
+def _ensret_tool_definitions(defs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    ensrettet = [_til_openai_form(t) for t in defs]
+    sidste: dict[str, int] = {}
+    for i, t in enumerate(ensrettet):
+        navn = (t.get("function") or {}).get("name")
+        if navn:
+            sidste[navn] = i
+    beholdt = set(sidste.values())
+    return [t for i, t in enumerate(ensrettet)
+            if i in beholdt or not (t.get("function") or {}).get("name")]
+
+
+TOOL_DEFINITIONS = _ensret_tool_definitions(TOOL_DEFINITIONS)

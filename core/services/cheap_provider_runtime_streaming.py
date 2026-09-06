@@ -69,6 +69,8 @@ def _iter_openai_compatible_chat_events(
         "Content-Type": "application/json",
         "Accept": "text/event-stream",
     }
+    from core.services.followup_output_budget import followup_max_tokens
+
     payload: dict[str, object] = {
         "model": model,
         "messages": messages,
@@ -76,8 +78,11 @@ def _iter_openai_compatible_chat_events(
         "stream_options": {"include_usage": True},
         # A4: stabiliser flash model med 1-min vindue. Uden max_tokens kan
         # deepseek-v4-flash generere uendeligt via sit 1M context-vindue.
-        # 4096 er rigeligt til en enkelt visible-reply uden at brænde tokens.
-        "max_tokens": 4096,
+        # 4096 er rigeligt til en enkelt reply for cheap-lane-providere — men
+        # DeepSeek thinking-mode tæller RÆSONNERINGEN med i max_tokens, så
+        # 4096 = "tænk ~32 s, så finish_reason=length uden tekst" (målt 4/9).
+        # Samme provider-skalerede budget som følge-runderne.
+        "max_tokens": followup_max_tokens(provider, model),
     }
     # Lag 10 Phase 1 (2026-05-12): caller may pass modulated values.
     # When None, omit from payload so server-side defaults apply (cheap-lane

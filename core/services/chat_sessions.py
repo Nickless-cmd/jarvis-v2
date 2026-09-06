@@ -407,6 +407,7 @@ def append_chat_message(
     created_at: str | None = None,
     tool_name: str | None = None,
     tool_arguments: dict[str, object] | None = None,
+    full_content: str | None = None,
     user_id: str | None = None,
     workspace_name: str | None = None,
     reasoning_content: str = "",
@@ -477,10 +478,15 @@ def append_chat_message(
 
     if normalized_role == "tool" and not parse_tool_result_reference(normalized_content):
         normalized_tool_name = (tool_name or _infer_tool_name_from_content(normalized_content) or "tool").strip()
+        # 5/9-2026: STOREN faar hele resultatet, samtalen faar det klippede.
+        # Referencen der laegges i samtalen lover «Use read_tool_result ... to
+        # inspect the full output»; indtil nu blev kun den klippede tekst gemt,
+        # saa midten (i ét maalt tilfaelde 131.200 tegn) fandtes ingen steder.
+        _stored = str(full_content or "").strip() or normalized_content
         result_id = save_tool_result(
             normalized_tool_name,
             tool_arguments or {},
-            normalized_content,
+            _stored,
             created_at=timestamp,
         )
         normalized_content = build_tool_result_reference(
@@ -890,6 +896,18 @@ def rename_chat_session(session_id: str, *, title: str) -> dict[str, object] | N
 
 
 def delete_chat_session(session_id: str) -> bool:
+    # ── SessionEnd-hook ──────────────────────────────────────────────────
+    # Foer sletningen: `block` betyder behold sessionen. Bagefter findes den
+    # ikke, saa det er her dommen kan gaelde.
+    try:
+        from core.services import lifecycle_hooks as _lh_se
+        if "SessionEnd" in _lh_se.WIRED_EVENTS and _lh_se.hooks_for("SessionEnd"):
+            _d = _lh_se.fire("SessionEnd", {"session_id": str(session_id or "")})
+            if _d.get("action") == "block":
+                return False
+    except Exception:
+        pass
+
     normalized = (session_id or "").strip()
     if not normalized:
         return False
@@ -978,3 +996,31 @@ def get_session_owner(session_id: str) -> str | None:
             (sid,),
         ).fetchone()
     return row[0] if row else None
+
+def latest_user_content_json(session_id: str) -> str | None:
+    """`content_json` for sessionens SENESTE brugerbesked.
+
+    Bruges af prompt-samlingen til at finde de billeder der hører til netop
+    denne tur. Beskeden persisteres FØR samlingen, så den seneste user-række
+    ER den aktuelle tur.
+
+    Self-safe: enhver fejl → None (turen bygges som hidtil, uden billeder).
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return None
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                """
+                SELECT content_json FROM chat_messages
+                WHERE session_id = ? AND role = 'user'
+                ORDER BY created_at DESC, rowid DESC LIMIT 1
+                """,
+                (sid,),
+            ).fetchone()
+        return str(row[0]) if row and row[0] else None
+    except Exception:
+        return None
+

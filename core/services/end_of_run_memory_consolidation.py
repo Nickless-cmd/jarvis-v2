@@ -24,7 +24,7 @@ _EXCERPT_MEMORY_CHARS = 2400
 _EXCERPT_USER_CHARS = 1800
 _FULL_MEMORY_CHARS = 12000
 _FULL_USER_CHARS = 8000
-_MAX_ITEMS = 3
+_MAX_ITEMS = 4  # ét pr. spørgsmål i lærings-sløjfen (blok B, 4/9-2026)
 _NONE_MARKERS = {"", "none", "null", "n/a"}
 
 
@@ -104,6 +104,11 @@ def consolidate_run_memory(
         result["skipped_reason"] = "no-new-memory-items"
         return _finish()
 
+    # Blok C: spørgsmål 2 og 3 tælles på tværs af sessioner. Tredje gang samme
+    # anmodning (anden gang samme rettelse) bliver den til ét regel-forslag i
+    # den proaktive kø i stedet for at Bjørn skal blive ved med at gentage sig.
+    result["rule_proposals"] = _count_repeated_asks(items, session_id=session_id)
+
     persisted = _persist_memory_candidates(
         items=items,
         session_id=session_id,
@@ -151,6 +156,8 @@ def _publish_consolidation_event(
             "skipped_reason": result.get("skipped_reason"),
             "auto_applied_user_count": int(result.get("auto_applied_user_count") or 0),
             "auto_applied_memory_count": int(result.get("auto_applied_memory_count") or 0),
+            # Blok C: hvor mange gentagelser der netop blev til et regel-forslag.
+            "rule_proposals": int(result.get("rule_proposals") or 0),
         },
     )
 
@@ -311,6 +318,20 @@ User: {user_message}
 Assistant: {assistant_response}
 {internal_block}
 
+ANSWER THESE FOUR QUESTIONS ABOUT THIS TURN. Each answer that has real
+content becomes one item; skip the ones that do not.
+
+1. What did I learn about Bjørn? (preference, working style, context about him)
+   -> target USER.md
+2. What did he ask for, in at most five words? (the request itself, normalized,
+   so a repeat of the same request can be recognised later)
+   -> target REQUEST, put the five words in "request"
+3. What did he correct? (something I did or said that he pushed back on)
+   -> target USER.md, kind "correction"
+4. What did I learn about myself or about the work? (durable project fact,
+   repo/workspace context, stable decision)
+   -> target MEMORY.md
+
 RULES:
 - Prefer generic judgment over hardcoded patterns.
 - Persist only durable facts, preferences, working context, or stable decisions.
@@ -322,17 +343,25 @@ RULES:
 - If you are unsure whether the existing file context is sufficient, return needs_full_context=true and no items.
 - If the relevant fact may already exist and you cannot tell from the provided context, return needs_full_context=true and no items.
 - Each item must be one short line suitable for append-only storage.
-- At most {_MAX_ITEMS} items.
+- Write the "line" in the language Bjørn used in the turn.
+- At most {_MAX_ITEMS} items (at most one per question).
+
+EVIDENCE — be honest, this decides whether the line is written now or only counted:
+- "explicit": Bjørn stated it in this turn, in his own words.
+- "confirmed": I stated it and he confirmed it.
+- "inferred": I concluded it from how the turn went. Counted, not written —
+  it is only written once the same conclusion recurs in another session.
 
 Return ONLY JSON in this shape:
 {{
   "needs_full_context": false,
   "items": [
     {{
-      "target": "USER.md" or "MEMORY.md",
-      "kind": "preference|fact|context|decision",
+      "target": "USER.md" or "MEMORY.md" or "REQUEST",
+      "kind": "preference|fact|context|decision|correction|request",
       "confidence": "low|medium|high",
-      "source": "explicit-user-statement|explicit-assistant-confirmation|runtime-inference",
+      "evidence": "explicit|confirmed|inferred",
+      "request": "at most five words, only for target REQUEST",
       "summary": "short summary",
       "reason": "why this is durable",
       "line": "- concise line for the file"
@@ -365,13 +394,22 @@ def _normalize_memory_items(raw_items: object) -> list[dict[str, str]]:
     for raw in raw_items[:_MAX_ITEMS]:
         if not isinstance(raw, dict):
             continue
-        target = str(raw.get("target") or "").strip()
-        if target not in {"USER.md", "MEMORY.md"}:
+        target = str(raw.get("target") or "").strip().upper()
+        target = "REQUEST" if target == "REQUEST" else str(raw.get("target") or "").strip()
+        if target not in {"USER.md", "MEMORY.md", "REQUEST"}:
             continue
+        request = _normalize_sentence(raw.get("request") or "")
         line = _normalize_line(raw.get("line") or "")
-        if not line:
+        if target == "REQUEST":
+            # Spørgsmål 2: den normaliserede anmodning. Skrives ikke til en fil —
+            # den tælles på tværs af sessioner (blok C) og bliver til et
+            # regel-forslag tredje gang den samme anmodning dukker op.
+            if not request:
+                continue
+            line = line or f"- {request}"
+        elif not line:
             continue
-        key = (target, line.lower())
+        key = (target, (request or line).lower())
         if key in seen:
             continue
         seen.add(key)
@@ -380,7 +418,8 @@ def _normalize_memory_items(raw_items: object) -> list[dict[str, str]]:
                 "target": target,
                 "kind": str(raw.get("kind") or "fact").strip().lower() or "fact",
                 "confidence": _normalize_confidence(raw.get("confidence") or ""),
-                "source": str(raw.get("source") or "runtime-inference").strip().lower() or "runtime-inference",
+                "evidence": _normalize_evidence(raw.get("evidence") or raw.get("source") or ""),
+                "request": request,
                 "summary": _normalize_sentence(raw.get("summary") or ""),
                 "reason": _normalize_sentence(raw.get("reason") or ""),
                 "line": line,
@@ -399,17 +438,27 @@ def _persist_memory_candidates(
     persisted: list[dict[str, object]] = []
     for item in items:
         target = item["target"]
+        if target == "REQUEST":
+            continue  # tælles af repeated_requests (blok C), skrives ikke til en fil
         candidate_type = "preference_update" if target == "USER.md" else "memory_promotion"
         canonical_key = _candidate_canonical_key(item)
         confidence = item["confidence"]
-        source = item["source"]
-        evidence_class = _evidence_class_for_source(source)
+        evidence = item.get("evidence") or _normalize_evidence(item.get("source") or "")
+        evidence_class = _EVIDENCE_CLASSES[evidence]
+        # «udledt» tælles, den skrives ikke. Dukker den SAMME konklusion op i en
+        # anden session, er den ikke længere et gæt — så skrives den.
+        if evidence == "inferred" and _seen_in_another_session(
+            canonical_key=canonical_key, target=target,
+            candidate_type=candidate_type, session_id=str(session_id or ""),
+        ):
+            evidence = "repeated"
+            evidence_class = "repeated_cross_session"
         candidate = upsert_runtime_contract_candidate(
             candidate_id=f"candidate-{uuid4().hex}",
             candidate_type=candidate_type,
             target_file=target,
             status="proposed",
-            source_kind="user-explicit" if source == "explicit-user-statement" else "runtime-derived-support",
+            source_kind="user-explicit" if evidence == "explicit" else "runtime-inference",
             source_mode="end_of_run_memory_consolidation",
             actor="runtime:end-of-run-memory-consolidation",
             session_id=str(session_id or ""),
@@ -418,7 +467,7 @@ def _persist_memory_candidates(
             summary=item["summary"] or _summary_from_line(item["line"]),
             reason=item["reason"] or "Bounded local-model consolidation judged this worth carrying forward.",
             evidence_summary=_summary_from_line(item["line"]),
-            support_summary=f"target={target} | kind={item['kind']} | source={source}",
+            support_summary=f"target={target} | kind={item['kind']} | evidence={evidence}",
             confidence=confidence,
             evidence_class=evidence_class,
             support_count=1,
@@ -427,10 +476,59 @@ def _persist_memory_candidates(
             updated_at=now,
             status_reason="Candidate proposed by bounded end-of-run local memory consolidation.",
             proposed_value=item["line"],
-            write_section="## Durable Preferences" if target == "USER.md" else "## Curated Memory",
+            # 2026-09-04 (blok A): «## Lært» læses relevans-udvalgt pr. tur;
+            # «## Durable Preferences» blev aldrig læst af nogen prompt.
+            write_section="## Lært" if target == "USER.md" else "## Curated Memory",
         )
         persisted.append(candidate)
     return persisted
+
+
+def _count_repeated_asks(items: list[dict[str, str]], *, session_id: str) -> int:
+    """Tæl anmodninger (spm. 2) og rettelser (spm. 3). Returnerer antal
+    forslag der netop modnede. Self-safe — må aldrig vælte konsolideringen."""
+    surfaced = 0
+    try:
+        from core.services.repeated_requests import note_and_surface
+    except Exception:
+        return 0
+    for item in items:
+        if item.get("target") == "REQUEST":
+            text, kind = str(item.get("request") or ""), "request"
+        elif str(item.get("kind") or "") == "correction":
+            text, kind = str(item.get("summary") or "") or str(item.get("line") or ""), "correction"
+        else:
+            continue
+        try:
+            res = note_and_surface(text=text, session_id=str(session_id or ""), kind=kind)
+            if res.get("surfaced"):
+                surfaced += 1
+        except Exception:
+            continue
+    return surfaced
+
+
+def _seen_in_another_session(
+    *, canonical_key: str, target: str, candidate_type: str, session_id: str,
+) -> bool:
+    """Har den SAMME konklusion været draget i en anden session før?
+
+    Det er skellet mellem et gæt og et mønster. Self-safe: enhver fejl → False
+    (så bliver linjen bare talt en gang mere i stedet for skrevet for tidligt).
+    """
+    try:
+        from core.runtime.db import list_runtime_contract_candidates
+        for other in list_runtime_contract_candidates(
+            candidate_type=candidate_type, target_file=target, limit=40,
+        ):
+            if str(other.get("canonical_key") or "") != canonical_key:
+                continue
+            other_session = str(other.get("session_id") or "")
+            if other_session and other_session != str(session_id or ""):
+                return True
+    except Exception:
+        return False
+    return False
 
 
 def _candidate_canonical_key(item: dict[str, str]) -> str:
@@ -497,12 +595,35 @@ def _append_daily_memory_log(
     return True
 
 
+def _normalize_evidence(value: object) -> str:
+    """Modellens bevis-ord → ét af tre niveauer.
+
+    Accepterer også de gamle `source`-værdier, så gemte prompts/svar fra før
+    4/9 stadig klassificeres rigtigt.
+    """
+    raw = " ".join(str(value or "").split()).strip().lower()
+    if raw in {"explicit", "explicit-user-statement", "explicit_user_statement"}:
+        return "explicit"
+    if raw in {"confirmed", "explicit-assistant-confirmation", "explicit_assistant_confirmation"}:
+        return "confirmed"
+    return "inferred"
+
+
+# De tre niveauer → den bevis-klasse gaten i candidate_workflow faktisk kender.
+# FEJLEN indtil 4/9: skriveren udsendte {explicit_user_statement,
+# single_session_pattern, runtime_support_only} mens gaten krævede
+# {explicit_user_statement, explicit_assistant_confirmation, runtime-inference}.
+# To af tre niveauer kunne derfor STRUKTURELT aldrig auto-anvendes — uanset
+# hvor tydeligt Bjørn havde sagt det.
+_EVIDENCE_CLASSES = {
+    "explicit": "explicit_user_statement",
+    "confirmed": "explicit_assistant_confirmation",
+    "inferred": "runtime_inference",
+}
+
+
 def _evidence_class_for_source(source: str) -> str:
-    if source == "explicit-user-statement":
-        return "explicit_user_statement"
-    if source == "explicit-assistant-confirmation":
-        return "single_session_pattern"
-    return "runtime_support_only"
+    return _EVIDENCE_CLASSES[_normalize_evidence(source)]
 
 
 def _normalize_line(value: object) -> str:

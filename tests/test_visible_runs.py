@@ -477,3 +477,19 @@ class TestAutonomousStreamFallback:
         assert "pool-answer" in blob          # pool-indhold nået consumeren
         assert '"status": "completed"' in blob  # terminal = completed, ikke failed
         assert '"status": "failed"' not in blob
+
+
+def test_loop_logger_lander_faktisk_i_journalen():
+    """Løkkens exit-årsag er blevet skrevet for HVER kørsel — og gået i gulvet.
+
+    `logging.getLogger(__name__)` har ingen handler i denne proces; kun
+    uvicorn's egen fejl-logger har. Linjen
+    «agentic-loop-exit run_id=… reason=… rounds_done=…» er det eneste sted
+    systemet siger HVORFOR en tur sluttede, og uden den er enhver cutoff-jagt
+    gætteri. Samme fælde er dokumenteret i heartbeat_scheduler.py.
+    """
+    import core.services.visible_runs as vr
+
+    assert vr.logger.name == "uvicorn.error", (
+        "et modulnavn går i gulvet — så tier løkken om hvorfor den stoppede"
+    )

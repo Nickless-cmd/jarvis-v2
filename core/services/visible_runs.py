@@ -6,7 +6,20 @@ import logging
 import re
 import time
 
-logger = logging.getLogger(__name__)
+# BEVIDST "uvicorn.error" — den ENESTE logger i processen der har handlers.
+#
+# 4. sep 2026: Bjørn havde jagtet «cutoff» i dagevis, og hver gang endte det i
+# gætteri. Løkken skriver ellers præcis det svar der manglede:
+#
+#     logger.info("agentic-loop-exit run_id=%s reason=%s rounds_done=%d", ...)
+#
+# Den linje er blevet skrevet for HVER eneste kørsel — og er gået i gulvet hver
+# eneste gang, fordi et modulnavn ikke har nogen handler. Systemet regnede
+# årsagen ud og smed den væk, mens vi ledte efter den.
+#
+# Samme fælde er dokumenteret i heartbeat_scheduler.py: «Et modulnavn — hvilket
+# som helst — går i gulvet.» Den kostede to fejlslagne forsøg dér også.
+logger = logging.getLogger("uvicorn.error")
 from datetime import UTC, datetime
 from dataclasses import dataclass, field
 from typing import AsyncIterator
@@ -285,184 +298,12 @@ from core.services.visible_runs_sections.run_control_state import (  # noqa: E40
 )
 
 
-def _build_turn_blocks(
-    *, text: str, tool_calls: list[dict], tool_results: list[dict],
-    interleave: list[str] | None = None,
-) -> list[dict]:
-    """Byg den kanoniske content-blok-array for en assistant-tur (spec §4).
-
-    Når *interleave* er givet (liste af 'text'/'tool'), følges den rækkefølge —
-    tekst- og tool-blokke placeres i den orden de kom under streamen.
-    Uden interleave: degraderet fallback (tekst først, så tool-par jf. spec §5).
-    """
-    blocks: list[dict] = []
-    clean = str(text or "").strip()
-    # Stol KUN på interleave-rækkefølgen når dens 'tool'-markører gør rede for
-    # ALLE tool-kald. Native batch-tool-exec fører ikke _interleave_log (kun evt.
-    # en enkelt 'text'-markør fra en streamet svar-delta) → interleave undertæller
-    # tools → de resterende ville blive hængt PÅ efter teksten så kortene falder i
-    # bunden (Bjørn 10. jul, 6 native kald). I det tilfælde: brug fallback der
-    # lægger tools først og svaret til sidst.
-    _tool_markers = sum(1 for k in (interleave or []) if k == "tool")
-    _trust_interleave = bool(interleave) and _tool_markers >= len(tool_calls or [])
-    if _trust_interleave:
-        # Dedupliér KUN consecutive 'text' (så én tekst-blob ikke splittes i to
-        # blokke). 'tool'-entries BEVARES ALLE — ellers kollapser flere tool-kald
-        # i træk til ét (Bjørn 10. jul: kun sidste tool overlevede + svar forsvandt).
-        deduped: list[str] = []
-        for e in interleave:
-            if e == "text" and deduped and deduped[-1] == "text":
-                continue
-            deduped.append(e)
-
-        results_by_id: dict[str, dict] = {}
-        for r in (tool_results or []):
-            results_by_id[str(r.get("tool_use_id") or "")] = r
-        text_placed = False
-        # Basér på tool_calls (IKKE zip m. results) — zip truncerer hvis results
-        # er kortere → tabt tool. Result hentes robust via results_by_id[tid].
-        tool_pairs = list(tool_calls or [])
-        pi = 0
-        # Placér den (enkelt-akkumulerede) tekst ved SIDSTE 'text'-markør, ikke
-        # den første. Reasoning-modeller streamer ofte en kort præ-tekst FØR de
-        # kalder værktøjer og skriver så det egentlige svar EFTER resultaterne
-        # (round 1: kort tekst + tool_calls; round 2: analysen). Vi har kun ÉN
-        # samlet tekst-blob — lægges den ved første markør, hopper HELE svaret op
-        # foran tool-kortene så de lander i bunden (Bjørn 10. jul). Sidste markør
-        # = svaret lander efter de værktøjer det brugte. Kun-før-tool-tekst
-        # (last==first) er uændret.
-        last_text_idx = max(
-            (i for i, k in enumerate(deduped) if k == "text"), default=-1
-        )
-        for idx, kind in enumerate(deduped):
-            if kind == "text":
-                if not text_placed and clean and idx == last_text_idx:
-                    blocks.append({"type": "text", "text": clean})
-                    text_placed = True
-            elif kind == "tool":
-                if pi < len(tool_pairs):
-                    tc = tool_pairs[pi]
-                    tid = str(tc.get("id") or "")
-                    blocks.append({
-                        "type": "tool_use",
-                        "id": tid,
-                        "name": str(tc.get("name") or ""),
-                        "input": tc.get("input") or {},
-                    })
-                    r = results_by_id.get(tid)
-                    if r is not None:
-                        status = str(r.get("status") or "done")
-                        blocks.append({
-                            "type": "tool_result",
-                            "tool_use_id": tid,
-                            "status": "error" if (r.get("is_error") or status == "error") else "done",
-                            "content": str(r.get("content") or ""),
-                            "is_error": bool(r.get("is_error")),
-                        })
-                    pi += 1
-        # Robusthed: tools/svar må ALDRIG droppes selv om interleave undercounter.
-        # Placer resterende tools + svar-teksten hvis den ikke blev placeret.
-        while pi < len(tool_pairs):
-            tc = tool_pairs[pi]
-            tid = str(tc.get("id") or "")
-            blocks.append({"type": "tool_use", "id": tid,
-                           "name": str(tc.get("name") or ""), "input": tc.get("input") or {}})
-            r = results_by_id.get(tid)
-            if r is not None:
-                status = str(r.get("status") or "done")
-                blocks.append({
-                    "type": "tool_result", "tool_use_id": tid,
-                    "status": "error" if (r.get("is_error") or status == "error") else "done",
-                    "content": str(r.get("content") or ""), "is_error": bool(r.get("is_error")),
-                })
-            pi += 1
-        if clean and not text_placed:
-            blocks.append({"type": "text", "text": clean})
-    else:
-        # Degraderet fallback (ingen interleave — fx native batch-tool-exec-stien
-        # der ikke fører _interleave_log): tool-par FØRST i kald-rækkefølge, så
-        # svar-teksten TIL SIDST. Uden rækkefølge-info er teksten næsten altid det
-        # afsluttende svar der opsummerer værktøjerne → skal ligge efter kortene,
-        # ikke foran så de falder til bunden (Bjørn 10. jul: 6 native tool-kald
-        # rendrede med tekst på index 0 → kort i bunden). Ren tekst-tur (ingen
-        # tools) giver bare ét tekst-blok.
-        results_by_id = {}
-        for r in (tool_results or []):
-            results_by_id[str(r.get("tool_use_id") or "")] = r
-        for tc in (tool_calls or []):
-            tid = str(tc.get("id") or "")
-            blocks.append({
-                "type": "tool_use",
-                "id": tid,
-                "name": str(tc.get("name") or ""),
-                "input": tc.get("input") or {},
-            })
-            r = results_by_id.get(tid)
-            if r is not None:
-                status = str(r.get("status") or "done")
-                blocks.append({
-                    "type": "tool_result",
-                    "tool_use_id": tid,
-                    "status": "error" if (r.get("is_error") or status == "error") else "done",
-                    "content": str(r.get("content") or ""),
-                    "is_error": bool(r.get("is_error")),
-                })
-        if clean:
-            blocks.append({"type": "text", "text": clean})
-    # Fladt progress-spor (feature 4, spec 2026-07-09 §5) — gælder BEGGE stier
-    # (interleave + fallback): ét settlet element pr. tool-kald + narration.
-    # Fail-open: en fejl her må aldrig vælte blok-bygningen for et live run.
-    try:
-        blocks.extend(_build_progress_blocks(tool_calls, tool_results))
-    except Exception:
-        pass
-    return blocks
-
-
-def _build_progress_blocks(
-    tool_calls: list[dict], tool_results: list[dict]
-) -> list[dict]:
-    """Byg det FLADE progress-spor for en tur (spec §5).
-
-    Ét ``progress``-element pr. tool-kald i kald-rækkefølge. ``message`` er
-    ``_tool_label(name, input)`` — nøjagtig den narration den live
-    ``working_step`` viste før exec (deterministisk fra name+args). ``status``
-    settles fra tool_result (error hvis fejlet, ellers done). ``parent_tool_use_id``
-    er altid ``None`` (fladt — træet kræver spawn-plumbing der ikke findes endnu).
-    Ren funktion; sikker at teste isoleret."""
-    results_by_id: dict[str, dict] = {}
-    for r in (tool_results or []):
-        results_by_id[str(r.get("tool_use_id") or "")] = r
-    out: list[dict] = []
-    for tc in (tool_calls or []):
-        tid = str(tc.get("id") or "")
-        name = str(tc.get("name") or "tool")
-        raw_input = tc.get("input") or {}
-        if isinstance(raw_input, str):
-            try:
-                import json as _json
-                raw_input = _json.loads(raw_input)
-            except Exception:
-                raw_input = {}
-        args = raw_input if isinstance(raw_input, dict) else {}
-        try:
-            message = _tool_label(name, args)
-        except Exception:
-            message = name
-        r = results_by_id.get(tid)
-        status = "done"
-        if r is not None and (
-            r.get("is_error") or str(r.get("status") or "") == "error"
-        ):
-            status = "error"
-        out.append({
-            "type": "progress",
-            "tool_use_id": tid,
-            "parent_tool_use_id": None,
-            "message": str(message or name),
-            "status": status,
-        })
-    return out
+# Tur-blokke: udskilt til core/services/visible_turn_blocks.py (Boy Scout,
+# 2026-09-02). Re-eksporteret så kaldesteder og tests ikke brækker.
+from core.services.visible_turn_blocks import (  # noqa: E402,F401
+    _build_progress_blocks,
+    _build_turn_blocks,
+)
 
 
 @dataclass(slots=True)
@@ -476,6 +317,13 @@ class VisibleRun:
     autonomous: bool = False  # True = heartbeat-triggered, no user present
     trust_all: bool = False   # True = auto-approve all tool calls without prompting
     thinking_mode: str = "think"  # "fast" | "think" | "deep" — for reasoning models
+    # True naar tilstanden blev VALGT af resolve_thinking_mode ud fra beskedens
+    # ordlyd, ikke af Bjoern i composeren. Klassifikatoren ser kun brugerens
+    # tekst: et "1" der saetter 11 runders filkirurgi i gang laeses som samtale
+    # og giver "fast" — og siden 4/9 betyder fast reelt INGEN taenkning paa
+    # DeepSeek. Et eksplicit valg respekteres altid; et gaet maa gerne rettes
+    # naar turen viser sig at vaere arbejde (se _thinking_for_round).
+    thinking_adaptive: bool = False
     local_tool_exec: bool = False  # Path B: emit tool_call to client + wait on broker
                                    # instead of running tools server-side (default OFF).
 
@@ -524,8 +372,34 @@ _LAST_VISIBLE_EXECUTION_TRACE: dict[str, object] | None = None
 
 # Cross-proces liveness-vindue: et run regnes dødt hvis dets DB-heartbeat ikke
 # er opdateret i dette antal sekunder. > længste enkelt-runde/tool-timeout (~60s)
+
+
 # så et levende men langsomt run ikke fejlagtigt regnes dødt.
 _VISIBLE_RUN_STALE_S = 75.0
+
+
+def _thinking_for_round(run: "VisibleRun", exchanges: list | None) -> str:
+    """Tænknings-tilstand for en agentisk FØLGE-runde.
+
+    2026-09-05: `resolve_thinking_mode` klassificerer på brugerens besked alene.
+    Det var harmløst indtil 4/9, hvor tilstanden faktisk begyndte at nå DeepSeek
+    — før da tænkte modellen på hver tur uanset hvad. Nu betyder «fast» reelt
+    ingen tænkning, og et «1» der vælger mellem to muligheder klassificeres som
+    samtale. Bjørns session 5/9 kl. 06:05 lavede 11 runders filkirurgi på en
+    protected identitets-fil med nul ræsonnering.
+
+    En tur der har kaldt værktøjer ER arbejde, uanset hvordan beskeden lød.
+    Derfor: opgradér «fast» → «think» fra det øjeblik turen har brugt et
+    værktøj — men KUN når tilstanden var et gæt. Vælger Bjørn selv ⚡ Fast,
+    står det ved magt hele turen.
+    """
+    mode = str(getattr(run, "thinking_mode", "think") or "think").strip().lower()
+    if mode != "fast" or not getattr(run, "thinking_adaptive", False):
+        return mode
+    for exchange in exchanges or []:
+        if getattr(exchange, "tool_calls", None):
+            return "think"
+    return mode
 
 
 def is_visible_run_alive(run_id: str) -> bool:
@@ -865,11 +739,14 @@ def start_visible_run(
     # HVER tur — også simpel snak. resolve_thinking_mode skruer kode/opgave→think, resten→
     # fast (−9s TTFT); eksplicit fast/deep fra klienten respekteres. Kill-switch:
     # adaptive_thinking_enabled=False. Self-safe → falder tilbage til requested.
+    _requested_thinking = (thinking_mode or "think").strip().lower()
     try:
         from core.services.central_prompt_composer import resolve_thinking_mode
         _resolved_thinking = resolve_thinking_mode(message or "", thinking_mode)
     except Exception:
-        _resolved_thinking = (thinking_mode or "think").strip().lower()
+        _resolved_thinking = _requested_thinking
+    # Eksplicit fast/deep fra klienten er Bjoerns valg og maa aldrig overskrives.
+    _thinking_was_adaptive = _requested_thinking not in ("fast", "deep")
     run = VisibleRun(
         run_id=f"visible-{uuid4().hex}",
         lane=settings.primary_model_lane,
@@ -879,6 +756,7 @@ def start_visible_run(
         session_id=normalized_session_id,
         trust_all=(approval_mode == "trust"),
         thinking_mode=_resolved_thinking,
+        thinking_adaptive=_thinking_was_adaptive,
         local_tool_exec=bool(local_tool_exec),
     )
     # KERNE-FORRANG (2026-07-22): markér den synlige tur som aktiv i HELE dens levetid
@@ -928,29 +806,32 @@ def _observe_autonomous_run(*, run, session_id: str, outcome: str,
     # awareness) så han bliver bevidst når et run slutter — hvad det gjorde, status,
     # fejl-id (run_id) og en review-invitation. Fejl/afbrud ALTID; completed kun når
     # der faktisk skete noget (frames>0), så trivielle ticks ikke oversvømmer brønden.
+    # Redesign 4. sep 2026: "run færdig" er TELEMETRI (event + Central), ikke en
+    # besked til Bjørn — 89 % af brøndens 506 nudges/uge var denne linje, 0 blev
+    # sendt. Kun fejl/afbrud bliver en proaktiv kandidat (medium → digest når
+    # Bjørn har været væk), leveret af proactivity_bridge.
     try:
-        from core.services import nudge_broend
         _focus = str(getattr(run, "user_message", "") or "")[:160]
         _rid = str(getattr(run, "run_id", "") or "")
-        _push = True
-        if outcome == "completed" and int(frames or 0) > 0:
-            _msg = f"Autonom run ✓ færdig: {_focus} — vil du reviewe? (run {_rid})"
-            _imp = "normal"
-        elif outcome == "failed":
+        try:
+            from core.eventbus.bus import event_bus as _eb_ar
+            _eb_ar.publish("runtime.autonomous_run_finished", {
+                "run_id": _rid, "outcome": str(outcome or ""), "frames": int(frames or 0),
+                "error": str(error or "")[:200], "focus": _focus,
+            })
+        except Exception:
+            pass
+        if outcome == "failed":
             _msg = (f"Autonom run ✗ FEJLET [err_id={_rid}]: {_focus} — "
                     f"{str(error or 'ukendt fejl')[:120]} — reviewe?")
-            _imp = "high"
         elif outcome in ("interrupted", "looped", "burned"):
             _msg = f"Autonom run ⏸ {outcome} [id={_rid}]: {_focus} — reviewe?"
-            _imp = "high"
         else:
-            _push = False  # trivielt/tomt completed-tick → ingen nudge
-        if _push:
-            nudge_broend.push(
-                source="autonomous_run", kind="autonomous_run",
-                message=_msg, importance=_imp,
-                raw_payload={"run_id": _rid, "outcome": outcome,
-                             "frames": int(frames or 0), "error": str(error or "")[:200]})
+            _msg = ""
+        if _msg:
+            from core.services.proactive_candidates import add_candidate
+            add_candidate(source="autonomous_run", kind="autonomous_run_failure",
+                          text=_msg, priority="medium")
     except Exception:
         pass
     # #3 supervision: vurdér runnet (korrelér + fang løgn/loop/forbindelsesfejl) + flag.
@@ -1291,6 +1172,63 @@ async def _stream_visible_run(
     if run.user_message.strip().lower() == "/compact":
         run.user_message = _handle_compact_command(run)
 
+    # ── SessionStart-hook ────────────────────────────────────────────────
+    # Fyrer paa sessionens FOERSTE tur. `inject` haefter opstart-kontekst paa;
+    # `block` afvises bevidst her — at naegte en hel session ved dens foerste
+    # ord er en stoerre magt end en hook boer have, og «bliv ved»-dommen hoerer
+    # til Stop. Vi honorerer altsaa kun det vi ogsaa mener.
+    try:
+        from core.services import lifecycle_hooks as _lh_ss
+        if "SessionStart" in _lh_ss.WIRED_EVENTS and _lh_ss.hooks_for("SessionStart"):
+            from core.services.chat_sessions import recent_chat_session_messages
+            _tidligere = recent_chat_session_messages(run.session_id, limit=3) or []
+            _foerste = len([m for m in _tidligere
+                            if (m.get("role") if isinstance(m, dict) else "") == "assistant"]) == 0
+            if _foerste:
+                _ssd = await _lh_ss.fire_async(
+                    "SessionStart", {"session_id": str(run.session_id or "")},
+                    user_id=str(force_user_id or ""))
+                if _ssd.get("action") == "inject" and _ssd.get("message"):
+                    run.user_message = (
+                        f"{run.user_message}\n\n[HOOK]\n{_ssd['message']}")
+    except Exception as _ss_exc:
+        logger.warning("SessionStart-hook fejlede: %r", _ss_exc)
+
+    # ── UserPromptSubmit-hook ────────────────────────────────────────────
+    # Foerste af jarvis-codes ni livscyklus-hooks der kobles. Stedet er valgt
+    # fordi BEGGE domme kan honoreres her: `run.user_message` er stadig
+    # foranderlig, og intet er bygget endnu. `block` afslutter turen med
+    # hookens egen besked; `inject` haefter kontekst paa foer prompt-assembly.
+    #
+    # Vi kobler kun det vi kan honorere — se `lifecycle_hooks.WIRED_EVENTS`.
+    try:
+        from core.services import lifecycle_hooks as _lh
+        if "UserPromptSubmit" in _lh.WIRED_EVENTS:
+            _hook_dom = await _lh.fire_async(
+                "UserPromptSubmit",
+                {"prompt": run.user_message, "session_id": str(run.session_id or "")},
+                user_id=str(force_user_id or ""))
+            if _hook_dom.get("action") == "block":
+                _besked = str(_hook_dom.get("message") or
+                              "Turen blev stoppet af en hook.")
+                _persist_session_assistant_message(run, _besked)
+                yield _sse("delta", {"type": "delta", "run_id": run.run_id,
+                                     "delta": _besked})
+                yield _sse("done", {"type": "done", "run_id": run.run_id,
+                                    "status": "blocked_by_hook",
+                                    "input_tokens": 0, "output_tokens": 0})
+                return
+            if _hook_dom.get("action") == "inject" and _hook_dom.get("message"):
+                run.user_message = (
+                    f"{run.user_message}\n\n[HOOK]\n{_hook_dom['message']}")
+            # Kun naar en hook faktisk gjorde noget — en linje pr. tur ville
+            # vaere stoej, og den almindelige vej er «ingen hooks».
+            if _hook_dom.get("action") != "allow":
+                logger.info("hook-UserPromptSubmit run_id=%s dom=%s",
+                            run.run_id, _hook_dom.get("action"))
+    except Exception as _lh_exc:
+        logger.warning("UserPromptSubmit-hook FEJLEDE: %r", _lh_exc)
+
     # ── Social labilizer (Fase 2 of generative autonomy) ─────────────────
     # Modulate pressure-vectors based on user input BEFORE prompt assembly
     # so cognitive_state sees the updated weather. A kind word flattens
@@ -1473,6 +1411,26 @@ async def _stream_visible_run(
     # under streamen, så _build_turn_blocks kan persistere blokke i den rækkefølge
     # de kom — frem for degraderet "tekst først, så tools"-rækkefølge.
     _interleave_log: list[str] = []
+    # Ét tekst-segment pr. sammenhængende stykke tekst mellem værktøjskald.
+    # Uden dem har _build_turn_blocks kun én samlet blob og kan kun placere den
+    # ét sted — hvorefter alle mellemsynteser forsvinder ind i det afsluttende
+    # svar og værktøjerne står alene i toppen (Bjørn 2026-09-02).
+    _text_segments: list[str] = []
+    _seg_open = False
+
+    def _seg_text(chunk: str) -> None:
+        nonlocal _seg_open
+        if not chunk:
+            return
+        if _seg_open and _text_segments:
+            _text_segments[-1] += chunk
+        else:
+            _text_segments.append(chunk)
+            _seg_open = True
+
+    def _seg_close() -> None:
+        nonlocal _seg_open
+        _seg_open = False
 
     def _coerce_tool_input(raw: object) -> dict:
         """Normalisér tool-input til et DICT. OpenAI-stil tool_calls bærer
@@ -1641,6 +1599,7 @@ async def _stream_visible_run(
                     safe_text = markup_buffer.feed(item.delta)
                     if safe_text:
                         _interleave_log.append("text")
+                        _seg_text(safe_text)
                         _set_orb_phase("speak")
                         yield _sse(
                             "delta",
@@ -1667,7 +1626,14 @@ async def _stream_visible_run(
                     continue
                 if isinstance(item, VisibleModelToolCalls):
                     _collected_native_tool_calls = item.tool_calls
-                    _interleave_log.append("tool")
+                    # ÉN markør PR. VÆRKTØJ, ikke pr. batch. Native batch-exec
+                    # leverer alle kald i ét item; med kun én markør undertalte
+                    # loggen tools, _trust_interleave faldt, og hele turen røg i
+                    # fallback — tools først, ét samlet tekstblok til sidst.
+                    # Præcis den fejl Bjørn så efter streaming (2026-09-02).
+                    for _ in (item.tool_calls or [None]):
+                        _interleave_log.append("tool")
+                    _seg_close()
                     continue
                 if isinstance(item, VisibleModelStreamDone):
                     result = item.result
@@ -1855,6 +1821,12 @@ async def _stream_visible_run(
         # ingen prosa-kald) gen-spørges ÉN gang. Idempotent — intet blev eksekveret.
         # Transient → lykkes oftest. execute_visible_model er SYNKRON → kør i tråd
         # (ellers fryser --workers 1 API'et). Bærer fuld kontekst via session_id.
+        _first_pass_hollow_retried = False
+        # Genoptag HOEJST én gang pr. tur paa baggrunds-output. Uden loftet
+        # kunne en snakkesalig shell holde turen i live i det uendelige.
+        _bg_resumed_this_turn = False
+        # Samme loft for Stop-hooken: én genoptagelse pr. tur.
+        _stop_hook_resumed = False
         if (result is not None and not _collected_native_tool_calls
                 and not (getattr(result, "text", "") or "").strip()):
             try:
@@ -1867,33 +1839,11 @@ async def _stream_visible_run(
                 # igen (verificeret på Bjørns council-spørgsmål, tomt 2×). Resend nu
                 # med den NON-thinking compat-alias (deepseek-chat) som ikke har
                 # #1453 → den formulerer svaret. Andre providere: uændret resend.
-                _rs_provider, _rs_model = run.provider, run.model
-                _rs_thinking = None
-                try:
-                    _rs_p = (run.provider or "").strip().lower()
-                    _rs_m = (run.model or "").strip().lower()
-                    # Thinking-modeller (deepseek-vX-flash, kimi, qwen3, glm-5, minimax,
-                    # gpt-oss, nemotron, *-code, r1/o1) deler den STICKY tom-completion-bug:
-                    # re-spørg SAMME thinking-model → tom igen. deepseek har en non-thinking
-                    # alias vi swapper til; ANDRE providere/modeller har ikke → de faldt før
-                    # tilbage til samme sticky model → cutoff (provider-agnostisk, 3. jul,
-                    # kimi-k2.7-code:cloud). Fald tilbage til en pålidelig non-thinking
-                    # formulator (deepseek-chat) så turen får et ÆGTE svar, ikke fallback-stub.
-                    _THINK_HINTS = ("kimi", "-code", "deepseek-v", "qwen3", "glm-5",
-                                    "minimax", "gpt-oss", "nemotron", "-r1", "o1-",
-                                    "think", "reason")
-                    if _rs_p == "deepseek":
-                        # execute_visible_model normaliserer modellen + slår thinking
-                        # fra via thinking_mode="fast" (ingen deprecated alias).
-                        _rs_model = run.model
-                        _rs_thinking = "fast"
-                    elif any(_t in _rs_m for _t in _THINK_HINTS):
-                        _rs_provider, _rs_model, _rs_thinking = (
-                            "deepseek", "deepseek-v4-flash", "fast",
-                        )
-                except Exception:
-                    _rs_provider, _rs_model = run.provider, run.model
-                    _rs_thinking = None
+                # Valget af gen-spørge-mål bor i first_pass_recovery (udskilt
+                # 5/9 efter Boy Scout-reglen).
+                from core.services.first_pass_recovery import resend_target
+                _rs_provider, _rs_model, _rs_thinking = resend_target(
+                    run.provider, run.model)
                 _rs = await asyncio.to_thread(
                     _exec_rs, message=run.user_message, provider=_rs_provider,
                     model=_rs_model, session_id=run.session_id,
@@ -1914,6 +1864,77 @@ async def _stream_visible_run(
                                          "delta": _rs_text})
             except Exception as _rs_exc:
                 logger.debug("resend-på-tom fejlede: %s", _rs_exc)
+
+        # ── Tomt løfte på FØRSTE pas (5/9-2026) ─────────────────────────────
+        # Værnet mod tomme løfter bor inde i followup-loopet, og hele det loop
+        # ligger inde i `if _collected_native_tool_calls:`. Et første pas der
+        # svarer med prosa og INTET værktøjskald sprang derfor loopet over — og
+        # værnet så det aldrig. Det er præcis Bjørns cutoff: «Lad mig bekræfte
+        # config'en» → turen slut, intet kaldt, status=completed.
+        #
+        # Kuren spejler resend-på-tom lige ovenfor: ét ekstra forsøg, med
+        # nudget lagt i beskeden, så han får chancen for at gøre det han lige
+        # lovede. Lykkes det ikke, står svaret som det var — vi gør aldrig
+        # turen værre end den var.
+        if (result is not None and not _collected_native_tool_calls
+                and not _first_pass_hollow_retried):
+            try:
+                from core.services.first_pass_recovery import first_pass_is_hollow
+                if first_pass_is_hollow(getattr(result, "text", ""), 0):
+                    _first_pass_hollow_retried = True
+                    from core.services import followup_observer as _fo_hp
+                    from core.services.hollow_promise_round import note_detected as _hp_det
+                    # MAALT, ikke kureret — og det er en bevidst forskel.
+                    #
+                    # Foerste udgave gen-spurgte via `execute_visible_model` med
+                    # nudget i beskeden. Den vej har INGEN tools-parameter: det er
+                    # en ren tekst-completion, saa `tool_calls` er tom pr.
+                    # konstruktion og kuren kunne aldrig lykkes. Den brugte et fuldt
+                    # modelkald pr. tomt loefte til ingenting — samme klasse fejl som
+                    # den den skulle rette: kode der ser levende ud og strukturelt
+                    # ikke kan gøre noget. Maalt: 3 forsoeg, 0 loest.
+                    #
+                    # Et aegte nudge skal gaa gennem followup-loopet, som annoncerer
+                    # tools og kan tvinge tool_choice (dér virker det 4 af 4). Indtil
+                    # den vej er bygget, REGISTRERER vi kun — saa Centralen kan taelle
+                    # dem aerligt frem for at vi lader som om de bliver kureret.
+                    _hp_det(run_id=run.run_id, provider=str(run.provider or ""),
+                            model=str(run.model or ""), round_index=0,
+                            session_id=str(run.session_id or ""), forced=True)
+                    # Nudget gaar ad `stream_visible_model` — samme vej som foerste
+                    # pas, og dermed den ENESTE der annoncerer vaerktoejer. Falder der
+                    # kald ud, overtager maskineriet nedenfor dem som var de kommet
+                    # med det samme; ellers staar svaret som det var.
+                    from core.services.first_pass_recovery import nudge_for_tool_calls
+                    _hp_calls = await asyncio.to_thread(
+                        nudge_for_tool_calls,
+                        message=run.user_message, provider=run.provider,
+                        model=run.model, session_id=run.session_id,
+                        thinking_mode=run.thinking_mode,
+                        tool_scope=tool_scope or "",
+                        local_exec=bool(getattr(run, "local_tool_exec", False)))
+                    _hp_resolved = bool(_hp_calls)
+                    if _hp_resolved:
+                        _collected_native_tool_calls = _hp_calls
+                    _fo_hp.note_hollow_promise(
+                        run.run_id, provider=run.provider, model=run.model,
+                        round_index=0, session_id=str(run.session_id or ""),
+                        resolved=_hp_resolved)
+                    try:
+                        from core.services.hollow_promise_round import (
+                            note_outcome as _hp_out,
+                        )
+                        _hp_out(run_id=run.run_id, provider=str(run.provider or ""),
+                                model=str(run.model or ""), round_index=0,
+                                session_id=str(run.session_id or ""), forced=True,
+                                tool_calls=len(_hp_calls))
+                    except Exception:
+                        pass
+                    logger.warning(
+                        "first-pass-hollow-promise run_id=%s model=%s → %d tool-kald "
+                        "efter nudge", run.run_id, run.model, len(_hp_calls))
+            except Exception as _hp_exc:
+                logger.debug("first-pass-hollow-kur fejlede: %s", _hp_exc)
 
         capability_plan = _extract_capability_plan(result.text)
 
@@ -1960,6 +1981,15 @@ async def _stream_visible_run(
                     for _lm_n in _lm_added:
                         if _lm_n and _lm_n not in _round_extra_tools:
                             _round_extra_tools.append(str(_lm_n))
+                    # 2026-09-05: udvid præfiks-låsen, så et værktøj han hentede
+                    # frem holder ved til næste tur i stedet for at forsvinde og
+                    # tvinge et nyt load_more_tools (og et nyt præfiks).
+                    if _lm_added:
+                        try:
+                            from core.services.session_tool_pin import extend as _pin_extend
+                            _pin_extend(run.session_id, [str(n) for n in _lm_added])
+                        except Exception:
+                            pass
                 except Exception:
                     pass
 
@@ -2207,6 +2237,7 @@ async def _stream_visible_run(
                             session_id=run.session_id,
                             role="tool",
                             content=result_text,
+                            full_content=str(sr.get("result_text_full") or ""),
                             tool_name=str(sr.get("tool_name") or ""),
                             tool_arguments=dict(sr.get("arguments") or {}),
                         )
@@ -2258,11 +2289,28 @@ async def _stream_visible_run(
                         run_id=run.run_id,
                     )
                     if not _selection.fallback_used:
-                        _selected_set = set(_selection.selected_names)
+                        # ── PRÆFIKS-LÅS (2026-09-05) ────────────────────────
+                        # Routeren valgte et NYT sæt pr. besked (målt 4/9: 58,
+                        # 59, 61, 80-88 værktøjer på forskellige ture). Tools-
+                        # arrayet ligger lige efter systembeskeden i DeepSeeks
+                        # template, så et nyt sæt bryder cachen dér og hele
+                        # historikken bagefter — op til 160k tokens — betales
+                        # fuldt hver tur. Hovedbogen viste hit frosset på
+                        # 6.400-8.320 (= systembeskeden) mens miss voksede til
+                        # 76k. Nu bestemmer routeren ÉN gang pr. session.
+                        from core.services.session_tool_pin import resolve as _pin_resolve
+                        _names, _pin_src = _pin_resolve(
+                            run.session_id, list(_selection.selected_names))
+                        _selected_set = set(_names)
                         _agentic_tools = [
                             d for d in _agentic_tools
                             if ((d.get("function") or {}).get("name") or d.get("name") or "") in _selected_set
                         ]
+                        logger.info(
+                            "tool-router run_id=%s valgt=%d sendt=%d kilde=%s",
+                            run.run_id, len(_selection.selected_names),
+                            len(_agentic_tools), _pin_src,
+                        )
                 except Exception:
                     pass  # keep full list on any error
                 _all_followup_parts: list[str] = []
@@ -2313,6 +2361,9 @@ async def _stream_visible_run(
                                 tool_call_id=str(_tc.get("id") or ""),
                                 tool_name=_tc_name,
                                 content=_content,
+                                image_data_url=str(
+                                    ((_sr or {}).get("result") or {}).get("image_data_url") or ""
+                                ),
                             )
                         )
                     # #2 Per-runde-nudge (ReAct "Observation → Thought"): append en KORT
@@ -2325,6 +2376,7 @@ async def _stream_visible_run(
                         out[-1] = _vf.ToolResult(
                             tool_call_id=_ln.tool_call_id,
                             tool_name=_ln.tool_name,
+                            image_data_url=_ln.image_data_url,
                             content=(_ln.content.rstrip() + "\n\n(⟳ Før du fortsætter: "
                                      "skriv én kort sætning om hvad disse resultater "
                                      "betyder og hvad du gør nu.)"),
@@ -2445,6 +2497,8 @@ async def _stream_visible_run(
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
                 _hollow_promise_nudged = False  # hollow-promise-guard: cap ÉT nudge pr. run
+                _hollow_force_next = False      # redesign 4/9: næste runde tvinges m. tool_choice=required
+                _hollow_await_outcome = False   # udfald af den tvungne runde skal persisteres
                 # Eskalerende synthese-pause (Bjørn 2026-06-17 "spinner→død"-roden):
                 # når Jarvis spiraler i tavse tool-runder (fx læser filer én-ad-gangen),
                 # tving ham til at OPSUMMERE efter N runder ved at fjerne tools i ÉN runde.
@@ -2704,7 +2758,15 @@ async def _stream_visible_run(
                     # afslutte på en tvunget tom runde) er uændret.
                     _force_summary = _is_last_round or _tool_pause_active
                     _round_tool_definitions = _agentic_tools
-                    _round_tool_choice = "none" if _force_summary else None
+                    # Redesign 4/9: efter et tomt løfte TVINGES et tool-kald på
+                    # openai-compat-lanes (tool_choice="required") i stedet for at bede.
+                    from core.services.hollow_promise_round import next_round_tool_choice as _nrtc
+                    _round_tool_choice = _nrtc(
+                        force_summary=_force_summary, hollow_force=_hollow_force_next,
+                        provider=str(_active_provider or ""),
+                    )
+                    _hollow_forced_this_round = _round_tool_choice == "required"
+                    _hollow_force_next = False
                     # ── HARNESS-GARANTI: adapter-AGNOSTISK tvungen finalize (Bjørn 4. jul) ──
                     # Roden til "modellen skipper tekst" er RUNTIME, ikke modellen:
                     # tool_choice="none" er (a) KUN plumbet til openai-compat-adapteren
@@ -2721,6 +2783,29 @@ async def _stream_visible_run(
                     # brudt af tool-fjernelsen på præcis denne ene afsluttende runde (one-shot,
                     # forskningsbekræftet acceptabelt). KUN _is_last_round — IKKE synthese-
                     # pausen (den skal kunne opsummere OG fortsætte med at grave).
+                    # ── VARSEL FØR DØREN SMÆKKER (Bjørn 6/9-2026) ──────────────
+                    # Finalize-runden fjerner tools og kræver prosa — uden varsel.
+                    # Den ene runde arbejder han, den næste er værktøjerne væk.
+                    # Målt: 12 af 658 runs når runde 30, og faldet fra runde 23 er
+                    # blidt — når han først graver, bliver han ved. De sidste fem
+                    # runder får derfor at vide hvor de er, så han kan samle sine
+                    # kald og runde af i stedet for at blive klippet midt i en
+                    # tanke. Append-only trailing tur → cache-præfikset er urørt.
+                    if not _is_last_round:
+                        try:
+                            from core.services.round_budget_notice import (
+                                round_budget_notice as _rbn,
+                            )
+                            _varsel = _rbn(
+                                round_index=_agentic_round,
+                                max_rounds=_AGENTIC_MAX_ROUNDS,
+                            )
+                        except Exception:
+                            _varsel = ""
+                        if _varsel:
+                            _round_base_messages = list(_round_base_messages) + [
+                                {"role": "user", "content": _varsel},
+                            ]
                     if _is_last_round:
                         _round_tool_definitions = None
                         _round_base_messages = list(_round_base_messages) + [{
@@ -2805,7 +2890,7 @@ async def _stream_visible_run(
                                     exchanges=_followup_exchanges,
                                     tool_definitions=tool_defs,
                                     round_index=rnd,
-                                    thinking_mode=run.thinking_mode,
+                                    thinking_mode=_thinking_for_round(run, _followup_exchanges),
                                     temperature=pump_temp,
                                     top_p=pump_top_p,
                                     tool_choice=pump_tool_choice,
@@ -2997,6 +3082,10 @@ async def _stream_visible_run(
                                 if _a_item.delta:
                                     _a_parts.append(_a_item.delta)
                                     _all_followup_parts.append(_a_item.delta)
+                                    # Opfølgnings-runder logførte IKKE rækkefølge —
+                                    # så en tur med flere runder tabte den helt.
+                                    _interleave_log.append("text")
+                                    _seg_text(_a_item.delta)
                                     yield _sse("delta", {
                                         "type": "delta",
                                         "run_id": run.run_id,
@@ -3017,6 +3106,9 @@ async def _stream_visible_run(
                                 continue
                             if isinstance(_a_item, _vf.FollowupToolCalls):
                                 _a_tool_calls.extend(_a_item.tool_calls)
+                                for _ in (_a_item.tool_calls or [None]):
+                                    _interleave_log.append("tool")
+                                _seg_close()
                                 continue
                             if isinstance(_a_item, _vf.FollowupFailed):
                                 # Carry the B11 structured taxonomy (failure_kind +
@@ -3592,6 +3684,20 @@ async def _stream_visible_run(
                             pass
                         break
 
+                    # Redesign 4/9: persistér udfaldet af runden EFTER et tomt løfte —
+                    # blev der kaldt et værktøj (resolved) eller ej (still_hollow)?
+                    if _hollow_await_outcome:
+                        _hollow_await_outcome = False
+                        try:
+                            from core.services.hollow_promise_round import note_outcome as _hp_out
+                            _hp_out(run_id=run.run_id, provider=str(_active_provider or ""),
+                                    model=str(_active_model or ""), round_index=_agentic_round + 1,
+                                    session_id=str(run.session_id or ""),
+                                    forced=bool(_hollow_forced_this_round),
+                                    tool_calls=len(_a_tool_calls or []))
+                        except Exception:
+                            pass
+
                     if not _a_tool_calls:
                         # Tvungen synthese-pause: tools var fjernet, så manglende
                         # tool-kald betyder "Jarvis opsummerede" — IKKE "færdig". Løft
@@ -3643,17 +3749,146 @@ async def _stream_visible_run(
                                         text=_exchange_text(), tool_calls=[], results=[]))
                                 base_messages.append(
                                     {"role": "user", "content": HOLLOW_PROMISE_NUDGE})
+                                # Redesign 4/9: næste runde tvinger et tool-kald og udfaldet
+                                # persisteres (runtime.hollow_promise_detected/outcome).
+                                _hollow_force_next = True
+                                _hollow_await_outcome = True
                                 try:
-                                    from core.services import followup_observer as _fu_hp
-                                    _fu_hp.note_hollow_promise(
-                                        run.run_id, provider=run.provider, model=run.model,
-                                        round_index=_agentic_round + 1,
-                                        session_id=run.session_id)
+                                    from core.services.hollow_promise_round import (
+                                        note_detected as _hp_det, supports_forced_tool_choice as _hp_sup,
+                                    )
+                                    _hp_det(run_id=run.run_id, provider=str(_active_provider or ""),
+                                            model=str(_active_model or ""), round_index=_agentic_round + 1,
+                                            session_id=str(run.session_id or ""),
+                                            forced=_hp_sup(str(_active_provider or "")))
                                 except Exception:
                                     pass
-                                continue  # tving ÉN mere runde med nudge'en
+                                continue  # tving ÉN mere runde — nu med tool_choice=required
+                            # ── TOMT LØFTE PÅ AFSLUTNINGSRUNDEN (2026-09-05) ────
+                            # Vagten ovenfor er slået fra når `_is_last_round` —
+                            # med god grund: der er ingen runde tilbage at puffe
+                            # med. Men det er PRÆCIS den runde hvor løftet er mest
+                            # sandsynligt: loopet har fjernet værktøjerne og bedt
+                            # om et endeligt svar, og modellen står måske midt i
+                            # arbejdet. Bjørns session 5/9 kl. 06:05 endte sådan:
+                            # «Lad mig læse filen direkte med read_file i stedet.»
+                            # — run afsluttet `completed`, intet spor nogen steder,
+                            # og han måtte selv skrive «Du stoppede?».
+                            # Vi kan ikke puffe, men vi kan lade være med at lyve
+                            # om det: markér runnet, persistér udfaldet, og sig det
+                            # ærligt i svaret.
+                            if (
+                                _is_last_round
+                                and not _hollow_promise_nudged
+                                and hollow_promise_guard_enabled()
+                                and is_hollow_promise(
+                                    final_text="".join(_a_parts),
+                                    total_tool_calls=sum(
+                                        len(getattr(_ex, "tool_calls", []) or [])
+                                        for _ex in _followup_exchanges),
+                                    user_message=run.user_message,
+                                    nudged_already=False,
+                                    last_round_tool_calls=0,
+                                )
+                            ):
+                                _run_degenerated = True
+                                _stop_note = (
+                                    "\n\n_(Jeg stoppede her fordi løkken tvang en "
+                                    "afslutning — ikke fordi jeg var færdig. Sig til, "
+                                    "så tager jeg den derfra.)_"
+                                )
+                                _a_parts.append(_stop_note)
+                                _all_followup_parts.append(_stop_note)
+                                yield _sse("delta", {
+                                    "type": "delta", "run_id": run.run_id,
+                                    "delta": _stop_note,
+                                })
+                                try:
+                                    from core.services.hollow_promise_round import (
+                                        note_detected as _hp_fin,
+                                    )
+                                    _hp_fin(run_id=run.run_id,
+                                            provider=str(_active_provider or ""),
+                                            model=str(_active_model or ""),
+                                            round_index=_agentic_round + 1,
+                                            session_id=str(run.session_id or ""),
+                                            forced=False)
+                                except Exception:
+                                    pass
+                                try:
+                                    from core.services.central_core import central as _c_fin
+                                    _c_fin().observe({
+                                        "cluster": "loop",
+                                        "nerve": "hollow_promise_on_forced_finalize",
+                                        "run_id": str(run.run_id or ""),
+                                        "round": _agentic_round + 1,
+                                        "forced_by_no_progress": bool(_force_finalize_next),
+                                    })
+                                except Exception:
+                                    pass
                         except Exception:
                             pass  # fail-open → normal break nedenfor
+                        # ── Baggrunds-shells: slut ikke mens noget koerer ──
+                        # `operator_run_in_background` er ubrugelig uden det her:
+                        # man starter en kommando, turen slutter, og resultatet
+                        # ses aldrig. KUN aegte aendring genoptager (nyt output
+                        # eller netop afsluttet) — ellers ville en tur med en
+                        # koerende shell aldrig kunne slutte.
+                        try:
+                            from core.services.background_resume import poll_async
+                            _bg_note = await poll_async(
+                                str(run.session_id or ""), str(force_user_id or ""))
+                            if _bg_note and not _bg_resumed_this_turn:
+                                _bg_resumed_this_turn = True
+                                base_messages.append(
+                                    {"role": "user", "content": _bg_note})
+                                _followup_exchanges.append(
+                                    _vf.ToolExchange(text=_exchange_text(),
+                                                     tool_calls=[], results=[]))
+                                logger.warning(
+                                    "background-resume run_id=%s — nyt fra "
+                                    "baggrunds-shell, turen fortsaetter", run.run_id)
+                                continue
+                        except Exception as _bg_exc:
+                            logger.debug("background-resume fejlede: %s", _bg_exc)
+
+                        # ── Stop-hook ────────────────────────────────────
+                        # I jarvis-code betyder «block» paa Stop: bliv ved. Det
+                        # er den eneste dom der giver mening her — turen er ved
+                        # at slutte, saa der er intet at forhindre, kun noget at
+                        # fortsaette. Hookens besked bliver til opgaven.
+                        #
+                        # Loft paa ÉN gang pr. tur, samme grund som baggrunds-
+                        # genoptagelsen: en hook der altid siger «bliv ved» maa
+                        # ikke kunne holde turen i live for evigt.
+                        try:
+                            from core.services import lifecycle_hooks as _lh_stop
+                            if ("Stop" in _lh_stop.WIRED_EVENTS
+                                    and not _stop_hook_resumed
+                                    and _lh_stop.hooks_for("Stop")):
+                                _sd = await _lh_stop.fire_async(
+                                    "Stop",
+                                    {"session_id": str(run.session_id or ""),
+                                     "rounds": _agentic_round + 1,
+                                     "text": _exchange_text()[:2000]},
+                                    user_id=str(force_user_id or ""))
+                                if _sd.get("action") == "block":
+                                    _stop_hook_resumed = True
+                                    base_messages.append({
+                                        "role": "user",
+                                        "content": ("[HOOK] " + str(
+                                            _sd.get("message")
+                                            or "Du er ikke faerdig endnu."))})
+                                    _followup_exchanges.append(
+                                        _vf.ToolExchange(text=_exchange_text(),
+                                                         tool_calls=[], results=[]))
+                                    logger.info(
+                                        "stop-hook run_id=%s — turen fortsaetter",
+                                        run.run_id)
+                                    continue
+                        except Exception as _stop_exc:
+                            logger.warning("Stop-hook fejlede: %r", _stop_exc)
+
                         # No more tool calls — this round produced the final response.
                         break
 
@@ -3917,6 +4152,18 @@ async def _stream_visible_run(
                         _round_sig = frozenset(_sig_items)
                         _no_new = bool(_round_sig) and (
                             _all_dup or _round_sig == _prev_round_sig)
+                        # 2026-09-05: en runde der ÆNDREDE noget har per definition
+                        # gjort fremskridt, uanset hvordan signaturen ser ud. Uden
+                        # dette blev en skrivning efterfulgt af to afviste
+                        # verifikationer læst som "modellen spinner" — og turen
+                        # blev tvunget til at afslutte midt i arbejdet (Bjørns
+                        # session 5/9 kl. 06:05).
+                        try:
+                            from core.services.tool_world_change import round_changed_the_world
+                            if round_changed_the_world(_a_results):
+                                _no_new = False
+                        except Exception:
+                            pass
                         if _no_new:
                             _no_progress_rounds += 1
                         else:
@@ -4152,6 +4399,7 @@ async def _stream_visible_run(
                                 session_id=run.session_id,
                                 role="tool",
                                 content=_a_rt,
+                                full_content=str(_a_sr.get("result_text_full") or ""),
                                 tool_name=str(_a_sr.get("tool_name") or ""),
                                 tool_arguments=dict(_a_sr.get("arguments") or {}),
                             )
@@ -4458,6 +4706,29 @@ async def _stream_visible_run(
                 _real_answer = str(followup_text or "").strip()
                 if _real_answer in ("[tool calls only]", "[Completed]", "[tool calls only]."):
                     _real_answer = ""
+                try:
+                    from core.services.post_tool_answer_guard import (
+                        is_hollow_post_tool_answer,
+                        should_replace_with_synthesis,
+                    )
+                    _fu_ex_guard = locals().get("_followup_exchanges") or []
+                    if is_hollow_post_tool_answer(_real_answer, _fu_ex_guard):
+                        _synth_guard = await asyncio.to_thread(
+                            _vf.synthesize_final_answer,
+                            provider=run.provider, model=run.model,
+                            base_messages=locals().get("base_messages") or [],
+                            exchanges=_fu_ex_guard,
+                        )
+                        if should_replace_with_synthesis(_real_answer, _synth_guard):
+                            followup_text = _synth_guard
+                            _real_answer = _synth_guard
+                            if not run.autonomous:
+                                yield _sse("delta", {
+                                    "type": "delta", "run_id": run.run_id,
+                                    "delta": _synth_guard,
+                                })
+                except Exception:
+                    pass
                 if not _real_answer and _final_run_status == "completed":
                     _fu_ex = locals().get("_followup_exchanges") or []
                     _tools_ct = sum(len(getattr(_ex, "tool_calls", []) or [])
@@ -4520,7 +4791,14 @@ async def _stream_visible_run(
                             })
                         followup_text = (followup_text + _resume_note).strip()
 
-                total_input_tokens = result.input_tokens * 2
+                # 2026-09-05: var `* 2` — et gaet om at der skete PRAECIS én
+                # foelge-runde. Maalt 4. september: 96 foerste-pas mod 380
+                # agentiske foelge-runder, altsaa ~4 pr. tur. Gaettet var baade
+                # for hoejt (ture uden foelge-runder) og for lavt (ture med ti).
+                # Runderne bogfoerer nu deres egne raekker i
+                # visible_followup_adapters, saa denne skal taelle FOERSTE pas
+                # og kun det — ellers tælles den ene runde to gange.
+                total_input_tokens = result.input_tokens
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
                 # 2026-06-13: denne agentiske completion-gren satte input/output
                 # men IKKE cache-vars — så cost-persistensen kastede
@@ -4530,6 +4808,15 @@ async def _stream_visible_run(
                 total_cache_hit_tokens = getattr(result, "cache_hit_tokens", 0)
                 total_cache_miss_tokens = getattr(result, "cache_miss_tokens", 0)
                 visible_output_text = followup_text
+                try:
+                    from core.services.prompt_section_impact import observe_last_prompt_answer_impact
+                    observe_last_prompt_answer_impact(
+                        session_id=run.session_id or "",
+                        run_id=run.run_id or "",
+                        answer_text=followup_text,
+                    )
+                except Exception:
+                    pass
 
                 set_last_visible_run_outcome(
                     run,
@@ -4563,6 +4850,7 @@ async def _stream_visible_run(
                             tool_calls=_turn_tool_calls,
                             tool_results=_turn_tool_results,
                             interleave=_interleave_log,
+                            text_segments=_text_segments,
                         ) or None,
                     )
                 except Exception as _persist_exc:
@@ -4657,55 +4945,20 @@ async def _stream_visible_run(
                             )
                         except Exception:
                             pass
-                        # Experience-episode collector (Lag 1 of Runtime
-                        # Decision Policy — added 2026-05-09). Append-only
-                        # log feeds embedding-retrieval substrate via
-                        # _experience_substrate_section in prompt_contract.
+                        # Experience-episode + lektie ved tool-fejl + theory-of-mind —
+                        # udskilt til visible_runs_learning_signals.py (Boy Scout,
+                        # 2026-09-04, memory repair R4).
                         try:
-                            from core.services.experience_episodes import record_episode
-                            _tool_seq = []
-                            for _tc in _collected_native_tool_calls or []:
-                                _name = ""
-                                try:
-                                    _name = (
-                                        getattr(_tc, "name", None)
-                                        or (_tc.get("name") if isinstance(_tc, dict) else "")
-                                        or (
-                                            _tc.get("function", {}).get("name", "")
-                                            if isinstance(_tc, dict) else ""
-                                        )
-                                    )
-                                except Exception:
-                                    _name = ""
-                                if _name:
-                                    _tool_seq.append(str(_name))
-                            _outcome_signals = {
-                                "status": str(_outcome_status or ""),
-                                "tool_errors": int(
-                                    1 if (_outcome_error or "") else 0
-                                ),
-                                "tool_count": len(_tool_seq),
-                                "output_tokens": int(_tokens[1] or 0),
-                                "assistant_chars": len(_followup_text or ""),
-                            }
-                            record_episode(
-                                session_id=_run_ref.session_id,
-                                turn_id=_run_ref.run_id,
-                                intent=str(_run_ref.user_message or "")[:240],
-                                tool_sequence=_tool_seq,
-                                outcome_signals=_outcome_signals,
-                                user_corrected=False,  # enriched later
-                                session_phase="mid-task",
+                            from core.services.visible_runs_learning_signals import (
+                                record_visible_run_learning_signals,
                             )
-                        except Exception:
-                            pass
-                        try:
-                            from core.services.theory_of_mind_engine import record_theory_of_mind_update
-                            record_theory_of_mind_update(
-                                user_message=_run_ref.user_message,
-                                assistant_text=_followup_text,
+                            record_visible_run_learning_signals(
+                                run_ref=_run_ref,
+                                collected_native_tool_calls=_collected_native_tool_calls,
                                 outcome_status=_outcome_status,
-                                source_run_id=_run_ref.run_id,
+                                outcome_error=_outcome_error,
+                                followup_text=_followup_text,
+                                output_tokens=int(_tokens[1] or 0),
                             )
                         except Exception:
                             pass
@@ -5222,6 +5475,15 @@ async def _stream_visible_run(
         # message in the DB (avoids the "message disappears" race condition).
         if visible_output_text:
             try:
+                from core.services.prompt_section_impact import observe_last_prompt_answer_impact
+                observe_last_prompt_answer_impact(
+                    session_id=str(run.session_id or ""),
+                    run_id=str(run.run_id or ""),
+                    answer_text=visible_output_text,
+                )
+            except Exception:
+                pass
+            try:
                 _persist_session_assistant_message(
                     run, visible_output_text,
                     reasoning_content=str(locals().get("_persist_reasoning", "") or ""),
@@ -5230,6 +5492,7 @@ async def _stream_visible_run(
                         tool_calls=_turn_tool_calls,
                         tool_results=_turn_tool_results,
                         interleave=_interleave_log,
+                        text_segments=_text_segments,
                     ) or None,
                 )
             except Exception as _persist_exc2:
@@ -5252,7 +5515,7 @@ async def _stream_visible_run(
         # and send a proper failed SSE so the browser gets a clean error instead of
         # an abrupt connection close ("Error in input stream").
         import logging as _outer_log
-        _outer_log.getLogger(__name__).error(
+        _outer_log.getLogger("uvicorn.error").error(
             "visible-run unhandled exception: %s", _outer_exc, exc_info=True
         )
         _outer_error = str(_outer_exc) or "unexpected-run-error"
@@ -5360,10 +5623,10 @@ async def _stream_visible_run(
             # dette i stedet for tavshed eller en dramatisk overlevelses-tekst.
             try:
                 if run.session_id and not run.autonomous and _session_last_role(run.session_id) != "assistant":
-                    _persist_session_assistant_message(
-                        run,
-                        "Jeg blev afbrudt midt i det — svaret nåede ikke helt ud. "
-                        "Skriv bare igen, så samler jeg tråden op.")
+                    from core.services.interruption_notice import (
+                        INTERRUPTION_NOTICE,
+                    )
+                    _persist_session_assistant_message(run, INTERRUPTION_NOTICE)
             except Exception:
                 pass
 

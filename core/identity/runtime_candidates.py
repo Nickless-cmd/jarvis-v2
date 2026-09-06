@@ -108,13 +108,22 @@ def _observe_candidate_workflows(counts: dict[str, int]) -> None:
             int(v) for k, v in counts.items()
             if isinstance(v, (int, float)) and str(k).endswith(":proposed")
         )
+        # 2026-09-04 (lærings-sløjfe, blok D): der fandtes KUN ":proposed"-tal.
+        # Så kunne ingen se at 12 selfhood-forslag var stillet og NUL anvendt —
+        # trykket blev målt, resultatet aldrig. Nu følger de anvendte med.
+        self_applied = int(counts.get("soul_update:applied", 0)) + int(
+            counts.get("identity_update:applied", 0)
+        )
         record_private(
             "identity", "runtime_candidate_workflows",
             value=float(self_proposed),
             meta={
                 "self_mutation_proposed": self_proposed,
+                "self_mutation_applied": self_applied,
                 "soul_proposed": int(counts.get("soul_update:proposed", 0)),
+                "soul_applied": int(counts.get("soul_update:applied", 0)),
                 "identity_proposed": int(counts.get("identity_update:proposed", 0)),
+                "identity_applied": int(counts.get("identity_update:applied", 0)),
                 "total_proposed": int(total_proposed),
             },
         )

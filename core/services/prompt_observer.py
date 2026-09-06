@@ -28,38 +28,99 @@ _KEY_PREFIX = "flag:central.switch.prompt_section."
 # Naturlig hjem her hos section_enabled: hvilke sektioner er diagnostik-STØJ
 # der droppes by default (kan live-overstyres pr. sektion). Var build-lokale
 # set-literaler i prompt_contract; samlet her så al sektion-policy bor ét sted.
+# ── 2026-09-05: OTTE labels taget af listen ────────────────────────────────
+#
+# Målt i en rigtig prompt-bygning: 22 sektioner slukket, 7 medtaget, NUL klemt
+# ud af budgettet. Blacklisten — ikke pladsen — var det der klippede.
+#
+# To af begrundelserne fra 22/6 var testbare påstande, og begge var blevet
+# usande:
+#
+#   «already in guidance rules» (markdown formatting, no tool-result echo)
+#     → FALSK. Hverken «linjeskift», «EGNE ord», «Gentag ALDRIG» eller
+#       «listepunkt» findes nogen steder i den byggede prompt. Instruktionerne
+#       levede KUN i de slukkede sektioner. At slukke dem fjernede vejledningen
+#       helt i stedet for at fjerne en dublet.
+#
+#   «merged into brain facts» (jarvis brain summary)
+#     → FALSK. Der findes ingen «brain facts»-sektion i prompten. Summariet blev
+#       flettet ind i noget der ikke eksisterer. 1.171 tegn af hans eget
+#       vidensresumé, tabt.
+#
+# «"Ny samtale ×5" tells him nothing» holdt for cross-session arc (stadig mest
+# maskin-titler) men IKKE for conversation continuity, som nu bærer emne OG
+# udfald: «Emne: Grunde for at ikke kunne fuldføre opgaver | Resultat: Brugeren
+# pointerede på, at Jarvis ofte lover at undersøge noget…». Begge tændt efter
+# Bjørns beslutning; arc kan mutes igen hvis den viser sig overflødig.
+#
+# R2 gate telemetry og loop-compliance self-check ER diagnostik — men de bærer
+# den ene besked han har mest brug for: 90 advarsler vist på et døgn, 71
+# ignoreret, 3 % efterlevelse. Systemet vidste det. Beskeden var slukket.
+#
+# LÆREN: en blacklist-begrundelse der siger «findes allerede et andet sted» skal
+# efterprøves, ikke antages. Det andet sted kan forsvinde.
+# ── 2026-09-05, 2. runde: syv BETINGEDE ALARMER taget af listen ────────────
+#
+# Jeg kaldte dem foerst "doede" fordi de returnerede 0 tegn. Det var forkert.
+# Deres egne docstrings og kode siger at de er TAVSE MED VILJE:
+#
+#   self-monitor warnings          fyrer naar thrash >= taerskel (loop-adfaerd)
+#   context window degradation     fyrer naar degradation != "ok"
+#   forgetting nudge               fyrer naar samtalen er substantiel
+#   causal alerts                  fyrer naar der ER fejl at advare om
+#   reasoning tier recommendation  fyrer paa tunge opgaver — VERIFICERET:
+#                                  "design en migrationsplan for at flytte 14
+#                                  daemoner" gav "Reasoning-tier estimat:
+#                                  reasoning (score 40/100)"
+#   reasoning escalation           fyrer naar eskalering er berettiget
+#   priors from your own data      IKKE tom laengere: "Dine sidste 5 ticks
+#                                  scorer 85.0/100 — 13 pct over dit 14-dages
+#                                  snit. Du er i flow." (kom foerst efter at
+#                                  tick-kvaliteten holdt op med at vaere laast paa 70)
+#
+# At blackliste en alarm er vaerre end at blackliste en statusrapport: den
+# forsvinder praecis naar den skulle tale. Og de koster NUL tegn naar de tier,
+# hvilket er det meste af tiden — saa budgettet belastes kun naar noget er galt.
 DIAGNOSTIC_NOISE_LABELS: frozenset[str] = frozenset({
-    "self-monitor warnings",
+    # 2026-09-05 (2. runde): cross-session arc SLUKKET igen efter Bjørns
+    # beslutning. Den viser stadig mest maskin-titler («Ny samtale»,
+    # «Autonom · Hjerteslag»), og conversation continuity dækker det samme med
+    # emne OG udfald. Dommen fra 22/6 holdt for denne ene.
+    "cross-session arc",
     "metacognition signals",
-    "R2 gate telemetry",
-    "decision adherence gate",
-    "reasoning tier recommendation",
-    "reasoning escalation recommendation",
-    "context window degradation signal",
-    "rule engine conclusions",
-    "causal alerts",
+    # 2026-09-05: "decision adherence gate" er FJERNET herfra. Den er ikke
+    # diagnostik — den er en adfærdsinstruks. Gaten eskalerer fra "Husk at..."
+    # over "DU SKAL..." til en kritisk advarsel med rollback, alt efter hvor
+    # lavt adherence er faldet. Fem aktive beslutninger stod under 25% da vi
+    # målte, og sektionen producerede 1.993 tegn korrekt eskaleret tekst —
+    # som blev kastet væk her, FØR indholdet blev vurderet.
+    #
+    # Hele kæden virkede: review skrev domme, adherence_score blev opdateret,
+    # gaten valgte det rigtige bånd. Og så nåede beskeden aldrig frem. En
+    # advarsel Jarvis ikke ser, er ikke en advarsel.
     "causal narrative",
-    "priors from your own data",
     # 2026-06-22 round 2 — cut per Jarvis' own review of his prompt:
-    "conversation continuity (always-on)",  # "Ny samtale ×5" tells him nothing
-    "loop-compliance self-check",          # heed-rate telemetry, not for him
-    "cross-session arc",                    # "Ny samtale ×5" tells him nothing
-    "session topics (always-on)",           # keyword counts ("NEJ ×14") ≠ awareness
-    "forgetting nudge",                     # a rule, belongs in guidance not signal
+    # 2026-09-04 (lærings-sløjfe, blok A): "session topics (always-on)" er TAGET
+    # AF listen. Dommen fra 22/6 ("NEJ ×14") ramte formatet, ikke signalet:
+    # session_topic_tracker har skrevet 5.112 rækker med gentagelses-tællere som
+    # INTET har læst siden. Gentagelse på tværs af samtaler er hele grundlaget
+    # for blok C. Slå den fra live med set_section hvis den viser sig at støje.
     "meta-learning weekly retrospective teaser",  # unread memo, don't burn tokens
     "rules learned from arcs",              # repeated retrospective noise
-    "markdown formatting",                  # already in guidance rules
-    "no tool-result echo",                  # already in guidance rules
     # 2026-06-22 round 3 — Jarvis' second review:
     "curiosity-budget idle-window invitation",  # "5/5 tilbage" = mikrostyring; gør implicit
-    "jarvis brain summary",  # merged into "brain facts" (one relevance-ranked section)
 })
 
 # Tail-anchored sektioner der ligeledes er støj (håndteres via _tail_add).
 TAIL_NOISE_LABELS: frozenset[str] = frozenset({
     "causal patterns",          # "agentic_round_start → tool.completed (803×)"
     "pattern counterfactuals",  # same family of self-evident repetition
-    "room entities",            # entity *counts*; real room-sense now in [INDRE LIV]
+    # 2026-09-05: "room entities" TAGET AF listen. Begrundelsen — «real room-sense
+    # now in [INDRE LIV]» — er samme type paastand som de to der blev efterproevet
+    # og faldt tidligere i dag, og den holder heller ikke her. [INDRE LIV]s
+    # rum-linje er visual_memory.latest_description, maalt i dag: «Intet maerkbart
+    # aendret.» Den slukkede sektion baerer derimod 1.538 observationer:
+    # lys x1538, vindue x973, sofa x861, dagslys x813, person x712, bord x678.
 })
 
 

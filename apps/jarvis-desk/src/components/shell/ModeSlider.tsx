@@ -12,7 +12,7 @@ export function ModeSlider({ active, onChange }: { active: Mode; onChange: (m: M
           className={`mode-seg ${active === m ? 'active' : ''}`}
           onClick={() => onChange(m)}
         >
-          {m === 'chat' ? 'Chat' : m === 'cowork' ? 'Cowork' : 'Code'}
+          {m === 'chat' ? 'Chat' : m === 'cowork' ? 'Arbejde' : 'Code'}
         </button>
       ))}
     </div>

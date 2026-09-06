@@ -33,14 +33,21 @@ ALLOWED_EVENT_FAMILIES = {
     # ── Rådets fund #4 (9. jul): PROTECTED CORE tamper/capability — publish RAISEDE stille (uregistreret)
     #    så file_awareness.change/composite.* nåede ALDRIG frem; nu routed OG allowed (invariant kræver begge). ──
     "file_awareness",    # file_awareness.change — ekstern ændring af Jarvis' egen kode (tamper-signal)
+    # ── 4. sep 2026: prompt-telemetri var latent afvist ──
+    "prompt",            # prompt.section_answer_impact (Codex' impact-telemetri) + prompt.assembly_size
+                         # (prompt_contract) — publish RAISEDE stille, 0 events nogensinde
     "composite",         # composite.{invoked,revoked,deleted} — capability-overflade-mutation
+    # ── 6. sep 2026: samme moenster igen. tool_discovery.nudge blev afvist af
+    #    netop denne liste, og kaldstedets except slugte fejlen til en debug-
+    #    linje — skygge-maalingen ville have vist 0 events i ugevis, og vi
+    #    ville have konkluderet at nudgen aldrig fyrer. ──
+    "tool_discovery",    # tool_discovery.nudge — hvilke usynlige tools blev foreslaaet
     # ── Døde routes lukket 6. jul: disse 15 stod i FAMILY_ROUTES (egress-OK) men manglede HER →
     # enhver publish RAISEDE stille. Flere HAVDE publishers (anomaly/telegram/decision_gate/veto_gate/
     # diagnosis/tick_quality) → ægte tabt signal. INVARIANT: FAMILY_ROUTES ⊆ ALLOWED (test-håndhævet). ──
     "anomaly", "stream", "telegram", "decision_gate", "veto_gate", "diagnosis", "tick_quality",
     "mail_checker", "tool_tagger", "session", "weekly_manifest", "arc_rules", "ambient_sound",
     "prompt_relevance_backend", "agent_skill_distiller",
-    "tiktok_content_daemon", "tiktok_research_daemon",
     # LivingNeuron "lange skygge" (2026-07-01): resterende inner-life-familier der publicerede men var
     # uregistrerede (droppet) → nu persisterer + routes egress-frit nedenfor.
     "cognitive_personal_project", "regret", "cognitive_reflective_plan", "cognitive_mission",

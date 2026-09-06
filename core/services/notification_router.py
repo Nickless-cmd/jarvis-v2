@@ -158,8 +158,10 @@ def _deliver_to_channel(uid: str, channel: str, payload: dict, ntype: str) -> bo
             return True
         if channel in ("mobile", "push"):
             from core.services import push_dispatcher as pd
-            pd._push_to_user(uid, {**payload, "kind": kind})
-            return True
+            # Returværdien blev ignoreret her også — en kanal der IKKE nåede
+            # frem meldte succes, og eskaleringen til næste enhed skete
+            # derfor aldrig. Nu bæres det ægte svar videre.
+            return bool(pd._push_to_user(uid, {**payload, "kind": kind}))
         if channel == "desktop":
             from core.services import desktop_notifications as dn
             dn.enqueue(uid, {"kind": kind, "title": payload.get("title", "Jarvis"),

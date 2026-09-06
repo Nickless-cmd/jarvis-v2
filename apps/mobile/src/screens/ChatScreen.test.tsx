@@ -78,10 +78,20 @@ jest.mock('../state/StreamContext', () => ({
 }))
 
 jest.mock('../components/Composer', () => ({
-  Composer: () => {
+  Composer: (props: {
+    onSend: (text: string) => void
+    remoteMode?: string
+    onRemoteModeChange?: (mode: 'chat' | 'code') => void
+  }) => {
     const ReactLib = jest.requireActual('react')
     const { Text } = jest.requireActual('react-native')
-    return ReactLib.createElement(Text, null, 'Composer')
+    return ReactLib.createElement(
+      ReactLib.Fragment,
+      null,
+      ReactLib.createElement(Text, null, `Composer ${props.remoteMode ?? 'none'}`),
+      ReactLib.createElement(Text, { onPress: () => props.onRemoteModeChange?.('code') }, 'Set code mode'),
+      ReactLib.createElement(Text, { onPress: () => props.onSend('ret remote delen') }, 'Send mocked composer')
+    )
   }
 }))
 
@@ -189,4 +199,28 @@ it('renders approval requests and forwards explicit decisions', async () => {
 
   expect(mockApprove).toHaveBeenCalledWith(config)
   expect(mockDeny).toHaveBeenCalledWith(config)
+})
+
+it('sender almindelige mobilbeskeder som code mode naar Code er valgt', async () => {
+  mockStream = {
+    ...mockStream,
+    state: {
+      status: 'idle',
+      blocks: []
+    }
+  }
+
+  const screen = await render(<ChatScreen />)
+
+  await waitFor(() => expect(screen.getByText('Composer chat')).toBeTruthy())
+  fireEvent.press(screen.getByText('Set code mode'))
+  await waitFor(() => expect(screen.getByText('Composer code')).toBeTruthy())
+  fireEvent.press(screen.getByText('Send mocked composer'))
+
+  expect(mockSend).toHaveBeenCalledWith(
+    config,
+    'session-1',
+    'ret remote delen',
+    expect.objectContaining({ mode: 'code' })
+  )
 })

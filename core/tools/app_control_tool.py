@@ -110,6 +110,10 @@ def build_app_action_event(
 
 APP_CONTROL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
+        # `type` er paakraevet i OpenAI-compat. Begge definitioner her har
+        # manglet den; deepseek tolererer det, en striksere provider ville
+        # afvise HELE requesten — samme fejlklasse som gemini-400'eren.
+        "type": "function",
         "function": {
             "name": "request_app_action",
             "description": "Bed jarvis-desk-appen om at skifte tilstand når den nuværende mode eller permission ikke rækker til opgaven. To handlinger: 'switch_to_code_mode' (fra chat til code mode — giver terminal + fil-adgang) og 'request_full_access' (fra 'spørg' til 'fuld adgang' i code mode). Du skifter ALDRIG selv: tool'et viser brugeren et godkendelseskort, og kun deres klik skifter. Når de godkender, gen-sendes beskeden automatisk så du fortsætter. Virker kun i desk-appen (ikke web/Discord). Kald det når du selv mærker at opgaven kræver mere — og afslut din tur med en kort note om at du afventer godkendelse.",
@@ -131,6 +135,7 @@ APP_CONTROL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         }
     },
     {
+        "type": "function",
         "function": {
             "name": "open_ui_panel",
             "description": "Åbn et panel i jarvis-desk-appen for at vise noget for brugeren: 'preview' (preview-panel), 'right' (højre side-panel), 'files' (fil-træ), 'file_tree' (åbn code-mode fil-træet og HIGHLIGHT en bestemt fil — sæt detail til den repo-relative sti, fx 'core/tools/ui_panel_tools.py', så scroller appen til filen og markerer den). Brug file_tree når brugeren ikke kan finde en fil. VIS EN FIL i preview: panel='preview' + detail=den repo-relative filsti (fx 'docs/spec.md') → appen loader og renderer filen. ÅBN INDSTILLINGER: panel='settings' → appen skifter til cowork og viser indstillingszonen (konto/kvote/tema/permissions m.m.). scope='workstation' for at highlighte i brugerens lokale workspace i stedet for server-repoet. Virker kun i desk-appen (ikke Discord/web). Du behøver ikke spørge om lov — appen åbner panelet for owner. action='close' lukker igen.",

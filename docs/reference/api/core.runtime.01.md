@@ -49,7 +49,7 @@ _Facade for core.runtime.db submodules._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_session_distillation_record_from_row` | `(row)` | — | [src](../../../core/runtime/db.py#L76) |
+| function | `_session_distillation_record_from_row` | `(row)` | — | [src](../../../core/runtime/db.py#L80) |
 
 ## `core/runtime/db_absence_traces.py`
 _DB helpers for absence_traces (Lag 11 forgetting)._
@@ -180,19 +180,25 @@ _Capability approval + approval feedback CRUD._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `recent_capability_approval_requests` | `(limit=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L27) |
-| function | `get_capability_approval_request` | `(request_id)` | — | [src](../../../core/runtime/db_capability_approval.py#L61) |
-| function | `approve_capability_approval_request` | `(request_id, *, approved_at)` | — | [src](../../../core/runtime/db_capability_approval.py#L96) |
-| function | `record_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode)` | — | [src](../../../core/runtime/db_capability_approval.py#L153) |
-| function | `_capability_approval_request_from_row` | `(row, *, status=…, approved_at=…, executed=…, executed_at=…, invocation_status=…, invocation_execution_mode=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L213) |
-| function | `_ensure_capability_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_capability_approval.py#L255) |
-| function | `latest_capability_approval_request` | `(*, execution_mode=…, include_executed=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L279) |
-| function | `latest_approved_capability_approval_request` | `(*, execution_mode=…, capability_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L328) |
-| function | `insert_approval_feedback` | `(*, recorded_at, intent_key, approval_state, approval_source, tool_name=…, resolution_reason=…, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L378) |
-| function | `list_approval_feedback` | `(limit=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L456) |
-| function | `approval_feedback_stats_by_tool` | `(days=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L471) |
-| function | `count_approval_feedback` | `()` | — | [src](../../../core/runtime/db_capability_approval.py#L501) |
-| function | `_approval_feedback_from_row` | `(row)` | — | [src](../../../core/runtime/db_capability_approval.py#L509) |
+| function | `capability_approval_stale_seconds` | `()` | — | [src](../../../core/runtime/db_capability_approval.py#L30) |
+| function | `capability_approval_request_is_stale` | `(request, *, reference_now=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L38) |
+| function | `capability_approval_envelope_fingerprint` | `(request)` | — | [src](../../../core/runtime/db_capability_approval.py#L55) |
+| function | `_approval_user_scope` | `(*, user_id, include_unassigned)` | — | [src](../../../core/runtime/db_capability_approval.py#L69) |
+| function | `recent_capability_approval_requests` | `(limit=…, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L85) |
+| function | `get_capability_approval_request` | `(request_id, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L132) |
+| function | `approve_capability_approval_request` | `(request_id, *, approved_at, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L179) |
+| function | `record_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L247) |
+| function | `claim_capability_approval_request_execution` | `(request_id, *, approved_at, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L315) |
+| function | `complete_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, execution_result_json, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L386) |
+| function | `_capability_approval_request_from_row` | `(row, *, status=…, approved_at=…, executed=…, executed_at=…, invocation_status=…, invocation_execution_mode=…, execution_result_json=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L427) |
+| function | `_ensure_capability_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_capability_approval.py#L486) |
+| function | `latest_capability_approval_request` | `(*, execution_mode=…, include_executed=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L512) |
+| function | `latest_approved_capability_approval_request` | `(*, execution_mode=…, capability_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L565) |
+| function | `insert_approval_feedback` | `(*, recorded_at, intent_key, approval_state, approval_source, tool_name=…, resolution_reason=…, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L619) |
+| function | `list_approval_feedback` | `(limit=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L697) |
+| function | `approval_feedback_stats_by_tool` | `(days=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L712) |
+| function | `count_approval_feedback` | `()` | — | [src](../../../core/runtime/db_capability_approval.py#L742) |
+| function | `_approval_feedback_from_row` | `(row)` | — | [src](../../../core/runtime/db_capability_approval.py#L750) |
 
 ## `core/runtime/db_central_incidents.py`
 _Central-incidents — persistent log af det Den Intelligente Central GRIBER._
@@ -466,6 +472,20 @@ _DB helpers for emotional_memory_anchors table._
 | function | `delete_emotional_memory_anchor` | `(anchor_type, anchor_id)` | — | [src](../../../core/runtime/db_emotional_memory.py#L234) |
 | function | `_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_emotional_memory.py#L244) |
 
+## `core/runtime/db_fts.py`
+_FTS5 full-text search over session summaries and chat messages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `fts5_available` | `(conn)` | — | [src](../../../core/runtime/db_fts.py#L34) |
+| function | `_base_table_exists` | `(conn, table)` | — | [src](../../../core/runtime/db_fts.py#L43) |
+| function | `ensure_fts_tables` | `(conn)` | Create the FTS tables + sync triggers for every base table that exists. | [src](../../../core/runtime/db_fts.py#L50) |
+| function | `rebuild_fts` | `()` | Rebuild every FTS table from its base table. Returns row counts. | [src](../../../core/runtime/db_fts.py#L96) |
+| function | `to_match_query` | `(query, *, max_terms=…)` | Turn free text into a tolerant FTS5 MATCH expression. | [src](../../../core/runtime/db_fts.py#L109) |
+| function | `_bm25_to_score` | `(rank)` | FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]. | [src](../../../core/runtime/db_fts.py#L128) |
+| function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries. Each hit: id, session_id, run_id, | [src](../../../core/runtime/db_fts.py#L136) |
+| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages. Each hit: id, message_id, session_id, | [src](../../../core/runtime/db_fts.py#L166) |
+
 ## `core/runtime/db_gate_verdicts.py`
 _Gate-verdict-ledger — PERSISTENT optælling af hvert governet gate-udfald._
 
@@ -499,21 +519,22 @@ _Persistence for governance-adjacent CRUD domains._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `create_tool_intent_approval_request` | `(*, intent_key, intent_type, intent_target, approval_scope, approval_required, approval_reason, requested_at, expires_at, execution_state=…)` | — | [src](../../../core/runtime/db_governance.py#L31) |
-| function | `get_tool_intent_approval_request` | `(intent_key)` | — | [src](../../../core/runtime/db_governance.py#L99) |
-| function | `resolve_tool_intent_approval_request` | `(intent_key, *, approval_state, approval_source, resolved_at, resolution_reason, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_governance.py#L134) |
-| function | `expire_tool_intent_approval_request` | `(intent_key, *, expired_at, resolution_reason)` | — | [src](../../../core/runtime/db_governance.py#L174) |
-| function | `_tool_intent_approval_request_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L206) |
-| function | `record_runtime_contract_file_write` | `(*, write_id, candidate_id, target_file, canonical_key, write_status, actor, summary, content_line, created_at)` | — | [src](../../../core/runtime/db_governance.py#L234) |
-| function | `get_runtime_contract_file_write` | `(write_id)` | — | [src](../../../core/runtime/db_governance.py#L282) |
-| function | `recent_runtime_contract_file_writes` | `(limit=…)` | — | [src](../../../core/runtime/db_governance.py#L308) |
-| function | `runtime_contract_file_write_counts` | `()` | — | [src](../../../core/runtime/db_governance.py#L332) |
-| function | `_ensure_runtime_contract_file_write_table` | `(conn)` | — | [src](../../../core/runtime/db_governance.py#L349) |
-| function | `_runtime_contract_file_write_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L374) |
-| function | `record_runtime_webchat_execution_pilot` | `(*, pilot_id, canonical_key, status, execution_type, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, delivery_channel=…, delivery_state=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_governance.py#L397) |
-| function | `list_runtime_webchat_execution_pilots` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_governance.py#L479) |
-| function | `get_runtime_webchat_execution_pilot` | `(pilot_id)` | — | [src](../../../core/runtime/db_governance.py#L526) |
-| function | `_runtime_webchat_execution_pilot_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L564) |
+| function | `recent_tool_intent_approval_requests` | `(limit=…, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_governance.py#L32) |
+| function | `create_tool_intent_approval_request` | `(*, intent_key, intent_type, intent_target, approval_scope, approval_required, approval_reason, requested_at, expires_at, execution_state=…)` | — | [src](../../../core/runtime/db_governance.py#L80) |
+| function | `get_tool_intent_approval_request` | `(intent_key)` | — | [src](../../../core/runtime/db_governance.py#L148) |
+| function | `resolve_tool_intent_approval_request` | `(intent_key, *, approval_state, approval_source, resolved_at, resolution_reason, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_governance.py#L183) |
+| function | `expire_tool_intent_approval_request` | `(intent_key, *, expired_at, resolution_reason)` | — | [src](../../../core/runtime/db_governance.py#L223) |
+| function | `_tool_intent_approval_request_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L255) |
+| function | `record_runtime_contract_file_write` | `(*, write_id, candidate_id, target_file, canonical_key, write_status, actor, summary, content_line, created_at)` | — | [src](../../../core/runtime/db_governance.py#L289) |
+| function | `get_runtime_contract_file_write` | `(write_id)` | — | [src](../../../core/runtime/db_governance.py#L337) |
+| function | `recent_runtime_contract_file_writes` | `(limit=…)` | — | [src](../../../core/runtime/db_governance.py#L363) |
+| function | `runtime_contract_file_write_counts` | `()` | — | [src](../../../core/runtime/db_governance.py#L387) |
+| function | `_ensure_runtime_contract_file_write_table` | `(conn)` | — | [src](../../../core/runtime/db_governance.py#L404) |
+| function | `_runtime_contract_file_write_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L429) |
+| function | `record_runtime_webchat_execution_pilot` | `(*, pilot_id, canonical_key, status, execution_type, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, delivery_channel=…, delivery_state=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_governance.py#L452) |
+| function | `list_runtime_webchat_execution_pilots` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_governance.py#L534) |
+| function | `get_runtime_webchat_execution_pilot` | `(pilot_id)` | — | [src](../../../core/runtime/db_governance.py#L581) |
+| function | `_runtime_webchat_execution_pilot_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L619) |
 
 ## `core/runtime/db_governance_ledger.py`
 _Governance-ledger — PERSISTENT log af governerede mutationer._
@@ -567,6 +588,26 @@ _DB layer for interlanguage validation blind-dommer UI._
 | function | `store_free_text_observations` | `(*, session_id, text)` | Gem free-text noter ved slutningen af session. | [src](../../../core/runtime/db_interlanguage_blind.py#L237) |
 | function | `get_confusion_matrix` | `(*, session_id)` | Confusion-matrix for α-trials: true_peer × user_answer counts. | [src](../../../core/runtime/db_interlanguage_blind.py#L257) |
 
+## `core/runtime/db_lessons.py`
+_`lessons` — the one store for what Jarvis learns from mistakes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_lessons.py#L44) |
+| function | `signature_key` | `(signature)` | Lowercase, punctuation-free, stopword-free, first 12 tokens. | [src](../../../core/runtime/db_lessons.py#L48) |
+| function | `ensure_lessons_table` | `(conn)` | — | [src](../../../core/runtime/db_lessons.py#L54) |
+| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_lessons.py#L77) |
+| function | `_jaccard` | `(a, b)` | — | [src](../../../core/runtime/db_lessons.py#L87) |
+| function | `_find_match` | `(conn, key)` | — | [src](../../../core/runtime/db_lessons.py#L94) |
+| function | `upsert_lesson` | `(*, signature, lesson, source, user_words=…, jarvis_words=…, activate=…, now=…)` | Insert or reinforce a lesson. Returns the stored row plus ``outcome``: | [src](../../../core/runtime/db_lessons.py#L110) |
+| function | `get_lesson` | `(lesson_id)` | — | [src](../../../core/runtime/db_lessons.py#L167) |
+| function | `list_lessons` | `(*, status=…, limit=…, source=…)` | — | [src](../../../core/runtime/db_lessons.py#L174) |
+| function | `count_lessons` | `(*, status=…)` | — | [src](../../../core/runtime/db_lessons.py#L194) |
+| function | `find_similar_lessons` | `(text, *, limit=…, status=…)` | Active lessons most similar to ``text`` (BM25 over signature + lesson). | [src](../../../core/runtime/db_lessons.py#L204) |
+| function | `record_repeat` | `(lesson_id, *, now=…)` | — | [src](../../../core/runtime/db_lessons.py#L231) |
+| function | `retire_stale` | `(*, days=…, min_evidence=…, now=…)` | Retire proposed/active lessons with evidence < min_evidence, no repeat, | [src](../../../core/runtime/db_lessons.py#L244) |
+| function | `set_lesson_status` | `(lesson_id, status)` | Saet en lektions status. Returnerer raekken bagefter, eller None. | [src](../../../core/runtime/db_lessons.py#L260) |
+
 ## `core/runtime/db_private_brain.py`
 _Private brain records — Jarvis' EGNE private lag (private-carry-erindringer med_
 
@@ -602,8 +643,8 @@ _Persistence for the private/protected inner-layer note tables._
 | function | `recent_private_growth_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L269) |
 | function | `record_protected_inner_voice` | `(*, voice_id, source, run_id, work_id, mood_tone, self_position, current_concern, current_pull, voice_line, created_at)` | — | [src](../../../core/runtime/db_private_notes.py#L309) |
 | function | `update_protected_inner_voice_enriched` | `(*, run_id, enriched_voice_line)` | Replace template voice_line with LLM-enriched text. | [src](../../../core/runtime/db_private_notes.py#L357) |
-| function | `get_protected_inner_voice` | `()` | — | [src](../../../core/runtime/db_private_notes.py#L367) |
-| function | `list_recent_protected_inner_voices` | `(*, limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L403) |
+| function | `get_protected_inner_voice` | `(*, offset=…)` | Seneste beskyttede indre stemme. ``offset`` går et skridt længere tilbage. | [src](../../../core/runtime/db_private_notes.py#L367) |
+| function | `list_recent_protected_inner_voices` | `(*, limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L409) |
 
 ## `core/runtime/db_private_signals.py`
 _Persistence for the private inner-life signal tables._
@@ -621,30 +662,7 @@ _Persistence for the private inner-life signal tables._
 | function | `get_private_temporal_promotion_signal` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L357) |
 | function | `_norm_retained` | `(value)` | Normalisér til novelty-sammenligning: trim, lowercase, kollaps whitespace. | [src](../../../core/runtime/db_private_signals.py#L393) |
 | function | `record_private_retained_memory_record` | `(*, record_id, source, run_id, work_id, retained_value, retained_kind, retention_scope, retention_horizon, confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L398) |
-| function | `update_private_retained_memory_record_enriched` | `(*, run_id, enriched_value)` | Replace template retained_value with LLM-enriched lesson text. | [src](../../../core/runtime/db_private_signals.py#L456) |
-| function | `get_private_retained_memory_record` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L468) |
-| function | `recent_private_retained_memory_records` | `(limit=…)` | — | [src](../../../core/runtime/db_private_signals.py#L504) |
-
-## `core/runtime/db_private_states.py`
-_Persistence for the private self-model / mood / promotion-decision tables._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_private_states_tables` | `(conn)` | — | [src](../../../core/runtime/db_private_states.py#L14) |
-| function | `record_private_self_model` | `(*, model_id, source, identity_focus, preferred_work_mode, recurring_tension, growth_direction, confidence, created_at, updated_at)` | — | [src](../../../core/runtime/db_private_states.py#L64) |
-| function | `get_private_self_model` | `()` | — | [src](../../../core/runtime/db_private_states.py#L109) |
-| function | `record_private_state` | `(*, state_id, source, frustration, fatigue, confidence, curiosity, created_at, updated_at)` | — | [src](../../../core/runtime/db_private_states.py#L143) |
-| function | `get_private_state` | `()` | — | [src](../../../core/runtime/db_private_states.py#L185) |
-| function | `record_private_promotion_decision` | `(*, decision_id, source, run_id, work_id, promotion_target, promotion_action, promotion_scope, confidence, created_at)` | — | [src](../../../core/runtime/db_private_states.py#L217) |
-| function | `get_private_promotion_decision` | `()` | — | [src](../../../core/runtime/db_private_states.py#L262) |
-
-## `core/runtime/db_runtime_browser.py`
-_Persistence for the `runtime_browser_bodies` table — Jarvis' browser bodies._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_runtime_browser_tables` | `(conn)` | — | [src](../../../core/runtime/db_runtime_browser.py#L13) |
-| function | `get_runtime_browser_body` | `(body_id)` | — | [src](../../../core/runtime/db_runtime_browser.py#L41) |
-| function | `upsert_runtime_browser_body` | `(*, body_id, profile_name, status, active_task_id=…, active_flow_id=…, focused_tab_id=…, tabs_json=…, last_url=…, last_title=…, summary=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_browser.py#L82) |
-| function | `list_runtime_browser_bodies` | `(limit=…)` | — | [src](../../../core/runtime/db_runtime_browser.py#L149) |
+| function | `update_private_retained_memory_record_enriched` | `(*, run_id, enriched_value)` | Replace template retained_value with LLM-enriched lesson text. | [src](../../../core/runtime/db_private_signals.py#L464) |
+| function | `get_private_retained_memory_record` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L476) |
+| function | `recent_private_retained_memory_records` | `(limit=…)` | — | [src](../../../core/runtime/db_private_signals.py#L512) |
 

@@ -101,6 +101,8 @@ def approve_capability_request_truth(
         approve_capability_approval_request(
             request_id,
             approved_at=datetime.now(UTC).isoformat(),
+            user_id=None,
+            include_unassigned=True,
         ),
         "local-fallback",
         api_error,
@@ -116,7 +118,11 @@ def execute_capability_request_truth(
     if response is not None:
         return response, "api", None
 
-    request = get_capability_approval_request(request_id)
+    request = get_capability_approval_request(
+        request_id,
+        user_id=None,
+        include_unassigned=True,
+    )
     if request is None:
         return (
             {

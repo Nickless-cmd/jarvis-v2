@@ -177,4 +177,22 @@ describe('Composer', () => {
 
     expect(onResearchModeChange).toHaveBeenCalledWith(true)
   })
+
+  it('viser Chat/Code remote mode og melder skiftet ud', async () => {
+    const onRemoteModeChange = jest.fn()
+    const screen = await render(
+      <Composer
+        onSend={jest.fn()}
+        onStop={jest.fn()}
+        remoteMode="chat"
+        onRemoteModeChange={onRemoteModeChange}
+      />
+    )
+    await openComposer(screen)
+
+    expect(screen.getByText('Chat')).toBeTruthy()
+    await act(async () => { fireEvent.press(screen.getByText('Code')) })
+
+    expect(onRemoteModeChange).toHaveBeenCalledWith('code')
+  })
 })

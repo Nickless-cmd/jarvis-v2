@@ -403,6 +403,105 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _exec_operator_run_in_background(args: dict[str, Any]) -> dict[str, Any]:
+    command = str(args.get("command") or "").strip()
+    if not command:
+        return {"error": "command is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_background import start_async
+    out = _run_operator_async(
+        lambda: start_async(command=command, cwd=str(args.get("cwd") or ""),
+                            user_id=user_id),
+        tool_name="operator_run_in_background",
+    )
+    # Knyt shell'en til sessionen, saa turen kan foelge den. Uden det er
+    # vaerktoejet ubrugeligt: man starter en kommando, turen slutter, og man ser
+    # aldrig resultatet.
+    try:
+        if isinstance(out, dict) and out.get("shell_id"):
+            from core.services.background_resume import note_started
+            note_started(str(args.get("_runtime_session_id")
+                             or args.get("_session_id") or ""),
+                         str(out["shell_id"]))
+    except Exception:
+        pass
+    return out
+
+
+def _exec_operator_bash_output(args: dict[str, Any]) -> dict[str, Any]:
+    shell_id = str(args.get("shell_id") or "").strip()
+    if not shell_id:
+        return {"error": "shell_id is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_background import read_async
+    return _run_operator_async(
+        lambda: read_async(shell_id=shell_id, since=int(args.get("since") or 0),
+                           user_id=user_id),
+        tool_name="operator_bash_output",
+    )
+
+
+def _exec_operator_kill_shell(args: dict[str, Any]) -> dict[str, Any]:
+    shell_id = str(args.get("shell_id") or "").strip()
+    if not shell_id:
+        return {"error": "shell_id is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_background import kill_async
+    return _run_operator_async(
+        lambda: kill_async(shell_id=shell_id, user_id=user_id),
+        tool_name="operator_kill_shell",
+    )
+
+
+def _exec_operator_multi_edit(args: dict[str, Any]) -> dict[str, Any]:
+    path = str(args.get("path") or "").strip()
+    edits = args.get("edits")
+    if not path:
+        return {"error": "path is required", "status": "error"}
+    if not isinstance(edits, list) or not edits:
+        return {"error": "edits (non-empty array) is required", "status": "error"}
+    # Samme laes-foer-skriv-vaern som edit_file: redigerer man, skal man have
+    # laest filen i denne session.
+    try:
+        from core.services.gate_execution import check_operator
+        _sid = (args.get("_runtime_session_id") or args.get("_session_id")
+                or "default")
+        _ec = check_operator(path, session_id=str(_sid), file_exists=True)
+        if _ec.classification == "guard_blocked" and _ec.reason:
+            return {
+                "status": "error", "error": _ec.reason,
+                "blocked_by": "read_before_write_guard", "path": path,
+                "hint": ("Kald operator_read_file('" + path + "') først — "
+                         "operator_multi_edit kan ikke edite uden at have læst "
+                         "filen i denne session."),
+            }
+    except Exception:
+        pass
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_multi_edit_async
+    out = _run_operator_async(
+        lambda: operator_multi_edit_async(
+            path=path, edits=edits, user_id=user_id, timeout_s=30.0),
+        tool_name="operator_multi_edit",
+    )
+    if isinstance(out, dict) and out.get("status") == "ok":
+        try:
+            from core.services.read_before_write_guard import (
+                get_session_edit_summary,
+                record_operator_edit,
+            )
+            _sid = (args.get("_runtime_session_id") or args.get("_session_id")
+                    or "default")
+            record_operator_edit(path, session_id=str(_sid), kind="edit")
+            summary = get_session_edit_summary(session_id=str(_sid))
+            if summary:
+                out["_session_summary"] = summary
+        except Exception:
+            pass
+        _record_active_file(path, "write", args)
+    return out
+
+
 def _exec_operator_glob(args: dict[str, Any]) -> dict[str, Any]:
     pattern = str(args.get("pattern") or "").strip()
     if not pattern:
@@ -1339,6 +1438,10 @@ __all__ = [
     "_operator_file_exists",
     "_exec_operator_write_file",
     "_exec_operator_edit_file",
+    "_exec_operator_multi_edit",
+    "_exec_operator_run_in_background",
+    "_exec_operator_bash_output",
+    "_exec_operator_kill_shell",
     "_exec_operator_glob",
     "_exec_operator_grep",
     "_exec_operator_list_dir",

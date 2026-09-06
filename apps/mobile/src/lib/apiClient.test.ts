@@ -1,5 +1,6 @@
 import {
   ApiError,
+  apiFetch,
   approveTool,
   createSession,
   denyTool,
@@ -239,4 +240,39 @@ it('starts Google account linking with bearer auth', async () => {
       })
     })
   )
+})
+
+describe('serverens forklaring når et kald fejler', () => {
+  const cfg = { apiBaseUrl: 'https://x.test', authToken: 't' } as never
+
+  function svar(status: number, body: unknown) {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false, status,
+      json: async () => body,
+    }) as never
+  }
+
+  it('bruger detail frem for statuskoden', async () => {
+    // Set live: en godkendelse afvist som «stale» viste sig som «HTTP 409».
+    svar(409, { detail: 'Capability approval request is stale and must be recreated' })
+    await expect(apiFetch(cfg, '/x')).rejects.toThrow(/stale and must be recreated/)
+  })
+
+  it('falder tilbage til koden når kroppen ikke er JSON', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false, status: 409,
+      json: async () => { throw new Error('ikke json') },
+    }) as never
+    await expect(apiFetch(cfg, '/x')).rejects.toThrow(/HTTP 409/)
+  })
+
+  it('tager første besked i en validerings-liste', async () => {
+    svar(422, { detail: [{ msg: 'field required' }] })
+    await expect(apiFetch(cfg, '/x')).rejects.toThrow(/field required/)
+  })
+
+  it('tom detail giver stadig en brugbar besked', async () => {
+    svar(409, { detail: '   ' })
+    await expect(apiFetch(cfg, '/x')).rejects.toThrow(/HTTP 409/)
+  })
 })

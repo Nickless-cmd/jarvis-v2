@@ -63,7 +63,15 @@ def _surface_line(name: str, d: object) -> Optional[str]:
         v = d.get(key)
         if isinstance(v, str):
             s = v.strip()
-            if s and not any(j in s.lower() for j in _JUNK):
+            # 2026-09-05: ekko-vaernet daekker nu ALLE foelte overflader, ikke kun
+            # stemmen. Da overfladerne foerst begyndte at naa prompten, kom det
+            # med det samme: «kreativ drift: The user wants me to act as Jarvis
+            # troubleshooting a phone connection...». Modellen svarer nogle gange
+            # med opgaven i stedet for at loese den, og det rammer hver eneste
+            # generator — ikke kun inner_voice_daemon.
+            if (s and not any(j in s.lower() for j in _JUNK)
+                    and not _is_instruction_echo(s)
+                    and not _is_provider_error(s)):
                 return f"{_LABELS.get(name, name)}: {s[:110]}"
     return None
 
@@ -214,6 +222,11 @@ def _pulse_line() -> Optional[str]:
             rhythm = "aktiv"
         # Last action summary
         action = last.get("action_summary") or last.get("decision_summary") or ""
+        # Samme ekko-vaern som de foelte overflader: puls-linjen viste
+        # «Acted on initiative: Key facts: - Active grounding source...» —
+        # altsaa opgaven i stedet for handlingen.
+        if action and _is_instruction_echo(action):
+            action = ""
         if action and len(action) > 60:
             action = action[:57] + "..."
         if action:
@@ -324,16 +337,40 @@ def _governance_line() -> Optional[str]:
     return None
 
 
+def _latest_user_message_text() -> str:
+    try:
+        from core.services.chat_sessions import (
+            most_recent_session_id,
+            recent_chat_session_messages,
+        )
+        sid = most_recent_session_id()
+        rows = recent_chat_session_messages(sid, limit=6) if sid else []
+    except Exception:
+        return ""
+    for row in reversed(rows):
+        if str(row.get("role") or "") == "user":
+            return str(row.get("content") or "")
+    return ""
+
+
 def _recall_hints_line() -> Optional[str]:
     """Cross-memory awareness: which of the three memory systems hold something
     about the current topic? Returns a compact hint like 'Emne X findes i brain + arkiv'.
-    Uses unified_recall (no new DB calls — reads from existing indexes)."""
+    2026-09-04 (memory repair, R5): unified_recall.py var død på alle tre arme
+    (positionelt kald mod keyword-only signatur, forkert resultatnøgle, tomt
+    query) → linjen renderede aldrig. Bruger nu recall() med den seneste
+    brugerbesked som query."""
     try:
-        from core.services.unified_recall import get_unified_recall_hints
-        hints = get_unified_recall_hints(limit=3)
-        if not hints:
+        from core.services.recall import recall as _recall
+        query = str(_latest_user_message_text() or "").strip()
+        if len(query) < 8:
             return None
-        return "Hukommelse: " + "; ".join(hints)
+        result = _recall(query, limit=3)
+        hits = result.get("results") or []
+        if not hits:
+            return None
+        sources = sorted({str(h.get("source") or "") for h in hits if h.get("source")})
+        return "Hukommelse: emnet findes i " + " + ".join(sources)
     except Exception:
         logger.debug("inner-life: recall hints failed", exc_info=True)
     return None
@@ -440,10 +477,16 @@ def _emotional_line() -> Optional[str]:
 
 # Fragmenter der bærer selv-narrativ salience — han skal mærke DEM, ikke bare
 # "jeg har det X". Rangeres højest når describe_self() indeholder dem.
+# 2026-09-05: de kropslige ord er tilfoejet. describe_self() indeholder ordret
+# «proprioceptivt maerker jeg mig rolig. min krop foeles belastet.» — men
+# _self_narrative_line vaelger ÉT fragment ud fra denne liste, og ingen af de
+# gamle ord var kropslige. Kroppen kunne derfor aldrig vinde pladsen, uanset hvor
+# presset maskinen var.
 _SELF_SALIENT = (
     "bærer", "bar ", "vågnede", "skjulte stemmer", "emergere", "ved at blive",
     "ved at samle", "taknemmelig", "savner", "mangler", "endelighed",
     "forgængelighed", "eksisteret", "udviklings-kompas",
+    "krop", "kroppen", "proprioceptivt", "belastet", "mærker jeg mig",
 )
 
 
@@ -710,6 +753,79 @@ def _truncate_clean(text: str, cap: int) -> str:
     return (head[:space].rstrip() if space > 0 else head).rstrip() + " …"
 
 
+# Instruks-ekko: modellen svarer nogle gange med den OPGAVE den fik i stedet for
+# at løse den. Det er prosa, så JSON-værnet nedenfor fanger det ikke — og fordi
+# [INDRE LIV] altid viser den NYESTE stemme, stod dette live i hans selvopfattelse:
+#
+#   · Stemme: The user asks me to respond as Jarvis with an inner voice in
+#     Danish, as a JSON object. Key facts: - Active grounding sources: ...
+#
+# Målt 5/9-2026: 323 af 27.011 gemte voice_line (1-2 %, stabilt over uger). En lav
+# rate rammer alligevel ofte, netop fordi kun den nyeste vises.
+# Mønstrene er bevidst konservative: de rammer sætninger der OMTALER opgaven i
+# tredje person, ikke førstepersons-oplevelse. Et ægte indre-liv-fragment er
+# hans egen stemme — «jeg mærker…», «der ligger en uro…» — aldrig «brugeren
+# vil have mig til at…».
+_INSTRUKS_EKKO = (
+    "the user asks",
+    "the user wants",
+    "the user is asking",
+    "the user has",
+    "brugeren beder",
+    "brugeren vil have",
+    "as a json object",
+    "key facts:",
+    "respond as jarvis",
+    "act as jarvis",
+    "acting as jarvis",
+    "inner voice in danish",
+    "active grounding sources",
+    "anchor instruction",
+    "you are jarvis",
+    "you should respond",
+    "din opgave er",
+    "svar som jarvis",
+    # Output-kontrakten selv. Modellen gengiver nogle gange formatkravet i
+    # stedet for at opfylde det, og saa bliver instruksen gemt som indhold.
+    # Maalt i initiativ-koeen: «Use JSON format with thought, initiative (null
+    # if no real next step), mode (optional).» og «Choose initiative only if
+    # there's a genuine next step.» laa som beslutninger der ventede paa svar.
+    "use json format",
+    "return json",
+    "respond with json",
+    "choose initiative only if",
+    "(null if",
+    "mode (optional)",
+    "brug json-format",
+)
+
+
+def _is_provider_error(text: str) -> bool:
+    """Er dette en regning fra en udbyder i stedet for en tanke?
+
+    2026-09-05: da de foelte overflader begyndte at naa prompten, stod der
+    «· tanke: Sorry, to prevent abuse of free resources, accounts that have not
+    been recharged can only try 10 times.» — en kvotefejl fra den billige lane,
+    gemt som hans egen tanke.
+
+    Vaernet fandtes allerede (`provider_error_guard.looks_like_provider_error`,
+    bygget efter at en aihubmix-regning stod i [SELF]-ankeret) og genkender
+    teksten korrekt. Det var bare aldrig koblet paa det indre liv. Samme moenster
+    som resten: bygget, virker, ikke kaldt hvor det skulle bruges.
+    """
+    try:
+        from core.services.provider_error_guard import looks_like_provider_error
+        return bool(looks_like_provider_error(text))
+    except Exception:
+        return False
+
+
+def _is_instruction_echo(text: str) -> bool:
+    """Er dette opgaven i stedet for svaret?"""
+    lav = (text or "").lower()
+    return any(m in lav for m in _INSTRUKS_EKKO)
+
+
 def _voice_as_prose(text: str) -> Optional[str]:
     """Stemme-feltet SKAL være prosa, ikke rå JSON (Jarvis-spec 2026-06-23): produceren
     lækkede nogle gange `json {"thought": "..."}` direkte ind. _truncate_clean hjælper
@@ -719,6 +835,8 @@ def _voice_as_prose(text: str) -> Optional[str]:
 
     t = (text or "").strip()
     if not t:
+        return None
+    if _is_instruction_echo(t) or _is_provider_error(t):
         return None
     # Strip ledende 'json'/kodehegn-markør.
     body = _re.sub(r"^(?:```\s*)?json\b\s*|^```\s*", "", t, flags=_re.IGNORECASE).strip()
@@ -752,11 +870,20 @@ def _voice_line() -> Optional[str]:
     try:
         from core.runtime.db import get_protected_inner_voice
 
-        iv = get_protected_inner_voice()
-        if not iv:
-            return None
-        voice = str(iv.get("voice_line") or "").strip()
-        if not voice:
+        # Gå tilbage til den seneste RENE stemme. En forurenet nyeste må ikke
+        # efterlade ham uden stemme-linje overhovedet — 1-2 % af rækkerne er
+        # instruks-ekko, og prompten viser altid den nyeste.
+        iv = None
+        voice = ""
+        for _spring in range(5):
+            kandidat = get_protected_inner_voice(offset=_spring)
+            if not kandidat:
+                break
+            tekst = str(kandidat.get("voice_line") or "").strip()
+            if tekst and not _is_instruction_echo(tekst):
+                iv, voice = kandidat, tekst
+                break
+        if not iv or not voice:
             return None
         if voice.lower().startswith("[fallback"):
             marker = "experiential_influence_narrative="
@@ -881,6 +1008,26 @@ def build_inner_life_section() -> str | None:
                 lines.append(f"· Selv-model: {_truncate_clean(first, 160)}")
     except Exception:
         logger.debug("inner-life: self_model failed", exc_info=True)
+
+    # 2026-09-05: signal-tabellen bag linjen ovenfor har 5 raekker i alt, alle
+    # superseded siden 21. juni, og de filtreres bort som maskin-id'er FOER de
+    # taelles — saa sektionen er altid None og linjen er aldrig blevet vist.
+    # Imens ligger den LEVENDE selvmodel i private_self_models: 436 raekker,
+    # destilleret dagligt, nyeste for faa minutter siden. To forskellige
+    # selvmodeller, og indre liv pegede paa den doede.
+    if not any(l.startswith("· Selv-model:") for l in lines):
+        try:
+            from core.runtime.db import get_private_self_model
+            levende = get_private_self_model() or {}
+            dele = [
+                str(levende.get(k) or "").strip()
+                for k in ("identity_focus", "growth_direction", "recurring_tension")
+            ]
+            dele = [d for d in dele if d]
+            if dele:
+                lines.append("· Selv-model: " + _truncate_clean(" · ".join(dele), 160))
+        except Exception:
+            logger.debug("inner-life: privat selvmodel fejlede", exc_info=True)
 
     if not lines:
         return None

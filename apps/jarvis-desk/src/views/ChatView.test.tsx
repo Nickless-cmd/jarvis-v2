@@ -30,6 +30,10 @@ vi.mock('../lib/api', () => ({
   getContextUsage: vi.fn().mockResolvedValue({ tokens: 0, compact_at: 130000, effective: 130000, compacting: false, compacted: false }),
   getSessionMilestones: vi.fn().mockResolvedValue({ milestones: [] }),
   getActiveRuns: vi.fn().mockResolvedValue([]),
+  // warmSession kom til i api.ts uden at mocken fulgte med — testen har
+  // vaeret roed siden. Ikke en aegte fejl, men en roed suite skjuler den
+  // naeste der ER aegte.
+  warmSession: vi.fn().mockResolvedValue(undefined),
   followRun: vi.fn(() => ({ abort: vi.fn() })),
   presencePing: vi.fn().mockResolvedValue(undefined),
   fetchPendingNotifications: vi.fn().mockResolvedValue([]),

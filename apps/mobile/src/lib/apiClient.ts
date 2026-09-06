@@ -18,6 +18,19 @@ interface FetchOptions {
   body?: unknown
 }
 
+/** Serverens egen forklaring, ellers statuskoden. Kaster aldrig. */
+async function _forklaring(response: Response): Promise<string> {
+  try {
+    const krop = await response.json()
+    const d = (krop as { detail?: unknown })?.detail
+    if (typeof d === 'string' && d.trim()) return d.trim()
+    if (Array.isArray(d) && d.length > 0) return String((d[0] as { msg?: string })?.msg ?? d[0])
+  } catch {
+    // ikke JSON, tom krop, eller allerede laest — statuskoden maa raekke
+  }
+  return `HTTP ${response.status}`
+}
+
 export async function apiFetch<T>(
   config: ApiConfig,
   path: string,
@@ -49,7 +62,12 @@ export async function apiFetch<T>(
     }
 
     if (!response.ok) {
-      throw new ApiError('unknown', `HTTP ${response.status}`, response.status)
+      // Serveren FORKLARER hvad der gik galt — FastAPI svarer med
+      // {"detail": "..."} — men kroppen blev aldrig laest, saa brugeren fik
+      // et tal. Set live: en godkendelse afvist som «stale and must be
+      // recreated» viste sig som «HTTP 409» paa telefonen.
+      // Best-effort: kan kroppen ikke laeses, falder vi tilbage til koden.
+      throw new ApiError('unknown', await _forklaring(response), response.status)
     }
 
     return (await response.json()) as T

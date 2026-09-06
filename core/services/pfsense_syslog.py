@@ -25,13 +25,47 @@ _PORT = 5514
 _WINDOW_S = 300.0            # 5-min glidende vindue pr. kilde-IP
 _SCAN_PORTS = 15            # ≥N distinkte dst-porte fra én IP = port-scan
 _BRUTE_BLOCKS = 30         # ≥N blokke fra én IP = brute-force
-_DETECT_COOLDOWN_S = 600.0  # samme IP re-detekteres højst hvert 10. min (dedup)
+_DETECT_COOLDOWN_S = 600.0  # første gentagelse tidligst efter 10 min
+# Gentagen alarm om den SAMME kilde er ikke ny viden. En scanner der er blokeret
+# bliver ved i timevis, og med fast 10-minutters dedup gav den 6 beskeder i
+# timen om noget der allerede virker som det skal. Ventetiden vokser derfor for
+# hver gentagelse: 10 min, 40 min, 2,7 t, 6 t (loft). Første alarm kommer stadig
+# med det samme — det er kun gentagelserne der dæmpes.
+_COOLDOWN_MAX_S = 21600.0
 
 _IPV4 = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
+
+# Adresser der ER os. En blok med os selv som kilde er ikke et angreb — det er
+# vores egen trafik der rammer vores egen firewall (hårnål gennem den
+# offentlige adresse). Uden dette sendte Jarvis «brute_force fra
+# 185.107.14.241» om Bjørns eget hus.
+#
+# Listen kan udvides i runtime.json som `pfsense_self_ips`, fordi den
+# offentlige adresse kan skifte. CGNAT-rummet nedenfor dækker WAN-segmentet
+# uanset hvilken adresse ISP'en giver os.
+def _self_ips() -> set[str]:
+    # read_runtime_key kører ALTID str() på værdien, så en JSON-liste kommer
+    # tilbage som sin repr: "['185.107.14.241', '100.75.136.21']". Et naivt
+    # split på komma laver den til "['185.107.14.241'" — og så genkendte vi
+    # ikke vores egen adresse, hvilket var hele pointen. Klip derfor
+    # klammer og anførselstegn af hvert led.
+    try:
+        from core.runtime.secrets import read_runtime_key
+        raw = read_runtime_key("pfsense_self_ips")
+    except Exception:
+        return set()
+    out: set[str] = set()
+    for part in str(raw).split(","):
+        ip = part.strip().strip("[]()").strip().strip("'\"").strip()
+        if _IPV4.match(ip):
+            out.add(ip)
+    return out
+
 
 _lock = threading.Lock()
 _agg: dict[str, dict] = {}          # src-IP → {"blocks":int, "ports":set, "first":ts}
 _last_detect: dict[str, float] = {}
+_detect_count: dict[str, int] = {}   # hvor mange gange samme kilde er meldt — styrer ventetiden
 _detections: list[dict] = []        # drænes af infra_sense-cadence
 _stats = {"packets": 0, "blocks": 0, "detections": 0, "last_packet_epoch": 0.0}
 _thread_started = False
@@ -72,6 +106,8 @@ def _is_internal_src(src: str) -> bool:
     192.168.50.84) der laver normal spærret udgående trafik → FALSE-POSITIVE brute_force, ikke
     angreb. (Exfil-detektion fra intern host kræver et andet, mere præcist signal — ikke '30
     blokerede udgående'.) Ekskludér interne kilder fra scan/brute-detektionen."""
+    if src in _self_ips():
+        return True
     try:
         a, b, *_ = (int(x) for x in src.split("."))
         if a == 10:
@@ -81,6 +117,13 @@ def _is_internal_src(src: str) -> bool:
         if a == 172 and 16 <= b <= 31:
             return True
         if a == 127:
+            return True
+        # CGNAT (100.64.0.0/10). Vores WAN sidder SELV i dette rum, så en
+        # «angriber» herfra er vores egen adresse eller en nabo på ISP-segmentet
+        # — og pfSense' regel om private netværk blokerer og logger hver eneste
+        # pakke derfra. Uden denne linje bliver ISP-segmentets almindelige støj
+        # til en strøm af trussels-alarmer.
+        if a == 100 and 64 <= b <= 127:
             return True
     except Exception:
         pass
@@ -124,8 +167,11 @@ def _ingest(rec: dict, now: float) -> None:
         # false-positives (verificeret 3. jul: 192.168.50.84=CheifOne, .31=husenhed).
         internal = _is_internal_src(src)
         last = _last_detect.get(src)  # None = aldrig detekteret (0.0 er en gyldig tid)
-        if (scan or brute) and not internal and (last is None or (now - last) > _DETECT_COOLDOWN_S):
+        seen = _detect_count.get(src, 0)
+        wait = min(_DETECT_COOLDOWN_S * (4 ** seen), _COOLDOWN_MAX_S)
+        if (scan or brute) and not internal and (last is None or (now - last) > wait):
             _last_detect[src] = now
+            _detect_count[src] = seen + 1
             _detections.append({
                 "src": src, "kind": "port_scan" if scan else "brute_force",
                 "blocks": a["blocks"], "distinct_ports": len(a["ports"]),
@@ -181,6 +227,7 @@ def _reset_for_tests() -> None:
     with _lock:
         _agg.clear()
         _last_detect.clear()
+        _detect_count.clear()
         _detections.clear()
         for k in _stats:
             _stats[k] = 0 if k != "last_packet_epoch" else 0.0

@@ -4,6 +4,8 @@ import type { ContentBlock } from '../../lib/sseProtocol'
 import { lookupTool } from '../../lib/toolRegistry'
 import { diffStat } from '../../lib/diffStat'
 import { DiffView } from './DiffView'
+import { PauseAndAskCard } from './PauseAndAskCard'
+import { parsePauseAsk } from '../../lib/pauseAsk'
 
 /** Density-aware, værktøjs-specifik tool-kald-visning (Claude Desktop-stil).
  *  bash → terminal-blok, write/edit → fil-header + diff, read/glob/grep → kompakt.
@@ -25,6 +27,7 @@ export function ToolCard({
   const summary = meta.summarize(args, block.result)
   const ds = diffStat(block.name, args)
   const status = block.status ?? 'running'
+  const ask = parsePauseAsk(block.result)
   const Icon = meta.Icon
 
   return (
@@ -44,7 +47,11 @@ export function ToolCard({
         )}
         <StatusBadge status={status} />
       </button>
-      {expanded && (
+      {/* Et spørgsmål er ikke tool-output man folder ud — det skal ses med
+          det samme, også i kompakt tilstand. */}
+      {ask
+        ? <div className="toolcard-body"><PauseAndAskCard ask={ask} /></div>
+        : expanded && (
         <div className="toolcard-body">
           {renderBody(fam, args, block.result)}
         </div>

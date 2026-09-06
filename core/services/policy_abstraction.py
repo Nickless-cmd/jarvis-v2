@@ -105,6 +105,36 @@ def abstract_rule(
     if evidence_count < _MIN_EVIDENCE:
         return {"status": "skipped", "reason": f"evidence_count {evidence_count} < min {_MIN_EVIDENCE}"}
 
+    # 2026-09-04 (memory repair, R4/R6): én række pr. specific_rule_key. Før blev
+    # der INSERT'et for hvert learning_policy-event → 26.997 rækker for 8 regler,
+    # match_count altid 0, og et LLM-kald pr. gentagelse.
+    conn = connect()
+    try:
+        _ensure_table(conn)
+        existing = conn.execute(
+            "SELECT policy_id, match_count, confidence FROM generalized_policies "
+            "WHERE specific_rule_key = ? ORDER BY updated_at DESC LIMIT 1",
+            (rule_key,),
+        ).fetchone()
+        if existing is not None:
+            now = _now()
+            prior_conf = float(existing[2] or 0.0)
+            new_conf = round(max(prior_conf, float(confidence) * 0.85), 3)
+            conn.execute(
+                "UPDATE generalized_policies SET match_count = match_count + 1, "
+                "confidence = ?, updated_at = ? WHERE policy_id = ?",
+                (new_conf, now, existing[0]),
+            )
+            conn.commit()
+            return {
+                "status": "reinforced",
+                "policy_id": existing[0],
+                "match_count": int(existing[1] or 0) + 1,
+                "confidence": new_conf,
+            }
+    finally:
+        conn.close()
+
     # Call cheap-lane LLM to generate abstraction
     generalized = _llm_generalize(
         specific_rule=policy or lesson,

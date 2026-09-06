@@ -85,6 +85,44 @@ def _origin_of_session(session_id: str) -> str:
     return dele[1] if len(dele) >= 2 else ""
 
 
+def _with_thinking_block(
+    blocks: list[dict], run: "_vr.VisibleRun", reasoning: str,
+) -> list[dict]:
+    """Sæt turens tænkning FORREST i blok-arrayet, hvis der blev tænkt.
+
+    Ræsonneringens tekst har altid været persisteret i sin egen kolonne
+    (`chat_messages.reasoning_content`), men lå UDEN FOR blok-arrayet — og
+    klienten renderer efter blokke. Derfor forsvandt tænkningen fra tråden i
+    samme øjeblik streamen sluttede: den var gemt, men ikke et sted nogen så på.
+
+    Varigheden kommer fra visible_thinking_trace, som måler i SSE-laget hvor
+    tænkningen faktisk åbner og lukker. Er der ingen måling (fx en model der
+    ikke tænker), lægges ingen blok — en «Tænkte i 0 s»-linje ville være støj.
+
+    Blokken lægges FØRST, fordi tænkningen kom først. ChatGPT viser den samme
+    sted: sammenfoldet over svaret, ikke under det.
+    """
+    seconds = None
+    try:
+        from core.services import visible_thinking_trace
+        seconds = visible_thinking_trace.take_seconds(str(run.run_id or ""))
+    except Exception:
+        seconds = None
+
+    text = str(reasoning or "").strip()
+    if seconds is None and not text:
+        return blocks
+
+    block: dict = {"type": "thinking"}
+    if seconds is not None:
+        block["seconds"] = seconds
+    if text:
+        # Halen er nok: klienten viser den foldet ud, og en hel ræsonnering kan
+        # være titusinder af tegn. Den fulde tekst bliver i reasoning_content.
+        block["text"] = text[-4000:]
+    return [block, *blocks]
+
+
 def _persist_session_assistant_message(
     run: "_vr.VisibleRun",
     text: str,
@@ -272,7 +310,10 @@ def _persist_session_assistant_message(
             from core.services.structured_content_flag import structured_content_v2_enabled
             if structured_content_v2_enabled():
                 import json as _json
-                content_json = _json.dumps(blocks, ensure_ascii=False)
+                content_json = _json.dumps(
+                    _with_thinking_block(blocks, run, str(reasoning_content or "")),
+                    ensure_ascii=False,
+                )
         except Exception:
             content_json = None
 

@@ -42,6 +42,46 @@ class ActionClaim:
 _FENCE = re.compile(r"```[\w-]*\n(.*?)```", re.DOTALL)
 
 
+# ── Samtale er ikke en handling (6/9-2026) ─────────────────────────────────
+# `verified` matcher «jeg bekræftede» hvor som helst i teksten. Men Jarvis
+# skrev «jeg bekræftede DIN KORREKTION så hårdt at jeg slettede min egen
+# observation» — en sætning om en tidligere samtale, ikke en påstand om et
+# tool-kald. Værnet flagede den som uverificeret.
+#
+# Det er værre end støj. Et værn der flager legitim erindring lærer ham at
+# holde op med at henvise til fortiden — og hukommelse på tværs af sessioner
+# hører til den beskyttede kerne. Værnet ville altså gøre skade præcis dér
+# hvor det gør mindst gavn: ingen af de her sætninger kan vildlede nogen om
+# hvorvidt en kommando er kørt.
+#
+# Snævert med vilje: KUN når verbets objekt er en person eller noget der
+# tilhører en. «jeg tjekkede filen», «jeg bekræftede at testen består» og
+# «jeg verificerede commit'en» fyrer uændret.
+# Enten en person direkte, ELLER et ejestedord fulgt af noget der hoerer
+# samtalen til. «dine tal», «din fil» og «din kode» er IKKE undtaget — det er
+# data, og en paastand om at have tjekket dem er stadig en paastand om en
+# handling. Undtagelsen skal vaere saa smal som muligt; et vaern man udhuler
+# for at goere det behageligt holder ingen ude.
+_SAMTALE_OBJEKT = re.compile(
+    r"^\s*(?:(?:dig|mig|ham|hende|dem)\b"
+    r"|(?:din|dit|dine|hans|hendes|deres|jeres|vores|min|mit|mine)\s+"
+    r"(?:korrektion|rettelse|besked|pointe|vurdering|kritik|indvending|"
+    r"svar|ord|formulering|opsummering|udlaegning|version af)\b)",
+    re.IGNORECASE,
+)
+
+
+def _er_mellemmenneskeligt(text: str, m: "re.Match[str]") -> bool:
+    """Peger paastanden paa en person eller paa noget der er SAGT?
+
+    I saa fald er den ikke en paastand om et tool-kald, og vaernet skal tie.
+    Ingen af de saetninger kan vildlede nogen om hvorvidt en kommando er
+    koert — men et vaern der flager dem, laerer ham at holde op med at
+    henvise til tidligere samtaler.
+    """
+    return bool(_SAMTALE_OBJEKT.match(text[m.end():m.end() + 40]))
+
+
 def detect_action_claims(text: str) -> list[ActionClaim]:
     """Deterministisk: find handlings-påstande. commit_hash tæller kun i commit/git/log-
     kontekst ELLER hvis der OGSÅ er en 'her er output'-påstand (undgå tilfældige hex).
@@ -54,7 +94,7 @@ def detect_action_claims(text: str) -> list[ActionClaim]:
         if kind in ("commit_hash", "output"):
             continue          # håndteres specielt nedenfor
         m = pat.search(text)
-        if m:
+        if m and not _er_mellemmenneskeligt(text, m):
             out.append(ActionClaim(kind=kind, matched_text=m.group(0)))
             detected.add(kind)
     # output-påstand: "her er output" ELLER (eksekverings-signal + en kodeblok).
@@ -80,9 +120,33 @@ def detect_action_claims(text: str) -> list[ActionClaim]:
     )
     if has_ctx:
         m = _ACTION_PATTERNS["commit_hash"].search(text)
-        if m:
+        if m and not _er_hash_vi_selv_har_vist(m.group(0)):
             out.append(ActionClaim(kind="commit_hash", matched_text=m.group(0)))
     return out
+
+
+def _er_hash_vi_selv_har_vist(hash_i_tekst: str) -> bool:
+    """Er det den commit-hash env-blokken selv skrev ind i hans prompt?
+
+    Saa er det at gengive den LAESNING, ikke en paastand om et git-kald.
+    Vaernet flagede ham 6/9 for at citere `9ef74a67` — som stod i hans egen
+    kontekst, fordi vi havde sat den der en time foer. En fejlklasse indfoert
+    af env-blokken selv.
+
+    Sammenligningen er praefiks-baseret i begge retninger: git forkorter til
+    forskellig laengde alt efter kontekst (7, 8, 9 tegn), saa `9ef74a67` og
+    `9ef74a675` er samme commit.
+    """
+    if not hash_i_tekst:
+        return False
+    try:
+        from core.services.env_block import vist_hash
+        vist = vist_hash()
+    except Exception:
+        return False
+    if not vist or len(hash_i_tekst) < 7:
+        return False
+    return vist.startswith(hash_i_tekst) or hash_i_tekst.startswith(vist)
 
 
 # ── Evidens-model (in-run) ──────────────────────────────────────────────────

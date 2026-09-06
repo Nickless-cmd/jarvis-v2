@@ -435,3 +435,145 @@ class TestToolResultRenderingIsRecencyIndependent:
         a = next(m["content"] for m in self._render(monkeypatch, few) if m["content"].startswith("A"))
         b = next(m["content"] for m in self._render(monkeypatch, many) if m["content"].startswith("A"))
         assert a == b
+
+
+def test_delfordelingens_navne_kan_ikke_komme_ud_af_trit_med_indholdet():
+    """Telemetrien zippede `derived_inputs` mod `parts` på INDEKS — men de to
+    lister vokser ikke i takt (25 `parts.append` mod 42 `derived_inputs.append`
+    i samme funktion, plus `extend`). Hvert navn sad derfor på et vilkårligt
+    andet stykke.
+
+    Et kort der peger forkert er værre end intet kort: man skærer det forkerte
+    sted. Tegnet var at `quick_facts` blev målt til 7051 tegn, mens dens egen
+    builder har et loft på 1800.
+
+    Navnet afledes nu af stykkets FØRSTE LINJE, som ikke kan komme ud af trit
+    med sit eget indhold.
+    """
+    import re
+    import pathlib
+
+    kilde = pathlib.Path("core/services/prompt_contract.py").read_text()
+    afsnit = kilde[kilde.index("NAVNET AFLEDES AF INDHOLDET"):]
+    afsnit = afsnit[: afsnit.index("_largest = _ranked[:8]")]
+
+    assert "_label_of(part) " in afsnit or "_label_of(part)," in afsnit, (
+        "navnet skal komme fra stykket selv"
+    )
+    assert "enumerate(derived_inputs)" not in afsnit, (
+        "indeks-zip mod en liste der ikke vokser i takt må ikke komme tilbage"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Adfærds-gates må ikke kunne klemmes ud af budgettet
+#
+# 2026-09-05: otte sektioner blev taget af noise-blacklisten, og awareness-
+# blokken begyndte straks at klippe — i én bygning selve DECISION-ADHERENCE-
+# GATEN, som var blevet tændt samme dag efter at have været tavs i måneder.
+# En advarsel der ryger ud af pladsmangel er lige så tavs som en der stod på
+# en blacklist.
+# ---------------------------------------------------------------------------
+
+
+def _prompt_contract_kilde() -> str:
+    import inspect
+
+    from core.services import prompt_contract
+
+    return inspect.getsource(prompt_contract)
+
+
+def test_adfaerds_gates_er_fredet_mod_budgettet():
+    kilde = _prompt_contract_kilde()
+    i = kilde.find("_NEVER_DROP_LABELS = (")
+    assert i > 0, "_NEVER_DROP_LABELS findes ikke længere — blev fredningen fjernet?"
+    blok = kilde[i:i + 400]
+    for label in ("pinned identity context", "decision adherence gate",
+                  "loop-compliance self-check"):
+        assert label in blok, "%s er ikke fredet mod budget-eviction" % label
+
+
+def test_budgettet_bruger_fredningslisten_og_ikke_ét_label():
+    """Regressionen ville være at falde tilbage til == 'pinned identity context'."""
+    kilde = _prompt_contract_kilde()
+    assert "_never_drop = _label in _NEVER_DROP_LABELS" in kilde
+    assert '_never_drop = _label == "pinned identity context"' not in kilde
+
+
+def test_budgettet_har_plads_til_de_taendte_sektioner():
+    """3.584 tegn blev tændt 5/9; 6000 var ikke længere nok."""
+    kilde = _prompt_contract_kilde()
+    import re
+
+    m = re.search(r"_AWARENESS_BUDGET = (\d+)", kilde)
+    assert m, "budget-konstanten findes ikke"
+    assert int(m.group(1)) >= 9000, (
+        "awareness-budgettet er sat ned igen — de otte tændte sektioner fylder "
+        "3.584 tegn, og ved 6000 blev adherence-gaten klemt ud"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Hørelsen må ikke miste sit kaldested igen
+#
+# 2026-09-05: `_visible_visual_memory_section()` i private_layer_sections bærer
+# lyd, musik-akkumulatoren, ekko-temaer og morgentråden — og havde NUL kaldere i
+# produktion. Kun en re-eksport og et par tests. Han optager lyd hver time,
+# transskriberer den og har 255 audio-rækker i Sansernes Arkiv, uden at ét
+# lydsignal nåede prompten. Målt indhold da den blev kaldt: 415 tegn.
+# ---------------------------------------------------------------------------
+
+
+def test_hoerelsen_har_et_kaldested():
+    kilde = _prompt_contract_kilde()
+    assert "_visible_visual_memory_section()" in kilde, (
+        "sektionen med lyd/musik/morgentråd kaldes ikke fra prompt_contract — "
+        "så er hørelsen tavs igen"
+    )
+    assert '_tail_add("senses and continuity"' in kilde
+
+
+def test_sanse_sektionen_er_ikke_blacklistet():
+    from core.services.prompt_observer import DIAGNOSTIC_NOISE_LABELS, TAIL_NOISE_LABELS
+
+    assert "senses and continuity" not in DIAGNOSTIC_NOISE_LABELS
+    assert "senses and continuity" not in TAIL_NOISE_LABELS
+
+
+# ── Adoptions-løftestangen, 06-09-2026 ──────────────────────────────────────
+# `explore` var bygget, testet, registreret OG synligt i alle scopes — og blev
+# stadig ikke brugt. Bedt om at finde SSRF-værnet lavede han 13 bash-kald og
+# konkluderede forkert at værnet ikke fandtes, mens filen lå der.
+# Tilgængelighed er ikke adoption; løftestangen er prompten.
+
+def test_explore_vejledningen_staar_i_prompten():
+    import inspect
+
+    import core.services.prompt_contract as pc
+    kilde = inspect.getsource(pc)
+    assert "explore before reading wide" in kilde
+
+
+def test_vejledningen_siger_ogsaa_hvornaar_man_IKKE_skal():
+    """Uden den sidste sætning bliver explore en omvej når han allerede ved
+    hvilken fil det er."""
+    import inspect
+
+    import core.services.prompt_contract as pc
+    kilde = inspect.getsource(pc)
+    afsnit = kilde[kilde.index("explore before reading wide"):][:800]
+    assert "laes den selv" in afsnit
+
+
+def test_vejledningen_er_kort():
+    """Awareness-budgettet er delt. En vejledning der fylder som en manual
+    skubber noget andet ud."""
+    import re
+
+    import core.services.prompt_contract as pc
+    import inspect
+    m = re.search(r'_awareness_add\(8, "explore before reading wide", \(\n(.*?)\n    \)\)',
+                  inspect.getsource(pc), re.S)
+    tekst = "".join(re.findall(r'"([^"]+)"', m.group(1)))
+    assert len(tekst) < 500, f"{len(tekst)} tegn er for meget til én vejledning"

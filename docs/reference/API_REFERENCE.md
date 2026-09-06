@@ -1,11 +1,13 @@
 # API_REFERENCE
 
-> Generated 2026-08-21 from app.routes (live) — 518 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-06 from app.routes (live) — 541 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
 | GET | `/account/apps` | dict | account |
 | PATCH | `/account/computer-use` | dict | account |
+| GET | `/account/data` | dict | account |
+| DELETE | `/account/data/{layer}` | dict | account |
 | POST | `/account/erase` | dict | account |
 | GET | `/account/export` | dict | account |
 | GET | `/account/jarvis` | dict | account |
@@ -13,7 +15,10 @@
 | PATCH | `/account/language` | dict | account |
 | GET | `/account/mcp` | dict | account |
 | POST | `/account/mcp` | dict | account |
+| GET | `/account/mcp/trust` | dict | account |
 | DELETE | `/account/mcp/{server_id}` | dict | account |
+| POST | `/account/mcp/{server_name}/allow` | dict | account |
+| POST | `/account/mcp/{server_name}/revoke` | dict | account |
 | GET | `/account/me` | dict | account |
 | GET | `/account/memory` | dict | account |
 | GET | `/account/memory/search` | dict | account |
@@ -113,6 +118,7 @@
 | GET | `/central/agent-smith` | dict | central_agent_smith |
 | GET | `/central/agents` | dict | central |
 | GET | `/central/agents` | dict | central_absorb_routes |
+| GET | `/central/agents/work` | dict | central |
 | POST | `/central/agents/{agent_id}/cancel` | dict | central |
 | POST | `/central/agents/{agent_id}/pause` | dict | central |
 | GET | `/central/analyst` | dict | central_matrix |
@@ -240,6 +246,9 @@
 | POST | `/chat/warm` | dict | chat_stream_v2 |
 | GET | `/chat/workspace-trust` | dict | chat |
 | POST | `/chat/workspace-trust` | dict | chat |
+| GET | `/companion/presence` | dict | companion |
+| GET | `/companion/senses` | dict | companion |
+| GET | `/companion/thoughts` | dict | companion |
 | GET | `/cowork/agents` | dict | cowork |
 | GET | `/cowork/app-dispatch/pending` | dict | cowork |
 | POST | `/cowork/app-dispatch/{dispatch_id}/ack` | dict | cowork |
@@ -300,6 +309,7 @@
 | GET | `/mc/boundary-model` | dict | mission_control_introspection |
 | GET | `/mc/cadence-producers` | dict | mission_control_introspection |
 | POST | `/mc/capability-approval-requests/{request_id}/approve` | dict | mission_control_runtime_config |
+| POST | `/mc/capability-approval-requests/{request_id}/approve-and-execute` | dict | mission_control_runtime_config |
 | POST | `/mc/capability-approval-requests/{request_id}/execute` | dict | mission_control_runtime_config |
 | GET | `/mc/cheap-balancer-state` | dict | cheap_balancer |
 | POST | `/mc/cheap-balancer/refresh-pool` | dict | cheap_balancer |
@@ -388,6 +398,7 @@
 | GET | `/mc/learning-curriculum` | dict | mission_control_introspection |
 | GET | `/mc/life-projects` | dict | mission_control_runs_ops |
 | POST | `/mc/life-projects/{initiative_id}/abandon` | dict | mission_control_runs_ops |
+| POST | `/mc/life-projects/{initiative_id}/endorse` | dict | mission_control_runs_ops |
 | GET | `/mc/liveness` | dict | mission_control_runs_ops |
 | GET | `/mc/living-executive` | dict | mission_control_introspection |
 | GET | `/mc/living-heartbeat-cycle` | dict | mission_control_introspection |
@@ -426,6 +437,7 @@
 | GET | `/mc/rhythm` | dict | mission_control_introspection |
 | GET | `/mc/runs` | dict | mission_control_runs_ops |
 | GET | `/mc/runs/{run_id}` | dict | mission_control_dashboard |
+| GET | `/mc/runs/{run_id}/prompt` | dict | mission_control_dashboard |
 | GET | `/mc/runtime` | dict | mission_control_runtime_config |
 | GET | `/mc/runtime-contract` | dict | mission_control_runtime_config |
 | POST | `/mc/runtime-contract/candidates/{candidate_id}/apply` | dict | mission_control_runtime_config |
@@ -509,6 +521,9 @@
 | GET | `/presence/state` | dict | presence |
 | POST | `/push/register` | dict | push |
 | POST | `/push/unregister` | dict | push |
+| GET | `/review/changes` | dict | review |
+| GET | `/review/lessons` | dict | review |
+| POST | `/review/lessons/{lesson_id}` | dict | review |
 | GET | `/status` | dict | status |
 | POST | `/transcribe` | dict | transcribe |
 | GET | `/v1/agent/audit` | dict | agent_audit |
@@ -522,3 +537,11 @@
 | POST | `/v1/tools/execute` |  | agent_loop |
 | GET | `/v1/tools/native` |  | agent_loop |
 | POST | `/v1/tools/native` |  | agent_loop |
+| GET | `/workbench/checkpoints` | dict | workbench |
+| POST | `/workbench/checkpoints/rollback` | dict | workbench |
+| GET | `/workbench/context` | dict | workbench |
+| GET | `/workbench/operator-channel` | dict | workbench |
+| POST | `/workbench/operator-channel/close` | dict | workbench |
+| POST | `/workbench/operator-channel/open` | dict | workbench |
+| GET | `/workbench/switches` | dict | workbench |
+| POST | `/workbench/switches/{navn}` | dict | workbench |

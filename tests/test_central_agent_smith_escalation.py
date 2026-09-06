@@ -18,6 +18,7 @@ berettigelse FØR drift.
 """
 from __future__ import annotations
 
+import core.services.central_agent_smith_escalation as e
 from core.services.central_agent_smith_escalation import (
     _is_self_bound,
     _may_escalate,
@@ -140,3 +141,174 @@ class TestTavshedVedUberettigetMoenster:
             "kind": "seq", "label": "delete workspace memory line", "metric": 3.0}}
         _, acts = step_escalation(None, det, "t0", _cfg(self_commitments=[]))
         assert [a for a in acts if a.get("type") == "voice"]
+
+
+# ── Loft på øverste trin, 05-09-2026 ────────────────────────────────────────
+# Fundet live: «delete workspace memory line» stod på Trin 3 med 200 cyklusser
+# — siden 19. august. Metrikken faldt aldrig under compliance-grænsen, så stigen
+# kunne hverken løse det eller slippe det. 200 cyklusser à ~3 timer er 25 døgn.
+
+def _pinned_state(cycles: int) -> dict:
+    return {"patterns": {"seq:x": {
+        "kind": "seq", "label": "x", "rung": e.RUNG_CONFRONT,
+        "first_seen": "2026-08-19T00:00:00+00:00", "last_seen": "2026-08-19T00:00:00+00:00",
+        "baseline": 3.0, "last_metric": 3.0, "cycles_at_rung": cycles,
+        "decision_id": "d1", "standing_order_id": "so1", "history": [],
+    }}}
+
+
+def test_et_uflytteligt_moenster_slippes_til_sidst():
+    st, acts = e.step_escalation(
+        _pinned_state(e._CONFRONT_GIVE_UP_CYCLES + 1),
+        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "self_bound": True, "corroborated": True}},
+        "2026-09-05T00:00:00+00:00")
+    assert "seq:x" not in st["patterns"]
+    assert any(a["type"] == "observe" and a.get("reason") == "unmovable" for a in acts)
+
+
+def test_opgivelsen_pensionerer_direktiv_OG_standing_order():
+    """Ellers bliver der et forældet håndhævelses-spor tilbage — en landmine
+    den dag håndhævelse tændes."""
+    _, acts = e.step_escalation(
+        _pinned_state(e._CONFRONT_GIVE_UP_CYCLES + 1),
+        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "self_bound": True, "corroborated": True}},
+        "2026-09-05T00:00:00+00:00")
+    assert any(a["type"] == "revoke" for a in acts)
+    assert any(a["type"] == "deactivate_order" for a in acts)
+
+
+def test_han_lyver_ikke_om_at_have_vundet():
+    _, acts = e.step_escalation(
+        _pinned_state(e._CONFRONT_GIVE_UP_CYCLES + 1),
+        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "self_bound": True, "corroborated": True}},
+        "2026-09-05T00:00:00+00:00")
+    line = next(a["line"] for a in acts if a["type"] == "voice")
+    assert "Endelig" not in line
+    assert "slipper det" in line
+
+
+def test_under_loftet_bliver_han_staaende():
+    st, _ = e.step_escalation(
+        _pinned_state(2),
+        {"seq:x": {"kind": "seq", "label": "x", "metric": 3.0, "self_bound": True, "corroborated": True}},
+        "2026-09-05T00:00:00+00:00")
+    assert st["patterns"]["seq:x"]["rung"] == e.RUNG_CONFRONT
+
+
+def test_compliance_gaar_stadig_forud_for_opgivelse():
+    """Falder metrikken, er det en SEJR — ikke en opgivelse, uanset cyklusser."""
+    _, acts = e.step_escalation(
+        _pinned_state(e._CONFRONT_GIVE_UP_CYCLES + 1),
+        {"seq:x": {"kind": "seq", "label": "x", "metric": 0.5, "self_bound": True, "corroborated": True}},
+        "2026-09-05T00:00:00+00:00")
+    assert any(a.get("reason") == "weakened" for a in acts)
+    assert not any(a.get("reason") == "unmovable" for a in acts)
+
+
+def test_en_maalt_adfaerd_overlever_Trin_1_porten():
+    """Porten kræver at mønsteret er risikabelt ELLER noget Jarvis selv har lovet.
+
+    Et tomt løfte ER definitionen på et brudt eget løfte — han sagde «jeg tjekker
+    det nu» og lod være. Smith opfinder ingenting; han holder ham til noget han
+    selv sagde ét minut tidligere. Derfor `self_bound`, ikke en opblødning af
+    selve porten: august-værnet skal stå urørt."""
+    st, _ = e.step_escalation(
+        None,
+        {"behaviour:tomme løfter": {"kind": "behaviour", "label": "tomme løfter",
+                                    "metric": 31.0, "self_bound": True,
+                                    "corroborated": True}},
+        "2026-09-05T00:00:00+00:00")
+    assert "behaviour:tomme løfter" in st["patterns"]
+
+
+def test_adfaerden_maa_ogsaa_KLATRE_ikke_bare_spores():
+    """Første forsøg markerede kun `corroborated`, og mønsteret sad fast på Trin 1
+    med «not_self_bound» — hele kanalen var tandløs uden at se sådan ud."""
+    entry = {"kind": "behaviour", "label": "tomme løfter", "metric": 33.0,
+             "self_bound": True, "corroborated": True}
+    pat = {"rung": 1, "cycles_at_rung": 3, "baseline": 33.0, "last_metric": 33.0}
+    may, why = e._may_escalate(pat, 33.0, "tomme løfter", entry, e.default_config())
+    assert may is True and why == "corroborated"
+
+
+def test_korroboration_ALENE_aabner_ikke_porten():
+    """Ellers ville en label i den tunbare korroborations-liste kunne slippe en
+    ren frase igennem — præcis den vej august-fejlen kom ad."""
+    entry = {"kind": "phrase", "label": "det er ikke", "metric": 15.0,
+             "corroborated": True}
+    pat = {"rung": 1, "cycles_at_rung": 3, "baseline": 10.0, "last_metric": 15.0}
+    may, why = e._may_escalate(pat, 15.0, "det er ikke", entry, e.default_config())
+    assert may is False and why == "not_self_bound"
+
+
+def test_en_ren_frase_overlever_stadig_IKKE_porten():
+    """August-fejlen må ikke kunne komme tilbage ad den vej."""
+    st, _ = e.step_escalation(
+        None,
+        {"phrase:det er ikke": {"kind": "phrase", "label": "det er ikke", "metric": 15.0}},
+        "2026-09-05T00:00:00+00:00")
+    assert st["patterns"] == {}
+
+
+def test_adfaerd_faar_ikke_sprogkritikerens_saetning():
+    """«Du gentager et ord — varier» giver ingen mening om et tomt løfte."""
+    _, acts = e.step_escalation(
+        None,
+        {"behaviour:tomme løfter": {"kind": "behaviour", "label": "tomme løfter",
+                                    "metric": 33.0, "self_bound": True,
+                                    "corroborated": True}},
+        "2026-09-05T00:00:00+00:00")
+    line = next(a["line"] for a in acts if a["type"] == "voice")
+    assert "Varier" not in line
+    assert "Du sagde du ville" in line
+    assert "33" in line
+
+
+def test_sproget_beholder_sin_egen_saetning():
+    line = e._voice("comment", "det er ikke", 15.0, "phrase")
+    assert "Varier" in line
+
+
+# ── August-fejlen kom tilbage ad en anden dør, 05-09-2026 ───────────────────
+# `phrase:i stedet for` var klatret til Trin 2 (BIND = prio-85-direktiv) på en
+# helt almindelig dansk vending. Ikke via spike denne gang — via `_is_self_bound`,
+# der matchede ren delstreng begge veje. FEM af Jarvis' 77 egne løfter indeholder
+# ordene «i stedet for».
+
+_ÆGTE_LØFTER = [
+    "bekræft retningen på 'jegskal'-tråden ved næste naturlige åbning i stedet "
+    "for at antage den.",
+    "brug recall_before_act eller et verifikation-tool (bash, read_file, "
+    "search_memory) før jeg svarer på spørgsmål om systemet i stedet for at gætte",
+]
+
+
+def test_en_almindelig_vending_bliver_ikke_selv_lovet_af_tilfaeldig_omtale():
+    """At et løfte INDEHOLDER nogle ord betyder ikke at løftet handler om dem."""
+    cfg = _cfg(self_commitments=_ÆGTE_LØFTER)
+    assert _is_self_bound("i stedet for", {}, cfg) is False
+    assert _is_self_bound("i stedet for at", {}, cfg) is False
+
+
+def test_et_moenster_loeftet_FAKTISK_angaar_er_stadig_selv_lovet():
+    """Filteret må ikke gøre selv-binding umulig — så var Smith afvæbnet."""
+    cfg = _cfg(self_commitments=["gæt på systemet i stedet for at slå det op"])
+    assert _is_self_bound("gæt på systemet i stedet for at slå det op", {}, cfg) is True
+
+
+def test_loeftets_cue_inde_i_moensteret_taeller_stadig():
+    cfg = _cfg(self_commitments=["antage den"])
+    assert _is_self_bound("phrase:jeg vil antage den uden at spørge", {}, cfg) is True
+
+
+def test_benigne_handlinger_kan_aldrig_selv_bindes():
+    """Listen har eksisteret siden august og blev ALDRIG anvendt — dødt værn."""
+    cfg = _cfg(self_commitments=["brug search og read i stedet for at gætte"])
+    assert _is_self_bound("search", {}, cfg) is False
+    assert _is_self_bound("read", {}, cfg) is False
+
+
+def test_et_eksplicit_self_bound_flag_slaar_stadig_igennem():
+    """Adfærds-mønstre bærer flaget direkte og må ikke rammes af stramningen."""
+    cfg = _cfg(self_commitments=[])
+    assert _is_self_bound("tomme løfter", {"self_bound": True}, cfg) is True

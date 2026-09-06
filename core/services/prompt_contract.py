@@ -26,6 +26,9 @@ from core.services.prompt_relevance_backend import (
     run_bounded_nl_memory_entry_selection,
     run_bounded_nl_prompt_relevance,
 )
+from core.services.prompt_sections.memory_selection import (  # noqa: F401
+    MemorySectionSelection,
+)
 
 _RELEVANCE_DECISION_HISTORY: list[dict[str, object]] = []
 _RELEVANCE_DECISION_HISTORY_LIMIT = 8
@@ -299,17 +302,10 @@ def _permissive_relevance(mode: str = "visible_chat") -> "PromptRelevanceDecisio
         backend_status="phase_timeout")
 
 
-@dataclass(slots=True)
-class MemorySectionSelection:
-    lines: list[str]
-    backend_attempted: bool
-    backend_success: bool
-    fallback_used: bool
-    backend_name: str | None
-    backend_provider: str | None
-    backend_model: str | None
-    backend_status: str
-    prompt_file_used: bool
+MEMORY_GROUP_HEADER = (
+    "[HUKOMMELSE] — det du husker om dette emne (MEMORY.md, din hjerne, recall). "
+    "Brug det når det er relevant; sig det hvis noget her modsiger samtalen."
+)
 
 
 @dataclass(slots=True)
@@ -790,6 +786,25 @@ def _build_visible_chat_prompt_assembly_impl(
         "cognitive_state",
         _safe_build_cognitive_state_for_prompt, compact=compact,
     )
+    # Skill-opslaget koster ~750 ms (semantisk match mod alle installerede
+    # skills). Det submittes HER så det overlapper memory_selection (~1500 ms)
+    # og frame (~940 ms) i stedet for at lægge sig oveni. Se
+    # skill_relevance_surface.py for hvorfor opslaget flyttede fra prompten til
+    # runtimen: to af hans laveste adherence-beslutninger var ritualer om at
+    # huske at slå op.
+    from core.services.skill_relevance_surface import relevant_skills_section
+    future_skill_relevance = _measured_submit(
+        "skill_relevance", relevant_skills_section, user_message,
+    )
+    # Tool-discovery-nudgen er skill_relevance for TOOLS: 429 registrerede,
+    # 328 aldrig brugt, fordi kataloget kun viser kerne-grupperne i klartekst.
+    # Samme embedding-pris (~ét ollama-kald), så samme sted i puljen.
+    from core.services.prompt_sections.tool_discovery_nudge import (
+        tool_discovery_nudge_section,
+    )
+    future_tool_discovery = _measured_submit(
+        "tool_discovery_nudge", tool_discovery_nudge_section, user_message, session_id,
+    )
     future_self_state = _measured_submit("self_state", _safe_build_self_state_block)
     future_frame = _measured_submit("frame", frame_fn)
     future_self_report = _measured_submit(
@@ -971,7 +986,21 @@ def _build_visible_chat_prompt_assembly_impl(
     # sections are dropped. Identity (SOUL/IDENTITY/STANDING_ORDERS),
     # nudges, capability truth, etc. are NOT awareness — they live above.
     _awareness: list[tuple[int, str, str]] = []  # (priority, label, content)
-    _AWARENESS_BUDGET = 6000  # chars; ~1.5 KT max for the whole awareness block
+    # 2026-09-05: 6000 → 9000. Otte sektioner blev taget af noise-blacklisten
+    # (3.584 tegn), og blokken begyndte straks at klippe — foerst
+    # rule_engine_conclusions + own_initiatives + central-hypoteser, i naeste
+    # bygning selve DECISION-ADHERENCE-GATEN. En advarsel der bliver smidt ud af
+    # pladsmangel er praecis den fejl vi brugte dagen paa at rette.
+    # ~2.2 KT for hele blokken; halen er alligevel ucachet, saa prisen er ren
+    # per-tur-token og ikke et cache-brud.
+    # Sektioner budgettet ALDRIG maa klippe: identitets-pins han selv har valgt,
+    # og de gates der aendrer hans adfaerd frem for blot at oplyse ham.
+    _NEVER_DROP_LABELS = (
+        "pinned identity context",
+        "decision adherence gate",
+        "loop-compliance self-check",
+    )
+    _AWARENESS_BUDGET = 9000  # chars; ~2.2 KT max for the whole awareness block
 
     # P3.5 (2026-04-29): awareness categories — instead of 30+ flat sections,
     # group by purpose so the model sees a small number of named lanes.
@@ -1159,6 +1188,13 @@ def _build_visible_chat_prompt_assembly_impl(
     def _tail_add(label: str, content: str | None) -> None:
         if not content:
             return
+        if _cpc is not None:
+            try:
+                if not _cpc.should_include_tail(_turn_type_l2, label):
+                    _dropped_disabled.append(label)
+                    return
+            except Exception:
+                pass
         if not _prompt_observer.section_enabled(
                 label, blacklisted=label in _TAIL_NOISE_LABELS,
                 overrides=_section_overrides):
@@ -1236,11 +1272,15 @@ def _build_visible_chat_prompt_assembly_impl(
     # outbound_nudges instead of sending directly. Priority 4 — even higher
     # than loop-compliance (7) and identity pins (5) because these are
     # PENDING context that Jarvis needs to know about before he speaks.
+    # Redesign 4. sep 2026: brønd-sektionen ("Pending nudges … mark_sent(nudge_id)")
+    # er fjernet — 0 sendt nogensinde, tool'et fandtes ikke, og den lå under "citér
+    # ALDRIG". Bjørns mid-run-beskeder vises som egen operationel sektion (halen),
+    # og relevante proaktive kandidater som ÉN "Siden sidst"-linje i [HUKOMMELSE].
     try:
-        from core.services.outbound_nudges import format_pending_for_awareness
-        _awareness_add(4, "pending outbound nudges", format_pending_for_awareness() or None)
+        from core.services.outbound_nudges import format_midway_for_prompt
+        _tail_add("midway user messages", format_midway_for_prompt() or None)
     except Exception as _e:
-        _sec_err("pending outbound nudges", _e)
+        _sec_err("midway user messages", _e)
 
     # Matrix-ensemblet — hans indre karakterer, med deres EGNE ord i stedet for et tal.
     # Prio 6: lige efter pending nudges, før identity-pins. Sektionen er None når ingen
@@ -1316,7 +1356,11 @@ def _build_visible_chat_prompt_assembly_impl(
                 threshold=getattr(_bs, "jarvis_brain_auto_inject_threshold", 0.55),
             )
             if _facts_text:
-                _awareness_add(8, "jarvis brain facts (auto-inject)", _facts_text)
+                # 2026-09-04 (memory repair, R2): hukommelse hører til i
+                # [HUKOMMELSE]-gruppen i halen — ikke under "INTERN DIAGNOSTIK
+                # … citér det ALDRIG", og ikke i 6000-tegns awareness-puljen.
+                _dyn_memory_recall.append(_facts_text)
+                derived_inputs.append("jarvis brain facts (memory group)")
 
             # Post-web-search nudge — if last tool message had URL content,
             # encourage remember_this. Heuristic; max one per turn since we
@@ -1407,6 +1451,23 @@ def _build_visible_chat_prompt_assembly_impl(
     # egne ord — gentag ALDRIG den rå tool-output som prosa i dit svar. Linjer der
     # starter med '[tool_navn]:' eller '[tool_result:...]' er interne markører og
     # må aldrig stå i din synlige besked til brugeren.
+    # Adoptions-loeftestangen (6/9-2026). `explore` var bygget, synligt i alle
+    # scopes og alligevel ubrugt: bedt om at finde SSRF-vaernet lavede han 13
+    # bash-kald, 6 soegninger og 4 fil-laesninger — og konkluderede FORKERT at
+    # vaernet ikke fandtes, mens filen laa der. Maalt bredere: 36 dispatch-
+    # koersler i systemets samlede levetid, 35 fra én fejlfindings-session.
+    #
+    # Tilgaengelighed er ikke adoption. Vaerktoejslisten var ikke problemet, saa
+    # loeftestangen er her. Sidste saetning er lige saa vigtig som de foerste:
+    # uden den bliver `explore` en omvej naar han allerede ved hvor filen er.
+    _awareness_add(8, "explore before reading wide", (
+        "Kraever svaret at du laeser paa tvaers af FLERE filer — «hvor ligger X», "
+        "«hvordan haenger Y sammen» — saa send `explore` afsted i stedet for at "
+        "laese dem selv. Den laeser og kommer tilbage med fund og linjenumre, og "
+        "du beholder din kontekst til selve arbejdet. Ved du allerede hvilken fil "
+        "det er, saa laes den selv — explore er til det brede, ikke det praecise."
+    ))
+
     _awareness_add(7, "no tool-result echo", (
         "Tool-resultater: efter et værktøjskald, sammenfat resultatet med dine EGNE "
         "ord. Gentag ALDRIG den rå output (fx '[list_proposals]: …' eller "
@@ -1510,6 +1571,19 @@ def _build_visible_chat_prompt_assembly_impl(
             _sec_err("room entities", _e)
     except Exception as _e:
         _sec_err("self-monitor warnings", _e)
+    # 2026-09-05: HOERELSEN havde mistet sit kaldested. Denne sektion baerer lyd
+    # (ambient_sound), musik-akkumulatoren, ekko-temaer og morgentraaden — og den
+    # blev ikke kaldt nogen steder i produktion; kun re-eksporteret nedenfor og
+    # brugt i tests. Han optager lyd hver time, transskriberer den og har 255
+    # audio-raekker i Sansernes Arkiv, uden at ét lydsignal naaede prompten.
+    # Maalt: 415 tegn indhold, bl.a. rummets atmosfaere og «min sag».
+    try:
+        from core.services.prompt_sections.private_layer_sections import (
+            _visible_visual_memory_section,
+        )
+        _tail_add("senses and continuity", _visible_visual_memory_section())
+    except Exception as _e:
+        _sec_err("senses and continuity", _e)
     try:
         from core.services.clarification_classifier import clarification_prompt_section
         _awareness_add(25, "clarification ambiguity flag", clarification_prompt_section(user_message))
@@ -1528,6 +1602,39 @@ def _build_visible_chat_prompt_assembly_impl(
         _awareness_add(24, "R2 gate telemetry", telemetry_section())
     except Exception as _e:
         _sec_err("R2 gate telemetry", _e)
+    try:
+        # Ny post som kendsgerning. Daemonen tjekker hvert andet minut i
+        # cluster_infra; det der manglede var at resultatet naaede ham.
+        # Sektionen er tom naar der ingen ny post er — ingen paamindelse.
+        from core.services.mail_checker_daemon import mail_awareness_section
+        _awareness_add(15, "new mail", mail_awareness_section())
+    except Exception as _e:
+        _sec_err("new mail", _e)
+    # 2026-09-05: 68 af backendens /mc-ruter blev aldrig roert af noget UI, og en
+    # haandfuld af dem er ikke observation — de er materiale der burde FORME hans
+    # adfaerd: vaerdier han selv har dannet, hans egen graense-model, aaben anger
+    # med en laert lektie, uhelede brud med Bjoern, og hans model af Bjoern.
+    # Samlet i ÉN kompakt sektion frem for otte; otte ville koste otte gange saa
+    # meget budget og laese som en rapport.
+    try:
+        from core.services.prompt_sections.formative_state import formative_state_section
+        _awareness_add(18, "formative state", formative_state_section())
+    except Exception as _e:
+        _sec_err("formative state", _e)
+    try:
+        _awareness_add(
+            20, "relevant skills",
+            _timed_result(future_skill_relevance, "skill_relevance", default=""),
+        )
+    except Exception as _e:
+        _sec_err("relevant skills", _e)
+    try:
+        _awareness_add(
+            21, "tool discovery nudge",
+            _timed_result(future_tool_discovery, "tool_discovery_nudge", default=""),
+        )
+    except Exception as _e:
+        _sec_err("tool discovery nudge", _e)
     try:
         from core.services.decision_adherence_gate import decision_adherence_section
         _awareness_add(25, "decision adherence gate", decision_adherence_section())
@@ -1779,7 +1886,9 @@ def _build_visible_chat_prompt_assembly_impl(
                 _busy_msr = _sid_msr in _MSR_INFLIGHT
             # Serve last cached result immediately (non-blocking).
             if _c_msr and (_now_msr - _c_msr[0]) < _RBA_TTL_S and _c_msr[1]:
-                _awareness_add(28, "multi-signal recall (BM25+entity+embedding)", _c_msr[1])
+                # 2026-09-04 (memory repair, R2): til [HUKOMMELSE]-gruppen.
+                _dyn_memory_recall.append(_c_msr[1])
+                derived_inputs.append("multi-signal recall (memory group)")
             # Refresh in background for the next turn (deduped per session).
             if not _busy_msr and _sid_msr:
                 with _RBA_LOCK:
@@ -2127,7 +2236,14 @@ def _build_visible_chat_prompt_assembly_impl(
         _needed = len(_content) + (len(_pending_header) + 2 if _pending_header else 0)
         # Valgt historik (2026-06-22): Jarvis' egne identity-pins har forrang —
         # de droppes aldrig af budgettet. Auto-udvalgte brain-facts fylder resten.
-        _never_drop = _label == "pinned identity context"
+        #
+        # 2026-09-05: adfaerds-gates foejet til. De aendrer hvad han GOER — de
+        # eskalerer fra "Husk at..." over "DU SKAL..." til kritisk advarsel — og
+        # en advarsel der bliver klemt ud af pladsmangel er lige saa tavs som en
+        # der stod paa en blacklist. Vi maalte netop adherence-gaten blive
+        # evicted samme dag den blev tændt. Informationssektioner maa vige for
+        # dem, ikke omvendt.
+        _never_drop = _label in _NEVER_DROP_LABELS
         if not _never_drop and _used > 0 and _used + _needed > _AWARENESS_BUDGET:
             _dropped.append(_label)
             return
@@ -2153,6 +2269,21 @@ def _build_visible_chat_prompt_assembly_impl(
     _awareness_flushed_upto = len(_awareness)
     if _dropped:
         derived_inputs.append(f"awareness budget dropped: {', '.join(_dropped)}")
+        # HVAD BLEV KLEMT UD DENNE TUR — skrevet ud, ikke kun registreret.
+        #
+        # Awareness-blokken har et loft på 6000 tegn, og alt undtagen «pinned
+        # identity context» kan droppes. Vi har MÅLT at
+        # `Visible_session_continuity` gik fra 1095 tegn til 0 mellem to
+        # på hinanden følgende ture — altså at dét afsnit der bærer «hvad lavede
+        # vi sidst» kan tabe kampen om pladsen.
+        #
+        # Uden denne linje ligner det at han har glemt. Med den kan man se at
+        # han fik det ikke at vide.
+        _sys_mod.stderr.write(
+            "prompt-awareness-dropped budget=%d %s\n" % (
+                _AWARENESS_BUDGET, " ".join(str(d).replace(" ", "_") for d in _dropped))
+        )
+        _sys_mod.stderr.flush()
     # Prompt-cluster: ét central.observe pr. build → trace af hvad der kom med + hvorfor noget
     # blev droppet (disabled via switch vs budget-evicted). Self-safe; ingen latency-effekt.
     try:
@@ -2231,8 +2362,10 @@ def _build_visible_chat_prompt_assembly_impl(
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
             user_message=user_message,
-            max_lines=3 if compact else 4,
-            max_chars=200 if compact else 280,
+            # 2026-09-04 (memory repair, R2): sektioner, ikke linjer. Før: 4 linjer
+            # à 280 tegn uden overskrift, fallback = filens sidste 4 linjer.
+            max_lines=2 if compact else 3,
+            max_chars=900 if compact else 1500,
             workspace_dir=workspace_dir,
             mode="visible_chat",
         )
@@ -2304,6 +2437,15 @@ def _build_visible_chat_prompt_assembly_impl(
             _dyn_memory_recall.append(recall_bundle)
             derived_inputs.append("bounded memory recall bundle (user-msg tail)")
 
+        try:
+            from core.services.past_context_router import build_past_context_section
+            past_context = build_past_context_section(user_message, session_id=session_id)
+            if past_context:
+                _dyn_memory_recall.append(past_context)
+                derived_inputs.append("past conversation context (user-msg tail)")
+        except Exception as _e:
+            _sec_err("past conversation context", _e)
+
     if relevance.include_guidance:
         for filename in ("TOOLS.md", "SKILLS.md"):
             section = _workspace_guidance_section(
@@ -2323,6 +2465,14 @@ def _build_visible_chat_prompt_assembly_impl(
                 # svar når beskeden er tool/skill-relevant — naturlig placering.
                 _tail_add(f"{filename} guidance", section)
                 conditional_files.append(filename)
+
+    try:
+        from core.tools.tool_scoping import tool_routing_hint
+        _tool_hint = tool_routing_hint(user_message)
+        if _tool_hint:
+            _tail_add("tool routing hint", _tool_hint)
+    except Exception as _e:
+        _sec_err("tool routing hint", _e)
 
     # --- Budget-controlled runtime sections ---
     # Workspace files (SOUL, IDENTITY, memory, rules, transcript) are
@@ -2658,6 +2808,23 @@ def _build_visible_chat_prompt_assembly_impl(
             derived_inputs.append("communication guard (action contract)")
     except Exception:
         pass
+    # Hvor staar han? (6/9-2026) — mappe, gren, om traeet er beskidt, seneste
+    # commit. Ingen af de tyve awareness-pladser vidste det foer, og med
+    # checkpoint pr. runde og operator-kanalen betyder det noget om han staar
+    # paa main og om hans sidste redigering landede.
+    #
+    # I HALEN med vilje: git-status aendrer sig ved hver redigering, og i det
+    # stabile praefiks ville den bryde prefix-cachen paa hver tur. ~220 tegn.
+    # Bjoern 6/9: taendt som standard, slukkes med central_switches
+    # ("prompt", "env_block").
+    try:
+        from core.services.env_block import render_env_block as _env_blok
+        _env = _env_blok()
+        if _env:
+            _dyn_tail.append(_env)
+            derived_inputs.append("env (mappe/gren/træ)")
+    except Exception:
+        pass
     # Tool-output hygiene: deepseek-flash tends to parrot the raw tool-result format
     # ([read_file]: …) into its visible reply. It is for the model's eyes only.
     _dyn_tail.append(
@@ -2766,6 +2933,70 @@ def _build_visible_chat_prompt_assembly_impl(
     # ── MEMORY group (audit #3, 2026-07-22): MEMORY.md + recall bundle together,
     # right after the diagnostics. He speaks from his state, not from recall — so
     # recall sits here, not at the top (Jarvis-review 2026-06-22).
+    # 2026-09-04 (memory repair, R4): lektier fra rettelser/tool-fejl/self-review
+    # — de mest lignende først, så de stærkeste. Ind i hukommelsesgruppen.
+    try:
+        from core.services.lessons import build_lessons_section as _bls
+        _lessons_text = _bls(user_message)
+        if _lessons_text:
+            _dyn_memory_recall.append(_lessons_text)
+            derived_inputs.append("lessons (memory group)")
+    except Exception as _e:
+        _sec_err("lessons", _e)
+    # ── LÆRT OM BJØRN (lærings-sløjfe 4/9, blok A) ──────────────────────────
+    # `## Lært` i USER.md er læsesiden for alt konsolideringen har lært om ham.
+    # Målt 4/9: 146 lærte præferencer stod i `## Durable Preferences` (linje 70
+    # af 202) og nåede ALDRIG prompten — hverken via "første 40 linjer" eller
+    # via Kerne. Her udvælges de 3 mest relevante for det han lige skrev.
+    try:
+        from core.services.prompt_sections.learned_about_user import (
+            build_learned_section as _bls_learned,
+        )
+        _learned_text = _bls_learned(user_message, workspace_dir=workspace_dir)
+        if _learned_text:
+            _dyn_memory_recall.append(_learned_text)
+            derived_inputs.append("learned about user (memory group)")
+    except Exception as _e:
+        _sec_err("learned about user", _e)
+    # Bruger-modellen (kommunikationsstil, målt hvert 10. minut) nåede kun
+    # heartbeat-prompten. Den hører til i samtalen — det er DER stilen bruges.
+    try:
+        from core.services.user_model_daemon import build_user_model_prompt_line as _bump
+        _um_line = _bump()
+        if _um_line:
+            _dyn_memory_recall.append(_um_line)
+            derived_inputs.append("user model (memory group)")
+    except Exception as _e:
+        _sec_err("user model", _e)
+    # Redesign 4/9: én "Siden sidst"-linje når en proaktiv kandidat er relevant.
+    try:
+        from core.services.proactive_candidates import build_since_last_line as _bsl
+        _since_line = _bsl(user_message, session_id=str(session_id or ""))
+        if _since_line:
+            _dyn_memory_recall.append(_since_line)
+            derived_inputs.append("since-last candidate (memory group)")
+    except Exception as _e:
+        _sec_err("since-last candidate", _e)
+    # Morgentråden (session_continuity) havde ingen læser i nogen prompt-builder.
+    try:
+        from core.services.session_continuity import get_latest_morning_thread as _glmt
+        _mt = _glmt() or {}
+        _mt_text = str(_mt.get("thread_text") or "").strip()
+        if _mt_text:
+            import datetime as _mt_dt
+            _mt_created = _mt_dt.datetime.fromisoformat(
+                str(_mt.get("created_at") or "").replace("Z", "+00:00")
+            )
+            if _mt_created.tzinfo is None:
+                _mt_created = _mt_created.replace(tzinfo=_mt_dt.timezone.utc)
+            if (_mt_dt.datetime.now(_mt_dt.timezone.utc) - _mt_created) < _mt_dt.timedelta(hours=6):
+                _tail_add("morning thread", f"[morgentråd]: {_mt_text[:200]}")
+    except Exception:
+        pass
+    # 2026-09-04 (memory repair, R2): én overskrift for hele gruppen, så
+    # hukommelsen ikke arver diagnostik-blokkens "citér det ALDRIG".
+    if _dyn_memory_recall:
+        _dyn_tail.append(MEMORY_GROUP_HEADER)
     _dyn_tail.extend(_dyn_memory_recall)
     # ── OPERATIONAL group: per-turn dynamic ops (model-pools, subagent completions,
     # recent self-changes, daily notes, background events) + device presence (below).
@@ -2886,11 +3117,30 @@ def _build_visible_chat_prompt_assembly_impl(
     _total_chars = len(_assembled_text)
     _approx_tokens = _total_chars // 4  # rough heuristic — close enough for triage
     _per_part_chars = [len(p) for p in parts if p]
-    _largest = sorted(
-        ((label, len(parts[i]) if i < len(parts) else 0)
-         for i, label in enumerate(derived_inputs)),
+    # NAVNET AFLEDES AF INDHOLDET, ikke af et indeks i en parallel liste.
+    #
+    # Den gamle udgave zippede `derived_inputs` mod `parts` på indeks — men de
+    # to lister vokser IKKE i takt (25 `parts.append` mod 42
+    # `derived_inputs.append` i samme funktion, plus `extend`). Hvert navn sad
+    # derfor på et vilkårligt andet stykke, og telemetrien har peget forkert så
+    # længe den har eksisteret. Den fejl er værre end ingen måling: et kort der
+    # peger forkert får en til at skære det forkerte sted.
+    #
+    # Tegnet på at noget var galt: `quick_facts` blev målt til 7051 tegn, mens
+    # dens egen builder har et loft på 1800.
+    #
+    # Første linje af et stykke ER dets overskrift i praksis, og den kan ikke
+    # komme ud af trit med sit eget indhold.
+    def _label_of(text: str) -> str:
+        head = (text or "").lstrip().split("\n", 1)[0].strip()
+        head = head.lstrip("#").strip().rstrip(":").strip()
+        return (head[:48] or "(uden overskrift)").replace(" ", "_")
+
+    _ranked = sorted(
+        ((_label_of(part), len(part)) for part in parts if part),
         key=lambda kv: kv[1], reverse=True,
-    )[:8]
+    )
+    _largest = _ranked[:8]
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish("prompt.assembly_size", {
@@ -2912,6 +3162,36 @@ def _build_visible_chat_prompt_assembly_impl(
         file=_sys_mod.stderr,
         flush=True,
     )
+    # Fordelingen på ÉN linje, så et døgns journal kan summeres uden at parse
+    # flere linjer sammen. Nul-dele tages med: en del der altid er tom er lige
+    # så interessant som en der fylder.
+    # I ASSEMBLY-RÆKKEFØLGE, ikke sorteret efter størrelse.
+    #
+    # Størrelsen siger hvad der fylder; RÆKKEFØLGEN siger hvad der ødelægger
+    # cachen. DeepSeek matcher fra begyndelsen, så en del der skifter størrelse
+    # — eller kommer og går — forskyder alt EFTER sig. Ligger den tidligt, er
+    # hele præfikset tabt hver tur; ligger den sidst, koster den ingenting.
+    # Sorterer man listen, kan man ikke se forskel på de to tilfælde.
+    print(
+        "prompt-assembly-parts " + " ".join(
+            f"{_label_of(part)}={len(part)}" for part in parts if part
+        ),
+        file=_sys_mod.stderr,
+        flush=True,
+    )
+
+    # Impact-telemetri (prompt.section_answer_impact): husk sektionerne HER, hvor
+    # _label_of er defineret. Den oprindelige placering (før transcript/katalog)
+    # kaldte den nested def før den var bundet → UnboundLocalError, fanget stille
+    # → 0 events nogensinde (verificeret live 4/9 efter to ægte ture).
+    try:
+        from core.services.prompt_section_impact import remember_prompt_sections
+        remember_prompt_sections(
+            session_id=session_id or "",
+            sections=[(_label_of(part), part) for part in parts if part],
+        )
+    except Exception:
+        pass
 
     # TEMP-DIAG: gated system-prompt dump (touch /tmp/jarvis-prompt-dump), rotates
     # latest→prev so two consecutive assemblies can be diffed to find what MUTATES
@@ -2930,6 +3210,22 @@ def _build_visible_chat_prompt_assembly_impl(
                 _fh_pd2.write(_assembled_text)
     except Exception:
         pass
+
+    # Hvad gik der ind i turen? (6/9-2026) Gemmes kompakt, saa desk kan vise
+    # en kontekst-drawer ved komponisten UDEN at bygge prompten igen — den
+    # koster sekunder, og en drawer man venter paa er en drawer man lukker.
+    #
+    # Retrospektivt med vilje: «det her brugte han sidste tur» er baade
+    # sandt og en god forudsigelse. Et estimat FOER afsendelse ville vaere
+    # et gaet praesenteret som en maaling.
+    _gem_kontekst_resume(
+        session_id=session_id,
+        included_files=included_files,
+        derived_inputs=derived_inputs,
+        excluded_files=excluded_files,
+        chars=_total_chars,
+        parts=len([p for p in parts if p]),
+    )
 
     return PromptAssembly(
         mode="visible_chat",
@@ -3640,53 +3936,6 @@ from core.services.prompt_sections.workspace_files import (  # noqa: E402
 )
 
 
-def _workspace_memory_section(
-    path: Path,
-    *,
-    label: str,
-    user_message: str,
-    max_lines: int,
-    max_chars: int,
-    workspace_dir: Path,
-    mode: str = "visible_chat",
-) -> MemorySectionSelection | None:
-    entries = _workspace_memory_entries(path)
-    if not entries:
-        return None
-    selection = _select_relevant_memory_entries(
-        entries,
-        user_message=user_message,
-        max_lines=max_lines,
-        max_chars=max_chars,
-        workspace_dir=workspace_dir,
-        mode=mode,
-    )
-    if not selection.lines:
-        return None
-    _track_memory_selection(selection, mode, len(entries))
-    return selection
-
-
-def _today_daily_memory_lines(*, limit: int = 10) -> list[str]:
-    """Read today's daily memory lines for injection into visible prompts.
-
-    Wraps read_daily_memory_lines with exception safety so prompt
-    builders never fail because the daily file is missing, empty, or
-    briefly unreadable.
-    """
-    try:
-        return read_daily_memory_lines(limit=limit)
-    except Exception:
-        return []
-
-
-def _recent_daily_memory_lines(*, limit: int = 12, days: int = 7) -> list[str]:
-    try:
-        return read_recent_daily_memory_lines(days=days, limit=limit)
-    except Exception:
-        return _today_daily_memory_lines(limit=limit)
-
-
 # Memory recall section helpers — udskilt til core/services/prompt_sections/memory_recall.py
 from core.services.prompt_sections.memory_recall import (  # noqa: E402
     _clip_line,
@@ -3704,135 +3953,18 @@ from core.services.prompt_sections.memory_scoring import (  # noqa: E402,F401
     _merge_ordered_memory_entries,
 )
 
-
-def _workspace_memory_entries(path: Path) -> list[str]:
-    from core.services.workspace_crypto import read_text_for_path
-    text = read_text_for_path(path)
-    if text is None:
-        return []
-    entries: list[str] = []
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        normalized = " ".join(line.lstrip("-").split()).strip()
-        if not normalized:
-            continue
-        entries.append(normalized)
-    return entries
-
-
-def _select_relevant_memory_entries(
-    entries: list[str],
-    *,
-    user_message: str,
-    max_lines: int,
-    max_chars: int,
-    workspace_dir: Path,
-    mode: str = "visible_chat",
-) -> MemorySectionSelection:
-    # Skip the LLM re-ranking on the visible hot path (2026-07-22, 4-agent latency audit;
-    # mirrors the existing relevance_skip_nl_on_visible precedent). _bounded_nl_memory_selection
-    # is a ~1s deepseek call (up to the 4s _HOT_RESOLVE_CAP) that BLOCKS the assembly, while the
-    # heuristic scorer (~3µs, already the fallback below at "else") picks sensible lines.
-    # AWARENESS-NEUTRAL: memory is still injected; only the LLM's re-ranking of the last 8
-    # MEMORY.md lines is dropped. Flag-gated (memory_selection_skip_nl_on_visible, default True)
-    # → instant rollback if memory-selection quality regresses.
-    _skip_nl = False
-    if mode == "visible_chat":
-        # Live kill-switch (runtime-state, default True) — flip to False instantly if
-        # memory-selection quality regresses, no redeploy. Bjørn cares about memory quality
-        # (it's why selection was a MODEL not embeddings) → keep it reversible.
-        try:
-            from core.runtime.db_core import get_runtime_state_value as _grs_msel
-            _flag = _grs_msel("memory_selection_skip_nl_on_visible", True)
-            _skip_nl = True if _flag is None else bool(_flag)
-        except Exception:
-            _skip_nl = True
-    if _skip_nl:
-        backend_attempt = BoundedMemorySelectionAttempt(
-            attempted=False, success=False, backend="skipped-visible-hotpath",
-            provider=None, model=None, status="skipped-visible-hotpath", result=None,
-        )
-    else:
-        backend_attempt = _bounded_nl_memory_selection(
-            user_message=user_message,
-            entries=entries,
-            max_lines=max_lines,
-            workspace_dir=workspace_dir,
-            mode=mode,
-        )
-    ordered: list[str]
-    from core.services.workspace_crypto import read_text_for_path
-    prompt_file_used = bool(
-        read_text_for_path(workspace_dir / "VISIBLE_MEMORY_SELECTION.md") is not None
-        or (TEMPLATE_DIR / "VISIBLE_MEMORY_SELECTION.md").exists()
-    )
-
-    if backend_attempt.success and backend_attempt.result is not None:
-        bounded_entries = entries[-8:]
-        selected_indexes = backend_attempt.result.selected_indexes
-        backend_ordered = [
-            bounded_entries[index]
-            for index in selected_indexes
-            if 0 <= index < len(bounded_entries)
-        ]
-        heuristic_ordered = _heuristic_relevant_memory_entries(
-            entries,
-            user_message=user_message,
-            max_lines=max_lines,
-        )
-        ordered = _merge_ordered_memory_entries(
-            heuristic_ordered,
-            backend_ordered,
-            max_lines=max_lines,
-        )
-    else:
-        ordered = _heuristic_relevant_memory_entries(
-            entries,
-            user_message=user_message,
-            max_lines=max_lines,
-        )
-
-    clipped: list[str] = []
-    for entry in ordered:
-        text = entry
-        if len(text) > max_chars:
-            text = text[: max_chars - 1].rstrip() + "…"
-        clipped.append(text)
-    return MemorySectionSelection(
-        lines=clipped,
-        backend_attempted=backend_attempt.attempted,
-        backend_success=backend_attempt.success,
-        fallback_used=not backend_attempt.success,
-        backend_name=backend_attempt.backend,
-        backend_provider=backend_attempt.provider,
-        backend_model=backend_attempt.model,
-        backend_status=backend_attempt.status,
-        prompt_file_used=prompt_file_used,
-    )
-
-
-def _bounded_nl_memory_selection(
-    *,
-    user_message: str,
-    entries: list[str],
-    max_lines: int,
-    workspace_dir: Path,
-    mode: str = "visible_chat",
-) -> BoundedMemorySelectionAttempt:
-    return run_bounded_nl_memory_entry_selection(
-        user_message=user_message,
-        entries=entries,
-        max_lines=max_lines,
-        workspace_dir=workspace_dir,
-        mode=mode,
-    )
-
-
-# _memory_line_relevance_score, _contains_any, _heuristic_relevant_memory_entries,
-# _merge_ordered_memory_entries er udskilt til prompt_sections/memory_scoring.py (Boy Scout) —
-# re-importeret nedenfor for bagudkompatibilitet.
+# MEMORY.md-udvælgelse (_workspace_memory_section, _select_relevant_memory_entries,
+# _workspace_memory_entries, daily-lines, MemorySectionSelection) — udskilt til
+# prompt_sections/memory_selection.py (Boy Scout, 2026-09-04). Re-importeret her:
+# tests og kaldere patcher navnene på prompt_contract-namespacet.
+from core.services.prompt_sections.memory_selection import (  # noqa: E402,F401
+    _bounded_nl_memory_selection,
+    _recent_daily_memory_lines,
+    _select_relevant_memory_entries,
+    _today_daily_memory_lines,
+    _workspace_memory_entries,
+    _workspace_memory_section,
+)
 
 
 def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
@@ -4059,10 +4191,10 @@ def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 1800) -> str |
     """Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered —
     stable references (URLs, paths, logins, hosts) must always be in view so
     Jarvis doesn't re-discover them locally every session."""
-    from core.services.workspace_crypto import read_text_for_path
+    from core.services.secret_redaction import read_for_prompt
     path = workspace_dir / "QUICK_FACTS.md"
     try:
-        raw = read_text_for_path(path)
+        raw = read_for_prompt(path)
     except Exception:
         return None
     if raw is None:
@@ -4620,3 +4752,41 @@ def prompt_mode_loader_summary() -> dict[str, object]:
         "heartbeat": "loader-ready",
         "future_agent_task": "loader-ready",
     }
+
+_KONTEKST_NOEGLE = "prompt_kontekst_resume"
+_KONTEKST_TTL_S = 3600.0
+
+
+def _gem_kontekst_resume(*, session_id, included_files, derived_inputs,
+                         excluded_files, chars: int, parts: int) -> None:
+    """Kompakt resumé af sidste turs prompt. Self-safe: fejl → ingenting.
+
+    Kun NAVNE og tal — aldrig indhold. Drawer'en skal svare paa «hvad bruger
+    han», ikke gengive hans hukommelse i et sidepanel.
+    """
+    try:
+        from core.services import shared_cache
+        sid = str(session_id or "_default")
+        shared_cache.set(
+            f"{_KONTEKST_NOEGLE}:{sid}",
+            {
+                "filer": [str(f) for f in (included_files or [])][:40],
+                "udeladt": [str(f) for f in (excluded_files or [])][:20],
+                "kilder": [str(d) for d in (derived_inputs or [])][:60],
+                "tegn": int(chars),
+                "dele": int(parts),
+            },
+            ttl_seconds=_KONTEKST_TTL_S,
+        )
+    except Exception:
+        pass
+
+
+def kontekst_resume(session_id: str) -> dict:
+    """Sidste turs prompt-sammensætning. Tom dict hvis der ingen tur var."""
+    try:
+        from core.services import shared_cache
+        v = shared_cache.get(f"{_KONTEKST_NOEGLE}:{str(session_id or '_default')}")
+        return dict(v) if isinstance(v, dict) else {}
+    except Exception:
+        return {}

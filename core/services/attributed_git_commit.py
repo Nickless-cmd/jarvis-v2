@@ -118,8 +118,35 @@ def commit_with_attribution(
         if amend:
             commit_env = os.environ.copy()
             commit_env["JARVIS_ATTRIBUTED_REWRITE"] = "1"
+        head_before = _git(root, "rev-parse", "HEAD", timeout=min(timeout, 10))
+        _sha_before = head_before.stdout.strip() if head_before.returncode == 0 else ""
         committed = _git(root, *command, timeout=timeout, env=commit_env)
         if committed.returncode != 0:
+            # SPØRG OM HEAD FLYTTEDE SIG — tro ikke på exit-koden alene.
+            #
+            # Jarvis 4. sep: «git commit showed exit 1 (pre-commit hooks
+            # "Passed") and the tree was clean afterwards — I re-ran the commit
+            # believing it failed.» En commit der melder fejl efter at være
+            # lykkedes inviterer til dubletter, og det er en dyr fejl at rette
+            # bagefter.
+            #
+            # Jeg kunne ikke genskabe præcis hvilken hook der meldte fejl. Men
+            # svaret behøver ikke afhænge af det: hvis HEAD peger et nyt sted
+            # bagefter, ER der committet, uanset hvem der råbte. Sandheden står
+            # i repoet, ikke i exit-koden.
+            after = _git(root, "rev-parse", "HEAD", timeout=min(timeout, 10))
+            _sha_after = after.stdout.strip() if after.returncode == 0 else ""
+            if _sha_after and _sha_after != _sha_before:
+                note = (
+                    "commit LYKKEDES (HEAD flyttede sig), men git meldte "
+                    f"exit={committed.returncode}. Kør ikke igen — det ville give en dublet."
+                )
+                return AttributedCommitResult(
+                    returncode=0,
+                    stdout=(committed.stdout or "") + "\n" + note,
+                    stderr=committed.stderr,
+                    sha=_sha_after,
+                )
             return AttributedCommitResult(
                 returncode=committed.returncode,
                 stdout=committed.stdout,

@@ -138,3 +138,83 @@ async def test_grep_dispatches_with_optional_args(monkeypatch):
     assert captured["args"]["path"] == "/home/bs"
     assert captured["args"]["case_insensitive"] is True
     assert len(result) == 1
+
+
+# ── Fuzzy edit på operatørens maskine, 05-09-2026 ───────────────────────────
+# `operator_edit_file` var en ren gennemstikning: broen lavede eksakt
+# strengmatch og fejlede 56 % af gangene (operator_bash: 1,2 %). Nu løses
+# matchet server-side og broen får en færdig fil.
+
+def _bro(monkeypatch, filer: dict):
+    """Fake bro: read_file svarer fra `filer`, write_file skriver tilbage."""
+    kald = []
+
+    async def _fake_dispatch(*, user_id, tool, args, timeout_s):
+        kald.append((tool, args))
+        if tool == "operator_read_file":
+            return {"status": "ok", "result": filer.get(args["path"], "")}
+        if tool == "operator_write_file":
+            filer[args["path"]] = args["content"]
+            return {"status": "ok", "result": {"bytes_written": len(args["content"])}}
+        return {"status": "ok", "result": {}}
+
+    monkeypatch.setattr(
+        "core.services.jarvisx_bridge.bridge_registry.dispatch", _fake_dispatch)
+    return kald
+
+
+@pytest.mark.asyncio
+async def test_edit_file_taaler_at_indrykning_afviger(monkeypatch):
+    """Dét eksakt match ikke kunne: modellen gengiver sjældent whitespace præcist."""
+    filer = {"/x.py": "class A:\n    def f(self):\n        return 1\n"}
+    _bro(monkeypatch, filer)
+    from core.tools.operator_tools import operator_edit_file_async
+    res = await operator_edit_file_async(
+        path="/x.py", old_string="def f(self):\n    return 1",
+        new_string="def f(self):\n    return 2", user_id="u1")
+    assert res["replacements"] == 1
+    assert filer["/x.py"] == "class A:\n    def f(self):\n        return 2\n"
+
+
+@pytest.mark.asyncio
+async def test_edit_file_skriver_IKKE_naar_teksten_ikke_findes(monkeypatch):
+    """Fejl højt frem for at redigere et forkert sted."""
+    filer = {"/x.py": "abc\n"}
+    kald = _bro(monkeypatch, filer)
+    from core.tools.operator_tools import operator_edit_file_async
+    res = await operator_edit_file_async(
+        path="/x.py", old_string="zzz qqq", new_string="y", user_id="u1")
+    assert "error" in res and res["replacements"] == 0
+    assert filer["/x.py"] == "abc\n"
+    assert not any(t == "operator_write_file" for t, _ in kald)
+
+
+@pytest.mark.asyncio
+async def test_multi_edit_er_alt_eller_intet(monkeypatch):
+    """En halvt redigeret fil er værre end en urørt — man kan ikke se hvor
+    langt den nåede."""
+    filer = {"/x.py": "a = 1\nb = 2\n"}
+    kald = _bro(monkeypatch, filer)
+    from core.tools.operator_tools import operator_multi_edit_async
+    res = await operator_multi_edit_async(
+        path="/x.py",
+        edits=[{"old_string": "a = 1", "new_string": "a = 9"},
+               {"old_string": "findes-ikke", "new_string": "x"}],
+        user_id="u1")
+    assert "error" in res and "2 af 2" in res["error"]
+    assert filer["/x.py"] == "a = 1\nb = 2\n"
+    assert not any(t == "operator_write_file" for t, _ in kald)
+
+
+@pytest.mark.asyncio
+async def test_multi_edit_bygger_ovenpaa_hinanden(monkeypatch):
+    filer = {"/x.py": "a = 1\nb = 2\n"}
+    _bro(monkeypatch, filer)
+    from core.tools.operator_tools import operator_multi_edit_async
+    res = await operator_multi_edit_async(
+        path="/x.py",
+        edits=[{"old_string": "a = 1", "new_string": "a = 9"},
+               {"old_string": "b = 2", "new_string": "b = 8"}],
+        user_id="u1")
+    assert res["replacements"] == 2 and res["edits"] == 2
+    assert filer["/x.py"] == "a = 9\nb = 8\n"

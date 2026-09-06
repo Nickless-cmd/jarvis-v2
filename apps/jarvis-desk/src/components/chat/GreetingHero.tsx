@@ -13,13 +13,29 @@ function openBrowser(url: string): void {
 /** Tom-session-skærm: tids-bevidst greeting + presence-ring tonet efter tidspunkt
  *  + op til 3 connector-forslag (kun ikke-forbundne) + "Flere apps →". Composeren
  *  gives som children, så den sidder under hilsenen (spec §3.4). */
+/** Chat: hukommelse og samtale — det fladen ER til. */
+const CHAT_FORSLAG = [
+  'Hvad talte vi om sidst?',
+  'Hvad ved du om mig?',
+  'Hvad har du lavet i dag?',
+]
+
+/** Code: de vaerktoejer der faktisk findes i code-scope. */
+const KODE_FORSLAG = [
+  'Brug explore til at finde hvor X håndteres',
+  'Hvad står der i git-status lige nu?',
+  'Hvad kan jeg fortryde? (checkpoint)',
+]
+
 export function GreetingHero({
-  config, userName, onOpenMarketplace, onSuggest, children,
+  config, userName, onOpenMarketplace, onSuggest, mode = 'chat', children,
 }: {
   config?: ApiConfig
   userName: string
   onOpenMarketplace: () => void
   onSuggest?: (text: string) => void
+  /** Hvilken flade man staar paa — afgoer hvilke forslag der giver mening. */
+  mode?: 'chat' | 'code'
   children: ReactNode
 }) {
   // Random men stabil pr. mount (seed varierer mellem sessioner — "random greeting").
@@ -68,6 +84,21 @@ export function GreetingHero({
           <span className="greeting-hint-text">{hint}</span>
           <button type="button" className="greeting-hint-yes" onClick={() => { onSuggest?.(hint); setHint(null) }}>Ja tak</button>
           <button type="button" className="greeting-hint-no" aria-label="Afvis" onClick={() => setHint(null)}>×</button>
+        </div>
+      )}
+
+      {/* Mode-afhaengige startforslag (6/9-2026, Codex' punkt 9).
+          Forslagene er ting Jarvis FAKTISK kan paa den flade — ikke
+          inspiration. Et forslag der fejler naar man trykker paa det er
+          vaerre end ingen forslag. */}
+      {onSuggest && (
+        <div className="greeting-starters">
+          {(mode === 'code' ? KODE_FORSLAG : CHAT_FORSLAG).map((f) => (
+            <button key={f} type="button" className="greeting-starter"
+                    onClick={() => onSuggest(f)}>
+              {f}
+            </button>
+          ))}
         </div>
       )}
 

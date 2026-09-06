@@ -750,8 +750,9 @@ def test_ollama_followup_omits_temperature_when_none(
 def test_rescue_swaps_to_nonthinking_chat_and_collects_text(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Rescue skal kalde deepseek-chat (non-thinking), UDEN tools, og returnere
-    den syntetiserede tekst."""
+    """Rescue skal kalde SAMME model med thinking_mode="fast" (adapteren sender
+    thinking disabled som request-param — deepseek-chat-aliaset døde 24/7),
+    UDEN tools, og returnere den syntetiserede tekst."""
     seen: dict[str, object] = {}
 
     def _fake_stream(*, provider, model, base_messages, exchanges,
@@ -773,10 +774,10 @@ def test_rescue_swaps_to_nonthinking_chat_and_collects_text(
         base_messages=[{"role": "user", "content": "hej"}],
         exchanges=[],
     )
-    assert out == "Her er svaret."          # ikke doblet
-    assert seen["model"] == "deepseek-chat"  # swappet til non-thinking
-    assert seen["tool_definitions"] is None  # force-prose
-    assert seen["thinking_mode"] == "fast"
+    assert out == "Her er svaret."               # ikke doblet
+    assert seen["model"] == "deepseek-v4-flash"  # intet alias-swap længere
+    assert seen["tool_definitions"] is None      # force-prose
+    assert seen["thinking_mode"] == "fast"       # non-thinking via request-param
 
 
 def test_rescue_skips_non_deepseek_providers(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -912,6 +913,25 @@ def test_continuation_empty_when_synthesis_empty(
     assert out == ""
 
 
+def test_continuation_rejects_a_second_length_cut(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """En fortsættelse der selv afkortes er ikke en komplet recovery."""
+    def _cut_again(**_kw):
+        yield vf.FollowupDone(
+            text="fortsættelsen blev også afkortet",
+            reasoning_content="",
+            finish_reason="length",
+        )
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _cut_again)
+    out = vf.synthesize_continuation(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[], exchanges=[], partial_text="afkortet",
+    )
+    assert out == ""
+
+
 def test_tool_choice_none_lands_in_deepseek_payload_keeping_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -964,3 +984,231 @@ def test_normalize_assistant_tool_calls_always_adds_type_function() -> None:
     assert flat[0]["type"] == "function"
     assert flat[0]["function"]["name"] == "search"
     assert "name" not in flat[0]  # flyttet ind i function
+
+
+# ── 4. sep 2026: "Invalid 'messages[N].tool_calls': empty array" ─────────────
+
+
+def test_openai_serialize_omits_tool_calls_key_for_text_only_exchange():
+    """Hollow-promise-nudgen appender ToolExchange(tool_calls=[]); replay som
+    `"tool_calls": []` fik DeepSeek til at afvise hele runden med HTTP 400."""
+    a = vf.OpenAICompatFollowupAdapter(provider_id="deepseek")
+    msgs = a._serialize_exchanges([vf.ToolExchange(text="jeg kører nu", tool_calls=[], results=[])])
+    assert msgs == [{"role": "assistant", "content": "jeg kører nu"}]
+
+
+def test_openai_serialize_keeps_tool_calls_when_present():
+    a = vf.OpenAICompatFollowupAdapter(provider_id="deepseek")
+    exch = vf.ToolExchange(
+        text="", tool_calls=[{"id": "c1", "function": {"name": "x", "arguments": {}}}],
+        results=[vf.ToolResult(tool_call_id="c1", tool_name="x", content="y")],
+    )
+    asst = a._serialize_exchanges([exch])[0]
+    assert asst["tool_calls"] and asst["tool_calls"][0]["type"] == "function"
+
+
+def test_ollama_serialize_omits_tool_calls_key_for_text_only_exchange():
+    a = vf.OllamaFollowupAdapter()
+    asst = a._serialize_exchanges([vf.ToolExchange(text="opsummering", tool_calls=[], results=[])])[0]
+    assert "tool_calls" not in asst and asst["content"] == "opsummering"
+
+
+# ── 4. sep 2026: reasoning åd max_tokens → finish_reason=length, nul tekst ──
+
+
+def _stub_deepseek_compat(monkeypatch):
+    import core.services.cheap_provider_runtime as cpr
+    monkeypatch.setattr(cpr, "provider_runtime_defaults",
+                        lambda pid: {"base_url": "https://api.deepseek.com/v1"}, raising=False)
+    monkeypatch.setattr(cpr, "_require_credentials",
+                        lambda **kw: {"api_key": "fake-test-key"}, raising=False)  # pragma: allowlist secret
+
+
+def _sse(*chunks: bytes) -> list[bytes]:
+    out: list[bytes] = []
+    for c in chunks:
+        out.extend([c, b"\n"])
+    out.extend([b"data: [DONE]\n", b"\n"])
+    return out
+
+
+def _sequenced_urlopen(monkeypatch, responses: list[list[bytes]]) -> list[dict]:
+    bodies: list[dict] = []
+
+    def fake_urlopen(req, timeout=None):  # noqa: ARG001
+        bodies.append(json.loads(req.data.decode("utf-8")))
+        return _FakeResponse(responses.pop(0) if len(responses) > 1 else responses[0])
+
+    monkeypatch.setattr(vf.urllib_request, "urlopen", fake_urlopen)
+    return bodies
+
+
+def test_deepseek_followup_budget_fits_reasoning_plus_answer(monkeypatch) -> None:
+    """4096 var MiniMax/OpenCode-loftet; på DeepSeek tæller ræsonneringen med →
+    4 af Bjørns ture døde 4/9 med length efter ~32 s tænkning og nul tekst."""
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"ok"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+    list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    assert bodies[0]["max_tokens"] == 32_768
+    assert bodies[0]["thinking"] == {"type": "enabled"}  # default think-mode, som første pas
+
+
+@pytest.mark.parametrize("mode,expected", [
+    ("think", {"reasoning_effort": "high", "thinking": {"type": "enabled"}}),
+    ("deep", {"reasoning_effort": "max", "thinking": {"type": "enabled"}}),
+    ("fast", {"thinking": {"type": "disabled"}}),
+])
+def test_deepseek_followup_sends_thinking_mode_params_like_first_pass(monkeypatch, mode, expected) -> None:
+    """Siden alias-pensioneringen 24/7 er thinking-mode request-params; følge-
+    runderne swappede kun modelnavnet → fast/deep gjaldt kun runde 0."""
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"ok"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+    list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash", thinking_mode=mode,
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    body = bodies[0]
+    assert body["model"] == "deepseek-v4-flash"
+    for k, v in expected.items():
+        assert body[k] == v
+    if mode == "fast":
+        assert "reasoning_effort" not in body
+
+
+def test_deepseek_v4_pro_followup_sends_no_thinking_params(monkeypatch) -> None:
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"ok"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+    list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-pro", thinking_mode="fast",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    assert "thinking" not in bodies[0] and "reasoning_effort" not in bodies[0]
+
+
+def test_nonthinking_rescue_runs_with_thinking_disabled(monkeypatch) -> None:
+    """#1453-rescue bailede paa 'intet swap' siden alias-pensioneringen 24/7 →
+    den var død. Nu: samme model, thinking disabled via request-param, prosa."""
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"reddet svar"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+    out = vf.synthesize_nonthinking_rescue(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}],
+        exchanges=[vf.ToolExchange(
+            text="", tool_calls=[{"id": "c1", "function": {"name": "x", "arguments": {}}}],
+            results=[vf.ToolResult(tool_call_id="c1", tool_name="x", content="y")])])
+    assert out == "reddet svar"
+    assert len(bodies) == 1
+    assert bodies[0]["model"] == "deepseek-v4-flash"
+    assert bodies[0]["thinking"] == {"type": "disabled"}
+    assert "tools" not in bodies[0]
+
+
+def test_reasoning_exhausted_round_retries_once_without_thinking(monkeypatch) -> None:
+    """length + nul tekst + nul tool-kald → præcis ÉN ekstra runde med
+    thinking disabled; svaret kommer fra retry-runden, ikke tomt."""
+    _stub_deepseek_compat(monkeypatch)
+    first = _sse(b'data: {"choices":[{"delta":{"reasoning_content":"taenker og taenker"}}]}',
+                 b'data: {"choices":[{"delta":{},"finish_reason":"length"}]}')
+    second = _sse(b'data: {"choices":[{"delta":{"content":"her er svaret"}}]}',
+                  b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')
+    bodies = _sequenced_urlopen(monkeypatch, [first, second])
+    events = list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    assert len(bodies) == 2
+    assert bodies[0]["thinking"] == {"type": "enabled"}
+    assert bodies[1]["thinking"] == {"type": "disabled"}
+    assert "reasoning_effort" not in bodies[1]
+    assert bodies[1]["messages"] == bodies[0]["messages"]
+    done = [e for e in events if isinstance(e, vf.FollowupDone)]
+    assert len(done) == 1 and done[0].text == "her er svaret" and done[0].finish_reason == "stop"
+
+
+def test_length_with_partial_text_does_not_retry(monkeypatch) -> None:
+    """Delvis tekst + length håndteres af loopets fortsæt-runde — ikke her."""
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"halvt sv"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"length"}]}')])
+    events = list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    assert len(bodies) == 1
+    assert [e for e in events if isinstance(e, vf.FollowupDone)][0].finish_reason == "length"
+
+
+def test_reasoning_exhausted_retry_never_loops(monkeypatch) -> None:
+    """Hvis retry-runden OGSÅ ender length/tom → ingen tredje runde."""
+    _stub_deepseek_compat(monkeypatch)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{},"finish_reason":"length"}]}')])
+    events = list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+    assert len(bodies) == 2
+    assert [e for e in events if isinstance(e, vf.FollowupDone)][0].finish_reason == "length"
+
+
+# ---------------------------------------------------------------------------
+# DeepSeek: thinking + tool_choice = HTTP 400
+#
+# Målt 2026-09-05 på et afbrudt run:
+#   followup-round-2-provider-error: HTTP 400
+#   {"error":{"message":"Thinking mode does not support this tool_choice"}}
+#
+# Fejlen kom først frem den dag, fordi thinking-mode indtil da aldrig nåede
+# frem til DeepSeek — rettelsen af DET blottede denne. Symptomet Bjørn så: et
+# tool-kald der blinkede og forsvandt, og så et cut.
+# ---------------------------------------------------------------------------
+
+import json
+
+from core.services import visible_followup_adapters as A
+
+
+def _payload(**kw) -> dict:
+    adapter = A.OpenAICompatFollowupAdapter(provider_id="deepseek")
+    req = adapter._build_request(
+        model="deepseek-v4-flash-vision-exp",
+        messages=[{"role": "user", "content": "hej"}],
+        tool_definitions=[{"type": "function", "function": {"name": "bash", "parameters": {}}}],
+        **kw,
+    )
+    return json.loads(req.data.decode("utf-8"))
+
+
+def test_thinking_slaas_fra_naar_tool_choice_saettes():
+    """Begge mekanismer skal overleve: tool_choice bevares, thinking viger."""
+    p = _payload(tool_choice="none", extra_body={"reasoning_effort": "high",
+                                                 "thinking": {"type": "enabled"}})
+    assert p["tool_choice"] == "none", "tool_choice er selve prosa-mekanismen"
+    assert p["thinking"] == {"type": "disabled"}
+    assert "reasoning_effort" not in p
+
+
+def test_tools_arrayet_bevares_saa_cachen_ikke_braekker():
+    """Pointen med tool_choice='none' er netop at BEHOLDE tools-arrayet."""
+    p = _payload(tool_choice="none", extra_body={"thinking": {"type": "enabled"}})
+    assert p.get("tools"), "tools-arrayet forsvandt — cache-præfikset brækker"
+
+
+def test_thinking_bevares_naar_der_ikke_er_tool_choice():
+    """De almindelige runder skal stadig ræsonnere."""
+    p = _payload(extra_body={"reasoning_effort": "high", "thinking": {"type": "enabled"}})
+    assert p["thinking"] == {"type": "enabled"}
+    assert p["reasoning_effort"] == "high"
+    assert "tool_choice" not in p
+
+
+def test_allerede_slaaet_fra_thinking_roeres_ikke():
+    p = _payload(tool_choice="none", extra_body={"thinking": {"type": "disabled"}})
+    assert p["thinking"] == {"type": "disabled"}
+    assert p["tool_choice"] == "none"

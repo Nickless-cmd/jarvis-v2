@@ -197,6 +197,18 @@ function Shell({
           config={cfg}
           onSelect={(id) => { select(id); setSurface('chat') }}
           onClose={() => setSearchOpen(false)}
+          erEjer={role === 'owner'}
+          // Paletten kan nu ogsaa NAVIGERE (6/9-2026). «zone:x» gaar til
+          // Arbejde og aabner zonen via den mekanisme Jarvis selv bruger
+          // naar han kalder open_ui_panel; «surface:x» skifter flade.
+          onNavigate={(id) => {
+            if (id.startsWith('zone:')) {
+              setSurface('cowork')
+              emitZone(id.slice(5) as Parameters<typeof emitZone>[0])
+            } else if (id.startsWith('surface:')) {
+              setSurface(id.slice(8) as Surface)
+            }
+          }}
         />
         <ApprovalNotifierHost />
         <AppActionHost setSurface={setSurface} />
@@ -210,7 +222,7 @@ function Shell({
               onOpenPrivacy={() => setSurface('settings')}
             />
           )}
-          {surface === 'cowork' && <CoworkView role={role} />}
+          {surface === 'cowork' && <CoworkView role={role} sessionId={activeId} />}
           {surface === 'code' && (
             <CodeView
               sessionId={activeId}

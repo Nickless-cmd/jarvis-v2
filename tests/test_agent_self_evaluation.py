@@ -31,36 +31,103 @@ def _fake_tick(act_kind="productive_idle", priorities=None, actions=None, elapse
     }
 
 
-def test_evaluate_idle_tick_with_no_actions():
+# 2026-09-05: scoringen måler nu SPOR, ikke form. De tre tests herunder holdt
+# tidligere fast i formen (havde slaget priorities? hvor mange handlinger?), og
+# netop den form gav 70 til 199 af 200 slag. Et slag med priorities der ikke
+# efterlader noget, skal kunne score lavt — det er hele pointen.
+
+
+def _uden_spor(monkeypatch=None):
+    """Patch spor-opslaget til tomt, så testen ikke afhænger af en levende DB."""
+    return patch("core.services.agent_self_evaluation._trace_kinds_since",
+                 return_value=[])
+
+
+def _med_spor(*kinds):
+    return patch("core.services.agent_self_evaluation._trace_kinds_since",
+                 return_value=list(kinds))
+
+
+def test_slag_uden_spor_scorer_lavt():
+    """Ingen handlinger, ingen spor: kun tiden er sund."""
     with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"):
+         patch("core.services.agent_self_evaluation.save_json"), _uden_spor():
         result = evaluate_tick_quality(tick_result=_fake_tick())
-    assert "score" in result
-    assert "evaluated_at" in result
-    # No priorities + no actions = lower score
+    assert "score" in result and "evaluated_at" in result
     assert result["score"] < 60
 
 
-def test_evaluate_high_quality_tick():
+def test_priorities_alene_giver_ikke_hoej_score():
+    """Den gamle scoring gav +45 for priorities + dispatch uanset udbytte."""
     with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"):
+         patch("core.services.agent_self_evaluation.save_json"), _uden_spor():
         result = evaluate_tick_quality(tick_result=_fake_tick(
             act_kind="tick_dispatched",
             priorities=["compact_context", "verify_mutations"],
             elapsed_ms=2000,
         ))
-    assert result["score"] >= 70
+    assert result["score"] < 60, "form uden spor må ikke give høj score"
 
 
-def test_evaluate_idle_with_actions():
+def test_spor_loefter_scoren():
+    """Samme slag, men denne gang efterlod det noget."""
     with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"):
+         patch("core.services.agent_self_evaluation.save_json"), \
+         _med_spor("memory.written", "credit_assignment.choice_recorded",
+                   "thought_stream.fragment_generated", "learning_pipeline.cycle_completed",
+                   "runtime.emergent_signal_created", "dream.recorded"):
         result = evaluate_tick_quality(tick_result=_fake_tick(
             act_kind="productive_idle",
             actions=["personality_snapshot", "composite_candidates:2"],
             elapsed_ms=5000,
         ))
-    assert result["score"] >= 50
+    assert result["score"] >= 80
+    assert len(result["trace_kinds"]) == 6
+
+
+def test_samme_spor_som_sidst_giver_ingen_nyhed():
+    """Et system der kører den samme runde igen, er ikke produktivt."""
+    forrige = [{"evaluated_at": (datetime.now(UTC) - timedelta(seconds=30)).isoformat(),
+                "score": 40, "trace_kinds": ["memory.written", "dream.recorded"]}]
+    with patch("core.services.agent_self_evaluation.load_json", return_value=forrige), \
+         patch("core.services.agent_self_evaluation.save_json"), \
+         _med_spor("memory.written", "dream.recorded"):
+        gentaget = evaluate_tick_quality(tick_result=_fake_tick(actions=["x"]))
+    with patch("core.services.agent_self_evaluation.load_json", return_value=forrige), \
+         patch("core.services.agent_self_evaluation.save_json"), \
+         _med_spor("noget.helt_nyt", "og_et_til.ogsaa_nyt"):
+        nyt = evaluate_tick_quality(tick_result=_fake_tick(actions=["x"]))
+    assert nyt["score"] > gentaget["score"], "nye spor skal score højere end en gentagelse"
+
+
+def test_haengende_slag_faar_ingen_tidspoint():
+    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
+         patch("core.services.agent_self_evaluation.save_json"), _uden_spor():
+        result = evaluate_tick_quality(tick_result=_fake_tick(elapsed_ms=200_000))
+    assert any("HANG" in n for n in result["notes"])
+
+
+def test_posten_gemmer_hvad_slaget_udrettede():
+    """Uden actions/trace_kinds i posten kan nyheds-målingen ikke virke næste gang."""
+    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
+         patch("core.services.agent_self_evaluation.save_json"), \
+         _med_spor("memory.written"):
+        result = evaluate_tick_quality(tick_result=_fake_tick(actions=["a", "b"]))
+    assert result["actions"] == ["a", "b"]
+    assert result["trace_kinds"] == ["memory.written"]
+    assert result["window_seconds"] >= 0
+
+
+def test_laast_maaling_raabes_op_i_opsummeringen():
+    """Den fejl vi lige har rettet, må aldrig kunne gemme sig igen."""
+    nu = datetime.now(UTC)
+    evals = [{"evaluated_at": (nu - timedelta(minutes=i)).isoformat(), "score": 70}
+             for i in range(20)]
+    with patch("core.services.agent_self_evaluation.load_json", return_value=evals):
+        s = tick_quality_summary()
+    assert s["trend"] == "locked"
+    assert s["distinct_scores"] == 1
+    assert "låst" in s["warning"]
 
 
 def test_summary_no_evals_returns_empty():

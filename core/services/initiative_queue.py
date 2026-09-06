@@ -20,10 +20,73 @@ from core.runtime.db import approve_runtime_initiative, reject_runtime_initiativ
 
 _MAX_QUEUE_SIZE = 8
 _EXPIRE_MINUTES = 90
+# 2026-09-04 (blok E): 90 minutter gjaldt ALLE prioriteter. En lav-prioritets
+# nysgerrighed opstaar sjaeldent i det vindue hvor den ogsaa kan handles paa —
+# maalt over 30 dage udloeb 782 af 985 initiativer. Lav prioritet lever nu et
+# doegn; medium/high er uaendret, saa det haastende stadig er haastende.
+_EXPIRE_MINUTES_LOW = 24 * 60
 _RETRY_DELAY_MINUTES = 10
 _LONG_TERM_REASSESS_DAYS = 14
 _MAX_ACTIVE_LONG_TERM_INTENTIONS = 3
 _QUEUE_LOCK = threading.Lock()
+
+
+# ── Kvalitetsport: er dette et initiativ, eller er det promptens eget indhold? ──
+#
+# Målt 2026-09-05: køen havde 48 poster — 6 ventende, 26 udløbet uden svar, og
+# NUL nogensinde godkendt eller afvist. Da vi læste de seks ventende, var kun ÉN
+# et rigtigt initiativ:
+#
+#   "Choose initiative only if there's a genuine next step."   ← instruksen
+#   "Use JSON format with thought, initiative (null if...)."   ← output-formatet
+#   "What might the next move be?"                             ← et spørgsmål
+#   "Or since mode is clarify and there's an inner-conflict…"   ← tankefragment
+#   "Tråden er stadig i opstartsfase efter pausen…"             ← statusbemærkning
+#   "Slå det seneste bash-run op og sammenhold det med…"        ← ÆGTE
+#
+# Det er samme sygdom som ramte de indre stemmer og curiosity-gælden: modellen
+# svarer med opgaven i stedet for at løse den, og det bliver gemt som indhold.
+# Her gør det mere skade, fordi køen er noget MENNESKER skal tage stilling til.
+# En kø fuld af promptens eget format er værre end en tom kø.
+#
+# Porten er bevidst konservativ. Den afviser kun det der beviseligt ikke er et
+# forslag; tvivlstilfælde slipper igennem.
+
+_IKKE_ET_FORSLAG_PREFIX = ("or ", "eller ", "men ", "and ", "så måske ", "maybe ")
+
+
+def _er_ikke_et_initiativ(focus: str) -> str:
+    """Returnér en grund hvis dette ikke er et forslag. Tom streng = behold."""
+    tekst = str(focus or "").strip()
+    if not tekst:
+        return "tom"
+
+    try:
+        from core.services.visible_inner_life import _is_instruction_echo
+        if _is_instruction_echo(tekst):
+            return "instruks-ekko"
+    except Exception:
+        pass
+
+    try:
+        from core.services.provider_error_guard import looks_like_provider_error
+        if looks_like_provider_error(tekst):
+            return "udbyder-fejl"
+    except Exception:
+        pass
+
+    # Et spørgsmål er ikke et forslag. «What might the next move be?» beder om
+    # et svar; den beder ikke om lov til at handle.
+    if tekst.rstrip().endswith("?"):
+        return "spørgsmål"
+
+    # Et fragment der starter med en konjunktion er et stykke ræsonnement der er
+    # revet ud af sin sammenhæng.
+    lav = tekst.lower()
+    if any(lav.startswith(p) for p in _IKKE_ET_FORSLAG_PREFIX):
+        return "tankefragment"
+
+    return ""
 
 
 def push_initiative(
@@ -36,7 +99,7 @@ def push_initiative(
     """Push a new initiative to the queue. Returns the initiative_id.
 
     Mood dialer gating:
-    - level 0 (distressed): afviser nye initiativer — retur tom streng
+    - level 0 (distressed): nedgraderer til low (slettede foer 2026-09-04)
     - level 1 (melancholic): downgrader priority til low
     - level 2 (neutral): passerer uændret
     - level 3-4 (content/euphoric): kan upgradere low→medium
@@ -46,6 +109,19 @@ def push_initiative(
     normalized_focus = focus[:200].strip()
     if not normalized_focus:
         normalized_focus = "Follow up on unspecified initiative"
+
+    # Porten: en kø som mennesker skal svare på, må ikke fyldes med promptens
+    # eget indhold. Afvisningen er synlig i eventbussen — vi taber ikke noget
+    # i tavshed, vi holder det bare ude af det der ligner en beslutning.
+    _afvist = _er_ikke_et_initiativ(normalized_focus)
+    if _afvist:
+        try:
+            event_bus.publish("heartbeat.initiative_rejected", {
+                "focus": normalized_focus[:120], "reason": _afvist, "source": source,
+            })
+        except Exception:
+            pass
+        return ""
     normalized_priority = (
         priority.strip().lower() if priority.strip().lower() in {"low", "medium", "high"} else "medium"
     )
@@ -56,12 +132,15 @@ def push_initiative(
             from core.services.mood_dialer import derive_from_v2_mood
             params = derive_from_v2_mood()
             if params.mood_level == 0:
-                # Distressed: refuse new initiatives entirely
+                # 2026-09-04 (blok E): distressed SLETTEDE impulsen — den blev
+                # aldrig set igen, og ingen kunne se hvad der forsvandt. En
+                # dårlig dag er ikke det samme som en dårlig idé. Nu nedgraderes
+                # den til low i stedet, så den kan hentes frem når humøret vender.
+                normalized_priority = "low"
                 event_bus.publish("heartbeat.initiative_gated", {
                     "focus": normalized_focus[:100], "reason": "mood_distressed",
-                    "mood_level": 0,
+                    "mood_level": 0, "action": "downgraded_to_low",
                 })
-                return ""
             elif params.mood_level == 1 and normalized_priority == "medium":
                 normalized_priority = "low"
             elif params.mood_level >= 3 and normalized_priority == "low":
@@ -382,6 +461,7 @@ def get_initiative_queue_state() -> dict[str, object]:
 def _expire_stale(now: datetime) -> None:
     """Expire initiatives older than _EXPIRE_MINUTES. Must hold _QUEUE_LOCK."""
     cutoff = now - timedelta(minutes=_EXPIRE_MINUTES)
+    cutoff_low = now - timedelta(minutes=_EXPIRE_MINUTES_LOW)
     for item in runtime_db.list_runtime_initiatives(
         status="pending",
         limit=_MAX_QUEUE_SIZE + 100,
@@ -389,7 +469,10 @@ def _expire_stale(now: datetime) -> None:
         if str(item.get("initiative_type") or "initiative") == "long_term_intention":
             continue
         detected = _parse_iso(str(item.get("detected_at") or ""))
-        if detected is not None and detected < cutoff:
+        item_cutoff = (
+            cutoff_low if str(item.get("priority") or "medium") == "low" else cutoff
+        )
+        if detected is not None and detected < item_cutoff:
             runtime_db.update_runtime_initiative(
                 str(item.get("initiative_id") or ""),
                 status="expired",
@@ -480,6 +563,42 @@ def abandon_long_term_intention(initiative_id: str, *, note: str = "") -> dict[s
     if updated:
         event_bus.publish(
             "heartbeat.initiative_rejected",
+            {
+                "initiative_id": initiative_id,
+                "focus": str(updated.get("focus") or "")[:100],
+                "initiative_type": "long_term_intention",
+                "note": note[:120],
+            },
+        )
+    return updated
+
+
+def endorse_long_term_intention(initiative_id: str, *, note: str = "") -> dict[str, object] | None:
+    """Bjørn siger «det er i orden» til et livsprojekt.
+
+    Bjørn 5/9-2026: «i mobil arbejds rum kan jeg kun vælge læg den fra dig …
+    mangler det er iorden knap». Et livsprojekt er ikke en anmodning om lov —
+    det er noget han HAR sat sig for. Da den eneste knap var «læg den fra dig»,
+    kunne man kun forholde sig afvisende til hans langsigtede hensigter.
+
+    Modsat abandon ændres status IKKE: projektet lever videre. Det der sættes er
+    `user_approved_at` — feltet fandtes i forvejen — så det er registreret at et
+    menneske har set det og sagt god for det.
+    """
+    now = datetime.now(UTC).isoformat()
+    with _QUEUE_LOCK:
+        existing = runtime_db.get_runtime_initiative(initiative_id)
+        if not existing or str(existing.get("initiative_type") or "") != "long_term_intention":
+            return None
+        updated = runtime_db.update_runtime_initiative(
+            initiative_id,
+            user_approved_at=now,
+            outcome_note=note[:120],
+            updated_at=now,
+        )
+    if updated:
+        event_bus.publish(
+            "heartbeat.initiative_approved",
             {
                 "initiative_id": initiative_id,
                 "focus": str(updated.get("focus") or "")[:100],

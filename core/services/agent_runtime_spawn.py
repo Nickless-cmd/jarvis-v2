@@ -452,6 +452,18 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
         surface = build_agent_detail_surface(agent_id) or {"agent_id": agent_id}
         surface["status"] = "completed"
         surface["note"] = f"max_turns exhausted: {turns_completed}/{max_turns}"
+        # ── SubagentStop-hook ────────────────────────────────────────────
+        # OBSERVATIONEL: agenten ER faerdig naar vi naar hertil, saa der er
+        # intet at blokere. Doemmer en hook alligevel, siger `fire` det hoejt i
+        # loggen — bedre end at forfatteren tror at hans «block» stoppede noget.
+        try:
+            from core.services import lifecycle_hooks as _lh_sa
+            if "SubagentStop" in _lh_sa.WIRED_EVENTS and _lh_sa.hooks_for("SubagentStop"):
+                _lh_sa.fire("SubagentStop", {
+                    "agent_id": str(agent_id or ""), "status": "completed",
+                    "turns": turns_completed})
+        except Exception:
+            pass
         return surface
     resolved_thread_id = thread_id or _agent_thread_id(agent_id)
     messages = list_agent_messages(agent_id=agent_id, thread_id=resolved_thread_id, limit=40)

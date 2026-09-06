@@ -401,6 +401,14 @@ niveauet) er fase 1's Approve-kort — og dette er skærmen *før*: vælg niveau
 når et run starter. (Tilføres fase 1-skitse som konfigurations-skærm;
 checkmark-radiogruppe + advarselsmarkering for det højeste niveau.)
 
+**Skærpelse (Codex CLI-forskning, 2026-09-02):** niveauet er en **server-side
+policy pr. forbindelse/run**, ikke et lokalt UI-flueben. Et valg der kun bor
+i appen kan omgås ved at skifte enhed — det er ikke et sikkerhedsniveau. UI'et
+skal *ændre* policy'en via et endpoint; serveren filtrerer hvad der overhovedet
+kræver Bjørn, og appen renderer kun konsekvensen. (Samme mønster som OpenAI's
+tilladelses-spektrum pr. forbindelse: sandbox → auto-review → read-only →
+fuld adgang.)
+
 ### Reference #8 — Transaktions-approval-kort i tråden (målt 2026-09-02)
 
 Det faktiske godkendelses-øjeblik — svaret på "hvordan ser en approval ud":
@@ -579,7 +587,13 @@ Server-side (dækkes af planens Task 1–6, med tests):
   karantæn owner-only. (Beslutning 12.)
 - **Dobbelt-tryk / timeout-retry / to klienter.** Ét idempotent
   `approve-and-execute` der claimer atomisk og returnerer det tidligere
-  resultat ved retry. (Beslutning 2.)
+  resultat ved retry. (Beslutning 2.) **Klient-kontrakten skal bære en
+  idempotency-key:** retry er kun sikkert hvis klienten genbruger samme
+  request-id som det oprindelige kald (serveren er idempotent, Task 3) —
+  en naiv retry der genererer nyt id kan dobbelt-eksekvere. Reglen:
+  request-id oprettes pr. godkendelses-intention og genbruges ved
+  timeout-retry, aldrig regenereres. (Konsekvens af Codex CLI-forskning,
+  2026-09-02.)
 - **Bruger-isolation.** Bruger B må hverken se eller påvirke bruger A's
   request. To-bruger-regressionstest. (Beslutning 3.)
 - **Autonome runs uden `scheduled_for_user_id`.** Push-modtager falder
@@ -594,6 +608,17 @@ App-side (dækkes af planens Task 7–12, med tests; Task 13 er selve E2E):
   også for `answer_ready`.
 - **Netværk falder midt i polling.** ConnectionPill (findes) + sidst kendte
   state; ingen korrupt tilstand, state er serverens.
+- **Server svarer busy (429/503).** Serveren kan være midlertidigt
+  overbelastet eller midt i restart. Polling-klienten skal have defineret
+  eksponentiel backoff (fx 3–5s → 15s → 30s cap) og en tydelig
+  "server utilgængelig — prøver igen"-tilstand. Den må ikke hamre videre i
+  fuld frekvens, og en transient 5xx må ikke tolkes som endelig fejl.
+  (Konsekvens af Codex CLI-forskning, 2026-09-02.)
+- **Ukendt/ny item-type i strømmen.** Serveren kan med tiden sende nye
+  SSE-event-typer (fx en compaction-besked midt i en Snak-strøm).
+  streamReducer'en skal ignorere ukendte typer grafisk-tolerant — beholde
+  sidst kendte state — frem for at tolke dem som fejl eller crashe.
+  (Konsekvens af Codex CLI-forskning, 2026-09-02.)
 - **Empty-stater.** Ingen aktive runs, tom godkendelseskø — begge skal have
   en bevidst tom-tilstand, ikke en blank skærm.
 - **Alder-grænsen.** "Nyligt afsluttede (24t)"-grupperingen skal rulle

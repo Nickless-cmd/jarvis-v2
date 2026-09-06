@@ -18,13 +18,18 @@ def test_novelty_gate_skips_echo_persist(isolated_runtime):
     )
     common = dict(source="s", work_id="w", retained_kind="reinforced pattern",
                   retention_scope="development", retention_horizon="persistent", confidence="high")
-    rec(record_id="a", run_id="run-a", retained_value="keep carrying what helped",
+    # 2026-09-04: værdierne skal have SUBSTANS (≥30 tegn, ægte emne) — skabelonen
+    # "keep carrying what helped" uden emne persisteres ikke længere overhovedet.
+    rec(record_id="a", run_id="run-a",
+        retained_value="keep carrying what helped around pfsense-nøglen i .env via env_override",
         created_at="2026-08-15T00:00:00+00:00", **common)
     # identisk value (kun whitespace/case forskel), ny run → ekko → skal skippes
-    rec(record_id="b", run_id="run-b", retained_value="  Keep   carrying what HELPED ",
+    rec(record_id="b", run_id="run-b",
+        retained_value="  Keep   carrying what HELPED around pfsense-nøglen i .env via env_override ",
         created_at="2026-08-15T01:00:00+00:00", **common)
     assert len(recent(limit=10)) == 1
     # genuint ny value → persisteres
-    rec(record_id="c", run_id="run-c", retained_value="en helt ny lektie i dag",
+    rec(record_id="c", run_id="run-c",
+        retained_value="en helt ny lektie i dag om Michelles iOS test-app og TestFlight",
         created_at="2026-08-15T02:00:00+00:00", **common)
     assert len(recent(limit=10)) == 2

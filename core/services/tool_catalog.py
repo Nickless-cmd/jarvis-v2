@@ -30,7 +30,18 @@ _HEADER = (
 # (især self_restart/self_wakeup + operator-desktop). Navnene SKAL matche de
 # faktisk registrerede tool-navne, ellers skjules de stille.
 _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
+    # 6/9-2026: `explore` staar FOERST med vilje. Den var bygget, testet,
+    # registreret, synlig i alle scopes OG naevnt i en awareness-vejledning — og
+    # blev stadig ikke brugt: bedt om at finde SSRF-vaernet lavede han 13
+    # bash-kald, 6 soegninger og 4 fil-laesninger. Grunden stod her: hans
+    # kerne-liste sagde read_file/search/find_files/bash, altsaa praecis det han
+    # gjorde, og naevnte aldrig alternativet.
+    #
+    # En vejledning laengere nede i prompten konkurrerer mod 8.256 tegn
+    # cognitive_state; INVENTARET er dét han laeser naar han spoerger sig selv
+    # «hvad kan jeg». Det er loeftestangen, ikke mere instruks-tekst.
     ("Filer & kode", [
+        "explore",
         "read_file", "write_file", "edit_file", "search", "find_files",
         "bash", "run_pytest", "db_query", "git_status",
     ]),
@@ -46,6 +57,9 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
     ]),
     ("Operator (din egen maskine/desktop)", [
         "operator_bash", "operator_read_file", "operator_write_file",
+        # Bygget 5-6/9 og skjult af samme grund som explore: de stod ikke her.
+        "operator_edit_file", "operator_multi_edit",
+        "operator_run_in_background", "operator_bash_output", "operator_kill_shell",
         "operator_list_dir", "operator_launch_app", "operator_screenshot",
         "operator_browser_open", "operator_keyboard_type", "operator_mouse_click",
         "operator_reminder", "operator_wakeup", "operator_speak", "operator_notify",

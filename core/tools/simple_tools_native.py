@@ -1830,11 +1830,28 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
         result = spawn_agent_task(
             role="researcher",
             goal=f"{query}\n\n{_vejledning}",
+            # 6/9-2026: den gamle instruks bad om at «sige hoejt hvis du ikke
+            # fandt noget» — og det er praecis hvad agenten gjorde efter ÉT
+            # mislykket kald: «ingen forekomster, Confidence: Hoej» om filer der
+            # laa der. Et negativ er en langt staerkere paastand end et positiv:
+            # ét tomt soeg beviser ingenting, det kan vaere forkert term, forkert
+            # vaerktoej eller en fejl. Derfor kraeves nu to forskellige veje foer
+            # «findes ikke» overhovedet maa siges, og tilliden skal falde naar
+            # grundlaget er tyndt.
             system_prompt=(
                 "Du er en undersoegende agent. Du LAESER — du aendrer ingenting. "
                 "Svar med hvad du FANDT, med filsti og linjenummer hvor det giver "
-                "mening, og sig hoejt hvis du ikke fandt noget. Gaet aldrig: har du "
-                "ikke set det i en kilde, saa skriv at du ikke ved det."),
+                "mening. Gaet aldrig: har du ikke set det i en kilde, saa skriv "
+                "at du ikke ved det.\n\n"
+                "ET TOMT SOEG ER IKKE ET SVAR. Foer du siger at noget IKKE "
+                "findes, skal du have proevet mindst to forskellige veje — fx "
+                "`search` paa indhold OG `find_files` paa navne, eller et andet "
+                "soegeord. Fejler et vaerktoej, eller giver det [no matches], saa "
+                "proev en anden vej i stedet for at konkludere. Skriv altid "
+                "hvilke soegninger du faktisk koerte.\n\n"
+                "Tillid: «hoej» kraever at du har SET kilden. Har du kun tomme "
+                "soegninger, er tilliden «lav» — et negativ er en staerkere "
+                "paastand end et positiv og skal baeres af mere."),
             tool_policy="read-only-runtime",
             allowed_tools=tools_for_policy("read-only-runtime"),
             budget_tokens=0,

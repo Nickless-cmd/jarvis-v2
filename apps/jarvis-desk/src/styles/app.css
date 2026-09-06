@@ -2537,3 +2537,39 @@
 .wb-besked { font-size: 11.5px; color: var(--fg-2); padding-top: 6px; }
 .wb-switches { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .wb-switches label { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; }
+
+/* ── Work Queue (6/9-2026): ét sted for alt der venter, kører eller er faldet ── */
+.work-queue { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px;
+  border-bottom: 1px solid var(--border); }
+.wq-head { display: flex; align-items: center; gap: 10px; }
+.wq-head h3 { margin: 0; font-size: 13px; }
+/* Tallet er det eneste der raaber — alt andet i koeen er roligt. */
+.wq-badge { font-size: 11px; padding: 1px 8px; border-radius: 999px;
+  color: var(--warn, #d08a3a);
+  background: color-mix(in srgb, var(--warn, #d08a3a) 14%, transparent); }
+.wq-delvis { font-size: 11.5px; color: var(--fg-2); }
+.wq-tom { font-size: 12.5px; color: var(--fg-2); padding: 8px 0; }
+
+.wq-spand { display: flex; flex-direction: column; gap: 4px; }
+.wq-spand-head { display: flex; align-items: center; gap: 8px; background: none;
+  border: none; padding: 4px 0; cursor: pointer; color: var(--fg-2);
+  font-size: 11.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.4px; }
+.wq-spand-head:hover { color: var(--fg-1); }
+.wq-antal { margin-left: auto; font-weight: 400; letter-spacing: 0; }
+/* «Venter paa dig» er den eneste spand der blokerer noget. */
+.wq-venter_paa_mig .wq-spand-head { color: var(--warn, #d08a3a); }
+.wq-fejlet .wq-spand-head { color: var(--danger, #c9524a); }
+
+.wq-liste { list-style: none; margin: 0; padding: 0; display: flex;
+  flex-direction: column; gap: 2px; }
+.wq-raekke { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px;
+  padding: 3px 0; }
+.wq-titel { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.wq-detalje { margin-left: auto; color: var(--fg-3); font-size: 11px;
+  white-space: nowrap; }
+.wq-flere { font-size: 11.5px; color: var(--fg-3); padding: 2px 0; }
+.wq-spin { animation: wq-rot 1.6s linear infinite; }
+@keyframes wq-rot { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .wq-spin { animation: none; } }

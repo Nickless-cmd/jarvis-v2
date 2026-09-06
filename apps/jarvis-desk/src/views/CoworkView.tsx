@@ -6,6 +6,7 @@ import { MissionControl } from '../components/cowork/missioncontrol/MissionContr
 import { CoworkZones } from '../components/cowork/CoworkZones'
 import { JarvisMind } from '../components/cowork/JarvisMind'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { WorkQueue } from '../components/cowork/WorkQueue'
 import { MarketplacePane } from '../components/cowork/MarketplacePane'
 import { AccountSection } from '../components/settings/AccountSection'
 import { KvoteSection } from '../components/settings/KvoteSection'
@@ -55,7 +56,16 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
   // samlet scroll. 'settings' (legacy-alias) og ukendte → Konto.
   const zoneContent = (raw: Zone): ReactNode => {
     switch (normalizeZone(raw)) {
-      case 'mc': return missionControl
+      // Work Queue oeverst paa 'mc'-zonen (6/9-2026): det er den flade man
+      // lander paa, og det foerste spoergsmaal er altid «hvad venter paa mig».
+      // Mission Control bliver staaende nedenunder — den er stadig
+      // kontrolpanelet, koeen er bare det man ser foerst.
+      case 'mc': return (
+        <>
+          <WorkQueue config={config} />
+          {missionControl}
+        </>
+      )
       case 'marketplace': return <MarketplacePane config={config} />
 
       case 'konto': return wrap(<>

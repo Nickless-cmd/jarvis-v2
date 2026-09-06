@@ -355,3 +355,52 @@ export async function setRuntimeSwitch(
 ): Promise<void> {
   await apiFetch(config, `/workbench/switches/${navn}`, { method: 'POST', body: { enabled } })
 }
+
+/** Work Queue (6/9-2026): ét sted for alt der venter, kører eller er faldet.
+ *
+ *  Codex' punkt 2: approvals, runs og tasks lå spredt i flere paneler, så man
+ *  skulle vide HVOR man skulle kigge for at vide hvad der foregik. De fem
+ *  spande er valgt efter hvad man kan GØRE ved dem — ikke efter hvor de kommer
+ *  fra:
+ *
+ *    venter_paa_mig  — blokerer noget indtil du svarer
+ *    aktiv           — kører lige nu, du kan styre eller stoppe
+ *    til_gennemsyn   — færdigt, men nogen bør se på det
+ *    fejlet          — stoppet utilsigtet, kan prøves igen
+ *    faerdig         — historik
+ *
+ *  Serveren scoper allerede efter bruger: owner ser sine egne plus systemets
+ *  ejerløse kørsler, andre kun deres egne (db_visible._run_user_scope).
+ */
+export type KoeSpand = 'venter_paa_mig' | 'aktiv' | 'til_gennemsyn' | 'fejlet' | 'faerdig'
+
+export interface McRunRow {
+  run_id: string
+  lane: string
+  provider: string | null
+  model: string | null
+  status: string
+  started_at: string
+  finished_at: string | null
+  text_preview: string | null
+}
+
+export async function getMcRuns(
+  config: ApiConfig, limit = 30,
+): Promise<{ active_run: McRunRow | null; recent_runs: McRunRow[] }> {
+  const d = await apiFetch<{ active_run?: McRunRow | null; recent_runs?: McRunRow[] }>(
+    config, `/mc/runs?limit=${limit}`,
+  )
+  return { active_run: d.active_run ?? null, recent_runs: d.recent_runs ?? [] }
+}
+
+/** Hvilken spand hører et run til? Ren funktion — testbar uden netværk. */
+export function spandForRun(status: string): KoeSpand {
+  const s = (status || '').toLowerCase()
+  if (s === 'running' || s === 'active' || s === 'streaming') return 'aktiv'
+  if (s === 'failed' || s === 'cancelled' || s === 'error') return 'fejlet'
+  // «interrupted» er hverken fejlet eller færdigt: turen blev afbrudt og
+  // efterlod noget halvt — det fortjener et blik, ikke en fejlmarkering.
+  if (s === 'interrupted') return 'til_gennemsyn'
+  return 'faerdig'
+}

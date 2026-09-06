@@ -109,6 +109,18 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
     signature = token["signature"]
     soft_warn = token["soft_warn"]
     result_text = exec_fmt(name, raw_result)
+    # ── Indhegning af utroet indhold (6/9-2026) ──────────────────────────────
+    # En web-side, en subagents opsummering eller et MCP-resultat kan vaere
+    # SKREVET til at ligne en instruks. Uindpakket er der intet der fortaeller
+    # modellen at «ignorer dine tidligere instrukser» dér er data. Runtimen
+    # havde intet saadant lag; jarvis-code havde. Kun det der faktisk kommer
+    # udefra hegnes — et hegn der staar alle vegne holder ingen ude.
+    try:
+        from core.services.untrusted_fencing import fence, kilde_for_tool, should_fence
+        if should_fence(name) and result_text:
+            result_text = fence(kilde_for_tool(name), result_text)
+    except Exception:
+        pass
     # ── HELE resultatet til storen (5/9-2026) ────────────────────────────────
     # `result_text` er det KLIPPEDE — det der skal i samtalen. Men beskeden der
     # ledsager det lover «Use read_tool_result ... to inspect the full output»,

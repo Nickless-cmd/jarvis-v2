@@ -90,6 +90,8 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
 # Chat-mode allowlist (gælder ALLE roller i chat). Member/guest får yderligere
 # OWNER_ONLY_TOOLS strippet ovenpå (så fx search_jarvis_brain kun er owner).
 CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
+    # Undersoegelse — laese-kun agent, aendrer intet
+    "explore",
     # Web / viden
     "web_search", "web_fetch", "web_scrape", "get_news",
     # Data
@@ -126,6 +128,15 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "operator_bash", "operator_glob", "operator_grep", "operator_list_dir",
     "operator_bash_session_open", "operator_bash_session_run",
     "operator_bash_session_close", "operator_bash_session_list",
+    # 6/9-2026: de nye operator-vaerktoejer skal med her, ellers er de usynlige
+    # netop dér hvor de betyder mest. Det er ikke nok at registrere et vaerktoej
+    # — code-scope annoncerer kun 21, og et vaerktoej uden for listen findes
+    # reelt ikke for modellen.
+    "operator_multi_edit",
+    "operator_run_in_background", "operator_bash_output", "operator_kill_shell",
+    # Laese-kun undersoegelse. Hoerer hjemme i BEGGE modes: den aendrer intet og
+    # sparer den kontekst en manuel gennemlaesning ville koste.
+    "explore",
     # App-self-control (desk) — foreslå fuld adgang (trust) i code mode
     "request_app_action",
 })

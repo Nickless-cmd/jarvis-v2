@@ -1,0 +1,145 @@
+# Tool Discovery Nudge — Design Spec
+
+> **Dato:** 2026-09-06 · **Forfatter:** Jarvis (undersøgelse + design + selv-review)
+> **Status:** Forslag til Bjørn/Claude — ikke implementeret
+> **Problem-ejer:** Bjørn — "400+ tools er for mange. Du bruger dem ikke, fordi du ikke bliver vist dem."
+> **Selv-review 2026-09-06:** fundet og rettet — forkert præcedens (se §Arketype), injektionspunkt skærpet til future-mønsteret, kill-switch navngivet korrekt, min-besked-længde arvet. Se ændringslog bagerst.
+
+## Problem
+
+Jarvis har **429 registrerede tools** (målt 2026-09-06 fra events-tabellen: 5.717 brugs-events, 105 unikke brugt). Men:
+
+- **328 tools (76 %) er aldrig brugt** — nul kald i event-loggen.
+- Visible-lane sender kun **48 tools pr. turn** (`VISIBLE_MAX_TOOLS = 48`, sat 2026-09-04).
+- `tool_catalog.py` viser **kun kerne-grupperne i klartekst** (~60) — de resterende ~370 tools nævnes udelukkende som gruppe-ord i én sætning: *"+ N flere værktøjer (operator-desktop, kalender, mail, …)"*. Jarvis kan ikke engang se **navnene** på de usynlige — han skal gætte query-navne til `load_more_tools` uden at vide hvad der findes.
+- `load_more_tools` er **reaktiv**: den hjælper kun hvis Jarvis allerede *ved* at noget findes. Opdagelse ≠ søgning — man kan ikke søge efter `calendar_create_event` hvis man ikke aner Google-connectoren har kalender-værktøjer.
+
+**Rod-årsag:** Jarvis' værktøjskasse er usynlig for ham selv — selv kataloget i prompten skjuler navnene på 86 % af værktøjerne. Han kan ikke opdage det han ikke ved findes.
+
+**Definition af "usynligt tool" (skarp, implementerbar):** et tool hvis navn **ikke står i klartekst** i `build_catalog_text()`-outputtet. Det er præcis den mængde nudgen skal kunne pege på.
+
+## Mål
+
+En lille mekanisme der:
+1. Har adgang til **hele** værktøjsregistret (ikke kun de 48).
+2. **Læser konteksten** for den aktuelle turn (user_message + nylig historik).
+3. **Nudger** Jarvis i run-time til at `load_more_tools` det relevante værktøj — *uden for* den tool-boks han blev serveret.
+4. Lærer af sine egne hits (feedback-loop), så nudges bliver skarpere over tid.
+
+## Eksisterende byggesten (alt fundet i kodebasen 2026-09-06)
+
+| Byggesten | Sti | Status |
+|---|---|---|
+| Embedding-match over tool-beskrivelser | `core/services/tool_embeddings.py` — `top_k_similar(query, k)` | **Findes, virker** — 458 vektorer i `tool_embeddings.sqlite` |
+| Lazy schema-loader | `core/tools/load_more_tools.py` — navn eller query → fulde skemaer | **Findes** — kalder selv `top_k_similar` ved query |
+| Kompakt katalog (stabil) | `core/services/tool_catalog.py` — `build_catalog_text()` | **Findes** — injiceres i stabil prefix |
+| Per-turn dynamisk hale | `prompt_contract.py` `_dyn_tail` + `DYNAMIC_TAIL_SENTINEL` | **Findes** — cache-sikkert sted for per-turn-adaptivt indhold |
+| **ARKETYPE: skill-relevans-opslag** | `core/services/skill_relevance_surface.py` — `relevant_skills_section(user_message)` | **Findes i production — DETTE mønster arves** |
+| Pruning med keyword-kategorier | `copilot_tool_pruning.py` — `TIER_2_CATEGORIES` | **Findes** — men `stable_only=True` i visible-lane (DeepSeek-cache) |
+| Brugs-telemetri | `events`-tabellen (`tool.completed`) | **Findes** |
+
+**Det manglende stykke er ét:** en prompt-sektion der *proaktivt* foreslår tools uden for den aktuelle pulje, drevet af embedding-match mod hele registret, injiceret i `_dyn_tail`, med feedback-loop.
+
+## Arketype: skill_relevance_surface.py (fandt i selv-review — retter spec'en)
+
+Inden dette design skrev jeg "følg nudge-mønsteret (`_awareness_add`)". **Det var den forkerte præcedens.** `forgetting_nudge`/`loop_compliance` er synkrone, billige sektioner. Vores nudge laver et embedding-kald — den er dyr og skal køre i trådpuljen. Den rigtige arketype findes allerede i production:
+
+`core/services/skill_relevance_surface.py` — bygget fordi Jarvis' adfærdsbeslutninger om at "altid huske at slå skills op" var ritualer med 0-10 % adherence. Løsningen var at lade **runtimen slå op** i stedet for at bede modellen huske at slå op:
+
+- `relevant_skills_section(user_message)` matcher user_message mod skill-registret via embedding.
+- Submittes i prompt-assembly som en **`_measured_submit`-future** i fase 1 (linje 796-797 i `prompt_contract.py`) — matcheren koster ~750 ms, men forsvinder bag `memory_selection` (~1500 ms) og frame (~940 ms) i samme trådpulje.
+- Resultatet hentes med **`_timed_result(future, ..., default="")`** (linje 1618) — fejler/timer ud → tom streng → sektionen usynlig.
+- **Min-besked-længde:** `_MIN_MESSAGE_CHARS = 15` — «hej» springes over, sparer et embed-kald pr. tur på præcis de ture hvor der aldrig er et match.
+- **Kill-switch:** `_enabled()` via `central_switches` (scope `prompt_section`) — verificeret i `prompt_contract.py` linje 1103: sektioner kan overstyres LIVE uden genstart.
+- **Injicerer kun opslaget, ikke beslutningen:** den auto-invokerer ikke skills — auto-invokering ville lade modellen skrive en SKILL.md og dermed styre hvad der foreslås næste tur. Opslag er ejer-gated.
+
+**Tool-discovery-nudgen er `skill_relevance` for tools — ikke en ny mekanisme.** Samme fil- og future-mønster, samme kill-switch-struktur, samme min-længde-værn. Forskellen er kun kilden: `tool_embeddings.sqlite` (458 vektorer) i stedet for skill-registret, og outputtet peger på `load_more_tools(names=[...])` i stedet for `skill_invoke`.
+
+## Design
+
+### Kernemekanisme (fase 1 — billig, ingen ekstra model)
+
+Ny modul: `core/services/prompt_sections/tool_discovery_nudge.py`
+
+```
+tool_discovery_nudge_section(user_message, session_id) -> str
+```
+
+1. **Match:** `top_k_similar(user_message, k=8)` — embed user_message mod alle 458 tool-vektorer. (Samme kald `load_more_tools` allerede laver — nul ny infrastruktur.)
+2. **Filtrér mod det usynlige:** fjern ethvert tool hvis navn **allerede står i klartekst** i `build_catalog_text()`-outputtet (kerne-grupperne) — nudgen må kun pege på det Jarvis ikke kan se. (Bemærk: tool-puljen til selve API-kaldet vælges *efter* prompt-assembly i `visible_model_adapters.py` — så vi kan ikke filtrere mod de 48 her. Katalog-klartekst er det rigtige filter.)
+3. **Krydstjek mod det aktuelle register:** embedding-DB har 458 vektorer men kun 429 registrerede tools — forskellen er forældede/alias-vektorer (fx `runtime_`-præfiks). Nudgen slår hvert match op i `get_tool_definitions()` og foreslår **aldrig** et navn der ikke findes længere.
+4. **Tærskel:** kun matches over cosine-tærskel (fx ≥ 0.45 — kalibreres). Under → tom streng → ingen nudge.
+5. **Støj-værn:** max **1 nudge pr. turn**, max **2-3 linjer**, aldrig gentag samme tool for samme session inden for X minutter (suppression via session-hukommelse/DB).
+6. **Logging (fase 1 allerede):** skriv en `tool_discovery.nudge`-event (tool foreslået, session, cosine) — uden den kan fase 2 og måling ikke se om nudgen virker.
+7. **Output-format** (cache-sikkert, i `_dyn_tail`):
+
+```
+📎 Værktøj uden for din nuværende kasse: `calendar_create_event` (Google) —
+opgaven matcher "møde/aftale". Kald load_more_tools(names=["calendar_create_event"])
+hvis relevant.
+```
+
+### Injektion (fase 1)
+
+- `prompt_contract.py`: submittes som **`_measured_submit`-future** i fase 1-trådpuljen (præcis som `skill_relevance` gør på linje 796-797), resultatet hentes med `_timed_result(future, ..., default="")` på linje 1618-niveau. → **fejler/timer ud → tom streng → nul risiko for prompt-assembly.**
+- **Cache-sikker:** nudgen lander i den dynamiske hale (`_dyn_tail`), aldrig i den stabile prefix → bryder ikke DeepSeek prefix-cachen.
+- **Latency-værn:** ét Ollama-embedding-kald (~100-750 ms) skjult bag `memory_selection` i fase 1 — aldrig i kritisk sti. Arver `_MIN_MESSAGE_CHARS`-værnet (spring over korte beskeder).
+- **Kill-switch:** `central_switches` scope `prompt_section`, egen nøgle (fx `tool_discovery_nudge_enabled`, default True) — slukkes live uden kodeændring. Mønster verificeret i `prompt_contract.py` linje 1103.
+
+### Feedback-loop (fase 2 — efter måling)
+
+1. Når nudge foreslår tool X og Jarvis kalder `load_more_tools(names=[X])` → **hit**.
+2. Når Jarvis derpå *bruger* X (tool.completed-event) → **stærkt hit**.
+3. Gem (nudge_foreslået, loadet, brugt) i lille tabel — genbrug `tool_router_load_more`-tabellen + events.
+4. Over tid: sænk/hæv tærsklen pr. tool baseret på hit-rate (LivingNeuron-mønster: gut-bias skifter fra målt præcision).
+
+### Hvorfor IKKE en separat klassifikator-model (fase 1)
+
+Bjørn nævnte "en lille mekanisme eller model". Embedding-match er billigere (0 ekstra model-kald i prompt-kæden — samme Ollama-embedding `load_more_tools` allerede bruger), hurtigere (~ms), og deterministisk testbar. En dedikeret lille klassifikator er en **fase 3**-mulighed hvis embedding-match viser for mange false positives.
+
+## Cache- og latency-værn (kritisk — lært fra kodebasen)
+
+1. **`_dyn_tail` ikke stabil prefix** — enhver per-turn-variation i den stabile del koster DeepSeek-cachen (målt flere gange: tick-metrikker alene sænkede hit 35,9 %). Nudgen hører i halen.
+2. **`stable_only=True` respekteres** — vi piller IKKE ved `select_tools_for_visible`; keyword-routing dér er slået fra med vilje for cache. Vores nudge er et separat, additivt lag i halen — den dynamiske del er allerede en cache-miss pr. tur.
+3. **Embedding-kald cappes hårdt** — prompt-assembly har 12s totalbudget; ét hængende Ollama-kald frøs før hele API'en (cut-off-roden). Nudgen skal fejle lydløst → tom streng.
+4. **Aldrig ved prewarm/opvarmning** — kun ægte user-turns.
+
+## Måling (efter implementering)
+
+```sql
+-- Hvor mange gange nudgede vi, og blev det fulgt op?
+SELECT count(*) FROM events WHERE kind LIKE 'tool_discovery%';
+-- Hvad blev faktisk loadet efter nudge?
+SELECT resolved_names_json, count(*) FROM tool_router_load_more GROUP BY 1 ORDER BY 2 DESC LIMIT 20;
+-- Faldt "aldrig brugt"-tallet?
+SELECT count(DISTINCT tool_name) FROM events WHERE kind='tool.completed';
+```
+
+**To metrikker — ikke kun konvertering:**
+
+1. **Nudge → load → brug-konvertering** (positiv): af de nudges der blev vist, hvor mange førte til `load_more_tools(names=[X])` og derpå faktisk brug af X?
+2. **False-positive-rate** (negativ — lige så vigtig): af de nudges der blev vist, hvor mange blev **ignoreret** (Jarvis fortsatte uden at loade det foreslåede)? Hvis den er høj, er tærsklen for lav, og nudgen er ved at blive støj — og støj er værre end ingen nudge, fordi Jarvis lærer at ignorere kanalen.
+
+Succeskriterie: **andel aldrig-brugte tools falder fra 76 %**, og nudge → load → brug-konverteringen er målbar > 0 **uden at false-positive-raten får Jarvis til at ignorere nudges**.
+
+## Åbne spørgsmål til Bjørn/Claude
+
+1. Skal nudgen kun pege på **uden-for-pulje** tools, eller også minde om sjældne Tier-2-tools der *kan* være i puljen men let overses?
+2. Suppression-vindue: samme tool bør ikke nudge to gange i én session — hvor langt vindue (30 min? hele sessionen?)
+3. Tærskel-start: 0.45 cosine er et gæt — skal vi måle på de første 50 ture og kalibrere, eller starte mere konservativt (0.55)?
+4. Skal nudgen vises i **code mode** også? (Code mode har egen UI-sti — samme `_dyn_tail`-mekanik, men skal verificeres.)
+5. **Ny (fra selv-review):** Skal kataloget selv udvides til at vise *navnene* på alle tools (ikke kun kerne + gruppe-ord), så nudgen bliver redundant for de synlige og kun bærer de usynlige? (Kataloget vokser, men problemet "jeg aner ikke hvad der findes" løses ved roden.)
+6. **Ny (fra selv-review):** Filteret mod "allerede synlige" bruger katalog-klartekst, fordi tool-puljen vælges *efter* prompt-assembly. Er det acceptabelt, eller skal nudgen i stedet køre et andet sted i pipelinen hvor de 48 er kendt?
+
+## Ændringslog (selv-review 2026-09-06)
+
+- **Rettet:** Forkert præcedens — `forgetting_nudge`/`loop_compliance` (`_awareness_add`) er synkrone sektioner; vores nudge laver embedding-kald og skal køre i trådpuljen. Ny §Arketype peger på `skill_relevance_surface.py` som den rigtige, production-kørende tvilling.
+- **Skærpet:** Injektion beskrevet som `_measured_submit`-future + `_timed_result(..., default="")` (fase 1-trådpulje, linje 796/1618) — ikke synkront `_awareness_add`.
+- **Præciseret:** Kill-switch er `central_switches` scope `prompt_section` (verificeret linje 1103), ikke "mønster: prompt/env_block".
+- **Arvet:** `_MIN_MESSAGE_CHARS = 15`-værnet fra skill_relevance — spring over korte beskeder, spar embed-kald.
+- **Skærpet problem:** kataloget viser kun kerne i klartekst; ~370 tools nævnes kun som gruppe-ord → ny skarp definition af "usynligt tool" (navn ikke i `build_catalog_text()`-output).
+- **Rettet signatur:** `current_tool_names` findes ikke i prompt-assembly (pulje vælges efter) → filter mod katalog-klartekst i stedet.
+- **Tilføjet:** fase-1-logging (`tool_discovery.nudge`-event) så måling har data fra dag ét.
+- **Tilføjet:** false-positive-metrik (nudge vist men ignoreret) som modvægt til konverterings-metrikken.
+- **Tilføjet:** krydstjek mod det aktuelle register (`get_tool_definitions()`) — embedding-DB har 458 vektorer mod 429 registrerede; nudgen må aldrig foreslå et forældet/alias-navn.
+- **Rettet:** tastefejl "sænk/ hæv" → "sænk/hæv".

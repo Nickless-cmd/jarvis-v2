@@ -11,12 +11,27 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from apps.api.jarvis_api.routes.jarvisx_common import logger
 
-router = APIRouter(prefix="/api", tags=["jarvisx"])
+def _kun_ejer() -> None:
+    """Disse ruter læser og opremser værtens filsystem.
+
+    Roden må ligge hvor som helst på maskinen — det er med vilje, for et
+    projekt er ikke bundet til ~/.jarvis-v2/workspaces/. Men så er det
+    heller ikke noget en gæst eller et medlem skal kunne: uden denne gate
+    kunne enhver indlogget bruger (fx telefonen) opremse /home/bs og læse
+    filer derfra. Tom rolle = ubundet lokal/CLI-kontekst, ikke en fremmed.
+    """
+    from core.identity.workspace_context import current_role
+
+    if current_role() not in {"", "owner"}:
+        raise HTTPException(status_code=403, detail="project routes are owner only")
+
+
+router = APIRouter(prefix="/api", tags=["jarvisx"], dependencies=[Depends(_kun_ejer)])
 
 
 # ── Project anchor: tree, read, notes ─────────────────────────────

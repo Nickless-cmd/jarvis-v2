@@ -98,20 +98,21 @@ _JarvisX project-anchor + file-watch route group._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_resolve_project_root` | `(root)` | Resolve a project root with strict guards. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L36) |
-| function | `_safe_project_subpath` | `(root, rel)` | Resolve a relative path under the project root, refusing escapes. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L59) |
-| function | `project_tree` | `(root=…, max_depth=…)` | Return a nested tree of the project root, depth-limited. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L72) |
-| function | `project_list` | `(root=…, limit=…)` | Flat list of files under root (for @file autocomplete). | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L134) |
-| function | `project_read` | `(root=…, path=…)` | Read a file from inside the project root with a 1 MB cap. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L176) |
-| function | `project_notes_get` | `(root=…)` | Read .jarvisx/notes.md inside the anchored project, if it exists. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L217) |
-| class | `ProjectNotesUpdate` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L241) |
-| function | `project_notes_set` | `(payload)` | Write .jarvisx/notes.md inside the anchored project. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L247) |
-| function | `_watch_lock` | `()` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L276) |
-| class | `WatchAddRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L283) |
-| class | `WatchPollRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L288) |
-| function | `project_watch_add` | `(payload)` | Start watching a list of files/dirs for the session. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L293) |
-| function | `project_watch_poll` | `(payload)` | Return the list of watched paths whose mtime changed since last poll. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L323) |
-| function | `project_watch_clear` | `(payload)` | Stop all watches for a session. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L356) |
+| function | `_kun_ejer` | `()` | Disse ruter læser og opremser værtens filsystem. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L19) |
+| function | `_resolve_project_root` | `(root)` | Resolve a project root with strict guards. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L51) |
+| function | `_safe_project_subpath` | `(root, rel)` | Resolve a relative path under the project root, refusing escapes. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L74) |
+| function | `project_tree` | `(root=…, max_depth=…)` | Return a nested tree of the project root, depth-limited. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L87) |
+| function | `project_list` | `(root=…, limit=…)` | Flat list of files under root (for @file autocomplete). | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L149) |
+| function | `project_read` | `(root=…, path=…)` | Read a file from inside the project root with a 1 MB cap. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L191) |
+| function | `project_notes_get` | `(root=…)` | Read .jarvisx/notes.md inside the anchored project, if it exists. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L232) |
+| class | `ProjectNotesUpdate` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L256) |
+| function | `project_notes_set` | `(payload)` | Write .jarvisx/notes.md inside the anchored project. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L262) |
+| function | `_watch_lock` | `()` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L291) |
+| class | `WatchAddRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L298) |
+| class | `WatchPollRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L303) |
+| function | `project_watch_add` | `(payload)` | Start watching a list of files/dirs for the session. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L308) |
+| function | `project_watch_poll` | `(payload)` | Return the list of watched paths whose mtime changed since last poll. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L338) |
+| function | `project_watch_clear` | `(payload)` | Stop all watches for a session. | [src](../../../apps/api/jarvis_api/routes/jarvisx_project.py#L371) |
 
 ## `apps/api/jarvis_api/routes/jarvisx_sessions.py`
 _JarvisX chat-session support route group._

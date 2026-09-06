@@ -468,10 +468,22 @@ class RuntimeSettings:
     #     0,37312  «send en mail til bjorn om netvaerket»
     # De tre nederste er utvetydige vaerktoejs-opgaver og blev alle afvist.
     #
-    # 0,370 lukker alle fire ind — sat UNDER den laveste maalte (0,37312), ikke
-    # bare under kalender-beskeden. En graense der lukker kalenderen ind men
-    # holder mailen ude er vilkaarlig. 68 % af turene passerer mod 20 % foer, og
-    # de passerende faar ~90 vaerktoejer mod 70 (~2.600 ekstra prompt-tokens).
+    # REKALIBRERET samme dag efter _clarity_signal blev rettet. Det gamle
+    # signal var maalt VENDT OM (det gav ikke-vaerktoejs-beskeder hoejere score);
+    # med imperativ-feature diskriminerer det, og hele fordelingen flytter sig.
+    # Taersklen maa foelge med, ellers loesner porten ved et uheld.
+    #
+    # Med det NYE signal, samme fire maalte forespoergsler:
+    #     0,42484  «kan du laegge et moede ind i min kalender»  (var 0,38016)
+    #     0,41779  «send en mail til bjorn om netvaerket»       (var 0,37312)
+    #     0,39311  «hvad er der i min kalender i morgen»        (var 0,40128)
+    #     0,38042  «vis mig de seneste commits»                 (var 0,33581)
+    # Den sidste gik fra vaerst til at passere — den var en klar ordre som det
+    # gamle signal straffede for ikke at vaere et spoergsmaal.
+    #
+    # 0,380 lukker alle fire ind og lader 72 % af turene passere. Det er lidt
+    # mere end de 68 % ved 0,370 med det gamle signal, men turene er valgt af
+    # et signal der faktisk korrelerer med vaerktoejsbehov i stedet for stoej.
     #
     # AABENT: signalet selv er skaevt. _clarity_signal giver +0,15 for at vaere
     # et SPOERGSMAAL, men en vaerktoejs-foresp0rgsel er naesten altid en BEFALING
@@ -482,7 +494,7 @@ class RuntimeSettings:
     # NB: routeren laeser RuntimeSettings() direkte, ikke load_settings(), saa
     # runtime.json kan IKKE overstyre den her. Det er ogsaa derfor daemonens
     # `threshold_proposed` aldrig er blevet anvendt.
-    tool_router_threshold: float = 0.370
+    tool_router_threshold: float = 0.380
     tool_router_always_core_size: int = 70
     tool_router_k_embeddings: int = 30
     tool_router_embedding_model: str = "nomic-embed-text"

@@ -84,11 +84,13 @@ def test_taersklen_lukker_de_maalte_vaerktoejs_foresporgsler_ind():
     """
     from core.runtime.settings import RuntimeSettings
     t = float(RuntimeSettings().tool_router_threshold)
+    # Målt EFTER _clarity_signal fik imperativ-feature. De gamle tal (0,38016
+    # / 0,37312 / 0,33581) stammer fra det signal der var målt vendt om.
     maalte = {
-        "hvad er der i min kalender i morgen": 0.40128,
-        "kan du lægge et møde ind i min kalender på fredag": 0.38016,
-        "kan du læse den fil og rette fejlen": 0.37488,
-        "send en mail til bjorn om netværket": 0.37312,
+        "kan du lægge et møde ind i min kalender på fredag": 0.42484,
+        "send en mail til bjorn om netværket": 0.41779,
+        "hvad er der i min kalender i morgen": 0.39311,
+        "vis mig de seneste commits": 0.38042,
     }
     afvist = [b for b, c in maalte.items() if c < t]
     assert not afvist, f"ægte værktøjs-forespørgsler afvises af tærsklen {t}: {afvist}"
@@ -108,3 +110,43 @@ def test_taersklen_ligger_under_formlens_loft():
         f"tærskel {t} er for tæt på loftet {loft_ved_typisk_rate:.3f} — "
         "porten ville næsten aldrig åbne"
     )
+
+
+# ---------------------------------------------------------------------------
+# _clarity_signal — målt mod grundsandhed, ikke mod en formodning
+# ---------------------------------------------------------------------------
+
+
+def test_befalinger_vejer_tungere_end_spoergsmaal():
+    """Det gamle signal gav +0,15 for et SPØRGSMÅL og intet for en befaling.
+
+    Målt på 1.200 beskeder mod grundsandhed (havde næste assistent-svar i samme
+    session `tool_use`?) var det ikke bare svagt — det var VENDT OM:
+    snit 0,688 med værktøj mod 0,691 uden. Ny formel: 0,791 mod 0,753.
+    """
+    from core.services.tool_router import _clarity_signal as c
+    assert c("vis mig de seneste commits") > c("hvad synes du om det")
+    assert c("send en mail til bjorn om netværket") > c("hvad er der sket i dag")
+
+
+def test_talehandlinger_taeller_IKKE_som_vaerktoejs_befalinger():
+    """Jarvis' indvending: «sig hej til Michelle» og «fortæl en joke» er også
+    befalinger. Listen er derfor HANDLINGSVERBER (vis/hent/kør/læs), ikke alle
+    imperativer — «sig» og «fortæl» står der ikke."""
+    from core.services.tool_router import _clarity_signal as c
+    for tale in ("sig hej til michelle", "fortæl en joke", "forklar det igen"):
+        assert c(tale) < c("vis mig de seneste commits"), tale
+
+
+def test_boejninger_rammes_men_ikke_delord():
+    from core.services.tool_router import _IMPERATIVE_VERBS as V
+    assert V.search("kan du lægge et møde ind")      # læg + ge
+    assert V.search("send en mail")
+    assert not V.search("research mode with findings")  # «find» må ikke ramme «findings»
+
+
+def test_korte_og_bekraeftende_beskeder_er_uaendrede():
+    """Imperativ-feature må ikke røre de to tidlige udgange."""
+    from core.services.tool_router import _clarity_signal as c
+    assert c("ja") == 0.15
+    assert c("kør nu") == 0.30      # under 3 ord → fast 0,30, uanset verbum

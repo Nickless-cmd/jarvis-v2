@@ -52,7 +52,48 @@ class ToolSelection:
     reason: str = ""
 
 
+# Handleverber, dansk og engelsk. `\w{0,3}` daekker boejninger (laeg→laegge,
+# send→sender) uden at «find» ogsaa rammer «findings».
+_IMPERATIVE_VERBS = re.compile(
+    r"\b(vis|hent|send|find|søg|opret|slet|skriv|læs|læg|kør|tjek|ret|lav|gem|"
+    r"flyt|kopiér|kopier|skift|sæt|kald|print|tilføj|fjern|start|stop|åbn|luk|"
+    r"byg|deploy|commit|push|pull|check|run|show|list|get|read|write|fix|add|"
+    r"open|make|move|copy)\w{0,3}\b"
+)
+
+
 def _clarity_signal(msg: str) -> float:
+    """Hvor sandsynligt er det at turen har brug for et vaerktoej?
+
+    Maalt 6/9-2026 mod GRUNDSANDHED — 1.200 beskeder, hvor labelen er om det
+    NAESTE assistent-svar i samme session faktisk indeholdt `tool_use`. Samme
+    tabel, samme session, ordnet paa id: ingen tidsmatch paa tvaers.
+
+    Den GAMLE formel gav +0,15 for at vaere et SPOERGSMAAL og intet for en
+    befaling. Resultatet var ikke bare svagt — det var VENDT OM:
+
+        gammel formel   snit m/vaerktoej 0,688 · uden 0,691 · forskel −0,0035
+
+    Den gav altsaa ikke-vaerktoejs-beskeder en anelse HOEJERE score. Og
+    signalet vejer 40 % af confidence.
+
+    Grunden er sprogets form: en vaerktoejs-forespoergsel er naesten altid en
+    BEFALING — «vis mig de seneste commits», «send en mail», «laeg et moede
+    ind» — mens spoergsmaal ofte bare er samtale. Maalt paa de 1.200:
+
+        spoergsmaal     38,8 % af vaerktoejs-ture mod 36,8 % uden  → +2,0 %
+        imperativ       43,4 %                    mod 26,2 %      → +17,1 %
+
+    Jarvis foreslog imperativ + domaeneord (fil/kalender/commit) for at holde
+    «sig hej til Michelle» ude. Praecisionen er bedre, men konjunktionen
+    daekker kun 16,3 % af vaerktoejs-turene mod 43,4 % — den taber mere i
+    recall end den vinder. Maalt: +8,9 % mod +17,1 %.
+
+    Bonussen er EKSKLUSIV (imperativ vinder over spoergsmaal), saa budgettet
+    ikke bare vokser:
+
+        ny formel       snit m/vaerktoej 0,791 · uden 0,753 · forskel +0,0385
+    """
     msg = (msg or "").strip()
     if not msg:
         return 0.0
@@ -64,7 +105,9 @@ def _clarity_signal(msg: str) -> float:
     if len(words) < 3:
         return 0.30
     has_q = any(w in _QUESTION_WORDS_DA_EN for w in words) or "?" in msg
-    base = 0.55 + (0.15 if has_q else 0.0) + min(0.15, len(words) * 0.01)
+    has_imperative = bool(_IMPERATIVE_VERBS.search(msg.lower()))
+    bonus = 0.25 if has_imperative else (0.10 if has_q else 0.0)
+    base = 0.55 + bonus + min(0.15, len(words) * 0.01)
     return min(1.0, base)
 
 

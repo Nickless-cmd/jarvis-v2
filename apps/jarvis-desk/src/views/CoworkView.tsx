@@ -31,7 +31,9 @@ import { AboutPanel } from '../components/AboutPanel'
 
 /** Cowork command center. 'mc'-zonen = det rigtige Mission Control-kontrolcenter;
  *  de øvrige zoner = én settings-sektion hver (flad simpel navigation, Bjørn 2026-07-01). */
-export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'guest' }) {
+export function CoworkView(
+  { role = 'owner', sessionId }: { role?: 'owner' | 'member' | 'guest'; sessionId?: string | null },
+) {
   const { settings, auth } = useSettings()
   const isOwner = role === 'owner'
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
@@ -90,7 +92,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
         {/* Operator-kanal, fortryd-runde og runtime-kontakter (6/9-2026).
             Hoerer til arbejdsomraadet: de handler alle om HVOR og HVORDAN
             arbejdet udfoeres, ikke om hvem han er. */}
-        {ownerAuth && <WorkbenchSection config={config} />}
+        {ownerAuth && <WorkbenchSection config={config} sessionId={sessionId} />}
       </>)
       case 'connections': return wrap(<>
         {ownerAuth && <McpSection config={config} />}

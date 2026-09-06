@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ArrowDown, PanelRight, Loader2 } from 'lucide-react'
 import { onPauseSvar } from '../lib/pauseAsk'
+import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
@@ -366,16 +367,38 @@ export function ChatView({
 
   // Gensend: send en tidligere bruger-besked igen uden copy-paste. Bruger
   // aktuelle composer-præferencer (model/provider/permission).
-  const resend = (text: string) => {
+  const resend = (text: string, modelOverride?: string) => {
     const prefs = readModelPrefs()
     handleSend(text, {
       planMode: false,
       permission,
       attachments: [],
-      model: prefs.model,
+      model: modelOverride ?? prefs.model,
       providerChoice: prefs.providerChoice,
     })
   }
+
+  /** Sidste bruger-besked som ren tekst — det man prøver igen med. */
+  const sidsteBrugerTekst = () => {
+    const last = [...visibleMessages].reverse().find((m) => m.role === 'user')
+    return Array.isArray(last?.content)
+      ? last!.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+      : ''
+  }
+
+  // Redningshandlinger. Slår kun checkpoints op NÅR der er en fejl.
+  const redning = useRedning({
+    config: settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined,
+    sessionId,
+    isOwner: auth?.role === 'owner',
+    aktiv: stream.status === 'error',
+    model: readModelPrefs().model,
+    prøvIgenMed: (m) => {
+      const t = sidsteBrugerTekst()
+      stream.clearError()
+      if (t.trim()) resend(t, m)
+    },
+  })
 
 
   // Et klik paa en pause_and_ask-knap skal blive den NAESTE bruger-besked,
@@ -642,13 +665,11 @@ export function ChatView({
               error={stream.canonicalError}
               onDismiss={() => stream.clearError()}
               onRetry={stream.canonicalError.retryable ? () => {
-                const last = [...visibleMessages].reverse().find((m) => m.role === 'user')
-                const text = Array.isArray(last?.content)
-                  ? last!.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
-                  : ''
+                const text = sidsteBrugerTekst()
                 stream.clearError()
                 if (text.trim()) resend(text)
               } : undefined}
+              redning={redning}
             />
           ) : stream.status === 'error' && stream.streamError && (
             <ErrorBanner

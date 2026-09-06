@@ -2748,3 +2748,19 @@
   .runtl-pil { transition: none; }
   .mrk-koerer { animation: none; }
 }
+
+/* Redningshandlinger i fejlkortet. Sekundære over for «Prøv igen» — de er
+   alternativer, ikke det man normalt vil. */
+.errorcard-alt {
+  padding: 5px 11px;
+  background: transparent; color: var(--fg-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  font: inherit; font-size: 12.5px; cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.errorcard-alt:hover:not(:disabled) { color: var(--fg-1); border-color: var(--fg-3); }
+.errorcard-alt:disabled { opacity: .6; cursor: default; }
+.errorcard-kvittering {
+  margin: 8px 0 0; color: var(--fg-2); font-size: 12.5px;
+}
+@media (prefers-reduced-motion: reduce) { .errorcard-alt { transition: none; } }

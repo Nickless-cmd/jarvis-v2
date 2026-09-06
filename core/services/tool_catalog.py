@@ -45,6 +45,14 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
         "read_file", "write_file", "edit_file", "search", "find_files",
         "bash", "run_pytest", "db_query", "git_status",
     ]),
+    # 6/9-2026: todo-vaerktoejerne fandtes med service, fem tools OG en
+    # prompt-sektion der siger «max ÉN maa vaere ▶» — men de var usynlige i
+    # ALLE scopes og fraviaerende her. Prompten mindede ham altsaa om en evne han
+    # ikke kunne naa. Det er vaerre end at mangle den: den peger paa noget der
+    # ikke er der.
+    ("Arbejdshukommelse", [
+        "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
+    ]),
     ("Web", ["web_search", "web_fetch"]),
     ("Hukommelse", [
         "search_memory", "recall_memories", "remember_this",

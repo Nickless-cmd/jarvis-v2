@@ -45,3 +45,39 @@ def test_de_nye_operator_vaerktoejer_er_med():
     for t in ("operator_multi_edit", "operator_run_in_background",
               "operator_bash_output", "operator_kill_shell", "operator_edit_file"):
         assert t in operator, f"{t} mangler i kerne-kataloget"
+
+
+def test_todo_vaerktoejerne_er_i_kataloget():
+    """De fandtes med service, fem tools OG en prompt-sektion der siger «max ÉN
+    må være ▶» — men var usynlige i alle scopes og fraværende her. Prompten
+    mindede ham om en evne han ikke kunne nå; det er værre end at mangle den."""
+    navne = _alle_navne()
+    for t in ("todo_list", "todo_add", "todo_update_status"):
+        assert t in navne
+
+
+def test_todos_er_synlige_i_begge_modes():
+    from core.tools.simple_tools import get_tool_definitions
+    from core.tools.tool_scoping import current_tool_scope, set_tool_scope
+    foer = current_tool_scope()
+    try:
+        for scope in ("chat", "code"):
+            set_tool_scope(scope)
+            n = {t["function"]["name"] for t in get_tool_definitions()
+                 if isinstance(t, dict) and t.get("function")}
+            assert "todo_add" in n, f"todos usynlige i {scope}"
+    finally:
+        # Scope er en ContextVar — laekker den, ser NAESTE test en beskidt
+        # tilstand. Fanget af test_context_manager_sets_and_resets.
+        set_tool_scope(foer or "")
+
+
+def test_prompt_sektionen_og_vaerktoejerne_haenger_sammen():
+    """Sektionen lover noget; værktøjerne skal kunne indfri det. Driver de fra
+    hinanden, peger prompten på en evne der ikke findes."""
+    import inspect
+
+    from core.services import agent_todos
+    assert "Aktive todos" in inspect.getsource(agent_todos)
+    from core.tools.simple_tools import _TOOL_HANDLERS
+    assert "todo_add" in _TOOL_HANDLERS

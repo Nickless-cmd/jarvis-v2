@@ -92,6 +92,9 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
 CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Undersoegelse — laese-kun agent, aendrer intet
     "explore",
+    # Arbejdshukommelse. Prompten har hele tiden vist hans todos og reglen om
+    # max ÉN i gang — uden at han kunne skrive til dem.
+    "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
     # Web / viden
     "web_search", "web_fetch", "web_scrape", "get_news",
     # Data
@@ -137,6 +140,8 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Laese-kun undersoegelse. Hoerer hjemme i BEGGE modes: den aendrer intet og
     # sparer den kontekst en manuel gennemlaesning ville koste.
     "explore",
+    # Arbejdshukommelse — en kode-opgave er praecis dér man har brug for den.
+    "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
     # App-self-control (desk) — foreslå fuld adgang (trust) i code mode
     "request_app_action",
 })

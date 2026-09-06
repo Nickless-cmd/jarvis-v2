@@ -283,10 +283,14 @@ class TestLocalExecOnlyTools:
 class TestNyeVaerktoejerErSynlige:
     def _navne(self, scope):
         from core.tools.simple_tools import get_tool_definitions
-        from core.tools.tool_scoping import set_tool_scope
-        set_tool_scope(scope)
-        return {t["function"]["name"] for t in get_tool_definitions()
-                if isinstance(t, dict) and t.get("function")}
+        from core.tools.tool_scoping import current_tool_scope, set_tool_scope
+        foer = current_tool_scope()
+        try:
+            set_tool_scope(scope)
+            return {t["function"]["name"] for t in get_tool_definitions()
+                    if isinstance(t, dict) and t.get("function")}
+        finally:
+            set_tool_scope(foer or "")
 
     def test_explore_er_i_BEGGE_modes(self):
         """Læse-kun undersøgelse ændrer intet og sparer den kontekst en manuel

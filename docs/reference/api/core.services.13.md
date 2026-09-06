@@ -623,18 +623,18 @@ _Livscyklus-hooks server-side — paritet med jarvis-code._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_allow` | `(context=…)` | — | [src](../../../core/services/lifecycle_hooks.py#L66) |
-| function | `matcher_matches` | `(matcher, tool_name, command=…)` | Rammer et matcher-moenster dette tool-kald? Ren. | [src](../../../core/services/lifecycle_hooks.py#L72) |
-| function | `decide` | `(results)` | Saml flere hook-svar til ét. Ren. | [src](../../../core/services/lifecycle_hooks.py#L110) |
-| function | `config_path` | `()` | `~/.jarvis-v2/config/hooks.json` — config er runtimens sandhed for | [src](../../../core/services/lifecycle_hooks.py#L142) |
-| function | `load_hooks` | `()` | {haendelse: [hook, ...]}. Self-safe → tomt. | [src](../../../core/services/lifecycle_hooks.py#L149) |
-| function | `hooks_for` | `(event)` | Konfigurerede hooks for én haendelse. Self-safe → tom liste. | [src](../../../core/services/lifecycle_hooks.py#L165) |
-| function | `_run_command_hook` | `(hook, context, user_id=…)` | Koer et shell-script med kontekst paa stdin. Exit 2 = block (jarvis-codes | [src](../../../core/services/lifecycle_hooks.py#L173) |
-| function | `_run_http_hook` | `(hook, context)` | POST konteksten; svarets `action`/`message` gaelder. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L214) |
-| function | `_run_command_hook_async` | `(hook, context, user_id=…)` | Operator-grenen, kaldt fra det loop broen selv lever paa. | [src](../../../core/services/lifecycle_hooks.py#L237) |
-| function | `fire_async` | `(event, context, user_id=…)` | Som `fire`, men kan koere operator-hooks. Brug denne fra async-kode. | [src](../../../core/services/lifecycle_hooks.py#L263) |
-| function | `run_hook` | `(event, hook, context, user_id=…)` | Koer ÉN hook. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L292) |
-| function | `fire` | `(event, context, user_id=…)` | Fyr alle hooks for en haendelse og saml dommen. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L311) |
+| function | `_allow` | `(context=…)` | — | [src](../../../core/services/lifecycle_hooks.py#L73) |
+| function | `matcher_matches` | `(matcher, tool_name, command=…)` | Rammer et matcher-moenster dette tool-kald? Ren. | [src](../../../core/services/lifecycle_hooks.py#L79) |
+| function | `decide` | `(results)` | Saml flere hook-svar til ét. Ren. | [src](../../../core/services/lifecycle_hooks.py#L117) |
+| function | `config_path` | `()` | `~/.jarvis-v2/config/hooks.json` — config er runtimens sandhed for | [src](../../../core/services/lifecycle_hooks.py#L149) |
+| function | `load_hooks` | `()` | {haendelse: [hook, ...]}. Self-safe → tomt. | [src](../../../core/services/lifecycle_hooks.py#L156) |
+| function | `hooks_for` | `(event)` | Konfigurerede hooks for én haendelse. Self-safe → tom liste. | [src](../../../core/services/lifecycle_hooks.py#L172) |
+| function | `_run_command_hook` | `(hook, context, user_id=…)` | Koer et shell-script med kontekst paa stdin. Exit 2 = block (jarvis-codes | [src](../../../core/services/lifecycle_hooks.py#L180) |
+| function | `_run_http_hook` | `(hook, context)` | POST konteksten; svarets `action`/`message` gaelder. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L221) |
+| function | `_run_command_hook_async` | `(hook, context, user_id=…)` | Operator-grenen, kaldt fra det loop broen selv lever paa. | [src](../../../core/services/lifecycle_hooks.py#L244) |
+| function | `fire_async` | `(event, context, user_id=…)` | Som `fire`, men kan koere operator-hooks. Brug denne fra async-kode. | [src](../../../core/services/lifecycle_hooks.py#L270) |
+| function | `run_hook` | `(event, hook, context, user_id=…)` | Koer ÉN hook. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L299) |
+| function | `fire` | `(event, context, user_id=…)` | Fyr alle hooks for en haendelse og saml dommen. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L318) |
 
 ## `core/services/liveness_registry.py`
 _Liveness-registry (Stage 2, liveness-audit 2026-06-15)._

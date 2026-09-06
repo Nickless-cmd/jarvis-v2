@@ -305,3 +305,14 @@ class TestStopOgSessionStart:
         kilde = pathlib.Path("core/services/visible_runs.py").read_text()
         afsnit = kilde[kilde.index("SessionStart-hook"):kilde.index("UserPromptSubmit-hook")]
         assert "_foerste" in afsnit and "recent_chat_session_messages" in afsnit
+
+
+def test_stop_begraensningen_er_dokumenteret():
+    """Stop sidder inde i det agentiske loop, og det loop kører kun når første
+    pas gav tool-kald. Et rent tekstsvar når det aldrig. Målt live — og det skal
+    stå i koden, ikke kun i en commit-besked, ellers tror næste læser at Stop
+    fyrer på hver tur."""
+    import inspect
+    kilde = inspect.getsource(lh)
+    assert "VIGTIG BEGRAENSNING" in kilde
+    assert "agentiske loop" in kilde

@@ -52,6 +52,13 @@ HOOK_EVENTS: tuple[str, ...] = (
 # for vaerktoejet HAR koert.
 # `Stop` koblet ved turens afslutning: «block» betyder BLIV VED — den eneste
 # dom der giver mening naar turen er ved at slutte. Loft paa én genoptagelse.
+#
+# VIGTIG BEGRAENSNING, maalt live: Stop sidder INDE i det agentiske loop, og det
+# loop koeres kun naar foerste pas gav tool-kald (`if _collected_native_tool_calls:`
+# → `if simple_results:` i visible_runs). Et rent tekstsvar — «Hvad er hovedstaden
+# i Danmark?» — naar det aldrig, saa Stop fyrer ikke dér. Samme strukturelle port
+# der blindede vaernet mod tomme loefter. Verificeret: fyrer paa en tur der brugte
+# et vaerktoej, fyrer ikke paa en tur uden.
 # `SessionStart` fyrer paa sessionens foerste tur; kun `inject` honoreres, for
 # at naegte en hel session ved dens foerste ord er en stoerre magt end en hook
 # boer have.

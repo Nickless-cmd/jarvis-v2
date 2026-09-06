@@ -1901,30 +1901,27 @@ def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _force_bash(args: dict[str, Any]) -> dict[str, Any]:
-    """Run bash command bypassing approval (blocked still blocked)."""
+    """Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig.
+
+    Delegerer til `_exec_bash` (6/9-2026). Før var det en PARALLEL
+    implementation: rå subprocess i PROJECT_ROOT, uden persistent shell, uden
+    operator-kanal, uden bwrap-sandkasse, uden egress-observation og uden at
+    bevare det fulde output til tool-result-storen.
+
+    Det betød at autonome runs kørte en ANDEN bash end synlige ture. Alt hvad
+    der blev bygget på `_exec_bash` — og der er kommet meget til — gjaldt
+    halvdelen af systemet. En kommando kunne opføre sig forskelligt alt efter
+    hvem der kaldte den, hvilket er den slags dobbelt sandhed huset ellers har
+    en regel imod.
+
+    Delegeringen følger samme mønster som operator-force-handlerne nedenfor:
+    ét flag der springer GODKENDELSEN over, og kun den. Gaten for blokerede og
+    guard-blokerede kommandoer sidder før flaget læses.
+    """
     command = str(args.get("command") or "").strip()
     if not command:
         return {"error": "command is required", "status": "error"}
-    from core.services.gate_execution import check_command as _check_command
-    if _check_command(command, blocked_only=True).classification == "blocked":
-        return {"error": f"Command blocked: {command}", "status": "blocked"}
-    try:
-        result = subprocess.run(
-            ["bash", "-c", command],
-            capture_output=True,
-            text=True,
-            timeout=MAX_BASH_SECONDS,
-            cwd=str(PROJECT_ROOT),
-        )
-    except subprocess.TimeoutExpired:
-        from core.tools.tool_limits import timeout_note as _tnote
-        return {"error": _tnote(MAX_BASH_SECONDS, command), "status": "error"}
-    output = result.stdout.strip()
-    if result.stderr.strip():
-        output = (output + "\n" + result.stderr.strip()).strip()
-    if len(output) > MAX_BASH_OUTPUT_CHARS:
-        output = _clip_head_tail(output, limit=MAX_BASH_OUTPUT_CHARS)
-    return {"text": output or "[no output]", "exit_code": result.returncode, "status": "ok"}
+    return _exec_bash({**args, "_runtime_trust_all": True})
 
 
 # ── Force-handlers for operator tools ─────────────────────────────────────
@@ -2149,7 +2146,18 @@ def format_tool_result_for_model(
     if status == "approval_needed":
         return f"[Tool {name}: {result.get('message', 'requires user approval')}]"
 
-    text = result.get("text", "")
+    # `text_full` vinder naar hele resultatet skal persisteres (6/9-2026).
+    # bash klipper SIG SELV inde i `_exec_bash` foer resultatet naar hertil,
+    # saa clip=False fik intet at arbejde med: den "fulde" gemte udgave var
+    # ogsaa klippet, og midten fandtes ingen steder. Maalt: 76.950 tegn ->
+    # 16.018, med 60.932 udeladt og ingen vej tilbage til dem. Fixet fra 5/9
+    # daekkede kun vaerktoejer der returnerer hele teksten og lader
+    # formateringen klippe.
+    text = ""
+    if not clip:
+        text = str(result.get("text_full") or "")
+    if not text:
+        text = result.get("text", "")
     if not text:
         # Human-friendly summaries for common tool results
         path = result.get("path", "")

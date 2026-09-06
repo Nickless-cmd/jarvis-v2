@@ -340,17 +340,17 @@ _Simple, general-purpose tools for Jarvis visible lane._
 | function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1186) |
 | function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1849) |
 | function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1873) |
-| function | `_force_bash` | `(args)` | Run bash command bypassing approval (blocked still blocked). | [src](../../../core/tools/simple_tools.py#L1903) |
-| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1936) |
-| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1941) |
-| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1946) |
-| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1951) |
-| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1956) |
-| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1961) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2022) |
-| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/simple_tools.py#L2060) |
-| function | `_json_safe_default` | `(o)` | json.dumps default= — GARANTERER at serialisering af et tool-resultat | [src](../../../core/tools/simple_tools.py#L2109) |
-| function | `format_tool_result_for_model` | `(name, result, *, clip=…)` | Format a tool result as text for the model's context. | [src](../../../core/tools/simple_tools.py#L2125) |
+| function | `_force_bash` | `(args)` | Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig. | [src](../../../core/tools/simple_tools.py#L1903) |
+| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1933) |
+| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1938) |
+| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1943) |
+| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1948) |
+| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1953) |
+| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1958) |
+| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2019) |
+| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/simple_tools.py#L2057) |
+| function | `_json_safe_default` | `(o)` | json.dumps default= — GARANTERER at serialisering af et tool-resultat | [src](../../../core/tools/simple_tools.py#L2106) |
+| function | `format_tool_result_for_model` | `(name, result, *, clip=…)` | Format a tool result as text for the model's context. | [src](../../../core/tools/simple_tools.py#L2122) |
 
 ## `core/tools/simple_tools_definitions.py`
 _Tool definitions catalog for Jarvis' visible-lane tools._
@@ -549,28 +549,28 @@ _Web/search/system-info tool executors for Jarvis' native lane._
 | function | `_exec_search` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L95) |
 | function | `_exec_find_files` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L198) |
 | function | `_get_or_open_default_bash_session` | `()` | — | [src](../../../core/tools/simple_tools_web.py#L293) |
-| function | `_reset_default_bash_session` | `()` | — | [src](../../../core/tools/simple_tools_web.py#L317) |
-| function | `_exec_bash` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L323) |
-| function | `_html_to_text` | `(raw)` | Grov HTML→tekst der BEVARER afsnits-struktur (blok-tags → linjeskift). | [src](../../../core/tools/simple_tools_web.py#L513) |
-| function | `_egress_blokeret` | `(url)` | Fejl-svaret hvis destinationen er intern, ellers None. | [src](../../../core/tools/simple_tools_web.py#L551) |
-| function | `_fetch_cache_get` | `(url)` | — | [src](../../../core/tools/simple_tools_web.py#L592) |
-| function | `_fetch_cache_put` | `(url, raw)` | — | [src](../../../core/tools/simple_tools_web.py#L603) |
-| class | `_RevaliderendeRedirect` | `` | Stopper en omdirigering mod et internt maal, hop for hop. | [src](../../../core/tools/simple_tools_web.py#L621) |
-| method | `_RevaliderendeRedirect.redirect_request` | `(self, req, fp, code, msg, headers, newurl)` | — | [src](../../../core/tools/simple_tools_web.py#L624) |
-| function | `_hent_side` | `(url)` | Hent en side med redirect-revalidering og kort cache. | [src](../../../core/tools/simple_tools_web.py#L639) |
-| function | `_exec_web_fetch` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L654) |
-| function | `_exec_web_scrape` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L717) |
-| function | `_read_api_key` | `(key)` | Read an API key directly from runtime.json. | [src](../../../core/tools/simple_tools_web.py#L732) |
-| function | `_fetch_tavily` | `(query, max_results)` | Raw Tavily API call — no caching. | [src](../../../core/tools/simple_tools_web.py#L742) |
-| function | `_cached_web_search_fn_impl` | `(*, query, max_results, fetch_fn)` | Wrapper so tests can monkeypatch the cache layer (real impl). | [src](../../../core/tools/simple_tools_web.py#L777) |
-| function | `_exec_web_search` | `(args)` | Web search via Tavily API with result caching. | [src](../../../core/tools/simple_tools_web.py#L784) |
-| function | `_read_user_location` | `()` | Read Location from the live workspace USER.md. | [src](../../../core/tools/simple_tools_web.py#L794) |
-| function | `_exec_get_weather` | `(args)` | Current weather via OpenWeatherMap. | [src](../../../core/tools/simple_tools_web.py#L806) |
-| function | `_exec_get_exchange_rate` | `(args)` | Currency exchange rates via exchangerate.host. | [src](../../../core/tools/simple_tools_web.py#L840) |
-| function | `_exec_get_news` | `(args)` | Recent news via NewsAPI. | [src](../../../core/tools/simple_tools_web.py#L867) |
-| function | `_exec_analyze_image` | `(args)` | Analyze an image using a vision-capable model via Ollama. | [src](../../../core/tools/simple_tools_web.py#L903) |
-| function | `_exec_read_archive` | `(args)` | List or extract a zip / tar / rar archive. | [src](../../../core/tools/simple_tools_web.py#L1023) |
-| function | `_exec_wolfram_query` | `(args)` | Precise answers via Wolfram Alpha Short Answers API. | [src](../../../core/tools/simple_tools_web.py#L1093) |
+| function | `_reset_default_bash_session` | `()` | — | [src](../../../core/tools/simple_tools_web.py#L327) |
+| function | `_exec_bash` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L333) |
+| function | `_html_to_text` | `(raw)` | Grov HTML→tekst der BEVARER afsnits-struktur (blok-tags → linjeskift). | [src](../../../core/tools/simple_tools_web.py#L557) |
+| function | `_egress_blokeret` | `(url)` | Fejl-svaret hvis destinationen er intern, ellers None. | [src](../../../core/tools/simple_tools_web.py#L596) |
+| function | `_fetch_cache_get` | `(url)` | — | [src](../../../core/tools/simple_tools_web.py#L637) |
+| function | `_fetch_cache_put` | `(url, raw)` | — | [src](../../../core/tools/simple_tools_web.py#L648) |
+| class | `_RevaliderendeRedirect` | `` | Stopper en omdirigering mod et internt maal, hop for hop. | [src](../../../core/tools/simple_tools_web.py#L666) |
+| method | `_RevaliderendeRedirect.redirect_request` | `(self, req, fp, code, msg, headers, newurl)` | — | [src](../../../core/tools/simple_tools_web.py#L669) |
+| function | `_hent_side` | `(url)` | Hent en side med redirect-revalidering og kort cache. | [src](../../../core/tools/simple_tools_web.py#L684) |
+| function | `_exec_web_fetch` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L699) |
+| function | `_exec_web_scrape` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L762) |
+| function | `_read_api_key` | `(key)` | Read an API key directly from runtime.json. | [src](../../../core/tools/simple_tools_web.py#L777) |
+| function | `_fetch_tavily` | `(query, max_results)` | Raw Tavily API call — no caching. | [src](../../../core/tools/simple_tools_web.py#L787) |
+| function | `_cached_web_search_fn_impl` | `(*, query, max_results, fetch_fn)` | Wrapper so tests can monkeypatch the cache layer (real impl). | [src](../../../core/tools/simple_tools_web.py#L822) |
+| function | `_exec_web_search` | `(args)` | Web search via Tavily API with result caching. | [src](../../../core/tools/simple_tools_web.py#L829) |
+| function | `_read_user_location` | `()` | Read Location from the live workspace USER.md. | [src](../../../core/tools/simple_tools_web.py#L839) |
+| function | `_exec_get_weather` | `(args)` | Current weather via OpenWeatherMap. | [src](../../../core/tools/simple_tools_web.py#L851) |
+| function | `_exec_get_exchange_rate` | `(args)` | Currency exchange rates via exchangerate.host. | [src](../../../core/tools/simple_tools_web.py#L885) |
+| function | `_exec_get_news` | `(args)` | Recent news via NewsAPI. | [src](../../../core/tools/simple_tools_web.py#L912) |
+| function | `_exec_analyze_image` | `(args)` | Analyze an image using a vision-capable model via Ollama. | [src](../../../core/tools/simple_tools_web.py#L948) |
+| function | `_exec_read_archive` | `(args)` | List or extract a zip / tar / rar archive. | [src](../../../core/tools/simple_tools_web.py#L1068) |
+| function | `_exec_wolfram_query` | `(args)` | Precise answers via Wolfram Alpha Short Answers API. | [src](../../../core/tools/simple_tools_web.py#L1138) |
 
 ## `core/tools/skill_chain_propose_tool.py`
 _propose_skill_chain tool — Skill Chain Phase 2 (AGI track #10)._

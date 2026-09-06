@@ -292,6 +292,16 @@ _DEFAULT_BASH_SESSION_LOCK = _threading_for_bash.Lock()
 
 def _get_or_open_default_bash_session() -> str | None:
     global _DEFAULT_BASH_SESSION_ID
+    # Importeres HER (6/9-2026). De to `_exec_bash_session_*` blev BRUGT uden
+    # nogensinde at vaere importeret — en NameError som kalderen fangede med
+    # `except Exception` og loggede paa DEBUG. Resultatet: sid blev None, alt
+    # faldt til engangs-subprocessen, og den PERSISTENTE shell har aldrig
+    # vaeret i brug herfra. Maalt: `cd /tmp` efterfulgt af `pwd` gav
+    # repo-roden, selv om kommentaren i _exec_bash lover det modsatte.
+    from core.tools.bash_session import (
+        _exec_bash_session_list,
+        _exec_bash_session_open,
+    )
     with _DEFAULT_BASH_SESSION_LOCK:
         sid = _DEFAULT_BASH_SESSION_ID
         if sid:
@@ -404,6 +414,21 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
                    "om lov før du prøver igen — gentag ikke den samme kommando.",
         )
 
+    # `_runtime_trust_all` springer GODKENDELSEN over — og kun den (6/9-2026).
+    # Blokerede og guard-blokerede kommandoer stoppes stadig ovenfor, foer vi
+    # naar hertil. Flaget er samme konvention som operator-force-handlerne i
+    # simple_tools.py bruger, og det findes for at autonome runs kan koere den
+    # SAMME bash som synlige ture i stedet for en parallel kopi.
+    _spring_godkendelse = bool(args.get("_runtime_trust_all"))
+
+    # DESTRUKTIVT springes ALDRIG over. Den gamle `_force_bash` tjekkede kun
+    # for klassen "blocked" — men `rm -rf /` klassificeres som "destructive",
+    # saa den slap igennem og KOERTE i autonome runs. Hullet er aeldre end
+    # sammenlaegningen; det lukkes her.
+    #
+    # Naar Bjoern selv har klikket Godkend paa praecis den kommando, kommer
+    # kaldet gennem resolve_pending_approval med sin egen godkendelse i
+    # ryggen — ikke gennem det her flag.
     if _ec.classification == "destructive":
         return {
             "status": "approval_needed",
@@ -412,7 +437,7 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
             "classification": "destructive",
         }
 
-    if _ec.classification == "approval":
+    if _ec.classification == "approval" and not _spring_godkendelse:
         return {
             "status": "approval_needed",
             "message": f"This command may modify the system. Please confirm: {command}",
@@ -429,10 +454,16 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     # The legacy subprocess path is kept as a fallback if the daemon
     # really cannot be reached.
     try:
+        from core.tools.bash_session import _exec_bash_session_run
         sid = _get_or_open_default_bash_session()
     except Exception as exc:
         sid = None
-        logger.debug("bash: default session resolve failed: %s", exc)
+        # WARNING, ikke DEBUG (6/9-2026): en NameError her gjorde HELE den
+        # persistente sti doed i det stille — bash virkede jo, bare uden
+        # shell-tilstand. En fejl der koster en funktion maa ikke logges paa
+        # et niveau ingen laeser.
+        logger.warning("bash: kunne ikke aabne persistent session (%s) — "
+                       "falder tilbage til engangs-subprocess", exc)
 
     if sid:
         run_result = _exec_bash_session_run({
@@ -458,13 +489,22 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
         # Normalize bash_session_run shape -> bash shape
         if run_result.get("status") in ("ok", None) and "exit_code" in run_result:
             output = str(run_result.get("output") or "").strip()
+            # `text_full` beholder HELE outputtet til tool-result-storen.
+            # Foer 6/9-2026 klippede bash sig selv HER, saa den "fulde" gemte
+            # udgave ogsaa havde hullet — og `read_tool_result` kunne ikke
+            # hente en midte der aldrig blev bevaret. Maalt: 60.932 tegn vaek
+            # uden nogen vej tilbage.
+            fuld = output
             if len(output) > MAX_BASH_OUTPUT_CHARS:
                 output = _clip_head_tail(output, limit=MAX_BASH_OUTPUT_CHARS)
-            return {
+            svar = {
                 "text": output or "[no output]",
                 "exit_code": run_result.get("exit_code"),
                 "status": "ok",
             }
+            if fuld != output:
+                svar["text_full"] = fuld
+            return svar
         # Daemon-side error — fall through to subprocess fallback so a
         # transient daemon problem doesn't break bash entirely.
         logger.warning("bash: session path errored, falling back to subprocess: %s", err)
@@ -500,14 +540,18 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     if result.stderr.strip():
         output += "\n[stderr] " + result.stderr.strip()
 
+    fuld = output
     if len(output) > MAX_BASH_OUTPUT_CHARS:
         output = _clip_head_tail(output, limit=MAX_BASH_OUTPUT_CHARS)
 
-    return {
+    svar = {
         "text": output or "[no output]",
         "exit_code": result.returncode,
         "status": "ok",
     }
+    if fuld != output:
+        svar["text_full"] = fuld   # se noten paa session-stien ovenfor
+    return svar
 
 
 def _html_to_text(raw: str) -> str:
@@ -518,6 +562,7 @@ def _html_to_text(raw: str) -> str:
     li/h1-6/br/tr/section/article) til linjeskift, så afsnit overlever og et vindue
     er læsbart. Self-safe.
     """
+
     try:
         t = re.sub(r"<script[^>]*>.*?</script>", " ", raw, flags=re.DOTALL | re.IGNORECASE)
         t = re.sub(r"<style[^>]*>.*?</style>", " ", t, flags=re.DOTALL | re.IGNORECASE)

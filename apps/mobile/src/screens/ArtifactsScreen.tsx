@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Clock3, FileCode2, Sparkles, X } from 'lucide-react-native'
 import { fetchArtifacts, type ArtifactItem } from '../lib/artifactsApi'
+import { buildArtifactPreview } from '../lib/artifactPreview'
 import { useAuth } from '../state/AuthContext'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
+import { StatusState } from '../components/StatusState'
 
 export function ArtifactsScreen({
   onClose,
@@ -35,34 +37,37 @@ export function ArtifactsScreen({
       </View>
 
       {items === null ? (
-        <View style={styles.center}><ActivityIndicator color={tokens.color.accent} /></View>
+        <StatusState title="Henter artifacts" loading />
       ) : items.length === 0 ? (
-        <View style={styles.center}>
-          <FileCode2 size={26} color={tokens.color.fg3} strokeWidth={1.7} />
-          <Text style={styles.empty}>Ingen artifacts endnu.</Text>
-        </View>
+        <StatusState title="Ingen artifacts endnu." detail="Når Jarvis laver patches, filer eller previews, lander de her." />
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
-          {items.map((item) => (
-            <View key={item.id} style={styles.card}>
-              <View style={styles.previewBox}>
-                <FileCode2 size={28} color={tokens.color.accent} strokeWidth={1.7} />
-                <Text style={styles.previewLabel}>Preview</Text>
-              </View>
-              <View style={styles.cardBody}>
-                <View style={styles.row}>
-                  <Sparkles size={15} color={tokens.color.fg2} strokeWidth={1.8} />
-                  <Text style={styles.kind}>Patch</Text>
+          {items.map((item) => {
+            const preview = buildArtifactPreview(item)
+            return (
+              <View key={item.id} style={styles.card}>
+                <View style={styles.previewBox}>
+                  <FileCode2 size={28} color={tokens.color.accent} strokeWidth={1.7} />
+                  <Text style={styles.previewLabel}>Preview</Text>
                 </View>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <Text style={styles.detail}>{item.detail}</Text>
-                <View style={styles.metaRow}>
-                  <Clock3 size={13} color={tokens.color.fg3} strokeWidth={1.8} />
-                  <Text style={styles.meta}>Senest</Text>
+                <View style={styles.cardBody}>
+                  <View style={styles.row}>
+                    <Sparkles size={15} color={tokens.color.fg2} strokeWidth={1.8} />
+                    <Text style={styles.kind}>{item.kind === 'patch' ? 'Patch' : preview.title}</Text>
+                    <Text style={styles.previewType}>{preview.title}</Text>
+                  </View>
+                  <Text style={styles.itemTitle}>{item.title}</Text>
+                  <Text style={[styles.detail, preview.kind === 'diff' ? styles.mono : null]} numberOfLines={preview.kind === 'diff' ? 8 : 6}>
+                    {preview.body}
+                  </Text>
+                  <View style={styles.metaRow}>
+                    <Clock3 size={13} color={tokens.color.fg3} strokeWidth={1.8} />
+                    <Text style={styles.meta}>{item.createdAt ? 'Senest' : 'Ingen dato'}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
+            )
+          })}
         </ScrollView>
       )}
     </View>
@@ -107,8 +112,10 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   cardBody: { flex: 1, padding: tokens.spacing.lg, gap: 7 },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm },
   kind: { color: tokens.color.fg2, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+  previewType: { color: tokens.color.fg3, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
   itemTitle: { color: tokens.color.fg1, fontSize: 15, fontWeight: '700', lineHeight: 21 },
   detail: { color: tokens.color.fg3, fontSize: 13, lineHeight: 18 },
+  mono: { fontFamily: 'monospace', color: tokens.color.fg2 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: tokens.spacing.xs },
   meta: { color: tokens.color.fg3, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }
 })

@@ -3,17 +3,10 @@ import { Camera, X } from 'lucide-react-native'
 import type { VoiceState, VoiceMode } from '../lib/useVoiceConversation'
 import { ApprovalCard, type ApprovalViewModel } from './ApprovalCard'
 import { VoiceOrb } from './VoiceOrb'
+import { voiceStatusCopy } from '../lib/voiceUiState'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /** Samtale-mode. Push-to-talk: hold kuglen. Hænderfri: den lytter selv videre. */
-
-const LABEL: Record<VoiceState, string> = {
-  idle: '',
-  listening: 'Jeg lytter',
-  transcribing: 'Hører hvad du sagde',
-  thinking: 'Tænker',
-  speaking: 'Tryk for at afbryde',
-}
 
 export interface VoiceOverlayProps {
   active: boolean
@@ -65,9 +58,7 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
     : p.lastProvider === 'edge' ? 'edge-tts'
       : p.lastProvider === 'device' ? 'telefonens stemme' : ''
 
-  const hint = p.mode === 'push'
-    ? 'Hold kuglen mens du taler'
-    : 'Tal frit — jeg sender når du holder pause'
+  const copy = voiceStatusCopy({ state: p.state, mode: p.mode, canInterrupt: p.state === 'speaking' })
 
   // Kuglen giver plads når der skal træffes en beslutning. Den skal stadig
   // være der — det er den samme samtale — men den skal ikke fylde mest.
@@ -94,7 +85,7 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
           >
             <VoiceOrb state={p.state} level={p.level} size={asking ? 128 : 232} />
           </Pressable>
-          <Text style={s.state}>{asking ? 'Jeg venter på dit svar' : LABEL[p.state]}</Text>
+          <Text style={s.state}>{asking ? 'Jeg venter på dit svar' : copy.primary || copy.action}</Text>
           {!asking && p.workingStep && (p.state === 'thinking' || p.state === 'speaking') ? (
             <Text style={s.step} numberOfLines={2}>{p.workingStep}</Text>
           ) : null}
@@ -135,7 +126,7 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
               </Pressable>
             ))}
           </View>
-          <Text style={s.hint}>{hint}{providerLabel ? `  ·  ${providerLabel}` : ''}</Text>
+          <Text style={s.hint}>{copy.hint}{providerLabel ? `  ·  ${providerLabel}` : ''}</Text>
         </View>
       </View>
     </Modal>

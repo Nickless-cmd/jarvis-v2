@@ -81,8 +81,8 @@ def _read_user_md(workspace_dir: Path) -> str:
     except Exception:
         pass
     try:
-        from core.services.workspace_crypto import read_text_for_path
-        return read_text_for_path(path) or ""
+        from core.services.secret_redaction import read_for_prompt
+        return read_for_prompt(path) or ""
     except Exception:
         try:
             return path.read_text(encoding="utf-8") if path.exists() else ""

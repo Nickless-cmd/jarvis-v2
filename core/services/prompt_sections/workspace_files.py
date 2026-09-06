@@ -127,9 +127,14 @@ def _workspace_file_section(
     max_lines: int,
     max_chars: int,
 ) -> str | None:
-    from core.services.workspace_crypto import read_text_for_path
+    # Prompt-siden (6/9-2026): hemmeligheder maskeres paa vej ind i konteksten.
+    # En noegle indsat i USER.md eller MEMORY.md ville ellers ligge i HVER
+    # prompt og gaa til en ekstern udbyder hver eneste tur.
+    # Stoerrelses-tjekket ovenfor bruger fortsat read_text_for_path: masken
+    # ville aendre laengden, og det tal skal beskrive filen som den ER.
+    from core.services.secret_redaction import read_for_prompt
     path = _resolve_with_shared_fallback(path)
-    text = read_text_for_path(path)
+    text = read_for_prompt(path)
     if text is None:
         return None
     # 2026-09-04 (memory repair, R7): USER.md var 23 KB uden protokol for hvad

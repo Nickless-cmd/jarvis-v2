@@ -61,9 +61,9 @@ def _lexical_coverage(query: str, section: str, text: str) -> float:
 def _memory_md_sections(workspace_dir: Path) -> list[tuple[str, str]]:
     path = workspace_dir / "MEMORY.md"
     try:
-        from core.services.workspace_crypto import read_text_for_path
+        from core.services.secret_redaction import read_for_prompt
 
-        raw = read_text_for_path(path)
+        raw = read_for_prompt(path)
     except Exception:
         raw = path.read_text(encoding="utf-8") if path.exists() else ""
     if not raw:

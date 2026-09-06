@@ -4159,10 +4159,10 @@ def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 1800) -> str |
     """Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered —
     stable references (URLs, paths, logins, hosts) must always be in view so
     Jarvis doesn't re-discover them locally every session."""
-    from core.services.workspace_crypto import read_text_for_path
+    from core.services.secret_redaction import read_for_prompt
     path = workspace_dir / "QUICK_FACTS.md"
     try:
-        raw = read_text_for_path(path)
+        raw = read_for_prompt(path)
     except Exception:
         return None
     if raw is None:

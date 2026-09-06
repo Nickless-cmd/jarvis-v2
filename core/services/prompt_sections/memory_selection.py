@@ -147,8 +147,10 @@ def _recent_daily_memory_lines(*, limit: int = 12, days: int = 7) -> list[str]:
 
 
 def _workspace_memory_entries(path: Path) -> list[str]:
-    from core.services.workspace_crypto import read_text_for_path
-    text = read_text_for_path(path)
+    # Prompt-siden: hemmeligheder maskeres. Linje ~207 tjekker kun om filen
+    # FINDES og skal derfor blive paa den raa laeser.
+    from core.services.secret_redaction import read_for_prompt
+    text = read_for_prompt(path)
     if text is None:
         return []
     entries: list[str] = []

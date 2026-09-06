@@ -228,10 +228,10 @@ _MEMORY.md line/section selection for the visible prompt._
 | function | `_today_daily_memory_lines` | `(*, limit=…)` | Read today's daily memory lines for injection into visible prompts. | [src](../../../core/services/prompt_sections/memory_selection.py#L127) |
 | function | `_recent_daily_memory_lines` | `(*, limit=…, days=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L140) |
 | function | `_workspace_memory_entries` | `(path)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L149) |
-| function | `_select_relevant_memory_entries` | `(entries, *, user_message, max_lines, max_chars, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L166) |
-| function | `memory_could_change_answer` | `(user_message, memory_text)` | Cheap gate: inject memory only when it can affect this answer's substance. | [src](../../../core/services/prompt_sections/memory_selection.py#L258) |
-| function | `_filter_answer_changing_memory` | `(user_message, lines)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L278) |
-| function | `_bounded_nl_memory_selection` | `(*, user_message, entries, max_lines, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L282) |
+| function | `_select_relevant_memory_entries` | `(entries, *, user_message, max_lines, max_chars, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L168) |
+| function | `memory_could_change_answer` | `(user_message, memory_text)` | Cheap gate: inject memory only when it can affect this answer's substance. | [src](../../../core/services/prompt_sections/memory_selection.py#L260) |
+| function | `_filter_answer_changing_memory` | `(user_message, lines)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L280) |
+| function | `_bounded_nl_memory_selection` | `(*, user_message, entries, max_lines, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L284) |
 
 ## `core/services/prompt_sections/pattern_counterfactuals.py`
 _Surface pattern-counterfactual hypotheses in the prompt._
@@ -331,7 +331,7 @@ _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._
 | function | `_development_section_text` | `(text)` | Body of a `## Udvikling` section, or "" when absent. | [src](../../../core/services/prompt_sections/workspace_files.py#L83) |
 | function | `_core_section_text` | `(text)` | Body of a `## Kerne` (or `## Core`) section, or "" when absent. | [src](../../../core/services/prompt_sections/workspace_files.py#L103) |
 | function | `_workspace_file_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L123) |
-| function | `_workspace_guidance_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L175) |
-| function | `_ws_exists` | `(path)` | Eksistens-tjek encryption-aware (.enc tæller for member-filer). | [src](../../../core/services/prompt_sections/workspace_files.py#L191) |
-| function | `_workspace_optional_file_section` | `(path, *, fallback_path, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L199) |
+| function | `_workspace_guidance_section` | `(path, *, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L180) |
+| function | `_ws_exists` | `(path)` | Eksistens-tjek encryption-aware (.enc tæller for member-filer). | [src](../../../core/services/prompt_sections/workspace_files.py#L196) |
+| function | `_workspace_optional_file_section` | `(path, *, fallback_path, label, max_lines, max_chars)` | — | [src](../../../core/services/prompt_sections/workspace_files.py#L204) |
 

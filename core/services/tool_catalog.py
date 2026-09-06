@@ -67,6 +67,9 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
         "schedule_task", "schedule_recurring",
     ]),
     ("Operator (din egen maskine/desktop)", [
+        # Aabn kanalen, saa gaar `bash` derover af sig selv — i stedet for at
+        # skulle huske operator_-navnene ved hvert eneste kald.
+        "operator_channel",
         "operator_bash", "operator_read_file", "operator_write_file",
         # Bygget 5-6/9 og skjult af samme grund som explore: de stod ikke her.
         "operator_edit_file", "operator_multi_edit",

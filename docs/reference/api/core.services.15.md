@@ -499,6 +499,25 @@ _Operator app-allowlist (leak-kandidat #5, CHICAGO-guard-mønster, 2026-07-10)._
 | function | `check_app` | `(app)` | Vurdér om Jarvis må GUI-styre `app`. OBSERVE-by-default: | [src](../../../core/services/operator_allowlist.py#L77) |
 | function | `build_operator_allowlist_surface` | `()` | Central-CLI: jc raw /central/operator-allowlist. | [src](../../../core/services/operator_allowlist.py#L102) |
 
+## `core/services/operator_channel.py`
+_Operator-kanalen — owner-gated bro fra containerens bash til Bjørns maskine._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/operator_channel.py#L41) |
+| function | `_save` | `(state)` | — | [src](../../../core/services/operator_channel.py#L50) |
+| function | `_aktiv` | `(post)` | — | [src](../../../core/services/operator_channel.py#L58) |
+| function | `status` | `(session_id)` | Læse-kun. Ingen owner-gate — at spørge er harmløst. | [src](../../../core/services/operator_channel.py#L65) |
+| function | `is_open` | `(session_id)` | — | [src](../../../core/services/operator_channel.py#L76) |
+| function | `open_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L80) |
+| function | `close_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L94) |
+| function | `current_session_id` | `()` | Samme opslags-raekkefoelge som staged_edits_tools — ét moenster, ikke to. | [src](../../../core/services/operator_channel.py#L105) |
+| function | `current_is_owner` | `()` | Owner-gaten. Fail-CLOSED: kan rollen ikke afgoeres, er svaret nej. | [src](../../../core/services/operator_channel.py#L120) |
+| function | `_absolutte_stier` | `(command)` | — | [src](../../../core/services/operator_channel.py#L136) |
+| function | `looks_like_workstation_path` | `(command, cwd=…)` | — | [src](../../../core/services/operator_channel.py#L149) |
+| function | `maybe_reroute_bash` | `(command, cwd, *, is_owner, session_id)` | Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None. | [src](../../../core/services/operator_channel.py#L156) |
+| function | `closed_channel_hint` | `(command, cwd, *, is_owner, session_id)` | Én linje til modellen når et kald tydeligvis sigtede mod hans maskine. | [src](../../../core/services/operator_channel.py#L182) |
+
 ## `core/services/orb_phase.py`
 _Desktop orb phase — writes current Jarvis pipeline state to a temp file._
 
@@ -617,15 +636,4 @@ _Paradoxes Capture — fanger modsætninger i egne handlinger._
 | function | `maybe_capture_weekly_paradox` | `(*, lookback_days=…)` | Max 1 paradox per 7 days, only if signature is new. | [src](../../../core/services/paradoxes_capture.py#L187) |
 | function | `list_paradoxes` | `(*, limit=…)` | — | [src](../../../core/services/paradoxes_capture.py#L246) |
 | function | `build_paradoxes_surface` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L269) |
-
-## `core/services/parallel_selves.py`
-_Parallel Selves — internal sub-selves._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_active_self` | `()` | — | [src](../../../core/services/parallel_selves.py#L15) |
-| function | `set_active_self` | `(self_type)` | — | [src](../../../core/services/parallel_selves.py#L18) |
-| function | `describe_self_plural` | `()` | — | [src](../../../core/services/parallel_selves.py#L23) |
-| function | `format_self_for_prompt` | `()` | — | [src](../../../core/services/parallel_selves.py#L26) |
-| function | `build_parallel_selves_surface` | `()` | — | [src](../../../core/services/parallel_selves.py#L29) |
 

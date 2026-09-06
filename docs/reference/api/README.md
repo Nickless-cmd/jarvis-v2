@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13584 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13598 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,16 +41,16 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13584 functions/
 - [`core.services.12`](core.services.12.md) — `global_workspace` … `impulse_executor`
 - [`core.services.13`](core.services.13.md) — `in_flight_runs` … `living_heartbeat_cycle`
 - [`core.services.14`](core.services.14.md) — `llm_pricing` … `model_context`
-- [`core.services.15`](core.services.15.md) — `model_trust` … `parallel_selves`
-- [`core.services.16`](core.services.16.md) — `past_context_router` … `prompt_contract`
-- [`core.services.17`](core.services.17.md) — `prompt_evolution` … `reflective_critic_tracking`
-- [`core.services.18`](core.services.18.md) — `regret_engine` … `runtime_self_model_identity`
-- [`core.services.19`](core.services.19.md) — `runtime_self_model_state` … `semantic_memory`
-- [`core.services.20`](core.services.20.md) — `sensory_archive` … `social_labilizer`
-- [`core.services.21`](core.services.21.md) — `somatic_daemon` … `tick_cache`
-- [`core.services.22`](core.services.22.md) — `tiny_webchat_execution_pilot` … `verification_gate`
-- [`core.services.23`](core.services.23.md) — `verification_gate_telemetry` … `workspace_trust`
-- [`core.services.24`](core.services.24.md) — `world_model_auto_extraction` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `model_trust` … `paradoxes_capture`
+- [`core.services.16`](core.services.16.md) — `parallel_selves` … `prompt_cache_probe`
+- [`core.services.17`](core.services.17.md) — `prompt_contract` … `reflection_to_plan`
+- [`core.services.18`](core.services.18.md) — `reflective_critic_tracking` … `runtime_self_model_builder`
+- [`core.services.19`](core.services.19.md) — `runtime_self_model_identity` … `semantic_indexer`
+- [`core.services.20`](core.services.20.md) — `semantic_memory` … `skill_security_scanner`
+- [`core.services.21`](core.services.21.md) — `social_labilizer` … `thought_thread`
+- [`core.services.22`](core.services.22.md) — `tick_cache` … `value_formation`
+- [`core.services.23`](core.services.23.md) — `verification_gate` … `workspace_crypto`
+- [`core.services.24`](core.services.24.md) — `workspace_trust` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

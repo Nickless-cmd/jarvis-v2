@@ -2893,3 +2893,17 @@ __all__ = [
     "_exec_hf_search_models",
     "_exec_hf_model_info",
 ]
+
+def _exec_operator_channel(args: dict[str, Any]) -> dict[str, Any]:
+    """Aabn/luk/vis operator-kanalen. Owner-only for open/close."""
+    from core.services import operator_channel as oc
+    handling = str(args.get("action") or "status").strip().lower()
+    sid = oc.current_session_id()
+    if handling == "status":
+        return oc.status(sid)
+    ejer = oc.current_is_owner()
+    if handling == "open":
+        return oc.open_channel(sid, is_owner=ejer)
+    if handling == "close":
+        return oc.close_channel(sid, is_owner=ejer)
+    return {"status": "error", "error": f"ukendt action: {handling!r}"}

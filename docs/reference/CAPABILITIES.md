@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-06 — 443 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-06 — 444 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -399,6 +399,7 @@
 | `operator_browser_screenshot` | operator | no |
 | `operator_browser_status` | operator | no |
 | `operator_browser_type` | operator | no |
+| `operator_channel` | operator | no |
 | `operator_clipboard_read` | operator | no |
 | `operator_clipboard_write` | operator | no |
 | `operator_edit_file` | operator | no |

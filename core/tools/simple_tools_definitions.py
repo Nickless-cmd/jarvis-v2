@@ -2499,6 +2499,32 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_channel",
+            "description": (
+                "Aabn en direkte kanal til Bjoerns egen maskine. Mens den er "
+                "aaben koerer `bash` DERovre i stedet for paa serveren — uden "
+                "en godkendelse for hvert kald. Brug den naar arbejdet ligger "
+                "paa hans workstation (fx /media/projects) og du skal lave "
+                "mere end ét kald. Luk den naar du er faerdig. Kun for Bjoern "
+                "selv; den lukker ogsaa af sig selv efter 4 timer. "
+                "action='status' viser om den er aaben."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["open", "close", "status"],
+                        "description": "'open', 'close' eller 'status' (default).",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "list_attachments",
             "description": "List files received in the current session \u2014 desk, mobile, Discord or Telegram \u2014 newest first.",
             "parameters": {

@@ -325,6 +325,20 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     if not command:
         return {"error": "command is required", "status": "error"}
 
+    # ── Operator-kanal (6/9-2026) ────────────────────────────────────────────
+    # Er kanalen aaben, hoerer denne kommando til paa Bjoerns maskine og ikke
+    # paa containeren. Owner-only, hardt gatet inde i modulet. Er den lukket,
+    # returnerer den None og alt fortsaetter praecis som foer.
+    try:
+        from core.services import operator_channel as _oc
+        _sid, _owner = _oc.current_session_id(), _oc.current_is_owner()
+        _via = _oc.maybe_reroute_bash(command, args.get("cwd"),
+                                      is_owner=_owner, session_id=_sid)
+        if _via is not None:
+            return _via
+    except Exception:
+        logger.debug("operator_channel: sprunget over", exc_info=True)
+
     # ── Egress-observation (6/9-2026) ────────────────────────────────────────
     # De eksisterende vaern fanger `curl | bash`. Det her fanger ENHVER udgaaende
     # netvaerks-raekken, uanset om den piper videre. Vi BLOKERER ikke — bash er

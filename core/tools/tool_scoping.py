@@ -92,6 +92,9 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
 CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Undersoegelse — laese-kun agent, aendrer intet
     "explore",
+    # Kanalen til hans egen maskine. Gaten sidder i modulet (owner-only), ikke
+    # her — men uden for scope kunne han slet ikke aabne den.
+    "operator_channel",
     # At se. Desk og mobil kan uploade billeder (POST /attachments), men
     # vaerktoejet der kigger paa dem stod i INGEN scope — saa et skaermbillede
     # i chat var noget han kunne modtage og ikke se paa. 6/9-2026.
@@ -133,6 +136,7 @@ CHAT_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
 CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Et skaermbillede af en fejl er ofte den korteste vej til at forstaa den.
     "read_attachment",
+    "operator_channel",
     "operator_read_file", "operator_write_file", "operator_edit_file",
     "operator_bash", "operator_glob", "operator_grep", "operator_list_dir",
     "operator_bash_session_open", "operator_bash_session_run",

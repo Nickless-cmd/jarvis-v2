@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6801/13584 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6807/13598 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,14 +24,14 @@ Generated from source. 6801/13584 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 566 | 1053 | 53% |
-| `core.services` | 4525 | 9410 | 48% |
+| `core.services` | 4530 | 9423 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 92 | 164 | 56% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 386 | 842 | 45% |
+| `core.tools` | 387 | 843 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -40,7 +40,7 @@ Generated from source. 6801/13584 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1955)
+## Undocumented public functions (1959)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1215,6 +1215,10 @@ Generated from source. 6801/13584 functions/methods documented (50%). The list b
 - `core/services/operator_allowlist.py` :: `remove_from_allowlist` (L53)
 - `core/services/operator_allowlist.py` :: `set_allowlist` (L39)
 - `core/services/operator_allowlist.py` :: `set_enforced` (L65)
+- `core/services/operator_channel.py` :: `close_channel` (L94)
+- `core/services/operator_channel.py` :: `is_open` (L76)
+- `core/services/operator_channel.py` :: `looks_like_workstation_path` (L149)
+- `core/services/operator_channel.py` :: `open_channel` (L80)
 - `core/services/outcome_learning.py` :: `build_outcome_learning_surface` (L189)
 - `core/services/paid_lane_guard.py` :: `build_paid_lane_guard_surface` (L98)
 - `core/services/paid_lane_guard.py` :: `is_paid` (L40)
@@ -1876,10 +1880,10 @@ Generated from source. 6801/13584 functions/methods documented (50%). The list b
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1143)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L254)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L198)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L216)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L194)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L221)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L202)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L220)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L198)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L225)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

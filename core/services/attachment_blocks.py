@@ -68,3 +68,52 @@ def user_message_content_json(metas: list[dict[str, Any]]) -> str | None:
         return None
     import json
     return json.dumps(blocks, ensure_ascii=False)
+
+
+# ── Modellens egne øjne (6/9-2026) ───────────────────────────────────────
+# Blokkene ovenfor er til KLIENTEN: en reference den kan hente billedet på.
+# Modellen fik dem aldrig som pixels. Dropper Bjørn et skærmbillede i
+# desk-appen, kunne Jarvis kun se det ved selv at kalde `read_attachment` —
+# altså ved at vide at der VAR noget at kigge på og bede om det.
+#
+# Herunder er den anden vej: billederne på den aktuelle tur lægges direkte i
+# prompten som rigtige indholdsblokke, når den model der svarer selv kan se.
+# Kan den ikke, sker der intet, og vision-vejen står uændret.
+#
+# Referencen bliver til data FØRST her, i prompt-samlingen, og går aldrig
+# gennem den gemte besked. Adgangskontrollen på `/attachments/image/{id}`
+# er dermed uberørt — det var hele grunden til at blokkene kun bar en
+# reference til at begynde med.
+
+def image_ids_on_message(content_json: str | None) -> list[str]:
+    """attachment_id'er for BILLEDER i en besked. Tom liste ved alt andet."""
+    if not content_json:
+        return []
+    import json
+    try:
+        blokke = json.loads(content_json)
+    except Exception:
+        return []
+    if not isinstance(blokke, list):
+        return []
+    return [str(b.get("attachment_id"))
+            for b in blokke
+            if isinstance(b, dict) and b.get("type") == "image" and b.get("attachment_id")]
+
+
+def image_content_blocks(content_json: str | None, *, limit: int = 4) -> list[dict[str, Any]]:
+    """`image_url`-blokke klar til prompten. Tom liste hvis intet kan læses.
+
+    `limit` er et bevidst loft: fire billeder er rigeligt til en tur, og et
+    dusin ville fylde konteksten uden at nogen havde bedt om det.
+    """
+    ud: list[dict[str, Any]] = []
+    for aid in image_ids_on_message(content_json)[: max(1, int(limit))]:
+        try:
+            from core.services.attachment_service import image_data_url
+            url = image_data_url(aid)
+        except Exception:
+            url = None
+        if url:
+            ud.append({"type": "image_url", "image_url": {"url": url}})
+    return ud

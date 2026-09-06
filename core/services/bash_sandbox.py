@@ -18,16 +18,24 @@ Argv, ikke en shell-streng, så der ikke opstår et nyt citerings-hul.
 
 To grunde, og den anden er den vigtige.
 
-1. **bwrap findes ikke på CT105.** Målt 6/9: workstationen har bubblewrap
-   0.9.0, containeren har intet. Så på den maskine hvor runtimens `bash`
-   faktisk kører, ville laget alligevel være inert. Den fejler ÅBENT dér —
-   en manglende mekanisme må ikke gøre bash ubrugelig.
-
-2. **Et fængsel om bash ændrer hvad der virker, ikke bare hvad der er
+1. **Et fængsel om bash ændrer hvad der VIRKER, ikke bare hvad der er
    tilladt.** Kommandoer der har fungeret i månedsvis begynder at fejle på
    stier de ikke længere kan se, og fejlen ligner ikke en tilladelsesfejl —
    den ligner at filen ikke findes. Derfor er den et bevidst valg pr.
    installation, ikke noget der bare glider ind med en deploy.
+
+2. **Den dækker ikke den normale bash-vej.** Runtime kører bash i en
+   PERSISTENT session, og et fængsel pr. kommando kan ikke lægges om en
+   shell der bliver stående mellem kald. Indespærringen sidder på
+   engangs-vejen. Et halvt dækkende lag der er tændt er værre end et der er
+   slukket, for det giver en tryghed der ikke svarer til virkeligheden.
+
+**Tilgængelighed (opdateret 6/9 kl. 11):** bubblewrap 0.9.0 er nu installeret
+BEGGE steder — workstationen og CT105 — og verificeret virksom i containeren
+(user namespaces er åbne i den LXC, og `/media` er usynlig indefra). Den
+tidligere note om at bwrap manglede på CT105 er dermed forældet. Laget fejler
+stadig åbent hvis binæren forsvinder: en manglende mekanisme må ikke gøre
+bash ubrugelig.
 
 Flaget læses RÅT, ikke via `central_switches.is_enabled` — den defaulter til
 ON når den er usat, og det er den forkerte vej rundt for det her.

@@ -7,12 +7,12 @@ _bwrap-indespærring om én bash-kommando. SLUKKET som standard._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `is_available` | `()` | Findes bwrap på DENNE maskine? | [src](../../../core/services/bash_sandbox.py#L49) |
-| function | `is_enabled` | `()` | Eksplicit tændt? Usat betyder SLUKKET — modsat central_switches' default. | [src](../../../core/services/bash_sandbox.py#L54) |
-| function | `set_enabled` | `(on)` | — | [src](../../../core/services/bash_sandbox.py#L64) |
-| function | `status` | `()` | — | [src](../../../core/services/bash_sandbox.py#L71) |
-| function | `wrap_bwrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed. | [src](../../../core/services/bash_sandbox.py#L85) |
-| function | `maybe_wrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | argv hvis sandboxen er tændt OG mulig her — ellers None (kør normalt). | [src](../../../core/services/bash_sandbox.py#L105) |
+| function | `is_available` | `()` | Findes bwrap på DENNE maskine? | [src](../../../core/services/bash_sandbox.py#L57) |
+| function | `is_enabled` | `()` | Eksplicit tændt? Usat betyder SLUKKET — modsat central_switches' default. | [src](../../../core/services/bash_sandbox.py#L62) |
+| function | `set_enabled` | `(on)` | — | [src](../../../core/services/bash_sandbox.py#L72) |
+| function | `status` | `()` | — | [src](../../../core/services/bash_sandbox.py#L79) |
+| function | `wrap_bwrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed. | [src](../../../core/services/bash_sandbox.py#L93) |
+| function | `maybe_wrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | argv hvis sandboxen er tændt OG mulig her — ellers None (kør normalt). | [src](../../../core/services/bash_sandbox.py#L113) |
 
 ## `core/services/behavioral_decisions.py`
 _Behavioral decisions — closing the reflection→behavior loop._

@@ -996,3 +996,31 @@ def get_session_owner(session_id: str) -> str | None:
             (sid,),
         ).fetchone()
     return row[0] if row else None
+
+def latest_user_content_json(session_id: str) -> str | None:
+    """`content_json` for sessionens SENESTE brugerbesked.
+
+    Bruges af prompt-samlingen til at finde de billeder der hører til netop
+    denne tur. Beskeden persisteres FØR samlingen, så den seneste user-række
+    ER den aktuelle tur.
+
+    Self-safe: enhver fejl → None (turen bygges som hidtil, uden billeder).
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return None
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                """
+                SELECT content_json FROM chat_messages
+                WHERE session_id = ? AND role = 'user'
+                ORDER BY created_at DESC, rowid DESC LIMIT 1
+                """,
+                (sid,),
+            ).fetchone()
+        return str(row[0]) if row and row[0] else None
+    except Exception:
+        return None
+

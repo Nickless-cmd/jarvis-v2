@@ -531,6 +531,34 @@ def _build_visible_input(
     return items
 
 
+def _giv_modellen_oejne(messages: list[dict], *, session_id: str | None,
+                        model: str) -> None:
+    """Sæt billed-blokke på den sidste user-besked. Self-safe: fejl → uændret."""
+    try:
+        if not messages or not session_id:
+            return
+        from core.services.vision_backend import model_can_see
+        if not model_can_see(model):
+            return
+        sidste = None
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                sidste = m
+                break
+        if sidste is None or not isinstance(sidste.get("content"), str):
+            return
+        from core.services.attachment_blocks import image_content_blocks
+        from core.services.chat_sessions import latest_user_content_json
+        blokke = image_content_blocks(latest_user_content_json(session_id))
+        if not blokke:
+            return
+        sidste["content"] = [{"type": "text", "text": sidste["content"]}, *blokke]
+        logger.info("visible: %d billede(r) lagt direkte i konteksten (%s ser selv)",
+                    len(blokke), model)
+    except Exception:
+        logger.warning("kunne ikke give modellen øjne", exc_info=True)
+
+
 def _build_visible_chat_messages_for_github(
     message: str,
     *,
@@ -591,6 +619,18 @@ def _build_visible_chat_messages_for_github(
         messages.append({"role": "user", "content": message})
 
     _insert_system_tail_before_current_user(messages, dynamic_tail)
+
+    # ── Hans egne øjne (6/9-2026) ────────────────────────────────────────
+    # Billeder på DENNE tur lægges ind som rigtige indholdsblokke, når den
+    # model der svarer selv kan se. Uden det kunne han kun se et skærmbillede
+    # ved selv at kalde `read_attachment` — altså ved at vide at der var noget
+    # at kigge på og bede om det. Nu ligger det i konteksten som for et
+    # menneske der får en skærm vist.
+    #
+    # KUN den sidste besked røres, så det stabile præfiks er uberørt og
+    # cachen intakt. Kan modellen ikke se, sker der ingenting og
+    # vision-vejen står som før.
+    _giv_modellen_oejne(messages, session_id=session_id, model=model)
 
     # Cache-sonde (slukket; touch /tmp/jarvis-msgdump). DETTE er deepseek-stien
     # — sonden skal sidde efter hale-splittet, så den måler præcis det array der

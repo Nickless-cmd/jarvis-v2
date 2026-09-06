@@ -90,11 +90,22 @@ def mc_runs(limit: int = 20) -> dict:
     """Runs-flade: aktiv run, sidste udfald/capability-brug, de seneste
     `limit` persisterede runs (med udledt failed/cancelled-tælling), seneste
     events samt seneste arbejds-enheder/-noter. Read-only projektion."""
+    from core.identity.workspace_context import current_role, current_user_id
+
     normalized_limit = max(int(limit), 1)
     surface = _mc_facade("_visible_run_surface")()
     work = _mc_facade("_visible_work_surface")()
+    # Bruger-scoping (6/9-2026): ruten returnerede ALLE brugeres runs til
+    # enhver autentificeret kalder. Owner ser alt — sine egne plus systemets
+    # egne autonome koersler, der ingen ejer har. Andre ser kun deres egne.
+    # Samme regel som approvals-koeen allerede foelger.
     recent_runs = list(
-        _mc_facade("recent_visible_runs")(limit=normalized_limit) or []
+        _mc_facade("recent_visible_runs")(
+            limit=normalized_limit,
+            user_id=current_user_id() or None,
+            include_unassigned=current_role() in {"", "owner"},
+        )
+        or []
     )
     failed_runs = [
         item

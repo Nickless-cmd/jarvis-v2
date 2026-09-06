@@ -459,18 +459,18 @@ _Mission Control routes: runs, overview, events, costs, approvals, memory-pipeli
 | function | `mc_events` | `(limit=…, family=…)` | Seneste events fra event-bussen (op til `limit`), valgfrit filtreret | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L62) |
 | function | `mc_costs` | `(limit=…)` | Cost-flade: telemetri-summering plus de seneste `limit` cost-rækker. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L80) |
 | function | `mc_runs` | `(limit=…)` | Runs-flade: aktiv run, sidste udfald/capability-brug, de seneste | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L89) |
-| function | `mc_approvals` | `(limit=…)` | Approvals-flade: de seneste `limit` approval-requests (med udledt | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L121) |
-| function | `mc_memory_pipeline` | `(limit=…)` | Memory-pipeline status surface (added 2026-06-09). | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L192) |
-| function | `mc_autonomy_proposals` | `(limit=…)` | MC surface for Niveau 2 autonomy proposal queue. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L351) |
-| function | `mc_approve_autonomy_proposal` | `(proposal_id, note=…)` | Godkend et Niveau 2-autonomi-forslag via id, med valgfri resolution-note. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L365) |
-| function | `mc_reject_autonomy_proposal` | `(proposal_id, note=…)` | Afvis et Niveau 2-autonomi-forslag via id, med valgfri resolution-note. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L375) |
-| function | `mc_initiatives` | `(limit=…)` | MC surface for the persistent initiative queue — pending, acted, approved, rejected. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L385) |
-| function | `mc_approve_initiative` | `(initiative_id, note=…)` | Approve a pending initiative so the heartbeat may act on it. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L398) |
-| function | `mc_reject_initiative` | `(initiative_id, note=…)` | Reject and expire a pending initiative. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L408) |
-| function | `mc_life_projects` | `()` | Mission Control surface for Jarvis-owned long-term intentions. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L418) |
-| function | `mc_endorse_life_project` | `(initiative_id, note=…)` | Sig god for en langsigtet hensigt uden at afslutte den. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L424) |
-| function | `mc_abandon_life_project` | `(initiative_id, note=…)` | Abandon a long-term intention without deleting its record. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L434) |
-| function | `mc_operations` | `(limit=…)` | Samlet operations-flade (3s cached): runtime-config, tool-intent, runs, | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L443) |
+| function | `mc_approvals` | `(limit=…)` | Approvals-flade: de seneste `limit` approval-requests (med udledt | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L132) |
+| function | `mc_memory_pipeline` | `(limit=…)` | Memory-pipeline status surface (added 2026-06-09). | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L203) |
+| function | `mc_autonomy_proposals` | `(limit=…)` | MC surface for Niveau 2 autonomy proposal queue. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L362) |
+| function | `mc_approve_autonomy_proposal` | `(proposal_id, note=…)` | Godkend et Niveau 2-autonomi-forslag via id, med valgfri resolution-note. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L376) |
+| function | `mc_reject_autonomy_proposal` | `(proposal_id, note=…)` | Afvis et Niveau 2-autonomi-forslag via id, med valgfri resolution-note. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L386) |
+| function | `mc_initiatives` | `(limit=…)` | MC surface for the persistent initiative queue — pending, acted, approved, rejected. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L396) |
+| function | `mc_approve_initiative` | `(initiative_id, note=…)` | Approve a pending initiative so the heartbeat may act on it. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L409) |
+| function | `mc_reject_initiative` | `(initiative_id, note=…)` | Reject and expire a pending initiative. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L419) |
+| function | `mc_life_projects` | `()` | Mission Control surface for Jarvis-owned long-term intentions. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L429) |
+| function | `mc_endorse_life_project` | `(initiative_id, note=…)` | Sig god for en langsigtet hensigt uden at afslutte den. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L435) |
+| function | `mc_abandon_life_project` | `(initiative_id, note=…)` | Abandon a long-term intention without deleting its record. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L445) |
+| function | `mc_operations` | `(limit=…)` | Samlet operations-flade (3s cached): runtime-config, tool-intent, runs, | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L454) |
 
 ## `apps/api/jarvis_api/routes/mission_control_runtime_config.py`
 _Mission Control routes: adaptive/tool-intent, runtime-contract, heartbeat, visible-execution, capability-approval_

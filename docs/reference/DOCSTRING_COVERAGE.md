@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6856/13689 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6858/13690 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,7 +23,7 @@ Generated from source. 6856/13689 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 566 | 1053 | 53% |
+| `core.runtime` | 568 | 1054 | 53% |
 | `core.services` | 4567 | 9497 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 92 | 164 | 56% |
@@ -40,7 +40,7 @@ Generated from source. 6856/13689 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1977)
+## Undocumented public functions (1976)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L199)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -482,11 +482,10 @@ Generated from source. 6856/13689 functions/methods documented (50%). The list b
 - `core/runtime/db_users.py` :: `soft_delete_user_row` (L204)
 - `core/runtime/db_users.py` :: `update_user_row` (L191)
 - `core/runtime/db_visible.py` :: `ensure_visible_tables` (L15)
-- `core/runtime/db_visible.py` :: `recent_visible_runs` (L73)
-- `core/runtime/db_visible.py` :: `recent_visible_work_notes` (L111)
-- `core/runtime/db_visible.py` :: `recent_visible_work_units` (L155)
-- `core/runtime/db_visible.py` :: `record_visible_work_note` (L195)
-- `core/runtime/db_visible.py` :: `visible_session_continuity` (L303)
+- `core/runtime/db_visible.py` :: `recent_visible_work_notes` (L146)
+- `core/runtime/db_visible.py` :: `recent_visible_work_units` (L190)
+- `core/runtime/db_visible.py` :: `record_visible_work_note` (L230)
+- `core/runtime/db_visible.py` :: `visible_session_continuity` (L338)
 - `core/runtime/heartbeat_triggers.py` :: `clear_triggers` (L77)
 - `core/runtime/heartbeat_triggers.py` :: `consume_trigger` (L68)
 - `core/runtime/heartbeat_triggers.py` :: `peek_trigger` (L63)

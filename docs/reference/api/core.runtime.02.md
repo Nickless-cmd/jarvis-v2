@@ -696,11 +696,12 @@ _Persistence for the visible-lane projection tables._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `ensure_visible_tables` | `(conn)` | — | [src](../../../core/runtime/db_visible.py#L15) |
-| function | `recent_visible_runs` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L73) |
-| function | `recent_visible_work_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L111) |
-| function | `recent_visible_work_units` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L155) |
-| function | `record_visible_work_note` | `(*, note_id, work_id, run_id, status, lane, provider, model, user_message_preview=…, capability_id=…, work_preview=…, projection_source=…, created_at, finished_at)` | — | [src](../../../core/runtime/db_visible.py#L195) |
-| function | `visible_session_continuity` | `()` | — | [src](../../../core/runtime/db_visible.py#L303) |
+| function | `_run_user_scope` | `(user_id, include_unassigned)` | WHERE-fragment + parametre for bruger-scoping af runs. | [src](../../../core/runtime/db_visible.py#L73) |
+| function | `recent_visible_runs` | `(limit=…, *, user_id=…, include_unassigned=…)` | De seneste runs. UDEN `user_id` er der intet filter. | [src](../../../core/runtime/db_visible.py#L93) |
+| function | `recent_visible_work_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L146) |
+| function | `recent_visible_work_units` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L190) |
+| function | `record_visible_work_note` | `(*, note_id, work_id, run_id, status, lane, provider, model, user_message_preview=…, capability_id=…, work_preview=…, projection_source=…, created_at, finished_at)` | — | [src](../../../core/runtime/db_visible.py#L230) |
+| function | `visible_session_continuity` | `()` | — | [src](../../../core/runtime/db_visible.py#L338) |
 
 ## `core/runtime/heartbeat_triggers.py`
 _Heartbeat trigger queue._

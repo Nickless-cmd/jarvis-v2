@@ -70,7 +70,41 @@ def ensure_visible_tables(conn: sqlite3.Connection) -> None:
     )
 
 
-def recent_visible_runs(limit: int = 5) -> list[dict[str, object]]:
+def _run_user_scope(
+    user_id: str | None, include_unassigned: bool,
+) -> tuple[str, tuple]:
+    """WHERE-fragment + parametre for bruger-scoping af runs.
+
+    Samme form som `_approval_user_scope`, saa de to koeer scoper ens.
+
+    - `user_id=None` → intet filter (interne daemoner: de SKAL se alt).
+    - owner (`include_unassigned=True`) → egne runs PLUS dem uden ejer;
+      systemets egne autonome koersler har ingen user_id og hoerer til ham.
+    - andre → kun deres egne.
+    """
+    uid = str(user_id or "").strip()
+    if not uid:
+        return "1=1", ()
+    if include_unassigned:
+        return "(user_id = ? OR user_id IS NULL OR user_id = '')", (uid,)
+    return "user_id = ?", (uid,)
+
+
+def recent_visible_runs(
+    limit: int = 5,
+    *,
+    user_id: str | None = None,
+    include_unassigned: bool = False,
+) -> list[dict[str, object]]:
+    """De seneste runs. UDEN `user_id` er der intet filter.
+
+    Scopingen er OPT-IN (6/9-2026): funktionen har 43 kaldere, og langt de
+    fleste er daemoner der med rette skal se hele billedet. Men ruten
+    `/mc/runs` returnerede ALLE brugeres runs til enhver autentificeret
+    kalder — usynligt med én bruger, en aegte eksponering i det oejeblik der
+    er en member eller gaest. Ruten sender nu kalderens identitet med.
+    """
+    scope_sql, scope_params = _run_user_scope(user_id, include_unassigned)
     with connect() as conn:
         rows = conn.execute(
             """
@@ -86,10 +120,11 @@ def recent_visible_runs(limit: int = 5) -> list[dict[str, object]]:
                 error,
                 capability_id
             FROM visible_runs
+            WHERE {scope}
             ORDER BY id DESC
             LIMIT ?
-            """,
-            (max(limit, 1),),
+            """.format(scope=scope_sql),
+            (*scope_params, max(limit, 1)),
         ).fetchall()
     return [
         {

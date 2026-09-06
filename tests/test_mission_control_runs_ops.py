@@ -7,7 +7,17 @@ def test_mc_runs_respects_requested_limit_beyond_surface_cap(
 ) -> None:
     mc = isolated_runtime.mission_control
     rows = [{"run_id": f"run-{index}", "status": "completed"} for index in range(8)]
-    monkeypatch.setattr(mc, "recent_visible_runs", lambda limit: rows[:limit])
+    # Ruten sender nu ogsaa kalderens identitet med (6/9-2026): den
+    # returnerede foer ALLE brugeres runs. Dubletten fanger begge dele, saa
+    # scopet ikke kan falde ud igen uden at en test siger fra.
+    set_scope: dict = {}
+
+    def _falsk(limit, *, user_id=None, include_unassigned=False):
+        set_scope["user_id"] = user_id
+        set_scope["include_unassigned"] = include_unassigned
+        return rows[:limit]
+
+    monkeypatch.setattr(mc, "recent_visible_runs", _falsk)
     monkeypatch.setattr(
         mc,
         "_visible_run_surface",
@@ -21,6 +31,8 @@ def test_mc_runs_respects_requested_limit_beyond_surface_cap(
 
     assert len(mc.mc_runs(limit=20)["recent_runs"]) == 8
     assert len(mc.mc_runs(limit=3)["recent_runs"]) == 3
+    assert "user_id" in set_scope, "ruten skal sende kalderens identitet med"
+    assert "include_unassigned" in set_scope
 
 
 def test_mc_approvals_respects_requested_limit_beyond_surface_cap(

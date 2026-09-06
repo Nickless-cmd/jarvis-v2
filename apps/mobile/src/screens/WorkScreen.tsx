@@ -34,6 +34,10 @@ interface Props {
   onPendingCount?: (count: number) => void
   /** Kaldes når en sync-udløst hentning er færdig. */
   onSyncDone?: () => void
+  /** Fane der skal åbnes udefra — fx når et approval-push tappes. */
+  focusTab?: WorkTab
+  /** Tæller op ved hvert tap, så gentagne pushes også virker. */
+  focusSignal?: number
 }
 
 const POLL_MS = 4000
@@ -60,13 +64,23 @@ export function tælReviewVentende(reviews: WorkReview[]): number {
  * State bor på serveren — skærmen abonnerer, den ejer intet. Taber telefonen
  * forbindelsen, dør intet.
  */
-export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSyncDone }: Props) {
+export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSignal = 0,
+                            onPendingCount, onSyncDone }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const { config } = useAuth()
   const sessions = useSessions()
   const stream = useStream()
   const [tab, setTab] = useState<WorkTab>('tasks')
+
+  // Et approval-push skal lande i GODKEND, ikke bare i rummet (6/9-2026).
+  // Før satte App kun mode='arbejde', så man landede på Opgaver og skulle
+  // selv finde fanen — netop det spec'en siger tappet skal spare én for.
+  // `focusSignal` tæller op ved hvert tap, så to pushes i træk begge virker;
+  // uden det ville en fane man selv havde skiftet væk fra aldrig komme igen.
+  useEffect(() => {
+    if (focusSignal > 0 && focusTab) setTab(focusTab)
+  }, [focusSignal, focusTab])
   const [runs, setRuns] = useState<McRun[]>([])
   const [approvals, setApprovals] = useState<Approval[]>([])
   const [error, setError] = useState<string | null>(null)

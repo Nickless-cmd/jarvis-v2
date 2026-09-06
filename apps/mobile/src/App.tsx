@@ -43,6 +43,9 @@ function AppBody() {
   // Arbejde-rummet (V2). Tilstanden bor her — ikke i en navigation-lib;
   // to bevidste tilstande af samme forhold til Jarvis, ikke to apps.
   const [mode, setMode] = useState<AppMode>('snak')
+  // Et approval-push skal lande i Arbejde → GODKEND. Signalet tæller op, så
+  // to pushes i træk begge rammer fanen, også hvis man selv har skiftet væk.
+  const [approveFokus, setApproveFokus] = useState(0)
   const [syncSignal, setSyncSignal] = useState(0)
   const [pendingWork, setPendingWork] = useState(0)
   const [menuSignal, setMenuSignal] = useState(0)
@@ -74,9 +77,15 @@ function AppBody() {
   // Bjørn skal selv finde det der ventede.
   useEffect(() => {
     void openedFromApprovalPush().then((yes) => {
-      if (yes) setMode('arbejde')
+      if (yes) {
+        setMode('arbejde')
+        setApproveFokus((n) => n + 1)
+      }
     })
-    return attachApprovalTapHandler(() => setMode('arbejde'))
+    return attachApprovalTapHandler(() => {
+      setMode('arbejde')
+      setApproveFokus((n) => n + 1)
+    })
   }, [])
 
   // Auto-updater: check ved opstart + når app vender tilbage til forgrunden.
@@ -175,6 +184,8 @@ function AppBody() {
               syncSignal={mode === 'arbejde' ? syncSignal : 0}
               onPendingCount={setPendingWork}
               onSyncDone={() => setSyncing(false)}
+              focusTab="approve"
+              focusSignal={approveFokus}
             />
           </ErrorBoundary>
         </View>

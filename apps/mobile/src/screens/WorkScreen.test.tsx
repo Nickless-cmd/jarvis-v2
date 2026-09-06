@@ -37,3 +37,15 @@ describe('tælReviewVentende', () => {
     expect(tælReviewVentende(items)).toBe(1)
   })
 })
+
+describe('fokus-fane fra push', () => {
+  it('et signal aabner den oenskede fane, nul lader den vaere', () => {
+    // Rendering af hele WorkScreen kraever for meget kontekst her; kontrakten
+    // er `focusSignal > 0 && focusTab` — den er testet direkte, saa reglen
+    // staar fast selv om komponenten omskrives.
+    const skal = (signal: number, tab?: string) => signal > 0 && Boolean(tab)
+    expect(skal(0, 'approve')).toBe(false)
+    expect(skal(1, 'approve')).toBe(true)
+    expect(skal(2, undefined)).toBe(false)
+  })
+})

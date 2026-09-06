@@ -287,3 +287,71 @@ export async function addMcpServer(config: ApiConfig, name: string, url: string)
 export async function removeMcpServer(config: ApiConfig, id: string): Promise<void> {
   await apiFetch(config, `/account/mcp/${id}`, { method: 'DELETE' })
 }
+
+/** MCP-tillid (6/9-2026). Registeret er en adressebog; det her er beslutningen.
+ *  Uden disse tre kunne man tilføje en server i UI'et og aldrig godkende den
+ *  derfra — altså tilføje noget der aldrig kunne bruges. */
+export type McpTrustRow = {
+  navn: string
+  url?: string
+  godkendt: boolean
+  forbundet: boolean
+  vaerktoejer: number
+}
+export async function getMcpTrust(
+  config: ApiConfig,
+): Promise<{ servere: McpTrustRow[]; pins: Record<string, unknown> }> {
+  return apiFetch(config, '/account/mcp/trust')
+}
+export async function allowMcpServer(config: ApiConfig, navn: string): Promise<void> {
+  await apiFetch(config, `/account/mcp/${encodeURIComponent(navn)}/allow`, { method: 'POST' })
+}
+export async function revokeMcpServer(config: ApiConfig, navn: string): Promise<void> {
+  await apiFetch(config, `/account/mcp/${encodeURIComponent(navn)}/revoke`, { method: 'POST' })
+}
+
+/** Workbench: operator-kanal, checkpoints og runtime-kontakter. */
+export type OperatorChannel = { open: boolean; udloeber_om_s?: number }
+export async function getOperatorChannel(
+  config: ApiConfig, sessionId?: string,
+): Promise<OperatorChannel> {
+  const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''
+  return apiFetch(config, `/workbench/operator-channel${q}`)
+}
+export async function setOperatorChannel(
+  config: ApiConfig, open: boolean, sessionId?: string,
+): Promise<OperatorChannel> {
+  return apiFetch(config, `/workbench/operator-channel/${open ? 'open' : 'close'}`, {
+    method: 'POST',
+    body: sessionId ? { session_id: sessionId } : {},
+  })
+}
+
+export type Checkpoint = { sha: string; note?: string; cwd?: string; tid?: number }
+export async function getCheckpoints(
+  config: ApiConfig, sessionId?: string,
+): Promise<{ antal: number; punkter: Checkpoint[] }> {
+  const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''
+  return apiFetch(config, `/workbench/checkpoints${q}`)
+}
+export async function rollbackCheckpoint(
+  config: ApiConfig, sessionId?: string,
+): Promise<{ status: string; gendannet?: string; error?: string }> {
+  return apiFetch(config, '/workbench/checkpoints/rollback', {
+    method: 'POST',
+    body: sessionId ? { session_id: sessionId } : {},
+  })
+}
+
+export type RuntimeSwitches = {
+  bash_sandbox: { tændt: boolean; bwrap_findes: boolean; aktiv: boolean; note: string }
+  env_block: { tændt: boolean }
+}
+export async function getRuntimeSwitches(config: ApiConfig): Promise<RuntimeSwitches> {
+  return apiFetch(config, '/workbench/switches')
+}
+export async function setRuntimeSwitch(
+  config: ApiConfig, navn: 'bash_sandbox' | 'env_block', enabled: boolean,
+): Promise<void> {
+  await apiFetch(config, `/workbench/switches/${navn}`, { method: 'POST', body: { enabled } })
+}

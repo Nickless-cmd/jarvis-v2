@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-05 from app.routes (live) — 525 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-06 from app.routes (live) — 535 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -15,7 +15,10 @@
 | PATCH | `/account/language` | dict | account |
 | GET | `/account/mcp` | dict | account |
 | POST | `/account/mcp` | dict | account |
+| GET | `/account/mcp/trust` | dict | account |
 | DELETE | `/account/mcp/{server_id}` | dict | account |
+| POST | `/account/mcp/{server_name}/allow` | dict | account |
+| POST | `/account/mcp/{server_name}/revoke` | dict | account |
 | GET | `/account/me` | dict | account |
 | GET | `/account/memory` | dict | account |
 | GET | `/account/memory/search` | dict | account |
@@ -529,3 +532,10 @@
 | POST | `/v1/tools/execute` |  | agent_loop |
 | GET | `/v1/tools/native` |  | agent_loop |
 | POST | `/v1/tools/native` |  | agent_loop |
+| GET | `/workbench/checkpoints` | dict | workbench |
+| POST | `/workbench/checkpoints/rollback` | dict | workbench |
+| GET | `/workbench/operator-channel` | dict | workbench |
+| POST | `/workbench/operator-channel/close` | dict | workbench |
+| POST | `/workbench/operator-channel/open` | dict | workbench |
+| GET | `/workbench/switches` | dict | workbench |
+| POST | `/workbench/switches/{navn}` | dict | workbench |

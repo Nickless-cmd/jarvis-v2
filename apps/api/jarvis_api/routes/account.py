@@ -443,6 +443,47 @@ async def account_mcp_remove(server_id: str) -> dict[str, Any]:
     return await asyncio.to_thread(remove_mcp_server, server_id)
 
 
+@router.get("/mcp/trust")
+async def account_mcp_trust() -> dict[str, Any]:
+    """Hvilke servere er GODKENDT, og hvad er de pinnet til?
+
+    Registeret (`/mcp`) er en adressebog; det her er beslutningen. Uden denne
+    rute kunne man tilfoeje en server i UI'et og ALDRIG godkende den derfra —
+    saa var den tilfoejet og ubrugelig.
+    """
+    from core.services.mcp_manager import status as mcp_status
+    return await asyncio.to_thread(mcp_status)
+
+
+@router.post("/mcp/{server_name}/allow")
+async def account_mcp_allow(server_name: str) -> dict[str, Any]:
+    """Owner-only: godkend en MCP-server til at koere paa Bjoerns vegne.
+
+    Samme graense som operator-kanalen: det er en fremmed server der faar lov
+    at handle. Foerste forbindelse pinner maalet (sha256 for stdio, vaert for
+    http); skifter det bagefter, blokeres den indtil den godkendes paa ny.
+    """
+    snap = current_context_snapshot()
+    if _current_role(snap.get("user_id") or "") != "owner":
+        raise HTTPException(status_code=403, detail="Kun owner kan godkende en MCP-server")
+    from core.services.mcp_trust import allow
+    return await asyncio.to_thread(allow, server_name)
+
+
+@router.post("/mcp/{server_name}/revoke")
+async def account_mcp_revoke(server_name: str) -> dict[str, Any]:
+    """Owner-only: tilbagekald godkendelsen OG drop pinnen.
+
+    Pinnen ryger med, saa en genkendelse er en ny beslutning frem for en tavs
+    genoptagelse af den gamle tillid.
+    """
+    snap = current_context_snapshot()
+    if _current_role(snap.get("user_id") or "") != "owner":
+        raise HTTPException(status_code=403, detail="Kun owner kan tilbagekalde en MCP-server")
+    from core.services.mcp_trust import revoke
+    return await asyncio.to_thread(revoke, server_name)
+
+
 @router.get("/quota")
 async def account_quota() -> dict[str, Any]:
     """Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type

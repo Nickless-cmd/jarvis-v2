@@ -5,11 +5,19 @@ const getAccountApps = vi.fn()
 const getAccountMcp = vi.fn()
 const addMcpServer = vi.fn().mockResolvedValue(undefined)
 const removeMcpServer = vi.fn().mockResolvedValue(undefined)
+const getMcpTrust = vi.fn(async () => ({ servere: [], pins: {} }))
+const allowMcpServer = vi.fn(async () => undefined)
+const revokeMcpServer = vi.fn(async () => undefined)
 vi.mock('../../lib/coworkApi', () => ({
   getAccountApps: (...a: unknown[]) => getAccountApps(...a),
   getAccountMcp: (...a: unknown[]) => getAccountMcp(...a),
   addMcpServer: (...a: unknown[]) => addMcpServer(...a),
   removeMcpServer: (...a: unknown[]) => removeMcpServer(...a),
+  // MCP-sektionen henter nu OGSÅ tilliden (6/9-2026) — registeret er
+  // adressebogen, godkendelsen er beslutningen.
+  getMcpTrust: () => getMcpTrust(),
+  allowMcpServer: () => allowMcpServer(),
+  revokeMcpServer: () => revokeMcpServer(),
 }))
 
 import { AppsSection } from './AppsSection'

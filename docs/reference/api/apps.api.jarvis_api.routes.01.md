@@ -35,12 +35,15 @@ _Self-profile-route for cowork command center (spec §4.1 Account)._
 | function | `account_mcp` | `()` | List registrerede MCP-servere. Returnerer {"servers": [...]}. | [src](../../../apps/api/jarvis_api/routes/account.py#L413) |
 | function | `account_mcp_add` | `(payload=…)` | Owner-only: tilføj en MCP-server. Body: {name, url}. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L421) |
 | function | `account_mcp_remove` | `(server_id)` | Owner-only: fjern MCP-serveren med `server_id`. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L435) |
-| function | `account_quota` | `()` | Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type | [src](../../../apps/api/jarvis_api/routes/account.py#L447) |
-| function | `build_data_export` | `(user_id, *, get_user, get_tier)` | GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt. | [src](../../../apps/api/jarvis_api/routes/account.py#L455) |
-| function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L509) |
-| function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L522) |
-| function | `account_data_overview` | `()` | Hvad har vi om dig, lag for lag. Rene tal — intet indhold. | [src](../../../apps/api/jarvis_api/routes/account.py#L588) |
-| function | `account_delete_layer` | `(layer)` | Slet ét lag: sessions | senses | brain | identity — eller `all`. | [src](../../../apps/api/jarvis_api/routes/account.py#L601) |
+| function | `account_mcp_trust` | `()` | Hvilke servere er GODKENDT, og hvad er de pinnet til? | [src](../../../apps/api/jarvis_api/routes/account.py#L447) |
+| function | `account_mcp_allow` | `(server_name)` | Owner-only: godkend en MCP-server til at koere paa Bjoerns vegne. | [src](../../../apps/api/jarvis_api/routes/account.py#L459) |
+| function | `account_mcp_revoke` | `(server_name)` | Owner-only: tilbagekald godkendelsen OG drop pinnen. | [src](../../../apps/api/jarvis_api/routes/account.py#L474) |
+| function | `account_quota` | `()` | Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type | [src](../../../apps/api/jarvis_api/routes/account.py#L488) |
+| function | `build_data_export` | `(user_id, *, get_user, get_tier)` | GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt. | [src](../../../apps/api/jarvis_api/routes/account.py#L496) |
+| function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L550) |
+| function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L563) |
+| function | `account_data_overview` | `()` | Hvad har vi om dig, lag for lag. Rene tal — intet indhold. | [src](../../../apps/api/jarvis_api/routes/account.py#L629) |
+| function | `account_delete_layer` | `(layer)` | Slet ét lag: sessions | senses | brain | identity — eller `all`. | [src](../../../apps/api/jarvis_api/routes/account.py#L642) |
 
 ## `apps/api/jarvis_api/routes/agent_audit.py`
 _Agent-audit-trail route (Fase 5 Task 9) — GET /v1/agent/audit._

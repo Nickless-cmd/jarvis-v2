@@ -3,7 +3,7 @@
 > **Dato:** 2026-09-06 · **Forfatter:** Jarvis (undersøgelse + design + selv-review)
 > **Status:** Forslag til Bjørn/Claude — ikke implementeret
 > **Problem-ejer:** Bjørn — "400+ tools er for mange. Du bruger dem ikke, fordi du ikke bliver vist dem."
-> **Selv-review 2026-09-06:** fundet og rettet — forkert præcedens (se §Arketype), injektionspunkt skærpet til future-mønsteret, kill-switch navngivet korrekt, min-besked-længde arvet. Se ændringslog bagerst.
+> **Selv-review 2026-09-06:** fundet og rettet — forkert præcedens (se §Arketype), injektionspunkt skærpet til future-mønsteret, kill-switch navngivet korrekt, min-besked-længde arvet, tests/edges-sektion tilføjet efter Bjørns gennemgang. Se ændringslog bagerst.
 
 ## Problem
 
@@ -122,6 +122,36 @@ SELECT count(DISTINCT tool_name) FROM events WHERE kind='tool.completed';
 
 Succeskriterie: **andel aldrig-brugte tools falder fra 76 %**, og nudge → load → brug-konverteringen er målbar > 0 **uden at false-positive-raten får Jarvis til at ignorere nudges**.
 
+## Tests & edge cases
+
+Arver strukturen fra arketypens test-fil (`tests/test_skill_relevance_surface.py`) — to grupper: **"Tavshed hvor der intet er"** og **"Indholdet"**. Nye tests skal følge samme form (monkeypatch af matcheren, aldrig rigtige embed-kald).
+
+### Tavshed — skal returnere `""` (og helst uden at betale for opslaget)
+
+- **Kort besked (< `_MIN_MESSAGE_CHARS`):** `"hej"`, `""`, `"   "` → ingen embed-kald overhovedet (test at matcheren *aldrig* kaldes — samme `pytest.fail`-trick som arketypen).
+- **Ingen matches over tærskel:** matcher returnerer tomt/nul → `""`.
+- **Kill-switch slukket** (`tool_discovery_nudge_enabled = False`) → `""` selvom der er stærke matches.
+- **Embedding-laget kaster / timer ud (Ollama nede):** → `""` — prompt-bygningen vælter aldrig. (Matcher arketypens "fejlende matcher vælter ikke prompten".)
+- **Embedding-DB tom** (ikke varmet op endnu, første kørsel): → `""` — ingen crash, ingen nudge før der er data.
+- **Match findes, men navnet er ikke længere i `get_tool_definitions()`** (forældet vektor, `runtime_`-alias): filtreret væk → `""`. Nudgen må aldrig foreslå et navn der ikke findes.
+- **Kun matches der allerede er i katalog-klartekst** (`build_catalog_text()`): filtreret → `""`. Nudgen må kun pege på det usynlige.
+- **Prewarm/opvarmnings-turns:** sektionen kaldes aldrig.
+
+### Indhold — skal returnere nudge-tekst
+
+- **Stærkt match** (over tærskel, ikke i kataloget, navn findes): sektionen indeholder tool-navnet + `load_more_tools(names=[...])`-opfordringen.
+- **Grænse-værdi:** match *præcis* på tærsklen (fx 0.45) er inkluderet — testen definerer om det er `>=` eller `>` (spec'en vælger `>=`; testen låser det).
+- **Max 1 nudge pr. turn:** selvom 4 matches er over tærskel, nævnes kun det bedste (eller max 2-3 linjer) — resten undertrykkes.
+- **Suppression virker:** samme tool foreslået to gange inden for vinduet → anden gang `""` (eller næst-bedste match).
+- **`session_id` mangler:** suppression kan ikke køre → nudgen vises alligevel uden at fejle (degradér ikke til tavshed på manglende metadata).
+- **Navnløst match** (`{"score": 0.8}` uden name): springes over — samme test som arketypens `test_navnloest_traef_springes_over`.
+
+### Integration (prompt-assembly)
+
+- `_timed_result(future, ..., default="")` med timeout → tom streng → prompt-assembly er uændret og cachen upåvirket (test at default stien returnerer `""`).
+- Hver vist nudge skriver en `tool_discovery.nudge`-event (tool, session, cosine) — test at eventen findes i DB'en efter et match.
+- Sektionen er usynlig i stabil prefix: nudgen må kun optræde i `_dyn_tail` (test at output aldrig indeholder `DYNAMIC_TAIL_SENTINEL`-indhold i den stabile del).
+
 ## Åbne spørgsmål til Bjørn/Claude
 
 1. Skal nudgen kun pege på **uden-for-pulje** tools, eller også minde om sjældne Tier-2-tools der *kan* være i puljen men let overses?
@@ -143,3 +173,4 @@ Succeskriterie: **andel aldrig-brugte tools falder fra 76 %**, og nudge → load
 - **Tilføjet:** false-positive-metrik (nudge vist men ignoreret) som modvægt til konverterings-metrikken.
 - **Tilføjet:** krydstjek mod det aktuelle register (`get_tool_definitions()`) — embedding-DB har 458 vektorer mod 429 registrerede; nudgen må aldrig foreslå et forældet/alias-navn.
 - **Rettet:** tastefejl "sænk/ hæv" → "sænk/hæv".
+- **Tilføjet (Bjørn-spørgsmål "tager den højde for tests/edges?"):** ny §Tests & edge cases — spejler arketypens test-fil-struktur i to grupper (Tavshed / Indhold) + integration. Lukker huller spec'en ikke dækkede eksplicit: tom embedding-DB, Ollama-timeout, forældet-vektor-filter → tom, suppression uden session_id, præcis-ved-tærskel-grænse (`>=` låses i test), max-1-nudge-regel.

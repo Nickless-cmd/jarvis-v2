@@ -13,6 +13,7 @@ import {
   pasteLineCount, pasteStoreEnabled, savePaste, shouldExternalizePaste,
 } from '../../lib/pasteStore'
 import { usePermission } from '../../hooks/usePermission'
+import { useFileMention } from '../../hooks/useFileMention'
 
 export interface SentAttachment { id: string; src?: string; name: string; isImage: boolean }
 
@@ -382,12 +383,35 @@ export function Composer({
     }
   }, [compacting, queuedDuringCompact, doSend])
 
+  // @fil-komplettering. Kun for ejeren: endpointet læser værtens disk.
+  const filnavne = useFileMention(config, isOwner)
+
   // Stabile handlers til den memo'd textarea (ellers re-renderer den hvert tick).
   // Bruger-input nulstiller historik-navigationen (man redigerer draften igen).
   const onInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value); setHistIdx(-1)
-  }, [])
+    filnavne.opdater(e.target.value, e.target.selectionStart ?? e.target.value.length)
+  }, [filnavne])
   const onInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Mention-listen skal have tasterne FØR historik og send — ellers
+    // sender Enter beskeden mens man står og vælger en fil.
+    if (filnavne.åben) {
+      if (e.key === 'Escape') { e.preventDefault(); filnavne.luk(); return }
+      if (e.key === 'ArrowDown') { e.preventDefault(); filnavne.flyt(1); return }
+      if (e.key === 'ArrowUp') { e.preventDefault(); filnavne.flyt(-1); return }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+        e.preventDefault()
+        const r = filnavne.vælg(e.currentTarget.value)
+        if (r) {
+          const ta = e.currentTarget
+          setText(r.tekst)
+          requestAnimationFrame(() => {
+            try { ta.selectionStart = ta.selectionEnd = r.caret } catch { /* noop */ }
+          })
+        }
+        return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); return }
     const ta = e.currentTarget
     const caretToEnd = (v: string) => requestAnimationFrame(() => {
@@ -420,7 +444,7 @@ export function Composer({
       }
       return
     }
-  }, [send, histIdx])
+  }, [send, histIdx, filnavne])
 
   // onPaste: store paste (>tærskel) → hold teksten lokalt, vis reference-chip i stedet
   // for at spilde tekst-væggen ind i inputtet. Under tærskel → default (inline).
@@ -483,6 +507,27 @@ export function Composer({
                 <X size={12} />
               </button>
             </div>
+          ))}
+        </div>
+      )}
+      {filnavne.åben && (
+        <div className="mention-liste" role="listbox" aria-label="Filer">
+          {filnavne.forslag.map((f, i) => (
+            <button
+              key={f.rel}
+              type="button"
+              role="option"
+              aria-selected={i === filnavne.valgt}
+              className={`mention-rk${i === filnavne.valgt ? ' valgt' : ''}`}
+              onMouseDown={(e) => {
+                e.preventDefault()  // behold fokus i feltet
+                const r = filnavne.vælg(text, i)
+                if (r) { setText(r.tekst); ref.current?.focus() }
+              }}
+            >
+              <span className="mention-navn">{f.rel.slice(f.rel.lastIndexOf('/') + 1)}</span>
+              <span className="mention-sti">{f.rel}</span>
+            </button>
           ))}
         </div>
       )}

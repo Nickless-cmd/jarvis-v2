@@ -57,6 +57,8 @@ interface Props {
   now?: Date
   busy?: boolean
   onSteer?: (run: McRun, content: string) => void
+  /** Aabner opgave-traaden (R6). Uden den foerer et tryk ingen steder hen. */
+  onOpen?: (run: McRun) => void
   onCancel?: (run: McRun) => void
 }
 
@@ -66,7 +68,7 @@ interface Props {
  * Bevidst: en knap der antyder cancel eller steer, men ikke virker, er værre
  * end ingen knap. Kortet er et vindue, ikke en fjernbetjening (endnu).
  */
-export function WorkTaskCard({ run, now, busy, onSteer, onCancel }: Props) {
+export function WorkTaskCard({ run, now, busy, onSteer, onCancel, onOpen }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const [steering, setSteering] = useState(false)
@@ -87,6 +89,14 @@ export function WorkTaskCard({ run, now, busy, onSteer, onCancel }: Props) {
   }
   return (
     <View style={styles.card} accessibilityRole="summary" accessibilityLabel={`Kørsel ${run.status}`}>
+      {/* Hovedet aabner traaden (R6). Steer-feltet og knapperne nedenfor
+          bliver siddende — man skal kunne styre uden at dykke ned. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Åbn opgave-tråden"
+        disabled={!onOpen}
+        onPress={() => onOpen?.(run)}
+      >
       <View style={styles.head}>
         <View style={[styles.dot, { backgroundColor: statusColor(run.status, tokens) }]} testID="status-dot" />
         <Text style={styles.tag}>{SOURCE_LABEL[source]}</Text>
@@ -98,6 +108,7 @@ export function WorkTaskCard({ run, now, busy, onSteer, onCancel }: Props) {
         <View style={styles.spacer} />
         <Text style={styles.age}>{formatRelativeTime(run.started_at, now ?? new Date())}</Text>
       </View>
+      </Pressable>
       <Text style={styles.preview} numberOfLines={2}>
         {preview || 'Ingen opsummering endnu.'}
       </Text>

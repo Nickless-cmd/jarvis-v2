@@ -8,7 +8,7 @@
 
 import { ApiError, apiFetch } from './apiClient'
 import type { ApiConfig } from './types'
-import type { Approval, McApprovalsResponse, McRun, McRunsResponse } from './mcTypes'
+import type { Approval, McApprovalsResponse, McRun, McRunDetail, McRunsResponse } from './mcTypes'
 
 const DEFAULT_LIMIT = 20
 
@@ -82,4 +82,19 @@ export async function approveToolIntent(
 /** Kun de kort der stadig kan handles på — resten er historik. */
 export function pendingApprovals(list: Approval[]): Approval[] {
   return list.filter((a) => a.active === true && a.stale !== true)
+}
+
+/** Opgave-tråden (R6, spec 2026-09-02): selve runnet plus de hændelser der
+ *  bærer dets run_id. Backend fandtes allerede — det var kun dykke-niveauet i
+ *  appen der manglede, så et tryk på et kort ikke førte nogen steder hen. */
+export async function fetchRunDetail(
+  config: ApiConfig,
+  runId: string,
+  eventLimit = 60,
+): Promise<McRunDetail> {
+  const raw = await apiFetch<Partial<McRunDetail>>(
+    config,
+    `/mc/runs/${encodeURIComponent(runId)}?event_limit=${eventLimit}`,
+  )
+  return { run: raw.run ?? null, steps: Array.isArray(raw.steps) ? raw.steps : [] }
 }

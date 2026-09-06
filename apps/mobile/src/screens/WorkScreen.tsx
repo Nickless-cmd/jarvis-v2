@@ -9,6 +9,7 @@ import { approveRequest, approveToolIntent, fetchApprovals, fetchRuns, pendingAp
 import { isToolIntent } from '../lib/mcTypes'
 import type { Approval, McRun } from '../lib/mcTypes'
 import { WorkTaskCard, isActive } from '../components/WorkTaskCard'
+import { TaskThreadScreen } from './TaskThreadScreen'
 import { WorkApprovalCard } from '../components/WorkApprovalCard'
 import { ThoughtsList } from '../components/ThoughtsList'
 import { fetchThoughts, type Thought } from '../lib/companionClient'
@@ -72,6 +73,8 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
   const sessions = useSessions()
   const stream = useStream()
   const [tab, setTab] = useState<WorkTab>('tasks')
+  // R6: dykke-niveauet. null = listen; et run = traaden ovenpaa.
+  const [aabenOpgave, setAabenOpgave] = useState<McRun | null>(null)
 
   // Et approval-push skal lande i GODKEND, ikke bare i rummet (6/9-2026).
   // Før satte App kun mode='arbejde', så man landede på Opgaver og skulle
@@ -250,6 +253,18 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
     onPendingCount?.(venter)
   }, [venter, onPendingCount])
 
+  // Traaden ligger OVENPAA listen frem for at erstatte den: lukker man den,
+  // staar man samme sted i listen som da man dykkede ned.
+  if (aabenOpgave) {
+    return (
+      <TaskThreadScreen
+        run={aabenOpgave}
+        topInset={topInset}
+        onClose={() => setAabenOpgave(null)}
+      />
+    )
+  }
+
   return (
     <View style={[styles.root, { paddingTop: topInset }]}>
       <View style={styles.subTabs}>
@@ -312,6 +327,7 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
                 busyId={busyId}
                 onSteer={onSteerRun}
                 onCancel={onCancelRun}
+                onOpen={setAabenOpgave}
               />
               {/* Jarvis' egne tanker hører til i Arbejde-rummet: det er dét rum
                   hvor noget venter på én, uden at det er en samtale. */}
@@ -371,12 +387,14 @@ function TasksView({
   runs,
   busyId,
   onSteer,
-  onCancel
+  onCancel,
+  onOpen
 }: {
   runs: McRun[]
   busyId?: string | null
   onSteer?: (run: McRun, content: string) => void
   onCancel?: (run: McRun) => void
+  onOpen?: (run: McRun) => void
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -397,6 +415,7 @@ function TasksView({
               busy={busyId === r.run_id}
               onSteer={onSteer}
               onCancel={onCancel}
+              onOpen={onOpen}
             />
           ))}
         </>

@@ -132,3 +132,15 @@ export function approvalDetail(a: Approval): string {
 export function approvalTag(a: Approval): string {
   return isCapability(a) ? a.execution_mode : a.approval_scope
 }
+
+/** Ét trin i en opgave-tråd (R6). Backend: /mc/runs/{run_id} → steps[]. */
+export interface McRunStep {
+  kind: string
+  at: string
+  summary: string
+}
+
+export interface McRunDetail {
+  run: McRun | null
+  steps: McRunStep[]
+}

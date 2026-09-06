@@ -2664,3 +2664,11 @@
   direction: rtl; text-align: left;   /* klip fra VENSTRE — halen bærer betydningen */
 }
 @media (prefers-reduced-motion: reduce) { .mention-rk { transition: none; } }
+
+/* Run health i miljø-feltet. Bruger env-rows' egen rytme — det er en
+   udvidelse af feltet, ikke et nyt kort med egen ramme. */
+.rh-rows { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.rh-tryk { color: var(--fg-3); }
+.rh-tryk.rh-medium { color: var(--warn-fg); }
+.rh-tryk.rh-high { color: var(--error-fg); }
+.rh-hoej { color: var(--warn-fg); font-weight: 600; }

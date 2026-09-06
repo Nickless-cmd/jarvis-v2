@@ -426,3 +426,17 @@ export async function getKontekst(
     tegn: d.tegn ?? 0, dele: d.dele ?? 0,
   }
 }
+
+/** Maskinens og hans egen tilstand — 441 bytes, modsat /mc/heartbeat på 149 KB.
+ *  Den store er hele hans indre liv; til et statusfelt er det spild af båndbredde. */
+export type Krop = {
+  cpu_pct: number; ram_pct: number; ram_used_gb: number; ram_total_gb: number
+  disk_free_gb: number; cpu_temp_c?: number | null
+  gpus?: { index: number; util_pct: number; vram_pct: number; temp_c?: number | null }[]
+  pressure: 'low' | 'medium' | 'high' | string
+  energy_level?: string; drain_label?: string; wake_state?: string
+}
+export async function getKrop(config: ApiConfig): Promise<{ krop: Krop | null; ts: string }> {
+  const d = await apiFetch<{ body?: Krop; ts?: string }>(config, '/central/body')
+  return { krop: d.body ?? null, ts: d.ts ?? '' }
+}

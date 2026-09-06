@@ -754,6 +754,7 @@ export function CodeView({
               gitMissing={gitMissing}
               installingTool={installingTool}
               onInstallTool={onInstallTool}
+              komprimerVed={compactAt}
             />
           </div>
         )}

@@ -20,7 +20,9 @@ import {
  *  mens den er åben kører `bash` på HANS maskine uden godkendelse pr. kald, i
  *  op til fire timer — og han havde ingen måde at opdage det på.
  */
-export function WorkbenchSection({ config }: { config: ApiConfig | undefined }) {
+export function WorkbenchSection(
+  { config, sessionId }: { config: ApiConfig | undefined; sessionId?: string | null },
+) {
   const [kanal, setKanal] = useState<OperatorChannel | null>(null)
   const [punkter, setPunkter] = useState<Checkpoint[]>([])
   const [kontakter, setKontakter] = useState<RuntimeSwitches | null>(null)
@@ -29,10 +31,13 @@ export function WorkbenchSection({ config }: { config: ApiConfig | undefined }) 
   const load = () => {
     if (!config) return
     getOperatorChannel(config).then(setKanal).catch(() => setKanal(null))
-    getCheckpoints(config).then((d) => setPunkter(d.punkter ?? [])).catch(() => setPunkter([]))
+    // Uden session-id spoerger den efter '_default' og faar altid 0 tilbage,
+    // selvom der ligger hundredvis af checkpoints paa den aktive session.
+    getCheckpoints(config, sessionId ?? undefined)
+      .then((d) => setPunkter(d.punkter ?? [])).catch(() => setPunkter([]))
     getRuntimeSwitches(config).then(setKontakter).catch(() => setKontakter(null))
   }
-  useEffect(load, [config?.apiBaseUrl, config?.authToken])
+  useEffect(load, [config?.apiBaseUrl, config?.authToken, sessionId])
 
   const skiftKanal = async (aaben: boolean) => {
     if (!config) return
@@ -40,7 +45,7 @@ export function WorkbenchSection({ config }: { config: ApiConfig | undefined }) 
   }
   const fortryd = async () => {
     if (!config) return
-    const r = await rollbackCheckpoint(config)
+    const r = await rollbackCheckpoint(config, sessionId ?? undefined)
     setBesked(r.status === 'ok' ? `Rullet tilbage til ${r.gendannet}` : (r.error ?? 'Kunne ikke fortryde'))
     load()
   }

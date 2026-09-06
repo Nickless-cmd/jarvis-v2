@@ -222,7 +222,7 @@ function Shell({
               onOpenPrivacy={() => setSurface('settings')}
             />
           )}
-          {surface === 'cowork' && <CoworkView role={role} />}
+          {surface === 'cowork' && <CoworkView role={role} sessionId={activeId} />}
           {surface === 'code' && (
             <CodeView
               sessionId={activeId}

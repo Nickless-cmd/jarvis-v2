@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { WorkbenchSection } from './WorkbenchSection'
+import { getCheckpoints, rollbackCheckpoint } from '../../lib/coworkApi'
 
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
 
@@ -33,5 +34,21 @@ describe('WorkbenchSection', () => {
   it('viser sandkassen som slukket med en begrundelse', async () => {
     render(<WorkbenchSection config={cfg} />)
     await waitFor(() => expect(screen.getByText(/slukket \(standard\)/)).toBeTruthy())
+  })
+})
+
+describe('WorkbenchSection · session', () => {
+  it('sender den aktive session med, ellers står listen altid tom', async () => {
+    // Uden session_id svarer /workbench/checkpoints for '_default' og
+    // returnerer 0 — selvom der lå 576 checkpoints på de rigtige sessioner.
+    render(<WorkbenchSection config={cfg} sessionId="visible-42" />)
+    await waitFor(() => expect(vi.mocked(getCheckpoints)).toHaveBeenCalledWith(cfg, 'visible-42'))
+  })
+
+  it('ruller tilbage på den samme session som den viser', async () => {
+    render(<WorkbenchSection config={cfg} sessionId="visible-42" />)
+    const knap = await screen.findByRole('button', { name: /fortryd/i })
+    fireEvent.click(knap)
+    await waitFor(() => expect(vi.mocked(rollbackCheckpoint)).toHaveBeenCalledWith(cfg, 'visible-42'))
   })
 })

@@ -438,22 +438,22 @@ _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._
 | function | `fire_due_delayed` | `(now_hm=…)` | Lever forfaldne udskudte notifikationer (kaldes af scheduler). Returnerer antal. | [src](../../../core/services/notification_router.py#L113) |
 | function | `_deliver_ntfy` | `(payload)` | — | [src](../../../core/services/notification_router.py#L142) |
 | function | `_deliver_to_channel` | `(uid, channel, payload, ntype)` | Lever til én konkret kanal. Returnerer True ved succes. | [src](../../../core/services/notification_router.py#L152) |
-| function | `route_proactive_notification` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…)` | Samlet routing for alle proaktive notifikationer — B-batch 2: leverings-udfald | [src](../../../core/services/notification_router.py#L181) |
-| function | `_route_proactive_notification_impl` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…)` | Samlet routing for alle proaktive notifikationer. | [src](../../../core/services/notification_router.py#L205) |
-| function | `reset_delivery` | `()` | — | [src](../../../core/services/notification_router.py#L254) |
-| function | `_new_id` | `()` | — | [src](../../../core/services/notification_router.py#L263) |
-| function | `_send_fcm` | `(user_id, device_key, data)` | — | [src](../../../core/services/notification_router.py#L267) |
-| function | `_send_desktop` | `(user_id, item)` | — | [src](../../../core/services/notification_router.py#L272) |
-| function | `_fallback_blast` | `(user_id, data)` | — | [src](../../../core/services/notification_router.py#L277) |
-| function | `_deliver` | `(user_id, target, notif_id, payload)` | — | [src](../../../core/services/notification_router.py#L282) |
-| function | `_arm_timer` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L295) |
-| function | `route_device_aware` | `(user_id, payload, kind)` | Lever en notifikation til brugerens bedste enhed + arm eskalering. | [src](../../../core/services/notification_router.py#L304) |
-| function | `_escalate` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L329) |
-| function | `ack` | `(notif_id)` | Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack). | [src](../../../core/services/notification_router.py#L341) |
-| function | `_discord_connected` | `()` | — | [src](../../../core/services/notification_router.py#L354) |
-| function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L362) |
-| function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L373) |
-| function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L403) |
+| function | `route_proactive_notification` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…)` | Samlet routing for alle proaktive notifikationer — B-batch 2: leverings-udfald | [src](../../../core/services/notification_router.py#L183) |
+| function | `_route_proactive_notification_impl` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…)` | Samlet routing for alle proaktive notifikationer. | [src](../../../core/services/notification_router.py#L207) |
+| function | `reset_delivery` | `()` | — | [src](../../../core/services/notification_router.py#L256) |
+| function | `_new_id` | `()` | — | [src](../../../core/services/notification_router.py#L265) |
+| function | `_send_fcm` | `(user_id, device_key, data)` | — | [src](../../../core/services/notification_router.py#L269) |
+| function | `_send_desktop` | `(user_id, item)` | — | [src](../../../core/services/notification_router.py#L274) |
+| function | `_fallback_blast` | `(user_id, data)` | — | [src](../../../core/services/notification_router.py#L279) |
+| function | `_deliver` | `(user_id, target, notif_id, payload)` | — | [src](../../../core/services/notification_router.py#L284) |
+| function | `_arm_timer` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L297) |
+| function | `route_device_aware` | `(user_id, payload, kind)` | Lever en notifikation til brugerens bedste enhed + arm eskalering. | [src](../../../core/services/notification_router.py#L306) |
+| function | `_escalate` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L331) |
+| function | `ack` | `(notif_id)` | Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack). | [src](../../../core/services/notification_router.py#L343) |
+| function | `_discord_connected` | `()` | — | [src](../../../core/services/notification_router.py#L356) |
+| function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L364) |
+| function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L375) |
+| function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L405) |
 
 ## `core/services/ntfy_gateway.py`
 _Ntfy gateway — send push notifications via ntfy.sh or self-hosted server._

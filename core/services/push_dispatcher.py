@@ -41,8 +41,19 @@ def _route_or_blast(user_id: str, data: dict, kind: str) -> bool:
         from core.runtime.settings import load_settings
         if load_settings().device_awareness_enabled:
             from core.services import notification_router
+            # Returværdien blev IGNORERET (6/9-2026): routeren kunne fejle
+            # tavst, og outboxen markerede alligevel notifikationen som
+            # leveret. Målt under en E2E-prøve: dispatcheren meldte
+            # «delivered: 1» uden at nogen havde afsendt noget.
+            #
+            # `route_device_aware` returnerer None ved design (den eskalerer
+            # asynkront), så vi kan ikke få et ja/nej ud af den. Derfor
+            # spørger vi i stedet om der overhovedet ER en enhed at levere
+            # til — er der ingen, er «leveret» en løgn, og outboxen skal
+            # kunne prøve igen.
+            from core.services import device_tokens as _dt
             notification_router.route_device_aware(user_id, data, kind)
-            return True
+            return bool(list(_dt.list_for_user(user_id)))
     except Exception as e:
         logger.warning("push: routing-fejl, falder tilbage til blast: %s", e)
     return _push_to_user(user_id, data)

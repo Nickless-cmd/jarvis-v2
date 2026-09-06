@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6890/13727 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6892/13730 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -19,7 +19,7 @@ Generated from source. 6890/13727 functions/methods documented (50%). The list b
 | `core.coding_lane` | 9 | 10 | 90% |
 | `core.context` | 53 | 67 | 79% |
 | `core.costing` | 6 | 8 | 75% |
-| `core.eventbus` | 9 | 22 | 40% |
+| `core.eventbus` | 11 | 25 | 44% |
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |

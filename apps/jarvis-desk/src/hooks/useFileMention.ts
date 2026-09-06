@@ -23,7 +23,7 @@ export function useFileMention(config: ApiConfig | undefined, aktiveret: boolean
     if (!config || henter.current || fejlet.current || filer.length > 0) return
     henter.current = true
     try {
-      const g = await apiFetch<{ workspace?: string }>(config, '/system/git')
+      const g = await apiFetch<{ workspace?: string }>(config, '/mc/system/git')
       const rod = g.workspace
       if (!rod) { fejlet.current = true; return }
       setFiler(await listProjectFiles(config, rod))

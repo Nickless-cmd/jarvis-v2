@@ -45,6 +45,17 @@ _PROJECT_TREE_SKIP_DIRS = {
     ".pytest_cache", ".mypy_cache", "target", ".gradle",
 }
 _PROJECT_TREE_MAX_ENTRIES = 5000  # safety cap per request
+
+
+def _skip_dir(navn: str) -> bool:
+    """Sandt for mapper der ikke hoerer til i en projektvisning.
+
+    Skjulte mapper springes over som helhed, ikke kun de faa der stod paa
+    listen. Uden det aad .claude/ (plugin-cache, 8040 filer) hele
+    fladlisten paa 10.000 og skubbede apps/, tests/ og scripts/ ud — saa
+    @fil-kompletteringen kunne ikke finde den kode den var til for.
+    """
+    return navn.startswith(".") or navn in _PROJECT_TREE_SKIP_DIRS
 _PROJECT_READ_MAX_BYTES = 1024 * 1024  # 1 MB ceiling for in-app preview
 
 
@@ -114,12 +125,12 @@ def project_tree(
                 node["truncated"] = True
                 break
             if entry.is_dir():
-                if entry.name in _PROJECT_TREE_SKIP_DIRS or entry.name.startswith(".jarvisx"):
+                if _skip_dir(entry.name):
                     # Skip skiplist + the .jarvisx directory used for notes
                     # to keep noise low. Notes are exposed via /api/project/notes.
                     if entry.name == ".jarvisx":
                         continue
-                    if entry.name in _PROJECT_TREE_SKIP_DIRS:
+                    if _skip_dir(entry.name):
                         # Show as collapsed placeholder so user knows it's there
                         node["children"].append({
                             "name": entry.name,
@@ -169,7 +180,7 @@ def project_list(
             if len(files) >= limit:
                 return
             if entry.is_dir():
-                if entry.name in _PROJECT_TREE_SKIP_DIRS or entry.name.startswith(".jarvisx"):
+                if _skip_dir(entry.name):
                     continue
                 walk(entry)
             elif entry.is_file():

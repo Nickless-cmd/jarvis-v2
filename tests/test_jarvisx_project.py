@@ -51,3 +51,30 @@ def test_fastapi_haandhaever_gaten_paa_en_rigtig_forespoergsel(monkeypatch, tmp_
 
     monkeypatch.setattr(wc, "current_role", lambda: "owner")
     assert klient.get(url).status_code == 200
+
+
+def test_skjulte_mapper_springes_over(tmp_path, monkeypatch):
+    """.claude/ åd 8040 af 10.000 pladser og skubbede apps/ og tests/ ud."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    (tmp_path / "apps").mkdir()
+    (tmp_path / "apps" / "rigtig.py").write_text("x")
+    (tmp_path / ".claude" / "plugins").mkdir(parents=True)
+    (tmp_path / ".claude" / "plugins" / "cache.json").write_text("x")
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / "lib.js").write_text("x")
+
+    monkeypatch.setattr(wc, "current_role", lambda: "owner")
+    app = FastAPI()
+    app.include_router(jp.router)
+    svar = TestClient(app).get(f"/api/project/list?root={tmp_path}").json()
+
+    rel = {f["rel"] for f in svar["files"]}
+    assert rel == {"apps/rigtig.py"}, f"forventede kun projektfiler, fik {rel}"
+
+
+def test_skip_dir_daekker_baade_skjulte_og_navngivne():
+    assert jp._skip_dir(".claude") and jp._skip_dir(".worktrees") and jp._skip_dir(".git")
+    assert jp._skip_dir("node_modules") and jp._skip_dir("__pycache__")
+    assert not jp._skip_dir("apps") and not jp._skip_dir("core")

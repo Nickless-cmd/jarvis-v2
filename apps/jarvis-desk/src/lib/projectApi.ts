@@ -16,7 +16,7 @@ export interface ProjectFil {
 export async function listProjectFiles(
   config: ApiConfig,
   root: string,
-  limit = 4000,
+  limit = 8000,
 ): Promise<ProjectFil[]> {
   const qs = `root=${encodeURIComponent(root)}&limit=${limit}`
   const d = await apiFetch<{ files?: ProjectFil[] }>(config, `/api/project/list?${qs}`, {

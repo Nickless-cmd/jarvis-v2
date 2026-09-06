@@ -19,6 +19,7 @@ import json
 import os
 import subprocess
 import threading as _threading_for_bash
+import time
 from pathlib import Path
 from typing import Any
 from urllib import error as urllib_error
@@ -266,6 +267,7 @@ def _exec_find_files(args: dict[str, Any]) -> dict[str, Any]:
 # while another worker is using it. Stale-session retries are handled
 # in _exec_bash via _reset_default_bash_session.
 import threading as _threading_for_bash
+import time
 _DEFAULT_BASH_SESSION_ID: str | None = None
 _DEFAULT_BASH_SESSION_LOCK = _threading_for_bash.Lock()
 
@@ -518,6 +520,55 @@ def _egress_blokeret(url: str) -> dict[str, Any] | None:
     return None
 
 
+# ── Redirect-revalidering + hentnings-cache (6/9-2026) ───────────────────
+# To huller i web_fetch. Det foerste er sikkerhed: `urlopen` foelger 302
+# SELV, saa en offentlig URL der bestod egress-tjekket kunne stille om til
+# 169.254.169.254, og saa var det foerste tjek uden vaerdi. `check_redirect_hop`
+# blev bygget 6/9 og aldrig tilsluttet — her er kaldsstedet.
+# Det andet er spild: den samme side blev hentet forfra hver gang. En kort
+# TTL raekker, for gentagelserne ligger inden for samme tur.
+_FETCH_CACHE: dict[str, tuple[float, str]] = {}
+_FETCH_CACHE_TTL_S = 900.0
+_FETCH_CACHE_MAX = 32
+_MAX_REDIRECTS = 5
+
+
+class _RevaliderendeRedirect(urllib_request.HTTPRedirectHandler):
+    """Stopper en omdirigering mod et internt maal, hop for hop."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        try:
+            from core.services.egress_guard import check_redirect_hop
+            dom = check_redirect_hop(newurl)
+            if not dom.get("safe", True):
+                raise urllib_error.URLError(
+                    f"omdirigering blokeret: {newurl} ({dom.get('reason')})"
+                )
+        except urllib_error.URLError:
+            raise
+        except Exception:
+            pass  # fail-open, samme valg som _egress_blokeret
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _hent_side(url: str) -> str:
+    """Hent en side med redirect-revalidering og kort cache."""
+    naa = time.time()
+    truffet = _FETCH_CACHE.get(url)
+    if truffet and (naa - truffet[0]) < _FETCH_CACHE_TTL_S:
+        return truffet[1]
+    aabner = urllib_request.build_opener(_RevaliderendeRedirect)
+    req = urllib_request.Request(
+        url, headers={"User-Agent": "Jarvis/2.0 (personal assistant)"},
+    )
+    with aabner.open(req, timeout=15) as response:
+        raw = response.read().decode("utf-8", errors="replace")
+    if len(_FETCH_CACHE) >= _FETCH_CACHE_MAX:
+        _FETCH_CACHE.pop(min(_FETCH_CACHE, key=lambda k: _FETCH_CACHE[k][0]), None)
+    _FETCH_CACHE[url] = (naa, raw)
+    return raw
+
+
 def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
     url = str(args.get("url") or "").strip()
     if not url:
@@ -542,13 +593,8 @@ def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
     if _eg:
         return _eg
 
-    req = urllib_request.Request(
-        url,
-        headers={"User-Agent": "Jarvis/2.0 (personal assistant)"},
-    )
     try:
-        with urllib_request.urlopen(req, timeout=15) as response:
-            raw = response.read().decode("utf-8", errors="replace")
+        raw = _hent_side(url)
     except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
         return {"error": f"Fetch failed: {exc}", "status": "error"}
 

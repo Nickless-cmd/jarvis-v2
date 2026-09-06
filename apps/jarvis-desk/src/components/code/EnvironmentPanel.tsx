@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { GitBranch, Monitor, Server, Globe, Bot, Settings, Activity, GitCompare, GitCommitHorizontal, Github } from 'lucide-react'
+import { RunHealth } from './RunHealth'
 import { getGitStatus, commitAllChanges, createPullRequest, type GitStatus, type ApiConfig } from '../../lib/api'
 import { lookupTool } from '../../lib/toolRegistry'
 
@@ -32,7 +33,7 @@ export function EnvironmentPanel({
   config, kind, root, refreshKey = 0,
   working, workingStep, totalTokens = 0, totalToolCalls = 0, tools = [], sessionId, hasHistory = false,
   isOwner = false, onChanged,
-  gitMissing = false, installingTool = '', onInstallTool,
+  gitMissing = false, installingTool = '', onInstallTool, komprimerVed = 0,
 }: {
   config?: ApiConfig
   kind: 'container' | 'workstation'
@@ -48,6 +49,7 @@ export function EnvironmentPanel({
   isOwner?: boolean
   onChanged?: () => void
   gitMissing?: boolean
+  komprimerVed?: number
   installingTool?: string
   onInstallTool?: (tool: string) => void
 }) {
@@ -169,6 +171,11 @@ export function EnvironmentPanel({
               </li>
             )}
           </ul>
+
+          {/* Maskin- og kontekst-tryk. Bjørn: miljø-feltet er stedet hvor
+              tilstand hører til, ikke endnu et dashboard. */}
+          <RunHealth config={config} tokens={totalTokens} komprimerVed={komprimerVed} />
+
           {note && (
             <div className={`env-note ${note.err ? 'is-err' : ''}`}>
               {note.url

@@ -120,9 +120,33 @@ def detect_action_claims(text: str) -> list[ActionClaim]:
     )
     if has_ctx:
         m = _ACTION_PATTERNS["commit_hash"].search(text)
-        if m:
+        if m and not _er_hash_vi_selv_har_vist(m.group(0)):
             out.append(ActionClaim(kind="commit_hash", matched_text=m.group(0)))
     return out
+
+
+def _er_hash_vi_selv_har_vist(hash_i_tekst: str) -> bool:
+    """Er det den commit-hash env-blokken selv skrev ind i hans prompt?
+
+    Saa er det at gengive den LAESNING, ikke en paastand om et git-kald.
+    Vaernet flagede ham 6/9 for at citere `9ef74a67` — som stod i hans egen
+    kontekst, fordi vi havde sat den der en time foer. En fejlklasse indfoert
+    af env-blokken selv.
+
+    Sammenligningen er praefiks-baseret i begge retninger: git forkorter til
+    forskellig laengde alt efter kontekst (7, 8, 9 tegn), saa `9ef74a67` og
+    `9ef74a675` er samme commit.
+    """
+    if not hash_i_tekst:
+        return False
+    try:
+        from core.services.env_block import vist_hash
+        vist = vist_hash()
+    except Exception:
+        return False
+    if not vist or len(hash_i_tekst) < 7:
+        return False
+    return vist.startswith(hash_i_tekst) or hash_i_tekst.startswith(vist)
 
 
 # ── Evidens-model (in-run) ──────────────────────────────────────────────────

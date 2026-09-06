@@ -79,7 +79,39 @@ def collect_env(cwd: str | None = None) -> dict[str, str]:
     sidste = _git(sti, "log", "-1", "--format=%h %s")
     if sidste:
         ud["seneste_commit"] = sidste[:100]
+        _husk_vist_hash(sidste.split()[0] if sidste.split() else "")
     return ud
+
+
+# TruthGate blokerer en commit-hash uden et git-kald bag sig. Men NÅR vi selv
+# har skrevet hashen ind i hans prompt, er det at citere den LÆSNING, ikke en
+# påstand — og gaten flagede ham for at gengive noget vi lige havde vist ham.
+# Fundet 6/9, en time efter blokken gik live: en fejlklasse jeg selv indførte.
+#
+# Hashen lægges i shared_cache frem for at gaten selv kalder git: gaten er
+# dokumenteret som en REN funktion, og et subprocess-kald i et værn der kører
+# på hvert svar ville koste både renhed og tid.
+_VIST_HASH_NOEGLE = "truth_gate:env_block_hash"
+_VIST_HASH_TTL_S = 3600.0
+
+
+def _husk_vist_hash(kort_hash: str) -> None:
+    if not kort_hash:
+        return
+    try:
+        from core.services import shared_cache
+        shared_cache.set(_VIST_HASH_NOEGLE, kort_hash, ttl_seconds=_VIST_HASH_TTL_S)
+    except Exception:
+        pass
+
+
+def vist_hash() -> str:
+    """Den commit-hash vi selv har vist ham i env-blokken. Tom hvis ingen."""
+    try:
+        from core.services import shared_cache
+        return str(shared_cache.get(_VIST_HASH_NOEGLE) or "")
+    except Exception:
+        return ""
 
 
 def render_env_block(cwd: str | None = None) -> str:

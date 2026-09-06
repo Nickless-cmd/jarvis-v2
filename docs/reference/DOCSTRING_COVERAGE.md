@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6841/13670 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6843/13673 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6841/13670 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 566 | 1053 | 53% |
-| `core.services` | 4562 | 9491 | 48% |
+| `core.services` | 4564 | 9494 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 92 | 164 | 56% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1777,7 +1777,7 @@ Generated from source. 6841/13670 functions/methods documented (50%). The list b
 - `core/services/trading/grid_bot.py` :: `GridBotV2.write_trading_state` (L218)
 - `core/services/trading/grid_bot.py` :: `GridConfig.to_dict` (L40)
 - `core/services/trading/grid_bot.py` :: `GridState.to_dict` (L74)
-- `core/services/truth_gate_v2.py` :: `classify_severity` (L194)
+- `core/services/truth_gate_v2.py` :: `classify_severity` (L218)
 - `core/services/turn_changelog.py` :: `build_turn_changelog` (L67)
 - `core/services/turn_trace.py` :: `active` (L36)
 - `core/services/upload_sandbox.py` :: `ExtractResult.as_dict` (L55)

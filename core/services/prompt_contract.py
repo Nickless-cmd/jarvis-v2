@@ -1442,6 +1442,23 @@ def _build_visible_chat_prompt_assembly_impl(
     # egne ord — gentag ALDRIG den rå tool-output som prosa i dit svar. Linjer der
     # starter med '[tool_navn]:' eller '[tool_result:...]' er interne markører og
     # må aldrig stå i din synlige besked til brugeren.
+    # Adoptions-loeftestangen (6/9-2026). `explore` var bygget, synligt i alle
+    # scopes og alligevel ubrugt: bedt om at finde SSRF-vaernet lavede han 13
+    # bash-kald, 6 soegninger og 4 fil-laesninger — og konkluderede FORKERT at
+    # vaernet ikke fandtes, mens filen laa der. Maalt bredere: 36 dispatch-
+    # koersler i systemets samlede levetid, 35 fra én fejlfindings-session.
+    #
+    # Tilgaengelighed er ikke adoption. Vaerktoejslisten var ikke problemet, saa
+    # loeftestangen er her. Sidste saetning er lige saa vigtig som de foerste:
+    # uden den bliver `explore` en omvej naar han allerede ved hvor filen er.
+    _awareness_add(8, "explore before reading wide", (
+        "Kraever svaret at du laeser paa tvaers af FLERE filer — «hvor ligger X», "
+        "«hvordan haenger Y sammen» — saa send `explore` afsted i stedet for at "
+        "laese dem selv. Den laeser og kommer tilbage med fund og linjenumre, og "
+        "du beholder din kontekst til selve arbejdet. Ved du allerede hvilken fil "
+        "det er, saa laes den selv — explore er til det brede, ikke det praecise."
+    ))
+
     _awareness_add(7, "no tool-result echo", (
         "Tool-resultater: efter et værktøjskald, sammenfat resultatet med dine EGNE "
         "ord. Gentag ALDRIG den rå output (fx '[list_proposals]: …' eller "

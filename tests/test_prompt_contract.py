@@ -539,3 +539,41 @@ def test_sanse_sektionen_er_ikke_blacklistet():
 
     assert "senses and continuity" not in DIAGNOSTIC_NOISE_LABELS
     assert "senses and continuity" not in TAIL_NOISE_LABELS
+
+
+# ── Adoptions-løftestangen, 06-09-2026 ──────────────────────────────────────
+# `explore` var bygget, testet, registreret OG synligt i alle scopes — og blev
+# stadig ikke brugt. Bedt om at finde SSRF-værnet lavede han 13 bash-kald og
+# konkluderede forkert at værnet ikke fandtes, mens filen lå der.
+# Tilgængelighed er ikke adoption; løftestangen er prompten.
+
+def test_explore_vejledningen_staar_i_prompten():
+    import inspect
+
+    import core.services.prompt_contract as pc
+    kilde = inspect.getsource(pc)
+    assert "explore before reading wide" in kilde
+
+
+def test_vejledningen_siger_ogsaa_hvornaar_man_IKKE_skal():
+    """Uden den sidste sætning bliver explore en omvej når han allerede ved
+    hvilken fil det er."""
+    import inspect
+
+    import core.services.prompt_contract as pc
+    kilde = inspect.getsource(pc)
+    afsnit = kilde[kilde.index("explore before reading wide"):][:800]
+    assert "laes den selv" in afsnit
+
+
+def test_vejledningen_er_kort():
+    """Awareness-budgettet er delt. En vejledning der fylder som en manual
+    skubber noget andet ud."""
+    import re
+
+    import core.services.prompt_contract as pc
+    import inspect
+    m = re.search(r'_awareness_add\(8, "explore before reading wide", \(\n(.*?)\n    \)\)',
+                  inspect.getsource(pc), re.S)
+    tekst = "".join(re.findall(r'"([^"]+)"', m.group(1)))
+    assert len(tekst) < 500, f"{len(tekst)} tegn er for meget til én vejledning"

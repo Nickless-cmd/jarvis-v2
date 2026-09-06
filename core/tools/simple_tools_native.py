@@ -1727,7 +1727,12 @@ def _exec_spawn_agent_task(args: dict[str, Any]) -> dict[str, Any]:
     goal = str(args.get("goal") or "").strip()
     if not goal:
         return {"status": "error", "error": "goal is required"}
-    budget = min(int(args.get("budget_tokens") or 2000), 8000)
+    # 0 = ubegraenset, med max_turns (20) som det egentlige net. Vaerktoejs-laget
+    # klemte tidligere til default 2000 / loft 8000 — praecis den strangulering
+    # juli-fixet fjernede i motoren: agenten braendte budgettet paa tool-kald og
+    # naaede aldrig frem til et svar, saa runnet stod «completed men tomt».
+    # Rettelsen var lavet ét lag nede og overlevede ikke herop.
+    budget = max(int(args.get("budget_tokens") or 0), 0)
     persistent = bool(args.get("persistent") or False)
     ttl_seconds = int(args.get("ttl_seconds") or 600)
     # Axis 2 (menu-lock lifted): Jarvis may write the agent's own prompt,
@@ -1764,8 +1769,67 @@ def _exec_spawn_agent_task(args: dict[str, Any]) -> dict[str, Any]:
             "agent_id": str(result.get("agent_id") or ""),
             "role": role,
             "agent_status": str(result.get("status") or ""),
-            "reply": last_reply[:1200] if last_reply else None,
+            # 1200 tegn var en tredjedel af hvad en god agent leverer (maalt:
+            # 3.751 tegn). Man bad om en undersoegelse og fik en trediedel af
+            # svaret — det faar dispatch til at foeles vaerdiloest.
+            "reply": last_reply[:12000] if last_reply else None,
         }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
+    """Bred, laese-kun undersoegelse — ét spoergsmaal ind, fund ud.
+
+    `spawn_agent_task` KAN allerede det her, men for at bruge den godt skal man
+    foerst beslutte sig om `system_prompt`, `role`, `allowed_tools`,
+    `tool_policy` og `budget_tokens`. Maalt: 36 dispatch-koersler i systemets
+    samlede levetid, 35 af dem fra en fejlfindings-session. Motoren fejlede
+    ikke — den blev bare aldrig grebet efter.
+    
+    Det her er samme motor med beslutningerne truffet paa forhaand: laese-kun
+    vaerktoejer, ingen budget-klemme, og ét kraevet felt. Man beskriver hvad man
+    leder efter; resten er ikke ens problem.
+    """
+    query = str(args.get("query") or args.get("goal") or "").strip()
+    if not query:
+        return {"status": "error", "error": "query is required"}
+    bredde = str(args.get("breadth") or "medium").strip().lower()
+    # Bredden styrer kun hvor grundigt agenten bliver BEDT om at lede — ikke et
+    # haardt loft. Et loft ville vaere en ny budget-klemme.
+    _vejledning = {
+        "quick": "Kig ét sted og svar kort.",
+        "medium": "Kig flere steder og sammenhold dem.",
+        "thorough": ("Kig grundigt: flere navnekonventioner, flere mapper, og "
+                     "verificér hvert fund i kilden foer du melder det."),
+    }.get(bredde, "Kig flere steder og sammenhold dem.")
+
+    from core.services.agent_runtime_base import tools_for_policy
+    try:
+        from core.services.agent_runtime import spawn_agent_task
+        result = spawn_agent_task(
+            role="researcher",
+            goal=f"{query}\n\n{_vejledning}",
+            system_prompt=(
+                "Du er en undersoegende agent. Du LAESER — du aendrer ingenting. "
+                "Svar med hvad du FANDT, med filsti og linjenummer hvor det giver "
+                "mening, og sig hoejt hvis du ikke fandt noget. Gaet aldrig: har du "
+                "ikke set det i en kilde, saa skriv at du ikke ved det."),
+            tool_policy="read-only-runtime",
+            allowed_tools=tools_for_policy("read-only-runtime"),
+            budget_tokens=0,
+            persistent=False,
+            ttl_seconds=0,
+            auto_execute=True,
+        )
+        svar = ""
+        for msg in reversed(result.get("messages") or []):
+            if str(msg.get("direction") or "") == "agent->jarvis":
+                svar = str(msg.get("content") or "")
+                break
+        return {"status": "ok", "findings": svar[:12000] or None,
+                "agent_id": str(result.get("agent_id") or ""),
+                "breadth": bredde}
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -1790,7 +1854,10 @@ def _exec_send_message_to_agent(args: dict[str, Any]) -> dict[str, Any]:
             "status": "ok",
             "agent_id": agent_id,
             "agent_status": str(result.get("status") or ""),
-            "reply": last_reply[:1200] if last_reply else None,
+            # 1200 tegn var en tredjedel af hvad en god agent leverer (maalt:
+            # 3.751 tegn). Man bad om en undersoegelse og fik en trediedel af
+            # svaret — det faar dispatch til at foeles vaerdiloest.
+            "reply": last_reply[:12000] if last_reply else None,
         }
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
@@ -1846,7 +1913,10 @@ def _exec_relay_to_agent(args: dict[str, Any]) -> dict[str, Any]:
             "status": "ok",
             "to_agent_id": to_agent_id,
             "agent_status": str(result.get("status") or ""),
-            "reply": last_reply[:1200] if last_reply else None,
+            # 1200 tegn var en tredjedel af hvad en god agent leverer (maalt:
+            # 3.751 tegn). Man bad om en undersoegelse og fik en trediedel af
+            # svaret — det faar dispatch til at foeles vaerdiloest.
+            "reply": last_reply[:12000] if last_reply else None,
         }
     except Exception as exc:
         return {"status": "error", "error": str(exc)}

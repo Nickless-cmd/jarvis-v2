@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-05 — 442 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-06 — 443 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -108,6 +108,7 @@
 | `edit_file` | native | no |
 | `edit_task` | native | no |
 | `eventbus_recent` | native | no |
+| `explore` | native | no |
 | `find_files` | native | no |
 | `find_symbol` | native | no |
 | `find_usages` | native | no |

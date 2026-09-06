@@ -254,6 +254,33 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "explore",
+            "description": (
+                "Send a read-only research agent to look something up for you, "
+                "in parallel with your own work. Give it a question in plain "
+                "words — it reads files, greps, searches, and comes back with "
+                "findings (paths + line numbers where relevant). It changes "
+                "nothing. Use it whenever answering would mean reading across "
+                "several files and you only want the conclusion. Cheaper than "
+                "reading everything yourself into your own context."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "What you want to find out, in plain words"},
+                    "breadth": {
+                        "type": "string",
+                        "enum": ["quick", "medium", "thorough"],
+                        "description": "How hard it should look (default medium)",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "operator_run_in_background",
             "description": (
                 "Start a long-running command on the OPERATOR'S DESKTOP without "

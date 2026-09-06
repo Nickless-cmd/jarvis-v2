@@ -2,12 +2,14 @@ import * as Location from 'expo-location'
 import * as SecureStore from 'expo-secure-store'
 
 /** Brugerens lokationsdeling-valg. 'off' = default (ingen deling). */
-export type LocationPrecision = 'off' | 'city' | 'precise'
+export type LocationPrecision = 'off' | 'city' | 'area' | 'now' | 'precise' | 'background'
 
 const PRECISION_KEY = 'jarvis.mobile.locationPrecision'
 
 export function parsePrecision(raw: string | null): LocationPrecision {
-  return raw === 'city' || raw === 'precise' ? raw : 'off'
+  return raw === 'city' || raw === 'area' || raw === 'now' || raw === 'precise' || raw === 'background'
+    ? raw
+    : 'off'
 }
 
 export async function loadPrecision(): Promise<LocationPrecision> {
@@ -31,7 +33,9 @@ export interface LocationPayload {
   lon: number
   label: string
   source: 'gps' | 'wifi' | 'ip'
-  precision: 'precise' | 'city'
+  precision: Exclude<LocationPrecision, 'off'>
+  accuracy_m?: number
+  captured_at?: string
 }
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org'
@@ -46,6 +50,21 @@ export async function reverseLabel(lat: number, lon: number, precise: boolean): 
     return labelFromAddress(data.address ?? {}, precise)
   } catch {
     return ''
+  }
+}
+
+export function shouldUseGps(precision: LocationPrecision): boolean {
+  return precision === 'now' || precision === 'precise' || precision === 'background'
+}
+
+export function precisionLabel(precision: LocationPrecision): string {
+  switch (precision) {
+    case 'city': return 'By'
+    case 'area': return 'Område'
+    case 'now': return 'Præcis nu'
+    case 'precise': return 'Mens appen er åben'
+    case 'background': return 'I baggrund'
+    default: return 'Fra'
   }
 }
 
@@ -71,7 +90,7 @@ export async function ipLocation(): Promise<LocationPayload | null> {
     }
     if (!d.success || d.latitude == null || d.longitude == null) return null
     const label = [d.city, d.region].filter(Boolean).join(', ')
-    return { lat: d.latitude, lon: d.longitude, label, source: 'ip', precision: 'city' }
+    return { lat: d.latitude, lon: d.longitude, label, source: 'ip', precision: 'city', captured_at: new Date().toISOString() }
   } catch {
     return null
   }
@@ -80,14 +99,18 @@ export async function ipLocation(): Promise<LocationPayload | null> {
 /**
  * Hent brugerens lokation efter valgt præcision.
  * - 'off'   → null (kalderen sender {} for at rydde server-side)
- * - 'precise' → GPS (Balanced) → reverse-geocode gade. Falder tilbage til IP.
+ * - 'area'  → IP-baseret område/by-region.
+ * - 'now'/'precise'/'background' → GPS → reverse-geocode gade. Falder tilbage til IP.
  * - 'city'  → IP-baseret by-niveau (ingen GPS-opkald → batterivenligt).
  * Best-effort: returnerer null ved manglende tilladelse/fejl.
  */
 export async function getDeviceLocation(precision: LocationPrecision): Promise<LocationPayload | null> {
   if (precision === 'off') return null
-  if (precision === 'city') return ipLocation()
-  // precise → GPS. KRITISK: getCurrentPositionAsync kan hænge i det uendelige
+  if (precision === 'city' || precision === 'area') {
+    const loc = await ipLocation()
+    return loc ? { ...loc, precision } : null
+  }
+  // GPS-niveauer. KRITISK: getCurrentPositionAsync kan hænge i det uendelige
   // indendørs/uden fix → vi MÅ tids-begrænse den (race mod 8s) så den aldrig
   // blokerer kalderen. Ved timeout/fejl → IP-fallback.
   // KRITISK (Bjørn 2026-06-21): requestForegroundPermissionsAsync() HÆNGER i det
@@ -97,13 +120,13 @@ export async function getDeviceLocation(precision: LocationPrecision): Promise<L
   // IKKE-blokerende med getForegroundPermissionsAsync() (rør ikke nogen Activity),
   // og bind HELE forløbet i en overordnet timeout så funktionen aldrig kan hænge.
   return Promise.race([
-    _precisePayload(),
+    _precisePayload(precision),
     new Promise<LocationPayload | null>((resolve) => setTimeout(() => resolve(null), 12000)),
   ]).then((r) => r ?? ipLocation()).catch(() => ipLocation())
 }
 
 /** Indre precise-flow uden timeout-værn (kalderen race'er det mod en deadline). */
-async function _precisePayload(): Promise<LocationPayload | null> {
+async function _precisePayload(precision: Extract<LocationPrecision, 'now' | 'precise' | 'background'>): Promise<LocationPayload | null> {
   try {
     // Læs tilladelse uden dialog (getForegroundPermissionsAsync rører ikke en
     // Activity → hænger ikke). Bed kun aktivt hvis status er ubestemt.
@@ -119,7 +142,7 @@ async function _precisePayload(): Promise<LocationPayload | null> {
     // celle/netværks-fix → reverse-geocode giver kun by, INTET vejnavn. Derfor:
     // hent en FRISK høj-præcisions-GPS-fix FØRST (race mod 10s), og brug kun
     // last-known som hurtig fallback hvis det friske fix timer ud/fejler.
-    let pos: { coords: { latitude: number; longitude: number } } | null =
+    let pos: { coords: { latitude: number; longitude: number; accuracy?: number | null } } | null =
       await Promise.race([
         Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
         new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
@@ -130,7 +153,15 @@ async function _precisePayload(): Promise<LocationPayload | null> {
     if (!pos) return ipLocation()
     const { latitude, longitude } = pos.coords
     const label = await reverseLabel(latitude, longitude, true)
-    return { lat: latitude, lon: longitude, label, source: 'gps', precision: 'precise' }
+    return {
+      lat: latitude,
+      lon: longitude,
+      label,
+      source: 'gps',
+      precision,
+      accuracy_m: typeof pos.coords.accuracy === 'number' ? pos.coords.accuracy : undefined,
+      captured_at: new Date().toISOString()
+    }
   } catch {
     return ipLocation()
   }

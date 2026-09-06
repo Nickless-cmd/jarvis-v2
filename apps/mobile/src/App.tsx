@@ -18,6 +18,7 @@ import {
   registerForPush
 } from './lib/push'
 import { startPresenceReporting } from './lib/presence'
+import { loadBatterySaver } from './lib/batteryPrefs'
 import { checkForUpdate, type UpdateManifest } from './lib/appUpdate'
 import { downloadAndInstall } from './lib/installApk'
 import { UpdateBanner } from './components/UpdateBanner'
@@ -55,6 +56,15 @@ function AppBody() {
   // Højden MÅLES, ikke gættes: bjælken har allerede skiftet højde én gang
   // (44 → 40 dp), og en konstant ville tie stille næste gang den gør det.
   const [headerHeight, setHeaderHeight] = useState(72)
+  const [batterySaver, setBatterySaver] = useState(false)
+
+  useEffect(() => {
+    void loadBatterySaver().then(setBatterySaver)
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') void loadBatterySaver().then(setBatterySaver)
+    })
+    return () => sub.remove()
+  }, [])
 
   // FCM: registrér device-token efter login + lyt på data-only i forgrunden.
   // Uden for tidlig return (hooks må ikke være betingede); guardet på authToken.
@@ -62,12 +72,12 @@ function AppBody() {
     if (!config?.authToken) return
     void registerForPush(config)
     const unsub = attachForegroundHandler(config)
-    const stopPresence = startPresenceReporting(config)
+    const stopPresence = startPresenceReporting(config, { getBatterySaver: () => batterySaver })
     return () => {
       unsub()
       stopPresence()
     }
-  }, [config?.authToken])
+  }, [config?.authToken, batterySaver])
 
   // Et tryk på en godkendelses-notifikation skal lande i Arbejde → Godkend,
   // ikke i Snak. Ellers fører notifikationen hen til det forkerte rum, og

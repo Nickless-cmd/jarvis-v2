@@ -70,9 +70,20 @@ jest.mock('expo-image-picker', () => ({
 
 jest.mock('expo-location', () => ({
   __esModule: true,
-  Accuracy: { Balanced: 3 },
+  Accuracy: { Balanced: 3, High: 4 },
   requestForegroundPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  requestBackgroundPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  getForegroundPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
   getCurrentPositionAsync: jest.fn(async () => ({ coords: { latitude: 55.86, longitude: 10.39 } })),
+  getLastKnownPositionAsync: jest.fn(async () => null),
+  hasStartedLocationUpdatesAsync: jest.fn(async () => false),
+  startLocationUpdatesAsync: jest.fn(async () => undefined),
+  stopLocationUpdatesAsync: jest.fn(async () => undefined),
+}))
+
+jest.mock('expo-task-manager', () => ({
+  __esModule: true,
+  defineTask: jest.fn(),
 }))
 
 jest.mock('expo-audio', () => ({
@@ -151,4 +162,3 @@ jest.mock('lucide-react-native', () => {
     }
   )
 })
-

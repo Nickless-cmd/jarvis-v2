@@ -42,6 +42,9 @@ interface StreamContextValue {
    * live uanset hvem der skriver. Passiv — afbrydes automatisk af send(). */
   follow: (config: ApiConfig, sessionId: string) => void
   stopFollow: () => void
+  /** Mobil lifecycle: slip den lokale SSE når appen backgrounder, men lad
+   * server-runnet leve videre. Foreground sync/follow samler op igen. */
+  detachForBackground: () => void
 }
 
 /** Hvordan runtime forsøger at rette fejlen (central_error_envelope.recoverable).
@@ -242,6 +245,16 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             // Local interruption must win even if the server-side cancel request fails.
           }
         }
+      },
+      detachForBackground: () => {
+        control.current?.abort()
+        control.current = null
+        setReconnecting(false)
+        updateState((prev) => (
+          prev.status === 'working'
+            ? prev
+            : { ...prev, status: 'working' }
+        ))
       },
       approve: async (config) => {
         if (!approval?.approvalId) return

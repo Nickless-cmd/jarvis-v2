@@ -145,6 +145,47 @@ export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   return data.session_ids ?? []
 }
 
+export interface ActiveRunSnapshot {
+  sessionId: string
+  runId: string
+  status: string
+}
+
+export async function getActiveRunSnapshot(config: ApiConfig): Promise<ActiveRunSnapshot[]> {
+  const data = await apiFetch<{
+    sessions?: { session_id?: string; run_id?: string; status?: string }[]
+  }>(config, '/chat/active-runs')
+  return (data.sessions ?? []).map((item) => ({
+    sessionId: String(item.session_id ?? ''),
+    runId: String(item.run_id ?? ''),
+    status: String(item.status ?? 'working')
+  })).filter((item) => item.sessionId)
+}
+
+export interface PresenceDebugDevice {
+  device_key: string
+  platform: string
+  foreground: boolean
+  awake: boolean
+  network: string
+  device_name?: string
+  active_session_id?: string
+  battery_saver?: boolean
+  ping_age_s?: number
+  interaction_age_s?: number
+  location?: unknown
+}
+
+export interface PresenceDebugSnapshot {
+  devices: PresenceDebugDevice[]
+  ranked: { device_key: string; platform: string; score: number; via: string }[]
+  summary: string
+}
+
+export async function getPresenceDebug(config: ApiConfig): Promise<PresenceDebugSnapshot> {
+  return apiFetch<PresenceDebugSnapshot>(config, '/presence/debug')
+}
+
 /** Afbryd det run der kører for en session (når appen ikke selv streamer det,
  * fx efter baggrund hvor serveren stadig arbejder). */
 export async function cancelActiveRun(config: ApiConfig, sessionId: string): Promise<void> {

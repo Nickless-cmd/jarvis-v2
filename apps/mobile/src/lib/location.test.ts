@@ -1,4 +1,4 @@
-import { parsePrecision, labelFromAddress } from './location'
+import { parsePrecision, labelFromAddress, precisionLabel, shouldUseGps } from './location'
 
 describe('parsePrecision', () => {
   it('defaults to off for unknown/null', () => {
@@ -8,8 +8,30 @@ describe('parsePrecision', () => {
   })
   it('accepts valid values', () => {
     expect(parsePrecision('city')).toBe('city')
+    expect(parsePrecision('area')).toBe('area')
+    expect(parsePrecision('now')).toBe('now')
     expect(parsePrecision('precise')).toBe('precise')
+    expect(parsePrecision('background')).toBe('background')
     expect(parsePrecision('off')).toBe('off')
+  })
+})
+
+describe('location precision policy', () => {
+  it('uses GPS only for precise/current/background levels', () => {
+    expect(shouldUseGps('city')).toBe(false)
+    expect(shouldUseGps('area')).toBe(false)
+    expect(shouldUseGps('precise')).toBe(true)
+    expect(shouldUseGps('now')).toBe(true)
+    expect(shouldUseGps('background')).toBe(true)
+  })
+
+  it('has user-facing labels for all precision levels', () => {
+    expect(precisionLabel('off')).toBe('Fra')
+    expect(precisionLabel('city')).toBe('By')
+    expect(precisionLabel('area')).toBe('Område')
+    expect(precisionLabel('now')).toBe('Præcis nu')
+    expect(precisionLabel('precise')).toBe('Mens appen er åben')
+    expect(precisionLabel('background')).toBe('I baggrund')
   })
 })
 

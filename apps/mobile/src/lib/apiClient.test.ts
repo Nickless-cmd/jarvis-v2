@@ -10,6 +10,7 @@ import {
   health,
   listSessions,
   cancelRunById,
+  getActiveRunSnapshot,
   steerRun,
   whoami
 } from './apiClient'
@@ -22,6 +23,20 @@ const config: ApiConfig = {
 
 beforeEach(() => {
   global.fetch = jest.fn()
+})
+
+it('reads active run snapshots for resumable mobile UI', async () => {
+  ;(global.fetch as jest.Mock).mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      sessions: [{ session_id: 's1', run_id: 'r1', status: 'working' }]
+    })
+  })
+
+  await expect(getActiveRunSnapshot(config)).resolves.toEqual([
+    { sessionId: 's1', runId: 'r1', status: 'working' }
+  ])
 })
 
 it('adds bearer token and reads whoami', async () => {

@@ -17,7 +17,8 @@ jest.mock('./SessionContext', () => ({
 }))
 
 jest.mock('../lib/streamClient', () => ({
-  startStream: (...args: unknown[]) => mockStartStream(...args)
+  startStream: (...args: unknown[]) => mockStartStream(...args),
+  followSession: jest.fn()
 }))
 
 jest.mock('../lib/apiClient', () => ({
@@ -32,7 +33,7 @@ const config = {
 }
 
 function Probe() {
-  const { approval, approve, deny, state, send, stop } = useStream()
+  const { approval, approve, deny, state, send, stop, detachForBackground } = useStream()
 
   return (
     <>
@@ -42,6 +43,7 @@ function Probe() {
       <Text onPress={() => send(config, 'session-1', 'Hej Jarvis')}>send</Text>
       <Text onPress={() => send(config, 'session-1', 'Hej hurtigt', { thinkingMode: 'fast', approvalMode: 'trust' })}>send-controlled</Text>
       <Text onPress={() => void stop(config)}>stop</Text>
+      <Text onPress={() => detachForBackground()}>detach</Text>
       <Text onPress={() => void approve(config)}>approve</Text>
       <Text onPress={() => void deny(config)}>deny</Text>
     </>
@@ -56,6 +58,31 @@ beforeEach(() => {
   })
   mockApproveTool.mockResolvedValue(undefined)
   mockDenyTool.mockResolvedValue(undefined)
+})
+
+it('detaches a backgrounded mobile stream without cancelling the server run', async () => {
+  const abort = jest.fn()
+  mockStartStream.mockReturnValue({
+    abort,
+    getRunId: () => 'run-123'
+  })
+
+  const screen = await render(
+    <StreamProvider>
+      <Probe />
+    </StreamProvider>
+  )
+
+  await act(async () => {
+    screen.getByText('send').props.onPress()
+  })
+  await act(async () => {
+    screen.getByText('detach').props.onPress()
+  })
+
+  expect(abort).toHaveBeenCalledTimes(1)
+  expect(mockCancelRun).not.toHaveBeenCalled()
+  expect(screen.getByText('working')).toBeTruthy()
 })
 
 it('videresender per-turn thinking og approval controls', async () => {

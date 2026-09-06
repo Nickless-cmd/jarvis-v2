@@ -173,6 +173,45 @@ export async function display(config: ApiConfig, data: PushData) {
   if (data.notif_id) void ackNotification(config, data.notif_id)
 }
 
+const RUN_NOTIFICATION_ID = 'jarvis-active-run'
+
+export async function showRunInProgressNotification(sessionId?: string, runId?: string): Promise<void> {
+  try {
+    const channelId = await notifee.createChannel({
+      id: 'jarvis',
+      name: 'Jarvis',
+      importance: AndroidImportance.HIGH,
+    })
+    await notifee.displayNotification({
+      id: RUN_NOTIFICATION_ID,
+      title: 'Jarvis arbejder',
+      body: 'Du kan lukke skærmen. Runnet fortsætter på serveren.',
+      data: {
+        kind: 'run_in_progress',
+        ...(sessionId ? { session_id: sessionId } : {}),
+        ...(runId ? { run_id: runId } : {})
+      },
+      android: {
+        channelId,
+        pressAction: { id: 'default' },
+        smallIcon: 'ic_notification',
+        ongoing: true,
+        autoCancel: false
+      }
+    })
+  } catch {
+    /* notification er hjælp, ikke run-sandhed */
+  }
+}
+
+export async function clearRunInProgressNotification(): Promise<void> {
+  try {
+    await notifee.cancelNotification(RUN_NOTIFICATION_ID)
+  } catch {
+    /* best-effort */
+  }
+}
+
 /**
  * Håndtér et notifee ACTION_PRESS-svar (Direct Reply): send teksten til
  * sessionens run + erstat notifikationen med en kvittering. Kaldes fra både

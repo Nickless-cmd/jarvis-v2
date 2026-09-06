@@ -2672,3 +2672,38 @@
 .rh-tryk.rh-medium { color: var(--warn-fg); }
 .rh-tryk.rh-high { color: var(--error-fg); }
 .rh-hoej { color: var(--warn-fg); font-weight: 600; }
+
+/* pause_and_ask — Jarvis standser og spørger. Skal skille sig ud fra
+   almindeligt tool-output: det er ikke noget man scroller forbi. */
+.pauseask {
+  display: flex; flex-direction: column; gap: 9px;
+  padding: 12px 13px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-left: 3px solid var(--tint);
+  border-radius: var(--radius-md);
+}
+.pauseask.haste-high { border-left-color: var(--warn-fg); }
+.pauseask-head {
+  display: flex; align-items: center; gap: 7px;
+  color: var(--fg-3); font-size: 11.5px;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.pauseask-q { margin: 0; color: var(--fg-1); font-size: 15px; line-height: 1.45; }
+.pauseask-ctx {
+  margin: 0; padding: 8px 10px;
+  background: var(--code-bg); border-radius: var(--radius-sm);
+  color: var(--fg-2); font-family: var(--font-mono); font-size: 12px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.pauseask-valg { display: flex; flex-wrap: wrap; gap: 7px; }
+.pauseask-btn {
+  padding: 7px 13px;
+  background: var(--bg-3); color: var(--fg-1);
+  border: 1px solid var(--line); border-radius: 999px;
+  font: inherit; font-size: 13.5px; cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.pauseask-btn:hover { background: var(--bg-4); border-color: var(--tint); }
+.pauseask-btn:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+.pauseask-fri { color: var(--fg-3); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .pauseask-btn { transition: none; } }

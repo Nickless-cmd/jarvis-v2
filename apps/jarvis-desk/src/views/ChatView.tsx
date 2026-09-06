@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ArrowDown, PanelRight, Loader2 } from 'lucide-react'
+import { onPauseSvar } from '../lib/pauseAsk'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
@@ -375,6 +376,14 @@ export function ChatView({
       providerChoice: prefs.providerChoice,
     })
   }
+
+
+  // Et klik paa en pause_and_ask-knap skal blive den NAESTE bruger-besked,
+  // praecis som vaerktoejets kontrakt lover. Ref fordi resend gendannes hver
+  // render — ellers rives abonnementet ned og op konstant.
+  const pauseSvarRef = useRef(resend)
+  pauseSvarRef.current = resend
+  useEffect(() => onPauseSvar((svar) => pauseSvarRef.current(svar)), [])
 
   const streaming = stream.status === 'working'
 

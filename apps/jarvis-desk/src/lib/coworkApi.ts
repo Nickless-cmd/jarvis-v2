@@ -458,3 +458,31 @@ export async function getRunPrompt(
 ): Promise<PromptSammensaetning> {
   return apiFetch(config, `/mc/runs/${encodeURIComponent(runId)}/prompt`)
 }
+
+/** Subagent-kørsler som arbejdskort. Læser agent_runs, hvor arbejdet faktisk
+ *  står — /central/agents' egen `recent` bygger på en dispatch-nerve der
+ *  målt 6/9-2026 producerede nul, mens der lå 383 kørsler ved siden af. */
+export type AgentArbejde = {
+  run_id: string
+  agent_id: string
+  role: string
+  kind: string
+  goal: string
+  status: string
+  execution_mode: string
+  model: string
+  input_summary: string
+  output_summary: string
+  started_at: string
+  finished_at: string
+  tokens: number
+  cost_usd: number
+}
+export async function getAgentArbejde(
+  config: ApiConfig, limit = 20,
+): Promise<{ runs: AgentArbejde[]; antal: number }> {
+  const d = await apiFetch<{ runs?: AgentArbejde[]; antal?: number }>(
+    config, `/central/agents/work?limit=${limit}`,
+  )
+  return { runs: d.runs ?? [], antal: d.antal ?? 0 }
+}

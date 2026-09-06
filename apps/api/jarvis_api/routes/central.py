@@ -135,6 +135,17 @@ async def central_agents(window: str = "today") -> dict:
     return await asyncio.to_thread(build_agents_surface, window=window)
 
 
+@router.get("/agents/work")
+async def central_agents_work(limit: int = 20) -> dict:
+    """De sidste subagent-kørsler som arbejdskort. Owner-only.
+
+    Modsat /central/agents' dispatches.recent, der bygger på en nerve som ikke
+    fyrer, læser denne agent_runs direkte — dér hvor arbejdet faktisk står."""
+    _require_owner()
+    from core.services.central_agents_surface import build_recent_agent_work
+    return await asyncio.to_thread(build_recent_agent_work, limit=limit)
+
+
 @router.post("/agents/{agent_id}/cancel")
 async def central_agent_cancel(agent_id: str, payload: dict | None = None) -> dict:
     """Afbryd (abort) en kørende agent fra Central CLI Agents-fanen. Owner-only.

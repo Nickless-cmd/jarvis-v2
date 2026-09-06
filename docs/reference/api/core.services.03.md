@@ -436,6 +436,7 @@ _Central agents-/council-surface (B3, 13. jul 2026) — gør de nye agent-/counc
 | function | `build_agents_surface` | `(*, window=…)` | Agent-observabilitet til /central/agents + `jc agents`. | [src](../../../core/services/central_agents_surface.py#L131) |
 | function | `_roster` | `()` | Full model roster (every pool model as a row) fra core.services.agents. | [src](../../../core/services/central_agents_surface.py#L166) |
 | function | `build_council_surface` | `(*, window=…)` | Council-observabilitet til /central/council + `jc council`. | [src](../../../core/services/central_agents_surface.py#L179) |
+| function | `build_recent_agent_work` | `(limit=…)` | De sidste subagent-koersler som arbejdskort — rolle, udfald, pris. | [src](../../../core/services/central_agents_surface.py#L234) |
 
 ## `core/services/central_analyst.py`
 _The Analyst — observatør-effekten._

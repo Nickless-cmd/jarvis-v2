@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 const getRunPrompt = vi.fn()
 vi.mock('../../lib/coworkApi', () => ({ getRunPrompt: (...a: unknown[]) => getRunPrompt(...a) }))

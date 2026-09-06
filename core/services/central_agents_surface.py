@@ -229,3 +229,64 @@ def build_council_surface(*, window: str = "today") -> dict:
         "note": "council_convene kan være tom indtil WS-C; håndteret empty-safe.",
         "generated_at": datetime.now(UTC).isoformat(),
     }
+
+
+def build_recent_agent_work(limit: int = 20) -> dict:
+    """De sidste subagent-koersler som arbejdskort — rolle, udfald, pris.
+
+    Hvorfor ikke `dispatches.recent`: den bygger paa dispatch-nerven
+    (`agent_result`/`agent_blocked`/`agent_error`), og den producerer nul.
+    Maalt 6/9-2026: dispatches.total = 0, mens `agent_runs` havde 383 raekker
+    (376 completed, 7 failed). Arbejdet SKETE — det blev bare aldrig vist.
+
+    Rollen ligger i `agent_registry`, ikke paa koerslen, saa den slaas op og
+    haeftes paa. Findes agenten ikke i registret, siges det aabent med et tomt
+    rolle-felt fremfor at gaette en.
+    """
+    from core.runtime.db import connect
+    from core.runtime.db_agent_runtime import list_agent_runs
+
+    runs = list_agent_runs(limit=max(1, min(int(limit), 100)))
+    if not runs:
+        return {"runs": [], "antal": 0}
+
+    roller: dict[str, dict[str, str]] = {}
+    try:
+        ids = sorted({str(r.get("agent_id") or "") for r in runs if r.get("agent_id")})
+        if ids:
+            with connect() as conn:
+                pladser = ",".join("?" for _ in ids)
+                for row in conn.execute(
+                    f"SELECT agent_id, role, kind, goal FROM agent_registry "
+                    f"WHERE agent_id IN ({pladser})",
+                    tuple(ids),
+                ).fetchall():
+                    roller[str(row["agent_id"])] = {
+                        "role": str(row["role"] or ""),
+                        "kind": str(row["kind"] or ""),
+                        "goal": str(row["goal"] or "")[:200],
+                    }
+    except Exception:  # pragma: no cover - registret maa ikke vaelte listen
+        roller = {}
+
+    kort = []
+    for r in runs:
+        aid = str(r.get("agent_id") or "")
+        meta = roller.get(aid, {})
+        kort.append({
+            "run_id": str(r.get("run_id") or ""),
+            "agent_id": aid,
+            "role": meta.get("role", ""),
+            "kind": meta.get("kind", ""),
+            "goal": meta.get("goal", ""),
+            "status": str(r.get("status") or ""),
+            "execution_mode": str(r.get("execution_mode") or ""),
+            "model": str(r.get("model") or ""),
+            "input_summary": str(r.get("input_summary") or "")[:200],
+            "output_summary": str(r.get("output_summary") or "")[:300],
+            "started_at": str(r.get("started_at") or ""),
+            "finished_at": str(r.get("finished_at") or ""),
+            "tokens": int(r.get("input_tokens") or 0) + int(r.get("output_tokens") or 0),
+            "cost_usd": round(float(r.get("cost_usd") or 0.0), 4),
+        })
+    return {"runs": kort, "antal": len(kort)}

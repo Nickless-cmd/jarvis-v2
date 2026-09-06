@@ -2791,3 +2791,26 @@
   font-variant-numeric: tabular-nums;
 }
 .ps-rest, .ps-tom { margin: 2px 0 0; color: var(--fg-3); font-size: 11.5px; }
+
+/* Subagent-arbejdskort. Ikke skjult intern magi: rolle, udfald, pris. */
+.aw { margin-top: 14px; }
+.aw-head {
+  display: flex; align-items: center; gap: 7px;
+  margin: 0 0 8px; color: var(--fg-2); font-size: 13px; font-weight: 600;
+}
+.aw-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.aw-kort {
+  padding: 9px 11px; background: var(--bg-1);
+  border: 1px solid var(--line); border-left: 2px solid var(--fg-3);
+  border-radius: var(--radius-md);
+}
+.aw-kort.st-completed { border-left-color: var(--ok); }
+.aw-kort.st-failed { border-left-color: var(--error-fg); }
+.aw-kort.st-running { border-left-color: var(--tint); }
+.aw-top { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--fg-2); }
+.aw-rolle { font-weight: 600; color: var(--fg-1); }
+.aw-mode { color: var(--fg-3); font-size: 11.5px; }
+.aw-pris { margin-left: auto; color: var(--fg-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.aw-maal, .aw-ud { margin: 5px 0 0; color: var(--fg-2); font-size: 12.5px; line-height: 1.45; }
+.aw-ud { color: var(--fg-3); }
+.aw-tom { color: var(--fg-3); font-size: 12.5px; margin-top: 12px; }

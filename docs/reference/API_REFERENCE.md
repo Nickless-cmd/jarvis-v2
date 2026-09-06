@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-06 from app.routes (live) — 537 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-06 from app.routes (live) — 538 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -118,6 +118,7 @@
 | GET | `/central/agent-smith` | dict | central_agent_smith |
 | GET | `/central/agents` | dict | central |
 | GET | `/central/agents` | dict | central_absorb_routes |
+| GET | `/central/agents/work` | dict | central |
 | POST | `/central/agents/{agent_id}/cancel` | dict | central |
 | POST | `/central/agents/{agent_id}/pause` | dict | central |
 | GET | `/central/analyst` | dict | central_matrix |

@@ -272,6 +272,13 @@ def select_tools_for_copilot(
             kept_required = [name for name in selected_names if name in required]
             kept_other = [name for name in selected_names if name not in required]
             selected_names = kept_other[: max(0, max_tools - len(kept_required))] + kept_required
+        # Katalog-raekkefoelge ogsaa her (6/9-2026). Den anden udgang nedenfor
+        # har altid genoprettet den; DENNE returnerede i udvaelgelsesraekkefoelge,
+        # saa de pinnede navne endte til sidst i arrayet. Det er den udgang der
+        # tages naar Tier 1 alene spraenger kappen — altsaa cowork, hans rige
+        # bane. Se test_visible_tool_pool_keeps_catalog_order_for_deepseek_cache.
+        _kat = {n: i for i, n in enumerate(by_name)}
+        selected_names.sort(key=lambda n: _kat.get(n, 1 << 30))
         return [by_name[n] for n in selected_names[:max_tools]]
 
     # Tier 2 scoring. In stable_only mode the two per-call-variable inputs

@@ -47,11 +47,11 @@ _EventContext — ContextVar holding the current parent event_id._
 | method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L227) |
 
 ## `core/eventbus/publish_scan.py`
-_Find hver `publish("familie.navn")` i kildekoden — statisk, uden at koere noget._
+_Find hvert publish-kald med en familie.navn-literal — statisk, uden at koere noget._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_repo_root` | `()` | — | [src](../../../core/eventbus/publish_scan.py#L37) |
-| function | `scan_published_families` | `(rod=…)` | familie → liste af "sti:linje" hvor den publiceres. | [src](../../../core/eventbus/publish_scan.py#L41) |
-| function | `unregistered_families` | `(rod=…)` | De publicerede familier der IKKE er tilladt → publish raiser tavst. | [src](../../../core/eventbus/publish_scan.py#L64) |
+| function | `_repo_root` | `()` | — | [src](../../../core/eventbus/publish_scan.py#L42) |
+| function | `scan_published_families` | `(rod=…)` | familie → liste af "sti:linje" hvor den publiceres. | [src](../../../core/eventbus/publish_scan.py#L46) |
+| function | `unregistered_families` | `(rod=…)` | De publicerede familier der IKKE er tilladt → publish raiser tavst. | [src](../../../core/eventbus/publish_scan.py#L77) |
 

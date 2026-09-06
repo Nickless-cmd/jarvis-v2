@@ -1,4 +1,7 @@
-"""Find hver `publish("familie.navn")` i kildekoden — statisk, uden at koere noget.
+"""Find hvert publish-kald med en familie.navn-literal — statisk, uden at koere noget.
+
+Eksemplet skrives med vilje ikke som et rigtigt kald: gjorde det det, ville
+scanneren finde sin egen docstring og opfinde familien «familie».
 
 Baggrund: tre gange paa to dage fandt vi det samme moenster — noget bygget, men
 kun *naesten* tilsluttet:
@@ -23,7 +26,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-# `publish("familie.navn"` — baade event_bus.publish og bus.publish.
+# Matcher et publish-kald med en streng-literal som foerste argument.
+# Eksemplet skrives IKKE som et rigtigt kald her: gjorde det det, ville
+# scanneren finde sin egen docstring og opfinde en familie.
 #
 # Navne-delen er bevidst bred (`[^'"]+`): et foerste forsoeg brugte
 # [a-zA-Z0-9_.{}] og var dermed BLIND for navne med aeoaa. Min egen
@@ -48,8 +53,16 @@ def scan_published_families(rod: Path | None = None) -> dict[str, list[str]]:
     ud: dict[str, list[str]] = {}
     for navn in _ROEDDER:
         for p in (base / navn).rglob("*.py"):
-            s = str(p)
-            if "node_modules" in s or ".worktrees" in s:
+            # Maalt RELATIVT til roden. Foer stod der `".worktrees" in str(p)`
+            # paa den ABSOLUTTE sti — og et worktree ligger SELV under
+            # .worktrees/, saa hver eneste fil blev sprunget over og scanningen
+            # fandt nul. Den var altsaa blind praecis dér hvor Codex' grene
+            # bygges.
+            rel = p.relative_to(base)
+            # Paa KOMPONENTER, ikke praefiks: saa rammer den ogsaa en kopi der
+            # ligger dybere end roden, og den kan stadig ikke udelukke sig selv
+            # naar basen SELV er et worktree (den relative sti naevner det ikke).
+            if {"node_modules", ".worktrees"} & set(rel.parts):
                 continue
             try:
                 txt = p.read_text(encoding="utf-8")

@@ -105,3 +105,39 @@ def test_scanneren_er_ikke_blind_for_ikke_ascii(tmp_path):
         'event_bus.publish("ny_familie.hændelse", {})\n', encoding="utf-8"
     )
     assert "ny_familie" in scan_published_families(tmp_path)
+
+
+def test_scanneren_virker_ogsaa_naar_den_koeres_fra_et_worktree(tmp_path):
+    """Skip-betingelsen målte «.worktrees» på den ABSOLUTTE sti — og et worktree
+    ligger selv under .worktrees/, så hver eneste fil blev sprunget over og
+    scanningen fandt nul. Den var blind præcis dér hvor Codex' grene bygges.
+
+    Nu måles der relativt til roden.
+    """
+    rod = tmp_path / ".worktrees" / "en-gren"
+    (rod / "core").mkdir(parents=True)
+    (rod / "apps").mkdir()
+    (rod / "scripts").mkdir()
+    (rod / "core" / "x.py").write_text('event_bus.publish("runtime.noget", {})\n', encoding="utf-8")
+    assert "runtime" in scan_published_families(rod)
+
+
+def test_scanneren_udelader_worktrees_UNDER_roden(tmp_path):
+    """Men kopier under roden skal stadig springes over — ellers tælles hvert
+    fund én gang pr. worktree."""
+    (tmp_path / "core").mkdir()
+    (tmp_path / "apps").mkdir()
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "core" / "ægte.py").write_text('publish("runtime.a", {})\n', encoding="utf-8")
+    kopi = tmp_path / "core" / ".worktrees" / "kopi"
+    kopi.mkdir(parents=True)
+    (kopi / "y.py").write_text('publish("kun_i_kopien.b", {})\n', encoding="utf-8")
+    fundet = scan_published_families(tmp_path)
+    assert "runtime" in fundet
+    assert "kun_i_kopien" not in fundet
+
+
+def test_scanneren_finder_ikke_sin_egen_dokumentation():
+    """Første udgave havde `publish("familie.navn")` i sin egen docstring og
+    opfandt dermed familien «familie» — som endte i baselinen som ægte gæld."""
+    assert "familie" not in scan_published_families()

@@ -164,3 +164,42 @@ def test_llm_judge_failure_is_fail_open(monkeypatch):
     v = tg.truth_gate_v2({"text": "Det er ekspederet på serveren nu.", "executed_tool_names": [],
                           "followup_exchanges": [], "run_id": "r"})
     assert v.decision is Decision.GREEN
+
+
+# ── Samtale er ikke en handling (6/9-2026) ───────────────────────────────
+
+def test_henvisning_til_tidligere_samtale_flages_ikke():
+    """Jarvis skrev «jeg bekræftede din korrektion» om en samtale i går.
+
+    Vaernet flagede det som uverificeret, fordi regexet kun ser verbet.
+    Det er vaerre end stoej: et vaern der flager legitim erindring laerer
+    ham at holde op med at henvise til fortiden, og hukommelse paa tvaers af
+    sessioner hoerer til den beskyttede kerne.
+    """
+    from core.services.truth_gate_v2 import detect_action_claims
+    t = ("jeg bekræftede din korrektion så hårdt, at jeg slettede min egen "
+         "observation med i købet")
+    assert detect_action_claims(t) == []
+
+
+def test_person_som_objekt_flages_ikke():
+    from core.services.truth_gate_v2 import detect_action_claims
+    for t in ("jeg tjekkede dig", "jeg bekræftede din pointe",
+              "jeg verificerede din vurdering"):
+        assert detect_action_claims(t) == [], t
+
+
+def test_undtagelsen_daekker_IKKE_data_og_filer():
+    """«dine tal» og «din fil» er data — en paastand om dem er en handling."""
+    from core.services.truth_gate_v2 import detect_action_claims
+    for t in ("jeg tjekkede dine tal igen", "jeg tjekkede din fil",
+              "jeg verificerede din kode"):
+        assert [c.kind for c in detect_action_claims(t)] == ["verified"], t
+
+
+def test_aegte_handlingspaastande_fyrer_uaendret():
+    from core.services.truth_gate_v2 import detect_action_claims
+    for t, kind in (("jeg bekræftede at testen består", "verified"),
+                    ("jeg deployede til CT105", "deployed"),
+                    ("jeg kørte testene", "ran")):
+        assert kind in [c.kind for c in detect_action_claims(t)], t

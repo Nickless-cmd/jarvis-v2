@@ -42,6 +42,46 @@ class ActionClaim:
 _FENCE = re.compile(r"```[\w-]*\n(.*?)```", re.DOTALL)
 
 
+# ── Samtale er ikke en handling (6/9-2026) ─────────────────────────────────
+# `verified` matcher «jeg bekræftede» hvor som helst i teksten. Men Jarvis
+# skrev «jeg bekræftede DIN KORREKTION så hårdt at jeg slettede min egen
+# observation» — en sætning om en tidligere samtale, ikke en påstand om et
+# tool-kald. Værnet flagede den som uverificeret.
+#
+# Det er værre end støj. Et værn der flager legitim erindring lærer ham at
+# holde op med at henvise til fortiden — og hukommelse på tværs af sessioner
+# hører til den beskyttede kerne. Værnet ville altså gøre skade præcis dér
+# hvor det gør mindst gavn: ingen af de her sætninger kan vildlede nogen om
+# hvorvidt en kommando er kørt.
+#
+# Snævert med vilje: KUN når verbets objekt er en person eller noget der
+# tilhører en. «jeg tjekkede filen», «jeg bekræftede at testen består» og
+# «jeg verificerede commit'en» fyrer uændret.
+# Enten en person direkte, ELLER et ejestedord fulgt af noget der hoerer
+# samtalen til. «dine tal», «din fil» og «din kode» er IKKE undtaget — det er
+# data, og en paastand om at have tjekket dem er stadig en paastand om en
+# handling. Undtagelsen skal vaere saa smal som muligt; et vaern man udhuler
+# for at goere det behageligt holder ingen ude.
+_SAMTALE_OBJEKT = re.compile(
+    r"^\s*(?:(?:dig|mig|ham|hende|dem)\b"
+    r"|(?:din|dit|dine|hans|hendes|deres|jeres|vores|min|mit|mine)\s+"
+    r"(?:korrektion|rettelse|besked|pointe|vurdering|kritik|indvending|"
+    r"svar|ord|formulering|opsummering|udlaegning|version af)\b)",
+    re.IGNORECASE,
+)
+
+
+def _er_mellemmenneskeligt(text: str, m: "re.Match[str]") -> bool:
+    """Peger paastanden paa en person eller paa noget der er SAGT?
+
+    I saa fald er den ikke en paastand om et tool-kald, og vaernet skal tie.
+    Ingen af de saetninger kan vildlede nogen om hvorvidt en kommando er
+    koert — men et vaern der flager dem, laerer ham at holde op med at
+    henvise til tidligere samtaler.
+    """
+    return bool(_SAMTALE_OBJEKT.match(text[m.end():m.end() + 40]))
+
+
 def detect_action_claims(text: str) -> list[ActionClaim]:
     """Deterministisk: find handlings-påstande. commit_hash tæller kun i commit/git/log-
     kontekst ELLER hvis der OGSÅ er en 'her er output'-påstand (undgå tilfældige hex).
@@ -54,7 +94,7 @@ def detect_action_claims(text: str) -> list[ActionClaim]:
         if kind in ("commit_hash", "output"):
             continue          # håndteres specielt nedenfor
         m = pat.search(text)
-        if m:
+        if m and not _er_mellemmenneskeligt(text, m):
             out.append(ActionClaim(kind=kind, matched_text=m.group(0)))
             detected.add(kind)
     # output-påstand: "her er output" ELLER (eksekverings-signal + en kodeblok).

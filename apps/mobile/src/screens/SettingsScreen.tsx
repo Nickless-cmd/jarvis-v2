@@ -8,6 +8,7 @@ import {
   getAccountMe,
   googleLinkStart,
   googleLoginResult,
+  getPresenceDebug,
   health,
   listConnectors,
   setConnectorEnabled,
@@ -20,7 +21,8 @@ import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { bubble } from '../lib/bubbleModule'
 import { loadBubblePersist, saveBubblePersist } from '../lib/bubbleSetting'
-import { loadPrecision, savePrecision, type LocationPrecision } from '../lib/location'
+import { loadPrecision, precisionLabel, savePrecision, type LocationPrecision } from '../lib/location'
+import { loadBatterySaver, saveBatterySaver } from '../lib/batteryPrefs'
 import { NotificationsSection } from '../components/NotificationsSection'
 import { AppearanceSection } from '../components/AppearanceSection'
 
@@ -59,6 +61,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const [qrOpen, setQrOpen] = useState(false)
   const insets = useSafeAreaInsets()
   const [diagnostic, setDiagnostic] = useState('Ikke testet')
+  const [presenceDiagnostic, setPresenceDiagnostic] = useState('')
   const [googleBusy, setGoogleBusy] = useState(false)
   const [googleMessage, setGoogleMessage] = useState('')
   const [profile, setProfile] = useState<AccountProfile | null>(null)
@@ -68,9 +71,11 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const [persistBubble, setPersistBubble] = useState(false)
   const [bubbleOk, setBubbleOk] = useState(false)
   const [locPrecision, setLocPrecision] = useState<LocationPrecision>('off')
+  const [batterySaver, setBatterySaver] = useState(false)
   useEffect(() => { void bubble.isSupported().then(setBubbleOk) }, [])
   useEffect(() => { void loadBubblePersist().then(setPersistBubble) }, [])
   useEffect(() => { void loadPrecision().then(setLocPrecision) }, [])
+  useEffect(() => { void loadBatterySaver().then(setBatterySaver) }, [])
 
   useEffect(() => {
     if (!config) return
@@ -103,6 +108,22 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
       setDiagnostic((await health(config.apiBaseUrl)) ? 'API svarer' : 'API svarer ikke')
     } catch {
       setDiagnostic('Kunne ikke kontakte API')
+    }
+  }
+
+  const checkPresence = async () => {
+    if (!config) { setPresenceDiagnostic('Ikke forbundet'); return }
+    try {
+      const snap = await getPresenceDebug(config)
+      const first = snap.devices?.[0]
+      const ranked = snap.ranked?.[0]
+      setPresenceDiagnostic([
+        snap.summary,
+        first ? `Denne/nyeste: ${first.device_name || first.platform} · ${first.foreground ? 'aktiv' : 'baggrund'} · ${first.network}` : '',
+        ranked ? `Router vælger: ${ranked.platform} · score ${ranked.score}` : ''
+      ].filter(Boolean).join('\n'))
+    } catch {
+      setPresenceDiagnostic('Kunne ikke hente device-presence')
     }
   }
 
@@ -242,6 +263,26 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
           <Pressable accessibilityRole="button" onPress={checkApi} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Test API</Text>
           </Pressable>
+          {presenceDiagnostic ? <Text style={styles.message}>{presenceDiagnostic}</Text> : null}
+          <Pressable accessibilityRole="button" onPress={checkPresence} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Test device-presence</Text>
+          </Pressable>
+        </View>
+
+        <Text style={styles.sectionTitle}>Batteri</Text>
+        <View style={styles.card}>
+          <View style={styles.bubbleRow}>
+            <Text style={styles.value}>Batterioptimering</Text>
+            <Switch
+              value={batterySaver}
+              onValueChange={(on) => {
+                setBatterySaver(on)
+                void saveBatterySaver(on)
+              }}
+              trackColor={{ true: tokens.color.accent, false: tokens.color.bg3 }}
+            />
+          </View>
+          <Text style={styles.muted}>Reducerer live-stream, polling og præcis GPS når Jarvis kan hente state igen senere.</Text>
         </View>
 
         {/* Forbind enhed (scan QR fra desktop) */}
@@ -258,7 +299,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
         <View style={styles.card}>
           <Text style={styles.value}>Del lokation med Jarvis</Text>
           <View style={styles.locRow}>
-            {(['off', 'city', 'precise'] as LocationPrecision[]).map((p) => (
+            {(['off', 'city', 'area', 'now', 'precise', 'background'] as LocationPrecision[]).map((p) => (
               <Pressable
                 key={p}
                 accessibilityRole="button"
@@ -266,7 +307,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                 style={[styles.locChip, locPrecision === p && styles.locChipOn]}
               >
                 <Text style={[styles.locChipText, locPrecision === p && styles.locChipTextOn]}>
-                  {p === 'off' ? 'Fra' : p === 'city' ? 'By' : 'Præcis'}
+                  {precisionLabel(p)}
                 </Text>
               </Pressable>
             ))}
@@ -276,7 +317,13 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
               ? 'Jarvis kan ikke se hvor du er. Ingen GPS- eller IP-opslag.'
               : locPrecision === 'city'
                 ? 'By-niveau via IP — fx "Svendborg". Batterivenligt, ingen GPS.'
-                : 'Præcis (gade) via GPS — fx "Toftegårdsvej, Svendborg". Kun mens appen er åben.'}
+                : locPrecision === 'area'
+                  ? 'Område/by-region via IP. Stadig batterivenligt og uden GPS.'
+                  : locPrecision === 'now'
+                    ? 'Henter et friskt GPS-fix én gang og deler det med Jarvis.'
+                    : locPrecision === 'background'
+                      ? 'Mest præcis og dyrest: Jarvis må bruge lokation i baggrund når OS tillader det.'
+                      : 'Præcis (gade) via GPS — fx "Toftegårdsvej, Svendborg". Kun mens appen er åben.'}
           </Text>
         </View>
 
@@ -368,7 +415,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   pressedRow: { opacity: 0.7 },
   root: { flex: 1, backgroundColor: tokens.color.bg0 },
   bubbleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  locRow: { flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 8 },
+  locRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10, marginBottom: 8 },
   locChip: {
     paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999,
     backgroundColor: tokens.color.bg3, borderWidth: 1, borderColor: tokens.color.bg3,

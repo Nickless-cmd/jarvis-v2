@@ -25,13 +25,20 @@ import { fetchPresence, type Presence } from '../lib/companionClient'
 import { livesInHousehold } from '../lib/household'
 import { SensesScreen } from './SensesScreen'
 import { ArtifactsScreen } from './ArtifactsScreen'
-import { cancelActiveRun, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
+import { cancelActiveRun, getActiveRunSnapshot, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession, loadModelChoice, saveModelChoice } from '../lib/sessionStore'
 import { bubble } from '../lib/bubbleModule'
-import { submitNotificationReply, REPLY_ACTION_ID } from '../lib/push'
+import {
+  clearRunInProgressNotification,
+  showRunInProgressNotification,
+  submitNotificationReply,
+  REPLY_ACTION_ID
+} from '../lib/push'
 import { outgoingChatText } from '../lib/chatPrompt'
+import { computeRuntimePolicy } from '../lib/mobileRuntimePolicy'
+import { loadBatterySaver } from '../lib/batteryPrefs'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
@@ -171,6 +178,9 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   // "han reagerer ikke"), og henter svaret når runnet er færdigt. Matcher
   // Claude/ChatGPT: composeren viser "stop" mens serveren arbejder.
   const [serverBusy, setServerBusy] = useState(false)
+  const [activeRunId, setActiveRunId] = useState('')
+  const [appState, setAppState] = useState(AppState.currentState)
+  const [batterySaver, setBatterySaver] = useState(false)
   const serverBusyRef = useRef(false)
   const keyboardHeight = useKeyboardHeight()
   // Løft composeren op over tastaturet med fuld tastaturhøjde. (Tidligere
@@ -186,6 +196,17 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [composerHeight, setComposerHeight] = useState(96)
 
   const didRestore = useRef(false)
+  const policy = computeRuntimePolicy({
+    appState,
+    connectivity,
+    activeRun: stream.state.status === 'working' || serverBusy,
+    userViewingActiveSession: true,
+    batterySaver
+  })
+
+  useEffect(() => {
+    void loadBatterySaver().then(setBatterySaver)
+  }, [])
 
   // Blød session-overgang (§3.6): fade besked-fladen ind ved samtale-skift.
   const sessionFade = useRef(new Animated.Value(1)).current
@@ -272,14 +293,24 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     const sub = AppState.addEventListener('change', (next) => {
       const prev = appStateRef.current
       appStateRef.current = next
+      setAppState(next)
+      if (next.match(/inactive|background/) && (stream.state.status === 'working' || serverBusy)) {
+        stream.detachForBackground()
+        void showRunInProgressNotification(
+          sessions.activeId ?? undefined,
+          stream.state.activeRunId ?? activeRunId
+        )
+      }
       if (prev.match(/inactive|background/) && next === 'active' && config && sessions.activeId) {
+        void clearRunInProgressNotification()
+        void loadBatterySaver().then(setBatterySaver)
         // Gen-synkronisér: A3 lader runnet køre færdigt server-side mens appen er
         // i baggrunden → ved retur henter vi sessionen så det færdige svar vises.
         sessions.select(config, sessions.activeId).catch(() => undefined)
       }
     })
     return () => sub.remove()
-  }, [config, sessions.activeId])
+  }, [config, sessions.activeId, stream, serverBusy, activeRunId])
 
   // Poll server-side run-status for den aktive session (delt sandhed). Mens et
   // run kører: vis "arbejder" (composeren blokerer send → ingen nudge-swallow).
@@ -296,12 +327,14 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     let cancelled = false
     const tick = async () => {
       try {
-        const ids = await getActiveRuns(config)
+        const runs = await getActiveRunSnapshot(config)
         if (cancelled) return
-        const busy = ids.includes(sid)
+        const match = runs.find((r) => r.sessionId === sid)
+        const busy = Boolean(match)
         const was = serverBusyRef.current
         serverBusyRef.current = busy
         setServerBusy(busy)
+        setActiveRunId(match?.runId ?? '')
         // idle → kørende: et run startede i sessionen. Live-attach (delt-session
         // sync) — stream.follow rører IKKE noget hvis vi selv sender (guard'en
         // tjekker control.current). Så ser vi en anden enheds/Jarvis' run live.
@@ -316,12 +349,12 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       }
     }
     void tick()
-    const id = setInterval(() => void tick(), 2000)
+    const id = policy.activeRunPollMs > 0 ? setInterval(() => void tick(), policy.activeRunPollMs) : null
     return () => {
       cancelled = true
-      clearInterval(id)
+      if (id) clearInterval(id)
     }
-  }, [config, sessions.activeId])
+  }, [config, sessions.activeId, policy.activeRunPollMs])
 
   // Greeting vises når chatten er tom (opstart / ny samtale) — som på desktop.
   const showGreeting = sessions.messages.length === 0 && !sessions.loading

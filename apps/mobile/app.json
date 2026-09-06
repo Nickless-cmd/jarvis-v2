@@ -12,6 +12,8 @@
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
@@ -25,7 +27,8 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Jarvis kan se din lokation når appen er åben, så han ved hvor du er."
+          "locationAlwaysAndWhenInUsePermission": "Jarvis kan se din lokation når appen er åben, så han ved hvor du er.",
+          "locationAlwaysPermission": "Jarvis kan dele din præcise lokation i baggrunden, hvis du selv slår det til."
         }
       ],
       "expo-audio"

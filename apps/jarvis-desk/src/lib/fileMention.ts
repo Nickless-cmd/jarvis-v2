@@ -38,10 +38,24 @@ function score(rel: string, q: string): number {
   if (iSti >= 0) return 600 - Math.min(iSti, 200)
 
   // Ellers: tegnene skal optræde i rækkefølge (fx "ctsp" → core/tools/simple…).
+  // Et træf inde i FILNAVNET vejer tungere end et spredt ud over hele stien,
+  // og jo tidligere det starter, jo bedre — ellers slår tests/test_x.py
+  // kilden core/services/x.py, blot fordi stien er kortere.
+  const iBaseSub = subsekvensStart(basen, q)
+  if (iBaseSub >= 0) return 400 - Math.min(iBaseSub, 90)
+  return subsekvensStart(lav, q) >= 0 ? 300 : -1
+}
+
+/** Første indeks hvor q optræder som subsekvens i s — eller -1. */
+function subsekvensStart(s: string, q: string): number {
+  let start = -1
   let j = 0
-  for (const c of lav) {
-    if (c === q[j]) j++
-    if (j === q.length) return 300
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === q[j]) {
+      if (j === 0) start = i
+      j++
+      if (j === q.length) return start
+    }
   }
   return -1
 }

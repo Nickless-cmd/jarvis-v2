@@ -8,6 +8,7 @@ const FILER = [
   f('core/tools/simple_tools_web.py'),
   f('core/services/visible_model.py'),
   f('tests/test_simple_tools.py'),
+  f('tests/test_visible_model.py'),
   f('README.md'),
 ]
 
@@ -44,6 +45,14 @@ describe('rangerFiler', () => {
 
   it('matcher forkortelser som subsekvens', () => {
     expect(rangerFiler(FILER, 'visiblemodel')[0]?.rel).toBe('core/services/visible_model.py')
+  })
+
+  it('sætter kilden over testen ved subsekvens-træf', () => {
+    // Mod det ægte indeks gav 'visiblemodel' tests/test_visible_model.py
+    // øverst, alene fordi stien var kortere. Et træf der starter tidligt i
+    // FILNAVNET skal veje tungere end en kort sti.
+    const r = rangerFiler(FILER, 'visiblemodel', 2)
+    expect(r[0]?.rel).toBe('core/services/visible_model.py')
   })
 
   it('giver hele listen ved tom query', () => {

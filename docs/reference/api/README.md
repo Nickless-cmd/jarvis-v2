@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13598 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13637 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -40,17 +40,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13598 functions/
 - [`core.services.11`](core.services.11.md) — `experience_substrate` … `github_connector`
 - [`core.services.12`](core.services.12.md) — `global_workspace` … `impulse_executor`
 - [`core.services.13`](core.services.13.md) — `in_flight_runs` … `living_heartbeat_cycle`
-- [`core.services.14`](core.services.14.md) — `llm_pricing` … `model_context`
-- [`core.services.15`](core.services.15.md) — `model_trust` … `paradoxes_capture`
-- [`core.services.16`](core.services.16.md) — `parallel_selves` … `prompt_cache_probe`
-- [`core.services.17`](core.services.17.md) — `prompt_contract` … `reflection_to_plan`
-- [`core.services.18`](core.services.18.md) — `reflective_critic_tracking` … `runtime_self_model_builder`
-- [`core.services.19`](core.services.19.md) — `runtime_self_model_identity` … `semantic_indexer`
-- [`core.services.20`](core.services.20.md) — `semantic_memory` … `skill_security_scanner`
-- [`core.services.21`](core.services.21.md) — `social_labilizer` … `thought_thread`
-- [`core.services.22`](core.services.22.md) — `tick_cache` … `value_formation`
-- [`core.services.23`](core.services.23.md) — `verification_gate` … `workspace_crypto`
-- [`core.services.24`](core.services.24.md) — `workspace_trust` … `world_model_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `llm_pricing` … `metacognition_signal_tracker`
+- [`core.services.15`](core.services.15.md) — `metacognitive_integration` … `override_command`
+- [`core.services.16`](core.services.16.md) — `override_store` … `process_supervisor`
+- [`core.services.17`](core.services.17.md) — `process_watcher` … `recurring_tasks`
+- [`core.services.18`](core.services.18.md) — `recursion_guard` … `runtime_self_knowledge`
+- [`core.services.19`](core.services.19.md) — `runtime_self_model` … `self_surprise_expectation`
+- [`core.services.20`](core.services.20.md) — `self_system_code_awareness` … `skill_contract_registry`
+- [`core.services.21`](core.services.21.md) — `skill_engine` … `theory_of_mind`
+- [`core.services.22`](core.services.22.md) — `theory_of_mind_engine` … `user_temperature_runtime`
+- [`core.services.23`](core.services.23.md) — `user_theory_of_mind` … `voice_daemon`
+- [`core.services.24`](core.services.24.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

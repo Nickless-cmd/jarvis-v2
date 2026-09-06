@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6807/13598 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6820/13637 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,14 +24,14 @@ Generated from source. 6807/13598 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 566 | 1053 | 53% |
-| `core.services` | 4530 | 9423 | 48% |
+| `core.services` | 4542 | 9461 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 92 | 164 | 56% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 387 | 843 | 45% |
+| `core.tools` | 388 | 844 | 45% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -40,7 +40,7 @@ Generated from source. 6807/13598 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1959)
+## Undocumented public functions (1970)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L198)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1118,9 +1118,20 @@ Generated from source. 6807/13598 functions/methods documented (50%). The list b
 - `core/services/malware_scan.py` :: `ScanReport.as_dict` (L30)
 - `core/services/malware_scan.py` :: `ScanReport.safe` (L27)
 - `core/services/malware_scan.py` :: `clamav_available` (L35)
+- `core/services/mcp_auth.py` :: `get_token` (L54)
+- `core/services/mcp_auth.py` :: `needs_refresh` (L81)
+- `core/services/mcp_auth.py` :: `set_token` (L59)
+- `core/services/mcp_client.py` :: `MCPClient.call_tool` (L238)
+- `core/services/mcp_client.py` :: `MCPClient.connected` (L135)
+- `core/services/mcp_client.py` :: `MCPClient.disconnect` (L121)
+- `core/services/mcp_manager.py` :: `call` (L99)
+- `core/services/mcp_manager.py` :: `disconnect_all` (L58)
+- `core/services/mcp_manager.py` :: `list_tools` (L88)
 - `core/services/mcp_registry.py` :: `add_mcp_server` (L28)
 - `core/services/mcp_registry.py` :: `list_mcp_servers` (L24)
 - `core/services/mcp_registry.py` :: `remove_mcp_server` (L40)
+- `core/services/mcp_trust.py` :: `is_allowlisted` (L48)
+- `core/services/mcp_trust.py` :: `list_trust` (L80)
 - `core/services/meaning_significance_signal_tracking.py` :: `build_runtime_meaning_significance_signal_surface` (L69)
 - `core/services/meaning_significance_signal_tracking.py` :: `refresh_runtime_meaning_significance_signal_statuses` (L65)
 - `core/services/meaning_significance_signal_tracking.py` :: `track_runtime_meaning_significance_signals_for_visible_turn` (L39)
@@ -1880,10 +1891,10 @@ Generated from source. 6807/13598 functions/methods documented (50%). The list b
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1143)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L254)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L202)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L220)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L198)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L225)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L206)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L224)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L202)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L229)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

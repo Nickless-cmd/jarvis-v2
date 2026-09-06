@@ -95,6 +95,9 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Kanalen til hans egen maskine. Gaten sidder i modulet (owner-only), ikke
     # her — men uden for scope kunne han slet ikke aabne den.
     "operator_channel",
+    # MCP: hele oekosystemet af eksterne vaerktoejer. Uden den i scope er
+    # registeret en adressebog uden telefon.
+    "mcp",
     # At se. Desk og mobil kan uploade billeder (POST /attachments), men
     # vaerktoejet der kigger paa dem stod i INGEN scope — saa et skaermbillede
     # i chat var noget han kunne modtage og ikke se paa. 6/9-2026.
@@ -137,6 +140,7 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Et skaermbillede af en fejl er ofte den korteste vej til at forstaa den.
     "read_attachment",
     "operator_channel",
+    "mcp",
     "operator_read_file", "operator_write_file", "operator_edit_file",
     "operator_bash", "operator_glob", "operator_grep", "operator_list_dir",
     "operator_bash_session_open", "operator_bash_session_run",

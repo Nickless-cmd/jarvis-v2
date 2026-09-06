@@ -2,6 +2,64 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/theory_of_mind_engine.py`
+_Active theory-of-mind engine for Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_theory_of_mind_surface` | `(*, user_message=…, assistant_text=…, user_id=…)` | Build active social hypotheses and response policy. | [src](../../../core/services/theory_of_mind_engine.py#L20) |
+| function | `build_theory_of_mind_prompt_section` | `(*, user_message=…, assistant_text=…, user_id=…)` | — | [src](../../../core/services/theory_of_mind_engine.py#L53) |
+| function | `record_theory_of_mind_update` | `(*, user_message=…, assistant_text=…, outcome_status=…, source_run_id=…, user_id=…)` | Persist a lightweight outcome update for future hypotheses. | [src](../../../core/services/theory_of_mind_engine.py#L84) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/theory_of_mind_engine.py#L135) |
+| function | `_safe_user_model` | `(agent_id)` | — | [src](../../../core/services/theory_of_mind_engine.py#L142) |
+| function | `_derive_hypotheses` | `(*, base_model, recent_updates, user_message, assistant_text)` | — | [src](../../../core/services/theory_of_mind_engine.py#L150) |
+| function | `_hypothesis` | `(label, confidence, evidence, implication)` | — | [src](../../../core/services/theory_of_mind_engine.py#L214) |
+| function | `_derive_response_policy` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L225) |
+| function | `_derive_uncertainty` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L252) |
+| function | `_summary` | `(*, hypotheses, policy)` | — | [src](../../../core/services/theory_of_mind_engine.py#L263) |
+
+## `core/services/thought_action_proposal_daemon.py`
+_Thought-action proposal daemon — turns action impulses in thought stream into MC proposals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_persist_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L26) |
+| function | `tick_thought_action_proposal_daemon` | `(fragment)` | Classify fragment and create a proposal if an action impulse is detected. | [src](../../../core/services/thought_action_proposal_daemon.py#L35) |
+| function | `resolve_proposal` | `(proposal_id, decision)` | Move a proposal from pending to resolved. decision: 'approved' | 'dismissed'. | [src](../../../core/services/thought_action_proposal_daemon.py#L114) |
+| function | `get_pending_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L138) |
+| function | `build_proposal_surface` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L142) |
+
+## `core/services/thought_stream_daemon.py`
+_Thought stream daemon — continuous associative fragment stream for Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/thought_stream_daemon.py#L20) |
+| function | `tick_thought_stream_daemon` | `(energy_level=…, inner_voice_mode=…, *, skip_event_gate=…)` | — | [src](../../../core/services/thought_stream_daemon.py#L28) |
+| function | `_gather_concrete_priors` | `()` | Pull a few specific recent things so the fragment has material to drift | [src](../../../core/services/thought_stream_daemon.py#L69) |
+| function | `_generate_fragment` | `(energy_level, previous_fragment, inner_voice_mode=…)` | — | [src](../../../core/services/thought_stream_daemon.py#L104) |
+| function | `_store_fragment` | `(fragment)` | — | [src](../../../core/services/thought_stream_daemon.py#L142) |
+| function | `get_latest_thought_fragment` | `()` | — | [src](../../../core/services/thought_stream_daemon.py#L175) |
+| function | `inject_rediscovery_fragment` | `(summary)` | Inject a re-discovered memory as a thought fragment. | [src](../../../core/services/thought_stream_daemon.py#L179) |
+| function | `build_thought_stream_surface` | `()` | — | [src](../../../core/services/thought_stream_daemon.py#L189) |
+
+## `core/services/thought_thread.py`
+_Thought Thread — continuity of attention across ticks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_parse_ts` | `(value)` | — | [src](../../../core/services/thought_thread.py#L57) |
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/thought_thread.py#L66) |
+| function | `_recent_thoughts` | `()` | Pull recent private-brain records that represent inner thinking. | [src](../../../core/services/thought_thread.py#L74) |
+| function | `_find_thread` | `(thoughts)` | Identify the dominant theme across recent thoughts via keyword overlap. | [src](../../../core/services/thought_thread.py#L103) |
+| function | `get_current_thread` | `()` | Return cached thread state, recomputing only periodically. | [src](../../../core/services/thought_thread.py#L171) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — no heavy work, just trigger recompute when due. | [src](../../../core/services/thought_thread.py#L187) |
+| function | `build_thought_thread_surface` | `()` | — | [src](../../../core/services/thought_thread.py#L192) |
+| function | `_surface_summary` | `(thread)` | — | [src](../../../core/services/thought_thread.py#L216) |
+| function | `build_thought_thread_prompt_section` | `()` | Tell him what thread he was holding before this turn. | [src](../../../core/services/thought_thread.py#L227) |
+| function | `reset_thought_thread` | `()` | Reset cached state (for testing). | [src](../../../core/services/thought_thread.py#L249) |
+| function | `_emit_thought_thread_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/thought_thread.py#L256) |
+
 ## `core/services/tick_cache.py`
 _Tick-scoped in-memory cache — lives exactly one heartbeat tick._
 
@@ -37,11 +95,11 @@ _Compact tool catalog for system prompt._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L90) |
-| function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L104) |
-| function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L119) |
-| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L155) |
-| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L160) |
+| function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L92) |
+| function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L106) |
+| function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L121) |
+| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L157) |
+| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L162) |
 
 ## `core/services/tool_chip_payload.py`
 _Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15)._
@@ -334,7 +392,8 @@ _Indhegning af utroet indhold — porteret fra jarvis-code._
 | function | `fence` | `(kilde, indhold)` | Pak indhold ind som utroet data. Self-safe. | [src](../../../core/services/untrusted_fencing.py#L63) |
 | function | `kilde_for_tool` | `(navn)` | Hvilken slags kilde er dette vaerktoejs resultat? Ren. | [src](../../../core/services/untrusted_fencing.py#L71) |
 | function | `should_fence` | `(navn)` | Skal dette vaerktoejs resultat hegnes ind? Ren. | [src](../../../core/services/untrusted_fencing.py#L89) |
-| function | `fence_tool_result` | `(navn, resultat)` | Hegn den laesbare krop af et vaerktoejs-resultat. Self-safe. | [src](../../../core/services/untrusted_fencing.py#L102) |
+| function | `_hegn_blok` | `(kilde, blok)` | Hegn teksten i én indholdsblok. Ikke-tekst-blokke roeres ikke. | [src](../../../core/services/untrusted_fencing.py#L102) |
+| function | `fence_tool_result` | `(navn, resultat)` | Hegn den laesbare krop af et vaerktoejs-resultat. Self-safe. | [src](../../../core/services/untrusted_fencing.py#L113) |
 
 ## `core/services/upload_sandbox.py`
 _Uploadede filer og arkiver — pakket ud ét sted, og aldrig eksekverbart._
@@ -478,76 +537,4 @@ _Daemon for the user-temperature LLM stream (Lag 10)._
 | function | `_loop` | `()` | Two rhythms in one loop: | [src](../../../core/services/user_temperature_runtime.py#L65) |
 | function | `start_user_temperature_runtime` | `()` | Start the daemon. Idempotent. | [src](../../../core/services/user_temperature_runtime.py#L88) |
 | function | `stop_user_temperature_runtime` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L101) |
-
-## `core/services/user_theory_of_mind.py`
-_User Theory of Mind — model what the user thinks and feels._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_user_mental_model` | `(user_id=…)` | Build a theory-of-mind model of the user. | [src](../../../core/services/user_theory_of_mind.py#L22) |
-| function | `_build_secondary_user_model` | `(user_id)` | Return stored ToM snapshot for a secondary user. | [src](../../../core/services/user_theory_of_mind.py#L33) |
-| function | `_build_primary_user_model` | `()` | Build live DB-backed theory-of-mind for the primary user. | [src](../../../core/services/user_theory_of_mind.py#L45) |
-| function | `format_user_model_for_prompt` | `(model)` | Compact user model for prompt injection. | [src](../../../core/services/user_theory_of_mind.py#L102) |
-| function | `build_user_theory_of_mind_surface` | `()` | — | [src](../../../core/services/user_theory_of_mind.py#L124) |
-| function | `_emit_user_theory_of_mind_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/user_theory_of_mind.py#L140) |
-
-## `core/services/user_understanding_signal_tracking.py`
-_User-understanding signal tracking — migrated onto signal_tracking_framework._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_user_understanding_signals_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L33) |
-| function | `refresh_runtime_user_understanding_signal_statuses` | `()` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L75) |
-| function | `build_runtime_user_understanding_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L79) |
-| function | `_extract_user_understanding_candidates` | `(*, user_message, session_id)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L83) |
-| function | `_preference_signal` | `(messages)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L117) |
-| function | `_workstyle_signal` | `(messages)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L173) |
-| function | `_reminder_worthiness_signal` | `(messages)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L204) |
-| function | `_cadence_preference_signal` | `(messages)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L233) |
-| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L264) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L273) |
-| function | `_user_understanding_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L282) |
-| function | `_recent_user_messages` | `(*, session_id, current_message)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L294) |
-| function | `_is_explicit_danish_preference` | `(message)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L318) |
-| function | `_is_explicit_concise_preference` | `(message)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L326) |
-| function | `_is_scoped_workstyle_signal` | `(message)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L334) |
-| function | `_is_carry_forward_preference` | `(message)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L350) |
-| function | `_is_reporting_cadence_preference` | `(message)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L357) |
-| function | `_dimension_from_canonical_key` | `(canonical_key)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L373) |
-| function | `_source_anchor` | `(text)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L380) |
-| function | `_source_anchor_from_support_summary` | `(summary)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L385) |
-| function | `_quote` | `(text, *, limit=…)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L392) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L401) |
-| function | `_contains_any` | `(text, needles)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L413) |
-| function | `_rank_confidence` | `(confidence)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L417) |
-
-## `core/services/valence_trajectory.py`
-_Valence Trajectory — long-term flourishing/withering signal._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_persisted_samples` | `()` | — | [src](../../../core/services/valence_trajectory.py#L35) |
-| function | `_persist_samples` | `()` | — | [src](../../../core/services/valence_trajectory.py#L52) |
-| function | `_clamp` | `(x, lo=…, hi=…)` | — | [src](../../../core/services/valence_trajectory.py#L68) |
-| function | `_sample_current_valence` | `()` | Compute a single instantaneous valence score in [-1, 1] from runtime signals. | [src](../../../core/services/valence_trajectory.py#L72) |
-| function | `tick` | `(_seconds=…)` | Sample current valence and append to rolling window. | [src](../../../core/services/valence_trajectory.py#L127) |
-| function | `_trajectory_from_window` | `()` | Compute trajectory statistics from current window. | [src](../../../core/services/valence_trajectory.py#L138) |
-| function | `_infer_dominant_driver` | `(current_score)` | Heuristic: which single signal is pushing hardest right now? | [src](../../../core/services/valence_trajectory.py#L180) |
-| function | `get_trajectory` | `()` | Return cached trajectory, recomputing only periodically. | [src](../../../core/services/valence_trajectory.py#L208) |
-| function | `current_instant` | `()` | Freshest instantaneous valence — the latest window sample (reactive, present-moment), | [src](../../../core/services/valence_trajectory.py#L218) |
-| function | `build_valence_trajectory_surface` | `()` | Mission Control surface for valence trajectory. | [src](../../../core/services/valence_trajectory.py#L231) |
-| function | `_summary_line` | `(traj)` | — | [src](../../../core/services/valence_trajectory.py#L246) |
-| function | `build_valence_trajectory_prompt_section` | `()` | Return a single prompt line when trajectory is notable. | [src](../../../core/services/valence_trajectory.py#L262) |
-| function | `reset_valence_trajectory` | `()` | Reset state (for testing). | [src](../../../core/services/valence_trajectory.py#L274) |
-| function | `_publish_valence_trajectory_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/valence_trajectory.py#L285) |
-
-## `core/services/value_formation.py`
-_Value Formation — emergent ethics from experience._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_value_from_experience` | `(*, action, outcome, reflection)` | — | [src](../../../core/services/value_formation.py#L12) |
-| function | `detect_value_from_outcome` | `(*, action_type, outcome_status, user_mood)` | Detect potential value-forming experiences. | [src](../../../core/services/value_formation.py#L32) |
-| function | `get_crystallized_values` | `(conviction_threshold=…)` | Return values with conviction above threshold — these have become commitments. | [src](../../../core/services/value_formation.py#L54) |
-| function | `build_formed_values_surface` | `()` | — | [src](../../../core/services/value_formation.py#L60) |
 

@@ -2,6 +2,59 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/metacognitive_integration.py`
+_Metacognitive Integration — the overarching layer that synthesizes all cognitive layers into a coherent self-model._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/metacognitive_integration.py#L39) |
+| function | `_extract_signal_values` | `(cognitive_state)` | Extract normalised signal values from the assembled cognitive state. | [src](../../../core/services/metacognitive_integration.py#L77) |
+| function | `compute_coherence` | `(signal_values)` | Compute coherence score (0-1) from signal values. | [src](../../../core/services/metacognitive_integration.py#L198) |
+| function | `compute_integration_quality` | `(cognitive_state)` | Compute integration quality — how many layers are active and contributing. | [src](../../../core/services/metacognitive_integration.py#L237) |
+| function | `compute_self_assessment` | `(coherence, integration, signal_values)` | Compute metacognitive self-assessment. | [src](../../../core/services/metacognitive_integration.py#L283) |
+| function | `get_metacognitive_line` | `(cognitive_state=…)` | Get the metacognitive integration prompt line. | [src](../../../core/services/metacognitive_integration.py#L332) |
+| function | `get_metacognitive_detail` | `(cognitive_state=…)` | Get full metacognitive assessment as a dict (for debugging/MC). | [src](../../../core/services/metacognitive_integration.py#L385) |
+| function | `_parse_raw_state` | `(raw)` | Parse the raw cognitive state string into a dict. | [src](../../../core/services/metacognitive_integration.py#L417) |
+| function | `build_metacognitive_integration_surface` | `()` | — | [src](../../../core/services/metacognitive_integration.py#L494) |
+| function | `_emit_integration_event` | `(layer, signal)` | — | [src](../../../core/services/metacognitive_integration.py#L503) |
+
+## `core/services/mirror_engine.py`
+_Mirror Engine — compassionate self-reflection during idle time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `generate_mirror_insight` | `(*, idle_hours=…, open_loop_count=…, recent_error_count=…, recent_success_count=…, top_loop_summary=…)` | Generate a deterministic mirror insight. | [src](../../../core/services/mirror_engine.py#L20) |
+| function | `build_mirror_surface` | `()` | — | [src](../../../core/services/mirror_engine.py#L56) |
+| function | `_deterministic_insight` | `(*, idle_hours, open_loop_count, recent_error_count, recent_success_count, top_loop_summary)` | — | [src](../../../core/services/mirror_engine.py#L65) |
+
+## `core/services/missions_pipeline.py`
+_Missions Pipeline — flerfase opgaver med state-machine._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MissionError` | `` | — | [src](../../../core/services/missions_pipeline.py#L52) |
+| method | `MissionError.__init__` | `(self, code, message)` | — | [src](../../../core/services/missions_pipeline.py#L53) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/missions_pipeline.py#L58) |
+| function | `_ensure_tables` | `()` | — | [src](../../../core/services/missions_pipeline.py#L62) |
+| function | `_row_to_mission` | `(row)` | — | [src](../../../core/services/missions_pipeline.py#L107) |
+| function | `create_mission` | `(*, title, description=…, goal=…, constraints=…, success_criteria=…, roles=…, metadata=…)` | Create a new mission in 'created' status. | [src](../../../core/services/missions_pipeline.py#L120) |
+| function | `get_mission` | `(*, mission_id)` | — | [src](../../../core/services/missions_pipeline.py#L176) |
+| function | `transition_mission_state` | `(*, mission_id, new_status, reason=…)` | Transition mission to new status, respecting _ALLOWED_TRANSITIONS. | [src](../../../core/services/missions_pipeline.py#L188) |
+| function | `send_mission_message` | `(*, mission_id, role=…, content, metadata=…)` | Post a message on the mission channel. Roles: researcher/implementer/reviewer etc. | [src](../../../core/services/missions_pipeline.py#L258) |
+| function | `list_mission_messages` | `(*, mission_id, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L311) |
+| function | `list_missions` | `(*, status=…, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L331) |
+| function | `build_missions_surface` | `()` | — | [src](../../../core/services/missions_pipeline.py#L350) |
+
+## `core/services/model_context.py`
+_Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `model_context_window` | `(provider, model)` | Bedste bud på modellens context-vindue (tokens). 0 = ukendt. | [src](../../../core/services/model_context.py#L33) |
+| function | `effective_context_limit` | `(provider, model, compact_threshold)` | Det første loft der rammer: min(modellens vindue, autocompact-tærskel). | [src](../../../core/services/model_context.py#L50) |
+| function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L65) |
+| function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L69) |
+
 ## `core/services/model_trust.py`
 _Central-governed EARNED model-trust (harness refactor Part 1 foundation)._
 
@@ -585,55 +638,4 @@ _Owner-override-kommando — delt handler for gateways (Discord/Telegram)._
 |---|---|---|---|---|
 | function | `handle_override_command` | `(text, *, session_id, owner_seed, level=…, now=…)` | Håndtér `!override <kode>` / `!revoke-override` — Auth-cluster GENNEM Centralen (observe). | [src](../../../core/services/override_command.py#L24) |
 | function | `_handle_override_command_impl` | `(text, *, session_id, owner_seed, level=…, now=…)` | Håndtér `!override <kode>` / `!revoke-override`. | [src](../../../core/services/override_command.py#L52) |
-
-## `core/services/override_store.py`
-_Owner-override-session-store — DB-backed, cross-proces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_key` | `(session_id)` | — | [src](../../../core/services/override_store.py#L31) |
-| function | `_now` | `(now)` | — | [src](../../../core/services/override_store.py#L35) |
-| function | `grant` | `(session_id, *, level=…, now=…)` | Aktivér owner-override for en session. Returnér record. | [src](../../../core/services/override_store.py#L39) |
-| function | `_read` | `(session_id)` | — | [src](../../../core/services/override_store.py#L59) |
-| function | `is_active` | `(session_id, *, now=…)` | True hvis sessionen har en aktiv (ikke-udløbet) override. | [src](../../../core/services/override_store.py#L64) |
-| function | `level` | `(session_id, *, now=…)` | Override-niveau hvis aktiv, ellers None. | [src](../../../core/services/override_store.py#L72) |
-| function | `touch` | `(session_id, *, now=…)` | Forny en AKTIV override til +5 min ved aktivitet. False hvis udløbet/fraværende. | [src](../../../core/services/override_store.py#L80) |
-| function | `revoke` | `(session_id)` | Deaktivér override (sæt udløbet — runtime_state har ingen delete). | [src](../../../core/services/override_store.py#L97) |
-
-## `core/services/paid_lane_guard.py`
-_Vagt: kun Bjørns egen lane må ramme den betalte DeepSeek-API (2026-09-05)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_host` | `(url)` | — | [src](../../../core/services/paid_lane_guard.py#L33) |
-| function | `is_paid` | `(base_url)` | — | [src](../../../core/services/paid_lane_guard.py#L40) |
-| function | `audit_paid_lanes` | `()` | Hvilke lanes peger på en betalt vært uden at måtte? | [src](../../../core/services/paid_lane_guard.py#L44) |
-| function | `check_paid_lanes` | `()` | Kør vagten: log + Central-nerve ved brud. Retter aldrig noget selv. | [src](../../../core/services/paid_lane_guard.py#L72) |
-| function | `build_paid_lane_guard_surface` | `()` | — | [src](../../../core/services/paid_lane_guard.py#L98) |
-
-## `core/services/paradox_tracker.py`
-_Paradox Tracker — detects active tensions in Jarvis' operation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `detect_paradox_tensions` | `(*, recent_messages)` | Scan recent messages for paradox tension signals. | [src](../../../core/services/paradox_tracker.py#L40) |
-| function | `narrativize_tension` | `(tension)` | Turn a paradox tension into felt inner conflict. | [src](../../../core/services/paradox_tracker.py#L77) |
-| function | `build_paradox_surface` | `()` | — | [src](../../../core/services/paradox_tracker.py#L88) |
-
-## `core/services/paradoxes_capture.py`
-_Paradoxes Capture — fanger modsætninger i egne handlinger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L58) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L62) |
-| function | `_event_text` | `(ev)` | — | [src](../../../core/services/paradoxes_capture.py#L85) |
-| function | `_axis_hits` | `(events, axis)` | — | [src](../../../core/services/paradoxes_capture.py#L100) |
-| function | `_signature` | `(title, evidence_refs)` | — | [src](../../../core/services/paradoxes_capture.py#L117) |
-| function | `detect_paradox_candidates` | `(*, lookback_days=…, min_hits=…)` | Scan recent events for paradox patterns. Returns candidates sorted by confidence. | [src](../../../core/services/paradoxes_capture.py#L123) |
-| function | `_latest_paradox_ts` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L165) |
-| function | `_known_signatures` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L180) |
-| function | `maybe_capture_weekly_paradox` | `(*, lookback_days=…)` | Max 1 paradox per 7 days, only if signature is new. | [src](../../../core/services/paradoxes_capture.py#L187) |
-| function | `list_paradoxes` | `(*, limit=…)` | — | [src](../../../core/services/paradoxes_capture.py#L246) |
-| function | `build_paradoxes_surface` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L269) |
 

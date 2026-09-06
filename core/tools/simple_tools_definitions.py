@@ -2499,6 +2499,40 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "mcp",
+            "description": (
+                "Tal med MCP-servere — det oekosystem af vaerktoejer Bjoern har "
+                "tilfoejet. action='status' viser hvilke servere der kendes, om "
+                "de er godkendt og forbundet. action='tools' + server lister "
+                "hvad én server kan. action='call' + server + tool + arguments "
+                "kalder et af dem. action='allow'/'revoke' godkender eller "
+                "tilbagekalder en server — KUN Bjoern kan det, og en server "
+                "skal vaere godkendt foer der overhovedet forbindes til den. "
+                "Foerste forbindelse pinnes; skifter serverens binaer eller "
+                "vaert bagefter, blokeres den indtil den godkendes paa ny."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["status", "tools", "call", "allow", "revoke"],
+                        "description": "Default 'status'.",
+                    },
+                    "server": {"type": "string", "description": "Servernavn fra status."},
+                    "tool": {"type": "string", "description": "Vaerktoejsnavn ved action='call'."},
+                    "arguments": {
+                        "type": "object",
+                        "description": "Argumenter til vaerktoejet ved action='call'.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "operator_channel",
             "description": (
                 "Aabn en direkte kanal til Bjoerns egen maskine. Mens den er "

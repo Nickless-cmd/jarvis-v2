@@ -2,6 +2,86 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/skill_engine.py`
+_Skill Engine — SKILL.md loader for Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Skill` | `` | A loaded skill from disk. | [src](../../../core/services/skill_engine.py#L48) |
+| function | `_parse_skill_md` | `(path)` | Parse a SKILL.md file and return a Skill dataclass. | [src](../../../core/services/skill_engine.py#L71) |
+| function | `_scan_skills` | `()` | Scan SKILLS_ROOT for all skills (mappe med SKILL.md). | [src](../../../core/services/skill_engine.py#L174) |
+| function | `reload_skills` | `()` | Force-reload all skills from disk. Returns summary. | [src](../../../core/services/skill_engine.py#L194) |
+| function | `get_skill` | `(name)` | Get a single skill by name. Lazy-loads if not cached. | [src](../../../core/services/skill_engine.py#L213) |
+| function | `list_skills` | `(tag=…)` | List all skills, optionally filtered by tag. | [src](../../../core/services/skill_engine.py#L228) |
+| function | `skill_exists` | `(name)` | Check if a skill exists on disk. | [src](../../../core/services/skill_engine.py#L254) |
+| function | `_collect_registered_tool_names` | `()` | Return the set of registered tool names (normalized form). | [src](../../../core/services/skill_engine.py#L259) |
+| function | `_skill_quality_nudges` | `(name, description, instructions, use_when=…, tags=…)` | Return non-blocking quality nudges for installable skill proposals. | [src](../../../core/services/skill_engine.py#L291) |
+| function | `validate_skill_proposal` | `(name, description, instructions, use_when=…, tags=…)` | Validate that a proposed skill would be installable by create_skill(). | [src](../../../core/services/skill_engine.py#L362) |
+| function | `create_skill` | `(name, description, instructions, use_when=…, tags=…, readonly=…)` | Create a new skill directory with SKILL.md on disk. | [src](../../../core/services/skill_engine.py#L443) |
+| function | `delete_skill` | `(name, *, force=…)` | Delete a skill directory from disk. | [src](../../../core/services/skill_engine.py#L523) |
+| function | `get_skill_instructions` | `(name)` | Get the full instructions + context for a skill (for prompt injection). | [src](../../../core/services/skill_engine.py#L554) |
+| function | `search_skills` | `(query)` | Simple keyword search across skill names, descriptions, and instructions. | [src](../../../core/services/skill_engine.py#L593) |
+| function | `build_skill_engine_surface` | `()` | Mission Control surface. | [src](../../../core/services/skill_engine.py#L616) |
+| function | `_ensure_audit_table` | `()` | Idempotent: ensure skill_audit_log table exists. | [src](../../../core/services/skill_engine.py#L640) |
+| function | `_build_skill_snapshot` | `(name)` | Build a portable snapshot dict for a skill. | [src](../../../core/services/skill_engine.py#L668) |
+| function | `_record_audit_entry` | `(skill_name, action, *, diff_summary=…, reason=…, snapshot=…)` | Record a skill mutation in the audit log. Never raises. | [src](../../../core/services/skill_engine.py#L687) |
+| function | `get_skill_history` | `(name, limit=…)` | Return audit trail for a single skill, newest first. | [src](../../../core/services/skill_engine.py#L731) |
+| function | `list_recent_skill_changes` | `(limit=…)` | Return most recent skill mutations across all skills. | [src](../../../core/services/skill_engine.py#L768) |
+| function | `update_skill` | `(name, *, description=…, instructions=…, use_when=…, tags=…, reason=…)` | Update an existing skill's metadata and/or instructions. Logs audit. | [src](../../../core/services/skill_engine.py#L794) |
+| function | `_emit_skill_engine_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/skill_engine.py#L886) |
+| function | `record_skill_usage` | `(skill_name, *, source=…, success=…, query=…, context_tags=…, score=…)` | Record that a skill was used. Never raises. | [src](../../../core/services/skill_engine.py#L902) |
+| function | `analyze_skill_usage` | `(days=…, min_invocations=…)` | Analyze skill usage patterns and generate improvement proposals. | [src](../../../core/services/skill_engine.py#L948) |
+| function | `get_skill_usage_stats` | `(name=…, days=…, limit=…)` | Return raw usage stats for a skill (or all skills if name is None). | [src](../../../core/services/skill_engine.py#L1078) |
+
+## `core/services/skill_relevance_surface.py`
+_Slå skills op FOR ham i stedet for at bede ham huske at slå op._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, slår vi op. | [src](../../../core/services/skill_relevance_surface.py#L44) |
+| function | `relevant_skills_section` | `(user_message)` | Prompt-sektion med de skills der matcher turens opgave. "" hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L53) |
+| function | `build_skill_relevance_surface` | `(user_message=…)` | Observationsflade — hvad opslaget ville sige om denne besked. | [src](../../../core/services/skill_relevance_surface.py#L111) |
+
+## `core/services/skill_scanner.py`
+_Skill-scanning før lokal eksekvering (spec §19.8 / §15.3.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Finding` | `` | — | [src](../../../core/services/skill_scanner.py#L27) |
+| class | `ScanResult` | `` | — | [src](../../../core/services/skill_scanner.py#L35) |
+| method | `ScanResult.max_severity` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L40) |
+| method | `ScanResult.blocked_reasons` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L46) |
+| method | `ScanResult.as_dict` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L49) |
+| function | `_normalize` | `(content)` | Fold skjult/forvirrende unicode til NFKC så injection ikke gemmer sig i | [src](../../../core/services/skill_scanner.py#L102) |
+| function | `_has_hidden_format_chars` | `(content)` | — | [src](../../../core/services/skill_scanner.py#L110) |
+| function | `scan_skill` | `(content, *, path=…, block_severity=…)` | Scan en skill-definition (tekst/kode) for injection/malware/boundary. | [src](../../../core/services/skill_scanner.py#L114) |
+
+## `core/services/skill_security_scanner.py`
+_Skill Security Scanner — single canonical scanner for SKILL.md + scripts/._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ScanFinding` | `` | — | [src](../../../core/services/skill_security_scanner.py#L54) |
+| class | `ScanResult` | `` | — | [src](../../../core/services/skill_security_scanner.py#L64) |
+| method | `ScanResult.passed` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L71) |
+| method | `ScanResult.has_critical` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L75) |
+| method | `ScanResult.has_high` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L79) |
+| method | `ScanResult.max_severity` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L83) |
+| method | `ScanResult.summary` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L88) |
+| method | `ScanResult.to_dict` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L105) |
+| function | `_make_pattern` | `(name, desc, severity, *patterns)` | — | [src](../../../core/services/skill_security_scanner.py#L133) |
+| function | `scan_skill_file` | `(skill_path)` | Scan a single SKILL.md file for security issues. | [src](../../../core/services/skill_security_scanner.py#L322) |
+| function | `scan_skill_by_name` | `(name)` | Scan a skill by its registered name (lookup in skills root). | [src](../../../core/services/skill_security_scanner.py#L374) |
+| function | `scan_all_skills` | `()` | Scan all installed skills. | [src](../../../core/services/skill_security_scanner.py#L391) |
+| function | `format_scan_report` | `(results)` | Aggregate multiple scan results into a single report dict. | [src](../../../core/services/skill_security_scanner.py#L405) |
+| function | `_risk_from_severity` | `(max_sev, score)` | Map (max_severity, total_score) to a risk label. | [src](../../../core/services/skill_security_scanner.py#L427) |
+| function | `_verdict_for_risk` | `(risk)` | — | [src](../../../core/services/skill_security_scanner.py#L444) |
+| function | `_scan_text_block` | `(content, source)` | Scan one text block against all patterns. Used for SKILL.md + scripts/. | [src](../../../core/services/skill_security_scanner.py#L464) |
+| function | `scan_skill_directory` | `(path)` | Scan a skill directory (SKILL.md + scripts/) and return a risk dict. | [src](../../../core/services/skill_security_scanner.py#L496) |
+| function | `scan_skill_directory_gated` | `(path)` | Som scan_skill_directory, men beslutningen GOVERNES af Centralen (SECURITY, | [src](../../../core/services/skill_security_scanner.py#L558) |
+| function | `scan_skill_content` | `(content, name=…)` | Scan raw SKILL.md content (e.g. fetched from URL) before writing to disk. | [src](../../../core/services/skill_security_scanner.py#L594) |
+| function | `is_skill_safe` | `(name, raise_on_critical=…)` | Check if a skill is safe to import. Returns True if clean. | [src](../../../core/services/skill_security_scanner.py#L609) |
+
 ## `core/services/social_labilizer.py`
 _Social labilizer — Fase 2 of generative autonomy._
 
@@ -586,62 +666,4 @@ _Theory of Mind — Step A.v1 of meta-evne stack._
 | function | `_listener_loop` | `()` | Poll events table for channel.chat_message_appended events. | [src](../../../core/services/theory_of_mind.py#L390) |
 | function | `start_theory_of_mind_tracker` | `()` | Start the DB-polling listener. Idempotent. | [src](../../../core/services/theory_of_mind.py#L454) |
 | function | `stop_theory_of_mind_tracker` | `()` | — | [src](../../../core/services/theory_of_mind.py#L471) |
-
-## `core/services/theory_of_mind_engine.py`
-_Active theory-of-mind engine for Jarvis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_theory_of_mind_surface` | `(*, user_message=…, assistant_text=…, user_id=…)` | Build active social hypotheses and response policy. | [src](../../../core/services/theory_of_mind_engine.py#L20) |
-| function | `build_theory_of_mind_prompt_section` | `(*, user_message=…, assistant_text=…, user_id=…)` | — | [src](../../../core/services/theory_of_mind_engine.py#L53) |
-| function | `record_theory_of_mind_update` | `(*, user_message=…, assistant_text=…, outcome_status=…, source_run_id=…, user_id=…)` | Persist a lightweight outcome update for future hypotheses. | [src](../../../core/services/theory_of_mind_engine.py#L84) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/theory_of_mind_engine.py#L135) |
-| function | `_safe_user_model` | `(agent_id)` | — | [src](../../../core/services/theory_of_mind_engine.py#L142) |
-| function | `_derive_hypotheses` | `(*, base_model, recent_updates, user_message, assistant_text)` | — | [src](../../../core/services/theory_of_mind_engine.py#L150) |
-| function | `_hypothesis` | `(label, confidence, evidence, implication)` | — | [src](../../../core/services/theory_of_mind_engine.py#L214) |
-| function | `_derive_response_policy` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L225) |
-| function | `_derive_uncertainty` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L252) |
-| function | `_summary` | `(*, hypotheses, policy)` | — | [src](../../../core/services/theory_of_mind_engine.py#L263) |
-
-## `core/services/thought_action_proposal_daemon.py`
-_Thought-action proposal daemon — turns action impulses in thought stream into MC proposals._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_persist_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L26) |
-| function | `tick_thought_action_proposal_daemon` | `(fragment)` | Classify fragment and create a proposal if an action impulse is detected. | [src](../../../core/services/thought_action_proposal_daemon.py#L35) |
-| function | `resolve_proposal` | `(proposal_id, decision)` | Move a proposal from pending to resolved. decision: 'approved' | 'dismissed'. | [src](../../../core/services/thought_action_proposal_daemon.py#L114) |
-| function | `get_pending_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L138) |
-| function | `build_proposal_surface` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L142) |
-
-## `core/services/thought_stream_daemon.py`
-_Thought stream daemon — continuous associative fragment stream for Jarvis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/thought_stream_daemon.py#L20) |
-| function | `tick_thought_stream_daemon` | `(energy_level=…, inner_voice_mode=…, *, skip_event_gate=…)` | — | [src](../../../core/services/thought_stream_daemon.py#L28) |
-| function | `_gather_concrete_priors` | `()` | Pull a few specific recent things so the fragment has material to drift | [src](../../../core/services/thought_stream_daemon.py#L69) |
-| function | `_generate_fragment` | `(energy_level, previous_fragment, inner_voice_mode=…)` | — | [src](../../../core/services/thought_stream_daemon.py#L104) |
-| function | `_store_fragment` | `(fragment)` | — | [src](../../../core/services/thought_stream_daemon.py#L142) |
-| function | `get_latest_thought_fragment` | `()` | — | [src](../../../core/services/thought_stream_daemon.py#L175) |
-| function | `inject_rediscovery_fragment` | `(summary)` | Inject a re-discovered memory as a thought fragment. | [src](../../../core/services/thought_stream_daemon.py#L179) |
-| function | `build_thought_stream_surface` | `()` | — | [src](../../../core/services/thought_stream_daemon.py#L189) |
-
-## `core/services/thought_thread.py`
-_Thought Thread — continuity of attention across ticks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse_ts` | `(value)` | — | [src](../../../core/services/thought_thread.py#L57) |
-| function | `_tokens` | `(text)` | — | [src](../../../core/services/thought_thread.py#L66) |
-| function | `_recent_thoughts` | `()` | Pull recent private-brain records that represent inner thinking. | [src](../../../core/services/thought_thread.py#L74) |
-| function | `_find_thread` | `(thoughts)` | Identify the dominant theme across recent thoughts via keyword overlap. | [src](../../../core/services/thought_thread.py#L103) |
-| function | `get_current_thread` | `()` | Return cached thread state, recomputing only periodically. | [src](../../../core/services/thought_thread.py#L171) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook — no heavy work, just trigger recompute when due. | [src](../../../core/services/thought_thread.py#L187) |
-| function | `build_thought_thread_surface` | `()` | — | [src](../../../core/services/thought_thread.py#L192) |
-| function | `_surface_summary` | `(thread)` | — | [src](../../../core/services/thought_thread.py#L216) |
-| function | `build_thought_thread_prompt_section` | `()` | Tell him what thread he was holding before this turn. | [src](../../../core/services/thought_thread.py#L227) |
-| function | `reset_thought_thread` | `()` | Reset cached state (for testing). | [src](../../../core/services/thought_thread.py#L249) |
-| function | `_emit_thought_thread_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/thought_thread.py#L256) |
 

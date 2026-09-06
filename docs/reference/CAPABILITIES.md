@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-06 — 444 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-06 — 445 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -189,6 +189,7 @@
 | `look_around` | native | no |
 | `manage_context_window` | native | no |
 | `mark_wakeup_consumed` | native | no |
+| `mcp` | native | no |
 | `memory_check_duplicate` | native | no |
 | `memory_cold_tier` | native | no |
 | `memory_consolidate` | native | no |

@@ -99,6 +99,17 @@ def should_fence(navn: str) -> bool:
     return n in _UDEFRA or n.startswith("mcp_")
 
 
+def _hegn_blok(kilde: str, blok: Any) -> Any:
+    """Hegn teksten i én indholdsblok. Ikke-tekst-blokke roeres ikke."""
+    if isinstance(blok, str):
+        return fence(kilde, blok) if blok else blok
+    if isinstance(blok, dict) and isinstance(blok.get("text"), str) and blok["text"]:
+        ny = dict(blok)
+        ny["text"] = fence(kilde, blok["text"])
+        return ny
+    return blok
+
+
 def fence_tool_result(navn: str, resultat: Any) -> Any:
     """Hegn den laesbare krop af et vaerktoejs-resultat. Self-safe.
 
@@ -116,8 +127,16 @@ def fence_tool_result(navn: str, resultat: Any) -> Any:
         ud = dict(resultat)
         for noegle in ("content", "result", "output", "text", "findings",
                        "reply", "body"):
-            if isinstance(ud.get(noegle), str) and ud[noegle]:
-                ud[noegle] = fence(kilde, ud[noegle])
+            vaerdi = ud.get(noegle)
+            if isinstance(vaerdi, str) and vaerdi:
+                ud[noegle] = fence(kilde, vaerdi)
+            elif isinstance(vaerdi, list) and vaerdi:
+                # MCP svarer med en LISTE af indholdsblokke
+                # (`[{"type":"text","text":...}]`) — det er standardformen i
+                # protokollen. Foer 6/9-2026 kiggede hegnet kun efter strenge,
+                # saa netop de svar der kommer fra en fremmed server gik
+                # uindhegnet igennem. Maalt mod en aegte MCP-server.
+                ud[noegle] = [_hegn_blok(kilde, b) for b in vaerdi]
         return ud
     except Exception:
         return resultat

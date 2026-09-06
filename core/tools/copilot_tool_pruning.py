@@ -40,6 +40,8 @@ REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     # Uden den kan han ikke AABNE kanalen til sin egen maskine — og saa er alt
     # arbejde derovre tilbage til ét operator_-kald ad gangen.
     "operator_channel",
+    # Uden den er hele MCP-oekosystemet usynligt i cowork.
+    "mcp",
 )
 
 

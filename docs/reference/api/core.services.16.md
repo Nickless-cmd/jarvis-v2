@@ -2,6 +2,57 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/override_store.py`
+_Owner-override-session-store — DB-backed, cross-proces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_key` | `(session_id)` | — | [src](../../../core/services/override_store.py#L31) |
+| function | `_now` | `(now)` | — | [src](../../../core/services/override_store.py#L35) |
+| function | `grant` | `(session_id, *, level=…, now=…)` | Aktivér owner-override for en session. Returnér record. | [src](../../../core/services/override_store.py#L39) |
+| function | `_read` | `(session_id)` | — | [src](../../../core/services/override_store.py#L59) |
+| function | `is_active` | `(session_id, *, now=…)` | True hvis sessionen har en aktiv (ikke-udløbet) override. | [src](../../../core/services/override_store.py#L64) |
+| function | `level` | `(session_id, *, now=…)` | Override-niveau hvis aktiv, ellers None. | [src](../../../core/services/override_store.py#L72) |
+| function | `touch` | `(session_id, *, now=…)` | Forny en AKTIV override til +5 min ved aktivitet. False hvis udløbet/fraværende. | [src](../../../core/services/override_store.py#L80) |
+| function | `revoke` | `(session_id)` | Deaktivér override (sæt udløbet — runtime_state har ingen delete). | [src](../../../core/services/override_store.py#L97) |
+
+## `core/services/paid_lane_guard.py`
+_Vagt: kun Bjørns egen lane må ramme den betalte DeepSeek-API (2026-09-05)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_host` | `(url)` | — | [src](../../../core/services/paid_lane_guard.py#L33) |
+| function | `is_paid` | `(base_url)` | — | [src](../../../core/services/paid_lane_guard.py#L40) |
+| function | `audit_paid_lanes` | `()` | Hvilke lanes peger på en betalt vært uden at måtte? | [src](../../../core/services/paid_lane_guard.py#L44) |
+| function | `check_paid_lanes` | `()` | Kør vagten: log + Central-nerve ved brud. Retter aldrig noget selv. | [src](../../../core/services/paid_lane_guard.py#L72) |
+| function | `build_paid_lane_guard_surface` | `()` | — | [src](../../../core/services/paid_lane_guard.py#L98) |
+
+## `core/services/paradox_tracker.py`
+_Paradox Tracker — detects active tensions in Jarvis' operation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `detect_paradox_tensions` | `(*, recent_messages)` | Scan recent messages for paradox tension signals. | [src](../../../core/services/paradox_tracker.py#L40) |
+| function | `narrativize_tension` | `(tension)` | Turn a paradox tension into felt inner conflict. | [src](../../../core/services/paradox_tracker.py#L77) |
+| function | `build_paradox_surface` | `()` | — | [src](../../../core/services/paradox_tracker.py#L88) |
+
+## `core/services/paradoxes_capture.py`
+_Paradoxes Capture — fanger modsætninger i egne handlinger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L58) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L62) |
+| function | `_event_text` | `(ev)` | — | [src](../../../core/services/paradoxes_capture.py#L85) |
+| function | `_axis_hits` | `(events, axis)` | — | [src](../../../core/services/paradoxes_capture.py#L100) |
+| function | `_signature` | `(title, evidence_refs)` | — | [src](../../../core/services/paradoxes_capture.py#L117) |
+| function | `detect_paradox_candidates` | `(*, lookback_days=…, min_hits=…)` | Scan recent events for paradox patterns. Returns candidates sorted by confidence. | [src](../../../core/services/paradoxes_capture.py#L123) |
+| function | `_latest_paradox_ts` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L165) |
+| function | `_known_signatures` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L180) |
+| function | `maybe_capture_weekly_paradox` | `(*, lookback_days=…)` | Max 1 paradox per 7 days, only if signature is new. | [src](../../../core/services/paradoxes_capture.py#L187) |
+| function | `list_paradoxes` | `(*, limit=…)` | — | [src](../../../core/services/paradoxes_capture.py#L246) |
+| function | `build_paradoxes_surface` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L269) |
+
 ## `core/services/parallel_selves.py`
 _Parallel Selves — internal sub-selves._
 
@@ -616,62 +667,4 @@ _Process supervisor — track long-running background processes Jarvis spawns._
 | function | `stop_process` | `(name, *, grace=…)` | — | [src](../../../core/services/process_supervisor.py#L264) |
 | function | `tail_process_log` | `(name, *, lines=…)` | — | [src](../../../core/services/process_supervisor.py#L271) |
 | function | `remove_process` | `(name)` | Remove an entry from the registry. Refuses if still alive. | [src](../../../core/services/process_supervisor.py#L303) |
-
-## `core/services/process_watcher.py`
-_Process watcher — push-notification primitive for Jarvis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/process_watcher.py#L74) |
-| function | `_state_path` | `(state_file)` | Resolve a state file path. Accepts absolute, ~ expansion, or | [src](../../../core/services/process_watcher.py#L78) |
-| function | `_walk_field` | `(obj, path)` | Walk a dotted path through nested dicts. Returns None if any | [src](../../../core/services/process_watcher.py#L90) |
-| class | `Watch` | `` | — | [src](../../../core/services/process_watcher.py#L105) |
-| function | `_load_all` | `()` | — | [src](../../../core/services/process_watcher.py#L121) |
-| function | `_save_all` | `(watches)` | — | [src](../../../core/services/process_watcher.py#L158) |
-| function | `add_watch` | `(*, label, conditions, on_match, notify_text=…, cooldown_seconds=…, one_shot=…)` | Register a new watch. Returns the created Watch as dict, or error. | [src](../../../core/services/process_watcher.py#L172) |
-| function | `remove_watch` | `(watch_id)` | — | [src](../../../core/services/process_watcher.py#L224) |
-| function | `list_watches` | `()` | — | [src](../../../core/services/process_watcher.py#L234) |
-| function | `set_watch_enabled` | `(watch_id, enabled)` | — | [src](../../../core/services/process_watcher.py#L239) |
-| function | `_eval_condition` | `(cond, runtime_state)` | Evaluate a single condition. Returns (matched, reason). | [src](../../../core/services/process_watcher.py#L252) |
-| function | `_fire_action` | `(watch, reason)` | Execute the watch's on_match action. Errors are logged, not raised. | [src](../../../core/services/process_watcher.py#L436) |
-| function | `_evaluate_watches_once` | `()` | One pass: evaluate every enabled watch; fire matched ones. | [src](../../../core/services/process_watcher.py#L510) |
-| function | `_watcher_loop` | `()` | — | [src](../../../core/services/process_watcher.py#L580) |
-| function | `start_watcher_daemon` | `()` | Start the daemon if not already running. Called once at jarvis-api boot. | [src](../../../core/services/process_watcher.py#L597) |
-| function | `stop_watcher_daemon` | `()` | Signal the daemon to exit. For tests / shutdown hooks. | [src](../../../core/services/process_watcher.py#L609) |
-
-## `core/services/producer_novelty.py`
-_core/services/producer_novelty.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `infer_caller` | `()` | Gæt den originerende service fra call-stacken når cadence-thread-local mangler (fx | [src](../../../core/services/producer_novelty.py#L34) |
-| function | `set_producer` | `(name)` | Sæt hvilken producer der kører NU (cadence-tråden). Self-safe. | [src](../../../core/services/producer_novelty.py#L58) |
-| function | `clear_producer` | `()` | — | [src](../../../core/services/producer_novelty.py#L66) |
-| function | `get_producer` | `()` | — | [src](../../../core/services/producer_novelty.py#L73) |
-| function | `_similarity` | `(a, b)` | — | [src](../../../core/services/producer_novelty.py#L77) |
-| function | `record_output` | `(producer, text)` | Registrér en producers LLM-output + mål nyhed = 1 - (max-lighed vs dens seneste N). | [src](../../../core/services/producer_novelty.py#L84) |
-| function | `snapshot` | `()` | Read-only overblik: pr. producer antal kald + gennemsnitlig nyhed. Lav avg = repetitiv | [src](../../../core/services/producer_novelty.py#L115) |
-| function | `_reset_for_tests` | `()` | — | [src](../../../core/services/producer_novelty.py#L127) |
-
-## `core/services/promise_ledger.py`
-_Promise-ledger (Bjørn-gate) — 16. jun 2026._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_promise` | `(session_id, text, *, now=…)` | Notér at Jarvis lovede en handling i `session_id`. Capper til de seneste N. | [src](../../../core/services/promise_ledger.py#L22) |
-| function | `pending_promises` | `(session_id, *, within_s=…, now=…)` | Ikke-forældede løfter for `session_id` (nyeste sidst). [] ved fejl/tomt. | [src](../../../core/services/promise_ledger.py#L41) |
-| function | `clear_promises` | `(session_id)` | Ryd løfterne for en session (fx når Bjørn bekræfter de er indfriet). | [src](../../../core/services/promise_ledger.py#L62) |
-
-## `core/services/prompt_cache_probe.py`
-_Prompt-cache-sonde — find hvad der bryder prefix-cachen MELLEM to rigtige ture._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ProbeVerdict` | `` | Resultatet af at sammenligne to beskeds-arrays. | [src](../../../core/services/prompt_cache_probe.py#L47) |
-| method | `ProbeVerdict.as_line` | `(self)` | — | [src](../../../core/services/prompt_cache_probe.py#L61) |
-| function | `flatten` | `(items)` | Fold provider-item-formen ud til (rolle, tekst). | [src](../../../core/services/prompt_cache_probe.py#L73) |
-| function | `compare` | `(prev, cur)` | Find hvor langt det byte-identiske prefix rækker. Ren funktion. | [src](../../../core/services/prompt_cache_probe.py#L97) |
-| function | `_nearby_sections` | `(text, offset)` | De sidste sektions-overskrifter før bruddet — peger på synderen. | [src](../../../core/services/prompt_cache_probe.py#L130) |
-| function | `enabled` | `()` | Sonden er slukket med mindre gate-filen findes. | [src](../../../core/services/prompt_cache_probe.py#L147) |
-| function | `probe` | `(items, *, session_id=…, source=…)` | Skriv turens beskeds-array og sammenlign med forrige tur. | [src](../../../core/services/prompt_cache_probe.py#L155) |
 

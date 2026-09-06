@@ -154,6 +154,53 @@ _Rekonstruér markdown-blokstruktur fra inline-markører._
 | function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L150) |
 | function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L169) |
 
+## `core/services/mcp_auth.py`
+_OAuth/bearer til remote MCP-servere._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_expand_env` | `(value)` | `${MIN_NOEGLE}` slaas op i miljoeet, saa en config kan deles uden token. | [src](../../../core/services/mcp_auth.py#L33) |
+| function | `_load` | `()` | — | [src](../../../core/services/mcp_auth.py#L38) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/mcp_auth.py#L45) |
+| function | `get_token` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L54) |
+| function | `set_token` | `(name, *, access_token, refresh_token=…, expires_in=…, token_url=…, client_id=…, client_secret=…)` | — | [src](../../../core/services/mcp_auth.py#L59) |
+| function | `needs_refresh` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L81) |
+| function | `refresh` | `(name)` | Kør refresh_token-grantet. False = intet at fornye, eller det fejlede. | [src](../../../core/services/mcp_auth.py#L91) |
+| function | `resolve_headers` | `(name, config)` | Headers til en request mod *name*. | [src](../../../core/services/mcp_auth.py#L117) |
+
+## `core/services/mcp_client.py`
+_MCP-klient — stdio og HTTP, med trust-gate foran hver forbindelse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MCPClient` | `` | Én forbindelse til én MCP-server. | [src](../../../core/services/mcp_client.py#L46) |
+| method | `MCPClient.__init__` | `(self, name, config)` | — | [src](../../../core/services/mcp_client.py#L49) |
+| method | `MCPClient.connect` | `(self)` | Trust-gate først, DERNÆST forbindelse. Rækkefølgen er hele pointen. | [src](../../../core/services/mcp_client.py#L63) |
+| method | `MCPClient._connect_stdio` | `(self)` | — | [src](../../../core/services/mcp_client.py#L80) |
+| method | `MCPClient._connect_http` | `(self)` | — | [src](../../../core/services/mcp_client.py#L106) |
+| method | `MCPClient.disconnect` | `(self)` | — | [src](../../../core/services/mcp_client.py#L121) |
+| method | `MCPClient.connected` | `(self)` | — | [src](../../../core/services/mcp_client.py#L135) |
+| method | `MCPClient._send_request` | `(self, method, params=…)` | — | [src](../../../core/services/mcp_client.py#L143) |
+| method | `MCPClient._send_stdio` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L152) |
+| method | `MCPClient._http_headers` | `(self)` | — | [src](../../../core/services/mcp_client.py#L179) |
+| method | `MCPClient._send_http` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L186) |
+| method | `MCPClient._send_notification` | `(self, method)` | — | [src](../../../core/services/mcp_client.py#L204) |
+| method | `MCPClient._initialize` | `(self)` | MCP kræver dette håndtryk før alt andet — mange servere afviser | [src](../../../core/services/mcp_client.py#L217) |
+| method | `MCPClient._discover_tools` | `(self)` | — | [src](../../../core/services/mcp_client.py#L231) |
+| method | `MCPClient.call_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/mcp_client.py#L238) |
+
+## `core/services/mcp_manager.py`
+_MCP-manager — forbinder registerets servere og eksponerer deres værktøjer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_server_config` | `(navn)` | — | [src](../../../core/services/mcp_manager.py#L27) |
+| function | `get_client` | `(navn, *, connect=…)` | Hent (og evt. forbind) klienten for *navn*. None hvis ukendt server. | [src](../../../core/services/mcp_manager.py#L40) |
+| function | `disconnect_all` | `()` | — | [src](../../../core/services/mcp_manager.py#L58) |
+| function | `status` | `()` | Hvilke servere kendes, hvilke er godkendt, hvilke er forbundet? | [src](../../../core/services/mcp_manager.py#L68) |
+| function | `list_tools` | `(navn)` | — | [src](../../../core/services/mcp_manager.py#L88) |
+| function | `call` | `(navn, vaerktoej, arguments=…)` | — | [src](../../../core/services/mcp_manager.py#L99) |
+
 ## `core/services/mcp_registry.py`
 _MCP-server-registry (§4.6) — brugerens konfigurerede MCP-endpoints._
 
@@ -163,6 +210,21 @@ _MCP-server-registry (§4.6) — brugerens konfigurerede MCP-endpoints._
 | function | `list_mcp_servers` | `()` | — | [src](../../../core/services/mcp_registry.py#L24) |
 | function | `add_mcp_server` | `(name, url)` | — | [src](../../../core/services/mcp_registry.py#L28) |
 | function | `remove_mcp_server` | `(server_id)` | — | [src](../../../core/services/mcp_registry.py#L40) |
+
+## `core/services/mcp_trust.py`
+_MCP-tillid: allowliste + TOFU-pinning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/mcp_trust.py#L35) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/mcp_trust.py#L44) |
+| function | `is_allowlisted` | `(name)` | — | [src](../../../core/services/mcp_trust.py#L48) |
+| function | `allow` | `(name)` | Godkend et servernavn. Idempotent. | [src](../../../core/services/mcp_trust.py#L52) |
+| function | `revoke` | `(name)` | Fjern fra allowlisten OG drop pinnen. Idempotent. | [src](../../../core/services/mcp_trust.py#L65) |
+| function | `list_trust` | `()` | — | [src](../../../core/services/mcp_trust.py#L80) |
+| function | `_sha256_file` | `(path)` | — | [src](../../../core/services/mcp_trust.py#L85) |
+| function | `check_pin_stdio` | `(name, command)` | Pin en stdio-servers binær (sti + sha256). Første syn pinner. | [src](../../../core/services/mcp_trust.py#L96) |
+| function | `check_pin_http` | `(name, url)` | Pin en HTTP-servers vaert. Første syn pinner. | [src](../../../core/services/mcp_trust.py#L117) |
 
 ## `core/services/meaning_significance_signal_tracking.py`
 _Meaning/significance signal tracking — migrated onto signal_tracking_framework._
@@ -580,57 +642,4 @@ _Metacognition signal tracker — Step E.v1 of meta-evne stack._
 | function | `_listener_loop` | `(_q_unused=…)` | DB-polling listener — same cross-process pattern as | [src](../../../core/services/metacognition_signal_tracker.py#L285) |
 | function | `start_metacognition_tracker` | `()` | Start DB-polling listener. Idempotent. | [src](../../../core/services/metacognition_signal_tracker.py#L342) |
 | function | `stop_metacognition_tracker` | `()` | — | [src](../../../core/services/metacognition_signal_tracker.py#L359) |
-
-## `core/services/metacognitive_integration.py`
-_Metacognitive Integration — the overarching layer that synthesizes all cognitive layers into a coherent self-model._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/metacognitive_integration.py#L39) |
-| function | `_extract_signal_values` | `(cognitive_state)` | Extract normalised signal values from the assembled cognitive state. | [src](../../../core/services/metacognitive_integration.py#L77) |
-| function | `compute_coherence` | `(signal_values)` | Compute coherence score (0-1) from signal values. | [src](../../../core/services/metacognitive_integration.py#L198) |
-| function | `compute_integration_quality` | `(cognitive_state)` | Compute integration quality — how many layers are active and contributing. | [src](../../../core/services/metacognitive_integration.py#L237) |
-| function | `compute_self_assessment` | `(coherence, integration, signal_values)` | Compute metacognitive self-assessment. | [src](../../../core/services/metacognitive_integration.py#L283) |
-| function | `get_metacognitive_line` | `(cognitive_state=…)` | Get the metacognitive integration prompt line. | [src](../../../core/services/metacognitive_integration.py#L332) |
-| function | `get_metacognitive_detail` | `(cognitive_state=…)` | Get full metacognitive assessment as a dict (for debugging/MC). | [src](../../../core/services/metacognitive_integration.py#L385) |
-| function | `_parse_raw_state` | `(raw)` | Parse the raw cognitive state string into a dict. | [src](../../../core/services/metacognitive_integration.py#L417) |
-| function | `build_metacognitive_integration_surface` | `()` | — | [src](../../../core/services/metacognitive_integration.py#L494) |
-| function | `_emit_integration_event` | `(layer, signal)` | — | [src](../../../core/services/metacognitive_integration.py#L503) |
-
-## `core/services/mirror_engine.py`
-_Mirror Engine — compassionate self-reflection during idle time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `generate_mirror_insight` | `(*, idle_hours=…, open_loop_count=…, recent_error_count=…, recent_success_count=…, top_loop_summary=…)` | Generate a deterministic mirror insight. | [src](../../../core/services/mirror_engine.py#L20) |
-| function | `build_mirror_surface` | `()` | — | [src](../../../core/services/mirror_engine.py#L56) |
-| function | `_deterministic_insight` | `(*, idle_hours, open_loop_count, recent_error_count, recent_success_count, top_loop_summary)` | — | [src](../../../core/services/mirror_engine.py#L65) |
-
-## `core/services/missions_pipeline.py`
-_Missions Pipeline — flerfase opgaver med state-machine._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `MissionError` | `` | — | [src](../../../core/services/missions_pipeline.py#L52) |
-| method | `MissionError.__init__` | `(self, code, message)` | — | [src](../../../core/services/missions_pipeline.py#L53) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/missions_pipeline.py#L58) |
-| function | `_ensure_tables` | `()` | — | [src](../../../core/services/missions_pipeline.py#L62) |
-| function | `_row_to_mission` | `(row)` | — | [src](../../../core/services/missions_pipeline.py#L107) |
-| function | `create_mission` | `(*, title, description=…, goal=…, constraints=…, success_criteria=…, roles=…, metadata=…)` | Create a new mission in 'created' status. | [src](../../../core/services/missions_pipeline.py#L120) |
-| function | `get_mission` | `(*, mission_id)` | — | [src](../../../core/services/missions_pipeline.py#L176) |
-| function | `transition_mission_state` | `(*, mission_id, new_status, reason=…)` | Transition mission to new status, respecting _ALLOWED_TRANSITIONS. | [src](../../../core/services/missions_pipeline.py#L188) |
-| function | `send_mission_message` | `(*, mission_id, role=…, content, metadata=…)` | Post a message on the mission channel. Roles: researcher/implementer/reviewer etc. | [src](../../../core/services/missions_pipeline.py#L258) |
-| function | `list_mission_messages` | `(*, mission_id, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L311) |
-| function | `list_missions` | `(*, status=…, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L331) |
-| function | `build_missions_surface` | `()` | — | [src](../../../core/services/missions_pipeline.py#L350) |
-
-## `core/services/model_context.py`
-_Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `model_context_window` | `(provider, model)` | Bedste bud på modellens context-vindue (tokens). 0 = ukendt. | [src](../../../core/services/model_context.py#L33) |
-| function | `effective_context_limit` | `(provider, model, compact_threshold)` | Det første loft der rammer: min(modellens vindue, autocompact-tærskel). | [src](../../../core/services/model_context.py#L50) |
-| function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L65) |
-| function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L69) |
 

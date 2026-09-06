@@ -166,10 +166,24 @@ function ToolResultBody({ data }) {
   // the kind/status checks below can see them — otherwise the interactive
   // cards never render and users see raw JSON. Same fix serves both the
   // JarvisX code-mode UI and webchat, which share this component.
+  // Conservative parse: only promote to an object when the string really
+  // is a structured payload (has a kind/status/classification marker).
+  // Plain text and arbitrary tool output must stay strings, or String()
+  // rendering below would show "[object Object]".
   let result = rawResult
-  if (typeof rawResult === 'string') {
+  if (typeof rawResult === 'string' && rawResult.length > 0) {
     try {
-      result = JSON.parse(rawResult)
+      const parsed = JSON.parse(rawResult)
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        !Array.isArray(parsed) &&
+        (parsed.kind === 'pause_and_ask' ||
+          parsed.status === 'approval_needed' ||
+          parsed.classification === 'destructive')
+      ) {
+        result = parsed
+      }
     } catch {
       result = rawResult // plain text — leave as-is
     }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { tokens } from '../theme/tokens'
@@ -14,6 +14,7 @@ import { ThoughtsList } from '../components/ThoughtsList'
 import { fetchThoughts, type Thought } from '../lib/companionClient'
 import { WorkDecisionCard } from '../components/WorkDecisionCard'
 import { actOnDecision, fetchDecisions, type Decision, type DecisionAction } from '../lib/decisionsApi'
+import { fetchOperatorChannel, lukOperatorChannel, timerTilbage, type OperatorChannel } from '../lib/workbenchApi'
 import { WorkReviewCard } from '../components/WorkReviewCard'
 import { fetchWorkReviews, type WorkReview } from '../lib/workReviewApi'
 import { NewWorkTaskSheet, type NewWorkMode } from '../components/NewWorkTaskSheet'
@@ -91,6 +92,10 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
   const [ubesvarede, setUbesvarede] = useState(0)
   const [reviews, setReviews] = useState<WorkReview[]>([])
   const [startingTask, setStartingTask] = useState(false)
+  // Operator-kanalen (6/9-2026). Er den åben, kører bash på Bjørns EGEN maskine
+  // uden godkendelse pr. kald. Telefonen er dér man opdager at man glemte at
+  // lukke den — derfor står den øverst, ikke i indstillinger.
+  const [kanal, setKanal] = useState<OperatorChannel | null>(null)
 
   const load = useCallback(async () => {
     if (!config) return
@@ -102,6 +107,9 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
       ])
       const rev = await fetchWorkReviews(config).catch(() => [])
       setReviews(rev)
+      // Fejler kaldet, står feltet tomt frem for at lægge en fejlbjælke over
+      // de godkendelser der FAKTISK blokerer et run — samme regel som tankerne.
+      setKanal(await fetchOperatorChannel(config).catch(() => null))
       if (d) {
         setDecisions(d.items)
         setUbesvarede(d.expiredUnanswered)
@@ -259,6 +267,30 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, onPendingCount, onSy
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
+          {/* Åben operator-kanal: øverst, over fanerne, uanset hvilken fane
+              man står på. Den er ikke en indstilling man opsøger — det er en
+              tilstand man skal falde over. */}
+          {kanal?.open && (
+            <View style={styles.kanalBanner}>
+              <View style={styles.kanalTekst}>
+                <Text style={styles.kanalTitel}>Operator-kanalen er åben</Text>
+                <Text style={styles.kanalUnder}>
+                  Jarvis kører kommandoer på din maskine uden at spørge hver gang.
+                  Lukker af sig selv om ca. {timerTilbage(kanal)} t.
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.kanalKnap}
+                onPress={() => {
+                  if (!config) return
+                  void lukOperatorChannel(config).then(setKanal).catch(() => undefined)
+                }}
+              >
+                <Text style={styles.kanalKnapTekst}>Luk</Text>
+              </Pressable>
+            </View>
+          )}
           {tab === 'tasks' ? (
             <>
               <TasksView
@@ -459,6 +491,30 @@ function ApproveView({
 }
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
+  // Advarselsfarve, ikke accent: en åben kanal er en TILSTAND man skal opdage,
+  // ikke en handling man inviteres til.
+  kanalBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.md,
+    padding: tokens.spacing.md,
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: tokens.color.warn,
+    backgroundColor: tokens.color.bg1,
+    marginBottom: tokens.spacing.sm,
+  },
+  kanalTekst: { flex: 1, gap: 2 },
+  kanalTitel: { color: tokens.color.warn, fontSize: 14, fontWeight: '600' },
+  kanalUnder: { color: tokens.color.fg3, fontSize: 12, lineHeight: 16 },
+  kanalKnap: {
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.sm,
+    borderRadius: tokens.radius.sm,
+    borderWidth: 1,
+    borderColor: tokens.color.warn,
+  },
+  kanalKnapTekst: { color: tokens.color.fg1, fontSize: 13, fontWeight: '600' },
   root: { flex: 1, backgroundColor: tokens.color.bg0 },
   subTabs: { paddingHorizontal: tokens.spacing.lg, paddingBottom: tokens.spacing.sm },
   list: { padding: tokens.spacing.lg, gap: tokens.spacing.md },

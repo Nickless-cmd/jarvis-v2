@@ -184,7 +184,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   // skærmbilleder sammen — man skulle sende to beskeder, og så mistede Jarvis
   // sammenhængen mellem dem.
   const [pendingAttachments, setPendingAttachments] = useState<
-    { id: string; uri: string; name: string; mime: string }[]
+    { id: string; uploadId?: string; uri: string; name: string; mime: string; status?: 'uploading' | 'ready' | 'error'; progress?: number }[]
   >([])
   const [displayName, setDisplayName] = useState('Jarvis')
   const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
@@ -445,6 +445,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
 
   const ensureSessionAndSend = async (text: string) => {
     if (!config) return
+    if (pendingAttachments.some((a) => a.status === 'uploading')) return
     if (connectivity === 'offline') {
       if (!sessions.activeId) {
         Alert.alert('Offline', 'Åbn en eksisterende samtale før du køer en besked offline.')
@@ -454,7 +455,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         kind: 'chat_message',
         sessionId: sessions.activeId,
         text: outgoingChatText(text, researchMode),
-        attachmentIds: pendingAttachments.length ? pendingAttachments.map((a) => a.id) : undefined
+        attachmentIds: pendingAttachments.filter((a) => a.status !== 'error' && a.status !== 'uploading').map((a) => a.uploadId ?? a.id)
       })
       setOutboxCount((await loadOutbox()).length)
       setPendingAttachments([])
@@ -462,8 +463,9 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       return
     }
     const sessionId = sessions.activeId ?? (await sessions.create(config)).id
-    const attachmentIds = pendingAttachments.length
-      ? pendingAttachments.map((a) => a.id)
+    const readyAttachments = pendingAttachments.filter((a) => a.status !== 'error' && a.status !== 'uploading')
+    const attachmentIds = readyAttachments.length
+      ? readyAttachments.map((a) => a.uploadId ?? a.id)
       : undefined
     stream.send(config, sessionId, outgoingChatText(text, researchMode), {
       ...modelOpts(),
@@ -506,13 +508,24 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     const sessionId = sessions.activeId ?? (await sessions.create(config)).id
     const failed: string[] = []
     for (const f of files) {
+      const localId = `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+      setPendingAttachments((prev) => [
+        ...prev,
+        { id: localId, uri: f.uri, name: f.name, mime: f.mime, status: 'uploading', progress: 1 }
+      ])
       try {
-        const up = await uploadAttachment(config, sessionId, f)
-        setPendingAttachments((prev) => [
-          ...prev,
-          { id: up.id, uri: f.uri, name: f.name, mime: f.mime }
-        ])
+        const up = await uploadAttachment(config, sessionId, f, (progress) => {
+          setPendingAttachments((prev) => prev.map((item) => (
+            item.id === localId ? { ...item, progress, status: 'uploading' } : item
+          )))
+        })
+        setPendingAttachments((prev) => prev.map((item) => (
+          item.id === localId ? { ...item, uploadId: up.id, status: 'ready', progress: 100 } : item
+        )))
       } catch (e) {
+        setPendingAttachments((prev) => prev.map((item) => (
+          item.id === localId ? { ...item, status: 'error', progress: 0 } : item
+        )))
         failed.push(`${f.name}${describeUploadError(e)}`)
       }
     }
@@ -672,7 +685,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           }}
         >
         <Composer
-          disabled={!config}
+          disabled={!config || pendingAttachments.some((a) => a.status === 'uploading')}
           working={stream.state.status === 'working' || serverBusy}
           modelLabel={model?.label}
           onSend={ensureSessionAndSend}

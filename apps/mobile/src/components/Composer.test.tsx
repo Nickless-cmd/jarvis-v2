@@ -148,6 +148,22 @@ describe('Composer', () => {
     expect(onRemove).toHaveBeenCalledWith('b')
   })
 
+  it('viser upload-progress og fejl direkte på billed-thumbnail', async () => {
+    const screen = await render(
+      <Composer
+        onSend={jest.fn()}
+        onStop={jest.fn()}
+        attachments={[
+          { id: 'a', uri: 'file:///a.png', name: 'a.png', mime: 'image/png', status: 'uploading', progress: 45 },
+          { id: 'b', uri: 'file:///b.png', name: 'b.png', mime: 'image/png', status: 'error' }
+        ]}
+      />
+    )
+
+    expect(screen.getByText('45%')).toBeTruthy()
+    expect(screen.getByText('Fejl')).toBeTruthy()
+  })
+
   it('kan sende med KUN vedhæftninger og ingen tekst', async () => {
     const onSend = jest.fn()
     const screen = await render(

@@ -46,7 +46,7 @@ export function Composer({
   onPressModel?: () => void
   onAttach?: () => void
   onMic?: () => void
-  attachments?: { id: string; uri: string; name: string; mime: string }[]
+  attachments?: { id: string; uri: string; name: string; mime: string; status?: 'uploading' | 'ready' | 'error'; progress?: number }[]
   onRemoveAttachment?: (id: string) => void
   /** Løftes ud, så skærmen kan vide om komponisten er i brug. */
   onFocusChange?: (focused: boolean) => void
@@ -153,7 +153,18 @@ export function Composer({
             {att.map((a) => (
               <View key={a.id} testID={`attach-chip-${a.id}`} style={styles.attachChip}>
                 {a.mime.startsWith('image/') ? (
-                  <Image source={{ uri: a.uri }} style={styles.attachThumb} />
+                  <View>
+                    <Image source={{ uri: a.uri }} style={styles.attachThumb} />
+                    {a.status === 'uploading' ? (
+                      <View style={styles.attachBadge}>
+                        <Text style={styles.attachBadgeText}>{Math.max(1, Math.min(99, Math.round(a.progress ?? 1)))}%</Text>
+                      </View>
+                    ) : a.status === 'error' ? (
+                      <View style={[styles.attachBadge, styles.attachBadgeError]}>
+                        <Text style={styles.attachBadgeText}>Fejl</Text>
+                      </View>
+                    ) : null}
+                  </View>
                 ) : (
                   <View style={styles.attachIcon}>
                     <FileText size={18} color={tokens.color.fg2} strokeWidth={1.8} />
@@ -338,6 +349,19 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     backgroundColor: tokens.color.bg2
   },
   attachThumb: { width: 40, height: 40, borderRadius: tokens.radius.sm, backgroundColor: tokens.color.bg3 },
+  attachBadge: {
+    position: 'absolute',
+    right: 3,
+    bottom: 3,
+    minWidth: 34,
+    alignItems: 'center',
+    borderRadius: tokens.radius.pill,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: 'rgba(0,0,0,0.72)'
+  },
+  attachBadgeError: { backgroundColor: tokens.color.error },
+  attachBadgeText: { color: tokens.color.fg1, fontSize: 10, fontWeight: '800' },
   attachName: { color: tokens.color.fg2, fontSize: 13, flexShrink: 1 },
   attachRemove: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.bg3 },
   attachRemoveText: { color: tokens.color.fg1, fontSize: 18, lineHeight: 20 },

@@ -1,9 +1,11 @@
-import { Image, StyleSheet, Text, View } from 'react-native'
+import { useState } from 'react'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { FileText } from 'lucide-react-native'
 import { useAuth } from '../state/AuthContext'
 import type { PersistedBlock } from '../lib/persistedBlocks'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
+import { FullscreenImagePreview } from './FullscreenImagePreview'
 
 /**
  * Vedhæftninger på en brugerbesked — tegnet OVER boblen, ikke inde i den.
@@ -22,6 +24,7 @@ export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const { config } = useAuth()
+  const [preview, setPreview] = useState<{ uri: string; title: string; headers?: Record<string, string> } | null>(null)
   if (!items.length) return null
 
   return (
@@ -33,19 +36,24 @@ export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
             `/attachments/image/${encodeURIComponent(id)}`,
             config.apiBaseUrl
           ).toString()
+          const headers = config.authToken
+            ? { Authorization: `Bearer ${config.authToken}` }
+            : undefined
           return (
-            <Image
+            <Pressable
               key={id}
-              testID={`attachment-image-${id}`}
-              source={{
-                uri,
-                headers: config.authToken
-                  ? { Authorization: `Bearer ${config.authToken}` }
-                  : undefined
-              }}
-              style={styles.image}
-              resizeMode="cover"
-            />
+              testID={`attachment-open-${id}`}
+              accessibilityRole="imagebutton"
+              accessibilityLabel={`Åbn ${b.filename || 'billede'}`}
+              onPress={() => setPreview({ uri, title: b.filename || 'Billede', headers })}
+            >
+              <Image
+                testID={`attachment-image-${id}`}
+                source={{ uri, headers }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+            </Pressable>
           )
         }
         return (
@@ -60,6 +68,15 @@ export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
           </View>
         )
       })}
+      {preview ? (
+        <FullscreenImagePreview
+          visible
+          uri={preview.uri}
+          title={preview.title}
+          headers={preview.headers}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
     </View>
   )
 }

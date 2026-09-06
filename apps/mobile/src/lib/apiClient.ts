@@ -235,18 +235,37 @@ export interface UploadedAttachment {
 export async function uploadAttachment(
   config: ApiConfig,
   sessionId: string,
-  photo: { uri: string; name: string; mime: string }
+  photo: { uri: string; name: string; mime: string },
+  onProgress?: (percent: number) => void
 ): Promise<UploadedAttachment> {
   const FS = await import('expo-file-system/legacy')
   const url = new URL('/attachments/upload', config.apiBaseUrl).toString()
-  const res = await FS.uploadAsync(url, photo.uri, {
-    httpMethod: 'POST',
+  const options: Parameters<typeof FS.uploadAsync>[2] = {
+    httpMethod: 'POST' as const,
     uploadType: FS.FileSystemUploadType.MULTIPART,
     fieldName: 'file',
     mimeType: photo.mime,
     parameters: { session_id: sessionId },
     headers: { Accept: 'application/json', Authorization: `Bearer ${config.authToken}` }
-  })
+  }
+  const createUploadTask = (FS as typeof FS & {
+    createUploadTask?: (
+      url: string,
+      fileUri: string,
+      options: Parameters<typeof FS.uploadAsync>[2],
+      callback: (data: { totalBytesSent?: number; totalBytesExpectedToSend?: number }) => void
+    ) => { uploadAsync: () => Promise<{ status: number; body: string } | null | undefined> }
+  }).createUploadTask
+  const res = createUploadTask && onProgress
+    ? await createUploadTask(url, photo.uri, options, (data) => {
+        const total = Number(data.totalBytesExpectedToSend ?? 0)
+        const sent = Number(data.totalBytesSent ?? 0)
+        if (total > 0) onProgress(Math.max(1, Math.min(99, Math.round((sent / total) * 100))))
+      }).uploadAsync()
+    : await FS.uploadAsync(url, photo.uri, options)
+  if (!res) {
+    throw new ApiError('network', 'Upload blev afbrudt')
+  }
   if (res.status >= 400) {
     throw new ApiError(res.status === 401 ? 'auth' : 'server', `HTTP ${res.status}: ${(res.body || '').slice(0, 160)}`, res.status)
   }

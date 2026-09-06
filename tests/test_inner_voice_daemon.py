@@ -26,6 +26,47 @@ def _reset_voice_state():
     iv_module._voice_last_result = None
 
 
+@pytest.fixture(autouse=True)
+def _intet_netvaerk(monkeypatch):
+    """Ingen udgaaende forbindelser. Det er en unit-test, ikke en integration.
+
+    Filen brugte 34-134 sekunder paa 40 tests og faldt uforudsigeligt paa
+    `ssl.py: Timeout (>45s) from pytest-timeout` — en TILFAELDIG test hver
+    gang, fordi det var den der ramte et langsomt kald.
+
+    Profileret: ét daemon-kald laver 22-31 https-kald. Kaeden er
+    `run_inner_voice_daemon` → `_gather_grounding` → `build_cognitive_frame`
+    → `_safe_self_knowledge` → `_build_active_capabilities` →
+    `cheap_lane_execution_truth`, som PROEVER hele billig-banen live: OAuth
+    mod auth.openai.com (22 forsoeg i traek) plus et dusin udbydere —
+    nvidia, openrouter, mistral, sambanova, cloudflare, huggingface, ovh,
+    pollinations, arko. Bare det at samle grundlag for en indre stemme koster
+    altsaa en fuld provider-afproevning.
+
+    Tre forsoeg paa at ramme ét kaldested slog fejl: mocken paa
+    `_llm_render_inner_voice` braekkede den test der tester netop den, en
+    mock der KASTEDE udloeste fallback-kaeden og gjorde det vaerre, og en
+    patch paa `cheap_lane_execution_truth` ramte ikke, fordi kalderen
+    importerer navnet inde i sin egen funktion.
+
+    Derfor graensen i stedet for kaldestederne: koden moeder samme verden som
+    paa en maskine uden net, og dens egen fejlhaandtering tager over. Maalt:
+    134 s → under 3 s, og stabilt.
+    """
+    import urllib.request
+
+    def _spaerret(*a, **k):
+        raise OSError("netværk spærret i unit-test")
+
+    monkeypatch.setattr(urllib.request, "urlopen", _spaerret)
+    try:
+        import httpx
+        monkeypatch.setattr(httpx, "post", _spaerret, raising=False)
+        monkeypatch.setattr(httpx, "get", _spaerret, raising=False)
+    except Exception:
+        pass
+
+
 # ---------------------------------------------------------------------------
 # Basic execution
 # ---------------------------------------------------------------------------

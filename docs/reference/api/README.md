@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13735 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13736 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -37,20 +37,20 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13735 functions/
 - [`core.services.08`](core.services.08.md) — `council_deliberation_controller` … `decision_log`
 - [`core.services.09`](core.services.09.md) — `decision_review_daemon` … `dream_distillation_daemon`
 - [`core.services.10`](core.services.10.md) — `dream_hypothesis_forced` … `existential_drift`
-- [`core.services.11`](core.services.11.md) — `existential_wonder_daemon` … `gate_verdict_ledger`
-- [`core.services.12`](core.services.12.md) — `ghost_networks` … `identity_mutation_log`
-- [`core.services.13`](core.services.13.md) — `identity_sketch` … `life_projects`
-- [`core.services.14`](core.services.14.md) — `lifecycle_hooks` … `meta_learning_hypotheses`
-- [`core.services.15`](core.services.15.md) — `meta_learning_retrospective` … `orb_phase`
-- [`core.services.16`](core.services.16.md) — `outbound_nudges` … `proactive_outbound_substrate`
-- [`core.services.17`](core.services.17.md) — `proactive_question_gate_tracking` … `reasoning_prefilter`
-- [`core.services.18`](core.services.18.md) — `reasoning_store` … `runtime_decision_engine`
-- [`core.services.19`](core.services.19.md) — `runtime_flows` … `self_repair_engine`
-- [`core.services.20`](core.services.20.md) — `self_review_cadence_signal_tracking` … `signal_surface_gc`
-- [`core.services.21`](core.services.21.md) — `signal_surface_router` … `temporal_depth`
-- [`core.services.22`](core.services.22.md) — `temporal_narrative` … `untrusted_fencing`
-- [`core.services.23`](core.services.23.md) — `upload_sandbox` … `visible_self_state_summary`
-- [`core.services.24`](core.services.24.md) — `visible_stream_gate` … `world_model_signal_tracking`
+- [`core.services.11`](core.services.11.md) — `existential_wonder_daemon` … `gate_truth`
+- [`core.services.12`](core.services.12.md) — `gate_verdict_ledger` … `identity_guard`
+- [`core.services.13`](core.services.13.md) — `identity_mutation_log` … `life_milestones`
+- [`core.services.14`](core.services.14.md) — `life_projects` … `meta_learning_aggregator`
+- [`core.services.15`](core.services.15.md) — `meta_learning_hypotheses` … `operator_channel`
+- [`core.services.16`](core.services.16.md) — `orb_phase` … `proactive_loop_lifecycle_tracking`
+- [`core.services.17`](core.services.17.md) — `proactive_outbound_substrate` … `reasoning_interceptor`
+- [`core.services.18`](core.services.18.md) — `reasoning_prefilter` … `runtime_cognitive_conductor`
+- [`core.services.19`](core.services.19.md) — `runtime_decision_engine` … `self_narrative_self_model_review_bridge`
+- [`core.services.20`](core.services.20.md) — `self_repair_engine` … `signal_pressure_accumulator`
+- [`core.services.21`](core.services.21.md) — `signal_surface_gc` … `temporal_context`
+- [`core.services.22`](core.services.22.md) — `temporal_depth` … `unfinished_intent`
+- [`core.services.23`](core.services.23.md) — `untrusted_fencing` … `visible_runs_watchdog`
+- [`core.services.24`](core.services.24.md) — `visible_self_state_summary` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

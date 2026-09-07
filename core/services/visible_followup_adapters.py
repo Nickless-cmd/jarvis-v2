@@ -581,7 +581,11 @@ class OpenAICompatFollowupAdapter:
         self, *, model: str, messages: list[dict], tool_definitions: list[dict] | None,
         temperature: float | None = None, top_p: float | None = None,
         tool_choice: str | None = None, extra_body: dict | None = None,
+        spor: dict | None = None,
     ) -> urllib_request.Request:
+        # `spor` er en MÅLING, ikke en indstilling: kalderen sender et tomt
+        # dict ind og læser bagefter hvad der faktisk blev sendt. Et dict pr.
+        # kald frem for tilstand på adapteren, som deles mellem samtidige runs.
         if self.provider_id == "github-copilot":
             # Lazy imports: these modules pull in auth state we don't want to
             # touch at module load.
@@ -684,6 +688,8 @@ class OpenAICompatFollowupAdapter:
         if tool_definitions:
             from core.services.cheap_provider_runtime import _normalize_tools_for_openai_chat
             payload["tools"] = _normalize_tools_for_openai_chat(list(tool_definitions))
+            if spor is not None:
+                spor["tools_advertised"] = len(payload["tools"])
             # tool_choice="none" tvinger prosa-svar uden at fjerne tools-arrayet →
             # cache-prefixet [system,tools] forbliver stabilt. Kun meningsfuldt når
             # der ER tools at vælge fra.
@@ -706,6 +712,14 @@ class OpenAICompatFollowupAdapter:
                         str(payload["thinking"].get("type") or "") == "enabled":
                     payload["thinking"] = {"type": "disabled"}
                     payload.pop("reasoning_effort", None)
+                    # Måles fra 7/9: begrundelsen ovenfor handler om
+                    # AFSLUTNINGS-runden, hvor et resumé ikke kræver
+                    # ræsonnement. Men `tool_choice="required"` bruges nu også
+                    # på den TVUNGNE runde, hvor modellen netop skal ræsonnere
+                    # sig frem til hvilket værktøj. Om det er dét der koster de
+                    # 22 %, ved vi ikke — derfor noteres det.
+                    if spor is not None:
+                        spor["thinking_disabled"] = True
         return urllib_request.Request(
             f"{base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
@@ -874,6 +888,10 @@ class OpenAICompatFollowupAdapter:
                     round_index, model, _no_rc,
                 )
 
+        # Sonde for tvungne runder — fyldes af _build_request, læses ved DONE.
+        # SKAL stå før byggeren; første udgave satte den bagefter, hvilket
+        # ville have kastet UnboundLocalError på hver eneste følgerunde.
+        _spor: dict = {}
         try:
             from core.services.followup_output_budget import nonthinking_retry_body
             req = self._build_request(
@@ -881,6 +899,7 @@ class OpenAICompatFollowupAdapter:
                 temperature=temperature, top_p=top_p, tool_choice=tool_choice,
                 extra_body={**(_mode_body or {}),
                             **(nonthinking_retry_body() if _length_retry else {})} or None,
+                spor=_spor,
             )
         except Exception as e:
             _log.error(
@@ -1175,6 +1194,24 @@ class OpenAICompatFollowupAdapter:
                 _length_retry=True,
             )
             return
+        # ── MÅLING af den tvungne runde (Bjørn 7/9-2026) ────────────────────
+        # Kun `required` — det er den runde hvor modellen SKAL kalde noget, og
+        # den eneste hvor et nul er interessant. Måler, ændrer intet.
+        if str(tool_choice or "") == "required":
+            try:
+                from core.services.forced_tool_choice_probe import note_forced_round
+                note_forced_round(
+                    run_id=str(run_id or ""), provider=str(self.provider_id or ""),
+                    model=str(model or ""), round_index=int(round_index),
+                    finish_reason=str(_finish_reason or ""),
+                    tool_calls=len(tool_calls or []),
+                    text_chars=len("".join(parts)),
+                    reasoning_chars=len("".join(reasoning_parts)),
+                    tools_advertised=int(_spor.get("tools_advertised") or 0),
+                    thinking_disabled=bool(_spor.get("thinking_disabled")),
+                )
+            except Exception:
+                pass
         if tool_calls:
             yield FollowupToolCalls(tool_calls=tool_calls)
         yield FollowupDone(

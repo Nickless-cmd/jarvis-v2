@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6897/13735 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6898/13736 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6897/13735 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 569 | 1055 | 53% |
-| `core.services` | 4578 | 9507 | 48% |
+| `core.services` | 4579 | 9508 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 104 | 179 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1794,9 +1794,9 @@ Generated from source. 6897/13735 functions/methods documented (50%). The list b
 - `core/services/value_formation.py` :: `build_formed_values_surface` (L60)
 - `core/services/value_formation.py` :: `track_value_from_experience` (L12)
 - `core/services/visible_first_pass_text.py` :: `FirstPassText.text` (L39)
-- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1237)
+- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1274)
 - `core/services/visible_followup_adapters.py` :: `OllamaFollowupAdapter.stream_followup` (L230)
-- `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L770)
+- `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L784)
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L170)
 - `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L395)
 - `core/services/visible_model.py` :: `available_provider_models` (L172)

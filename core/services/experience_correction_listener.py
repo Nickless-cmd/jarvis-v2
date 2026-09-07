@@ -79,6 +79,50 @@ _CORRECTION_PATTERNS: tuple[re.Pattern, ...] = (
     re.compile(r"\bikke (rigtigt|korrekt|helt rigtigt)\b", re.IGNORECASE),
 )
 
+# Jarvis' EGNE erkendelser. Det er den anden vej ind, og den maalte sig bedre
+# end at gaette paa Bjoerns tekst: 52 rene traef i 4.131 tur-par, mod
+# moensterets 12 % daekning / 3 % praecision.
+#
+# «du har ret» staar bevidst IKKE her. Den optraadte i 182 af 3.000 svar — en
+# talemaade, ikke en erkendelse. Tages den med, maaler man hoeflighed.
+_ACK_PATTERNS: tuple[re.Pattern, ...] = (
+    re.compile(r"\bjeg tog fejl\b", re.IGNORECASE),
+    re.compile(r"\bjeg tager fejl\b", re.IGNORECASE),
+    re.compile(r"\bjeg havde uret\b", re.IGNORECASE),
+    re.compile(r"\bmin fejl\b", re.IGNORECASE),
+    re.compile(r"\bjeg misforstod\b", re.IGNORECASE),
+    re.compile(r"\bjeg konkluderede forkert\b", re.IGNORECASE),
+    re.compile(r"\bdet var forkert af mig\b", re.IGNORECASE),
+    re.compile(r"\btak for rettelsen\b", re.IGNORECASE),
+    re.compile(r"\brettelse til (min|mit|den)\b", re.IGNORECASE),
+)
+
+# «Haha, min fejl! 😄 Troede du var paa vej i seng» — en spoegefuld indroemmelse,
+# ikke en rettelse. Maalt: én af 50.
+#
+# Raekkefoelge-uafhaengig: latteren kan staa foer ELLER efter. Foerste udgave
+# krav den foer, og «min fejl 🤣 troede du sov» slap igennem.
+_LATTER = r"(?:haha+|hehe|😄|😅|🤣|😆)"
+_ACK_I_SPOEG = re.compile(
+    r"(?:%s[^.!?\n]{0,20}min fejl|min fejl[^.!?\n]{0,20}%s)" % (_LATTER, _LATTER),
+    re.IGNORECASE,
+)
+
+# Under dette er Bjoerns besked et «ja» eller «ok» — der er ingen rettelse at
+# gemme, uanset hvad Jarvis svarer. Maalt: skaerer 6 tomme fra af 50.
+_MIN_RETTELSE_TEGN = 15
+
+
+def _looks_like_acknowledgement(text: str) -> bool:
+    """True hvis Jarvis selv siger at han tog fejl."""
+    if not text:
+        return False
+    krop = text.strip()[:1200]
+    if _ACK_I_SPOEG.search(krop[:200]):
+        return False
+    return any(p.search(krop) for p in _ACK_PATTERNS)
+
+
 # Window in which we associate a correction with the previous turn.
 # After this we assume the correction is about something else.
 _CORRECTION_WINDOW_MINUTES = 10
@@ -207,6 +251,36 @@ def _previous_assistant_text(session_id: str) -> str:
     return last_assistant
 
 
+def _previous_user_text(session_id: str) -> str:
+    """Bjoerns seneste besked FOER dette svar — det er selve rettelsen.
+
+    Samme form som ``_previous_assistant_text``; de to spejler hinanden.
+    """
+    try:
+        from core.services.chat_sessions import get_chat_messages
+        rows = get_chat_messages(session_id, limit=6) or []
+    except Exception:
+        return ""
+    for row in reversed(rows):
+        if str(row.get("role") or "") == "user":
+            return str(row.get("content") or "")
+    return ""
+
+
+def _record_self_ack_lesson(session_id: str, jarvis_words: str) -> None:
+    """Jarvis indroemmede selv. Gem Bjoerns foregaaende ord som lektien."""
+    user_words = _previous_user_text(session_id).strip()
+    if len(user_words) < _MIN_RETTELSE_TEGN:
+        return
+    try:
+        from core.services.lessons import record_self_acknowledged_correction
+        record_self_acknowledged_correction(
+            session_id=session_id, user_words=user_words, jarvis_words=jarvis_words,
+        )
+    except Exception as exc:
+        logger.debug("experience_correction: self-ack lesson failed: %s", exc)
+
+
 def _record_correction_lesson(session_id: str, content: str) -> None:
     """2026-09-04 (memory repair, R4): before, the correction text was thrown
     away and only ``user_corrected=1`` survived. Now the words become a lesson."""
@@ -234,6 +308,20 @@ def _listener_loop(q) -> None:
             if kind != "channel.chat_message_appended":
                 continue
             payload = item.get("payload") or {}
+            msg = payload.get("message") or {}
+            rolle = str(msg.get("role") or "").strip().lower()
+            sid = str(payload.get("session_id") or "").strip()
+
+            # Vej 2: Jarvis' egen erkendelse. Maalte sig langt bedre end at
+            # gaette paa Bjoerns tekst — han retter ved at LEVERE en
+            # kendsgerning, uden markoer, og det kan et moenster ikke se.
+            if rolle == "assistant":
+                svar = str(msg.get("content") or "")
+                if sid and _looks_like_acknowledgement(svar):
+                    _mark_recent_episode_corrected(sid)
+                    _record_self_ack_lesson(sid, svar)
+                continue
+
             session_id, content = _extract_user_message(payload)
             if not session_id or not content:
                 continue

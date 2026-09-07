@@ -593,20 +593,20 @@ _`lessons` — the one store for what Jarvis learns from mistakes._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_lessons.py#L44) |
-| function | `signature_key` | `(signature)` | Lowercase, punctuation-free, stopword-free, first 12 tokens. | [src](../../../core/runtime/db_lessons.py#L48) |
-| function | `ensure_lessons_table` | `(conn)` | — | [src](../../../core/runtime/db_lessons.py#L54) |
-| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_lessons.py#L77) |
-| function | `_jaccard` | `(a, b)` | — | [src](../../../core/runtime/db_lessons.py#L87) |
-| function | `_find_match` | `(conn, key)` | — | [src](../../../core/runtime/db_lessons.py#L94) |
-| function | `upsert_lesson` | `(*, signature, lesson, source, user_words=…, jarvis_words=…, activate=…, now=…)` | Insert or reinforce a lesson. Returns the stored row plus ``outcome``: | [src](../../../core/runtime/db_lessons.py#L110) |
-| function | `get_lesson` | `(lesson_id)` | — | [src](../../../core/runtime/db_lessons.py#L167) |
-| function | `list_lessons` | `(*, status=…, limit=…, source=…)` | — | [src](../../../core/runtime/db_lessons.py#L174) |
-| function | `count_lessons` | `(*, status=…)` | — | [src](../../../core/runtime/db_lessons.py#L194) |
-| function | `find_similar_lessons` | `(text, *, limit=…, status=…)` | Active lessons most similar to ``text`` (BM25 over signature + lesson). | [src](../../../core/runtime/db_lessons.py#L204) |
-| function | `record_repeat` | `(lesson_id, *, now=…)` | — | [src](../../../core/runtime/db_lessons.py#L231) |
-| function | `retire_stale` | `(*, days=…, min_evidence=…, now=…)` | Retire proposed/active lessons with evidence < min_evidence, no repeat, | [src](../../../core/runtime/db_lessons.py#L244) |
-| function | `set_lesson_status` | `(lesson_id, status)` | Saet en lektions status. Returnerer raekken bagefter, eller None. | [src](../../../core/runtime/db_lessons.py#L260) |
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_lessons.py#L62) |
+| function | `signature_key` | `(signature)` | Lowercase, punctuation-free, stopword-free, first 12 tokens. | [src](../../../core/runtime/db_lessons.py#L66) |
+| function | `ensure_lessons_table` | `(conn)` | — | [src](../../../core/runtime/db_lessons.py#L72) |
+| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_lessons.py#L95) |
+| function | `_jaccard` | `(a, b)` | — | [src](../../../core/runtime/db_lessons.py#L105) |
+| function | `_find_match` | `(conn, key)` | — | [src](../../../core/runtime/db_lessons.py#L112) |
+| function | `upsert_lesson` | `(*, signature, lesson, source, user_words=…, jarvis_words=…, activate=…, now=…)` | Insert or reinforce a lesson. Returns the stored row plus ``outcome``: | [src](../../../core/runtime/db_lessons.py#L128) |
+| function | `get_lesson` | `(lesson_id)` | — | [src](../../../core/runtime/db_lessons.py#L185) |
+| function | `list_lessons` | `(*, status=…, limit=…, source=…)` | — | [src](../../../core/runtime/db_lessons.py#L192) |
+| function | `count_lessons` | `(*, status=…)` | — | [src](../../../core/runtime/db_lessons.py#L212) |
+| function | `find_similar_lessons` | `(text, *, limit=…, status=…)` | Active lessons most similar to ``text`` (BM25 over signature + lesson). | [src](../../../core/runtime/db_lessons.py#L222) |
+| function | `record_repeat` | `(lesson_id, *, now=…)` | — | [src](../../../core/runtime/db_lessons.py#L249) |
+| function | `retire_stale` | `(*, days=…, min_evidence=…, now=…)` | Retire proposed/active lessons with evidence < min_evidence, no repeat, | [src](../../../core/runtime/db_lessons.py#L262) |
+| function | `set_lesson_status` | `(lesson_id, status)` | Saet en lektions status. Returnerer raekken bagefter, eller None. | [src](../../../core/runtime/db_lessons.py#L278) |
 
 ## `core/runtime/db_private_brain.py`
 _Private brain records — Jarvis' EGNE private lag (private-carry-erindringer med_

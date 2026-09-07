@@ -62,6 +62,49 @@ def record_correction(*, session_id: str, user_words: str, jarvis_words: str = "
         return {"outcome": "error", "reason": str(exc)[:160]}
 
 
+def record_self_acknowledged_correction(
+    *, session_id: str, user_words: str, jarvis_words: str = "",
+) -> dict[str, Any]:
+    """Jarvis indroemmede selv at han tog fejl — brug Bjoerns foregaaende ord.
+
+    Maalt 7/9-2026 paa 4.131 tur-par: at detektere rettelsen i BJOERNS tekst
+    gav 12 % daekning og 3 % praecision. Han afviser sjaeldent; han leverer den
+    manglende kendsgerning:
+
+        «https://ollama.com/library/qwen3.6 det er ikke en cloud model»
+        «Ollama koer paa din container»
+
+    Ingen markoer. De er kun rettelser i forhold til hvad Jarvis lige har sagt.
+
+    Men Jarvis' EGNE erkendelser er formelagtige — «jeg tog fejl», «min fejl»,
+    «tak for rettelsen» — og et simpelt moenster fandt 52 rene traef i de samme
+    4.131 par. Saa vend det om: skriv lektien naar HAN indroemmer det, og brug
+    Bjoerns foregaaende besked som teksten. Det kraever ingen semantik og kan
+    ikke fejllaese «nej det er okay».
+
+    Starter som `proposed`, ikke `active`: kilden er en slutning, og ~15 % af
+    erkendelserne er i spoeg. En aegte tilbagevendende rettelse gentager sig og
+    aktiveres ved evidens 2; en enkeltstaaende bliver liggende.
+    """
+    uw = _clip(user_words, 300)
+    jw = _clip(jarvis_words, 300)
+    if not uw:
+        return {"outcome": "skipped", "reason": "no user words"}
+    sig_topic = _topic_from(uw) or _topic_from(jw)
+    lesson = f"Jeg tog fejl ({_today()}). Bjoern sagde: «{uw}»."
+    try:
+        return db_lessons.upsert_lesson(
+            signature=f"self-ack: {sig_topic}",
+            lesson=lesson,
+            source=db_lessons.SOURCE_SELF_ACK,
+            user_words=uw,
+            jarvis_words=jw,
+        )
+    except Exception as exc:
+        logger.debug("lessons.record_self_acknowledged_correction failed: %s", exc)
+        return {"outcome": "error", "reason": str(exc)}
+
+
 def record_tool_error(*, tool_name: str, error_text: str, context: str = "") -> dict[str, Any]:
     """A tool call failed. Proposed until it happens twice, then active."""
     name = str(tool_name or "").strip() or "ukendt"

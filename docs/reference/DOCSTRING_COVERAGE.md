@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6983/13853 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6987/13857 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6983/13853 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 569 | 1055 | 53% |
-| `core.services` | 4622 | 9562 | 48% |
+| `core.services` | 4626 | 9566 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 106 | 182 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -388,11 +388,11 @@ Generated from source. 6983/13853 functions/methods documented (50%). The list b
 - `core/runtime/db_heartbeat.py` :: `record_heartbeat_runtime_tick` (L598)
 - `core/runtime/db_heartbeat.py` :: `upsert_heartbeat_runtime_state` (L421)
 - `core/runtime/db_instrument.py` :: `set_file_hash` (L68)
-- `core/runtime/db_lessons.py` :: `count_lessons` (L194)
-- `core/runtime/db_lessons.py` :: `ensure_lessons_table` (L54)
-- `core/runtime/db_lessons.py` :: `get_lesson` (L167)
-- `core/runtime/db_lessons.py` :: `list_lessons` (L174)
-- `core/runtime/db_lessons.py` :: `record_repeat` (L231)
+- `core/runtime/db_lessons.py` :: `count_lessons` (L212)
+- `core/runtime/db_lessons.py` :: `ensure_lessons_table` (L72)
+- `core/runtime/db_lessons.py` :: `get_lesson` (L185)
+- `core/runtime/db_lessons.py` :: `list_lessons` (L192)
+- `core/runtime/db_lessons.py` :: `record_repeat` (L249)
 - `core/runtime/db_private_brain.py` :: `get_private_brain_record` (L293)
 - `core/runtime/db_private_brain.py` :: `insert_private_brain_record` (L122)
 - `core/runtime/db_private_brain.py` :: `list_private_brain_records` (L162)
@@ -978,7 +978,7 @@ Generated from source. 6983/13853 functions/methods documented (50%). The list b
 - `core/services/executive_contradiction_signal_tracking.py` :: `track_runtime_executive_contradiction_signals_for_visible_turn` (L36)
 - `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L163)
 - `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L159)
-- `core/services/experience_correction_listener.py` :: `stop_listener` (L270)
+- `core/services/experience_correction_listener.py` :: `stop_listener` (L358)
 - `core/services/experienced_time_daemon.py` :: `build_experienced_time_surface` (L149)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L64)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_surface` (L30)

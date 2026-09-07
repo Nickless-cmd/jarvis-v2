@@ -27,8 +27,26 @@ SOURCE_TOOL_ERROR = "tool_error"
 SOURCE_SELF_REVIEW = "self_review"
 SOURCE_REGRET = "regret"
 SOURCE_ARC_RULE = "arc_rule"
+# Udledt af Jarvis' EGEN erkendelse («jeg tog fejl», «min fejl») frem for af et
+# moenster i Bjoerns tekst. Bevidst UDEN for _ACTIVATE_IMMEDIATELY: kilden er en
+# slutning, ikke en direkte detekteret rettelse, og maalingen 7/9 viste ~15 %
+# stoej (han siger «min fejl» ogsaa i spoeg). Den maa derfor vente paa at
+# gentage sig — _ACTIVATE_AT_EVIDENCE gaelder.
+SOURCE_SELF_ACK = "self_ack"
 
-_ACTIVATE_IMMEDIATELY = frozenset({SOURCE_CORRECTION})
+# INGEN kilde aktiveres straks laengere (7/9-2026).
+#
+# SOURCE_CORRECTION stod her med begrundelsen «hans ord er autoritative», og
+# det er rigtigt — NAAR det faktisk ER en rettelse. Maalt mod 4.131 tur-par
+# ramte moensteret 3 % praecision: 156 traef i historikken, hvoraf de fleste
+# var «nej det er okay», «Du stoppede?» og «nej han er lige kommet tilbage».
+# Med straks-aktivering var det ~150 junk-lektier direkte i prompten — vi
+# ville have byttet den gamle stoej ud med ny.
+#
+# Alt venter nu paa evidens 2. En aegte tilbagevendende rettelse gentager sig;
+# en enkeltstaaende hilsen goer ikke. Det er en billigere filter end at
+# forsoege at skaerpe moenstre der ikke kan se semantik.
+_ACTIVATE_IMMEDIATELY: frozenset[str] = frozenset()
 _ACTIVATE_AT_EVIDENCE = 2
 _KEY_TOKENS = 12
 _SIMILAR_JACCARD = 0.75

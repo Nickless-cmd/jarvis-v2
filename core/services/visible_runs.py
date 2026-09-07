@@ -2496,7 +2496,17 @@ async def _stream_visible_run(
                 _MAX_TOOL_ONLY_ROUNDS = int(_agentic_budget.get("max_tool_only_rounds") or 4)
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
-                _hollow_promise_nudged = False  # hollow-promise-guard: cap ÉT nudge pr. run
+                # ── TO tvungne forsøg, ikke ét (Bjørn 7/9-2026) ──────────────
+                # Målt på 36 tvungne runder: 28 gav et værktøjskald (78 %). De
+                # 8 der ikke gjorde fordeler sig over FIRE modeller — 11 af 15
+                # for vision-modellen, 13 af 16 for flash uden syn. Det er
+                # altså ikke en model der «ikke kan værktøjer», som jeg først
+                # skrev; det er tilfældigt pr. forsøg, præcis som Bjørn sagde.
+                # Med 78 % pr. forsøg falder resten fra ~22 % til ~5 % ved at
+                # prøve én gang til. Tools ER med på den tvungne runde (målt:
+                # 70 annoncerede, tool_choice=required) — det er ikke dét.
+                _hollow_promise_nudges = 0
+                _HOLLOW_MAX_NUDGES = 2
                 _hollow_force_next = False      # redesign 4/9: næste runde tvinges m. tool_choice=required
                 _hollow_await_outcome = False   # udfald af den tvungne runde skal persisteres
                 # Eskalerende synthese-pause (Bjørn 2026-06-17 "spinner→død"-roden):
@@ -3699,7 +3709,7 @@ async def _stream_visible_run(
                                 tool_calls=len(_a_tool_calls or []))
                         except Exception:
                             pass
-                        # ── DET TVUNGNE FORSØG VIRKEDE HELLER IKKE (2026-09-07) ──
+                        # ── BEGGE TVUNGNE FORSØG SLOG FEJL (2026-09-07) ─────────
                         # Vagten opdagede løftet, tvang en runde med
                         # tool_choice=required — og modellen kaldte STADIG
                         # ingenting. Indtil nu blev `resolved=False` skrevet til
@@ -3707,11 +3717,19 @@ async def _stream_visible_run(
                         # «Kør», fik et nyt løfte, fire gange i træk. Systemet
                         # VIDSTE hvad der var galt hver eneste gang.
                         #
-                        # Målt 7/9 kl. 05:44-05:45: modellen var
-                        # deepseek-v4-flash-vision-exp — en vision-model der
-                        # ikke kalder værktøjer. Derfor nævnes modellen ved
-                        # navn: det er dét, der kan handles på.
-                        if not _hp_resolved:
+                        # FØRSTE UDGAVE VAR FORKERT: jeg skrev at modellen
+                        # «ikke ser ud til at kunne bruge værktøjer» og nævnte
+                        # den ved navn. Bjørn rettede mig, og tallene gav ham
+                        # ret — vision-modellen løser 11 af 15, flash uden syn
+                        # 13 af 16. Det er tilfældigt pr. forsøg, ikke en
+                        # egenskab ved modellen. Beskeden peger derfor ikke
+                        # fingre; den siger hvad der skete, og at der ikke blev
+                        # udført noget.
+                        # Først når budgettet er brugt. Siger vi det efter
+                        # FØRSTE fejl, står der en usand sætning i svaret hvis
+                        # andet forsøg lykkes — og det gør det i ~78 % af
+                        # tilfældene.
+                        if not _hp_resolved and _hollow_promise_nudges >= _HOLLOW_MAX_NUDGES:
                             _run_degenerated = True
                             from core.services.hollow_promise_round import (
                                 hollow_promise_note as _hp_note_fn,
@@ -3766,7 +3784,7 @@ async def _stream_visible_run(
                             )
                             if (
                                 not _is_last_round
-                                and not _hollow_promise_nudged
+                                and _hollow_promise_nudges < _HOLLOW_MAX_NUDGES
                                 and hollow_promise_guard_enabled()
                                 and is_hollow_promise(
                                     final_text="".join(_a_parts),
@@ -3774,11 +3792,11 @@ async def _stream_visible_run(
                                         len(getattr(_ex, "tool_calls", []) or [])
                                         for _ex in _followup_exchanges),
                                     user_message=run.user_message,
-                                    nudged_already=_hollow_promise_nudged,
+                                    nudged_already=False,
                                     last_round_tool_calls=len(_a_tool_calls or []),
                                 )
                             ):
-                                _hollow_promise_nudged = True
+                                _hollow_promise_nudges += 1
                                 _run_degenerated = True  # harness model-trust: hollow promise
                                 _followup_exchanges.append(
                                     _vf.ToolExchange(
@@ -3815,7 +3833,7 @@ async def _stream_visible_run(
                             # ærligt i svaret.
                             if (
                                 _is_last_round
-                                and not _hollow_promise_nudged
+                                and _hollow_promise_nudges == 0
                                 and hollow_promise_guard_enabled()
                                 and is_hollow_promise(
                                     final_text="".join(_a_parts),

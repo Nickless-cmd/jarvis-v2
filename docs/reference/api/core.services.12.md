@@ -508,8 +508,7 @@ _Hollow-promise follow-through (redesign 2026-09-04)._
 | function | `_publish` | `(kind, payload)` | — | [src](../../../core/services/hollow_promise_round.py#L50) |
 | function | `note_detected` | `(*, run_id, provider, model, round_index, session_id, forced)` | — | [src](../../../core/services/hollow_promise_round.py#L58) |
 | function | `note_outcome` | `(*, run_id, provider, model, round_index, session_id, forced, tool_calls)` | Persist the outcome of the round after a hollow promise. Returns resolved. | [src](../../../core/services/hollow_promise_round.py#L65) |
-| function | `_ser_ud_til_at_mangle_vaerktoejer` | `(model)` | — | [src](../../../core/services/hollow_promise_round.py#L89) |
-| function | `hollow_promise_note` | `(model=…)` | Sætningen der siges højt når det tvungne forsøg OGSÅ gav nul værktøjskald. | [src](../../../core/services/hollow_promise_round.py#L94) |
+| function | `hollow_promise_note` | `(model=…)` | Sætningen der siges højt når BEGGE tvungne forsøg gav nul værktøjskald. | [src](../../../core/services/hollow_promise_round.py#L83) |
 
 ## `core/services/identity_canon.py`
 _Kanonisk identitets-narrativ-store — den strukturelle kur mod sonnet-spøgelset._

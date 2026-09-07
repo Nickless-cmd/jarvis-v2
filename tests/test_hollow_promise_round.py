@@ -4,11 +4,7 @@ Baggrund 7/9-2026: vagten opdagede løftet, tvang en runde med
 tool_choice=required, fik stadig nul værktøjskald — og skrev det udelukkende
 til eventbussen. Bjørn så fire løfter i træk og skrev «Kør» hver gang.
 """
-from core.services.hollow_promise_round import (
-    hollow_promise_note,
-    note_outcome,
-    _ser_ud_til_at_mangle_vaerktoejer,
-)
+from core.services.hollow_promise_round import hollow_promise_note, note_outcome
 
 
 def test_nul_kald_er_ikke_loest():
@@ -27,25 +23,22 @@ def test_beskeden_indroemmer_at_intet_blev_udfoert():
     assert "ikke udført" in n
 
 
-def test_vision_modellen_naevnes_ved_navn_med_en_udvej():
-    n = hollow_promise_note("deepseek-v4-flash-vision-exp")
-    assert "deepseek-v4-flash-vision-exp" in n
-    # Uden en udvej er det bare en undskyldning.
-    assert "Skift model" in n
+def test_ingen_model_beskyldes():
+    """Første udgave hængte modellen ud ved navn. Bjørn rettede mig, og tallene
+    gav ham ret: vision-modellen løser 11 af 15, flash uden syn 13 af 16 — det
+    er tilfældigt pr. forsøg. En forkert beskyldning ville sende ham ud at
+    skifte model uden grund."""
+    for m in ("deepseek-v4-flash-vision-exp", "deepseek-v4-flash", "", None):
+        n = hollow_promise_note(m or "")
+        assert "vision" not in n.lower()
+        assert "Skift model" not in n
+        assert "`" not in n
 
 
-def test_en_almindelig_model_beskyldes_ikke_for_at_mangle_vaerktoejer():
-    n = hollow_promise_note("deepseek-v4-pro")
-    assert "ikke ud til at kunne bruge værktøjer" not in n
+def test_beskeden_er_den_samme_uanset_model():
+    assert hollow_promise_note("a") == hollow_promise_note("b") == hollow_promise_note("")
 
 
-def test_uden_modelnavn_siger_vi_stadig_sandheden():
-    n = hollow_promise_note("")
-    assert "ikke udført" in n
-    assert "`" not in n          # intet tomt navn i baktikker
-
-
-def test_kun_maalte_modeller_flages():
-    assert _ser_ud_til_at_mangle_vaerktoejer("deepseek-v4-flash-vision-exp")
-    assert not _ser_ud_til_at_mangle_vaerktoejer("claude-sonnet-5")
-    assert not _ser_ud_til_at_mangle_vaerktoejer("")
+def test_beskeden_siger_at_der_blev_forsoegt_to_gange():
+    # Ellers lyder det som om han gav op med det samme.
+    assert "to gange" in hollow_promise_note("")

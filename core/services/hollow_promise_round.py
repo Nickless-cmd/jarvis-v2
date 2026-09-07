@@ -80,40 +80,19 @@ def note_outcome(*, run_id: str, provider: str, model: str, round_index: int, se
     return resolved
 
 
-# Modeller vi har MÅLT ikke kalder værktøjer i den synlige bane. Listen er
-# bevidst kort og konkret: et gæt på tværs af navne ville give falske
-# beskyldninger mod modeller der fungerer fint.
-_MAALTE_UDEN_VAERKTOEJER = ("vision",)
-
-
-def _ser_ud_til_at_mangle_vaerktoejer(model: str) -> bool:
-    m = str(model or "").lower()
-    return any(t in m for t in _MAALTE_UDEN_VAERKTOEJER)
-
-
 def hollow_promise_note(model: str = "") -> str:
-    """Sætningen der siges højt når det tvungne forsøg OGSÅ gav nul værktøjskald.
+    """Sætningen der siges højt når BEGGE tvungne forsøg gav nul værktøjskald.
 
-    Den skal gøre to ting: indrømme at der ikke blev udført noget, og pege på
-    dét, der kan gøres ved det. Uden det sidste bliver det bare en undskyldning
-    — og Bjørn skrev «Kør» fire gange i træk 7/9, fordi intet fortalte ham at
-    modellen ikke kunne kalde værktøjer overhovedet.
+    Den skal indrømme at der ikke blev udført noget — ellers står Bjørn med et
+    løfte og aner ikke at det er tomt; 7/9 skrev han «Kør» fire gange i træk.
+
+    Den peger IKKE på modellen. Første udgave gjorde, og det var forkert:
+    målt på 36 tvungne runder løser vision-modellen 11 af 15 og flash uden syn
+    13 af 16. Fejlen er tilfældig pr. forsøg, ikke en egenskab ved modellen, og
+    en forkert beskyldning ville sende Bjørn ud at skifte model uden grund.
     """
-    navn = str(model or "").strip()
-    if navn and _ser_ud_til_at_mangle_vaerktoejer(navn):
-        return (
-            f"\n\n_(Jeg sagde hvad jeg ville gøre og kaldte så ingen værktøjer — "
-            f"heller ikke da jeg blev tvunget til det. Modellen for denne samtale "
-            f"er `{navn}`, og den ser ikke ud til at kunne bruge værktøjer. "
-            f"Skift model under «Denne samtale», så udfører jeg det.)_"
-        )
-    if navn:
-        return (
-            f"\n\n_(Jeg sagde hvad jeg ville gøre og kaldte så ingen værktøjer — "
-            f"heller ikke da jeg blev tvunget til det. Der blev altså ikke udført "
-            f"noget. Modellen er `{navn}`; virker det igen, så prøv en anden.)_"
-        )
     return (
-        "\n\n_(Jeg sagde hvad jeg ville gøre og kaldte så ingen værktøjer — heller "
-        "ikke da jeg blev tvunget til det. Der blev altså ikke udført noget.)_"
+        "\n\n_(Jeg sagde hvad jeg ville gøre og kaldte så ingen værktøjer — "
+        "heller ikke da jeg blev tvunget til det, to gange. Der blev altså "
+        "ikke udført noget. Sig til, så tager jeg den forfra.)_"
     )

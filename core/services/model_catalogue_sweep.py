@@ -228,7 +228,19 @@ def _skriv_registret(*, provider: str, model: str, aktiv: bool, grund: str,
     ændret = False
     if fundet is None:
         if not aktiv:
-            return False          # tilføj ikke en model der allerede dumpede
+            # BLIND VINKEL rettet 7/9-2026: «tilføj ikke en model der dumpede»
+            # lød fornuftigt, men gjorde at en model der KUN lever i kataloget
+            # aldrig kunne slås fra. Cerebras' modeller står i static_models og
+            # ikke i registret — sonden dømte dem 0 («Payment required»), og
+            # dommen blev tavst kasseret, så puljen blev ved med at vælge dem.
+            #
+            # En katalog-model skal derfor skrives IND som frakoblet. Det er
+            # netop dem der ellers bliver ved i det uendelige. En tilfældig ny
+            # model fra /v1/models der dumper, tilføjes stadig ikke — den har
+            # ingen plads at miste.
+            statiske = list((CHEAP_PROVIDER_DEFAULTS.get(provider) or {}).get("static_models") or [])
+            if model not in statiske:
+                return False
         base = str((CHEAP_PROVIDER_DEFAULTS.get(provider) or {}).get("base_url") or "")
         try:
             from core.runtime.provider_router import configure_provider_router_entry as reg

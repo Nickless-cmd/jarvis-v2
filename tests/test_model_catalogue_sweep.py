@@ -177,3 +177,49 @@ def test_en_katalogmodel_meldes_ikke_som_NY_hver_uge(monkeypatch):
                           proev=lambda **kw: _r(), skriv=lambda **kw: False)
     assert r["nye"] == [], "en katalog-model blev meldt som ny"
     assert r["proevet"] == 1
+
+
+def test_en_katalogmodel_kan_slaas_FRA_selvom_den_ikke_stod_i_registret(monkeypatch, tmp_path):
+    """Blind vinkel 7/9: «tilføj ikke en model der dumpede» gjorde at cerebras'
+    modeller — som kun lever i static_models — aldrig kunne slås fra. Sonden
+    dømte dem 0 («Payment required»), og dommen blev tavst kasseret."""
+    import json
+    import core.services.model_catalogue_sweep as sw
+    from core.runtime import config as cfg
+
+    f = tmp_path / "provider_router.json"
+    f.write_text(json.dumps({"providers": [], "models": []}))
+    monkeypatch.setattr(cfg, "PROVIDER_ROUTER_FILE", f)
+
+    tilføjet = []
+
+    def falsk_reg(**kw):
+        d = json.loads(f.read_text())
+        d["models"].append({"provider": kw["provider"], "model": kw["model"],
+                            "lane": "cheap", "enabled": True})
+        f.write_text(json.dumps(d))
+        tilføjet.append(kw["model"])
+
+    monkeypatch.setattr("core.runtime.provider_router.configure_provider_router_entry", falsk_reg)
+    # gemma-4-31b STÅR i cerebras' static_models
+    ændret = sw._skriv_registret(provider="cerebras", model="gemma-4-31b", aktiv=False,
+                                 grund="Payment required", score=0,
+                                 detalje={"follows": False}, profil="default")
+    d = json.loads(f.read_text())
+    post = [m for m in d["models"] if m["model"] == "gemma-4-31b"]
+    assert post and post[0]["enabled"] is False
+    assert "Payment required" in post[0]["disabled_reason"]
+
+
+def test_en_tilfaeldig_ny_model_der_dumper_tilfoejes_IKKE(monkeypatch, tmp_path):
+    """Den har ingen plads at miste — at skrive den ind ville bare fylde."""
+    import json
+    import core.services.model_catalogue_sweep as sw
+    from core.runtime import config as cfg
+    f = tmp_path / "provider_router.json"
+    f.write_text(json.dumps({"providers": [], "models": []}))
+    monkeypatch.setattr(cfg, "PROVIDER_ROUTER_FILE", f)
+    assert sw._skriv_registret(provider="cerebras", model="en-helt-ny-model",
+                               aktiv=False, grund="404", score=0,
+                               detalje={}, profil="default") is False
+    assert json.loads(f.read_text())["models"] == []

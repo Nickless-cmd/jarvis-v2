@@ -20,6 +20,12 @@ class MainActivity : ReactActivity() {
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
     super.onCreate(null)
+    // Deling til en LUKKET app: intenten ligger på activity'en her, længe før
+    // JS er oppe. At læse den fra modulet via ctx.currentActivity virkede IKKE
+    // i praksis (målt på enhed 7/9: den varme vej gik igennem, den kolde gav
+    // en tom komposer) — så vi fanger den dér hvor den beviseligt findes, og
+    // lader hentDeling() hente den fra ventepositionen.
+    DelingModule.gemStart(intent)
   }
 
   /**
@@ -33,7 +39,7 @@ class MainActivity : ReactActivity() {
     // New Architecture: appen har `reactHost`, ikke `reactNativeHost` — der
     // findes ingen reactInstanceManager at gå gennem.
     val ctx = (application as? ReactApplication)?.reactHost?.currentReactContext
-    ShareModule.levér(ctx as? ReactApplicationContext, intent)
+    DelingModule.levér(ctx as? ReactApplicationContext, intent)
   }
 
   /**

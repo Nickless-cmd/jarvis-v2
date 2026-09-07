@@ -8,11 +8,18 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
 
 /**
  * Læser det Android har delt med os (ACTION_SEND / ACTION_SEND_MULTIPLE).
+ *
+ * HED «ShareModule» indtil 7/9-2026 og virkede ikke: React Native har SELV et
+ * indbygget modul med det navn (det bag `Share.share()`, som «Del»-knappen
+ * bruger). Kernens vandt, mit blev kasseret UDEN en fejl — JS fik et objekt
+ * uden metoder, og `getModule("ShareModule")` blev aldrig kaldt på vores
+ * pakke. Navnet skal være vores eget.
  *
  * Manifestets intent-filtre gør at Jarvis STÅR i del-arket; uden det her
  * lander delingen bare i en app der ikke kigger efter den. Filtrene har været
@@ -28,8 +35,9 @@ import com.facebook.react.modules.core.DeviceEventManagerModule
  * gennem baggrunden levere den samme deling igen, og teksten ville hobe sig
  * op i komposeren.
  */
-class ShareModule(private val ctx: ReactApplicationContext) : ReactContextBaseJavaModule(ctx) {
-  override fun getName(): String = "ShareModule"
+@ReactModule(name = "DelingModule")
+class DelingModule(private val ctx: ReactApplicationContext) : ReactContextBaseJavaModule(ctx) {
+  override fun getName(): String = "DelingModule"
 
   companion object {
     /** Sættes af MainActivity.onNewIntent mens appen kører. */
@@ -69,6 +77,14 @@ class ShareModule(private val ctx: ReactApplicationContext) : ReactContextBaseJa
       return map
     }
 
+    /** Kaldes fra MainActivity.onCreate. Gemmer KUN delings-intents. */
+    fun gemStart(intent: Intent?) {
+      val action = intent?.action ?: return
+      if (action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE) {
+        afventende = intent
+      }
+    }
+
     fun læsOgRyd(intent: Intent?): WritableMap? {
       val map = tilMap(intent) ?: return null
       // Samme deling må ikke kunne læses to gange.
@@ -83,11 +99,11 @@ class ShareModule(private val ctx: ReactApplicationContext) : ReactContextBaseJa
   @ReactMethod
   fun hentDeling(promise: Promise) {
     try {
-      val fraAktivitet = læsOgRyd(ctx.currentActivity?.intent)
-      if (fraAktivitet != null) { promise.resolve(fraAktivitet); return }
+      // Ventepositionen først: den er sat i onCreate og er den pålidelige vej.
       val gemt = læsOgRyd(afventende)
       afventende = null
-      promise.resolve(gemt)
+      if (gemt != null) { promise.resolve(gemt); return }
+      promise.resolve(læsOgRyd(ctx.currentActivity?.intent))
     } catch (e: Throwable) {
       // En fejl her må ikke forhindre appen i at starte.
       promise.resolve(null)

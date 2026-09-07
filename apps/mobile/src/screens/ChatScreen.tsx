@@ -608,10 +608,12 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     skiftPin(id, messageId).then(setPins).catch(() => undefined)
   }
 
-  const handleSaveMemory = (message: { content: string }) => {
+  const handleSaveMemory = (message: { id?: string; content: string }) => {
     if (!config) return
     void haptik('markér')
-    gemSomHukommelse(config, message.content, sessions.activeId ?? undefined).then((r) => {
+    gemSomHukommelse(
+      config, message.content, sessions.activeId ?? undefined, message.id ? String(message.id) : undefined
+    ).then((r) => {
       // Kvitteringen er hele pointen: uden den ved man ikke om han fik den.
       Alert.alert(r.ok ? 'Husket' : 'Ikke gemt', r.besked)
     })

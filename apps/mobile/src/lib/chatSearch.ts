@@ -46,6 +46,11 @@ export function soegbarTekst(m: ChatMessage): string {
   return dele.filter(Boolean).join('\n')
 }
 
+/** Markdown-tegn der ikke skal med i et uddrag. Set på telefonen 7/9-2026:
+ *  «...værd at holde fast i: **de to sikkerhedshuller og det ven...» — stjernerne
+ *  er instruktioner til en renderer, ikke noget man læser. */
+const MARKERINGER = /(\*\*|__|~~|`)/g
+
 function lavUddrag(tekst: string, i: number, laengde: number) {
   const fra = Math.max(0, i - UDDRAG_FOER)
   const til = Math.min(tekst.length, i + laengde + UDDRAG_EFTER)
@@ -53,7 +58,13 @@ function lavUddrag(tekst: string, i: number, laengde: number) {
   const efter = til < tekst.length ? '…' : ''
   // Nye linjer gør uddraget uroligt i en enkelt-linjes række.
   const raa = tekst.slice(fra, til).replace(/\s+/g, ' ')
-  return { uddrag: `${foer}${raa}${efter}`, start: foer.length + (i - fra) }
+  // Hvor mange markerings-tegn stod FØR træffet? Uden det ville fremhævningen
+  // skride lige så mange tegn til højre som vi fjernede.
+  const fjernetFoer = (raa.slice(0, i - fra).match(MARKERINGER) ?? []).join('').length
+  return {
+    uddrag: `${foer}${raa.replace(MARKERINGER, '')}${efter}`,
+    start: foer.length + (i - fra) - fjernetFoer
+  }
 }
 
 /** Find alle beskeder der matcher. Tom query → ingen træf (ikke ALLE). */

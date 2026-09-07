@@ -335,6 +335,40 @@ def _adb_er_opsat() -> bool:
         return False
 
 
+def _forbundne_connector_vaerktoejer() -> frozenset[str]:
+    """Vaerktoejer fra apps brugeren FAKTISK har forbundet.
+
+    Fejlen 7/9-2026: alle syv Google-connectors stod som forbundet og
+    aktiveret, og prompten fortalte ham «du HAR adgang til dem lige nu via dine
+    vaerktoejer — brug dem i stedet for at sige at du ikke kan». Men
+    scope-porten havde ingen af dem i chat- eller code-listen; de fandtes kun i
+    cowork. Appsne koerer i chat.
+
+    Han fik altsaa at vide at han havde adgang, havde ingen vaerktoejer, og
+    blev udtrykkeligt bedt om ikke at sige at han ikke kunne. Den kombination
+    inviterer til at han finder paa noget.
+
+    Listen kommer fra connector-registret (``tools`` pr. connector), saa der er
+    ét sted der ved hvad en app laaser op. Kun ``connected AND enabled``
+    taeller — en frakoblet app aabner ingenting, og overfladen udvides derfor
+    ikke naar intet er forbundet. Self-safe: fejler opslaget, gives intet.
+    """
+    try:
+        from core.identity.workspace_context import current_user_id
+        from core.services.connectors import list_for_user
+        uid = current_user_id()
+        if not uid:
+            return frozenset()
+        ud: set[str] = set()
+        for c in list_for_user(str(uid)) or []:
+            if not (c.get("connected") and c.get("enabled")):
+                continue
+            ud.update(str(t) for t in (c.get("tools") or ()) if t)
+        return frozenset(ud)
+    except Exception:
+        return frozenset()
+
+
 def allowed_tool_names(
     *, role: str, scope: str, all_names: Iterable[str],
 ) -> set[str]:
@@ -367,6 +401,7 @@ def allowed_tool_names(
                 result |= _phone_tool_names() & names
             if _adb_er_opsat():
                 result |= _phone_adb_tool_names() & names
+            result |= _forbundne_connector_vaerktoejer() & names
         elif scope == "chat":
             result = (set(CHAT_MODE_TOOLS_BASE) | CHAT_MODE_OWNER_EXTRA) & names
             # Bjørn 2026-07-01: owner skal kunne nå sin EGEN paret desktop fra mobil chat
@@ -382,6 +417,9 @@ def allowed_tool_names(
                 result |= _phone_tool_names() & names
             if _adb_er_opsat():
                 result |= _phone_adb_tool_names() & names
+            # Forbundne apps aabner deres egne vaerktoejer. Uden det staar der
+            # i prompten at han har adgang, mens vaerktoejerne er filtreret fra.
+            result |= _forbundne_connector_vaerktoejer() & names
         else:
             result = names  # cowork / ubegrænset: alt mode-passende = alt
     else:

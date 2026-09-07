@@ -1,4 +1,21 @@
-"""Connector-katalog + per-bruger status (v1).
+"""Connector-registret — hvad brugeren har forbundet, og hvad det laaser op.
+
+``tools`` er tilfoejet 7/9-2026 og er den ENE sandhed om hvilke vaerktoejer en
+forbundet app giver adgang til. Uden den var koblingen implicit, og det gik
+galt paa den vaerst taenkelige maade:
+
+Alle syv Google-connectors stod som forbundet OG aktiveret, prompten
+fortalte ham «du HAR adgang til dem lige nu via dine vaerktoejer — brug dem i
+stedet for at sige at du ikke kan» — og scope-porten filtrerede hvert eneste
+af vaerktoejerne fra i chat- og code-tilstand. De fandtes kun i cowork.
+
+Appsne koerer i chat. Han fik altsaa at vide at han havde adgang, havde ingen
+vaerktoejer, og blev udtrykkeligt bedt om ikke at sige at han ikke kunne.
+
+``tool_scoping`` laeser nu listen her, saa en forbundet app faktisk aabner
+sine vaerktoejer — og en frakoblet ikke goer.
+
+## Connector-katalog + per-bruger status (v1)
 
 Privatlivs-først: hver connector-status er pr. bruger. OAuth-connectors er kun
 "connected" hvis brugeren har en (dekrypterbar) token i oauth_store — den er
@@ -20,6 +37,8 @@ _ENABLED_KEY = "connector_enabled"
 _CATALOG: list[dict] = [
     {
         "id": "github", "name": "GitHub", "kind": "oauth",
+        # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
+        "tools": ["github_list_issues", "github_list_prs"],
         "category": "Udvikling", "icon": "github",
         "desc": "Issues, PRs, kode", "scopes": ["repo", "read:user"],
         "post_connect_hint": "Nu kan jeg kigge i dine GitHub-issues — skal jeg?",
@@ -48,6 +67,8 @@ _CATALOG: list[dict] = [
     #    status="coming_soon" indtil per-app tools er wired (fase 2). ──
     {
         "id": "gmail", "name": "Gmail", "kind": "oauth", "provider": "google",
+        # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
+        "tools": ["gmail_list", "gmail_search", "gmail_send"],
         "category": "Google", "icon": "mail", "status": "available",
         "desc": "Læs, søg og send mails",
         "scopes": ["gmail.readonly", "gmail.send"],
@@ -59,6 +80,8 @@ _CATALOG: list[dict] = [
     },
     {
         "id": "google-calendar", "name": "Google Calendar", "kind": "oauth", "provider": "google",
+        # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
+        "tools": ["calendar_list_events", "calendar_create_event"],
         "category": "Google", "icon": "calendar", "status": "available",
         "desc": "Læs kommende aftaler",
         "scopes": ["calendar.events"],
@@ -67,6 +90,8 @@ _CATALOG: list[dict] = [
     },
     {
         "id": "google-drive", "name": "Google Drive", "kind": "oauth", "provider": "google",
+        # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
+        "tools": ["drive_search"],
         "category": "Google", "icon": "hard-drive", "status": "available",
         "desc": "Søg og læs filer",
         "scopes": ["drive.readonly"],
@@ -74,6 +99,8 @@ _CATALOG: list[dict] = [
     },
     {
         "id": "google-docs", "name": "Google Docs", "kind": "oauth", "provider": "google",
+        # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
+        "tools": ["docs_read", "docs_append"],
         "category": "Google", "icon": "file-text", "status": "available",
         "desc": "Læs dokumenter",
         "scopes": ["documents"],
@@ -81,6 +108,8 @@ _CATALOG: list[dict] = [
     },
     {
         "id": "google-sheets", "name": "Google Sheets", "kind": "oauth", "provider": "google",
+        # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
+        "tools": ["sheets_read", "sheets_write"],
         "category": "Google", "icon": "table", "status": "available",
         "desc": "Læs regneark",
         "scopes": ["spreadsheets"],
@@ -88,6 +117,8 @@ _CATALOG: list[dict] = [
     },
     {
         "id": "google-slides", "name": "Google Slides", "kind": "oauth", "provider": "google",
+        # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
+        "tools": ["slides_read"],
         "category": "Google", "icon": "presentation", "status": "available",
         "desc": "Læs præsentationer",
         "scopes": ["presentations"],

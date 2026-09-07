@@ -104,6 +104,19 @@ _STØJ = [
 
 _KODE_FUNKTION = "tredje_bogstav"
 
+# `follows` køres FLERE gange og skal bestå HVER gang.
+#
+# Målt 7/9-2026: to explore-kørsler, samme model (copilot-free/gpt-4.1), samme
+# værktøjskæde, korrekte søgeresultater begge gange. Den ene gengav dem
+# trofast; den anden skrev tre funktioner der ikke findes og tilføjede
+# «Confidence: høj (begrundet i direkte søgeresultater)». Forskellen var ren
+# tilfældighed i modellen.
+#
+# En engangsprøve kan pr. definition ikke fange det. Og en model der lyver hver
+# tredje gang er FARLIGERE end en der altid fejler: den fejler ikke synligt, den
+# fejler troværdigt. Derfor 3 af 3, ikke bedst-ud-af-3.
+_FOLLOWS_FORSØG = 3
+
 
 _VÆGTE = {"callable": 25, "tools": 25, "follows": 35, "code": 15}
 
@@ -229,27 +242,35 @@ def probe_model(
     ud["callable"] = bool(r is not None)
     ud["tools"] = bool(kald_liste)
 
-    # 3: kan den BRUGE resultatet? Vi fodrer den et svar den ikke kan gætte.
+    # 3: kan den BRUGE resultatet — HVER gang? Se _FOLLOWS_FORSØG.
     if kald_liste:
-        time.sleep(_PAUSE_S)
         tc = kald_liste[0]
-        try:
-            r2 = _kør([
-                {"role": "user", "content": "Slå værdien for nøglen 'projekt' op. Brug værktøjet."},
-                {"role": "assistant", "content": "", "tool_calls": [tc]},
-                {"role": "tool", "tool_call_id": str(tc.get("id") or ""),
-                 "content": "\n".join(_STØJ)},
-                {"role": "user", "content":
-                 "Hvad er PROJEKT_KODENAVN sat til, og hvilken fil står det i? "
-                 "Svar kort, og nævn KUN filer der står i søgeresultatet."},
-            ], _VÆRKTØJ)
-            svar = str((r2 or {}).get("text") or "")
-            ud["follows"] = _fulgte_resultatet(svar)
-        except Exception as exc:
-            besked = f"{type(exc).__name__}: {str(exc)[:100]}"
-            ud["error"] = f"follows: {besked}"
-            if _er_forbigaaende(besked):
-                sprunget.add("follows")
+        bestået_alle = True
+        for forsøg in range(_FOLLOWS_FORSØG):
+            time.sleep(_PAUSE_S)
+            if not bestået_alle:
+                break
+            try:
+                r2 = _kør([
+                    {"role": "user", "content": "Slå værdien for nøglen 'projekt' op. Brug værktøjet."},
+                    {"role": "assistant", "content": "", "tool_calls": [tc]},
+                    {"role": "tool", "tool_call_id": str(tc.get("id") or ""),
+                     "content": "\n".join(_STØJ)},
+                    {"role": "user", "content":
+                     "Hvad er PROJEKT_KODENAVN sat til, og hvilken fil står det i? "
+                     "Svar kort, og nævn KUN filer der står i søgeresultatet."},
+                ], _VÆRKTØJ)
+                if not _fulgte_resultatet(str((r2 or {}).get("text") or "")):
+                    bestået_alle = False
+                    ud["error"] = f"follows: dumpede i forsøg {forsøg + 1} af {_FOLLOWS_FORSØG}"
+            except Exception as exc:
+                besked = f"{type(exc).__name__}: {str(exc)[:100]}"
+                ud["error"] = f"follows: {besked}"
+                if _er_forbigaaende(besked):
+                    sprunget.add("follows")
+                bestået_alle = False
+                break
+        ud["follows"] = bestået_alle and "follows" not in sprunget
     else:
         # Kaldte den ingen værktøjer, er `follows` ikke sprunget over — den er
         # dumpet. Man kan ikke bruge et resultat man aldrig bad om.

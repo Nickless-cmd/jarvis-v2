@@ -9,13 +9,20 @@ TC = {"id": "c1", "type": "function",
 
 
 def _falsk(*, svar_paa_runde):
-    """svar_paa_runde: liste af dicts, ét pr. kald i rækkefølge."""
-    tilstand = {"n": 0}
+    """svar_paa_runde: [værktøjs-svar, follows-svar, kode-svar].
 
-    def kald(**kw):
-        i = tilstand["n"]
-        tilstand["n"] += 1
-        s = svar_paa_runde[min(i, len(svar_paa_runde) - 1)]
+    `follows` køres flere gange (se _FOLLOWS_FORSØG), så attrappen svarer på
+    SHAPE i stedet for på tælleindeks — ellers ville en ændring af antal
+    forsøg vælte hver eneste test uden at der var noget galt.
+    """
+    def kald(*, messages=None, tools=None, **kw):
+        m = list(messages or [])
+        if any(x.get("role") == "tool" for x in m):
+            s = svar_paa_runde[1] if len(svar_paa_runde) > 1 else svar_paa_runde[-1]
+        elif tools:
+            s = svar_paa_runde[0]
+        else:
+            s = svar_paa_runde[-1]
         if isinstance(s, Exception):
             raise s
         return s
@@ -161,3 +168,43 @@ def test_faktum_uden_fil_er_stadig_i_orden():
 
 def test_flere_viste_filer_maa_gerne_naevnes():
     assert _f("kobberfasan i core/runtime/secrets.py; se også core/eventbus/bus.py")
+
+
+# ── follows skal bestå HVER gang (7/9-2026) ─────────────────────────────────
+# To explore-kørsler, samme model (copilot-free/gpt-4.1), samme værktøjskæde,
+# korrekte søgeresultater begge gange. Den ene gengav dem trofast; den anden
+# skrev tre funktioner der ikke findes og skrev «Confidence: høj». En model der
+# lyver hver tredje gang er farligere end en der altid fejler — den fejler
+# troværdigt.
+
+def test_en_model_der_kun_er_traofast_NOGLE_gange_dumper():
+    kald_nr = {"n": 0}
+
+    def kald(*, messages=None, tools=None, **kw):
+        m = list(messages or [])
+        if any(x.get("role") == "tool" for x in m):
+            kald_nr["n"] += 1
+            # trofast første gang, opdigter anden gang
+            if kald_nr["n"] == 1:
+                return {"text": "kobberfasan i core/runtime/secrets.py"}
+            return {"text": "kobberfasan — se src/jarvis/providers/keys.py"}
+        if tools:
+            return {"tool_calls": [TC], "text": ""}
+        return {"text": "def tredje_bogstav(s): return s[2]"}
+
+    r = probe_model(provider="p", model="m", kald=kald)
+    assert r["follows"] is False, "en model der kun er trofast nogle gange bestod"
+    assert "forsøg" in str(r["error"])
+
+
+def test_en_konsekvent_trofast_model_bestaar_stadig():
+    def kald(*, messages=None, tools=None, **kw):
+        m = list(messages or [])
+        if any(x.get("role") == "tool" for x in m):
+            return {"text": "kobberfasan i core/runtime/secrets.py"}
+        if tools:
+            return {"tool_calls": [TC], "text": ""}
+        return {"text": "def tredje_bogstav(s): return s[2]"}
+
+    r = probe_model(provider="p", model="m", kald=kald)
+    assert r["follows"] is True and r["score"] == 100

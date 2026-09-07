@@ -3,6 +3,7 @@ import { ArrowDown, PanelRight, Loader2 } from 'lucide-react'
 import { onPauseSvar } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
+import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
@@ -47,6 +48,8 @@ export function ChatView({
   const { permission } = usePermission()
   const panel = usePanel()
   const reconciledForRun = useRef<string | null>(null)
+  // Brister strømmen, ligger svaret allerede gemt på serveren. Hent det hjem.
+  useGenopretEfterBrud(stream.status, sessions.activeId ?? null, sessions.refresh)
   const transcriptRef = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
   const [unread, setUnread] = useState(0)

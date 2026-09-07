@@ -112,3 +112,42 @@ def test_umaalte_lægger_sig_EFTER_de_maalte(monkeypatch):
     ]
     monkeypatch.setattr(fit, "_registret", lambda: poster)
     assert fit.egnede_modeller(maks=2)[0] == ("svag", "y")
+
+
+# ── linje-koblingen (7/9-2026) ──────────────────────────────────────────────
+# Første udgave søgte «tal inden for 40 tegn efter navnet». I en markdown-tabel
+# er det næste tal NÆSTE RÆKKES linjenummer, så deepseek-v4-pro fik 1 af 28
+# rigtige på et svar der var fejlfrit. Jeg var ved at straffe en model for min
+# egen parsing.
+
+TRE = {"a_funktion": 10, "b_funktion": 20, "c_funktion": 30}
+
+
+def test_markdown_tabel_laeses_rigtigt():
+    svar = "| Linje | Funktion |\n|---|---|\n| 10 | a_funktion |\n| 20 | b_funktion |\n| 30 | c_funktion |"
+    assert bedøm_svar(svar, TRE)["linjer_rigtige"] == 3
+
+
+def test_punktliste_laeses_rigtigt():
+    svar = "- a_funktion (linje 10)\n- b_funktion (linje 20)\n- c_funktion (linje 30)"
+    assert bedøm_svar(svar, TRE)["linjer_rigtige"] == 3
+
+
+def test_alt_paa_EN_linje_kobler_stadig_rigtigt():
+    """Uden nærheds-kravet ville linjens første tal blive tildelt alle navne."""
+    d = bedøm_svar("a_funktion 10, b_funktion 20, c_funktion 30", TRE)
+    assert d["linjer_rigtige"] == 3 and d["linjer_paastaaet"] == 3
+
+
+def test_forkerte_linjenumre_koster():
+    rigtigt = bedøm_svar("a_funktion 10, b_funktion 20, c_funktion 30", TRE)
+    forkert = bedøm_svar("a_funktion 1, b_funktion 2, c_funktion 3", TRE)
+    assert forkert["score"] < rigtigt["score"]
+    assert forkert["linje_praecision"] == 0.0
+
+
+def test_et_svar_UDEN_linjenumre_straffes_ikke_for_dem():
+    """Samme princip som sondens sprungne delprøver: det vi ikke kan måle,
+    tæller hverken for eller imod."""
+    d = bedøm_svar("a_funktion, b_funktion, c_funktion", TRE)
+    assert d["linje_praecision"] is None and d["score"] == 100

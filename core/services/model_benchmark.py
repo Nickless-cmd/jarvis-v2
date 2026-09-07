@@ -43,8 +43,14 @@ logger = logging.getLogger(__name__)
 # Præcision vejer tungest: at opfinde er værre end at overse. En agent der
 # nævner ting der ikke findes, sender Jarvis ud i en blindgyde han skal
 # opdage selv; en agent der overser noget, siger i det mindste sandt om resten.
-VÆGT_PRÆCISION = 0.7
-VÆGT_DÆKNING = 0.3
+VÆGT_PRÆCISION = 0.5
+VÆGT_DÆKNING = 0.2
+# Linjenumre er dét der gør et fund CITÉRBART. Et svar med rigtige navne og
+# forkerte tal sender Jarvis det forkerte sted hen — og det var netop den
+# resterende asterisk i Jarvis' egen testrapport. Tæller kun når modellen
+# faktisk PÅSTÅR linjenumre; gør den ikke det, vægtes de to andre op, samme
+# princip som sondens sprungne delprøver.
+VÆGT_LINJER = 0.3
 
 _DEF = re.compile(r"^(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", re.MULTILINE)
 _NAVN = re.compile(r"[A-Za-z_][A-Za-z0-9_]{2,}")
@@ -121,23 +127,48 @@ def bedøm_svar(svar: str, facit: dict[str, int]) -> dict[str, Any]:
     dækning = (len(rigtige) / len(facit)) if facit else 0.0
 
     # Linjenumre: kun for dem den både nævnte OG gav et tal til.
+    #
+    # KUN PÅ SAMME LINJE. Første udgave søgte «tal inden for 40 tegn efter
+    # navnet», og i en markdown-tabel er det næste tal NÆSTE RÆKKES
+    # linjenummer. deepseek-v4-pro fik derfor 1 af 28 rigtige på et svar der
+    # var fejlfrit — jeg var ved at straffe en model for min egen parsing.
     linje_ok, linje_i_alt = 0, 0
+    linjer_i_svar = str(svar or "").splitlines()
     for navn in rigtige:
-        m = re.search(rf"{re.escape(navn)}\D{{0,40}}?(\d{{1,5}})", svar) \
-            or re.search(rf"(\d{{1,5}})\D{{0,40}}?{re.escape(navn)}", svar)
-        if not m:
+        tal: int | None = None
+        for tekstlinje in linjer_i_svar:
+            i = tekstlinje.find(navn)
+            if i < 0:
+                continue
+            # Tallet skal være NÆR navnet, ikke bare et sted på linjen. Med
+            # «a_funktion 10, b_funktion 20» på én linje ville linjens første
+            # tal ellers blive tildelt alle tre navne.
+            efter = tekstlinje[i + len(navn):i + len(navn) + 30]
+            før = tekstlinje[max(0, i - 30):i]
+            m = re.search(r"\b(\d{1,5})\b", efter) or re.search(r"\b(\d{1,5})\b(?!.*\b\d)", før)
+            if m:
+                tal = int(m.group(1))
+                break
+        if tal is None:
             continue
         linje_i_alt += 1
-        if int(m.group(1)) == facit[navn]:
+        if tal == facit[navn]:
             linje_ok += 1
+    dele = {"praecision": (VÆGT_PRÆCISION, præcision),
+            "daekning": (VÆGT_DÆKNING, dækning)}
+    if linje_i_alt:
+        dele["linjer"] = (VÆGT_LINJER, linje_ok / linje_i_alt)
+    vægt_i_alt = sum(v for v, _ in dele.values())
+    score = round(100 * sum(v * x for v, x in dele.values()) / vægt_i_alt) if vægt_i_alt else 0
     return {
         "praecision": round(præcision, 3),
         "daekning": round(dækning, 3),
+        "linje_praecision": round(linje_ok / linje_i_alt, 3) if linje_i_alt else None,
         "opfundne": opfundne[:8],
         "rigtige": len(rigtige),
         "linjer_rigtige": linje_ok,
         "linjer_paastaaet": linje_i_alt,
-        "score": round(100 * (VÆGT_PRÆCISION * præcision + VÆGT_DÆKNING * dækning)),
+        "score": score,
     }
 
 

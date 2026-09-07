@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13830 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13833 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -42,15 +42,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13830 functions/
 - [`core.services.13`](core.services.13.md) — `identity_drift_daemon` … `layer_tension_daemon`
 - [`core.services.14`](core.services.14.md) — `learning_pipeline_orchestrator` … `memory_tattoos`
 - [`core.services.15`](core.services.15.md) — `memory_write_policy` … `oauth_flow`
-- [`core.services.16`](core.services.16.md) — `oauth_store` … `private_inner_interplay_signal_tracking`
-- [`core.services.17`](core.services.17.md) — `private_inner_note_signal_tracking` … `query_language_bridge`
-- [`core.services.18`](core.services.18.md) — `quota_store` … `run_event_log`
-- [`core.services.19`](core.services.19.md) — `run_follow` … `self_model_blind_spots`
-- [`core.services.20`](core.services.20.md) — `self_model_distiller` … `shutdown_window_daemon`
-- [`core.services.21`](core.services.21.md) — `side_tasks` … `sustained_attention`
-- [`core.services.22`](core.services.22.md) — `system_cartographer` … `tool_world_change`
-- [`core.services.23`](core.services.23.md) — `totp_verifier` … `visible_runs_approvals`
-- [`core.services.24`](core.services.24.md) — `visible_runs_capabilities` … `world_model_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `oauth_store` … `private_initiative_tension_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `private_inner_interplay_signal_tracking` … `pushback`
+- [`core.services.18`](core.services.18.md) — `query_language_bridge` … `run_closure_gate`
+- [`core.services.19`](core.services.19.md) — `run_event_log` … `self_experiments`
+- [`core.services.20`](core.services.20.md) — `self_model_blind_spots` … `shared_language_extended`
+- [`core.services.21`](core.services.21.md) — `shutdown_window_daemon` … `surprise_detector`
+- [`core.services.22`](core.services.22.md) — `sustained_attention` … `tool_usage_store`
+- [`core.services.23`](core.services.23.md) — `tool_world_change` … `visible_runs`
+- [`core.services.24`](core.services.24.md) — `visible_runs_approvals` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

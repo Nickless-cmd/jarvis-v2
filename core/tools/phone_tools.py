@@ -57,7 +57,24 @@ async def _phone_call(
     to kraever helt forskellige reaktioner: den foerste er normal (telefonen
     sover), den anden er noget at undersoege.
     """
+    import asyncio
+
     from core.services.jarvisx_bridge import bridge_registry
+
+    # Sover telefonen, bankes der paa foerst. Push-vaekningen er tavs (ingen
+    # title/preview → ingen notifikations-blok), saa Bjoern ser ingenting;
+    # appen vaagner, forbinder, og kaldet gaar igennem. Uden det her ville
+    # ethvert telefon-kald fejle med det samme naar skaermen var slukket —
+    # altsaa naesten altid.
+    #
+    # Ventetiden koeres i en traad, fordi den poller synkront paa delt cache
+    # og ellers ville blokere hele event-loopet i op til 20 sekunder.
+    try:
+        from core.services import phone_wake
+        if not phone_wake.telefon_er_forbundet(user_id):
+            await asyncio.to_thread(phone_wake.vaek_og_vent, user_id)
+    except Exception:
+        logger.debug("phone_tools: vaekning fejlede, proever alligevel", exc_info=True)
 
     result = await bridge_registry.dispatch(
         user_id=user_id, tool=tool, args=args, timeout_s=timeout_s,
@@ -66,9 +83,10 @@ async def _phone_call(
         err = str(result.get("error") or "unknown")
         if "not_connected" in err or "no_bridge" in err:
             raise RuntimeError(
-                "phone_not_connected: telefonen er ikke forbundet lige nu. "
-                "Det er normalt — appen sover naar den ikke er i brug. "
-                "Send en push-notifikation hvis det haster."
+                "phone_not_connected: telefonen svarede ikke, heller ikke efter "
+                "en vaekning. Den kan vaere slukket, uden net, eller have "
+                "batterisparing paa appen. ADB-vejen (phone_adb_*) rammes ikke "
+                "af det."
             )
         raise RuntimeError(f"{tool} failed: {err}")
     return result.get("result")

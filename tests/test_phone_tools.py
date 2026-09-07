@@ -62,12 +62,57 @@ def test_kaldet_lander_paa_telefonen_ikke_computeren():
     bridge_registry.clear()
 
 
-def test_telefon_der_sover_giver_en_laeselig_grund(monkeypatch):
-    """«Ikke forbundet» er normalt for en telefon — og skal sige det.
+def test_en_sovende_telefon_vaekkes_foer_kaldet(monkeypatch):
+    """Skaermen er slukket det meste af tiden — uden vaekning ville et
+    telefon-kald fejle naesten altid.
 
-    En raa ``bridge_not_connected`` ville blive fejlsoegt som et brobrud.
-    Telefonen ligger bare i lommen.
+    Maalt 7/9: broen registrerede sig 15:13:51 og afmeldte sig 15:14:24, da
+    telefonen blev lagt fra sig. Android kapper forbindelsen; vaekningen er
+    svaret paa det, ikke en omgaaelse af det.
     """
+    kaldt: list[str] = []
+
+    from core.services import phone_wake
+    monkeypatch.setattr(phone_wake, "telefon_er_forbundet", lambda uid: False)
+    monkeypatch.setattr(phone_wake, "vaek_og_vent",
+                        lambda uid, **kw: kaldt.append(uid) or True)
+
+    async def fake_dispatch(**kw):
+        return {"status": "ok", "result": {"breddegrad": 55.6}}
+
+    from core.services.jarvisx_bridge import bridge_registry
+    monkeypatch.setattr(bridge_registry, "dispatch", fake_dispatch)
+
+    r = asyncio.run(P.phone_location_async(user_id="u1"))
+    assert kaldt == ["u1"]
+    assert r["breddegrad"] == 55.6
+
+
+def test_en_vaagen_telefon_vaekkes_ikke(monkeypatch):
+    """Vaekning er en FCM-levering og en app-opstart. Er den der, lad vaere."""
+    from core.services import phone_wake
+    monkeypatch.setattr(phone_wake, "telefon_er_forbundet", lambda uid: True)
+    monkeypatch.setattr(phone_wake, "vaek_og_vent",
+                        lambda uid, **kw: pytest.fail("maatte ikke vaekke"))
+
+    async def fake_dispatch(**kw):
+        return {"status": "ok", "result": {}}
+
+    from core.services.jarvisx_bridge import bridge_registry
+    monkeypatch.setattr(bridge_registry, "dispatch", fake_dispatch)
+    asyncio.run(P.phone_location_async(user_id="u1"))
+
+
+def test_telefon_der_ikke_kom_giver_en_laeselig_grund(monkeypatch):
+    """Kom den ikke EFTER en vaekning, er «den sover» ikke laengere svaret.
+
+    Beskeden skal pege paa det der saa faktisk kan vaere galt — og paa
+    ADB-vejen, som ikke rammes af baggrundsproblemet.
+    """
+    from core.services import phone_wake
+    monkeypatch.setattr(phone_wake, "telefon_er_forbundet", lambda uid: False)
+    monkeypatch.setattr(phone_wake, "vaek_og_vent", lambda uid, **kw: False)
+
     async def fake_dispatch(**kw):
         return {"status": "error", "error": "bridge_not_connected"}
 
@@ -76,8 +121,26 @@ def test_telefon_der_sover_giver_en_laeselig_grund(monkeypatch):
 
     with pytest.raises(RuntimeError) as ei:
         asyncio.run(P.phone_location_async(user_id="u1"))
-    assert "phone_not_connected" in str(ei.value)
-    assert "sover" in str(ei.value)
+    besked = str(ei.value)
+    assert "phone_not_connected" in besked
+    assert "vaekning" in besked and "phone_adb_" in besked
+
+
+def test_en_vaekning_der_kaster_stopper_ikke_kaldet(monkeypatch):
+    """FCM nede maa ikke betyde at en VAAGEN telefon ikke kan naas."""
+    from core.services import phone_wake
+
+    def eksploder(uid):
+        raise RuntimeError("fcm nede")
+
+    monkeypatch.setattr(phone_wake, "telefon_er_forbundet", eksploder)
+
+    async def fake_dispatch(**kw):
+        return {"status": "ok", "result": {"ok": True}}
+
+    from core.services.jarvisx_bridge import bridge_registry
+    monkeypatch.setattr(bridge_registry, "dispatch", fake_dispatch)
+    assert asyncio.run(P.phone_location_async(user_id="u1")) == {"ok": True}
 
 
 def test_en_aegte_fejl_forveksles_ikke_med_en_sovende_telefon(monkeypatch):

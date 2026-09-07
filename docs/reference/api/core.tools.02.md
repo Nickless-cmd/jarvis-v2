@@ -171,31 +171,31 @@ _Telefon-vaerktoejer — Jarvis' organer paa Bjoerns telefon._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_phone_call` | `(*, tool, args, user_id, timeout_s=…)` | Send et kald til telefonen. Kaster ``RuntimeError`` med en LAESELIG grund. | [src](../../../core/tools/phone_tools.py#L47) |
-| function | `phone_photo_async` | `(*, user_id, kamera=…, gem_sti=…, timeout_s=…)` | Tag et billede. **Kraever at appen er i forgrunden** — kameraet kan ikke | [src](../../../core/tools/phone_tools.py#L80) |
-| function | `phone_location_async` | `(*, user_id, noejagtighed=…, timeout_s=…)` | Hvor telefonen er. Virker ogsaa i baggrunden. | [src](../../../core/tools/phone_tools.py#L94) |
-| function | `phone_record_audio_async` | `(*, user_id, sekunder=…, timeout_s=…)` | Optag lyd fra mikrofonen. Virker ogsaa i baggrunden. | [src](../../../core/tools/phone_tools.py#L107) |
-| function | `phone_speak_async` | `(*, user_id, tekst, sprog=…, timeout_s=…)` | Sig noget hoejt gennem telefonens hoejttaler. | [src](../../../core/tools/phone_tools.py#L128) |
-| function | `phone_bubble_async` | `(*, user_id, tekst, timeout_s=…)` | Vis noget i den flydende boble oven paa andre apps. | [src](../../../core/tools/phone_tools.py#L141) |
-| function | `phone_read_file_async` | `(*, user_id, sti, timeout_s=…)` | Laes en fil i appens eget omraade paa telefonen. | [src](../../../core/tools/phone_tools.py#L155) |
-| function | `phone_write_file_async` | `(*, user_id, sti, indhold, timeout_s=…)` | Skriv en fil i appens eget omraade paa telefonen. | [src](../../../core/tools/phone_tools.py#L166) |
-| function | `phone_list_files_async` | `(*, user_id, sti=…, timeout_s=…)` | Hvad ligger der i appens omraade. | [src](../../../core/tools/phone_tools.py#L178) |
-| function | `phone_share_async` | `(*, user_id, tekst=…, sti=…, timeout_s=…)` | Send noget videre til en anden app via delings-arket. | [src](../../../core/tools/phone_tools.py#L189) |
-| function | `phone_clipboard_read_async` | `(*, user_id, timeout_s=…)` | Hvad der ligger i telefonens udklipsholder. | [src](../../../core/tools/phone_tools.py#L205) |
-| function | `phone_clipboard_write_async` | `(*, user_id, tekst, timeout_s=…)` | Laeg noget i telefonens udklipsholder. | [src](../../../core/tools/phone_tools.py#L215) |
-| function | `_f` | `(navn, beskrivelse, properties, required)` | — | [src](../../../core/tools/phone_tools.py#L236) |
-| function | `_bruger` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L300) |
-| function | `_koer` | `(coro_fn, *, tool_name, timeout_s)` | — | [src](../../../core/tools/phone_tools.py#L305) |
-| function | `_exec_phone_photo` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L310) |
-| function | `_exec_phone_location` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L318) |
-| function | `_exec_phone_record_audio` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L325) |
-| function | `_exec_phone_speak` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L333) |
-| function | `_exec_phone_bubble` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L341) |
-| function | `_exec_phone_read_file` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L347) |
-| function | `_exec_phone_write_file` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L353) |
-| function | `_exec_phone_list_files` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L361) |
-| function | `_exec_phone_share` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L367) |
-| function | `_exec_phone_clipboard_read` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L375) |
-| function | `_exec_phone_clipboard_write` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L381) |
+| function | `phone_photo_async` | `(*, user_id, kamera=…, gem_sti=…, timeout_s=…)` | Tag et billede. **Kraever at appen er i forgrunden** — kameraet kan ikke | [src](../../../core/tools/phone_tools.py#L98) |
+| function | `phone_location_async` | `(*, user_id, noejagtighed=…, timeout_s=…)` | Hvor telefonen er. Virker ogsaa i baggrunden. | [src](../../../core/tools/phone_tools.py#L112) |
+| function | `phone_record_audio_async` | `(*, user_id, sekunder=…, timeout_s=…)` | Optag lyd fra mikrofonen. Virker ogsaa i baggrunden. | [src](../../../core/tools/phone_tools.py#L125) |
+| function | `phone_speak_async` | `(*, user_id, tekst, sprog=…, timeout_s=…)` | Sig noget hoejt gennem telefonens hoejttaler. | [src](../../../core/tools/phone_tools.py#L146) |
+| function | `phone_bubble_async` | `(*, user_id, tekst, timeout_s=…)` | Vis noget i den flydende boble oven paa andre apps. | [src](../../../core/tools/phone_tools.py#L159) |
+| function | `phone_read_file_async` | `(*, user_id, sti, timeout_s=…)` | Laes en fil i appens eget omraade paa telefonen. | [src](../../../core/tools/phone_tools.py#L173) |
+| function | `phone_write_file_async` | `(*, user_id, sti, indhold, timeout_s=…)` | Skriv en fil i appens eget omraade paa telefonen. | [src](../../../core/tools/phone_tools.py#L184) |
+| function | `phone_list_files_async` | `(*, user_id, sti=…, timeout_s=…)` | Hvad ligger der i appens omraade. | [src](../../../core/tools/phone_tools.py#L196) |
+| function | `phone_share_async` | `(*, user_id, tekst=…, sti=…, timeout_s=…)` | Send noget videre til en anden app via delings-arket. | [src](../../../core/tools/phone_tools.py#L207) |
+| function | `phone_clipboard_read_async` | `(*, user_id, timeout_s=…)` | Hvad der ligger i telefonens udklipsholder. | [src](../../../core/tools/phone_tools.py#L223) |
+| function | `phone_clipboard_write_async` | `(*, user_id, tekst, timeout_s=…)` | Laeg noget i telefonens udklipsholder. | [src](../../../core/tools/phone_tools.py#L233) |
+| function | `_f` | `(navn, beskrivelse, properties, required)` | — | [src](../../../core/tools/phone_tools.py#L254) |
+| function | `_bruger` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L318) |
+| function | `_koer` | `(coro_fn, *, tool_name, timeout_s)` | — | [src](../../../core/tools/phone_tools.py#L323) |
+| function | `_exec_phone_photo` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L328) |
+| function | `_exec_phone_location` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L336) |
+| function | `_exec_phone_record_audio` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L343) |
+| function | `_exec_phone_speak` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L351) |
+| function | `_exec_phone_bubble` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L359) |
+| function | `_exec_phone_read_file` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L365) |
+| function | `_exec_phone_write_file` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L371) |
+| function | `_exec_phone_list_files` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L379) |
+| function | `_exec_phone_share` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L385) |
+| function | `_exec_phone_clipboard_read` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L393) |
+| function | `_exec_phone_clipboard_write` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L399) |
 
 ## `core/tools/plan_revise_tool.py`
 _Plan revision tool — revise_plan._

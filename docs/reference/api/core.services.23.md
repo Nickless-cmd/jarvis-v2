@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_world_change.py`
+_Ændrede dette værktøjskald verden? (loop-fix 2026-09-05)_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_shell_command` | `(arguments)` | — | [src](../../../core/services/tool_world_change.py#L37) |
+| function | `_mutation_tool_names` | `()` | Navne fra verification_gate — ét sted at vedligeholde listen. | [src](../../../core/services/tool_world_change.py#L45) |
+| function | `call_changed_the_world` | `(*, tool_name, arguments=…, status=…)` | True når kaldet reelt ændrede state (og lykkedes). | [src](../../../core/services/tool_world_change.py#L54) |
+| function | `round_changed_the_world` | `(results)` | Ændrede mindst ét kald i denne agentiske runde verden? | [src](../../../core/services/tool_world_change.py#L83) |
+
 ## `core/services/totp_verifier.py`
 _TOTP-verifikation (RFC 6238) til owner-override — ren stdlib, ingen dependency._
 
@@ -686,11 +696,4 @@ _Value/result classes and typed exceptions for the visible model lane._
 | function | `_set_last_visible_execution_trace` | `(trace)` | — | [src](../../../core/services/visible_runs.py#L7155) |
 | function | `_visible_trace_payload` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7164) |
 | function | `_publish_agentic_round_start` | `(*, run_id, round_num)` | Publish runtime.agentic_round_start event and return its event_id. | [src](../../../core/services/visible_runs.py#L7173) |
-
-## `core/services/visible_runs_approvals.py`
-_Pending tool-approval resolution for visible runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `resolve_pending_approval` | `(approval_id, *, approved)` | Resolve a pending tool approval. | [src](../../../core/services/visible_runs_approvals.py#L27) |
 

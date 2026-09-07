@@ -270,3 +270,48 @@ def test_lad_mig_fanger_ogsaa_ukendte_verber(text):
 )
 def test_talehandlinger_er_ikke_loefter(text):
     assert hpg.is_promise_of_action(text) is False
+
+
+# ── Bjørns fire stoppede ture 7/9-2026 ────────────────────────────────────
+# Vagten fangede kun to. De to der slap havde løftet i FØRSTE sætning, mens
+# hale-reglen kun læste den sidste — og den sidste sagde «Lad me starte»,
+# altså ødelagt dansk fra en svag model.
+
+def test_loefte_i_foerste_saetning_fanges_via_halens_ordelyd():
+    t = ("Jeg undersøger det funktionelle fravær grundigt — hvad kan serveren/desktop "
+         "som mobilen aldrig når. Lad me starte med at se hvad mobilens API-lag "
+         "(`apiClient.ts`) faktisk kan kalde, og sammenligne med det fulde server-API.")
+    assert hpg.is_hollow_promise(final_text=t, total_tool_calls=0, user_message="Kør",
+                             nudged_already=False, last_round_tool_calls=0)
+
+
+def test_lad_me_er_lige_saa_meget_et_loefte_som_lad_mig():
+    assert hpg.is_promise_of_action("Lad me finde filen.")
+    assert hpg.is_promise_of_action("Lad mig finde filen.")
+
+
+def test_beretning_er_stadig_ikke_et_loefte_uanset_laengde():
+    # Hale-reglen skal BLIVE ved: en beretning om hvad der ER gjort må ikke
+    # læses som et løfte om noget der ikke er gjort. Fristelsen 7/9 var at
+    # læse hele teksten for korte svar — den her er kort OG en beretning.
+    t = "Jeg kigger på filen og finder tre steder der skal rettes. Alle tre er rettet."
+    assert not hpg.is_hollow_promise(final_text=t, total_tool_calls=0, user_message="Kør",
+                                     nudged_already=False, last_round_tool_calls=0)
+
+
+def test_kort_svar_uden_loefte_flages_ikke():
+    t = "Ja, det passer. Filen ligger i core/services og er 212 linjer lang."
+    assert not hpg.is_hollow_promise(final_text=t, total_tool_calls=0, user_message="Hvor?",
+                                 nudged_already=False, last_round_tool_calls=0)
+
+
+def test_kort_spoergsmaal_til_bjoern_er_ikke_et_loefte():
+    t = "Jeg kan køre den nu, eller vente til du har set diffen. Hvad foretrækker du?"
+    assert not hpg.is_hollow_promise(final_text=t, total_tool_calls=0, user_message="Kør",
+                                 nudged_already=False, last_round_tool_calls=0)
+
+
+def test_et_kald_i_sidste_runde_er_aldrig_tomt():
+    t = "Jeg åbner en frisk session og henter det fulde billede."
+    assert not hpg.is_hollow_promise(final_text=t, total_tool_calls=0, user_message="Kør",
+                                 nudged_already=False, last_round_tool_calls=1)

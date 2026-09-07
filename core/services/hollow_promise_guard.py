@@ -118,7 +118,11 @@ _FIRST_PERSON_ACTION = [
     re.compile(rf"\bjeg\s+(?:\w+\s+){{0,2}}{_ACTION_VERB}\b", re.IGNORECASE),
     re.compile(rf"\b{_ACTION_VERB}\s+jeg\b", re.IGNORECASE),
     # Konstruktionen baerer loeftet: «lad mig <hvadsomhelst>» — undtagen talehandlinger.
-    re.compile(rf"\blad\s+mig\s+(?:lige\s+)?(?!{_SPEECH_ACT_VERB}\b)\w+", re.IGNORECASE),
+    # «lad me» er ikke en tastefejl fra Bjørn — det er MODELLEN. En svag model
+    # skriver ødelagt dansk, og 7/9 slap et løfte igennem netop dér: «Lad me
+    # starte med at se hvad mobilens API-lag faktisk kan kalde.» Værnet skal
+    # ikke kræve korrekt dansk af en model der er ved at fejle.
+    re.compile(rf"\blad\s+m(?:ig|e)\s+(?:lige\s+)?(?!{_SPEECH_ACT_VERB}\b)\w+", re.IGNORECASE),
 ]
 
 _PROMISE_RE = [re.compile(p, re.IGNORECASE) for p in _PROMISE_PATTERNS]
@@ -146,9 +150,15 @@ def is_promise_of_action(text: str) -> bool:
             return False
         if any(rx.search(t) for rx in _PROMISE_RE):
             return True
-        # Kun den SIDSTE sætning tæller. Et langt svar der undervejs siger «jeg
+        # Kun den SIDSTE sætning tæller. Et svar der undervejs siger «jeg
         # læste filen» er ikke et løfte — det er en beretning. Løftet står til
         # sidst, som dét man efterlades med.
+        #
+        # 7/9 blev det prøvet af: et svar hvor løftet stod i FØRSTE sætning
+        # slap igennem. Fristelsen var at læse hele teksten for korte svar —
+        # men «Jeg kigger på filen … alle tre er rettet» er også kort, og dét
+        # ER en beretning. Reglen blev stående; det var den ØDELAGTE dansk i
+        # sidste sætning der lukkede hullet (se `lad m(ig|e)` ovenfor).
         tail = _last_sentence(t)
         return any(rx.search(tail) for rx in _FIRST_PERSON_ACTION)
     except Exception:

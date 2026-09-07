@@ -60,6 +60,24 @@ def main() -> None:
     for lid, kilde, status, ev, tekst in raekker:
         print("  #%-3s %-10s %-9s ev=%s  %s" % (lid, kilde, status, ev, str(tekst)[:88]))
 
+    # Beslutnings-anmelderen: saa kun de foerste 20 af 45 indtil 7/9. Nu hvor
+    # den ser alle, er det her tallet der viser om halen faktisk bliver maalt.
+    print("\n=== beslutninger: bliver halen maalt nu? ===")
+    ialt, uden = con.execute(
+        "SELECT count(*), sum(adherence_score IS NULL) FROM behavioral_decisions "
+        "WHERE status='active'").fetchone()
+    print("  aktive %s  ·  uden score %s  (var 8 den 7/9)" % (ialt, uden))
+    friske = con.execute(
+        "SELECT count(*) FROM behavioral_decisions WHERE status='active' "
+        "AND last_reviewed_at > ?", (str(nul.get("taget")),)).fetchone()[0]
+    print("  anmeldt siden nulpunktet: %s" % friske)
+    print("  --- de daarligst efterlevede ---")
+    for a, d in con.execute(
+        "SELECT adherence_score, directive FROM behavioral_decisions "
+        "WHERE status='active' AND adherence_score IS NOT NULL "
+        "ORDER BY adherence_score ASC LIMIT 5"):
+        print("    %.3f  %s" % (a, str(d)[:66]))
+
     # Det tal der afgoer om [HUKOMMELSE] faktisk viser noget.
     print("\n=== hvad han FAKTISK ser i prompten ===")
     try:

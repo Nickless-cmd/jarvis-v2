@@ -49,6 +49,50 @@ _sidst_vaekket: dict[str, float] = {}
 
 WAKE_KIND = "bro_vaekning"
 
+# Foerste app-version der FORSTAAR en vaekning. AEldre versioner falder igennem
+# til den generiske notifikations-gren og viser «Jarvis / Der er noget nyt» —
+# en meningsloes besked til Bjoern for noget der skulle vaere tavst.
+MIN_VERSION = (0, 2, 21)
+_VERSION_KEY = "phone_app_version_seen"
+
+
+def _som_tal(version: str) -> tuple[int, ...] | None:
+    try:
+        dele = tuple(int(d) for d in str(version or "").strip().split(".")[:3])
+        return dele if dele else None
+    except Exception:
+        return None
+
+
+def _husk_version(version: str) -> None:
+    """Gem den app-version telefonen sidst meldte ved registrering."""
+    t = _som_tal(version)
+    if not t:
+        return
+    try:
+        from core.runtime.db_core import set_runtime_state_value
+        set_runtime_state_value(_VERSION_KEY, ".".join(str(x) for x in t))
+    except Exception:
+        pass
+
+
+def app_forstaar_vaekning() -> bool:
+    """Kan den app vi sidst saa haandtere en tavs vaekning?
+
+    **Fail-open naar vi ikke ved det.** Har vi aldrig set telefonen registrere
+    sig (frisk installation), skal vaekningen stadig kunne komme igennem —
+    ellers ville en ny telefon aldrig kunne naas. Kun naar vi POSITIVT ved at
+    versionen er for gammel, holder vi igen.
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        t = _som_tal(str(get_runtime_state_value(_VERSION_KEY, "") or ""))
+    except Exception:
+        return True
+    if not t:
+        return True
+    return t >= MIN_VERSION
+
 
 def telefon_er_forbundet(user_id: str) -> bool:
     """Er der en klient med telefon-værktøjer for brugeren lige nu?
@@ -63,9 +107,17 @@ def telefon_er_forbundet(user_id: str) -> bool:
         navne = set(PHONE_TOOL_NAMES)
         klienter = info.get("clients")
         if isinstance(klienter, dict):
-            return any(navne & set((c or {}).get("capabilities") or ())
-                       for c in klienter.values())
-        return bool(navne & set(info.get("capabilities") or ()))
+            for c in klienter.values():
+                if navne & set((c or {}).get("capabilities") or ()):
+                    # Laer versionen mens telefonen er her, saa vi senere ved om
+                    # det giver mening at vaekke den.
+                    _husk_version(str((c or {}).get("version") or ""))
+                    return True
+            return False
+        if navne & set(info.get("capabilities") or ()):
+            _husk_version(str(info.get("version") or ""))
+            return True
+        return False
     except Exception:
         return False
 
@@ -113,6 +165,13 @@ def vaek_og_vent(user_id: str, *, vent_s: float = VENT_S) -> bool:
         # sende endnu en levering ind i den samme opstart.
         pass
     else:
+        if not app_forstaar_vaekning():
+            logger.info(
+                "phone_wake: springer over — den app vi sidst saa er aeldre end %s "
+                "og ville vise en meningsloes notifikation i stedet",
+                ".".join(str(x) for x in MIN_VERSION),
+            )
+            return False
         if not _send_vaekning(uid):
             return False
         _sidst_vaekket[uid] = nu

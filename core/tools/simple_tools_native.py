@@ -1859,11 +1859,26 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
             ttl_seconds=0,
             auto_execute=True,
         )
-        svar = ""
+        # Kun beskeder af kinden `result` er fund. En `provider-error` er en
+        # kvote- eller fejlbesked fra udbyderen leveret som modellens indhold —
+        # 7/9-2026 kom den tilbage som «lægeerklæringsskabelon» og «Hi! How can
+        # I assist you today?», og explore kaldte det et fund. At vælge på
+        # RETNING alene (agent->jarvis) kunne ikke skelne dem.
+        svar, fejl = "", ""
         for msg in reversed(result.get("messages") or []):
-            if str(msg.get("direction") or "") == "agent->jarvis":
+            if str(msg.get("direction") or "") != "agent->jarvis":
+                continue
+            kind = str(msg.get("kind") or "")
+            if kind == "provider-error" and not fejl:
+                fejl = str(msg.get("content") or "")
+            elif kind in ("result", "") and not svar:
                 svar = str(msg.get("content") or "")
-                break
+        if not svar and (fejl or str(result.get("status") or "") == "failed"):
+            besked = fejl or str(result.get("error") or "agenten fejlede")
+            return {"status": "error",
+                    "error": f"undersøgelsen kom ikke igennem: {besked}"[:600],
+                    "agent_id": str(result.get("agent_id") or ""),
+                    "breadth": bredde}
         return {"status": "ok", "findings": svar[:12000] or None,
                 "agent_id": str(result.get("agent_id") or ""),
                 "breadth": bredde}

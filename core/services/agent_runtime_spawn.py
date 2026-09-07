@@ -527,6 +527,63 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
         output_tokens = int(result.get("output_tokens") or 0)
         input_tokens = int(result.get("input_tokens") or 0)
 
+        # ── EN UDBYDER-FEJL ER IKKE ET SVAR (Bjørn 7/9-2026) ────────────────
+        # `explore` gav «lægeerklæringsskabelon», «Hi! How can I assist you
+        # today?» og — målt her — dette, ordret, som agentens fund:
+        #
+        #   «Sorry, to prevent abuse of free resources, accounts that have not
+        #    been recharged can only try 10 times … console.aihubmix.com/topup»
+        #
+        # Det er en kvote-besked leveret som modellens indhold med HTTP 200.
+        # Uden det her bliver den gemt som `result`, run'et markeres
+        # `completed`, og Jarvis får den tilbage som «fund». Det ligner en
+        # agent der hallucinerer; det er en udbyder der svarer i stedet for
+        # modellen.
+        #
+        # `looks_like_provider_error` fandtes ALLEREDE og fanger strengen — den
+        # var bare aldrig koblet på agent-vejen. Nul agent-værktøjskald er
+        # logget siden 5/9, hvilket passer: disse svar kalder aldrig noget.
+        _udbyder_fejl = ""
+        try:
+            from core.services.provider_error_guard import describe, looks_like_provider_error
+            if text and looks_like_provider_error(text):
+                _udbyder_fejl = describe(text)
+        except Exception:
+            pass
+        if _udbyder_fejl:
+            create_agent_message(
+                message_id=f"agent-msg-{uuid4().hex}",
+                thread_id=resolved_thread_id,
+                run_id=run_id,
+                agent_id=agent_id,
+                direction="agent->jarvis",
+                # IKKE `result`: kalderen leder efter et resultat, og det her
+                # er ikke ét. Kinden er selve pointen.
+                kind="provider-error",
+                role="assistant",
+                content=_udbyder_fejl,
+            )
+            update_agent_run(run_id, status="failed", finished_at=_now_iso(),
+                             failure_reason=_udbyder_fejl, provider_status="failed",
+                             output_summary=_udbyder_fejl[:400],
+                             input_tokens=input_tokens, output_tokens=output_tokens)
+            update_agent_registry_entry(agent_id, status="failed",
+                                        last_error=_udbyder_fejl)
+            try:
+                from core.services.central_core import central as _c_pe
+                _c_pe().observe({
+                    "cluster": "agent", "nerve": "provider_error_as_agent_result",
+                    "agent_id": str(agent_id or ""),
+                    "provider": str(result.get("provider") or agent.get("provider") or ""),
+                    "model": str(result.get("model") or agent.get("model") or ""),
+                })
+            except Exception:
+                pass
+            surface = build_agent_detail_surface(agent_id) or {}
+            surface["status"] = "failed"
+            surface["error"] = _udbyder_fejl
+            return surface
+
         # Detect and execute spawn_agent requests embedded in response (can-spawn policy)
         tool_policy = str(agent.get("tool_policy") or "")
         if tool_policy == "can-spawn":

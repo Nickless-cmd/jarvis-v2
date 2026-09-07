@@ -83,7 +83,7 @@ class ShareModule(private val ctx: ReactApplicationContext) : ReactContextBaseJa
   @ReactMethod
   fun hentDeling(promise: Promise) {
     try {
-      val fraAktivitet = læsOgRyd(currentActivity?.intent)
+      val fraAktivitet = læsOgRyd(ctx.currentActivity?.intent)
       if (fraAktivitet != null) { promise.resolve(fraAktivitet); return }
       val gemt = læsOgRyd(afventende)
       afventende = null

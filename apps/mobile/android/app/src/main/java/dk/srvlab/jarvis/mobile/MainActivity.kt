@@ -6,6 +6,8 @@ import android.os.Bundle
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
+import com.facebook.react.ReactApplication
+import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
@@ -28,11 +30,10 @@ class MainActivity : ReactActivity() {
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
-    ShareModule.levér(
-      (application as? MainApplication)?.reactNativeHost?.reactInstanceManager?.currentReactContext
-        as? com.facebook.react.bridge.ReactApplicationContext,
-      intent
-    )
+    // New Architecture: appen har `reactHost`, ikke `reactNativeHost` — der
+    // findes ingen reactInstanceManager at gå gennem.
+    val ctx = (application as? ReactApplication)?.reactHost?.currentReactContext
+    ShareModule.levér(ctx as? ReactApplicationContext, intent)
   }
 
   /**

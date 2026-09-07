@@ -51,7 +51,7 @@ _Decision review prompter — closes the adherence loop._
 | function | `_last_review_time` | `(decision)` | Nyeste review-tidspunkt for en beslutning. | [src](../../../core/services/decision_review_prompter.py#L52) |
 | function | `_build_review_prompt` | `(decision, evidence=…)` | — | [src](../../../core/services/decision_review_prompter.py#L81) |
 | function | `_parse_review` | `(text)` | — | [src](../../../core/services/decision_review_prompter.py#L104) |
-| function | `review_pending_decisions` | `(*, max_reviews=…)` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L127) |
+| function | `review_pending_decisions` | `(*, max_reviews=…)` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L133) |
 
 ## `core/services/decision_signal_staging.py`
 _Efemer staging af decision-signals til model-kontekst (2026-07-04 runaway-fix)._

@@ -124,6 +124,12 @@ def _parse_review(text: str) -> tuple[str, str] | None:
     return verdict, reasoning[:280]
 
 
+# Hoejt nok til at daekke enhver realistisk maengde aktive direktiver. Et tal
+# frem for None, fordi den underliggende _db_list KRAEVER en graense — og en
+# uendelig ville bare flytte problemet til den dag nogen laver 10.000.
+_ALL_ACTIVE = 500
+
+
 def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any]:
     """Run the review loop. Returns counts.
 
@@ -144,7 +150,23 @@ def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any
         return {"status": "error", "error": f"daemon_llm import failed: {exc}"}
 
     try:
-        active = list_active_decisions(limit=20) or []
+        # ALLE aktive, ikke de foerste 20.
+        #
+        # Maalt 7/9-2026: der var 45 aktive, og `limit=20` gjorde de sidste 25
+        # usynlige for anmelderen. Sorteringen er `priority DESC, updated_at
+        # DESC`, saa afskaeringen FLYTTER sig — et opdateret direktiv rykker op
+        # og skubber et andet ud, uden at nogen kan se hvilke der faldt ud.
+        #
+        # Hvad der laa i halen: «Brug curiosity-vaerktoejerne» med adherence
+        # 0,125 og 933 registrerede brud, og «tjek mails ved ny session» med
+        # 0,025 — systemets to daarligst efterlevede direktiver. De kunne
+        # hverken genmaales, eskaleres eller pensioneres.
+        #
+        # Loftet pr. tik (_MAX_REVIEW_PER_TICK=5) er den rigtige bremse paa
+        # LLM-belastning og roeres ikke: 4 tik i doegnet giver 20 anmeldelser,
+        # og 24-timers-porten roterer nu gennem hele listen paa ~2 doegn i
+        # stedet for at koere i ring om de samme 20.
+        active = list_active_decisions(limit=_ALL_ACTIVE) or []
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 

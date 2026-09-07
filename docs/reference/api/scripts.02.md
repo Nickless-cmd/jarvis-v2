@@ -71,6 +71,13 @@ _Mint a JarvisX bearer token for a user._
 | function | `_append_registry` | `(entry)` | Append a token-issue entry to the audit registry. Best-effort. | [src](../../../scripts/mint_jarvisx_token.py#L40) |
 | function | `main` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L52) |
 
+## `scripts/model_catalogue_sweep.py`
+_Ugentlig gennemgang af cheap lane: hvilke modeller lever, og hvad kan de?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/model_catalogue_sweep.py#L36) |
+
 ## `scripts/nudge_well_cleanup.py`
 _Drain the two dead nudge wells (redesign 2026-09-04). Dry-run by default._
 

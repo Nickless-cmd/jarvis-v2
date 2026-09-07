@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13742 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13759 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,16 +41,16 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13742 functions/
 - [`core.services.12`](core.services.12.md) — `gate_skill` … `identity_drift_guard`
 - [`core.services.13`](core.services.13.md) — `identity_drift_proposer` … `learning_policy_engine`
 - [`core.services.14`](core.services.14.md) — `lessons` … `memory_write_queue`
-- [`core.services.15`](core.services.15.md) — `meta_cognition_daemon` … `open_loop_signal_tracking`
-- [`core.services.16`](core.services.16.md) — `operator_allowlist` … `proactive_candidates`
-- [`core.services.17`](core.services.17.md) — `proactive_context_governor` … `reasoning_detectors`
-- [`core.services.18`](core.services.18.md) — `reasoning_escalation` … `runtime_awareness_signal_tracking`
-- [`core.services.19`](core.services.19.md) — `runtime_browser_body` … `self_mutation_lineage`
-- [`core.services.20`](core.services.20.md) — `self_narrative_continuity_signal_tracking` … `signal_network_visualizer`
-- [`core.services.21`](core.services.21.md) — `signal_noise_guard` … `temperament_tendency_signal_tracking`
-- [`core.services.22`](core.services.22.md) — `temporal_body` … `unconscious_modulation`
-- [`core.services.23`](core.services.23.md) — `unconscious_temperature_field` … `visible_runs_outcomes`
-- [`core.services.24`](core.services.24.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `meta_cognition_daemon` … `ollama_visible_prompt`
+- [`core.services.16`](core.services.16.md) — `open_loop_closure_proposal_tracking` … `private_temporal_curiosity_state_tracking`
+- [`core.services.17`](core.services.17.md) — `private_temporal_promotion_signal_tracking` … `read_before_write_guard`
+- [`core.services.18`](core.services.18.md) — `reasoning_classifier` … `runtime_action_outcome_tracking`
+- [`core.services.19`](core.services.19.md) — `runtime_action_registry` … `self_model_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `self_monitor` … `signal_decay_daemon`
+- [`core.services.21`](core.services.21.md) — `signal_delta_trigger` … `taste_profile`
+- [`core.services.22`](core.services.22.md) — `telegram_gateway` … `turn_trace`
+- [`core.services.23`](core.services.23.md) — `ui_panel_store` … `visible_runs_learning_signals`
+- [`core.services.24`](core.services.24.md) — `visible_runs_memory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

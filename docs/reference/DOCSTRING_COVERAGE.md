@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6902/13742 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6914/13759 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6902/13742 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 569 | 1055 | 53% |
-| `core.services` | 4583 | 9512 | 48% |
+| `core.services` | 4595 | 9528 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 104 | 179 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -35,12 +35,12 @@ Generated from source. 6902/13742 functions/methods documented (50%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 178 | 341 | 52% |
+| `scripts` | 178 | 342 | 52% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1977)
+## Undocumented public functions (1978)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1979,6 +1979,7 @@ Generated from source. 6902/13742 functions/methods documented (50%). The list b
 - `scripts/memory_probe.py` :: `main` (L155)
 - `scripts/memory_probe.py` :: `score_probe` (L29)
 - `scripts/mint_jarvisx_token.py` :: `main` (L52)
+- `scripts/model_catalogue_sweep.py` :: `main` (L36)
 - `scripts/nudge_well_cleanup.py` :: `clean_broend` (L64)
 - `scripts/nudge_well_cleanup.py` :: `clean_outbound` (L24)
 - `scripts/nudge_well_cleanup.py` :: `main` (L85)

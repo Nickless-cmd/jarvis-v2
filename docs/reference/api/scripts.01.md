@@ -240,6 +240,14 @@ _Pre-commit hook: enforces test coverage for core/ code changes._
 | function | `_expected_test_path` | `(staged_path, repo_root=…)` | Given a staged file path like 'core/services/foo.py', | [src](../../../scripts/enforce_test_coverage.py#L161) |
 | function | `main` | `(argv=…)` | Entry point.  Accept optional --repo-root to override REPO_ROOT. | [src](../../../scripts/enforce_test_coverage.py#L187) |
 
+## `scripts/forced_tool_choice_report.py`
+_Aflæs sonden: honorerer providerne ``tool_choice="required"``?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rows` | `()` | — | [src](../../../scripts/forced_tool_choice_report.py#L42) |
+| function | `main` | `()` | — | [src](../../../scripts/forced_tool_choice_report.py#L65) |
+
 ## `scripts/god_file_map.py`
 _Read-only god-fil-kort: alle egne .py-filer ≥1500 linjer, karakteriseret (linjer, funktioner,_
 
@@ -438,23 +446,4 @@ _Merge duplicate `## ` headings in a MEMORY.md (memory repair 2026-09-04, R7)._
 | function | `dedupe_headings` | `(text)` | Return (new_text, merged_count). Only `## ` headings are merged. | [src](../../../scripts/memory_md_dedupe_headings.py#L28) |
 | function | `dedupe_file` | `(path, *, apply)` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L78) |
 | function | `main` | `()` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L92) |
-
-## `scripts/memory_noise_cleanup.py`
-_One-off data cleanup after the memory repair (2026-09-04, Task 8)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_table_exists` | `(conn, name)` | — | [src](../../../scripts/memory_noise_cleanup.py#L43) |
-| function | `step_brain_salience` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L50) |
-| function | `step_policies_dedupe` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L56) |
-| function | `step_experiential_empty` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L89) |
-| function | `step_partner_facts` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L104) |
-| function | `step_embeddings_released` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L123) |
-| function | `step_retained_templates` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L140) |
-| function | `step_md_proposals_stale` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L161) |
-| function | `step_fts_rebuild` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L183) |
-| function | `step_memory_md_dedupe` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L190) |
-| function | `backup` | `(backup_dir)` | Consistent SQLite backup (sqlite3 backup API, safe with WAL) + MEMORY.md copy. | [src](../../../scripts/memory_noise_cleanup.py#L216) |
-| function | `run` | `(*, apply, only=…, backup_dir=…)` | — | [src](../../../scripts/memory_noise_cleanup.py#L241) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/memory_noise_cleanup.py#L256) |
 

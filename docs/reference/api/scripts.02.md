@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/memory_noise_cleanup.py`
+_One-off data cleanup after the memory repair (2026-09-04, Task 8)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_table_exists` | `(conn, name)` | — | [src](../../../scripts/memory_noise_cleanup.py#L43) |
+| function | `step_brain_salience` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L50) |
+| function | `step_policies_dedupe` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L56) |
+| function | `step_experiential_empty` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L89) |
+| function | `step_partner_facts` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L104) |
+| function | `step_embeddings_released` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L123) |
+| function | `step_retained_templates` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L140) |
+| function | `step_md_proposals_stale` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L161) |
+| function | `step_fts_rebuild` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L183) |
+| function | `step_memory_md_dedupe` | `(apply)` | — | [src](../../../scripts/memory_noise_cleanup.py#L190) |
+| function | `backup` | `(backup_dir)` | Consistent SQLite backup (sqlite3 backup API, safe with WAL) + MEMORY.md copy. | [src](../../../scripts/memory_noise_cleanup.py#L216) |
+| function | `run` | `(*, apply, only=…, backup_dir=…)` | — | [src](../../../scripts/memory_noise_cleanup.py#L241) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/memory_noise_cleanup.py#L256) |
+
 ## `scripts/memory_probe.py`
 _Memory probe: does recall find what Bjørn knows is there? (memory repair 2026-09-04, Task 7)_
 

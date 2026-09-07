@@ -262,6 +262,44 @@ def _operator_file_exists(path: str, user_id: str) -> bool | None:
     return base in names
 
 
+def _sti_gate_operator(path: str, args: dict[str, Any], *, kind: str, tool: str,
+                       forhaandsvisning: str = "") -> dict[str, Any] | None:
+    """Sti-gate for operator-fil-skrivning. ``None`` = maa fortsaette.
+
+    Spejler den LOKALE `write_file`/`edit_file` (file_tools_exec.py:149-166), saa
+    de to ikke har hver sin politik for den samme slags handling. Gaten er
+    moenster-baseret og virker derfor ogsaa paa en fjern sti: `.ssh/id_rsa`
+    doemmes blocked uanset hvilken maskine den ligger paa.
+
+    Fundet 7/9-2026: operator-varianten havde en read-before-write-vagt, men
+    hverken spaerret-sti-tjek eller godkendelseskort. Den lokale afviser
+    `~/.ssh/id_rsa` og beder om lov uden for workspacet; operator-varianten
+    skrev direkte. Broen koerer paa operatoerens egen maskine, saa det var ikke
+    en vej ind til Bjoern — men Mikkel havde ubetinget filskrivning paa sin,
+    uden at nogen havde besluttet det.
+
+    Workspace-stier doemmes `auto` og giver derfor INGEN kort — ellers ville
+    hver eneste skrivning i kodetilstand kraeve et klik.
+    """
+    from core.services.gate_execution import check_file
+    _sid = args.get("_runtime_session_id") or args.get("_session_id") or "default"
+    _ec = check_file(path, session_id=str(_sid), kind=kind)
+
+    if _ec.classification == "blocked":
+        return {"status": "blocked", "error": f"Write blocked for safety: {path}"}
+
+    if _ec.classification == "approval" and not bool(args.get("_runtime_trust_all")):
+        return {
+            "status": "approval_needed",
+            "tool_name": tool,
+            "message": f"Jarvis vil skrive til {path} paa operatoerens maskine.",
+            "command": path,
+            "path": path,
+            "content_preview": forhaandsvisning[:200] + ("…" if len(forhaandsvisning) > 200 else ""),
+        }
+    return None
+
+
 def _exec_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
     path = str(args.get("path") or "").strip()
     content = args.get("content")
@@ -269,6 +307,10 @@ def _exec_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "path is required", "status": "error"}
     if content is None:
         return {"error": "content is required", "status": "error"}
+    _gate = _sti_gate_operator(path, args, kind="write",
+                               tool="operator_write_file", forhaandsvisning=str(content))
+    if _gate is not None:
+        return _gate
     # Phase 1 read-before-write guard: block if this path hasn't been
     # read in this session. The LLM can bypass legitimately by passing
     # force=true (e.g. brand-new file creation that doesn't exist yet).
@@ -342,6 +384,10 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "path is required", "status": "error"}
     if old_string is None or new_string is None:
         return {"error": "old_string and new_string are required", "status": "error"}
+    _gate = _sti_gate_operator(path, args, kind="edit",
+                               tool="operator_edit_file", forhaandsvisning=str(new_string))
+    if _gate is not None:
+        return _gate
     # Phase 1 read-before-write guard. edit_file by definition needs an
     # existing file, so no force bypass — if you're editing, you must
     # have read it in this session.

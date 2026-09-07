@@ -39,10 +39,12 @@ from core.tools.simple_tools_native import (
 )
 from core.tools.simple_tools_operator import (
     _exec_operator_browser_evaluate,
+    _exec_operator_edit_file,
     _exec_operator_kill_process,
     _exec_operator_launch_app,
     _exec_operator_open_url,
     _exec_operator_record_audio,
+    _exec_operator_write_file,
 )
 
 
@@ -195,6 +197,16 @@ def _force_sheets_write(args: dict[str, Any]) -> dict[str, Any]:
     return _exec_sheets_write({**args, "_runtime_trust_all": True})
 
 
+def _force_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
+    """Skriv filen paa operatoerens maskine direkte efter chat-godkendelse."""
+    return _exec_operator_write_file({**args, "_runtime_trust_all": True})
+
+
+def _force_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
+    """Redigér filen paa operatoerens maskine direkte efter chat-godkendelse."""
+    return _exec_operator_edit_file({**args, "_runtime_trust_all": True})
+
+
 def _force_operator_launch_app(args: dict[str, Any]) -> dict[str, Any]:
     """Start program direkte efter chat-godkendelse."""
     return _exec_operator_launch_app({**args, "_runtime_trust_all": True})
@@ -225,6 +237,9 @@ _FORCE_HANDLERS: dict[str, Any] = {
     "operator_bash": _force_operator_bash,
     "operator_open_url": _force_operator_open_url,
     "operator_launch_app": _force_operator_launch_app,
+    # Tilfoejet 7/9 sammen med sti-gaten: uden dem loeb godkendelsen i ring.
+    "operator_write_file": _force_operator_write_file,
+    "operator_edit_file": _force_operator_edit_file,
     "operator_browser_evaluate": _force_operator_browser_evaluate,
     "operator_kill_process": _force_operator_kill_process,
     "operator_record_audio": _force_operator_record_audio,

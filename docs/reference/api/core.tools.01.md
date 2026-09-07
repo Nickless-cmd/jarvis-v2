@@ -249,22 +249,24 @@ _Force-handlere — værktøjer der kører EFTER et menneske har godkendt._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_exec_operator_bash` | `(args)` | Sen import: operator_bash_session traekker paa broen, som traekker paa | [src](../../../core/tools/force_handlers.py#L49) |
-| function | `_exec_bash` | `(args)` | Facade → ``simple_tools._exec_bash`` (honorér test-patch-søm). | [src](../../../core/tools/force_handlers.py#L56) |
-| function | `_canonicalize_workspace_target` | `(target)` | Sen import: bor i simple_tools, som importerer DENNE fil. En import paa | [src](../../../core/tools/force_handlers.py#L68) |
-| function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L75) |
-| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L99) |
-| function | `_force_bash` | `(args)` | Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig. | [src](../../../core/tools/force_handlers.py#L129) |
-| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L159) |
-| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L164) |
-| function | `_force_gmail_send` | `(args)` | Send mailen direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L178) |
-| function | `_force_calendar_create_event` | `(args)` | Opret begivenheden direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L183) |
-| function | `_force_docs_append` | `(args)` | Skriv i dokumentet direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L188) |
-| function | `_force_sheets_write` | `(args)` | Skriv i regnearket direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L193) |
-| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L198) |
-| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L203) |
-| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L208) |
-| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L213) |
+| function | `_exec_operator_bash` | `(args)` | Sen import: operator_bash_session traekker paa broen, som traekker paa | [src](../../../core/tools/force_handlers.py#L51) |
+| function | `_exec_bash` | `(args)` | Facade → ``simple_tools._exec_bash`` (honorér test-patch-søm). | [src](../../../core/tools/force_handlers.py#L58) |
+| function | `_canonicalize_workspace_target` | `(target)` | Sen import: bor i simple_tools, som importerer DENNE fil. En import paa | [src](../../../core/tools/force_handlers.py#L70) |
+| function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L77) |
+| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L101) |
+| function | `_force_bash` | `(args)` | Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig. | [src](../../../core/tools/force_handlers.py#L131) |
+| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L161) |
+| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L166) |
+| function | `_force_gmail_send` | `(args)` | Send mailen direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L180) |
+| function | `_force_calendar_create_event` | `(args)` | Opret begivenheden direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L185) |
+| function | `_force_docs_append` | `(args)` | Skriv i dokumentet direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L190) |
+| function | `_force_sheets_write` | `(args)` | Skriv i regnearket direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L195) |
+| function | `_force_operator_write_file` | `(args)` | Skriv filen paa operatoerens maskine direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L200) |
+| function | `_force_operator_edit_file` | `(args)` | Redigér filen paa operatoerens maskine direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L205) |
+| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L210) |
+| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L215) |
+| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L220) |
+| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L225) |
 
 ## `core/tools/forgetting_tools.py`
 _Forgetting tools — Lag 11 self-track._

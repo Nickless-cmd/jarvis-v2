@@ -63,7 +63,7 @@ def test_handler_allows_new_file(monkeypatch):
     # fake _run_operator_async never calls it, so no further patch needed.
 
     out = st._exec_operator_write_file(
-        {"path": "/home/bs/vesc-open-client-spec.md", "content": "hello"}
+        {"path": "/media/projects/jarvis-v2/vesc-open-client-spec.md", "content": "hello"}
     )
     assert calls["wrote"] is True
     assert out.get("status") == "ok"
@@ -82,14 +82,20 @@ def test_handler_blocks_existing_unread_file(monkeypatch):
     monkeypatch.setattr(st, "_operator_user_id", lambda args: "owner")
 
     out = st._exec_operator_write_file(
-        {"path": "/home/bs/vesc-open-client-spec.md", "content": "hello"}
+        {"path": "/media/projects/jarvis-v2/vesc-open-client-spec.md", "content": "hello"}
     )
     assert out.get("status") == "error"
     assert out.get("blocked_by") == "read_before_write_guard"
 
 
 def test_handler_force_skips_guard(monkeypatch):
-    """force=true bypasses the guard entirely (no existence probe needed)."""
+    """force=true bypasses the READ-BEFORE-WRITE guard (no existence probe).
+
+    Stien er flyttet ind i workspacet 7/9-2026. Operator-skrivning fik samme
+    sti-gate som den lokale write_file, og /home/bs/... doemmes `approval` dér
+    — saa testen ville maale sti-gaten i stedet for vagten. Se
+    test_force_bypasser_IKKE_sti_gaten nedenfor for den nye egenskab.
+    """
     from core.tools import simple_tools as st
 
     seen = {"list_dir": False, "wrote": False}
@@ -107,8 +113,32 @@ def test_handler_force_skips_guard(monkeypatch):
     monkeypatch.setattr(st, "_operator_user_id", lambda args: "owner")
 
     out = st._exec_operator_write_file(
-        {"path": "/home/bs/vesc-open-client-spec.md", "content": "x", "force": True}
+        {"path": "/media/projects/jarvis-v2/vesc-open-client-spec.md",
+         "content": "x", "force": True}
     )
     assert seen["wrote"] is True
     assert seen["list_dir"] is False  # force → no probe
     assert out.get("status") == "ok"
+
+
+def test_force_bypasser_IKKE_sti_gaten(monkeypatch):
+    """`force` siger «filen er ny» — ikke «jeg maa skrive hvor som helst».
+
+    Flaget saettes af MODELLEN. Kunne det ogsaa aabne sti-gaten, ville
+    ~/.ssh/id_rsa staa aabent for enhver tur der bare huskede at sende
+    force=true.
+    """
+    from core.tools import simple_tools as st
+
+    skrev = {"ja": False}
+    monkeypatch.setattr(
+        st, "_run_operator_async",
+        lambda coro_fn, *, tool_name, timeout_s=35.0: skrev.update(ja=True) or {"status": "ok"},
+    )
+    monkeypatch.setattr(st, "_operator_user_id", lambda args: "owner")
+
+    ud = st._exec_operator_write_file(
+        {"path": "/home/bs/.ssh/id_rsa", "content": "x", "force": True}
+    )
+    assert ud.get("status") == "blocked"
+    assert skrev["ja"] is False

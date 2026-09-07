@@ -72,6 +72,15 @@ def _run_detectors(ctx: dict[str, Any]) -> Verdict:
     so = det.standing_orders_on_reasoning(text, ctx)  # always — the registry decides relevance
     if so is not None:
         verdicts.append(so)
+    # Agent Smith, trin 3 — always: the ladder decides relevance, not a risk class.
+    # This is the ONLY detector that can produce a RED here, because it is the only
+    # one grounded in something Jarvis committed to himself AND repeated to the top
+    # rung. RED holds the pending call so he re-reasons; it never ends the run.
+    # See core.services.smith_confrontation.
+    from core.services.smith_confrontation import smith_confront_on_action
+    sm = smith_confront_on_action(text, ctx)
+    if sm is not None:
+        verdicts.append(sm)
     # drift — always attempted; self-gates on the independent affect signal (<0.7 → None)
     dr = det.drift_on_reasoning(text, ctx)
     if dr is not None:

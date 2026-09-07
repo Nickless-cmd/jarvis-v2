@@ -116,20 +116,20 @@ export function MessageBubble({
     code_block: (node: { key: string; content: string; sourceInfo?: string }) => (
       <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
     ),
-    // Markering. `textgroup` er den blok biblioteket tegner AL løbende tekst
-    // med, så det ene sted gør hvert afsnit markerbart — hold inde, træk,
-    // og Android giver selv Markér alt / Kopiér / Del.
+    // `textgroup` er den blok biblioteket tegner AL løbende tekst med.
     //
-    // Uden den kunne intet i en besked markeres. Kopiér-knappen tog hele
-    // svaret, og der var ingen vej til en enkelt sætning, et enkelt tal eller
-    // en enkelt sti.
+    // Den er med VILJE ikke `selectable`: Androids egen markering kan ikke
+    // krydse søskende-elementer, og markdown tegner overskrift, liste og hvert
+    // afsnit hver for sig. Var den selectable, fangede hold-inde ét afsnit og
+    // nægtede at trække videre — målt hos Bjørn 7/9, og præcis dét der var
+    // frustrerende. Hold-inde giver nu i stedet hele beskeden som ét felt.
     textgroup: (
       node: { key: string },
       children: React.ReactNode,
       _parent: unknown,
       mdStyles: Record<string, unknown>
     ) => (
-      <Text key={node.key} selectable style={mdStyles.textgroup as never}>
+      <Text key={node.key} style={mdStyles.textgroup as never}>
         {children}
       </Text>
     )
@@ -179,9 +179,19 @@ export function MessageBubble({
       ) : isUser ? (
         <Text selectable style={styles.userText}>{message.content}</Text>
       ) : (
-        <Markdown markdownit={markdownItInstance} style={markdownStyles} rules={markdownRules}>
-          {message.content}
-        </Markdown>
+        // Hold inde = markér hele svaret. Den naturlige bevægelse skal gøre
+        // det rigtige; menupunktet «Markér tekst» findes stadig som den
+        // synlige vej for den der ikke gætter gesten.
+        <Pressable
+          testID="msg-body"
+          onLongPress={() => setMarkering(true)}
+          delayLongPress={350}
+          accessibilityLabel="Hold inde for at markere hele svaret"
+        >
+          <Markdown markdownit={markdownItInstance} style={markdownStyles} rules={markdownRules}>
+            {message.content}
+          </Markdown>
+        </Pressable>
       )}
 
       {sources.length ? (

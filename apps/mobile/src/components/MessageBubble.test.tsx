@@ -147,15 +147,21 @@ describe('teksten kan markeres', () => {
     expect(markerbare(r.toJSON())).not.toHaveLength(0)
   })
 
-  it('hans svar kan markeres — også gennem markdown', async () => {
-    // Markdown-biblioteket tegner al løbende tekst med `textgroup`. Rører man
-    // ikke den regel, er intet i et svar markerbart, uanset hvad man gør ved
-    // boblen udenom.
+  it('hans svar markeres gennem hold-inde, ikke afsnit for afsnit', async () => {
+    // Hed før «hans svar kan markeres — også gennem markdown» og hævdede at
+    // `textgroup` var selectable. Det VAR den, og det var netop problemet:
+    // Androids markering kan ikke krydse søskende-elementer, så hold-inde
+    // fangede ét afsnit og nægtede at trække videre. Målt hos Bjørn 7/9.
+    //
+    // Nu giver hold-inde hele svaret som ét felt i stedet.
     const r = await render(
       <MessageBubble message={{ ...base, role: 'assistant', content: 'se **her**: /etc/hosts' } as ChatMessage} />
     )
+    expect(markerbare(r.toJSON())).toHaveLength(0)
+    await act(async () => { fireEvent(r.getByTestId('msg-body'), 'longPress') })
     expect(markerbare(r.toJSON())).not.toHaveLength(0)
   })
+
 })
 
 describe('markér hele beskeden', () => {
@@ -182,6 +188,24 @@ describe('markér hele beskeden', () => {
 
     expect(r.getByText(langt.content)).toBeTruthy()
     expect(r.getByTestId('msg-select-done')).toBeTruthy()
+  })
+
+  it('hold inde på svaret markerer det HELE — uden menu-omvej', async () => {
+    // Den naturlige bevægelse skal gøre det rigtige. Bjørn prøvede at holde
+    // inde og trække, og Android gav ham ét afsnit og nægtede at gå videre.
+    const r = await render(<MessageBubble message={langt} />)
+    await act(async () => { fireEvent(r.getByTestId('msg-body'), 'longPress') })
+    expect(r.getByText(langt.content)).toBeTruthy()
+    expect(r.getByTestId('msg-select-done')).toBeTruthy()
+  })
+
+  it('brugerens egen besked markeres stadig direkte', async () => {
+    // Én Text uden blokke — dér er der intet at krydse, og den indbyggede
+    // markering er den korteste vej.
+    const r = await render(
+      <MessageBubble message={{ ...base, role: 'user', content: 'min sti' } as ChatMessage} />
+    )
+    expect(r.queryByTestId('msg-body')).toBeNull()
   })
 
   it('Færdig lukker tilstanden igen', async () => {

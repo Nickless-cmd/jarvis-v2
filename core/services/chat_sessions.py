@@ -636,6 +636,30 @@ def _infer_tool_name_from_content(content: str) -> str:
     return ""
 
 
+def recent_user_message_texts(*, limit: int = 1500) -> list[str]:
+    """Brugerens seneste beskeder paa TVAERS af sessioner — kun teksten.
+
+    Bygget til ordstatistik (se ``tool_lexical_match.hyppige_ord_hos_brugeren``),
+    ikke til at vise noget. Derfor kun `content`, og derfor ingen tidsvindue:
+    «de seneste N» er stabilt, mens et vindue i `datetime('now')` mod ISO-T/Z-
+    stempler enten rammer hele tabellen eller ingenting.
+
+    Meget korte beskeder («ok», «kør») bidrager ikke med ord der betyder noget
+    og skaevvrider naevneren, saa de sorteres fra i selve forespoergslen.
+    """
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT content FROM chat_messages
+            WHERE role = 'user' AND length(content) BETWEEN 15 AND 2000
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (max(1, int(limit)),),
+        ).fetchall()
+    return [str(r["content"] or "") for r in rows]
+
+
 def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[dict[str, str]]:
     normalized = (session_id or "").strip()
     if not normalized:

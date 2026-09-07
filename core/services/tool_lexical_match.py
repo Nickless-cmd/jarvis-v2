@@ -117,12 +117,20 @@ class Korpus:
         """
         return math.log((self._n + 1) / (1 + self._df.get(ord_, 0))) / math.log(self._n + 1)
 
-    def slaa_op(self, besked: str, kandidater: list[str] | None = None) -> Traef | None:
+    def slaa_op(
+        self,
+        besked: str,
+        kandidater: list[str] | None = None,
+        ekstra_stopord: frozenset[str] = frozenset(),
+    ) -> Traef | None:
         """Bedste bud, eller ``None`` naar intet staar klart nok over feltet.
 
         ``None`` er det normale svar — 43 af 60 aegte beskeder i maalingen.
+
+        ``ekstra_stopord`` er ord der er hyppige i BRUGERENS sprog. Se
+        ``hyppige_ord_hos_brugeren`` for hvorfor det er noedvendigt.
         """
-        bo = ord_i(besked)
+        bo = ord_i(besked) - ekstra_stopord
         if not bo:
             return None
         navne = kandidater if kandidater is not None else list(self._tekster)
@@ -160,3 +168,37 @@ def byg_korpus_fra_definitioner(definitioner: list[dict]) -> Korpus:
         if navn:
             tekster[navn] = navn + " " + str(fn.get("description") or "")
     return Korpus(tekster)
+
+
+def hyppige_ord_hos_brugeren(
+    beskeder: list[str], *, graense: float = 0.01,
+) -> frozenset[str]:
+    """Ord brugeren siger HELE TIDEN — spaerret uanset hvor saerkende de er
+    blandt vaerktoejerne.
+
+    IDF ovenfor er **ensidig**: den maaler kun hvor sjaeldent et ord er blandt
+    vaerktoejsbeskrivelserne. Den ved intet om hvor hyppigt ordet er i det
+    brugeren faktisk skriver. Maalt 7/9-2026 paa 400 aegte beskeder var det den
+    stoerste stoejkilde i hele matcheren:
+
+        «claude»  tool-IDF 0,68  men staar i  7,2 % af hans beskeder
+                  -> dispatch_to_claude_code vandt 22 af 72 bud (30 %),
+                     hver gang paa saetninger som «Claude kigger paa det..»
+
+    Et ord han bruger i hver fjortende besked baerer ingen information om
+    hvilket vaerktoej han har brug for — uanset at kun ét vaerktoej naevner det.
+    Den haandlavede ``_STOPORD`` ovenfor er det samme princip, fundet i haanden
+    ét falsk traef ad gangen («slet», «paste»). Denne udgave udleder listen af
+    hans eget sprog og holder sig selv ved lige naar emnerne skifter.
+
+    Ved 1 % spaerres ~110 ord — jarvis, claude, tool, prompt, code, container,
+    tools. Det er praecis den slags ord han taler *om* systemet med, ikke dem
+    han beder om noget med.
+    """
+    if not beskeder:
+        return frozenset()
+    df: Counter[str] = Counter()
+    for b in beskeder:
+        df.update(ord_i(b))
+    n = len(beskeder)
+    return frozenset(w for w, antal in df.items() if antal / n > graense)

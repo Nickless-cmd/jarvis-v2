@@ -342,10 +342,61 @@ def _matches(besked: str, kandidater: list[str] | None = None):
       turene. Nu rangeres kun blandt de usynlige.
     """
     try:
-        return _korpus().slaa_op(besked, kandidater)
+        return _korpus().slaa_op(besked, kandidater, _brugerens_hyppige_ord())
     except Exception as exc:
         logger.debug("tool_discovery_nudge: opslag fejlede: %s", exc)
         return None
+
+
+_BRUGERORD_NOEGLE = "tool_discovery_nudge:brugerord"
+_BRUGERORD_TTL = 6 * 3600
+_BRUGERORD_STIKPROEVE = 1500
+
+
+def _brugerens_hyppige_ord() -> frozenset[str]:
+    """Ord han bruger hele tiden — spaerret uanset hvor saerkende de er.
+
+    IDF er ensidig: den maaler sjaeldenhed blandt VAERKTOEJERNE og ved intet
+    om hans sprog. Maalt 7/9-2026 var det matcherens stoerste stoejkilde:
+    «claude» staar i 7,2 % af hans beskeder, og `dispatch_to_claude_code` tog
+    derfor 22 af 72 bud (30 %) — hver gang paa saetninger som «Claude kigger
+    paa det..», hvor han fortaeller mig hvad der sker, ikke beder om noget.
+
+    Samme gjaldt «vision» (9 bud, alle mens han talte OM vision-modeller) og
+    «listen» → mic_listen (dansk bestemt form af «liste»).
+
+    Beregnes af hans egne beskeder og caches i 6 timer; fejler den, falder vi
+    tilbage til den haandlavede stopordsliste alene. Aldrig en undtagelse ud —
+    sektionens kontrakt er at den ikke kan vaelte prompt-bygningen.
+    """
+    try:
+        from core.services import shared_cache
+        cachet = shared_cache.get(_BRUGERORD_NOEGLE)
+        if cachet is not None:
+            return frozenset(cachet)
+    except Exception as exc:
+        logger.debug("tool_discovery_nudge: brugerord-cache utilgaengelig: %s", exc)
+
+    try:
+        from core.services.chat_sessions import recent_user_message_texts
+        beskeder = recent_user_message_texts(limit=_BRUGERORD_STIKPROEVE)
+    except Exception as exc:
+        logger.debug("tool_discovery_nudge: kunne ikke laese beskeder: %s", exc)
+        return frozenset()
+
+    try:
+        from core.services.tool_lexical_match import hyppige_ord_hos_brugeren
+        ord_ = hyppige_ord_hos_brugeren(list(beskeder or ()))
+    except Exception as exc:
+        logger.debug("tool_discovery_nudge: brugerord fejlede: %s", exc)
+        return frozenset()
+
+    try:
+        from core.services import shared_cache
+        shared_cache.set(_BRUGERORD_NOEGLE, sorted(ord_), ttl_seconds=_BRUGERORD_TTL)
+    except Exception as exc:
+        logger.debug("tool_discovery_nudge: kunne ikke cache brugerord: %s", exc)
+    return ord_
 
 
 def tool_discovery_nudge_section(

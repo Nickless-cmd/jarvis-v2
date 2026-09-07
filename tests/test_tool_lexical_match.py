@@ -130,3 +130,66 @@ def test_tomt_korpus_falder_ikke_over():
 @pytest.mark.parametrize("besked", ["", "   ", "ok", "🙂"])
 def test_tom_besked_giver_ingenting(besked):
     assert _korpus().slaa_op(besked) is None
+
+
+# ---------------------------------------------------------------------------
+# Ensidig IDF (maalt 7/9-2026)
+#
+# IDF ovenfor kender kun vaerktoejskorpuset. Den ved intet om hvad brugeren
+# faktisk siger. Paa 400 aegte beskeder var det den stoerste stoejkilde:
+# «claude» staar i 7,2 % af Bjoerns beskeder, og dispatch_to_claude_code tog
+# derfor 22 af 72 bud (30 %) — hver gang paa saetninger som «Claude kigger paa
+# det..», hvor han fortaeller hvad der sker frem for at bede om noget.
+# ---------------------------------------------------------------------------
+
+def test_hyppige_ord_findes_af_data_ikke_af_haanden():
+    from core.services.tool_lexical_match import hyppige_ord_hos_brugeren
+
+    beskeder = ["claude kigger på det nu", "claude er i gang",
+                "claude fik det til at virke", "helt andet emne uden det ord"]
+    ord_ = hyppige_ord_hos_brugeren(beskeder, graense=0.5)
+    assert "claude" in ord_
+    assert "emne" not in ord_
+
+
+def test_tomt_input_giver_tom_liste():
+    from core.services.tool_lexical_match import hyppige_ord_hos_brugeren
+
+    assert hyppige_ord_hos_brugeren([]) == frozenset()
+
+
+def _korpus_i_realistisk_stoerrelse(*ekstra):
+    """GULV=1.35 er kalibreret paa ~450 vaerktoejer. Med en haandfuld kan INGEN
+    score naa derop (normaliseret IDF giver ~0,5 for et unikt ord ved N=3), saa
+    en for lille proeve tester noget andet end produktionen gør."""
+    from core.services.tool_lexical_match import byg_korpus_fra_definitioner
+
+    defs = list(ekstra) + [
+        {"function": {"name": "fyld_%02d" % i,
+                      "description": "internt fyld nummer %02d uden faelles ord" % i}}
+        for i in range(24)
+    ]
+    return byg_korpus_fra_definitioner(defs)
+
+
+def test_et_spaerret_ord_kan_ikke_vinde():
+    """Selve pointen: ordet er stadig saerkende blandt vaerktoejerne — det er
+    at han SIGER det konstant der gør det ubrugeligt som signal."""
+    k = _korpus_i_realistisk_stoerrelse(
+        {"function": {"name": "dispatch_to_claude_code",
+                      "description": "send opgave videre til claude code"}},
+    )
+    besked = "claude kigger paa det nu"
+
+    uden = k.slaa_op(besked)
+    assert uden is not None and uden.navn == "dispatch_to_claude_code"
+    assert k.slaa_op(besked, None, frozenset({"claude"})) is None
+
+
+def test_spaerring_roerer_ikke_de_aegte_traef():
+    k = _korpus_i_realistisk_stoerrelse(
+        {"function": {"name": "phone_photo",
+                      "description": "hent billeder og videoer fra telefonen"}},
+    )
+    t = k.slaa_op("hent billeder fra telefonen", None, frozenset({"claude", "jarvis"}))
+    assert t is not None and t.navn == "phone_photo"

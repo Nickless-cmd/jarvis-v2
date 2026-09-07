@@ -496,8 +496,9 @@ _Leksikalsk vaerktoejs-opslag: saerkende ord slaar semantisk lighed._
 | class | `Korpus` | `` | IDF over vaerktoejskorpuset. Bygges én gang pr. vaerktoejssaet. | [src](../../../core/services/tool_lexical_match.py#L92) |
 | method | `Korpus.__init__` | `(self, tekster)` | — | [src](../../../core/services/tool_lexical_match.py#L99) |
 | method | `Korpus.idf` | `(self, ord_)` | Sjaeldne ord vejer tungt, paa en skala der ikke afhaenger af korpus-stoerrelsen. | [src](../../../core/services/tool_lexical_match.py#L108) |
-| method | `Korpus.slaa_op` | `(self, besked, kandidater=…)` | Bedste bud, eller ``None`` naar intet staar klart nok over feltet. | [src](../../../core/services/tool_lexical_match.py#L120) |
-| function | `byg_korpus_fra_definitioner` | `(definitioner)` | Korpus ud fra ``get_tool_definitions()``-formen (baade rå og indpakket). | [src](../../../core/services/tool_lexical_match.py#L154) |
+| method | `Korpus.slaa_op` | `(self, besked, kandidater=…, ekstra_stopord=…)` | Bedste bud, eller ``None`` naar intet staar klart nok over feltet. | [src](../../../core/services/tool_lexical_match.py#L120) |
+| function | `byg_korpus_fra_definitioner` | `(definitioner)` | Korpus ud fra ``get_tool_definitions()``-formen (baade rå og indpakket). | [src](../../../core/services/tool_lexical_match.py#L162) |
+| function | `hyppige_ord_hos_brugeren` | `(beskeder, *, graense=…)` | Ord brugeren siger HELE TIDEN — spaerret uanset hvor saerkende de er | [src](../../../core/services/tool_lexical_match.py#L173) |
 
 ## `core/services/tool_observer.py`
 _Tools-cluster query-helpers (Phase 1) oven på tool_call-observe i execute_tool._

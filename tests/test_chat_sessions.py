@@ -255,3 +255,33 @@ def test_set_session_workspace(isolated_runtime):
     full = get_chat_session(sid)
     assert full["workspace_kind"] == "workstation"
     assert full["workspace_root"] == "/home/bs/proj"
+
+
+def test_recent_user_message_texts_gaar_paa_tvaers_af_sessioner(tmp_path, monkeypatch):
+    """Ordstatistikken skal se hele hans sprog, ikke én samtale.
+
+    Korte beskeder («ok», «kør») sorteres fra i forespørgslen: de bidrager
+    ingen ord der betyder noget, men tæller med i nævneren og skævvrider
+    hyppighederne.
+    """
+    from core.services.chat_sessions import (
+        append_chat_message, create_chat_session, recent_user_message_texts,
+    )
+
+    sa = create_chat_session(title="a"); sb = create_chat_session(title="b")
+    a = str(sa.get("session_id") or sa.get("id"))
+    b = str(sb.get("session_id") or sb.get("id"))
+
+    append_chat_message(session_id=a, role="user",
+                        content="det her er en rigtig lang nok besked om noget")
+    append_chat_message(session_id=b, role="user",
+                        content="og her er en anden besked fra en anden session")
+    append_chat_message(session_id=b, role="user", content="ok")
+    append_chat_message(session_id=b, role="assistant",
+                        content="et svar der ikke skal taelle med her")
+
+    t = recent_user_message_texts(limit=50)
+    assert any("anden session" in x for x in t)
+    assert any("rigtig lang nok" in x for x in t)
+    assert "ok" not in t
+    assert not any("et svar der ikke skal" in x for x in t)

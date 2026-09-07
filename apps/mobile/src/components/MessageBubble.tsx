@@ -1,11 +1,11 @@
-import { Check, Copy, MoreHorizontal, RotateCw, Share2, Square, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native'
+import { Brain, Check, Copy, MoreHorizontal, Pin, PinOff, RotateCw, Share2, Square, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native'
 import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
 import * as Clipboard from 'expo-clipboard'
 import { readAloud as readAloudText, stopReading } from '../lib/readAloud'
 import { useAuthOptional } from '../state/AuthContext'
-import { Animated, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native'
+import { Animated, Modal, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import { CodeBlock } from './CodeBlock'
 import type { ChatMessage } from '../lib/types'
 import { tokens } from '../theme/tokens'
@@ -31,12 +31,21 @@ export function MessageBubble({
   message,
   onResend,
   onRegenerate,
-  hideActions
+  hideActions,
+  pinned,
+  onTogglePin,
+  onSaveMemory
 }: {
   message: ChatMessage
   onResend?: (text: string) => void
   /** Menu-ikonet i handlingsrækken. Uden handler er det blot inaktivt. */
   onRegenerate?: () => void
+  /** Er beskeden fastgjort? Styrer kun ikonet i menuen. */
+  pinned?: boolean
+  /** Slå fast/løs. Udeladt → punktet vises ikke. */
+  onTogglePin?: () => void
+  /** Gem svaret i Jarvis' hukommelse. Udeladt → punktet vises ikke. */
+  onSaveMemory?: () => void
   /**
    * Skjul handlingsrækken.
    *
@@ -57,6 +66,10 @@ export function MessageBubble({
   // til serveren endnu, og en knap der lader som om den sender noget, er værre
   // end ingen knap. Når kanalen findes, sendes den herfra.
   const [vote, setVote] = useState<'up' | 'down' | null>(null)
+  // «...» havde en handler INGEN sendte — knappen har aldrig gjort noget.
+  // Den er nu dét den ligner: en menu med de handlinger der ikke er værd at
+  // bruge en plads på i den målte seks-ikon-række.
+  const [menuOpen, setMenuOpen] = useState(false)
   const streaming = message.id.startsWith('stream-')
   const sources = isUser ? [] : sourceDomains(message.content)
 
@@ -178,10 +191,60 @@ export function MessageBubble({
           <Pressable accessibilityLabel="Del" hitSlop={10} onPress={share}>
             <Share2 size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
           </Pressable>
-          <Pressable accessibilityLabel="Send igen" hitSlop={10} onPress={() => onRegenerate?.()}>
+          <Pressable
+            accessibilityLabel="Flere handlinger"
+            hitSlop={10}
+            onPress={() => (onTogglePin || onSaveMemory ? setMenuOpen(true) : onRegenerate?.())}
+          >
             <MoreHorizontal size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
           </Pressable>
         </View>
+      ) : null}
+
+      {menuOpen ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+          <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)} accessibilityLabel="Luk" />
+          <View style={styles.menuSheet}>
+            {onTogglePin ? (
+              <Pressable
+                testID="msg-toggle-pin"
+                accessibilityRole="button"
+                accessibilityLabel={pinned ? 'Fjern fastgørelse' : 'Fastgør besked'}
+                onPress={() => { setMenuOpen(false); onTogglePin() }}
+                style={styles.menuRow}
+              >
+                {pinned
+                  ? <PinOff size={18} color={tokens.color.fg2} strokeWidth={1.8} />
+                  : <Pin size={18} color={tokens.color.fg2} strokeWidth={1.8} />}
+                <Text style={styles.menuText}>{pinned ? 'Fjern fastgørelse' : 'Fastgør besked'}</Text>
+              </Pressable>
+            ) : null}
+            {onSaveMemory ? (
+              <Pressable
+                testID="msg-save-memory"
+                accessibilityRole="button"
+                accessibilityLabel="Brug som hukommelse"
+                onPress={() => { setMenuOpen(false); onSaveMemory() }}
+                style={styles.menuRow}
+              >
+                <Brain size={18} color={tokens.color.fg2} strokeWidth={1.8} />
+                <Text style={styles.menuText}>Brug som hukommelse</Text>
+              </Pressable>
+            ) : null}
+            {onRegenerate ? (
+              <Pressable
+                testID="msg-regenerate"
+                accessibilityRole="button"
+                accessibilityLabel="Send igen"
+                onPress={() => { setMenuOpen(false); onRegenerate() }}
+                style={styles.menuRow}
+              >
+                <RotateCw size={18} color={tokens.color.fg2} strokeWidth={1.8} />
+                <Text style={styles.menuText}>Send igen</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </Modal>
       ) : null}
       {!streaming && isUser && onResend ? (
         <View style={styles.userActions}>
@@ -213,6 +276,14 @@ export function MessageBubble({
 const ICON = 17
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
+  menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
+  menuSheet: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    backgroundColor: tokens.color.bg1, borderTopLeftRadius: 18, borderTopRightRadius: 18,
+    paddingTop: 10, paddingBottom: 28, paddingHorizontal: 18
+  },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
+  menuText: { color: tokens.color.fg1, fontSize: 15.5 },
   root: {
     marginHorizontal: tokens.spacing.lg,
     marginVertical: tokens.spacing.sm,

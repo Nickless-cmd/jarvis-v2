@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Activity, Boxes, Eye, MessageCircle, Search, Settings, SquarePen } from 'lucide-react-native'
+import { Activity, Boxes, Eye, MessageCircle, Search, Settings, SquarePen, SlidersHorizontal } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
@@ -25,6 +25,7 @@ export function SidePanel({
   onSelectSession,
   onNewSession,
   onOpenSettings,
+  onOpenChatSettings,
   onOpenSenses,
   onOpenArtifacts,
   onOpenActivity,
@@ -43,6 +44,8 @@ export function SidePanel({
   onSelectSession: (sessionId: string) => void
   onNewSession: () => void
   onOpenSettings: () => void
+  /** Indstillinger for den AKTIVE samtale — model, værktøjer, stemme. */
+  onOpenChatSettings?: () => void
   /** Sansernes Arkiv. Kun sat for husstanden — men serveren er den ægte grænse. */
   onOpenSenses?: () => void
   onOpenArtifacts?: () => void
@@ -165,6 +168,18 @@ export function SidePanel({
                 style={styles.gear}
               >
                 <Activity size={18} color={tokens.color.fg2} strokeWidth={1.8} />
+              </Pressable>
+            ) : null}
+            {onOpenChatSettings ? (
+              <Pressable
+                testID="open-chat-settings"
+                accessibilityRole="button"
+                accessibilityLabel="Denne samtale"
+                onPress={onOpenChatSettings}
+                hitSlop={8}
+                style={styles.gear}
+              >
+                <SlidersHorizontal size={18} color={tokens.color.fg2} strokeWidth={1.8} />
               </Pressable>
             ) : null}
             <Pressable accessibilityRole="button" accessibilityLabel="Indstillinger" onPress={onOpenSettings} hitSlop={8} style={styles.gear}>

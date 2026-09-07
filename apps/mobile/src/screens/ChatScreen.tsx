@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Animated, AppState, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import notifee, { EventType } from '@notifee/react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { laesPins, skiftPin } from '../lib/pinnedMessages'
+import { gemSomHukommelse } from '../lib/memoryApi'
+import { haptik } from '../lib/haptics'
+import { laesIndstillinger, gemIndstillinger, tilStreamFelter, STANDARD, type ChatIndstillinger } from '../lib/chatSettings'
+import { ChatSearchBar } from '../components/ChatSearchBar'
+import { ChatSettingsSheet } from '../components/ChatSettingsSheet'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
@@ -198,6 +205,13 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [remoteMode, setRemoteMode] = useState<'chat' | 'code'>('chat')
   const [thinkingMode, setThinkingMode] = useState<ThinkingMode>('think')
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>('ask')
+  // Indstillinger PR. SAMTALE. Én samtale kan handle om kode og en anden om
+  // aftaler; de har ikke brug for samme model eller samme værktøjs-omfang.
+  const [chatCfg, setChatCfg] = useState<ChatIndstillinger>(STANDARD)
+  const [chatCfgOpen, setChatCfgOpen] = useState(false)
+  const [soegAaben, setSoegAaben] = useState(false)
+  const insets = useSafeAreaInsets()
+  const [pins, setPins] = useState<string[]>([])
   // FEATURE 1: gendan sidst valgte model på tværs af app-genstart. Sættes
   // ubetinget når der findes et gemt valg — whoami-defaulten bruger `cur ??`
   // og bevarer derfor det gemte uanset rækkefølge.
@@ -441,6 +455,16 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   // Greeting vises når chatten er tom (opstart / ny samtale) — som på desktop.
   const showGreeting = sessions.messages.length === 0 && !sessions.loading
 
+  useEffect(() => {
+    let levende = true
+    const sid = sessions.activeId
+    if (!sid) { setChatCfg(STANDARD); return }
+    laesIndstillinger(sid)
+      .then((c) => { if (levende) setChatCfg(c) })
+      .catch(() => { if (levende) setChatCfg(STANDARD) })
+    return () => { levende = false }
+  }, [sessions.activeId])
+
   const modelOpts = () => (model ? { model: model.model, providerChoice: model.providerChoice } : {})
 
   const ensureSessionAndSend = async (text: string) => {
@@ -467,12 +491,16 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     const attachmentIds = readyAttachments.length
       ? readyAttachments.map((a) => a.uploadId ?? a.id)
       : undefined
+    // Samtalens egne valg vinder over de globale. En tom per-chat-model
+    // betyder «som appen plejer» — ikke «ingen model».
+    const cfg = tilStreamFelter(chatCfg, model?.model ?? '')
     stream.send(config, sessionId, outgoingChatText(text, researchMode), {
       ...modelOpts(),
+      model: cfg.model,
       attachmentIds,
       thinkingMode,
-      approvalMode,
-      mode: remoteMode
+      approvalMode: cfg.approvalMode,
+      mode: chatCfg.vaerktoejer === 'fuldt' ? cfg.mode : remoteMode
     })
     setPendingAttachments([])
     if (researchMode) setResearchMode(false)
@@ -552,6 +580,30 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     await stageAttachments(await pickDocuments())
   }
 
+  useEffect(() => {
+    const id = sessions.activeId
+    if (!id) { setPins([]); return }
+    let levende = true
+    laesPins(id).then((p) => { if (levende) setPins(p) }).catch(() => undefined)
+    return () => { levende = false }
+  }, [sessions.activeId])
+
+  const handleTogglePin = (messageId: string) => {
+    const id = sessions.activeId
+    if (!id) return
+    void haptik('markér')
+    skiftPin(id, messageId).then(setPins).catch(() => undefined)
+  }
+
+  const handleSaveMemory = (message: { content: string }) => {
+    if (!config) return
+    void haptik('markér')
+    gemSomHukommelse(config, message.content, sessions.activeId ?? undefined).then((r) => {
+      // Kvitteringen er hele pointen: uden den ved man ikke om han fik den.
+      Alert.alert(r.ok ? 'Husket' : 'Ikke gemt', r.besked)
+    })
+  }
+
   const handleSelectSession = (sessionId: string) => {
     setPanelOpen(false)
     const s = (sessions.sessions ?? []).find((x) => x.id === sessionId)
@@ -588,6 +640,18 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       ) : null}
 
       <View style={styles.flex}>
+        {/* Svæver ligesom TopBar og komponisten. Som almindeligt søskende-
+            element ville feltet lande i y=0 — altså BAG den svævende
+            topbjælke, hvor man hverken kan se eller ramme det.
+            insets.top + 52 = under bjælken; tråden ruller videre bagved. */}
+        <View style={[styles.floatSearch, { top: insets.top + 52 }]} pointerEvents="box-none">
+        <ChatSearchBar
+          visible={soegAaben}
+          messages={sessions.messages}
+          onJump={(id) => listRef.current?.jumpToMessage(id)}
+          onClose={() => setSoegAaben(false)}
+        />
+        </View>
         <Animated.View style={{ flex: 1, opacity: sessionFade }}>
           {showGreeting ? (
             <GreetingHero userName={displayName} presence={presence} />
@@ -597,6 +661,9 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
               messages={sessions.messages}
               blocks={stream.state.blocks}
               onResend={(text) => void ensureSessionAndSend(text)}
+              pins={pins}
+              onTogglePin={sessions.activeId ? handleTogglePin : undefined}
+              onSaveMemory={config ? handleSaveMemory : undefined}
               onScrollOffset={onScrollOffset}
               thinking={stream.state.status === 'working' || serverBusy}
               bottomInset={liftPadding}
@@ -765,6 +832,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             setPanelOpen(false)
             setSettingsOpen(true)
           }}
+          onOpenChatSettings={sessions.activeId ? () => {
+            setPanelOpen(false)
+            setChatCfgOpen(true)
+          } : undefined}
           bubbleSupported={bubbleSupported}
           onFloatActive={() => {
             const id = sessions.activeId
@@ -774,6 +845,22 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           }}
         />
       ) : null}
+
+      <ChatSettingsSheet
+        visible={chatCfgOpen}
+        onSearch={() => setSoegAaben(true)}
+        cfg={chatCfg}
+        modeller={modelChoices.filter((c) => c.model).map((c) => ({ model: c.model, label: c.label }))}
+        onChange={(next) => {
+          const sid = sessions.activeId
+          if (!sid) return
+          // Optimistisk: kontakten skal føles øjeblikkelig, og et fejlet skriv
+          // må ikke rulle UI'et tilbage midt under fingeren.
+          setChatCfg((nu) => ({ ...nu, ...next }))
+          void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
+        }}
+        onClose={() => setChatCfgOpen(false)}
+      />
 
       <Modal visible={settingsOpen} animationType="slide" onRequestClose={() => setSettingsOpen(false)}>
         <SettingsScreen onClose={() => setSettingsOpen(false)} />
@@ -847,6 +934,12 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   flex: {
     flex: 1
+  },
+  floatSearch: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 5
   },
   floatBottom: {
     position: 'absolute',

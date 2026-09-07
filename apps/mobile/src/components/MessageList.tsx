@@ -24,6 +24,9 @@ export interface MessageListHandle {
   jumpOlderUser: () => void // forrige bruger-besked (op i historik)
   jumpNewerUser: () => void // næste bruger-besked (ned mod nyeste)
   scrubTo: (fraction: number) => void // 0=nyeste, 1=ældste
+  /** Spring til en besked ved dens id. Til søgning: man finder et træf i en
+   *  liste og vil se det i sin sammenhæng, ikke bare læse uddraget. */
+  jumpToMessage: (messageId: string) => void
 }
 
 interface MessageListProps {
@@ -39,6 +42,12 @@ interface MessageListProps {
    */
   bottomInset?: number
   onResend?: (text: string) => void
+  /** Id'er på fastgjorte beskeder. Styrer ikonet i besked-menuen. */
+  pins?: string[]
+  /** Slå fast/løs på en besked. Udeladt → punktet vises ikke. */
+  onTogglePin?: (messageId: string) => void
+  /** Gem et af hans svar i hukommelsen. Udeladt → punktet vises ikke. */
+  onSaveMemory?: (message: ChatMessage) => void
   /**
    * Kaldes med afstanden fra bunden af traaden.
    *
@@ -156,7 +165,7 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0 },
+  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory },
   ref
 ) {
   const tokens = useTheme()
@@ -273,7 +282,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       if (i != null) flatRef.current?.scrollToIndex({ index: i, animated: true, viewPosition: 0 })
     },
     scrubTo: (f: number) => flatRef.current?.scrollToOffset({ offset: f * contentLenRef.current, animated: false }),
-  }), [userFlags])
+    jumpToMessage: (messageId: string) => {
+      const i = ordered.findIndex((r) => r.kind === 'msg' && String(r.message.id) === String(messageId))
+      if (i < 0) return
+      // viewPosition 0.3: træffet lander lidt under toppen, så man kan se
+      // linjerne FØR det — en besked uden sin optakt er svær at genkende.
+      flatRef.current?.scrollToIndex({ index: i, animated: true, viewPosition: 0.3 })
+    },
+  }), [userFlags, ordered])
 
   return (
     <FlatList
@@ -305,6 +321,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           <MessageBubble
             message={item.message}
             onResend={item.message.role === 'user' ? onResend : undefined}
+            pinned={pins?.includes(String(item.message.id))}
+            onTogglePin={onTogglePin ? () => onTogglePin(String(item.message.id)) : undefined}
+            onSaveMemory={
+              // Kun hans egne svar. En hukommelse af Bjørns egen besked er
+              // bare et ekko — det er svaret der er værd at gemme.
+              onSaveMemory && item.message.role === 'assistant'
+                ? () => onSaveMemory(item.message)
+                : undefined
+            }
             hideActions={item.hideActions}
           />
         )

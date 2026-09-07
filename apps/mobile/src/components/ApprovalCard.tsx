@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { haptik } from '../lib/haptics'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
@@ -67,12 +68,12 @@ export function ApprovalCard({
       ) : null}
       {/* Uden for ScrollView'en: knapperne skal være nåelige uanset indholdets længde. */}
       <View style={styles.actions}>
-        <Pressable accessibilityRole="button" onPress={onDeny} style={[styles.button, styles.deny]}>
+        <Pressable accessibilityRole="button" onPress={() => { void haptik('afvis'); onDeny() }} style={[styles.button, styles.deny]}>
           <Text style={styles.buttonText}>Afvis</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          onPress={onApprove}
+          onPress={() => { void haptik('godkend'); onApprove() }}
           style={[styles.button, styles.allow]}
         >
           <Text style={styles.allowText}>Tillad</Text>

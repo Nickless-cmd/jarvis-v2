@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { haptik } from '../lib/haptics'
 import { ArrowUp, AudioLines, ChevronDown, Code2, Cpu, FileText, MessageCircle, Mic, Plus, Square } from 'lucide-react-native'
 import { shortModelLabel } from '../lib/modelLabel'
 import { tokens } from '../theme/tokens'
@@ -91,6 +92,9 @@ export function Composer({
     if ((!value && att.length === 0) || disabled || working || submitting) return
 
     setSubmitting(true)
+    // Kvitteringen kommer FØR kaldet: den skal mærkes i det øjeblik man
+    // trykker, ikke når serveren svarer.
+    void haptik('send')
     try {
       await onSend(value)
       setText('')
@@ -265,7 +269,7 @@ export function Composer({
               testID="composer-button"
               accessibilityRole="button"
               disabled={(disabled && !working) || submitting}
-              onPress={working ? onStop : submit}
+              onPress={working ? () => { void haptik('stop'); onStop() } : submit}
               style={({ pressed }) => [
                 styles.sendBtn,
                 working ? styles.stopBtn : null,

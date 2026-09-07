@@ -38,17 +38,111 @@ def test_register_and_get_bridge():
     assert "read_file" in found.capabilities
 
 
-def test_register_replaces_existing():
-    """Newer registration for same user_id replaces the older."""
+def test_samme_klient_der_genforbinder_erstatter_sig_selv():
+    """Genforbinder DEN SAMME app, ryger den gamle socket ud.
+
+    Hed foer «newer registration for same user_id replaces the older», hvor
+    noeglen var user_id alene. Efter 7/9 er noeglen (user_id, client_id), fordi
+    computer og telefon skal kunne vaere forbundet samtidig — men for én og
+    samme klient er kravet uaendret: den doede socket maa ikke blive liggende.
+    """
     from core.services.jarvisx_bridge import bridge_registry, BridgeConnection
     bridge_registry.clear()
 
-    old = BridgeConnection(user_id="user-x", client="test-old")
-    new = BridgeConnection(user_id="user-x", client="test-new")
+    old = BridgeConnection(user_id="user-x", client="desk", client_id="desk-1")
+    new = BridgeConnection(user_id="user-x", client="desk", client_id="desk-1")
     bridge_registry.register(old)
     bridge_registry.register(new)
 
     assert bridge_registry.get_bridge("user-x") is new
+    assert bridge_registry.list_bridges("user-x") == [new]
+
+
+def test_telefon_og_computer_sparker_ikke_hinanden_af():
+    """To ENHEDER under samme ejer lever side om side.
+
+    Det var den konkrete blokering for at lade Jarvis udfoere ting paa
+    telefonen: registret holdt én bro pr. bruger og rev den eksisterende ned
+    ved registrering, saa hvert enhedsskift ville have slaaet den anden af.
+    """
+    from core.services.jarvisx_bridge import bridge_registry, BridgeConnection
+    bridge_registry.clear()
+
+    desk = BridgeConnection(user_id="user-x", client="jarvisx-electron",
+                            client_id="desk-1", capabilities=["operator_bash"])
+    tlf = BridgeConnection(user_id="user-x", client="jarvis-mobile",
+                           client_id="mobil-1", capabilities=["phone_photo"])
+    bridge_registry.register(desk)
+    bridge_registry.register(tlf)
+
+    forbundne = bridge_registry.list_bridges("user-x")
+    assert len(forbundne) == 2
+    assert desk in forbundne and tlf in forbundne
+    # og den ene forsvinder ikke naar den anden falder fra
+    bridge_registry.unregister(tlf)
+    assert bridge_registry.list_bridges("user-x") == [desk]
+
+
+def test_vaerktoejet_vaelger_enheden():
+    """``capabilities`` har vaeret registreret hele tiden — nu STYRER den.
+
+    Desk sender ``Object.keys(handlers)``, altsaa sin faktiske handler-liste,
+    og feltet blev logget og rapporteret men aldrig laest til routing. Uden
+    det her skulle hver tur huske hvilken enhed et vaerktoej bor paa.
+    """
+    from core.services.jarvisx_bridge import bridge_registry, BridgeConnection
+    bridge_registry.clear()
+
+    desk = BridgeConnection(user_id="user-x", client="jarvisx-electron",
+                            client_id="desk-1",
+                            capabilities=["operator_bash", "operator_screenshot"])
+    tlf = BridgeConnection(user_id="user-x", client="jarvis-mobile",
+                           client_id="mobil-1", capabilities=["phone_photo"])
+    bridge_registry.register(desk)
+    bridge_registry.register(tlf)
+
+    assert bridge_registry.get_bridge("user-x", tool="operator_bash") is desk
+    assert bridge_registry.get_bridge("user-x", tool="phone_photo") is tlf
+
+
+def test_ukendt_vaerktoej_falder_tilbage_til_den_rigeste_bro():
+    """Melder ingen vaerktoejet, gaar turen derhen hvor der er mest at gribe i.
+
+    Sikrer at en klient som (endnu) ikke annoncerer capabilities opfoerer sig
+    praecis som foer aendringen — ellers ville routingen kunne sende et
+    operator-kald til telefonen, fordi ingen af dem «kunne» det.
+    """
+    from core.services.jarvisx_bridge import bridge_registry, BridgeConnection
+    bridge_registry.clear()
+
+    desk = BridgeConnection(user_id="user-x", client="jarvisx-electron",
+                            client_id="desk-1",
+                            capabilities=["operator_bash", "operator_screenshot"])
+    tlf = BridgeConnection(user_id="user-x", client="jarvis-mobile",
+                           client_id="mobil-1", capabilities=["phone_photo"])
+    bridge_registry.register(desk)
+    bridge_registry.register(tlf)
+
+    assert bridge_registry.get_bridge("user-x", tool="noget_ukendt") is desk
+    assert bridge_registry.get_bridge("user-x") is desk
+
+
+def test_ved_lige_stand_vinder_den_nyest_forbundne():
+    """Tie-break paa registreringsraekkefoelge, ikke paa klientnavn.
+
+    Alfabetisk ville vaere vilkaarligt og skjule sig godt: 'test-old' slaar
+    'test-new' paa bogstaver, saa den aeldste bro ville vinde uden at nogen
+    kunne se hvorfor.
+    """
+    from core.services.jarvisx_bridge import bridge_registry, BridgeConnection
+    bridge_registry.clear()
+
+    foerst = BridgeConnection(user_id="user-x", client="a-klient", client_id="a")
+    sidst = BridgeConnection(user_id="user-x", client="z-klient", client_id="z")
+    bridge_registry.register(foerst)
+    bridge_registry.register(sidst)
+
+    assert bridge_registry.get_bridge("user-x") is sidst
 
 
 def test_unregister_removes_bridge():

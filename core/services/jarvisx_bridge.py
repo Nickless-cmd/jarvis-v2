@@ -147,6 +147,16 @@ class BridgeConnection:
 
     user_id: str
     client: str = "unknown"
+    # Stabil id pr. app-INSTANS, ikke pr. bruger. Uden den kunne registret kun
+    # holde én bro pr. bruger, og telefonen ville sparke computeren af broen
+    # (og omvendt) hver gang Bjoern skiftede enhed. Falder tilbage til
+    # ``client``, saa en desk der genforbinder erstatter sig selv — men aldrig
+    # en anden enhed.
+    client_id: str = ""
+    # Registreringsraekkefoelge, sat af registret. Bruges som tie-break naar to
+    # klienter melder lige mange vaerktoejer: den nyest forbundne vinder.
+    # Alfabetisk paa klientnavn ville vaere vilkaarligt og skjule sig godt.
+    reg_seq: int = 0
     version: str = ""
     platform: str = ""
     capabilities: list[str] = field(default_factory=list)
@@ -292,45 +302,78 @@ class BridgeConnection:
 
 
 class BridgeRegistry:
-    """Process-local registry of active bridges, keyed by user_id."""
+    """Process-local registry of active bridges: user_id → client_id → bro.
+
+    **To niveauer siden 7/9-2026.** Foer laa der én bro pr. bruger, og
+    ``register`` rev den eksisterende ned med «tear it down first». Det var
+    rigtigt saa laenge der kun fandtes én slags klient (desk), men det
+    betyder at telefonen ville sparke computeren af broen i det sekund den
+    forbandt under samme ejer-id — og omvendt ved hvert enhedsskift.
+
+    En ny bro erstatter nu kun en bro med SAMME ``client_id`` (den samme app
+    der genforbinder). Forskellige enheder lever side om side.
+    """
 
     def __init__(self) -> None:
-        self._by_user: dict[str, BridgeConnection] = {}
+        self._by_user: dict[str, dict[str, BridgeConnection]] = {}
+        self._seq = 0
+
+    @staticmethod
+    def _client_key(conn: BridgeConnection) -> str:
+        return str(conn.client_id or conn.client or "unknown")
 
     def register(self, conn: BridgeConnection) -> None:
-        existing = self._by_user.get(conn.user_id)
+        klienter = self._by_user.setdefault(conn.user_id, {})
+        noegle = self._client_key(conn)
+        existing = klienter.get(noegle)
         if existing is not None and existing is not conn:
-            # Older bridge for same user: tear it down first.
+            # Samme klient der genforbinder: riv den gamle socket ned.
+            # En ANDEN klient (telefon vs computer) roeres ikke.
             existing.cancel_all_pending(reason="bridge_replaced")
             logger.info(
-                "jarvisx_bridge: replacing existing bridge user=%s", conn.user_id,
+                "jarvisx_bridge: replacing existing bridge user=%s client=%s",
+                conn.user_id, noegle,
             )
-        self._by_user[conn.user_id] = conn
+        self._seq += 1
+        conn.reg_seq = self._seq
+        klienter[noegle] = conn
         logger.info(
-            "jarvisx_bridge: registered user=%s client=%s capabilities=%s",
-            conn.user_id, conn.client, conn.capabilities,
+            "jarvisx_bridge: registered user=%s client=%s capabilities=%d andre=%s",
+            conn.user_id, noegle, len(conn.capabilities),
+            [k for k in klienter if k != noegle],
         )
         self._publish_presence()
 
     def unregister(self, conn: BridgeConnection) -> None:
-        """Remove ONLY if the registered bridge for this user IS this conn.
+        """Remove ONLY if the registered bridge for this client IS this conn.
         (Prevents tearing down a newer bridge when an older WS cleans up.)"""
-        current = self._by_user.get(conn.user_id)
-        if current is conn:
+        klienter = self._by_user.get(conn.user_id) or {}
+        noegle = self._client_key(conn)
+        if klienter.get(noegle) is conn:
             conn.cancel_all_pending()
-            del self._by_user[conn.user_id]
-            logger.info("jarvisx_bridge: unregistered user=%s", conn.user_id)
+            del klienter[noegle]
+            if not klienter:
+                self._by_user.pop(conn.user_id, None)
+            logger.info(
+                "jarvisx_bridge: unregistered user=%s client=%s", conn.user_id, noegle,
+            )
             self._publish_presence()
 
     def _evict_if_current(self, user_id: str, conn: "BridgeConnection", *, reason: str) -> None:
         """Fjern en stale/død bro fra registret HVIS den stadig er den aktuelle for
         user_id (samme guard som unregister — riv ikke en nyere bro ned). Kaldes når
         et send afslører en lukket WS, så næste dispatch ikke rammer den samme zombie."""
-        current = self._by_user.get(user_id)
-        if current is conn:
+        klienter = self._by_user.get(user_id) or {}
+        noegle = self._client_key(conn)
+        if klienter.get(noegle) is conn:
             conn.cancel_all_pending(reason=reason)
-            del self._by_user[user_id]
-            logger.warning("jarvisx_bridge: evicted stale bridge user=%s reason=%s", user_id, reason)
+            del klienter[noegle]
+            if not klienter:
+                self._by_user.pop(user_id, None)
+            logger.warning(
+                "jarvisx_bridge: evicted stale bridge user=%s client=%s reason=%s",
+                user_id, noegle, reason,
+            )
             self._publish_presence()
 
     def _publish_presence(self) -> None:
@@ -340,10 +383,23 @@ class BridgeRegistry:
             from core.services import bridge_presence
             bridge_presence.publish({
                 uid: {
-                    "client": c.client, "platform": c.platform, "version": c.version,
-                    "capabilities": list(c.capabilities),
+                    # Bagudkompatibel form: DEN foretrukne bro staar oeverst, saa
+                    # laesere der kun kender {client, platform, ...} virker uaendret.
+                    "client": (foretrukken := self._foretrukken(klienter)).client,
+                    "platform": foretrukken.platform,
+                    "version": foretrukken.version,
+                    "capabilities": list(foretrukken.capabilities),
+                    # Nyt: alle forbundne klienter, saa diagnosen kan se at BAADE
+                    # computer og telefon er der — og hvem der kan hvad.
+                    "clients": {
+                        k: {
+                            "client": c.client, "platform": c.platform,
+                            "version": c.version, "capabilities": list(c.capabilities),
+                        }
+                        for k, c in klienter.items()
+                    },
                 }
-                for uid, c in self._by_user.items()
+                for uid, klienter in self._by_user.items() if klienter
             })
         except Exception:  # pragma: no cover - presence er blødt
             pass
@@ -358,7 +414,7 @@ class BridgeRegistry:
             presence = bridge_presence.all_presence()
         except Exception:
             presence = {}
-        local = list(self._by_user.keys())
+        local = [uid for uid, k in self._by_user.items() if k]
         token = bool(internal_dispatch_token())
         if presence and user_id not in presence:
             reason = "user_id_mismatch"   # bro FINDES, men under et andet user_id
@@ -385,17 +441,57 @@ class BridgeRegistry:
         )
         return detail
 
-    def get_bridge(self, user_id: str) -> Optional[BridgeConnection]:
-        return self._by_user.get(user_id)
+    @staticmethod
+    def _foretrukken(klienter: dict[str, BridgeConnection]) -> BridgeConnection:
+        """Broen der bruges naar intet vaerktoej peger et bestemt sted hen.
+
+        Den med flest annoncerede vaerktoejer, og ved lige stand den nyest
+        forbundne. Det er ikke et skoensmaessigt valg: computeren melder hele
+        ``operator_*``-saettet, mens telefonen melder sine faa organer — saa en
+        tur uden vaerktoejskrav lander dér hvor der er mest at gribe fat i,
+        praecis som foer telefonen fandtes.
+        """
+        return max(klienter.values(), key=lambda c: (len(c.capabilities), c.reg_seq))
+
+    def get_bridge(
+        self, user_id: str, *, tool: str | None = None,
+    ) -> Optional[BridgeConnection]:
+        """Broen for ``user_id`` — og med ``tool`` DEN der kan udfoere det.
+
+        ``capabilities`` har vaeret registreret og rapporteret hele tiden
+        (desk sender ``Object.keys(handlers)``, altsaa sin faktiske
+        handler-liste), men ingen har nogensinde LAEST den til routing. Det
+        er hele mekanikken bag at telefonen kan faa sine egne vaerktoejer
+        uden at nogen skal huske hvilken enhed de bor paa.
+
+        Falder tilbage til den foretrukne bro naar intet melder vaerktoejet —
+        saa en klient der (endnu) ikke annoncerer capabilities opfoerer sig
+        praecis som foer.
+        """
+        klienter = self._by_user.get(user_id) or {}
+        if not klienter:
+            return None
+        if tool:
+            kan = [c for c in klienter.values() if tool in (c.capabilities or ())]
+            if kan:
+                # Melder BEGGE enheder vaerktoejet, vinder den nyest forbundne —
+                # den Bjoern sidst har haft i haanden.
+                return max(kan, key=lambda c: c.reg_seq)
+        return self._foretrukken(klienter)
+
+    def list_bridges(self, user_id: str) -> list[BridgeConnection]:
+        """Alle forbundne klienter for en bruger (computer OG telefon)."""
+        return list((self._by_user.get(user_id) or {}).values())
 
     def list_user_ids(self) -> list[str]:
         """user_id'er med en aktiv bro (til bro_broker / override-switch)."""
-        return list(self._by_user.keys())
+        return [uid for uid, k in self._by_user.items() if k]
 
     def clear(self) -> None:
         """Test helper — drop all registrations."""
-        for conn in self._by_user.values():
-            conn.cancel_all_pending(reason="registry_cleared")
+        for klienter in self._by_user.values():
+            for conn in klienter.values():
+                conn.cancel_all_pending(reason="registry_cleared")
         self._by_user.clear()
 
     async def dispatch(
@@ -419,7 +515,7 @@ class BridgeRegistry:
         uendelig løkke. Fail-safe: enhver forward-fejl degraderer til
         bridge_not_connected (uændret adfærd når api reelt mangler broen).
         """
-        bridge = self.get_bridge(user_id)
+        bridge = self.get_bridge(user_id, tool=tool)
         if bridge is None:
             return await self._dispatch_without_local_bridge(
                 user_id=user_id, tool=tool, args=args,

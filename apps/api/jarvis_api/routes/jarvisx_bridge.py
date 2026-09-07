@@ -183,6 +183,11 @@ async def jarvisx_bridge_ws(ws: WebSocket) -> None:
     conn = BridgeConnection(
         user_id=user_id,
         client=str(first.get("client") or "jarvisx"),
+        # Stabil id pr. app-instans, saa computer og telefon kan vaere forbundet
+        # samtidig under samme ejer. Klienter der ikke sender den falder tilbage
+        # til klientnavnet — desk ('jarvisx-electron') erstatter dermed stadig
+        # sig selv ved genforbindelse, praecis som foer.
+        client_id=str(first.get("client_id") or first.get("client") or "jarvisx"),
         version=str(first.get("version") or ""),
         platform=str(first.get("platform") or ""),
         capabilities=list(first.get("capabilities") or []),

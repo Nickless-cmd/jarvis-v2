@@ -232,6 +232,10 @@ def list_for_user(user_id: str) -> list[dict]:
             "id": c["id"], "name": c["name"], "kind": c["kind"],
             "category": c["category"], "icon": c["icon"], "desc": c["desc"],
             "scopes": list(c.get("scopes") or []),
+            # Skal med: tool_scoping laeser den for at aabne app'ens
+            # vaerktoejer i chat/code. Droppes den her, er hele koblingen
+            # stille virkningsloes.
+            "tools": list(c.get("tools") or []),
             "post_connect_hint": c.get("post_connect_hint"),
             "status": status,
             # coming_soon kan ikke forbindes endnu → aldrig "connected".

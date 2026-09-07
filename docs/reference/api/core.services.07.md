@@ -546,8 +546,8 @@ _Connector-registret — hvad brugeren har forbundet, og hvad det laaser op._
 | function | `_connected` | `(user_id, c)` | — | [src](../../../core/services/connectors.py#L207) |
 | function | `oauth_request_for` | `(connector_id)` | Map et connector-id → (oauth_provider, scopes) til /api/oauth/{id}/start. | [src](../../../core/services/connectors.py#L213) |
 | function | `list_for_user` | `(user_id)` | Hele kataloget beriget med per-bruger `connected` + `enabled`. | [src](../../../core/services/connectors.py#L225) |
-| function | `_audit` | `(event, user_id, connector_id)` | — | [src](../../../core/services/connectors.py#L244) |
-| function | `delete_for_user` | `(user_id, connector_id)` | Afbryd & slet: revoke hos provider (best-effort) + lokal token-wipe + ryd flag. | [src](../../../core/services/connectors.py#L252) |
+| function | `_audit` | `(event, user_id, connector_id)` | — | [src](../../../core/services/connectors.py#L248) |
+| function | `delete_for_user` | `(user_id, connector_id)` | Afbryd & slet: revoke hos provider (best-effort) + lokal token-wipe + ryd flag. | [src](../../../core/services/connectors.py#L256) |
 
 ## `core/services/consent_registry.py`
 _Consent Registry — user preferences and boundaries that persist across sessions._

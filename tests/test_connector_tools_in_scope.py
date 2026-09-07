@@ -114,3 +114,35 @@ def test_registret_er_den_ENE_sandhed():
     for c in med_tools:
         for t in c["tools"]:
             assert t in kendte, "%s peger på et værktøj der ikke findes: %s" % (c["id"], t)
+
+
+def test_den_AEGTE_list_for_user_baerer_tools_med():
+    """Uden mock. Denne test findes fordi de andre var mockede — og mocken
+    skjulte at `list_for_user` byggede et nyt dict UDEN `tools`.
+
+    Fixet var altsaa deployet og virkningsloest: porten spurgte efter en
+    noegle afsenderen ikke sendte. Samme form som resten af ugens fund —
+    koden var rigtig, koblingen manglede — men her var det min egen test der
+    mockede praecis den graense der var braekket.
+    """
+    from core.services.connectors import list_for_user
+
+    ud = {c["id"]: c for c in list_for_user("prøve-bruger")}
+    assert ud["gmail"].get("tools"), "list_for_user taber `tools` → hele koblingen er død"
+    assert "gmail_list" in ud["gmail"]["tools"]
+
+
+def test_hele_kaeden_ende_til_ende_uden_mock_af_connectors():
+    """Fra katalog → list_for_user → tool_scoping. Kun `_connected`/`is_enabled`
+    mockes, fordi de kraever en rigtig brugers tokens."""
+    from unittest.mock import patch
+
+    import core.services.connectors as C
+    from core.tools.tool_scoping import allowed_tool_names
+
+    with patch.object(C, "_connected", return_value=True), \
+         patch.object(C, "is_enabled", return_value=True), \
+         patch("core.identity.workspace_context.current_user_id", return_value="u1"):
+        t = allowed_tool_names(role="owner", scope="chat", all_names=VAERKTOEJER)
+
+    assert "gmail_list" in t and "calendar_list_events" in t

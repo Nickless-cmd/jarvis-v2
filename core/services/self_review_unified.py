@@ -259,13 +259,27 @@ def run_self_review(*, period: str = "ad-hoc") -> dict[str, Any]:
         review_id = int(cursor.lastrowid)
         conn.commit()
 
-    # 2026-09-04 (memory repair, R4): lektierne endte i "morning thread", hvis
-    # eneste læser aldrig blev kaldt. Nu i lessons-lageret (proposed → active).
-    try:
-        from core.services.lessons import record_review_lessons
-        record_review_lessons(list(review.get("lessons") or []), "self_review")
-    except Exception:
-        pass
+    # Selvevalueringens "lektier" ryger IKKE i lessons-lageret (7/9-2026).
+    #
+    # R4-reparationen 4/9 flyttede dem hertil, fordi deres tidligere læser
+    # aldrig blev kaldt. Men de er ikke lektier: de genereres fra TÆLLERE
+    # (linje 110-127) og beskriver en tilstand, ikke en årsag —
+    #
+    #     "3 åbne regrets akkumulerer — reconcile eller lær fra dem."
+    #     "7 uaccepterede blinde pletter venter — anerkend dem."
+    #
+    # og en LLM omskriver dem bagefter, hvilket gjorde det værre. Målt live i
+    # Bjørns prompt 7/9 stod der tre af dem under overskriften «Lektier (det
+    # jeg har lært af fejl)», to i ødelagt dansk:
+    #
+    #     "7 åbne bedre områder viser en potensiel for uopnåede mål."
+    #
+    # 337 tegn støj i HVER eneste prompt, og de var det ENESTE der stod dér —
+    # så blokken lærte ham ingenting og lærte ham samtidig at ignorere den.
+    #
+    # Selvevalueringen har sin egen tabel (`lessons_json` ovenfor) og sin egen
+    # overflade. `lessons` er til det han har lært af FEJL: Bjørns rettelser og
+    # tool-fejl. De to ting hører ikke samme sted.
 
     try:
         event_bus.publish("cognitive_self_review.completed", {

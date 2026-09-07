@@ -117,6 +117,21 @@ def ready_profiles_for(provider: str) -> list[str]:
         if provider_auth_ready(provider=provider, auth_profile=profile):
             ready.append(profile)
 
+    # Delt ejer-nøgle i runtime.json (HuggingFace, xkiro): der findes ingen
+    # profil-mappe at scanne, så uden det her returneres [] og udbyderen kommer
+    # ALDRIG i cheap-puljen. Målt 7/9-2026: xkiro var klar
+    # (provider_auth_ready=True) og svarede på et direkte kald, men
+    # `_configured_cheap_candidates` gav nul kandidater, fordi profil-listen var
+    # tom. HuggingFace skjulte hullet, fordi den OGSÅ har profil-nøgler.
+    #
+    # Tredje sted den samme nøgle skal kendes — readiness, dispatch og her.
+    # TILFØJES, erstatter ikke: en kortslutning her ville have fjernet
+    # HuggingFaces `account2`, som findes som rigtig profil.
+    if "default" not in ready:
+        from core.services.cheap_provider_runtime_keys import has_runtime_owner_key
+        if has_runtime_owner_key(provider):
+            ready.append("default")
+
     result = _sort_default_first(ready)
     _CACHE[provider] = (now + _TTL_SECONDS, result)
     return list(result)

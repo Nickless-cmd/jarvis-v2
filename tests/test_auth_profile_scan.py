@@ -1,3 +1,5 @@
+from pathlib import Path
+
 def test_ready_profiles_for_scans_dirs(tmp_path, monkeypatch):
     from core.services import auth_profile_scan as s
     # build auth/profiles/{default,account2}/providers/groq/
@@ -67,3 +69,44 @@ def test_cache_ttl_avoids_rescan(tmp_path, monkeypatch):
     s.clear_cache()
     s.ready_profiles_for("groq"); s.ready_profiles_for("groq")
     assert calls["n"] == 1   # second call served from cache
+
+
+# ── Delt ejer-nøgle i runtime.json (7/9-2026) ────────────────────────────────
+# xkiro var klar og svarede på direkte kald, men kom aldrig i cheap-puljen:
+# profil-listen var tom, fordi nøglen ikke ligger i et profil-arkiv.
+
+def test_runtime_noegle_giver_default_profil(monkeypatch):
+    import core.services.auth_profile_scan as s
+    import core.services.cheap_provider_runtime_keys as nk
+    s._CACHE.clear()
+    monkeypatch.setattr(nk, "has_runtime_owner_key", lambda p: p == "xkiro")
+    monkeypatch.setattr(s, "_profiles_root", lambda: Path("/findes-ikke"))
+    assert s.ready_profiles_for("xkiro") == ["default"]
+
+
+def test_udbyder_uden_runtime_noegle_forbliver_tom(monkeypatch):
+    import core.services.auth_profile_scan as s
+    import core.services.cheap_provider_runtime_keys as nk
+    s._CACHE.clear()
+    monkeypatch.setattr(nk, "has_runtime_owner_key", lambda p: False)
+    monkeypatch.setattr(s, "_profiles_root", lambda: Path("/findes-ikke"))
+    assert s.ready_profiles_for("noget-ukendt") == []
+
+
+def test_rigtige_profiler_overlever_runtime_noeglen(monkeypatch):
+    """Kortslutning her ville have fjernet HuggingFaces `account2`."""
+    import core.services.auth_profile_scan as s
+    import core.services.cheap_provider_runtime_keys as nk
+    s._CACHE.clear()
+    monkeypatch.setattr(nk, "has_runtime_owner_key", lambda p: True)
+    monkeypatch.setattr(s, "ready_profiles_for", s.ready_profiles_for)
+    kaldt = {}
+
+    def falsk_root():
+        kaldt["scannet"] = True
+        return Path("/findes-ikke")
+
+    monkeypatch.setattr(s, "_profiles_root", falsk_root)
+    ud = s.ready_profiles_for("huggingface")
+    assert kaldt.get("scannet"), "scanningen skal stadig køre — ikke kortsluttes"
+    assert "default" in ud

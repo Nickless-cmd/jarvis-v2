@@ -10,6 +10,8 @@ import {
 import { ChatScreen } from './screens/ChatScreen'
 import { WorkScreen } from './screens/WorkScreen'
 import { TopBar, type AppMode } from './components/TopBar'
+import { OnboardingGuide } from './components/OnboardingGuide'
+import { erGennemfoert } from './lib/onboarding'
 import { LoginScreen } from './screens/LoginScreen'
 import {
   attachApprovalTapHandler,
@@ -41,6 +43,7 @@ function AppBody() {
   const [updBusy, setUpdBusy] = useState(false)
   const [updProgress, setUpdProgress] = useState(0)
   const [updDismissed, setUpdDismissed] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
   // Arbejde-rummet (V2). Tilstanden bor her — ikke i en navigation-lib;
   // to bevidste tilstande af samme forhold til Jarvis, ikke to apps.
   const [mode, setMode] = useState<AppMode>('snak')
@@ -98,6 +101,14 @@ function AppBody() {
     })
   }, [])
 
+  // Tilladelses-guiden vises ÉN gang, og først efter login: at spørge om
+  // kamera og lokation før man overhovedet er logget ind ligner en app der
+  // beder om alt uden at have gjort sig fortjent til noget.
+  useEffect(() => {
+    if (!config?.authToken) return
+    erGennemfoert().then((f) => setGuideOpen(!f)).catch(() => undefined)
+  }, [config?.authToken])
+
   // Auto-updater: check ved opstart + når app vender tilbage til forgrunden.
   useEffect(() => {
     if (!config?.authToken) return
@@ -136,6 +147,7 @@ function AppBody() {
   return (
     <SessionProvider key={JSON.stringify([config.apiBaseUrl, config.authToken])}>
       <StreamProvider>
+        <OnboardingGuide visible={guideOpen} onDone={() => setGuideOpen(false)} />
         {update && !updDismissed ? (
           <View style={{ marginTop: headerHeight + insets.top }}>
           <UpdateBanner

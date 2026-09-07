@@ -4,6 +4,8 @@ import notifee, { EventType } from '@notifee/react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { laesPins, skiftPin } from '../lib/pinnedMessages'
 import { byggeKontekster, type KontekstSlags } from '../lib/recentContexts'
+import { deling } from '../lib/shareModule'
+import { tolkDeling, kanModtage, type DeltIntent } from '../lib/shareIntake'
 import { getDeviceLocation, loadPrecision, precisionLabel, type LocationPrecision } from '../lib/location'
 import { gemSomHukommelse } from '../lib/memoryApi'
 import * as Clipboard from 'expo-clipboard'
@@ -614,6 +616,29 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       Alert.alert(r.ok ? 'Husket' : 'Ikke gemt', r.besked)
     })
   }
+
+  // Deling udefra: Android har haft filtrene siden 0.2.16, men INGEN har
+  // læst dem — en dør uden nogen bag. Nu lander det delte i komposeren.
+  // Det sendes IKKE af sig selv: man skal kunne skrive hvad der skal ske
+  // med det, før han går i gang.
+  useEffect(() => {
+    const modtag = (intent: DeltIntent) => {
+      if (!kanModtage(intent.mimeType)) {
+        Alert.alert('Kan ikke tage imod', 'Jarvis kan tage imod tekst, billeder og PDF.')
+        return
+      }
+      const h = tolkDeling(intent)
+      if (h.slags === 'ingenting') return
+      if (h.slags === 'filer') {
+        void stageAttachments(
+          h.uris.map((uri, i) => ({ uri, name: `delt-${i + 1}`, mime: intent.mimeType || 'application/octet-stream' }))
+        )
+      }
+      if (h.udkast) setIndsaet((p) => ({ tekst: h.udkast, n: p.n + 1 }))
+    }
+    void deling.vedOpstart().then((i) => { if (i) modtag(i) })
+    return deling.lyt(modtag)
+  }, [])
 
   // Kaldes når vedhæft-fladen åbnes: to billige opslag, ikke en poll.
   const opdaterKontekst = () => {

@@ -1,5 +1,6 @@
 package dk.srvlab.jarvis.mobile
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 
@@ -17,6 +18,21 @@ class MainActivity : ReactActivity() {
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
     super.onCreate(null)
+  }
+
+  /**
+   * launchMode er singleTask: deler man noget mens appen KØRER, får vi en ny
+   * intent i stedet for en ny activity. Uden dette ville kun delinger til en
+   * lukket app nogensinde nå frem.
+   */
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    ShareModule.levér(
+      (application as? MainApplication)?.reactNativeHost?.reactInstanceManager?.currentReactContext
+        as? com.facebook.react.bridge.ReactApplicationContext,
+      intent
+    )
   }
 
   /**

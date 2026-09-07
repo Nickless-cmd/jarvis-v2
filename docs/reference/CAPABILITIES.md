@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-06 — 446 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-07 — 457 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -229,6 +229,17 @@
 | `personality_drift_check` | native | no |
 | `personality_drift_snapshot` | native | no |
 | `phased_heartbeat_tick` | native | no |
+| `phone_bubble` | native | no |
+| `phone_clipboard_read` | native | no |
+| `phone_clipboard_write` | native | no |
+| `phone_list_files` | native | no |
+| `phone_location` | native | no |
+| `phone_photo` | native | no |
+| `phone_read_file` | native | no |
+| `phone_record_audio` | native | no |
+| `phone_share` | native | no |
+| `phone_speak` | native | no |
+| `phone_write_file` | native | no |
 | `pin_identity` | native | no |
 | `pollinations_image` | native | no |
 | `pollinations_video` | native | no |

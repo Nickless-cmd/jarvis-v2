@@ -149,6 +149,38 @@ _pause_and_ask — structured clarification prompts mid-run._
 |---|---|---|---|---|
 | function | `_exec_pause_and_ask` | `(args)` | — | [src](../../../core/tools/pause_and_ask_tools.py#L28) |
 
+## `core/tools/phone_tools.py`
+_Telefon-vaerktoejer — Jarvis' organer paa Bjoerns telefon._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_phone_call` | `(*, tool, args, user_id, timeout_s=…)` | Send et kald til telefonen. Kaster ``RuntimeError`` med en LAESELIG grund. | [src](../../../core/tools/phone_tools.py#L47) |
+| function | `phone_photo_async` | `(*, user_id, kamera=…, gem_sti=…, timeout_s=…)` | Tag et billede. **Kraever at appen er i forgrunden** — kameraet kan ikke | [src](../../../core/tools/phone_tools.py#L80) |
+| function | `phone_location_async` | `(*, user_id, noejagtighed=…, timeout_s=…)` | Hvor telefonen er. Virker ogsaa i baggrunden. | [src](../../../core/tools/phone_tools.py#L94) |
+| function | `phone_record_audio_async` | `(*, user_id, sekunder=…, timeout_s=…)` | Optag lyd fra mikrofonen. Virker ogsaa i baggrunden. | [src](../../../core/tools/phone_tools.py#L107) |
+| function | `phone_speak_async` | `(*, user_id, tekst, sprog=…, timeout_s=…)` | Sig noget hoejt gennem telefonens hoejttaler. | [src](../../../core/tools/phone_tools.py#L128) |
+| function | `phone_bubble_async` | `(*, user_id, tekst, timeout_s=…)` | Vis noget i den flydende boble oven paa andre apps. | [src](../../../core/tools/phone_tools.py#L141) |
+| function | `phone_read_file_async` | `(*, user_id, sti, timeout_s=…)` | Laes en fil i appens eget omraade paa telefonen. | [src](../../../core/tools/phone_tools.py#L155) |
+| function | `phone_write_file_async` | `(*, user_id, sti, indhold, timeout_s=…)` | Skriv en fil i appens eget omraade paa telefonen. | [src](../../../core/tools/phone_tools.py#L166) |
+| function | `phone_list_files_async` | `(*, user_id, sti=…, timeout_s=…)` | Hvad ligger der i appens omraade. | [src](../../../core/tools/phone_tools.py#L178) |
+| function | `phone_share_async` | `(*, user_id, tekst=…, sti=…, timeout_s=…)` | Send noget videre til en anden app via delings-arket. | [src](../../../core/tools/phone_tools.py#L189) |
+| function | `phone_clipboard_read_async` | `(*, user_id, timeout_s=…)` | Hvad der ligger i telefonens udklipsholder. | [src](../../../core/tools/phone_tools.py#L205) |
+| function | `phone_clipboard_write_async` | `(*, user_id, tekst, timeout_s=…)` | Laeg noget i telefonens udklipsholder. | [src](../../../core/tools/phone_tools.py#L215) |
+| function | `_f` | `(navn, beskrivelse, properties, required)` | — | [src](../../../core/tools/phone_tools.py#L236) |
+| function | `_bruger` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L300) |
+| function | `_koer` | `(coro_fn, *, tool_name, timeout_s)` | — | [src](../../../core/tools/phone_tools.py#L305) |
+| function | `_exec_phone_photo` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L310) |
+| function | `_exec_phone_location` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L318) |
+| function | `_exec_phone_record_audio` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L325) |
+| function | `_exec_phone_speak` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L333) |
+| function | `_exec_phone_bubble` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L341) |
+| function | `_exec_phone_read_file` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L347) |
+| function | `_exec_phone_write_file` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L353) |
+| function | `_exec_phone_list_files` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L361) |
+| function | `_exec_phone_share` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L367) |
+| function | `_exec_phone_clipboard_read` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L375) |
+| function | `_exec_phone_clipboard_write` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L381) |
+
 ## `core/tools/plan_revise_tool.py`
 _Plan revision tool — revise_plan._
 
@@ -329,36 +361,36 @@ _Simple, general-purpose tools for Jarvis visible lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L642) |
-| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L671) |
-| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L767) |
-| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L781) |
-| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L870) |
-| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L892) |
-| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L965) |
-| function | `execute_tool_force` | `(name, arguments)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1105) |
-| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1186) |
-| function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1849) |
-| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1873) |
-| function | `_force_bash` | `(args)` | Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig. | [src](../../../core/tools/simple_tools.py#L1903) |
-| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1933) |
-| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1938) |
-| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1943) |
-| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1948) |
-| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1953) |
-| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1958) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2019) |
-| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/simple_tools.py#L2057) |
-| function | `_json_safe_default` | `(o)` | json.dumps default= — GARANTERER at serialisering af et tool-resultat | [src](../../../core/tools/simple_tools.py#L2106) |
-| function | `format_tool_result_for_model` | `(name, result, *, clip=…)` | Format a tool result as text for the model's context. | [src](../../../core/tools/simple_tools.py#L2122) |
+| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L643) |
+| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L672) |
+| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L768) |
+| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L782) |
+| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L871) |
+| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L893) |
+| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L966) |
+| function | `execute_tool_force` | `(name, arguments)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1106) |
+| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1187) |
+| function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1851) |
+| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/simple_tools.py#L1875) |
+| function | `_force_bash` | `(args)` | Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig. | [src](../../../core/tools/simple_tools.py#L1905) |
+| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1935) |
+| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1940) |
+| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1945) |
+| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1950) |
+| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1955) |
+| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/simple_tools.py#L1960) |
+| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2021) |
+| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/simple_tools.py#L2059) |
+| function | `_json_safe_default` | `(o)` | json.dumps default= — GARANTERER at serialisering af et tool-resultat | [src](../../../core/tools/simple_tools.py#L2108) |
+| function | `format_tool_result_for_model` | `(name, result, *, clip=…)` | Format a tool result as text for the model's context. | [src](../../../core/tools/simple_tools.py#L2124) |
 
 ## `core/tools/simple_tools_definitions.py`
 _Tool definitions catalog for Jarvis' visible-lane tools._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3566) |
-| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3583) |
+| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3570) |
+| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3587) |
 
 ## `core/tools/simple_tools_enforcement.py`
 _Commit-enforcement (repo-state attachment) for Jarvis' tool results._
@@ -666,16 +698,4 @@ _Speak tool — Jarvis speaks aloud through system speakers._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_exec_speak` | `(args)` | Execute the speak tool: synthesize text and play through speakers. | [src](../../../core/tools/speak_tool.py#L26) |
-
-## `core/tools/staged_edits_tools.py`
-_Tool registry entries for staged edits._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_current_session_id` | `()` | Resolve the session_id for staging scope. | [src](../../../core/tools/staged_edits_tools.py#L29) |
-| function | `_exec_stage_edit_file` | `(args)` | — | [src](../../../core/tools/staged_edits_tools.py#L55) |
-| function | `_exec_stage_write_file` | `(args)` | — | [src](../../../core/tools/staged_edits_tools.py#L66) |
-| function | `_exec_list_staged_edits` | `(args)` | — | [src](../../../core/tools/staged_edits_tools.py#L75) |
-| function | `_exec_commit_staged_edits` | `(args)` | — | [src](../../../core/tools/staged_edits_tools.py#L82) |
-| function | `_exec_discard_staged_edits` | `(args)` | — | [src](../../../core/tools/staged_edits_tools.py#L90) |
 

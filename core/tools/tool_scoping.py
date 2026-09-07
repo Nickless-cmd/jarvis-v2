@@ -251,6 +251,58 @@ def _owner_has_live_bridge() -> bool:
         return False
 
 
+def _phone_tool_names() -> frozenset[str]:
+    """Telefonens vaerktoejer — hentet fra ét sted, ikke gentaget her.
+
+    Lazy import, fordi ``phone_tools`` haenger paa broen og dette modul ligger
+    under den. Cachet paa funktionen, saa porten ikke betaler et import-opslag
+    pr. tur.
+    """
+    cache = getattr(_phone_tool_names, "_cache", None)
+    if cache is None:
+        try:
+            from core.tools.phone_tools import PHONE_TOOL_NAMES
+            cache = frozenset(PHONE_TOOL_NAMES)
+        except Exception:
+            cache = frozenset()
+        _phone_tool_names._cache = cache  # type: ignore[attr-defined]
+    return cache
+
+
+def _owner_has_live_phone() -> bool:
+    """True hvis en TELEFON er forbundet for nuvaerende bruger.
+
+    Skelner paa ``capabilities``, ikke paa klientnavn: en klient der melder
+    telefonens vaerktoejer ER telefonen. Det er den samme mekanik som
+    routingen bruger, saa porten og valget kan ikke komme til at vaere uenige.
+
+    Modstykket til ``_owner_has_live_bridge``: telefon-vaerktoejerne dukker
+    kun op naar der er en telefon at udfoere dem paa — overfladen udvides
+    ikke naar intet er paret. Self-safe → False ved tvivl.
+    """
+    try:
+        from core.identity.workspace_context import current_user_id
+        from core.services import bridge_presence
+        uid = current_user_id()
+        if not uid:
+            return False
+        info = bridge_presence.all_presence().get(str(uid)) or {}
+        telefon_navne = _phone_tool_names()
+        if not telefon_navne:
+            return False
+        klienter = info.get("clients")
+        if isinstance(klienter, dict):
+            for c in klienter.values():
+                if telefon_navne & set((c or {}).get("capabilities") or ()):
+                    return True
+            return False
+        # Aeldre presence-form uden «clients» (én proces der endnu ikke har
+        # genpubliceret): fald tilbage til den flade capability-liste.
+        return bool(telefon_navne & set(info.get("capabilities") or ()))
+    except Exception:
+        return False
+
+
 def allowed_tool_names(
     *, role: str, scope: str, all_names: Iterable[str],
 ) -> set[str]:
@@ -279,6 +331,8 @@ def allowed_tool_names(
             result = (
                 set(CODE_MODE_TOOLS_BASE) | CODE_MODE_OWNER_EXTRA | LOCAL_EXEC_ONLY_TOOLS
             ) & names
+            if _owner_has_live_phone():
+                result |= _phone_tool_names() & names
         elif scope == "chat":
             result = (set(CHAT_MODE_TOOLS_BASE) | CHAT_MODE_OWNER_EXTRA) & names
             # Bjørn 2026-07-01: owner skal kunne nå sin EGEN paret desktop fra mobil chat
@@ -287,6 +341,11 @@ def allowed_tool_names(
             # overfladen udvides ikke når intet er paret. Godkendelses-kort gater risiko.
             if _owner_has_live_bridge():
                 result |= set(CODE_MODE_TOOLS_BASE) & names
+            # Telefonen: samme princip som desk-undtagelsen ovenfor. Bjoern
+            # skriver mest fra mobil-chatten, saa uden det her ville
+            # telefon-vaerktoejerne vaere usynlige praecis dér hvor de bruges.
+            if _owner_has_live_phone():
+                result |= _phone_tool_names() & names
         else:
             result = names  # cowork / ubegrænset: alt mode-passende = alt
     else:

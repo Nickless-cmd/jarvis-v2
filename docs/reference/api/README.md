@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13738 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13740 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -32,25 +32,25 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13738 functions/
 - [`core.services.03`](core.services.03.md) — `bash_sandbox` … `central_causal_quality`
 - [`core.services.04`](core.services.04.md) — `central_construct` … `central_learning`
 - [`core.services.05`](core.services.05.md) — `central_lexicon` … `central_sentinel`
-- [`core.services.06`](core.services.06.md) — `central_sequence` … `client_turn_live`
-- [`core.services.07`](core.services.07.md) — `cluster_daemon` … `cost_optimization_daemon`
-- [`core.services.08`](core.services.08.md) — `council_deliberation_controller` … `decision_log`
-- [`core.services.09`](core.services.09.md) — `decision_review_daemon` … `dream_distillation_daemon`
-- [`core.services.10`](core.services.10.md) — `dream_hypothesis_forced` … `existential_drift`
-- [`core.services.11`](core.services.11.md) — `existential_wonder_daemon` … `gate_truth`
-- [`core.services.12`](core.services.12.md) — `gate_verdict_ledger` … `identity_guard`
-- [`core.services.13`](core.services.13.md) — `identity_mutation_log` … `life_milestones`
-- [`core.services.14`](core.services.14.md) — `life_projects` … `meta_learning_aggregator`
-- [`core.services.15`](core.services.15.md) — `meta_learning_hypotheses` … `operator_channel`
-- [`core.services.16`](core.services.16.md) — `orb_phase` … `proactive_loop_lifecycle_tracking`
-- [`core.services.17`](core.services.17.md) — `proactive_outbound_substrate` … `reasoning_interceptor`
-- [`core.services.18`](core.services.18.md) — `reasoning_prefilter` … `runtime_cognitive_conductor`
-- [`core.services.19`](core.services.19.md) — `runtime_decision_engine` … `self_narrative_self_model_review_bridge`
-- [`core.services.20`](core.services.20.md) — `self_repair_engine` … `signal_pressure_accumulator`
-- [`core.services.21`](core.services.21.md) — `signal_surface_gc` … `temporal_context`
-- [`core.services.22`](core.services.22.md) — `temporal_depth` … `unfinished_intent`
-- [`core.services.23`](core.services.23.md) — `untrusted_fencing` … `visible_runs_watchdog`
-- [`core.services.24`](core.services.24.md) — `visible_self_state_summary` … `world_model_signal_tracking`
+- [`core.services.06`](core.services.06.md) — `central_sequence` … `client_turn_absorb`
+- [`core.services.07`](core.services.07.md) — `client_turn_live` … `conversation_rhythm`
+- [`core.services.08`](core.services.08.md) — `cost_optimization_daemon` … `decision_ghosts`
+- [`core.services.09`](core.services.09.md) — `decision_log` … `dream_continuum`
+- [`core.services.10`](core.services.10.md) — `dream_distillation_daemon` … `executive_contradiction_signal_tracking`
+- [`core.services.11`](core.services.11.md) — `existential_drift` … `gate_skill`
+- [`core.services.12`](core.services.12.md) — `gate_truth` … `identity_drift_proposer`
+- [`core.services.13`](core.services.13.md) — `identity_guard` … `lessons`
+- [`core.services.14`](core.services.14.md) — `life_milestones` … `meta_cognition_daemon`
+- [`core.services.15`](core.services.15.md) — `meta_learning_aggregator` … `operator_allowlist`
+- [`core.services.16`](core.services.16.md) — `operator_channel` … `proactive_context_governor`
+- [`core.services.17`](core.services.17.md) — `proactive_loop_lifecycle_tracking` … `reasoning_escalation`
+- [`core.services.18`](core.services.18.md) — `reasoning_interceptor` … `runtime_browser_body`
+- [`core.services.19`](core.services.19.md) — `runtime_cognitive_conductor` … `self_narrative_continuity_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `self_narrative_self_model_review_bridge` … `signal_noise_guard`
+- [`core.services.21`](core.services.21.md) — `signal_pressure_accumulator` … `temporal_body`
+- [`core.services.22`](core.services.22.md) — `temporal_context` … `unconscious_temperature_field`
+- [`core.services.23`](core.services.23.md) — `unfinished_intent` … `visible_runs_sse_v2`
+- [`core.services.24`](core.services.24.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6898/13738 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6900/13740 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6898/13738 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 569 | 1055 | 53% |
-| `core.services` | 4579 | 9508 | 48% |
+| `core.services` | 4581 | 9510 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 104 | 179 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -759,10 +759,10 @@ Generated from source. 6898/13738 functions/methods documented (50%). The list b
 - `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L859)
 - `core/services/chat_sessions.py` :: `rename_chat_session` (L884)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
-- `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L736)
-- `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L690)
-- `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L653)
-- `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L643)
+- `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L766)
+- `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L721)
+- `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L688)
+- `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L678)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L77)
 - `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L579)
 - `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L858)

@@ -26,6 +26,7 @@ import { checkForUpdate, type UpdateManifest } from './lib/appUpdate'
 import { downloadAndInstall } from './lib/installApk'
 import { UpdateBanner } from './components/UpdateBanner'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { startBro } from './lib/broOpstart'
 import { AuthProvider, useAuth } from './state/AuthContext'
 import { SessionProvider } from './state/SessionContext'
 import { StreamProvider } from './state/StreamContext'
@@ -81,9 +82,14 @@ function AppBody() {
     void registerForPush(config)
     const unsub = attachForegroundHandler(config)
     const stopPresence = startPresenceReporting(config, { getBatterySaver: () => batterySaver })
+    // Broen: gør telefonen til en enhed Jarvis kan udføre ting på, ikke bare
+    // en skærm han skriver til. Samme livstid som push og presence — den
+    // hører til token'et, ikke til en skærm.
+    const stopBro = startBro(config)
     return () => {
       unsub()
       stopPresence()
+      stopBro()
     }
   }, [config?.authToken, batterySaver])
 

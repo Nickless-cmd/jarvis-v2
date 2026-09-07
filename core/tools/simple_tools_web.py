@@ -112,6 +112,28 @@ def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
             file_glob = _sti.name
         search_path = str(_sti.parent)
 
+    # ── EN STI I `glob` GAV STILLE NUL (7/9-2026) ───────────────────────────
+    # `--include=` (og rg's `-g`) matcher på FILNAVN-mønster, ikke på sti. En
+    # agent skrev det oplagte — glob='core/runtime/provider_router.py' — og fik
+    # «[no matches]» på et mønster der findes 20 gange i filen. Ikke en fejl,
+    # ikke et tomt resultat man kan lære af: bare tavshed.
+    #
+    # Indeholder globben en skråstreg og peger på noget der findes, behandler
+    # vi den som dét den er: en sti. Så bliver mappen til rod og filnavnet til
+    # globben, præcis som når `path` peger på en fil.
+    # Målet er "." (hele træet) med mindre globben peger på noget konkret. Vi
+    # skifter IKKE rod til filens mappe: så ville træffene komme tilbage som
+    # `./provider_router.py:18` uden sti, og stien er netop dét agenten skal
+    # citere. I stedet søger vi i filen med rod stadig i projektet, så
+    # resultatet lyder `core/runtime/provider_router.py:18`.
+    _maal = "."
+    if file_glob and "/" in file_glob and "*" not in file_glob:
+        _g = Path(file_glob)
+        _abs = _g if _g.is_absolute() else Path(search_path) / _g
+        if _abs.exists():
+            _maal = str(_g) if not _g.is_absolute() else str(_abs)
+            file_glob = ""
+
     # Prefer ripgrep when present — much faster, smarter defaults
     # (.gitignore aware, binary-skip, type-detection). Fall back to grep
     # so the tool still works on machines without rg installed.
@@ -120,14 +142,18 @@ def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
     ).returncode == 0
 
     if have_rg:
-        argv = ["rg", "-n", "--color=never", "-m", str(MAX_SEARCH_RESULTS)]
+        # `--with-filename`: uden den udelader både rg og grep filnavnet når
+        # målet er ÉN fil — og så står agenten med «18:def …» uden at vide
+        # hvilken fil. Stien er halvdelen af et brugbart fund.
+        argv = ["rg", "-n", "--with-filename", "--color=never",
+                "-m", str(MAX_SEARCH_RESULTS)]
         if file_glob:
             argv += ["-g", file_glob]
         if multiline:
             argv += ["-U", "--multiline-dotall"]
         if case_insensitive:
             argv += ["-i"]
-        argv += [pattern, "."]
+        argv += [pattern, _maal]
     else:
         # `-E` (6/9-2026): grep uden det er BASIC regex, hvor |, (, ), ? og +
         # er LITERALER. rg bruger moderne regex. Uden ripgrep installeret — og
@@ -137,7 +163,7 @@ def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
         # Det er formentlig stoerste enkeltaarsag til at agenternes
         # undersoegelser blev ringe netop dér hvor Jarvis bor.
         argv = [
-            "grep", "-rEn", "--color=never",
+            "grep", "-rEnH", "--color=never",
             "--exclude-dir=.git", "--exclude-dir=node_modules",
             "--exclude-dir=__pycache__", "--exclude-dir=.claude",
             "--exclude-dir=dist", "--exclude-dir=build",
@@ -147,7 +173,7 @@ def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
             argv += [f"--include={file_glob}"]
         if case_insensitive:
             argv += ["-i"]
-        argv += [pattern, "."]
+        argv += [pattern, _maal]
     try:
         result = subprocess.run(
             argv,

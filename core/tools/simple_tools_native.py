@@ -1851,7 +1851,16 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
                 "hvilke soegninger du faktisk koerte.\n\n"
                 "Tillid: «hoej» kraever at du har SET kilden. Har du kun tomme "
                 "soegninger, er tilliden «lav» — et negativ er en staerkere "
-                "paastand end et positiv og skal baeres af mere."),
+                "paastand end et positiv og skal baeres af mere.\n\n"
+                # 7/9-2026: agenten laeste filen med `read_file` og TALTE
+                # linjerne selv — 15/27/131 hvor sandheden var 18/30/125. Ikke
+                # opdigtet, bare daarlig hovedregning. `search` giver
+                # linjenummeret gratis og korrekt.
+                "LINJENUMRE: taeller du dem ALDRIG selv. `read_file` giver dig "
+                "ingen numre, og at gaette dem ud fra teksten rammer forbi. "
+                "Vil du citere et linjenummer, saa find linjen med `search` — "
+                "den svarer med `sti:linje:indhold`. Har du kun laest filen, "
+                "saa skriv filstien uden nummer i stedet for et gaet."),
             tool_policy="read-only-runtime",
             allowed_tools=tools_for_policy("read-only-runtime"),
             budget_tokens=0,

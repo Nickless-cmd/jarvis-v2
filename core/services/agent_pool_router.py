@@ -21,12 +21,45 @@ def route_agent_task(*, kind: str = "default", min_tokens: int = 0,
     ("rigtig opgave"): betalte Copilot-premium (Claude/GPT-5.6) bliver også kandidater,
     scoret på kvalitet — de vælges først (høj prioritet) fordi de er bedst."""
     from core.services import central_route
-    r = central_route.route(
-        lane="agent",
-        task={"kind": kind, "min_tokens": min_tokens,
-              "quality_threshold": quality_threshold, "allow_paid": allow_paid},
-        exclude=exclude,
-    )
+
+    def _rut(ekskl: frozenset[str]):
+        return central_route.route(
+            lane="agent",
+            task={"kind": kind, "min_tokens": min_tokens,
+                  "quality_threshold": quality_threshold, "allow_paid": allow_paid},
+            exclude=ekskl,
+        )
+
+    r = _rut(exclude)
+    # ── SONDENS DOM SKAL BRUGES (Bjørn 7/9-2026) ────────────────────────────
+    # «Hans agenter må aldrig fejle og skal altid levere.» Den konkrete fejl:
+    # explore fik nemotron-3-ultra, som kaldte `search`, fik de rigtige
+    # filstier tilbage — og skrev derefter en sti der ikke findes, med
+    # opdigtede klassenavne og «confidence: Høj» ovenpå. Sonden gav den 0 på
+    # `follows`. Dommen fandtes; ingen læste den.
+    #
+    # Ukendt er TILLADT. Kun kendt-dårlig rutes udenom, så en tom
+    # karakter-tabel ikke lammer agent-arbejdet før første fejning er kørt.
+    try:
+        from core.services.agent_model_fitness import bedste_egnede, er_blokeret
+        ekskl = set(exclude)
+        for _ in range(3):
+            p, m = str(r.get("provider") or ""), str(r.get("model") or "")
+            if not p or not m or not er_blokeret(p, m, rolle=kind):
+                break
+            logger.info("agent-router: %s/%s er målt uegnet til %s — vælger igen", p, m, kind)
+            ekskl.add(p)
+            r = _rut(frozenset(ekskl))
+        else:
+            # Ruteren bliver ved med at pege på noget vi har målt som uegnet.
+            # Hellere en model vi VED virker end en vi ved ikke gør.
+            p2, m2 = bedste_egnede(undtagen=frozenset(exclude))
+            if p2 and m2:
+                logger.info("agent-router: falder tilbage til målt bedste %s/%s", p2, m2)
+                r = dict(r); r["provider"], r["model"] = p2, m2
+                r["fitness_fallback"] = True
+    except Exception:
+        pass  # fitness må aldrig kunne blokere en agent i at blive født
     return r
 
 

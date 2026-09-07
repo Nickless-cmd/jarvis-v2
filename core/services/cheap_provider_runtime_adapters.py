@@ -438,6 +438,41 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["reka-edge-2603"],
     },
+    # xkiro (7/9-2026, Bjørn-nøgle i runtime.json som `xkiro_api_key`):
+    # OpenAI-compat `api.xkiro.com/v1`, bearer. MÅLT med nøglen, ikke læst på
+    # deres side:
+    #   * `/v1/usage` svarer med free_tokens.limit_per_day = 5.000.000 — altså
+    #     5 mio. tokens PR. DØGN, ikke pr. måned.
+    #   * DeepSeek-modellerne har IKKE `:free` i navnet, men trækker alligevel
+    #     fra gratis-puljen: efter fire testkald stod wallet stadig på præcis
+    #     5.000000 USD og `used_today` var steget. Bjørns antagelse holdt.
+    #   * 112 modeller, heraf 25 med `:free` (qwen + minimax).
+    #
+    # FÆLDE: udbyderen svarer **403 uden en User-Agent**. Pythons standard
+    # `Python-urllib/3.x` afvises. Cheap-lane sætter allerede
+    # `jarvis-v2/cheap-lane` på hvert kald, så det virker her — men en ny
+    # klient uden UA vil fejle med noget der ligner et nøgleproblem.
+    #
+    # static_models er bevidst de `:free`-mærkede: de er utvetydigt gratis.
+    # DeepSeek-modellerne trækker fra samme pulje, men uden `:free` i navnet er
+    # der intet der lover det bliver ved, og de hører til i den synlige bane.
+    "xkiro": {
+        "label": "xkiro",
+        "priority": 50,
+        "base_url": "https://api.xkiro.com/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 20,
+        "daily_limit": 1000,
+        "cost_class": "free",
+        "static_models": [
+            "qwen/qwen3.5-flash:free",
+            "qwen/qwen3.6-35b-a3b:free",
+            "qwen/qwen3-coder-plus:free",
+            "minimax/minimax-m2.5-highspeed:free",
+        ],
+    },
     # BazaarLink (15. jul, Bjørn-nøgle): OpenAI-compat `bazaarlink.ai/api/v1`, bearer.
     # `auto:free` = ÆGTE perpetual gratis — 6/6 vedvarende kald cost=0 (BESTOD den
     # SiliconFlow-hærdede test: gratis BLIVER gratis, ingen trial-gate). Ærlig cost-
@@ -669,22 +704,18 @@ def is_routable_provider(provider: str) -> bool:
     return bool((cfg or {}).get("routable", True))
 
 
-def _huggingface_runtime_token() -> str:
-    """Delt owner-token for HuggingFace Router — læses fra runtime.json
-    (`huggingface_token`), samme kilde som `hf_connector`/`hf_inference_tools`.
+# Delte ejer-nøgler i runtime.json er flyttet til
+# core/services/cheap_provider_runtime_keys.py (Boy-Scout 7/9-2026, filen var
+# 2.021 linjer). Re-eksporteret her for eksisterende kaldere og tests.
+from core.services.cheap_provider_runtime_keys import (  # noqa: E402
+    has_runtime_owner_key,
+    runtime_owner_key,
+)
 
-    HF's nøgle lever IKKE i per-profil auth-store (`get_provider_credentials`),
-    så både readiness og dispatch skal falde tilbage hertil — ellers markeres
-    HF's 7 static_models som ikke-klar og kommer aldrig i cheap-pool, selvom
-    tokenen findes (både lokalt og på CT105). Returnerer tom streng hvis fraværende.
-    """
-    try:
-        from core.runtime.secrets import read_runtime_key
-        return str(
-            read_runtime_key("huggingface_token", env_override="HUGGINGFACE_TOKEN")
-            or "").strip()
-    except Exception:
-        return ""
+
+def _huggingface_runtime_token() -> str:
+    """Bagudkompatibel indpakning. Se `cheap_provider_runtime_keys`."""
+    return runtime_owner_key("huggingface")
 
 
 def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
@@ -707,12 +738,11 @@ def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
         # Arko's credentials live in runtime.json, not in auth profiles.
         from core.runtime.arko_provider import is_configured as arko_is_configured
         return arko_is_configured()
-    if normalized_provider == "huggingface":
-        # HF-token lever i runtime.json (delt owner-token), ikke i auth-store.
-        # Findes den → ready. Ellers fald igennem til det generiske store-tjek
-        # nedenfor (bagudkompat, hvis nogen har lagt en profil-nøgle).
-        if _huggingface_runtime_token():
-            return True
+    # Delt ejer-nøgle i runtime.json (HuggingFace, xkiro) — findes den → ready.
+    # Ellers fald igennem til det generiske store-tjek nedenfor, så en
+    # profil-nøgle stadig virker.
+    if has_runtime_owner_key(normalized_provider):
+        return True
     if normalized_provider == _OPENAI_CODEX_PROVIDER:
         # Codex uses OAuth tokens imported from ~/.codex/auth.json.
         # Check that the auth profile exists and has usable credentials.
@@ -1607,11 +1637,11 @@ def _require_credentials(*, profile: str, provider: str) -> dict[str, object]:
         except Exception:
             return {}
     credentials = get_provider_credentials(profile=profile, provider=provider)
-    if not credentials and provider == "huggingface":
-        # HF-token i runtime.json (delt owner-token), ikke i auth-store — samme
-        # fallback som readiness (provider_auth_ready). Uden dette ville dispatch
-        # rejse auth-not-ready selvom tokenen findes, og pool-slot'et var dødt.
-        tok = _huggingface_runtime_token()
+    if not credentials:
+        # Delt ejer-nøgle i runtime.json — SAMME kilde som readiness ovenfor.
+        # Uden dette ville dispatch rejse auth-not-ready selvom nøglen findes,
+        # og pool-slot'et var dødt: klar i det ene tjek, tom i det andet.
+        tok = runtime_owner_key(provider)
         if tok:
             return {"api_key": tok}
     if not credentials:

@@ -550,7 +550,7 @@ def append_chat_message(
             (next_title, timestamp, normalized_session),
         )
 
-    return {
+    besked = {
         "id": message_id,
         "role": normalized_role,
         "content": normalized_content,
@@ -559,6 +559,36 @@ def append_chat_message(
         "ts": _time_label(timestamp),
         "created_at": timestamp,
     }
+
+    # Brugerens egne beskeder annonceres nu ogsaa.
+    #
+    # `experience_correction_listener` lytter efter `channel.chat_message_appended`
+    # og kraever `role == "user"` — den fanger Bjoerns rettelser («nej», «forkert»,
+    # «du misforstod») og goer dem til lektier. Den har koert hele tiden.
+    #
+    # Men de 1.478 haendelser der fandtes, blev ALLE publiceret fra
+    # visible_runs_outcomes.py:329 med role="assistant" — altsaa Jarvis' eget
+    # svar. Listeneren afviste hver eneste paa foerste linje og faldt igennem
+    # til `continue`. Derfor 0 correction-lektier, nogensinde. Maalt 7/9-2026.
+    #
+    # Udsendes fra append_chat_message frem for fra de fem kaldsteder, saa
+    # enhver vej ind (mobil, desk, Discord, Telegram, openai-compat) er daekket
+    # af ét sted. Discord-abonnenten filtrerer eksplicit paa role="assistant",
+    # saa brugerbeskeder laekker ikke derover.
+    #
+    # Fire-and-forget: en doed event-bus maa aldrig koste en gemt besked.
+    if normalized_role == "user":
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish("channel.chat_message_appended", {
+                "session_id": normalized_session,
+                "message": besked,
+                "source": "chat-append",
+            })
+        except Exception:
+            pass
+
+    return besked
 
 
 _DEDUP_WINDOW_SECONDS = 900  # 15 min: fanger mirror/retry + perceived-failure-resends

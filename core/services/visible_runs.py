@@ -5615,6 +5615,21 @@ async def _stream_visible_run(
         _final_run_status = "failed"  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
         _final_run_error = _outer_error
         set_last_visible_run_outcome(run, status="failed", error=_outer_error)
+        # Laer af den. Laeringssignalerne koerer laengere oppe (linje ~5045) og
+        # ser kun `_final_run_error`, som paa det tidspunkt endnu er tom for et
+        # run der fejler HER — derfor naaede 250 «failed»-runs aldrig frem, og
+        # lessons stod paa 4 raekker efter 17.609 runs. Maalt 7/9-2026.
+        try:
+            from core.services.visible_runs_learning_signals import er_brugerafbrydelse
+            if not er_brugerafbrydelse(_outer_error):
+                from core.services.lessons import record_tool_error
+                record_tool_error(
+                    tool_name="run",
+                    error_text=str(_outer_error),
+                    context=str(getattr(run, "user_message", "") or "")[:80],
+                )
+        except Exception:
+            pass
         for _fail_chunk in _fail_visible_run(run, _outer_error, partial_text=visible_output_text):
             yield _fail_chunk
         unregister_visible_run(run.run_id)

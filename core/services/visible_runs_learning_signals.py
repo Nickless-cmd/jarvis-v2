@@ -19,6 +19,19 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+# Moenstre der betyder «brugeren stoppede», ikke «noget gik galt». De skal
+# aldrig blive til lektier: der er intet at laere af at Bjoern trykkede stop,
+# og de druknede den haandfuld aegte fejl der var noget vaerd.
+_AFBRYDELSE = ("user-cancelled", "user_cancelled", "cancelled-by-user",
+               "client-disconnected", "run-abandoned")
+
+
+def er_brugerafbrydelse(fejl: str) -> bool:
+    """True hvis fejlteksten beskriver en afbrydelse frem for en fejl."""
+    t = str(fejl or "").strip().lower()
+    return bool(t) and any(m in t for m in _AFBRYDELSE)
+
+
 def tool_names(collected_native_tool_calls: Any) -> list[str]:
     """Names of the native tool calls in order (objects or OpenAI-style dicts)."""
     out: list[str] = []
@@ -70,7 +83,12 @@ def record_visible_run_learning_signals(
     except Exception:
         logger.debug("learning_signals: record_episode failed", exc_info=True)
 
-    if error_text:
+    # En AFBRYDELSE er ikke en lektie. `_final_run_error` baerer to slags ting:
+    # «user-cancelled-during-agentic-loop» (Bjoern trykkede stop) og en aegte
+    # fejl fra en interruption. Foer talte begge, og da afbrydelser er langt de
+    # hyppigste, var det stort set det eneste laeringen saa. Bjoerns ord 7/9:
+    # «aegte fejl skal taelle, ikke brugerafbrydelser».
+    if error_text and not er_brugerafbrydelse(error_text):
         try:
             from core.services.lessons import record_tool_error
 

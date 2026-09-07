@@ -303,6 +303,38 @@ def _owner_has_live_phone() -> bool:
         return False
 
 
+def _phone_adb_tool_names() -> frozenset[str]:
+    """ADB-vaerktoejernes navne — ét sted, ikke gentaget her."""
+    cache = getattr(_phone_adb_tool_names, "_cache", None)
+    if cache is None:
+        try:
+            from core.tools.phone_adb import PHONE_ADB_TOOL_NAMES
+            cache = frozenset(PHONE_ADB_TOOL_NAMES)
+        except Exception:
+            cache = frozenset()
+        _phone_adb_tool_names._cache = cache  # type: ignore[attr-defined]
+    return cache
+
+
+def _adb_er_opsat() -> bool:
+    """Er der overhovedet en telefon at pege adb paa?
+
+    Gater paa CONFIG, ikke paa presence — modsat ``_owner_has_live_phone``.
+    ADB gaar uden om appen, saa broen siger intet om hvorvidt vejen findes;
+    det goer ``phone_adb_address`` i runtime.json. Er den ikke sat, er
+    vaerktoejerne ubrugelige, og saa skal de heller ikke staa i kataloget og
+    fylde.
+
+    Ikke cachet: adressen kan saettes uden en genstart, og en tur der lige er
+    blevet sat op skal virke med det samme.
+    """
+    try:
+        from core.runtime.secrets import read_runtime_key
+        return bool(str(read_runtime_key("phone_adb_address") or "").strip())
+    except Exception:
+        return False
+
+
 def allowed_tool_names(
     *, role: str, scope: str, all_names: Iterable[str],
 ) -> set[str]:
@@ -333,6 +365,8 @@ def allowed_tool_names(
             ) & names
             if _owner_has_live_phone():
                 result |= _phone_tool_names() & names
+            if _adb_er_opsat():
+                result |= _phone_adb_tool_names() & names
         elif scope == "chat":
             result = (set(CHAT_MODE_TOOLS_BASE) | CHAT_MODE_OWNER_EXTRA) & names
             # Bjørn 2026-07-01: owner skal kunne nå sin EGEN paret desktop fra mobil chat
@@ -346,6 +380,8 @@ def allowed_tool_names(
             # telefon-vaerktoejerne vaere usynlige praecis dér hvor de bruges.
             if _owner_has_live_phone():
                 result |= _phone_tool_names() & names
+            if _adb_er_opsat():
+                result |= _phone_adb_tool_names() & names
         else:
             result = names  # cowork / ubegrænset: alt mode-passende = alt
     else:

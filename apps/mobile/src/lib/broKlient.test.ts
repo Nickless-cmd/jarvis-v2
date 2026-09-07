@@ -44,6 +44,24 @@ describe('registrering', () => {
     expect(reg.client_id).toBe('mobil-1')
   })
 
+  it('sender token i HEADEREN — ikke i beskeden', () => {
+    // Den fejl kostede en hel build: token'et lå i register-beskeden, som
+    // serveren aldrig læser. Uden Authorization ved handshaket er der ingen
+    // claims, og forbindelsen lukkes med «user_id_missing» før beskeden
+    // overhovedet betyder noget. Telefonen kunne ALDRIG registrere sig, og
+    // intet i appen sagde det — kun serverloggen, ved at tie.
+    const s = fakeSocket()
+    let setMuligheder: { headers: Record<string, string> } | undefined
+    opretBro({
+      ...GRUND,
+      lavSocket: (_url, m) => { setMuligheder = m; return s }
+    }).start()
+    s.onopen!()
+
+    expect(setMuligheder?.headers?.Authorization).toBe('Bearer test-token')
+    expect(beskeder(s)[0].auth_token).toBeUndefined()
+  })
+
   it('sender IKKE user_id — serveren tager den fra token', () => {
     // To kilder til hvem enheden tilhører ville kunne komme til at være uenige.
     const s = fakeSocket()

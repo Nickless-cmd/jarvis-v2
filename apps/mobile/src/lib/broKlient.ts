@@ -31,8 +31,8 @@ export interface BroOpsaetning {
   clientId: string
   version?: string
   udfoer: Udfoerer
-  /** Injicerbar til test. Default: global WebSocket. */
-  lavSocket?: (url: string, protokoller?: string[]) => WebSocketLignende
+  /** Injicerbar til test. Default: global WebSocket MED Authorization-header. */
+  lavSocket?: (url: string, muligheder?: { headers: Record<string, string> }) => WebSocketLignende
   /** Injicerbar til test, så genforbindelse kan køres uden rigtig ventetid. */
   planlaeg?: (fn: () => void, ms: number) => unknown
   log?: (besked: string, ...rest: unknown[]) => void
@@ -71,8 +71,22 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
     apiBaseUrl, authToken, capabilities, clientId,
     version = '', udfoer,
   } = opsaetning
+  // Token'et skal i HEADEREN, ikke i register-beskeden. Serveren laeser kun
+  // Authorization ved handshaket og tager user_id fra token'ets `sub`; uden
+  // headeren er der ingen claims, og forbindelsen lukkes med
+  // «user_id_missing» foer register-beskeden overhovedet betyder noget.
+  // Samme form som desk-broen: new WebSocket(url, { headers }).
+  // React Natives WebSocket tager (url, protokoller, muligheder); TypeScript
+  // ser DOM-varianten, som kun kender to. Typen skrives derfor eksplicit her
+  // frem for et blindt cast, saa det staar hvad der faktisk kaldes.
+  type RNWebSocket = new (
+    url: string,
+    protokoller?: string | string[],
+    muligheder?: { headers?: Record<string, string> },
+  ) => WebSocketLignende
   const lavSocket = opsaetning.lavSocket
-    ?? ((url: string) => new WebSocket(url) as unknown as WebSocketLignende)
+    ?? ((url: string, muligheder?: { headers: Record<string, string> }) =>
+      new (WebSocket as unknown as RNWebSocket)(url, undefined, muligheder))
   const planlaeg = opsaetning.planlaeg ?? ((fn, ms) => setTimeout(fn, ms))
   const log = opsaetning.log ?? (() => {})
 
@@ -113,7 +127,9 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
 
   function forbind() {
     if (stoppet) return
-    const s = lavSocket(broUrl(apiBaseUrl))
+    const s = lavSocket(broUrl(apiBaseUrl), {
+      headers: { Authorization: `Bearer ${authToken}` }
+    })
     ws = s
 
     s.onopen = () => {
@@ -126,8 +142,7 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
           client_id: clientId,
           version,
           platform: 'android',
-          capabilities,
-          auth_token: authToken
+          capabilities
         }))
       } catch (e) {
         log('bro: register fejlede', e)

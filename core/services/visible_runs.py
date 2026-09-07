@@ -257,6 +257,35 @@ _APPROVALS_STATE_KEY = "pending_approvals"
 _PENDING_APPROVALS: dict[str, dict] = dict(_load_approvals_state(_APPROVALS_STATE_KEY, {}))
 
 
+def _publicer_approval_requested(
+    *, approval_id: str, tool: str, run_id: str, session_id: str, result: dict,
+) -> None:
+    """Haendelse naar et godkendelses-kort BLIVER LAVET.
+
+    Der fandtes 496 ``tool.approval_resolved`` og nul paa anmodnings-siden
+    (maalt 7/9-2026). Man kunne altsaa taelle hvad Bjoern havde svaret paa,
+    aldrig hvad han var blevet spurgt om — saa «jeg fik ikke noget kort» var
+    umuligt at efterproeve.
+
+    Beviser ikke at kortet naaede skaermen. Men uden den er leveringen ikke
+    engang maalbar, og det var betingelsen for at turde roere de sidste
+    uportede veje. Self-safe: telemetri maa aldrig kunne forhindre kortet.
+    """
+    try:
+        event_bus.publish("tool.approval_requested", {
+            "approval_id": approval_id,
+            "tool": tool,
+            "run_id": run_id,
+            "session_id": session_id,
+            # Klassifikationen skiller «destruktiv» fra «aendrer systemet», saa
+            # man kan se OM det er de farlige der forsvinder.
+            "classification": str((result or {}).get("classification") or ""),
+            "gate_type": str((result or {}).get("gate_type") or ""),
+        })
+    except Exception:  # pragma: no cover - telemetri maa ikke braekke flowet
+        logger.debug("kunne ikke publicere tool.approval_requested", exc_info=True)
+
+
 def _persist_pending_approvals() -> None:
     _save_approvals_state(_APPROVALS_STATE_KEY, _PENDING_APPROVALS)
 
@@ -2123,6 +2152,11 @@ async def _stream_visible_run(
                             "session_id": run.session_id,
                             "created_at": created_at,
                         })
+                        _publicer_approval_requested(
+                            approval_id=approval_id, tool=sr["tool_name"],
+                            run_id=run.run_id, session_id=run.session_id,
+                            result=sr["result"],
+                        )
                         yield _sse("approval_request", {
                             "type": "approval_request",
                             "approval_id": approval_id,
@@ -4362,6 +4396,11 @@ async def _stream_visible_run(
                                 "session_id": run.session_id,
                                 "created_at": _a_created_at,
                             })
+                            _publicer_approval_requested(
+                                approval_id=_a_apid, tool=_a_sr["tool_name"],
+                                run_id=run.run_id, session_id=run.session_id,
+                                result=_a_sr["result"],
+                            )
                             yield _sse("approval_request", {
                                 "type": "approval_request",
                                 "approval_id": _a_apid,

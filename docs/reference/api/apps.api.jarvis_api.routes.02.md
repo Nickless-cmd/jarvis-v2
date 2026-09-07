@@ -523,6 +523,15 @@ _Mission Control routes: skills, memory, hardening, lab_
 | function | `mc_hardening` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L119) |
 | function | `mc_lab` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L133) |
 
+## `apps/api/jarvis_api/routes/mobile_memory.py`
+_«Brug denne besked som hukommelse» — fra telefonen ind i hans hjerne._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `GemSomHukommelse` | `` | — | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L31) |
+| function | `_titel_af` | `(tekst)` | Foerste meningsfulde linje, klippet. En huskeseddel skal kunne skimmes. | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L38) |
+| function | `gem_som_hukommelse` | `(body)` | Gem en besked som en post i hjernen. Owner-only via global auth. | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L48) |
+
 ## `apps/api/jarvis_api/routes/mobile_update.py`
 _Mobil auto-updater: manifest + APK-download. Auth-scopet til en bruger._
 
@@ -676,11 +685,4 @@ _TOTP-setup for owner-override (spec §6.2). Armerer bagdøren: generér nøgle,
 | function | `_do_setup` | `()` | — | [src](../../../apps/api/jarvis_api/routes/totp.py#L35) |
 | function | `totp_setup` | `()` | Generér + gem en ny TOTP-seed for owner. Returnér secret + otpauth-URI | [src](../../../apps/api/jarvis_api/routes/totp.py#L52) |
 | function | `totp_revoke` | `()` | Fjern owners TOTP-seed (deaktivér override til ny setup, §9 kompromittering). | [src](../../../apps/api/jarvis_api/routes/totp.py#L59) |
-
-## `apps/api/jarvis_api/routes/transcribe.py`
-_POST /transcribe — diktering-transskription til jarvis-desk's mic-knap._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `transcribe` | `(file, language=…)` | — | [src](../../../apps/api/jarvis_api/routes/transcribe.py#L22) |
 

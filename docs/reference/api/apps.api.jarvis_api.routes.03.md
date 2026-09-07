@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/transcribe.py`
+_POST /transcribe — diktering-transskription til jarvis-desk's mic-knap._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `transcribe` | `(file, language=…)` | — | [src](../../../apps/api/jarvis_api/routes/transcribe.py#L22) |
+
 ## `apps/api/jarvis_api/routes/tts.py`
 _TTS synthesis route — ElevenLabs primær (Jarvis' egen stemme, Mads),_
 

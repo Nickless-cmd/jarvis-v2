@@ -11,7 +11,8 @@ import { ChatScreen } from './screens/ChatScreen'
 import { WorkScreen } from './screens/WorkScreen'
 import { TopBar, type AppMode } from './components/TopBar'
 import { OnboardingGuide } from './components/OnboardingGuide'
-import { erGennemfoert } from './lib/onboarding'
+import { erGennemfoert, type Tilladelse } from './lib/onboarding'
+import { alleredeGivneTilladelser } from './lib/permissionRequests'
 import { LoginScreen } from './screens/LoginScreen'
 import {
   attachApprovalTapHandler,
@@ -44,6 +45,7 @@ function AppBody() {
   const [updProgress, setUpdProgress] = useState(0)
   const [updDismissed, setUpdDismissed] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
+  const [givneTilladelser, setGivneTilladelser] = useState<Tilladelse[]>([])
   // Arbejde-rummet (V2). Tilstanden bor her — ikke i en navigation-lib;
   // to bevidste tilstande af samme forhold til Jarvis, ikke to apps.
   const [mode, setMode] = useState<AppMode>('snak')
@@ -106,7 +108,17 @@ function AppBody() {
   // beder om alt uden at have gjort sig fortjent til noget.
   useEffect(() => {
     if (!config?.authToken) return
-    erGennemfoert().then((f) => setGuideOpen(!f)).catch(() => undefined)
+    // Tilstanden læses FØR guiden vises, ellers spørger den om ting man
+    // allerede har givet — og en guide der spørger om det åbenlyse mister
+    // tilliden på sit første trin.
+    void (async () => {
+      const [faerdig, givet] = await Promise.all([
+        erGennemfoert().catch(() => true),
+        alleredeGivneTilladelser().catch(() => [] as Tilladelse[])
+      ])
+      setGivneTilladelser(givet)
+      setGuideOpen(!faerdig)
+    })()
   }, [config?.authToken])
 
   // Auto-updater: check ved opstart + når app vender tilbage til forgrunden.
@@ -147,7 +159,7 @@ function AppBody() {
   return (
     <SessionProvider key={JSON.stringify([config.apiBaseUrl, config.authToken])}>
       <StreamProvider>
-        <OnboardingGuide visible={guideOpen} onDone={() => setGuideOpen(false)} />
+        <OnboardingGuide visible={guideOpen} alleredeGivet={givneTilladelser} onDone={() => setGuideOpen(false)} />
         {update && !updDismissed ? (
           <View style={{ marginTop: headerHeight + insets.top }}>
           <UpdateBanner

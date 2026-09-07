@@ -55,3 +55,17 @@ it('søgbar tekst samler content og blokke', () => {
   expect(t).toContain('a')
   expect(t).toContain('b')
 })
+
+it('uddraget viser tekst, ikke markdown-tegn', () => {
+  const m = [{ id: '1', role: 'assistant', content: 'noget om **sikkerhedshuller** her', created_at: '' }] as any
+  const t = soegIBeskeder(m, 'sikkerhedshuller')
+  expect(t[0].uddrag).not.toMatch(/\*\*/)
+  expect(t[0].uddrag).toContain('sikkerhedshuller')
+})
+
+it('fremhævningen peger stadig på træffet efter oprydning', () => {
+  const m = [{ id: '1', role: 'assistant', content: '**fed** og så broen', created_at: '' }] as any
+  const t = soegIBeskeder(m, 'broen')
+  const u = t[0].uddrag
+  expect(u.slice(t[0].traefStart, t[0].traefStart + t[0].traefLaengde)).toBe('broen')
+})

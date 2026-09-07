@@ -60,11 +60,14 @@ describe('gemSomHukommelse', () => {
   it('sender tekst og session til /mobile/memory', async () => {
     const spy = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
     global.fetch = spy as any
-    const r = await gemSomHukommelse(cfg, 'noget værd at huske', 's1')
+    const r = await gemSomHukommelse(cfg, 'noget værd at huske', 's1', 'm9')
     expect(r.ok).toBe(true)
     const [url, init] = spy.mock.calls[0]
     expect(url).toBe('https://api.test/mobile/memory')
-    expect(JSON.parse(init.body)).toEqual({ text: 'noget værd at huske', session_id: 's1' })
+    // Feltnavnene er RUTENS, ikke mine: apps/api/.../mobile_memory.py::GemSomHukommelse
+    expect(JSON.parse(init.body)).toEqual({
+      content: 'noget værd at huske', session_id: 's1', message_id: 'm9'
+    })
   })
 
   it('viser serverens status frem for at tie', async () => {

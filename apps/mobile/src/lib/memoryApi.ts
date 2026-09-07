@@ -84,7 +84,8 @@ export async function fetchMemoryOverview(config: ApiConfig): Promise<MemoryOver
 export async function gemSomHukommelse(
   config: ApiConfig,
   text: string,
-  sessionId?: string
+  sessionId?: string,
+  messageId?: string
 ): Promise<{ ok: boolean; besked: string }> {
   const indhold = String(text || '').trim()
   if (!indhold) return { ok: false, besked: 'Der er ikke noget at gemme.' }
@@ -96,7 +97,14 @@ export async function gemSomHukommelse(
         'Content-Type': 'application/json',
         ...(config.authToken ? { Authorization: `Bearer ${config.authToken}` } : {})
       },
-      body: JSON.stringify({ text: indhold, session_id: sessionId ?? null })
+      // Feltet hedder `content`. Det hed `text` indtil 7/9-2026 og gav 422 på
+      // telefonen — min egen test fastholdt det forkerte navn, fordi den
+      // sammenlignede med min antagelse i stedet for med ruten.
+      body: JSON.stringify({
+        content: indhold,
+        session_id: sessionId ?? '',
+        message_id: messageId ?? ''
+      })
     })
     if (!res.ok) {
       return { ok: false, besked: `Kunne ikke gemme (${res.status}).` }

@@ -14,6 +14,26 @@ import type { Tilladelse } from './onboarding'
  *  guiden: den går videre til næste trin. En crash midt i en tilladelses-
  *  guide ville være den værste mulige første oplevelse med appen.
  */
+/** Hvilke tilladelser er ALLEREDE givet?
+ *
+ *  Bruger `get`-varianterne, som IKKE åbner nogen dialog. Uden det her viser
+ *  guiden trin for ting man for længst har sagt ja til — målt på enhed 7/9:
+ *  telefonen havde push, mikrofon og lokation, og guiden spurgte om alle fire
+ *  alligevel. `resterendeTrin()` fandtes allerede til netop dét; den fik bare
+ *  aldrig noget at arbejde med.
+ */
+export async function alleredeGivneTilladelser(): Promise<Tilladelse[]> {
+  const givet: Tilladelse[] = []
+  const tjek = async (t: Tilladelse, f: () => Promise<boolean>) => {
+    try { if (await f()) givet.push(t) } catch { /* ukendt = spørg hellere */ }
+  }
+  await tjek('push', async () => Number((await notifee.getNotificationSettings())?.authorizationStatus ?? 0) > 0)
+  await tjek('mikrofon', async () => (await Audio.getRecordingPermissionsAsync()).granted === true)
+  await tjek('kamera', async () => (await Camera.getCameraPermissionsAsync()).granted === true)
+  await tjek('lokation', async () => (await Location.getForegroundPermissionsAsync()).status === 'granted')
+  return givet
+}
+
 export async function bedOmTilladelse(hvilken: Tilladelse): Promise<boolean> {
   try {
     if (hvilken === 'push') {

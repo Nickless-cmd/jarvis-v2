@@ -3,7 +3,11 @@ import { Alert, Animated, AppState, Linking, Modal, Pressable, StyleSheet, Text,
 import notifee, { EventType } from '@notifee/react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { laesPins, skiftPin } from '../lib/pinnedMessages'
+import { byggeKontekster, type KontekstSlags } from '../lib/recentContexts'
+import { getDeviceLocation, loadPrecision, precisionLabel, type LocationPrecision } from '../lib/location'
 import { gemSomHukommelse } from '../lib/memoryApi'
+import * as Clipboard from 'expo-clipboard'
+import { getOrCreateDeviceIdentity } from '../lib/deviceIdentity'
 import { haptik } from '../lib/haptics'
 import { laesIndstillinger, gemIndstillinger, tilStreamFelter, STANDARD, type ChatIndstillinger } from '../lib/chatSettings'
 import { ChatSearchBar } from '../components/ChatSearchBar'
@@ -212,6 +216,13 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [soegAaben, setSoegAaben] = useState(false)
   const insets = useSafeAreaInsets()
   const [pins, setPins] = useState<string[]>([])
+  // Kontekst-striben i vedhæft-fladen. Tilstanden hentes når fladen ÅBNES —
+  // ikke løbende: en tilladelse man lige har ændret skal være med, men en
+  // baggrunds-poll af udklipsholderen ville være at lytte uopfordret.
+  const [ctxPraecision, setCtxPraecision] = useState<LocationPrecision>('off')
+  const [ctxUdklip, setCtxUdklip] = useState(false)
+  const [indsaet, setIndsaet] = useState<{ tekst: string; n: number }>({ tekst: '', n: 0 })
+  const [enhedsNavn, setEnhedsNavn] = useState('')
   // FEATURE 1: gendan sidst valgte model på tværs af app-genstart. Sættes
   // ubetinget når der findes et gemt valg — whoami-defaulten bruger `cur ??`
   // og bevarer derfor det gemte uanset rækkefølge.
@@ -604,6 +615,35 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     })
   }
 
+  // Kaldes når vedhæft-fladen åbnes: to billige opslag, ikke en poll.
+  const opdaterKontekst = () => {
+    loadPrecision().then(setCtxPraecision).catch(() => undefined)
+    getOrCreateDeviceIdentity().then((d) => setEnhedsNavn(d.deviceName)).catch(() => undefined)
+    Clipboard.hasStringAsync().then(setCtxUdklip).catch(() => setCtxUdklip(false))
+  }
+
+  const handleKontekst = async (slags: KontekstSlags) => {
+    void haptik('markér')
+    if (slags === 'kamera') { setAttachMenuOpen(false); setCameraOpen(true); return }
+    if (slags === 'fil') { await handlePickDocuments(); return }
+    if (slags === 'udklip') {
+      const t = await Clipboard.getStringAsync().catch(() => '')
+      if (t.trim()) { setAttachMenuOpen(false); setIndsaet((p) => ({ tekst: t, n: p.n + 1 })) }
+      return
+    }
+    if (slags === 'enhed') {
+      setAttachMenuOpen(false)
+      setIndsaet((p) => ({ tekst: `Jeg skriver fra ${enhedsNavn || 'denne enhed'}.`, n: p.n + 1 }))
+      return
+    }
+    // Lokation: hentes FØRST når man beder om den, og med den præcision
+    // Bjørn har valgt i indstillinger — ikke den bedste enheden kan give.
+    const pos = await getDeviceLocation(ctxPraecision).catch(() => null)
+    setAttachMenuOpen(false)
+    if (!pos) { Alert.alert('Ingen lokation', `Kunne ikke hente en position (${precisionLabel(ctxPraecision)}).`); return }
+    setIndsaet((p) => ({ tekst: `Jeg er her: ${pos.label}`, n: p.n + 1 }))
+  }
+
   const handleSelectSession = (sessionId: string) => {
     setPanelOpen(false)
     const s = (sessions.sessions ?? []).find((x) => x.id === sessionId)
@@ -752,6 +792,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           }}
         >
         <Composer
+          indsaet={indsaet}
           disabled={!config || pendingAttachments.some((a) => a.status === 'uploading')}
           working={stream.state.status === 'working' || serverBusy}
           modelLabel={model?.label}
@@ -767,7 +808,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             }
           }}
           onPressModel={() => setModelPickerOpen(true)}
-          onAttach={() => setAttachMenuOpen(true)}
+          onAttach={() => { opdaterKontekst(); setAttachMenuOpen(true) }}
           onMic={voice.enter}
           attachments={pendingAttachments}
           onRemoveAttachment={(id) =>
@@ -868,6 +909,14 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
 
       <AttachMenu
         visible={attachMenuOpen}
+        kontekster={byggeKontekster({
+          kameraTilladt: true,
+          lokationsPraecision: ctxPraecision,
+          sidsteFil: pendingAttachments[pendingAttachments.length - 1]?.name,
+          udklipHarTekst: ctxUdklip,
+          enhedsNavn: enhedsNavn || undefined
+        })}
+        onKontekst={(slags) => void handleKontekst(slags)}
         onCamera={() => {
           setAttachMenuOpen(false)
           setCameraOpen(true)

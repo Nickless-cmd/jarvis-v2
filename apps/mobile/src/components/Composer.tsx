@@ -37,7 +37,8 @@ export function Composer({
   researchMode,
   onResearchModeChange,
   remoteMode,
-  onRemoteModeChange
+  onRemoteModeChange,
+  indsaet
 }: {
   disabled?: boolean
   working?: boolean
@@ -58,10 +59,17 @@ export function Composer({
   onResearchModeChange?: (next: boolean) => void
   remoteMode?: 'chat' | 'code'
   onRemoteModeChange?: (next: 'chat' | 'code') => void
+  /** Tekst udefra — fx en delt lokation eller udklipsholderen.
+   *
+   *  Signalet er en TÆLLER og ikke bare strengen: indsætter man den samme
+   *  tekst to gange, ændrer strengen sig ikke, og en effekt på strengen alene
+   *  ville tie anden gang. */
+  indsaet?: { tekst: string; n: number }
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const [text, setText] = useState('')
+  const sidsteIndsaet = useRef(0)
   const [submitting, setSubmitting] = useState(false)
   const [focused, setFocused] = useState(false)
   // Et tryk på hvilepillen skal åbne arbejdsformen FØR tastaturet er nået frem.
@@ -78,6 +86,17 @@ export function Composer({
   useEffect(() => {
     if (wantFocus) inputRef.current?.focus()
   }, [wantFocus])
+
+  // Tekst udefra lægges TIL det man allerede har skrevet — ikke i stedet for.
+  // Man kan godt have skrevet en halv sætning og så dele sin lokation.
+  useEffect(() => {
+    if (!indsaet || indsaet.n === sidsteIndsaet.current) return
+    sidsteIndsaet.current = indsaet.n
+    const t = String(indsaet.tekst || '')
+    if (!t) return
+    setText((prev) => (prev ? `${prev}\n${t}` : t))
+    setWantFocus(true)
+  }, [indsaet])
 
   // Skærmen skal vide om komponisten er i brug: rul-til-bunden sidder OVER
   // komponisten når den hviler, og INDE I den mens man skriver — ellers ville

@@ -212,3 +212,50 @@ describe('Composer', () => {
     expect(onRemoteModeChange).toHaveBeenCalledWith('code')
   })
 })
+
+describe('Composer: tekst udefra', () => {
+  it('lægger delt tekst TIL det man har skrevet — ikke i stedet for', async () => {
+    const screen = await render(
+      <Composer onSend={jest.fn()} onStop={jest.fn()} indsaet={{ tekst: '', n: 0 }} />
+    )
+    await openComposer(screen)
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('composer-input'), 'jeg står')
+    })
+    await act(async () => {
+      screen.rerender(
+        <Composer onSend={jest.fn()} onStop={jest.fn()} indsaet={{ tekst: 'Jeg er her: Aarhus', n: 1 }} />
+      )
+    })
+    expect(screen.getByTestId('composer-input').props.value).toBe('jeg står\nJeg er her: Aarhus')
+  })
+
+  it('indsætter SAMME tekst igen — tælleren er signalet, ikke strengen', async () => {
+    const screen = await render(
+      <Composer onSend={jest.fn()} onStop={jest.fn()} indsaet={{ tekst: '', n: 0 }} />
+    )
+    await openComposer(screen)
+    for (const n of [1, 2]) {
+      await act(async () => {
+        screen.rerender(
+          <Composer onSend={jest.fn()} onStop={jest.fn()} indsaet={{ tekst: 'kl. 9', n }} />
+        )
+      })
+    }
+    expect(screen.getByTestId('composer-input').props.value).toBe('kl. 9\nkl. 9')
+  })
+
+  it('rører ikke feltet uden et nyt signal', async () => {
+    const screen = await render(
+      <Composer onSend={jest.fn()} onStop={jest.fn()} indsaet={{ tekst: 'noget', n: 4 }} />
+    )
+    await openComposer(screen)
+    const foer = screen.getByTestId('composer-input').props.value
+    await act(async () => {
+      screen.rerender(
+        <Composer onSend={jest.fn()} onStop={jest.fn()} indsaet={{ tekst: 'noget', n: 4 }} />
+      )
+    })
+    expect(screen.getByTestId('composer-input').props.value).toBe(foer)
+  })
+})

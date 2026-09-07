@@ -152,7 +152,10 @@ from core.tools.operator_bash_session import (
     _exec_operator_bash_session_list,
 )
 from core.tools.phone_tools import PHONE_TOOL_EXECUTORS as _PHONE_EXECUTORS
-from core.tools.phone_adb import PHONE_ADB_TOOL_EXECUTORS as _PHONE_ADB_EXECUTORS
+from core.tools.phone_adb import (
+    PHONE_ADB_TOOL_EXECUTORS as _PHONE_ADB_EXECUTORS,
+    PHONE_ADB_FORCE_HANDLERS as _PHONE_ADB_FORCE_HANDLERS,
+)
 from core.tools.operator_tools import (
     _exec_operator_session_open,
     _exec_operator_session_run,
@@ -1944,6 +1947,35 @@ def _force_operator_open_url(args: dict[str, Any]) -> dict[str, Any]:
     return _exec_operator_open_url({**args, "_runtime_trust_all": True})
 
 
+# Google-connectorens skrivende vaerktoejer. De havde SAMME fejl som
+# phone_adb_shell: de beder om godkendelse og stod ikke i _FORCE_HANDLERS, saa
+# en godkendelse faldt tilbage til den normale handler med de oprindelige
+# argumenter og bad om godkendelse paa ny. Fundet 7/9-2026 af invarianten i
+# tests/test_approval_har_force_handler.py, som blev skrevet til én fejl og
+# afsloerede fire mere — alle fire er UDGAAENDE handlinger (en mail bliver
+# sendt, en aftale oprettet), hvor «der skete ingenting» er svaert at se.
+
+
+def _force_gmail_send(args: dict[str, Any]) -> dict[str, Any]:
+    """Send mailen direkte efter chat-godkendelse."""
+    return _exec_gmail_send({**args, "_runtime_trust_all": True})
+
+
+def _force_calendar_create_event(args: dict[str, Any]) -> dict[str, Any]:
+    """Opret begivenheden direkte efter chat-godkendelse."""
+    return _exec_calendar_create_event({**args, "_runtime_trust_all": True})
+
+
+def _force_docs_append(args: dict[str, Any]) -> dict[str, Any]:
+    """Skriv i dokumentet direkte efter chat-godkendelse."""
+    return _exec_docs_append({**args, "_runtime_trust_all": True})
+
+
+def _force_sheets_write(args: dict[str, Any]) -> dict[str, Any]:
+    """Skriv i regnearket direkte efter chat-godkendelse."""
+    return _exec_sheets_write({**args, "_runtime_trust_all": True})
+
+
 def _force_operator_launch_app(args: dict[str, Any]) -> dict[str, Any]:
     """Start program direkte efter chat-godkendelse."""
     return _exec_operator_launch_app({**args, "_runtime_trust_all": True})
@@ -1977,6 +2009,14 @@ _FORCE_HANDLERS: dict[str, Any] = {
     "operator_browser_evaluate": _force_operator_browser_evaluate,
     "operator_kill_process": _force_operator_kill_process,
     "operator_record_audio": _force_operator_record_audio,
+    # Telefonens ADB-vej. Uden dem loeb en godkendelse i ring: den normale
+    # handler blev kaldt igen med de oprindelige argumenter og svarede
+    # approval_needed paa ny.
+    **_PHONE_ADB_FORCE_HANDLERS,
+    "gmail_send": _force_gmail_send,
+    "calendar_create_event": _force_calendar_create_event,
+    "docs_append": _force_docs_append,
+    "sheets_write": _force_sheets_write,
 }
 
 

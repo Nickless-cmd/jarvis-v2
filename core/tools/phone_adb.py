@@ -276,3 +276,30 @@ PHONE_ADB_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "gem_sti": {"type": "string", "description": "Gem PNG her i stedet for at returnere base64."}},
        []),
 ]
+
+
+# ── force-handlere ──────────────────────────────────────────────────────
+#
+# `execute_tool_force` slaar op i `_FORCE_HANDLERS` FOERST og falder ellers
+# tilbage til den normale handler — med de OPRINDELIGE argumenter. Uden en
+# force-handler her ville et godkendt kald altsaa ramme den samme
+# approval-gren igen og returnere `approval_needed` paa ny: godkendelsen kom
+# frem, men handlingen skete aldrig, og Jarvis saa bare endnu en afventende
+# anmodning. Maalt paa Bjoerns telefon 7/9 — han godkendte to gange, og begge
+# kald kom tilbage som afventende.
+
+
+def _force_phone_adb_shell(args: dict[str, Any]) -> dict[str, Any]:
+    """Koer kommandoen direkte efter chat-godkendelse."""
+    return _exec_phone_adb_shell({**args, "_runtime_trust_all": True})
+
+
+def _force_phone_adb_screenshot(args: dict[str, Any]) -> dict[str, Any]:
+    """Tag skaermbilledet direkte efter chat-godkendelse."""
+    return _exec_phone_adb_screenshot({**args, "_runtime_trust_all": True})
+
+
+PHONE_ADB_FORCE_HANDLERS: dict[str, Any] = {
+    "phone_adb_shell": _force_phone_adb_shell,
+    "phone_adb_screenshot": _force_phone_adb_screenshot,
+}

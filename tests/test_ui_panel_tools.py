@@ -59,3 +59,61 @@ def test_file_tree_panel_with_highlight_path(isolated_runtime, monkeypatch) -> N
     assert r["status"] == "ok" and r["panel"] == "file_tree"
     pend = [p for p in list_pending() if p["panel"] == "file_tree"]
     assert pend and pend[-1]["detail"] == "core/tools/ui_panel_tools.py"
+
+
+# ---------------------------------------------------------------------------
+# Registreringen (7/9-2026)
+#
+# `open_ui_panel` svarede `status: ok` og gjorde INGENTING. To moduler
+# registrerede navnet; app_control-udgaven blev spredt sidst i simple_tools og
+# vandt derfor dict'et — men den returnerer kun en `panel_request`-markør som
+# intet modul læser. Desk-appen pollede en tom kø.
+#
+# 6/9 blev dubletten "løst" i definitions-arrayet ved at fjerne den ANDEN
+# definition. Det fjernede symptomet (modellen så to signaturer) og lod
+# årsagen stå: den overlevende handler var den inerte.
+# ---------------------------------------------------------------------------
+
+def test_open_ui_panel_peger_paa_handleren_der_faktisk_skriver():
+    import core.tools.app_control_tool as A
+    import core.tools.ui_panel_tools as U
+    from core.tools.simple_tools import _TOOL_HANDLERS
+
+    h = _TOOL_HANDLERS["open_ui_panel"]
+    assert h is U._exec_open_ui_panel, "den inerte udgave har vundet igen"
+    assert h is not A._exec_open_ui_panel
+
+
+def test_kun_EEN_definition_og_den_kender_scope():
+    """Definitionen skal blive ved at være supersættet (den med `scope`)."""
+    from core.tools.simple_tools import TOOL_DEFINITIONS
+
+    d = [x for x in TOOL_DEFINITIONS
+         if (x.get("function") or {}).get("name") == "open_ui_panel"]
+    assert len(d) == 1
+    assert "scope" in (d[0]["function"]["parameters"]["properties"])
+
+
+def test_scope_naar_faktisk_frem_til_store(monkeypatch):
+    """Handleren ignorerede `scope` — så 'workstation' blev stille til 'repo'."""
+    import core.tools.ui_panel_tools as U
+
+    set_ = {}
+
+    def falsk_request_panel(panel, *, detail="", scope="repo", session_id=""):
+        set_.update(panel=panel, detail=detail, scope=scope)
+        return {"id": "panel-prøve"}
+
+    monkeypatch.setattr(U, "request_panel", falsk_request_panel)
+    monkeypatch.setattr(U, "get_request_status", lambda rid: "opened")
+
+    U._exec_open_ui_panel({"panel": "file_tree", "detail": "a/b.py",
+                           "scope": "workstation"})
+    assert set_["scope"] == "workstation"
+
+
+def test_ukendt_scope_afvises():
+    import core.tools.ui_panel_tools as U
+
+    r = U._exec_open_ui_panel({"panel": "preview", "scope": "månen"})
+    assert r["status"] == "error" and "scope" in r["error"]

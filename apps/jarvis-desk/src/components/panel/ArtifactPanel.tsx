@@ -22,16 +22,28 @@ export function ArtifactPanel({
   const [fileData, setFileData] = useState<{ content: string; language: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const kind = artifact?.kind
+  const filePath = artifact?.kind === 'file' ? artifact.filePath : undefined
+  const base = config?.apiBaseUrl
+  const token = config?.authToken
+
+  // Afhængighederne er VÆRDIER, ikke objekt-identiteter (7/9-2026).
+  // Tidligere stod der `[artifact, config]`; forælderen byggede et nyt
+  // config-objekt ved hver render, så effekten kørte igen og igen —
+  // `setFileData(null)` tømte panelet, "Henter…" blinkede, og scroll-
+  // positionen nulstilledes. Forælderen memoiserer nu også, men panelet skal
+  // kunne holde til en forælder der ikke gør.
   useEffect(() => {
     setFileData(null)
     setError(null)
-    if (artifact?.kind === 'file' && artifact.filePath && config) {
-      // Artifact-stier er repo-relative (specs/kode fra Jarvis) → 'repo'-root.
-      getFile(config, 'repo', artifact.filePath)
-        .then((d) => setFileData({ content: d.content, language: d.language }))
-        .catch(() => setError('Kunne ikke hente filen'))
-    }
-  }, [artifact, config])
+    if (kind !== 'file' || !filePath || !base) return
+    let afbrudt = false
+    // Artifact-stier er repo-relative (specs/kode fra Jarvis) → 'repo'-root.
+    getFile({ apiBaseUrl: base, authToken: token } as ApiConfig, 'repo', filePath)
+      .then((d) => { if (!afbrudt) setFileData({ content: d.content, language: d.language }) })
+      .catch(() => { if (!afbrudt) setError('Kunne ikke hente filen') })
+    return () => { afbrudt = true }
+  }, [kind, filePath, base, token])
 
   const Icon = artifact ? (ICON[artifact.kind] ?? File) : File
   return (

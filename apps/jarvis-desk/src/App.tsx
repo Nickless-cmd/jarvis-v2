@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { UpdateCard } from './components/shell/UpdateCard'
 import { DependencyCard } from './components/shell/DependencyCard'
 import { useSettings } from './hooks/useSettings'
@@ -155,7 +155,15 @@ function DependencyHost() {
 function ShellWithPanel({ children }: { children: ReactNode }) {
   const panel = usePanel()
   const { settings } = useSettings()
-  const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  // useMemo, ikke et frisk objekt-literal (7/9-2026): ArtifactPanel'ets
+  // fetch-effekt afhænger af `config`, så et nyt objekt ved HVER render fik
+  // panelet til at nulstille indholdet og genhente ~hvert sekund — det så ud
+  // som blink, og scroll-positionen røg med. Panelet var ubrugeligt for lange
+  // filer.
+  const config = useMemo(
+    () => (settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined),
+    [settings?.apiBaseUrl, settings?.authToken],
+  )
   return (
     <SplitLayout
       open={panel.open}

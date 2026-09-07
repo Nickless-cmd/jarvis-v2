@@ -168,7 +168,18 @@ APP_CONTROL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
 ]
 
+# open_ui_panel-handleren er BEVIDST ikke med her (7/9-2026).
+#
+# Den nedenfor definerede `_exec_open_ui_panel` returnerer kun en
+# `panel_request`-markør — og INTET modul i huset laeser den markoer. Fordi
+# dette dict blev spredt EFTER UI_PANEL_TOOL_HANDLERS i simple_tools, vandt
+# den inerte udgave, og `open_ui_panel` svarede `status: ok` uden at lægge
+# noget i køen. Desk-appen pollede en tom kø; panelet åbnede aldrig.
+#
+# Definitionen herfra beholdes (den er et supersæt — kender `scope`), men
+# handleren kommer nu fra ui_panel_tools, som faktisk skriver til
+# ui_panel_store og VENTER på desk-ack. `_exec_open_ui_panel` bevares som
+# funktion for bagudkompatibilitet med test og call-sites.
 APP_CONTROL_TOOL_HANDLERS: dict[str, Any] = {
     "request_app_action": _exec_request_app_action,
-    "open_ui_panel": _exec_open_ui_panel,
 }

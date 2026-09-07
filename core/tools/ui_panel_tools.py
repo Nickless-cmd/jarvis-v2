@@ -13,6 +13,7 @@ from typing import Any
 from core.services.ui_panel_store import request_panel, get_request_status
 
 _PANELS = ("preview", "right", "files", "file_tree", "settings")
+_SCOPES = ("repo", "workstation")
 
 # Request→ACK-kontrakt (2026-07-10): open_ui_panel VENTER på at desk-appen faktisk
 # åbner + kvitterer, så Jarvis får bekræftelse i stedet for at skyde i blinde.
@@ -35,11 +36,19 @@ def _exec_open_ui_panel(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": f"ukendt panel '{panel}' (gyldige: {', '.join(_PANELS)})"}
     detail = str(args.get("detail") or "")
     session_id = str(args.get("session_id") or "")
+    # `scope` kom ind med app_control-udgaven af definitionen ('workstation'
+    # highlighter i brugerens lokale workspace i stedet for server-repoet).
+    # Denne handler ignorerede den, hvilket var halvdelen af grunden til at
+    # app_control-udgaven fik lov at vinde handler-dict'en 6/9 — se
+    # APP_CONTROL_TOOL_HANDLERS.
+    scope = str(args.get("scope") or "repo").strip().lower()
+    if scope not in _SCOPES:
+        return {"status": "error", "error": f"ukendt scope '{scope}' (gyldige: {', '.join(_SCOPES)})"}
     if action == "close":
         # Ingen persisteret panel-request — signalér blot desk'en at lukke.
         return {"status": "ok", "panel": panel, "action": "close",
                 "note": "Desk-appen lukker panelet. (Kun synligt i jarvis-desk.)"}
-    rec = request_panel(panel, detail=detail, session_id=session_id)
+    rec = request_panel(panel, detail=detail, scope=scope, session_id=session_id)
     rid = rec["id"]
     # VENT på desk-ack (status → 'opened'). Cross-proces via DB-backed store, så
     # ack'en fra api-procesen ses her uanset om vi kører i runtime- eller api-proces.

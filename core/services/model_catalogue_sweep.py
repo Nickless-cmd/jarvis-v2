@@ -78,12 +78,24 @@ def kandidater_for(
     return ud
 
 
-def beslut(resultat: dict[str, Any]) -> tuple[bool, str]:
-    """(skal_være_aktiv, grund). Ren funktion — al politik ét sted."""
+def beslut(resultat: dict[str, Any]) -> tuple[bool | None, str]:
+    """(skal_være_aktiv, grund). Ren funktion — al politik ét sted.
+
+    `None` betyder RØR IKKE: vi kunne ikke afgøre noget, og tilstanden skal
+    stå som den er.
+    """
+    from core.services.model_probe import _er_forbigaaende
     score = int(resultat.get("score") or 0)
     fejl = str(resultat.get("error") or "")
     sprunget = list(resultat.get("sprunget") or [])
     if not resultat.get("callable"):
+        # Et rate limit er ikke en dom. Første kørsel slog
+        # nvidia-nim/minimaxai/minimax-m3 fra på et 429 «Too Many Requests» —
+        # en model jeg havde verificeret minutter forinden. Jeg beskyttede
+        # delprøverne mod forbigående fejl og glemte den første. Uden det her
+        # ville hver ugentlig fejning slå tilfældige raske modeller fra.
+        if _er_forbigaaende(fejl):
+            return None, f"kunne ikke prøves nu: {fejl[:100]}"
         return False, f"svarer ikke: {fejl[:120]}" or "svarer ikke"
     if score < MIN_SCORE_LEVENDE:
         return False, f"score {score} — under grænsen for brugbar ({fejl[:80]})".strip()
@@ -153,7 +165,7 @@ def sweep_provider(
     # VÆRN: slå aldrig ALT fra hos en udbyder på én kørsel. Rammer vi en travl
     # dag eller en netværkshikke, ville vi tømme puljen for en udbyder der er
     # rask i morgen — og cheap lane må aldrig dø.
-    levende = [m for m, r in resultater.items() if beslut(r)[0]]
+    levende = [m for m, r in resultater.items() if beslut(r)[0] is not False]
     if registrerede and not levende:
         rapport["fejl"] = ("alle kandidater dumpede — rører intet. "
                            "Enten er udbyderen nede, eller vi er.")
@@ -161,6 +173,11 @@ def sweep_provider(
 
     for m, r in resultater.items():
         aktiv, grund = beslut(r)
+        if aktiv is None:
+            # Kunne ikke afgøres — lad tilstanden stå.
+            rapport["uaendret"] += 1
+            rapport.setdefault("ikke_afgjort", []).append({"model": m, "grund": grund})
+            continue
         var_registreret = m in registrerede
         ændret = skriv(provider=provider, model=m, aktiv=aktiv, grund=grund,
                        score=int(r.get("score") or 0), detalje=r, profil=profil or "default")

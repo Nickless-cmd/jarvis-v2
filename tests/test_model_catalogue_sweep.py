@@ -68,13 +68,18 @@ def test_kataloget_vejer_tungere_end_udbyderens_reklame():
 # ── værnet ──────────────────────────────────────────────────────────────────
 
 def test_slaar_ALDRIG_alt_fra_hos_en_udbyder_paa_én_koersel(monkeypatch):
-    """En travl dag eller en netværkshikke må ikke tømme puljen — cheap lane
-    må aldrig dø."""
+    """En dårlig dag må ikke tømme puljen — cheap lane må aldrig dø.
+
+    Fejlen her er ÆGTE (410 Gone), ikke forbigående: forbigående fejl har
+    deres eget værn (`beslut` → None). Det her er værnet mod at ALT hos én
+    udbyder dumper på én kørsel, fx fordi udbyderen er nede."""
+    import core.services.model_catalogue_sweep as sw
+    monkeypatch.setattr(sw, "_registrerede_modeller", lambda p: (["a", "b"], "default"))
     skrevet = []
-    rapport = sweep_provider(
+    rapport = sw.sweep_provider(
         "nvidia-nim",
         hent_modeller=lambda p, prof: [],
-        proev=lambda **kw: _r(callable=False, score=0, error="timeout"),
+        proev=lambda **kw: _r(callable=False, score=0, error="410 Gone"),
         skriv=lambda **kw: skrevet.append(kw) or True,
     )
     assert skrevet == [], "rørte registret selvom ALT dumpede"
@@ -223,3 +228,29 @@ def test_en_tilfaeldig_ny_model_der_dumper_tilfoejes_IKKE(monkeypatch, tmp_path)
                                aktiv=False, grund="404", score=0,
                                detalje={}, profil="default") is False
     assert json.loads(f.read_text())["models"] == []
+
+
+def test_et_rate_limit_er_ikke_en_dom():
+    """Første kørsel slog nvidia-nim/minimax-m3 fra på et 429 — en model der
+    var verificeret minutter forinden. Delprøverne var beskyttet mod
+    forbigående fejl; den FØRSTE var ikke."""
+    aktiv, grund = beslut(_r(callable=False, score=0,
+                             error='CheapProviderError: {"status":429,"title":"Too Many Requests"}'))
+    assert aktiv is None, "en travl udbyder må ikke koste modellen dens plads"
+    assert "kunne ikke prøves" in grund
+
+
+def test_en_aegte_doed_model_slaas_stadig_fra():
+    aktiv, _ = beslut(_r(callable=False, score=0, error="410 Gone — end of life"))
+    assert aktiv is False
+
+
+def test_ikke_afgjorte_modeller_roeres_ikke(monkeypatch):
+    import core.services.model_catalogue_sweep as sw
+    monkeypatch.setattr(sw, "_registrerede_modeller", lambda p: (["m"], "default"))
+    skrevet = []
+    r = sw.sweep_provider("nvidia-nim", hent_modeller=lambda p, prof: [],
+                          proev=lambda **kw: _r(callable=False, score=0, error="429 rate limit"),
+                          skriv=lambda **kw: skrevet.append(kw) or True)
+    assert skrevet == [], "skrev selvom dommen var uafgjort"
+    assert r["ikke_afgjort"][0]["model"] == "m"

@@ -5,9 +5,10 @@ import MarkdownIt from 'markdown-it'
 import * as Clipboard from 'expo-clipboard'
 import { readAloud as readAloudText, stopReading } from '../lib/readAloud'
 import { useAuthOptional } from '../state/AuthContext'
-import { Animated, Modal, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native'
+import { Animated, Linking, Modal, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import { CodeBlock } from './CodeBlock'
 import type { ChatMessage } from '../lib/types'
+import { kilderFraBlokke, kilderPrDomaene, type Kilde, type KildeBlok } from '../lib/kilder'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
@@ -29,6 +30,7 @@ export function sourceDomains(text: string): string[] {
 
 export function MessageBubble({
   message,
+  kildeBlokke,
   onResend,
   onRegenerate,
   hideActions,
@@ -37,6 +39,9 @@ export function MessageBubble({
   onSaveMemory
 }: {
   message: ChatMessage
+  /** Turens strukturerede blokke, så kilderne kan læses af det han faktisk
+   *  slog op i stedet for af hvad der tilfældigvis står i svarteksten. */
+  kildeBlokke?: KildeBlok[] | null
   onResend?: (text: string) => void
   /** Menu-ikonet i handlingsrækken. Uden handler er det blot inaktivt. */
   onRegenerate?: () => void
@@ -71,7 +76,13 @@ export function MessageBubble({
   // bruge en plads på i den målte seks-ikon-række.
   const [menuOpen, setMenuOpen] = useState(false)
   const streaming = message.id.startsWith('stream-')
-  const sources = isUser ? [] : sourceDomains(message.content)
+  // Kilderne kommer fra hvad han FAKTISK slog op — tool_use-inputs og
+  // tool_result-indhold — ikke fra om han tilfældigvis citerede adressen i
+  // svaret. Før dette forsvandt de i det sekund streamen stoppede, fordi den
+  // persisterede visning kun tegner tool_use og «Kilder» kun læste teksten.
+  const sources: Kilde[] = isUser
+    ? []
+    : kilderPrDomaene(kilderFraBlokke(kildeBlokke, message.content))
 
   // Blød spring-ind ved mount (§3.3): scale 0.96→1 + opacity 0→1.
   const enter = useRef(new Animated.Value(0)).current
@@ -138,8 +149,16 @@ export function MessageBubble({
         <View style={styles.sources}>
           <Text style={styles.sourcesLabel}>Kilder</Text>
           <View style={styles.sourceChips}>
-            {sources.map((source) => (
-              <Text key={source} style={styles.sourceChip}>{source}</Text>
+            {sources.map((kilde) => (
+              <Text
+                key={kilde.url}
+                style={styles.sourceChip}
+                accessibilityRole="link"
+                accessibilityLabel={`Åbn ${kilde.url}`}
+                onPress={() => { void Linking.openURL(kilde.url) }}
+              >
+                {kilde.domaene}
+              </Text>
             ))}
           </View>
         </View>

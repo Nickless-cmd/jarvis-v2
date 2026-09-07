@@ -83,3 +83,47 @@ describe('handlingsrækken hører til turens SIDSTE afsnit', () => {
     expect(screen.getByText('openai.com')).toBeTruthy()
   })
 })
+
+describe('kilder overlever at streamen stopper', () => {
+  const svar = { ...base, role: 'assistant' as const, content: 'Her er svaret.' } as ChatMessage
+
+  it('viser kilder fra tool_result — også når svaret ikke citerer dem', async () => {
+    // Kernen i fejlen målt 7/9: under streaming kunne man se kilderne, fordi
+    // de levende tool-blokke blev tegnet. Bagefter faldt de væk, fordi
+    // «Kilder» udelukkende læste svarteksten — og han citerer sjældent selv
+    // adresserne.
+    const r = await render(
+      <MessageBubble
+        message={svar}
+        kildeBlokke={[
+          { type: 'tool_use', name: 'web_search', input: { query: 'proxmox' } },
+          { type: 'tool_result', content: 'Se https://pve.proxmox.com/wiki/LXC' }
+        ]}
+      />
+    )
+    expect(r.getByText('Kilder')).toBeTruthy()
+    expect(r.getByText('pve.proxmox.com')).toBeTruthy()
+  })
+
+  it('uden blokke falder den tilbage til adresser i teksten', async () => {
+    // Gamle beskeder har ingen content_json. De skal ikke miste det de havde.
+    const r = await render(
+      <MessageBubble message={{ ...svar, content: 'Læs https://dr.dk/nyt' }} />
+    )
+    expect(r.getByText('dr.dk')).toBeTruthy()
+  })
+
+  it('ingen kilder → ingen overskrift', async () => {
+    const r = await render(<MessageBubble message={svar} kildeBlokke={[]} />)
+    expect(r.queryByText('Kilder')).toBeNull()
+  })
+
+  it('brugerens egen besked får aldrig kilder', async () => {
+    const r = await render(
+      <MessageBubble
+        message={{ ...base, role: 'user', content: 'se https://dr.dk/x' } as ChatMessage}
+      />
+    )
+    expect(r.queryByText('Kilder')).toBeNull()
+  })
+})

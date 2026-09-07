@@ -2710,6 +2710,27 @@
 
 /* Agent-tidslinje: «hvad skete der egentlig?» under et assistent-svar.
    Foldet sammen som standard — resuméet skal kunne læses på ét blik. */
+/* Kilder under et svar — de sider han faktisk hentede, som klikbare links.
+   Ligger LIGE over forløbet (.runtl), fordi «hvor ved du det fra?» er et
+   hyppigere spørgsmål end «hvad gjorde du?». Samme dæmpede vægt som
+   forløbets hoved, så rækken kan ses uden at trække blikket fra svaret. */
+.msg-kilder {
+  display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: 4px 8px; margin: 8px 0 2px; font-size: 12px; line-height: 1.5;
+}
+.msg-kilder-head {
+  color: var(--fg-3); font-size: 10px; font-weight: 800;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.msg-kilder-liste { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.msg-kilde {
+  color: var(--fg-2); text-decoration: none;
+  padding: 1px 7px; border: 1px solid var(--line); border-radius: 999px;
+  max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.msg-kilde:hover { color: var(--fg-1); border-color: var(--fg-3); }
+.msg-kilde:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 .runtl { margin: 6px 0 2px; }
 .runtl-head {
   display: flex; align-items: center; gap: 5px; width: 100%;

@@ -6,6 +6,7 @@ import { RunTimeline } from './RunTimeline'
 import { ArtifactAffordance } from './ArtifactAffordance'
 import { detectArtifacts } from '../../lib/artifacts'
 import { blocksToPlainText } from '../../lib/formatTime'
+import { Kilder } from './Kilder'
 import { hasPasteReference, splitPasteSegments } from '../../lib/pasteSegments'
 import { PasteReferenceChip } from './PasteReferenceChip'
 import type { ApiConfig } from '../../lib/api'
@@ -95,6 +96,9 @@ function MessageRowImpl({
       </article>
       {/* Forløbet FØR handlingerne: «hvad skete der egentlig?» besvares
           bedst lige under svaret, ikke i et panel man skal opsøge. */}
+      {/* Kilderne før forløbet: «hvor ved du det fra?» er et hyppigere
+          spørgsmål end «hvad gjorde du?», og svaret skal stå tættest på teksten. */}
+      {!streaming && <Kilder blocks={blocks} />}
       {!streaming && <RunTimeline blocks={blocks} />}
       {!streaming && <MessageActions text={blocksToPlainText(blocks)} createdAt={createdAt} />}
     </div>

@@ -60,7 +60,11 @@ interface MessageListProps {
 }
 
 type Row =
-  | { kind: 'msg'; key: string; message: ChatMessage; hideActions?: boolean }
+  | { kind: 'msg'; key: string; message: ChatMessage; hideActions?: boolean
+      // Turens blokke følger med den SIDSTE tekstboble, så «Kilder» kan bygges
+      // af det han faktisk slog op. Uden dem faldt kilderne væk i samme sekund
+      // streamen stoppede.
+      kildeBlokke?: PersistedBlock[] | null }
   /** «Tænkte i 14 s ›» — foldet spor af turens overvejelse. */
   | { kind: 'thinking'; key: string; seconds?: number; text?: string }
   /** Billeder/filer sendt MED en brugerbesked, tegnet over boblen. */
@@ -215,8 +219,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               key: `${m.id}-b${bi}`,
               message: { ...m, id: `${m.id}-b${bi}`, content: (b.text ?? '').trim() },
               // Kun turens sidste afsnit bærer kopiér/oplæs — ellers gentages
-              // rækken efter hvert afsnit og tråden bliver støjende.
-              hideActions: bi !== lastTextIdx
+              // rækken efter hvert afsnit og tråden bliver støjende. Samme
+              // sted hører kilderne hjemme: én gang pr. tur, i bunden.
+              hideActions: bi !== lastTextIdx,
+              kildeBlokke: bi === lastTextIdx ? blocks : null
             })
           } else if (b.type === 'tool_use') {
             expanded.push({
@@ -237,7 +243,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       // sagtens have tænkt. Uden dette forsvandt linjen på netop de turer hvor
       // tænkningen ofte er mest interessant: de rene svar.
       if (think) {
-        persisted.unshift({ kind: 'msg', key: m.id, message: m })
+        persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
         persisted.unshift({
           kind: 'thinking', key: `${m.id}-think`,
           seconds: think.seconds, text: think.text
@@ -249,7 +255,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       skipToolRows = false
       const ublocks = attachmentBlocks(parseBlocks(m))
       if (ublocks.length) {
-        persisted.unshift({ kind: 'msg', key: m.id, message: m })
+        persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
         // Billederne ligger OVER boblen, som i referencen — ikke inde i den.
         persisted.unshift({ kind: 'attachments', key: `${m.id}-att`, items: ublocks })
         continue
@@ -320,6 +326,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         return (
           <MessageBubble
             message={item.message}
+            kildeBlokke={item.kildeBlokke}
             onResend={item.message.role === 'user' ? onResend : undefined}
             pinned={pins?.includes(String(item.message.id))}
             onTogglePin={onTogglePin ? () => onTogglePin(String(item.message.id)) : undefined}

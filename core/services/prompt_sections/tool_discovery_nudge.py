@@ -98,13 +98,43 @@ def _skygge() -> bool:
     (Jarvis' overfit-indvending, 6/9). Skyggen giver maalingen uden at roere
     prompten. Samme moenster som reasoning_interceptor og Agent Smith.
 
-    Default TIL, netop fordi den ikke koster prompten noget.
+    **Default OFF fra 7/9-2026 — forsoeget er afsluttet, og svaret var nej.**
+
+    Skyggen koerte et doegn og leverede sin maaling. Den koster ikke prompten
+    noget, men den koster ét embedding-kald pr. besked, og der er ikke mere at
+    laere af at blive ved:
+
+        40 aegte bruger-beskeder koert igennem  →  0 nudges
+        topmatch over taersklen 0,75           →  2 af 40
+        topmatch der ALLEREDE staar i kataloget →  15 af 40 (38 %)
+        snit-afstand top1 → top2                →  0,0106
+
+    De 12 skygge-haendelser var 8 identiske par — ~4 aegte fyringer, ingen fra
+    Bjoerns samtaler (de autonome runs sender samme prompt dagligt, deraf de
+    identiske scorer).
+
+    Det afgoerende tal er 0,0106: afstanden mellem bedste og naestbedste match
+    er ét procentpoint, saa ranglisten er reelt vilkaarlig.
+    ``curiosity_read_mood`` scorer 0,736 paa «Claude kigger paa det nu, dine
+    agenter skal altid virke» — vroevl, 0,017 under toppen. Saenker man
+    taersklen for recall, koeber man stoej i samme takt.
+
+    Og designet strider mod sig selv: nudgen skal frem med de 328 UBRUGTE
+    vaerktoejer, men lighed rangerer konsekvent de ALMINDELIGE oeverst (deres
+    beskrivelser ligner hverdagssprog) — og de frasorteres korrekt, fordi de
+    allerede staar i kataloget. Tilbage er kun det der ligger UNDER dem.
+
+    Problemet er signalet, ikke taersklen, saa der er intet flag der redder
+    den. Koden bliver staaende: der findes maerket data der kan baere et
+    rigtigt signal — «indeholdt naeste assistent-svar i samme session
+    ``tool_use``?» — hvor imperativ-featuren skiller +17,1 % mod spoergsmaals
+    +2,0 %. Bygges den paa DET grundlag, taendes begge flag igen.
     """
     try:
         from core.runtime.settings import load_settings
-        return bool(load_settings().extra.get("tool_discovery_nudge_shadow", True))
+        return bool(load_settings().extra.get("tool_discovery_nudge_shadow", False))
     except Exception:
-        return True
+        return False
 
 
 def _er_prewarm(session_id: str) -> bool:

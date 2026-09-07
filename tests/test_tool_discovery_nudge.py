@@ -315,6 +315,38 @@ def test_default_er_SLUKKET_indtil_sprog_spoergsmaalet_er_afgjort(monkeypatch):
     assert T._enabled() is False
 
 
+def test_skyggen_er_ogsaa_slukket_som_default(monkeypatch):
+    """Skyggen er OGSAA OFF som default fra 7/9 — forsoeget er afsluttet.
+
+    Skyggen koster ikke prompten noget, men den koster ét embedding-kald pr.
+    besked, og maalingen er i hus: 40 aegte beskeder gav 0 nudges, og
+    afstanden top1→top2 er 0,0106, saa ranglisten er vilkaarlig. Der er ikke
+    mere at laere af at lade den regne videre.
+
+    Testen findes fordi de OEVRIGE skygge-tests alle monkeypatcher ``_skygge``
+    og derfor aldrig kan opdage at defaulten er forkert — samme faelde som da
+    otte groenne tests overssa at tilladelses-guiden spurgte om alt.
+    """
+    monkeypatch.undo()
+
+    class TomConfig:
+        extra: dict = {}
+
+    monkeypatch.setattr("core.runtime.settings.load_settings", lambda: TomConfig())
+    assert T._skygge() is False
+
+
+def test_ulaeselig_config_slukker_ogsaa_skyggen(monkeypatch):
+    """Self-safe den sikre vej: kan flaget ikke laeses, regner vi ikke."""
+    monkeypatch.undo()
+
+    def eksploder():
+        raise RuntimeError("config nede")
+
+    monkeypatch.setattr("core.runtime.settings.load_settings", eksploder)
+    assert T._skygge() is False
+
+
 def test_ulaeselig_config_giver_ogsaa_slukket(monkeypatch):
     """Self-safe den SIKRE vej: kan vi ikke læse flaget, nudger vi ikke."""
     monkeypatch.undo()

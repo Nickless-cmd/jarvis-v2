@@ -133,13 +133,19 @@ def egnede_modeller(*, undtagen: frozenset[tuple[str, str]] = frozenset(),
             continue
         s = int(post.get("probe_score") or 0)
         if s >= MIN_SCORE:
-            ud.append((s, p, m))
-    ud.sort(key=lambda x: -x[0])
+            # RÆKKEFØLGEN kommer fra benchmarken når den findes, ikke fra
+            # sonden. Efter første fejning stod 65 af 67 egnede modeller med
+            # probe_score 100, og den første i rotationen var en 3B-model
+            # foran deepseek-v4-pro. Sonden siger KAN den; benchmarken siger
+            # hvor godt. Umålte lægger sig efter de målte, ikke forrest.
+            k = post.get("kvalitets_score")
+            ud.append((int(k) if k is not None else -1, s, p, m))
+    ud.sort(key=lambda x: (-x[0], -x[1]))
     # Én model pr. UDBYDER: to modeller hos samme udbyder deler ofte adfærd,
     # og pointen med rotation er at komme et andet sted hen.
     set_udbydere: set[str] = set()
     valgt: list[tuple[str, str]] = []
-    for _, p, m in ud:
+    for _, _, p, m in ud:
         if p in set_udbydere:
             continue
         set_udbydere.add(p)

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13771 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13779 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,16 +41,16 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13771 functions/
 - [`core.services.12`](core.services.12.md) — `gate_review` … `identity_composer`
 - [`core.services.13`](core.services.13.md) — `identity_drift_daemon` … `layer_tension_daemon`
 - [`core.services.14`](core.services.14.md) — `learning_pipeline_orchestrator` … `memory_tattoos`
-- [`core.services.15`](core.services.15.md) — `memory_write_policy` … `oauth_store`
-- [`core.services.16`](core.services.16.md) — `offline_recomposition_engine` … `private_inner_note_signal_tracking`
-- [`core.services.17`](core.services.17.md) — `private_state_snapshot_tracking` … `quota_store`
-- [`core.services.18`](core.services.18.md) — `r2_5_blocking_gate` … `run_follow`
-- [`core.services.19`](core.services.19.md) — `runtime_action_executor` … `self_model_distiller`
-- [`core.services.20`](core.services.20.md) — `self_model_predictive` … `side_tasks`
-- [`core.services.21`](core.services.21.md) — `signal_baseline` … `system_cartographer`
-- [`core.services.22`](core.services.22.md) — `task_worker` … `truth_gate_v2`
-- [`core.services.23`](core.services.23.md) — `turn_changelog` … `visible_runs_cognitive`
-- [`core.services.24`](core.services.24.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `memory_write_policy` … `oauth_flow`
+- [`core.services.16`](core.services.16.md) — `oauth_store` … `private_inner_interplay_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `private_inner_note_signal_tracking` … `query_language_bridge`
+- [`core.services.18`](core.services.18.md) — `quota_store` … `run_event_log`
+- [`core.services.19`](core.services.19.md) — `run_follow` … `self_model_blind_spots`
+- [`core.services.20`](core.services.20.md) — `self_model_distiller` … `shutdown_window_daemon`
+- [`core.services.21`](core.services.21.md) — `side_tasks` … `sustained_attention`
+- [`core.services.22`](core.services.22.md) — `system_cartographer` … `totp_verifier`
+- [`core.services.23`](core.services.23.md) — `truth_gate_v2` … `visible_runs_capabilities`
+- [`core.services.24`](core.services.24.md) — `visible_runs_cognitive` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

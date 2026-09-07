@@ -127,7 +127,13 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
             pass
         return {"status": "denied", "tool": pending["tool_name"]}
 
-    result = execute_tool_force(pending["tool_name"], pending["arguments"])
+    # owner_approved: et menneske har set PRAECIS dette kald og klikket Godkend.
+    # Uden det rammer en destruktiv kommando sin egen gate igen og svarer
+    # approval_needed paa ny — i ring. Autonome runs kalder samme funktion UDEN
+    # flaget og skal blive ved med at blive stoppet.
+    result = execute_tool_force(
+        pending["tool_name"], pending["arguments"], owner_approved=True,
+    )
     result_text = format_tool_result_for_model(pending["tool_name"], result)
 
     # 2026-05-24 (Claude): persist tool result as role=tool in chat

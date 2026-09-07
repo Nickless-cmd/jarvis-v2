@@ -38,7 +38,7 @@ def test_resolve_pending_approval_persists_tool_result_to_chat(monkeypatch) -> N
     )
     monkeypatch.setattr(
         simple_tools, "execute_tool_force",
-        lambda tool_name, arguments: {
+        lambda tool_name, arguments, **_: {
             "status": "ok", "tool_name": tool_name, "arguments": arguments,
         },
     )
@@ -88,7 +88,7 @@ def test_resolve_pending_approval_persistence_failure_does_not_block(monkeypatch
     monkeypatch.setattr(visible_runs, "append_chat_message", _failing_append)
     monkeypatch.setattr(
         simple_tools, "execute_tool_force",
-        lambda tool_name, arguments: {"status": "ok"},
+        lambda tool_name, arguments, **_: {"status": "ok"},
     )
     monkeypatch.setattr(
         simple_tools, "format_tool_result_for_model",
@@ -120,7 +120,7 @@ def test_resolve_pending_approval_no_session_skips_persistence(monkeypatch) -> N
     )
     monkeypatch.setattr(
         simple_tools, "execute_tool_force",
-        lambda tool_name, arguments: {"status": "ok"},
+        lambda tool_name, arguments, **_: {"status": "ok"},
     )
     monkeypatch.setattr(
         simple_tools, "format_tool_result_for_model",

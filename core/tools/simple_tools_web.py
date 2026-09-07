@@ -447,21 +447,34 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     # SAMME bash som synlige ture i stedet for en parallel kopi.
     _spring_godkendelse = bool(args.get("_runtime_trust_all"))
 
-    # DESTRUKTIVT springes ALDRIG over. Den gamle `_force_bash` tjekkede kun
-    # for klassen "blocked" — men `rm -rf /` klassificeres som "destructive",
-    # saa den slap igennem og KOERTE i autonome runs. Hullet er aeldre end
-    # sammenlaegningen; det lukkes her.
+    # DESTRUKTIVT springes ALDRIG over af TRUST. Den gamle `_force_bash`
+    # tjekkede kun for klassen "blocked" — men `rm -rf /` klassificeres som
+    # "destructive", saa den slap igennem og KOERTE i autonome runs.
     #
-    # Naar Bjoern selv har klikket Godkend paa praecis den kommando, kommer
-    # kaldet gennem resolve_pending_approval med sin egen godkendelse i
-    # ryggen — ikke gennem det her flag.
+    # Den sidste saetning i den gamle kommentar her var forkert, og det kostede
+    # Bjoern en dag: der stod at en menneskelig godkendelse «kommer gennem
+    # resolve_pending_approval med sin egen godkendelse i ryggen — ikke gennem
+    # det her flag». Men resolve_pending_approval kalder execute_tool_force →
+    # _force_bash → _exec_bash(_runtime_trust_all=True), altsaa PRAECIS dette
+    # flag. En godkendt destruktiv kommando ramte derfor gaten igen og fik
+    # approval_needed tilbage — i ring. Maalt 7/9: kortet kom, han godkendte,
+    # og runnet ventede videre til det timede ud.
+    #
+    # Ejer-godkendelsen baeres nu i en ContextVar, ikke i argumenterne — for
+    # modellen skriver selv argumenterne og kunne ellers sende sin egen
+    # godkendelse med. Se core.tools.owner_approval.
     if _ec.classification == "destructive":
-        return {
-            "status": "approval_needed",
-            "message": f"Destructive command requires explicit approval: {command}",
-            "command": command,
-            "classification": "destructive",
-        }
+        from core.tools.owner_approval import er_ejer_godkendt
+        if not er_ejer_godkendt():
+            return {
+                "status": "approval_needed",
+                "message": f"Destructive command requires explicit approval: {command}",
+                "command": command,
+                "classification": "destructive",
+            }
+        logger.warning(
+            "bash: destruktiv kommando koert paa EJER-godkendelse: %s", command[:160],
+        )
 
     if _ec.classification == "approval" and not _spring_godkendelse:
         return {

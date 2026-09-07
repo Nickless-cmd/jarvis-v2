@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-06 from app.routes (live) — 541 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-07 from app.routes (live) — 542 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -504,6 +504,7 @@
 | POST | `/mc/workspace-capabilities/{capability_id}/invoke` | dict | mission_control_runtime_config |
 | GET | `/mobile/download` |  | mobile_update |
 | GET | `/mobile/latest` | dict | mobile_update |
+| POST | `/mobile/memory` | dict | mobile_memory |
 | POST | `/notifications/ack` | dict | presence |
 | GET | `/notifications/pending` | dict | presence |
 | GET | `/notifications/preferences` | dict | presence |

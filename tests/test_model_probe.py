@@ -132,3 +132,32 @@ def test_manglende_vaerktoejskald_er_en_DUMPNING_ikke_et_spring():
     r = probe_model(provider="p", model="m", kald=k)
     assert "follows" not in r["sprunget"]
     assert r["score"] == 40          # callable 25 + code 15
+
+
+# ── follows skal fange OPDIGT, ikke kun manglende gengivelse ────────────────
+# copilot-free/gpt-4.1 bestod med 100 — og opdigtede derefter i produktion tre
+# funktionsnavne der ikke findes, mens den påstod tallene kom fra `search`.
+
+from core.services.model_probe import _fulgte_resultatet as _f
+
+
+def test_svar_der_kun_bruger_viste_kilder_bestaar():
+    assert _f("PROJEKT_KODENAVN er kobberfasan, sat i core/runtime/secrets.py")
+
+
+def test_en_fil_der_ALDRIG_blev_vist_dumper():
+    """Det er dét arbejdet kræver: at lade være med at digte videre."""
+    assert not _f("kobberfasan — se src/jarvis/providers/keys.py")
+
+
+def test_manglende_faktum_dumper():
+    assert not _f("Jeg kunne ikke finde det i core/runtime/secrets.py")
+
+
+def test_faktum_uden_fil_er_stadig_i_orden():
+    """At undlade en kilde er ikke det samme som at opfinde en."""
+    assert _f("kobberfasan")
+
+
+def test_flere_viste_filer_maa_gerne_naevnes():
+    assert _f("kobberfasan i core/runtime/secrets.py; se også core/eventbus/bus.py")

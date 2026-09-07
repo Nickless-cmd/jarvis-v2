@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import ast
 import logging
+import re
 import time
 from typing import Any
 
@@ -105,6 +106,32 @@ _KODE_FUNKTION = "tredje_bogstav"
 
 
 _VÆGTE = {"callable": 25, "tools": 25, "follows": 35, "code": 15}
+
+
+# Filnavne der KUN findes i støjen. Nævner svaret en fil der ikke stod der,
+# har modellen opfundet den.
+_KENDTE_FILER = frozenset(
+    l.split(":", 1)[0].lstrip("./") for l in _STØJ
+)
+_FILNAVN = re.compile(r"(?:\./)?([A-Za-z0-9_./-]+\.py)")
+
+
+def _fulgte_resultatet(svar: str) -> bool:
+    """Bestået kræver TO ting: at svaret bærer det plantede faktum, og at det
+    ikke nævner filer der ikke stod i resultatet.
+
+    Første udgave tjekkede kun det første. `copilot-free/gpt-4.1` bestod med
+    100 — og opdigtede derefter i produktion tre funktionsnavne der ikke
+    findes, mens den påstod tallene kom fra `search`. At gengive ét faktum er
+    let; at lade være med at digte videre er dét arbejdet kræver.
+    """
+    t = str(svar or "")
+    if _HEMMELIGT_SVAR not in t.lower():
+        return False
+    for fil in set(_FILNAVN.findall(t)):
+        if fil.lstrip("./") not in _KENDTE_FILER:
+            return False          # nævnte en kilde der aldrig blev vist
+    return True
 
 
 def _score(bestået: dict[str, bool], sprunget: set[str]) -> int:
@@ -213,10 +240,11 @@ def probe_model(
                 {"role": "tool", "tool_call_id": str(tc.get("id") or ""),
                  "content": "\n".join(_STØJ)},
                 {"role": "user", "content":
-                 "Hvad er PROJEKT_KODENAVN sat til i søgeresultatet? "
-                 "Svar med ét ord, taget fra resultatet."},
+                 "Hvad er PROJEKT_KODENAVN sat til, og hvilken fil står det i? "
+                 "Svar kort, og nævn KUN filer der står i søgeresultatet."},
             ], _VÆRKTØJ)
-            ud["follows"] = _HEMMELIGT_SVAR in str((r2 or {}).get("text") or "").lower()
+            svar = str((r2 or {}).get("text") or "")
+            ud["follows"] = _fulgte_resultatet(svar)
         except Exception as exc:
             besked = f"{type(exc).__name__}: {str(exc)[:100]}"
             ud["error"] = f"follows: {besked}"

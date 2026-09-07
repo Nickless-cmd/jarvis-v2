@@ -212,10 +212,11 @@ _Prøv én model: kan den kaldes, kan den bruge værktøjer, kan den kode._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_er_forbigaaende` | `(fejl)` | — | [src](../../../core/services/model_probe.py#L60) |
-| function | `_score` | `(bestået, sprunget)` | Vægtene afspejler hvad agent-arbejde faktisk falder på. | [src](../../../core/services/model_probe.py#L110) |
-| function | `bedøm_kode` | `(tekst)` | True hvis svaret indeholder en Python-funktion der kan parses. | [src](../../../core/services/model_probe.py#L128) |
-| function | `probe_model` | `(*, provider, model, auth_profile=…, base_url=…, kald=…)` | Kør de fire prøver mod én model. Kaster aldrig. | [src](../../../core/services/model_probe.py#L159) |
+| function | `_er_forbigaaende` | `(fejl)` | — | [src](../../../core/services/model_probe.py#L61) |
+| function | `_fulgte_resultatet` | `(svar)` | Bestået kræver TO ting: at svaret bærer det plantede faktum, og at det | [src](../../../core/services/model_probe.py#L119) |
+| function | `_score` | `(bestået, sprunget)` | Vægtene afspejler hvad agent-arbejde faktisk falder på. | [src](../../../core/services/model_probe.py#L137) |
+| function | `bedøm_kode` | `(tekst)` | True hvis svaret indeholder en Python-funktion der kan parses. | [src](../../../core/services/model_probe.py#L155) |
+| function | `probe_model` | `(*, provider, model, auth_profile=…, base_url=…, kald=…)` | Kør de fire prøver mod én model. Kaster aldrig. | [src](../../../core/services/model_probe.py#L186) |
 
 ## `core/services/model_trust.py`
 _Central-governed EARNED model-trust (harness refactor Part 1 foundation)._

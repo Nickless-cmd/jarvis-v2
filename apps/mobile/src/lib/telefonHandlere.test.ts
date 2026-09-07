@@ -76,6 +76,33 @@ describe('position', () => {
     expect((Location.getCurrentPositionAsync as jest.Mock).mock.calls[0][0].accuracy).toBe(5)
   })
 
+  it('siger hvor gammelt fixet er — Android leverer gerne et cachet', async () => {
+    // Målt 7/9: svaret var 2½ minut gammelt med 100 m nøjagtighed. «Hvor
+    // telefonen er» og «hvor den var» er to forskellige svar.
+    const nu = 1757000000000
+    jest.spyOn(Date, 'now').mockReturnValue(nu)
+    ;(Location.getCurrentPositionAsync as jest.Mock).mockResolvedValueOnce({
+      coords: { latitude: 55.6, longitude: 12.5, accuracy: 100, altitude: 0, speed: 0 },
+      timestamp: nu - 150000
+    })
+    const r = await HANDLERE.phone_location!({}) as Record<string, unknown>
+    expect(r.alder_sekunder).toBe(150)
+    expect(r.frisk).toBe(false)
+    ;(Date.now as jest.Mock).mockRestore()
+  })
+
+  it('markerer et friskt fix som friskt', async () => {
+    const nu = 1757000000000
+    jest.spyOn(Date, 'now').mockReturnValue(nu)
+    ;(Location.getCurrentPositionAsync as jest.Mock).mockResolvedValueOnce({
+      coords: { latitude: 55.6, longitude: 12.5, accuracy: 8, altitude: 0, speed: 0 },
+      timestamp: nu - 3000
+    })
+    const r = await HANDLERE.phone_location!({}) as Record<string, unknown>
+    expect(r.frisk).toBe(true)
+    ;(Date.now as jest.Mock).mockRestore()
+  })
+
   it('siger det ærligt når tilladelsen mangler', async () => {
     ;(Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValueOnce({ status: 'denied' })
     await expect(HANDLERE.phone_location!({})).rejects.toThrow('lokation_ikke_tilladt')

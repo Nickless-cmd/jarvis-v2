@@ -67,13 +67,21 @@ export const HANDLERE: Record<string, (args: Record<string, unknown>) => Promise
         ? Location.Accuracy.High
         : noejagtighed === 'low' ? Location.Accuracy.Low : Location.Accuracy.Balanced
     })
+    // Android leverer gerne et CACHET fix i stedet for at tænde GPS'en —
+    // målt 7/9: et svar der var 2½ minut gammelt, med 100 m nøjagtighed.
+    // Det er ikke forkert, men «hvor telefonen er» og «hvor den var» er to
+    // forskellige svar, og forskellen skal kunne ses uden at regne på
+    // tidsstemplet.
+    const alderS = Math.max(0, Math.round((Date.now() - pos.timestamp) / 1000))
     return {
       breddegrad: pos.coords.latitude,
       laengdegrad: pos.coords.longitude,
       noejagtighed_m: pos.coords.accuracy,
       hoejde_m: pos.coords.altitude,
       fart_ms: pos.coords.speed,
-      tidspunkt: new Date(pos.timestamp).toISOString()
+      tidspunkt: new Date(pos.timestamp).toISOString(),
+      alder_sekunder: alderS,
+      frisk: alderS <= 30
     }
   },
 

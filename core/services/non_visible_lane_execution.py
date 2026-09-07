@@ -67,6 +67,33 @@ _PROVIDERS_WITHOUT_TOOL_SUPPORT: frozenset[str] = frozenset({
 })
 
 
+def _prompt_fra_messages(messages: list[dict] | None) -> str:
+    """Fald tilbage til samtalen når kalderen kun gav `messages`.
+
+    Puljen tager én streng. Vi kan ikke give den værktøjs-transkriptet, men vi
+    kan give den OPGAVEN — den sidste brugerbesked — i stedet for ingenting.
+    Et fald til en tekst-only-udbyder er et dårligere svar; en tom prompt er
+    slet ikke et svar.
+    """
+    if not messages:
+        return ""
+    for m in reversed(messages):
+        try:
+            if str(m.get("role") or "") != "user":
+                continue
+            c = m.get("content")
+            if isinstance(c, str) and c.strip():
+                return c.strip()
+            if isinstance(c, list):
+                dele = [str(d.get("text") or "").strip() for d in c
+                        if isinstance(d, dict) and str(d.get("text") or "").strip()]
+                if dele:
+                    return "\n".join(dele)
+        except Exception:
+            continue
+    return ""
+
+
 def execute_with_role_or_fallback(
     *, message: str = "", provider: str = "", model: str = "",
     requires_tools: bool = False,
@@ -103,7 +130,19 @@ def execute_with_role_or_fallback(
     primary_provider = (provider or "").strip()
     primary_model = (model or "").strip()
     # Effective prompt for token-estimation / text-only fallback paths.
-    _prompt_for_estimate = message or ""
+    #
+    # ── DEN TOMME PROMPT (Bjørn 7/9-2026) ───────────────────────────────────
+    # Var `message or ""`. Agentens værktøjs-løkke kalder med `messages=[...]`
+    # og sender ALDRIG `message` — så hver eneste fallback herunder gav puljen
+    # en TOM streng. Modellen fik intet at svare på og svarede derefter:
+    # «Hello! How can I assist you today?». Det blev gemt som agentens fund, og
+    # explore afleverede det som research.
+    #
+    # Kæden bagved: cerebras (agentens primære) kører på 0,0 % success med
+    # `credits-exhausted` — 814 kald på syv døgn, alle mislykkede. Primæren
+    # kaster, failover fyrer, og dét er hvor prompten blev tabt. Fejlen var
+    # altså ikke i agenten, ikke i værktøjerne og ikke i prompt-samlingen.
+    _prompt_for_estimate = message or _prompt_fra_messages(messages)
     if not primary_provider or not primary_model:
         return execute_cheap_lane_via_pool(message=_prompt_for_estimate, lane=lane)
 

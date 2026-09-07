@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6901/13741 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6902/13742 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 6901/13741 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 569 | 1055 | 53% |
-| `core.services` | 4582 | 9511 | 48% |
+| `core.services` | 4583 | 9512 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 104 | 179 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1203,10 +1203,10 @@ Generated from source. 6901/13741 functions/methods documented (50%). The list b
 - `core/services/nerve_registry.py` :: `is_registered` (L313)
 - `core/services/nerve_registry.py` :: `loader` (L704)
 - `core/services/non_visible_lane_execution.py` :: `cheap_lane_execution_truth` (L31)
-- `core/services/non_visible_lane_execution.py` :: `coding_lane_execution_truth` (L289)
-- `core/services/non_visible_lane_execution.py` :: `execute_coding_lane` (L320)
-- `core/services/non_visible_lane_execution.py` :: `fetch_github_copilot_models` (L1204)
-- `core/services/non_visible_lane_execution.py` :: `local_lane_execution_truth` (L268)
+- `core/services/non_visible_lane_execution.py` :: `coding_lane_execution_truth` (L328)
+- `core/services/non_visible_lane_execution.py` :: `execute_coding_lane` (L359)
+- `core/services/non_visible_lane_execution.py` :: `fetch_github_copilot_models` (L1243)
+- `core/services/non_visible_lane_execution.py` :: `local_lane_execution_truth` (L307)
 - `core/services/notes_connector.py` :: `add_note` (L84)
 - `core/services/notes_connector.py` :: `delete_note` (L114)
 - `core/services/notes_connector.py` :: `list_notes` (L96)

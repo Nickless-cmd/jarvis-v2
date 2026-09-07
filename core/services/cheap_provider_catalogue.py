@@ -281,10 +281,10 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": ["Meta-Llama-3_3-70B-Instruct", "Qwen3.5-9B"],
     },
     # account2's EGEN ollama-cloud free-tier-konto (24. jul, Bjørn): en separat
-    # ollama-server på VPN-gateway-hosten 10.0.0.45 (ct106) proxy'er til
+    # ollama-server på VPN-gateway-hosten 10.0.0.26 proxy'er til
     # ollama.com med account2's konto → adskilt gratis cloud-kvote fra den lokale
     # `ollama` (ejerens konto, visible-lane, i _EXCLUDED_PROVIDERS). Kaldet er et
-    # ALM. LAN-kald til 10.0.0.45 (auth_kind=none, egress=home) — account2-
+    # ALM. LAN-kald til 10.0.0.26 (auth_kind=none, egress=home) — account2-
     # adskillelsen sker inde i ollama-serveren, ikke i vores egress. static_models
     # = KUN de cloud-modeller free-tier faktisk kan (verificeret 24. jul); de øvrige
     # (glm-5.2/kimi-k2.7-code/deepseek-v4-*) kræver subscription → udeladt så de ikke
@@ -292,7 +292,13 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     "ollama-a2": {
         "label": "Ollama Cloud (account2 free tier)",
         "priority": 90,
-        "base_url": "http://10.0.0.45:11434",
+        # ADRESSEN FLYTTET 7/9-2026: stod på 10.0.0.45, som ikke svarer — hverken
+        # ping eller ARP. 1.063 kald på syv døgn, ALLE med
+        # «[Errno 113] No route to host», 0,0 % success. Gatewayen fandtes ved at
+        # scanne LAN for port 11434: den ligger på 10.0.0.26 og har præcis de to
+        # konfigurerede modeller. Verificeret med et rigtigt kald — svarer «klar»
+        # OG returnerer tool_calls, så den duer til agent-arbejde.
+        "base_url": "http://10.0.0.26:11434",
         "auth_kind": "none",
         "protocol": "ollama",
         "models_endpoint": "/api/tags",

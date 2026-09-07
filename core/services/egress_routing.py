@@ -61,13 +61,22 @@ _DEFAULT_NONDEFAULT_EGRESS = "vpn"
 # IPv4-sti; bemærk at den historisk var Cloudflare-blokeret for groq, så den er en
 # nødplan der kan fejle. Skal ægte he6-IPv6 genoplives, kræver det en vært UDEN
 # VPN-kill-switch — ikke en ny adresse.
+# ADRESSEN FLYTTET 7/9-2026: stod på 10.0.0.45, som ikke længere svarer —
+# hverken ping eller ARP. Værten er flyttet til 10.0.0.26 (fundet ved at scanne
+# LAN for 11434 og 8888). Verificeret: proxyen svarer og kommer ud som
+# 45.130.83.70 mod hjemme-IP'ens 185.107.14.241, altså stadig VPN.
+#
+# Det kostede ingenting i dag, fordi v6bind tager forrang for de allowlistede
+# account2-udbydere og aldrig rører proxyen. Men det er en mine: slukkes
+# `egress_v6bind_enabled`, ville ALT account2-trafik ryge mod en død vært — og
+# lækage-guarden ville se et gyldigt endpoint hele vejen ned.
 _DEFAULT_PROXY_ENDPOINTS = {
-    "vpn": "http://10.0.0.45:8888",
+    "vpn": "http://10.0.0.26:8888",
     # DEPRECATED alias — intet ruter hertil længere (EGRESS_ROUTES er tom). Bevaret
     # fordi _resolve_egress_proxy hæver en hård lækage-guard ved manglende endpoint;
     # en gammel state-post der stadig siger "he6" skal resolve, ikke sende account2
     # over hjemme-IP'en. Kan fjernes når ingen persisteret state nævner "he6".
-    "he6": "http://10.0.0.45:8888",
+    "he6": "http://10.0.0.26:8888",
     "home": None,
 }
 

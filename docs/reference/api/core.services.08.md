@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/contradiction_resolver.py`
+_Contradiction resolver (spec 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_meaningful_overlap` | `(finding)` | Overlap-tokens uden stopord og rene tal — kun disse tæller som ægte signal. | [src](../../../core/services/contradiction_resolver.py#L44) |
+| function | `_confidence` | `(finding)` | — | [src](../../../core/services/contradiction_resolver.py#L55) |
+| function | `pick_survivor` | `(finding)` | Authority-first, recency-tiebreak. Decision og self-review-critique er begge | [src](../../../core/services/contradiction_resolver.py#L64) |
+| function | `classify_tier` | `(finding)` | 'auto' | 'escalate'. Escalate naar den tabende beslutning roerer identitet/ | [src](../../../core/services/contradiction_resolver.py#L79) |
+| function | `_apply_supersede` | `(decision_id, *, review_id, rule)` | Marker den tabende decision superseded (status-flip, reversibel, aldrig slettet). | [src](../../../core/services/contradiction_resolver.py#L92) |
+| function | `revert_supersede` | `(decision_id)` | Owner-reversal (Central-CLI): superseded → active igen. | [src](../../../core/services/contradiction_resolver.py#L121) |
+| function | `_write_escalation_proposal` | `(finding, *, rule, seen)` | Escalate-tier: publicer et resolution-FORSLAG (muterer intet). Deduppet pr. | [src](../../../core/services/contradiction_resolver.py#L140) |
+| function | `resolve_contradictions` | `(*, live)` | Resolve modsigelser. ``live=True`` muterer (supersede); ``live=False`` er | [src](../../../core/services/contradiction_resolver.py#L162) |
+| function | `run_resolver_tick` | `()` | Cadence-indgang. Kaldes gennem central().decide saa Centralen ER aktoeren; gate_enforcement | [src](../../../core/services/contradiction_resolver.py#L200) |
+| function | `build_contradiction_resolver_surface` | `(*, limit=…)` | Side-effect-fri read-surface til Central-CLI (jc raw /central/contradictions). | [src](../../../core/services/contradiction_resolver.py#L226) |
+
 ## `core/services/conversation_rhythm.py`
 _Conversation Rhythm — tracks conversation signature patterns._
 
@@ -597,14 +613,4 @@ _Ekstern sandhed til adfærds-reviews — hvad der FAKTISK skete i vinduet._
 | function | `_commits_since` | `(since, until)` | Commits i vinduet, som korte emnelinjer. | [src](../../../core/services/decision_evidence.py#L80) |
 | function | `gather_evidence` | `(*, since, until=…)` | Saml regnskabet for vinduet. Returnerer også en kompakt tekst. | [src](../../../core/services/decision_evidence.py#L103) |
 | function | `evidence_permits_verdict` | `(verdict, evidence)` | Nedgradér en positiv dom der ikke har ydre dækning. | [src](../../../core/services/decision_evidence.py#L152) |
-
-## `core/services/decision_gate.py`
-_Decision gate — pre-execution decision conflict detection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `check_decision_gate` | `(tool_name, tool_args=…, user_message=…)` | Check if a tool call conflicts with active decisions. | [src](../../../core/services/decision_gate.py#L27) |
-| function | `evaluate_decision_conflict` | `(tool_name, tool_args=…, user_message=…)` | Graderet decision-conflict. Returnerer (severity, reason): | [src](../../../core/services/decision_gate.py#L115) |
-| function | `_build_context` | `(tool_name, tool_args, user_message)` | Build a context string for conflict detection. | [src](../../../core/services/decision_gate.py#L182) |
-| function | `_detect_conflict` | `(directive, context, decision)` | Detect if the context conflicts with a decision directive. | [src](../../../core/services/decision_gate.py#L199) |
 

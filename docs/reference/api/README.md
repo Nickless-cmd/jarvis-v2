@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13759 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13764 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -27,30 +27,30 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13759 functions/
 - [`core.plugins`](core.plugins.md)
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_private_signals`
 - [`core.runtime.02`](core.runtime.02.md) — `db_private_states` … `workspace_paths`
-- [`core.services.01`](core.services.01.md) — `__init__` … `agreement_streak`
-- [`core.services.02`](core.services.02.md) — `ambient_presence` … `background_resume`
-- [`core.services.03`](core.services.03.md) — `bash_sandbox` … `central_causal_quality`
-- [`core.services.04`](core.services.04.md) — `central_construct` … `central_learning`
-- [`core.services.05`](core.services.05.md) — `central_lexicon` … `central_sentinel`
-- [`core.services.06`](core.services.06.md) — `central_sequence` … `clarification_classifier`
-- [`core.services.07`](core.services.07.md) — `client_turn_absorb` … `contradiction_resolver`
-- [`core.services.08`](core.services.08.md) — `conversation_rhythm` … `decision_gate`
-- [`core.services.09`](core.services.09.md) — `decision_ghosts` … `dream_consolidation_daemon`
-- [`core.services.10`](core.services.10.md) — `dream_continuum` … `events_retention`
-- [`core.services.11`](core.services.11.md) — `executive_contradiction_signal_tracking` … `gate_shadow`
-- [`core.services.12`](core.services.12.md) — `gate_skill` … `identity_drift_guard`
-- [`core.services.13`](core.services.13.md) — `identity_drift_proposer` … `learning_policy_engine`
-- [`core.services.14`](core.services.14.md) — `lessons` … `memory_write_queue`
-- [`core.services.15`](core.services.15.md) — `meta_cognition_daemon` … `ollama_visible_prompt`
-- [`core.services.16`](core.services.16.md) — `open_loop_closure_proposal_tracking` … `private_temporal_curiosity_state_tracking`
-- [`core.services.17`](core.services.17.md) — `private_temporal_promotion_signal_tracking` … `read_before_write_guard`
-- [`core.services.18`](core.services.18.md) — `reasoning_classifier` … `runtime_action_outcome_tracking`
-- [`core.services.19`](core.services.19.md) — `runtime_action_registry` … `self_model_signal_tracking`
-- [`core.services.20`](core.services.20.md) — `self_monitor` … `signal_decay_daemon`
-- [`core.services.21`](core.services.21.md) — `signal_delta_trigger` … `taste_profile`
-- [`core.services.22`](core.services.22.md) — `telegram_gateway` … `turn_trace`
-- [`core.services.23`](core.services.23.md) — `ui_panel_store` … `visible_runs_learning_signals`
-- [`core.services.24`](core.services.24.md) — `visible_runs_memory` … `world_model_signal_tracking`
+- [`core.services.01`](core.services.01.md) — `__init__` … `agents`
+- [`core.services.02`](core.services.02.md) — `agreement_streak` … `avoidance_detector`
+- [`core.services.03`](core.services.03.md) — `background_resume` … `central_catalog`
+- [`core.services.04`](core.services.04.md) — `central_causal_quality` … `central_layer_contract`
+- [`core.services.05`](core.services.05.md) — `central_learning` … `central_self_state`
+- [`core.services.06`](core.services.06.md) — `central_sentinel` … `claim_scanner`
+- [`core.services.07`](core.services.07.md) — `clarification_classifier` … `contradiction_engine`
+- [`core.services.08`](core.services.08.md) — `contradiction_resolver` … `decision_evidence`
+- [`core.services.09`](core.services.09.md) — `decision_gate` … `dream_carry_over`
+- [`core.services.10`](core.services.10.md) — `dream_consolidation_daemon` … `eventbus_central_bridge`
+- [`core.services.11`](core.services.11.md) — `events_retention` … `gate_review`
+- [`core.services.12`](core.services.12.md) — `gate_shadow` … `identity_drift_daemon`
+- [`core.services.13`](core.services.13.md) — `identity_drift_guard` … `learning_pipeline_orchestrator`
+- [`core.services.14`](core.services.14.md) — `learning_policy_engine` … `memory_write_policy`
+- [`core.services.15`](core.services.15.md) — `memory_write_queue` … `offline_recomposition_engine`
+- [`core.services.16`](core.services.16.md) — `ollama_visible_prompt` … `private_state_snapshot_tracking`
+- [`core.services.17`](core.services.17.md) — `private_temporal_curiosity_state_tracking` … `r2_5_blocking_gate`
+- [`core.services.18`](core.services.18.md) — `read_before_write_guard` … `runtime_action_executor`
+- [`core.services.19`](core.services.19.md) — `runtime_action_outcome_tracking` … `self_model_predictive`
+- [`core.services.20`](core.services.20.md) — `self_model_signal_tracking` … `signal_baseline`
+- [`core.services.21`](core.services.21.md) — `signal_decay_daemon` … `task_worker`
+- [`core.services.22`](core.services.22.md) — `taste_profile` … `turn_changelog`
+- [`core.services.23`](core.services.23.md) — `turn_trace` … `visible_runs_error_messaging`
+- [`core.services.24`](core.services.24.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

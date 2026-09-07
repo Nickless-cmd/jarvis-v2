@@ -2,6 +2,39 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dream_consolidation_daemon.py`
+_Dream Consolidation — semantic + LLM-driven consolidation during low-activity._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sessions_since` | `(last_iso)` | Antal distinkte chat-sessioner med aktivitet siden ``last_iso``. Fail-OPEN: | [src](../../../core/services/dream_consolidation_daemon.py#L52) |
+| function | `_acquire_consolidation_lock` | `()` | True hvis vi fik lockken (ingen anden dream kører). Best-effort, self-safe. | [src](../../../core/services/dream_consolidation_daemon.py#L70) |
+| function | `_release_consolidation_lock` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L82) |
+| function | `_storage_path` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L116) |
+| function | `_dreams_dir` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L120) |
+| function | `_load` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L124) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L140) |
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L152) |
+| function | `_fragment_tokens` | `(text)` | Tokens fra ét fragment, uden et evt. afhugget sidste ord. | [src](../../../core/services/dream_consolidation_daemon.py#L157) |
+| function | `_is_idle_enough` | `()` | True hvis systemet er i ro nok til at konsolidere drømme. | [src](../../../core/services/dream_consolidation_daemon.py#L172) |
+| function | `_gather_fragments` | `()` | Collect recent text fragments from multiple sources. | [src](../../../core/services/dream_consolidation_daemon.py#L211) |
+| function | `drop_boilerplate_tokens` | `(token_counter, *, fragment_count, max_doc_frequency=…)` | Fjern ord der staar i for stor en andel af fragmenterne. Ren funktion. | [src](../../../core/services/dream_consolidation_daemon.py#L294) |
+| function | `_find_themes` | `(fragments)` | Cluster fragments by shared keywords into themes. | [src](../../../core/services/dream_consolidation_daemon.py#L311) |
+| function | `_query_fragmented_memories` | `(theme_tokens, theme_texts)` | Find contradictory, low-confidence, or overlapping memories for a theme. | [src](../../../core/services/dream_consolidation_daemon.py#L362) |
+| function | `_write_dream_note` | `(consolidation_id, themes, idle_minutes)` | Write an abstract dream note to dreams/ dir. | [src](../../../core/services/dream_consolidation_daemon.py#L444) |
+| function | `extract_json_object` | `(raw)` | Træk det første JSON-objekt ud af et LLM-svar. Ren funktion, kaster aldrig. | [src](../../../core/services/dream_consolidation_daemon.py#L492) |
+| function | `_llm_synthesize_dream` | `(themes, fragments, consolidation_id)` | Run a quality LLM synthesis pass over theme clusters + fragments. | [src](../../../core/services/dream_consolidation_daemon.py#L529) |
+| function | `_produce_dream_artifacts` | `(synthesis, consolidation_id, themes)` | Pipe LLM synthesis output into dream notes + hypothesis signals + chronicle. | [src](../../../core/services/dream_consolidation_daemon.py#L616) |
+| function | `consolidate_now` | `()` | Run one consolidation pass unconditionally (ignores cooldown). | [src](../../../core/services/dream_consolidation_daemon.py#L756) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — consolidate when idle + cooldown allows. | [src](../../../core/services/dream_consolidation_daemon.py#L823) |
+| function | `list_recent_dreams` | `(*, limit=…)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L854) |
+| function | `build_dream_consolidation_surface` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L858) |
+| function | `_surface_summary` | `(data)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L879) |
+| function | `build_dream_consolidation_prompt_section` | `()` | Announce recent dream if fresh (last 6h). | [src](../../../core/services/dream_consolidation_daemon.py#L888) |
+| function | `consolidation_loop` | `(stop_event)` | Kald tick() på egen kadence og LOG udfaldet. | [src](../../../core/services/dream_consolidation_daemon.py#L934) |
+| function | `start_dream_consolidation_daemon` | `()` | Start konsoliderings-tråden. Idempotent. | [src](../../../core/services/dream_consolidation_daemon.py#L955) |
+| function | `stop_dream_consolidation_daemon` | `()` | Stop tråden. Self-safe. | [src](../../../core/services/dream_consolidation_daemon.py#L971) |
+
 ## `core/services/dream_continuum.py`
 _Dream Continuum — dreams that mature and "think" between ticks._
 
@@ -661,16 +694,4 @@ _core/services/eventbus_central_bridge.py_
 | function | `_observe_skipped_families` | `(skipped_families)` | Rådets fund #3: gør UROUTEDE event-families selv-opdagende i stedet for at tælle dem i én | [src](../../../core/services/eventbus_central_bridge.py#L571) |
 | function | `run_bridge_tick` | `(*, trigger=…, last_visible_at=…)` | Ét poll-tick: læs nye events siden last_seen_id, router hvidlistede → observe. | [src](../../../core/services/eventbus_central_bridge.py#L596) |
 | function | `register_bridge_producer` | `()` | Registrér broen som cadence-producer (poll ~hvert 30s). Observe-only → ingen | [src](../../../core/services/eventbus_central_bridge.py#L685) |
-
-## `core/services/events_retention.py`
-_Events-table retention — bound the unbounded ``events`` telemetry table._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_retention_days` | `()` | — | [src](../../../core/services/events_retention.py#L24) |
-| function | `prune_old_events` | `(*, max_age_days=…, max_delete=…, batch_size=…)` | Delete events older than ``max_age_days`` in batches. Returns {"deleted": N}. | [src](../../../core/services/events_retention.py#L33) |
-| function | `prune_table_by_age` | `(table, ts_column, *, max_age_days, max_delete=…, batch_size=…)` | Delete rows from ``table`` where ``ts_column`` < cutoff, in small capped | [src](../../../core/services/events_retention.py#L50) |
-| function | `prune_telemetry_tables` | `()` | Age-prune the safe telemetry tables. Self-safe. Returns per-table deleted counts. | [src](../../../core/services/events_retention.py#L105) |
-| function | `prune_versioned_table` | `(table, version_col, *, keep_latest, max_delete=…, batch_size=…)` | Delete all but the newest ``keep_latest`` versions from a versioned snapshot | [src](../../../core/services/events_retention.py#L129) |
-| function | `prune_versioned_tables` | `()` | Keep-latest-N prune the versioned cognitive snapshot tables. Self-safe. | [src](../../../core/services/events_retention.py#L175) |
 

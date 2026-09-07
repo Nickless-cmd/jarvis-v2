@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/events_retention.py`
+_Events-table retention — bound the unbounded ``events`` telemetry table._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_retention_days` | `()` | — | [src](../../../core/services/events_retention.py#L24) |
+| function | `prune_old_events` | `(*, max_age_days=…, max_delete=…, batch_size=…)` | Delete events older than ``max_age_days`` in batches. Returns {"deleted": N}. | [src](../../../core/services/events_retention.py#L33) |
+| function | `prune_table_by_age` | `(table, ts_column, *, max_age_days, max_delete=…, batch_size=…)` | Delete rows from ``table`` where ``ts_column`` < cutoff, in small capped | [src](../../../core/services/events_retention.py#L50) |
+| function | `prune_telemetry_tables` | `()` | Age-prune the safe telemetry tables. Self-safe. Returns per-table deleted counts. | [src](../../../core/services/events_retention.py#L105) |
+| function | `prune_versioned_table` | `(table, version_col, *, keep_latest, max_delete=…, batch_size=…)` | Delete all but the newest ``keep_latest`` versions from a versioned snapshot | [src](../../../core/services/events_retention.py#L129) |
+| function | `prune_versioned_tables` | `()` | Keep-latest-N prune the versioned cognitive snapshot tables. Self-safe. | [src](../../../core/services/events_retention.py#L175) |
+
 ## `core/services/executive_contradiction_signal_tracking.py`
 _Executive-contradiction signal tracking — migrated onto signal_tracking_framework._
 
@@ -535,16 +547,4 @@ _Review-cluster gate — selv-review-vurdering, GRADERET._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `review_gate` | `(ctx)` | ctx: {review} hvor review har risk_level (low/med/high) + score. | [src](../../../core/services/gate_review.py#L23) |
-
-## `core/services/gate_shadow.py`
-_Track 2 — SHADOW-kørsel af de sovende post_output-gates._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_enforced` | `(nerve)` | True hvis gaten er graduated til enforce (i _ENFORCED) OG ikke kill-switchet fra. | [src](../../../core/services/gate_shadow.py#L60) |
-| function | `_enforce_verdict` | `(nerve, cluster, klass, verdict)` | Håndhæv en enforced gates ikke-grønne verdict = gør det SYNLIGT som central-incident. | [src](../../../core/services/gate_shadow.py#L71) |
-| function | `POST_OUTPUT_GATES_CLUSTERS` | `()` | (nerve, cluster) i kald-rækkefølge — til test/introspektion. | [src](../../../core/services/gate_shadow.py#L97) |
-| function | `_shadow_enabled` | `()` | True medmindre gate_kernel.shadow er EKSPLICIT slået fra. Fail-open til ON | [src](../../../core/services/gate_shadow.py#L102) |
-| function | `_resolve` | `(mod_path, fn_attr)` | — | [src](../../../core/services/gate_shadow.py#L112) |
-| function | `run_post_output_shadow` | `(ctx)` | Kør de 5 sovende gates i SKYGGE via central().decide. | [src](../../../core/services/gate_shadow.py#L117) |
 

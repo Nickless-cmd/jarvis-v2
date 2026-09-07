@@ -361,6 +361,17 @@ _Agent dispatch orchestrator for code mode (spec §19)._
 | function | `scan_skills_before_dispatch` | `(skill_contents)` | Kør skill_scanner på hver skill der vil eksekvere lokalt (§19.8). Blokerer | [src](../../../core/services/agent_dispatch.py#L74) |
 | function | `dispatch_code_mode_task` | `(task, *, inline=…, executor_count=…, skill_contents=…, user_id=…, dry_run=…)` | Orchestrér en code-mode-opgave (§19.4). | [src](../../../core/services/agent_dispatch.py#L87) |
 
+## `core/services/agent_model_fitness.py`
+_Er denne model egnet til agent-arbejde? Svaret bygger på MÅLINGER._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_registret` | `()` | — | [src](../../../core/services/agent_model_fitness.py#L42) |
+| function | `dom` | `(provider, model, *, poster=…)` | 'egnet' | 'uegnet' | 'ukendt'. Kaster aldrig. | [src](../../../core/services/agent_model_fitness.py#L50) |
+| function | `_dom` | `(provider, model, poster)` | — | [src](../../../core/services/agent_model_fitness.py#L64) |
+| function | `er_blokeret` | `(provider, model, *, rolle=…)` | True kun når vi har MÅLT at modellen ikke duer til værktøjs-arbejde. | [src](../../../core/services/agent_model_fitness.py#L83) |
+| function | `bedste_egnede` | `(*, undtagen=…)` | Den højest scorende målte model der bestod `follows`. ('','') hvis ingen. | [src](../../../core/services/agent_model_fitness.py#L90) |
+
 ## `core/services/agent_observation_compressor.py`
 _Agent observation compressor — Mastra-style intra-session compression._
 
@@ -395,9 +406,9 @@ _Agent-pool router (spec §4 + §5.5). Tyndt lag over central_route så agenter_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `route_agent_task` | `(*, kind=…, min_tokens=…, quality_threshold=…, allow_paid=…, exclude=…)` | Vælg (provider, model) for en agent-task via central_route. Aldrig tør. | [src](../../../core/services/agent_pool_router.py#L15) |
-| function | `_load_task_scores` | `(provider, model)` | Nuværende task_scores for (provider, model) fra runtime-state. {} ved intet. | [src](../../../core/services/agent_pool_router.py#L33) |
-| function | `_save_task_scores` | `(provider, model, scores)` | — | [src](../../../core/services/agent_pool_router.py#L44) |
-| function | `update_task_score` | `(*, provider, model, kind, outcome_quality, lr=…)` | §4.4 kvalitets-læring: EMA-opdatér task_score for (model, kind) fra et | [src](../../../core/services/agent_pool_router.py#L52) |
+| function | `_load_task_scores` | `(provider, model)` | Nuværende task_scores for (provider, model) fra runtime-state. {} ved intet. | [src](../../../core/services/agent_pool_router.py#L66) |
+| function | `_save_task_scores` | `(provider, model, scores)` | — | [src](../../../core/services/agent_pool_router.py#L77) |
+| function | `update_task_score` | `(*, provider, model, kind, outcome_quality, lr=…)` | §4.4 kvalitets-læring: EMA-opdatér task_score for (model, kind) fra et | [src](../../../core/services/agent_pool_router.py#L85) |
 
 ## `core/services/agent_relay.py`
 _Agent relay — direct A→B messaging between sub-agents._
@@ -658,13 +669,4 @@ _Agents-cluster — gør multi-agent-systemerne synlige i Den Intelligente Centr
 | function | `agents_summary` | `(*, window=…)` | Read-only: nylig agent/council-aktivitet (til MC). Self-safe. | [src](../../../core/services/agents.py#L102) |
 | function | `_build_roster` | `(*, window=…)` | Full agent roster: every unique (provider, model) from the cheap-lane pool as a | [src](../../../core/services/agents.py#L136) |
 | function | `_iso` | `(ts)` | Epoch seconds → ISO-8601 UTC string; "" for a missing/zero timestamp. | [src](../../../core/services/agents.py#L221) |
-
-## `core/services/agreement_streak.py`
-_Agreement-streak substrate trigger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_opening_is_agreement` | `(text)` | Return the matched phrase if the text opens with agreement, else None. | [src](../../../core/services/agreement_streak.py#L45) |
-| function | `detect_agreement_streak` | `(*, lookback=…, threshold=…)` | Pull last N assistant messages, return substrate dict if streak detected. | [src](../../../core/services/agreement_streak.py#L60) |
-| function | `build_agreement_streak_section` | `()` | Prompt section — substrate, ikke domm. | [src](../../../core/services/agreement_streak.py#L110) |
 

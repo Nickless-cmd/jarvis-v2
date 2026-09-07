@@ -34,6 +34,17 @@ logger = logging.getLogger(__name__)
 # Match at start of message (case-insensitive). We're conservative:
 # rather miss true corrections than mark non-corrections (which would
 # bias retrieval against good episodes).
+# «nej» betyder ikke altid nej.
+#
+# Paa dansk ACCEPTERER man med det: «nej det er okay», «nej tak, det er fint».
+# Maalt paa 400 rigtige beskeder 7/9-2026 var seks af de otteogtyve traef af
+# den slags — Bjoern der sagde at det var i orden. De skal ud FOER moenstrene
+# faar lov at kigge.
+_ACCEPT = re.compile(
+    r"^\s*(nej|nope)[,.\s]+(det er |den er )?(okay|ok|fint|i orden|fine|alt ?ok)",
+    re.IGNORECASE,
+)
+
 _CORRECTION_PATTERNS: tuple[re.Pattern, ...] = (
     # Direct rejections
     re.compile(r"^\s*nej[,.\s]", re.IGNORECASE),
@@ -42,18 +53,30 @@ _CORRECTION_PATTERNS: tuple[re.Pattern, ...] = (
     re.compile(r"^\s*det er forkert\b", re.IGNORECASE),
     # Undo / stop
     re.compile(r"\bfortryd\b", re.IGNORECASE),
-    re.compile(r"\bstop\s*(det|nu|med)?", re.IGNORECASE),
+    # ORDGRAENSE, tilfoejet 7/9. Foer stod der `\bstop\s*(det|nu|med)?` — uden
+    # afsluttende graense, saa den matchede «stoppede». Syv af otteogtyve traef
+    # var «Du stoppede?», altsaa Bjoern der SPURGTE hvorfor Jarvis holdt op.
+    # Ikke rettelser; det hyppigste enkeltmoenster af falske positiver.
+    re.compile(r"\bstop\b", re.IGNORECASE),
     re.compile(r"\brul tilbage\b", re.IGNORECASE),
     re.compile(r"\brevert\b", re.IGNORECASE),
     re.compile(r"\bundo\b", re.IGNORECASE),
     # Course-correction phrasings
     re.compile(r"\bdet skal ikke\b", re.IGNORECASE),
-    re.compile(r"\bikke s[aå]dan\b", re.IGNORECASE),
-    re.compile(r"\bdu mis(forstod|forst[aå]r)\b", re.IGNORECASE),
+    re.compile(r"\bikke s[a\u00e5]dan\b", re.IGNORECASE),
+    re.compile(r"\bdu mis(forstod|forst[a\u00e5]r)\b", re.IGNORECASE),
     re.compile(r"\bdet var ikke\b", re.IGNORECASE),
     re.compile(r"\bglemte du\b", re.IGNORECASE),
-    re.compile(r"\bg[oø]r det om\b", re.IGNORECASE),
-    re.compile(r"\bprøv igen\b", re.IGNORECASE),
+    re.compile(r"\bg[o\u00f8]r det om\b", re.IGNORECASE),
+    re.compile(r"\bpr\u00f8v igen\b", re.IGNORECASE),
+    # Bjoerns EGEN maade at rette paa (maalt paa hans rettelser fra 7/9).
+    # Han afviser sjaeldent — han LEVERER den manglende kendsgerning. De faa
+    # eksplicitte markoerer han bruger, stod der ikke.
+    re.compile(r"\b(m[a\u00e5] |vil )?rette dig\b", re.IGNORECASE),
+    re.compile(r"\bdet er ikke\b", re.IGNORECASE),
+    re.compile(r"\bvigtig(t|e)? info\b", re.IGNORECASE),
+    re.compile(r"\bdu tager fejl\b", re.IGNORECASE),
+    re.compile(r"\bikke (rigtigt|korrekt|helt rigtigt)\b", re.IGNORECASE),
 )
 
 # Window in which we associate a correction with the previous turn.
@@ -66,6 +89,8 @@ def _looks_like_correction(text: str) -> bool:
     if not text:
         return False
     head = text.strip()[:240]
+    if not head or _ACCEPT.match(head):
+        return False
     return any(p.search(head) for p in _CORRECTION_PATTERNS)
 
 

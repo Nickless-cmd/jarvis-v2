@@ -978,7 +978,7 @@ Generated from source. 6983/13853 functions/methods documented (50%). The list b
 - `core/services/executive_contradiction_signal_tracking.py` :: `track_runtime_executive_contradiction_signals_for_visible_turn` (L36)
 - `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L163)
 - `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L159)
-- `core/services/experience_correction_listener.py` :: `stop_listener` (L245)
+- `core/services/experience_correction_listener.py` :: `stop_listener` (L270)
 - `core/services/experienced_time_daemon.py` :: `build_experienced_time_surface` (L149)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L64)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_surface` (L30)

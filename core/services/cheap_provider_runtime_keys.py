@@ -22,10 +22,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# BEMÆRK: kataloget har en `auth_kind: "runtime-key"` på arko. Den er en
+# ETIKET — grep finder den ét sted, og ingen kode læser den; arkos nøgle
+# håndteres af et hårdkodet særtilfælde i `provider_auth_ready`. Den er altså
+# ikke den mekanisme man tror når man ser den. Dette kort ER mekanismen.
+# Arko er bevidst ikke flyttet herind: den har sin egen `is_configured()` med
+# mere end en nøgle at tjekke, og at rive den om ville være en anden opgave.
+#
 # provider → (nøgle i runtime.json, env-override)
 RUNTIME_KEY_PROVIDERS: dict[str, tuple[str, str]] = {
     "huggingface": ("huggingface_token", "HUGGINGFACE_TOKEN"),
     "xkiro": ("xkiro_api_key", "XKIRO_API_KEY"),
+    "llm7": ("llm7_api_key", "LLM7_API_KEY"),
 }
 
 

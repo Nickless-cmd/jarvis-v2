@@ -119,7 +119,55 @@ def evaluate_keys() -> dict[str, Any]:
             conn.commit()
     except Exception:
         pass
+    # Notificér EFTER commit, saa vi aldrig varsler om en noegle der ikke blev skrevet.
+    for k in out["issued"]:
+        _varsl_ejer(k["domain"], int(k["track"]))
     return out
+
+
+def _ejer_uid() -> str:
+    try:
+        from core.identity.owner_resolver import get_owner_discord_id
+        return (get_owner_discord_id() or "").strip()
+    except Exception:
+        return ""
+
+
+def _varsl_ejer(domain: str, track: int) -> bool:
+    """Sig til naar en noegle er OPTJENT — den kan ikke bruges foer ejeren godkender.
+
+    Fandtes ikke foer 7/9-2026, og det kostede praecis det man ville tro: tre
+    noegler laa PENDING i to maaneder (veto 1.193 beslutninger fra 10. juli,
+    self_review og decision_gate fra 7. juli), og en fjerde blev udstedt 6. juli
+    og UDLOEB ubemaerket 10. juli. Maskineriet virkede hele vejen — optjening,
+    taerskel, TTL — men det sidste led var at nogen tilfaeldigvis kiggede i en
+    tabel.
+
+    Beskeden baerer kommandoen, fordi verbet er svaert at gaette: det hedder
+    `unlock <id>` i Central CLI, ikke `approve` (som er bundet til tool-intents,
+    autonomi-forslag og initiativer og derfor ikke rammer noegler).
+
+    `importance="normal"`: en optjent noegle er en mulighed, ikke et brud — den
+    skal ikke vaekke nogen om natten. Self-safe; en fejlet notifikation maa
+    aldrig forhindre at noeglen bliver udstedt.
+    """
+    uid = _ejer_uid()
+    if not uid:
+        return False
+    navn = domain.split(":", 1)[-1]
+    try:
+        from core.services.notification_router import route_proactive_notification
+        res = route_proactive_notification(
+            uid, "keymaker_key_earned",
+            {"title": "🔑 The Keymaker: nøgle optjent",
+             "message": (f"«{navn}» har {track} beslutninger med 0 fejl og har optjent en "
+                         f"decentraliserings-nøgle. Den er PENDING indtil du godkender.\n"
+                         f"Godkend i Central CLI: unlock <id>  (se dem med: keys)\n"
+                         f"En godkendt nøgle udløber automatisk efter 24 timer.")},
+            importance="normal")
+        return bool(res.get("delivered"))
+    except Exception:
+        return False
 
 
 def list_keys(*, include_expired: bool = False) -> list[dict[str, Any]]:
@@ -211,7 +259,63 @@ def expire_due() -> dict[str, Any]:
             out["expired"] = len(due)
     except Exception:
         pass
+    out["mindet_om"] = _mind_om_ventende()
     return out
+
+
+_PAAMINDELSE_NOEGLE = "keymaker:paamindelse"
+_PAAMINDELSE_TTL_S = 86400
+_VENTETID_DAGE = 3
+
+
+def _mind_om_ventende() -> int:
+    """Mind om noegler der har ventet paa godkendelse i mere end tre dage.
+
+    Varslingen ved udstedelse daekker kun NYE noegler. Uden dette ville de tre
+    der allerede laa PENDING i to maaneder blive ved at ligge tavse — og en
+    udstedelses-varsling der ikke naaede frem ville aldrig faa en anden chance.
+    En noegle der udloeber uden godkendelse er tabt arbejde: det skete for
+    noegle 1 (veto, 125 beslutninger) mellem 6. og 10. juli.
+
+    Én gang i doegnet, uanset hvor mange der venter — noegler er sjaeldne
+    (fire paa to maaneder), saa en daglig paamindelse er ikke stoej. Self-safe.
+    """
+    try:
+        from core.services import shared_cache
+        if shared_cache.get(_PAAMINDELSE_NOEGLE) is not None:
+            return 0
+    except Exception:
+        return 0        # kan vi ikke rate-limitere, minder vi hellere ikke om
+
+    try:
+        graense = (_now() - timedelta(days=_VENTETID_DAGE)).isoformat()
+        with connect() as conn:
+            _ensure_table(conn)
+            ventende = conn.execute(
+                "SELECT * FROM central_keys WHERE status='pending' AND issued_at < ? ORDER BY id",
+                (graense,)).fetchall()
+        if not ventende:
+            return 0
+        uid = _ejer_uid()
+        if not uid:
+            return 0
+        linjer = ["%s — %s (%d beslutninger, 0 fejl)" % (
+            r["id"], str(r["unlock_name"]), int(r["track_value"] or 0)) for r in ventende]
+        from core.services.notification_router import route_proactive_notification
+        route_proactive_notification(
+            uid, "keymaker_key_pending",
+            {"title": "🔑 %d nøgle(r) venter på dig" % len(ventende),
+             "message": ("Optjent, men ikke i brug før du godkender:\n" + "\n".join(linjer) +
+                         "\n\nCentral CLI: unlock <id>   (se dem med: keys)")},
+            importance="normal")
+        try:
+            from core.services import shared_cache
+            shared_cache.set(_PAAMINDELSE_NOEGLE, True, ttl_seconds=_PAAMINDELSE_TTL_S)
+        except Exception:
+            pass
+        return len(ventende)
+    except Exception:
+        return 0
 
 
 def build_keymaker_surface() -> dict[str, Any]:

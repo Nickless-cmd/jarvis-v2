@@ -156,3 +156,94 @@ def test_is_decentralized_requires_valid_approved_key(tmpdb):
         conn.close()
         assert km.is_decentralized("veto") is False       # udløbet → False
     assert km.is_decentralized("decision_gate") is False   # anden nerve → aldrig
+
+
+# ---------------------------------------------------------------------------
+# Varsling (7/9-2026)
+#
+# Maskineriet virkede hele vejen — optjening, tærskel, TTL — men det sidste led
+# var at nogen tilfældigvis kiggede i en tabel. Tre nøgler lå PENDING i to
+# måneder (veto med 1.193 beslutninger fra 10. juli), og en fjerde blev udstedt
+# 6. juli og **udløb ubemærket** 10. juli. En nøgle der udløber uden godkendelse
+# er tabt arbejde.
+# ---------------------------------------------------------------------------
+
+def test_en_ny_noegle_varsler_ejeren(monkeypatch):
+    import core.services.central_keymaker as K
+
+    sendt: list = []
+    monkeypatch.setattr(K, "_ejer_uid", lambda: "u1")
+    monkeypatch.setattr("core.services.notification_router.route_proactive_notification",
+                        lambda uid, t, p, importance="normal": sendt.append((t, p)) or {"delivered": True})
+
+    assert K._varsl_ejer("decentralize:veto", 1193) is True
+    ntype, payload = sendt[0]
+    assert ntype == "keymaker_key_earned"
+    assert "veto" in payload["message"] and "1193" in payload["message"]
+
+
+def test_beskeden_baerer_kommandoen_fordi_verbet_er_svaert_at_gaette(monkeypatch):
+    """Det hedder `unlock`, ikke `approve` — `approve` er bundet til
+    tool-intents, autonomi-forslag og initiativer og rammer ikke nøgler."""
+    import core.services.central_keymaker as K
+
+    sendt: list = []
+    monkeypatch.setattr(K, "_ejer_uid", lambda: "u1")
+    monkeypatch.setattr("core.services.notification_router.route_proactive_notification",
+                        lambda uid, t, p, importance="normal": sendt.append(p) or {"delivered": True})
+    K._varsl_ejer("decentralize:veto", 1193)
+    assert "unlock" in sendt[0]["message"]
+
+
+def test_uden_ejer_sendes_der_intet(monkeypatch):
+    import core.services.central_keymaker as K
+
+    monkeypatch.setattr(K, "_ejer_uid", lambda: "")
+    with monkeypatch.context() as m:
+        kaldt: list = []
+        m.setattr("core.services.notification_router.route_proactive_notification",
+                  lambda *a, **kw: kaldt.append(1) or {"delivered": True})
+        assert K._varsl_ejer("decentralize:veto", 10) is False
+        assert kaldt == []
+
+
+def test_en_fejlet_varsling_forhindrer_ikke_at_noeglen_udstedes(monkeypatch):
+    """Notifikationen er en bekvemmelighed; nøglen er arbejdet."""
+    import core.services.central_keymaker as K
+
+    def eksploder(*a, **kw):
+        raise RuntimeError("ntfy nede")
+
+    monkeypatch.setattr(K, "_ejer_uid", lambda: "u1")
+    monkeypatch.setattr("core.services.notification_router.route_proactive_notification", eksploder)
+    assert K._varsl_ejer("decentralize:veto", 10) is False
+
+
+# ── påmindelsen ──────────────────────────────────────────────────────────────
+
+def test_paamindelsen_er_rate_limiteret_til_en_gang_i_doegnet(monkeypatch):
+    import core.services.central_keymaker as K
+
+    monkeypatch.setattr("core.services.shared_cache.get", lambda k: True)
+    assert K._mind_om_ventende() == 0
+
+
+def test_uden_rate_limit_minder_vi_hellere_ikke(monkeypatch):
+    """Kan cachen ikke nås, kan vi ikke garantere én om dagen — og en
+    påmindelse pr. cadence-tick ville lære ham at ignorere kanalen."""
+    import core.services.central_keymaker as K
+
+    def eksploder(*a, **kw):
+        raise RuntimeError("cache væk")
+
+    monkeypatch.setattr("core.services.shared_cache.get", eksploder)
+    assert K._mind_om_ventende() == 0
+
+
+def test_expire_due_kalder_paamindelsen(monkeypatch):
+    """Uden koblingen ville modulet være endnu et der er bygget og ikke kaldt."""
+    import inspect
+
+    import core.services.central_keymaker as K
+
+    assert "_mind_om_ventende" in inspect.getsource(K.expire_due)

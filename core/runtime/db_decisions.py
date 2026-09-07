@@ -184,6 +184,68 @@ def append_review(
     return get_decision(decision_id)
 
 
+def update_decision(
+    decision_id: str,
+    *,
+    directive: str | None = None,
+    rationale: str | None = None,
+    trigger_cue: str | None = None,
+    trigger_name: str | None = None,
+    priority: int | None = None,
+    status: str | None = None,
+) -> dict[str, Any] | None:
+    """Update mutable fields on a decision.
+
+    Semantics:
+    - ``None``  → field is left unchanged
+    - ``""``    → field is cleared to NULL (rationale/trigger_cue/trigger_name)
+    - otherwise → field is set to the given value
+
+    ``status`` must be one of VALID_STATUSES; ``priority`` is clamped 0-100.
+    Returns the updated row (or None if decision_id is unknown).
+    """
+    if status is not None and status not in VALID_STATUSES:
+        return None
+    if not get_decision(decision_id):
+        return None
+
+    sets: list[str] = []
+    params: list[Any] = []
+    if directive is not None:
+        sets.append("directive = ?")
+        params.append(str(directive).strip())
+    if rationale is not None:
+        sets.append("rationale = ?")
+        params.append(str(rationale).strip() or None)
+    if trigger_cue is not None:
+        sets.append("trigger_cue = ?")
+        params.append(str(trigger_cue).strip() or None)
+    if trigger_name is not None:
+        sets.append("trigger_name = ?")
+        params.append(str(trigger_name).strip() or None)
+    if priority is not None:
+        sets.append("priority = ?")
+        params.append(max(0, min(100, int(priority))))
+    if status is not None:
+        sets.append("status = ?")
+        params.append(status)
+    if not sets:
+        return get_decision(decision_id)  # nothing to change — return as-is
+
+    sets.append("updated_at = ?")
+    params.append(_now_iso())
+    params.append(decision_id)
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.execute(
+            f"UPDATE behavioral_decisions SET {', '.join(sets)} "
+            "WHERE decision_id = ?",
+            params,
+        )
+        conn.commit()
+    return get_decision(decision_id)
+
+
 def set_status(decision_id: str, new_status: str) -> dict[str, Any] | None:
     if new_status not in VALID_STATUSES:
         return None

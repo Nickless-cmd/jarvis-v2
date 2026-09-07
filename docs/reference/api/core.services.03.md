@@ -33,19 +33,20 @@ _Behavioral decisions — closing the reflection→behavior loop._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_normalize_directive` | `(value)` | — | [src](../../../core/services/behavioral_decisions.py#L34) |
-| function | `_commit_observe` | `(outcome, decision_id)` | Commit-cluster instrument: decision_create → central observe (best-effort). | [src](../../../core/services/behavioral_decisions.py#L38) |
-| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/services/behavioral_decisions.py#L50) |
-| function | `review_decision` | `(*, decision_id, verdict, note=…, evidence=…)` | — | [src](../../../core/services/behavioral_decisions.py#L106) |
-| function | `change_status` | `(decision_id, new_status)` | — | [src](../../../core/services/behavioral_decisions.py#L136) |
-| function | `revoke_decision` | `(decision_id, *, reason=…)` | — | [src](../../../core/services/behavioral_decisions.py#L154) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L172) |
-| function | `get_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L182) |
-| function | `get_decision_with_reviews` | `(decision_id, *, review_limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L186) |
-| function | `list_active_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L213) |
-| function | `list_all_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L217) |
-| function | `format_active_decisions_for_heartbeat` | `(*, max_items=…)` | Compact line of top active commitments for heartbeat injection. | [src](../../../core/services/behavioral_decisions.py#L221) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L240) |
+| function | `_normalize_directive` | `(value)` | — | [src](../../../core/services/behavioral_decisions.py#L35) |
+| function | `_commit_observe` | `(outcome, decision_id)` | Commit-cluster instrument: decision_create → central observe (best-effort). | [src](../../../core/services/behavioral_decisions.py#L39) |
+| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/services/behavioral_decisions.py#L51) |
+| function | `review_decision` | `(*, decision_id, verdict, note=…, evidence=…)` | — | [src](../../../core/services/behavioral_decisions.py#L107) |
+| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update a decision's mutable fields (None = unchanged, "" = cleared). | [src](../../../core/services/behavioral_decisions.py#L137) |
+| function | `change_status` | `(decision_id, new_status)` | — | [src](../../../core/services/behavioral_decisions.py#L178) |
+| function | `revoke_decision` | `(decision_id, *, reason=…)` | — | [src](../../../core/services/behavioral_decisions.py#L196) |
+| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L214) |
+| function | `get_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L224) |
+| function | `get_decision_with_reviews` | `(decision_id, *, review_limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L228) |
+| function | `list_active_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L255) |
+| function | `list_all_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L259) |
+| function | `format_active_decisions_for_heartbeat` | `(*, max_items=…)` | Compact line of top active commitments for heartbeat injection. | [src](../../../core/services/behavioral_decisions.py#L263) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L282) |
 
 ## `core/services/body_memory.py`
 _Body Memory — Jarvis' physical sensation snapshots._

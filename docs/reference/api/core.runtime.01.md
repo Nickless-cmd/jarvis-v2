@@ -427,12 +427,13 @@ _Behavioral decisions store — commitments Jarvis makes to himself._
 | function | `_new_id` | `(prefix)` | — | [src](../../../core/runtime/db_decisions.py#L76) |
 | function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/runtime/db_decisions.py#L80) |
 | function | `append_review` | `(*, decision_id, verdict, note=…, evidence=…)` | Record a self-assessment: how am I doing on this? | [src](../../../core/runtime/db_decisions.py#L119) |
-| function | `set_status` | `(decision_id, new_status)` | — | [src](../../../core/runtime/db_decisions.py#L187) |
-| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L204) |
-| function | `list_decisions` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L216) |
-| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L237) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L248) |
-| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L263) |
+| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L187) |
+| function | `set_status` | `(decision_id, new_status)` | — | [src](../../../core/runtime/db_decisions.py#L249) |
+| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L266) |
+| function | `list_decisions` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L278) |
+| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L299) |
+| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L310) |
+| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L325) |
 
 ## `core/runtime/db_dream_bias.py`
 _DB helpers for dream_bias_active (Lag 2 dream-bias)._

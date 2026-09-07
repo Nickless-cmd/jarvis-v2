@@ -26,6 +26,7 @@ from core.runtime.db_decisions import (
     list_decisions as _db_list,
     list_reviews,
     set_status as _db_set_status,
+    update_decision as _db_update_decision,
 )
 
 logger = logging.getLogger(__name__)
@@ -131,6 +132,47 @@ def review_decision(
     except Exception as exc:
         logger.debug("behavioral_decisions: publish reviewed failed: %s", exc)
     return result
+
+
+def update_decision(
+    decision_id: str,
+    *,
+    directive: str | None = None,
+    rationale: str | None = None,
+    trigger_cue: str | None = None,
+    trigger_name: str | None = None,
+    priority: int | None = None,
+    status: str | None = None,
+) -> dict[str, Any] | None:
+    """Update a decision's mutable fields (None = unchanged, "" = cleared).
+
+    Thin wrapper over the store that publishes ``decision.updated`` so
+    downstream (MC projections, commitment instruments) stay in sync.
+    """
+    updated = _db_update_decision(
+        decision_id,
+        directive=directive,
+        rationale=rationale,
+        trigger_cue=trigger_cue,
+        trigger_name=trigger_name,
+        priority=priority,
+        status=status,
+    )
+    if not updated:
+        return None
+    try:
+        event_bus.publish(
+            "decision.updated",
+            {
+                "decision_id": updated.get("decision_id"),
+                "directive": updated.get("directive"),
+                "status": updated.get("status"),
+                "priority": updated.get("priority"),
+            },
+        )
+    except Exception as exc:
+        logger.debug("behavioral_decisions: publish updated failed: %s", exc)
+    return updated
 
 
 def change_status(decision_id: str, new_status: str) -> dict[str, Any] | None:

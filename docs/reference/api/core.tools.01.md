@@ -227,7 +227,8 @@ _Behavioral decisions tools — Jarvis-facing closure of reflection→behavior._
 | function | `_exec_decision_review` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L40) |
 | function | `_exec_decision_list` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L63) |
 | function | `_exec_decision_get` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L85) |
-| function | `_exec_decision_revoke` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L102) |
+| function | `_exec_decision_update` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L102) |
+| function | `_exec_decision_revoke` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L135) |
 
 ## `core/tools/file_tools_exec.py`
 _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_

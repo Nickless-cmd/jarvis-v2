@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 6987/13857 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 6989/13860 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,15 +23,15 @@ Generated from source. 6987/13857 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 569 | 1055 | 53% |
-| `core.services` | 4626 | 9566 | 48% |
+| `core.runtime` | 570 | 1056 | 53% |
+| `core.services` | 4627 | 9567 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 106 | 182 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 429 | 904 | 47% |
+| `core.tools` | 429 | 905 | 47% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -349,13 +349,13 @@ Generated from source. 6987/13857 functions/methods documented (50%). The list b
 - `core/runtime/db_core.py` :: `PooledConnection.close` (L76)
 - `core/runtime/db_core.py` :: `get_runtime_state_value` (L391)
 - `core/runtime/db_core.py` :: `set_runtime_state_value` (L371)
-- `core/runtime/db_decisions.py` :: `count_decisions` (L263)
+- `core/runtime/db_decisions.py` :: `count_decisions` (L325)
 - `core/runtime/db_decisions.py` :: `create_decision` (L80)
-- `core/runtime/db_decisions.py` :: `delete_decision` (L248)
-- `core/runtime/db_decisions.py` :: `get_decision` (L204)
-- `core/runtime/db_decisions.py` :: `list_decisions` (L216)
-- `core/runtime/db_decisions.py` :: `list_reviews` (L237)
-- `core/runtime/db_decisions.py` :: `set_status` (L187)
+- `core/runtime/db_decisions.py` :: `delete_decision` (L310)
+- `core/runtime/db_decisions.py` :: `get_decision` (L266)
+- `core/runtime/db_decisions.py` :: `list_decisions` (L278)
+- `core/runtime/db_decisions.py` :: `list_reviews` (L299)
+- `core/runtime/db_decisions.py` :: `set_status` (L249)
 - `core/runtime/db_embeddings.py` :: `count_embeddings` (L133)
 - `core/runtime/db_embeddings.py` :: `delete_embedding` (L93)
 - `core/runtime/db_embeddings.py` :: `get_embedding` (L78)
@@ -641,16 +641,16 @@ Generated from source. 6987/13857 functions/methods documented (50%). The list b
 - `core/services/background_resume.py` :: `tracked` (L85)
 - `core/services/bash_sandbox.py` :: `set_enabled` (L72)
 - `core/services/bash_sandbox.py` :: `status` (L79)
-- `core/services/behavioral_decisions.py` :: `change_status` (L136)
-- `core/services/behavioral_decisions.py` :: `create_decision` (L50)
-- `core/services/behavioral_decisions.py` :: `delete_decision` (L172)
-- `core/services/behavioral_decisions.py` :: `get_decision` (L182)
-- `core/services/behavioral_decisions.py` :: `get_decision_with_reviews` (L186)
-- `core/services/behavioral_decisions.py` :: `get_stats` (L240)
-- `core/services/behavioral_decisions.py` :: `list_active_decisions` (L213)
-- `core/services/behavioral_decisions.py` :: `list_all_decisions` (L217)
-- `core/services/behavioral_decisions.py` :: `review_decision` (L106)
-- `core/services/behavioral_decisions.py` :: `revoke_decision` (L154)
+- `core/services/behavioral_decisions.py` :: `change_status` (L178)
+- `core/services/behavioral_decisions.py` :: `create_decision` (L51)
+- `core/services/behavioral_decisions.py` :: `delete_decision` (L214)
+- `core/services/behavioral_decisions.py` :: `get_decision` (L224)
+- `core/services/behavioral_decisions.py` :: `get_decision_with_reviews` (L228)
+- `core/services/behavioral_decisions.py` :: `get_stats` (L282)
+- `core/services/behavioral_decisions.py` :: `list_active_decisions` (L255)
+- `core/services/behavioral_decisions.py` :: `list_all_decisions` (L259)
+- `core/services/behavioral_decisions.py` :: `review_decision` (L107)
+- `core/services/behavioral_decisions.py` :: `revoke_decision` (L196)
 - `core/services/body_memory.py` :: `build_body_memory_surface` (L36)
 - `core/services/body_memory.py` :: `describe_body_memory` (L20)
 - `core/services/body_memory.py` :: `format_body_for_prompt` (L26)

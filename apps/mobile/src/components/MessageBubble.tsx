@@ -1,4 +1,4 @@
-import { Brain, Check, Copy, MoreHorizontal, Pin, PinOff, RotateCw, Share2, Square, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native'
+import { Brain, Check, Copy, MoreHorizontal, Pin, PinOff, RotateCw, Share2, Square, TextCursorInput, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native'
 import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
@@ -75,6 +75,15 @@ export function MessageBubble({
   // Den er nu dét den ligner: en menu med de handlinger der ikke er værd at
   // bruge en plads på i den målte seks-ikon-række.
   const [menuOpen, setMenuOpen] = useState(false)
+  // Markerings-tilstand. React Natives tekstmarkering kan IKKE krydse
+  // søskende-elementer, og markdown tegner hvert afsnit, hver liste og hver
+  // kodeblok som sit eget. Derfor kunne kun én linje ad gangen markeres — og
+  // netop hans svar, med indrykning og tegn, er dem man vil have HELE.
+  //
+  // Her byttes den tegnede visning ud med ét enkelt markerbart felt med den
+  // rå tekst. Så virker træk hen over alt, indrykningen står som den er, og
+  // Android giver selv Markér alt.
+  const [markering, setMarkering] = useState(false)
   const streaming = message.id.startsWith('stream-')
   // Kilderne kommer fra hvad han FAKTISK slog op — tool_use-inputs og
   // tool_result-indhold — ikke fra om han tilfældigvis citerede adressen i
@@ -154,7 +163,20 @@ export function MessageBubble({
         { opacity: enter, transform: [{ scale: enterScale }] }
       ]}
     >
-      {isUser ? (
+      {markering ? (
+        <View>
+          <Text selectable style={styles.markeringText}>{message.content}</Text>
+          <Pressable
+            testID="msg-select-done"
+            accessibilityRole="button"
+            accessibilityLabel="Færdig med at markere"
+            onPress={() => setMarkering(false)}
+            style={styles.markeringLuk}
+          >
+            <Text style={styles.markeringLukText}>Færdig</Text>
+          </Pressable>
+        </View>
+      ) : isUser ? (
         <Text selectable style={styles.userText}>{message.content}</Text>
       ) : (
         <Markdown markdownit={markdownItInstance} style={markdownStyles} rules={markdownRules}>
@@ -230,7 +252,11 @@ export function MessageBubble({
           <Pressable
             accessibilityLabel="Flere handlinger"
             hitSlop={10}
-            onPress={() => (onTogglePin || onSaveMemory ? setMenuOpen(true) : onRegenerate?.())}
+            // Menuen aabner ALTID nu. Foer aabnede den kun hvis der var et
+            // fastgoer- eller hukommelses-kald med, og ellers kaldte knappen
+            // onRegenerate direkte — saa «Markér tekst», som ikke afhaenger af
+            // nogen prop, ville vaere uopnaaelig netop dér.
+            onPress={() => setMenuOpen(true)}
           >
             <MoreHorizontal size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
           </Pressable>
@@ -267,6 +293,16 @@ export function MessageBubble({
                 <Text style={styles.menuText}>Brug som hukommelse</Text>
               </Pressable>
             ) : null}
+            <Pressable
+              testID="msg-select-text"
+              accessibilityRole="button"
+              accessibilityLabel="Markér tekst"
+              onPress={() => { setMenuOpen(false); setMarkering(true) }}
+              style={styles.menuRow}
+            >
+              <TextCursorInput size={18} color={tokens.color.fg2} strokeWidth={1.8} />
+              <Text style={styles.menuText}>Markér tekst</Text>
+            </Pressable>
             {onRegenerate ? (
               <Pressable
                 testID="msg-regenerate"
@@ -348,6 +384,24 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   sources: { marginTop: tokens.spacing.sm, gap: tokens.spacing.xs },
   sourcesLabel: { color: tokens.color.fg3, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   sourceChips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.xs },
+  // Markerings-tilstand: rå tekst, monospace, indrykning bevaret. Den tegnede
+  // markdown-visning er til at LÆSE; den her er til at tage fat i.
+  markeringText: {
+    color: tokens.color.fg1,
+    fontFamily: MONO,
+    fontSize: 13.5,
+    lineHeight: 20
+  },
+  markeringLuk: {
+    alignSelf: 'flex-start',
+    marginTop: tokens.spacing.sm,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: tokens.color.line
+  },
+  markeringLukText: { color: tokens.color.fg2, fontSize: 12, fontWeight: '700' },
   sourceChip: {
     color: tokens.color.accentText,
     fontSize: 12,

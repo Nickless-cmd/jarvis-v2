@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native'
+import { act, fireEvent, render } from '@testing-library/react-native'
 import { MessageBubble } from './MessageBubble'
 import type { ChatMessage } from '../lib/types'
 
@@ -155,5 +155,40 @@ describe('teksten kan markeres', () => {
       <MessageBubble message={{ ...base, role: 'assistant', content: 'se **her**: /etc/hosts' } as ChatMessage} />
     )
     expect(markerbare(r.toJSON())).not.toHaveLength(0)
+  })
+})
+
+describe('markér hele beskeden', () => {
+  const langt = {
+    ...base,
+    role: 'assistant' as const,
+    content: '# Overskrift\n\n- punkt et\n- punkt to\n\n```\n  indrykket linje\n```\n\nsidste afsnit'
+  } as ChatMessage
+
+  it('menuen tilbyder at markere teksten', async () => {
+    const r = await render(<MessageBubble message={langt} />)
+    await act(async () => { fireEvent.press(r.getByLabelText('Flere handlinger')) })
+    expect(r.getByTestId('msg-select-text')).toBeTruthy()
+  })
+
+  it('markerings-tilstand viser HELE beskeden som ét felt', async () => {
+    // Kernen: React Natives markering kan ikke krydse søskende-elementer, og
+    // markdown tegner overskrift, liste, kodeblok og afsnit hver for sig. Man
+    // kunne derfor kun tage én linje. Her er alt ét felt, så et træk hen over
+    // det hele virker — og indrykningen står som den er.
+    const r = await render(<MessageBubble message={langt} />)
+    await act(async () => { fireEvent.press(r.getByLabelText('Flere handlinger')) })
+    await act(async () => { fireEvent.press(r.getByTestId('msg-select-text')) })
+
+    expect(r.getByText(langt.content)).toBeTruthy()
+    expect(r.getByTestId('msg-select-done')).toBeTruthy()
+  })
+
+  it('Færdig lukker tilstanden igen', async () => {
+    const r = await render(<MessageBubble message={langt} />)
+    await act(async () => { fireEvent.press(r.getByLabelText('Flere handlinger')) })
+    await act(async () => { fireEvent.press(r.getByTestId('msg-select-text')) })
+    await act(async () => { fireEvent.press(r.getByTestId('msg-select-done')) })
+    expect(r.queryByTestId('msg-select-done')).toBeNull()
   })
 })

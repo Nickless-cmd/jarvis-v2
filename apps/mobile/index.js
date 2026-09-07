@@ -3,6 +3,7 @@ import messaging from '@react-native-firebase/messaging'
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native'
 import App from './src/App'
 import { display, handleNotificationAction } from './src/lib/push'
+import { erVaekning, haandterVaekning } from './src/lib/broVaekning'
 import { loadAuthConfig } from './src/lib/authStore'
 import { installGlobalErrorHandler } from './src/lib/globalErrorHandler'
 import './src/bubble/registerBubble'
@@ -30,6 +31,13 @@ messaging().setBackgroundMessageHandler(async (msg) => {
   try {
     const config = await loadAuthConfig()
     if (config && config.authToken) {
+      // Vækning: ikke en besked til Bjørn, men en anmodning om at åbne broen.
+      // Den AWAITES — returnerer handleren, lukker Android JS-konteksten ned,
+      // og broen dør før serveren når at sende sit kald.
+      if (erVaekning(data)) {
+        await haandterVaekning(config)
+        return
+      }
       await display(config, data)
       return
     }

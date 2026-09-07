@@ -288,13 +288,19 @@ def _husk_nudge(session_id: str, navn: str) -> None:
         logger.debug("tool_discovery_nudge: kunne ikke gemme suppression: %s", exc)
 
 
-def _log_nudge(navn: str, session_id: str, score: float) -> None:
+def _log_nudge(navn: str, session_id: str, score: float, *, gate: bool | None = None) -> None:
     """Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken
-    konvertering (nudge -> load -> brug) eller falsk-positiv-raten."""
+    konvertering (nudge -> load -> brug) eller falsk-positiv-raten.
+
+    ``gate`` er intent-gatens dom over det leksikalske bud (None = gaten kørte
+    ikke). Den logges OGSAA naar dommen er nej, saa skyggen viser hvad gaten
+    fjerner — ellers ville dens virkning vaere usynlig i data.
+    """
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish("tool_discovery.nudge", {
             "tool": navn, "session_id": session_id, "score": round(float(score), 4),
+            "gate": gate,
         })
     except Exception as exc:
         logger.debug("tool_discovery_nudge: event fejlede: %s", exc)
@@ -399,6 +405,22 @@ def _brugerens_hyppige_ord() -> frozenset[str]:
     return ord_
 
 
+def _intent_gate(besked: str, navn: str) -> bool:
+    """Modellens dom, eller ``False`` hvis den ikke kunne afgives.
+
+    Fejler LUKKET med vilje: stoej er vaerre end ingen nudge, saa tvivl skal
+    koste buddet. Gaten har sin egen hårde deadline (1,5 s mod maalte 0,19 s),
+    fordi ollama-kald koeer 28-91 s naar den er optaget — samme risiko der er
+    dokumenteret som cut-off-roden i ``prompt_contract._timed_result``.
+    """
+    try:
+        from core.services.local_intent_gate import er_bestilt
+        return bool(er_bestilt(besked, navn, _registrerede_navne().get(navn, "")))
+    except Exception as exc:
+        logger.debug("tool_discovery_nudge: intent-gate fejlede: %s", exc)
+        return False
+
+
 def tool_discovery_nudge_section(
     user_message: str, session_id: str | None = None,
 ) -> str:
@@ -449,7 +471,13 @@ def tool_discovery_nudge_section(
     if traef is None:
         return ""   # det NORMALE svar: 50 af 60 aegte beskeder
 
-    _log_nudge(traef.navn, sid, traef.score)
+    # ANDET LED: ordmatchen fandt HVILKET vaerktoej; en lille lokal model
+    # afgoer OM beskeden er en bestilling. Maalt paa 35 aegte bud: praecision
+    # 17 % -> 100 %, 26 af 26 forkerte afvist. Se core.services.local_intent_gate.
+    bestilt = _intent_gate(besked, traef.navn)
+    _log_nudge(traef.navn, sid, traef.score, gate=bestilt)
+    if not bestilt:
+        return ""
     if not _enabled():
         # Skygge: maalingen er skrevet, men prompten er urørt. Vi husker heller
         # ikke nudget — suppression hoerer til den synlige kanal.

@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/pushback.py`
+_Pushback — three prompt-level mechanisms that give Jarvis a real voice_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_emit_pushback_telemetry` | `(section, *, triggered, reason=…, **fields)` | Log pushback section generation to eventbus for observability. | [src](../../../core/services/pushback.py#L34) |
+| function | `_ambiguity_score` | `(message)` | Heuristic 0-1 ambiguity. Returns (score, reasons). | [src](../../../core/services/pushback.py#L67) |
+| function | `_conflict_with_decisions` | `(message)` | Check if the request appears to contradict an active behavioral decision. | [src](../../../core/services/pushback.py#L113) |
+| function | `doubt_signal_section` | `(user_message)` | Render doubt as a prompt section. None when doubt is low. | [src](../../../core/services/pushback.py#L146) |
+| function | `disagreement_invite_section` | `()` | Always-on reminder that pushback is welcome. Static text. | [src](../../../core/services/pushback.py#L184) |
+| function | `_affective_pressure` | `(snapshot)` | Map the emotional snapshot to the feeling most likely to drive pushback. | [src](../../../core/services/pushback.py#L217) |
+| function | `_request_risk_evidence` | `(user_message)` | — | [src](../../../core/services/pushback.py#L244) |
+| function | `affective_pushback_section` | `(user_message)` | Render feeling-driven pushback as bounded prompt guidance. | [src](../../../core/services/pushback.py#L257) |
+| function | `_is_high_stakes` | `(user_message, reasoning_tier)` | — | [src](../../../core/services/pushback.py#L330) |
+| function | `direction_confirm_section` | `(*, user_message, reasoning_tier)` | Inject a 'plan-first, confirm-before-tools' section for high-stakes | [src](../../../core/services/pushback.py#L337) |
+
 ## `core/services/query_language_bridge.py`
 _Bro fra Bjoerns dansk til de engelske vektorer — foer et embedding-opslag._
 
@@ -674,29 +690,4 @@ _Rule Engine — forward-chaining symbolic inference over signal surfaces._
 | function | `get_all_rules` | `()` | Return all registered rules as serializable dicts (for tools). | [src](../../../core/services/rule_engine.py#L212) |
 | function | `build_rule_engine_surface` | `()` | — | [src](../../../core/services/rule_engine.py#L224) |
 | function | `_emit_rule_fired_event` | `(rule_name, urgency)` | — | [src](../../../core/services/rule_engine.py#L239) |
-
-## `core/services/run_closure_gate.py`
-_Run-closure gate — fang tomme replies og unstaged changes efter agentic runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_git_porcelain_status` | `(*, cwd=…)` | Return the set of path-strings reported by ``git status --porcelain``. | [src](../../../core/services/run_closure_gate.py#L67) |
-| function | `_git_dirty_content_hashes` | `(*, cwd=…)` | Return {path: content_hash} for every file currently dirty in working tree. | [src](../../../core/services/run_closure_gate.py#L86) |
-| function | `_record_pre_run_state` | `(run_id)` | — | [src](../../../core/services/run_closure_gate.py#L165) |
-| function | `_pop_pre_run_state` | `(run_id)` | Return pre-run snapshot, or ``None`` if no snapshot was recorded. | [src](../../../core/services/run_closure_gate.py#L174) |
-| function | `_set_current_run` | `(run_id)` | — | [src](../../../core/services/run_closure_gate.py#L203) |
-| function | `_get_current_run` | `()` | — | [src](../../../core/services/run_closure_gate.py#L209) |
-| function | `_record_tool_call` | `(run_id, tool_name)` | — | [src](../../../core/services/run_closure_gate.py#L214) |
-| function | `_pop_tool_calls` | `(run_id)` | — | [src](../../../core/services/run_closure_gate.py#L228) |
-| function | `_summarize_unstaged` | `(diff, limit=…)` | Build a structured summary of new unstaged/untracked paths. | [src](../../../core/services/run_closure_gate.py#L236) |
-| function | `_is_auto_commit_excluded` | `(path)` | True hvis en path er et arbejdsartefakt der aldrig skal committes. | [src](../../../core/services/run_closure_gate.py#L273) |
-| function | `_git_staged_paths` | `(*, cwd=…)` | Return paths currently staged in the index. | [src](../../../core/services/run_closure_gate.py#L281) |
-| function | `_try_auto_commit` | `(touched_paths, *, run_id, session_id, focus)` | Commit filer rørt under et autonomt run. Return short-hash eller None. | [src](../../../core/services/run_closure_gate.py#L300) |
-| function | `_notify_auto_commit_blocked` | `(summary, *, run_id, session_id)` | Nudge Bjørn når gaten ikke kunne forsegle et autonomt runs ændringer. | [src](../../../core/services/run_closure_gate.py#L395) |
-| function | `_on_run_completed` | `(payload)` | Handle a runtime.autonomous_run_completed event. | [src](../../../core/services/run_closure_gate.py#L440) |
-| function | `_on_run_started` | `(payload)` | Handle runtime.autonomous_run_started — snapshot git state. | [src](../../../core/services/run_closure_gate.py#L609) |
-| function | `_on_tool_used` | `(payload)` | Track tool calls so we can detect silent runs. | [src](../../../core/services/run_closure_gate.py#L617) |
-| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/run_closure_gate.py#L633) |
-| function | `start_run_closure_gate` | `()` | Start the eventbus subscriber thread. Safe to call multiple times. | [src](../../../core/services/run_closure_gate.py#L661) |
-| function | `stop_run_closure_gate` | `()` | — | [src](../../../core/services/run_closure_gate.py#L686) |
 

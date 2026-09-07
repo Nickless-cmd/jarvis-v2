@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13865 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13869 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -40,17 +40,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13865 functions/
 - [`core.services.11`](core.services.11.md) — `events_retention` … `gate_proactivity`
 - [`core.services.12`](core.services.12.md) — `gate_review` … `identity_composer`
 - [`core.services.13`](core.services.13.md) — `identity_drift_daemon` … `layer_tension_daemon`
-- [`core.services.14`](core.services.14.md) — `learning_pipeline_orchestrator` … `memory_tattoos`
-- [`core.services.15`](core.services.15.md) — `memory_write_policy` … `oauth_flow`
-- [`core.services.16`](core.services.16.md) — `oauth_store` … `private_initiative_tension_signal_tracking`
-- [`core.services.17`](core.services.17.md) — `private_inner_interplay_signal_tracking` … `pushback`
-- [`core.services.18`](core.services.18.md) — `query_language_bridge` … `run_closure_gate`
-- [`core.services.19`](core.services.19.md) — `run_event_log` … `self_experiments`
-- [`core.services.20`](core.services.20.md) — `self_model_blind_spots` … `shared_language_extended`
-- [`core.services.21`](core.services.21.md) — `shutdown_window_daemon` … `surprise_detector`
-- [`core.services.22`](core.services.22.md) — `sustained_attention` … `tool_usage_store`
-- [`core.services.23`](core.services.23.md) — `tool_world_change` … `visible_runs`
-- [`core.services.24`](core.services.24.md) — `visible_runs_approvals` … `world_model_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `learning_pipeline_orchestrator` … `memory_search`
+- [`core.services.15`](core.services.15.md) — `memory_tattoos` … `nudge_broend`
+- [`core.services.16`](core.services.16.md) — `oauth_flow` … `priors_feedback`
+- [`core.services.17`](core.services.17.md) — `private_initiative_tension_signal_tracking` … `push_dispatcher`
+- [`core.services.18`](core.services.18.md) — `pushback` … `rule_engine`
+- [`core.services.19`](core.services.19.md) — `run_closure_gate` … `self_deception_guard`
+- [`core.services.20`](core.services.20.md) — `self_experiments` … `shared_language`
+- [`core.services.21`](core.services.21.md) — `shared_language_extended` … `surprise_daemon`
+- [`core.services.22`](core.services.22.md) — `surprise_detector` … `tool_tagger`
+- [`core.services.23`](core.services.23.md) — `tool_usage_store` … `visible_model_types`
+- [`core.services.24`](core.services.24.md) — `visible_runs` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

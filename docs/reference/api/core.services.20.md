@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_experiments.py`
+_Self-Experiments — A/B testing on Jarvis' own behavior._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_default_experiments` | `()` | Create default experiments if none exist. | [src](../../../core/services/self_experiments.py#L38) |
+| function | `record_experiment_observation` | `(*, experiment_id, cohort, success, observed_run_id=…, observation_note=…)` | Record an observation for an experiment. | [src](../../../core/services/self_experiments.py#L57) |
+| function | `_evaluate_experiment` | `(cohorts)` | Simple evaluation: compare success rates between cohorts. | [src](../../../core/services/self_experiments.py#L140) |
+| function | `generate_learning_curriculum` | `()` | 3.8 Curriculum learning — analyze weaknesses, generate learning plan. | [src](../../../core/services/self_experiments.py#L169) |
+| function | `observe_recent_visible_runs_for_self_experiments` | `(*, limit=…)` | Auto-observe recent visible runs for active self-experiments. | [src](../../../core/services/self_experiments.py#L242) |
+| function | `materialize_learning_curriculum_tasks` | `(*, limit=…, origin=…, owner=…, run_id=…)` | Turn top curriculum focuses into bounded runtime tasks. | [src](../../../core/services/self_experiments.py#L320) |
+| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L411) |
+| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L428) |
+| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L436) |
+| function | `_success_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L451) |
+| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L462) |
+| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L479) |
+| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L483) |
+
 ## `core/services/self_model_blind_spots.py`
 _Self-Model Blind Spots — LLM-drevet opdagelse af egne usete fejlmønstre._
 
@@ -720,20 +739,4 @@ _Shared Language — tracks shorthand terms that develop between Jarvis and user
 | function | `scan_for_shared_terms` | `(*, user_message, assistant_response, run_id=…)` | Scan conversation for potential shared language terms. | [src](../../../core/services/shared_language.py#L25) |
 | function | `build_shared_language_surface` | `()` | — | [src](../../../core/services/shared_language.py#L61) |
 | function | `_is_common_phrase` | `(phrase)` | — | [src](../../../core/services/shared_language.py#L82) |
-
-## `core/services/shared_language_extended.py`
-_Shared Language Extended — shorthand-udvikling og -resolution._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/shared_language_extended.py#L34) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/shared_language_extended.py#L38) |
-| function | `_ngrams` | `(text)` | — | [src](../../../core/services/shared_language_extended.py#L60) |
-| function | `_load_recent_user_messages` | `(days=…, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L71) |
-| function | `propose_shorthand_terms` | `(*, min_occurrences=…, max_proposals=…)` | Scan chat messages for repeated n-grams; propose as shorthand. | [src](../../../core/services/shared_language_extended.py#L87) |
-| function | `_latest_suggestion_ts` | `()` | — | [src](../../../core/services/shared_language_extended.py#L151) |
-| function | `maybe_weekly_shorthand_suggestion` | `()` | Max 1 shorthand per 7 days. Returns the new term if added. | [src](../../../core/services/shared_language_extended.py#L166) |
-| function | `list_shorthand_terms` | `(*, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L210) |
-| function | `resolve_shorthand_text` | `(text)` | Expand shorthand in text. Returns {resolved_text, matched_terms}. | [src](../../../core/services/shared_language_extended.py#L229) |
-| function | `build_shared_language_extended_surface` | `()` | — | [src](../../../core/services/shared_language_extended.py#L265) |
 

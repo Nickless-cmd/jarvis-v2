@@ -30,7 +30,13 @@ def _grundtilstand(monkeypatch):
     )
     monkeypatch.setattr(T, "_undertrykt", lambda sid, navn: False)
     monkeypatch.setattr(T, "_husk_nudge", lambda sid, navn: None)
-    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: None)
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score, gate=None: None)
+    # Intent-gaten (andet led) staar aaben her, saa disse tests bliver ved at
+    # maale ORDMATCHEN. Gaten kalder en lokal model og fejler lukket; uden
+    # denne stub ville hver eneste af dem fejle af den grund og ikke af det
+    # de handler om. Gatens egen adfaerd testes i test_local_intent_gate.py
+    # og i test_gaten_kan_stoppe_et_leksikalsk_bud nedenfor.
+    monkeypatch.setattr(T, "_intent_gate", lambda besked, navn: True)
 
 
 def _stub(monkeypatch, resultat):
@@ -214,12 +220,13 @@ def test_naestbedste_bruges_naar_det_bedste_er_undertrykt(monkeypatch):
 def test_manglende_session_id_giver_stadig_et_nudge(monkeypatch):
     """Suppression kan ikke køre uden session — men vi degraderer ikke til tavshed."""
     monkeypatch.undo()
+    monkeypatch.setattr(T, "_intent_gate", lambda besked, navn: True)
     monkeypatch.setattr(T, "_enabled", lambda: True)
     monkeypatch.setattr(T, "_er_prewarm", lambda sid: False)
     monkeypatch.setattr(T, "_katalog_tekst", lambda: "")
     monkeypatch.setattr(T, "_registrerede_navne",
                         lambda: {"calendar_create_event": "Opret begivenhed i brugerens kalender"})
-    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: None)
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score, gate=None: None)
     _stub(monkeypatch, [("calendar_create_event", 0.91)])
     assert "calendar_create_event" in T.tool_discovery_nudge_section(BESKED, "")
 
@@ -227,7 +234,7 @@ def test_manglende_session_id_giver_stadig_et_nudge(monkeypatch):
 def test_nudget_skriver_en_event_saa_det_kan_maales(monkeypatch):
     """Uden fase-1-logging kan hverken konvertering eller falsk-positiv måles."""
     set_events: list[tuple] = []
-    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: set_events.append((navn, sid, score)))
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score, gate=None: set_events.append((navn, sid, score)))
     _stub(monkeypatch, [("calendar_create_event", 0.91)])
     T.tool_discovery_nudge_section(BESKED, "s1")
     assert set_events == [("calendar_create_event", "s1", 0.91)]
@@ -263,7 +270,7 @@ def test_observationsflade_paa_kort_besked(monkeypatch):
 def test_session_id_none_lekker_ikke_ind_i_eventen(monkeypatch):
     """prompt-assembly sender session_id=None på ture uden session."""
     set_events: list[tuple] = []
-    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: set_events.append((navn, sid)))
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score, gate=None: set_events.append((navn, sid)))
     _stub(monkeypatch, [("calendar_create_event", 0.91)])
     ud = T.tool_discovery_nudge_section(BESKED, None)
     assert "calendar_create_event" in ud
@@ -293,7 +300,7 @@ def test_nudget_ligger_i_den_VOLATILE_hale(monkeypatch):
                         lambda: {"calendar_create_event": "Opret begivenhed i brugerens kalender"})
     monkeypatch.setattr(T, "_undertrykt", lambda sid, navn: False)
     monkeypatch.setattr(T, "_husk_nudge", lambda sid, navn: None)
-    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: None)
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score, gate=None: None)
     monkeypatch.setattr(T, "_matches", lambda besked: [("calendar_create_event", 0.91)])
 
     a = build_visible_chat_prompt_assembly(
@@ -332,10 +339,13 @@ def test_eventen_publiceres_med_det_navn_maalingen_soeger_paa(monkeypatch):
         lambda kind, payload: set_kald.append((kind, payload)),
     )
 
-    T._log_nudge("calendar_create_event", "s1", 0.9137)
+    T._log_nudge("calendar_create_event", "s1", 0.9137, gate=False)
     assert set_kald[0][0] == "tool_discovery.nudge"
+    # `gate` er med OGSAA naar dommen er nej — ellers ville intent-gatens
+    # virkning vaere usynlig i skyggedataen.
     assert set_kald[0][1] == {
         "tool": "calendar_create_event", "session_id": "s1", "score": 0.9137,
+        "gate": False,
     }
 
 
@@ -518,7 +528,7 @@ def test_skyggen_logger_men_injicerer_ikke(monkeypatch):
     set_events: list[tuple] = []
     monkeypatch.setattr(T, "_enabled", lambda: False)
     monkeypatch.setattr(T, "_skygge", lambda: True)
-    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: set_events.append((navn, score)))
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score, gate=None: set_events.append((navn, score)))
     _stub(monkeypatch, [("calendar_create_event", 0.91)])
 
     ud = T.tool_discovery_nudge_section(BESKED, "s1")
@@ -533,7 +543,7 @@ def test_skyggen_husker_ikke_suppression(monkeypatch):
     monkeypatch.setattr(T, "_enabled", lambda: False)
     monkeypatch.setattr(T, "_skygge", lambda: True)
     monkeypatch.setattr(T, "_husk_nudge", lambda sid, navn: husket.append(navn))
-    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: None)
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score, gate=None: None)
     _stub(monkeypatch, [("calendar_create_event", 0.91)])
     T.tool_discovery_nudge_section(BESKED, "s1")
     assert husket == []
@@ -549,7 +559,7 @@ def test_baade_slukket_og_skygge_slukket_koster_intet_opslag(monkeypatch):
 def test_observationsfladen_siger_at_vi_er_i_skygge(monkeypatch):
     monkeypatch.setattr(T, "_enabled", lambda: False)
     monkeypatch.setattr(T, "_skygge", lambda: True)
-    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score: None)
+    monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score, gate=None: None)
     _stub(monkeypatch, [("calendar_create_event", 0.91)])
     f = T.build_tool_discovery_nudge_surface(BESKED, "s1")
     assert f["shadow"] is True and f["active"] is False
@@ -582,3 +592,75 @@ def test_publish_afvises_ikke_laengere(monkeypatch):
     from core.eventbus.events import Event
     e = Event(kind="tool_discovery.nudge", payload={"tool": "x"})
     assert e.family == "tool_discovery"
+
+
+# ---------------------------------------------------------------------------
+# Andet led: intent-gaten (7/9-2026)
+#
+# Ordmatchen finder HVILKET vaerktoej beskeden minder om; en lille lokal model
+# afgoer OM den er en bestilling. Maalt paa 35 aegte bud: 17 % -> 100 %
+# praecision, 26 af 26 forkerte afvist.
+# ---------------------------------------------------------------------------
+
+def test_gaten_kan_stoppe_et_leksikalsk_bud(monkeypatch):
+    import core.services.prompt_sections.tool_discovery_nudge as N
+
+    monkeypatch.setattr(N, "_enabled", lambda: True)
+    monkeypatch.setattr(N, "_skygge", lambda: True)
+    monkeypatch.setattr(N, "_er_prewarm", lambda sid: False)
+    monkeypatch.setattr(N, "_er_social", lambda b: False)
+    monkeypatch.setattr(N, "_registrerede_navne", lambda: {"phone_photo": "hent billeder"})
+    monkeypatch.setattr(N, "_katalog_tekst", lambda: "")
+    monkeypatch.setattr(N, "_er_internt", lambda b: False)
+    monkeypatch.setattr(N, "_staar_i_katalog", lambda n, k: False)
+    monkeypatch.setattr(N, "_undertrykt", lambda s, n: False)
+
+    class _T:
+        navn, score, naest, ord = "phone_photo", 2.0, 0.5, ("billeder",)
+
+    monkeypatch.setattr(N, "_matches", lambda b, k: _T())
+
+    monkeypatch.setattr(N, "_intent_gate", lambda b, n: False)
+    assert N.tool_discovery_nudge_section("en lang nok besked om billeder her", "s1") == ""
+
+    monkeypatch.setattr(N, "_intent_gate", lambda b, n: True)
+    assert "phone_photo" in N.tool_discovery_nudge_section(
+        "en lang nok besked om billeder her", "s1")
+
+
+def test_gatens_dom_logges_OGSAA_naar_den_er_nej(monkeypatch):
+    """Ellers er gatens virkning usynlig i skyggedataen — vi ville kunne se
+    hvad der slap igennem, men ikke hvad den fjernede."""
+    import core.services.prompt_sections.tool_discovery_nudge as N
+
+    set_ = []
+    monkeypatch.setattr(N, "_log_nudge",
+                        lambda navn, sid, score, gate=None: set_.append(gate))
+    monkeypatch.setattr(N, "_enabled", lambda: False)
+    monkeypatch.setattr(N, "_skygge", lambda: True)
+    monkeypatch.setattr(N, "_er_prewarm", lambda sid: False)
+    monkeypatch.setattr(N, "_er_social", lambda b: False)
+    monkeypatch.setattr(N, "_registrerede_navne", lambda: {"phone_photo": "hent billeder"})
+    monkeypatch.setattr(N, "_katalog_tekst", lambda: "")
+    monkeypatch.setattr(N, "_er_internt", lambda b: False)
+    monkeypatch.setattr(N, "_staar_i_katalog", lambda n, k: False)
+    monkeypatch.setattr(N, "_undertrykt", lambda s, n: False)
+    monkeypatch.setattr(N, "_intent_gate", lambda b, n: False)
+
+    class _T:
+        navn, score, naest, ord = "phone_photo", 2.0, 0.5, ("billeder",)
+
+    monkeypatch.setattr(N, "_matches", lambda b, k: _T())
+    N.tool_discovery_nudge_section("en lang nok besked om billeder her", "s1")
+    assert set_ == [False]
+
+
+def test_en_fejlende_gate_vaelter_ikke_sektionen(monkeypatch):
+    """Grund-fixturen holder gaten aaben; her skal den AEGTE funktion proeves."""
+    monkeypatch.undo()
+
+    def eksploder(*a, **kw):
+        raise RuntimeError("modellen er vaek")
+
+    monkeypatch.setattr("core.services.local_intent_gate.er_bestilt", eksploder)
+    assert T._intent_gate("en besked", "phone_photo") is False

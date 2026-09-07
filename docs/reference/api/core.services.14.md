@@ -152,6 +152,15 @@ _Central LLM-pris-tabel + cost-beregner (WS2, 13. jul 2026)._
 |---|---|---|---|---|
 | function | `compute_cost_usd` | `(provider, model, *, cache_hit_tokens=…, cache_miss_tokens=…, output_tokens=…, input_tokens=…)` | Beregn cost_usd fra tokens × pris. Returnerer 0.0 for ukendte (provider, model). | [src](../../../core/services/llm_pricing.py#L31) |
 
+## `core/services/local_intent_gate.py`
+_Er dét vaerktoej faktisk bestilt? — afgjort af en lille lokal model._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_base_url` | `()` | — | [src](../../../core/services/local_intent_gate.py#L84) |
+| function | `_cache_noegle` | `(besked, navn)` | — | [src](../../../core/services/local_intent_gate.py#L92) |
+| function | `er_bestilt` | `(besked, navn, beskrivelse=…)` | Beder brugeren om noget hvor ``navn`` ville blive kaldt? | [src](../../../core/services/local_intent_gate.py#L99) |
+
 ## `core/services/local_tool_broker.py`
 _Local-tool broker (Path B — server-owned transcript, client-local execution)._
 
@@ -619,15 +628,4 @@ _Semantic memory search — embeddings-based search over Jarvis's workspace memo
 | function | `search_memory` | `(query, *, limit=…, sources=…, workspace_dir=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L422) |
 | function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L498) |
 | function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L507) |
-
-## `core/services/memory_tattoos.py`
-_Memory Tattoos — emotional marks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `create_tattoo` | `(event, emotion, intensity)` | — | [src](../../../core/services/memory_tattoos.py#L9) |
-| function | `describe_tattoo` | `()` | — | [src](../../../core/services/memory_tattoos.py#L19) |
-| function | `format_tattoo_for_prompt` | `()` | — | [src](../../../core/services/memory_tattoos.py#L25) |
-| function | `reset_memory_tattoos` | `()` | — | [src](../../../core/services/memory_tattoos.py#L31) |
-| function | `build_memory_tattoos_surface` | `()` | — | [src](../../../core/services/memory_tattoos.py#L35) |
 

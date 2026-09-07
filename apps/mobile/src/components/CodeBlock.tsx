@@ -58,7 +58,9 @@ export function CodeBlock({ code, language }: { code: string; language?: string 
         </Pressable>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <Text style={styles.code}>
+        {/* Kodeblokke markeres ligesom løbende tekst: en sti eller en
+            kommando er netop dét man vil have fat i, ikke hele blokken. */}
+        <Text selectable style={styles.code}>
           {highlight(body).map((t, i) => (
             <Text key={i} style={COLOR[t.kind]}>{t.text}</Text>
           ))}

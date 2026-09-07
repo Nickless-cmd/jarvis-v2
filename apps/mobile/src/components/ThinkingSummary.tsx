@@ -48,7 +48,7 @@ export function ThinkingSummary({ seconds, text }: { seconds?: number; text?: st
           )
         ) : null}
       </Pressable>
-      {open && hasText ? <Text style={styles.body}>{text}</Text> : null}
+      {open && hasText ? <Text selectable style={styles.body}>{text}</Text> : null}
     </View>
   )
 }

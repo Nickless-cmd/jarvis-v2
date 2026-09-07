@@ -106,6 +106,23 @@ export function MessageBubble({
     ),
     code_block: (node: { key: string; content: string; sourceInfo?: string }) => (
       <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
+    ),
+    // Markering. `textgroup` er den blok biblioteket tegner AL løbende tekst
+    // med, så det ene sted gør hvert afsnit markerbart — hold inde, træk,
+    // og Android giver selv Markér alt / Kopiér / Del.
+    //
+    // Uden den kunne intet i en besked markeres. Kopiér-knappen tog hele
+    // svaret, og der var ingen vej til en enkelt sætning, et enkelt tal eller
+    // en enkelt sti.
+    textgroup: (
+      node: { key: string },
+      children: React.ReactNode,
+      _parent: unknown,
+      mdStyles: Record<string, unknown>
+    ) => (
+      <Text key={node.key} selectable style={mdStyles.textgroup as never}>
+        {children}
+      </Text>
     )
   }
 
@@ -138,7 +155,7 @@ export function MessageBubble({
       ]}
     >
       {isUser ? (
-        <Text style={styles.userText}>{message.content}</Text>
+        <Text selectable style={styles.userText}>{message.content}</Text>
       ) : (
         <Markdown markdownit={markdownItInstance} style={markdownStyles} rules={markdownRules}>
           {message.content}

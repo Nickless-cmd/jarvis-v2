@@ -70,8 +70,12 @@ export function ToolResultCard({
           {running ? <Text style={styles.running}>● kører…</Text> : null}
           <Text style={styles.chev}>{open ? '▾' : '▸'}</Text>
         </View>
+        {/* Markerbar kun når kortet er FOLDET UD. Sammenfoldet er kortet en
+            knap man trykker på for at åbne, og en markering dér ville slås
+            med det tryk. Åbent er det output man vil have en sti eller en
+            fejlbesked ud af. */}
         {body ? (
-          <Text style={styles.preview} numberOfLines={open ? undefined : 2}>
+          <Text selectable={open} style={styles.preview} numberOfLines={open ? undefined : 2}>
             {open ? body : toolPreview(body)}
           </Text>
         ) : null}

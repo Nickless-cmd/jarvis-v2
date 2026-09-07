@@ -127,3 +127,33 @@ describe('kilder overlever at streamen stopper', () => {
     expect(r.queryByText('Kilder')).toBeNull()
   })
 })
+
+describe('teksten kan markeres', () => {
+  /** Find alle Text-noder med selectable i det renderede træ. */
+  function markerbare(node: unknown, fundet: unknown[] = []): unknown[] {
+    if (!node || typeof node !== 'object') return fundet
+    const n = node as { props?: Record<string, unknown>; children?: unknown[] }
+    if (n.props?.selectable) fundet.push(n)
+    for (const b of n.children ?? []) markerbare(b, fundet)
+    return fundet
+  }
+
+  it('brugerens egen besked kan markeres', async () => {
+    // Kunne ikke før: kopiér-knappen tog HELE beskeden, og der var ingen vej
+    // til en enkelt sætning, et tal eller en sti.
+    const r = await render(
+      <MessageBubble message={{ ...base, role: 'user', content: 'min sti er /opt/x' } as ChatMessage} />
+    )
+    expect(markerbare(r.toJSON())).not.toHaveLength(0)
+  })
+
+  it('hans svar kan markeres — også gennem markdown', async () => {
+    // Markdown-biblioteket tegner al løbende tekst med `textgroup`. Rører man
+    // ikke den regel, er intet i et svar markerbart, uanset hvad man gør ved
+    // boblen udenom.
+    const r = await render(
+      <MessageBubble message={{ ...base, role: 'assistant', content: 'se **her**: /etc/hosts' } as ChatMessage} />
+    )
+    expect(markerbare(r.toJSON())).not.toHaveLength(0)
+  })
+})

@@ -79,6 +79,20 @@ async def _phone_call(
     result = await bridge_registry.dispatch(
         user_id=user_id, tool=tool, args=args, timeout_s=timeout_s,
     )
+
+    # «bridge_replaced» betyder at en NY forbindelse fra samme klient tog over
+    # mens kaldet var undervejs — typisk fordi Bjoern aabnede appen midt i det.
+    # Selve telefonen er der stadig, saa ét gentagsforsoeg er det rigtige svar;
+    # at give op ville sende en fejl tilbage for noget der lykkedes et sekund
+    # senere. Kun ÉT forsoeg: sker det igen, er der noget andet galt end en
+    # tilfaeldig overlapning.
+    if str(result.get("error") or "").find("bridge_replaced") >= 0:
+        logger.info("phone_tools: broen blev erstattet under %s — proever igen", tool)
+        await asyncio.sleep(0.5)
+        result = await bridge_registry.dispatch(
+            user_id=user_id, tool=tool, args=args, timeout_s=timeout_s,
+        )
+
     if result.get("status") != "ok":
         err = str(result.get("error") or "unknown")
         if "not_connected" in err or "no_bridge" in err:

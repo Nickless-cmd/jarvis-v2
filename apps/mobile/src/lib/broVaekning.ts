@@ -58,7 +58,12 @@ export async function haandterVaekning(
   let sidsteAktivitet = naa()
   const paaAktivitet = () => { kald += 1; sidsteAktivitet = naa() }
 
-  const id = await klientId()
+  // EGET client_id, ikke appens. Broen erstatter en klient med SAMME
+  // client_id, saa delte vi id med `startBro`, ville de to sparke hinanden af
+  // — og et kald der var undervejs doede med «bridge_replaced». Maalt 7/9:
+  // vaekningen kom frem, appen vaagnede, og position-kaldet blev revet vaek
+  // efter 2,3 sekunder, fordi appens egen bro startede oven i vaekningens.
+  const id = `${await klientId()}-vaek`
   const lavBro = opsaetning.lavBro ?? ((c, klient, paa) => opretBro({
     apiBaseUrl: c.apiBaseUrl,
     authToken: c.authToken,

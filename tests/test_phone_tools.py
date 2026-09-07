@@ -298,3 +298,45 @@ def test_aeldre_presence_uden_clients_bryder_ikke(monkeypatch):
         lambda: {"u1": {"process": "api", "capabilities": ["phone_photo"]}},
     )
     assert TS._owner_has_live_phone() is True
+
+
+def test_en_erstattet_bro_proeves_igen(monkeypatch):
+    """«bridge_replaced» = telefonen er der stadig, forbindelsen blev bare ny.
+
+    Sker typisk fordi Bjoern aabner appen mens et kald er undervejs. At give
+    op ville sende en fejl tilbage for noget der lykkes et sekund senere.
+    """
+    forsoeg: list[int] = []
+
+    async def fake_dispatch(**kw):
+        forsoeg.append(1)
+        if len(forsoeg) == 1:
+            return {"status": "error", "error": "phone_location failed: bridge_replaced"}
+        return {"status": "ok", "result": {"breddegrad": 55.6}}
+
+    from core.services import phone_wake
+    from core.services.jarvisx_bridge import bridge_registry
+    monkeypatch.setattr(phone_wake, "telefon_er_forbundet", lambda uid: True)
+    monkeypatch.setattr(bridge_registry, "dispatch", fake_dispatch)
+
+    r = asyncio.run(P.phone_location_async(user_id="u1"))
+    assert len(forsoeg) == 2
+    assert r["breddegrad"] == 55.6
+
+
+def test_der_proeves_kun_EEN_gang_igen(monkeypatch):
+    """Sker det to gange, er der noget andet galt end en tilfaeldig overlapning."""
+    forsoeg: list[int] = []
+
+    async def fake_dispatch(**kw):
+        forsoeg.append(1)
+        return {"status": "error", "error": "bridge_replaced"}
+
+    from core.services import phone_wake
+    from core.services.jarvisx_bridge import bridge_registry
+    monkeypatch.setattr(phone_wake, "telefon_er_forbundet", lambda uid: True)
+    monkeypatch.setattr(bridge_registry, "dispatch", fake_dispatch)
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(P.phone_location_async(user_id="u1"))
+    assert len(forsoeg) == 2

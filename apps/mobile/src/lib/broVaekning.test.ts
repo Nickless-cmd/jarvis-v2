@@ -29,6 +29,25 @@ describe('genkendelse', () => {
   })
 })
 
+describe('identitet', () => {
+  it('bruger sit EGET client_id, ikke appens', async () => {
+    // Broen erstatter en klient med samme client_id. Delte vækningen id med
+    // appens egen bro, ville de sparke hinanden af, og et kald undervejs dø
+    // med «bridge_replaced» — målt på enheden 7/9.
+    let setId = ''
+    await haandterVaekning(CONFIG, {
+      naa: () => 0,
+      vent: async () => { throw new Error('stop') },
+      lavBro: (_c, id) => {
+        setId = id
+        return { start: jest.fn(), stop: jest.fn(), erForbundet: () => true, forsoeg: () => 0 }
+      }
+    }).catch(() => {})
+    expect(setId).toBe('mobil-1-vaek')
+    expect(setId).not.toBe('mobil-1')
+  })
+})
+
 describe('vinduet', () => {
   it('lukker broen når der ikke sker noget', async () => {
     const u = ur()

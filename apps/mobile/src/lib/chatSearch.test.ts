@@ -59,13 +59,15 @@ it('søgbar tekst samler content og blokke', () => {
 it('uddraget viser tekst, ikke markdown-tegn', () => {
   const m = [{ id: '1', role: 'assistant', content: 'noget om **sikkerhedshuller** her', created_at: '' }] as any
   const t = soegIBeskeder(m, 'sikkerhedshuller')
-  expect(t[0].uddrag).not.toMatch(/\*\*/)
-  expect(t[0].uddrag).toContain('sikkerhedshuller')
+  const traef = t[0]!
+  expect(traef.uddrag).not.toMatch(/\*\*/)
+  expect(traef.uddrag).toContain('sikkerhedshuller')
 })
 
 it('fremhævningen peger stadig på træffet efter oprydning', () => {
   const m = [{ id: '1', role: 'assistant', content: '**fed** og så broen', created_at: '' }] as any
   const t = soegIBeskeder(m, 'broen')
-  const u = t[0].uddrag
-  expect(u.slice(t[0].traefStart, t[0].traefStart + t[0].traefLaengde)).toBe('broen')
+  const traef = t[0]!
+  const u = traef.uddrag
+  expect(u.slice(traef.traefStart, traef.traefStart + traef.traefLaengde)).toBe('broen')
 })

@@ -211,3 +211,81 @@ def test_et_risikabelt_moenster_bliver_stadig_mintet(monkeypatch):
                         lambda *a, **kw: None)
     A.run_escalation_tick({"felt": "", "score": 0.0, "verdict": False})
     assert len(mintet) == 1, "risikabelt mønster blev vetoet — det skal gå udenom"
+
+
+# ---------------------------------------------------------------------------
+# Trin 1: den rå detektor-linje må ALDRIG nå prompten (7/9-2026)
+#
+# 19. aug blev berettigelsen udvidet til også at gælde trin 1 — er et mønster
+# hverken risikabelt eller selv-lovet, har Smith ingenting at sige. Men
+# `line = rung_line or a["felt"]` gav gaten en åbning i ryggen, og det var dén
+# der talte:
+#
+#     «Mr. Anderson... du har sagt "nu har jeg" i 11 beskeder;
+#      samme træk (run non-destructive command) 15 gange.»
+#
+# Linjen stod i halen, Jarvis gentog formuleringen, og Smith mintede så seks
+# direktiver om sin egen replik. Sløjfen begyndte her — ikke ved minten.
+# ---------------------------------------------------------------------------
+
+def test_raa_detektorlinje_naar_ikke_prompten_naar_stigen_tier(monkeypatch):
+    import core.services.central_agent_smith as A
+
+    gemt: dict = {}
+    monkeypatch.setattr(A, "assess", lambda: {
+        "felt": 'Mr. Anderson... du har sagt "nu har jeg" i 11 beskeder.',
+        "score": 0.9, "verdict": True,
+    })
+    monkeypatch.setattr(A, "run_escalation_tick", lambda a: {"line": ""})
+    monkeypatch.setattr("core.runtime.db_core.set_runtime_state_value",
+                        lambda k, v: gemt.update({k: v}))
+
+    A.record_agent_smith()
+    st = gemt.get("agent_smith_state", {})
+    assert st.get("line") == "", "den rå n-gram-linje slap ind som prompt-linje"
+    # men den skal stadig kunne SES — vi mister ikke hvad detektoren så
+    assert "nu har jeg" in str(st.get("felt_raw"))
+
+
+def test_en_berettiget_trin1_kommentar_naar_stadig_frem(monkeypatch):
+    """Trin 1 tabes ikke: top_line rangerer comment-stemmen med."""
+    import core.services.central_agent_smith as A
+
+    gemt: dict = {}
+    monkeypatch.setattr(A, "assess", lambda: {"felt": "rå støj", "score": 0.1,
+                                              "verdict": False})
+    monkeypatch.setattr(A, "run_escalation_tick",
+                        lambda a: {"line": "Mr. Anderson... «tomme løfter»: 4 gange."})
+    monkeypatch.setattr("core.runtime.db_core.set_runtime_state_value",
+                        lambda k, v: gemt.update({k: v}))
+
+    A.record_agent_smith()
+    st = gemt.get("agent_smith_state", {})
+    assert "tomme løfter" in st["line"]
+    assert st["verdict"] is True, "en eskaleret linje skal tælle som en dom"
+
+
+def test_prompt_sektionen_har_ingen_score_omvej(monkeypatch):
+    """Uden rung_line er svaret None — uanset hvor høj scoren er."""
+    import core.services.central_agent_smith as A
+
+    monkeypatch.setattr("core.services.central_switches.is_enabled", lambda *a: True)
+    monkeypatch.setattr(
+        "core.runtime.db_core.get_runtime_state_value",
+        lambda k, d=None: {"rung_line": "", "line": "rå n-gram-linje",
+                           "score": 0.99, "felt_raw": "rå n-gram-linje"},
+    )
+    assert A.agent_smith_prompt_section() is None
+
+
+def test_en_eskaleret_linje_surfacer_uanset_score(monkeypatch):
+    import core.services.central_agent_smith as A
+
+    monkeypatch.setattr("core.services.central_switches.is_enabled", lambda *a: True)
+    monkeypatch.setattr(
+        "core.runtime.db_core.get_runtime_state_value",
+        lambda k, d=None: {"rung_line": "Nej, Mr. Anderson. «tomme løfter» igen.",
+                           "line": "", "score": 0.0},
+    )
+    ud = A.agent_smith_prompt_section()
+    assert ud is not None and "tomme løfter" in ud

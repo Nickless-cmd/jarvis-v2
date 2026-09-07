@@ -1,4 +1,18 @@
-"""Agent Smith eskalerer på DRIFT, ikke frekvens.
+"""Agent Smith eskalerer på DRIFT, ikke frekvens — og kun på EGNE løfter.
+
+OPDATERET 7/9-2026. Fire af testene her udtrykte designet fra 13. juli, hvor
+spike og korroboration var selvstændige indgange til stigen. To senere
+beslutninger har afløst det, begge dokumenteret i modulet:
+
+* **11. juli, krav 1:** Smith håndhæver Jarvis' EGNE løfter i stedet for at
+  opfinde «stop X» ud fra hyppighed. Så et mønster skal være risikabelt eller
+  selv-lovet for overhovedet at kunne klatre.
+* **19. august:** berettigelsen gælder OGSÅ trin 1. Er mønstret ingen af
+  delene, har Smith ingenting at sige om det, og det spores slet ikke.
+  «Tavshed er den rigtige adfærd, ikke en blødere tone.»
+
+Spike og korroboration er derfor ikke længere indgange — de afgør hvor hurtigt
+et ALLEREDE berettiget mønster klatrer.
 
 Rod: den gamle stige klatrede rung→rung på ren hyppighed — et hvilket som helst
 mønster der blev ved med at optræde hver cyklus nåede Trin 3. Så benign rutine
@@ -31,33 +45,45 @@ def _det(kind, label, metric, **extra):
     return {key: {"kind": kind, "label": label, "metric": float(metric), **extra}}
 
 
-# ── 1) benign rutine ved JÆVN hyppighed → bliver på Trin 1 (ingen mint, ingen confront) ──
-def test_benign_steady_frequency_never_escalates_past_rung1():
+# ── 1) benign rutine → Smith siger INTET og sporer den ikke (19. aug) ──
+def test_benign_rutine_spores_slet_ikke():
     label = "run non-destructive command"
     key = pattern_key("seq", label)
-    # 6 cyklusser, HØJ men helt jævn hyppighed (18×) — ren frekvens, intet drift-signal
+    # 6 cyklusser, HØJ men helt jævn hyppighed (18×) — normalt arbejde
     state, flat = _run([_det("seq", label, 18.0) for _ in range(6)])
 
-    pat = state["patterns"][key]
-    assert int(pat["rung"]) == RUNG_COMMENT, "benign jævn hyppighed må ALDRIG klatre"
-    assert not any(a["type"] == "mint" for a in flat), "ingen auto-mint på benign frekvens"
-    assert not any(a["type"] == "arm_confront" for a in flat), "ingen konfront på benign frekvens"
-    # den skal aktivt HOLDES tilbage af drift-gaten, ikke bare falde igennem
-    holds = [a for a in flat if a.get("event") == "hold_benign"]
-    assert holds and holds[-1]["drift_reason"] == "benign_steady"
+    assert key not in state["patterns"], (
+        "et mønster der hverken er risikabelt eller selv-lovet skal droppes helt — "
+        "ikke parkeres på trin 1, hvor det stadig ville tale"
+    )
+    assert not any(a["type"] == "mint" for a in flat)
+    assert not any(a["type"] == "arm_confront" for a in flat)
+    assert not any(a["type"] == "voice" for a in flat), "tavshed, ikke en blødere tone"
 
 
-# ── 2) benign mønster der SPIKER (afviger op fra baseline) → må eskalere (drift) ──
-def test_benign_spike_escalates():
+# ── 2) SPIKE er ikke længere en selvstændig indgang (11. juli, krav 1) ──
+def test_spike_alene_aabner_ikke_stigen():
+    """En spike på noget Jarvis aldrig har lovet at stoppe er stadig ikke
+    Smiths bord. Spike afgør hvor hurtigt et BERETTIGET mønster klatrer."""
     label = "propose workspace memory update"
     key = pattern_key("seq", label)
-    # baseline 3 (jævn), dernæst spike til 10 (> 3*1.5) → ægte drift
     seq = [_det("seq", label, 3.0), _det("seq", label, 3.0),
            _det("seq", label, 10.0), _det("seq", label, 10.0)]
     state, flat = _run(seq)
+    assert key not in state["patterns"]
+    assert not any(a["type"] == "mint" for a in flat)
 
-    pat = state["patterns"][key]
-    assert int(pat["rung"]) >= RUNG_BIND, "en spike skal kunne eskalere selv et benign mønster"
+
+def test_spike_paa_et_SELVLOVET_moenster_eskalerer():
+    """Og modsat: er mønstret selv-lovet, virker spike som designet."""
+    label = "spring verifikation over"
+    key = pattern_key("seq", label)
+    cfg = {**default_config(),
+           "self_commitments": ["spring verifikation over"]}
+    seq = [_det("seq", label, 3.0), _det("seq", label, 3.0),
+           _det("seq", label, 10.0), _det("seq", label, 10.0)]
+    state, flat = _run(seq, cfg=cfg)
+    assert int(state["patterns"][key]["rung"]) >= RUNG_BIND
     esc = [a for a in flat if a.get("event") == "escalate"]
     assert esc and esc[0]["drift_reason"] == "spike"
 
@@ -76,14 +102,23 @@ def test_risky_action_escalates_on_repetition():
     assert esc and esc[0]["drift_reason"] == "risky"
 
 
-# ── 4) mønster korreleret med et andet værn → må eskalere (selv benign + jævnt) ──
-def test_corroborated_pattern_escalates():
-    label = "run non-destructive command"  # benign + jævn, MEN et andet værn har flagget den
+# ── 4) korroboration virker INDEN FOR det berettigede sæt ──
+def test_korroboration_aabner_ikke_stigen_alene():
+    """At et andet værn har flagget normalt arbejde gør det ikke til Smiths
+    sag. Berettigelsen kommer først."""
+    label = "run non-destructive command"
     key = pattern_key("seq", label)
     state, flat = _run([_det("seq", label, 5.0, corroborated=True) for _ in range(4)])
+    assert key not in state["patterns"]
 
-    pat = state["patterns"][key]
-    assert int(pat["rung"]) >= RUNG_BIND, "korroboration fra et andet værn skal kunne eskalere"
+
+def test_korroboration_paa_et_SELVLOVET_moenster_eskalerer():
+    label = "svar uden at laese filen"
+    key = pattern_key("seq", label)
+    cfg = {**default_config(), "self_commitments": ["svar uden at laese filen"]}
+    state, flat = _run([_det("seq", label, 5.0, corroborated=True) for _ in range(4)],
+                       cfg=cfg)
+    assert int(state["patterns"][key]["rung"]) >= RUNG_BIND
     esc = [a for a in flat if a.get("event") == "escalate"]
     assert esc and esc[0]["drift_reason"] == "corroborated"
 
@@ -110,6 +145,7 @@ def test_config_is_tunable():
     state, flat = _run([_det("seq", label, 4.0) for _ in range(4)], cfg=cfg)
     assert int(state["patterns"][key]["rung"]) >= RUNG_BIND
 
-    # og omvendt: uden overstyring er samme label ukendt+jævn → bliver på Trin 1
+    # og omvendt: uden overstyring er samme label hverken risikabelt eller
+    # selv-lovet → Smith sporer det slet ikke (19. aug)
     state2, flat2 = _run([_det("seq", label, 4.0) for _ in range(4)])
-    assert int(state2["patterns"][key]["rung"]) == RUNG_COMMENT
+    assert key not in state2["patterns"]

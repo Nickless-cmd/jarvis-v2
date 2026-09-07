@@ -541,10 +541,31 @@ def record_agent_smith(*, trigger: str = "cadence", last_visible_at: str = "") -
     a = assess()
     esc = run_escalation_tick(a)
     rung_line = str(esc.get("line") or "")
-    line = rung_line or a["felt"]
+    # INGEN faldback til den raa detektor-linje (7/9-2026).
+    #
+    # 19. aug blev berettigelsen udvidet til at gaelde OGSAA Trin 1: er et
+    # moenster hverken risikabelt eller noget Jarvis SELV har lovet at stoppe,
+    # har Smith ingenting at sige om det. `a["felt"]` gaar uden om den regel —
+    # den bygges direkte paa n-gram-hyppighed — saa `rung_line or a["felt"]`
+    # gav gaten en aabning i ryggen, og det var netop dén der talte:
+    #
+    #     «Mr. Anderson... du har sagt "nu har jeg" i 11 beskeder;
+    #      samme traek (run non-destructive command) 15 gange.»
+    #
+    # Den linje stod i promptens hale, Jarvis gentog formuleringen, og Smith
+    # detekterede saa «mr anderson forudsigeligt som altid» som en gentagelse
+    # og mintede seks direktiver om sin egen replik. Sloejfen begyndte her.
+    #
+    # Trin 1 taber intet: `top_line` rangerer comment-stemmen med, saa en
+    # BERETTIGET trin-1-kommentar naar frem via `rung_line`.
+    line = rung_line
     try:
         from core.runtime.db_core import set_runtime_state_value
         set_runtime_state_value(_STATE_KEY, {"score": a["score"], "line": line,
+                                             # Raa detektor-linje: KUN til
+                                             # observation (Centralen), aldrig
+                                             # til prompten. Se ovenfor.
+                                             "felt_raw": a["felt"],
                                              "rung_line": rung_line,
                                              "verdict": bool(a["verdict"] or rung_line),
                                              "ts": datetime.now(UTC).isoformat()})
@@ -579,9 +600,13 @@ def agent_smith_prompt_section() -> str | None:
         rung_line = str(st.get("rung_line") or "").strip()
         if rung_line:
             return f"[AGENT SMITH]\n{rung_line}"
-        if float(st.get("score") or 0.0) >= _VOICE_THRESHOLD:
-            line = str(st.get("line") or "").strip()
-            return f"[AGENT SMITH]\n{line}" if line else None
+        # Ingen score-gate laengere. Den lod den RAA detektor-linje ind i halen
+        # naar score >= 0.5 — uden om berettigelses-reglen fra 19. aug, som
+        # netop siger at Smith intet har at sige om moenstre der hverken er
+        # risikable eller selv-lovede. Tavshed er den rigtige adfaerd dér,
+        # ikke en bloedere tone. En berettiget trin-1-kommentar kommer frem
+        # som `rung_line` ovenfor.
+        return None
     except Exception:
         return None
     return None

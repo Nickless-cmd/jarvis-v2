@@ -408,6 +408,13 @@ _jarvis_bare practice runner — stripped-bare interlanguage expression generato
 | function | `_run_loop` | `(args)` | Run forever (or for args.hours hours) with args.interval_min between ticks. | [src](../../../scripts/jarvis_bare_practice_runner.py#L232) |
 | function | `main` | `()` | — | [src](../../../scripts/jarvis_bare_practice_runner.py#L318) |
 
+## `scripts/laering_status.py`
+_Hvad fangede laeringskredsloebet siden nulpunktet?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/laering_status.py#L23) |
+
 ## `scripts/link_google_email.py`
 _Admin-migration: knyt Google-email til eksisterende konti (§12)._
 
@@ -436,14 +443,4 @@ _Mål Jarvis' svartid — fra send til svar._
 | function | `watch` | `(session_id)` | — | [src](../../../scripts/measure_turn_latency.py#L101) |
 | function | `_api` | `(path, payload=…, stream=…)` | — | [src](../../../scripts/measure_turn_latency.py#L123) |
 | function | `probe` | `(rounds, message)` | — | [src](../../../scripts/measure_turn_latency.py#L134) |
-
-## `scripts/memory_md_dedupe_headings.py`
-_Merge duplicate `## ` headings in a MEMORY.md (memory repair 2026-09-04, R7)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_norm` | `(heading)` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L24) |
-| function | `dedupe_headings` | `(text)` | Return (new_text, merged_count). Only `## ` headings are merged. | [src](../../../scripts/memory_md_dedupe_headings.py#L28) |
-| function | `dedupe_file` | `(path, *, apply)` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L78) |
-| function | `main` | `()` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L92) |
 

@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/memory_md_dedupe_headings.py`
+_Merge duplicate `## ` headings in a MEMORY.md (memory repair 2026-09-04, R7)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_norm` | `(heading)` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L24) |
+| function | `dedupe_headings` | `(text)` | Return (new_text, merged_count). Only `## ` headings are merged. | [src](../../../scripts/memory_md_dedupe_headings.py#L28) |
+| function | `dedupe_file` | `(path, *, apply)` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L78) |
+| function | `main` | `()` | — | [src](../../../scripts/memory_md_dedupe_headings.py#L92) |
+
 ## `scripts/memory_noise_cleanup.py`
 _One-off data cleanup after the memory repair (2026-09-04, Task 8)._
 

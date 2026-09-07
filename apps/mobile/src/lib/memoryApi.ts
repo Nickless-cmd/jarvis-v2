@@ -71,3 +71,38 @@ export async function fetchMemoryOverview(config: ApiConfig): Promise<MemoryOver
     return EMPTY
   }
 }
+
+/** Gem et af Jarvis' svar som en hukommelse.
+ *
+ *  Serveren (`POST /mobile/memory`) fastlægger selv kind/visibility/domain —
+ *  telefonen skal ikke kunne vælge forkert på hans vegne. Den sender kun
+ *  teksten og hvilken samtale den kom fra.
+ *
+ *  Returnerer en besked der kan vises som den er. En fejl er IKKE en
+ *  undtagelse her: den skal frem for øjnene af brugeren, ikke ned i loggen.
+ */
+export async function gemSomHukommelse(
+  config: ApiConfig,
+  text: string,
+  sessionId?: string
+): Promise<{ ok: boolean; besked: string }> {
+  const indhold = String(text || '').trim()
+  if (!indhold) return { ok: false, besked: 'Der er ikke noget at gemme.' }
+  try {
+    const url = new URL('/mobile/memory', config.apiBaseUrl).toString()
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(config.authToken ? { Authorization: `Bearer ${config.authToken}` } : {})
+      },
+      body: JSON.stringify({ text: indhold, session_id: sessionId ?? null })
+    })
+    if (!res.ok) {
+      return { ok: false, besked: `Kunne ikke gemme (${res.status}).` }
+    }
+    return { ok: true, besked: 'Gemt i hans hukommelse.' }
+  } catch {
+    return { ok: false, besked: 'Ingen forbindelse — hukommelsen blev ikke gemt.' }
+  }
+}

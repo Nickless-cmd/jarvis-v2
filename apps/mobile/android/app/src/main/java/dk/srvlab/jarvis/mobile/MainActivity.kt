@@ -1,10 +1,13 @@
 package dk.srvlab.jarvis.mobile
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
+import com.facebook.react.ReactApplication
+import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
@@ -17,6 +20,20 @@ class MainActivity : ReactActivity() {
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
     super.onCreate(null)
+  }
+
+  /**
+   * launchMode er singleTask: deler man noget mens appen KØRER, får vi en ny
+   * intent i stedet for en ny activity. Uden dette ville kun delinger til en
+   * lukket app nogensinde nå frem.
+   */
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    // New Architecture: appen har `reactHost`, ikke `reactNativeHost` — der
+    // findes ingen reactInstanceManager at gå gennem.
+    val ctx = (application as? ReactApplication)?.reactHost?.currentReactContext
+    ShareModule.levér(ctx as? ReactApplicationContext, intent)
   }
 
   /**

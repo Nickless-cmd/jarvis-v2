@@ -7,7 +7,7 @@ import com.facebook.react.uimanager.ViewManager
 
 class BubblePackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
-    listOf(BubbleModule(reactContext))
+    listOf(BubbleModule(reactContext), ShareModule(reactContext))
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
     emptyList()

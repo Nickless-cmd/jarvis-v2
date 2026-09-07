@@ -14,12 +14,17 @@ import * as Haptics from 'expo-haptics'
  *  har slået haptik fra i systemet må aldrig kunne vælte en send-knap.
  */
 
-export type HaptiskHandling = 'send' | 'stop' | 'godkend' | 'afvis' | 'fejl'
+export type HaptiskHandling = 'send' | 'stop' | 'godkend' | 'afvis' | 'fejl' | 'markér'
 
 export async function haptik(handling: HaptiskHandling): Promise<void> {
   try {
     switch (handling) {
       case 'send':
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        return
+      // At fastgøre eller gemme er en lille markering, ikke en beslutning —
+      // samme lette bump som send, ikke en success-notifikation.
+      case 'markér':
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
         return
       case 'stop':

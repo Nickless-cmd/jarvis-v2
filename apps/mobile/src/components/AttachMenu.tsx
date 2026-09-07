@@ -18,6 +18,7 @@ import { Camera, Check, Images, Upload, X } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import type { CapturedPhoto } from '../screens/CameraCapture'
+import { sorteretTilVisning, type KontekstPunkt, type KontekstSlags } from '../lib/recentContexts'
 
 /**
  * «Tilføj filer» — bygget efter ChatGPT-appens flade (set 2026-09-02).
@@ -36,6 +37,8 @@ const PAGE = 12
 
 export function AttachMenu({
   visible,
+  kontekster,
+  onKontekst,
   onCamera,
   onGallery,
   onUpload,
@@ -51,6 +54,11 @@ export function AttachMenu({
   /** Valg direkte i gitteret — springer systemvælgeren helt over. */
   onPick?: (photos: CapturedPhoto[]) => void
   onClose: () => void
+  /** Genveje til det man ellers skal igennem fem menuer for at give ham:
+   *  hvor man er, hvad der ligger i udklipsholderen, hvilken enhed man sidder
+   *  ved. Udeladt → striben vises ikke. */
+  kontekster?: KontekstPunkt[]
+  onKontekst?: (slags: KontekstSlags) => void
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -148,6 +156,35 @@ export function AttachMenu({
           <Text style={styles.uploadText}>Upload filer</Text>
         </Pressable>
         <View style={styles.divider} />
+
+        {kontekster && kontekster.length ? (
+          <>
+            <Text style={styles.section}>Giv ham noget</Text>
+            <View style={styles.ctxWrap} testID="attach-contexts">
+              {sorteretTilVisning(kontekster).map((k) => (
+                <Pressable
+                  key={k.slags}
+                  testID={`attach-ctx-${k.slags}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={k.titel}
+                  disabled={!k.tilgaengelig}
+                  onPress={() => onKontekst?.(k.slags)}
+                  style={({ pressed }) => [
+                    styles.ctxCard,
+                    !k.tilgaengelig && styles.ctxOff,
+                    pressed && k.tilgaengelig && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.ctxTitle}>{k.titel}</Text>
+                  {/* Grunden står FREM for en død knap: man skal vide hvad man
+                      gør ved det, ikke trykke forgæves. */}
+                  <Text style={styles.ctxHint} numberOfLines={2}>{k.detalje}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.divider} />
+          </>
+        ) : null}
 
         <Text style={styles.section}>Seneste</Text>
 
@@ -273,6 +310,14 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   uploadText: { color: tokens.color.fg1, fontSize: 17 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.line, marginHorizontal: tokens.spacing.lg },
+  ctxWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
+  ctxCard: {
+    flexGrow: 1, flexBasis: '46%', borderRadius: 12, paddingVertical: 11, paddingHorizontal: 12,
+    backgroundColor: tokens.color.bg1, borderWidth: StyleSheet.hairlineWidth, borderColor: tokens.color.line,
+  },
+  ctxOff: { opacity: 0.45 },
+  ctxTitle: { color: tokens.color.fg1, fontSize: 14, fontWeight: '500' },
+  ctxHint: { color: tokens.color.fg3, fontSize: 11.5, marginTop: 2 },
   section: {
     color: tokens.color.fg1,
     fontSize: 15,

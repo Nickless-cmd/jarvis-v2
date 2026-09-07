@@ -31,3 +31,9 @@ it('en enhed uden vibrator vælter ikke send-knappen', async () => {
   ;(Haptics.impactAsync as jest.Mock).mockRejectedValueOnce(new Error('ingen vibrator'))
   await expect(haptik('send')).resolves.toBeUndefined()
 })
+
+it('markér er et let bump — en pin er ikke en beslutning', async () => {
+  await haptik('markér')
+  expect(Haptics.impactAsync).toHaveBeenCalledWith('light')
+  expect(Haptics.notificationAsync).not.toHaveBeenCalled()
+})

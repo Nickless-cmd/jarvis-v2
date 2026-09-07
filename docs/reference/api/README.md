@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13765 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13771 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -37,20 +37,20 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13765 functions/
 - [`core.services.08`](core.services.08.md) — `contradiction_resolver` … `decision_evidence`
 - [`core.services.09`](core.services.09.md) — `decision_gate` … `dream_carry_over`
 - [`core.services.10`](core.services.10.md) — `dream_consolidation_daemon` … `eventbus_central_bridge`
-- [`core.services.11`](core.services.11.md) — `events_retention` … `gate_review`
-- [`core.services.12`](core.services.12.md) — `gate_shadow` … `identity_drift_daemon`
-- [`core.services.13`](core.services.13.md) — `identity_drift_guard` … `learning_pipeline_orchestrator`
-- [`core.services.14`](core.services.14.md) — `learning_policy_engine` … `memory_write_policy`
-- [`core.services.15`](core.services.15.md) — `memory_write_queue` … `offline_recomposition_engine`
-- [`core.services.16`](core.services.16.md) — `ollama_visible_prompt` … `private_state_snapshot_tracking`
-- [`core.services.17`](core.services.17.md) — `private_temporal_curiosity_state_tracking` … `r2_5_blocking_gate`
-- [`core.services.18`](core.services.18.md) — `read_before_write_guard` … `runtime_action_executor`
-- [`core.services.19`](core.services.19.md) — `runtime_action_outcome_tracking` … `self_model_predictive`
-- [`core.services.20`](core.services.20.md) — `self_model_signal_tracking` … `signal_baseline`
-- [`core.services.21`](core.services.21.md) — `signal_decay_daemon` … `task_worker`
-- [`core.services.22`](core.services.22.md) — `taste_profile` … `turn_changelog`
-- [`core.services.23`](core.services.23.md) — `turn_trace` … `visible_runs_error_messaging`
-- [`core.services.24`](core.services.24.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
+- [`core.services.11`](core.services.11.md) — `events_retention` … `gate_proactivity`
+- [`core.services.12`](core.services.12.md) — `gate_review` … `identity_composer`
+- [`core.services.13`](core.services.13.md) — `identity_drift_daemon` … `layer_tension_daemon`
+- [`core.services.14`](core.services.14.md) — `learning_pipeline_orchestrator` … `memory_tattoos`
+- [`core.services.15`](core.services.15.md) — `memory_write_policy` … `oauth_store`
+- [`core.services.16`](core.services.16.md) — `offline_recomposition_engine` … `private_inner_note_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `private_state_snapshot_tracking` … `quota_store`
+- [`core.services.18`](core.services.18.md) — `r2_5_blocking_gate` … `run_follow`
+- [`core.services.19`](core.services.19.md) — `runtime_action_executor` … `self_model_distiller`
+- [`core.services.20`](core.services.20.md) — `self_model_predictive` … `side_tasks`
+- [`core.services.21`](core.services.21.md) — `signal_baseline` … `system_cartographer`
+- [`core.services.22`](core.services.22.md) — `task_worker` … `truth_gate_v2`
+- [`core.services.23`](core.services.23.md) — `turn_changelog` … `visible_runs_cognitive`
+- [`core.services.24`](core.services.24.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

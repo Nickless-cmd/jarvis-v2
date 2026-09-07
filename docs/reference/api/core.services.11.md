@@ -186,6 +186,15 @@ _Experiment runner — controlled A/B trials of prompt variants._
 | function | `_exec_conclude_experiment` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L196) |
 | function | `_exec_list_experiments` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L200) |
 
+## `core/services/explore_claim_check.py`
+_Tjek explore-agentens påstande mod virkeligheden._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rod` | `()` | — | [src](../../../core/services/explore_claim_check.py#L49) |
+| function | `_findes` | `(sti, rod)` | — | [src](../../../core/services/explore_claim_check.py#L57) |
+| function | `tjek_paastande` | `(svar, *, rod=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L64) |
+
 ## `core/services/fabricated_tool_result_gate.py`
 _Fabrikerede tool-resultater — den ene løgn der ikke kan bortforklares._
 
@@ -540,11 +549,4 @@ _Proactivity-cluster gate — verifikations-disciplin, GRADERET (R2 blød / R2.5
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `proactivity_gate` | `(ctx)` | ctx: {reasoning_tier}. Returnér ét GRADERET Verdict for verifikations-disciplin. | [src](../../../core/services/gate_proactivity.py#L26) |
-
-## `core/services/gate_review.py`
-_Review-cluster gate — selv-review-vurdering, GRADERET._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `review_gate` | `(ctx)` | ctx: {review} hvor review har risk_level (low/med/high) + score. | [src](../../../core/services/gate_review.py#L23) |
 

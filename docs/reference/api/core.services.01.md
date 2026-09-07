@@ -371,6 +371,7 @@ _Er denne model egnet til agent-arbejde? Svaret bygger på MÅLINGER._
 | function | `_dom` | `(provider, model, poster)` | — | [src](../../../core/services/agent_model_fitness.py#L64) |
 | function | `er_blokeret` | `(provider, model, *, rolle=…)` | True kun når vi har MÅLT at modellen ikke duer til værktøjs-arbejde. | [src](../../../core/services/agent_model_fitness.py#L83) |
 | function | `bedste_egnede` | `(*, undtagen=…)` | Den højest scorende målte model der bestod `follows`. ('','') hvis ingen. | [src](../../../core/services/agent_model_fitness.py#L90) |
+| function | `egnede_modeller` | `(*, undtagen=…, maks=…)` | Målte, egnede modeller — bedste først. Til rotation. | [src](../../../core/services/agent_model_fitness.py#L114) |
 
 ## `core/services/agent_observation_compressor.py`
 _Agent observation compressor — Mastra-style intra-session compression._

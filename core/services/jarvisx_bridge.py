@@ -477,6 +477,17 @@ class BridgeRegistry:
                 # Melder BEGGE enheder vaerktoejet, vinder den nyest forbundne —
                 # den Bjoern sidst har haft i haanden.
                 return max(kan, key=lambda c: c.reg_seq)
+            # Ingen melder vaerktoejet. Fallbacken nedenfor findes for klienter
+            # der slet ikke annoncerer capabilities (aeldre broer) — den maa
+            # IKKE sende et enhedsspecifikt kald til en maskine der umuligt kan
+            # udfoere det. Maalt 7/9: telefonen var slukket, og phone_location
+            # blev routet til desk-broen, som svarede «unknown_tool» efter 20
+            # sekunders ventetid. Et aerligt «ingen bro» er langt bedre — saa
+            # kan kalderen vaekke telefonen eller sige det som det er.
+            tavse = [c for c in klienter.values() if not (c.capabilities or ())]
+            if not tavse:
+                return None
+            return max(tavse, key=lambda c: c.reg_seq)
         return self._foretrukken(klienter)
 
     def list_bridges(self, user_id: str) -> list[BridgeConnection]:

@@ -105,12 +105,14 @@ def test_vaerktoejet_vaelger_enheden():
     assert bridge_registry.get_bridge("user-x", tool="phone_photo") is tlf
 
 
-def test_ukendt_vaerktoej_falder_tilbage_til_den_rigeste_bro():
-    """Melder ingen vaerktoejet, gaar turen derhen hvor der er mest at gribe i.
+def test_uden_vaerktoejskrav_gaar_turen_til_den_rigeste_bro():
+    """Uden et konkret vaerktoej gaar turen derhen hvor der er mest at gribe i.
 
-    Sikrer at en klient som (endnu) ikke annoncerer capabilities opfoerer sig
-    praecis som foer aendringen — ellers ville routingen kunne sende et
-    operator-kald til telefonen, fordi ingen af dem «kunne» det.
+    Hed foer «ukendt vaerktoej falder tilbage til den rigeste bro» og haevdede
+    at OGSAA et ukendt vaerktoejsnavn skulle lande dér. Den praemis var
+    forkert og blev maalt 7/9: telefonen var slukket, phone_location blev
+    routet til desk-broen, og svaret blev «unknown_tool» efter 20 sekunders
+    ventetid. Se test_et_ukendt_vaerktoej_sendes_ikke_til_en_bro_der_ikke_kan_det.
     """
     from core.services.jarvisx_bridge import bridge_registry, BridgeConnection
     bridge_registry.clear()
@@ -123,9 +125,7 @@ def test_ukendt_vaerktoej_falder_tilbage_til_den_rigeste_bro():
     bridge_registry.register(desk)
     bridge_registry.register(tlf)
 
-    assert bridge_registry.get_bridge("user-x", tool="noget_ukendt") is desk
     assert bridge_registry.get_bridge("user-x") is desk
-
 
 def test_ved_lige_stand_vinder_den_nyest_forbundne():
     """Tie-break paa registreringsraekkefoelge, ikke paa klientnavn.
@@ -429,3 +429,41 @@ def test_dispatch_api_side_returns_diagnosis(isolated_runtime, monkeypatch):
     assert out["error"] == "bridge_not_connected"
     assert "diagnosis" in out
     assert out["diagnosis"]["reason"] in {"no_bridge_anywhere", "user_id_mismatch", "forward_failed"}
+
+
+def test_et_ukendt_vaerktoej_sendes_ikke_til_en_bro_der_ikke_kan_det():
+    """Maalt 7/9: telefonen var slukket, og phone_location blev routet til
+    DESK-broen, som svarede «unknown_tool» efter 20 sekunders ventetid.
+
+    Fallbacken «broen med flest vaerktoejer» findes for klienter der slet ikke
+    annoncerer capabilities. Den maa ikke goere et enhedsspecifikt kald til et
+    forkert svar fra en maskine der umuligt kan udfoere det — et aerligt
+    «ingen bro» lader kalderen vaekke telefonen i stedet.
+    """
+    from core.services.jarvisx_bridge import bridge_registry, BridgeConnection
+    bridge_registry.clear()
+
+    desk = BridgeConnection(user_id="u1", client="jarvisx-electron", client_id="desk",
+                            capabilities=["operator_bash"])
+    bridge_registry.register(desk)
+
+    assert bridge_registry.get_bridge("u1", tool="phone_location") is None
+    assert bridge_registry.get_bridge("u1", tool="operator_bash") is desk
+    # uden vaerktoejskrav er adfaerden uaendret
+    assert bridge_registry.get_bridge("u1") is desk
+    bridge_registry.clear()
+
+
+def test_en_klient_uden_capabilities_faar_stadig_kaldet():
+    """Bagudkompatibilitet: en aeldre bro der intet annoncerer skal virke som foer.
+
+    Det var HELE grunden til at fallbacken fandtes — den skulle bare ikke
+    gaelde naar der ER klienter der annoncerer, og ingen af dem kan det.
+    """
+    from core.services.jarvisx_bridge import bridge_registry, BridgeConnection
+    bridge_registry.clear()
+
+    gammel = BridgeConnection(user_id="u1", client="gammel-bro", client_id="g", capabilities=[])
+    bridge_registry.register(gammel)
+    assert bridge_registry.get_bridge("u1", tool="hvadsomhelst") is gammel
+    bridge_registry.clear()

@@ -157,9 +157,16 @@ _Er dét vaerktoej faktisk bestilt? — afgjort af en lille lokal model._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_base_url` | `()` | — | [src](../../../core/services/local_intent_gate.py#L84) |
-| function | `_cache_noegle` | `(besked, navn)` | — | [src](../../../core/services/local_intent_gate.py#L92) |
-| function | `er_bestilt` | `(besked, navn, beskrivelse=…)` | Beder brugeren om noget hvor ``navn`` ville blive kaldt? | [src](../../../core/services/local_intent_gate.py#L99) |
+| function | `_cache_noegle` | `(besked, navn)` | — | [src](../../../core/services/local_intent_gate.py#L83) |
+| function | `er_bestilt` | `(besked, navn, beskrivelse=…)` | Beder brugeren om noget hvor ``navn`` ville blive kaldt? | [src](../../../core/services/local_intent_gate.py#L90) |
+
+## `core/services/local_small_model.py`
+_Ét-ords-spoergsmaal til den lille lokale model paa Jarvis' eget kort._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `base_url` | `()` | — | [src](../../../core/services/local_small_model.py#L39) |
+| function | `spoerg_et_ord` | `(system, bruger, *, timeout_s=…)` | Foerste HELE ord af modellens svar, med STORE bogstaver. ``None`` = intet svar. | [src](../../../core/services/local_small_model.py#L47) |
 
 ## `core/services/local_tool_broker.py`
 _Local-tool broker (Path B — server-owned transcript, client-local execution)._
@@ -602,30 +609,4 @@ _Proactive memory resurfacing — pull old MEMORY.md headings back into focus._
 | function | `_log_resurfacing` | `(heading, trigger=…)` | — | [src](../../../core/services/memory_resurfacing.py#L135) |
 | function | `pick_resurfacing_candidate` | `(*, trigger=…, seed=…)` | Choose a stale heading to surface, log the choice, return its detail. | [src](../../../core/services/memory_resurfacing.py#L150) |
 | function | `format_for_prompt` | `(candidate)` | Render a resurfacing candidate as a single soft prompt line. | [src](../../../core/services/memory_resurfacing.py#L201) |
-
-## `core/services/memory_search.py`
-_Semantic memory search — embeddings-based search over Jarvis's workspace memory files._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Chunk` | `` | — | [src](../../../core/services/memory_search.py#L32) |
-| function | `_workspace_dir` | `()` | Workspace for the current user, falling back to the owner's workspace. | [src](../../../core/services/memory_search.py#L38) |
-| function | `_memory_files` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L52) |
-| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/memory_search.py#L71) |
-| function | `_chunk_markdown` | `(text, source)` | Split markdown into chunks, tracking the nearest heading. | [src](../../../core/services/memory_search.py#L78) |
-| function | `_embed_ollama` | `(texts)` | Embed a list of texts via Ollama. Returns (N, D) array or None on failure. | [src](../../../core/services/memory_search.py#L104) |
-| function | `_embed_single` | `(text)` | — | [src](../../../core/services/memory_search.py#L159) |
-| function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L171) |
-| function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L179) |
-| function | `_cache_path` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L210) |
-| function | `_chunk_all_files` | `(files, ws=…)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L218) |
-| function | `_load_cached_vectors` | `(ws=…)` | chunk-tekst → vektor fra den eksisterende cache, til INKREMENTEL reindex. | [src](../../../core/services/memory_search.py#L235) |
-| function | `_build_and_cache_index` | `(files, current_mtimes, ws=…)` | Byg indeks og skriv cache. Kaldes KUN fra baggrunds-tråden. | [src](../../../core/services/memory_search.py#L258) |
-| function | `_schedule_background_rebuild` | `(files, current_mtimes, ws=…)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L321) |
-| function | `_load_or_build_index` | `(ws=…)` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L352) |
-| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L396) |
-| function | `_source_matches` | `(chunk_source, sources)` | — | [src](../../../core/services/memory_search.py#L415) |
-| function | `search_memory` | `(query, *, limit=…, sources=…, workspace_dir=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L422) |
-| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L498) |
-| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L507) |
 

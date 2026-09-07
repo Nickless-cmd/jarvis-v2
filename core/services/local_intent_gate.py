@@ -44,15 +44,14 @@ turen.
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
-import re
-import urllib.error
-import urllib.request
+
+from core.services.local_small_model import MODEL, spoerg_et_ord
 
 logger = logging.getLogger(__name__)
 
-MODEL = "qwen3:4b-instruct-2507-q4_K_M"
+__all__ = ["MODEL", "er_bestilt"]
+
 _TIMEOUT_S = 1.5
 _CACHE_TTL_S = 900
 
@@ -79,14 +78,6 @@ _SKABELON = (
     "«gmail-integrationen driller vist» + gmail_send -> NEJ (kommenterer)\n"
     "«send den til Michelle» + gmail_send -> JA (beder om handlingen)"
 )
-
-
-def _base_url() -> str:
-    try:
-        from core.services.semantic_memory import _ollama_base_url
-        return (_ollama_base_url() or "").rstrip("/") or "http://127.0.0.1:11434"
-    except Exception:
-        return "http://127.0.0.1:11434"
 
 
 def _cache_noegle(besked: str, navn: str) -> str:
@@ -116,36 +107,15 @@ def er_bestilt(besked: str, navn: str, beskrivelse: str = "") -> bool:
     except Exception as exc:
         logger.debug("local_intent_gate: cache utilgaengelig: %s", exc)
 
-    krop = json.dumps({
-        "model": MODEL,
-        "stream": False,
-        "options": {"temperature": 0, "num_predict": 3},
-        "messages": [
-            {"role": "system", "content": _SKABELON.format(
-                navn=navn, beskrivelse=(beskrivelse or "")[:150])},
-            {"role": "user", "content": besked[:1200]},
-        ],
-    }).encode()
-
-    try:
-        anmodning = urllib.request.Request(  # noqa: S310 - fast lokal URL
-            f"{_base_url()}/api/chat", krop, {"Content-Type": "application/json"})
-        with urllib.request.urlopen(anmodning, timeout=_TIMEOUT_S) as svar:  # noqa: S310
-            data = json.loads(svar.read())
-        tekst = str((data.get("message") or {}).get("content") or "").strip().upper()
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        # Modellen er nede eller koeer. Ollama koeer 28-91s naar den er optaget,
-        # og prompt-samlingen maa ikke vente paa den — se modulets docstring.
-        logger.debug("local_intent_gate: naaede ikke modellen (%s)", exc)
-        return False
-    except Exception as exc:
-        logger.debug("local_intent_gate: uventet svar: %s", exc)
-        return False
-
-    # Foerste HELE ord, ikke praefiks: «JAVEL» og «JANUAR» er ikke et ja, og
-    # gaten fejler lukket, saa den skal vaere striks. «JA.» og «JA,» er.
-    foerste = re.match(r"[A-ZÆØÅ]+", tekst)
-    dom = bool(foerste) and foerste.group(0) == "JA"
+    ord_ = spoerg_et_ord(
+        _SKABELON.format(navn=navn, beskrivelse=(beskrivelse or "")[:150]),
+        besked,
+        timeout_s=_TIMEOUT_S,
+    )
+    # Kun et rent «JA» er et ja. ``spoerg_et_ord`` giver foerste HELE ord, saa
+    # «JAVEL» og «JANUAR» falder her — gaten fejler lukket og skal vaere striks.
+    # Ingen dom (modellen nede eller for langsom) er ogsaa et nej.
+    dom = ord_ == "JA"
     try:
         from core.services import shared_cache
         shared_cache.set(noegle, dom, ttl_seconds=_CACHE_TTL_S)

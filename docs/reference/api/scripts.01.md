@@ -351,13 +351,13 @@ _LLM-judge for interlanguage validation — Phase 3+4 pre-registered design._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `load_expressions` | `(peer_id, *, days=…, limit=…)` | Pull expression_text for a peer from the interlanguage_practice table. | [src](../../../scripts/interlanguage_llm_judge.py#L57) |
-| function | `_ollama_chat` | `(model, prompt, *, timeout=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L72) |
-| function | `_parse_entity` | `(raw)` | Match first token of judge reply to an entity name (case-insensitive). | [src](../../../scripts/interlanguage_llm_judge.py#L88) |
-| function | `run_alpha` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L100) |
-| function | `run_delta` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L149) |
-| function | `_binomial_p` | `(k, n, p0)` | One-sided binomial p-value: P(X >= k) under H0 with prob p0. | [src](../../../scripts/interlanguage_llm_judge.py#L199) |
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_llm_judge.py#L215) |
+| function | `load_expressions` | `(peer_id, *, days=…, limit=…)` | Pull expression_text for a peer from the interlanguage_practice table. | [src](../../../scripts/interlanguage_llm_judge.py#L58) |
+| function | `_ollama_chat` | `(model, prompt, *, timeout=…, retries=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L73) |
+| function | `_parse_entity` | `(raw)` | Match first token of judge reply to an entity name (case-insensitive). | [src](../../../scripts/interlanguage_llm_judge.py#L98) |
+| function | `run_alpha` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L110) |
+| function | `run_delta` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L159) |
+| function | `_binomial_p` | `(k, n, p0)` | One-sided binomial p-value: P(X >= k) under H0 with prob p0. | [src](../../../scripts/interlanguage_llm_judge.py#L209) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_llm_judge.py#L225) |
 
 ## `scripts/interlanguage_structural_classifier.py`
 _Structural-feature classifier for interlanguage expressions._

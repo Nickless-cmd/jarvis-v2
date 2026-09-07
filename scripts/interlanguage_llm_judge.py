@@ -28,6 +28,7 @@ import math
 import random
 import sqlite3
 import sys
+import time
 import urllib.request
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
@@ -69,7 +70,7 @@ def load_expressions(peer_id: str, *, days: int = 7, limit: int = 500) -> list[s
 # ---------------------------------------------------------------------------
 # Ollama judge call
 # ---------------------------------------------------------------------------
-def _ollama_chat(model: str, prompt: str, *, timeout: int = 90) -> str:
+def _ollama_chat(model: str, prompt: str, *, timeout: int = 90, retries: int = 3) -> str:
     req = urllib.request.Request(
         OLLAMA,
         data=json.dumps({
@@ -80,9 +81,18 @@ def _ollama_chat(model: str, prompt: str, *, timeout: int = 90) -> str:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
-    return (payload.get("message") or {}).get("content", "").strip()
+    last_err: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+            return (payload.get("message") or {}).get("content", "").strip()
+        except Exception as exc:  # transient socket/HTTP blips must not kill a 250-call run
+            last_err = exc
+            wait = 10 * attempt
+            print(f"  [retry {attempt}/{retries}] ollama call failed ({exc}); waiting {wait}s", flush=True)
+            time.sleep(wait)
+    raise last_err  # type: ignore[misc]
 
 
 def _parse_entity(raw: str) -> str | None:

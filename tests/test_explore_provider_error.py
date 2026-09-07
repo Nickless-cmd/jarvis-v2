@@ -64,3 +64,38 @@ def test_vaernet_genkender_den_aegte_streng():
     from core.services.provider_error_guard import looks_like_provider_error
     assert looks_like_provider_error(KVOTE)
     assert not looks_like_provider_error("Defineret i simple_tools_definitions.py:257")
+
+
+# ── Banen skal FEJLE OVER, ikke aflevere skraldet (7/9-2026) ────────────────
+# Et HTTP 200 med en kvote-besked i `content` lignede succes, så failover
+# fyrede aldrig og turen var brændt.
+
+def test_kvote_i_content_kastes_som_udbyder_svigt():
+    from core.services.cheap_provider_runtime_adapters import (
+        CheapProviderError, _extract_openai_compatible_text,
+    )
+    data = {"choices": [{"message": {"content": KVOTE}}]}
+    try:
+        _extract_openai_compatible_text(provider="aihubmix", data=data)
+    except CheapProviderError as e:
+        # quota-exhausted → 1 times afkøling, så den ikke vælges igen med det samme
+        assert e.code == "quota-exhausted"
+    else:
+        raise AssertionError("kvote-beskeden slap igennem som et svar")
+
+
+def test_et_aegte_svar_slipper_uroert_igennem():
+    from core.services.cheap_provider_runtime_adapters import _extract_openai_compatible_text
+    svar = "Defineret i core/tools/simple_tools_definitions.py:257"
+    data = {"choices": [{"message": {"content": svar}}]}
+    assert _extract_openai_compatible_text(provider="p", data=data) == svar
+
+
+def test_et_dansk_svar_der_NAEVNER_en_kvotefejl_kasseres_ikke():
+    """Vagten frikender dansk — ellers ville Jarvis' egen forklaring om en
+    kvotefejl blive smidt væk som om den VAR fejlen."""
+    from core.services.cheap_provider_runtime_adapters import _extract_openai_compatible_text
+    svar = ("Udbyderen svarede med en kvotefejl om at kontoen ikke er "
+            "genopfyldt, og derfor fejlede kaldet.")
+    data = {"choices": [{"message": {"content": svar}}]}
+    assert _extract_openai_compatible_text(provider="p", data=data) == svar

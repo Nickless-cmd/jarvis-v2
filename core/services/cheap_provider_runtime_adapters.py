@@ -1304,6 +1304,36 @@ def _notify_checkin_required(provider: str) -> None:
         logger.debug("checkin-nudge fejlede", exc_info=True)
 
 
+def _afvis_udbyder_fejl(provider: str, text: str) -> str:
+    """En kvote-besked leveret som modellens INDHOLD er ikke et svar.
+
+    Målt 7/9-2026: aihubmix svarer HTTP 200 med
+    «Sorry, to prevent abuse of free resources, accounts that have not been
+    recharged can only try 10 times …» i `choices[0].message.content`. Banen så
+    en succes, fejlede aldrig over, og teksten blev afleveret som agentens fund
+    — Jarvis' explore returnerede den slags som research.
+
+    Ved at kaste her får den samme behandling som ethvert andet udbyder-svigt:
+    failover til næste udbyder plus afkøling (1 time for quota-exhausted).
+
+    Vagten er konservativ af sig selv — dansk tekst frikendes, alt over 320
+    tegn frikendes, og de afgørende mønstre er forankret i tekstens start — så
+    et ægte svar der NÆVNER en kvotefejl bliver ikke kasseret.
+    """
+    try:
+        from core.services.provider_error_guard import describe, looks_like_provider_error
+        if not looks_like_provider_error(text):
+            return text
+        besked = describe(text)
+    except Exception:
+        return text
+    raise CheapProviderError(
+        provider=provider,
+        code="quota-exhausted",
+        message=f"provider svarede med en fejlbesked som indhold: {besked}",
+    )
+
+
 def _extract_openai_compatible_text(*, provider: str, data: dict[str, object]) -> str:
     choices = data.get("choices") or []
     for item in choices:
@@ -1312,7 +1342,7 @@ def _extract_openai_compatible_text(*, provider: str, data: dict[str, object]) -
         message = item.get("message") or {}
         content = message.get("content")
         if isinstance(content, str) and content.strip():
-            return content.strip()
+            return _afvis_udbyder_fejl(provider, content.strip())
         if isinstance(content, list):
             parts = [
                 str(part.get("text") or "").strip()

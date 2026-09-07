@@ -32,25 +32,25 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13740 functions/
 - [`core.services.03`](core.services.03.md) — `bash_sandbox` … `central_causal_quality`
 - [`core.services.04`](core.services.04.md) — `central_construct` … `central_learning`
 - [`core.services.05`](core.services.05.md) — `central_lexicon` … `central_sentinel`
-- [`core.services.06`](core.services.06.md) — `central_sequence` … `client_turn_absorb`
-- [`core.services.07`](core.services.07.md) — `client_turn_live` … `conversation_rhythm`
-- [`core.services.08`](core.services.08.md) — `cost_optimization_daemon` … `decision_ghosts`
-- [`core.services.09`](core.services.09.md) — `decision_log` … `dream_continuum`
-- [`core.services.10`](core.services.10.md) — `dream_distillation_daemon` … `executive_contradiction_signal_tracking`
-- [`core.services.11`](core.services.11.md) — `existential_drift` … `gate_skill`
-- [`core.services.12`](core.services.12.md) — `gate_truth` … `identity_drift_proposer`
-- [`core.services.13`](core.services.13.md) — `identity_guard` … `lessons`
-- [`core.services.14`](core.services.14.md) — `life_milestones` … `meta_cognition_daemon`
-- [`core.services.15`](core.services.15.md) — `meta_learning_aggregator` … `operator_allowlist`
-- [`core.services.16`](core.services.16.md) — `operator_channel` … `proactive_context_governor`
-- [`core.services.17`](core.services.17.md) — `proactive_loop_lifecycle_tracking` … `reasoning_escalation`
-- [`core.services.18`](core.services.18.md) — `reasoning_interceptor` … `runtime_browser_body`
-- [`core.services.19`](core.services.19.md) — `runtime_cognitive_conductor` … `self_narrative_continuity_signal_tracking`
-- [`core.services.20`](core.services.20.md) — `self_narrative_self_model_review_bridge` … `signal_noise_guard`
-- [`core.services.21`](core.services.21.md) — `signal_pressure_accumulator` … `temporal_body`
-- [`core.services.22`](core.services.22.md) — `temporal_context` … `unconscious_temperature_field`
-- [`core.services.23`](core.services.23.md) — `unfinished_intent` … `visible_runs_sse_v2`
-- [`core.services.24`](core.services.24.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
+- [`core.services.06`](core.services.06.md) — `central_sequence` … `clarification_classifier`
+- [`core.services.07`](core.services.07.md) — `client_turn_absorb` … `contradiction_resolver`
+- [`core.services.08`](core.services.08.md) — `conversation_rhythm` … `decision_gate`
+- [`core.services.09`](core.services.09.md) — `decision_ghosts` … `dream_consolidation_daemon`
+- [`core.services.10`](core.services.10.md) — `dream_continuum` … `events_retention`
+- [`core.services.11`](core.services.11.md) — `executive_contradiction_signal_tracking` … `gate_shadow`
+- [`core.services.12`](core.services.12.md) — `gate_skill` … `identity_drift_guard`
+- [`core.services.13`](core.services.13.md) — `identity_drift_proposer` … `learning_policy_engine`
+- [`core.services.14`](core.services.14.md) — `lessons` … `memory_write_queue`
+- [`core.services.15`](core.services.15.md) — `meta_cognition_daemon` … `open_loop_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `operator_allowlist` … `proactive_candidates`
+- [`core.services.17`](core.services.17.md) — `proactive_context_governor` … `reasoning_detectors`
+- [`core.services.18`](core.services.18.md) — `reasoning_escalation` … `runtime_awareness_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `runtime_browser_body` … `self_mutation_lineage`
+- [`core.services.20`](core.services.20.md) — `self_narrative_continuity_signal_tracking` … `signal_network_visualizer`
+- [`core.services.21`](core.services.21.md) — `signal_noise_guard` … `temperament_tendency_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `temporal_body` … `unconscious_modulation`
+- [`core.services.23`](core.services.23.md) — `unconscious_temperature_field` … `visible_runs_outcomes`
+- [`core.services.24`](core.services.24.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

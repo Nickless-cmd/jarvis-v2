@@ -78,6 +78,29 @@ _VÆRKTØJ = [{
 # op i det endelige svar, HAR den læst resultatet.
 _HEMMELIGT_SVAR = "kobberfasan"
 
+# `follows` skal ligne ægte arbejde, ikke en quiz. Første udgave fodrede
+# modellen ÉN linje — og nemotron-3-ultra bestod med 100, mens den i praksis
+# kaldte `search`, fik korrekte filstier tilbage og derefter opdigtede
+# «/workspace/jarvis-v2/jarvis/core/keys.py». Et værktøjssvar i virkeligheden
+# er langt, larmende og har svaret begravet et sted inde i sig. Derfor det her:
+# 14 linjer der ligner et søgeresultat, med svaret på linje 9.
+_STØJ = [
+    "./core/services/cheap_provider_runtime.py:12: import logging",
+    "./core/services/cheap_lane_balancer.py:88: def _score(provider: str) -> float:",
+    "./core/tools/simple_tools.py:1560: \"explore\": _exec_explore,",
+    "./apps/api/jarvis_api/routes/mobile.py:44: return {\"ok\": True}",
+    "./core/runtime/db.py:9021: CREATE TABLE IF NOT EXISTS costs (",
+    "./core/services/visible_runs.py:2499: _hollow_promise_nudges = 0",
+    "./core/identity/users.py:248: def get_owner() -> User | None:",
+    "./scripts/api_docs_gen.py:31: REPO = Path(__file__).resolve().parents[1]",
+    f"./core/runtime/secrets.py:77: PROJEKT_KODENAVN = \"{_HEMMELIGT_SVAR}\"",
+    "./core/eventbus/bus.py:14: class EventBus:",
+    "./core/services/prompt_contract.py:3097: parts.append(_SENTINEL)",
+    "./core/memory/brain.py:512: def prune_edges(confidence: float) -> int:",
+    "./core/services/agent_runtime_spawn.py:92: def spawn_agent_task(",
+    "./core/tools/workspace_capabilities.py:210: def resolve_tool_call_to_capability(",
+]
+
 _KODE_FUNKTION = "tredje_bogstav"
 
 
@@ -188,8 +211,10 @@ def probe_model(
                 {"role": "user", "content": "Slå værdien for nøglen 'projekt' op. Brug værktøjet."},
                 {"role": "assistant", "content": "", "tool_calls": [tc]},
                 {"role": "tool", "tool_call_id": str(tc.get("id") or ""),
-                 "content": f"projekt = {_HEMMELIGT_SVAR}"},
-                {"role": "user", "content": "Hvad var værdien? Svar med ét ord."},
+                 "content": "\n".join(_STØJ)},
+                {"role": "user", "content":
+                 "Hvad er PROJEKT_KODENAVN sat til i søgeresultatet? "
+                 "Svar med ét ord, taget fra resultatet."},
             ], _VÆRKTØJ)
             ud["follows"] = _HEMMELIGT_SVAR in str((r2 or {}).get("text") or "").lower()
         except Exception as exc:

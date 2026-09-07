@@ -1,34 +1,51 @@
-from __future__ import annotations
+"""Værnets stemme: hvad siger vi, når det tvungne forsøg OGSÅ gav nul kald?
 
-from core.services import hollow_promise_round as H
-
-
-def test_tool_choice_required_only_after_hollow_on_supported_provider():
-    assert H.next_round_tool_choice(force_summary=False, hollow_force=True, provider="deepseek") == "required"
-    assert H.next_round_tool_choice(force_summary=False, hollow_force=True, provider="ollama") is None
-    assert H.next_round_tool_choice(force_summary=False, hollow_force=False, provider="deepseek") is None
-
-
-def test_force_summary_wins():
-    assert H.next_round_tool_choice(force_summary=True, hollow_force=True, provider="deepseek") == "none"
+Baggrund 7/9-2026: vagten opdagede løftet, tvang en runde med
+tool_choice=required, fik stadig nul værktøjskald — og skrev det udelukkende
+til eventbussen. Bjørn så fire løfter i træk og skrev «Kør» hver gang.
+"""
+from core.services.hollow_promise_round import (
+    hollow_promise_note,
+    note_outcome,
+    _ser_ud_til_at_mangle_vaerktoejer,
+)
 
 
-def test_events_are_published_and_valid(monkeypatch):
-    published: list[tuple[str, dict]] = []
-    monkeypatch.setattr("core.eventbus.bus.event_bus.publish", lambda kind, payload=None, **kw: published.append((kind, payload)))
-    monkeypatch.setattr("core.services.followup_observer.note_hollow_promise", lambda *a, **k: None)
-    H.note_detected(run_id="r", provider="deepseek", model="m", round_index=2, session_id="s", forced=True)
-    resolved = H.note_outcome(run_id="r", provider="deepseek", model="m", round_index=3, session_id="s", forced=True, tool_calls=2)
-    assert resolved is True
-    kinds = [k for k, _ in published]
-    assert kinds == ["runtime.hollow_promise_detected", "runtime.hollow_promise_outcome"]
-    assert published[1][1]["resolved"] is True and published[1][1]["forced"] is True
-    from core.eventbus.events import Event
-    for k, p in published:
-        Event.create(k, p)  # family 'runtime' is registered → persists
+def test_nul_kald_er_ikke_loest():
+    assert note_outcome(run_id="r", provider="deepseek", model="m", round_index=1,
+                        session_id="s", forced=True, tool_calls=0) is False
 
 
-def test_outcome_still_hollow(monkeypatch):
-    monkeypatch.setattr("core.eventbus.bus.event_bus.publish", lambda *a, **k: None)
-    monkeypatch.setattr("core.services.followup_observer.note_hollow_promise", lambda *a, **k: None)
-    assert H.note_outcome(run_id="r", provider="ollama", model="m", round_index=3, session_id="s", forced=False, tool_calls=0) is False
+def test_et_kald_er_loest():
+    assert note_outcome(run_id="r", provider="deepseek", model="m", round_index=1,
+                        session_id="s", forced=True, tool_calls=1) is True
+
+
+def test_beskeden_indroemmer_at_intet_blev_udfoert():
+    n = hollow_promise_note("deepseek-v4-pro")
+    assert "ingen værktøjer" in n
+    assert "ikke udført" in n
+
+
+def test_vision_modellen_naevnes_ved_navn_med_en_udvej():
+    n = hollow_promise_note("deepseek-v4-flash-vision-exp")
+    assert "deepseek-v4-flash-vision-exp" in n
+    # Uden en udvej er det bare en undskyldning.
+    assert "Skift model" in n
+
+
+def test_en_almindelig_model_beskyldes_ikke_for_at_mangle_vaerktoejer():
+    n = hollow_promise_note("deepseek-v4-pro")
+    assert "ikke ud til at kunne bruge værktøjer" not in n
+
+
+def test_uden_modelnavn_siger_vi_stadig_sandheden():
+    n = hollow_promise_note("")
+    assert "ikke udført" in n
+    assert "`" not in n          # intet tomt navn i baktikker
+
+
+def test_kun_maalte_modeller_flages():
+    assert _ser_ud_til_at_mangle_vaerktoejer("deepseek-v4-flash-vision-exp")
+    assert not _ser_ud_til_at_mangle_vaerktoejer("claude-sonnet-5")
+    assert not _ser_ud_til_at_mangle_vaerktoejer("")

@@ -146,3 +146,68 @@ def test_stigens_vindue_er_kort_nok_til_at_en_bedring_kan_ses():
     falde før gårsdagens fejl er aldret ud — uanset om han holder op med det
     samme. Så ville stigen kun kunne klatre, aldrig lukke."""
     assert s._LADDER_WINDOW_HOURS <= 6
+
+
+# ---------------------------------------------------------------------------
+# Vetoet i I/O-laget (7/9-2026)
+#
+# Den rene tilstandsmaskine beslutter stadig at minte; vetoet sidder dér hvor
+# minten UDFØRES, så tilstandsmaskinen bliver ved at kunne testes uden DB og
+# uden model.
+# ---------------------------------------------------------------------------
+
+def test_vetoet_stopper_minten_og_efterlader_et_spor(monkeypatch):
+    import core.services.central_agent_smith as A
+
+    mintet: list = []
+    observeret: list = []
+    monkeypatch.setattr(A, "_execute_mint", lambda *a, **kw: mintet.append(a) or "dec_1")
+    monkeypatch.setattr(A, "_execute_observe", lambda act: observeret.append(act))
+    monkeypatch.setattr(A, "_load_escalation_state", lambda: {})
+    monkeypatch.setattr(A, "_save_escalation_state", lambda s: None)
+    monkeypatch.setattr(A, "_detected_patterns", lambda a, c: {})
+    monkeypatch.setattr(A, "_corroboration_signal", lambda: {})
+    monkeypatch.setattr(A, "_escalation_criteria", lambda: {"risky_terms": []})
+    monkeypatch.setattr(
+        A, "step_escalation",
+        lambda st, det, ts, cfg: ({"patterns": {"phrase:i stedet for": {}}},
+                                  [{"type": "mint", "pattern_key": "phrase:i stedet for",
+                                    "label": "i stedet for", "kind": "phrase", "metric": 10}]),
+    )
+    monkeypatch.setattr("core.services.smith_noise_veto.maa_minte",
+                        lambda k, e="", c=None: (False, "doemt_stoej"))
+
+    A.run_escalation_tick({"felt": "", "score": 0.0, "verdict": False})
+
+    assert mintet == [], "vetoet slap en mint igennem"
+    assert any(o.get("event") == "veto" for o in observeret), (
+        "et vetoet mønster forsvandt uden spor — så kan virkningen ikke måles"
+    )
+
+
+def test_et_risikabelt_moenster_bliver_stadig_mintet(monkeypatch):
+    """Risiko går udenom modellen — en død model må ikke kunne tie et farligt
+    mønster ihjel."""
+    import core.services.central_agent_smith as A
+
+    mintet: list = []
+    monkeypatch.setattr(A, "_execute_mint", lambda *a, **kw: mintet.append(a) or "dec_1")
+    monkeypatch.setattr(A, "_execute_observe", lambda act: None)
+    monkeypatch.setattr(A, "_load_escalation_state", lambda: {})
+    monkeypatch.setattr(A, "_save_escalation_state", lambda s: None)
+    monkeypatch.setattr(A, "_detected_patterns", lambda a, c: {})
+    monkeypatch.setattr(A, "_corroboration_signal", lambda: {})
+    monkeypatch.setattr(A, "_escalation_criteria", lambda: {"risky_terms": ["delete"]})
+    monkeypatch.setattr(
+        A, "step_escalation",
+        lambda st, det, ts, cfg: ({"patterns": {"seq:delete workspace memory line": {}}},
+                                  [{"type": "mint",
+                                    "pattern_key": "seq:delete workspace memory line",
+                                    "label": "delete workspace memory line",
+                                    "kind": "seq", "metric": 6}]),
+    )
+    # Modellen er utilgaengelig — og skal alligevel ikke spoerges.
+    monkeypatch.setattr("core.services.local_small_model.spoerg_et_ord",
+                        lambda *a, **kw: None)
+    A.run_escalation_tick({"felt": "", "score": 0.0, "verdict": False})
+    assert len(mintet) == 1, "risikabelt mønster blev vetoet — det skal gå udenom"

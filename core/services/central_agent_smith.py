@@ -497,6 +497,20 @@ def run_escalation_tick(assessment: dict[str, Any] | None = None) -> dict[str, A
         for act in actions:
             t = act.get("type")
             if t == "mint":
+                # VETO (7/9-2026). Detektoren er n-gram-hyppighed og kan ikke
+                # skelne en adfaerds-vane fra almindeligt dansk. Uden dette lag
+                # har Smith mintet 31 direktiver hvoraf to havde indhold — seks
+                # af dem om HANS EGEN replik, der kom retur via prompt-halen.
+                # Risikable handlinger gaar udenom vetoet, saa en doed model
+                # ikke kan tie et farligt moenster ihjel.
+                # Se core.services.smith_noise_veto.
+                from core.services.smith_noise_veto import maa_minte
+                maa, grund = maa_minte(act["pattern_key"], act.get("label", ""), cfg)
+                if not maa:
+                    _execute_observe({"type": "observe", "event": "veto",
+                                      "pattern_key": act["pattern_key"],
+                                      "reason": grund})
+                    continue
                 did = _execute_mint(act["pattern_key"], act.get("label", ""),
                                     act.get("kind", "phrase"), float(act.get("metric") or 0))
                 pat = new_state.get("patterns", {}).get(act["pattern_key"])

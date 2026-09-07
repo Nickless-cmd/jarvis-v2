@@ -43,10 +43,16 @@ def check_decision_gate(
     """
     if tool_name in _META_TOOLS:
         return True, None
+    if ejeren_har_sagt_alligevel(user_message):
+        return True, None
 
     try:
         from core.services.behavioral_decisions import list_active_decisions
-        decisions = list_active_decisions(limit=10) or []
+        # ALLE aktive, ikke de foerste ti (7/9-2026). Der er 45 aktive, saa 35
+        # blev aldrig tjekket — samme fejl som anmelderens limit=20 mod 45.
+        # Sikkert foerst nu, hvor maalet skal fylde noget: med den gamle
+        # matcher ville flere beslutninger bare give flere falske blokeringer.
+        decisions = list_active_decisions(limit=_ALLE_AKTIVE) or []
     except Exception as _exc:
         # Fail-open synlighed (audit 2026-07-04): kan gaten ikke læse aktive beslutninger
         # tillader den handlingen — men det MÅ ikke være tavst, ellers kan Jarvis bryde
@@ -110,6 +116,26 @@ def check_decision_gate(
 # advarer men tillader (YELLOW). Tærskel = 50 (= create_decision-default), så nuværende
 # blokerings-adfærd bevares for normale beslutninger; kun eksplicit lav-prioritet softer.
 _HARD_BLOCK_PRIORITY = 50
+_ALLE_AKTIVE = 500
+
+
+_OVERSTYRING = re.compile(r"(?<!\w)alligevel(?!\w)", re.IGNORECASE)
+
+
+def ejeren_har_sagt_alligevel(user_message: str) -> bool:
+    """Har BRUGEREN sagt «alligevel» i sin egen besked?
+
+    Gaten har hele tiden skrevet «Sig \'alligevel\' for at gennemtvinge» — og
+    INTET sted i koden laeste det ord. Jarvis proevede fire gange og meldte
+    «uden effekt»; han havde ret, der var ingen effekt at faa. Samme familie som
+    godkendelses-ringen: en port der anviser en udvej der ikke findes.
+
+    Ordet skal komme fra BRUGERENS besked, ikke fra vaerktoejs-argumenterne.
+    Modellen skriver selv sine argumenter, saa en overstyring der kunne staa dér
+    ville vaere selv-udstedt — praecis den fejl ejer-godkendelsen allerede har
+    kostet os én gang.
+    """
+    return bool(_OVERSTYRING.search(str(user_message or "")))
 
 
 def evaluate_decision_conflict(
@@ -124,9 +150,15 @@ def evaluate_decision_conflict(
     """
     if tool_name in _META_TOOLS:
         return "none", None
+    if ejeren_har_sagt_alligevel(user_message):
+        return "none", None
     try:
         from core.services.behavioral_decisions import list_active_decisions
-        decisions = list_active_decisions(limit=10) or []
+        # ALLE aktive, ikke de foerste ti (7/9-2026). Der er 45 aktive, saa 35
+        # blev aldrig tjekket — samme fejl som anmelderens limit=20 mod 45.
+        # Sikkert foerst nu, hvor maalet skal fylde noget: med den gamle
+        # matcher ville flere beslutninger bare give flere falske blokeringer.
+        decisions = list_active_decisions(limit=_ALLE_AKTIVE) or []
     except Exception as _exc:
         # Fail-open synlighed (audit 2026-07-04): graderet-varianten fejler også STILLE til
         # 'none' (GREEN) → Jarvis kan bryde en forpligtelse uden spor. Flag FØR return.
@@ -196,12 +228,36 @@ def _build_context(
     return " ".join(parts).lower()
 
 
+# Hvor stor en del af direktivet maalet mindst skal fylde (7/9-2026).
+#
+# Regex'en griber ordene efter «ikke/undgaa/stop», men den kan ikke se om de er
+# et FORBUD eller bare en vending inde i en laengere saetning. dec_c428 lyder
+# «Foer jeg konkluderer at noget er doedt, aldrig kaldes, eller ikke findes —
+# verificér at ...» (500+ tegn). Regex'en tog ordet «findes» og gjorde det til
+# et forbud, saa gaten haard-blokerede ENHVER hukommelses-skrivning der indeholdt
+# ordet. Maalt: «der findes en god kagegrimasse i koekkenet» blev blokeret.
+#
+# Ratio frem for ordliste, samme princip som `_is_self_bound` i Smiths stige: en
+# ordliste udskyder bare det naeste ord. Et aegte forbud fylder det meste af sin
+# saetning («undgaa at bruge bash til filredigering» → 0,74); et tilfaeldigt ord
+# inde i et langt direktiv goer ikke («findes» i dec_c428 → 0,012).
+_MIN_MAAL_ANDEL = 0.15
+
+
+def _helt_ord(maal: str, tekst: str) -> bool:
+    """Delstreng var for loest: «findes» ramte ogsaa «genfindes» og «befindes»."""
+    return re.search(r"(?<!\w)%s(?!\w)" % re.escape(maal), tekst) is not None
+
+
 def _detect_conflict(directive: str, context: str, decision: dict) -> str | None:
     """Detect if the context conflicts with a decision directive.
 
     Uses heuristic pattern matching:
     - If directive says "undgå/ikke/stop/avoid X" and context contains X → conflict
     - If directive says "altid/always X" and context suggests NOT doing X → conflict
+
+    Maalet skal fylde mindst `_MIN_MAAL_ANDEL` af direktivet og matche som helt
+    ord — se konstanten for hvorfor.
     """
     directive_lower = directive.lower()
     context_lower = context.lower()
@@ -213,7 +269,9 @@ def _detect_conflict(directive: str, context: str, decision: dict) -> str | None
     )
     if avoid_match:
         target = avoid_match.group(2).strip()
-        if target and target in context_lower:
+        if (target
+                and len(target) / max(1, len(directive_lower)) >= _MIN_MAAL_ANDEL
+                and _helt_ord(target, context_lower)):
             return f"handling matcher '{target}' som forpligtelsen siger at undgå"
 
     # Pattern: imperative directive — "altid X" and context suggests skipping

@@ -40,8 +40,9 @@ def test_home_ruten_har_stadig_ingen_proxy():
     assert _DEFAULT_PROXY_ENDPOINTS["home"] is None
 
 
-def test_de_konfigurerede_ollama_a2_modeller_er_dem_gatewayen_har():
-    # Verificeret mod /api/tags på 10.0.0.26 den 7/9: begge findes.
-    assert set(CHEAP_PROVIDER_DEFAULTS["ollama-a2"]["static_models"]) == {
-        "gemma4:31b-cloud", "minimax-m3:cloud",
-    }
+def test_kun_den_model_free_tier_faktisk_kan():
+    """Gatewayen LISTER syv modeller, men account2's free-tier kan én.
+    minimax-m3, glm-5.2, kimi-k2.7-code og deepseek-v4-* svarer alle «this
+    model requires a subscription». At stå på /api/tags er ikke det samme som
+    at kunne kaldes — samme lærestreg som LLM7's 46 modeller hvoraf 3 svarer."""
+    assert CHEAP_PROVIDER_DEFAULTS["ollama-a2"]["static_models"] == ["gemma4:31b-cloud"]

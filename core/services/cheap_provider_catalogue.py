@@ -305,7 +305,12 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "rpm_limit": 6,
         "daily_limit": 200,
         "cost_class": "free",
-        "static_models": ["gemma4:31b-cloud", "minimax-m3:cloud"],
+        # 7/9-2026: `minimax-m3:cloud` er FJERNET. Den stod som gratis siden
+        # 24. juli, men gatewayen svarer nu «this model requires a subscription
+        # or extra usage» — det samme gør glm-5.2, kimi-k2.7-code og
+        # deepseek-v4-*. Kun gemma4 er tilbage på free-tier. En model der
+        # returnerer en abonnements-fejl er en død pool-plads, ikke en mulighed.
+        "static_models": ["gemma4:31b-cloud"],
     },
     # Pollinations (15. jul, live-verificeret): ANONYM (ingen key, auth_kind=none),
     # openai-compat, TOOL-CAPABLE (tool_calls=1 testet med rigtigt tool-kald). Backed

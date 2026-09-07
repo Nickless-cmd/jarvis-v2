@@ -27,14 +27,10 @@ import re
 
 logger = logging.getLogger(__name__)
 
-# Cosine-taerskel. Spec'en foreslog 0,45; maalt paa 60 aegte beskeder ville den
-# have nudget paa 60 af 60 ture — 100 %. Kalibreret paa data:
-#     0,45 → 60/60 (100 %)   0,70 → 38/60 (63 %)
-#     0,75 →  8/60 ( 13 %)   0,80 →  1/60 (  2 %)
-# 0,75 er den eneste vaerdi med en frekvens der overhovedet kan forsvares.
-# Spec'en vaelger >= (ikke >) — laast i test.
-_THRESHOLD = 0.75
-_TOP_K = 8
+# Taersklerne bor i matcheren (``tool_lexical_match.GULV`` og ``FAKTOR``) og
+# importeres kun her til observationsfladen. Den gamle cosine-taerskel paa 0,75
+# stod haardkodet BEGGE steder, saa fladen blev ved med at rapportere 0,75
+# efter at matcheren var skiftet — én kilde, ikke to.
 
 # Max ét nudge pr. tur. Stoej er vaerre end ingen nudge: laerer han at kanalen
 # er stoej, holder han op med at laese den, og saa er den doed for altid.
@@ -98,43 +94,39 @@ def _skygge() -> bool:
     (Jarvis' overfit-indvending, 6/9). Skyggen giver maalingen uden at roere
     prompten. Samme moenster som reasoning_interceptor og Agent Smith.
 
-    **Default OFF fra 7/9-2026 — forsoeget er afsluttet, og svaret var nej.**
+    **Skyggen var lukket i nogle timer 7/9 og er TAENDT igen samme dag** — men
+    paa en ny matcher. Historien er vaerd at have, saa den ikke skal genfindes:
 
-    Skyggen koerte et doegn og leverede sin maaling. Den koster ikke prompten
-    noget, men den koster ét embedding-kald pr. besked, og der er ikke mere at
-    laere af at blive ved:
+    Cosinus-varianten koerte et doegn i skygge og svarede nej. Maalt paa 40-60
+    aegte beskeder: 0 nudges, afstand top1→top2 = 0,0106 i snit, saa
+    ranglisten var reelt vilkaarlig — ``curiosity_read_mood`` laa 0,017 fra
+    toppen paa en besked om agenter. To ting jeg proevede foerst hjalp ikke:
+    porten foer opslaget flyttede margin 0,0099 → 0,0108 (intet), og z-score
+    var 2,6-4,1 paa HVER besked, saa den kunne ikke skille noget fra noget.
 
-        40 aegte bruger-beskeder koert igennem  →  0 nudges
-        topmatch over taersklen 0,75           →  2 af 40
-        topmatch der ALLEREDE staar i kataloget →  15 af 40 (38 %)
-        snit-afstand top1 → top2                →  0,0106
+    Det der VIRKEDE i de faa rigtige traef var altid leksikalsk — «branches» →
+    ``git_branch``, «interlanguage» → ``interlanguage_protocol``. Matcheren er
+    derfor skiftet til ``core.services.tool_lexical_match``, hvor et aegte traef
+    staar KLART over feltet (``provider_health_check`` 2,22 mod 1,36) og et
+    tilfaeldigt ligger lige med et dusin andre. 10 af 60 beskeder faar et bud;
+    de foerste ti var rigtige nok til at maale videre paa.
 
-    De 12 skygge-haendelser var 8 identiske par — ~4 aegte fyringer, ingen fra
-    Bjoerns samtaler (de autonome runs sender samme prompt dagligt, deraf de
-    identiske scorer).
+    Skyggen er taendt igen fordi den nu er gratis: opslaget roerer ingen model,
+    saa den koster ikke laengere et embedding-kald pr. besked. Fremadrettede
+    data er stadig den eneste valide test af en taerskel kalibreret paa ét
+    datasaet (Jarvis' overfit-indvending), og nu kan vi faa dem uden at betale.
 
-    Det afgoerende tal er 0,0106: afstanden mellem bedste og naestbedste match
-    er ét procentpoint, saa ranglisten er reelt vilkaarlig.
-    ``curiosity_read_mood`` scorer 0,736 paa «Claude kigger paa det nu, dine
-    agenter skal altid virke» — vroevl, 0,017 under toppen. Saenker man
-    taersklen for recall, koeber man stoej i samme takt.
+    ``_enabled`` er stadig OFF: skyggen skal levere sit doegn foerst.
 
-    Og designet strider mod sig selv: nudgen skal frem med de 328 UBRUGTE
-    vaerktoejer, men lighed rangerer konsekvent de ALMINDELIGE oeverst (deres
-    beskrivelser ligner hverdagssprog) — og de frasorteres korrekt, fordi de
-    allerede staar i kataloget. Tilbage er kun det der ligger UNDER dem.
-
-    Problemet er signalet, ikke taersklen, saa der er intet flag der redder
-    den. Koden bliver staaende: der findes maerket data der kan baere et
-    rigtigt signal — «indeholdt naeste assistent-svar i samme session
-    ``tool_use``?» — hvor imperativ-featuren skiller +17,1 % mod spoergsmaals
-    +2,0 %. Bygges den paa DET grundlag, taendes begge flag igen.
+    Self-safe: kan config ikke laeses, maaler vi videre — skyggen kan pr.
+    konstruktion ikke naa prompten, saa den sikre vej her er TIL (modsat
+    ``_enabled``, hvor en fejl ville havne i hans prompt).
     """
     try:
         from core.runtime.settings import load_settings
-        return bool(load_settings().extra.get("tool_discovery_nudge_shadow", False))
+        return bool(load_settings().extra.get("tool_discovery_nudge_shadow", True))
     except Exception:
-        return False
+        return True
 
 
 def _er_prewarm(session_id: str) -> bool:
@@ -308,25 +300,52 @@ def _log_nudge(navn: str, session_id: str, score: float) -> None:
         logger.debug("tool_discovery_nudge: event fejlede: %s", exc)
 
 
-def _matches(besked: str) -> list[tuple[str, float]]:
-    """``top_k_similar`` returnerer (navn, score)-TUPLER — ikke dicts som
-    arketypens matcher. Defensiv udpakning: en misformet raekke springes over
-    frem for at vaelte sektionen."""
-    from core.services.query_language_bridge import normalise_for_embedding
-    from core.services.tool_embeddings import top_k_similar
+_korpus_cache: tuple[int, object] | None = None
 
-    # Broen over sprogforskellen: modellen er engelsk-centrisk, tool-navnene er
-    # engelske, og han skriver dansk. Uden den kom curiosity_read_dreams (0,694)
-    # foer calendar_list_events (0,665) paa en kalender-besked.
-    ud: list[tuple[str, float]] = []
-    for r in top_k_similar(normalise_for_embedding(besked), k=_TOP_K) or []:
-        try:
-            navn, score = str(r[0] or "").strip(), float(r[1])
-        except Exception:
-            continue
-        if navn:
-            ud.append((navn, score))
-    return ud
+
+def _korpus():
+    """Leksikalsk korpus over vaerktoejerne, bygget én gang pr. vaerktoejssaet.
+
+    Cachen noegles paa ANTALLET af definitioner, saa den bygges om naar
+    vaerktoejer kommer til eller falder fra, men ikke pr. tur. IDF aendrer sig
+    kun med korpuset.
+    """
+    global _korpus_cache
+    from core.services.tool_lexical_match import byg_korpus_fra_definitioner
+    from core.tools.simple_tools import get_tool_definitions
+
+    defs = get_tool_definitions() or []
+    if _korpus_cache is not None and _korpus_cache[0] == len(defs):
+        return _korpus_cache[1]
+    k = byg_korpus_fra_definitioner(defs)
+    _korpus_cache = (len(defs), k)
+    return k
+
+
+def _matches(besked: str, kandidater: list[str] | None = None):
+    """Bedste leksikalske bud blandt ``kandidater``, eller ``None``.
+
+    **Skiftet fra cosinus 7/9-2026.** Embedding-lighed blev maalt paa 60 aegte
+    beskeder og kunne ikke skelne: afstanden top1→top2 var 0,0106 i snit, saa
+    ranglisten var vilkaarlig, og 40 beskeder gav nul brugbare bud. De faa
+    rigtige traef var ALTID leksikalske — «branches» → git_branch — hvor
+    embeddingen intet tilfoejede og tit foerte vild («**slet** ikk faa lov» →
+    note_delete). Se ``core.services.tool_lexical_match``.
+
+    To ting foelger med skiftet:
+
+    * **Ingen model i vejen.** Opslaget er rene strengoperationer, saa
+      sektionen koster ikke laengere et embedding-kald pr. besked — hverken
+      taendt eller i skygge.
+    * **Porten ligger FOER opslaget.** Foer scorede vi mod alle 448 og kasserede
+      bagefter dem der stod i kataloget; det aad topplaceringen i 38 % af
+      turene. Nu rangeres kun blandt de usynlige.
+    """
+    try:
+        return _korpus().slaa_op(besked, kandidater)
+    except Exception as exc:
+        logger.debug("tool_discovery_nudge: opslag fejlede: %s", exc)
+        return None
 
 
 def tool_discovery_nudge_section(
@@ -350,51 +369,59 @@ def tool_discovery_nudge_section(
     if _er_social(besked):
         return ""
 
-    try:
-        traef = _matches(besked)
-    except Exception as exc:
-        # Ollama nede, tom embedding-DB, DB-laas — alle ender her.
-        logger.debug("tool_discovery_nudge: opslag fejlede: %s", exc)
-        return ""
-    if not traef:
-        return ""
-
     registreret = _registrerede_navne()
     if not registreret:
         return ""  # kan vi ikke krydstjekke, foreslaar vi ingenting
     katalog = _katalog_tekst()
 
-    valgt: list[tuple[str, float]] = []
-    for navn, score in traef:
-        if score < _THRESHOLD:
-            continue                      # sorteret desc → resten er ogsaa under
-        if navn not in registreret:
-            continue                      # foraeldet/alias-vektor
-        if _er_internt(registreret[navn]):
-            continue                      # hans eget maskineri, ikke Bjoerns verden
-        if _staar_i_katalog(navn, katalog):
-            continue                      # staar allerede i klartekst
-        if _undertrykt(sid, navn):
-            continue
-        valgt.append((navn, score))
-        if len(valgt) >= _MAX_NUDGES:
-            break
-
-    if not valgt:
+    # Porten FOER opslaget. Tidligere scorede vi mod alle 448 vaerktoejer og
+    # kasserede bagefter dem der allerede stod i kataloget — det aad
+    # topplaceringen i 38 % af turene, saa de usynlige (som hele sektionen
+    # findes for) konkurrerede om pladser der alligevel blev smidt vaek.
+    kandidater = [
+        navn for navn, beskrivelse in registreret.items()
+        if not _er_internt(beskrivelse)      # hans eget maskineri, ikke Bjoerns verden
+        and not _staar_i_katalog(navn, katalog)  # staar allerede i klartekst
+        and not _undertrykt(sid, navn)
+    ]
+    if not kandidater:
         return ""
 
-    navn, score = valgt[0]
-    _log_nudge(navn, sid, score)
+    # Dobbelt vaern med vilje: ``_matches`` fanger selv sine egne fejl, men
+    # sektionens kontrakt er «kaster aldrig», og den maa ikke afhaenge af at
+    # en fremtidig matcher husker at vaere hoeflig.
+    try:
+        traef = _matches(besked, kandidater)
+    except Exception as exc:
+        logger.debug("tool_discovery_nudge: opslag fejlede: %s", exc)
+        return ""
+    if traef is None:
+        return ""   # det NORMALE svar: 50 af 60 aegte beskeder
+
+    _log_nudge(traef.navn, sid, traef.score)
     if not _enabled():
         # Skygge: maalingen er skrevet, men prompten er urørt. Vi husker heller
         # ikke nudget — suppression hoerer til den synlige kanal.
         return ""
-    _husk_nudge(sid, navn)
+    _husk_nudge(sid, traef.navn)
+    # Traeffet baerer de ord det byggede paa, saa han kan afvise et daarligt bud
+    # paa stedet i stedet for at skulle tro paa et tal.
     return (
-        "📎 Vaerktoej uden for din nuvaerende kasse: `%s` — opgaven matcher det "
-        "(%.2f). Kald load_more_tools(names=[\"%s\"]) hvis det er relevant."
-        % (navn, score, navn)
+        "📎 Vaerktoej uden for din nuvaerende kasse: `%s` — din besked naevner "
+        "%s. Kald load_more_tools(names=[\"%s\"]) hvis det er relevant."
+        % (traef.navn, ", ".join("«%s»" % o for o in traef.ord), traef.navn)
     )
+
+
+def _GULV() -> float:
+    """Laeses ved kaldet, ikke ved import — saa fladen ikke fryser en gammel vaerdi."""
+    from core.services.tool_lexical_match import GULV
+    return GULV
+
+
+def _FAKTOR() -> float:
+    from core.services.tool_lexical_match import FAKTOR
+    return FAKTOR
 
 
 def build_tool_discovery_nudge_surface(
@@ -408,7 +435,8 @@ def build_tool_discovery_nudge_surface(
         "shadow": _skygge() and not _enabled(),
         "message_chars": len(besked),
         "skipped_short": len(besked) < _MIN_MESSAGE_CHARS,
-        "threshold": _THRESHOLD,
+        "gulv": _GULV(),
+        "margin_faktor": _FAKTOR(),
         "suppression_seconds": _SUPPRESSION_S,
         "matched": bool(tekst),
         "section_chars": len(tekst),

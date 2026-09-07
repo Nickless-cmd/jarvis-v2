@@ -34,14 +34,34 @@ def _grundtilstand(monkeypatch):
 
 
 def _stub(monkeypatch, resultat):
-    monkeypatch.setattr(T, "_matches", lambda besked: resultat)
+    """Fake matcher der er TRO mod den nye kontrakt.
+
+    Matcheren skiftede 7/9 fra cosinus til leksikalsk opslag, og porten flyttede
+    med: hvor sektionen foer scorede mod alle vaerktoejer og kasserede bagefter,
+    faar matcheren nu kandidatlisten ind og rangerer kun blandt den. Stubben
+    SKAL derfor respektere ``kandidater`` — ellers ville testene for katalog,
+    internt maskineri og suppression bestaa uden at der blev filtreret noget.
+
+    ``resultat`` beholder den gamle (navn, score)-form, saa testene kan skrives
+    som «her er felterne» — stubben vaelger den foerste der er en gyldig kandidat,
+    praecis som det aegte opslag goer.
+    """
+    from core.services.tool_lexical_match import Traef
+
+    def fake(besked, kandidater=None):
+        for navn, score in resultat:
+            if kandidater is None or navn in kandidater:
+                return Traef(navn=navn, score=score, naest=0.0, ord=("kalender",))
+        return None
+
+    monkeypatch.setattr(T, "_matches", fake)
 
 
 def _maa_ikke_slaa_op(monkeypatch):
-    monkeypatch.setattr(
-        T, "_matches",
-        lambda besked: pytest.fail("måtte ikke betale for opslaget her"),
-    )
+    def fake(besked, kandidater=None):
+        pytest.fail("måtte ikke betale for opslaget her")
+
+    monkeypatch.setattr(T, "_matches", fake)
 
 
 # ---------------------------------------------------------------------------
@@ -81,15 +101,27 @@ def test_tom_embedding_db_giver_ingen_nudge(monkeypatch):
     assert T.tool_discovery_nudge_section(BESKED) == ""
 
 
-def test_ollama_nede_vaelter_ikke_prompten(monkeypatch):
-    def eksploder(besked):
-        raise TimeoutError("ollama svarer ikke")
+def test_en_matcher_der_kaster_vaelter_ikke_prompten(monkeypatch):
+    """Sektionen maa aldrig kunne vaelte prompt-bygningen.
+
+    Hed foer «ollama nede», dengang opslaget var et embedding-kald. Opslaget er
+    nu rene strengoperationer og roerer ingen model — men et vaerktoejsregister
+    der er laast eller misformet kan stadig kaste, og kravet er uaendret.
+    """
+    def eksploder(besked, kandidater=None):
+        raise TimeoutError("registret svarer ikke")
     monkeypatch.setattr(T, "_matches", eksploder)
     assert T.tool_discovery_nudge_section(BESKED) == ""
 
 
-def test_under_taerskel_giver_tavshed(monkeypatch):
-    _stub(monkeypatch, [("calendar_create_event", T._THRESHOLD - 0.01)])
+def test_matcherens_nej_giver_tavshed(monkeypatch):
+    """Siger matcheren nej, tier sektionen — og det er det NORMALE svar.
+
+    Taersklen selv bor nu i ``tool_lexical_match`` (GULV/FAKTOR) og testes dér.
+    Her staar kun kontrakten: ``None`` ind, tom sektion ud. Maalt paa 60 aegte
+    beskeder gav 50 af dem netop ``None``.
+    """
+    monkeypatch.setattr(T, "_matches", lambda besked, kandidater=None: None)
     assert T.tool_discovery_nudge_section(BESKED) == ""
 
 
@@ -118,12 +150,23 @@ def test_undertrykt_tool_nudges_ikke_igen(monkeypatch):
     assert T.tool_discovery_nudge_section(BESKED, "s1") == ""
 
 
-def test_misformet_traef_springes_over(monkeypatch):
-    """top_k_similar giver tupler; en misformet række må ikke vælte sektionen."""
+def test_opslaget_roerer_ingen_model(monkeypatch):
+    """Sektionen koster ikke laengere et embedding-kald — hverken taendt eller i skygge.
+
+    Det er den konkrete gevinst ved skiftet fra cosinus 7/9: opslaget er rene
+    strengoperationer. Testen findes fordi et embedding-kald let kan snige sig
+    ind igen via en «forbedring» af matcheren, og saa betaler hver eneste tur
+    for et signal vi har maalt til at vaere stoej.
+    """
+    monkeypatch.undo()
     from core.services import tool_embeddings as TE
-    monkeypatch.setattr(TE, "top_k_similar", lambda q, k=8: [None, ("x",), ("calendar_create_event", 0.93)])
-    ud = T.tool_discovery_nudge_section(BESKED)
-    assert "calendar_create_event" in ud
+
+    def maa_ikke_kaldes(*a, **kw):
+        pytest.fail("matcheren maa ikke slaa op i en embedding-model")
+
+    monkeypatch.setattr(TE, "top_k_similar", maa_ikke_kaldes)
+    monkeypatch.setattr(TE, "_compute_embedding", maa_ikke_kaldes, raising=False)
+    T._matches("kan du laegge et moede ind i min kalender", ["note_add"])
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +183,7 @@ def test_staerkt_match_giver_nudge_med_load_more_tools(monkeypatch):
 
 def test_praecis_paa_taersklen_er_med(monkeypatch):
     """Spec'en vælger >= (ikke >). Testen låser det."""
-    _stub(monkeypatch, [("calendar_create_event", T._THRESHOLD)])
+    _stub(monkeypatch, [("calendar_create_event", 2.2)])
     assert "calendar_create_event" in T.tool_discovery_nudge_section(BESKED)
 
 
@@ -203,7 +246,12 @@ def test_observationsflade_fortaeller_hvad_der_skete(monkeypatch):
     f = T.build_tool_discovery_nudge_surface(BESKED, "s1")
     assert f["matched"] is True and f["active"] is True
     assert f["skipped_short"] is False
-    assert f["threshold"] == T._THRESHOLD
+    from core.services import tool_lexical_match as L
+    # Fladen skal laese taersklen fra matcheren — ikke fra sin egen kopi.
+    # Den gamle flade havde 0,75 haardkodet og blev ved med at rapportere den
+    # efter at matcheren var skiftet.
+    assert f["gulv"] == L.GULV
+    assert f["margin_faktor"] == L.FAKTOR
 
 
 def test_observationsflade_paa_kort_besked(monkeypatch):
@@ -315,13 +363,14 @@ def test_default_er_SLUKKET_indtil_sprog_spoergsmaalet_er_afgjort(monkeypatch):
     assert T._enabled() is False
 
 
-def test_skyggen_er_ogsaa_slukket_som_default(monkeypatch):
-    """Skyggen er OGSAA OFF som default fra 7/9 — forsoeget er afsluttet.
+def test_skyggen_er_taendt_som_default(monkeypatch):
+    """Skyggen er TIL som default — den er gratis nu.
 
-    Skyggen koster ikke prompten noget, men den koster ét embedding-kald pr.
-    besked, og maalingen er i hus: 40 aegte beskeder gav 0 nudges, og
-    afstanden top1→top2 er 0,0106, saa ranglisten er vilkaarlig. Der er ikke
-    mere at laere af at lade den regne videre.
+    Cosinus-varianten blev slukket 7/9 fordi den kostede et embedding-kald pr.
+    besked for et signal vi havde maalt til stoej. Den leksikalske matcher
+    roerer ingen model (laast i ``test_opslaget_roerer_ingen_model``), saa
+    skyggen kan koere uden at koste noget — og fremadrettede data er den
+    eneste valide test af en taerskel kalibreret paa ét datasaet.
 
     Testen findes fordi de OEVRIGE skygge-tests alle monkeypatcher ``_skygge``
     og derfor aldrig kan opdage at defaulten er forkert — samme faelde som da
@@ -333,18 +382,22 @@ def test_skyggen_er_ogsaa_slukket_som_default(monkeypatch):
         extra: dict = {}
 
     monkeypatch.setattr("core.runtime.settings.load_settings", lambda: TomConfig())
-    assert T._skygge() is False
+    assert T._skygge() is True
 
+def test_ulaeselig_config_lader_skyggen_koere(monkeypatch):
+    """Kan flaget ikke laeses, maaler vi videre — skyggen roerer aldrig prompten.
 
-def test_ulaeselig_config_slukker_ogsaa_skyggen(monkeypatch):
-    """Self-safe den sikre vej: kan flaget ikke laeses, regner vi ikke."""
+    Modsat ``_enabled``, hvor den sikre vej er OFF: dér kan en fejl havne i
+    Jarvis' prompt. Skyggen kan pr. konstruktion ikke, saa den sikre vej er at
+    blive ved med at samle data.
+    """
     monkeypatch.undo()
 
     def eksploder():
         raise RuntimeError("config nede")
 
     monkeypatch.setattr("core.runtime.settings.load_settings", eksploder)
-    assert T._skygge() is False
+    assert T._skygge() is True
 
 
 def test_ulaeselig_config_giver_ogsaa_slukket(monkeypatch):
@@ -358,18 +411,29 @@ def test_ulaeselig_config_giver_ogsaa_slukket(monkeypatch):
     assert T._enabled() is False
 
 
-def test_opslaget_gaar_gennem_sprog_broen(monkeypatch):
-    """Uden broen kom curiosity_read_dreams (0,694) før calendar_list_events
-    (0,665) på en kalender-besked. Den må ikke kunne fjernes i stilhed."""
-    monkeypatch.undo()
-    set_query: list[str] = []
-    from core.services import tool_embeddings as TE
-    monkeypatch.setattr(
-        TE, "top_k_similar",
-        lambda q, k=8: set_query.append(q) or [("calendar_create_event", 0.91)],
+def test_porten_ligger_foer_opslaget(monkeypatch):
+    """Matcheren ser KUN de usynlige vaerktoejer — ikke hele registret.
+
+    Afloeser sprog-bro-testen, som daekkede cosinus-varianten. Broen oversatte
+    dansk til engelsk foer embedding-opslaget; med leksikalsk matchning er der
+    ingen model at oversaette til, saa broen er vaek.
+    
+    Til gengaeld er DENNE egenskab ny og vaerd at laase: foer scorede vi mod
+    alle 448 vaerktoejer og kasserede bagefter dem der stod i kataloget, hvilket
+    aad topplaceringen i 38 % af turene. Nu naar de aldrig frem til opslaget.
+    """
+    set_kandidater: list[list[str]] = []
+
+    def fake(besked, kandidater=None):
+        set_kandidater.append(sorted(kandidater or []))
+        return None
+
+    monkeypatch.setattr(T, "_matches", fake)
+    T.tool_discovery_nudge_section(BESKED, session_id="s1")
+
+    assert set_kandidater == [["calendar_create_event"]], (
+        "read_file/write_file/bash staar i kataloget og maa aldrig naa opslaget"
     )
-    T._matches("kan du lægge et møde ind i min kalender")
-    assert set_query == ["kan du lægge et meeting ind i min calendar"]
 
 
 # ---------------------------------------------------------------------------

@@ -301,21 +301,24 @@ _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikk
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_enabled` | `()` | Kill-switch. **Default OFF** — se maalingen nedenfor. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L52) |
-| function | `_skygge` | `()` | Skygge-tilstand: REGN nudgen ud og LOG den, men injicér den ikke. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L92) |
-| function | `_er_prewarm` | `(session_id)` | Prewarm-ture varmer cachen — de skal ikke koste et embedding-kald. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L140) |
-| function | `_er_internt` | `(beskrivelse)` | Handler vaerktoejet om HANS indre maskineri frem for Bjoerns verden? | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L203) |
-| function | `_er_social` | `(besked)` | Kort OG socialt. Laengden alene raekker ikke — «send en mail til bjorn og | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L209) |
-| function | `_har_handleverbum` | `(besked)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L227) |
-| function | `_registrerede_navne` | `()` | Navne der FAKTISK findes lige nu. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L232) |
-| function | `_katalog_tekst` | `()` | Katalogets klartekst. Tom streng hvis den ikke kan laeses. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L254) |
-| function | `_staar_i_katalog` | `(navn, katalog)` | Staar NAVNET i klartekst i kataloget? Saa behoever han intet nudge. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L264) |
-| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L277) |
-| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L287) |
-| function | `_log_nudge` | `(navn, session_id, score)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L299) |
-| function | `_matches` | `(besked)` | ``top_k_similar`` returnerer (navn, score)-TUPLER — ikke dicts som | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L311) |
-| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L332) |
-| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L400) |
+| function | `_enabled` | `()` | Kill-switch. **Default OFF** — se maalingen nedenfor. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L48) |
+| function | `_skygge` | `()` | Skygge-tilstand: REGN nudgen ud og LOG den, men injicér den ikke. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L88) |
+| function | `_er_prewarm` | `(session_id)` | Prewarm-ture varmer cachen — de skal ikke koste et embedding-kald. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L132) |
+| function | `_er_internt` | `(beskrivelse)` | Handler vaerktoejet om HANS indre maskineri frem for Bjoerns verden? | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L195) |
+| function | `_er_social` | `(besked)` | Kort OG socialt. Laengden alene raekker ikke — «send en mail til bjorn og | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L201) |
+| function | `_har_handleverbum` | `(besked)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L219) |
+| function | `_registrerede_navne` | `()` | Navne der FAKTISK findes lige nu. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L224) |
+| function | `_katalog_tekst` | `()` | Katalogets klartekst. Tom streng hvis den ikke kan laeses. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L246) |
+| function | `_staar_i_katalog` | `(navn, katalog)` | Staar NAVNET i klartekst i kataloget? Saa behoever han intet nudge. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L256) |
+| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L269) |
+| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L279) |
+| function | `_log_nudge` | `(navn, session_id, score)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L291) |
+| function | `_korpus` | `()` | Leksikalsk korpus over vaerktoejerne, bygget én gang pr. vaerktoejssaet. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L306) |
+| function | `_matches` | `(besked, kandidater=…)` | Bedste leksikalske bud blandt ``kandidater``, eller ``None``. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L325) |
+| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L351) |
+| function | `_GULV` | `()` | Laeses ved kaldet, ikke ved import — saa fladen ikke fryser en gammel vaerdi. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L416) |
+| function | `_FAKTOR` | `()` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L422) |
+| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L427) |
 
 ## `core/services/prompt_sections/transcript_sections.py`
 _Transcript rendering + session compaction for prompts._

@@ -109,3 +109,41 @@ def bedste_egnede(*, undtagen: frozenset[str] = frozenset()) -> tuple[str, str]:
         if s >= MIN_SCORE and s > bedst[0]:
             bedst = (s, p, m)
     return bedst[1], bedst[2]
+
+
+def egnede_modeller(*, undtagen: frozenset[tuple[str, str]] = frozenset(),
+                    maks: int = 4) -> list[tuple[str, str]]:
+    """Målte, egnede modeller — bedste først. Til rotation.
+
+    Bjørn 7/9-2026: «i stedet for at låse sig på kun én model, rotere». Vi kan
+    ikke forudsige hvilken model der lyver i denne kørsel — det er målt at
+    samme model gør begge dele på samme opgave. Men vi kan efterprøve svaret og
+    prøve en anden når det ikke holder.
+    """
+    ud: list[tuple[int, str, str]] = []
+    try:
+        poster = _registret()
+    except Exception:
+        return []
+    for post in poster:
+        p, m = str(post.get("provider") or ""), str(post.get("model") or "")
+        if not p or not m or (p, m) in undtagen or not post.get("enabled", True):
+            continue
+        if not (post.get("probe_detail") or {}).get("follows"):
+            continue
+        s = int(post.get("probe_score") or 0)
+        if s >= MIN_SCORE:
+            ud.append((s, p, m))
+    ud.sort(key=lambda x: -x[0])
+    # Én model pr. UDBYDER: to modeller hos samme udbyder deler ofte adfærd,
+    # og pointen med rotation er at komme et andet sted hen.
+    set_udbydere: set[str] = set()
+    valgt: list[tuple[str, str]] = []
+    for _, p, m in ud:
+        if p in set_udbydere:
+            continue
+        set_udbydere.add(p)
+        valgt.append((p, m))
+        if len(valgt) >= maks:
+            break
+    return valgt

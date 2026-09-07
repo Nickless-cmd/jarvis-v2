@@ -1798,18 +1798,97 @@ def _exec_spawn_agent_task(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+# Hvor mange modeller explore proever foer den giver op med en advarsel.
+_EXPLORE_MAKS_RUNDER = 3
+
+def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: str = "") -> dict:
+    """Ét explore-spawn. Udskilt så påstands-værnet kan prøve en anden model."""
+    from core.services.agent_runtime import spawn_agent_task
+    from core.services.agent_runtime_base import tools_for_policy
+    return spawn_agent_task(
+        role="researcher",
+        goal=f"{query}\n\n{vejledning}",
+        # 6/9-2026: den gamle instruks bad om at «sige hoejt hvis du ikke
+        # fandt noget» — og det er praecis hvad agenten gjorde efter ÉT
+        # mislykket kald: «ingen forekomster, Confidence: Hoej» om filer der
+        # laa der. Et negativ er en langt staerkere paastand end et positiv:
+        # ét tomt soeg beviser ingenting, det kan vaere forkert term, forkert
+        # vaerktoej eller en fejl. Derfor kraeves nu to forskellige veje foer
+        # «findes ikke» overhovedet maa siges, og tilliden skal falde naar
+        # grundlaget er tyndt.
+        system_prompt=(
+            "Du er en undersoegende agent. Du LAESER — du aendrer ingenting. "
+            "Svar med hvad du FANDT, med filsti og linjenummer hvor det giver "
+            "mening. Gaet aldrig: har du ikke set det i en kilde, saa skriv "
+            "at du ikke ved det.\n\n"
+            "ET TOMT SOEG ER IKKE ET SVAR. Foer du siger at noget IKKE "
+            "findes, skal du have proevet mindst to forskellige veje — fx "
+            "`search` paa indhold OG `find_files` paa navne, eller et andet "
+            "soegeord. Fejler et vaerktoej, eller giver det [no matches], saa "
+            "proev en anden vej i stedet for at konkludere. Skriv altid "
+            "hvilke soegninger du faktisk koerte.\n\n"
+            "Tillid: «hoej» kraever at du har SET kilden. Har du kun tomme "
+            "soegninger, er tilliden «lav» — et negativ er en staerkere "
+            "paastand end et positiv og skal baeres af mere.\n\n"
+            # 7/9-2026: agenten laeste filen med `read_file` og TALTE
+            # linjerne selv — 15/27/131 hvor sandheden var 18/30/125. Ikke
+            # opdigtet, bare daarlig hovedregning. `search` giver
+            # linjenummeret gratis og korrekt.
+            "LINJENUMRE: taeller du dem ALDRIG selv. `read_file` giver dig "
+            "ingen numre, og at gaette dem ud fra teksten rammer forbi. "
+            "Vil du citere et linjenummer, saa find linjen med `search` — "
+            "den svarer med `sti:linje:indhold`. Har du kun laest filen, "
+            "saa skriv filstien uden nummer i stedet for et gaet."),
+        tool_policy="read-only-runtime",
+        allowed_tools=tools_for_policy("read-only-runtime"),
+        budget_tokens=0,
+        persistent=False,
+        ttl_seconds=0,
+        auto_execute=True,
+        provider=provider,
+        model=model,
+    )
+
+
+def _explore_svar(result: dict) -> tuple[str, str]:
+    """(fund, udbyder_fejl). Kun beskeder af kinden `result` er fund.
+
+    En `provider-error` er en kvote- eller fejlbesked fra udbyderen leveret som
+    modellens indhold — 7/9-2026 kom den tilbage som «laegeerklaerings-
+    skabelon» og «Hi! How can I assist you today?», og explore kaldte det et
+    fund. At vaelge paa RETNING alene (agent->jarvis) kunne ikke skelne dem.
+    """
+    svar, fejl = "", ""
+    for msg in reversed(result.get("messages") or []):
+        if str(msg.get("direction") or "") != "agent->jarvis":
+            continue
+        kind = str(msg.get("kind") or "")
+        if kind == "provider-error" and not fejl:
+            fejl = str(msg.get("content") or "")
+        elif kind in ("result", "") and not svar:
+            svar = str(msg.get("content") or "")
+    return svar, fejl
+
+
 def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
     """Bred, laese-kun undersoegelse — ét spoergsmaal ind, fund ud.
 
     `spawn_agent_task` KAN allerede det her, men for at bruge den godt skal man
     foerst beslutte sig om `system_prompt`, `role`, `allowed_tools`,
-    `tool_policy` og `budget_tokens`. Maalt: 36 dispatch-koersler i systemets
-    samlede levetid, 35 af dem fra en fejlfindings-session. Motoren fejlede
-    ikke — den blev bare aldrig grebet efter.
-    
-    Det her er samme motor med beslutningerne truffet paa forhaand: laese-kun
-    vaerktoejer, ingen budget-klemme, og ét kraevet felt. Man beskriver hvad man
-    leder efter; resten er ikke ens problem.
+    `tool_policy` og `budget_tokens`. Det her er samme motor med beslutningerne
+    truffet paa forhaand.
+
+    ── PAASTANDE TJEKKES, OG MODELLEN ROTERES (Bjoern 7/9-2026) ──────────────
+    Jeg brugte en hel dag paa at forudsige om en model VILLE lyve: syntetiske
+    proever, gentagne koersler, en opdigt-detektor. `copilot-free/gpt-4.1`
+    bestod dem alle — og gav paa SAMME spoergsmaal baade det rigtige svar og
+    tre opdigtede funktionsnavne med «Confidence: hoej» ovenpaa.
+
+    Bjoerns forslag er staerkere: explore's paastande er EFTERPROEVELIGE. En
+    filsti findes eller findes ikke; linje 12 baerer det den siger, eller goer
+    ikke. Saa vi holder op med at gaette paa modellen og slaar svaret op.
+    Holder det ikke, proever vi en anden model — hos en anden udbyder, for to
+    modeller samme sted deler ofte adfaerd.
     """
     query = str(args.get("query") or args.get("goal") or "").strip()
     if not query:
@@ -1817,82 +1896,68 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
     bredde = str(args.get("breadth") or "medium").strip().lower()
     # Bredden styrer kun hvor grundigt agenten bliver BEDT om at lede — ikke et
     # haardt loft. Et loft ville vaere en ny budget-klemme.
-    _vejledning = {
+    vejledning = {
         "quick": "Kig ét sted og svar kort.",
         "medium": "Kig flere steder og sammenhold dem.",
         "thorough": ("Kig grundigt: flere navnekonventioner, flere mapper, og "
                      "verificér hvert fund i kilden foer du melder det."),
     }.get(bredde, "Kig flere steder og sammenhold dem.")
 
-    from core.services.agent_runtime_base import tools_for_policy
     try:
-        from core.services.agent_runtime import spawn_agent_task
-        result = spawn_agent_task(
-            role="researcher",
-            goal=f"{query}\n\n{_vejledning}",
-            # 6/9-2026: den gamle instruks bad om at «sige hoejt hvis du ikke
-            # fandt noget» — og det er praecis hvad agenten gjorde efter ÉT
-            # mislykket kald: «ingen forekomster, Confidence: Hoej» om filer der
-            # laa der. Et negativ er en langt staerkere paastand end et positiv:
-            # ét tomt soeg beviser ingenting, det kan vaere forkert term, forkert
-            # vaerktoej eller en fejl. Derfor kraeves nu to forskellige veje foer
-            # «findes ikke» overhovedet maa siges, og tilliden skal falde naar
-            # grundlaget er tyndt.
-            system_prompt=(
-                "Du er en undersoegende agent. Du LAESER — du aendrer ingenting. "
-                "Svar med hvad du FANDT, med filsti og linjenummer hvor det giver "
-                "mening. Gaet aldrig: har du ikke set det i en kilde, saa skriv "
-                "at du ikke ved det.\n\n"
-                "ET TOMT SOEG ER IKKE ET SVAR. Foer du siger at noget IKKE "
-                "findes, skal du have proevet mindst to forskellige veje — fx "
-                "`search` paa indhold OG `find_files` paa navne, eller et andet "
-                "soegeord. Fejler et vaerktoej, eller giver det [no matches], saa "
-                "proev en anden vej i stedet for at konkludere. Skriv altid "
-                "hvilke soegninger du faktisk koerte.\n\n"
-                "Tillid: «hoej» kraever at du har SET kilden. Har du kun tomme "
-                "soegninger, er tilliden «lav» — et negativ er en staerkere "
-                "paastand end et positiv og skal baeres af mere.\n\n"
-                # 7/9-2026: agenten laeste filen med `read_file` og TALTE
-                # linjerne selv — 15/27/131 hvor sandheden var 18/30/125. Ikke
-                # opdigtet, bare daarlig hovedregning. `search` giver
-                # linjenummeret gratis og korrekt.
-                "LINJENUMRE: taeller du dem ALDRIG selv. `read_file` giver dig "
-                "ingen numre, og at gaette dem ud fra teksten rammer forbi. "
-                "Vil du citere et linjenummer, saa find linjen med `search` — "
-                "den svarer med `sti:linje:indhold`. Har du kun laest filen, "
-                "saa skriv filstien uden nummer i stedet for et gaet."),
-            tool_policy="read-only-runtime",
-            allowed_tools=tools_for_policy("read-only-runtime"),
-            budget_tokens=0,
-            persistent=False,
-            ttl_seconds=0,
-            auto_execute=True,
-        )
-        # Kun beskeder af kinden `result` er fund. En `provider-error` er en
-        # kvote- eller fejlbesked fra udbyderen leveret som modellens indhold —
-        # 7/9-2026 kom den tilbage som «lægeerklæringsskabelon» og «Hi! How can
-        # I assist you today?», og explore kaldte det et fund. At vælge på
-        # RETNING alene (agent->jarvis) kunne ikke skelne dem.
-        svar, fejl = "", ""
-        for msg in reversed(result.get("messages") or []):
-            if str(msg.get("direction") or "") != "agent->jarvis":
-                continue
-            kind = str(msg.get("kind") or "")
-            if kind == "provider-error" and not fejl:
-                fejl = str(msg.get("content") or "")
-            elif kind in ("result", "") and not svar:
-                svar = str(msg.get("content") or "")
-        if not svar and (fejl or str(result.get("status") or "") == "failed"):
-            besked = fejl or str(result.get("error") or "agenten fejlede")
-            return {"status": "error",
-                    "error": f"undersøgelsen kom ikke igennem: {besked}"[:600],
-                    "agent_id": str(result.get("agent_id") or ""),
-                    "breadth": bredde}
-        return {"status": "ok", "findings": svar[:12000] or None,
-                "agent_id": str(result.get("agent_id") or ""),
-                "breadth": bredde}
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
+        from core.services.agent_model_fitness import egnede_modeller
+        from core.services.explore_claim_check import tjek_paastande
+    except Exception:  # vaernet maa aldrig kunne blokere en undersoegelse
+        egnede_modeller = None
+        tjek_paastande = None
+
+    brugt: set[tuple[str, str]] = set()
+    sidste_fejl: list[str] = []
+    svar, agent_id, kontrolleret = "", "", 0
+
+    for runde in range(_EXPLORE_MAKS_RUNDER):
+        prov, mod = "", ""
+        if runde:
+            if egnede_modeller is None:
+                break
+            kandidater = egnede_modeller(undtagen=frozenset(brugt), maks=4)
+            if not kandidater:
+                break          # ingen anden MAALT egnet model — behold svaret
+            prov, mod = kandidater[0]
+        try:
+            result = _explore_spawn(query=query, vejledning=vejledning,
+                                    provider=prov, model=mod)
+        except Exception as exc:
+            return {"status": "error", "error": str(exc), "breadth": bredde}
+
+        agent_id = str(result.get("agent_id") or "")
+        brugt.add((str(result.get("provider") or prov), str(result.get("model") or mod)))
+        svar_n, udbyder_fejl = _explore_svar(result)
+        if not svar_n:
+            sidste_fejl = [udbyder_fejl or str(result.get("error") or "agenten fejlede")]
+            continue
+        svar = svar_n
+        if tjek_paastande is None:
+            break
+        dom = tjek_paastande(svar)
+        kontrolleret = int(dom.get("kontrolleret") or 0)
+        if dom.get("holder"):
+            return {"status": "ok", "findings": svar[:12000] or None,
+                    "agent_id": agent_id, "breadth": bredde,
+                    "paastande_kontrolleret": kontrolleret}
+        sidste_fejl = [str(x) for x in (dom.get("fejl") or [])]
+
+    if svar:
+        # Alle forsoeg havde paastande der ikke holdt. Aflevér det ALLIGEVEL —
+        # men sig det hoejt. Et svar med en advarsel er mere vaerd end
+        # ingenting, og at skjule advarslen ville vaere samme fejl som at tro
+        # paa svaret.
+        return {"status": "ok", "findings": svar[:12000], "agent_id": agent_id,
+                "breadth": bredde, "paastande_kontrolleret": kontrolleret,
+                "advarsel": "paastande kunne ikke bekraeftes i kilden: "
+                            + "; ".join(sidste_fejl[:4])}
+    return {"status": "error", "breadth": bredde, "agent_id": agent_id,
+            "error": "undersoegelsen kom ikke igennem: "
+                     + ("; ".join(sidste_fejl[:3]) or "intet svar")}
 
 
 def _exec_send_message_to_agent(args: dict[str, Any]) -> dict[str, Any]:

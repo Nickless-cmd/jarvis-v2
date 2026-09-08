@@ -46,6 +46,7 @@ export type {
 } from './sseProtocol'
 
 import type { StreamEvent } from './sseProtocol'
+import { optag } from './streamCapture'
 
 // ─── Typed errors ──────────────────────────────────────────────────────
 
@@ -223,6 +224,11 @@ export function startStream(
   }
 
   const dispatchEvent = (eventName: string, dataStr: string): void => {
+    // Rå optagelse FØR alt andet — også før size-cap'en og JSON-parsingen, så
+    // en droppet eller defekt ramme også havner i filen. Det er præcis de
+    // rammer der ikke naar frem, der kan forklare hvad Bjoern ser.
+    // Kaster aldrig; slaaet fra er den ét boolsk tjek.
+    optag(eventName, dataStr)
     // SIKKERHED: cap event-size så en ondsindet eller buggy server ikke
     // kan crashe os via en gigantisk payload.
     if (dataStr.length > MAX_BODY_BYTES) {

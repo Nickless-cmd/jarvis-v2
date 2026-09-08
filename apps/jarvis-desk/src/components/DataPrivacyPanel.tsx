@@ -1,12 +1,50 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
 import { exportMyData, downloadJson } from '../lib/accountApi'
 
 /** Data & privatliv-oplysning (GDPR-transparens + Googles "prominent disclosure").
  *  Navngiver præcist hvilke data appen rører + en data-eksport-knap (Art. 20). */
+type OptagStatus = {
+  enabled: boolean; expiresAt: number; active: boolean
+  dir: string; files: string[]; bytes: number
+}
+
+function optagBro() {
+  return (window as unknown as {
+    jarvisDesk?: { capture?: {
+      setEnabled: (on: boolean, days: number) => Promise<unknown>
+      status: () => Promise<OptagStatus>
+      clear: () => Promise<boolean>
+    } }
+  }).jarvisDesk?.capture
+}
+
 export function DataPrivacyPanel({ config }: { config?: ApiConfig }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [optag, setOptag] = useState<OptagStatus | null>(null)
+
+  const hentOptagStatus = useCallback(async () => {
+    const c = optagBro()
+    if (!c) return
+    try { setOptag(await c.status()) } catch { /* ikke i desk */ }
+  }, [])
+
+  useEffect(() => { void hentOptagStatus() }, [hentOptagStatus])
+
+  const slåOptagelse = async (on: boolean) => {
+    const c = optagBro()
+    if (!c) return
+    await c.setEnabled(on, 3)
+    await hentOptagStatus()
+  }
+
+  const rydOptagelse = async () => {
+    const c = optagBro()
+    if (!c) return
+    await c.clear()
+    await hentOptagStatus()
+  }
 
   const onExport = async () => {
     if (!config || busy) return
@@ -55,6 +93,34 @@ export function DataPrivacyPanel({ config }: { config?: ApiConfig }) {
         <li><strong>GitHub:</strong> dine egne issues/PRs.</li>
         <li><strong>Hugging Face:</strong> offentlig modelsøgning.</li>
       </ul>
+
+      <h4>Stream-optagelse (fejlsøgning)</h4>
+      <p>
+        Optager de <strong>rå streaming-rammer</strong> som denne app modtager — kun
+        på denne maskine, kun dine egne samtaler, og filen sendes aldrig nogen
+        steder. Den bruges til at finde ud af hvorfor svar ser ud til at starte
+        forfra. <strong>Optagelsen stopper af sig selv efter 3 dage.</strong>
+      </p>
+      {optag && (
+        <div className="data-privacy-capture">
+          <p>
+            Status: <strong>{optag.active ? 'optager' : 'slået fra'}</strong>
+            {optag.active && optag.expiresAt > 0 && (
+              <> · udløber {new Date(optag.expiresAt).toLocaleString('da-DK')}</>
+            )}
+            {optag.files.length > 0 && (
+              <> · {optag.files.length} fil(er), {Math.round(optag.bytes / 1024)} KB</>
+            )}
+          </p>
+          <p className="data-privacy-capture-path"><code>{optag.dir}</code></p>
+          <button type="button" onClick={() => void slåOptagelse(!optag.active)}>
+            {optag.active ? 'Stop optagelse' : 'Optag i 3 dage'}
+          </button>
+          {optag.files.length > 0 && (
+            <button type="button" onClick={() => void rydOptagelse()}>Slet optagelser</button>
+          )}
+        </div>
+      )}
 
       <h4>Dine rettigheder (GDPR)</h4>
       <ul className="data-privacy-rights">

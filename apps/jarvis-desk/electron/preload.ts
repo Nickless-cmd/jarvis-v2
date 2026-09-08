@@ -57,6 +57,16 @@ export interface JarvisDeskBridge {
   central: {
     openCli: () => Promise<{ ok: boolean; error?: string }>
   }
+  /** Stream-optagelse: raa SSE-rammer skrevet lokalt (kun hans egen maskine). */
+  capture: {
+    setEnabled: (on: boolean, days: number) => Promise<{ enabled: boolean; expiresAt: number }>
+    status: () => Promise<{
+      enabled: boolean; expiresAt: number; active: boolean
+      dir: string; files: string[]; bytes: number
+    }>
+    append: (lines: string[]) => Promise<boolean>
+    clear: () => Promise<boolean>
+  }
   /** App auto-update (§22.5): lyt på tilgængelig/klar + styr download/install. */
   updates: {
     onAvailable: (cb: (info: { version?: string }) => void) => () => void
@@ -108,6 +118,14 @@ const bridge: JarvisDeskBridge = {
   },
   central: {
     openCli: () => ipcRenderer.invoke('central:openCli'),
+  },
+  // Stream-optagelse: raa SSE-rammer skrives lokalt paa hans egen maskine.
+  // Se noten i main.ts for hvorfor den ligger i klienten og ikke paa serveren.
+  capture: {
+    setEnabled: (on: boolean, days: number) => ipcRenderer.invoke('capture:setEnabled', on, days),
+    status: () => ipcRenderer.invoke('capture:status'),
+    append: (lines: string[]) => ipcRenderer.invoke('capture:append', lines),
+    clear: () => ipcRenderer.invoke('capture:clear'),
   },
   updates: {
     onAvailable: (cb) => {

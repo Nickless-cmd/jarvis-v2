@@ -538,6 +538,92 @@ ipcMain.handle('session:exportMarkdown', async (_event, markdown: string, sugges
   return true
 })
 
+// ─── Stream-optagelse (Bjørn 8/9-2026) ────────────────────────────────
+//
+// «lad os logge mine samtaler over de næste par dage … den skal optage helt
+// ude fra klienten, ALT streaming, alt.»
+//
+// Serverens data kunne ikke forklare det han ser: nul dublerede runder, nul
+// retries, udbyder-kald = runder + 1 (arkitektur), og 343 tilfælde af samme
+// værktøj i træk men NUL med samme argumenter. Så optagelsen skal ske dér hvor
+// han faktisk ser det — i klienten, på de rå SSE-rammer før de parses.
+//
+// KUN HANS EGNE. Optagelsen bor i HANS desk-app på HANS maskine; andres
+// samtaler passerer aldrig denne proces. Det er en stærkere garanti end et
+// filter ville være.
+//
+// Filen er ren tekst med hele samtalen. Derfor: lokal, aldrig sendt nogen
+// steder, med en udløbsdato der stopper den af sig selv, og en sletning der
+// kan kaldes fra appen.
+const captureDir = path.join(userDataDir, 'stream-capture')
+const captureStatePath = path.join(captureDir, 'state.json')
+
+type CaptureState = { enabled: boolean; expiresAt: number }
+
+function readCaptureState(): CaptureState {
+  try {
+    const raw = fs.readFileSync(captureStatePath, 'utf-8')
+    const s = JSON.parse(raw) as CaptureState
+    if (typeof s.enabled === 'boolean' && typeof s.expiresAt === 'number') return s
+  } catch { /* ingen tilstand endnu */ }
+  return { enabled: false, expiresAt: 0 }
+}
+
+function captureActive(): boolean {
+  const s = readCaptureState()
+  return s.enabled && Date.now() < s.expiresAt
+}
+
+function captureFileForToday(): string {
+  const d = new Date()
+  const navn = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.jsonl`
+  return path.join(captureDir, navn)
+}
+
+ipcMain.handle('capture:setEnabled', async (_e, on: boolean, days: number) => {
+  await fs.promises.mkdir(captureDir, { recursive: true })
+  const dage = Math.max(1, Math.min(14, Math.floor(days || 3)))
+  const state: CaptureState = {
+    enabled: !!on,
+    expiresAt: on ? Date.now() + dage * 24 * 60 * 60 * 1000 : 0,
+  }
+  await fs.promises.writeFile(captureStatePath, JSON.stringify(state), 'utf-8')
+  return state
+})
+
+ipcMain.handle('capture:status', async () => {
+  const s = readCaptureState()
+  let bytes = 0
+  const filer: string[] = []
+  try {
+    for (const f of await fs.promises.readdir(captureDir)) {
+      if (!f.endsWith('.jsonl')) continue
+      filer.push(f)
+      bytes += (await fs.promises.stat(path.join(captureDir, f))).size
+    }
+  } catch { /* mappen findes ikke endnu */ }
+  return { ...s, active: captureActive(), dir: captureDir, files: filer.sort(), bytes }
+})
+
+ipcMain.handle('capture:append', async (_e, lines: string[]) => {
+  // Udløbet optagelse skriver ikke — den stopper af sig selv uden at nogen
+  // skal huske det.
+  if (!captureActive() || !Array.isArray(lines) || lines.length === 0) return false
+  await fs.promises.mkdir(captureDir, { recursive: true })
+  await fs.promises.appendFile(captureFileForToday(), lines.join('\n') + '\n', 'utf-8')
+  return true
+})
+
+ipcMain.handle('capture:clear', async () => {
+  try {
+    for (const f of await fs.promises.readdir(captureDir)) {
+      if (f.endsWith('.jsonl')) await fs.promises.unlink(path.join(captureDir, f))
+    }
+  } catch { /* intet at rydde */ }
+  return true
+})
+
+
 // ─── Code-mode terminal (§17) ─────────────────────────────────────────
 // Lokal kommando-runner til terminal-ruden i Code mode. Kører KUN på
 // brugerens egen maskine (samme model som operator-bridgen) — én kommando

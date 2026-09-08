@@ -704,8 +704,12 @@ export function CodeView({
     <div className="chatview-head">
       <div className="chatview-head-left">
         <PresenceDot status={bgActive && stream.status !== 'working' ? 'working' : stream.status} />{' '}
-        <span className="chat-title">Code ·</span>
-        <div className="code-head-ws">{workspaceSelector}</div>
+        {/* Workspace-vaelgeren (Server / Min computer + sti) er taget UD af
+            headeren 8/9-2026. Den er et valg man traeffer ÉN gang naar man
+            starter en session — ikke en tilstand man aflaeser hele tiden — og
+            den staar stadig stort midt paa den tomme skaerm hvor valget hoerer
+            hjemme. Stien staar i miljoe-panelet. */}
+        <span className="chat-title">Code · {ready ? effRoot : 'vælg workspace'}</span>
       </div>
       {headerRight}
     </div>

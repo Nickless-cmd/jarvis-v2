@@ -35,3 +35,33 @@ describe('DataPrivacyPanel', () => {
     expect(await screen.findByText(/blev downloadet/)).toBeInTheDocument()
   })
 })
+
+/**
+ * «Privatliv & cookies» stod under skrivefeltet, men linket åbnede bare
+ * indstillinger, og ordet cookies optrådte ingen steder i panelet. En
+ * overskrift der lover noget siden ikke svarer på, er værre end ingen.
+ */
+describe('cookies og adgang', () => {
+  it('svarer på cookie-spørgsmålet — og svaret er nul', () => {
+    // Efterprøvet i kilden 8/9-2026: intet `document.cookie`, ingen
+    // cookie-baseret auth, ingen analytics. Så det er dét siden siger.
+    render(<DataPrivacyPanel />)
+    expect(screen.getByText('Cookies')).toBeInTheDocument()
+    expect(screen.getByText(/bruger ingen cookies/i)).toBeInTheDocument()
+  })
+
+  it('siger hvad der FAKTISK ligger på maskinen', () => {
+    render(<DataPrivacyPanel />)
+    expect(screen.getByText(/adgangstoken/i)).toBeInTheDocument()
+    expect(screen.getByText(/Ingen indhold/i)).toBeInTheDocument()
+  })
+
+  it('siger hvad Jarvis kan gøre på maskinen — og at der ikke spørges', () => {
+    // Den ubehagelige, men sande linje. `approvalRace` i broen er eksporteret
+    // og har nul kaldere, så app'en spørger IKKE pr. handling; godkendelser
+    // håndhæves på serveren. En privatlivsside der påstod andet ville lyve.
+    render(<DataPrivacyPanel />)
+    expect(screen.getByText(/Hvad Jarvis kan gøre på denne maskine/)).toBeInTheDocument()
+    expect(screen.getByText(/spørger dig ikke om lov for hver handling/i)).toBeInTheDocument()
+  })
+})

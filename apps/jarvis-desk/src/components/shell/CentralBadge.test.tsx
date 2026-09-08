@@ -61,16 +61,22 @@ describe('CentralBadge', () => {
     expect(screen.getByRole('tooltip').textContent).toMatch(/truth\/fact_gate/)
   })
 
-  it('member-hover viser IKKE detaljerede metrics — kun statusord', async () => {
+  it('vises SLET IKKE for en member', async () => {
+    // Ejer-kun fra 8/9-2026. For en member var maerket alligevel kun ordet
+    // «Central» og en graa prik: /central/realtime svarer 403, saa der var
+    // aldrig data bag. Gaten sidder i komponenten, ikke hos kalderne — ellers
+    // kan et nyt kaldested glemme den.
     getCentralRealtime.mockResolvedValue(RED)
-    render(<CentralBadge config={CFG} isOwner={false} />)
-    await waitFor(() => expect(screen.getByText('Central')).toBeTruthy())
-    fireEvent.mouseEnter(screen.getByTestId('central-badge'))
-    await waitFor(() => expect(screen.getByRole('tooltip')).toBeTruthy())
-    const tip = screen.getByRole('tooltip').textContent || ''
-    expect(tip).toMatch(/Central:/)
-    expect(tip).not.toMatch(/nerver/)
-    expect(tip).not.toMatch(/breakers/)
+    const { container } = render(<CentralBadge config={CFG} isOwner={false} />)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(container.querySelector('[data-testid="central-badge"]')).toBeNull()
+  })
+
+  it('vises heller ikke naar isOwner slet ikke er sat', async () => {
+    getCentralRealtime.mockResolvedValue(RED)
+    const { container } = render(<CentralBadge config={CFG} />)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(container.querySelector('[data-testid="central-badge"]')).toBeNull()
   })
 
   it('owner-klik kalder window.jarvisDesk.central.openCli', async () => {
@@ -81,7 +87,9 @@ describe('CentralBadge', () => {
     await waitFor(() => expect(openCli).toHaveBeenCalledTimes(1))
   })
 
-  it('member-klik gør intet (ingen openCli)', async () => {
+  it.skip('member-klik gør intet (ingen openCli)', async () => {
+    // Overfloedig nu: maerket renderes slet ikke for en member. Staar tilbage
+    // (sprunget over) saa den er klar hvis member-visningen kommer igen.
     const openCli = stubBridge()
     render(<CentralBadge config={CFG} isOwner={false} />)
     await waitFor(() => expect(screen.getByText('Central')).toBeTruthy())
@@ -91,7 +99,7 @@ describe('CentralBadge', () => {
 
   it('tåler at getCentralRealtime rejecter (offline / 403) uden at crashe', async () => {
     getCentralRealtime.mockRejectedValue(new Error('403 Forbidden'))
-    render(<CentralBadge config={CFG} isOwner={false} />)
+    render(<CentralBadge config={CFG} isOwner />)
     await waitFor(() => expect(screen.getByText('Central')).toBeTruthy())
     expect(screen.getByTestId('central-badge').className).toContain('tone-unknown')
   })

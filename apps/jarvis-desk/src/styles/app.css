@@ -347,12 +347,15 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   overflow-y: auto;
   overflow-x: hidden;
   padding: 32px 24px 8px;
-  /* Teksten toner ud de oeverste 40px i stedet for at blive klippet af en
-     streg. En maske frem for en malet gradient: den virker paa enhver bund,
+  /* Teksten toner ud i BEGGE ender i stedet for at blive klippet: opad mod
+     headeren, nedad mod liveness-linjen og skrivefeltet. Bunden faar 44px —
+     lidt mere end toppen, fordi der er to elementer at glide bag. En maske frem for en malet gradient: den virker paa enhver bund,
      ogsaa naar temaet skifter — en gradient skulle kende baggrundsfarven og
      ville vaere forkert i det andet tema. */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 40px);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 40px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 40px,
+                                      #000 calc(100% - 44px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 40px,
+                              #000 calc(100% - 44px), transparent 100%);
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -906,13 +909,15 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .central-badge.tone-red .cb-dot { background: #ff5d5d; box-shadow: 0 0 6px rgba(255,93,93,0.5); }
 .central-badge.tone-unknown .cb-dot { background: var(--fg-3); opacity: 0.6; }
 .central-badge .cb-label { color: var(--fg-2); }
-/* Tone-farvet baggrund + hvid tekst (Bjørn 10. jul: grøn m. hvid tekst i header). */
-.central-badge.tone-green { background: rgba(62,224,138,0.14); border-color: rgba(62,224,138,0.34); }
-.central-badge.tone-green .cb-label { color: #fff; font-weight: 600; }
-.central-badge.tone-yellow { background: rgba(245,196,81,0.13); border-color: rgba(245,196,81,0.32); }
-.central-badge.tone-yellow .cb-label { color: #fff; }
-.central-badge.tone-red { background: rgba(255,93,93,0.14); border-color: rgba(255,93,93,0.34); }
-.central-badge.tone-red .cb-label { color: #fff; }
+/* Toner. Mærket var fyldt med farve og hvid fed tekst (Bjørn 10. jul) — det
+   raabte i en header hvor alt andet hvisker, og laeste som et fremmedelement.
+   Nu baerer PRIKKEN farven, og selve maerket er lige saa stille som resten.
+   Roed beholder en anelse fyld: en incident ER en undtagelse og maa gerne
+   traekke i oejet — men stadig uden hvid fed tekst. */
+.central-badge.tone-green .cb-label,
+.central-badge.tone-yellow .cb-label { color: var(--fg-2); }
+.central-badge.tone-red { background: rgba(255,93,93,0.10); border-color: rgba(255,93,93,0.28); }
+.central-badge.tone-red .cb-label { color: var(--fg-1); }
 .central-badge .cb-count {
   min-width: 15px; text-align: center; padding: 0 5px; border-radius: 999px;
   font-size: 10.5px; font-weight: 600; color: #fff; background: #ff5d5d;

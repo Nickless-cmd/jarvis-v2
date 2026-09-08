@@ -247,7 +247,7 @@ function Shell({
               sessionId={activeId}
               userName={userName}
               onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
-              onOpenPrivacy={() => setSurface('settings')}
+              onOpenPrivacy={() => { setSurface('cowork'); emitZone('privacy') }}
             />
           )}
           {surface === 'cowork' && <CoworkView role={role} sessionId={activeId} />}
@@ -257,7 +257,7 @@ function Shell({
               userName={userName}
               role={role}
               onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
-              onOpenPrivacy={() => setSurface('settings')}
+              onOpenPrivacy={() => { setSurface('cowork'); emitZone('privacy') }}
             />
           )}
           {surface === 'memory' && <MemoryView role={role} />}

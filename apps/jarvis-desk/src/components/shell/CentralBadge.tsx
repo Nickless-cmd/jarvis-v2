@@ -8,6 +8,13 @@ import { usePollWhenVisible } from '../../hooks/usePollWhenVisible'
  *  Hover: minimal status for members, detaljerede metrics for owner.
  *  Klik (kun owner): åbner `central`-CLI'en i et rigtigt OS-terminalvindue. */
 export function CentralBadge({ config, isOwner }: { config?: ApiConfig; isOwner?: boolean }) {
+  // Kun ejeren (Bjørn 8/9-2026). Centralen er det interne kontrol-plan; for en
+  // member var mærket alligevel kun ordet «Central» og en prik uden data, fordi
+  // /central/realtime svarer 403. Gaten sidder HER og ikke hos kalderne, saa en
+  // ny kaldested ikke kan glemme den.
+  //
+  // Hooks skal koere foer et betinget return (React #310 — den fejl kostede en
+  // hel visning 8/9), saa selve returnet staar nedenfor, ikke her.
   // usePollWhenVisible sluger fejl (403 for ikke-ejere / offline) → data forbliver null.
   const { data: snap, error } = usePollWhenVisible(() => getCentralRealtime(config!), 8000, !!config)
   const [hover, setHover] = useState(false)
@@ -36,6 +43,8 @@ export function CentralBadge({ config, isOwner }: { config?: ApiConfig; isOwner?
     try { await open() } catch { /* stille — brugeren ser blot at intet skete */ }
     finally { setTimeout(() => setOpening(false), 1200) }
   }
+
+  if (!isOwner) return null
 
   const top = incidents[0]
   const detail = isOwner

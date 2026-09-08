@@ -94,6 +94,40 @@ export function DataPrivacyPanel({ config }: { config?: ApiConfig }) {
         <li><strong>Hugging Face:</strong> offentlig modelsøgning.</li>
       </ul>
 
+      <h4>Cookies</h4>
+      <p>
+        <strong>Denne app bruger ingen cookies.</strong> Der er ingen sporing,
+        ingen analytics og ingen tredjeparts-scripts — hverken egne eller
+        andres. Login sker med et token, ikke en cookie.
+      </p>
+      <p>
+        Det app&apos;en gemmer på din maskine er:
+      </p>
+      <ul className="data-privacy-scopes">
+        <li><strong>Dit adgangstoken og serveradressen</strong> — i app&apos;ens egen
+          konfigurationsfil, så du ikke skal logge ind hver gang.</li>
+        <li><strong>Indstillinger for hvordan app&apos;en ser ud</strong> — tema, valgt
+          model, panelbredder, hvilken samtale du var i. Ingen indhold.</li>
+      </ul>
+      <p>
+        Ingen af delene forlader maskinen, og intet af det deles med nogen.
+      </p>
+
+      <h4>Hvad Jarvis kan gøre på denne maskine</h4>
+      <p>
+        Det her er den vigtigste linje på siden. Når desk-app&apos;en er åben og
+        forbundet, kan Jarvis <strong>køre kommandoer, læse og skrive filer, tage
+        skærmbilleder, læse og skrive udklipsholderen og styre mus og
+        tastatur</strong> på denne computer. Det er hele pointen med app&apos;en —
+        men det er også adgang til alt hvad du selv kan nå.
+      </p>
+      <p>
+        <strong>App&apos;en spørger dig ikke om lov for hver handling.</strong> De
+        godkendelser der findes, håndhæves på serveren; selve broen udfører det
+        den får besked på. Lukker du app&apos;en, forsvinder adgangen — der er ingen
+        baggrundstjeneste der bliver ved.
+      </p>
+
       <h4>Stream-optagelse (fejlsøgning)</h4>
       <p>
         Optager de <strong>rå streaming-rammer</strong> som denne app modtager — kun

@@ -1155,20 +1155,34 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   border-radius: 0 var(--radius-sm, 6px) var(--radius-sm, 6px) 0;
 }
 /* Sammenfoldet read/søge-gruppe: én kompakt linje m. tæller, foldbar */
-/* Gruppen foelger samme linje som det enkelte kald — ellers ville en foldet
-   gruppe staa som et kort mellem to linjer der ikke er det. */
+/* Runde-linjen, 1:1 med mobilens InlineToolGroup: ingen ramme, ingen baggrund,
+   ingen skygge. `</>` + én saetning + chevron. Mobilen bruger 15px i fg2 og
+   gap `sm`; det er tallene her. */
 .toolgroup { margin: 2px 0; }
 .toolgroup-head {
   display: flex; align-items: center; gap: 8px; width: 100%;
   background: none; border: none; color: var(--fg-2);
-  padding: 5px 2px; cursor: pointer; font-size: 12.5px; text-align: left;
+  padding: 6px 2px; cursor: pointer; font-size: 15px; text-align: left;
   border-radius: var(--radius-sm, 6px);
 }
 .toolgroup-head:hover { background: var(--bg-2); }
-.toolgroup-icon { flex: 0 0 auto; color: var(--fg-2); opacity: .8; }
-.toolgroup-label { color: var(--fg-2); flex: 1 1 auto; min-width: 0; }
-.toolgroup-chevron { flex: 0 0 auto; color: var(--fg-3); }
-.toolgroup-body { padding: 4px 8px; margin-left: 21px; border-left: 1px solid var(--line); }
+.toolgroup-icon { flex: 0 0 auto; color: var(--fg-2); }
+.toolgroup-label {
+  color: var(--fg-2); flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.toolgroup-chevron { flex: 0 0 auto; color: var(--fg-2); }
+/* Mens runden koerer, aander linjen; naar den er faerdig, staar den stille.
+   Bevaegelse betyder «i gang» — en linje der pulser bagefter lyver. Mobilen
+   gaar 1 → 0,4 over 800 ms hver vej. */
+.toolgroup.er-koerende .toolgroup-head { animation: toolgroup-aande 1.6s ease-in-out infinite; }
+@keyframes toolgroup-aande { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }
+@media (prefers-reduced-motion: reduce) {
+  .toolgroup.er-koerende .toolgroup-head { animation: none; }
+}
+/* Foldet ud: mobilen rykker 24px ind. Desk viser sine egne tool-kort dér —
+   det er stedet hvor den ekstra metadata bor. */
+.toolgroup-body { padding: 2px 0 6px; margin-left: 24px; }
 /* Progress-spor ("Forløb") — persisteret working-step-narration (spec 2026-07-09) */
 .progress-trail { border: 1px solid var(--line); border-radius: var(--radius-sm); margin: 6px 0; overflow: hidden; }
 .progress-trail-head {

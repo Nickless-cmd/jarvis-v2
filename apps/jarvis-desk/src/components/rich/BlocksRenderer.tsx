@@ -1,5 +1,5 @@
 import type { ContentBlock } from '../../lib/sseProtocol'
-import { groupReadSearch, type RenderBlock } from '../../lib/groupReadSearch'
+import { groupToolRounds, type RenderBlock } from '../../lib/toolRounds'
 import { denseBlocks } from '../../lib/blockHelpers'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ToolCard } from './ToolCard'
@@ -38,9 +38,9 @@ function coalesceProgress(blocks: RenderBlock[]): (RenderBlock | ProgressTrailBl
 /** Dispatcher content-blocks til de rette rich-komponenter. Density-aware:
  *  videregives til ToolCard (compact|full).
  *
- *  Ren render-lags-transform: groupReadSearch folder ≥3 sammenhængende read/søge-
- *  tool_use-blokke til ét foldbart tool_group-kort. Ingen wire/persist-ændring —
- *  transformen kører her, efter fold, lige før dispatch. */
+ *  Ren render-lags-transform: groupToolRounds folder en HEL runde vaerktoejs-
+ *  kald til ét foldbart tool_group — som mobilen. Ingen wire/persist-aendring;
+ *  transformen koerer her, efter fold, lige foer dispatch. */
 export function BlocksRenderer({
   blocks,
   density,
@@ -51,9 +51,9 @@ export function BlocksRenderer({
   streaming: boolean
 }) {
   // denseBlocks FØRST: fjern sparsomme huller (foldede tool_result-indices) FØR
-  // groupReadSearch/coalesceProgress itererer med for..of — ellers crash på et
+  // groupToolRounds/coalesceProgress itererer med for..of — ellers crash på et
   // undefined-hul (sort skærm, Bjørn 9. jul).
-  const rendered = coalesceProgress(groupReadSearch(denseBlocks(blocks)))
+  const rendered = coalesceProgress(groupToolRounds(denseBlocks(blocks)))
   const lastIdx = rendered.length - 1
   return (
     <>

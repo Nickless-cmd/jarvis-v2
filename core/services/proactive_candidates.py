@@ -119,6 +119,17 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
     body = " ".join(str(text or "").split()).strip()
     if len(body) < 8:
         return {"status": "skipped", "reason": "empty"}
+    # Laekage-vaern ved INDGANGEN (8/9-2026). Uden det stod den indre daemons
+    # telemetri og generatorens egen output-kontrakt som Jarvis' tanker i den
+    # proaktive kanal. Her frem for ved visningen, saa ét vaern daekker alle
+    # forbrugere af koeen — ikke kun digesten.
+    try:
+        from core.services.thought_leak_guard import ligner_ikke_en_tanke
+        grund = ligner_ikke_en_tanke(body)
+    except Exception:
+        grund = ""
+    if grund:
+        return {"status": "skipped", "reason": grund}
     norm = _norm_text(body)
     now = _now_iso()
     cutoff = (datetime.now(UTC) - timedelta(hours=_DEDUPE_HOURS)).isoformat()

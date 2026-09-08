@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7009/13887 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7012/13890 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7009/13887 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 570 | 1056 | 53% |
-| `core.services` | 4644 | 9590 | 48% |
+| `core.services` | 4647 | 9593 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1293,15 +1293,15 @@ Generated from source. 7009/13887 functions/methods documented (50%). The list b
 - `core/services/private_temporal_promotion_signal_tracking.py` :: `build_runtime_private_temporal_promotion_signal_surface` (L73)
 - `core/services/private_temporal_promotion_signal_tracking.py` :: `refresh_runtime_private_temporal_promotion_signal_statuses` (L69)
 - `core/services/private_temporal_promotion_signal_tracking.py` :: `track_runtime_private_temporal_promotion_signals_for_visible_turn` (L35)
-- `core/services/proactive_candidates.py` :: `build_proactive_candidates_surface` (L297)
-- `core/services/proactive_candidates.py` :: `counts` (L204)
+- `core/services/proactive_candidates.py` :: `build_proactive_candidates_surface` (L308)
+- `core/services/proactive_candidates.py` :: `counts` (L215)
 - `core/services/proactive_candidates.py` :: `ensure_table` (L77)
-- `core/services/proactive_candidates.py` :: `expire_stale` (L191)
+- `core/services/proactive_candidates.py` :: `expire_stale` (L202)
 - `core/services/proactive_candidates.py` :: `lexical_coverage` (L66)
-- `core/services/proactive_candidates.py` :: `list_pending` (L156)
-- `core/services/proactive_candidates.py` :: `mark` (L170)
+- `core/services/proactive_candidates.py` :: `list_pending` (L167)
+- `core/services/proactive_candidates.py` :: `mark` (L181)
 - `core/services/proactive_candidates.py` :: `normalize_priority` (L107)
-- `core/services/proactive_candidates.py` :: `remember_shown` (L228)
+- `core/services/proactive_candidates.py` :: `remember_shown` (L239)
 - `core/services/proactive_context_governor.py` :: `list_context_versions` (L301)
 - `core/services/proactive_context_governor.py` :: `recall_context_version` (L316)
 - `core/services/proactive_loop_lifecycle_tracking.py` :: `build_runtime_proactive_loop_lifecycle_surface` (L159)

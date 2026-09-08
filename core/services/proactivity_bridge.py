@@ -69,10 +69,20 @@ def build_urgent(item: dict[str, Any]) -> str:
 def build_digest(normal: list[dict[str, Any]]) -> str:
     """'Mens du var væk'-digest af normale items (kort, prioriteret)."""
     lines = ["💭 Mens du var væk tænkte jeg på:"]
+    try:
+        from core.services.thought_leak_guard import ligner_ikke_en_tanke
+    except Exception:
+        def ligner_ikke_en_tanke(_t: str) -> str:  # type: ignore[misc]
+            return ""
     for c in (normal or [])[:_DIGEST_MAX]:
         text = str(c.get("text") or "").strip()
-        if text:
+        # Andet lag med vilje: vaernet staar ved koeens indgang, men digesten er
+        # det Bjoern faktisk laeser, og en post der er kommet ind ad en anden vej
+        # (eller foer vaernet fandtes) maa ikke naa ud herfra.
+        if text and not ligner_ikke_en_tanke(text):
             lines.append(f"  • {text}")
+    if len(lines) == 1:
+        return ""      # kun overskriften tilbage → send ingenting
     return "\n".join(lines)
 
 

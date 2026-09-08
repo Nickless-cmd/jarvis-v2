@@ -2502,7 +2502,26 @@ def _build_visible_chat_prompt_assembly_impl(
         user_message=user_message,
         session_id=session_id,
     )
-    support_content = "\n\n".join(support_raw) if support_raw else None
+    # Forbeholdet hoistes til TOPPEN af den samlede blok (8/9-2026).
+    #
+    # Hver enkelt support-bygger sluttede med «Use only as subordinate support.
+    # Runtime and visible truth outrank it.» — og attention-budgettet klipper
+    # support_signals til ~400 tegn ved sidste linjeskift. Konsekvensen var maalt:
+    # forbeholdet stod NUL steder i den samlede prompt, mens world-model-blokkens
+    # data stod der i fuld laengde. Vaernet blev klippet af, dataen blev tilbage.
+    #
+    # Én gang oeverst loeser to ting: den overlever beskaeringen (det er en
+    # guardrail, ikke en fodnote), og den samme saetning fylder ikke fem gange i
+    # en blok der i forvejen er for stor til sit budget.
+    _SUBORDINAT = "Use only as subordinate support. Runtime and visible truth outrank it."
+    if support_raw:
+        _krop = "\n\n".join(
+            "\n".join(l for l in blok.split("\n") if l.strip() != _SUBORDINAT)
+            for blok in support_raw
+        )
+        support_content = _SUBORDINAT + "\n\n" + _krop
+    else:
+        support_content = None
 
     bridge_content = None  # spec 2026-07-05: altid None på visible-lane
 

@@ -85,7 +85,12 @@ def test_forwarded_provider_error_returns_typed_not_500crash(monkeypatch):
 
 
 def test_flag_off_is_inert(monkeypatch):
-    _patch_chat(monkeypatch, fake_chat(text="", tool_calls=[], reasoning="secret-thinking"))
+    # Tomt svar UDEN reasoning. Testen sendte indtil 8/9-2026
+    # `reasoning="secret-thinking"` og forventede status "empty" — men I1-heal
+    # (tilfoejet senere) loefter netop reasoning op som svar frem for at melde
+    # tomt, saa fixturen udloeste healen og status blev "ok". Testen var aeldre
+    # end fixet. Healen har sin egen test nedenfor.
+    _patch_chat(monkeypatch, fake_chat(text="", tool_calls=[], reasoning=""))
     calls = {"empty": 0, "nerve": 0, "cost": 0}
     monkeypatch.setattr(al, "note_empty_completion",
                         lambda *a, **k: calls.__setitem__("empty", calls["empty"] + 1))
@@ -105,3 +110,21 @@ def test_flag_off_is_inert(monkeypatch):
     assert "effective_approval_mode" not in body
     # the O1 envelope itself is unconditional (Fase 0), so it's still present.
     assert body["status"] == "empty"
+
+
+def test_i1_heal_viser_tanken_frem_for_et_tavst_tomt_svar(monkeypatch):
+    """En taenke-model der lagde hele svaret i tænke-kanalen må ikke ende som
+    et tavst tomt svar — det er den fejl der gav hæng (silent_empty_completion).
+
+    Healen loefter `reasoning_content` op som indhold, og status bliver derfor
+    "ok". Reasoning-FELTET forbliver ude af svaret saa laenge
+    observability-flaget er slaaet fra.
+    """
+    _patch_chat(monkeypatch, fake_chat(text="", tool_calls=[], reasoning="hele svaret laa her"))
+    r = client.post("/v1/agent/step",
+                    json={"messages": [{"role": "user", "content": "x"}], "stream": False})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert "hele svaret laa her" in str(body.get("content") or body.get("message") or body)
+    assert "reasoning_content" not in body

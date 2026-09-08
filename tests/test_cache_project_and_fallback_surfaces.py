@@ -37,12 +37,33 @@ def test_agentic_tool_cache_roundtrips_read_file(tmp_path, monkeypatch):
 
 
 def test_memory_consolidation_nudge_is_unconditional():
+    """Nudgen fyrer HVER tur — det er hele pointen med «unconditional».
+
+    Testen holdt indtil 8/9-2026 på den danske streng «Aldrig bare skrive».
+    Sektionen er skrevet om til engelsk (modulet er engelsk hele vejen igennem,
+    docstring og alt — det er en instruks til modellen, ikke tekst til Bjørn),
+    og testen var rød i dagevis for en oversættelse der ikke ændrede noget.
+
+    Den prøver nu KONTRAKTEN: ingen argumenter, ingen gating, nævner hvor det
+    skal gemmes, og kræver et VÆRKTØJSKALD frem for et løfte. Formuleringen må
+    gerne skifte sprog igen.
+    """
+    import inspect
+
     from core.services import memory_consolidation_nudge as nudge
 
+    # Unconditional = kan kaldes uden noget som helst, og giver altid tekst.
+    assert not inspect.signature(nudge.memory_consolidation_nudge_section).parameters
     section = nudge.memory_consolidation_nudge_section()
+    assert section.strip()
 
-    assert "MEMORY.md" in section
-    assert "Aldrig bare skrive" in section
+    assert "MEMORY.md" in section, "sektionen skal sige HVOR det gemmes"
+    lav = section.lower()
+    assert "tool" in lav or "værktøj" in lav, "den skal kræve et kald"
+    assert "never just" in lav or "aldrig bare" in lav, (
+        "den skal afvise løftet uden handling — det er hele grunden til at "
+        "nudgen findes (jf. hollow_promise_guard)"
+    )
 
 
 def test_creative_projects_surface_tracks_created_projects(tmp_path, monkeypatch):

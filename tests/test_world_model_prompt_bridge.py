@@ -696,3 +696,32 @@ def test_visible_self_report_limits_fake_retry_language(
     )
     assert guard_block is not None
     assert "Do NOT claim" in guard_block
+
+
+def test_forbeholdet_overlever_budget_beskaeringen(isolated_runtime) -> None:
+    """Værnet må ikke være dét der bliver klippet af.
+
+    Målt 8/9-2026: hver support-bygger sluttede med «Use only as subordinate
+    support. Runtime and visible truth outrank it.», og attention-budgettet
+    klipper `support_signals` til sit loft ved sidste linjeskift. Resultatet
+    var at forbeholdet stod **nul steder** i den samlede prompt, mens
+    world-model-blokkens data stod der i fuld længde. Guardrailen blev klippet
+    af; dataen blev tilbage.
+
+    Nu hoistes sætningen én gang til toppen — og budgettet er udvidet med
+    præcis dens længde, så den ikke fortrænger data.
+    """
+    _insert_self_model(isolated_runtime.db)
+    _insert_reflection_signal(isolated_runtime.db)
+    _insert_world_model_signal(isolated_runtime.db)
+    _insert_goal_signal(isolated_runtime.db)
+    _insert_runtime_awareness_signal(isolated_runtime.db)
+
+    system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
+    caveat = "Use only as subordinate support. Runtime and visible truth outrank it."
+
+    assert caveat in system_text, "guardrailen blev klippet af igen"
+    assert system_text.count(caveat) == 1, (
+        "forbeholdet skal stå ÉN gang — fem gentagelser i en blok der i "
+        "forvejen er for stor til sit budget er spildplads"
+    )

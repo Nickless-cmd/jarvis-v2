@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7047/13941 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7049/13945 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,12 +35,12 @@ Generated from source. 7047/13941 functions/methods documented (50%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 182 | 355 | 51% |
+| `scripts` | 184 | 359 | 51% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1982)
+## Undocumented public functions (1984)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2005,6 +2005,8 @@ Generated from source. 7047/13941 functions/methods documented (50%). The list b
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `find_firefox_cookie_db` (L28)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `main` (L70)
 - `scripts/primary_cache_warmer.py` :: `main` (L595)
+- `scripts/publish_mobile_apk.py` :: `apk_navn` (L42)
+- `scripts/publish_mobile_apk.py` :: `hovedet` (L86)
 - `scripts/repro_streaming_fault.py` :: `main` (L77)
 - `scripts/requirements_gen.py` :: `main` (L46)
 - `scripts/requirements_gen.py` :: `scan` (L29)

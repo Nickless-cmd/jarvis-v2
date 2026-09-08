@@ -198,6 +198,16 @@ _Primary lane cache warmer._
 | function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run)` | Cache-warm én bestemt workspace. Logger separat per workspace. | [src](../../../scripts/primary_cache_warmer.py#L521) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L595) |
 
+## `scripts/publish_mobile_apk.py`
+_Læg en ny mobil-APK op — og behold præcis én version tilbage._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `apk_navn` | `(version_code)` | — | [src](../../../scripts/publish_mobile_apk.py#L42) |
+| function | `vaelg_hvad_der_slettes` | `(filer, ny, forrige)` | Hvilke APK'er beholdes, og hvilke ryger? | [src](../../../scripts/publish_mobile_apk.py#L46) |
+| function | `_kald` | `(host, kommando, *, dry)` | Kør en kommando lokalt eller på host. Returnerer stdout. | [src](../../../scripts/publish_mobile_apk.py#L74) |
+| function | `hovedet` | `(argv=…)` | — | [src](../../../scripts/publish_mobile_apk.py#L86) |
+
 ## `scripts/regenerate_tier1.py`
 _Regenerate TIER_1_ALWAYS_ON in copilot_tool_pruning.py from 30-day usage data._
 

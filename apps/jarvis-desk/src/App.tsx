@@ -51,19 +51,29 @@ export function App() {
     }
   }, [surface])
 
-  if (!settings) return null
-  if (!isConfigured) return <SetupScreen onSave={(cfg) => void update(cfg)} />
-
   // useMemo, ikke et frisk objekt-literal (8/9-2026). Alle fire providers
   // afhænger af `cfg`; et nyt objekt pr. render ville enten få dem til at
   // gen-hente ved hver render, eller — fordi App sjældent re-renderer — aldrig.
   // Session-listen ramte det sidste: den blev hentet én gang ved mount og
   // aldrig igen, så Bjørn måtte skifte til cowork og tilbage for at se nye
   // samtaler. Samme fejl som ArtifactPanel havde.
+  //
+  // OVER de tidlige returns (rettet 9/9-2026). Foerste udgave laa under dem,
+  // og saa koerte hooket ikke saa laenge `settings` var null — men gjorde det
+  // saa snart de ankom. React taeller hooks pr. render: «Rendered more hooks
+  // than during the previous render», minified #310, og hele visningen faldt.
+  // Et hook maa aldrig staa efter en betinget return.
   const cfg = useMemo(
-    () => ({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }),
-    [settings.apiBaseUrl, settings.authToken],
+    () => ({
+      apiBaseUrl: settings?.apiBaseUrl ?? '',
+      authToken: settings?.authToken ?? null,
+    }),
+    [settings?.apiBaseUrl, settings?.authToken],
   )
+
+  if (!settings) return null
+  if (!isConfigured) return <SetupScreen onSave={(cfg) => void update(cfg)} />
+
   return (
     <SessionProvider config={cfg}>
       <StreamProvider config={cfg}>

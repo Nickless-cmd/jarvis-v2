@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13897 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13911 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -36,21 +36,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13897 functions/
 - [`core.services.07`](core.services.07.md) — `claim_scanner` … `contract_evolution`
 - [`core.services.08`](core.services.08.md) — `contradiction_engine` … `decision_enforcement`
 - [`core.services.09`](core.services.09.md) — `decision_evidence` … `dream_bias_engine`
-- [`core.services.10`](core.services.10.md) — `dream_carry_over` … `event_trigger_shadow`
-- [`core.services.11`](core.services.11.md) — `eventbus_central_bridge` … `gate_privacy`
-- [`core.services.12`](core.services.12.md) — `gate_proactivity` … `identity_canon`
-- [`core.services.13`](core.services.13.md) — `identity_composer` … `keyring_store`
-- [`core.services.14`](core.services.14.md) — `layer_tension_daemon` … `memory_recall_telemetry`
-- [`core.services.15`](core.services.15.md) — `memory_resurfacing` … `notification_router`
-- [`core.services.16`](core.services.16.md) — `ntfy_gateway` … `precision_bias`
-- [`core.services.17`](core.services.17.md) — `pressure_threshold_gate` … `provider_retry_policy`
-- [`core.services.18`](core.services.18.md) — `provider_self_heal` … `round_budget_notice`
-- [`core.services.19`](core.services.19.md) — `rule_definitions` … `self_compassion`
-- [`core.services.20`](core.services.20.md) — `self_critique_runtime` … `share_guard_store`
-- [`core.services.21`](core.services.21.md) — `shared_cache` … `structured_content_flag`
-- [`core.services.22`](core.services.22.md) — `subagent_digest` … `tool_pattern_miner`
-- [`core.services.23`](core.services.23.md) — `tool_result_aging` … `visible_model_adapters`
-- [`core.services.24`](core.services.24.md) — `visible_model_observe` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `dream_carry_over` … `event_gate`
+- [`core.services.11`](core.services.11.md) — `event_trigger_shadow` … `gate_pattern_learning`
+- [`core.services.12`](core.services.12.md) — `gate_privacy` … `hollow_promise_round`
+- [`core.services.13`](core.services.13.md) — `identity_canon` … `kerne_curator`
+- [`core.services.14`](core.services.14.md) — `keyring_store` … `memory_recall_engine`
+- [`core.services.15`](core.services.15.md) — `memory_recall_telemetry` … `notification_bridge`
+- [`core.services.16`](core.services.16.md) — `notification_router` … `post_tool_answer_guard`
+- [`core.services.17`](core.services.17.md) — `precision_bias` … `provider_health_check`
+- [`core.services.18`](core.services.18.md) — `provider_retry_policy` … `role_registry`
+- [`core.services.19`](core.services.19.md) — `round_budget_notice` … `self_authored_prompt_proposal_tracking`
+- [`core.services.20`](core.services.20.md) — `self_compassion` … `shadow_scan_daemon`
+- [`core.services.21`](core.services.21.md) — `share_guard_store` … `stream_sentinel`
+- [`core.services.22`](core.services.22.md) — `structured_content_flag` … `tool_outcome_memory`
+- [`core.services.23`](core.services.23.md) — `tool_pattern_miner` … `visible_model`
+- [`core.services.24`](core.services.24.md) — `visible_model_adapters` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_privacy.py`
+_Privacy-cluster gate 🔒 — cross-user-deling, GRADERET + fail-CLOSED._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `privacy_gate` | `(ctx)` | ctx: {text, current_user_id}. Returnér ét SECURITY-Verdict for cross-user-deling. | [src](../../../core/services/gate_privacy.py#L26) |
+
 ## `core/services/gate_proactivity.py`
 _Proactivity-cluster gate — verifikations-disciplin, GRADERET (R2 blød / R2.5 hård)._
 
@@ -565,20 +572,4 @@ _Hollow-promise follow-through (redesign 2026-09-04)._
 | function | `note_detected` | `(*, run_id, provider, model, round_index, session_id, forced)` | — | [src](../../../core/services/hollow_promise_round.py#L58) |
 | function | `note_outcome` | `(*, run_id, provider, model, round_index, session_id, forced, tool_calls)` | Persist the outcome of the round after a hollow promise. Returns resolved. | [src](../../../core/services/hollow_promise_round.py#L65) |
 | function | `hollow_promise_note` | `(model=…)` | Sætningen der siges højt når BEGGE tvungne forsøg gav nul værktøjskald. | [src](../../../core/services/hollow_promise_round.py#L83) |
-
-## `core/services/identity_canon.py`
-_Kanonisk identitets-narrativ-store — den strukturelle kur mod sonnet-spøgelset._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/identity_canon.py#L47) |
-| function | `_ensure_identity_canon_table` | `(conn)` | Lazy DDL for begge tabeller. Idempotent. Self-safe (kalderen wrapper). | [src](../../../core/services/identity_canon.py#L51) |
-| function | `_seed_if_empty` | `(conn)` | Idempotent seed: sonnet-korrektionen (kritisk) + valgfrit voice-canon. Kaldes under _ensure. | [src](../../../core/services/identity_canon.py#L77) |
-| function | `_ensure_and_seed` | `(conn)` | — | [src](../../../core/services/identity_canon.py#L104) |
-| function | `set_canon_thread` | `(*, thread, canon_text, updated_by=…)` | Owner/governed-self-surgery opdaterer en kanon-tråd. Upsert. Self-safe. | [src](../../../core/services/identity_canon.py#L117) |
-| function | `get_canon` | `()` | Alle aktive kanon-tråde som {thread: canon_text}. Self-safe (tom dict ved fejl). | [src](../../../core/services/identity_canon.py#L138) |
-| function | `list_acknowledged_corrections` | `(*, active_only=…)` | De kendte konfabulationer (anti-drift-listen). Self-safe (tom liste ved fejl). | [src](../../../core/services/identity_canon.py#L151) |
-| function | `add_acknowledged_correction` | `(*, claim_pattern, reason)` | Tilføj en konfabulation til anti-drift-listen. Self-safe. | [src](../../../core/services/identity_canon.py#L168) |
-| function | `build_identity_canon_surface` | `()` | Central-CLI-view: kanon-tråde + anerkendte korrektioner + seneste drift-fangster. Self-safe. | [src](../../../core/services/identity_canon.py#L187) |
-| function | `_recent_drift_catches` | `(limit=…)` | Seneste identity_drift-observe-hændelser fra central trace, hvis let tilgængeligt. Self-safe. | [src](../../../core/services/identity_canon.py#L206) |
 

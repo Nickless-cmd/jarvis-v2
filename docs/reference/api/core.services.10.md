@@ -118,6 +118,27 @@ _Dream Hypothesis Generator — overraskende forbindelser._
 | function | `build_dream_hypothesis_surface` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L411) |
 | function | `build_dream_hypothesis_prompt_section` | `()` | Surface the single highest-confidence unpresented dream hypothesis. | [src](../../../core/services/dream_hypothesis_generator.py#L428) |
 
+## `core/services/dream_hypothesis_judge.py`
+_Dommer over drømme-hypoteser: hvad skal videre fra drømme-stadiet?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Kandidat` | `` | Én ``## sektion`` fra en kandidat-fil. | [src](../../../core/services/dream_hypothesis_judge.py#L73) |
+| method | `Kandidat.__post_init__` | `(self)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L84) |
+| method | `Kandidat.selv_afvist` | `(self)` | Han har allerede dømt den i selve artefaktet. | [src](../../../core/services/dream_hypothesis_judge.py#L104) |
+| function | `_parse_fil` | `(sti)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L114) |
+| function | `laes_kandidater` | `(mappe=…)` | Alle hypotese-kandidater fra drømme-mappen, nyeste fil først. | [src](../../../core/services/dream_hypothesis_judge.py#L134) |
+| function | `siger_hvad_der_ville_modbevise_den` | `(k)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L167) |
+| function | `er_en_hypotese` | `(k)` | Bjørns krav: «sørg for det er faktisk hypoteser». | [src](../../../core/services/dream_hypothesis_judge.py#L200) |
+| function | `skal_videre` | `(k)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L213) |
+| function | `doem` | `(k)` | ``(forfrem, grund)``. Grunden logges, saa dommen kan efterproeves. | [src](../../../core/services/dream_hypothesis_judge.py#L222) |
+| function | `_afsnit` | `(k)` | Felter fra begge notations-former i korpuset: ``**Navn:**`` og ``### Navn``. | [src](../../../core/services/dream_hypothesis_judge.py#L248) |
+| function | `_foerste` | `(felter, *navne)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L258) |
+| function | `byg_preregistrering` | `(k)` | Markdown → den form ``register_governed_hypothesis`` kræver. | [src](../../../core/services/dream_hypothesis_judge.py#L266) |
+| function | `_allerede_forfremmet` | `(k)` | Er denne kandidat skrevet ind foer? | [src](../../../core/services/dream_hypothesis_judge.py#L297) |
+| function | `forfrem` | `(k)` | Skriv hypotesen ind hvor den kan testes og dø. Self-safe. | [src](../../../core/services/dream_hypothesis_judge.py#L319) |
+| function | `koer_dommer` | `(*, mappe=…)` | Dømm alle kandidater og forfrem dem der har fortjent det. | [src](../../../core/services/dream_hypothesis_judge.py#L331) |
+
 ## `core/services/dream_hypothesis_signal_tracking.py`
 _Dream-hypothesis signal tracking — migrated onto signal_tracking_framework._
 
@@ -686,17 +707,4 @@ _Shared non-LLM event-gate for generative daemons (Fase 2 Lag 5/7)._
 | function | `event_driven_enabled` | `()` | True when the event-driven-daemons mode is switched on in runtime-state. | [src](../../../core/services/event_gate.py#L31) |
 | function | `_resolve_min_delta` | `(default)` | Runtime-tunable threshold. Falls back to ``default`` when unset/broken. | [src](../../../core/services/event_gate.py#L44) |
 | function | `should_generative_fire` | `(daemon_name, signals, *, min_delta=…, now=…)` | Decide whether ``daemon_name``'s LLM should fire this tick. | [src](../../../core/services/event_gate.py#L58) |
-
-## `core/services/event_trigger_shadow.py`
-_core/services/event_trigger_shadow.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_mode` | `()` | Governance-mode (off|shadow|on) fra grund-dommerens flag. Self-safe. | [src](../../../core/services/event_trigger_shadow.py#L70) |
-| function | `_gather_signals` | `()` | Saml de flydende signaler som en dict[str,float] (0..1) — GENBRUG af de | [src](../../../core/services/event_trigger_shadow.py#L79) |
-| function | `_consult_guards` | `()` | Læs (read-only) hvad dispatch-værnene VILLE sige lige nu. Self-safe. | [src](../../../core/services/event_trigger_shadow.py#L99) |
-| function | `_record` | `(value, meta)` | — | [src](../../../core/services/event_trigger_shadow.py#L118) |
-| function | `_persist_durable` | `(sample)` | Append ét telemetri-sample til den durable ring-buffer i runtime-state | [src](../../../core/services/event_trigger_shadow.py#L126) |
-| function | `recent_shadow_samples` | `(limit=…)` | Læs de seneste durable shadow-samples (for θ-kalibrering). Nyeste sidst. | [src](../../../core/services/event_trigger_shadow.py#L143) |
-| function | `tick_event_trigger_shadow` | `(signals=…, *, now=…)` | Ét shadow-tick: saml signaler → evaluér den rene delta-trigger → konsultér | [src](../../../core/services/event_trigger_shadow.py#L162) |
 

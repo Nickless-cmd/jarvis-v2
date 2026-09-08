@@ -42,6 +42,21 @@ export const GRUPPE_NAVN: Record<SessionGruppe, string> = {
   baggrund: 'proaktive & autonome',
 }
 
+/**
+ * Hvilke grupper hører til hvilken mode (Bjørn 8/9-2026: «istedet for at vise
+ * chat samtale i code mode og omvendt … sådan de samtaler der hører til det
+ * pågældende mode kun bliver vist»).
+ *
+ * Baggrunds-kørslerne ligger under chat, ikke kode: de er samtaler Jarvis selv
+ * har startet, og de har ingen workspace. Havde de ligget begge steder, ville
+ * de være dukket op to gange — og det er præcis den slags rod inddelingen blev
+ * lavet for at fjerne.
+ */
+export const GRUPPER_I_MODE: Record<'chat' | 'code', SessionGruppe[]> = {
+  chat: ['chat', 'baggrund'],
+  code: ['kode'],
+}
+
 /** Rækkefølgen er fast og betyder noget: det han selv har skrevet står øverst,
  *  maskinens egne kørsler nederst. */
 export const GRUPPE_ORDEN: SessionGruppe[] = ['chat', 'kode', 'baggrund']

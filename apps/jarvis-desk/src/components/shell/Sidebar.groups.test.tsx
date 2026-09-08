@@ -30,21 +30,53 @@ vi.mock('../../lib/api', () => ({
 
 import { Sidebar } from './Sidebar'
 
-const vis = () => render(<Sidebar surface="chat" onSurface={() => {}} userName="Bjørn" />)
+const vis = (surface: 'chat' | 'code' = 'chat') =>
+  render(<Sidebar surface={surface} onSurface={() => {}} userName="Bjørn" />)
 const gruppe = (navn: string) => screen.getByRole('button', { name: new RegExp(navn, 'i') })
 
 describe('sessions-listen er inddelt', () => {
-  it('viser de tre kataloger med antal', () => {
-    vis()
+  it('chat-mode viser samtaler og de autonome — ikke kode', () => {
+    // Bjørn 8/9-2026: «istedet for at vise chat samtale i code mode og omvendt
+    // … sådan de samtaler der hører til det pågældende mode kun bliver vist».
+    vis('chat')
     expect(within(gruppe('samtaler')).getByText('2')).toBeInTheDocument()
-    expect(within(gruppe('kode')).getByText('1')).toBeInTheDocument()
     expect(within(gruppe('proaktive & autonome')).getByText('3')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^kode/i })).toBeNull()
+    expect(screen.queryByText('ret lige den fil')).not.toBeInTheDocument()
+  })
+
+  it('code-mode viser KUN kode', () => {
+    vis('code')
+    expect(within(gruppe('kode')).getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('ret lige den fil')).toBeInTheDocument()
+    expect(screen.queryByText('kan du kigge på gaten')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /proaktive/i })).toBeNull()
+  })
+
+  it('de autonome følger chat, ikke kode — de har intet workspace', () => {
+    // Havde de ligget begge steder, ville de dukke op to gange, og det er
+    // præcis den slags rod inddelingen blev lavet for at fjerne.
+    vis('code')
+    expect(screen.queryByRole('button', { name: /proaktive/i })).toBeNull()
   })
 
   it('hans egne samtaler er åbne som udgangspunkt', () => {
     vis()
     expect(screen.getByText('kan du kigge på gaten')).toBeInTheDocument()
-    expect(screen.getByText('ret lige den fil')).toBeInTheDocument()
+  })
+
+  it('søgefeltet er væk — søgningen bor i Ctrl+K-paletten', () => {
+    // Feltet kaldte samme `searchSessions` som paletten og viste samme uddrag.
+    // To indgange til én funktion, hvor den ene tog fast plads i panelet.
+    vis()
+    expect(screen.queryByPlaceholderText(/Søg i samtaler/i)).toBeNull()
+  })
+
+  it('søge-ikonet i toppen åbner paletten', () => {
+    const onSearch = vi.fn()
+    render(<Sidebar surface="chat" onSurface={() => {}} userName="Bjørn" onSearch={onSearch} />)
+    fireEvent.click(screen.getByLabelText(/Søg \(Ctrl\+K\)/i))
+    expect(onSearch).toHaveBeenCalled()
   })
 
   it('de autonome er FOLDET SAMMEN — 181 kørsler ville drukne resten', () => {

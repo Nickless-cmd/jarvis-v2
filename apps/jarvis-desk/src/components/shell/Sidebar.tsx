@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
-  Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code, Activity,
+  Plus, MoreHorizontal, Pencil, Download, Trash2, Search, Images, Code, Activity,
   ChevronRight, ChevronDown,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
@@ -9,9 +9,9 @@ import {
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
-import { searchSessions, getActiveRuns, type SessionSearchResult } from '../../lib/api'
+import { getActiveRuns } from '../../lib/api'
 import { COWORK_ZONES, emitZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
-import { grupperSessioner, type SessionGruppe } from '../../lib/sessionGroups'
+import { grupperSessioner, GRUPPER_I_MODE, type SessionGruppe } from '../../lib/sessionGroups'
 import { ModeDropdown, type Mode } from './ModeDropdown'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
@@ -41,13 +41,17 @@ export function Sidebar({
 
   // Inddeling af sessions-listen (8/9-2026). Bjørn: «sessioner i side panelet
   // er rodet». 278 chat + 181 autonome + 1 proaktiv i én flad liste.
-  const grupper = useMemo(() => grupperSessioner(sessions), [sessions])
+  const alleGrupper = useMemo(() => grupperSessioner(sessions), [sessions])
+
+  // Vis kun de grupper der hører til den aktive mode. Alt andet end code-fladen
+  // regnes som chat — hukommelse, planlagt og galleriet har ingen egne
+  // sessioner, og dér er hans samtaler det rigtige at have ved hånden.
+  const grupper = useMemo(() => {
+    const tilladte = GRUPPER_I_MODE[surface === 'code' ? 'code' : 'chat']
+    return alleGrupper.filter((g) => tilladte.includes(g.gruppe))
+  }, [alleGrupper, surface])
   const [foldedeGrupper, setFoldedeGrupper] =
     useState<Partial<Record<SessionGruppe, boolean>>>({})
-
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SessionSearchResult[]>([])
-  const searching = query.trim().length > 0
 
   // #8: poll backend for sessioner med aktivt run (også autonome baggrunds-runs
   // som klienten ikke selv driver). Union'es med workingSessionId fra streamen.
@@ -67,19 +71,9 @@ export function Sidebar({
   }, [settings])
   const isWorking = (id: string) => id === workingSessionId || activeRunSessions.has(id)
 
-  // Debounced søgning mod backend (titel + besked-indhold).
-  useEffect(() => {
-    const q = query.trim()
-    if (!q || !settings) { setResults([]); return }
-    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
-    let cancelled = false
-    const t = setTimeout(() => {
-      void searchSessions(cfg, q)
-        .then((r) => { if (!cancelled) setResults(r) })
-        .catch(() => { if (!cancelled) setResults([]) })
-    }, 220)
-    return () => { cancelled = true; clearTimeout(t) }
-  }, [query, settings])
+  // Søgningen bor nu ÉT sted: Ctrl+K-paletten (SessionSearch), som kalder
+  // samme `searchSessions`. Debounce-effekten her var den anden halvdel af
+  // dubletten og er væk med feltet.
 
   return (
     <aside className="sidebar">
@@ -131,41 +125,12 @@ export function Sidebar({
           <Images size={14} /> Billeder
         </button>
 
-        <div className="session-search">
-          <Search size={13} className="session-search-icon" />
-          <input
-            type="text"
-            placeholder="Søg i samtaler…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          {query && (
-            <button type="button" className="session-search-clear" aria-label="Ryd søgning" onClick={() => setQuery('')}>
-              <X size={13} />
-            </button>
-          )}
-        </div>
-
-        {searching ? (
-          <>
-            <div className="sidebar-label">resultater</div>
-            {results.length === 0 ? (
-              <div className="session-search-empty">Ingen samtaler matcher</div>
-            ) : (
-              results.map((r) => (
-                <button
-                  key={r.session_id}
-                  type="button"
-                  className={`session-result ${r.session_id === activeId ? 'active' : ''}`}
-                  onClick={() => { select(r.session_id); onSurface('chat'); setQuery('') }}
-                >
-                  <span className="session-result-title">{r.title}</span>
-                  {r.snippet && <span className="session-result-snippet">{r.snippet}</span>}
-                </button>
-              ))
-            )}
-          </>
-        ) : (
+        {/* Søgefeltet er væk 8/9-2026. Det gjorde nøjagtig det samme som
+            Ctrl+K-paletten — samme `searchSessions`, samme uddrag — og
+            paletten kan desuden navigere. To indgange til én funktion, hvor
+            den ene tog fast plads i et panel der i forvejen er fyldt.
+            Søge-ikonet i toppen åbner paletten. */}
+        {(
           grupper.length > 0 && (
             <>
               {grupper.map((g) => {

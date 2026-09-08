@@ -190,20 +190,26 @@
   display: flex; align-items: center; gap: 6px;
   padding: 10px 10px 4px;
 }
-.mode-dd { position: relative; flex: 1 1 auto; min-width: 0; }
+/* Kort og uden kant (Bjoern 8/9-2026). Feltet fyldte hele bredden og bar en
+   ramme — men det er ikke et input man udfylder, det er en etiket der kan
+   klikkes. Rammen lovede en formular. Nu: bredde efter indhold, ingen kant,
+   ingen bund; baggrunden dukker foerst op naar man peger paa den. */
+.mode-dd { position: relative; flex: 0 0 auto; min-width: 0; }
 .mode-dd-btn {
-  display: flex; align-items: center; gap: 7px; width: 100%;
-  padding: 6px 8px; border-radius: var(--radius-sm, 6px);
-  background: var(--bg-2); border: 1px solid var(--line);
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 6px; border-radius: var(--radius-sm, 6px);
+  background: none; border: 0;
   color: var(--fg-1); font-family: inherit; font-size: 13px;
   cursor: pointer; text-align: left;
 }
-.mode-dd-btn:hover { background: var(--bg-3); }
+.mode-dd-btn:hover { background: var(--bg-2); }
 .mode-dd-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .mode-dd-navn { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mode-dd-chevron { flex: none; opacity: .6; }
 .mode-dd-menu {
-  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+  /* `right: 0` foer — menuen arvede knappens bredde. Nu hvor knappen er smal,
+     saettes en egen minimumsbredde saa punkterne ikke bliver klemte. */
+  position: absolute; top: calc(100% + 4px); left: 0; min-width: 148px; z-index: 20;
   display: flex; flex-direction: column; padding: 4px;
   background: var(--bg-2); border: 1px solid var(--line);
   border-radius: var(--radius-sm, 6px); box-shadow: 0 8px 24px rgba(0,0,0,0.4);

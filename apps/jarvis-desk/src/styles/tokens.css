@@ -12,6 +12,11 @@
   --fg-2: #a8b0bd;
   --fg-3: #6b7480;
   --accent: #6ee7a8;
+  /* Accenten som TEKST. I mørkt tema er den den samme; i lyst er den mørknet,
+     fordi accenterne er valgt til at lyse på sort og bliver næsten ulæselige
+     som tekst på hvidt. Mobilen skiller de to på nøjagtig samme måde — fladen
+     beholder den ægte accent, kun teksten mørknes. */
+  --accent-text: #6ee7a8;
   --user-bubble: #1f2837;
   --code-bg: #0a0e14;
 
@@ -40,30 +45,48 @@
 
 }
 
-/* Lyst tema — invertér baggrunds-/forgrunds-rampen. */
-:root[data-theme="light"] {
-  --bg-0: #f4f6fa;
-  --bg-1: #ffffff;
-  --bg-2: #eef1f6;
-  --bg-3: #e3e8f0;
-  --bg-4: #d6dce6;
-  --line: #d8dee8;
-  --fg-1: #1a212d;
-  --fg-2: #46505f;
-  --fg-3: #6b7480;
-  --accent: #1f9d63;
-  --user-bubble: #e6edf6;
-  --code-bg: #f0f2f6;
-  --fg-0: #0b0f16;
-  --ok: #157a4c;
-  --tint: #2563eb;
-  --error-fg: #c0392b;
-  --warn-fg: #8a5c00;
+/* Lyst tema — 1:1 med mobil-appens lyse palet (Bjørn 8/9-2026: «det samme
+   hvide tema som er i mobil appen … det findes allerede i desk appen, det skal
+   bare opdateres»). Tallene er mobilens LIGHT_BASE, ikke nye:
 
+     bg0 er IKKE rent hvidt. En helt hvid flade under sort tekst blænder, og
+     #FAFAFA giver samme afstand OP til kortene (#FFFFFF) som den mørke palet
+     giver ned.
+
+     fg2/fg3 er mørkere end deres mørke modstykker er lyse — sort på hvidt skal
+     bruge mindre kontrast for at læse lige så godt som hvidt på sort.
+
+   Desk havde en blålig grå rampe (#f4f6fa/#eef1f6) og en dæmpet accent. Den
+   var ikke forkert, den var bare en anden app. */
+:root[data-theme="light"] {
+  --bg-0: #fafafa;
+  --bg-1: #ffffff;
+  --bg-2: #f0f0f0;
+  --bg-3: #e6e6e6;
+  --bg-4: #dadada;
+  --line: #dcdcdc;
+  --fg-1: #111111;
+  --fg-2: #5a5a5a;
+  --fg-3: #8a8a8a;
+  --accent: #6ee7a8;
+  /* darken(#6EE7A8, 0.45) — mobilens egen udregning, ikke et skøn. */
+  --accent-text: #3d7f5c;
+  --user-bubble: #cff3e0;
+  --code-bg: #f2f2f2;
+  --fg-0: #000000;
+  --ok: #2e7d32;
+  --tint: #2563eb;
+  --error-fg: #c62828;
+  /* Mobilens advarsel er #B26A00. Den giver 4,06:1 mod #fafafa og falder for
+     desk'ens egen kontrast-test (4,5:1) — mobilen har ikke den test. #a05f00
+     er samme farve en anelse mørkere og lander på 4,87:1. Ét trin fra 1:1,
+     fordi det andet ville være at slukke en vagt for at matche en palet. */
+  --warn-fg: #a05f00;
 }
 
 /* Høj kontrast — maksimal læsbarhed. */
 :root[data-theme="contrast"] {
+  --accent-text: var(--accent);
   --bg-0: #000000;
   --bg-1: #000000;
   --bg-2: #0a0a0a;

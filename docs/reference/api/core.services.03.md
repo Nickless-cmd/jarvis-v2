@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/avoidance_detector.py`
+_Avoidance Detector — unbidden self-observation of patterns over time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tokens_from_title` | `(title)` | — | [src](../../../core/services/avoidance_detector.py#L37) |
+| function | `_cluster_key` | `(title)` | Pick a short cluster key from the first meaningful keyword(s). | [src](../../../core/services/avoidance_detector.py#L45) |
+| function | `_parse_ts` | `(value)` | — | [src](../../../core/services/avoidance_detector.py#L54) |
+| function | `_gather_signals` | `()` | Pull goal/dream/focus signals with common shape. | [src](../../../core/services/avoidance_detector.py#L63) |
+| function | `detect_avoidances` | `()` | Identify clusters with real prior support that have gone silent. | [src](../../../core/services/avoidance_detector.py#L108) |
+| function | `build_avoidance_surface` | `()` | — | [src](../../../core/services/avoidance_detector.py#L161) |
+| function | `_surface_summary` | `(findings)` | — | [src](../../../core/services/avoidance_detector.py#L175) |
+| function | `build_avoidance_prompt_section` | `()` | Only speaks when there's a real pattern to notice. | [src](../../../core/services/avoidance_detector.py#L185) |
+
 ## `core/services/background_resume.py`
 _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
 
@@ -587,21 +601,4 @@ _Boundary-capture for Centralen (§10). Kør en nerve bag en grænse: enhver_
 |---|---|---|---|---|
 | class | `ErrorRecord` | `` | — | [src](../../../core/services/central_capture.py#L15) |
 | function | `safe_call` | `(fn, ctx, *, nerve=…, cluster=…, klass=…)` | Returnér (resultat, None) ved succes, ellers (None, ErrorRecord). Kaster aldrig. | [src](../../../core/services/central_capture.py#L26) |
-
-## `core/services/central_catalog.py`
-_Fit-pass-katalog (§13.2): det maskinlæsbare resultat af kortlægningen af hver nerve._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `NerveSpec` | `` | — | [src](../../../core/services/central_catalog.py#L16) |
-| function | `nerve_location` | `(name)` | Fil:linje for en nerve (til cross-cluster korrelation: hvilke filer relaterer til et run). | [src](../../../core/services/central_catalog.py#L483) |
-| function | `nerve_cluster` | `(name)` | — | [src](../../../core/services/central_catalog.py#L488) |
-| function | `nerve_klass` | `(name)` | Katalog-klasse for en nerve, eller None hvis nerven ikke er kortlagt. | [src](../../../core/services/central_catalog.py#L492) |
-| function | `is_security_nerve` | `(name)` | True hvis nerven er katalog-klassificeret SECURITY (§11.3: må ALDRIG decentraliseres). | [src](../../../core/services/central_catalog.py#L501) |
-| function | `cluster_rank` | `(cluster)` | Lavere = højere prioritet. Ukendt cluster → bagest (lavest prioritet). | [src](../../../core/services/central_catalog.py#L509) |
-| function | `clusters` | `()` | — | [src](../../../core/services/central_catalog.py#L517) |
-| function | `is_security_cluster` | `(cluster)` | True hvis clusteret har mindst én SECURITY-nerve (→ kan ikke slås fra). | [src](../../../core/services/central_catalog.py#L527) |
-| function | `security_clusters` | `()` | — | [src](../../../core/services/central_catalog.py#L532) |
-| function | `by_cluster` | `(cluster)` | — | [src](../../../core/services/central_catalog.py#L536) |
-| function | `validate` | `()` | Returnér liste af problemer (tom = grøn). | [src](../../../core/services/central_catalog.py#L540) |
 

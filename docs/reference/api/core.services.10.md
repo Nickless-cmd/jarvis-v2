@@ -253,12 +253,14 @@ _Drømme-sessionerne skal blive til læring._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `Afsnit` | `` | — | [src](../../../core/services/dream_session_lessons.py#L68) |
-| method | `Afsnit.signatur` | `(self)` | Første sætning, kortet ned — nok til at genkende det samme igen. | [src](../../../core/services/dream_session_lessons.py#L73) |
-| function | `_afsnit_fra` | `(sti)` | — | [src](../../../core/services/dream_session_lessons.py#L95) |
-| function | `laes_noter` | `(mappe=…, *, antal=…)` | Afsnit fra de nyeste drømme-noter, nyeste først. | [src](../../../core/services/dream_session_lessons.py#L112) |
-| function | `er_en_lektie` | `(a)` | Fejler lukket: uden en dom er svaret nej. | [src](../../../core/services/dream_session_lessons.py#L132) |
-| function | `gem` | `(a)` | Skriv lektien. Returnerer udfaldet fra ``upsert_lesson`` ('' ved fejl). | [src](../../../core/services/dream_session_lessons.py#L142) |
-| function | `koer_hoest` | `(*, mappe=…, antal=…)` | Læs de nyeste drømme-noter og gem det der er lektier. | [src](../../../core/services/dream_session_lessons.py#L162) |
+| method | `Afsnit.kilde_maerke` | `(self)` | Hvilken NOTE afsnittet kom fra. | [src](../../../core/services/dream_session_lessons.py#L73) |
+| method | `Afsnit.signatur` | `(self)` | Første sætning, kortet ned — nok til at genkende det samme igen. | [src](../../../core/services/dream_session_lessons.py#L85) |
+| function | `_afsnit_fra` | `(sti)` | — | [src](../../../core/services/dream_session_lessons.py#L107) |
+| function | `laes_noter` | `(mappe=…, *, antal=…)` | Afsnit fra de nyeste drømme-noter, nyeste først. | [src](../../../core/services/dream_session_lessons.py#L124) |
+| function | `er_en_lektie` | `(a)` | Fejler lukket: uden en dom er svaret nej. | [src](../../../core/services/dream_session_lessons.py#L144) |
+| function | `gem` | `(a)` | Skriv lektien. Returnerer udfaldet fra ``upsert_lesson`` ('' ved fejl). | [src](../../../core/services/dream_session_lessons.py#L154) |
+| function | `_allerede_hoestet` | `(a)` | Er dette afsnit hoestet fra den SAMME note foer? | [src](../../../core/services/dream_session_lessons.py#L178) |
+| function | `koer_hoest` | `(*, mappe=…, antal=…)` | Læs de nyeste drømme-noter og gem det der er lektier. | [src](../../../core/services/dream_session_lessons.py#L199) |
 
 ## `core/services/dreaming_session.py`
 _D4 — Dreaming Session: dedicated full-model session during prolonged idle._

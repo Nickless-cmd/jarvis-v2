@@ -70,6 +70,18 @@ class Afsnit:
     fil: str
 
     @property
+    def kilde_maerke(self) -> str:
+        """Hvilken NOTE afsnittet kom fra.
+
+        Evidens-2-reglen betyder «set to gange i verden», ikke «laest to gange
+        af hoesten». Uden dette maerke ville en genstart — som nulstiller alle
+        cadence-cooldowns — koere hoesten igen over samme afsnit og loefte
+        lektien til evidens 2 med det samme. Maalt praecis saadan: tre lektier
+        stod aktive efter én dags noter.
+        """
+        return self.fil
+
+    @property
     def signatur(self) -> str:
         """Første sætning, kortet ned — nok til at genkende det samme igen."""
         første = re.split(r"(?<=[.!?])\s", self.tekst.strip(), maxsplit=1)[0]
@@ -151,12 +163,37 @@ def gem(a: Afsnit) -> str:
             signature=a.signatur,
             lesson=a.tekst,
             source=KILDE,
+            # Noten staar i user_words, saa den SAMME note aldrig kan forstaerke
+            # sin egen lektie to gange. Uden det talte en genstart som en
+            # gentagelse — se `kilde_maerke`.
+            user_words=a.kilde_maerke,
             jarvis_words=a.tekst[:400],
         )
         return str(r.get("outcome") or "")
     except Exception as exc:
         logger.debug("dream_session_lessons: kunne ikke gemme lektie: %s", exc)
         return ""
+
+
+def _allerede_hoestet(a: Afsnit) -> bool:
+    """Er dette afsnit hoestet fra den SAMME note foer?
+
+    Self-safe → True: kan vi ikke tjekke, hoester vi ikke igen. En manglende
+    lektie koster ingenting; en lektie der loefter sig selv til evidens 2 ved
+    at blive laest to gange underminerer hele reglen.
+    """
+    try:
+        from core.runtime.db import connect
+        from core.runtime.db_lessons import signature_key
+        with connect() as c:
+            row = c.execute(
+                "SELECT 1 FROM lessons WHERE signature_key=? AND source=? "
+                "AND user_words=? LIMIT 1",
+                (signature_key(a.signatur), KILDE, a.kilde_maerke)).fetchone()
+        return row is not None
+    except Exception as exc:
+        logger.debug("dream_session_lessons: hoest-opslag fejlede: %s", exc)
+        return True
 
 
 def koer_hoest(*, mappe: Path | None = None, antal: int = _ANTAL_NOTER) -> dict[str, object]:
@@ -167,6 +204,9 @@ def koer_hoest(*, mappe: Path | None = None, antal: int = _ANTAL_NOTER) -> dict[
     """
     tal: dict[str, int] = {}
     for a in laes_noter(mappe, antal=antal):
+        if _allerede_hoestet(a):
+            tal["allerede-hoestet"] = tal.get("allerede-hoestet", 0) + 1
+            continue
         if not er_en_lektie(a):
             tal["betragtning"] = tal.get("betragtning", 0) + 1
             continue

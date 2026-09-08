@@ -145,3 +145,47 @@ def test_en_fejlende_skrivning_stopper_ikke_hoesten(tmp_path: Path):
                side_effect=[RuntimeError("db væk"), {"outcome": "created"}]):
         tal = koer_hoest(mappe=tmp_path)["tal"]
     assert tal.get("fejl") == 1 and tal.get("created") == 1
+
+
+# ---------------------------------------------------------------------------
+# En genlæsning er ikke en gentagelse (8/9-2026)
+#
+# Evidens-2-reglen betyder «set to gange i verden», ikke «læst to gange af
+# høsten». Cadence-cooldowns ligger i hukommelsen og nulstilles ved genstart,
+# så høsten kørte igen over samme afsnit — og tre lektier stod **aktive med
+# evidens 2 efter én dags noter**.
+# ---------------------------------------------------------------------------
+
+def test_samme_note_forstaerker_ikke_sin_egen_lektie(tmp_path: Path):
+    from core.services.dream_session_lessons import _allerede_hoestet
+
+    a = Afsnit(tekst=_LEKTIE, fil="dream-session-2026-09-08-1131.md")
+    with patch("core.runtime.db.connect") as conn:
+        conn.return_value.__enter__.return_value.execute.return_value.fetchone.return_value = (1,)
+        assert _allerede_hoestet(a) is True
+
+
+def test_noten_gemmes_som_kilde_saa_gentagelse_kan_skelnes():
+    set_: dict = {}
+    with patch("core.runtime.db_lessons.upsert_lesson",
+               side_effect=lambda **kw: set_.update(kw) or {"outcome": "created"}):
+        gem(Afsnit(tekst=_LEKTIE, fil="dream-session-2026-09-08-1131.md"))
+    assert set_["user_words"] == "dream-session-2026-09-08-1131.md"
+
+
+def test_uden_opslag_hoestes_der_ikke_igen():
+    """Self-safe i den dyre retning: en manglende lektie koster ingenting; en
+    lektie der løfter sig selv til evidens 2 underminerer hele reglen."""
+    from core.services.dream_session_lessons import _allerede_hoestet
+
+    with patch("core.runtime.db.connect", side_effect=RuntimeError("db væk")):
+        assert _allerede_hoestet(Afsnit(tekst=_LEKTIE, fil="x.md")) is True
+
+
+def test_allerede_hoestede_afsnit_koster_ikke_et_model_kald(tmp_path: Path):
+    _skriv(tmp_path, "dream-session-2026-09-08-1131.md", "\n\n" + _LEKTIE + "\n")
+    with patch("core.services.dream_session_lessons._allerede_hoestet", return_value=True), \
+         patch("core.services.local_small_model.spoerg_et_ord") as m:
+        tal = koer_hoest(mappe=tmp_path)["tal"]
+    assert tal == {"allerede-hoestet": 1}
+    m.assert_not_called()

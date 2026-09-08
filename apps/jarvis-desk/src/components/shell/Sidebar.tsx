@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
-  Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code,
+  Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code, Activity,
   ChevronRight, ChevronDown,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
@@ -12,7 +12,7 @@ import { useStream } from '../../hooks/useStream'
 import { searchSessions, getActiveRuns, type SessionSearchResult } from '../../lib/api'
 import { COWORK_ZONES, emitZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
 import { grupperSessioner, type SessionGruppe } from '../../lib/sessionGroups'
-import { ModeSlider, type Mode } from './ModeSlider'
+import { ModeDropdown, type Mode } from './ModeDropdown'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
@@ -27,10 +27,13 @@ export function Sidebar({
   surface,
   onSurface,
   userName,
+  onSearch,
 }: {
   surface: Surface
   onSurface: (s: Surface) => void
   userName: string
+  /** Aabner Ctrl+K-paletten. Samme vej som genvejen — ét sted at rette. */
+  onSearch?: () => void
 }) {
   const { sessions, activeId, select, newChat } = useSessions()
   const { settings } = useSettings()
@@ -80,10 +83,33 @@ export function Sidebar({
 
   return (
     <aside className="sidebar">
-      <ModeSlider
-        active={(['chat', 'cowork', 'code'] as const).includes(surface as Mode) ? (surface as Mode) : 'chat'}
-        onChange={(m) => onSurface(m)}
-      />
+      {/* Mode-vaelger + de to handlinger man bruger oftest. Slideren brugte hele
+          bredden paa at vise tre valg; dropdown'en viser det aktive og frigoer
+          plads ved siden af. */}
+      <div className="sidebar-top">
+        <ModeDropdown
+          active={(['chat', 'cowork', 'code'] as const).includes(surface as Mode) ? (surface as Mode) : 'chat'}
+          onChange={(m) => onSurface(m)}
+        />
+        <button
+          type="button"
+          className="icon-btn"
+          title="Søg (Ctrl+K)"
+          aria-label="Søg (Ctrl+K)"
+          onClick={() => onSearch?.()}
+        >
+          <Search size={15} />
+        </button>
+        <button
+          type="button"
+          className="icon-btn"
+          title="Aktivitet — hvad der foregår lige nu"
+          aria-label="Aktivitet"
+          onClick={() => { onSurface('cowork'); emitZone('mc') }}
+        >
+          <Activity size={15} />
+        </button>
+      </div>
 
       {surface === 'cowork' ? (
         <CoworkMenu />

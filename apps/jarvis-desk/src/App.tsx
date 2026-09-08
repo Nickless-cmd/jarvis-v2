@@ -215,7 +215,7 @@ function Shell({
   const [searchOpen, setSearchOpen] = useState(false)
   return (
     <div className="window">
-      <Sidebar surface={surface} onSurface={setSurface} userName={userName} />
+      <Sidebar surface={surface} onSurface={setSurface} userName={userName} onSearch={() => setSearchOpen(true)} />
       <main className="main">
         <ShortcutsHost setSurface={setSurface} onSearch={() => setSearchOpen(true)} />
         <PresenceHost />

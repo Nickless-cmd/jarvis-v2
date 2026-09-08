@@ -68,7 +68,9 @@ export function CentralBadge({ config, isOwner }: { config?: ApiConfig; isOwner?
     >
       <span className="cb-dot" />
       <span className="cb-label">Central</span>
-      {incidents.length > 0 && <span className="cb-count">{incidents.length}</span>}
+      {/* Taelleren er ude 8/9-2026. Et roedt tal i en ellers stille header
+          raabte konstant, og tallet i sig selv siger ikke hvad man skal goere.
+          Prikken baerer tilstanden; hover og klik giver detaljerne. */}
       {opening && <span className="cb-opening">åbner…</span>}
       {hover && (
         <div className="cb-pop" role="tooltip">{detail}</div>

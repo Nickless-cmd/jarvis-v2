@@ -1,8 +1,14 @@
-import { Brain, Clock, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 
 export type SecondarySurface = 'memory' | 'scheduling' | 'settings'
 
-/** Sekundær nav (opslags-flader) i sidebar-foden ved bruger-avataren. */
+/** Sekundær nav i sidebar-foden ved bruger-avataren.
+ *
+ *  Hukommelse og Planlagt blev taget ud 8/9-2026. To ikoner i foden for flader
+ *  man slår op i sjældent er dyr plads — og de er IKKE utilgængelige: begge
+ *  ligger i Ctrl+K-paletten (`surface:memory`, `surface:scheduling`), hvor man
+ *  leder efter dem når man endelig skal bruge dem. Typen beholder navnene, saa
+ *  paletten og ruterne i App.tsx virker uændret. */
 export function SecondaryNav({
   active,
   onSelect,
@@ -10,9 +16,7 @@ export function SecondaryNav({
   active: string
   onSelect: (s: SecondarySurface) => void
 }) {
-  const items: Array<{ key: SecondarySurface; icon: typeof Brain; title: string }> = [
-    { key: 'memory', icon: Brain, title: 'Memory' },
-    { key: 'scheduling', icon: Clock, title: 'Scheduling' },
+  const items: Array<{ key: SecondarySurface; icon: typeof Settings; title: string }> = [
     { key: 'settings', icon: Settings, title: 'Indstillinger' },
   ]
   return (

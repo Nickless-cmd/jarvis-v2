@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ModeSlider } from './ModeSlider'
 import { Composer } from './Composer'
 import { PermissionProvider } from '../../contexts/PermissionContext'
 
@@ -9,12 +8,8 @@ import { PermissionProvider } from '../../contexts/PermissionContext'
 const renderComposer = (ui: React.ReactElement) => render(<PermissionProvider>{ui}</PermissionProvider>)
 
 describe('shell', () => {
-  it('ModeSlider switches active mode', async () => {
-    const onChange = vi.fn()
-    render(<ModeSlider active="chat" onChange={onChange} />)
-    await userEvent.click(screen.getByRole('button', { name: /code/i }))
-    expect(onChange).toHaveBeenCalledWith('code')
-  })
+  // ModeSlider er afloest af ModeDropdown (8/9-2026) — daekket i
+  // ModeDropdown.test.tsx, hvor ogsaa aabne/lukke-adfaerden hoerer hjemme.
   it('Composer sends on Enter with opts, not Shift+Enter', async () => {
     const onSend = vi.fn()
     renderComposer(<Composer streaming={false} onSend={onSend} onStop={() => {}} getSessionId={async () => "s1"} model="deepseek-flash" thinking="think" />)

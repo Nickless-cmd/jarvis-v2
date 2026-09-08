@@ -182,6 +182,42 @@
    (.env-section-head i hoejre panel): 11px, normal vaegt, .04em, daempet.
    Foer stod den i VERSALER med .06em og fed — samme familie, men sat saa
    anderledes at den laeste som en anden skrift, og tungere end panelet baerer. */
+/* ── Sidebar-top: mode-dropdown + de to handlinger man bruger oftest ──────
+   Afloeser pille-slideren (Bjoern 8/9-2026). Slideren viste alle tre modes
+   hele tiden og brugte hele bredden paa at fortaelle hvor man var; dropdown'en
+   viser den aktive og frigoer plads til soeg og aktivitet. */
+.sidebar-top {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 10px 4px;
+}
+.mode-dd { position: relative; flex: 1 1 auto; min-width: 0; }
+.mode-dd-btn {
+  display: flex; align-items: center; gap: 7px; width: 100%;
+  padding: 6px 8px; border-radius: var(--radius-sm, 6px);
+  background: var(--bg-2); border: 1px solid var(--line);
+  color: var(--fg-1); font-family: inherit; font-size: 13px;
+  cursor: pointer; text-align: left;
+}
+.mode-dd-btn:hover { background: var(--bg-3); }
+.mode-dd-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.mode-dd-navn { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mode-dd-chevron { flex: none; opacity: .6; }
+.mode-dd-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+  display: flex; flex-direction: column; padding: 4px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 6px); box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.mode-dd-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px; border: 0; border-radius: 5px;
+  background: none; color: var(--fg-2); font-family: inherit; font-size: 13px;
+  cursor: pointer; text-align: left;
+}
+.mode-dd-item:hover { background: var(--bg-3); color: var(--fg-1); }
+.mode-dd-item.active { color: var(--fg-1); }
+.sidebar-top .icon-btn { flex: none; }
+
 .sidebar-label {
   font-size: 11px;
   letter-spacing: 0.04em;

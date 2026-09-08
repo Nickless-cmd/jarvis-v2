@@ -44,10 +44,14 @@ describe('CentralBadge', () => {
     expect(badge.querySelector('.cb-dot')).toBeTruthy()
   })
 
-  it('viser incident-tæller når der er incidents', async () => {
+  it('viser INGEN tæller — tilstanden ligger i prikken', async () => {
+    // Tælleren er ude 8/9-2026: et rødt tal i en ellers stille header råbte
+    // konstant, og tallet siger ikke i sig selv hvad man skal gøre. Prikken
+    // bærer tilstanden; hover og klik giver detaljerne.
     getCentralRealtime.mockResolvedValue(RED)
     render(<CentralBadge config={CFG} isOwner />)
-    await waitFor(() => expect(screen.getByText('2')).toBeTruthy())
+    await waitFor(() => expect(screen.getByTestId('central-badge')).toBeTruthy())
+    expect(screen.queryByText('2')).toBeNull()
     expect(screen.getByTestId('central-badge').className).toContain('tone-red')
   })
 

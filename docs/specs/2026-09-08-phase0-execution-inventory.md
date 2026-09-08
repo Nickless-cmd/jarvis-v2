@@ -81,3 +81,51 @@ skal gennemgås enkeltvis for:
 
 Det sidste har vi allerede set fejle i praksis: baggrundsjob der overlevede
 deres run stod som `lost` i process-supervisoren efter en runtime-genstart.
+
+---
+
+## Miljø, netværk og annullering — målt 2026-09-08
+
+### Miljø-arv: 91 % arver, men der er intet at arve
+
+**97 subprocess-kaldsteder. 9 (9 %) sætter `env=` eksplicit.** De øvrige 88
+arver forældrens miljø.
+
+Det ville være alvorligt, hvis miljøet bar hemmeligheder. Det gør det ikke:
+den kørende `jarvis-api`-proces har **nul** miljøvariable der matcher
+`KEY|TOKEN|SECRET|PASSWORD`. Hemmelighederne bor i
+`~/.jarvis-v2/config/runtime.json` og læses ved kald-tid gennem
+`read_runtime_key()`, præcis som repoets egen secrets-politik foreskriver.
+
+Miljø-aksen er altså **sikker ved konstruktion**, ikke ved held.
+
+Men vær præcis om hvad det beviser: filen står som `0600 bs`, og en
+underproces kører som **samme bruger**. Den kan læse `runtime.json` direkte.
+Miljø-arv er ikke lækagevejen; filsystem-adgang er. Det er nøjagtig dét den ene
+sandkasse-sti findes for — og den er slukket som standard og dækker 1 af 53.
+
+### Annullering: 27 kaldsteder uden timeout
+
+**70 af 97 (72 %) sætter `timeout=`.** De 27 øvrige kan hænge på ubestemt tid.
+Blandt de model-kaldbare:
+
+- `core/tools/bash_session.py` (persistent shell — bevidst, den ER langtlevende)
+- `core/tools/simple_tools_web.py` (engangs-bash)
+- `core/tools/claude_dispatch/{tool,runner,worktree}.py`
+- `core/tools/auto_ensure_tests.py`
+- `core/tools/restart_self_tools.py`
+- `core/tools/mic_listen_tool.py`
+
+En timeout er ikke det samme som annullering. Spec'ens Fase 3 skelner mellem
+`aborted_before_dispatch` og `outcome_unknown`; ingen af de 97 kaldsteder kan i
+dag skelne. Vi har allerede set konsekvensen i praksis: efter en
+runtime-genstart stod fire baggrundsjob som `lost` — pid'en væk, ingen
+exit-kode, ingen der ved hvad der skete.
+
+### Netværk
+
+Uden sandkasse er svaret det samme for 52 af 53 stier: **fuld netadgang**. Den
+ene indespærrede sti kan begrænses, men flaget er slukket som standard.
+
+Netværks-aksen kræver derfor ikke en gennemgang sti for sti — den kræver en
+beslutning om hvilke stier der SKAL kunne begrænses. Det hører til Fase 3.

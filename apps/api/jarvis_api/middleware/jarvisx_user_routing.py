@@ -47,8 +47,13 @@ _AFVIS_SIDST: dict[tuple[str, str], float] = {}
 _AFVIS_STILHED_S = 60.0
 
 
-def _log_auth_afvisning(grund: str, request: "Request") -> None:
-    """Sig HVORFOR en 401 skete — én gang i minuttet pr. klient og grund."""
+def _log_auth_afvisning(grund: str, request: "Request", raw_auth: str = "") -> None:
+    """Sig HVORFOR en 401 skete — én gang i minuttet pr. klient og grund.
+
+    Ved «token expired» siges ogsaa HVOR gammelt udloebet er, for det er det
+    tal der afgoer om enheden kan forny sig selv eller skal have et nyt token
+    baaret over i haanden. Uden det er svaret et gaet.
+    """
     import time as _t
     try:
         klient = getattr(getattr(request, "client", None), "host", "") or "?"
@@ -60,8 +65,15 @@ def _log_auth_afvisning(grund: str, request: "Request") -> None:
         _AFVIS_SIDST[noegle] = nu
         if len(_AFVIS_SIDST) > 256:
             _AFVIS_SIDST.clear()
-        logger.warning("auth-afvist: %s — klient=%s path=%s",
-                       grund[:120], klient, request.url.path)
+        hale = ""
+        if grund == "token expired" and raw_auth:
+            from core.runtime.token_renewal import GRACE_DAYS, udloebs_alder_dage
+            alder = udloebs_alder_dage(raw_auth)
+            if alder is not None:
+                kan = "kan fornys" if alder <= GRACE_DAYS else "FOR GAMMELT — kraever nyt token"
+                hale = f" udloebet-for={alder}d ({kan})"
+        logger.warning("auth-afvist: %s — klient=%s path=%s%s",
+                       grund[:120], klient, request.url.path, hale)
     except Exception:
         pass
 
@@ -174,7 +186,7 @@ async def jarvisx_user_routing_middleware(
             #
             # Rate-limitet pr. (grund, klient) i ét minut: en itererende klient
             # skal give ÉT signal, ikke tusind linjer. Aldrig selve token'en.
-            _log_auth_afvisning(grund, request)
+            _log_auth_afvisning(grund, request, raw_auth)
             return JSONResponse(
                 status_code=401,
                 content={

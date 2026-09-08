@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7046/13940 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7047/13941 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,7 +23,7 @@ Generated from source. 7046/13940 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 576 | 1063 | 54% |
+| `core.runtime` | 577 | 1064 | 54% |
 | `core.services` | 4669 | 9622 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
@@ -46,7 +46,7 @@ Generated from source. 7046/13940 functions/methods documented (50%). The list b
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
-- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L131)
+- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L143)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L57)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L70)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)

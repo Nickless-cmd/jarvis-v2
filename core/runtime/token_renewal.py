@@ -54,6 +54,7 @@ Den giver aldrig mere end tokenet allerede havde:
 """
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import uuid
@@ -157,6 +158,32 @@ def _husk_jti(user_id: str, jti: str) -> None:
         # Fornyelsen må ikke fejle fordi bogføringen fejler. Tokenet er stadig
         # gyldigt; det er kun afbryderen der mangler for netop dette token.
         logger.warning("token_renewal: kunne ikke bogfoere jti for %s", user_id, exc_info=True)
+
+
+def udloebs_alder_dage(raw_token: str) -> float | None:
+    """Hvor mange dage er tokenet udløbet? Kun til LOGNING.
+
+    Læser `exp` UDEN at verificere signaturen — tallet må derfor aldrig styre
+    en beslutning, kun beskrive en. Grunden til at det findes: «token expired»
+    alene svarer ikke på det eneste spørgsmål der betyder noget, nemlig om
+    enheden kan hjælpe sig selv (inden for nådevinduet) eller skal have et nyt
+    token i hånden. Uden tallet er svaret et gæt.
+    """
+    try:
+        token = str(raw_token or "").strip()
+        if token.lower().startswith("bearer "):
+            token = token[7:].strip()
+        # Selve nyttelasten læses, ikke tokenet: PyJWT afviser hele strengen hvis
+        # signaturen ikke er gyldig base64 — og en log-linje skal kunne beskrive
+        # også det vrøvl nogen sender os.
+        krop = token.split(".")[1]
+        krav = json.loads(base64.urlsafe_b64decode(krop + "=" * (-len(krop) % 4)))
+        exp = float(krav.get("exp") or 0)
+    except Exception:
+        return None
+    if exp <= 0:
+        return None
+    return round((_now().timestamp() - exp) / 86400, 1)
 
 
 def renew(raw_token: str, *, now: datetime | None = None) -> dict[str, Any]:

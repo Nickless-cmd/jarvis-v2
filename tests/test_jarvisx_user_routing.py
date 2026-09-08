@@ -66,11 +66,22 @@ def test_forskellige_klienter_logges_hver_for_sig(caplog):
 
 
 def test_token_logges_ALDRIG(caplog):
-    """Grunden må siges højt; legitimationen må ikke."""
-    import inspect
+    """Grunden må siges højt; legitimationen må ikke.
 
-    src = inspect.getsource(M._log_auth_afvisning)
-    assert "raw_auth" not in src and "authorization" not in src.lower()
+    Testen læste før KILDEN og krævede at ordet «raw_auth» ikke stod der. Det
+    holdt kun så længe funktionen ikke havde tokenet i hånden — og den har den
+    nu, fordi udløbsalderen skal beregnes. En kilde-test ville have tvunget
+    valget mellem at droppe alderen eller at sløre variabelnavnet.
+    Kontrakten er «tokenet må ikke stå i loggen», så det er dét der måles.
+    """
+    _nulstil()
+    hemmelig = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1IiwiZXhwIjoxfQ.HEMMELIG-SIGNATUR"  # pragma: allowlist secret (lokkemad — testen tjekker at den IKKE logges)
+    with caplog.at_level(logging.WARNING):
+        M._log_auth_afvisning("token expired", _request(), "Bearer " + hemmelig)
+    assert caplog.text, "der skulle være logget noget"
+    assert hemmelig not in caplog.text
+    assert "HEMMELIG" not in caplog.text
+    assert "udloebet-for=" in caplog.text  # alderen ER med — det er hele nytten
 
 
 def test_logningen_kan_ikke_vaelte_en_request(caplog):

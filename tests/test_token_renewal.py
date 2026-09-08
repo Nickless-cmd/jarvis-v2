@@ -187,3 +187,27 @@ def test_bogfoerings_fejl_vaelter_ikke_fornyelsen(monkeypatch):
     def _braek(*a, **k): raise RuntimeError("DB laast")
     monkeypatch.setattr("core.runtime.db.set_runtime_state_value", _braek, raising=False)
     assert tr.renew(_token())["ok"] is True
+
+
+# ── udløbsalder til loggen ────────────────────────────────────────────────
+
+def test_alderen_kan_laeses_af_et_udloebet_token():
+    """«token expired» alene svarer ikke på det eneste spørgsmål der betyder
+    noget: kan enheden hjælpe sig selv, eller skal den have et token i hånden?"""
+    assert tr.udloebs_alder_dage(_udloebet(7)) == pytest.approx(7, abs=0.2)
+
+
+def test_alderen_laeses_ogsaa_af_et_token_med_vroevl_i_signaturen():
+    """PyJWT afviser hele strengen hvis signaturen ikke er gyldig base64 — men en
+    log-linje skal kunne beskrive også det vrøvl nogen sender os."""
+    krop = _udloebet(3).rsplit(".", 1)[0]
+    assert tr.udloebs_alder_dage(krop + ".ikke-base64!!") == pytest.approx(3, abs=0.2)
+
+
+def test_alderen_er_negativ_paa_et_gyldigt_token():
+    assert tr.udloebs_alder_dage(_token()) < 0
+
+
+def test_alderen_er_none_paa_noget_der_ikke_er_et_token():
+    assert tr.udloebs_alder_dage("hej") is None
+    assert tr.udloebs_alder_dage("") is None

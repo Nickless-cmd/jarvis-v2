@@ -28,7 +28,7 @@ import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ErrorCard } from '../components/feedback/ErrorCard'
 import { GreetingHero } from '../components/chat/GreetingHero'
-import { MessageRail, railLabel } from '../components/chat/MessageRail'
+import { MessageRail, railAnchors as byggAnkre } from '../components/chat/MessageRail'
 
 const NEAR_BOTTOM_PX = 120
 
@@ -471,12 +471,17 @@ export function ChatView({
   // Rail-ankre: MILEPÆLE (kapitler) når de findes (≥2 der matcher synlige beskeder), ellers
   // fallback til user-beskederne så rail'en aldrig er tom mens milepæle genereres.
   const railAnchors = useMemo(() => {
+    const afLedte = byggAnkre(visibleMessages)
     const ids = new Set(visibleMessages.map((m) => m.id))
+    // Milepælene har de bedre TITLER (kapitler), men de ved intet om fejl.
+    // Fejl-markeringen kommer fra beskederne, så den bæres over her frem for at
+    // gå tabt bare fordi der findes milepæle.
+    const fejlPrId = new Map(afLedte.map((a) => [a.id, a.fejl]))
     const fromMilestones = milestones
       .filter((m) => ids.has(m.anchor_id))
-      .map((m) => ({ id: m.anchor_id, label: m.title }))
+      .map((m) => ({ id: m.anchor_id, label: m.title, fejl: fejlPrId.get(m.anchor_id) }))
     if (fromMilestones.length >= 2) return fromMilestones
-    return visibleMessages.filter((m) => m.role === 'user').map((m) => ({ id: m.id, label: railLabel(m.content) }))
+    return afLedte
   }, [milestones, visibleMessages])
   const isEmpty =
     !sessionId ||

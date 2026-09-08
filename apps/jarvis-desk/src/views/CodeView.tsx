@@ -24,7 +24,7 @@ import { CentralBadge } from '../components/shell/CentralBadge'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { listProcesses } from '../lib/processesApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
-import { MessageRail, railLabel } from '../components/chat/MessageRail'
+import { MessageRail, railAnchors } from '../components/chat/MessageRail'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
@@ -832,7 +832,7 @@ export function CodeView({
         <div className="transcript-wrap">
         <MessageRail
           containerRef={transcriptRef}
-          anchors={visibleMessages.filter((m) => m.role === 'user').map((m) => ({ id: m.id, label: railLabel(m.content) }))}
+          anchors={railAnchors(visibleMessages)}
         />
         <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (

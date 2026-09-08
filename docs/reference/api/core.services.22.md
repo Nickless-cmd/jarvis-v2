@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/stream_sentinel.py`
+_Stream-cluster — observabilitet for SSE-lanen. IKKE en blokerende gate: streaming er_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_observe` | `(nerve, run_id, session_id, **data)` | — | [src](../../../core/services/stream_sentinel.py#L32) |
+| function | `note_start` | `(run_id, session_id=…, **meta)` | En SSE-stream sendte message_start. Registrér + observe + opportunistisk stall-sweep. | [src](../../../core/services/stream_sentinel.py#L43) |
+| function | `note_stop` | `(run_id, *, reason=…)` | En SSE-stream sendte message_stop (reason='done' normalt, 'fallback' = terminal-garanti). | [src](../../../core/services/stream_sentinel.py#L58) |
+| function | `note_event` | `(run_id, kind, session_id=…, **data)` | Andre lane-fejl/edge-cases: idle / cancel / error / zombie_slot / subscriber_timeout. | [src](../../../core/services/stream_sentinel.py#L80) |
+| function | `_sweep_stalled` | `(timeout_s=…)` | message_start uden message_stop i >timeout_s → ægte zombie → flag ÉN gang pr. run | [src](../../../core/services/stream_sentinel.py#L88) |
+| function | `sweep` | `()` | Eksternt-kaldbar stall-sweep (fx fra heartbeat-kadence). Returnér antal live streams. | [src](../../../core/services/stream_sentinel.py#L115) |
+| function | `live_count` | `()` | — | [src](../../../core/services/stream_sentinel.py#L125) |
+
 ## `core/services/structured_content_flag.py`
 _Governed kill-switch for struktureret content-persist + wire. Default ON._
 
@@ -600,15 +613,4 @@ _Tools-cluster query-helpers (Phase 1) oven på tool_call-observe i execute_tool
 | function | `recent_tool_calls` | `(*, session_id=…, kind=…, status=…, limit=…)` | Læs tool_call-observe-records fra central_trace, filtreret. Nyeste først. | [src](../../../core/services/tool_observer.py#L14) |
 | function | `recent_tool_failures` | `(*, session_id=…, kind=…, limit=…)` | Kun FEJLEDE tool-kald — debugging-indgang når en bruger melder en fejl ude af huset. | [src](../../../core/services/tool_observer.py#L44) |
 | function | `tool_call_summary` | `()` | Aggregeret overblik (MC/debug): antal kald pr. kind + fejlrate. Self-safe. | [src](../../../core/services/tool_observer.py#L57) |
-
-## `core/services/tool_outcome_memory.py`
-_Bridge tool execution outcomes into durable runtime action evidence._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_tool_outcome_memory` | `(*, tool_name, arguments, result, mode=…)` | Persist a tool outcome as runtime action evidence. | [src](../../../core/services/tool_outcome_memory.py#L7) |
-| function | `_summary_for_result` | `(tool_name, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L51) |
-| function | `classify_tool_family` | `(tool_name)` | — | [src](../../../core/services/tool_outcome_memory.py#L59) |
-| function | `_score_for_outcome` | `(*, status, family, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L74) |
-| function | `_preview_arguments` | `(arguments)` | — | [src](../../../core/services/tool_outcome_memory.py#L98) |
 

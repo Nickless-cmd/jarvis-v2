@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_pattern_learning.py`
+_Gate-mønster-læring — vane-bryder oven på gate-substratet (2026-07-13)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_hydrated` | `()` | Genindlæs den durable snapshot ÉN gang ved første brug (ikke ved import → tests offline-rene). | [src](../../../core/services/gate_pattern_learning.py#L40) |
+| function | `_normalize_detected` | `(text)` | Normalisér den detekterede substring til en vane-FORM: lowercase, whitespace-kollaps, | [src](../../../core/services/gate_pattern_learning.py#L56) |
+| function | `record_gate_pattern` | `(pattern, detected_text, *, session_id=…, now=…)` | Registrér én gate-fyring for (pattern, detected_text). Self-safe — kaster ALDRIG. | [src](../../../core/services/gate_pattern_learning.py#L67) |
+| function | `repeated_patterns` | `(threshold=…, now=…)` | Overflade vane-kandidaterne: mønstre med count ≥ threshold indenfor alders-vinduet. | [src](../../../core/services/gate_pattern_learning.py#L121) |
+| function | `_evict_oldest_locked` | `()` | Drop den ældste (mindst nyligt sete) nøgle. Kaldes under _LOCK. | [src](../../../core/services/gate_pattern_learning.py#L140) |
+| function | `_emit_repeat_nudge` | `(pattern, sample, count, *, n_sessions)` | Nudge-substratet: fortæl Centralen at et gate-mønster er blevet en VANE. Self-safe. | [src](../../../core/services/gate_pattern_learning.py#L149) |
+| function | `_persist_best_effort` | `(force=…)` | Bedste-indsats durabel snapshot til runtime_state (overlever genstart). Fire-and-forget, | [src](../../../core/services/gate_pattern_learning.py#L167) |
+| function | `hydrate` | `()` | Genindlæs durabel snapshot fra runtime_state ind i in-memory-store. Kaldes eksplicit | [src](../../../core/services/gate_pattern_learning.py#L195) |
+| function | `_reset` | `()` | Test-hook: ryd in-memory-store + durabel snapshot + hydrate-flag (ren slate, så | [src](../../../core/services/gate_pattern_learning.py#L227) |
+
 ## `core/services/gate_privacy.py`
 _Privacy-cluster gate 🔒 — cross-user-deling, GRADERET + fail-CLOSED._
 
@@ -560,16 +575,4 @@ _Hollow-promise guard (4. jul) — fang "lovede handling, kaldte intet værktøj
 | function | `is_deferred_text_promise` | `(text)` | True for a promise to emit another prose section after this run ends. | [src](../../../core/services/hollow_promise_guard.py#L168) |
 | function | `is_hollow_promise` | `(final_text, total_tool_calls, user_message=…, nudged_already=…, last_round_tool_calls=…)` | Tom løfte = lovede handling + NUL tool-kald i SIDSTE runde + ikke allerede nudget. | [src](../../../core/services/hollow_promise_guard.py#L179) |
 | function | `hollow_promise_guard_enabled` | `()` | Default TRUE (Bjørn bad om værnet 4. jul). Env `JARVIS_HOLLOW_PROMISE_GUARD` vinder; | [src](../../../core/services/hollow_promise_guard.py#L211) |
-
-## `core/services/hollow_promise_round.py`
-_Hollow-promise follow-through (redesign 2026-09-04)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `supports_forced_tool_choice` | `(provider)` | — | [src](../../../core/services/hollow_promise_round.py#L33) |
-| function | `next_round_tool_choice` | `(*, force_summary, hollow_force, provider)` | Sampling param for the next follow-up round. | [src](../../../core/services/hollow_promise_round.py#L37) |
-| function | `_publish` | `(kind, payload)` | — | [src](../../../core/services/hollow_promise_round.py#L50) |
-| function | `note_detected` | `(*, run_id, provider, model, round_index, session_id, forced)` | — | [src](../../../core/services/hollow_promise_round.py#L58) |
-| function | `note_outcome` | `(*, run_id, provider, model, round_index, session_id, forced, tool_calls)` | Persist the outcome of the round after a hollow promise. Returns resolved. | [src](../../../core/services/hollow_promise_round.py#L65) |
-| function | `hollow_promise_note` | `(model=…)` | Sætningen der siges højt når BEGGE tvungne forsøg gav nul værktøjskald. | [src](../../../core/services/hollow_promise_round.py#L83) |
 

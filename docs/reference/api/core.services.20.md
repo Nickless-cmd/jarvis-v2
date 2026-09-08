@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_authored_prompt_proposal_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_self_authored_prompt_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L29) |
+| function | `refresh_runtime_self_authored_prompt_proposal_statuses` | `()` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L51) |
+| function | `build_runtime_self_authored_prompt_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L82) |
+| function | `_extract_self_authored_prompt_proposals` | `()` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L111) |
+| function | `_persist_self_authored_prompt_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L188) |
+| function | `_build_prompt_snapshots` | `()` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L262) |
+| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L303) |
+| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L316) |
+| function | `_build_proposal_type` | `(*, item, snapshot)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L332) |
+| function | `_prompt_target_from_proposal_type` | `(proposal_type)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L351) |
+| function | `_build_proposed_nudge` | `(*, proposal_type)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L361) |
+| function | `_build_prompt_status` | `(*, influence_status, proposal_type)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L371) |
+| function | `_build_proposal_confidence` | `(*, proposal_type, influence_confidence)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L379) |
+| function | `_build_proposal_reason` | `(*, proposal_type, proposal_confidence)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L387) |
+| function | `_build_influence_anchor` | `(*, item, snapshot)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L397) |
+| function | `_build_status_reason` | `(*, proposal_type)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L411) |
+| function | `_hypothesis_type_from_snapshot` | `(*, snapshot)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L421) |
+| function | `_influence_target_from_summary` | `(summary)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L425) |
+| function | `_proposal_confidence_from_summary` | `(summary)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L436) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L445) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L450) |
+| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L455) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L460) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L465) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L470) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L479) |
+| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L489) |
+
 ## `core/services/self_compassion.py`
 _Self-Compassion & Resilience — counterweight to regret._
 
@@ -732,26 +764,4 @@ _core/services/shadow_experiment_registry.py_
 | function | `build_shadow_review_surface` | `(now_ts=…)` | Byg surface til Central-route/`jc shadows`. Seeder kendte shadows, | [src](../../../core/services/shadow_experiment_registry.py#L161) |
 | function | `_emit_reminder` | `(ripe_names)` | Passiv Central-påmindelse: observe `central_meta/shadow_review_due`. | [src](../../../core/services/shadow_experiment_registry.py#L182) |
 | function | `tick_shadow_review_reminder` | `(now_ts=…)` | Heartbeat-venlig tick: byg surface (som emit'er påmindelsen ved modenhed) | [src](../../../core/services/shadow_experiment_registry.py#L198) |
-
-## `core/services/shadow_scan_daemon.py`
-_Shadow Scan — my blindspots as visible signals._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L34) |
-| function | `_shadow_log_path` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L38) |
-| function | `_load` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L42) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/shadow_scan_daemon.py#L58) |
-| function | `_detect_apologize_then_repeat` | `()` | If conflict_memory has multiple similar pushback patterns. | [src](../../../core/services/shadow_scan_daemon.py#L72) |
-| function | `_detect_avoid_topic` | `()` | Pull from existing avoidance_detector. | [src](../../../core/services/shadow_scan_daemon.py#L101) |
-| function | `_detect_overclaim_then_retract` | `()` | Self-mutation followed by rollback within a short window. | [src](../../../core/services/shadow_scan_daemon.py#L122) |
-| function | `_detect_intent_behavior_gap` | `()` | Stale goals while related tools keep running. | [src](../../../core/services/shadow_scan_daemon.py#L146) |
-| function | `_run_all_detectors` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L175) |
-| function | `_append_shadow_log` | `(scan)` | — | [src](../../../core/services/shadow_scan_daemon.py#L195) |
-| function | `run_scan` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L230) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/shadow_scan_daemon.py#L260) |
-| function | `build_shadow_scan_surface` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L273) |
-| function | `_surface_summary` | `(last)` | — | [src](../../../core/services/shadow_scan_daemon.py#L287) |
-| function | `build_shadow_scan_prompt_section` | `()` | Surface strongest pattern if the last scan was within 48h. | [src](../../../core/services/shadow_scan_daemon.py#L297) |
-| function | `build_shadow_feedback_section` | `()` | Generate behavioral correction if shadow scan shows elevated avoidance. | [src](../../../core/services/shadow_scan_daemon.py#L321) |
 

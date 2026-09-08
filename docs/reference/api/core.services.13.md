@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/hollow_promise_round.py`
+_Hollow-promise follow-through (redesign 2026-09-04)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `supports_forced_tool_choice` | `(provider)` | — | [src](../../../core/services/hollow_promise_round.py#L33) |
+| function | `next_round_tool_choice` | `(*, force_summary, hollow_force, provider)` | Sampling param for the next follow-up round. | [src](../../../core/services/hollow_promise_round.py#L37) |
+| function | `_publish` | `(kind, payload)` | — | [src](../../../core/services/hollow_promise_round.py#L50) |
+| function | `note_detected` | `(*, run_id, provider, model, round_index, session_id, forced)` | — | [src](../../../core/services/hollow_promise_round.py#L58) |
+| function | `note_outcome` | `(*, run_id, provider, model, round_index, session_id, forced, tool_calls)` | Persist the outcome of the round after a hollow promise. Returns resolved. | [src](../../../core/services/hollow_promise_round.py#L65) |
+| function | `hollow_promise_note` | `(model=…)` | Sætningen der siges højt når BEGGE tvungne forsøg gav nul værktøjskald. | [src](../../../core/services/hollow_promise_round.py#L83) |
+
 ## `core/services/identity_canon.py`
 _Kanonisk identitets-narrativ-store — den strukturelle kur mod sonnet-spøgelset._
 
@@ -689,19 +701,4 @@ _Jobs Engine — proper async job queue with provider selection and cost trackin
 | function | `sweep_zombie_jobs` | `(stale_seconds=…)` | Mark 'running' jobs older than stale_seconds as error. | [src](../../../core/services/jobs_engine.py#L330) |
 | function | `list_jobs` | `(*, status=…, limit=…)` | — | [src](../../../core/services/jobs_engine.py#L375) |
 | function | `build_jobs_engine_surface` | `()` | — | [src](../../../core/services/jobs_engine.py#L382) |
-
-## `core/services/kerne_curator.py`
-_Kerne-kurator — holder USER.md `## Kerne` kort og levende (blok A, 2026-09-04)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_should_run` | `(last_run_iso, now)` | — | [src](../../../core/services/kerne_curator.py#L33) |
-| function | `_workspace_dir` | `()` | — | [src](../../../core/services/kerne_curator.py#L45) |
-| function | `promotion_candidates` | `(workspace_dir)` | Lært-linjer der er brugt tit nok til at høre hjemme i Kerne. | [src](../../../core/services/kerne_curator.py#L50) |
-| function | `demotion_candidates` | `(workspace_dir)` | De ældste Kerne-linjer der ligger ud over loftet (tomt når under). | [src](../../../core/services/kerne_curator.py#L70) |
-| function | `_move_line` | `(*, text, to_core)` | Flyt én linje mellem `## Kerne` og `## Lært` i USER.md. Atomisk. | [src](../../../core/services/kerne_curator.py#L79) |
-| function | `promote_to_kerne` | `(text)` | Flyt en Lært-linje op i Kerne (altid i prompten). | [src](../../../core/services/kerne_curator.py#L111) |
-| function | `demote_from_kerne` | `(text)` | Flyt en Kerne-linje ned i Lært (kun når den er relevant). | [src](../../../core/services/kerne_curator.py#L116) |
-| function | `build_proposal_text` | `(workspace_dir)` | Ugens ÉNE forslag — "" når Kerne er sund og intet er modnet. | [src](../../../core/services/kerne_curator.py#L121) |
-| function | `run_kerne_curator` | `(*, force=…, now=…)` | Ugentlig kuratering. Self-throttlende og self-safe — kaster aldrig. | [src](../../../core/services/kerne_curator.py#L145) |
 

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13911 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 13917 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -36,21 +36,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13911 functions/
 - [`core.services.07`](core.services.07.md) — `claim_scanner` … `contract_evolution`
 - [`core.services.08`](core.services.08.md) — `contradiction_engine` … `decision_enforcement`
 - [`core.services.09`](core.services.09.md) — `decision_evidence` … `dream_bias_engine`
-- [`core.services.10`](core.services.10.md) — `dream_carry_over` … `event_gate`
-- [`core.services.11`](core.services.11.md) — `event_trigger_shadow` … `gate_pattern_learning`
-- [`core.services.12`](core.services.12.md) — `gate_privacy` … `hollow_promise_round`
-- [`core.services.13`](core.services.13.md) — `identity_canon` … `kerne_curator`
-- [`core.services.14`](core.services.14.md) — `keyring_store` … `memory_recall_engine`
-- [`core.services.15`](core.services.15.md) — `memory_recall_telemetry` … `notification_bridge`
-- [`core.services.16`](core.services.16.md) — `notification_router` … `post_tool_answer_guard`
-- [`core.services.17`](core.services.17.md) — `precision_bias` … `provider_health_check`
-- [`core.services.18`](core.services.18.md) — `provider_retry_policy` … `role_registry`
-- [`core.services.19`](core.services.19.md) — `round_budget_notice` … `self_authored_prompt_proposal_tracking`
-- [`core.services.20`](core.services.20.md) — `self_compassion` … `shadow_scan_daemon`
-- [`core.services.21`](core.services.21.md) — `share_guard_store` … `stream_sentinel`
-- [`core.services.22`](core.services.22.md) — `structured_content_flag` … `tool_outcome_memory`
-- [`core.services.23`](core.services.23.md) — `tool_pattern_miner` … `visible_model`
-- [`core.services.24`](core.services.24.md) — `visible_model_adapters` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `dream_carry_over` … `error_healers`
+- [`core.services.11`](core.services.11.md) — `event_gate` … `gate_mutation`
+- [`core.services.12`](core.services.12.md) — `gate_pattern_learning` … `hollow_promise_guard`
+- [`core.services.13`](core.services.13.md) — `hollow_promise_round` … `jobs_engine`
+- [`core.services.14`](core.services.14.md) — `kerne_curator` … `memory_pruning_daemon`
+- [`core.services.15`](core.services.15.md) — `memory_recall_engine` … `notes_connector`
+- [`core.services.16`](core.services.16.md) — `notification_bridge` … `policy_abstraction`
+- [`core.services.17`](core.services.17.md) — `post_tool_answer_guard` … `provider_error_guard`
+- [`core.services.18`](core.services.18.md) — `provider_health_check` … `role_model_resolver`
+- [`core.services.19`](core.services.19.md) — `role_registry` … `selective_forgetting_candidate_tracking`
+- [`core.services.20`](core.services.20.md) — `self_authored_prompt_proposal_tracking` … `shadow_experiment_registry`
+- [`core.services.21`](core.services.21.md) — `shadow_scan_daemon` … `stream_failure_kind`
+- [`core.services.22`](core.services.22.md) — `stream_sentinel` … `tool_observer`
+- [`core.services.23`](core.services.23.md) — `tool_outcome_memory` … `visible_inner_life`
+- [`core.services.24`](core.services.24.md) — `visible_model` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

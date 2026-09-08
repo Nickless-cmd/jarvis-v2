@@ -247,6 +247,19 @@ _Dream Motif daemon — periodisk clustering af tankestrøm-fragmenter._
 | function | `_state` | `()` | — | [src](../../../core/services/dream_motif_daemon.py#L197) |
 | function | `_parse_iso` | `(s)` | — | [src](../../../core/services/dream_motif_daemon.py#L205) |
 
+## `core/services/dream_session_lessons.py`
+_Drømme-sessionerne skal blive til læring._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Afsnit` | `` | — | [src](../../../core/services/dream_session_lessons.py#L68) |
+| method | `Afsnit.signatur` | `(self)` | Første sætning, kortet ned — nok til at genkende det samme igen. | [src](../../../core/services/dream_session_lessons.py#L73) |
+| function | `_afsnit_fra` | `(sti)` | — | [src](../../../core/services/dream_session_lessons.py#L95) |
+| function | `laes_noter` | `(mappe=…, *, antal=…)` | Afsnit fra de nyeste drømme-noter, nyeste først. | [src](../../../core/services/dream_session_lessons.py#L112) |
+| function | `er_en_lektie` | `(a)` | Fejler lukket: uden en dom er svaret nej. | [src](../../../core/services/dream_session_lessons.py#L132) |
+| function | `gem` | `(a)` | Skriv lektien. Returnerer udfaldet fra ``upsert_lesson`` ('' ved fejl). | [src](../../../core/services/dream_session_lessons.py#L142) |
+| function | `koer_hoest` | `(*, mappe=…, antal=…)` | Læs de nyeste drømme-noter og gem det der er lektier. | [src](../../../core/services/dream_session_lessons.py#L162) |
+
 ## `core/services/dreaming_session.py`
 _D4 — Dreaming Session: dedicated full-model session during prolonged idle._
 
@@ -698,13 +711,4 @@ _HEALER-REGISTRET (Canonical Error System, Fase 1) — det eneste ægte NYE back
 | function | `heal_error` | `(kind, *, origin=…, run_id=…, detail=…, **ctx_extra)` | Dispatcher — slå healer op på `kind` og forsøg helbredelse. ALDRIG raise. | [src](../../../core/services/error_healers.py#L478) |
 | function | `build_healer_surface` | `()` | Læsbar tilstand til Mission Control: hvilke healers findes, deres mode/flag, og | [src](../../../core/services/error_healers.py#L523) |
 | function | `_reset_for_tests` | `()` | Nulstil bogholderi + gen-registrér defaults (til tests). Self-safe. | [src](../../../core/services/error_healers.py#L550) |
-
-## `core/services/event_gate.py`
-_Shared non-LLM event-gate for generative daemons (Fase 2 Lag 5/7)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `event_driven_enabled` | `()` | True when the event-driven-daemons mode is switched on in runtime-state. | [src](../../../core/services/event_gate.py#L31) |
-| function | `_resolve_min_delta` | `(default)` | Runtime-tunable threshold. Falls back to ``default`` when unset/broken. | [src](../../../core/services/event_gate.py#L44) |
-| function | `should_generative_fire` | `(daemon_name, signals, *, min_delta=…, now=…)` | Decide whether ``daemon_name``'s LLM should fire this tick. | [src](../../../core/services/event_gate.py#L58) |
 

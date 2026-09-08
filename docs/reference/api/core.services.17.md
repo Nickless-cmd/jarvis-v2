@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/post_tool_answer_guard.py`
+_Guards for tool turns that end in hollow final prose._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tool_call_count` | `(exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L13) |
+| function | `is_hollow_post_tool_answer` | `(answer_text, exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L17) |
+| function | `should_replace_with_synthesis` | `(current_text, candidate_text)` | — | [src](../../../core/services/post_tool_answer_guard.py#L26) |
+
 ## `core/services/precision_bias.py`
 _Precision Bias — emotional color-mapping for action style._
 
@@ -751,21 +760,4 @@ _Provider-fejl-vagt — fang "providerens fejlbesked blev til Jarvis' svar"._
 |---|---|---|---|---|
 | function | `looks_like_provider_error` | `(text)` | True hvis `text` ligner en udbyders fejlbesked frem for Jarvis' svar. | [src](../../../core/services/provider_error_guard.py#L72) |
 | function | `describe` | `(text)` | Kort, sikker beskrivelse til incident-beskeden. Lækker ikke hele teksten. | [src](../../../core/services/provider_error_guard.py#L96) |
-
-## `core/services/provider_health_check.py`
-_Provider health check — periodic ping to detect outages early._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ping_host` | `(url)` | HTTP GET with short timeout. Returns reachable=True/False + latency_ms. | [src](../../../core/services/provider_health_check.py#L48) |
-| function | `health_check_all_providers` | `()` | Ping every cheap-lane provider once. Returns per-provider status. | [src](../../../core/services/provider_health_check.py#L66) |
-| function | `_cheap_dry_providers` | `()` | Providers i cheap-lane-cooldown (tør/quota-blokeret) — fra runtime-state. Self-safe. | [src](../../../core/services/provider_health_check.py#L115) |
-| function | `_model_drift` | `()` | Model-drift: en provider der FØR havde modeller men nu har 0 (model udfaset/omdøbt — den | [src](../../../core/services/provider_health_check.py#L135) |
-| function | `_spread_load_proactively` | `(reports, unreachable)` | Daemon-load-spredning (Jarvis-spec): sæt PROAKTIVT en kort cooldown på nede providers, så | [src](../../../core/services/provider_health_check.py#L170) |
-| function | `observe_and_flag` | `()` | Kadence-entry (Jarvis-spec 2026-06-23): ping + model-drift + cheap-dry → observe + FLAG | [src](../../../core/services/provider_health_check.py#L211) |
-| function | `build_provider_health_surface` | `()` | Read-only provider-helbreds-surface til Jarvis Mind / terminal: ÉT kald → ping + tør + | [src](../../../core/services/provider_health_check.py#L260) |
-| function | `latest_health_snapshot` | `()` | Read most-recent stored snapshot. | [src](../../../core/services/provider_health_check.py#L283) |
-| function | `health_section` | `()` | Awareness section listing currently unreachable providers. | [src](../../../core/services/provider_health_check.py#L295) |
-| function | `_exec_run_health_check` | `(args)` | — | [src](../../../core/services/provider_health_check.py#L315) |
-| function | `_exec_get_health_snapshot` | `(args)` | — | [src](../../../core/services/provider_health_check.py#L319) |
 

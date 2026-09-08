@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/role_registry.py`
+_Role registry — runtime-extensible agent roles._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_custom_roles` | `()` | — | [src](../../../core/services/role_registry.py#L33) |
+| function | `_builtin_roles` | `()` | — | [src](../../../core/services/role_registry.py#L47) |
+| function | `list_all_roles` | `()` | Return merged dict of role_name → template (builtin + custom). | [src](../../../core/services/role_registry.py#L55) |
+| function | `get_role` | `(name)` | Look up a single role by name (custom > built-in). | [src](../../../core/services/role_registry.py#L73) |
+| function | `register_custom_role` | `(*, role, title, system_prompt, default_tool_policy=…, extends=…, tags=…)` | Persist a new custom role to disk. Idempotent on (role) name. | [src](../../../core/services/role_registry.py#L79) |
+| function | `_exec_list_roles` | `(args)` | — | [src](../../../core/services/role_registry.py#L119) |
+| function | `_exec_register_custom_role` | `(args)` | — | [src](../../../core/services/role_registry.py#L138) |
+
 ## `core/services/round_budget_notice.py`
 _Fortael ham hvor mange runder han har tilbage, foer doeren smaekker._
 
@@ -736,36 +749,4 @@ _Selective Consolidation Daemon — D1._
 | function | `_find_support_value` | `(support_summary, key, default)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L535) |
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L546) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L560) |
-
-## `core/services/self_authored_prompt_proposal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_self_authored_prompt_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L29) |
-| function | `refresh_runtime_self_authored_prompt_proposal_statuses` | `()` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L51) |
-| function | `build_runtime_self_authored_prompt_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L82) |
-| function | `_extract_self_authored_prompt_proposals` | `()` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L111) |
-| function | `_persist_self_authored_prompt_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L188) |
-| function | `_build_prompt_snapshots` | `()` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L262) |
-| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L303) |
-| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L316) |
-| function | `_build_proposal_type` | `(*, item, snapshot)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L332) |
-| function | `_prompt_target_from_proposal_type` | `(proposal_type)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L351) |
-| function | `_build_proposed_nudge` | `(*, proposal_type)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L361) |
-| function | `_build_prompt_status` | `(*, influence_status, proposal_type)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L371) |
-| function | `_build_proposal_confidence` | `(*, proposal_type, influence_confidence)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L379) |
-| function | `_build_proposal_reason` | `(*, proposal_type, proposal_confidence)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L387) |
-| function | `_build_influence_anchor` | `(*, item, snapshot)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L397) |
-| function | `_build_status_reason` | `(*, proposal_type)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L411) |
-| function | `_hypothesis_type_from_snapshot` | `(*, snapshot)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L421) |
-| function | `_influence_target_from_summary` | `(summary)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L425) |
-| function | `_proposal_confidence_from_summary` | `(summary)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L436) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L445) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L450) |
-| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L455) |
-| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L460) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L465) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L470) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L479) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L489) |
 

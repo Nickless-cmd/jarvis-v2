@@ -36,3 +36,19 @@ def test_produceren_rapporterer_hans_efterlevelse():
     """Tallet skal med ud, ellers kan man ikke se hvor tæt han er på at
     fortjene nøglen uden at slå i databasen."""
     assert "adfaerd" in inspect.getsource(C)
+
+
+def test_droemme_dommeren_er_registreret():
+    """Uden koblingen ville dommeren være endnu et modul der er bygget og
+    aldrig kaldt — det hyppigste mønster i dette hus."""
+    src = inspect.getsource(C)
+    assert 'name="dream_hypothesis_judge"' in src
+    assert "koer_dommer" in src
+
+
+def test_dommeren_koerer_én_gang_i_doegnet():
+    """Kandidaterne skrives af drømme-sessionerne (3-4 om dagen). En dom pr.
+    time ville bare stille samme spørgsmål til den samme markdown igen."""
+    src = inspect.getsource(C)
+    i = src.index('name="dream_hypothesis_judge"')
+    assert "cooldown_minutes=24 * 60" in src[i:i + 400]

@@ -127,6 +127,23 @@ def register_core_producers(register_producer: Callable[[ProducerSpec], None]) -
                 "expired": ex.get("expired", 0),
                 "adfaerd": (ad.get("track") or {}).get("snit")}
 
+    # Dommer over droemme-hypoteser: hvad skal videre fra droemme-stadiet?
+    # Én gang i doegnet — kandidaterne skrives af droemme-sessionerne (3-4 om
+    # dagen), og en dom pr. time ville bare stille samme spoergsmaal til den
+    # samme markdown igen.
+    def _run_dream_hypothesis_judge(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.dream_hypothesis_judge import koer_dommer
+        r = koer_dommer()
+        return {"forfremmede": len(r.get("forfremmede") or []), **(r.get("tal") or {})}
+
+    register_producer(ProducerSpec(
+        name="dream_hypothesis_judge",
+        cooldown_minutes=24 * 60,
+        visible_grace_minutes=0,
+        run_fn=_run_dream_hypothesis_judge,
+        priority=6,
+    ))
+
     register_producer(ProducerSpec(
         name="keymaker",
         cooldown_minutes=30,

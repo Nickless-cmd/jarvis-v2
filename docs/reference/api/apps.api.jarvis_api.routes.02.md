@@ -38,8 +38,9 @@ _JarvisX bearer-token issuance + verification route group._
 | class | `_IssueTokenPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L27) |
 | class | `_RefreshTokenPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L33) |
 | function | `refresh_auth_token` | `(payload)` | Veksl en refresh-token til et nyt access+refresh-par (§22.6). PUBLIC — | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L39) |
-| function | `issue_auth_token` | `(payload)` | Mint a signed bearer token for a user. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L51) |
-| function | `whoami_token` | `(authorization=…)` | Inspect the bearer token attached to this request. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L72) |
+| function | `renew_auth_token` | `(authorization=…)` | Veksl DET MEDSENDTE bearer-token til et friskt et. PUBLIC. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L51) |
+| function | `issue_auth_token` | `(payload)` | Mint a signed bearer token for a user. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L80) |
+| function | `whoami_token` | `(authorization=…)` | Inspect the bearer token attached to this request. | [src](../../../apps/api/jarvis_api/routes/jarvisx_authtokens.py#L101) |
 
 ## `apps/api/jarvis_api/routes/jarvisx_bridge.py`
 _WebSocket endpoint for JarvisX tool-bridge._

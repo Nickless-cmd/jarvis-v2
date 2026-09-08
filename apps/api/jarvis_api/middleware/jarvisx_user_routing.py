@@ -78,6 +78,10 @@ AUTH_HEADER = "authorization"
 _PUBLIC_PATHS = (
     "/health",
     "/api/auth/refresh",       # §22.6: refresh udløbet access-token (bærer egen refresh-token)
+    # Fornyelse SKAL være public: hele pointen er at et udløbet token kan
+    # veksles. Kræver den auth, kan netop den klient der har brug for den ikke
+    # nå den. Ruten verificerer selv signaturen (core.runtime.token_renewal).
+    "/api/auth/renew",
     "/api/auth/whoami-token",  # let clients self-check token validity
     "/api/auth/register",      # selvregistrering (spec 2026-06-15 §5) — public
     "/api/auth/verify-email",  # email-verifikations-link — public
@@ -176,6 +180,11 @@ async def jarvisx_user_routing_middleware(
                 content={
                     "detail": "authentication required",
                     "error": grund,
+                    # Sig hvad klienten kan GØRE ved det. Et udloebet token er
+                    # det eneste tilfaelde der har en vej tilbage uden ejeren:
+                    # POST /api/auth/renew med det samme token. En forkert
+                    # signatur har det ikke — der er intet at forny.
+                    "can_renew": grund == "token expired",
                 },
             )
 

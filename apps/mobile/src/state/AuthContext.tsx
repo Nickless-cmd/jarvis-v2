@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { AppState } from 'react-native'
 import { clearAuthConfig, loadAuthConfig, normalizeApiBaseUrl, saveAuthConfig } from '../lib/authStore'
+import { fornyOmNoedvendigt } from '../lib/tokenRenewal'
 import { DEFAULT_API_BASE_URL, type ApiConfig } from '../lib/types'
 
 interface AuthContextValue {
@@ -35,10 +37,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Forny tokenet ved opstart. Mikkels telefon hamrede 927 gange på seks
+    // timer med et udløbet token og havde ingen vej tilbage; nu har den én.
+    // fornyOmNoedvendigt rører kun serveren når det faktisk trænger, og
+    // returnerer den gamle config uændret hvis noget går galt.
     loadAuthConfig()
+      .then((c) => (c ? fornyOmNoedvendigt(c, saveAuthConfig) : null))
       .then(setConfig)
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    // Og igen når appen kommer i forgrunden. Android holder appen i live i
+    // dagevis, så opstart alene ville aldrig køre igen på en telefon der bare
+    // bliver skiftet væk fra og tilbage til.
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s !== 'active' || !config) return
+      void fornyOmNoedvendigt(config, saveAuthConfig).then((next) => {
+        if (next.authToken !== config.authToken) setConfig(next)
+      })
+    })
+    return () => sub.remove()
+  }, [config])
 
   const value = useMemo<AuthContextValue>(
     () => ({

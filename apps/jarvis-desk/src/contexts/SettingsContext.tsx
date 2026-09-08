@@ -1,4 +1,5 @@
 import { createContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { fornyOmNoedvendigt } from '../lib/tokenRenewal'
 import { whoami, type WhoAmI } from '../lib/api'
 
 export interface AppSettings {
@@ -86,6 +87,24 @@ export function SettingsProvider({
       })
     }
   }
+
+  // Forny tokenet i god tid. Tokens har fast udløb, og indtil nu var eneste
+  // kur at minte et nyt i hånden — det var dét der låste Mikkels telefon ude
+  // (927 × 401 paa seks timer med grunden `token expired`).
+  //
+  // fornyOmNoedvendigt rører kun serveren når der er under en tredjedel af
+  // levetiden tilbage, og returnerer den gamle config uændret hvis noget går
+  // galt. Derfor er der ingen fejlsti at håndtere her.
+  useEffect(() => {
+    if (!settings?.authToken || !settings.apiBaseUrl) return
+    void fornyOmNoedvendigt(
+      { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken },
+      async (c) => { await update({ authToken: c.authToken }) },
+    )
+    // `update` udelades bevidst: den gendannes hver render og ville gøre
+    // effekten til en løkke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.apiBaseUrl, settings?.authToken])
 
   const value = useMemo<SettingsContextValue>(
     () => ({ settings, auth, isConfigured, update }),

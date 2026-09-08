@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-07 from app.routes (live) — 542 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-08 from app.routes (live) — 543 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -37,6 +37,7 @@
 | GET | `/api/auth/pair/status` |  | auth |
 | POST | `/api/auth/refresh` | dict | jarvisx_authtokens |
 | POST | `/api/auth/register` |  | auth |
+| POST | `/api/auth/renew` | dict | jarvisx_authtokens |
 | GET | `/api/auth/verify-email` |  | auth |
 | GET | `/api/auth/whoami-token` | dict | jarvisx_authtokens |
 | GET | `/api/channels/state` | dict | jarvisx_channels |

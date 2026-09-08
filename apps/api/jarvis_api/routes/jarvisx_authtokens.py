@@ -47,6 +47,35 @@ def refresh_auth_token(payload: _RefreshTokenPayload) -> dict[str, Any]:
     return res
 
 
+@router.post("/auth/renew")
+def renew_auth_token(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    """Veksl DET MEDSENDTE bearer-token til et friskt et. PUBLIC.
+
+    Klienten sender bare sit nuværende token — også hvis det er udløbet. Det er
+    hele pointen: Mikkels telefon fik 927 × 401 med `token expired` og havde
+    ingen vej tilbage uden at Bjørn bar et nyt token over i hånden.
+
+    Der findes en ældre refresh-token-vej (`/auth/refresh`, §22.6). Den er
+    aldrig blevet brugt af nogen klient, fordi `/auth/issue` aldrig har udstedt
+    en refresh-token at bruge den med. Denne rute arbejder på det token-format
+    der FAKTISK ligger på enhederne.
+
+    Fornyelse giver aldrig mere end tokenet havde — se
+    `core.runtime.token_renewal` for reglerne.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="no Authorization header")
+    from core.runtime.token_renewal import renew
+    res = renew(authorization)
+    if not res.get("ok"):
+        raise HTTPException(status_code=401, detail=res.get("reason", "cannot renew"))
+    return {
+        "token": res["token"],
+        "expires_at": res["expires_at"],
+        "role": res["role"],
+    }
+
+
 @router.post("/auth/issue")
 def issue_auth_token(payload: _IssueTokenPayload) -> dict[str, Any]:
     """Mint a signed bearer token for a user. Owner-only.

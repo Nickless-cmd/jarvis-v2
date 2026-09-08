@@ -54,13 +54,33 @@ def test_oauth_request_maps_gmail_to_google(monkeypatch):
     assert cx.oauth_request_for("browser") is None
 
 
+def _google_token(monkeypatch, scope: str):
+    """Token gemt under provider 'google' — connectoren hedder 'gmail'."""
+    monkeypatch.setattr(cx, "has_token", lambda uid, pid: pid == "google")
+    monkeypatch.setattr(cx, "get_token", lambda uid, pid: {"scope": scope})
+
+
 def test_gmail_connected_uses_google_token(monkeypatch):
     _patch_state(monkeypatch)
     # token gemt under provider 'google' (ikke 'gmail') → gmail viser connected.
-    monkeypatch.setattr(cx, "has_token", lambda uid, pid: pid == "google")
+    _patch = next(c for c in cx._CATALOG if c["id"] == "gmail")
+    _google_token(monkeypatch, " ".join(_patch.get("oauth_scopes") or []))
     items = cx.list_for_user("alice")
     gmail = next(i for i in items if i["id"] == "gmail")
     assert gmail["status"] == "available" and gmail["connected"] is True
+
+
+def test_en_google_token_UDEN_kalender_scope_forbinder_ikke_kalenderen(monkeypatch):
+    """Syv connectors deler tre udbydere. Før 8/9-2026 gjorde én gmail-token
+    alle fem andre Google-apps «forbundne» — og så viste Marketplace ingen
+    «Forbind»-knap, så de kunne heller ikke gen-godkendes."""
+    _patch_state(monkeypatch)
+    gmail = next(c for c in cx._CATALOG if c["id"] == "gmail")
+    _google_token(monkeypatch, " ".join(gmail.get("oauth_scopes") or []))
+    items = {i["id"]: i for i in cx.list_for_user("alice")}
+    assert items["gmail"]["connected"] is True
+    assert items["google-calendar"]["connected"] is False
+    assert items["google-drive"]["connected"] is False
 
 
 def test_set_enabled_roundtrip(monkeypatch):

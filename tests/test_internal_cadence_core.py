@@ -52,3 +52,9 @@ def test_dommeren_koerer_én_gang_i_doegnet():
     src = inspect.getsource(C)
     i = src.index('name="dream_hypothesis_judge"')
     assert "cooldown_minutes=24 * 60" in src[i:i + 400]
+
+
+def test_droemme_hoesten_er_registreret():
+    src = inspect.getsource(C)
+    assert 'name="dream_session_lessons"' in src
+    assert "koer_hoest" in src

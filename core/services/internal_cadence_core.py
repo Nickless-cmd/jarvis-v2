@@ -136,6 +136,21 @@ def register_core_producers(register_producer: Callable[[ProducerSpec], None]) -
         r = koer_dommer()
         return {"forfremmede": len(r.get("forfremmede") or []), **(r.get("tal") or {})}
 
+    # Droemme-sessionerne skal blive til laering (Bjoern 8/9). Én gang i
+    # doegnet: noterne skrives 3-4 gange dagligt, og de samme afsnit ville
+    # ellers blive doemt igen og igen.
+    def _run_dream_session_lessons(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.dream_session_lessons import koer_hoest
+        return dict(koer_hoest().get("tal") or {})
+
+    register_producer(ProducerSpec(
+        name="dream_session_lessons",
+        cooldown_minutes=24 * 60,
+        visible_grace_minutes=0,
+        run_fn=_run_dream_session_lessons,
+        priority=6,
+    ))
+
     register_producer(ProducerSpec(
         name="dream_hypothesis_judge",
         cooldown_minutes=24 * 60,

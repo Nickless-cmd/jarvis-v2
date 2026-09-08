@@ -234,3 +234,37 @@ describe('session-listen opdaterer af sig selv', () => {
     expect(spy.mock.calls.length).toBeGreaterThan(foer)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Sidst-valgte samtale skal overleve en genstart (8/9-2026)
+//
+// Bjørn: «appen glemmer hvilken session man var på efter genstart og det er
+// rimelig træls». Id'et blev SKREVET til localStorage — der var bare aldrig
+// nogen der læste det. Det vender samtidig en beslutning fra 17. juni om altid
+// at lande på greeting-skærmen.
+// ---------------------------------------------------------------------------
+
+describe('gendan sidst-valgte samtale', () => {
+  it('åbner den samtale man var på', async () => {
+    localStorage.setItem('jarvis-desk:activeSession', 's1')
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(result.current.activeId).toBe('s1'))
+    localStorage.clear()
+  })
+
+  it('genopliver IKKE en slettet samtale — og glemmer den', async () => {
+    // Ellers ville et dødt id hente 404 ved hver eneste opstart, for evigt.
+    localStorage.setItem('jarvis-desk:activeSession', 's-findes-ikke')
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(result.current.sessions.length).toBe(1))
+    expect(result.current.activeId).toBeNull()
+    expect(localStorage.getItem('jarvis-desk:activeSession')).toBeNull()
+  })
+
+  it('lander på greeting når der intet er gemt', async () => {
+    localStorage.clear()
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(result.current.sessions.length).toBe(1))
+    expect(result.current.activeId).toBeNull()
+  })
+})

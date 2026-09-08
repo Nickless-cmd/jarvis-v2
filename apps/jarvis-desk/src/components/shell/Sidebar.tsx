@@ -91,24 +91,28 @@ export function Sidebar({
           active={(['chat', 'cowork', 'code'] as const).includes(surface as Mode) ? (surface as Mode) : 'chat'}
           onChange={(m) => onSurface(m)}
         />
-        <button
-          type="button"
-          className="icon-btn"
-          title="Søg (Ctrl+K)"
-          aria-label="Søg (Ctrl+K)"
-          onClick={() => onSearch?.()}
-        >
-          <Search size={15} />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          title="Aktivitet — hvad der foregår lige nu"
-          aria-label="Aktivitet"
-          onClick={() => { onSurface('cowork'); emitZone('mc') }}
-        >
-          <Activity size={15} />
-        </button>
+        {/* Egen gruppe i hoejre side: mode-vaelgeren siger HVOR man er,
+            ikonerne er ting man GOER. To slags, hver sin ende. */}
+        <div className="sidebar-top-actions">
+          <button
+            type="button"
+            className="icon-btn"
+            title="Søg (Ctrl+K)"
+            aria-label="Søg (Ctrl+K)"
+            onClick={() => onSearch?.()}
+          >
+            <Search size={15} />
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            title="Aktivitet — hvad der foregår lige nu"
+            aria-label="Aktivitet"
+            onClick={() => { onSurface('cowork'); emitZone('mc') }}
+          >
+            <Activity size={15} />
+          </button>
+        </div>
       </div>
 
       {surface === 'cowork' ? (

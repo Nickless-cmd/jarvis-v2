@@ -199,7 +199,9 @@
   display: flex; align-items: center; gap: 6px;
   padding: 5px 6px; border-radius: var(--radius-sm, 6px);
   background: none; border: 0;
-  color: var(--fg-1); font-family: inherit; font-size: 13px;
+  /* En anelse stoerre end panelets raekker (13px): det er den eneste etiket
+     i toppen, og den skal kunne findes uden at lede. */
+  color: var(--fg-1); font-family: inherit; font-size: 14.5px;
   cursor: pointer; text-align: left;
 }
 .mode-dd-btn:hover { background: var(--bg-2); }
@@ -222,6 +224,7 @@
 }
 .mode-dd-item:hover { background: var(--bg-3); color: var(--fg-1); }
 .mode-dd-item.active { color: var(--fg-1); }
+.sidebar-top-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }
 .sidebar-top .icon-btn { flex: none; }
 
 .sidebar-label {

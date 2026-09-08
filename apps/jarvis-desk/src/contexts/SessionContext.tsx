@@ -52,13 +52,36 @@ export function SessionProvider({
   // re-kalder select for en session vi allerede har — fx en netop oprettet.
   const loadedRef = useRef<string | null>(null)
 
-  // Init: hent KUN session-listen (til sidebar). Gendan IKKE sidst-valgte samtale
-  // — appen lander altid på greeting-skærmen ved opstart/genstart (Bjørn 17. jun:
-  // "det ser mere seriøst ud man starter på greetings screen"). De gamle samtaler
-  // er stadig tilgængelige ved at klikke dem i sidebaren.
+  // Init: hent session-listen (til sidebar).
   useEffect(() => {
     void loadSessions()
   }, [loadSessions])
+
+  // Gendan sidst-valgte samtale ved opstart (Bjørn 8/9-2026: «appen glemmer
+  // hvilken session man var på efter genstart og det er rimelig træls»).
+  //
+  // Det VENDER en tidligere beslutning: 17. juni landede appen med vilje altid
+  // på greeting-skærmen («det ser mere seriøst ud»). Id'et er blevet SKREVET til
+  // localStorage lige siden — der har bare aldrig været nogen der læste det.
+  //
+  // Kun hvis samtalen stadig findes i listen. Ellers ville en slettet session
+  // genopstå ved hver opstart og hente 404 i det uendelige.
+  const gendannetRef = useRef(false)
+  useEffect(() => {
+    if (gendannetRef.current || sessions.length === 0) return
+    gendannetRef.current = true
+    let gemt: string | null = null
+    try { gemt = localStorage.getItem('jarvis-desk:activeSession') } catch { /* ignore */ }
+    if (!gemt) return
+    if (!sessions.some((s) => s.id === gemt)) {
+      try { localStorage.removeItem('jarvis-desk:activeSession') } catch { /* ignore */ }
+      return
+    }
+    select(gemt)
+    // `select` udelades: den gendannes ved hver config-ændring og ville koere
+    // gendannelsen igen. `gendannetRef` gør den til en engangs-handling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions])
 
   // Session-listen skal opdatere UDEN at man skifter flade (Bjørn 8/9-2026:
   // «jeg skal trykke over på cowork og tilbage før den opdatere»). Den blev

@@ -29,7 +29,10 @@ from __future__ import annotations
 
 import core.runtime.db_core as dbc
 from core.services import oauth_flow, oauth_store
-from core.services.oauth_store import get_fresh_token, has_token
+from core.services.oauth_store import get_fresh_token, get_token, has_token
+import logging
+
+logger = logging.getLogger(__name__)
 
 _ENABLED_KEY = "connector_enabled"
 
@@ -205,9 +208,41 @@ def _provider_of(c: dict) -> str:
 
 
 def _connected(user_id: str, c: dict) -> bool:
+    """Er DENNE connector brugbar — ikke bare: findes der en token hos udbyderen.
+
+    Foer 8/9-2026 spurgte den kun `has_token(uid, provider)`. Men flere
+    connectors deler én udbyder: gmail, kalender, drive, docs, sheets og slides
+    hentes alle fra Google. En token udstedt til gmail fik derfor de fem andre
+    til at staa som FORBUNDNE — og fordi de saa forbundne ud, viste Marketplace
+    ingen «Forbind»-knap, og Bjoern kunne ikke selv give dem adgang. Maalt hos
+    ham: token'ens scope var «gmail.send gmail.readonly», og alle fem andre
+    manglede hver eneste af deres egne scopes.
+
+    Nu skal token'en OGSAA baere de scopes connectoren kraever. Google
+    fletter scopes ved gen-godkendelse (`include_granted_scopes=true`), saa en
+    re-auth af kalenderen tager ikke gmail med i faldet.
+
+    Connectors uden erklaerede scopes (fx github) doemmes som foer paa
+    tilstedevaerelse alene.
+    """
     if c["kind"] == "local":
         return True
-    return bool(has_token(user_id, _provider_of(c)))
+    prov = _provider_of(c)
+    if not has_token(user_id, prov):
+        return False
+    kraevet = {str(s) for s in (c.get("oauth_scopes") or ()) if s}
+    if not kraevet:
+        return True
+    try:
+        token = get_token(user_id, prov) or {}
+        givet = {s for s in str(token.get("scope") or "").split() if s}
+    except Exception:
+        # Fail-open, men ALDRIG tavst: en connector der fremstaar forbundet uden
+        # at vaere det er praecis den fejl dette tjek findes for.
+        logger.warning("connectors: kunne ikke laese scope for %s — doemmer som "
+                       "forbundet paa token-tilstedevaerelse alene", prov, exc_info=True)
+        return True
+    return kraevet.issubset(givet)
 
 
 def oauth_request_for(connector_id: str) -> tuple[str, list[str]] | None:

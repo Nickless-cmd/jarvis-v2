@@ -569,15 +569,15 @@ _Connector-registret — hvad brugeren har forbundet, og hvad det laaser op._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_enabled_store` | `()` | — | [src](../../../core/services/connectors.py#L174) |
-| function | `is_enabled` | `(user_id, connector_id)` | Default ON; kun False hvis brugeren eksplicit har slået den fra. | [src](../../../core/services/connectors.py#L179) |
-| function | `set_enabled` | `(user_id, connector_id, enabled)` | — | [src](../../../core/services/connectors.py#L188) |
-| function | `_provider_of` | `(c)` | OAuth-provider for en connector. Google-pakken deler provider='google'. | [src](../../../core/services/connectors.py#L202) |
-| function | `_connected` | `(user_id, c)` | — | [src](../../../core/services/connectors.py#L207) |
-| function | `oauth_request_for` | `(connector_id)` | Map et connector-id → (oauth_provider, scopes) til /api/oauth/{id}/start. | [src](../../../core/services/connectors.py#L213) |
-| function | `list_for_user` | `(user_id)` | Hele kataloget beriget med per-bruger `connected` + `enabled`. | [src](../../../core/services/connectors.py#L225) |
-| function | `_audit` | `(event, user_id, connector_id)` | — | [src](../../../core/services/connectors.py#L248) |
-| function | `delete_for_user` | `(user_id, connector_id)` | Afbryd & slet: revoke hos provider (best-effort) + lokal token-wipe + ryd flag. | [src](../../../core/services/connectors.py#L256) |
+| function | `_enabled_store` | `()` | — | [src](../../../core/services/connectors.py#L177) |
+| function | `is_enabled` | `(user_id, connector_id)` | Default ON; kun False hvis brugeren eksplicit har slået den fra. | [src](../../../core/services/connectors.py#L182) |
+| function | `set_enabled` | `(user_id, connector_id, enabled)` | — | [src](../../../core/services/connectors.py#L191) |
+| function | `_provider_of` | `(c)` | OAuth-provider for en connector. Google-pakken deler provider='google'. | [src](../../../core/services/connectors.py#L205) |
+| function | `_connected` | `(user_id, c)` | Er DENNE connector brugbar — ikke bare: findes der en token hos udbyderen. | [src](../../../core/services/connectors.py#L210) |
+| function | `oauth_request_for` | `(connector_id)` | Map et connector-id → (oauth_provider, scopes) til /api/oauth/{id}/start. | [src](../../../core/services/connectors.py#L248) |
+| function | `list_for_user` | `(user_id)` | Hele kataloget beriget med per-bruger `connected` + `enabled`. | [src](../../../core/services/connectors.py#L260) |
+| function | `_audit` | `(event, user_id, connector_id)` | — | [src](../../../core/services/connectors.py#L283) |
+| function | `delete_for_user` | `(user_id, connector_id)` | Afbryd & slet: revoke hos provider (best-effort) + lokal token-wipe + ryd flag. | [src](../../../core/services/connectors.py#L291) |
 
 ## `core/services/consent_registry.py`
 _Consent Registry — user preferences and boundaries that persist across sessions._

@@ -355,10 +355,10 @@ _In-memory device-presence pr. bruger. Efemær — genopbygges af klient-pings._
 | class | `RankedDevice` | `` | — | [src](../../../core/services/device_presence.py#L138) |
 | function | `_recency_weight` | `(now, last_interaction_at)` | — | [src](../../../core/services/device_presence.py#L145) |
 | function | `rank` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L152) |
-| function | `prune` | `(user_id=…)` | — | [src](../../../core/services/device_presence.py#L215) |
-| function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L228) |
-| function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L252) |
-| function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L272) |
+| function | `prune` | `(user_id=…)` | — | [src](../../../core/services/device_presence.py#L222) |
+| function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L235) |
+| function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L259) |
+| function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L279) |
 
 ## `core/services/device_tokens.py`
 _Per-bruger FCM device-tokens. Egen tabel — rører ikke db.py's 33k linjer._

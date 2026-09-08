@@ -186,3 +186,48 @@ def test_rank_does_not_duplicate_token_with_active_ping(monkeypatch):
     ranked = dp.rank("bjorn")
     assert len(ranked) == 1
     assert ranked[0].score >= dp._FOREGROUND_BONUS
+
+
+# ── forældede enheder skal forsvinde af sig selv ─────────────────────────
+
+def test_prune_kaldes_naar_der_rangeres(monkeypatch):
+    """`prune()` fandtes med NUL kaldere. En enhed der holdt op med at pinge blev
+    liggende til processen genstartede — Bjørns liste stod på fem poster for tre
+    enheder, fordi hver geninstallation af appen laver et nyt device_id."""
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    dp.record_ping("u1", "telefon-gammel", "mobile", foreground=False, awake=True,
+                   network="home", interaction=True)
+    box["t"] = 1000.0 + dp._PRESENCE_TTL_S + 10
+    dp.record_ping("u1", "telefon-frisk", "mobile", foreground=False, awake=True,
+                   network="home", interaction=True)
+
+    noegler = {r.device_key for r in dp.rank("u1")}
+    assert "telefon-frisk" in noegler
+    assert "telefon-gammel" not in noegler
+    with dp._lock:
+        assert "telefon-gammel" not in dp._PRESENCE.get("u1", {})
+
+
+def test_debug_viser_ikke_enheder_der_er_vaek(monkeypatch):
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    dp.record_ping("u1", "vaek", "mobile", foreground=False, awake=True,
+                   network="home", interaction=True)
+    box["t"] = 1000.0 + dp._PRESENCE_TTL_S + 10
+    assert dp.debug_snapshot("u1")["devices"] == []
+
+
+def test_prune_i_rank_giver_ikke_deadlock():
+    """_lock er ikke genindtrædende: kaldes prune INDE i `with _lock` hænger
+    processen for evigt. Derfor står kaldet uden for låsen — og derfor måles det."""
+    import threading
+    dp.reset()
+    dp.record_ping("u1", "d1", "mobile", foreground=False, awake=True,
+                   network="home", interaction=True)
+    faerdig = threading.Event()
+    threading.Thread(target=lambda: (dp.rank("u1"), dp.debug_snapshot("u1"), faerdig.set()),
+                     daemon=True).start()
+    assert faerdig.wait(timeout=5), "rank/debug_snapshot hang — deadlock paa _lock"

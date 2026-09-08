@@ -151,6 +151,13 @@ def _recency_weight(now: float, last_interaction_at: float) -> float:
 
 def rank(user_id: str) -> list[RankedDevice]:
     uid = (user_id or "").strip()
+    # Ryd forældede poster FØR vi rangerer. `prune()` har eksisteret hele tiden
+    # med nul kaldere (målt 8/9-2026), så en enhed der holdt op med at pinge blev
+    # liggende til processen genstartede: Bjørns liste stod på fem poster for tre
+    # enheder, fordi hver geninstallation laver et nyt device_id. Enhederne er
+    # ikke tabt — de registrerede FCM-tokens nedenfor er stadig nåbare.
+    # Uden for låsen: `prune` tager den selv, og _lock er ikke genindtrædende.
+    prune(uid)
     now = _now()
     out: list[RankedDevice] = []
     with _lock:
@@ -272,6 +279,7 @@ def location_for(user_id: str) -> dict | None:
 def debug_snapshot(user_id: str) -> dict:
     """Diagnostik: live presence-tilstande + rank-resultat for én bruger."""
     uid = (user_id or "").strip()
+    prune(uid)          # samme grund som i rank() — vis ikke enheder der er væk
     now = _now()
     with _lock:
         devices = [

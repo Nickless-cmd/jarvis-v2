@@ -42,6 +42,29 @@ from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
+# 401-grunde: hvornaar samme (grund, klient) sidst blev logget.
+_AFVIS_SIDST: dict[tuple[str, str], float] = {}
+_AFVIS_STILHED_S = 60.0
+
+
+def _log_auth_afvisning(grund: str, request: "Request") -> None:
+    """Sig HVORFOR en 401 skete — én gang i minuttet pr. klient og grund."""
+    import time as _t
+    try:
+        klient = getattr(getattr(request, "client", None), "host", "") or "?"
+        noegle = (grund[:80], klient)
+        nu = _t.monotonic()
+        sidst = _AFVIS_SIDST.get(noegle, 0.0)
+        if nu - sidst < _AFVIS_STILHED_S:
+            return
+        _AFVIS_SIDST[noegle] = nu
+        if len(_AFVIS_SIDST) > 256:
+            _AFVIS_SIDST.clear()
+        logger.warning("auth-afvist: %s — klient=%s path=%s",
+                       grund[:120], klient, request.url.path)
+    except Exception:
+        pass
+
 USER_HEADER = "x-jarvisx-user"
 USER_NAME_HEADER = "x-jarvisx-user-name"
 CLIENT_HEADER = "x-jarvisx-client"
@@ -138,11 +161,21 @@ async def jarvisx_user_routing_middleware(
         except Exception:
             require = False
         if require:
+            grund = token_error or "missing or invalid bearer token"
+            # Grunden stod KUN i svaret til klienten (8/9-2026). Serveren
+            # loggede 401 uden at sige hvorfor, saa da Mikkels telefon gav 927
+            # afvisninger paa seks timer, kunne intet i loggen skelne «udloebet»
+            # fra «forkert signatur» fra «ingen token» — diagnosen krævede ti
+            # maalinger i stedet for ét opslag.
+            #
+            # Rate-limitet pr. (grund, klient) i ét minut: en itererende klient
+            # skal give ÉT signal, ikke tusind linjer. Aldrig selve token'en.
+            _log_auth_afvisning(grund, request)
             return JSONResponse(
                 status_code=401,
                 content={
                     "detail": "authentication required",
-                    "error": token_error or "missing or invalid bearer token",
+                    "error": grund,
                 },
             )
 

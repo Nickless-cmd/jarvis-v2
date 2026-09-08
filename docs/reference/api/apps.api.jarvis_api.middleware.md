@@ -38,8 +38,9 @@ _JarvisX user-routing + bearer-token auth middleware._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_is_public_path` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L92) |
-| function | `jarvisx_user_routing_middleware` | `(request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L104) |
+| function | `_log_auth_afvisning` | `(grund, request)` | Sig HVORFOR en 401 skete — én gang i minuttet pr. klient og grund. | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L50) |
+| function | `_is_public_path` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L115) |
+| function | `jarvisx_user_routing_middleware` | `(request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L127) |
 
 ## `apps/api/jarvis_api/middleware/security_headers.py`
 _Security-headers + let-vægts rate-limiting middleware (spec §20)._

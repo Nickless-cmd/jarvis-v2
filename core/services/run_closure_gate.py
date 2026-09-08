@@ -580,6 +580,10 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
     # detection never fired. Corroborated by run autonomous-141add33d9
     # (30 tool.force_invoked, 20 agentic rounds, text_preview empty,
     # zero notification to Bjørn — his actual complaint pattern).
+    # Initialiseret FOER blokken: referatet nedenfor laeser den, og uden
+    # tool-kald ville navnet ellers ikke findes. (Samme unbound-name-fejl som
+    # huset allerede har dokumenteret ved _guard_py_escapes.)
+    output = ""
     if tool_calls:
         try:
             from core.runtime.db import connect
@@ -604,6 +608,25 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
                 )
         except Exception:
             logger.warning("run_closure_gate: failed silent-run check", exc_info=True)
+
+    # REFERAT (8/9-2026). Bjoern: de autonome runs «ligger i en session for sig
+    # selv saa ser dem ikke rigtigt». Arbejdet bliver hvor det er — én koersel
+    # fyldte 168 beskeder, 155 af dem tool-resultater — men et kort referat gaar
+    # derhen hvor han er. Sidst, saa et referat der fejler ikke kan koste
+    # auto-commit eller nogen af eventerne ovenfor.
+    if bool(payload.get("autonomous")):
+        try:
+            from core.services.autonomous_run_digest import post_referat
+            post_referat(
+                run_id=run_id,
+                session_id=session_id,
+                tool_calls=tool_calls,
+                output=output,
+                aendrede_filer=sorted(touched_paths),
+                committet=bool(auto_commit),
+            )
+        except Exception:
+            logger.debug("run_closure_gate: referat fejlede", exc_info=True)
 
 
 def _on_run_started(payload: dict[str, Any]) -> None:

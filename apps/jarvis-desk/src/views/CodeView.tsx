@@ -260,7 +260,14 @@ export function CodeView({
   // Lokale tools fra vores egen stream (kun nuværende tur — lokal sti folder pr. tur).
   const localLiveTools = stream.status === 'working'
     ? stream.blocks.filter((b) => b.type === 'tool_use')
-        .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
+        .map((b) => ({
+          name: (b as { name?: string }).name || '',
+          input: ((b as { input?: Record<string, unknown> }).input) || {},
+          // Status baeres med: uden den kan miljoe-feltet ikke vide hvilke
+          // agenter der KOERER — og «aktive agenter» var praecis det Bjoern
+          // bad om at se (8/9-2026).
+          status: (b as { status?: 'running' | 'done' | 'error' }).status,
+        }))
     : []
   // Cross-device tools = event-akkumulatoren (alle ture), vist mens runnet kører.
   const crossLiveTools = bgActive ? bgTools : []

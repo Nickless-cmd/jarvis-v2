@@ -5,7 +5,27 @@ import { getGitStatus, commitAllChanges, createPullRequest, type GitStatus, type
 import { lookupTool } from '../../lib/toolRegistry'
 
 /** Tool-navne der er agent-dispatch (vises som "Underagenter" à la Codex). */
-const AGENT_TOOLS = new Set(['dispatch_code_mode_task', 'dispatch_to_claude_code', 'spawn_subagent', 'agent_dispatch'])
+/**
+ * Vaerktoejer der STARTER en agent.
+ *
+ * Listen navngav foer fire dispatch-vaerktoejer — hvoraf `spawn_subagent` slet
+ * ikke findes — og manglede dem han faktisk bruger. `explore` er ordret «send a
+ * read-only research agent», og den kaldes hele tiden; den stod bare ikke her,
+ * saa «Underagenter» var tom naesten altid (Bjoern 8/9-2026).
+ *
+ * De agent-STYRENDE vaerktoejer (list_agents, send_message_to_agent,
+ * relay_to_agent, cancel_agent) hoerer IKKE hjemme her. De starter ingen agent;
+ * at tage dem med ville faa et opslag i listen til at se ud som en agent.
+ */
+const AGENT_TOOLS = new Set([
+  'explore',
+  'task',
+  'convene_council',
+  'quick_council_check',
+  'dispatch_code_mode_task',
+  'dispatch_to_claude_code',
+  'agent_dispatch',
+])
 /** Tool-navne der er eksterne kilder (Codex "Kilder"). */
 const SOURCE_RULES: { match: (n: string) => boolean; label: string }[] = [
   { match: (n) => /web.?search|search.?web|websearch/.test(n), label: 'Websøgning' },
@@ -13,7 +33,13 @@ const SOURCE_RULES: { match: (n: string) => boolean; label: string }[] = [
 ]
 const AGENT_COLORS = ['#e0843a', '#3ab85f', '#9b6bff', '#e0556b', '#3a9be0']
 
-export interface ToolInvocation { name: string; input: Record<string, unknown> }
+export interface ToolInvocation {
+  name: string
+  input: Record<string, unknown>
+  /** Kun sat for LIVE kald (fra streamens blokke). Persisterede kald fra
+   *  sessionen har den ikke — og det er rigtigt: de er per definition faerdige. */
+  status?: 'running' | 'done' | 'error'
+}
 
 /** Pænt tool-label som i chatview: label + opsummering (kommando/sti). For
  *  operator_bash bliver det fx "Terminal: git status" — IKKE bare "operator_bash". */
@@ -115,7 +141,15 @@ export function EnvironmentPanel({
   const toolLabels: string[] = []
   for (const t of tools) {
     const nm = t.name || ''
-    if (AGENT_TOOLS.has(nm)) { if (!agents.some((a) => a.name === nm)) agents.push(t); continue }
+    if (AGENT_TOOLS.has(nm)) {
+      // KOERENDE agenter staar hver for sig — to parallelle explore-kald er to
+      // agenter, ikke én. Faerdige samles fortsat pr. navn, ellers ville listen
+      // vokse med hver eneste tur.
+      if (t.status === 'running' || !agents.some((a) => a.name === nm && a.status !== 'running')) {
+        agents.push(t)
+      }
+      continue
+    }
     const src = SOURCE_RULES.find((r) => r.match(nm))
     if (src) { if (!sources.includes(src.label)) sources.push(src.label); continue }
     if (nm) {
@@ -193,15 +227,27 @@ export function EnvironmentPanel({
               <div className="env-divider" />
               <div className="env-section-head">Underagenter</div>
               <ul className="env-rows">
-                {agents.map((a, i) => (
-                  <li className="env-row" key={a.name}>
-                    <span className="env-label">
-                      <Bot size={13} style={{ color: AGENT_COLORS[i % AGENT_COLORS.length] }} />
-                      <span style={{ color: AGENT_COLORS[i % AGENT_COLORS.length] }}>{lookupTool(a.name).label}</span>
-                      <span className="env-muted">(worker)</span>
-                    </span>
-                  </li>
-                ))}
+                {agents.map((a, i) => {
+                  const farve = AGENT_COLORS[i % AGENT_COLORS.length]
+                  const koerer = a.status === 'running'
+                  // Opgaven staar, ikke bare vaerktoejsnavnet: «(worker)» sagde
+                  // ingenting om hvad agenten var sat til. For explore er det
+                  // `query`, for task `prompt`, for et raad `question`.
+                  const opgave = String(
+                    a.input?.query ?? a.input?.task ?? a.input?.prompt
+                    ?? a.input?.description ?? a.input?.instruction ?? a.input?.question ?? '',
+                  ).replace(/\s+/g, ' ').trim()
+                  return (
+                    <li className={`env-row${koerer ? ' agent-koerer' : ''}`} key={`${a.name}-${i}`}>
+                      <span className="env-label">
+                        <Bot size={13} style={{ color: farve }} />
+                        <span style={{ color: farve }}>{lookupTool(a.name).label}</span>
+                        {opgave && <span className="env-muted agent-opgave" title={opgave}>{opgave}</span>}
+                      </span>
+                      {koerer && <span className="env-val agent-status">kører</span>}
+                    </li>
+                  )
+                })}
               </ul>
             </>
           )}

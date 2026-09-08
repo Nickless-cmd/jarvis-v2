@@ -86,6 +86,9 @@ export function CodeView({
   const [contextTokens, setContextTokens] = useState(0)
   const [overheadTokens, setOverheadTokens] = useState(0)
   const [compacting, setCompacting] = useState(false)
+  // Ringens tal, meldt op fra Composer. Miljoe-feltet skal vise DET SAMME —
+  // ellers staar der to «Kontekst»-procenter der er uenige (Bjoern 8/9-2026).
+  const [gauge, setGauge] = useState<{ tokens: number; denominator: number }>({ tokens: 0, denominator: 0 })
   const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
   // Miljø-felt: toggle som panel-ikonerne. null = auto (vis ved fuld skærm / bredt
   // vindue, skjul når smalt så det ikke dækker chatten). Bruger kan overstyre.
@@ -626,6 +629,7 @@ export function CodeView({
       getSessionId={async () => sessionId ?? (await sessions.create('Kode-session')).id}
       showPermissions={true}
       contextTokens={contextTokens}
+      onGauge={setGauge}
       overheadTokens={overheadTokens}
       compactAt={compactAt}
       compacting={compacting}
@@ -758,6 +762,7 @@ export function CodeView({
               refreshKey={gitRefresh}
               working={stream.status === 'working' || bgWorking}
               workingStep={(bgWorking ? followState.workingStep : stream.workingStep) ?? undefined}
+              kontekstTokens={gauge.tokens}
               totalTokens={envTotalTokens}
               totalToolCalls={envTotalToolCalls}
               tools={envTools}
@@ -768,7 +773,7 @@ export function CodeView({
               gitMissing={gitMissing}
               installingTool={installingTool}
               onInstallTool={onInstallTool}
-              komprimerVed={compactAt}
+              komprimerVed={gauge.denominator}
             />
           </div>
         )}

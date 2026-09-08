@@ -268,3 +268,20 @@ describe('gendan sidst-valgte samtale', () => {
     expect(result.current.activeId).toBeNull()
   })
 })
+
+describe('den gendannede samtale vælger sin flade', () => {
+  it('en kode-session åbner i code-fladen', async () => {
+    // Uden det åbnede en kode-session i chat-fladen, og så så det ud som om
+    // miljø-panelet var forsvundet (Bjørn 8/9-2026).
+    localStorage.setItem('jarvis-desk:activeSession', 's1')
+    const set = vi.fn()
+    const w = ({ children }: { children: ReactNode }) => (
+      <SessionProvider config={cfg} onRestore={set}>{children}</SessionProvider>
+    )
+    renderHook(() => useSessions(), { wrapper: w })
+    await waitFor(() => expect(set).toHaveBeenCalled())
+    // listSessions-mocken har ingen workspace_kind → chat.
+    expect(set).toHaveBeenCalledWith('chat')
+    localStorage.clear()
+  })
+})

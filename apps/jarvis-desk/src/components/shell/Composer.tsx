@@ -116,6 +116,7 @@ export function Composer({
   getSessionId,
   showPermissions = true,
   contextTokens = 0,
+  onGauge,
   overheadTokens = 0,
   compactAt = 0,
   compacting = false,
@@ -138,6 +139,18 @@ export function Composer({
   /** Context-ring (#9): tokens i konteksten + autocompact-tærskel. Ringen vises
    *  altid når compactAt > 0 (tom ved 0 tokens). */
   contextTokens?: number
+  /**
+   * Melder ringens tal op: {tokens, denominator}. Miljoe-feltet viste sit EGET
+   * regnestykke — kumulative session-tokens delt med autocompact-taersklen
+   * (80k) — mens ringen viste transcript-fyld delt med modellens rigtige vindue
+   * (1M for deepseek). To tal, to naevnere, samme overskrift «Kontekst».
+   * Én af dem maatte vaere forkert, og det var miljoe-feltets.
+   *
+   * Naevneren kan kun beregnes her, hvor provider og model er valgt — derfor
+   * rapporteres den op frem for at blive regnet ud to steder. Ingen dobbelt
+   * sandhed.
+   */
+  onGauge?: (g: { tokens: number; denominator: number }) => void
   /** System-overhead (stabil prefix) — til tooltip'ens ægte total-tal. */
   overheadTokens?: number
   compactAt?: number
@@ -222,6 +235,13 @@ export function Composer({
     return () => { alive = false }
   }, [_apiBaseUrl, _authToken, provChoice, selModel])
   const ringDenominator = effectiveCtx || compactAt
+
+  useEffect(() => {
+    onGauge?.({ tokens: contextTokens, denominator: ringDenominator })
+    // `onGauge` udelades: kalderen gendanner den paa hver render, og at afhaenge
+    // af den ville goere effekten til en loekke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextTokens, ringDenominator])
 
   // Member: standard/pro. Owner: konkret model afhænger af valgt provider.
   const memberTier: 'standard' | 'pro' = selModel === 'pro' ? 'pro' : 'standard'

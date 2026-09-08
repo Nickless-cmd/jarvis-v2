@@ -76,7 +76,7 @@ export function App() {
   if (!isConfigured) return <SetupScreen onSave={(cfg) => void update(cfg)} />
 
   return (
-    <SessionProvider config={cfg}>
+    <SessionProvider config={cfg} onRestore={(s) => setSurface(s)}>
       <StreamProvider config={cfg}>
         <PermissionProvider>
           <PanelProvider defaultWidth={480}>

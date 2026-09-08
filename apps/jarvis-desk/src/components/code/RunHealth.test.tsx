@@ -30,7 +30,7 @@ describe('RunHealth', () => {
 
   it('viser IKKE maskine, GPU eller disk når de er slået fra', async () => {
     render(<RunHealth config={cfg} tokens={1_000} komprimerVed={80_000} />)
-    await screen.findByText(/1% af 80k/)
+    await screen.findByText('1%')
     expect(screen.queryByText(/cpu/)).toBeNull()
     expect(screen.queryByText(/vram/)).toBeNull()
     expect(screen.queryByText(/GB fri/)).toBeNull()
@@ -42,7 +42,7 @@ describe('RunHealth', () => {
     // maskin-tallene — selv om det ikke har noget med dem at gøre.
     getKrop.mockRejectedValue(new Error('nede'))
     render(<RunHealth config={cfg} tokens={40_000} komprimerVed={80_000} />)
-    expect(await screen.findByText(/50% af 80k/)).toBeTruthy()
+    expect(await screen.findByText('50%')).toBeTruthy()
   })
 
   it('poller slet ikke når maskin-rækkerne er slået fra', async () => {
@@ -53,10 +53,25 @@ describe('RunHealth', () => {
     expect(getKrop).not.toHaveBeenCalled()
   })
 
-  it('markerer kontekst-tryk når det nærmer sig komprimering', async () => {
+  it('procenten skifter farve som ringen i skrivefeltet', async () => {
+    // Samme zoner: <60 blaa, <85 gul, ellers roed. Et tal der aldrig skifter
+    // udseende, laeses ikke.
     render(<RunHealth config={cfg} tokens={72_000} komprimerVed={80_000} />)
-    const v = await screen.findByText(/90% af 80k/)
-    expect(v.className).toContain('rh-hoej')
+    expect((await screen.findByText('90%')).className).toContain('zone-roed')
+  })
+
+  it('gul i mellemzonen, blaa naar der er rigeligt', async () => {
+    const { unmount } = render(<RunHealth config={cfg} tokens={56_000} komprimerVed={80_000} />)
+    expect((await screen.findByText('70%')).className).toContain('zone-gul')
+    unmount()
+    render(<RunHealth config={cfg} tokens={8_000} komprimerVed={80_000} />)
+    expect((await screen.findByText('10%')).className).toContain('zone-blaa')
+  })
+
+  it('et 1M-vindue staar som 1M, ikke 1000k', async () => {
+    // Hans vindue ER 1M (deepseek). «1000k» er teknisk rigtigt og ulaeseligt.
+    render(<RunHealth config={cfg} tokens={250_000} komprimerVed={1_000_000} />)
+    expect(await screen.findByText(/af 1M/)).toBeTruthy()
   })
 
   it('viser intet når der hverken er maskine eller kontekst — ingen tom ramme', async () => {

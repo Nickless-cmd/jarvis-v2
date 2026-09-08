@@ -33,7 +33,7 @@ export function EnvironmentPanel({
   config, kind, root, refreshKey = 0,
   working, workingStep, totalTokens = 0, totalToolCalls = 0, tools = [], sessionId, hasHistory = false,
   isOwner = false, onChanged,
-  gitMissing = false, installingTool = '', onInstallTool, komprimerVed = 0,
+  gitMissing = false, installingTool = '', onInstallTool, komprimerVed = 0, kontekstTokens,
 }: {
   config?: ApiConfig
   kind: 'container' | 'workstation'
@@ -50,6 +50,10 @@ export function EnvironmentPanel({
   onChanged?: () => void
   gitMissing?: boolean
   komprimerVed?: number
+  /** Kontekst-fyldet som ringen i skrivefeltet maaler det. `totalTokens` er noget
+   *  ANDET — sessionens kumulative forbrug — og duer ikke som kontekst-tal:
+   *  den falder aldrig naar compaction fyrer. */
+  kontekstTokens?: number
   installingTool?: string
   onInstallTool?: (tool: string) => void
 }) {
@@ -174,7 +178,7 @@ export function EnvironmentPanel({
 
           {/* Maskin- og kontekst-tryk. Bjørn: miljø-feltet er stedet hvor
               tilstand hører til, ikke endnu et dashboard. */}
-          <RunHealth config={config} tokens={totalTokens} komprimerVed={komprimerVed} />
+          <RunHealth config={config} tokens={kontekstTokens ?? totalTokens} komprimerVed={komprimerVed} />
 
           {note && (
             <div className={`env-note ${note.err ? 'is-err' : ''}`}>

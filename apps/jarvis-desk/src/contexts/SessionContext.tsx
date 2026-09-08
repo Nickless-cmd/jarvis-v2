@@ -32,9 +32,14 @@ export const SessionContext = createContext<SessionContextValue | null>(null)
 export function SessionProvider({
   children,
   config,
+  onRestore,
 }: {
   children: ReactNode
   config: { apiBaseUrl: string; authToken: string | null }
+  /** Kaldes ÉN gang ved opstart naar en gemt samtale gendannes, med den flade
+   *  den hoerer til. Uden den aabnede en kode-session i chat-fladen, og saa saa
+   *  det ud som om miljoe-panelet var vaek. */
+  onRestore?: (surface: 'chat' | 'code') => void
 }) {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -78,6 +83,12 @@ export function SessionProvider({
       return
     }
     select(gemt)
+    // Fladen skal FOELGE samtalen. En kode-session der aabner i chat-fladen
+    // viser ikke miljoe-panelet, og saa ser det ud som om det er forsvundet.
+    // Sidebarens klik gør præcis det samme opslag (`workspace_kind` sat →
+    // code); at gøre noget andet her ville være to definitioner af det samme.
+    const s = sessions.find((x) => x.id === gemt)
+    if (s) onRestore?.(s.workspace_kind ? 'code' : 'chat')
     // `select` udelades: den gendannes ved hver config-ændring og ville koere
     // gendannelsen igen. `gendannetRef` gør den til en engangs-handling.
     // eslint-disable-next-line react-hooks/exhaustive-deps

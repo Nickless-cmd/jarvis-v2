@@ -12,6 +12,15 @@ import { DESK_CHROME } from '../../lib/deskChrome'
  */
 const TRYK_DA: Record<string, string> = { low: 'lavt', medium: 'middel', high: 'højt' }
 
+/** 1.000.000 skal staa som «1M», ikke «1000k». Hans vindue ER 1M. */
+function vindue(n: number): string {
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000
+    return `${m % 1 === 0 ? m : m.toFixed(1)}M`
+  }
+  return `${Math.round(n / 1000)}k`
+}
+
 export function RunHealth({
   config, tokens = 0, komprimerVed = 0,
 }: {
@@ -76,8 +85,14 @@ export function RunHealth({
       {komprimerVed > 0 && (
         <li className="env-row">
           <span className="env-label"><Activity size={13} /> Kontekst</span>
-          <span className={`env-val${tokenPct >= 85 ? ' rh-hoej' : ''}`}>
-            {tokenPct}% af {Math.round(komprimerVed / 1000)}k
+          <span className="env-val">
+            {/* Samme zoner som ringen i skrivefeltet: <60 blaa, <85 gul, ellers
+                roed. Tallet og ringen maaler nu ogsaa det samme — foer havde de
+                hver sin taeller OG naevner under samme overskrift. */}
+            <span className={`rh-pct zone-${tokenPct >= 85 ? 'roed' : tokenPct >= 60 ? 'gul' : 'blaa'}`}>
+              {tokenPct}%
+            </span>
+            {' af '}{vindue(komprimerVed)}
           </span>
         </li>
       )}

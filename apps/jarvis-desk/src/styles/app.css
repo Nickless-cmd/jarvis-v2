@@ -178,11 +178,15 @@
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
+/* Sektions-overskrift i sidebaren. Sat som husets andre sektions-overskrifter
+   (.env-section-head i hoejre panel): 11px, normal vaegt, .04em, daempet.
+   Foer stod den i VERSALER med .06em og fed — samme familie, men sat saa
+   anderledes at den laeste som en anden skrift, og tungere end panelet baerer. */
 .sidebar-label {
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--fg-3);
+  opacity: .8;
   padding: 14px 10px 6px;
 }
 
@@ -199,9 +203,11 @@ button.sidebar-group {
   /* IKKE `font: inherit`. Den shorthand saetter ogsaa font-size til arvet, og
      da `button.sidebar-group` er mere specifik end `.sidebar-label`, slog den
      etikettens 11px ihjel — overskrifterne stod i panelets broedtekst-stoerrelse.
-     Det saa ud som et designvalg; det var en kollision i kaskaden. */
+     Det saa ud som et designvalg; det var en kollision i kaskaden.
+     Vaegten arves ogsaa: en fed overskrift over en liste af normal tekst
+     traekker oejet til etiketten i stedet for til indholdet. */
   font-family: inherit;
-  font-weight: 600;
+  font-weight: inherit;
   text-align: left;
   cursor: pointer;
 }

@@ -102,16 +102,32 @@ naturlige sammenhængende enhed til en ny fil, før du laver din egentlige ændr
 Over tid falder filstørrelser uden dedikeret refaktor-arbejde. Nye ændringer bliver 
 lettere at læse og teste, fordi ansvar er klart adskilt.
 
-Gælder særligt disse filer (pr. 2026-04-17):
-- `core/runtime/db.py` (33.056 linjer)
-- `core/services/heartbeat_runtime.py` (7.221)
-- `core/services/runtime_self_model.py` (4.826)
-- `core/tools/simple_tools.py` (4.225)
-- `core/services/visible_runs.py` (4.131)
-- `core/tools/workspace_capabilities.py` (4.004)
-- `core/services/prompt_contract.py` (3.776)
-- `apps/api/jarvis_api/routes/mission_control.py` (3.736)
-- `core/services/visible_model.py` (1.832)
+Gælder særligt disse filer (målt 2026-09-08):
+- `core/services/heartbeat_runtime.py` (7.569 linjer)
+- `core/services/visible_runs.py` (7.290)
+- `core/services/prompt_contract.py` (4.811)
+- `core/tools/simple_tools_definitions.py` (3.603)
+- `core/runtime/db_runtime_executive_signals.py` (3.404)
+- `core/tools/simple_tools_native.py` (3.064)
+- `core/runtime/db_runtime_cognition_signals.py` (2.736)
+- `core/tools/workspace_capabilities.py` (2.184)
+- `core/tools/simple_tools.py` (2.141)
+- `core/runtime/db_runtime_relational_signals.py` (2.136)
+
+Listen ovenfor stod urørt fra april til september og var forældet i BEGGE
+retninger. Reglen har virket: `db.py` gik fra 33.056 til 1.213 linjer og
+`mission_control.py` fra 3.736 til 80 — begge splittet. Men tre filer VOKSEDE
+forbi deres gamle tal uden at nogen flyttede dem op: `visible_runs.py` +3.159,
+`prompt_contract.py` +1.035, `heartbeat_runtime.py` +348. Listen pegede altså
+på monstre der ikke fandtes længere og overså de to største i repoet.
+
+**Mål listen igen når du bruger den.** En liste over store filer forfalder
+hurtigere end koden den beskriver:
+
+```bash
+find core apps/api scripts -name "*.py" -not -path "*/__pycache__/*" \
+  | xargs wc -l | sort -rn | sed -n '2,11p'
+```
 
 ## Model Philosophy
 - Paid/stable model for visible Jarvis

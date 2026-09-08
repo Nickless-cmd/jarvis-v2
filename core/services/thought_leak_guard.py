@@ -42,10 +42,35 @@ import re
 
 logger = logging.getLogger(__name__)
 
-# To eller flere «Etiket: vaerdi»-led. Etiketten er 1-4 ord med stort forbogstav
-# eller ren lowercase-noegle; leddene er bundet med » - « eller » — «.
+# To eller flere «Etiket: vaerdi»-led bundet med » - «.
+#
+# STRAMMET 8/9-2026, samme dag som vaernet kom til. Foerste udgave kasserede
+# 3 af hans 12 aegte droemme-beskeder: naar whitespace kollapses, bliver en
+# markdown-liste
+#
+#     Tre artefakter skrevet:
+#     - **Dream note** (`...md`) — observationer, forbindelser
+#     - **Hypothesis candidates** (`...`) — to nye: MSATI (0.45)
+#
+# til «skrevet: - **Dream note** … — … candidates …: to nye», og det ligner
+# telemetri paa en prik. To stramninger, begge strukturelle:
+#
+#   * etiketten maa ikke baere markdown (`*`, backtick) — en telemetri-etiket
+#     er et rent noeglenavn, en listepost er formateret prosa.
+#   * vaerdien maa ikke begynde med en listemarkoer (`-`, `*`) eller backtick.
+#     «Tre artefakter skrevet: - **Dream note** …» blev ellers laest som
+#     etiket «Tre artefakter skrevet» med vaerdien «- **Dream note**».
+#   * moensteret skal begynde inden for de foerste 60 tegn. En serialiseret
+#     datastruktur har ingen prosa-optakt; en saetning med en liste i har.
+#
+# Den aegte laekage der ellers ville slippe («I'll test it going forward) -
+# Conductor mode: clarify - …», hvor telemetrien starter sent) fanges stadig —
+# af den uafbalancerede parentes.
+_ETIKET = r"[A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9 _]{0,28}"
+_VAERDI_START = r"[^\s*`\-—]"
 _TELEMETRI = re.compile(
-    r"[A-Za-zÆØÅæøå][\w ]{0,28}:\s*\S.*?\s+[-—]\s+[A-Za-zÆØÅæøå][\w ]{0,28}:\s*\S"
+    r"^.{0,60}?" + _ETIKET + r":\s*" + _VAERDI_START
+    + r".*?\s+[-—]\s+" + _ETIKET + r":\s*" + _VAERDI_START
 )
 
 # Outputfelterne naevnt i anfoerselstegn = kontrakten gengivet, ikke opfyldt.

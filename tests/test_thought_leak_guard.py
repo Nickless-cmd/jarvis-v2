@@ -106,3 +106,53 @@ def test_kun_overskriften_tilbage_sender_ingenting():
 
     assert build_digest([{"text": _ÆGTE_LÆKAGER[1][0]}]) == ""
     assert build_digest([]) == ""
+
+
+# ---------------------------------------------------------------------------
+# Falske positive fanget samme dag som værnet kom til (8/9-2026)
+#
+# Bjørn: «hans drømme sessioner forsvundet». De var de ikke — men målingen
+# afslørede at værnet ville have kasseret **3 af hans 12 ægte drømme-beskeder**.
+# Når whitespace kollapses, bliver en markdown-liste
+#
+#     Tre artefakter skrevet:
+#     - **Dream note** (`...md`) — observationer, forbindelser
+#
+# til «skrevet: - **Dream note** … — …», og det ligner telemetri på en prik.
+# ---------------------------------------------------------------------------
+
+_ÆGTE_DRØMME = [
+    ("Dream-session fuldført. Tre artefakter skrevet: - **Dream note** "
+     "(`dream-session-2026-09-07-0529.md`) — observationer, forbindelser, "
+     "chronicle-fragment - **Hypothesis candidates** (`hypothesis-candidate.md`) "
+     "— to nye: MSATI (0.45) og fatigue-as-power"),
+    ("Dream-session 2026-09-07 11:30 fuldført. To artefakter skrevet og verificeret. "
+     "**Hvad kom ud af denne session:** **Den første test.** Actuation-calcification "
+     "blev testet mod sit pre-registerede falsifikationskriterie."),
+    ("Begge filer verificeret. Dream-session 2026-09-06 23:29 komplet. "
+     "**Hvad den fandt:** noget interessant om hypoteserne."),
+]
+
+
+@pytest.mark.parametrize("tekst", _ÆGTE_DRØMME)
+def test_hans_droemme_slipper_igennem(tekst):
+    """Ordret fra produktionen. En markdown-liste er ikke en datastruktur."""
+    assert G(tekst) == ""
+
+
+def test_en_listemarkoer_er_ikke_en_telemetri_vaerdi():
+    """«Tre artefakter skrevet: - **Dream note**» blev læst som etiket
+    «Tre artefakter skrevet» med værdien «- **Dream note**»."""
+    assert G("Her er hvad jeg gjorde: - først det ene - dernæst det andet") == ""
+
+
+def test_telemetri_skal_begynde_tidligt():
+    """En serialiseret datastruktur har ingen prosa-optakt; en sætning med en
+    liste i har. Den ægte lækage der starter sent fanges af den ubalancerede
+    parentes i stedet."""
+    sent = ("Jeg skrev en længere indledning her som fylder pænt meget plads "
+            "før noget som helst andet sker, og først bagefter: Tilstand: rolig "
+            "- Fokus: uklart")
+    assert G(sent) == ""
+    assert G("I'll test it going forward) - Conductor mode: clarify - Most salient item: x") \
+        == "telemetri"

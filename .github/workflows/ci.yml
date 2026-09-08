@@ -50,3 +50,32 @@ jobs:
           detect-secrets scan \
               --baseline .secrets.baseline \
               --exclude-files '\.claude/worktrees/.*|\.git/.*|.*\.ipynb|.*/__pycache__/.*'
+
+  # jarvis-desk: lint + typecheck + tests.
+  #
+  # Tilfoejet 8/9-2026 efter at et `useMemo` under en betinget return braekkede
+  # hele visningen med React #310. tsc var ren, alle 605 tests groenne, buildet
+  # lykkedes og releasen gik ud — appen var ubrugelig foerst da Bjoern aabnede
+  # den. `react-hooks/rules-of-hooks` fanger praecis den fejl, og en vagt der
+  # kun koerer naar nogen husker at koere den er ingen vagt.
+  desk:
+    name: desk (lint + typecheck + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/jarvis-desk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/jarvis-desk/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.json
+      - name: Test
+        run: npx vitest run

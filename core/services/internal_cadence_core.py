@@ -115,10 +115,17 @@ def register_core_producers(register_producer: Callable[[ProducerSpec], None]) -
     # (2) om godkendte nøgler er UDLØBET → reverter deres flag (tilladelse mistes hvis ikke fornyet,
     # ingen permanent privilege-crawl). Genererer ALDRIG adgang selv — kun pending + auto-expire.
     def _run_keymaker(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
-        from core.services.central_keymaker import evaluate_keys, expire_due
+        from core.services.central_keymaker import (
+            evaluate_behaviour_key, evaluate_keys, expire_due,
+        )
         ev = evaluate_keys()
+        # Adfaerds-noeglen: han optjener selv paa efterlevelsen af sine EGNE
+        # forpligtelser, ikke kun gates paa deres track-record (Bjoern 8/9).
+        ad = evaluate_behaviour_key()
         ex = expire_due()
-        return {"issued": len(ev.get("issued", [])), "expired": ex.get("expired", 0)}
+        return {"issued": len(ev.get("issued", [])) + (1 if ad.get("issued") else 0),
+                "expired": ex.get("expired", 0),
+                "adfaerd": (ad.get("track") or {}).get("snit")}
 
     register_producer(ProducerSpec(
         name="keymaker",

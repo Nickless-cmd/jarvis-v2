@@ -247,3 +247,72 @@ def test_expire_due_kalder_paamindelsen(monkeypatch):
     import core.services.central_keymaker as K
 
     assert "_mind_om_ventende" in inspect.getsource(K.expire_due)
+
+
+# ---------------------------------------------------------------------------
+# Adfærds-nøglen (8/9-2026)
+#
+# Bjørn: «keymakeren er et point system hvor han kan optjene nøgler for rigtig
+# adfærd og det autonome arbejde han laver». Den eksisterende optjening måler
+# GATES; denne måler HAM — holder han sine egne forpligtelser?
+#
+# Sløjfen lukker: Smith straffer, Keymakeren belønner, og begge måler samme
+# adfærd. Falder efterlevelsen, fornys nøglen ikke.
+# ---------------------------------------------------------------------------
+
+def _spor(antal=25, snit=0.9, lavest=0.7):
+    return {"antal": antal, "snit": snit, "lavest": lavest}
+
+
+def test_noeglen_skal_FORTJENES_ikke_gives(monkeypatch):
+    """Snittet i dag er 0,70. Bar'en er 0,85 — den skal koste noget."""
+    import core.services.central_keymaker as K
+
+    monkeypatch.setattr(K, "_adfaerds_track_record", lambda: _spor(snit=0.70))
+    assert K.evaluate_behaviour_key()["issued"] is None
+
+
+def test_en_enkelt_forpligtelse_der_flyder_blokerer(monkeypatch):
+    """Et højt snit må ikke kunne skjule at én forpligtelse ligger og driver."""
+    import core.services.central_keymaker as K
+
+    monkeypatch.setattr(K, "_adfaerds_track_record", lambda: _spor(snit=0.95, lavest=0.2))
+    assert K.evaluate_behaviour_key()["issued"] is None
+
+
+def test_for_faa_maalinger_giver_ingen_noegle(monkeypatch):
+    import core.services.central_keymaker as K
+
+    monkeypatch.setattr(K, "_adfaerds_track_record", lambda: None)
+    ud = K.evaluate_behaviour_key()
+    assert ud["issued"] is None and ud["track"] is None
+
+
+def test_smiths_frosne_seq_moenstre_er_IKKE_grundlag():
+    """capability_invocations har ikke haft en ægte kørsel siden 15. maj. En
+    belønning målt på frosne tal ville være gratis."""
+    import inspect
+
+    import core.services.central_keymaker as K
+
+    src = inspect.getsource(K._adfaerds_track_record)
+    assert "capability_invocations" not in src
+    assert "adherence_score" in src
+
+
+def test_noeglen_laeses_mod_tabellen_aldrig_mod_en_switch():
+    """central_switches.is_enabled defaulter til ON — en unset nøgle ville
+    fremstå gyldig og give autonomien gratis."""
+    import inspect
+
+    import core.services.central_keymaker as K
+
+    assert "is_decentralized" in inspect.getsource(K.har_adfaerds_noegle)
+
+
+def test_cadence_kalder_optjeningen():
+    import inspect
+
+    import core.services.internal_cadence_core as C
+
+    assert "evaluate_behaviour_key" in inspect.getsource(C)

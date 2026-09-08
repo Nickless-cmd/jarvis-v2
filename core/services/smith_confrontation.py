@@ -42,6 +42,13 @@ samme kald igen og igen, og runnet ville staa stille — hvilket i praksis ER at
 cutte det. Efter ``_MAX_HOLD`` gange slipper kaldet igennem; korrektionen staar
 stadig i konteksten, saa han ved hvorfor.
 
+**En gyldig adfaerds-noegle nedgraderer holdet til en advarsel.** Har han
+fortjent og faaet godkendt en noegle for efterlevelse af sine egne
+forpligtelser, standser Smith ham ikke — men han taler stadig. Noeglen fjerner
+overhead, aldrig doemmekraft; det er samme doktrin som decentraliserings-
+noeglerne. Sloejfen lukker: Smith straffer, Keymakeren beloenner, og begge
+maaler den SAMME adfaerd. Falder efterlevelsen, fornys noeglen ikke.
+
 **Kun handlings-moenstre (``seq:``).** ``behaviour:``-moenstre som «tomme
 loefter» handler om at love uden at kalde noget — der ER intet tool-kald at
 holde, og ``hollow_promise_guard`` daekker dem allerede. At holde dér ville
@@ -113,6 +120,17 @@ def _hold_taeller(run_id: str, noegle: str, *, laes_kun: bool = False) -> int:
         return _MAX_HOLD
 
 
+def _har_adfaerds_noegle() -> bool:
+    """Self-safe: uden svar behandler vi det som INGEN noegle, saa et opslags-
+    problem aldrig kan give ham en fritagelse han ikke har fortjent."""
+    try:
+        from core.services.central_keymaker import har_adfaerds_noegle
+        return bool(har_adfaerds_noegle())
+    except Exception as exc:
+        logger.debug("smith_confrontation: noegle-opslag fejlede: %s", exc)
+        return False
+
+
 def _trin3_moenstre() -> list[dict[str, Any]]:
     try:
         from core.runtime.db_core import get_runtime_state_value
@@ -158,6 +176,22 @@ def smith_confront_on_action(reasoning_text: str, ctx: dict[str, Any]):
             for m in moenstre:
                 if not _rammer(m["label"], navn, argumenter):
                     continue
+                if _har_adfaerds_noegle():
+                    # ADFAERDS-NOEGLE (8/9-2026). Han har fortjent, faaet godkendt
+                    # og endnu ikke opbrugt en noegle for efterlevelse af sine egne
+                    # forpligtelser. Saa holder Smith ikke kaldet — men han taler
+                    # stadig, og korrektionen naar stadig frem.
+                    #
+                    # Samme doktrin som decentraliserings-noeglerne: noeglen fjerner
+                    # OVERHEAD, aldrig doemmekraft. Detektionen koerer, sporet
+                    # skrives, og falder efterlevelsen bagefter, fornys noeglen ikke
+                    # — den doer af sig selv efter 24 timer.
+                    return Verdict(
+                        "agent_smith", Decision.YELLOW,
+                        ("Agent Smith: «%s» igen — du har en gyldig adfærds-nøgle, "
+                         "så jeg standser dig ikke. Men jeg så det." % m["label"])[:200],
+                        action="warn", klass=GateClass.COGNITIVE,
+                    )
                 if _hold_taeller(run_id, m["key"], laes_kun=True) >= _MAX_HOLD:
                     # Loftet er naaet. Vi holder ikke igen — at lade ham
                     # re-raesonnere i ring ville i praksis vaere at cutte runnet.

@@ -164,3 +164,49 @@ def test_detektoren_er_faktisk_koblet_ind_i_interceptoren():
     import core.services.reasoning_interceptor as R
 
     assert "smith_confront_on_action" in inspect.getsource(R._run_detectors)
+
+
+# ---------------------------------------------------------------------------
+# Adfærds-nøglen nedgraderer holdet (8/9-2026)
+#
+# Nøglen fjerner OVERHEAD, aldrig dømmekraft — samme doktrin som
+# decentraliserings-nøglerne. Smith detekterer stadig, taler stadig og skriver
+# stadig sporet; han standser bare ikke kaldet.
+# ---------------------------------------------------------------------------
+
+def test_gyldig_noegle_nedgraderer_hold_til_advarsel():
+    from core.services.gate_kernel import Decision
+    from core.services.smith_confrontation import smith_confront_on_action
+
+    a, b, c = _med_stige()
+    with a, b, c, patch("core.services.central_keymaker.har_adfaerds_noegle",
+                        return_value=True):
+        v = smith_confront_on_action("", {
+            "tool_calls_this_run": [_kald("memory_delete_line")], "run_id": "r1"})
+    assert v is not None, "Smith skal stadig tale — nøglen fjerner ikke dømmekraften"
+    assert v.decision is Decision.YELLOW, "YELLOW holder ikke kaldet"
+    assert "nøgle" in v.reason
+
+
+def test_uden_noegle_holdes_kaldet_som_foer():
+    from core.services.gate_kernel import Decision
+    from core.services.smith_confrontation import smith_confront_on_action
+
+    a, b, c = _med_stige()
+    with a, b, c, patch("core.services.central_keymaker.har_adfaerds_noegle",
+                        return_value=False):
+        v = smith_confront_on_action("", {
+            "tool_calls_this_run": [_kald("memory_delete_line")], "run_id": "r1"})
+    assert v.decision is Decision.RED
+
+
+def test_et_fejlende_noegle_opslag_giver_INGEN_fritagelse():
+    """Et opslags-problem må aldrig give ham en fritagelse han ikke har
+    fortjent — så fail-closed på nøglen, hvilket her betyder: hold kaldet."""
+    from core.services.smith_confrontation import _har_adfaerds_noegle
+
+    def eksploder(*a, **kw):
+        raise RuntimeError("keymaker væk")
+
+    with patch("core.services.central_keymaker.har_adfaerds_noegle", eksploder):
+        assert _har_adfaerds_noegle() is False

@@ -170,6 +170,89 @@ def _varsl_ejer(domain: str, track: int) -> bool:
         return False
 
 
+# ── Adfaerds-noegler: han optjener selv, ikke kun gates ─────────────────────
+#
+# Bjoern 8/9-2026: «keymakeren er et point system hvor han kan optjene noegler
+# for rigtig adfaerd og det autonome arbejde han laver».
+#
+# Den eksisterende optjening maaler GATES (gate_verdict_ledger). Denne maaler
+# HAM: holder han sine egne forpligtelser? Kilden er `behavioral_decisions.
+# adherence_score`, som anmelderen saetter — verificeret levende 8/9 (37 af 44
+# aktive har en score, snit 0,70, senest anmeldt 5/9).
+#
+# Smiths `seq:`-moenstre er BEVIDST ikke med i grundlaget: de laeses fra
+# capability_invocations, hvis sidste aegte koersel er 15. maj, og en beloenning
+# maalt paa frosne tal ville vaere gratis. `behaviour:`-moenstre er derimod
+# levende («tomme loefter» blev resolved 7/9 kl. 08:35).
+_ADFAERD_MIN_SCOREDE = 20      # for faa maalinger = for lidt at gaa efter
+_ADFAERD_MIN_SNIT = 0.85       # snittet i dag er 0,70 — den skal FORTJENES
+_ADFAERD_GULV = 0.5            # og ingen enkelt forpligtelse maa ligge og flyde
+_ADFAERD_DOMAENE = "behaviour:adherence"
+
+
+def _adfaerds_track_record() -> dict[str, Any] | None:
+    """Hans egen efterlevelse af sine forpligtelser. ``None`` hvis den ikke kan maales."""
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT adherence_score FROM behavioral_decisions "
+                "WHERE status='active' AND adherence_score IS NOT NULL").fetchall()
+    except Exception:
+        return None
+    scorer = [float(r["adherence_score"]) for r in rows]
+    if len(scorer) < _ADFAERD_MIN_SCOREDE:
+        return None
+    return {"antal": len(scorer), "snit": sum(scorer) / len(scorer), "lavest": min(scorer)}
+
+
+def evaluate_behaviour_key() -> dict[str, Any]:
+    """Udsted en PENDING adfaerds-noegle naar HAN har fortjent den. Self-safe.
+
+    Samme kontrakt som gate-noeglerne og af samme grund: den genererer aldrig
+    adgang selv, den venter paa ejeren, og den udloeber. Falder efterlevelsen
+    bagefter, fornys noeglen ikke — den doer af sig selv efter 24 timer.
+    """
+    ud: dict[str, Any] = {"issued": None, "track": None}
+    t = _adfaerds_track_record()
+    if t is None:
+        return ud
+    ud["track"] = t
+    if t["snit"] < _ADFAERD_MIN_SNIT or t["lavest"] < _ADFAERD_GULV:
+        return ud
+    try:
+        with connect() as conn:
+            _ensure_table(conn)
+            findes = conn.execute(
+                "SELECT 1 FROM central_keys WHERE domain=? AND status IN ('pending','approved')",
+                (_ADFAERD_DOMAENE,)).fetchone()
+            if findes:
+                return ud
+            reason = ("efterlevelse %.2f over %d forpligtelser, laveste %.2f "
+                      "→ han holder hvad han lover" % (t["snit"], t["antal"], t["lavest"]))
+            conn.execute(
+                """INSERT INTO central_keys
+                   (domain, unlock_scope, unlock_name, track_value, issued_at, status, reason)
+                   VALUES (?, 'behaviour', 'adherence', ?, ?, 'pending', ?)""",
+                (_ADFAERD_DOMAENE, int(round(t["snit"] * 100)), _now().isoformat(), reason),
+            )
+            conn.commit()
+        ud["issued"] = {"domain": _ADFAERD_DOMAENE, **t, "reason": reason}
+        _observe("earned", {"domain": _ADFAERD_DOMAENE, "track": round(t["snit"], 3)})
+        _varsl_ejer(_ADFAERD_DOMAENE, int(round(t["snit"] * 100)))
+    except Exception:
+        pass
+    return ud
+
+
+def har_adfaerds_noegle() -> bool:
+    """True hvis han har en GYLDIG (godkendt + ikke udloebet) adfaerds-noegle.
+
+    Laeses som `is_decentralized` — mod tabellen, aldrig mod en switch, der
+    defaulter til ON og dermed ville give noeglen gratis.
+    """
+    return is_decentralized("adherence")
+
+
 def list_keys(*, include_expired: bool = False) -> list[dict[str, Any]]:
     try:
         with connect() as conn:

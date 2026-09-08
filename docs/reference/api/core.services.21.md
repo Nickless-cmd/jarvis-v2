@@ -337,12 +337,13 @@ _Trin 3: Smith standser handlingen i realtid og tvinger et nyt valg._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ord_i` | `(tekst)` | — | [src](../../../core/services/smith_confrontation.py#L72) |
-| function | `_er_fritaget` | `(navn)` | — | [src](../../../core/services/smith_confrontation.py#L76) |
-| function | `_rammer` | `(label, tool_navn, argumenter=…)` | Peger dette tool-kald paa moensteret? | [src](../../../core/services/smith_confrontation.py#L81) |
-| function | `_hold_taeller` | `(run_id, noegle, *, laes_kun=…)` | Hvor mange gange har vi holdt dette moenster i dette run? | [src](../../../core/services/smith_confrontation.py#L99) |
-| function | `_trin3_moenstre` | `()` | — | [src](../../../core/services/smith_confrontation.py#L116) |
-| function | `smith_confront_on_action` | `(reasoning_text, ctx)` | RED naar et trin-3-moenster er ved at blive gentaget. ``None`` ellers. | [src](../../../core/services/smith_confrontation.py#L133) |
+| function | `_ord_i` | `(tekst)` | — | [src](../../../core/services/smith_confrontation.py#L79) |
+| function | `_er_fritaget` | `(navn)` | — | [src](../../../core/services/smith_confrontation.py#L83) |
+| function | `_rammer` | `(label, tool_navn, argumenter=…)` | Peger dette tool-kald paa moensteret? | [src](../../../core/services/smith_confrontation.py#L88) |
+| function | `_hold_taeller` | `(run_id, noegle, *, laes_kun=…)` | Hvor mange gange har vi holdt dette moenster i dette run? | [src](../../../core/services/smith_confrontation.py#L106) |
+| function | `_har_adfaerds_noegle` | `()` | Self-safe: uden svar behandler vi det som INGEN noegle, saa et opslags- | [src](../../../core/services/smith_confrontation.py#L123) |
+| function | `_trin3_moenstre` | `()` | — | [src](../../../core/services/smith_confrontation.py#L134) |
+| function | `smith_confront_on_action` | `(reasoning_text, ctx)` | RED naar et trin-3-moenster er ved at blive gentaget. ``None`` ellers. | [src](../../../core/services/smith_confrontation.py#L151) |
 
 ## `core/services/smith_noise_veto.py`
 _Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._

@@ -1,33 +1,42 @@
 /* Design tokens — locked 2026-06-10
    Spec: docs/superpowers/specs/2026-06-10-jarvis-desk-chat-mode-design.md */
 
+/* Mørkt tema — 1:1 med mobil-appens mørke palet (Bjørn 8/9-2026: «det er
+   voldsomt github agtigt»). Han havde ret, og det var bogstaveligt: #0d1117 ER
+   GitHubs canvas-farve, og hele rampen bar blåt overskud — i #0d1117 ligger blå
+   ti trin over rød, og dét blå skær er præcis det man genkender.
+
+   Mobilens palet er neutralt grå og målt i ChatGPT-appen, ikke opfundet. Nu
+   er den grønne accent den eneste farve i billedet i stedet for at konkurrere
+   med en blå bund. Sammen med det lyse tema fra samme kilde er de to lys nu
+   ét produkt. */
 :root {
-  --bg-0: #0d1117;
-  --bg-1: #131922;
-  --bg-2: #1a212d;
-  --bg-3: #232b39;
-  --bg-4: #2c3543;
-  --line: #1f2733;
-  --fg-1: #e8eaed;
-  --fg-2: #a8b0bd;
-  --fg-3: #6b7480;
+  --bg-0: #000000;
+  --bg-1: #121212;
+  --bg-2: #212121;
+  --bg-3: #303030;
+  --bg-4: #414141;
+  --line: #2a2a2a;
+  --fg-1: #ffffff;
+  --fg-2: #b0b0b0;
+  --fg-3: #7a7a7a;
   --accent: #6ee7a8;
   /* Accenten som TEKST. I mørkt tema er den den samme; i lyst er den mørknet,
      fordi accenterne er valgt til at lyse på sort og bliver næsten ulæselige
      som tekst på hvidt. Mobilen skiller de to på nøjagtig samme måde — fladen
      beholder den ægte accent, kun teksten mørknes. */
   --accent-text: #6ee7a8;
-  --user-bubble: #1f2837;
-  --code-bg: #0a0e14;
+  --user-bubble: #14402f;   /* accentens dybt nedtonede kulør, som paa mobilen */
+  --code-bg: #303030;
 
   --error-fg: #ff8080;
-  --warn-fg: #ffd166;
+  --warn-fg: #ffb347;
 
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --fg-0: #f7f9fc;
-  --ok: #5fcf80;
+  --fg-0: #ffffff;
+  --ok: #4caf50;
   --tint: #6ea8fe;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --mono: var(--font-mono);

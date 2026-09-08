@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Activity, Cpu, HardDrive, Zap } from 'lucide-react'
 import { getKrop, type Krop } from '../../lib/coworkApi'
 import type { ApiConfig } from '../../lib/api'
+import { DESK_CHROME } from '../../lib/deskChrome'
 
 /** Maskinstatus i miljø-feltet — læsbar uden at åbne en log.
  *
@@ -21,7 +22,9 @@ export function RunHealth({
   const [krop, setKrop] = useState<Krop | null>(null)
 
   useEffect(() => {
-    if (!config) return
+    // Poll'en henter KUN maskin-tallene. Er de slået fra, er der intet at
+    // hente — og en usynlig poll hvert 15. sekund er ren omkostning.
+    if (!config || !DESK_CHROME.envMachineRows) return
     let levende = true
     const hent = () => {
       // Ikke mens fanen er skjult: en usynlig poll er ren omkostning.
@@ -33,13 +36,17 @@ export function RunHealth({
     return () => { levende = false; clearInterval(id) }
   }, [config?.apiBaseUrl, config?.authToken])
 
-  if (!krop) return null
-
-  const gpu = krop.gpus?.[0]
+  const gpu = krop?.gpus?.[0]
   const tokenPct = komprimerVed > 0 ? Math.round((tokens / komprimerVed) * 100) : 0
+  const visMaskine = DESK_CHROME.envMachineRows && !!krop
+  // Kontekst hænger ikke på maskin-kaldet: den kommer fra tokens/komprimerVed.
+  // Før returnerede vi null når `krop` manglede — og så forsvandt kontekst-
+  // tallet med maskin-tallene, selv om det ikke havde noget med dem at gøre.
+  if (!visMaskine && !(komprimerVed > 0)) return null
 
   return (
     <ul className="env-rows rh-rows">
+      {visMaskine && krop && (
       <li className="env-row">
         <span className="env-label"><Cpu size={13} /> Maskine</span>
         <span className="env-val">
@@ -47,7 +54,8 @@ export function RunHealth({
           {krop.cpu_temp_c ? ` · ${Math.round(krop.cpu_temp_c)}°` : ''}
         </span>
       </li>
-      {gpu && (
+      )}
+      {visMaskine && gpu && (
         <li className="env-row">
           <span className="env-label"><Zap size={13} /> GPU</span>
           <span className="env-val">
@@ -56,6 +64,7 @@ export function RunHealth({
           </span>
         </li>
       )}
+      {visMaskine && krop && (
       <li className="env-row">
         <span className="env-label"><HardDrive size={13} /> Disk</span>
         <span className="env-val">
@@ -63,6 +72,7 @@ export function RunHealth({
           <span className={`rh-tryk rh-${krop.pressure}`}> · tryk {TRYK_DA[krop.pressure] ?? krop.pressure}</span>
         </span>
       </li>
+      )}
       {komprimerVed > 0 && (
         <li className="env-row">
           <span className="env-label"><Activity size={13} /> Kontekst</span>

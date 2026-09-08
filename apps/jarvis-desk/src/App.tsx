@@ -30,6 +30,7 @@ import { MemoryView } from './views/MemoryView'
 import { SchedulingView } from './views/SchedulingView'
 import { ImageGalleryView } from './views/ImageGalleryView'
 import { Sidebar, type Surface } from './components/shell/Sidebar'
+import { DESK_CHROME } from './lib/deskChrome'
 import { StatusBar } from './components/shell/StatusBar'
 import './styles/tokens.css'
 import './styles/app.css'
@@ -263,7 +264,7 @@ function Shell({
           {surface === 'gallery' && <ImageGalleryView onOpenChat={() => setSurface('chat')} />}
           {surface === 'scheduling' && <SchedulingView role={role} />}
         </ShellWithPanel>
-        <StatusBar model={model} sessionId={activeId} />
+        {DESK_CHROME.statusbar && <StatusBar model={model} sessionId={activeId} />}
       </main>
     </div>
   )

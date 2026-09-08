@@ -18,6 +18,7 @@ import { readModelPrefs } from '../lib/composerPrefs'
 import { getContextInfo, getContextUsage, getSessionMilestones, getActiveRuns, followRun, compactNow, warmSession } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
+import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { CentralBadge } from '../components/shell/CentralBadge'
 import { SystemHealth } from '../components/shell/SystemHealth'
@@ -536,11 +537,11 @@ export function ChatView({
         <PresenceDot status={bgActive && stream.status !== 'working' ? 'working' : stream.status} /> <span className="chat-title">{chatTitle}</span>
       </div>
       <div className="chatview-head-right">
-        <SystemHealth errors={stream.canonicalErrors} />
+        {DESK_CHROME.headerHealth && <SystemHealth errors={stream.canonicalErrors} />}
         {settings && (
           <CentralBadge config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} isOwner={auth?.role === 'owner'} />
         )}
-        {settings && (
+        {DESK_CHROME.headerConnection && settings && (
           <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
         )}
         {voice.supported && (

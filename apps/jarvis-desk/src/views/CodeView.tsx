@@ -15,6 +15,7 @@ import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ApprovalCard } from '../components/rich/ApprovalCard'
 import { PresenceDot } from '../components/shell/PresenceDot'
+import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
@@ -654,10 +655,10 @@ export function CodeView({
 
   const headerRight = (
     <div className="chatview-head-right">
-      {config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
-      <SystemHealth errors={stream.canonicalErrors} />
+      {DESK_CHROME.headerGit && config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
+      {DESK_CHROME.headerHealth && <SystemHealth errors={stream.canonicalErrors} />}
       <CentralBadge config={config} isOwner={isOwner} />
-      {config && <ConnectionPill config={config} />}
+      {DESK_CHROME.headerConnection && config && <ConnectionPill config={config} />}
       <button
         type="button"
         className={`panel-toggle ${envOpen ? 'active' : ''}`}

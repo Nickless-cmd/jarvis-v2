@@ -196,7 +196,12 @@ button.sidebar-group {
   width: 100%;
   background: none;
   border: 0;
-  font: inherit;
+  /* IKKE `font: inherit`. Den shorthand saetter ogsaa font-size til arvet, og
+     da `button.sidebar-group` er mere specifik end `.sidebar-label`, slog den
+     etikettens 11px ihjel — overskrifterne stod i panelets broedtekst-stoerrelse.
+     Det saa ud som et designvalg; det var en kollision i kaskaden. */
+  font-family: inherit;
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
 }
@@ -336,6 +341,12 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   overflow-y: auto;
   overflow-x: hidden;
   padding: 32px 24px 8px;
+  /* Teksten toner ud de oeverste 40px i stedet for at blive klippet af en
+     streg. En maske frem for en malet gradient: den virker paa enhver bund,
+     ogsaa naar temaet skifter — en gradient skulle kende baggrundsfarven og
+     ville vaere forkert i det andet tema. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 40px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 40px);
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -855,7 +866,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .chatview-head {
   display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 0 0 auto;
   padding: 8px 24px; font-size: 13px; color: var(--fg-2);
-  border-bottom: 1px solid var(--line);
+  /* Ingen streg. Samtalen fader i stedet ud opad (se .transcript nedenfor), saa
+     headeren holder op med at vaere en kasse og bliver en kant teksten gaar imod. */
 }
 .chatview-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .chat-title { color: var(--fg-1); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

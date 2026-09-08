@@ -25,7 +25,12 @@ export function RunTimeline({ blocks }: { blocks: ContentBlock[] }) {
   if (!harArbejde) return null
 
   const fejlede = faser.some((f) => f.status === 'fejl')
-  const resume = faser.filter((f) => f.slags !== 'svarede').map((f) => f.label).join(' · ')
+  const arbejde = faser.filter((f) => f.slags !== 'svarede')
+  // Resuméet bærer nu den FØRSTE detalje: «Kørte en kommando» sagde ikke hvad
+  // der blev kørt, og så var linjen ikke værd at læse (Bjørn 8/9-2026).
+  const resume = arbejde
+    .map((f) => (f.detaljer[0] ? `${f.label}: ${f.detaljer[0]}` : f.label))
+    .join(' · ')
 
   return (
     <div className={`runtl${fejlede ? ' har-fejl' : ''}`}>
@@ -36,6 +41,7 @@ export function RunTimeline({ blocks }: { blocks: ContentBlock[] }) {
         aria-expanded={aaben}
       >
         <ChevronRight size={13} className={`runtl-pil${aaben ? ' aaben' : ''}`} />
+        <span className="runtl-titel">Forløb ({arbejde.length})</span>
         <span className="runtl-resume">{resume}</span>
       </button>
       {aaben && (
@@ -44,7 +50,11 @@ export function RunTimeline({ blocks }: { blocks: ContentBlock[] }) {
             <li key={i} className={`runtl-fase st-${f.status}`}>
               <Prik fase={f} />
               <span className="runtl-label">{f.label}</span>
-              {f.detalje && <code className="runtl-detalje">{f.detalje}</code>}
+              {f.detaljer.length > 0 && (
+                <span className="runtl-detaljer">
+                  {f.detaljer.map((d, j) => <code key={j} className="runtl-detalje">{d}</code>)}
+                </span>
+              )}
             </li>
           ))}
         </ol>

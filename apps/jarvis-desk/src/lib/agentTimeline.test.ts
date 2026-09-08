@@ -63,3 +63,94 @@ describe('byggeTidslinje', () => {
     expect(byggeTidslinje([taenk('   '), tekst('  ')])).toEqual([])
   })
 })
+
+/**
+ * Bjørn 8/9-2026: «forløbet i bunden af hans besked er rimelig ubrugeligt uden
+ * metadata … de viser bare "kørt kommando bash", ikke hvad de faktisk lavede.»
+ *
+ * Dataen lå i `input` hele tiden — kun testkørsler bar en detalje.
+ */
+describe('forløbet siger hvad der faktisk skete', () => {
+  it('kommandoen står ved en kørsel', () => {
+    const [f] = byggeTidslinje([
+      { type: 'tool_use', id: '1', name: 'bash', input: { command: 'git status --short' }, status: 'done' },
+    ])
+    expect(f!.detaljer).toEqual(['git status --short'])
+  })
+
+  it('filen står ved en læsning — kun de sidste to led af stien', () => {
+    // Den fulde sti er sjældent det man leder efter, og den skubber alt andet
+    // ud af linjen.
+    const [f] = byggeTidslinje([
+      { type: 'tool_use', id: '1', name: 'read_file', input: { file_path: '/media/projects/jarvis-v2/core/db.py' }, status: 'done' },
+    ])
+    expect(f!.detaljer).toEqual(['core/db.py'])
+  })
+
+  it('mønstret står ved en søgning', () => {
+    const [f] = byggeTidslinje([
+      { type: 'tool_use', id: '1', name: 'grep', input: { pattern: 'def issue_token' }, status: 'done' },
+    ])
+    expect(f!.detaljer).toEqual(['def issue_token'])
+  })
+
+  it('en sammenslået fase samler flere detaljer', () => {
+    const [f] = byggeTidslinje([
+      { type: 'tool_use', id: '1', name: 'read_file', input: { file_path: 'a.py' }, status: 'done' },
+      { type: 'tool_use', id: '2', name: 'read_file', input: { file_path: 'b.py' }, status: 'done' },
+    ])
+    expect(f!.antal).toBe(2)
+    expect(f!.detaljer).toEqual(['a.py', 'b.py'])
+  })
+
+  it('men højst seks — en fase må ikke fylde skærmen', () => {
+    const [f] = byggeTidslinje(
+      Array.from({ length: 12 }, (_, i) => ({
+        type: 'tool_use' as const, id: String(i), name: 'read_file',
+        input: { file_path: `f${i}.py` }, status: 'done' as const,
+      })),
+    )
+    expect(f!.antal).toBe(12)
+    expect(f!.detaljer.length).toBe(6)
+  })
+
+  it('Jarvis egen narration bliver til metadata på fasen', () => {
+    // Den stod før i sit EGET «Forløb»-felt — to forløb på samme besked.
+    const [f] = byggeTidslinje([
+      { type: 'tool_use', id: 'c1', name: 'bash', input: { command: 'ls' }, status: 'done' },
+      { type: 'progress', tool_use_id: 'c1', parent_tool_use_id: null, message: 'Kiggede i mappen', status: 'done' },
+    ])
+    expect(f!.detaljer).toEqual(['ls', 'Kiggede i mappen'])
+  })
+
+  it('en detalje uden indhold laver ikke en tom linje', () => {
+    const [f] = byggeTidslinje([
+      { type: 'tool_use', id: '1', name: 'bash', input: {}, status: 'done' },
+    ])
+    expect(f!.detaljer).toEqual([])
+  })
+})
+
+describe('narration uden en fase at høre til', () => {
+  it('opfinder ikke en fase — den droppes', () => {
+    // Første forsøg lavede en «Tænkte sig om»-fase af narration der ikke kunne
+    // hænge på noget, og så stod der en falsk fase fuld af rå værktøjsnavne.
+    const faser = byggeTidslinje([
+      { type: 'progress', tool_use_id: 'x', parent_tool_use_id: null, message: 'løs narration', status: 'done' },
+    ])
+    expect(faser).toEqual([])
+  })
+
+  it('spilder ikke over i en ny fase når den forrige er fuld', () => {
+    const blokke: ContentBlock[] = [
+      { type: 'tool_use', id: '1', name: 'bash', input: { command: 'a' }, status: 'done' },
+      ...Array.from({ length: 9 }, (_, i) => ({
+        type: 'progress' as const, tool_use_id: '1', parent_tool_use_id: null,
+        message: `n${i}`, status: 'done' as const,
+      })),
+    ]
+    const faser = byggeTidslinje(blokke)
+    expect(faser.length).toBe(1)
+    expect(faser[0]!.detaljer.length).toBe(6)
+  })
+})

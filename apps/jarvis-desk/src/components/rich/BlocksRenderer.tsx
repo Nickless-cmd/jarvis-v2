@@ -76,11 +76,16 @@ function BlockView({
   isLast: boolean
 }) {
   switch (block.type) {
+    // Narrationen vises KUN mens der streames. Når turen er slut, staar den i
+    // «Forløb» under beskeden — hvor den er blevet til den metadata linjen
+    // manglede. Foer stod begge dele samtidig, og Bjoern saa to forloeb paa
+    // samme besked (8/9-2026). Live har den stadig en opgave: den er det
+    // eneste der fortaeller hvad der sker lige nu.
     case 'progress_trail':
-      return <ProgressTrail items={block.items} />
+      return streaming ? <ProgressTrail items={block.items} /> : null
     case 'progress':
       // Enkelt progress-blok (skulle være coalesced, men vær robust).
-      return <ProgressTrail items={[block]} />
+      return streaming ? <ProgressTrail items={[block]} /> : null
     case 'text':
       return <MarkdownRenderer text={block.text} streaming={streaming} />
     case 'tool_group':

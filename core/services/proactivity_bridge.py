@@ -102,7 +102,12 @@ def _digest_is_repeat(text: str) -> bool:
         return False
     try:
         from core.services.chat_sessions import recent_chat_session_messages
-        for m in reversed(recent_chat_session_messages(_PROACTIVITY_SESSION_ID, limit=8)):
+        # Samme session som beskeden VILLE lande i (8/9-2026). Da digesten
+        # flyttede til hans sidst aktive samtale, kiggede dette vaern stadig i
+        # den gamle dedikerede session — og et gentagelses-vaern der kigger det
+        # forkerte sted er ikke et vaern.
+        sid = _sidst_aktive_samtale() or _PROACTIVITY_SESSION_ID
+        for m in reversed(recent_chat_session_messages(sid, limit=8)):
             if str(m.get("role")) == "assistant":
                 return _norm_digest(str(m.get("content"))) == want
     except Exception:
@@ -210,14 +215,58 @@ def _route(uid: str, text: str, importance: str) -> dict[str, Any]:
     return res
 
 
+# Hvor gammel må den sidst aktive samtale være, før en proaktiv besked hellere
+# skal ligge for sig selv? Et døgn: kommer han tilbage dagen efter, hører
+# beskeden stadig til dér hvor han slap. Er der gået længere, ville den lande
+# i en samtale han for længst har lukket.
+_SIDST_AKTIV_MAKS_TIMER = 24
+
+
+def _sidst_aktive_samtale() -> str:
+    """Den senest rørte af HANS egne samtaler — ikke en baggrunds-session.
+
+    Bjørn 8/9-2026: de proaktive spørgsmål «ligger i en session for sig selv så
+    ser dem ikke rigtigt... de burde komme i den aktive og sidste aktive
+    session». En besked skrevet TIL ham hører hjemme dér hvor han er.
+
+    Autonome kørsler flyttes bevidst IKKE med: målt samme dag fyldte én af dem
+    168 beskeder, hvoraf 155 var tool-resultater. De ville både drukne samtalen
+    og æde hans prompt-kontekst. Deres RESULTAT når ham allerede gennem denne
+    kanal; selve arbejdet bliver i sin egen session.
+
+    Self-safe → tom streng, og så falder vi tilbage til den dedikerede session.
+    """
+    try:
+        from datetime import UTC, datetime, timedelta
+
+        from core.runtime.db_core import connect
+        graense = (datetime.now(UTC) - timedelta(hours=_SIDST_AKTIV_MAKS_TIMER)).isoformat()
+        with connect() as conn:
+            row = conn.execute(
+                """SELECT session_id FROM chat_sessions
+                   WHERE session_id LIKE 'chat-%' AND updated_at > ?
+                   ORDER BY updated_at DESC LIMIT 1""",
+                (graense,)).fetchone()
+        return str(row["session_id"]) if row else ""
+    except Exception as exc:
+        logger.debug("proactivity_bridge: kunne ikke finde sidst aktive samtale: %s", exc)
+        return ""
+
+
 def _persist_as_chat(uid: str, text: str) -> str:
-    """Skriv beskeden som en RIGTIG chat-besked i den dedikerede proactivity-session, så
-    Bjørn kan se og SVARE på den i companion — ikke kun en forsvindende notifikation.
-    Self-safe; returnerer session_id ('' ved fejl)."""
+    """Skriv beskeden som en RIGTIG chat-besked, så Bjørn kan se og SVARE på den
+    — ikke kun en forsvindende notifikation.
+
+    Lander i hans SIDST AKTIVE samtale når der er en fra det sidste døgn; ellers
+    i den dedikerede proactivity-session som før. Self-safe; returnerer
+    session_id ('' ved fejl)."""
     try:
         from core.services.chat_sessions import (get_or_create_named_session,
                                                  append_chat_message)
-        sid = get_or_create_named_session(_PROACTIVITY_SESSION_ID, _PROACTIVITY_SESSION_TITLE)
+        sid = _sidst_aktive_samtale()
+        if not sid:
+            sid = get_or_create_named_session(_PROACTIVITY_SESSION_ID,
+                                              _PROACTIVITY_SESSION_TITLE)
         append_chat_message(session_id=sid, role="assistant", content=text,
                             user_id=uid, workspace_name="default")
         return sid

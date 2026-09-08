@@ -76,3 +76,75 @@ def test_digest_is_repeat_false_when_empty_history(monkeypatch):
     import core.services.chat_sessions as cs
     monkeypatch.setattr(cs, "recent_chat_session_messages", lambda *_a, **_k: [])
     assert pb._digest_is_repeat(pb.build_digest([_cand(text="noget")])) is False
+
+
+# ---------------------------------------------------------------------------
+# Proaktive beskeder lander hos ham, ikke i en silo (8/9-2026)
+#
+# Bjørn: «de ligger i en session for sig selv så ser dem ikke rigtigt... de
+# burde komme i den aktive og sidste aktive session».
+#
+# Autonome kørsler flyttes bevidst IKKE med: målt samme dag fyldte
+# auto-recurring-20260907 **168 beskeder, hvoraf 155 var tool-resultater**. De
+# ville både drukne samtalen og æde hans prompt-kontekst. Deres resultat når
+# ham allerede gennem denne kanal.
+# ---------------------------------------------------------------------------
+
+def test_beskeden_lander_i_hans_sidst_aktive_samtale(monkeypatch):
+    import core.services.proactivity_bridge as B
+
+    skrevet: list = []
+    monkeypatch.setattr(B, "_sidst_aktive_samtale", lambda: "chat-abc")
+    monkeypatch.setattr(
+        "core.services.chat_sessions.append_chat_message",
+        lambda **kw: skrevet.append(kw) or {"id": "m1"},
+    )
+    assert B._persist_as_chat("u1", "💭 en tanke") == "chat-abc"
+    assert skrevet[0]["session_id"] == "chat-abc"
+
+
+def test_uden_en_frisk_samtale_falder_den_tilbage_til_siloen(monkeypatch):
+    """Har han ikke skrevet i et døgn, hører beskeden ikke hjemme i en samtale
+    han for længst har lukket."""
+    import core.services.proactivity_bridge as B
+
+    monkeypatch.setattr(B, "_sidst_aktive_samtale", lambda: "")
+    monkeypatch.setattr(
+        "core.services.chat_sessions.get_or_create_named_session",
+        lambda sid, titel: sid,
+    )
+    monkeypatch.setattr(
+        "core.services.chat_sessions.append_chat_message", lambda **kw: {"id": "m1"},
+    )
+    assert B._persist_as_chat("u1", "💭 en tanke") == B._PROACTIVITY_SESSION_ID
+
+
+def test_kun_HANS_samtaler_taeller_som_sidst_aktive():
+    """En autonom eller proaktiv session må aldrig blive målet — så ville
+    beskeden lande i siloen igen ad bagvejen."""
+    import inspect
+
+    import core.services.proactivity_bridge as B
+
+    src = inspect.getsource(B._sidst_aktive_samtale)
+    assert "chat-%" in src, "forespørgslen begrænser ikke til hans egne samtaler"
+
+
+def test_gentagelses_vaernet_kigger_samme_sted_som_beskeden_lander(monkeypatch):
+    """Et værn der kigger det forkerte sted er ikke et værn."""
+    import core.services.proactivity_bridge as B
+
+    set_: list = []
+    monkeypatch.setattr(B, "_sidst_aktive_samtale", lambda: "chat-abc")
+    monkeypatch.setattr(
+        "core.services.chat_sessions.recent_chat_session_messages",
+        lambda sid, limit=8: set_.append(sid) or [],
+    )
+    B._digest_is_repeat("en digest")
+    assert set_ == ["chat-abc"]
+
+
+def test_opslaget_kaster_aldrig():
+    import core.services.proactivity_bridge as B
+
+    assert isinstance(B._sidst_aktive_samtale(), str)

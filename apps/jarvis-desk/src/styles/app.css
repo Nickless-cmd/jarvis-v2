@@ -186,6 +186,31 @@
   padding: 14px 10px 6px;
 }
 
+/* Gruppe-overskrift i sessions-listen (8/9-2026). Den er en knap fordi den
+   folder gruppen sammen — men den skal se ud som den etiket den erstatter,
+   ikke som en knap. */
+button.sidebar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.sidebar-group:hover { color: var(--fg-2); }
+button.sidebar-group:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
+button.sidebar-group svg { flex: none; opacity: .7; }
+
+.sidebar-group-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  opacity: .55;
+}
+
 .session-item {
   display: flex;
   align-items: center;

@@ -1,0 +1,69 @@
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent, within } from '@testing-library/react'
+
+// Bjørn 8/9-2026: «sessioner i side panelet er rodet». 278 chat-sessioner,
+// 181 autonome og én proaktiv lå i én flad liste — og indtil samme dag hed
+// chat-sessionerne alle sammen «Ny samtale», så navnene hjalp heller ikke.
+//
+// Testdata er hans faktiske session-typer, målt i runtime.
+const SESSIONER = [
+  { id: 'chat-aaa', title: 'kan du kigge på gaten', updated_at: 'x', workspace_kind: null },
+  { id: 'chat-bbb', title: 'Måtte starte en ny session', updated_at: 'x', workspace_kind: null },
+  { id: 'chat-ccc', title: 'ret lige den fil', updated_at: 'x', workspace_kind: 'code' },
+  { id: 'auto-heartbeat-20260908', title: 'Autonom · Hjerteslag · 2026-09-08', updated_at: 'x' },
+  { id: 'auto-dream-20260908', title: 'Autonom · Drømme · 2026-09-08', updated_at: 'x' },
+  { id: 'proactivity-bridge', title: '💭 Proaktive spørgsmål', updated_at: 'x' },
+]
+
+vi.mock('../../hooks/useSessions', () => ({
+  useSessions: () => ({
+    sessions: SESSIONER, activeId: null,
+    select: vi.fn(), create: vi.fn(), rename: vi.fn(), remove: vi.fn(), newChat: vi.fn(),
+  }),
+}))
+vi.mock('../../hooks/useSettings', () => ({ useSettings: () => ({ settings: null }) }))
+vi.mock('../../hooks/useStream', () => ({ useStream: () => ({ workingSessionId: null }) }))
+vi.mock('../../lib/api', () => ({
+  searchSessions: vi.fn().mockResolvedValue([]),
+  getActiveRuns: vi.fn().mockResolvedValue([]),
+}))
+
+import { Sidebar } from './Sidebar'
+
+const vis = () => render(<Sidebar surface="chat" onSurface={() => {}} userName="Bjørn" />)
+const gruppe = (navn: string) => screen.getByRole('button', { name: new RegExp(navn, 'i') })
+
+describe('sessions-listen er inddelt', () => {
+  it('viser de tre kataloger med antal', () => {
+    vis()
+    expect(within(gruppe('samtaler')).getByText('2')).toBeInTheDocument()
+    expect(within(gruppe('kode')).getByText('1')).toBeInTheDocument()
+    expect(within(gruppe('proaktive & autonome')).getByText('3')).toBeInTheDocument()
+  })
+
+  it('hans egne samtaler er åbne som udgangspunkt', () => {
+    vis()
+    expect(screen.getByText('kan du kigge på gaten')).toBeInTheDocument()
+    expect(screen.getByText('ret lige den fil')).toBeInTheDocument()
+  })
+
+  it('de autonome er FOLDET SAMMEN — 181 kørsler ville drukne resten', () => {
+    vis()
+    expect(screen.queryByText('Autonom · Hjerteslag · 2026-09-08')).not.toBeInTheDocument()
+    expect(screen.queryByText('💭 Proaktive spørgsmål')).not.toBeInTheDocument()
+    expect(gruppe('proaktive & autonome')).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('de kan foldes ud', () => {
+    vis()
+    fireEvent.click(gruppe('proaktive & autonome'))
+    expect(screen.getByText('💭 Proaktive spørgsmål')).toBeInTheDocument()
+    expect(gruppe('proaktive & autonome')).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('og hans egne kan foldes sammen', () => {
+    vis()
+    fireEvent.click(gruppe('samtaler'))
+    expect(screen.queryByText('kan du kigge på gaten')).not.toBeInTheDocument()
+  })
+})

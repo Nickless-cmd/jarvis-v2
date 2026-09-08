@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, Fragment } from 'react'
+import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
   Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code,
+  ChevronRight, ChevronDown,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
   type LucideIcon,
@@ -10,6 +11,7 @@ import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
 import { searchSessions, getActiveRuns, type SessionSearchResult } from '../../lib/api'
 import { COWORK_ZONES, emitZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
+import { grupperSessioner, type SessionGruppe } from '../../lib/sessionGroups'
 import { ModeSlider, type Mode } from './ModeSlider'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
@@ -33,6 +35,12 @@ export function Sidebar({
   const { sessions, activeId, select, newChat } = useSessions()
   const { settings } = useSettings()
   const { workingSessionId } = useStream()
+
+  // Inddeling af sessions-listen (8/9-2026). Bjørn: «sessioner i side panelet
+  // er rodet». 278 chat + 181 autonome + 1 proaktiv i én flad liste.
+  const grupper = useMemo(() => grupperSessioner(sessions), [sessions])
+  const [foldedeGrupper, setFoldedeGrupper] =
+    useState<Partial<Record<SessionGruppe, boolean>>>({})
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SessionSearchResult[]>([])
@@ -128,20 +136,38 @@ export function Sidebar({
             )}
           </>
         ) : (
-          sessions.length > 0 && (
+          grupper.length > 0 && (
             <>
-              <div className="sidebar-label">samtaler</div>
-              {sessions.map((s) => (
-                <SessionItem
-                  key={s.id}
-                  id={s.id}
-                  title={s.title || 'Uden titel'}
-                  active={s.id === activeId}
-                  working={isWorking(s.id)}
-                  workspaceKind={s.workspace_kind}
-                  onSelect={() => { select(s.id); onSurface(s.workspace_kind ? 'code' : 'chat') }}
-                />
-              ))}
+              {grupper.map((g) => {
+                // Baggrunds-gruppen er foldet sammen som udgangspunkt: 181
+                // autonome kørsler ville ellers drukne hans egne samtaler.
+                const foldet = foldedeGrupper[g.gruppe] ?? (g.gruppe === 'baggrund')
+                return (
+                  <Fragment key={g.gruppe}>
+                    <button
+                      type="button"
+                      className="sidebar-label sidebar-group"
+                      aria-expanded={!foldet}
+                      onClick={() => setFoldedeGrupper((f) => ({ ...f, [g.gruppe]: !foldet }))}
+                    >
+                      {foldet ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                      <span>{g.navn}</span>
+                      <span className="sidebar-group-count">{g.sessioner.length}</span>
+                    </button>
+                    {!foldet && g.sessioner.map((s) => (
+                      <SessionItem
+                        key={s.id}
+                        id={s.id}
+                        title={s.title || 'Uden titel'}
+                        active={s.id === activeId}
+                        working={isWorking(s.id)}
+                        workspaceKind={s.workspace_kind}
+                        onSelect={() => { select(s.id); onSurface(s.workspace_kind ? 'code' : 'chat') }}
+                      />
+                    ))}
+                  </Fragment>
+                )
+              })}
             </>
           )
         )}

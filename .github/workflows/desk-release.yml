@@ -1,9 +1,14 @@
 name: desk-release
 
-# Bygger jarvis-desk (Electron-appen "Jarvis") til Linux + macOS når et
-# release-tag pushes, og uploader artefakterne til GitHub-releasen for det tag.
-# Windows bygges manuelt (se apps/jarvis-desk/WINDOWS-BUILD-NOTE.md) og uploades
-# til samme tag. Builds er USIGNEREDE — Gatekeeper/SmartScreen advarer; forventet.
+# Bygger jarvis-desk (Electron-appen "Jarvis") til Linux, macOS OG Windows når
+# et release-tag pushes, og uploader artefakterne til GitHub-releasen for det tag.
+#
+# Kommentaren her sagde indtil 8/9-2026 at Windows byggedes manuelt. Det var
+# forældet: matrixen nedenfor har haft windows-latest hele tiden, og de sidste
+# releases bærer alle tre — .deb + .AppImage, .dmg + mac.zip (universal), .exe.
+# En kommentar der modsiger koden er værre end ingen kommentar.
+#
+# Builds er USIGNEREDE — Gatekeeper/SmartScreen advarer; forventet.
 
 on:
   push:

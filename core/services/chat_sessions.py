@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -13,6 +14,8 @@ from core.services.tool_result_store import (
     save_tool_result,
 )
 from core.runtime.db import connect
+
+logger = logging.getLogger(__name__)
 
 
 def _load_tool_result_for_reconstruct(result_id: str) -> dict | None:
@@ -578,6 +581,7 @@ def append_chat_message(
     #
     # Fire-and-forget: en doed event-bus maa aldrig koste en gemt besked.
     if normalized_role == "user":
+        _navngiv_fra_foerste_besked(normalized_session, content)
         try:
             from core.eventbus.bus import event_bus
             event_bus.publish("channel.chat_message_appended", {
@@ -589,6 +593,48 @@ def append_chat_message(
             pass
 
     return besked
+
+
+# Titler ingen har valgt. En session der stadig hedder én af disse maa gerne
+# omdoebes af sin foerste brugerbesked; alt andet er brugerens eget valg.
+_PLADSHOLDER_TITLER = frozenset({
+    "new chat", "ny samtale", "ny chat", "kode session", "code session",
+    "untitled", "uden titel", "",
+})
+
+
+def _navngiv_fra_foerste_besked(session_id: str, content: str) -> None:
+    """Doeb sessionen efter det foerste brugeren skrev i den.
+
+    Foer 8/9-2026 gjorde INGEN dette. `rename_chat_session` fandtes, men blev
+    kun kaldt fra en manuel API-rute, saa hver chat-session hed «Ny samtale» —
+    ogsaa den med 683 beskeder. Sidepanelet blev en liste af identiske navne.
+
+    Kun pladsholder-titler roeres: har brugeren selv navngivet sessionen, eller
+    baerer den en maskin-titel med betydning («Autonom · Hjerteslag · …»,
+    «💭 Proaktive spoergsmaal»), bliver den staaende.
+
+    Self-safe og tavs: en session uden navn er et skoenhedsproblem, en braekket
+    besked-gemning er det ikke.
+    """
+    tekst = " ".join(str(content or "").split()).strip()
+    if not tekst:
+        return
+    try:
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT title FROM chat_sessions WHERE session_id = ?",
+                (session_id,)).fetchone()
+            if row is None:
+                return
+            if str(row["title"] or "").strip().lower() not in _PLADSHOLDER_TITLER:
+                return
+            conn.execute(
+                "UPDATE chat_sessions SET title = ? WHERE session_id = ?",
+                (_normalize_title(tekst), session_id))
+            conn.commit()
+    except Exception as exc:
+        logger.debug("chat_sessions: kunne ikke navngive %s: %s", session_id, exc)
 
 
 _DEDUP_WINDOW_SECONDS = 900  # 15 min: fanger mirror/retry + perceived-failure-resends

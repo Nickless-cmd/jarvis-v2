@@ -60,6 +60,35 @@ export function SessionProvider({
     void loadSessions()
   }, [loadSessions])
 
+  // Session-listen skal opdatere UDEN at man skifter flade (Bjørn 8/9-2026:
+  // «jeg skal trykke over på cowork og tilbage før den opdatere»). Den blev
+  // hentet én gang ved mount og aldrig igen; et fladeskift gen-monterede
+  // provideren, og DET var opdateringen.
+  //
+  // To udløsere frem for en poll — en poll-storm har allerede kostet os
+  // afbrudte streams én gang:
+  //   1) vinduet får fokus igen (han har været et andet sted)
+  //   2) den aktive session får sin FØRSTE besked — det er dér serveren nu
+  //      omdøber den fra «Ny samtale» til det han skrev, så titlen i panelet
+  //      ellers ville blive hængende.
+  useEffect(() => {
+    const paaFokus = () => { void loadSessions() }
+    window.addEventListener('focus', paaFokus)
+    document.addEventListener('visibilitychange', paaFokus)
+    return () => {
+      window.removeEventListener('focus', paaFokus)
+      document.removeEventListener('visibilitychange', paaFokus)
+    }
+  }, [loadSessions])
+
+  const foersteBeskedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!activeId || messages.length === 0) return
+    if (foersteBeskedRef.current === activeId) return
+    foersteBeskedRef.current = activeId
+    void loadSessions()
+  }, [activeId, messages.length, loadSessions])
+
   const select = useCallback((id: string) => {
     setActiveId(id)
     try { localStorage.setItem('jarvis-desk:activeSession', id) } catch { /* ignore */ }
@@ -84,10 +113,13 @@ export function SessionProvider({
   }, [])
 
   const refresh = useCallback(async () => {
+    // Listen FØRST: en ny eller netop omdøbt session skal frem i panelet,
+    // også når der ikke er en aktiv samtale at hente beskeder for.
+    void loadSessions()
     if (!activeId) return
     const { messages: server } = await getSession(config, activeId)
     setMessages((local) => mergeServer(local, server))
-  }, [config, activeId])
+  }, [config, activeId, loadSessions])
 
   const create = useCallback(async (title: string) => {
     const sess = await createSession(config, title)

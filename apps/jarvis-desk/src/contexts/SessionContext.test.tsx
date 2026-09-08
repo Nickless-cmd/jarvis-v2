@@ -186,3 +186,51 @@ describe('SessionContext reconcile', () => {
     await waitFor(() => expect(result.current.sessions.length).toBe(1))
   })
 })
+
+// ---------------------------------------------------------------------------
+// Session-listen skal opdatere UDEN et fladeskift (8/9-2026)
+//
+// Bjørn: «jeg skal trykke over på cowork og tilbage før den opdatere den nye
+// sessioner i panelet». Listen blev hentet én gang ved mount og aldrig igen —
+// et fladeskift gen-monterede provideren, og DET var opdateringen.
+// ---------------------------------------------------------------------------
+
+describe('session-listen opdaterer af sig selv', () => {
+  it('henter listen igen når vinduet får fokus', async () => {
+    const { listSessions } = await import('../lib/api')
+    const spy = vi.mocked(listSessions)
+    spy.mockClear()
+    renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(spy).toHaveBeenCalled())
+    const foer = spy.mock.calls.length
+
+    await act(async () => { window.dispatchEvent(new Event('focus')) })
+    await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(foer))
+  })
+
+  it('henter listen igen når fanen bliver synlig', async () => {
+    const { listSessions } = await import('../lib/api')
+    const spy = vi.mocked(listSessions)
+    spy.mockClear()
+    renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(spy).toHaveBeenCalled())
+    const foer = spy.mock.calls.length
+
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+    await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(foer))
+  })
+
+  it('refresh henter OGSÅ listen, ikke kun beskederne', async () => {
+    const { listSessions } = await import('../lib/api')
+    const spy = vi.mocked(listSessions)
+    spy.mockClear()
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(spy).toHaveBeenCalled())
+    const foer = spy.mock.calls.length
+
+    // Ingen aktiv session: før fiksningen returnerede refresh med det samme
+    // og rørte aldrig listen — så en netop oprettet session blev usynlig.
+    await act(async () => { await result.current.refresh() })
+    expect(spy.mock.calls.length).toBeGreaterThan(foer)
+  })
+})

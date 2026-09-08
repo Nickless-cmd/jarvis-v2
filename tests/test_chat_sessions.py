@@ -285,3 +285,83 @@ def test_recent_user_message_texts_gaar_paa_tvaers_af_sessioner(tmp_path, monkey
     assert any("rigtig lang nok" in x for x in t)
     assert "ok" not in t
     assert not any("et svar der ikke skal" in x for x in t)
+
+
+# ---------------------------------------------------------------------------
+# Auto-navngivning (8/9-2026)
+#
+# Bjørn: «sessionerne hedder ny samtale eller kode session istedet for de bliver
+# navngivet ved første besked». `rename_chat_session` fandtes, men blev kun kaldt
+# fra en manuel API-rute — så hver chat-session hed «Ny samtale», også den med
+# 683 beskeder. Sidepanelet blev en liste af identiske navne.
+# ---------------------------------------------------------------------------
+
+def _sess(titel):
+    from core.services.chat_sessions import create_chat_session
+    s = create_chat_session(title=titel)
+    return str(s.get("session_id") or s.get("id"))
+
+
+def test_foerste_brugerbesked_doeber_sessionen():
+    from core.services.chat_sessions import (
+        append_chat_message, get_chat_session,
+    )
+
+    sid = _sess("Ny samtale")
+    append_chat_message(session_id=sid, role="user",
+                        content="kan du kigge på gaten der blokerer mine skrivninger?")
+    assert "gaten der blokerer" in str(get_chat_session(sid)["title"])
+
+
+def test_kun_den_FOERSTE_besked_doeber():
+    """Ellers ville titlen skifte hver gang han skrev noget."""
+    from core.services.chat_sessions import (
+        append_chat_message, get_chat_session,
+    )
+
+    sid = _sess("Ny samtale")
+    append_chat_message(session_id=sid, role="user", content="første besked her")
+    append_chat_message(session_id=sid, role="user", content="en helt anden ting bagefter")
+    assert "første besked" in str(get_chat_session(sid)["title"])
+
+
+def test_en_titel_brugeren_selv_har_valgt_roeres_ikke():
+    from core.services.chat_sessions import (
+        append_chat_message, get_chat_session,
+    )
+
+    sid = _sess("Backup-projektet")
+    append_chat_message(session_id=sid, role="user", content="noget helt andet")
+    assert get_chat_session(sid)["title"] == "Backup-projektet"
+
+
+def test_maskin_titler_med_betydning_roeres_ikke():
+    """«Autonom · Hjerteslag · 2026-09-04» og «💭 Proaktive spørgsmål» siger
+    allerede hvad sessionen er — de skal ikke omdøbes af deres indhold."""
+    from core.services.chat_sessions import (
+        append_chat_message, get_chat_session,
+    )
+
+    for titel in ("Autonom · Hjerteslag · 2026-09-04", "💭 Proaktive spørgsmål"):
+        sid = _sess(titel)
+        append_chat_message(session_id=sid, role="user", content="et eller andet indhold")
+        assert get_chat_session(sid)["title"] == titel
+
+
+def test_assistentens_svar_doeber_ikke():
+    from core.services.chat_sessions import (
+        append_chat_message, get_chat_session,
+    )
+
+    sid = _sess("Ny samtale")
+    append_chat_message(session_id=sid, role="assistant", content="jeg svarer noget her")
+    assert get_chat_session(sid)["title"] == "Ny samtale"
+
+
+def test_navngivningen_kan_ikke_braekke_en_besked():
+    """En session uden navn er et skønhedsproblem; en brækket besked-gemning
+    er det ikke. (Fangede en NameError: modulet havde ingen logger.)"""
+    from core.services.chat_sessions import _navngiv_fra_foerste_besked
+
+    _navngiv_fra_foerste_besked("session-der-ikke-findes", "hej")
+    _navngiv_fra_foerste_besked("", "hej")

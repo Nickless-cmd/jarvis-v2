@@ -62,3 +62,29 @@ describe('design-tokens', () => {
     }
   })
 })
+
+/**
+ * Klassenavne må ikke deles af to komponenter.
+ *
+ * `.central-badge` blev brugt af BÅDE status-mærket i headeren og en tælle-pille
+ * inde i Central-panelet. Panelets regel stod ~1350 linjer senere i filen og
+ * vandt derfor: headerens mærke stod som en fyldt accent-farvet pille med hvid
+ * tekst uanset hvad dens egne regler sagde. Det lignede et designvalg.
+ *
+ * Testen er bevidst smal — den vogter de navne der ER stødt sammen, ikke alle
+ * tænkelige. En regel der larmer om alt bliver slået fra.
+ */
+describe('klassenavne uden sammenfald', () => {
+  const css = readFileSync(join(__dirname, 'app.css'), 'utf-8')
+
+  it('.central-badge tilhører kun header-mærket', () => {
+    // Base-reglen må kun stå ét sted. Flere `.central-badge {` betyder at en
+    // anden komponent har taget navnet igen.
+    const baser = css.match(/^\.central-badge \{/gm) || []
+    expect(baser.length).toBe(1)
+  })
+
+  it('tælle-pillen har sit eget navn', () => {
+    expect(css).toContain('.central-count-badge')
+  })
+})

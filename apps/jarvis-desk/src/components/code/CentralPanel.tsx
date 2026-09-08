@@ -113,8 +113,8 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
               <div className="central-anom-head">
                 <span>⚠ Udefinerede fejl</span>
                 <span className="central-anom-badges">
-                  {(anomCounts.critical ?? 0) > 0 && <span className="central-badge is-red">{anomCounts.critical} kritisk</span>}
-                  {(anomCounts.high ?? 0) > 0 && <span className="central-badge is-yellow">{anomCounts.high} høj</span>}
+                  {(anomCounts.critical ?? 0) > 0 && <span className="central-count-badge is-red">{anomCounts.critical} kritisk</span>}
+                  {(anomCounts.high ?? 0) > 0 && <span className="central-count-badge is-yellow">{anomCounts.high} høj</span>}
                   <span className="central-anom-total">{anomCounts.total} i alt</span>
                 </span>
               </div>
@@ -175,7 +175,7 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
           <button type="button" className="central-learn-toggle" onClick={() => setShowLearning((s) => !s)}>
             <Brain size={12} /> Læring {showLearning ? '▾' : '▸'}
             {typeof learn.proposals === 'number' && learn.proposals > 0 && (
-              <span className="central-badge">{learn.proposals}</span>
+              <span className="central-count-badge">{learn.proposals}</span>
             )}
           </button>
           {showLearning && (

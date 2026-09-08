@@ -2272,7 +2272,12 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .central-learn-toggle { display: flex; align-items: center; gap: 5px; width: 100%; margin-top: 8px;
   background: none; border: none; color: var(--fg-3, var(--fg)); font-size: 11px; cursor: pointer; padding: 4px 0; }
 .central-learn-toggle:hover { color: var(--fg-1, var(--fg)); }
-.central-badge { margin-left: auto; background: var(--accent, #5aa9ff); color: #fff; border-radius: 8px; padding: 0 6px; font-size: 10px; }
+/* Taelle-pille INDE i Central-panelet. Hed foer `.central-badge` — praecis
+   samme navn som status-maerket i headeren (CentralBadge.tsx), og fordi denne
+   regel staar ~1350 linjer senere i filen, vandt den. Headerens maerke stod
+   derfor som en fyldt accent-farvet pille med hvid tekst uanset hvad dens egne
+   regler sagde. Navnesammenfald, ikke et designvalg. */
+.central-count-badge { margin-left: auto; background: var(--accent, #5aa9ff); color: #fff; border-radius: 8px; padding: 0 6px; font-size: 10px; }
 .central-learn { display: flex; flex-direction: column; gap: 4px; font-size: 11px; padding: 4px 0 0; }
 .central-learn-row { display: flex; justify-content: space-between; gap: 8px; }
 .central-learn-row > span:first-child { color: var(--fg-3, var(--fg)); opacity: .8; }
@@ -2292,7 +2297,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .central-anom { background: rgba(255,138,76,.08); border: 1px solid rgba(255,138,76,.25); border-radius: 8px; padding: 7px 9px; margin-bottom: 9px; }
 .central-anom-head { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--warn-fg, #ffae6b); margin-bottom: 5px; }
 .central-anom-badges { display: flex; gap: 4px; align-items: center; }
-.central-badge.is-red { background: #ff6b6b; } .central-badge.is-yellow { background: #ffd166; color: #1a1a1a; }
+.central-count-badge.is-red { background: #ff6b6b; } .central-count-badge.is-yellow { background: #ffd166; color: #1a1a1a; }
 .central-anom-total { font-size: 10px; color: var(--fg-3, var(--fg)); opacity: .7; }
 .central-anom-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .central-anom-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }

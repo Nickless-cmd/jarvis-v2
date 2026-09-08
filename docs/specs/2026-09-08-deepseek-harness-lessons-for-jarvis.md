@@ -75,6 +75,8 @@ Primary DeepSeek files reviewed:
 - `/home/bs/Skrivebord/deepseek-harness/packages/test-support/loader-smoke/README.md`
 - `/home/bs/Skrivebord/deepseek-harness/packages/test-support/session-snapshot/README.md`
 
+Verification pass (2026-09-08, opus): every path cited below was confirmed to exist — 39 DeepSeek paths and 27 Jarvis paths, none missing. The DeepSeek checkout's `HEAD`, package version, and remote match the values stated above exactly. Gaps A, C, G, H, I, and J were each checked against the code rather than accepted from the prose; §11 and §12 were checked against `presets/ptc/agent.cordis.yml` and `presets/minimal/agent.cordis.yml`. `session_events` and `chat_sessions.storage_mode` were confirmed ABSENT from the live database, so Phase 1 introduces them rather than duplicating something existing. One claim was corrected (the size of `visible_runs.py`) and one sharpened (Gap J, below). The architectural judgements themselves are not grep-verifiable and were read, not proved.
+
 Jarvis files reviewed:
 
 - `core/eventbus/bus.py`
@@ -372,7 +374,11 @@ Jarvis has projection tables and `central_projection_cache.py`, but no domain re
 
 ### Gap J: out-of-line output is tool-specific and under-specified
 
-`tool_result_store.py` proves the value of out-of-line results, but it is not a general artifact capability. It stores arguments and output directly, relies on ambient file permissions, clips the value advertised as full output, and does not make authority, completeness, retention, provenance, and retrieval separate contracts. Jobs, web fetches, subagents, workflows, and cross-session references need the same secure storage seam.
+`tool_result_store.py` proves the value of out-of-line results, but it is not a general artifact capability. It stores arguments and output directly, relies on ambient file permissions, clips the value advertised as full output, and does not make authority, completeness, retention, provenance, and retrieval separate contracts.
+
+Verified 2026-09-08: `save_tool_result()` clips at `_MAX_STORED_CHARS = 2_000_000` via `clip_head_tail` and writes the result under the `result` key. The clipping is **not** silent — `clip_head_tail` splices a visible note into the text (`… [N tegn udeladt i midten — hoved+hale bevaret] …`), so a reader can see it. But completeness is carried **in the payload prose, not as structured metadata**: a programmatic consumer must parse Danish text to learn whether it holds the whole output, and nothing records the original length. That is precisely the contract this gap asks for — completeness as a separate, machine-readable fact — and it is cheap to close ahead of the phase.
+
+(An earlier revision of this note claimed the clipping was undetectable. That was wrong: the marker in the text was checked only after the sentence was written. The narrower criticism above is the accurate one.) Jobs, web fetches, subagents, workflows, and cross-session references need the same secure storage seam.
 
 ### Gap K: cross-session context lacks one provenance envelope
 
@@ -1163,7 +1169,7 @@ Before changing behavior:
 - add characterization tests for successful text, tool-only output, empty response, retry after partial stream, cancellation before/after deltas, local-tool disconnect, approvals, and child dispatch
 - establish the minimal-mode baseline from §12 (fixed prompt, two tools, no context injection) and record model-only success/failure on the same fixtures, so later phases can measure what the harness adds rather than assuming it
 - establish `HarnessConformanceKit` fixtures for deterministic replay, scripted provider faults, production-loader smoke, and current Session/prompt/tool-schema snapshots
-- because `core/services/visible_runs.py` exceeds 2,000 lines, first extract the nearest coherent stream accumulation/settlement unit with compatibility re-exports before changing its logic
+- because `core/services/visible_runs.py` is **7,290 lines** (measured 2026-09-08, not the 4,131 the repository's own list claimed), first extract the nearest coherent stream accumulation/settlement unit with compatibility re-exports before changing its logic. The scale matters for planning: this is the second-largest file in the repository, behind `heartbeat_runtime.py` at 7,569, and the extraction is a phase of work rather than a preparatory step
 - add declared event ownership checks without changing the eventbus into the ledger
 - introduce the `RuntimeInvariantRegistry` and register the existing load-bearing settlement, approval, and authority relationships as its first checks
 - introduce the minimal `RuntimePluginLifecycle` contract for every newly extracted seam

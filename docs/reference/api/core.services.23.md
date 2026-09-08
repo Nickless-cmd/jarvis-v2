@@ -41,14 +41,14 @@ _Provider-agnostic tool-result aging for the visible agentic loop._
 |---|---|---|---|---|
 | function | `summarize_result` | `(content, max_length=…)` | — | [src](../../../core/services/tool_result_store.py#L20) |
 | function | `save_tool_result` | `(tool_name, arguments, result_content, *, created_at=…)` | — | [src](../../../core/services/tool_result_store.py#L27) |
-| function | `get_tool_result` | `(result_id)` | — | [src](../../../core/services/tool_result_store.py#L56) |
-| function | `cleanup_old_results` | `(max_age_days=…)` | — | [src](../../../core/services/tool_result_store.py#L72) |
-| function | `build_tool_result_reference` | `(result_id, *, tool_name, summary)` | — | [src](../../../core/services/tool_result_store.py#L89) |
-| function | `parse_tool_result_reference` | `(content)` | — | [src](../../../core/services/tool_result_store.py#L101) |
-| function | `render_tool_result_for_prompt` | `(content, *, expand, max_chars=…, stub=…)` | — | [src](../../../core/services/tool_result_store.py#L122) |
-| function | `_result_path` | `(result_id)` | — | [src](../../../core/services/tool_result_store.py#L172) |
-| function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L176) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L184) |
+| function | `get_tool_result` | `(result_id)` | — | [src](../../../core/services/tool_result_store.py#L67) |
+| function | `cleanup_old_results` | `(max_age_days=…)` | — | [src](../../../core/services/tool_result_store.py#L88) |
+| function | `build_tool_result_reference` | `(result_id, *, tool_name, summary)` | — | [src](../../../core/services/tool_result_store.py#L105) |
+| function | `parse_tool_result_reference` | `(content)` | — | [src](../../../core/services/tool_result_store.py#L117) |
+| function | `render_tool_result_for_prompt` | `(content, *, expand, max_chars=…, stub=…)` | — | [src](../../../core/services/tool_result_store.py#L138) |
+| function | `_result_path` | `(result_id)` | — | [src](../../../core/services/tool_result_store.py#L188) |
+| function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L192) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L200) |
 
 ## `core/services/tool_router.py`
 _Per-turn tool selection._

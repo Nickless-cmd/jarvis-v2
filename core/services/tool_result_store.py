@@ -34,8 +34,10 @@ def save_tool_result(
     TOOL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     result_id = f"tool-result-{uuid4().hex}"
     timestamp = created_at or datetime.now(UTC).isoformat()
-    stored = str(result_content or "")
-    if len(stored) > _MAX_STORED_CHARS:
+    raa = str(result_content or "")
+    stored = raa
+    klippet = len(raa) > _MAX_STORED_CHARS
+    if klippet:
         from core.services.text_clip import clip_head_tail
         stored = clip_head_tail(stored, limit=_MAX_STORED_CHARS)
     payload = {
@@ -43,6 +45,15 @@ def save_tool_result(
         "tool_name": str(tool_name or "").strip(),
         "arguments": dict(arguments or {}),
         "result": stored,
+        # Fuldstændighed er nu et FELT, ikke kun en note inde i teksten.
+        # `clip_head_tail` splejser «… [N tegn udeladt …] …» ind, så et menneske
+        # kan se det — men en programmatisk læser skulle parse dansk prosa for at
+        # vide om den holdt hele outputtet. Det er præcis den kontrakt
+        # DeepSeek-harness-spec'ens Gap J beder om: fuldstændighed som en
+        # maskinlæsbar kendsgerning, ikke en antagelse.
+        "complete": not klippet,
+        "original_chars": len(raa),
+        "stored_chars": len(stored),
         "created_at": timestamp,
         "summary": summarize_result(result_content),
     }
@@ -66,6 +77,11 @@ def get_tool_result(result_id: str) -> dict[str, object] | None:
         return None
     if not isinstance(data, dict):
         return None
+    # Poster gemt FØR fuldstændigheds-felterne fandtes har dem ikke. Et manglende
+    # felt må ikke læses som «ufuldstændig» — vi ved det ikke, og at gætte ville
+    # gøre gammelt, komplet output mistænkeligt. `None` siger «ukendt».
+    data.setdefault("complete", None)
+    data.setdefault("original_chars", None)
     return data
 
 

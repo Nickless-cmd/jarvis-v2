@@ -795,6 +795,70 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .artifact-loading, .artifact-error { color: var(--fg-3); font-size: 13px; padding: 8px 0; }
 .artifact-empty { color: var(--fg-3); font-size: 13px; line-height: 1.6; padding: 24px 4px; text-align: center; }
 .chatview-head-right { display: flex; align-items: center; gap: 10px; }
+/* ── Baggrundsjob-ruden ──────────────────────────────────────────────────
+   Formen er Claude Codes egen «Background tasks» (Bjoern pegede paa den paa
+   midterskaermen): titel, «Koerer»-liste med ét kort pr. job, og faerdige
+   foldet sammen nedenunder. Den bor i samme hoejre stak som miljoe-feltet og
+   arver dets bredde — to ruder med hver sin bredde ville flytte samtalen frem
+   og tilbage hver gang man skifter. */
+.jobs-panel {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px; font-size: 12.5px; color: var(--fg-2);
+  overflow-y: auto;
+}
+.jobs-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; letter-spacing: .04em; color: var(--fg-3); margin-bottom: 8px;
+}
+.jobs-close { background: none; border: 0; color: var(--fg-3); cursor: pointer; padding: 2px; border-radius: 5px; }
+.jobs-close:hover { color: var(--fg-1); background: var(--bg-2); }
+.jobs-section-head, .jobs-faerdige-head {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; letter-spacing: .04em; color: var(--fg-3); opacity: .8;
+  margin: 8px 0 6px; background: none; border: 0; padding: 0; cursor: default;
+  font-family: inherit; text-align: left;
+}
+.jobs-faerdige-head { cursor: pointer; margin-top: 14px; }
+.jobs-faerdige-head:hover { color: var(--fg-2); }
+.jobs-count { font-variant-numeric: tabular-nums; opacity: .7; }
+.jobs-tom { color: var(--fg-3); opacity: .7; padding: 2px 0 4px; }
+.jobs-fejl { color: var(--error-fg); padding: 2px 0 6px; }
+.jobs-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.jobs-kort {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 9px; border-radius: var(--radius-sm, 6px);
+  background: var(--bg-2); border: 1px solid var(--line);
+}
+.jobs-kort.er-faerdig { background: none; }
+.jobs-kort-tekst { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.jobs-navn { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobs-meta { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 11.5px; color: var(--fg-3); }
+.jobs-kommando {
+  font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; min-width: 0;
+}
+.jobs-tid { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.jobs-exit { flex: 0 0 auto; }
+.jobs-exit.er-fejl { color: var(--error-fg); }
+.jobs-stop {
+  flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px;
+  background: none; border: 1px solid var(--line); border-radius: 5px;
+  color: var(--fg-3); cursor: pointer;
+}
+.jobs-stop:hover:not(:disabled) { color: var(--error-fg); border-color: var(--error-fg); }
+.jobs-stop:disabled { opacity: .4; cursor: default; }
+
+/* Taelleren paa ikonet findes KUN naar noget koerer. Ingenting at se ellers. */
+.panel-toggle { position: relative; }
+.panel-toggle-taeller {
+  position: absolute; top: 1px; right: 0px;
+  min-width: 13px; height: 13px; padding: 0 3px;
+  display: grid; place-items: center;
+  background: var(--warn-fg); color: var(--bg-0);
+  border-radius: 999px; font-size: 9px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .panel-toggle {
   display: grid; place-items: center; width: 28px; height: 28px;
   background: none; border: none; color: var(--fg-3); cursor: pointer; border-radius: 6px;
@@ -2322,12 +2386,16 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 
 /* ── Miljø-felt (code mode, vises under run) ── */
 .codeview-main { position: relative; }
-.env-panel { position: absolute; top: 52px; right: 16px; z-index: 50; width: 240px;
+.env-panel { position: absolute; top: 52px; right: 16px; z-index: 50; width: 288px;
   background: var(--bg-1, var(--bg)); border: 1px solid var(--line); border-radius: 12px;
   padding: 12px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.30); font-size: 13px; }
 
 /* Højre-stak: miljø-feltet + Central-feltet stables lodret (Central kun owner). */
-.code-right-stack { position: absolute; top: 52px; right: 16px; z-index: 50; width: 240px;
+/* 240 → 288 (Bjoern 8/9-2026). Raekkerne klippede: «+193 −61», kommandoerne i
+   jobs-ruden og opgaven ved en agent er alle tekst der bliver ubrugelig naar
+   den ender i «…». Miljoe-feltet og jobs-ruden deler bredden med vilje — to
+   ruder med hver sin bredde ville flytte samtalen frem og tilbage. */
+.code-right-stack { position: absolute; top: 52px; right: 16px; z-index: 50; width: 288px;
   display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 76px); overflow-y: auto; }
 .code-right-stack .env-panel { position: static; top: auto; right: auto; width: 100%; }
 
@@ -2427,7 +2495,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    tool-linjen goer. Faerdige agenter staar stille. */
 .env-row.agent-koerer { animation: toolgroup-aande 1.6s ease-in-out infinite; }
 .agent-status { color: var(--warn-fg, #f5c451); font-size: 11px; }
-.agent-opgave { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+.agent-opgave { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
 @media (prefers-reduced-motion: reduce) { .env-row.agent-koerer { animation: none; } }
 
 /* Kontekst-procenten skifter farve som ringen i skrivefeltet — samme zoner,
@@ -2436,7 +2504,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    tool-linjen goer. Faerdige agenter staar stille. */
 .env-row.agent-koerer { animation: toolgroup-aande 1.6s ease-in-out infinite; }
 .agent-status { color: var(--warn-fg, #f5c451); font-size: 11px; }
-.agent-opgave { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+.agent-opgave { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
 @media (prefers-reduced-motion: reduce) { .env-row.agent-koerer { animation: none; } }
 
 .rh-pct { font-variant-numeric: tabular-nums; }

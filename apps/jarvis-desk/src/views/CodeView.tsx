@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge } from 'lucide-react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge, SquareStack } from 'lucide-react'
 import { onPauseSvar } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
@@ -21,6 +21,8 @@ import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { JobsPanel } from '../components/shell/JobsPanel'
+import { listProcesses } from '../lib/processesApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { MessageRail, railLabel } from '../components/chat/MessageRail'
 import { GreetingHero } from '../components/chat/GreetingHero'
@@ -89,6 +91,7 @@ export function CodeView({
   // Ringens tal, meldt op fra Composer. Miljoe-feltet skal vise DET SAMME —
   // ellers staar der to «Kontekst»-procenter der er uenige (Bjoern 8/9-2026).
   const [gauge, setGauge] = useState<{ tokens: number; denominator: number }>({ tokens: 0, denominator: 0 })
+
   const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
   // Miljø-felt: toggle som panel-ikonerne. null = auto (vis ved fuld skærm / bredt
   // vindue, skjul når smalt så det ikke dækker chatten). Bruger kan overstyre.
@@ -271,6 +274,25 @@ export function CodeView({
     initial: 560, min: 300, max: 1000, side: 'left', storageKey: 'jarvis-desk:code-panel-w2',
   })
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+
+  // Baggrundsjob: panelet henter selv naar det er aabent. HER hentes kun
+  // TAELLEREN, saa ikonet kan sige om noget koerer uden at man skal aabne det.
+  const [jobsOpen, setJobsOpen] = useState(false)
+  const [koerendeJobs, setKoerendeJobs] = useState(0)
+  useEffect(() => {
+    if (!config) return
+    let levende = true
+    const tik = () => {
+      if (document.hidden) return
+      listProcesses(config)
+        .then((p) => { if (levende) setKoerendeJobs(p.filter((x) => x.status === 'running').length) })
+        .catch(() => { /* stille — et tal der mangler er bedre end en fejl i headeren */ })
+    }
+    tik()
+    const id = setInterval(tik, 15_000)
+    return () => { levende = false; clearInterval(id) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config?.apiBaseUrl, config?.authToken])
 
   // Context-ring: hent autocompact-tærsklen (samme som chat).
   useEffect(() => {
@@ -663,13 +685,25 @@ export function CodeView({
       {DESK_CHROME.headerHealth && <SystemHealth errors={stream.canonicalErrors} />}
       <CentralBadge config={config} isOwner={isOwner} />
       {DESK_CHROME.headerConnection && config && <ConnectionPill config={config} />}
+      {/* Alle fire panel-knapper i SAMME vaegt og stoerrelse som ikonerne i
+          sidebaren (15 / 1,8). De stod paa 16 og standard-streg og var derfor
+          tydeligt tungere end resten (Bjoern 8/9-2026). */}
+      <button
+        type="button"
+        className={`panel-toggle ${jobsOpen ? 'active' : ''}`}
+        aria-label="Vis/skjul baggrundsjob" title="Baggrundsjob"
+        onClick={() => setJobsOpen((o) => !o)}
+      >
+        <SquareStack size={15} strokeWidth={1.8} />
+        {koerendeJobs > 0 && <span className="panel-toggle-taeller">{koerendeJobs}</span>}
+      </button>
       <button
         type="button"
         className={`panel-toggle ${envOpen ? 'active' : ''}`}
         aria-label="Vis/skjul miljø-felt" title="Miljø"
         onClick={() => setEnvManual(!(envManual ?? envWide))}
       >
-        <Gauge size={16} />
+        <Gauge size={15} strokeWidth={1.8} />
       </button>
       <button
         type="button"
@@ -677,7 +711,7 @@ export function CodeView({
         aria-label="Vis/skjul fil-træ" title="Filer"
         onClick={() => setFilesOpen((o) => !o)}
       >
-        <FolderTree size={16} />
+        <FolderTree size={15} strokeWidth={1.8} />
       </button>
       <button
         type="button"
@@ -685,7 +719,7 @@ export function CodeView({
         aria-label="Vis/skjul preview-panel" title="Preview"
         onClick={panel.toggle}
       >
-        <PanelRight size={16} />
+        <PanelRight size={15} strokeWidth={1.8} />
       </button>
     </div>
   )
@@ -753,7 +787,17 @@ export function CodeView({
             <button type="button" className="takeover-dismiss" aria-label="Skjul" onClick={() => setTakeoverDismissed(true)}>×</button>
           </div>
         )}
-        {config && envOpen && !filesOpen && !panel.open && (
+        {config && jobsOpen && (
+          <div className="code-right-stack">
+            <JobsPanel
+              config={config}
+              isOwner={isOwner}
+              onCount={setKoerendeJobs}
+              onClose={() => setJobsOpen(false)}
+            />
+          </div>
+        )}
+        {config && envOpen && !jobsOpen && !filesOpen && !panel.open && (
           <div className="code-right-stack">
             <EnvironmentPanel
               config={config}

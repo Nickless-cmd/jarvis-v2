@@ -2,6 +2,43 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/state_flag_store.py`
+_State-flag store (leak-kandidat #1, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/state_flag_store.py#L22) |
+| function | `_key` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L26) |
+| function | `_load` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L30) |
+| function | `_save` | `(user_id, flags)` | — | [src](../../../core/services/state_flag_store.py#L39) |
+| function | `_prune` | `(flags)` | Fjern udløbne flag. Returnerer den rensede dict (muterer input). | [src](../../../core/services/state_flag_store.py#L43) |
+| function | `set_flag` | `(key, value, *, ttl_minutes=…, user_id=…)` | Sæt/opdatér et flag. ttl_minutes=None/0 → intet udløb. Returnerer den lagrede | [src](../../../core/services/state_flag_store.py#L53) |
+| function | `get_flag` | `(key, *, user_id=…)` | Læs et flag (prune udløbne først). None hvis ukendt/udløbet. | [src](../../../core/services/state_flag_store.py#L70) |
+| function | `clear_flag` | `(key, *, user_id=…)` | Fjern et flag. True hvis det fandtes. | [src](../../../core/services/state_flag_store.py#L81) |
+| function | `list_flags` | `(*, user_id=…)` | Alle aktive (ikke-udløbne) flag. | [src](../../../core/services/state_flag_store.py#L94) |
+
+## `core/services/stream_degeneration.py`
+_Degenerations-guard — fang model-repetitions-løkker i streaming-laget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `check_degeneration` | `(text)` | → (er_degenereret, menneskelæsbar_grund). Self-safe → (False, '') ved enhver fejl. | [src](../../../core/services/stream_degeneration.py#L29) |
+
+## `core/services/stream_failure_kind.py`
+_Struktureret failure-taksonomi for streaming/followup (spec §11.1 B11, I5)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `FailureKind` | `` | Kanoniske failure-kind-strenge (str-const set fremfor Enum så de | [src](../../../core/services/stream_failure_kind.py#L37) |
+| function | `_scan_http_status` | `(text)` | — | [src](../../../core/services/stream_failure_kind.py#L121) |
+| function | `_contains` | `(text, needles)` | — | [src](../../../core/services/stream_failure_kind.py#L131) |
+| function | `classify_failure` | `(*, http_status=…, error_text=…, kind_hint=…)` | Klassificér en streaming/followup-fejl → (failure_kind, retryable). | [src](../../../core/services/stream_failure_kind.py#L135) |
+| function | `is_retryable_kind` | `(failure_kind)` | Er ``failure_kind`` retryable på SAMME provider? (provider_stall = False.) | [src](../../../core/services/stream_failure_kind.py#L225) |
+| function | `compute_backoff_with_jitter` | `(attempt, *, base=…, cap=…, retry_after=…)` | Eksponentiel backoff MED jitter (spec §11.2, OpenAI-SDK-mønster). | [src](../../../core/services/stream_failure_kind.py#L242) |
+| class | `MalformedStreamPayload` | `` | Streamen sluttede malformet (trunkeret final-JSON / ingen terminal/``done``) | [src](../../../core/services/stream_failure_kind.py#L291) |
+| function | `safe_decode_line` | `(raw_line)` | Decode én rå stream-linje UDEN nogensinde at rejse. | [src](../../../core/services/stream_failure_kind.py#L298) |
+| function | `try_parse_json_line` | `(data)` | Parse én JSON ``data:``-streng → ``(payload, ok)``, ALDRIG rejsende. | [src](../../../core/services/stream_failure_kind.py#L319) |
+
 ## `core/services/stream_sentinel.py`
 _Stream-cluster — observabilitet for SSE-lanen. IKKE en blokerende gate: streaming er_
 
@@ -579,38 +616,4 @@ _Tool description embedding cache._
 | function | `_now` | `()` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L607) |
 | function | `_normalize` | `(value)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L611) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L623) |
-
-## `core/services/tool_intent_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_tool_intent_runtime_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L27) |
-| function | `_build_tool_intent_runtime_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L43) |
-| function | `_build_mutating_exec_proposal_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L486) |
-| function | `_build_sudo_exec_proposal_surface` | `(mutating_exec_surface)` | — | [src](../../../core/services/tool_intent_runtime.py#L669) |
-| function | `_derive_intent_from_awareness` | `(*, awareness, repo_observation)` | — | [src](../../../core/services/tool_intent_runtime.py#L725) |
-| function | `_emit_tool_intent_runtime_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/tool_intent_runtime.py#L836) |
-
-## `core/services/tool_lexical_match.py`
-_Leksikalsk vaerktoejs-opslag: saerkende ord slaar semantisk lighed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Traef` | `` | Et bud. ``ord`` er de saerkende ord det byggede paa, mest saerkende foerst. | [src](../../../core/services/tool_lexical_match.py#L78) |
-| function | `ord_i` | `(tekst)` | Saerkende ord i en tekst — smaa bogstaver, stopord ude. | [src](../../../core/services/tool_lexical_match.py#L87) |
-| class | `Korpus` | `` | IDF over vaerktoejskorpuset. Bygges én gang pr. vaerktoejssaet. | [src](../../../core/services/tool_lexical_match.py#L92) |
-| method | `Korpus.__init__` | `(self, tekster)` | — | [src](../../../core/services/tool_lexical_match.py#L99) |
-| method | `Korpus.idf` | `(self, ord_)` | Sjaeldne ord vejer tungt, paa en skala der ikke afhaenger af korpus-stoerrelsen. | [src](../../../core/services/tool_lexical_match.py#L108) |
-| method | `Korpus.slaa_op` | `(self, besked, kandidater=…, ekstra_stopord=…)` | Bedste bud, eller ``None`` naar intet staar klart nok over feltet. | [src](../../../core/services/tool_lexical_match.py#L120) |
-| function | `byg_korpus_fra_definitioner` | `(definitioner)` | Korpus ud fra ``get_tool_definitions()``-formen (baade rå og indpakket). | [src](../../../core/services/tool_lexical_match.py#L162) |
-| function | `hyppige_ord_hos_brugeren` | `(beskeder, *, graense=…)` | Ord brugeren siger HELE TIDEN — spaerret uanset hvor saerkende de er | [src](../../../core/services/tool_lexical_match.py#L173) |
-
-## `core/services/tool_observer.py`
-_Tools-cluster query-helpers (Phase 1) oven på tool_call-observe i execute_tool._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `recent_tool_calls` | `(*, session_id=…, kind=…, status=…, limit=…)` | Læs tool_call-observe-records fra central_trace, filtreret. Nyeste først. | [src](../../../core/services/tool_observer.py#L14) |
-| function | `recent_tool_failures` | `(*, session_id=…, kind=…, limit=…)` | Kun FEJLEDE tool-kald — debugging-indgang når en bruger melder en fejl ude af huset. | [src](../../../core/services/tool_observer.py#L44) |
-| function | `tool_call_summary` | `()` | Aggregeret overblik (MC/debug): antal kald pr. kind + fejlrate. Self-safe. | [src](../../../core/services/tool_observer.py#L57) |
 

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 13970 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14015 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -43,14 +43,14 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13970 functions/
 - [`core.services.14`](core.services.14.md) — `kerne_curator` … `memory_pruning_daemon`
 - [`core.services.15`](core.services.15.md) — `memory_recall_engine` … `notes_connector`
 - [`core.services.16`](core.services.16.md) — `notification_bridge` … `policy_abstraction`
-- [`core.services.17`](core.services.17.md) — `post_tool_answer_guard` … `provider_error_guard`
-- [`core.services.18`](core.services.18.md) — `provider_health_check` … `role_model_resolver`
-- [`core.services.19`](core.services.19.md) — `role_registry` … `selective_forgetting_candidate_tracking`
-- [`core.services.20`](core.services.20.md) — `self_authored_prompt_proposal_tracking` … `shadow_experiment_registry`
-- [`core.services.21`](core.services.21.md) — `shadow_scan_daemon` … `stream_failure_kind`
-- [`core.services.22`](core.services.22.md) — `stream_sentinel` … `tool_observer`
-- [`core.services.23`](core.services.23.md) — `tool_outcome_memory` … `visible_inner_life`
-- [`core.services.24`](core.services.24.md) — `visible_model` … `world_model_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `post_tool_answer_guard` … `prose_tool_calls`
+- [`core.services.18`](core.services.18.md) — `provider_autodiscovery` … `resonance_decay`
+- [`core.services.19`](core.services.19.md) — `retention` … `seed_system`
+- [`core.services.20`](core.services.20.md) — `selective_attention` … `session_tool_pin`
+- [`core.services.21`](core.services.21.md) — `session_topic_tracker` … `state_file_retention`
+- [`core.services.22`](core.services.22.md) — `state_flag_store` … `tool_intent_approval_runtime`
+- [`core.services.23`](core.services.23.md) — `tool_intent_runtime` … `visible_followup_adapters`
+- [`core.services.24`](core.services.24.md) — `visible_followup_events` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -63,8 +63,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 13970 functions/
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.util`](core.util.md)
-- [`scripts.01`](scripts.01.md) — `__init__` … `measure_turn_latency`
-- [`scripts.02`](scripts.02.md) — `memory_md_dedupe_headings` … `verify_fase_a`
+- [`scripts.01`](scripts.01.md) — `__init__` … `measure_prompt_payload`
+- [`scripts.02`](scripts.02.md) — `measure_turn_latency` … `verify_fase_a`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

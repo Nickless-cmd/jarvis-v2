@@ -2,6 +2,59 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/selective_attention.py`
+_Selective Attention — metacognitive focus modulation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `FocusDirective` | `` | A single attention directive — what to amplify or attenuate. | [src](../../../core/services/selective_attention.py#L48) |
+| class | `AttentionSpotlight` | `` | Current attention spotlight — a set of focus directives. | [src](../../../core/services/selective_attention.py#L57) |
+| function | `compute_selective_attention` | `()` | Compute current attention spotlight. | [src](../../../core/services/selective_attention.py#L124) |
+| function | `get_attention_spotlight_line` | `()` | Convenience: compute spotlight and return prompt-ready string. | [src](../../../core/services/selective_attention.py#L237) |
+| function | `get_attention_spotlight_detail` | `()` | Return full spotlight state for MC transparency. | [src](../../../core/services/selective_attention.py#L249) |
+| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/selective_attention.py#L274) |
+| function | `_detect_context_cue` | `(family_pressures, dominant_pressures)` | Heuristic: detect the operational context from signal patterns. | [src](../../../core/services/selective_attention.py#L285) |
+| function | `_generate_directives` | `(base_pressures, attention_weights)` | Generate focus directives by comparing base vs adjusted weights. | [src](../../../core/services/selective_attention.py#L319) |
+| function | `_compute_focus_width` | `(attention_weights, directive_count)` | Compute how narrow or broad the attention spotlight is. | [src](../../../core/services/selective_attention.py#L380) |
+| function | `build_selective_attention_surface` | `()` | Returns current attention spotlight if any. | [src](../../../core/services/selective_attention.py#L414) |
+| function | `_emit_spotlight_event` | `(label)` | — | [src](../../../core/services/selective_attention.py#L430) |
+
+## `core/services/selective_consolidation_daemon.py`
+_Selective Consolidation Daemon — D1._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_selective_consolidation_daemon` | `()` | Run selective consolidation if cadence elapsed. | [src](../../../core/services/selective_consolidation_daemon.py#L42) |
+| function | `_score_sensory` | `(row)` | Score a sensory memory 0.0-1.0. | [src](../../../core/services/selective_consolidation_daemon.py#L109) |
+| function | `_consolidate_sensory` | `(today_start)` | Score and archive bottom (100-K)% of today's sensory memories. | [src](../../../core/services/selective_consolidation_daemon.py#L121) |
+| function | `_score_brain` | `(entry)` | Score a brain entry 0.0-1.0. | [src](../../../core/services/selective_consolidation_daemon.py#L170) |
+| function | `_consolidate_brain` | `(today_start)` | Score and archive bottom (100-K)% of today's brain entries. | [src](../../../core/services/selective_consolidation_daemon.py#L181) |
+| function | `_score_private` | `(record)` | Score a private brain record 0.0-1.0. | [src](../../../core/services/selective_consolidation_daemon.py#L241) |
+| function | `_consolidate_private` | `(today_start)` | Score and archive bottom (100-K)% of today's private brain records. | [src](../../../core/services/selective_consolidation_daemon.py#L252) |
+| function | `build_selective_consolidation_surface` | `()` | Build surface data for mission control. | [src](../../../core/services/selective_consolidation_daemon.py#L306) |
+
+## `core/services/selective_forgetting_candidate_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_selective_forgetting_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L27) |
+| function | `refresh_runtime_selective_forgetting_candidate_statuses` | `()` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L50) |
+| function | `build_runtime_selective_forgetting_candidate_surface` | `(*, limit=…)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L81) |
+| function | `_extract_selective_forgetting_candidates` | `(*, run_id)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L119) |
+| function | `_build_candidate` | `(*, domain_key, metabolism, release_marker, witness, meaning, temperament, self_narrative, chronicle, relation_continuity)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L231) |
+| function | `_persist_selective_forgetting_candidates` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L348) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L417) |
+| function | `_derive_candidate_state` | `(*, release_state, witness_status, fading_count, softening_count, stale_count)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L444) |
+| function | `_derive_candidate_reason` | `(*, release_state, witness_status, stale_count)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L459) |
+| function | `_derive_candidate_weight` | `(*, fading_count, softening_count, stale_count, release_state)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L474) |
+| function | `_candidate_summary` | `(*, focus, candidate_state, candidate_reason, candidate_weight)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L489) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L509) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L516) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L523) |
+| function | `_find_support_value` | `(support_summary, key, default)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L535) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L546) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/selective_forgetting_candidate_tracking.py#L560) |
+
 ## `core/services/self_authored_prompt_proposal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -718,50 +771,4 @@ _Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._
 | function | `clear` | `(session_id)` | — | [src](../../../core/services/session_tool_pin.py#L120) |
 | function | `resolve` | `(session_id, selected_names)` | Hvilke værktøjer skal denne tur sende? | [src](../../../core/services/session_tool_pin.py#L124) |
 | function | `build_session_tool_pin_surface` | `(session_id=…)` | — | [src](../../../core/services/session_tool_pin.py#L145) |
-
-## `core/services/session_topic_tracker.py`
-_Session topic tracker — real-time topic extraction and accumulation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_extract_topics_from_text` | `(text)` | Extract candidate topic labels from a user message. | [src](../../../core/services/session_topic_tracker.py#L94) |
-| function | `_increment_turn` | `(session_id)` | Increment turn counter for session. Returns new count. | [src](../../../core/services/session_topic_tracker.py#L175) |
-| function | `_should_extract` | `(session_id)` | Return True if it's time to extract topics for this session. | [src](../../../core/services/session_topic_tracker.py#L181) |
-| function | `_accumulate_topics` | `(session_id, topics)` | Merge extracted topics into the session's topic store. | [src](../../../core/services/session_topic_tracker.py#L187) |
-| function | `track_session_topics` | `(session_id, run_id, user_message)` | Call this after every visible user turn. | [src](../../../core/services/session_topic_tracker.py#L207) |
-| function | `_persist_session_topics` | `(session_id)` | Write current in-memory topics to the session_topics DB table. | [src](../../../core/services/session_topic_tracker.py#L241) |
-| function | `load_session_topics` | `(session_id)` | Load topics for a session from DB, merging with in-memory state. | [src](../../../core/services/session_topic_tracker.py#L262) |
-| function | `_format_topics_for_prompt` | `(store, max_topics=…)` | Format topics sorted by mention count descending. | [src](../../../core/services/session_topic_tracker.py#L296) |
-| function | `build_session_topics_prompt_section` | `(session_id=…)` | Build a compact section showing active topics for this session. | [src](../../../core/services/session_topic_tracker.py#L316) |
-| function | `clear_session_topics` | `(session_id)` | Clear in-memory topics for a session. Called at session end. | [src](../../../core/services/session_topic_tracker.py#L354) |
-
-## `core/services/session_wakeup.py`
-_Eventbus → visible-prompt wake-up digest._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_notable` | `(kind)` | — | [src](../../../core/services/session_wakeup.py#L58) |
-| function | `_load_marks` | `()` | — | [src](../../../core/services/session_wakeup.py#L71) |
-| function | `_save_marks` | `(marks)` | — | [src](../../../core/services/session_wakeup.py#L84) |
-| function | `last_seen_event_id` | `(session_id)` | — | [src](../../../core/services/session_wakeup.py#L88) |
-| function | `mark_seen` | `(session_id, event_id)` | — | [src](../../../core/services/session_wakeup.py#L92) |
-| function | `_format_event` | `(ev)` | — | [src](../../../core/services/session_wakeup.py#L100) |
-| function | `wakeup_digest` | `(session_id)` | Return a short digest of notable events since this session last saw, | [src](../../../core/services/session_wakeup.py#L116) |
-
-## `core/services/shadow_experiment_registry.py`
-_core/services/shadow_experiment_registry.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | Læs hele register-dict'en fra KV. Self-safe → {} ved fejl/ugyldig form. | [src](../../../core/services/shadow_experiment_registry.py#L31) |
-| function | `_save` | `(data)` | Skriv hele register-dict'en durabelt. Self-safe (best-effort). | [src](../../../core/services/shadow_experiment_registry.py#L44) |
-| function | `register_experiment` | `(name, review_after_hours, note=…, started_ts=…)` | Registrér et shadow-eksperiment. Idempotent på navn: hvis det allerede er | [src](../../../core/services/shadow_experiment_registry.py#L54) |
-| function | `_annotate` | `(rec, now)` | Berig én rå-record med `hours_running` + `ripe`. | [src](../../../core/services/shadow_experiment_registry.py#L89) |
-| function | `list_experiments` | `(now_ts=…)` | Alle registrerede eksperimenter, beriget med `hours_running` + `ripe`. | [src](../../../core/services/shadow_experiment_registry.py#L107) |
-| function | `ready_for_review` | `(now_ts=…)` | De modne (ripe), ikke-reviewede eksperimenter. Self-safe → []. | [src](../../../core/services/shadow_experiment_registry.py#L120) |
-| function | `mark_reviewed` | `(name)` | Markér et eksperiment som reviewet (fjerner det fra `ripe`). Self-safe. | [src](../../../core/services/shadow_experiment_registry.py#L125) |
-| function | `register_known_shadows` | `()` | Seed registeret med de bekræftede live shadows (idempotent, self-safe). | [src](../../../core/services/shadow_experiment_registry.py#L154) |
-| function | `build_shadow_review_surface` | `(now_ts=…)` | Byg surface til Central-route/`jc shadows`. Seeder kendte shadows, | [src](../../../core/services/shadow_experiment_registry.py#L161) |
-| function | `_emit_reminder` | `(ripe_names)` | Passiv Central-påmindelse: observe `central_meta/shadow_review_due`. | [src](../../../core/services/shadow_experiment_registry.py#L182) |
-| function | `tick_shadow_review_reminder` | `(now_ts=…)` | Heartbeat-venlig tick: byg surface (som emit'er påmindelsen ved modenhed) | [src](../../../core/services/shadow_experiment_registry.py#L198) |
 

@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/measure_turn_latency.py`
+_Mål Jarvis' svartid — fra send til svar._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_token` | `()` | — | [src](../../../scripts/measure_turn_latency.py#L37) |
+| function | `_parse` | `(ts)` | — | [src](../../../scripts/measure_turn_latency.py#L42) |
+| function | `_turns` | `(session_id, limit=…)` | Par bruger-besked med det følgende assistent-svar. | [src](../../../scripts/measure_turn_latency.py#L52) |
+| function | `_provider_for` | `(asked_at, answered_at)` | Hvilken provider betjente turen. | [src](../../../scripts/measure_turn_latency.py#L76) |
+| function | `watch` | `(session_id)` | — | [src](../../../scripts/measure_turn_latency.py#L101) |
+| function | `_api` | `(path, payload=…, stream=…)` | — | [src](../../../scripts/measure_turn_latency.py#L123) |
+| function | `probe` | `(rounds, message)` | — | [src](../../../scripts/measure_turn_latency.py#L134) |
+
 ## `scripts/memory_md_dedupe_headings.py`
 _Merge duplicate `## ` headings in a MEMORY.md (memory repair 2026-09-04, R7)._
 

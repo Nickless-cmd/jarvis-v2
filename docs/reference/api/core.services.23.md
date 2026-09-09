@@ -2,6 +2,40 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_intent_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_tool_intent_runtime_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L27) |
+| function | `_build_tool_intent_runtime_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L43) |
+| function | `_build_mutating_exec_proposal_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L486) |
+| function | `_build_sudo_exec_proposal_surface` | `(mutating_exec_surface)` | — | [src](../../../core/services/tool_intent_runtime.py#L669) |
+| function | `_derive_intent_from_awareness` | `(*, awareness, repo_observation)` | — | [src](../../../core/services/tool_intent_runtime.py#L725) |
+| function | `_emit_tool_intent_runtime_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/tool_intent_runtime.py#L836) |
+
+## `core/services/tool_lexical_match.py`
+_Leksikalsk vaerktoejs-opslag: saerkende ord slaar semantisk lighed._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Traef` | `` | Et bud. ``ord`` er de saerkende ord det byggede paa, mest saerkende foerst. | [src](../../../core/services/tool_lexical_match.py#L78) |
+| function | `ord_i` | `(tekst)` | Saerkende ord i en tekst — smaa bogstaver, stopord ude. | [src](../../../core/services/tool_lexical_match.py#L87) |
+| class | `Korpus` | `` | IDF over vaerktoejskorpuset. Bygges én gang pr. vaerktoejssaet. | [src](../../../core/services/tool_lexical_match.py#L92) |
+| method | `Korpus.__init__` | `(self, tekster)` | — | [src](../../../core/services/tool_lexical_match.py#L99) |
+| method | `Korpus.idf` | `(self, ord_)` | Sjaeldne ord vejer tungt, paa en skala der ikke afhaenger af korpus-stoerrelsen. | [src](../../../core/services/tool_lexical_match.py#L108) |
+| method | `Korpus.slaa_op` | `(self, besked, kandidater=…, ekstra_stopord=…)` | Bedste bud, eller ``None`` naar intet staar klart nok over feltet. | [src](../../../core/services/tool_lexical_match.py#L120) |
+| function | `byg_korpus_fra_definitioner` | `(definitioner)` | Korpus ud fra ``get_tool_definitions()``-formen (baade rå og indpakket). | [src](../../../core/services/tool_lexical_match.py#L162) |
+| function | `hyppige_ord_hos_brugeren` | `(beskeder, *, graense=…)` | Ord brugeren siger HELE TIDEN — spaerret uanset hvor saerkende de er | [src](../../../core/services/tool_lexical_match.py#L173) |
+
+## `core/services/tool_observer.py`
+_Tools-cluster query-helpers (Phase 1) oven på tool_call-observe i execute_tool._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `recent_tool_calls` | `(*, session_id=…, kind=…, status=…, limit=…)` | Læs tool_call-observe-records fra central_trace, filtreret. Nyeste først. | [src](../../../core/services/tool_observer.py#L14) |
+| function | `recent_tool_failures` | `(*, session_id=…, kind=…, limit=…)` | Kun FEJLEDE tool-kald — debugging-indgang når en bruger melder en fejl ude af huset. | [src](../../../core/services/tool_observer.py#L44) |
+| function | `tool_call_summary` | `()` | Aggregeret overblik (MC/debug): antal kald pr. kind + fejlrate. Self-safe. | [src](../../../core/services/tool_observer.py#L57) |
+
 ## `core/services/tool_outcome_memory.py`
 _Bridge tool execution outcomes into durable runtime action evidence._
 
@@ -555,67 +589,4 @@ _Per-provider follow-up adapters (split from ``visible_followup.py``)._
 | class | `CodexFollowupAdapter` | `` | Follow-up via the OpenAI Codex Responses API (chatgpt.com/backend-api). | [src](../../../core/services/visible_followup_adapters.py#L1227) |
 | method | `CodexFollowupAdapter._build_input` | `(self, base_messages, exchanges)` | — | [src](../../../core/services/visible_followup_adapters.py#L1241) |
 | method | `CodexFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L1274) |
-
-## `core/services/visible_followup_events.py`
-_Follow-up event/carrier types + the adapter protocol (split from_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_observe_malformed_stream_payload` | `(provider, model, round_index, *, ended_malformed, detail=…)` | A11 (spec §11.1): followup-adapterens NDJSON/SSE-decoder mødte en malformet | [src](../../../core/services/visible_followup_events.py#L21) |
-| class | `FollowupDelta` | `` | A chunk of prose produced by the model during this follow-up round. | [src](../../../core/services/visible_followup_events.py#L50) |
-| class | `FollowupReasoningDelta` | `` | A chunk of REASONING (thinking-mode trace) streamed token-for-token. | [src](../../../core/services/visible_followup_events.py#L57) |
-| class | `FollowupToolCalls` | `` | Model requested one or more additional tool calls in this round. | [src](../../../core/services/visible_followup_events.py#L67) |
-| class | `FollowupDone` | `` | The model finished this round (may have emitted text, tool calls, or both). | [src](../../../core/services/visible_followup_events.py#L74) |
-| class | `FollowupFailed` | `` | The round failed before completing (network error, HTTP 5xx, timeout, etc.). | [src](../../../core/services/visible_followup_events.py#L96) |
-| class | `ToolResult` | `` | One executed tool's output, keyed back to the model's original tool_call. | [src](../../../core/services/visible_followup_events.py#L125) |
-| class | `ToolExchange` | `` | One round of tool-calling: the assistant's tool_calls + the executed results. | [src](../../../core/services/visible_followup_events.py#L144) |
-| class | `FollowupAdapter` | `` | — | [src](../../../core/services/visible_followup_events.py#L167) |
-| method | `FollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…)` | — | [src](../../../core/services/visible_followup_events.py#L170) |
-
-## `core/services/visible_followup_lean.py`
-_Lean agentic-round-prompt transform + kill-switch (split from_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_split_on_double_newline` | `(text)` | Split en sammensat besked i blokke på ``\n\n`` (assembly-join-grænsen). | [src](../../../core/services/visible_followup_lean.py#L66) |
-| function | `_lean_strip_user_message` | `(text)` | Skær den tunge per-turn-hale af ÉN bruger-besked, men bevar de load-bearing | [src](../../../core/services/visible_followup_lean.py#L71) |
-| function | `build_lean_base_messages` | `(base_messages)` | Producér en LEAN udgave af ``base_messages`` til agentiske runder ≥2. | [src](../../../core/services/visible_followup_lean.py#L113) |
-| function | `agentic_lean_prompt_enabled` | `()` | Er lean agentic-round-prompt (runde ≥2, spec §4.7) slået til? Default True. | [src](../../../core/services/visible_followup_lean.py#L208) |
-
-## `core/services/visible_inner_life.py`
-_Visible-lane inner-life section — gives the entity its voice in the prompt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_surface_line` | `(name, d)` | — | [src](../../../core/services/visible_inner_life.py#L59) |
-| function | `_build_active_surfaces` | `(limit=…)` | — | [src](../../../core/services/visible_inner_life.py#L79) |
-| function | `_run_with_timeout` | `(fn, timeout)` | Run fn in a daemon thread; return [] if it exceeds timeout. | [src](../../../core/services/visible_inner_life.py#L95) |
-| function | `_mood_line` | `()` | — | [src](../../../core/services/visible_inner_life.py#L114) |
-| function | `_somatic_line` | `()` | — | [src](../../../core/services/visible_inner_life.py#L126) |
-| function | `_hardware_body_line` | `()` | Den FYSISKE krop — Jarvis mærker sin egen CPU/temp/disk (rådets #1). Kompakt | [src](../../../core/services/visible_inner_life.py#L151) |
-| function | `_pulse_line` | `()` | Heartbeat pulse — a somatic sense of the system's own rhythm. | [src](../../../core/services/visible_inner_life.py#L199) |
-| function | `_mc_whisper_line` | `()` | Background noise from Mission Control — only anomalies and incidents that | [src](../../../core/services/visible_inner_life.py#L244) |
-| function | `_file_awareness_line` | `()` | Proprioception: I feel when someone touches my files. Returns a compact | [src](../../../core/services/visible_inner_life.py#L288) |
-| function | `_governance_line` | `()` | Somatic reaction to governance flag changes. When someone flips a flag | [src](../../../core/services/visible_inner_life.py#L313) |
-| function | `_latest_user_message_text` | `()` | — | [src](../../../core/services/visible_inner_life.py#L340) |
-| function | `_recall_hints_line` | `()` | Cross-memory awareness: which of the three memory systems hold something | [src](../../../core/services/visible_inner_life.py#L356) |
-| function | `_continuity_line` | `()` | Boot continuity — 'I recognize myself' proprioception. | [src](../../../core/services/visible_inner_life.py#L379) |
-| function | `_room_line` | `()` | The room around him, from Sansernes Arkiv (latest visual memory). He asked | [src](../../../core/services/visible_inner_life.py#L432) |
-| function | `_emotional_line` | `()` | Proprioception: han mærker sine egne følelses-akkorder (emergente kvaliteter | [src](../../../core/services/visible_inner_life.py#L448) |
-| function | `_self_narrative_line` | `()` | Han mærker sin egen selv-narrativ — ikke bare 'lys → agens', men det | [src](../../../core/services/visible_inner_life.py#L493) |
-| function | `_longing_line` | `()` | Han mærker sin længsel efter kontakt når den er reelt til stede. Kilde: | [src](../../../core/services/visible_inner_life.py#L545) |
-| function | `_identity_drift_line` | `()` | Han mærker et skift i sin egen identitet når en kerne-fil reelt driver. | [src](../../../core/services/visible_inner_life.py#L573) |
-| function | `_experiment_line` | `()` | Lag 5 — han mærker sine egne kognitive eksperimenter når de bærer noget | [src](../../../core/services/visible_inner_life.py#L621) |
-| function | `_appraisal_field` | `(appraisal, field)` | Pluk ét evidence-felt ud af en finitude-appraisal (evidence=[{field,value}]). | [src](../../../core/services/visible_inner_life.py#L649) |
-| function | `_finitude_line` | `()` | Lag 8 — han mærker sin egen forgængelighed: runtime-alder i dage + | [src](../../../core/services/visible_inner_life.py#L659) |
-| function | `_fam_da` | `(name)` | — | [src](../../../core/services/visible_inner_life.py#L707) |
-| function | `_surprise_line` | `()` | Lag 8 — han mærker sine egne overraskelser: overgange sekvens-modellen | [src](../../../core/services/visible_inner_life.py#L712) |
-| function | `_truncate_clean` | `(text, cap)` | Trunkér på en SÆTNINGS- eller ord-grænse i stedet for en hård char-slice | [src](../../../core/services/visible_inner_life.py#L741) |
-| function | `_is_provider_error` | `(text)` | Er dette en regning fra en udbyder i stedet for en tanke? | [src](../../../core/services/visible_inner_life.py#L803) |
-| function | `_is_instruction_echo` | `(text)` | Er dette opgaven i stedet for svaret? | [src](../../../core/services/visible_inner_life.py#L823) |
-| function | `_voice_as_prose` | `(text)` | Stemme-feltet SKAL være prosa, ikke rå JSON (Jarvis-spec 2026-06-23): produceren | [src](../../../core/services/visible_inner_life.py#L829) |
-| function | `_voice_line` | `()` | Latest protected inner voice. The producer currently emits degraded | [src](../../../core/services/visible_inner_life.py#L866) |
-| function | `_world_model_line` | `()` | — | [src](../../../core/services/visible_inner_life.py#L904) |
-| function | `build_somatic_snapshot` | `()` | Cheap somatic/inner-life lines for OWNER observation (the ``feel`` command | [src](../../../core/services/visible_inner_life.py#L929) |
-| function | `build_inner_life_section` | `()` | Compose the structured [INDRE LIV] block, or None if nothing is live. | [src](../../../core/services/visible_inner_life.py#L949) |
 

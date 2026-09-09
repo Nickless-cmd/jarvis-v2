@@ -651,20 +651,22 @@ _Append-only session-ledger — Fase 1 af DeepSeek-harness-spec'en._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/runtime/db_session_ledger.py#L56) |
-| function | `_iso` | `(dt)` | — | [src](../../../core/runtime/db_session_ledger.py#L60) |
-| function | `_ensure_session_ledger_table` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L64) |
-| function | `acquire_write_lease` | `(session_id, *, owner, ttl_s=…, now=…)` | Tag skrive-ejerskabet over én session. Returnér møntet, eller None. | [src](../../../core/runtime/db_session_ledger.py#L99) |
-| function | `release_write_lease` | `(session_id, *, owner, token)` | Giv ejerskabet fra sig. Kun den nuværende ejer med den rigtige mønt kan. | [src](../../../core/runtime/db_session_ledger.py#L141) |
-| function | `lease_state` | `(session_id)` | Diagnostik: hvem ejer sessionen, med hvilken mønt, hvor længe. | [src](../../../core/runtime/db_session_ledger.py#L156) |
-| class | `LeaseLost` | `` | Skrivningen blev afvist: leasen er væk eller møntet er forældet. | [src](../../../core/runtime/db_session_ledger.py#L175) |
-| function | `append_session_events` | `(session_id, *, owner, token, events, now=…)` | Tilføj hændelser ATOMISK og IDEMPOTENT. | [src](../../../core/runtime/db_session_ledger.py#L179) |
-| function | `read_session_events` | `(session_id, *, from_seq=…, to_seq=…)` | Læs hændelser i rækkefølge. Halvåbent interval: (from_seq, to_seq]. | [src](../../../core/runtime/db_session_ledger.py#L253) |
-| function | `current_seq` | `(session_id)` | Sessionens højeste sekvensnummer — 0 hvis ledgeren er tom for den. | [src](../../../core/runtime/db_session_ledger.py#L283) |
-| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_session_ledger.py#L294) |
-| function | `_ensure_storage_mode_column` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L320) |
-| function | `storage_mode` | `(session_id)` | Hvilken kilde er kanonisk for denne session? | [src](../../../core/runtime/db_session_ledger.py#L329) |
-| function | `advance_storage_mode` | `(session_id, *, to)` | Ryk EN session fremad. Envejs — der er ingen vej tilbage. | [src](../../../core/runtime/db_session_ledger.py#L351) |
+| function | `_now` | `()` | — | [src](../../../core/runtime/db_session_ledger.py#L59) |
+| function | `_iso` | `(dt)` | — | [src](../../../core/runtime/db_session_ledger.py#L63) |
+| function | `_ensure_session_ledger_table` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L67) |
+| function | `acquire_write_lease` | `(session_id, *, owner, ttl_s=…, now=…)` | Tag skrive-ejerskabet over én session. Returnér møntet, eller None. | [src](../../../core/runtime/db_session_ledger.py#L102) |
+| function | `release_write_lease` | `(session_id, *, owner, token)` | Giv ejerskabet fra sig. Kun den nuværende ejer med den rigtige mønt kan. | [src](../../../core/runtime/db_session_ledger.py#L144) |
+| function | `lease_state` | `(session_id)` | Diagnostik: hvem ejer sessionen, med hvilken mønt, hvor længe. | [src](../../../core/runtime/db_session_ledger.py#L159) |
+| class | `LeaseLost` | `` | Skrivningen blev afvist: leasen er væk eller møntet er forældet. | [src](../../../core/runtime/db_session_ledger.py#L178) |
+| function | `append_session_events` | `(session_id, *, owner, token, events, now=…)` | Tilføj hændelser ATOMISK og IDEMPOTENT. | [src](../../../core/runtime/db_session_ledger.py#L182) |
+| function | `_annoncer` | `(session_id, skrevet, seq)` | Fortæl bussen at der er kommet hændelser — EFTER commit, og aldrig fatalt. | [src](../../../core/runtime/db_session_ledger.py#L255) |
+| function | `read_session_events` | `(session_id, *, from_seq=…, to_seq=…)` | Læs hændelser i rækkefølge. Halvåbent interval: (from_seq, to_seq]. | [src](../../../core/runtime/db_session_ledger.py#L281) |
+| function | `current_seq` | `(session_id)` | Sessionens højeste sekvensnummer — 0 hvis ledgeren er tom for den. | [src](../../../core/runtime/db_session_ledger.py#L314) |
+| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_session_ledger.py#L325) |
+| function | `_ensure_storage_mode_column` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L351) |
+| function | `storage_mode` | `(session_id, *, conn=…)` | Hvilken kilde er kanonisk for denne session? | [src](../../../core/runtime/db_session_ledger.py#L360) |
+| function | `_storage_mode_on` | `(conn, session_id)` | — | [src](../../../core/runtime/db_session_ledger.py#L381) |
+| function | `advance_storage_mode` | `(session_id, *, to)` | Ryk EN session fremad. Envejs — der er ingen vej tilbage. | [src](../../../core/runtime/db_session_ledger.py#L393) |
 
 ## `core/runtime/db_user_contradiction.py`
 _DB helpers for user_contradictions + user_statements tables._
@@ -841,6 +843,34 @@ _Safe read/merge/write helpers for runtime.json._
 | function | `_parse_int` | `(value, key)` | — | [src](../../../core/runtime/secrets.py#L59) |
 | function | `read_runtime_key` | `(key, env_override=…, *, as_int=…)` | Read a top-level key from ~/.jarvis-v2/config/runtime.json. | [src](../../../core/runtime/secrets.py#L68) |
 | function | `mail_config` | `()` | — | [src](../../../core/runtime/secrets.py#L103) |
+
+## `core/runtime/session_handle.py`
+_`SessionHandle` — én ejer, én lease, én sekvens._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SessionFormatError` | `` | Sessionens format kan ikke åbnes. Bærer hvilken slags. | [src](../../../core/runtime/session_handle.py#L63) |
+| method | `SessionFormatError.__init__` | `(self, verdict, besked)` | — | [src](../../../core/runtime/session_handle.py#L66) |
+| class | `NotWritable` | `` | Der blev forsøgt en skrivning gennem et skrivebeskyttet håndtag. | [src](../../../core/runtime/session_handle.py#L71) |
+| class | `SessionHeader` | `` | Uforanderlig. Skrives ÉN gang ved oprettelsen og ændres aldrig. | [src](../../../core/runtime/session_handle.py#L76) |
+| method | `SessionHeader.as_json` | `(self)` | — | [src](../../../core/runtime/session_handle.py#L87) |
+| function | `_ensure_header_column` | `(conn)` | — | [src](../../../core/runtime/session_handle.py#L93) |
+| function | `write_header` | `(session_id, *, generation=…)` | Skriv headeren én gang. Et andet forsøg er en fejl, ikke en opdatering. | [src](../../../core/runtime/session_handle.py#L100) |
+| function | `read_header` | `(session_id)` | — | [src](../../../core/runtime/session_handle.py#L119) |
+| function | `classify_format` | `(session_id)` | Fire udfald der kan skelnes. En session uden header er `current`: | [src](../../../core/runtime/session_handle.py#L142) |
+| class | `SessionHandle` | `` | Ejerskabet gjort til noget man holder. Brug som context manager. | [src](../../../core/runtime/session_handle.py#L159) |
+| method | `SessionHandle.__init__` | `(self, session_id, *, owner, token, header, format_verdict)` | — | [src](../../../core/runtime/session_handle.py#L162) |
+| method | `SessionHandle.writable` | `(self)` | — | [src](../../../core/runtime/session_handle.py#L174) |
+| method | `SessionHandle.token` | `(self)` | — | [src](../../../core/runtime/session_handle.py#L178) |
+| method | `SessionHandle.seq` | `(self)` | — | [src](../../../core/runtime/session_handle.py#L181) |
+| method | `SessionHandle.append` | `(self, event)` | Læg i kø. Intet rører databasen før `flush()` eller `close()`. | [src](../../../core/runtime/session_handle.py#L186) |
+| method | `SessionHandle.flush` | `(self)` | Skriv køen som ÉN batch. Returnerer antal skrevne hændelser. | [src](../../../core/runtime/session_handle.py#L202) |
+| method | `SessionHandle.close` | `(self)` | Flush og GIV LEASE'N FRA DIG. Uden det venter næste proces på | [src](../../../core/runtime/session_handle.py#L221) |
+| method | `SessionHandle.__enter__` | `(self)` | — | [src](../../../core/runtime/session_handle.py#L240) |
+| method | `SessionHandle.__exit__` | `(self, *exc)` | — | [src](../../../core/runtime/session_handle.py#L243) |
+| function | `_bedoem` | `(session_id)` | — | [src](../../../core/runtime/session_handle.py#L247) |
+| function | `open_readonly` | `(session_id)` | Kig uden at tage noget. Skriver intet — heller ikke en lease-række. | [src](../../../core/runtime/session_handle.py#L259) |
+| function | `open_for_write` | `(session_id, *, owner, ttl_s=…)` | Tag skriveretten. Returnerer et skrivebeskyttet håndtag hvis en anden | [src](../../../core/runtime/session_handle.py#L266) |
 
 ## `core/runtime/settings.py`
 

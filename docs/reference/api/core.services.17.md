@@ -400,6 +400,49 @@ _core/services/producer_novelty.py_
 | function | `snapshot` | `()` | Read-only overblik: pr. producer antal kald + gennemsnitlig nyhed. Lav avg = repetitiv | [src](../../../core/services/producer_novelty.py#L115) |
 | function | `_reset_for_tests` | `()` | — | [src](../../../core/services/producer_novelty.py#L127) |
 
+## `core/services/projection_chat_messages.py`
+_Kompatibilitets-projektoren — ledger-hændelser → `chat_messages`-rækker._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `message_id_for` | `(session_id, event_id)` | Udled et stabilt `message_id`. Samme hændelse → altid samme id. | [src](../../../core/services/projection_chat_messages.py#L59) |
+| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_chat_messages.py#L69) |
+| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_chat_messages.py#L82) |
+| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_chat_messages.py#L103) |
+| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold. | [src](../../../core/services/projection_chat_messages.py#L127) |
+| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_chat_messages.py#L136) |
+| function | `register` | `()` | — | [src](../../../core/services/projection_chat_messages.py#L155) |
+| function | `rebuild` | `(session_id)` | Genskab sessionens `chat_messages`-rækker fra ledgeren. | [src](../../../core/services/projection_chat_messages.py#L160) |
+| class | `DirekteSkrivningAfvist` | `` | En ledger-session fik et direkte skrive-forsøg uden om projektoren. | [src](../../../core/services/projection_chat_messages.py#L174) |
+| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `chat_messages`-skrivninger for en ledger-session. | [src](../../../core/services/projection_chat_messages.py#L178) |
+
+## `core/services/projection_drift.py`
+_Drift-detektion — er ledgeren og `chat_messages` enige?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_normaliser_json` | `(v)` | `content_json` kan være tekst ét sted og et objekt et andet. Det er | [src](../../../core/services/projection_drift.py#L45) |
+| function | `_felt` | `(raekke, navn)` | — | [src](../../../core/services/projection_drift.py#L62) |
+| function | `_fra_ledger` | `(session_id)` | Fold i HUKOMMELSEN. At kalde projektoren ville skrive de rækker vi | [src](../../../core/services/projection_drift.py#L68) |
+| function | `_fra_tabellen` | `(session_id)` | — | [src](../../../core/services/projection_drift.py#L84) |
+| function | `compare` | `(session_id)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L96) |
+| function | `may_cut_over` | `(session_id)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L132) |
+
+## `core/services/projection_runtime.py`
+_Projektions-runtime — rene, versionerede folder over session-ledgeren._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Projection` | `` | — | [src](../../../core/services/projection_runtime.py#L52) |
+| function | `register` | `(navn, *, version, fold, start=…)` | Registrér en projektion. Samme navn to gange er en fejl, ikke en erstatning. | [src](../../../core/services/projection_runtime.py#L64) |
+| function | `registered` | `()` | — | [src](../../../core/services/projection_runtime.py#L80) |
+| function | `_unregister_all_for_tests` | `()` | — | [src](../../../core/services/projection_runtime.py#L84) |
+| function | `_ensure_checkpoint_table` | `(conn)` | — | [src](../../../core/services/projection_runtime.py#L90) |
+| function | `checkpoint` | `(session_id, navn)` | Hvor langt er denne projektion foldet for denne session? | [src](../../../core/services/projection_runtime.py#L105) |
+| function | `_gem_checkpoint` | `(session_id, navn, version, as_of_seq)` | — | [src](../../../core/services/projection_runtime.py#L126) |
+| function | `project` | `(session_id, navn, *, force_refold=…)` | Fold sessionens hændelser gennem projektionen og ryk markøren frem. | [src](../../../core/services/projection_runtime.py#L148) |
+| function | `snapshot` | `(session_id, navne=…)` | Fold FLERE projektioner og giv dem ÉT fælles `as_of_seq`. | [src](../../../core/services/projection_runtime.py#L176) |
+
 ## `core/services/promise_ledger.py`
 _Promise-ledger (Bjørn-gate) — 16. jun 2026._
 
@@ -703,61 +746,4 @@ _Parser for prosa-emitterede tool-kald (cluster: tool-leak-fix 2026-06-21)._
 |---|---|---|---|---|
 | function | `_match_json_object` | `(s, start)` | s[start] skal være '{'. Returnér (objekt-streng, slut-index) via brace-matching | [src](../../../core/services/prose_tool_calls.py#L26) |
 | function | `extract_prose_tool_calls` | `(text, valid_tool_names)` | Find `[navn]: {json}`-prosa-kald hvor navn er et kendt tool og args er et | [src](../../../core/services/prose_tool_calls.py#L55) |
-
-## `core/services/provider_autodiscovery.py`
-_Provider auto-discovery (spec Fase C). Dagligt scan af providers' /models,_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_list_remote_models` | `(provider)` | Modeller providerens /models-endpoint rapporterer. [] ved fejl. | [src](../../../core/services/provider_autodiscovery.py#L18) |
-| function | `_known_models` | `()` | Modeller allerede i provider_router.json (uanset lane). | [src](../../../core/services/provider_autodiscovery.py#L28) |
-| function | `_stage_pending` | `(provider, model)` | Skriv (provider, model) til pending_models-staging, status='pending'. | [src](../../../core/services/provider_autodiscovery.py#L38) |
-| function | `_add_to_router` | `(provider, model)` | Faktisk optagelse i routbar pool. Kaldes KUN af promote_pending efter gates. | [src](../../../core/services/provider_autodiscovery.py#L56) |
-| function | `_configured_providers` | `()` | Alle providers i provider_router.json (til daglig re-scan). [] ved fejl. | [src](../../../core/services/provider_autodiscovery.py#L69) |
-| function | `tick_provider_autodiscovery_daemon` | `()` | Fase C daemon-tick: dagligt scan af alle providers' /models → nye modeller til | [src](../../../core/services/provider_autodiscovery.py#L80) |
-| function | `discover_provider` | `(provider)` | Scan provider, stage nye modeller. Returnér de nye (staged). Auto-adder ALDRIG. | [src](../../../core/services/provider_autodiscovery.py#L100) |
-| function | `_smoke_ok` | `(provider, model)` | Svarer modellen på et minimalt kald? | [src](../../../core/services/provider_autodiscovery.py#L109) |
-| function | `_is_free` | `(provider, model)` | Konservativ gratis-verifikation. Default False (governed — hellere afvise). | [src](../../../core/services/provider_autodiscovery.py#L125) |
-| function | `_score_model` | `(provider, model)` | Seed kvalitets-score (§4.4). Grov til at komme i gang. | [src](../../../core/services/provider_autodiscovery.py#L130) |
-| function | `promote_pending` | `(provider, model, *, min_score=…)` | Gated promotion: kræver smoke + gratis + score ≥ tærskel. Kun da optages | [src](../../../core/services/provider_autodiscovery.py#L135) |
-
-## `core/services/provider_circuit_breaker.py`
-_Provider circuit breaker — skip primaries that have been failing recently._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_key` | `(provider, model)` | — | [src](../../../core/services/provider_circuit_breaker.py#L39) |
-| function | `_prune_old_failures` | `(failures, now)` | — | [src](../../../core/services/provider_circuit_breaker.py#L43) |
-| function | `record_failure` | `(provider, model)` | Record a primary-call failure. Returns updated state for this key. | [src](../../../core/services/provider_circuit_breaker.py#L49) |
-| function | `record_success` | `(provider, model)` | Clear failure tracking on success — provider seems healthy again. | [src](../../../core/services/provider_circuit_breaker.py#L67) |
-| function | `should_skip` | `(provider, model)` | True when breaker is open for this (provider, model). | [src](../../../core/services/provider_circuit_breaker.py#L77) |
-| function | `breaker_state` | `()` | Observability snapshot — returns open breakers + recent failure counts. | [src](../../../core/services/provider_circuit_breaker.py#L95) |
-| function | `reset_all` | `()` | Test/admin helper — clear all state. | [src](../../../core/services/provider_circuit_breaker.py#L128) |
-| class | `_PPState` | `` | Per-provider breaker-state (consecutive-i-træk-state-maskine). | [src](../../../core/services/provider_circuit_breaker.py#L160) |
-| method | `_PPState.__init__` | `(self, threshold, cooldown_s, window_s)` | — | [src](../../../core/services/provider_circuit_breaker.py#L168) |
-| class | `_PerProviderBreaker` | `` | Proces-lokal per-provider-keyed breaker. Trådsikker, self-safe. | [src](../../../core/services/provider_circuit_breaker.py#L179) |
-| method | `_PerProviderBreaker.__init__` | `(self, *, threshold=…, cooldown_s=…, window_s=…)` | — | [src](../../../core/services/provider_circuit_breaker.py#L189) |
-| method | `_PerProviderBreaker._key` | `(provider_id)` | — | [src](../../../core/services/provider_circuit_breaker.py#L204) |
-| method | `_PerProviderBreaker.configure` | `(self, provider_id, *, threshold=…, cooldown_s=…, window_s=…)` | Per-provider-tærskler (ofa/arko bevarer deres historiske tal). | [src](../../../core/services/provider_circuit_breaker.py#L207) |
-| method | `_PerProviderBreaker._state` | `(self, pid)` | — | [src](../../../core/services/provider_circuit_breaker.py#L235) |
-| method | `_PerProviderBreaker.record_failure` | `(self, provider_id, *, now=…)` | Fejl → opdatér state. True hvis breakeren NETOP åbnede (frisk kant). | [src](../../../core/services/provider_circuit_breaker.py#L247) |
-| method | `_PerProviderBreaker.record_success` | `(self, provider_id)` | Success → luk (reset). True hvis den netop lukkede (frisk kant). | [src](../../../core/services/provider_circuit_breaker.py#L273) |
-| method | `_PerProviderBreaker.is_open` | `(self, provider_id, *, now=…)` | OPEN nu (→ kort-slut)? Cooldown udløbet → half-open (slip én probe → | [src](../../../core/services/provider_circuit_breaker.py#L288) |
-| method | `_PerProviderBreaker.snapshot` | `(self, provider_id)` | — | [src](../../../core/services/provider_circuit_breaker.py#L306) |
-| method | `_PerProviderBreaker.reset_all` | `(self)` | — | [src](../../../core/services/provider_circuit_breaker.py#L323) |
-| function | `_observe_pp` | `(nerve, provider_id, **data)` | Observér en per-provider breaker-kant til Centralen (cluster="stream"). | [src](../../../core/services/provider_circuit_breaker.py#L332) |
-| function | `pp_configure` | `(provider_id, **kw)` | Sæt per-provider-tærskler på den delte breaker (ofa/arko-løft). | [src](../../../core/services/provider_circuit_breaker.py#L346) |
-| function | `pp_record_failure` | `(provider_id)` | Registrér en provider-fejl på den DELTE per-provider breaker + observér | [src](../../../core/services/provider_circuit_breaker.py#L351) |
-| function | `pp_record_success` | `(provider_id)` | Registrér success på den delte per-provider breaker + observér close-kant. | [src](../../../core/services/provider_circuit_breaker.py#L366) |
-| function | `pp_is_open` | `(provider_id)` | Er ``provider_id``'s delte breaker OPEN lige nu? (Fail-open.) | [src](../../../core/services/provider_circuit_breaker.py#L374) |
-| function | `pp_snapshot` | `(provider_id)` | Debug/observe-snapshot af den delte per-provider breaker. | [src](../../../core/services/provider_circuit_breaker.py#L379) |
-| function | `pp_reset_all` | `()` | Test/admin: nulstil HELE den delte per-provider breaker. | [src](../../../core/services/provider_circuit_breaker.py#L384) |
-
-## `core/services/provider_error_guard.py`
-_Provider-fejl-vagt — fang "providerens fejlbesked blev til Jarvis' svar"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `looks_like_provider_error` | `(text)` | True hvis `text` ligner en udbyders fejlbesked frem for Jarvis' svar. | [src](../../../core/services/provider_error_guard.py#L72) |
-| function | `describe` | `(text)` | Kort, sikker beskrivelse til incident-beskeden. Lækker ikke hele teksten. | [src](../../../core/services/provider_error_guard.py#L96) |
 

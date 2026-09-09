@@ -415,6 +415,14 @@ _Hvad fangede laeringskredsloebet siden nulpunktet?_
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/laering_status.py#L23) |
 
+## `scripts/ledger_rehearsal.py`
+_Generalprøve: kan ledgeren holde RIGTIGE samtaler?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `kopiér` | `(antal, mindst, hoejst)` | — | [src](../../../scripts/ledger_rehearsal.py#L39) |
+| function | `main` | `()` | — | [src](../../../scripts/ledger_rehearsal.py#L70) |
+
 ## `scripts/link_google_email.py`
 _Admin-migration: knyt Google-email til eksisterende konti (§12)._
 
@@ -430,17 +438,4 @@ _Measure where Jarvis's visible-chat prompt tokens come from._
 | function | `count_tokens` | `(text)` | Count tokens with tiktoken if available; else chars/4 estimate. | [src](../../../scripts/measure_prompt_payload.py#L35) |
 | function | `split_system_by_sections` | `(text)` | Split a system prompt into (header, char_count, token_count) tuples. | [src](../../../scripts/measure_prompt_payload.py#L57) |
 | function | `main` | `()` | — | [src](../../../scripts/measure_prompt_payload.py#L80) |
-
-## `scripts/measure_turn_latency.py`
-_Mål Jarvis' svartid — fra send til svar._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_token` | `()` | — | [src](../../../scripts/measure_turn_latency.py#L37) |
-| function | `_parse` | `(ts)` | — | [src](../../../scripts/measure_turn_latency.py#L42) |
-| function | `_turns` | `(session_id, limit=…)` | Par bruger-besked med det følgende assistent-svar. | [src](../../../scripts/measure_turn_latency.py#L52) |
-| function | `_provider_for` | `(asked_at, answered_at)` | Hvilken provider betjente turen. | [src](../../../scripts/measure_turn_latency.py#L76) |
-| function | `watch` | `(session_id)` | — | [src](../../../scripts/measure_turn_latency.py#L101) |
-| function | `_api` | `(path, payload=…, stream=…)` | — | [src](../../../scripts/measure_turn_latency.py#L123) |
-| function | `probe` | `(rounds, message)` | — | [src](../../../scripts/measure_turn_latency.py#L134) |
 

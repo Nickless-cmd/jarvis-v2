@@ -145,6 +145,20 @@ _Pending runtime→app instruktioner (spec §18.5, Fase 2)._
 | function | `list_pending` | `()` | Uafgjorte instruktioner i kø-rækkefølge (desk poller). | [src](../../../core/services/app_dispatch_store.py#L58) |
 | function | `ack` | `(dispatch_id)` | Markér en instruktion som udført (consumeret af desk). | [src](../../../core/services/app_dispatch_store.py#L63) |
 
+## `core/services/approval_bridge_shadow.py`
+_Skygge for godkendelses-broen: ville den have sagt det samme?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taellere` | `()` | — | [src](../../../core/services/approval_bridge_shadow.py#L41) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_bridge_shadow.py#L45) |
+| function | `taellere_fra_cache` | `()` | Læs tællerne fra en anden proces — se `settlement_shadow` for hvorfor | [src](../../../core/services/approval_bridge_shadow.py#L50) |
+| function | `_gem` | `()` | — | [src](../../../core/services/approval_bridge_shadow.py#L61) |
+| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville tænde en | [src](../../../core/services/approval_bridge_shadow.py#L69) |
+| function | `note_requested` | `(approval_id, *, tool_name, arguments, run_id=…, session_id=…)` | Godkendelsen er bedt om. Registrér den i broen — ændrer intet. | [src](../../../core/services/approval_bridge_shadow.py#L80) |
+| function | `note_decided` | `(approval_id, *, approved)` | Mennesket har klikket. | [src](../../../core/services/approval_bridge_shadow.py#L98) |
+| function | `note_claim` | `(approval_id, *, tool_name, arguments, legacy_allowed)` | Ville broen have tilladt det samme som den kørende kode? | [src](../../../core/services/approval_bridge_shadow.py#L113) |
+
 ## `core/services/approval_feedback_subscriber.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -606,23 +620,4 @@ _Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9).
 | function | `_find_support_value` | `(support_summary, key, default)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L835) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L843) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L855) |
-
-## `core/services/autonomy_proposal_queue.py`
-_Autonomy proposal queue — Niveau 2 fundament._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_proposal_executor` | `(kind, fn)` | Register an executor for a proposal kind. | [src](../../../core/services/autonomy_proposal_queue.py#L49) |
-| function | `get_registered_proposal_kinds` | `()` | — | [src](../../../core/services/autonomy_proposal_queue.py#L54) |
-| function | `file_proposal` | `(*, kind, title, rationale=…, payload=…, created_by=…, session_id=…, run_id=…, tick_id=…, canonical_key=…)` | File a new proposal in the queue. | [src](../../../core/services/autonomy_proposal_queue.py#L58) |
-| function | `_notify_discord_proposal` | `(proposal_id, kind, title)` | Send a DM to the owner when a proposal is filed — fire and forget. | [src](../../../core/services/autonomy_proposal_queue.py#L109) |
-| function | `list_pending_proposals` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L155) |
-| function | `list_recent_proposals` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L159) |
-| function | `approve_proposal` | `(proposal_id, *, resolution_note=…)` | Bjørn approves a proposal — execute it immediately if we have an | [src](../../../core/services/autonomy_proposal_queue.py#L163) |
-| function | `reject_proposal` | `(proposal_id, *, resolution_note=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L255) |
-| function | `build_autonomy_proposal_surface` | `(*, limit=…)` | MC-friendly view of the proposal queue. | [src](../../../core/services/autonomy_proposal_queue.py#L285) |
-| function | `_execute_memory_rewrite_proposal` | `(payload)` | Execute an approved memory-rewrite proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L308) |
-| function | `_execute_source_edit_proposal` | `(payload)` | Execute an approved source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L333) |
-| function | `_auto_commit_after_source_edit` | `(proposal, result)` | Auto-commit the file changed by a source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L417) |
-| function | `_execute_git_commit_proposal` | `(payload)` | Execute an approved git-commit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L508) |
 

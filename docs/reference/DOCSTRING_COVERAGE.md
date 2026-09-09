@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7149/14108 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7154/14116 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7149/14108 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 603 | 1110 | 54% |
-| `core.services` | 4741 | 9730 | 48% |
+| `core.services` | 4746 | 9738 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7149/14108 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2014)
+## Undocumented public functions (2015)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -594,6 +594,7 @@ Generated from source. 7149/14108 functions/methods documented (50%). The list b
 - `core/services/anticipatory_action_daemon.py` :: `tick` (L184)
 - `core/services/anticipatory_context.py` :: `build_anticipatory_context_surface` (L76)
 - `core/services/apophenia_guard.py` :: `build_apophenia_guard_surface` (L120)
+- `core/services/approval_bridge_shadow.py` :: `taellere` (L41)
 - `core/services/approval_feedback_subscriber.py` :: `start_approval_feedback_subscriber` (L19)
 - `core/services/approval_feedback_subscriber.py` :: `stop_approval_feedback_subscriber` (L36)
 - `core/services/approval_outbox.py` :: `dispatch_pending_approval_notifications` (L106)
@@ -1835,20 +1836,20 @@ Generated from source. 7149/14108 functions/methods documented (50%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L383)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L380)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L390)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6556)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6581)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6785)
-- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6794)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6781)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6552)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6694)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6746)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6663)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6604)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6636)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6522)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6804)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6567)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6580)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6605)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6809)
+- `core/services/visible_runs.py` :: `get_last_visible_execution_trace` (L6818)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6805)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6576)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L6718)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L6770)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L6687)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6628)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L6660)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6546)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6828)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6591)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L432)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)

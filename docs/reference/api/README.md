@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14108 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14116 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -29,30 +29,30 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14108 functions/
 - [`core.runtime.02`](core.runtime.02.md) — `db_private_signals` … `token_renewal`
 - [`core.runtime.03`](core.runtime.03.md) — `workspace_paths` … `workspace_paths`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agents`
-- [`core.services.02`](core.services.02.md) — `agreement_streak` … `autonomy_proposal_queue`
-- [`core.services.03`](core.services.03.md) — `avoidance_detector` … `central_capture`
-- [`core.services.04`](core.services.04.md) — `central_catalog` … `central_keymaker`
-- [`core.services.05`](core.services.05.md) — `central_layer_contract` … `central_self_observe`
-- [`core.services.06`](core.services.06.md) — `central_self_state` … `chronicle_engine`
-- [`core.services.07`](core.services.07.md) — `claim_scanner` … `continuity_kernel`
-- [`core.services.08`](core.services.08.md) — `contract_evolution` … `decision_adherence_gate`
-- [`core.services.09`](core.services.09.md) — `decision_enforcement` … `dream_articulation`
-- [`core.services.10`](core.services.10.md) — `dream_bias_engine` … `epistemic_runtime_state`
-- [`core.services.11`](core.services.11.md) — `epistemics` … `gate_loop`
-- [`core.services.12`](core.services.12.md) — `gate_memory` … `hf_connector`
-- [`core.services.13`](core.services.13.md) — `hollow_promise_census` … `jarvisx_bridge`
-- [`core.services.14`](core.services.14.md) — `jc_tool_telemetry` … `memory_emotional_context`
-- [`core.services.15`](core.services.15.md) — `memory_graph` … `negotiation_pipeline`
-- [`core.services.16`](core.services.16.md) — `nerve_registry` … `personality_drift`
-- [`core.services.17`](core.services.17.md) — `personality_vector` … `prompt_observer`
-- [`core.services.18`](core.services.18.md) — `prompt_relevance_backend` … `relation_dynamics`
-- [`core.services.19`](core.services.19.md) — `relation_map` … `runtime_self_model_surfaces`
-- [`core.services.20`](core.services.20.md) — `runtime_surface_cache` … `sensory_archive`
-- [`core.services.21`](core.services.21.md) — `sensory_perception_bridge` … `skill_security_scanner`
-- [`core.services.22`](core.services.22.md) — `smith_confrontation` … `theory_of_mind`
-- [`core.services.23`](core.services.23.md) — `theory_of_mind_engine` … `user_scope`
-- [`core.services.24`](core.services.24.md) — `user_temperature_engine` … `vision_backend`
-- [`core.services.25`](core.services.25.md) — `visual_memory` … `world_model_signal_tracking`
+- [`core.services.02`](core.services.02.md) — `agreement_streak` … `autonomy_pressure_signal_tracking`
+- [`core.services.03`](core.services.03.md) — `autonomy_proposal_queue` … `central_cadence_conductor`
+- [`core.services.04`](core.services.04.md) — `central_capture` … `central_instrument`
+- [`core.services.05`](core.services.05.md) — `central_keymaker` … `central_self_model`
+- [`core.services.06`](core.services.06.md) — `central_self_observe` … `chronicle_consolidation_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `chronicle_engine` … `continuity`
+- [`core.services.08`](core.services.08.md) — `continuity_kernel` … `db_sentinel`
+- [`core.services.09`](core.services.09.md) — `decision_adherence_gate` … `dream_adoption_candidate_tracking`
+- [`core.services.10`](core.services.10.md) — `dream_articulation` … `epistemic_pragmatic`
+- [`core.services.11`](core.services.11.md) — `epistemic_runtime_state` … `gate_kernel`
+- [`core.services.12`](core.services.12.md) — `gate_loop` … `heartbeat_scheduler`
+- [`core.services.13`](core.services.13.md) — `hf_connector` … `jarvis_brain_visibility`
+- [`core.services.14`](core.services.14.md) — `jarvisx_bridge` … `memory_density`
+- [`core.services.15`](core.services.15.md) — `memory_emotional_context` … `negotiation_engine`
+- [`core.services.16`](core.services.16.md) — `negotiation_pipeline` … `personal_project`
+- [`core.services.17`](core.services.17.md) — `personality_drift` … `prompt_mutation_loop`
+- [`core.services.18`](core.services.18.md) — `prompt_observer` … `relation_continuity_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `relation_dynamics` … `runtime_self_model_state`
+- [`core.services.20`](core.services.20.md) — `runtime_self_model_surfaces` … `semantic_memory`
+- [`core.services.21`](core.services.21.md) — `sensory_archive` … `skill_scanner`
+- [`core.services.22`](core.services.22.md) — `skill_security_scanner` … `theater_audit`
+- [`core.services.23`](core.services.23.md) — `theory_of_mind` … `user_model_daemon`
+- [`core.services.24`](core.services.24.md) — `user_scope` … `visible_turn_blocks`
+- [`core.services.25`](core.services.25.md) — `vision_backend` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

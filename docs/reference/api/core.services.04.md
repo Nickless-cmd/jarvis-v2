@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_capture.py`
+_Boundary-capture for Centralen (§10). Kør en nerve bag en grænse: enhver_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ErrorRecord` | `` | — | [src](../../../core/services/central_capture.py#L15) |
+| function | `safe_call` | `(fn, ctx, *, nerve=…, cluster=…, klass=…)` | Returnér (resultat, None) ved succes, ellers (None, ErrorRecord). Kaster aldrig. | [src](../../../core/services/central_capture.py#L26) |
+
 ## `core/services/central_catalog.py`
 _Fit-pass-katalog (§13.2): det maskinlæsbare resultat af kortlægningen af hver nerve._
 
@@ -551,26 +559,4 @@ _central_instrument — selv-instrumenterende motor (system-cluster nerve, perio
 | function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L285) |
 | function | `_file_proposals` | `(max_new=…)` | Filer reviewbare proposals for åbne fund med score≥threshold (ikke allerede filed, | [src](../../../core/services/central_instrument.py#L320) |
 | function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L356) |
-
-## `core/services/central_keymaker.py`
-_The Keymaker — optjent, udløbende, én-dør-ad-gangen autonomi._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_never` | `(nerve)` | True hvis <nerve> ALDRIG må optjene/godkende en decentraliserings-nøgle: enten katalog- | [src](../../../core/services/central_keymaker.py#L40) |
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/central_keymaker.py#L53) |
-| function | `_now` | `()` | — | [src](../../../core/services/central_keymaker.py#L72) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_keymaker.py#L76) |
-| function | `evaluate_keys` | `()` | Find dimensioner der har OPTJENT en nøgle (track-record over tærskel) og udsted en PENDING | [src](../../../core/services/central_keymaker.py#L84) |
-| function | `_ejer_uid` | `()` | — | [src](../../../core/services/central_keymaker.py#L128) |
-| function | `_varsl_ejer` | `(domain, track)` | Sig til naar en noegle er OPTJENT — den kan ikke bruges foer ejeren godkender. | [src](../../../core/services/central_keymaker.py#L136) |
-| function | `_adfaerds_track_record` | `()` | Hans egen efterlevelse af sine forpligtelser. ``None`` hvis den ikke kan maales. | [src](../../../core/services/central_keymaker.py#L193) |
-| function | `evaluate_behaviour_key` | `()` | Udsted en PENDING adfaerds-noegle naar HAN har fortjent den. Self-safe. | [src](../../../core/services/central_keymaker.py#L208) |
-| function | `har_adfaerds_noegle` | `()` | True hvis han har en GYLDIG (godkendt + ikke udloebet) adfaerds-noegle. | [src](../../../core/services/central_keymaker.py#L247) |
-| function | `list_keys` | `(*, include_expired=…)` | — | [src](../../../core/services/central_keymaker.py#L256) |
-| function | `is_decentralized` | `(nerve)` | True hvis <nerve> har en GYLDIG optjent decentraliserings-nøgle: status='approved' OG endnu | [src](../../../core/services/central_keymaker.py#L267) |
-| function | `approve_key` | `(key_id)` | OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL. Auto-reverterer ved udløb. | [src](../../../core/services/central_keymaker.py#L289) |
-| function | `expire_due` | `()` | Cadence: reverter flag for udløbne nøgler (tilladelse mistes hvis ikke fornyet). Self-safe. | [src](../../../core/services/central_keymaker.py#L323) |
-| function | `_mind_om_ventende` | `()` | Mind om noegler der har ventet paa godkendelse i mere end tre dage. | [src](../../../core/services/central_keymaker.py#L354) |
-| function | `build_keymaker_surface` | `()` | Owner-view: aktive/afventende nøgler + fortjente dimensioner. Self-safe. | [src](../../../core/services/central_keymaker.py#L404) |
 

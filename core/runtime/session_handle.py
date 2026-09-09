@@ -216,7 +216,37 @@ class SessionHandle:
             # være væk fordi en skrivning fejlede.
             self._pending = batch + self._pending
             raise
+        self._projicer()
         return len(batch)
+
+    def _projicer(self) -> None:
+        """Kør projektionerne EFTER commit — kun for en kanonisk session.
+
+        Her, og ikke i kaldestederne, fordi handlet er den eneste sanktionerede
+        vej til at skrive i en `ledger`-session. Så gælder «hver append følges
+        af en projektion» for enhver skriver der bruger den rigtige vej.
+
+        For `shadow` og `legacy` gøres intet: dér er `chat_messages` sandheden
+        og skrives direkte, og en projektion oveni ville skrive de samme rækker
+        én gang til.
+
+        En fejl her må ikke boble op: hændelsen ER committet, og en fejlet
+        projektion er en projektion der er BAGUD — ikke en tabt skrivning.
+        Næste flush eller et `rebuild()` henter den ind, fordi foldningen
+        fortsætter fra sit checkpoint.
+        """
+        try:
+            from core.runtime.db_session_ledger import storage_mode
+            if storage_mode(self.session_id) != "ledger":
+                return
+            from core.services.projection_chat_messages import register
+            from core.services.projection_runtime import registered, run_for_session
+            if "chat_messages" not in registered():
+                register()
+            run_for_session(self.session_id)
+        except Exception:
+            logger.warning("session_handle: projektion fejlede efter append for %s",
+                           self.session_id, exc_info=True)
 
     def close(self) -> None:
         """Flush og GIV LEASE'N FRA DIG. Uden det venter næste proces på

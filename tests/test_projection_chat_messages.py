@@ -164,15 +164,33 @@ def test_en_tom_session_giver_ingen_raekker(sid):
 
 # ── kun projektoren skriver for en ledger-session ────────────────────────
 
-def test_direkte_skrivning_afvises_naar_sessionen_er_i_LEDGER(sid):
-    """Uden vagten ville skiftet give DOBBELT sandhed frem for at flytte den:
-    nogle rækker foldet, andre skrevet udenom, og ingen måde at se hvilke."""
+def test_en_LEDGER_session_RUTES_gennem_ledgeren_ikke_udenom(sid):
+    """Testen sagde tidligere at `append_chat_message` KASTEDE for en
+    ledger-session. Det var rigtigt indtil skrivevejen blev koblet: dengang var
+    der ingen anden vej ind, og at fejle højt var bedre end at skrive en række
+    projektoren ikke kunne genskabe.
+
+    Nu skrives hændelsen i ledgeren, og rækken laves af projektoren. Vagten
+    bliver stående som sikkerhedsnet for enhver ANDEN skriver — se testen
+    nedenfor."""
     from core.services.chat_sessions import append_chat_message
     L.advance_storage_mode(sid, to="shadow")
     L.advance_storage_mode(sid, to="ledger")
-    with pytest.raises(C.DirekteSkrivningAfvist):
-        append_chat_message(session_id=sid, role="user", content="udenom")
-    assert _raekker(sid) == []
+    r = append_chat_message(session_id=sid, role="user", content="gennem ledgeren")
+
+    assert [e["event_id"] for e in L.read_session_events(sid)] == [r["id"]]
+    raekker = _raekker(sid)
+    assert len(raekker) == 1 and raekker[0]["message_id"] == r["id"]
+
+
+def test_vagten_stopper_stadig_en_ANDEN_skriver(sid):
+    """Sikkerhedsnettet: den der ikke går gennem skrivevejen, afvises."""
+    from core.runtime.db import connect as _c
+    L.advance_storage_mode(sid, to="shadow")
+    L.advance_storage_mode(sid, to="ledger")
+    with _c() as conn:
+        with pytest.raises(C.DirekteSkrivningAfvist):
+            C.guard_direct_write(sid, conn=conn)
 
 
 def test_projektoren_selv_skriver_stadig_i_ledger_tilstand(sid):
@@ -195,6 +213,9 @@ def test_direkte_skrivning_er_uroert_indtil_skiftet(sid, mode):
 
 
 def test_en_ulaeselig_tilstand_goer_ikke_samtalen_skrivebeskyttet(sid, monkeypatch):
+    """Retningen er valgt bevidst: alternativet er at brugeren MISTER sin
+    besked fordi et opslag fejlede. Det er værre end en række projektoren ikke
+    har lavet — og det logges højt."""
     from core.services.chat_sessions import append_chat_message
     import core.runtime.db_session_ledger as _L
     monkeypatch.setattr(_L, "storage_mode",

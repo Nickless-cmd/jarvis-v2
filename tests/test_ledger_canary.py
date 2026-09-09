@@ -239,22 +239,32 @@ def test_en_samtale_MED_markoer_genskabes_helt(sid):
     assert any(r["role"] == "compact_marker" for r in efter)
 
 
-def test_en_LEDGER_session_afviser_markoeren_HOEJT(sid):
-    """Landminen skrevet ned frem for skjult.
+def test_en_LEDGER_session_skriver_markoeren_GENNEM_ledgeren(sid):
+    """Landminen er ryddet — bevidst, som den gamle test krævede.
 
-    Bliver en session kanonisk i ledgeren, kaster `store_compact_marker` på
-    skrive-vagten — fordi ingen har koblet markør-skrivningen til et
-    `SessionHandle` endnu. Det er den RIGTIGE opførsel: den siger at koblingen
-    mangler, i stedet for tavst at skrive en række der ikke kan genskabes.
-    Ændres det, skal denne test ændres bevidst.
+    Indtil markør-skrivningen var koblet til et `SessionHandle`, KASTEDE dette
+    kald på skrive-vagten. Det var den rigtige opførsel dengang: fejl højt frem
+    for tavst at skrive en række der ikke kan genskabes. Nu går markøren samme
+    vej som enhver anden besked, og projektoren laver rækken.
     """
-    from core.services.projection_chat_messages import DirekteSkrivningAfvist
     _historik(sid, 2)
     K.enable_shadow(sid)
     _ro()
     L.advance_storage_mode(sid, to="ledger")
-    with pytest.raises(DirekteSkrivningAfvist):
-        _markoer(sid)
+
+    mid = _markoer(sid, "opsummering", sha="cafe123")
+
+    # hændelsen er i ledgeren …
+    sidste = L.read_session_events(sid)[-1]
+    assert sidste["event_id"] == mid
+    assert sidste["payload"]["role"] == "compact_marker"
+    assert sidste["payload"]["git_sha"] == "cafe123"
+
+    # … og RÆKKEN findes, fordi handlet kørte projektoren
+    with connect() as c:
+        r = c.execute("SELECT role, content, git_sha FROM chat_messages "
+                      "WHERE message_id = ?", (mid,)).fetchone()
+    assert r is not None and r[0] == "compact_marker" and r[2] == "cafe123"
 
 
 # ── et hul i MIDTEN kan ikke lappes ved at føje til ──────────────────────

@@ -62,6 +62,7 @@ def _begge(sid: str, rolle: str, tekst: str, **ekstra):
     """
     append_chat_message(session_id=sid, role=rolle, content=tekst,
                         created_at=TID, **ekstra)
+    _ro()
 
 
 def _kun_tabellen(sid: str, rolle: str, tekst: str, **ekstra):
@@ -81,6 +82,7 @@ def _kun_tabellen(sid: str, rolle: str, tekst: str, **ekstra):
                             created_at=TID, **ekstra)
     finally:
         L.append_unowned = aegte
+    _ro()
 
 
 def _kun_ledger(sid: str, eid: str, rolle: str, tekst: str, **ekstra):

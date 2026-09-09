@@ -191,3 +191,31 @@ def snapshot(session_id: str, navne: list[str] | None = None) -> dict[str, Any]:
         celler[n] = r["state"]
         seqs.append(int(r["as_of_seq"]))
     return {"cells": celler, "as_of_seq": min(seqs) if seqs else 0}
+
+
+def run_for_session(session_id: str, navne: list[str] | None = None) -> dict[str, Any]:
+    """Kør alle registrerede projektioner for én session.
+
+    Dette er det kald der gør en `ledger`-session brugbar. Uden det er
+    `chat_messages` en projektion ingen genopbygger — og så ville de 61 læsere
+    stille vise gammelt indhold efter et skifte. Ingen fejl, ingen tom skærm:
+    bare en samtale der holdt op med at ændre sig.
+
+    Kaldes fra `SessionHandle.flush()`, fordi handlet er den eneste sanktionerede
+    vej til at skrive i en kanonisk ledger-session. Så gælder «hver append
+    følges af en projektion» for enhver skriver der bruger den rigtige vej —
+    frem for at være noget hvert kaldested skulle huske.
+    """
+    ud: dict[str, Any] = {}
+    for n in (navne or registered()):
+        try:
+            r = project(session_id, n)
+            ud[n] = {"as_of_seq": r["as_of_seq"], "events": r["events"]}
+        except Exception as e:
+            # Én projektion der fejler, må ikke stoppe de andre. Fejlen står i
+            # svaret OG i loggen — en projektion der tier, er værre end en der
+            # er bagud, fordi ingen kan se forskel på den og en der er ajour.
+            logger.warning("projection_runtime: %r fejlede for %s", n, session_id,
+                           exc_info=True)
+            ud[n] = {"fejl": f"{type(e).__name__}: {e}"}
+    return ud

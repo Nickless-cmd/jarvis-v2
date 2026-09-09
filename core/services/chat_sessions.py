@@ -528,22 +528,40 @@ def append_chat_message(
             except Exception:
                 pass
 
-        # For en ledger-session er `chat_messages` en PROJEKTION. En direkte
-        # skrivning her ville give to sandheder frem for at flytte den ene.
-        from core.services.projection_chat_messages import guard_direct_write
-        guard_direct_write(normalized_session, conn=conn)
+        # For en ledger-session er `chat_messages` en PROJEKTION: hændelsen
+        # skrives i ledgeren, og RÆKKEN er noget projektoren laver bagefter.
+        # Det er hele forskellen på en tabel man skriver i, og en tabel man
+        # udleder.
+        from core.runtime.db_session_ledger import storage_mode as _tilstand
+        try:
+            _kanonisk = _tilstand(normalized_session, conn=conn) == "ledger"
+        except Exception:
+            # Kan tilstanden ikke læses, skrives rækken som altid. Retningen er
+            # valgt bevidst: alternativet er at brugeren MISTER sin besked fordi
+            # et opslag fejlede, og det er værre end en række projektoren ikke
+            # har lavet. Logges højt, fordi det for en kanonisk session ville
+            # give en række der ikke kan genskabes.
+            logger.warning("chat_sessions: kunne ikke laese storage_mode for %s — "
+                           "skriver som legacy", normalized_session, exc_info=True)
+            _kanonisk = False
 
-        conn.execute(
-            """
-            INSERT INTO chat_messages (message_id, session_id, role, content,
-                                        user_id, workspace_name,
-                                        reasoning_content, content_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (message_id, normalized_session, normalized_role, normalized_content,
-             _user_id, _workspace_name, str(reasoning_content or ""),
-             content_json, timestamp),
-        )
+        if not _kanonisk:
+            # Vagten bliver stående som sikkerhedsnet: enhver ANDEN skriver der
+            # måtte finde vej hertil for en ledger-session, skal stoppes.
+            from core.services.projection_chat_messages import guard_direct_write
+            guard_direct_write(normalized_session, conn=conn)
+
+            conn.execute(
+                """
+                INSERT INTO chat_messages (message_id, session_id, role, content,
+                                            user_id, workspace_name,
+                                            reasoning_content, content_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (message_id, normalized_session, normalized_role, normalized_content,
+                 _user_id, _workspace_name, str(reasoning_content or ""),
+                 content_json, timestamp),
+            )
 
         next_title = str(exists["title"])
         if normalized_role == "user" and next_title == "New chat":
@@ -558,17 +576,31 @@ def append_chat_message(
             (next_title, timestamp, normalized_session),
         )
 
-    # Skygge-skrivning til ledgeren. EFTER commit, aldrig fatal: sessionen er
-    # stadig `legacy` i praksis, og en bruger maa ikke miste sin besked fordi
-    # et eksperiment fejlede. Springer selv over naar sessionen ikke er i
-    # skygge-tilstand — hvilket er alle sessioner indtil nogen flytter en.
-    from core.services.shadow_ledger_writer import shadow_append
-    shadow_append(normalized_session, message_id=message_id,
-                  role=normalized_role, content=normalized_content,
-                  created_at=timestamp, user_id=_user_id,
-                  workspace_name=_workspace_name,
-                  reasoning_content=str(reasoning_content or ""),
-                  content_json=content_json)
+    if _kanonisk:
+        # Ledgeren er sandheden: skriv gennem handlet (lease + fencing), og lad
+        # DET køre projektoren. Kalderen får først sin besked tilbage når rækken
+        # findes — ellers kunne kaldet returnere en besked ingen læser kan se.
+        #
+        # Kaster hvis det fejler. MED VILJE anderledes end skygge-skrivningen:
+        # her er der ingen anden kopi af beskeden, så en tavs fejl ville være
+        # tabt data.
+        from core.services.ledger_write_path import append_message as _ledger_skriv
+        _ledger_skriv(normalized_session, role=normalized_role,
+                      content=normalized_content, created_at=timestamp,
+                      user_id=_user_id, workspace_name=_workspace_name,
+                      reasoning_content=str(reasoning_content or ""),
+                      content_json=content_json, message_id=message_id)
+    else:
+        # Skygge-skrivning. EFTER commit, aldrig fatal: `chat_messages` er
+        # stadig sandheden, og en bruger må ikke miste sin besked fordi et
+        # eksperiment fejlede. Springer selv over for `legacy`.
+        from core.services.shadow_ledger_writer import shadow_append
+        shadow_append(normalized_session, message_id=message_id,
+                      role=normalized_role, content=normalized_content,
+                      created_at=timestamp, user_id=_user_id,
+                      workspace_name=_workspace_name,
+                      reasoning_content=str(reasoning_content or ""),
+                      content_json=content_json)
 
     besked = {
         "id": message_id,
@@ -920,24 +952,45 @@ def store_compact_marker(
     normalized_git_sha = (git_sha or "").strip()
     timestamp = datetime.now(UTC).isoformat()
     marker_id = f"compact-{uuid4().hex}"
+    from core.runtime.db_session_ledger import storage_mode as _tilstand
     with connect() as conn:
-        from core.services.projection_chat_messages import guard_direct_write
-        guard_direct_write(normalized_session, conn=conn)
-        conn.execute(
-            """
-            INSERT INTO chat_messages (message_id, session_id, role, content, git_sha, created_at)
-            VALUES (?, ?, 'compact_marker', ?, ?, ?)
-            """,
-            (marker_id, normalized_session, normalized_content, normalized_git_sha, timestamp),
-        )
+        try:
+            kanonisk = _tilstand(normalized_session, conn=conn) == "ledger"
+        except Exception:
+            logger.warning("chat_sessions: kunne ikke laese storage_mode for %s — "
+                           "skriver markoeren som legacy", normalized_session,
+                           exc_info=True)
+            kanonisk = False
+        if not kanonisk:
+            from core.services.projection_chat_messages import guard_direct_write
+            guard_direct_write(normalized_session, conn=conn)
+            conn.execute(
+                """
+                INSERT INTO chat_messages (message_id, session_id, role, content, git_sha, created_at)
+                VALUES (?, ?, 'compact_marker', ?, ?, ?)
+                """,
+                (marker_id, normalized_session, normalized_content, normalized_git_sha, timestamp),
+            )
 
-    # Markøren skal OGSÅ i skyggen. Uden den ville et skifte tabe den: den er
-    # en `chat_messages`-række som alle andre, og projektoren bygger kun det
-    # ledgeren har set. Efter commit og aldrig fatal, som al anden skygge.
-    from core.services.shadow_ledger_writer import shadow_append
-    shadow_append(normalized_session, message_id=marker_id,
-                  role="compact_marker", content=normalized_content,
-                  created_at=timestamp, git_sha=normalized_git_sha)
+    # En markør ER en `chat_messages`-række — samme tabel, samme id-kolonne,
+    # bare en anden rolle. Derfor følger den nøjagtig samme to veje som en
+    # besked: gennem handlet når ledgeren er sandheden, ellers i skyggen.
+    #
+    # Den KASTEDE tidligere for en ledger-session, fordi markør-skrivningen
+    # ikke var koblet. Det var den rigtige opførsel dengang — fejl højt frem
+    # for tavst at skrive en række der ikke kan genskabes — men det var en
+    # landmine, og nu er den koblet.
+    if kanonisk:
+        from core.services.ledger_write_path import append_message as _ledger_skriv
+        _ledger_skriv(normalized_session, role="compact_marker",
+                      content=normalized_content, created_at=timestamp,
+                      git_sha=normalized_git_sha, message_id=marker_id,
+                      owner="compact")
+    else:
+        from core.services.shadow_ledger_writer import shadow_append
+        shadow_append(normalized_session, message_id=marker_id,
+                      role="compact_marker", content=normalized_content,
+                      created_at=timestamp, git_sha=normalized_git_sha)
     return marker_id
 
 

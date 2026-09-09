@@ -1021,6 +1021,30 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     _auto_provider, _auto_model = _resolve_auto(
         autonomous_provider=settings.autonomous_model_provider,
         autonomous_model=settings.autonomous_model_name)
+
+    # MODEL-PARRET SKAL OGSAA TJEKKES HER (10/9-2026). `resolve_safe` blev
+    # bygget da `ollama/glm-5.2` viste sig at give 162 tomme svar ud af 162 —
+    # men den blev kun koblet paa `start_visible_run`. Den AUTONOME sti gik
+    # udenom, og det er praecis dér de tomme koersler kom fra. Fundet fordi
+    # afregnings-skyggen blev ved med at melde uenighed paa netop det par.
+    #
+    # Forskellen fra den synlige sti: her er der INGEN at vise en fejl til.
+    # Kan parret ikke afgoeres, beholdes det oprindelige og det siges hoejt —
+    # at afvise ville lukke autonomt arbejde helt ned paa en tvivl.
+    try:
+        from core.services.model_pair_resolver import resolve_safe as _resolve_par
+        _p2, _m2, _problem = _resolve_par(_auto_provider, _auto_model)
+        if _problem:
+            logger.warning("autonomt model-par uafklaret (%s/%s): %s — beholder "
+                           "parret", _auto_provider, _auto_model, _problem)
+        else:
+            if (_p2, _m2) != (_auto_provider, _auto_model):
+                logger.info("autonomt model-par oversat: %s/%s -> %s/%s",
+                            _auto_provider, _auto_model, _p2, _m2)
+            _auto_provider, _auto_model = _p2, _m2
+    except Exception:
+        logger.warning("autonomt model-par-tjek fejlede — lader parret gaa",
+                       exc_info=True)
     run = VisibleRun(
         run_id=f"autonomous-{uuid4().hex}",
         lane=settings.primary_model_lane,

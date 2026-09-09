@@ -1261,6 +1261,52 @@ Exit criteria:
 - prepared requests can be reconstructed with route, prompt, ordered tool schemas, derived-history watermark, profile hash, and compaction generation
 - compaction advances surface generation atomically or leaves it unchanged; overflow retries occur only after an advancing replacement
 
+**Status 2026-09-09 (opus).** All four runtimes are built and tested as pure
+contracts, and the settlement classifier is wired to the live answer path in
+shadow. Nothing has replaced existing behaviour.
+
+| Piece | File | Tests |
+| --- | --- | --- |
+| settlement table (13 rows) + exactly-once attempt ledger | `core/services/stream_settlement.py` | `tests/test_stream_settlement.py` (80) |
+| retry policy and turn-wide budgets | `core/services/retry_runtime.py` | `tests/test_retry_runtime.py` (36) |
+| reconstructable prepared request | `core/services/prepared_request.py` | `tests/test_prepared_request.py` (26) |
+| one terminal run outcome | `core/services/outcome_projector.py` | `tests/test_outcome_projector.py` (28) |
+| compaction that cannot loop | `core/services/compaction_runtime.py` | `tests/test_compaction_runtime.py` (28) |
+| shadow comparison against the running code | `core/services/settlement_shadow.py` | `tests/test_settlement_shadow.py` (21) |
+| extracted run-outcome state machine (Boy Scout) | `core/services/visible_run_outcome_state.py` | `tests/test_visible_run_outcome_state.py` (15) |
+
+Three of these came from *this repository's* scars rather than from the DeepSeek
+document, and they are the load-bearing ones:
+
+* **`EMPTY_RESPONSE` requires that nothing was emitted.** `visible_runs.py`
+  carries two warnings (lines ~2290 and ~4644) that a false empty-completion
+  makes the fallback "wipe the streamed answer" — the system concluding no
+  answer arrived while the user was looking at it. The rule is an assertion in
+  the classifier, not only a test.
+* **A failed attempt never becomes an assistant message.** An aihubmix quota
+  error was once stored as an *assistant* message and surfaced inside the
+  `[SELF]` anchor. A user-facing failure notice is now its own event kind with
+  its own provenance, so the difference is visible in data rather than in tone.
+* **`surface_generation` is the proof that compaction freed something.** Without
+  it, context overflow is a loop that costs a model call per lap.
+
+Two wiring mistakes worth recording, both found by measuring rather than by
+reasoning:
+
+* The shadow call first landed inside `if _collected_native_tool_calls:` and so
+  measured only tool-calling runs. It now sits in the `finally` block — the one
+  place every run passes — with the abandonment downgrade applied *before* the
+  observation, so the shadow sees the final decision rather than the optimistic
+  default.
+* `central_switches.is_enabled()` is **fail-open**: it returns `True` for a key
+  nobody has set. Correct for a gate protecting a function, wrong for a
+  measurement on the visible answer path. The shadow reads the raw value and
+  requires an explicit `enabled: true`.
+
+Remaining for Phase 2: the cancellation path does not yet read the server-owned
+resumable-buffer prefix (the classifier specifies it; nothing supplies it), and
+no profile has been migrated — only the shadow comparison runs.
+
 ### Phase 3: tool definition adapter and durable invocation state
 
 Build `ToolDefinitionV2` wrappers, `ExecutionSandbox`, and `ArtifactStore` compatibility providers for current simple tools and jarvis-code tools. Generate legacy OpenAI/Anthropic schemas and routing projections from the adapter while `jc_tool_catalog` remains authoritative for unmigrated tools. Phase 3 also introduces the minimal invocation-bound approval bridge: it stores the exact invocation digest and atomically consumes one decision while committing `dispatching`. Phase 4 migrates answerers, expiry, UI, and canonical storage behind `ApprovalRuntime` without weakening that safety invariant.

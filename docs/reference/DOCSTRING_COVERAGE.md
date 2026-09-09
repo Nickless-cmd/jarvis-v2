@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7090/14025 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7095/14030 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,8 +23,8 @@ Generated from source. 7090/14025 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 595 | 1099 | 54% |
-| `core.services` | 4692 | 9660 | 48% |
+| `core.runtime` | 596 | 1100 | 54% |
+| `core.services` | 4696 | 9664 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -758,11 +758,11 @@ Generated from source. 7090/14025 functions/methods documented (50%). The list b
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
 - `core/services/chat_sessions.py` :: `append_chat_message` (L405)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L54)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1025)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1078)
 - `core/services/chat_sessions.py` :: `get_chat_session` (L338)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L726)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L986)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1011)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L758)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1039)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1064)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
 - `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L180)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L135)

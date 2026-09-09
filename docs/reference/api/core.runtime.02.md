@@ -660,13 +660,15 @@ _Append-only session-ledger — Fase 1 af DeepSeek-harness-spec'en._
 | class | `LeaseLost` | `` | Skrivningen blev afvist: leasen er væk eller møntet er forældet. | [src](../../../core/runtime/db_session_ledger.py#L178) |
 | function | `append_session_events` | `(session_id, *, owner, token, events, now=…)` | Tilføj hændelser ATOMISK og IDEMPOTENT. | [src](../../../core/runtime/db_session_ledger.py#L182) |
 | function | `_annoncer` | `(session_id, skrevet, seq)` | Fortæl bussen at der er kommet hændelser — EFTER commit, og aldrig fatalt. | [src](../../../core/runtime/db_session_ledger.py#L255) |
-| function | `read_session_events` | `(session_id, *, from_seq=…, to_seq=…)` | Læs hændelser i rækkefølge. Halvåbent interval: (from_seq, to_seq]. | [src](../../../core/runtime/db_session_ledger.py#L281) |
-| function | `current_seq` | `(session_id)` | Sessionens højeste sekvensnummer — 0 hvis ledgeren er tom for den. | [src](../../../core/runtime/db_session_ledger.py#L314) |
-| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_session_ledger.py#L325) |
-| function | `_ensure_storage_mode_column` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L351) |
-| function | `storage_mode` | `(session_id, *, conn=…)` | Hvilken kilde er kanonisk for denne session? | [src](../../../core/runtime/db_session_ledger.py#L360) |
-| function | `_storage_mode_on` | `(conn, session_id)` | — | [src](../../../core/runtime/db_session_ledger.py#L381) |
-| function | `advance_storage_mode` | `(session_id, *, to)` | Ryk EN session fremad. Envejs — der er ingen vej tilbage. | [src](../../../core/runtime/db_session_ledger.py#L393) |
+| function | `append_unowned` | `(session_id, *, events, now=…)` | Tilføj hændelser i ÉN transaktion, uden lease. Kun for skygge-sessioner. | [src](../../../core/runtime/db_session_ledger.py#L279) |
+| function | `read_session_events` | `(session_id, *, from_seq=…, to_seq=…)` | Læs hændelser i rækkefølge. Halvåbent interval: (from_seq, to_seq]. | [src](../../../core/runtime/db_session_ledger.py#L368) |
+| function | `current_seq` | `(session_id)` | Sessionens højeste sekvensnummer — 0 hvis ledgeren er tom for den. | [src](../../../core/runtime/db_session_ledger.py#L401) |
+| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_session_ledger.py#L412) |
+| function | `_ensure_storage_mode_column` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L438) |
+| function | `storage_mode` | `(session_id, *, conn=…)` | Hvilken kilde er kanonisk for denne session? | [src](../../../core/runtime/db_session_ledger.py#L447) |
+| function | `_storage_mode_on` | `(conn, session_id)` | — | [src](../../../core/runtime/db_session_ledger.py#L468) |
+| function | `advance_storage_mode` | `(session_id, *, to)` | Ryk EN session fremad. Envejs — der er ingen vej tilbage. | [src](../../../core/runtime/db_session_ledger.py#L480) |
+| function | `abandon_shadow` | `(session_id)` | Sluk skyggen igen: `shadow` → `legacy`. Aldrig fra `ledger`. | [src](../../../core/runtime/db_session_ledger.py#L507) |
 
 ## `core/runtime/db_user_contradiction.py`
 _DB helpers for user_contradictions + user_statements tables._

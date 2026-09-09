@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/policy_abstraction.py`
+_Policy Abstraktion — Phase 2 of Generalized Learning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/policy_abstraction.py#L32) |
+| function | `_ensure_table` | `(conn)` | Idempotent table creation for generalized policies. | [src](../../../core/services/policy_abstraction.py#L36) |
+| function | `is_enabled` | `()` | — | [src](../../../core/services/policy_abstraction.py#L71) |
+| function | `set_enabled` | `(value)` | — | [src](../../../core/services/policy_abstraction.py#L75) |
+| function | `abstract_rule` | `(*, rule_key, policy, lesson, target_context, evidence_count, confidence, source_domain=…)` | Generate a generalized principle from a specific learning policy rule. | [src](../../../core/services/policy_abstraction.py#L82) |
+| function | `match_generalized_policies` | `(*, task_description=…, context_domain=…, limit=…, min_confidence=…)` | Retrieve generalized policies relevant to the current task/context. | [src](../../../core/services/policy_abstraction.py#L196) |
+| function | `build_generalized_policies_surface` | `(*, limit=…)` | Compact surface for prompt injection — top generalized policies. | [src](../../../core/services/policy_abstraction.py#L280) |
+| function | `count_abstraction_candidates` | `()` | Count how many active learning policy rules are ready for abstraction. | [src](../../../core/services/policy_abstraction.py#L309) |
+| function | `sweep_abstraction_candidates` | `(max_rules=…)` | Find all rules ready for abstraction and abstract them. | [src](../../../core/services/policy_abstraction.py#L326) |
+| function | `_llm_generalize` | `(*, specific_rule, target_context, evidence_count, confidence, source_domain)` | Generate a generalized principle via cheap-lane LLM. | [src](../../../core/services/policy_abstraction.py#L382) |
+| function | `_compute_relevance` | `(*, principle, transfer_domains, task_description, context_domain, base_confidence)` | Score how relevant a generalized policy is to the current task. | [src](../../../core/services/policy_abstraction.py#L457) |
+| function | `build_policy_abstraction_prompt_section` | `(*, limit=…)` | Build a compact awareness section with top generalized policies. | [src](../../../core/services/policy_abstraction.py#L499) |
+
 ## `core/services/post_tool_answer_guard.py`
 _Guards for tool turns that end in hollow final prose._
 
@@ -406,15 +424,16 @@ _Kompatibilitets-projektoren — ledger-hændelser → `chat_messages`-rækker._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `message_id_for` | `(session_id, event_id)` | Udled et stabilt `message_id`. Samme hændelse → altid samme id. | [src](../../../core/services/projection_chat_messages.py#L59) |
-| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_chat_messages.py#L69) |
-| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_chat_messages.py#L82) |
-| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_chat_messages.py#L103) |
-| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold. | [src](../../../core/services/projection_chat_messages.py#L127) |
-| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_chat_messages.py#L136) |
-| function | `register` | `()` | — | [src](../../../core/services/projection_chat_messages.py#L155) |
-| function | `rebuild` | `(session_id)` | Genskab sessionens `chat_messages`-rækker fra ledgeren. | [src](../../../core/services/projection_chat_messages.py#L160) |
-| class | `DirekteSkrivningAfvist` | `` | En ledger-session fik et direkte skrive-forsøg uden om projektoren. | [src](../../../core/services/projection_chat_messages.py#L174) |
-| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `chat_messages`-skrivninger for en ledger-session. | [src](../../../core/services/projection_chat_messages.py#L178) |
+| function | `_message_id` | `(session_id, e, payload)` | Et id sessionen allerede har, VINDER over et udledt. | [src](../../../core/services/projection_chat_messages.py#L71) |
+| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_chat_messages.py#L85) |
+| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_chat_messages.py#L98) |
+| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_chat_messages.py#L119) |
+| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold. | [src](../../../core/services/projection_chat_messages.py#L143) |
+| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_chat_messages.py#L152) |
+| function | `register` | `()` | — | [src](../../../core/services/projection_chat_messages.py#L171) |
+| function | `rebuild` | `(session_id)` | Genskab sessionens `chat_messages`-rækker fra ledgeren. | [src](../../../core/services/projection_chat_messages.py#L176) |
+| class | `DirekteSkrivningAfvist` | `` | En ledger-session fik et direkte skrive-forsøg uden om projektoren. | [src](../../../core/services/projection_chat_messages.py#L190) |
+| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `chat_messages`-skrivninger for en ledger-session. | [src](../../../core/services/projection_chat_messages.py#L194) |
 
 ## `core/services/projection_drift.py`
 _Drift-detektion — er ledgeren og `chat_messages` enige?_
@@ -738,12 +757,4 @@ _Proprioception Metrics — process-level body sense._
 | function | `_surface_summary` | `(current, rss_trend)` | — | [src](../../../core/services/proprioception_metrics.py#L177) |
 | function | `build_proprioception_metrics_prompt_section` | `()` | Only surfaces when something is actively worth noticing. | [src](../../../core/services/proprioception_metrics.py#L193) |
 | function | `reset_proprioception_metrics` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L213) |
-
-## `core/services/prose_tool_calls.py`
-_Parser for prosa-emitterede tool-kald (cluster: tool-leak-fix 2026-06-21)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_match_json_object` | `(s, start)` | s[start] skal være '{'. Returnér (objekt-streng, slut-index) via brace-matching | [src](../../../core/services/prose_tool_calls.py#L26) |
-| function | `extract_prose_tool_calls` | `(text, valid_tool_names)` | Find `[navn]: {json}`-prosa-kald hvor navn er et kendt tool og args er et | [src](../../../core/services/prose_tool_calls.py#L55) |
 

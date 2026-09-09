@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/memory_pruning_daemon.py`
+_Memory pruning daemon — arkiverer entries med meget lav salience._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_memory_pruning_daemon` | `()` | Run pruning cycle if cadence elapsed. Returns stats dict. | [src](../../../core/services/memory_pruning_daemon.py#L53) |
+| function | `_prune_brain_entries` | `(now)` | Find brain entries med effektiv salience under tærskel og arkivér dem. | [src](../../../core/services/memory_pruning_daemon.py#L103) |
+| function | `_prune_private_brain_records` | `()` | Find private_brain_records med salience under tærskel og arkivér dem. | [src](../../../core/services/memory_pruning_daemon.py#L161) |
+| function | `build_memory_pruning_surface` | `()` | — | [src](../../../core/services/memory_pruning_daemon.py#L207) |
+
 ## `core/services/memory_recall_engine.py`
 _Unified memory recall — bridge across all memory sources with mood-weighting._
 
@@ -625,17 +635,4 @@ _Global leaky-bucket rate cap FORAN den non-visible cheap-lane pool._
 | function | `_now` | `()` | Wall-clock i sekunder. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_rate_cap.py#L34) |
 | function | `reset` | `()` | Nulstil alle buckets (til tests + boot). | [src](../../../core/services/non_visible_rate_cap.py#L39) |
 | function | `allow` | `(tokens=…)` | Forbrug 1 request + `tokens` tokens hvis begge buckets har plads; ellers | [src](../../../core/services/non_visible_rate_cap.py#L49) |
-
-## `core/services/notes_connector.py`
-_Huskesedler-connector (lokal) — simple per-bruger notater._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_store` | `()` | — | [src](../../../core/services/notes_connector.py#L68) |
-| function | `_bucket` | `(user_id)` | — | [src](../../../core/services/notes_connector.py#L73) |
-| function | `_save` | `(user_id, notes)` | — | [src](../../../core/services/notes_connector.py#L78) |
-| function | `add_note` | `(user_id, text, *, now=…)` | — | [src](../../../core/services/notes_connector.py#L84) |
-| function | `list_notes` | `(user_id, *, limit=…)` | — | [src](../../../core/services/notes_connector.py#L96) |
-| function | `search_notes` | `(user_id, query)` | — | [src](../../../core/services/notes_connector.py#L105) |
-| function | `delete_note` | `(user_id, note_id)` | — | [src](../../../core/services/notes_connector.py#L114) |
 

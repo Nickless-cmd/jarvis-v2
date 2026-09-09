@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_tool_pin.py`
+_Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `pin_enabled` | `()` | Er låsen slået til? Fail-safe: enhver fejl → til (den nye adfærd). | [src](../../../core/services/session_tool_pin.py#L41) |
+| function | `_key` | `(session_id)` | — | [src](../../../core/services/session_tool_pin.py#L50) |
+| function | `_compact_epoch` | `(session_id)` | Compaction-markøren for sessionen. Skifter den, er historikken skrevet | [src](../../../core/services/session_tool_pin.py#L54) |
+| function | `_state_get` | `(session_id)` | — | [src](../../../core/services/session_tool_pin.py#L64) |
+| function | `_state_set` | `(session_id, payload)` | — | [src](../../../core/services/session_tool_pin.py#L73) |
+| function | `get_pinned` | `(session_id)` | Det låste sæt for sessionen — tom liste når intet er låst, eller når | [src](../../../core/services/session_tool_pin.py#L81) |
+| function | `pin` | `(session_id, names)` | Lås sættet for sessionen. Returnerer det låste sæt. | [src](../../../core/services/session_tool_pin.py#L96) |
+| function | `extend` | `(session_id, names)` | Udvid låsen (load_more_tools). Tilføjelser holder ved til næste tur. | [src](../../../core/services/session_tool_pin.py#L106) |
+| function | `clear` | `(session_id)` | — | [src](../../../core/services/session_tool_pin.py#L120) |
+| function | `resolve` | `(session_id, selected_names)` | Hvilke værktøjer skal denne tur sende? | [src](../../../core/services/session_tool_pin.py#L124) |
+| function | `build_session_tool_pin_surface` | `(session_id=…)` | — | [src](../../../core/services/session_tool_pin.py#L145) |
+
 ## `core/services/session_topic_tracker.py`
 _Session topic tracker — real-time topic extraction and accumulation._
 
@@ -47,6 +64,15 @@ _core/services/shadow_experiment_registry.py_
 | function | `build_shadow_review_surface` | `(now_ts=…)` | Byg surface til Central-route/`jc shadows`. Seeder kendte shadows, | [src](../../../core/services/shadow_experiment_registry.py#L161) |
 | function | `_emit_reminder` | `(ripe_names)` | Passiv Central-påmindelse: observe `central_meta/shadow_review_due`. | [src](../../../core/services/shadow_experiment_registry.py#L182) |
 | function | `tick_shadow_review_reminder` | `(now_ts=…)` | Heartbeat-venlig tick: byg surface (som emit'er påmindelsen ved modenhed) | [src](../../../core/services/shadow_experiment_registry.py#L198) |
+
+## `core/services/shadow_ledger_writer.py`
+_Skygge-skrivning — den første kobling mellem drift og ledgeren._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taellere` | `()` | — | [src](../../../core/services/shadow_ledger_writer.py#L51) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/shadow_ledger_writer.py#L55) |
+| function | `shadow_append` | `(session_id, *, message_id, role, content, created_at, user_id=…, workspace_name=…, reasoning_content=…, git_sha=…, content_json=…)` | Skriv beskeden i ledgeren HVIS sessionen er i skygge-tilstand. | [src](../../../core/services/shadow_ledger_writer.py#L60) |
 
 ## `core/services/shadow_scan_daemon.py`
 _Shadow Scan — my blindspots as visible signals._
@@ -562,28 +588,4 @@ _Staged edits — compose multi-file changes, review, then commit atomically._
 | function | `list_staged` | `(session_id, *, full_diffs=…)` | Return all staged edits for the session. | [src](../../../core/services/staged_edits.py#L280) |
 | function | `commit_staged` | `(session_id, *, stage_ids=…)` | Apply staged edits to disk in stage order. | [src](../../../core/services/staged_edits.py#L319) |
 | function | `discard_staged` | `(session_id, *, stage_ids=…)` | Drop staged edits without applying. | [src](../../../core/services/staged_edits.py#L417) |
-
-## `core/services/standing_orders_registry.py`
-_Standing-orders registry — INDEPENDENT grounding for the reasoning-interceptor's standing-orders_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/standing_orders_registry.py#L13) |
-| function | `add_standing_order` | `(*, text, match_key=…)` | — | [src](../../../core/services/standing_orders_registry.py#L25) |
-| function | `set_standing_order_active` | `(order_id, *, active)` | — | [src](../../../core/services/standing_orders_registry.py#L36) |
-| function | `list_active_standing_orders` | `()` | — | [src](../../../core/services/standing_orders_registry.py#L47) |
-
-## `core/services/state_file_retention.py`
-_Rotation af operationel runtime-tilstand i ``~/.jarvis-v2``._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_state_dir` | `()` | — | [src](../../../core/services/state_file_retention.py#L50) |
-| function | `parse_ts` | `(value)` | Tolk et tidsstempel. Ukendt form → None (posten regnes som ung). | [src](../../../core/services/state_file_retention.py#L54) |
-| function | `record_age_days` | `(record, now)` | Postens alder i dage, eller None hvis den ikke bærer et brugbart stempel. | [src](../../../core/services/state_file_retention.py#L68) |
-| function | `select_expired` | `(records, *, max_age_days, now)` | Nøgler på poster der er ældre end vinduet. Ren funktion. | [src](../../../core/services/state_file_retention.py#L80) |
-| function | `prune_state_file` | `(path, *, max_age_days, now=…)` | Fjern udløbne poster fra én fil. Returnér antal fjernede. | [src](../../../core/services/state_file_retention.py#L96) |
-| function | `prune_all_state_files` | `(*, now=…)` | Kør rotationen på alle filer i ``POLICIES``. Returnér {fil: antal fjernet}. | [src](../../../core/services/state_file_retention.py#L127) |
-| function | `find_orphan_upload_dirs` | `(upload_root, *, session_is_known)` | Mapper hvis session hverken har en række eller beskeder. Ren udvælgelse. | [src](../../../core/services/state_file_retention.py#L151) |
-| function | `cleanup_orphan_uploads` | `()` | Fjern vedhæftnings-mapper for sessioner der hverken har række eller beskeder. | [src](../../../core/services/state_file_retention.py#L176) |
 

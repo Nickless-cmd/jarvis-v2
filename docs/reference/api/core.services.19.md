@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/resonance_decay.py`
+_Resonance Decay — how emotional signals persist and fade over time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Resonance` | `` | A single active resonance — an emotional signal persisting over time. | [src](../../../core/services/resonance_decay.py#L84) |
+| class | `ResonanceField` | `` | The sum of all active resonances — the emotional tail coloring now. | [src](../../../core/services/resonance_decay.py#L95) |
+| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/resonance_decay.py#L121) |
+| function | `_hours_since` | `(iso_ts)` | Compute hours elapsed since an ISO timestamp. | [src](../../../core/services/resonance_decay.py#L132) |
+| function | `_apply_decay` | `(resonance, hours)` | Apply exponential decay to a resonance. | [src](../../../core/services/resonance_decay.py#L142) |
+| function | `_prune_resonances` | `()` | Remove resonances below threshold and cap at max count. | [src](../../../core/services/resonance_decay.py#L151) |
+| function | `_scan_for_new_resonances` | `()` | Scan recent signal/chord history for new resonances to register. | [src](../../../core/services/resonance_decay.py#L173) |
+| function | `_direction_to_family` | `(direction)` | Map a pressure direction to its dominant signal family. | [src](../../../core/services/resonance_decay.py#L260) |
+| function | `_compute_field_quality` | `(resonances)` | Compute a qualitative description of the resonance field. | [src](../../../core/services/resonance_decay.py#L275) |
+| function | `assess_resonance_field` | `()` | Assess the current resonance field — all active emotional tails. | [src](../../../core/services/resonance_decay.py#L316) |
+| function | `get_resonance_line` | `(db_conn=…)` | Convenience: compute resonance field and format for prompt. | [src](../../../core/services/resonance_decay.py#L378) |
+| function | `get_active_resonance_count` | `()` | Return the number of currently active resonances (for debugging). | [src](../../../core/services/resonance_decay.py#L399) |
+| function | `clear_resonances` | `()` | Clear all active resonances (for testing). | [src](../../../core/services/resonance_decay.py#L404) |
+| function | `build_resonance_decay_surface` | `()` | — | [src](../../../core/services/resonance_decay.py#L410) |
+| function | `_emit_decay_event` | `(signal_id, half_life)` | — | [src](../../../core/services/resonance_decay.py#L419) |
+
 ## `core/services/retention.py`
 _Retention-sweep — bremser ubegrænset vækst på høj-volumen tabeller._
 
@@ -713,16 +734,4 @@ _Identity-verification-guard & abuse-monitoring — kerne (spec 2026-06-21)._
 | function | `_lock_account` | `(user_id, *, hours=…)` | Lås ALLE brugerens sessioner + sæt 'locked'-flag (udløber om `hours`). | [src](../../../core/services/security_guard.py#L156) |
 | function | `_recent_session_lock_count` | `(user_id, *, hours=…)` | Antal session-lock-audit-entries for user_id i de sidste `hours`. | [src](../../../core/services/security_guard.py#L180) |
 | function | `escalate_session_lock` | `(user_id, session_id, reason)` | Lås sessionen, og afgør om det også udløser account-lockdown. | [src](../../../core/services/security_guard.py#L198) |
-
-## `core/services/seed_system.py`
-_Seed System — prospective memory / dormant intentions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `plant_seed` | `(*, title, summary=…, activate_at=…, activate_on_event=…, activate_on_context=…, relevance_score=…, linked_goal=…)` | Plant a dormant intention seed. | [src](../../../core/services/seed_system.py#L26) |
-| function | `check_seed_activation` | `(*, current_context=…, current_event=…)` | Check if any planted seeds should activate. | [src](../../../core/services/seed_system.py#L56) |
-| function | `fulfill_seed` | `(seed_id)` | Mark a seed as fulfilled. | [src](../../../core/services/seed_system.py#L103) |
-| function | `build_seed_surface` | `()` | — | [src](../../../core/services/seed_system.py#L109) |
-| function | `auto_plant_seeds_from_conversation` | `(*, user_message)` | Scan user message for future-intent markers and auto-plant seeds. | [src](../../../core/services/seed_system.py#L123) |
-| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/seed_system.py#L160) |
 

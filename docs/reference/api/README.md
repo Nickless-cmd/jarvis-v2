@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14015 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14024 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -40,17 +40,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14015 functions/
 - [`core.services.11`](core.services.11.md) — `event_gate` … `gate_mutation`
 - [`core.services.12`](core.services.12.md) — `gate_pattern_learning` … `hollow_promise_guard`
 - [`core.services.13`](core.services.13.md) — `hollow_promise_round` … `jobs_engine`
-- [`core.services.14`](core.services.14.md) — `kerne_curator` … `memory_pruning_daemon`
-- [`core.services.15`](core.services.15.md) — `memory_recall_engine` … `notes_connector`
-- [`core.services.16`](core.services.16.md) — `notification_bridge` … `policy_abstraction`
-- [`core.services.17`](core.services.17.md) — `post_tool_answer_guard` … `prose_tool_calls`
-- [`core.services.18`](core.services.18.md) — `provider_autodiscovery` … `resonance_decay`
-- [`core.services.19`](core.services.19.md) — `retention` … `seed_system`
-- [`core.services.20`](core.services.20.md) — `selective_attention` … `session_tool_pin`
-- [`core.services.21`](core.services.21.md) — `session_topic_tracker` … `state_file_retention`
-- [`core.services.22`](core.services.22.md) — `state_flag_store` … `tool_intent_approval_runtime`
-- [`core.services.23`](core.services.23.md) — `tool_intent_runtime` … `visible_followup_adapters`
-- [`core.services.24`](core.services.24.md) — `visible_followup_events` … `world_model_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `kerne_curator` … `memory_md_update_proposal_tracking`
+- [`core.services.15`](core.services.15.md) — `memory_pruning_daemon` … `non_visible_rate_cap`
+- [`core.services.16`](core.services.16.md) — `notes_connector` … `plugin_ruleset_store`
+- [`core.services.17`](core.services.17.md) — `policy_abstraction` … `proprioception_metrics`
+- [`core.services.18`](core.services.18.md) — `prose_tool_calls` … `repeated_requests`
+- [`core.services.19`](core.services.19.md) — `resonance_decay` … `security_guard`
+- [`core.services.20`](core.services.20.md) — `seed_system` … `session_prewarm`
+- [`core.services.21`](core.services.21.md) — `session_tool_pin` … `staged_edits`
+- [`core.services.22`](core.services.22.md) — `standing_orders_registry` … `tool_concurrency`
+- [`core.services.23`](core.services.23.md) — `tool_embeddings` … `visible_first_pass_text`
+- [`core.services.24`](core.services.24.md) — `visible_followup` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

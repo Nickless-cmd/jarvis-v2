@@ -2,6 +2,45 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_embeddings.py`
+_Tool description embedding cache._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_connect` | `()` | — | [src](../../../core/services/tool_embeddings.py#L28) |
+| function | `_pack` | `(vec)` | — | [src](../../../core/services/tool_embeddings.py#L42) |
+| function | `_unpack` | `(blob)` | — | [src](../../../core/services/tool_embeddings.py#L46) |
+| function | `_hash_desc` | `(desc)` | — | [src](../../../core/services/tool_embeddings.py#L51) |
+| function | `_compute_embedding` | `(text)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L55) |
+| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L71) |
+| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L91) |
+| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L97) |
+| function | `top_k_similar` | `(query, k=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L108) |
+| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L121) |
+
+## `core/services/tool_intent_approval_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_tool_intent_approval_surface` | `(intent_surface, *, requested_at)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L50) |
+| function | `build_sudo_approval_window_surface` | `(intent_surface, *, now=…)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L177) |
+| function | `sudo_approval_window_scope_from_request` | `(request)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L224) |
+| function | `sudo_approval_window_scope_from_intent` | `(intent_surface)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L232) |
+| function | `sudo_approval_window_allows_request` | `(request, *, now=…)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L240) |
+| function | `resolve_tool_intent_approval` | `(intent_surface, *, approval_state, approval_source, resolution_reason, resolution_message=…, session_id=…, resolved_at=…)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L300) |
+| function | `build_approval_feedback_surface` | `()` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L364) |
+| function | `tool_intent_approval_key` | `(intent_surface)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L373) |
+| function | `_approval_reason` | `(intent_surface)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L385) |
+| function | `_intent_tool_name` | `(intent_surface)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L479) |
+| function | `_emit_approval_resolved_event` | `(*, intent_key, approval_state, approval_source, resolved_at, resolution_reason, resolution_message, session_id, tool_name)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L489) |
+| function | `_find_verbal_resolution` | `(intent_surface, request)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L518) |
+| function | `_decision_from_text` | `(content)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L555) |
+| function | `_matches_intent_context` | `(content, intent_surface)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L566) |
+| function | `_sudo_approval_window_scope` | `(*, capability_id, command_text, proposal_scope)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L579) |
+| function | `_now` | `()` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L607) |
+| function | `_normalize` | `(value)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L611) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L623) |
+
 ## `core/services/tool_intent_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -545,48 +584,4 @@ _Akkumuleret first-pass-tekst med indbygget degenerations-vagt._
 | method | `FirstPassText.__len__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L42) |
 | method | `FirstPassText.__bool__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L45) |
 | method | `FirstPassText.feed` | `(self, delta)` | Tilføj en delta. Returnér (degenereret, årsag). | [src](../../../core/services/visible_first_pass_text.py#L48) |
-
-## `core/services/visible_followup.py`
-_Provider-neutral agentic follow-up dispatcher._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `supported_followup_providers` | `()` | Provider ids with a working follow-up adapter. | [src](../../../core/services/visible_followup.py#L119) |
-| function | `stream_visible_followup` | `(*, provider, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…, tool_choice=…, run_id=…, autonomous=…)` | Dispatch to the provider's follow-up adapter; yield FollowupEvents. | [src](../../../core/services/visible_followup.py#L129) |
-| function | `synthesize_nonthinking_rescue` | `(*, provider, model, base_messages, exchanges)` | Sidste-udvejs synteseturn der OMGÅR DeepSeek #1453 (tom completion efter | [src](../../../core/services/visible_followup.py#L203) |
-| function | `synthesize_final_answer` | `(*, provider, model, base_messages, exchanges)` | HARNESS-FINALIZE lag 2b (Bjørn 4. jul, provider-AGNOSTISK): ét tool-FRIT | [src](../../../core/services/visible_followup.py#L286) |
-| function | `synthesize_continuation` | `(*, provider, model, base_messages, exchanges, partial_text, continuation_instruction=…)` | CUT-OFF-FORTSÆTTELSE (2026-08-20): når provideren lukkede streamen med | [src](../../../core/services/visible_followup.py#L365) |
-| function | `agentic_round_retry_enabled` | `()` | Er rund-niveau stream-retry (Fase 1) slået til? Default False. | [src](../../../core/services/visible_followup.py#L470) |
-| function | `provider_failover_enabled` | `()` | Er visible-lane provider-failover (Fase 3, spec §11.2) slået til? Default False. | [src](../../../core/services/visible_followup.py#L514) |
-| function | `pick_failover_target` | `(current_provider, current_model)` | Vælg en kendt-pålidelig fallback-provider for RESTEN af denne tur (S6/§11.2). | [src](../../../core/services/visible_followup.py#L533) |
-| function | `inject_fault` | `(shape, *, partial_deltas=…, drop_as_exception=…, http_status=…, fire_once=…, fail_times=…, recover_text=…)` | Registrér en fejl-injektion for NÆSTE ``stream_visible_followup``-kald. | [src](../../../core/services/visible_followup.py#L597) |
-| function | `clear_faults` | `()` | Fjern enhver aktiv injektion. Idempotent. TEST-ONLY. | [src](../../../core/services/visible_followup.py#L643) |
-| class | `fault_injection` | `` | Context-manager der registrerer en injektion + RYDDER den ved exit | [src](../../../core/services/visible_followup.py#L650) |
-| method | `fault_injection.__init__` | `(self, shape, **kwargs)` | — | [src](../../../core/services/visible_followup.py#L660) |
-| method | `fault_injection.__enter__` | `(self)` | — | [src](../../../core/services/visible_followup.py#L664) |
-| method | `fault_injection.__exit__` | `(self, *_exc)` | — | [src](../../../core/services/visible_followup.py#L668) |
-| function | `_maybe_inject_fault` | `(round_index)` | Prod-no-op hook: returnér en event-iterator hvis en injektion er aktiv, | [src](../../../core/services/visible_followup.py#L673) |
-| function | `_yield_injected_fault` | `(fault, round_index)` | Generér event-strømmen for en given injektion (test-only). | [src](../../../core/services/visible_followup.py#L706) |
-
-## `core/services/visible_followup_adapters.py`
-_Per-provider follow-up adapters (split from ``visible_followup.py``)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_append_image_message` | `(messages, tr)` | Læg pixels ind efter et tool-resultat der bar et billede (2026-09-06). | [src](../../../core/services/visible_followup_adapters.py#L52) |
-| class | `OllamaFollowupAdapter` | `` | Follow-up via Ollama's ``/api/chat`` streaming NDJSON endpoint. | [src](../../../core/services/visible_followup_adapters.py#L72) |
-| method | `OllamaFollowupAdapter._normalize_tool_calls` | `(self, tool_calls)` | Replay tool_calls — men REPARÉR afkortede/malformede argument-strenge først. | [src](../../../core/services/visible_followup_adapters.py#L95) |
-| method | `OllamaFollowupAdapter._repair_arguments` | `(container)` | Hvis container['arguments'] er en STRENG der ikke er gyldig JSON → erstat med {}. | [src](../../../core/services/visible_followup_adapters.py#L121) |
-| method | `OllamaFollowupAdapter._compact_exchanges` | `(self, exchanges)` | Bound Ollama follow-up replay so long tool loops do not 400. | [src](../../../core/services/visible_followup_adapters.py#L146) |
-| method | `OllamaFollowupAdapter._serialize_exchanges` | `(self, exchanges)` | Replay exchanges as structured assistant + role=tool messages. | [src](../../../core/services/visible_followup_adapters.py#L185) |
-| method | `OllamaFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L230) |
-| class | `OpenAICompatFollowupAdapter` | `` | Follow-up via OpenAI-compatible ``/chat/completions`` SSE streams. | [src](../../../core/services/visible_followup_adapters.py#L532) |
-| method | `OpenAICompatFollowupAdapter.__init__` | `(self, *, provider_id)` | — | [src](../../../core/services/visible_followup_adapters.py#L542) |
-| method | `OpenAICompatFollowupAdapter._normalize_assistant_tool_calls` | `(self, tool_calls)` | Normalize assistant tool_calls to match the OpenAI chat-completions | [src](../../../core/services/visible_followup_adapters.py#L545) |
-| method | `OpenAICompatFollowupAdapter._build_request` | `(self, *, model, messages, tool_definitions, temperature=…, top_p=…, tool_choice=…, extra_body=…, spor=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L580) |
-| method | `OpenAICompatFollowupAdapter._serialize_exchanges` | `(self, exchanges)` | Turn accumulated exchanges into OpenAI-compat tool messages. | [src](../../../core/services/visible_followup_adapters.py#L738) |
-| method | `OpenAICompatFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…, tool_choice=…, run_id=…, autonomous=…, _length_retry=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L784) |
-| class | `CodexFollowupAdapter` | `` | Follow-up via the OpenAI Codex Responses API (chatgpt.com/backend-api). | [src](../../../core/services/visible_followup_adapters.py#L1227) |
-| method | `CodexFollowupAdapter._build_input` | `(self, base_messages, exchanges)` | — | [src](../../../core/services/visible_followup_adapters.py#L1241) |
-| method | `CodexFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L1274) |
 

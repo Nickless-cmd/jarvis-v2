@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7083/14015 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7089/14024 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,8 +23,8 @@ Generated from source. 7083/14015 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 593 | 1097 | 54% |
-| `core.services` | 4687 | 9652 | 48% |
+| `core.runtime` | 595 | 1099 | 54% |
+| `core.services` | 4691 | 9659 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7083/14015 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1998)
+## Undocumented public functions (1999)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -758,11 +758,11 @@ Generated from source. 7083/14015 functions/methods documented (50%). The list b
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
 - `core/services/chat_sessions.py` :: `append_chat_message` (L405)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L54)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1005)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1017)
 - `core/services/chat_sessions.py` :: `get_chat_session` (L338)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L714)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L966)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L991)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L726)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L978)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1003)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
 - `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L180)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L135)
@@ -1332,7 +1332,7 @@ Generated from source. 7083/14015 functions/methods documented (50%). The list b
 - `core/services/process_watcher.py` :: `set_watch_enabled` (L239)
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
-- `core/services/projection_chat_messages.py` :: `register` (L155)
+- `core/services/projection_chat_messages.py` :: `register` (L171)
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
 - `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3413)
@@ -1623,6 +1623,7 @@ Generated from source. 7083/14015 functions/methods documented (50%). The list b
 - `core/services/session_tool_pin.py` :: `clear` (L120)
 - `core/services/session_wakeup.py` :: `last_seen_event_id` (L88)
 - `core/services/session_wakeup.py` :: `mark_seen` (L92)
+- `core/services/shadow_ledger_writer.py` :: `taellere` (L51)
 - `core/services/shadow_scan_daemon.py` :: `build_shadow_scan_surface` (L273)
 - `core/services/shadow_scan_daemon.py` :: `run_scan` (L230)
 - `core/services/shadow_scan_daemon.py` :: `tick` (L260)

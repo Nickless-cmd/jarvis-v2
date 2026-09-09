@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/standing_orders_registry.py`
+_Standing-orders registry — INDEPENDENT grounding for the reasoning-interceptor's standing-orders_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/standing_orders_registry.py#L13) |
+| function | `add_standing_order` | `(*, text, match_key=…)` | — | [src](../../../core/services/standing_orders_registry.py#L25) |
+| function | `set_standing_order_active` | `(order_id, *, active)` | — | [src](../../../core/services/standing_orders_registry.py#L36) |
+| function | `list_active_standing_orders` | `()` | — | [src](../../../core/services/standing_orders_registry.py#L47) |
+
+## `core/services/state_file_retention.py`
+_Rotation af operationel runtime-tilstand i ``~/.jarvis-v2``._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_dir` | `()` | — | [src](../../../core/services/state_file_retention.py#L50) |
+| function | `parse_ts` | `(value)` | Tolk et tidsstempel. Ukendt form → None (posten regnes som ung). | [src](../../../core/services/state_file_retention.py#L54) |
+| function | `record_age_days` | `(record, now)` | Postens alder i dage, eller None hvis den ikke bærer et brugbart stempel. | [src](../../../core/services/state_file_retention.py#L68) |
+| function | `select_expired` | `(records, *, max_age_days, now)` | Nøgler på poster der er ældre end vinduet. Ren funktion. | [src](../../../core/services/state_file_retention.py#L80) |
+| function | `prune_state_file` | `(path, *, max_age_days, now=…)` | Fjern udløbne poster fra én fil. Returnér antal fjernede. | [src](../../../core/services/state_file_retention.py#L96) |
+| function | `prune_all_state_files` | `(*, now=…)` | Kør rotationen på alle filer i ``POLICIES``. Returnér {fil: antal fjernet}. | [src](../../../core/services/state_file_retention.py#L127) |
+| function | `find_orphan_upload_dirs` | `(upload_root, *, session_is_known)` | Mapper hvis session hverken har en række eller beskeder. Ren udvælgelse. | [src](../../../core/services/state_file_retention.py#L151) |
+| function | `cleanup_orphan_uploads` | `()` | Fjern vedhæftnings-mapper for sessioner der hverken har række eller beskeder. | [src](../../../core/services/state_file_retention.py#L176) |
+
 ## `core/services/state_flag_store.py`
 _State-flag store (leak-kandidat #1, 2026-07-10)._
 
@@ -577,43 +601,4 @@ _Tool-concurrency policy (harness Part C)._
 | function | `concurrency_mode` | `()` | Current mode: 'off' | 'on'. Default 'off'. Env wins over config. Self-safe. | [src](../../../core/services/tool_concurrency.py#L42) |
 | function | `_call_name` | `(tc)` | — | [src](../../../core/services/tool_concurrency.py#L57) |
 | function | `is_parallelizable` | `(tool_calls, *, mode)` | True iff mode=='on' AND >=2 calls AND every call name is in the allowlist. | [src](../../../core/services/tool_concurrency.py#L62) |
-
-## `core/services/tool_embeddings.py`
-_Tool description embedding cache._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_connect` | `()` | — | [src](../../../core/services/tool_embeddings.py#L28) |
-| function | `_pack` | `(vec)` | — | [src](../../../core/services/tool_embeddings.py#L42) |
-| function | `_unpack` | `(blob)` | — | [src](../../../core/services/tool_embeddings.py#L46) |
-| function | `_hash_desc` | `(desc)` | — | [src](../../../core/services/tool_embeddings.py#L51) |
-| function | `_compute_embedding` | `(text)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L55) |
-| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L71) |
-| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L91) |
-| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L97) |
-| function | `top_k_similar` | `(query, k=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L108) |
-| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L121) |
-
-## `core/services/tool_intent_approval_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_tool_intent_approval_surface` | `(intent_surface, *, requested_at)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L50) |
-| function | `build_sudo_approval_window_surface` | `(intent_surface, *, now=…)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L177) |
-| function | `sudo_approval_window_scope_from_request` | `(request)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L224) |
-| function | `sudo_approval_window_scope_from_intent` | `(intent_surface)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L232) |
-| function | `sudo_approval_window_allows_request` | `(request, *, now=…)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L240) |
-| function | `resolve_tool_intent_approval` | `(intent_surface, *, approval_state, approval_source, resolution_reason, resolution_message=…, session_id=…, resolved_at=…)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L300) |
-| function | `build_approval_feedback_surface` | `()` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L364) |
-| function | `tool_intent_approval_key` | `(intent_surface)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L373) |
-| function | `_approval_reason` | `(intent_surface)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L385) |
-| function | `_intent_tool_name` | `(intent_surface)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L479) |
-| function | `_emit_approval_resolved_event` | `(*, intent_key, approval_state, approval_source, resolved_at, resolution_reason, resolution_message, session_id, tool_name)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L489) |
-| function | `_find_verbal_resolution` | `(intent_surface, request)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L518) |
-| function | `_decision_from_text` | `(content)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L555) |
-| function | `_matches_intent_context` | `(content, intent_surface)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L566) |
-| function | `_sudo_approval_window_scope` | `(*, capability_id, command_text, proposal_scope)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L579) |
-| function | `_now` | `()` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L607) |
-| function | `_normalize` | `(value)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L611) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L623) |
 

@@ -312,3 +312,68 @@ def test_state_siger_HVILKEN_slags_post_det_er(aid):
     b = aid + "-m"
     B.request(b, tool_name="bash", arguments={"command": "ls"})
     assert B.state(b)["kind"] == "approval"
+
+
+# ── og naar de to kappende er PROCESSER, ikke traade ─────────────────────
+
+_BARN = """
+import os, sys
+# `isolated_runtime` isolerer via HOME, ikke JARVIS_HOME. Saetter man
+# det forkerte, skriver barnet i den RIGTIGE database — set 9/9-2026,
+# hvor tre proeve-raekker landede i den lokale jarvis.db.
+os.environ["HOME"] = sys.argv[1]
+sys.path.insert(0, {rod!r})
+from core.runtime import db_approval_bridge as B
+try:
+    B.claim(sys.argv[2], tool_name="bash", arguments={{"command": "ls"}})
+    print("vandt")
+except B.ApprovalRefused as e:
+    print("tabte:" + str(e)[:70])
+except Exception as e:
+    print("fejl:" + type(e).__name__ + ":" + str(e)[:80])
+"""
+
+
+def test_EN_vinder_ogsaa_paa_tvaers_af_PROCESSER(isolated_runtime):
+    """Traad-testen beviser at én SQL-saetning er udelelig i én proces.
+    Produktionen er `jarvis-api` og `jarvis-runtime` — to SELVSTAENDIGE
+    processer mod samme fil. Dér ville en dobbelt-udfoerelse komme fra, saa
+    boernene her er rigtige processer, ikke traade og ikke forks.
+    """
+    import subprocess
+    import sys
+    from concurrent.futures import ThreadPoolExecutor
+    from pathlib import Path
+
+    from core.runtime import db_core
+
+    rod = str(Path(__file__).resolve().parent.parent)
+    # DATABASE-STIEN er sandheden, ikke $HOME. Et tidligere reload kan have
+    # bundet modulet til en anden tmp-mappe end env-varen peger paa — set
+    # 9/9-2026, hvor foraelderen skrev ét sted og boernene laeste et andet,
+    # og testen «bestod» én gang og fejlede bagefter.
+    hjem = str(Path(db_core.DB_PATH).resolve().parents[2])
+
+    aid = "appr-proces-kaploeb"
+    B.request(aid, tool_name="bash", arguments={"command": "ls"})
+    B.decide(aid, approved=True)
+
+    kode = _BARN.format(rod=rod)
+
+    def _koer(_):
+        return subprocess.run([sys.executable, "-c", kode, hjem, aid],
+                              capture_output=True, text=True,
+                              timeout=90).stdout.strip()
+
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        svar = list(ex.map(_koer, range(6)))
+
+    # Bevis at der FAKTISK loeb seks boern — en tom liste ville ellers
+    # bestaa den foerste assert lige saa stille som en rigtig maaling.
+    assert len(svar) == 6, svar
+    assert svar.count("vandt") == 1, svar
+    assert sum(1 for s in svar if s.startswith("tabte")) == 5, svar
+    assert not [s for s in svar if s.startswith("fejl")], svar
+    # og de fem tabte skal have tabt af den RIGTIGE grund
+    assert all("allerede overtaget" in s for s in svar if s.startswith("tabte")), svar
+    assert B.state(aid)["state"] == B.DISPATCHING

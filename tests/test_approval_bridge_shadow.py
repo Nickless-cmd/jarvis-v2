@@ -121,11 +121,49 @@ def test_en_doed_bro_vaelter_ikke_overtagelsen(taendt, aid, monkeypatch):
     assert S.taellere()["fejl"] == 1
 
 
-def test_ingen_af_kaldene_returnerer_noget_nogen_kan_handle_paa(taendt, aid):
+def test_registrering_og_beslutning_returnerer_intet(taendt, aid):
     assert S.note_requested(aid, tool_name="bash", arguments=ARGS) is None
     assert S.note_decided(aid, approved=True) is None
+
+
+def test_overtagelsen_returnerer_en_DOM_men_afgoer_intet_selv(taendt, aid):
+    """Aendret med K5. Foer returnerede den None, saa ingen KUNNE handle paa
+    den. Nu returnerer den `(tillod, grund)` — for overtagelsen skal kunne
+    HAANDHAEVES lige foer udbyder-graensen, og ét forsoeg er nok: at overtage
+    to gange ville faa det andet til at fejle af en grund der ikke findes.
+
+    Skyggen afgoer stadig intet selv. Det er kaldestedet der vaelger at lytte,
+    og kun naar broen er aktiv.
+    """
+    S.note_requested(aid, tool_name="bash", arguments=ARGS)
+    S.note_decided(aid, approved=True)
+    tillod, grund = S.note_claim(aid, tool_name="bash", arguments=ARGS,
+                                 legacy_allowed=True)
+    assert tillod is True and grund == ""
+
+
+def test_en_ukendt_godkendelse_er_IKKE_et_nej(taendt):
+    """En godkendelse fra foer taendingen har ingen post. At afvise paa
+    ingenting ville vaere vaerre end at lade den gamle sti baere."""
+    assert S.note_claim("appr-findes-ikke", tool_name="bash", arguments=ARGS,
+                        legacy_allowed=True) == (True, "ikke målt")
+
+
+def test_slukket_skygge_siger_ja(aid):
     assert S.note_claim(aid, tool_name="bash", arguments=ARGS,
-                        legacy_allowed=True) is None
+                        legacy_allowed=True)[0] is True
+
+
+def test_en_KOLLAPSET_bro_er_et_nej(taendt, aid, monkeypatch):
+    """Naar broen HAANDHAEVER, er «vi ved det ikke» et nej: en godkendelse man
+    ikke kan bevise, er ikke en godkendelse."""
+    S.note_requested(aid, tool_name="bash", arguments=ARGS)
+    S.note_decided(aid, approved=True)
+    monkeypatch.setattr(B, "claim",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
+    tillod, grund = S.note_claim(aid, tool_name="bash", arguments=ARGS,
+                                 legacy_allowed=True)
+    assert tillod is False and "kunne ikke" in grund
 
 
 # ── tællerne er aflæselige udefra ────────────────────────────────────────

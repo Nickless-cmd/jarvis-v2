@@ -145,12 +145,44 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     # ægte argumenter, og dét er den eneste måde at opdage om digesten
     # overlever den virkelige vej: fra værktøjets svar, gennem en dict i
     # hukommelsen, gennem delt tilstand mellem processer, og tilbage.
+    # K5: overtagelsen OG `dispatching` committer i ÉN sætning, HER — lige før
+    # udbyder-grænsen krydses. Bevist på tværs af rigtige processer, ikke kun
+    # tråde (`test_EN_vinder_ogsaa_paa_tvaers_af_PROCESSER`).
+    #
+    # Så længe broen kører i skygge, afgør svaret ingenting. Når den HÅNDHÆVER,
+    # er et nej et nej — og «broen kunne ikke afgøre det» er også et nej, for
+    # en godkendelse man ikke kan bevise er ikke en godkendelse.
     try:
         from core.services.approval_bridge_shadow import note_claim
-        note_claim(approval_id, tool_name=pending["tool_name"],
-                   arguments=pending["arguments"], legacy_allowed=True)
+        bro_tillod, bro_grund = note_claim(
+            approval_id, tool_name=pending["tool_name"],
+            arguments=pending["arguments"], legacy_allowed=True)
     except Exception:
-        pass
+        bro_tillod, bro_grund = True, "skyggen kastede"
+
+    if not bro_tillod:
+        try:
+            from core.tools.approval_rollout_gate import bridge_active
+            haandhaever = bridge_active()
+        except Exception:
+            haandhaever = False
+        if haandhaever:
+            logger.warning("K5: afviser %s (%s) — broen sagde nej: %s",
+                           approval_id, pending["tool_name"], bro_grund[:200])
+            try:
+                from core.services.approval_bridge_shadow import note_settled
+                note_settled(approval_id, ok=False)
+            except Exception:
+                pass
+            return {
+                "status": "error",
+                "tool": pending["tool_name"],
+                "error": ("Godkendelsen kunne ikke overtages: " + bro_grund),
+                "result_text": ("[Godkendelsen kunne ikke overtages: "
+                                + bro_grund + "]"),
+                "chat_persisted": False,
+                "approval_id": approval_id,
+            }
 
     try:
         result = execute_tool_force(

@@ -118,13 +118,22 @@ def note_decided(approval_id: str, *, approved: bool) -> None:
 
 
 def note_claim(approval_id: str, *, tool_name: str, arguments: dict[str, Any] | None,
-               legacy_allowed: bool) -> None:
+               legacy_allowed: bool) -> tuple[bool, str]:
     """Ville broen have tilladt det samme som den kørende kode?
 
-    `legacy_allowed` er hvad der FAKTISK skete. Broens svar afgør ingenting.
+    `legacy_allowed` er hvad der FAKTISK skete.
+
+    Returnerer `(broen_tillod, grund)`. I skygge afgør svaret ingenting — men
+    det RETURNERES, så kaldestedet kan håndhæve det når broen er aktiv (K5).
+    Det er ét forsøg: at overtage to gange ville få det andet til at fejle af
+    en grund der ikke findes.
+
+    `(True, "ikke målt")` når skyggen er slukket eller godkendelsen er ældre
+    end tændingen — dér ved broen ingenting, og at afvise på ingenting ville
+    være værre end at lade den gamle sti bære.
     """
     if not live():
-        return
+        return True, "ikke målt"
     try:
         from core.runtime.db_approval_bridge import ApprovalRefused, claim, state
 
@@ -139,7 +148,7 @@ def note_claim(approval_id: str, *, tool_name: str, arguments: dict[str, Any] | 
         if state(approval_id) is None:
             _taellere["sprunget_over"] += 1
             _gem()
-            return
+            return True, "ikke målt"
 
         try:
             claim(approval_id, tool_name=tool_name, arguments=arguments)
@@ -156,10 +165,14 @@ def note_claim(approval_id: str, *, tool_name: str, arguments: dict[str, Any] | 
                 "approval-bridge-shadow UENIGE id=%s tool=%s gammel=%s bro=%s grund=%r",
                 approval_id, tool_name, legacy_allowed, bro_tillod, grund[:200])
         _gem()
-    except Exception:
+        return bro_tillod, grund
+    except Exception as e:
         _taellere["fejl"] += 1
         logger.warning("approval-bridge-shadow: kunne ikke sammenligne %s",
                        approval_id, exc_info=True)
+        # Skyggen afgør intet, så her er svaret «vi ved det ikke». Kaldestedet
+        # afgør hvad det betyder — og når broen HÅNDHÆVER, betyder det nej.
+        return False, f"broen kunne ikke afgøre det: {type(e).__name__}"
 
 
 def note_settled(approval_id: str, *, ok: bool) -> None:

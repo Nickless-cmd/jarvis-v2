@@ -135,3 +135,24 @@ def test_selvmodsigende_input_vaelter_ikke_maalingen(taendt):
     Den kaster — og skyggen skal fange det, ikke sende det videre."""
     _obs(legacy_status="completed", text="", emitted_prefix="brugeren så det her")
     assert SH.taellere()["fejl"] == 1
+
+
+# ── tavshed skal kunne skelnes fra fravær ────────────────────────────────
+
+def test_enigheden_siges_HOEJT_med_jaevne_mellemrum(taendt, caplog):
+    """En måling der kun logger ved uenighed, kan ikke skelne «alt passer» fra
+    «fyrede aldrig»."""
+    import logging
+    with caplog.at_level(logging.INFO):
+        for _ in range(SH.PULS_HVER):
+            _obs()
+    assert "settlement-shadow puls" in caplog.text
+    assert SH.taellere()["enige"] == SH.PULS_HVER
+
+
+def test_pulsen_kommer_ikke_ved_HVER_observation(taendt, caplog):
+    import logging
+    with caplog.at_level(logging.INFO):
+        for _ in range(SH.PULS_HVER - 1):
+            _obs()
+    assert "puls" not in caplog.text

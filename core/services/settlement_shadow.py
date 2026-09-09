@@ -26,6 +26,12 @@ måling der tænder sig selv fordi ingen har sat en nøgle, er ikke noget nogen
 har besluttet. Derfor kræves et EKSPLICIT `enabled: true`; alt andet — nøglen
 mangler, cachen fejler, værdien har en anden form — regnes som slukket.
 
+## Tavshed er tvetydig, så den siges højt
+
+En måling der kun logger ved uenighed, kan ikke skelne «alt passer» fra
+«fyrede aldrig». Derfor siges tællerne højt hver 20. observation — så nul
+uenigheder kan aflæses som et resultat frem for et fravær.
+
 ## Hvad uenighed betyder
 
 Ikke nødvendigvis at den nye kode tager fejl. Det kan lige så godt være at den
@@ -78,6 +84,17 @@ _KORT = {
 }
 
 
+#: Hvor ofte enigheden siges højt. Tavshed er ellers TVETYDIG: den kan betyde
+#: «alt passer» eller «målingen fyrede aldrig», og de to skal kunne skelnes.
+PULS_HVER = 20
+
+
+def _puls() -> None:
+    n = _taellere["enige"] + _taellere["uenige"]
+    if n and n % PULS_HVER == 0:
+        logger.info("settlement-shadow puls: %s", taellere())
+
+
 def observe(*, run_id: str, legacy_status: str, legacy_error: str | None,
             text: str, emitted_prefix: str, cancelled: bool,
             transport_error: bool = False, tool_dispatched: bool = False) -> None:
@@ -103,6 +120,7 @@ def observe(*, run_id: str, legacy_status: str, legacy_error: str | None,
 
         if ny.outcome == forventet:
             _taellere["enige"] += 1
+            _puls()
             return
 
         _taellere["uenige"] += 1

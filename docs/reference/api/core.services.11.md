@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/epistemic_pragmatic.py`
+_Epistemic/Pragmatic Balance — action-mode modulation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ActionMode` | `` | Current epistemic/pragmatic balance. | [src](../../../core/services/epistemic_pragmatic.py#L42) |
+| function | `compute_epistemic_pragmatic` | `()` | Compute current epistemic/pragmatic balance. | [src](../../../core/services/epistemic_pragmatic.py#L73) |
+| function | `_mode_from_confidence` | `(confidence)` | Fallback: determine mode from confidence alone (no pressures). | [src](../../../core/services/epistemic_pragmatic.py#L199) |
+| function | `get_mode_line` | `()` | Convenience: compute mode and return prompt-ready string. | [src](../../../core/services/epistemic_pragmatic.py#L227) |
+| function | `get_mode_detail` | `()` | Return full mode state for MC transparency. | [src](../../../core/services/epistemic_pragmatic.py#L239) |
+| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/epistemic_pragmatic.py#L257) |
+
 ## `core/services/epistemic_runtime_state.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -600,28 +612,4 @@ _Execution-cluster gate 🔒 — én graderet SECURITY-gate for ALLE tool-eksekv
 | function | `_gate_repeat_key` | `(gate, subject)` | — | [src](../../../core/services/gate_execution.py#L305) |
 | function | `gate_observation` | `(check, *, gate, subject, remedy=…, status=…)` | Byg et IN-LOOP tool-resultat ud af en gate-dom — brugbart nok til selvkorrektion. | [src](../../../core/services/gate_execution.py#L311) |
 | function | `reset_gate_repeat_counts` | `()` | Nulstil gentagelses-tællere (tests + sessionsskift). | [src](../../../core/services/gate_execution.py#L383) |
-
-## `core/services/gate_kernel.py`
-_GateKernel — central orchestrator for alle gates (spec 2026-06-21)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Decision` | `` | — | [src](../../../core/services/gate_kernel.py#L24) |
-| class | `GateClass` | `` | — | [src](../../../core/services/gate_kernel.py#L31) |
-| class | `Verdict` | `` | — | [src](../../../core/services/gate_kernel.py#L40) |
-| method | `Verdict.is_blocking` | `(self)` | — | [src](../../../core/services/gate_kernel.py#L59) |
-| function | `worst` | `(verdicts)` | Aggregeret beslutning efter præcedens RED>YELLOW>GREEN>SKIP. | [src](../../../core/services/gate_kernel.py#L63) |
-| class | `_Gate` | `` | — | [src](../../../core/services/gate_kernel.py#L71) |
-| function | `_source_loc` | `(fn)` | Gatens egen registrerings-placering (fil + firstlineno) via inspect. Self-safe: | [src](../../../core/services/gate_kernel.py#L82) |
-| class | `GateKernel` | `` | — | [src](../../../core/services/gate_kernel.py#L103) |
-| method | `GateKernel.__init__` | `(self, *, flag_reader=…, emit=…)` | — | [src](../../../core/services/gate_kernel.py#L104) |
-| method | `GateKernel.register` | `(self, name, phase, fn, *, klass=…, timeout_ms=…, flag_key=…)` | — | [src](../../../core/services/gate_kernel.py#L112) |
-| method | `GateKernel.gates_for` | `(self, phase)` | — | [src](../../../core/services/gate_kernel.py#L120) |
-| method | `GateKernel._fail_verdict` | `(self, g, reason)` | — | [src](../../../core/services/gate_kernel.py#L124) |
-| method | `GateKernel._run_one` | `(self, g, ctx)` | — | [src](../../../core/services/gate_kernel.py#L130) |
-| method | `GateKernel.run_phase` | `(self, phase, ctx)` | Kør alle gates i en fase isoleret; emit ÉT event; returnér verdicts. | [src](../../../core/services/gate_kernel.py#L173) |
-| function | `_normalize` | `(g, raw)` | Tillad gates at returnere en færdig Verdict, et dict, eller None (=GREEN). | [src](../../../core/services/gate_kernel.py#L204) |
-| function | `_default_flag_reader` | `(flag_key)` | Returnér True/False hvis flag'et er EKSPLICIT sat i shared_cache, ellers None | [src](../../../core/services/gate_kernel.py#L223) |
-| function | `_default_emit` | `(kind, payload)` | — | [src](../../../core/services/gate_kernel.py#L238) |
-| function | `kernel` | `()` | — | [src](../../../core/services/gate_kernel.py#L250) |
 

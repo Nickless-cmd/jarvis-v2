@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_instrument.py`
+_central_instrument — selv-instrumenterende motor (system-cluster nerve, periodisk daemon)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Finding` | `` | — | [src](../../../core/services/central_instrument.py#L55) |
+| method | `Finding.signature` | `(self)` | — | [src](../../../core/services/central_instrument.py#L66) |
+| function | `_call_name` | `(node)` | Bedste streng-navn for et Call's funktion (foo / obj.foo / a.b.foo). | [src](../../../core/services/central_instrument.py#L73) |
+| function | `_has_guard_call` | `(node)` | True hvis subtræet indeholder et kald der tæller som fejl-håndtering/synlighed, | [src](../../../core/services/central_instrument.py#L85) |
+| function | `_is_success_like_return` | `(node)` | True hvis except-handleren returnerer en success-lignende værdi (None/{}/[]/True/0/ | [src](../../../core/services/central_instrument.py#L98) |
+| function | `_func_of` | `(lineno, funcs)` | Navn på den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L114) |
+| function | `_acknowledged` | `(lines, start, end)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end]. | [src](../../../core/services/central_instrument.py#L127) |
+| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L136) |
+| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L208) |
+| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L232) |
+| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L237) |
+| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L256) |
+| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L271) |
+| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L285) |
+| function | `_file_proposals` | `(max_new=…)` | Filer reviewbare proposals for åbne fund med score≥threshold (ikke allerede filed, | [src](../../../core/services/central_instrument.py#L320) |
+| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L356) |
+
 ## `core/services/central_keymaker.py`
 _The Keymaker — optjent, udløbende, én-dør-ad-gangen autonomi._
 
@@ -592,19 +614,4 @@ _Central runtime proxy — read runtime-process-only surfaces from anywhere._
 | function | `_runtime_services_enabled` | `()` | True when this process runs the runtime services (state is local here). | [src](../../../core/services/central_runtime_proxy.py#L36) |
 | function | `_http_get` | `(name)` | HTTP-GET a runtime surface from jarvis-runtime. Returns a parsed dict. | [src](../../../core/services/central_runtime_proxy.py#L42) |
 | function | `proxy_or_local` | `(builder_name, local_fn)` | Return a runtime surface, in-process or via HTTP-proxy to port 8011. | [src](../../../core/services/central_runtime_proxy.py#L54) |
-
-## `core/services/central_self_model.py`
-_core/services/central_self_model.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_self_model.py#L24) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_self_model.py#L33) |
-| function | `_populated` | `(v)` | — | [src](../../../core/services/central_self_model.py#L41) |
-| function | `_extract_structure` | `(model)` | Uddrag KUN struktur fra selv-modellen: hvilke lag findes/er udfyldt (labels), tællinger, | [src](../../../core/services/central_self_model.py#L49) |
-| function | `snapshot_self_model` | `()` | Byg selv-modellen og uddrag dens STRUKTUR (ikke indhold). Self-safe → {} ved fejl. | [src](../../../core/services/central_self_model.py#L60) |
-| function | `get_self_model_snapshot` | `()` | Centralens DURABLE selv-model-struktur (senest optagne). Overlever genstart (kv). Self-safe. | [src](../../../core/services/central_self_model.py#L72) |
-| function | `run_self_model_mirror_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: snapshot selv-modellens struktur → gem durabelt (kv) + egress-fri observe (kun skalarer). | [src](../../../core/services/central_self_model.py#L78) |
-| function | `register_self_model_mirror_producer` | `()` | Registrér spejlet som cadence-producer (~hvert 30 min). Egress-frit, observe-only. | [src](../../../core/services/central_self_model.py#L102) |
-| function | `build_self_model_mirror_surface` | `()` | Mission Control — read-only: Centralens billede af sig selv (struktur, ikke indhold). | [src](../../../core/services/central_self_model.py#L114) |
 

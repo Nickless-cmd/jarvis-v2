@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/skill_relevance_surface.py`
+_Slå skills op FOR ham i stedet for at bede ham huske at slå op._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, slår vi op. | [src](../../../core/services/skill_relevance_surface.py#L44) |
+| function | `relevant_skills_section` | `(user_message)` | Prompt-sektion med de skills der matcher turens opgave. "" hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L53) |
+| function | `build_skill_relevance_surface` | `(user_message=…)` | Observationsflade — hvad opslaget ville sige om denne besked. | [src](../../../core/services/skill_relevance_surface.py#L111) |
+
 ## `core/services/skill_scanner.py`
 _Skill-scanning før lokal eksekvering (spec §19.8 / §15.3.2)._
 
@@ -626,15 +635,4 @@ _core/services/text_clip.py_
 | function | `clip_text` | `(value, *, limit, hard=…)` | Klip tekst til <= ~limit tegn UDEN at hugge midt i et ord. | [src](../../../core/services/text_clip.py#L16) |
 | function | `clip_head_tail` | `(value, *, limit, tail_frac=…)` | Bevar HOVED + HALE ved LINJE-grænser når tekst overskrider limit. Til tool-output (bash/read/ | [src](../../../core/services/text_clip.py#L53) |
 | function | `clip_words` | `(value, *, max_words)` | Klip til et antal ORD (ikke tegn) — når ord er den meningsfulde enhed. Self-safe. | [src](../../../core/services/text_clip.py#L88) |
-
-## `core/services/text_resonance.py`
-_Text Resonance — I feel what I read, before I analyze it._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `resonate` | `(text, *, source=…)` | Compute warmth, cold, urgency scores for a piece of text. | [src](../../../core/services/text_resonance.py#L61) |
-| function | `recent_resonances` | `(*, limit=…)` | — | [src](../../../core/services/text_resonance.py#L139) |
-| function | `build_text_resonance_surface` | `()` | — | [src](../../../core/services/text_resonance.py#L143) |
-| function | `build_text_resonance_prompt_section` | `()` | Only surface when recent reading is strongly toned. | [src](../../../core/services/text_resonance.py#L168) |
-| function | `reset_text_resonance` | `()` | — | [src](../../../core/services/text_resonance.py#L185) |
 

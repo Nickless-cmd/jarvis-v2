@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/db_sentinel.py`
+_DB-cluster — observabilitet + flag for jarvis.db's helbred. IKKE en blokerende gate og_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_list_tables` | `()` | — | [src](../../../core/services/db_sentinel.py#L27) |
+| function | `census` | `()` | Row-count pr. tabel. Best-effort; en fejlende tabel udelades. | [src](../../../core/services/db_sentinel.py#L40) |
+| function | `dead_table_candidates` | `()` | Tabeller med 0 rækker = KANDIDATER til oprydning. KUN til menneskelig review — | [src](../../../core/services/db_sentinel.py#L57) |
+| function | `_load_prev` | `()` | — | [src](../../../core/services/db_sentinel.py#L64) |
+| function | `_save` | `(c)` | — | [src](../../../core/services/db_sentinel.py#L73) |
+| function | `scan` | `()` | Census + vækst-delta vs forrige snapshot + flag egregious vækst. Returnér rapport. | [src](../../../core/services/db_sentinel.py#L81) |
+| function | `observe` | `()` | Kør scan + central.observe(summary) + flag egregious vækst som incident (review). | [src](../../../core/services/db_sentinel.py#L105) |
+| function | `build_db_health_surface` | `()` | MC-surface — read-only meta-projektion af DB-helbred + kandidat-død-liste til review. | [src](../../../core/services/db_sentinel.py#L131) |
+
 ## `core/services/decision_adherence_gate.py`
 _Gate 1: Decision-adherence gate._
 
@@ -563,33 +577,4 @@ _Dream-to-Action: den ende der manglede._
 | function | `_bump_errors` | `()` | Gentagne fejl → `off`. Den genstarter ikke sig selv. | [src](../../../core/services/dream_action_executor.py#L129) |
 | function | `run_once` | `(*, limit=…)` | Ét gennemløb: find modne prediction_error-hypoteser, mål regimet, registrér. | [src](../../../core/services/dream_action_executor.py#L142) |
 | function | `build_executor_surface` | `()` | Overflade til Centralen: tilstand + hvad den ville/har gjort. Self-safe. | [src](../../../core/services/dream_action_executor.py#L200) |
-
-## `core/services/dream_adoption_candidate_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_dream_adoption_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L32) |
-| function | `refresh_runtime_dream_adoption_candidate_statuses` | `()` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L54) |
-| function | `build_runtime_dream_adoption_candidate_surface` | `(*, limit=…)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L85) |
-| function | `_extract_dream_adoption_candidates` | `()` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L114) |
-| function | `_persist_dream_adoption_candidates` | `(*, candidates, session_id, run_id)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L186) |
-| function | `_build_adoption_snapshots` | `()` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L260) |
-| function | `_with_runtime_view` | `(item, candidate)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L308) |
-| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L319) |
-| function | `_build_candidate_type` | `(*, item, snapshot)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L332) |
-| function | `_build_candidate_status` | `(*, candidate_type, hypothesis_status, cadence_state)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L348) |
-| function | `_build_adoption_confidence` | `(*, candidate_type, snapshot)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L356) |
-| function | `_build_adoption_reason` | `(*, candidate_type, hypothesis_type, adoption_confidence)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L364) |
-| function | `_build_adoption_anchor` | `(*, snapshot)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L372) |
-| function | `_build_status_reason` | `(*, candidate_type)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L389) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L397) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L406) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L411) |
-| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L416) |
-| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L421) |
-| function | `_hypothesis_type_from_candidate_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L426) |
-| function | `_adoption_confidence_from_summary` | `(summary)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L431) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L440) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L445) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L455) |
 

@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/heartbeat_scheduler.py`
+_Hjerteslagets dæmon — tråden der spørger «er det tid?» hvert 30. sekund._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_running` | `()` | Lever planlægger-tråden? | [src](../../../core/services/heartbeat_scheduler.py#L49) |
+| function | `iterations` | `()` | Antal gennemløb siden tråden startede. Står tallet stille, er løkken væk. | [src](../../../core/services/heartbeat_scheduler.py#L59) |
+| function | `stop_event` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L64) |
+| function | `start` | `(*, name=…)` | Start dæmonen. Er den allerede i gang, sker der ingenting. | [src](../../../core/services/heartbeat_scheduler.py#L68) |
+| function | `stop` | `(*, name=…)` | — | [src](../../../core/services/heartbeat_scheduler.py#L113) |
+| function | `_loop` | `(*, name, startup_recovery_requested)` | — | [src](../../../core/services/heartbeat_scheduler.py#L127) |
+
 ## `core/services/hf_connector.py`
 _Hugging Face-connector — søg modeller/datasets via Hub API._
 
@@ -657,17 +669,4 @@ _Jarvis Brain background daemon — tre uafhængige loops._
 | function | `run_consolidation_pass` | `()` | Single consolidation pass: phase 1 (dedup) + phase 2 (contradictions). | [src](../../../core/services/jarvis_brain_daemon.py#L677) |
 | function | `start_brain_daemon` | `()` | Start the three brain daemon threads. Idempotent. | [src](../../../core/services/jarvis_brain_daemon.py#L696) |
 | function | `stop_brain_daemon` | `()` | Signal stop and wait briefly for threads to exit. Idempotent. | [src](../../../core/services/jarvis_brain_daemon.py#L719) |
-
-## `core/services/jarvis_brain_reflection.py`
-_End-of-day refleksions-slot — visible Jarvis spørger sig selv hvad han lærte._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_reflection_envelope` | `(*, chronicle_summary)` | Build the envelope text shown to visible Jarvis at end-of-day. | [src](../../../core/services/jarvis_brain_reflection.py#L30) |
-| function | `build_internal_nudge` | `(*, count_so_far)` | Soft nudge after 3+ remember_this calls in same reflection slot. | [src](../../../core/services/jarvis_brain_reflection.py#L35) |
-| function | `_was_active_today` | `()` | Best-effort tjek om Jarvis havde aktivitet i dag. | [src](../../../core/services/jarvis_brain_reflection.py#L48) |
-| function | `_build_today_chronicle_summary` | `()` | Build a short summary of today's chronicle entries. | [src](../../../core/services/jarvis_brain_reflection.py#L70) |
-| function | `_run_reflection_turn` | `(chronicle_summary)` | Trigger en visible-Jarvis tur med reflection-envelope. | [src](../../../core/services/jarvis_brain_reflection.py#L83) |
-| function | `run_daily_reflection_if_active` | `()` | Entry point for the daily slot trigger. | [src](../../../core/services/jarvis_brain_reflection.py#L107) |
-| function | `build_jarvis_brain_reflection_surface` | `()` | Surface the daily reflection slot without triggering it. | [src](../../../core/services/jarvis_brain_reflection.py#L123) |
 

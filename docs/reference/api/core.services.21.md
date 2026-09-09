@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/semantic_indexer.py`
+_Semantic indexer — auto-embedding of new memory records._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start_semantic_indexer` | `()` | — | [src](../../../core/services/semantic_indexer.py#L34) |
+| function | `stop_semantic_indexer` | `()` | — | [src](../../../core/services/semantic_indexer.py#L62) |
+| function | `_sweeper_loop` | `()` | Every N minutes, run backfill_all to catch new rows without events. | [src](../../../core/services/semantic_indexer.py#L81) |
+| function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/semantic_indexer.py#L109) |
+| function | `_handle_sensory` | `(payload)` | — | [src](../../../core/services/semantic_indexer.py#L140) |
+| function | `_handle_private_brain` | `(payload)` | — | [src](../../../core/services/semantic_indexer.py#L163) |
+| function | `build_semantic_indexer_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_indexer.py#L193) |
+
 ## `core/services/semantic_memory.py`
 _Semantic memory — unified embedding + cosine search across memory surfaces._
 
@@ -575,13 +588,4 @@ _Skill Engine — SKILL.md loader for Jarvis._
 | function | `record_skill_usage` | `(skill_name, *, source=…, success=…, query=…, context_tags=…, score=…)` | Record that a skill was used. Never raises. | [src](../../../core/services/skill_engine.py#L902) |
 | function | `analyze_skill_usage` | `(days=…, min_invocations=…)` | Analyze skill usage patterns and generate improvement proposals. | [src](../../../core/services/skill_engine.py#L948) |
 | function | `get_skill_usage_stats` | `(name=…, days=…, limit=…)` | Return raw usage stats for a skill (or all skills if name is None). | [src](../../../core/services/skill_engine.py#L1078) |
-
-## `core/services/skill_relevance_surface.py`
-_Slå skills op FOR ham i stedet for at bede ham huske at slå op._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, slår vi op. | [src](../../../core/services/skill_relevance_surface.py#L44) |
-| function | `relevant_skills_section` | `(user_message)` | Prompt-sektion med de skills der matcher turens opgave. "" hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L53) |
-| function | `build_skill_relevance_surface` | `(user_message=…)` | Observationsflade — hvad opslaget ville sige om denne besked. | [src](../../../core/services/skill_relevance_surface.py#L111) |
 

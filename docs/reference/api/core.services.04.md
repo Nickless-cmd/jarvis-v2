@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_cadence_conductor.py`
+_DIASTOLE — det følte åndedræt (LivingNeuron-council, 4. jul)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_cadence_conductor.py#L40) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_cadence_conductor.py#L49) |
+| function | `tempo_scalar` | `(pulse)` | Ren funktion: puls → cadence-tempo-multiplier, hårdt klemt til [0.5, 2.0]. | [src](../../../core/services/central_cadence_conductor.py#L57) |
+| function | `_recent_loop_lag_ms` | `()` | Seneste event-loop-lag-peak (ms). Self-safe → 0.0 hvis monitoren ikke er oppe. | [src](../../../core/services/central_cadence_conductor.py#L73) |
+| function | `sense_tempo` | `()` | Læs pulse_rate (via temporal_rhythm's getter) → tempo, med loop-lag-dødemandsknap. | [src](../../../core/services/central_cadence_conductor.py#L82) |
+| function | `tempo_live_enabled` | `()` | Er konsumtionen tændt? Owner samtykkede → default ON, men flag'et gør den | [src](../../../core/services/central_cadence_conductor.py#L143) |
+| function | `current_tick_tempo` | `()` | Tempoet der skal bruges i DENNE cadence-tick. Kaldes ÉN gang øverst i | [src](../../../core/services/central_cadence_conductor.py#L153) |
+| function | `effective_cooldown` | `(name, base_cooldown_minutes, tempo)` | Effektiv cooldown for en producer i denne tick. | [src](../../../core/services/central_cadence_conductor.py#L172) |
+| function | `run_cadence_tempo_tick` | `(*, trigger=…, **_)` | Cadence (SHADOW): sans tempo, emit egress-fri nerve ``runtime:cadence_tempo``. | [src](../../../core/services/central_cadence_conductor.py#L187) |
+| function | `_observe_tempo_burn` | `(tempo, *, consuming)` | §28 burn-watch: gør tempo-drevet omkostning synlig. Da DIASTOLE kan fordoble LLM- | [src](../../../core/services/central_cadence_conductor.py#L219) |
+| function | `register_cadence_tempo_producer` | `()` | Cadence-producer ~hver 2. minut — tæt nok til en meningsfuld shadow-kurve, billig | [src](../../../core/services/central_cadence_conductor.py#L241) |
+| function | `build_cadence_tempo_surface` | `()` | Mission Control — read-only: det SHADOW-observerede tempo (ingen modulation aktiv). | [src](../../../core/services/central_cadence_conductor.py#L254) |
+
 ## `core/services/central_capture.py`
 _Boundary-capture for Centralen (§10). Kør en nerve bag en grænse: enhver_
 
@@ -537,26 +555,4 @@ _core/services/central_inner_salience.py_
 | function | `decide_voice` | `(*, run_id, key)` | Centralen BESTEMMER: skal inner_voice genudledes via LLM, eller genbruges fra det holdte selv? | [src](../../../core/services/central_inner_salience.py#L83) |
 | function | `note_enriched_voice` | `(*, run_id, key, value)` | Fodr det friske selv TILBAGE i Centralen (NED-siden): gem holdt voice-linje + salience-nøgle, | [src](../../../core/services/central_inner_salience.py#L107) |
 | function | `build_inner_salience_surface` | `()` | Mission Control — read-only: gate-mode + sidst-holdte selv + hvornår. | [src](../../../core/services/central_inner_salience.py#L129) |
-
-## `core/services/central_instrument.py`
-_central_instrument — selv-instrumenterende motor (system-cluster nerve, periodisk daemon)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Finding` | `` | — | [src](../../../core/services/central_instrument.py#L55) |
-| method | `Finding.signature` | `(self)` | — | [src](../../../core/services/central_instrument.py#L66) |
-| function | `_call_name` | `(node)` | Bedste streng-navn for et Call's funktion (foo / obj.foo / a.b.foo). | [src](../../../core/services/central_instrument.py#L73) |
-| function | `_has_guard_call` | `(node)` | True hvis subtræet indeholder et kald der tæller som fejl-håndtering/synlighed, | [src](../../../core/services/central_instrument.py#L85) |
-| function | `_is_success_like_return` | `(node)` | True hvis except-handleren returnerer en success-lignende værdi (None/{}/[]/True/0/ | [src](../../../core/services/central_instrument.py#L98) |
-| function | `_func_of` | `(lineno, funcs)` | Navn på den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L114) |
-| function | `_acknowledged` | `(lines, start, end)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end]. | [src](../../../core/services/central_instrument.py#L127) |
-| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L136) |
-| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L208) |
-| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L232) |
-| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L237) |
-| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L256) |
-| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L271) |
-| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L285) |
-| function | `_file_proposals` | `(max_new=…)` | Filer reviewbare proposals for åbne fund med score≥threshold (ikke allerede filed, | [src](../../../core/services/central_instrument.py#L320) |
-| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L356) |
 

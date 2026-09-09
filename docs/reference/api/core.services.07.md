@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/chronicle_consolidation_signal_tracking.py`
+_Chronicle/consolidation signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_chronicle_consolidation_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L51) |
+| function | `refresh_runtime_chronicle_consolidation_signal_statuses` | `()` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L77) |
+| function | `build_runtime_chronicle_consolidation_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L81) |
+| function | `_extract_chronicle_consolidation_candidates` | `(*, run_id)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L85) |
+| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L243) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L262) |
+| function | `_chronicle_consolidation_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L300) |
+| function | `_chronicle_type` | `(*, cadence_state, promotion_type, has_remembered_fact)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L319) |
+| function | `_chronicle_weight` | `(*, cadence_state, has_promotion, contradiction_pressure, outcome_status)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L334) |
+| function | `_focus_text` | `(outcome, cadence, *, domain_key)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L348) |
+| function | `_summary_line` | `(*, chronicle_type, chronicle_focus)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L364) |
+| function | `_grounding_mode` | `(*, has_private_state, has_temporal_promotion, has_remembered_fact, has_executive_contradiction)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L370) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L389) |
+| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L396) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L403) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L409) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L421) |
+| function | `_value` | `(*values, default=…)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L432) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/chronicle_consolidation_signal_tracking.py#L440) |
+
 ## `core/services/chronicle_engine.py`
 _Chronicle Engine — Jarvis' narrative autobiography that grows over time._
 
@@ -703,21 +728,4 @@ _Context window manager — strategies for keeping prompts within budget._
 | function | `context_window_section` | `()` | Awareness-section warning when degradation detected. | [src](../../../core/services/context_window_manager.py#L253) |
 | function | `_exec_context_pressure` | `(args)` | — | [src](../../../core/services/context_window_manager.py#L269) |
 | function | `_exec_manage_context_window` | `(args)` | Apply a chosen context-management strategy. | [src](../../../core/services/context_window_manager.py#L277) |
-
-## `core/services/continuity.py`
-_Continuity Kernel — state capsule + live update + graded wake-up._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/continuity.py#L87) |
-| function | `_ensure_dir` | `()` | — | [src](../../../core/services/continuity.py#L91) |
-| function | `_truncate_capsule` | `(data)` | Ensure capsule stays under _MAX_CAPSULE_SIZE_BYTES. | [src](../../../core/services/continuity.py#L95) |
-| function | `capture_state` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, workspace_id=…, session_id=…)` | Build a complete state capsule dict from partial inputs. | [src](../../../core/services/continuity.py#L129) |
-| function | `write_capsule` | `(capsule)` | Write capsule to disk with rotation. | [src](../../../core/services/continuity.py#L210) |
-| function | `sync_capsule_mood` | `()` | Sync capsule mood from mood_oscillator's live state. | [src](../../../core/services/continuity.py#L228) |
-| function | `read_capsule` | `()` | Read the latest capsule from disk. | [src](../../../core/services/continuity.py#L278) |
-| function | `get_wake_tier` | `(hours_since_last)` | Determine wake tier based on time since last session. | [src](../../../core/services/continuity.py#L296) |
-| function | `build_conversation_continuity` | `(*, limit=…)` | Build a 'hvad talte vi om' block from recent session data. | [src](../../../core/services/continuity.py#L308) |
-| function | `build_wake_up_block` | `(capsule=…)` | Build the wake-up block for prompt injection. | [src](../../../core/services/continuity.py#L402) |
-| function | `live_update_after_turn` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, session_id=…)` | Call this after every visible turn to persist the state capsule. | [src](../../../core/services/continuity.py#L519) |
 

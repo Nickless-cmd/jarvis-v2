@@ -551,6 +551,13 @@ _Autonome sessioner — rotér pr. oprindelse+dag, og gør historien synlig._
 | function | `_origin_of_session` | `(session_id)` | Udled oprindelse fra et ``auto-{origin}-{dato}``-id. | [src](../../../core/services/autonomous_sessions.py#L63) |
 | function | `build_autonomous_history_surface` | `(*, days=…, per_origin_limit=…)` | Projicér den autonome historie for owner-visning (§24.4-sikker). | [src](../../../core/services/autonomous_sessions.py#L73) |
 
+## `core/services/autonomous_stream_run.py`
+_Server-authoritative streaming lifecycle for autonomous visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start_autonomous_stream_run` | `(message, *, session_id, origin=…)` | Start autonomous work and relay its v2 frames through ``run_event_log``. | [src](../../../core/services/autonomous_stream_run.py#L5) |
+
 ## `core/services/autonomous_supervisor.py`
 _Autonom run-supervision (#3) — Centralen følger HVERT autonomt run, korrelerer det på tværs_
 
@@ -601,24 +608,4 @@ _Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9).
 | function | `build_weekly_summary` | `()` | Ugens stilhed i én linje — "" når han ikke har tiet nævneværdigt. | [src](../../../core/services/autonomy_budget.py#L142) |
 | function | `run_weekly_review` | `(*, force=…, now=…)` | Ugentligt: læg stilheds-resuméet i den proaktive kø og nulstil tælleren. | [src](../../../core/services/autonomy_budget.py#L161) |
 | function | `build_autonomy_budget_surface` | `()` | — | [src](../../../core/services/autonomy_budget.py#L190) |
-
-## `core/services/autonomy_pressure_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_autonomy_pressure_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L60) |
-| function | `refresh_runtime_autonomy_pressure_signal_statuses` | `()` | Mark signals as stale based on multiple criteria. | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L83) |
-| function | `retire_autonomy_pressure_signal` | `(signal_id, *, reason=…)` | Explicitly retire/close an autonomy pressure signal. | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L143) |
-| function | `build_runtime_autonomy_pressure_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L170) |
-| function | `_extract_autonomy_pressure_candidates` | `()` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L213) |
-| function | `_persist_autonomy_pressure_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L549) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L613) |
-| function | `_candidate` | `(*, pressure_type, pressure_state, weight, confidence, title, summary, rationale, source_anchor, evidence_summary, support_summary, support_count, session_count, status_reason)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L645) |
-| function | `_source_anchor` | `(surface, *, fallback)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L684) |
-| function | `_question_continuity_support` | `(*, relation, meaning, witness, chronicle, attachment, loyalty)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L693) |
-| function | `_initiative_loop_question_support` | `(*, open_loops, initiative, regulation, awareness, witness, chronicle, attachment, loyalty)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L734) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L826) |
-| function | `_find_support_value` | `(support_summary, key, default)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L835) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L843) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L855) |
 

@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dream_adoption_candidate_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_dream_adoption_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L32) |
+| function | `refresh_runtime_dream_adoption_candidate_statuses` | `()` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L54) |
+| function | `build_runtime_dream_adoption_candidate_surface` | `(*, limit=…)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L85) |
+| function | `_extract_dream_adoption_candidates` | `()` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L114) |
+| function | `_persist_dream_adoption_candidates` | `(*, candidates, session_id, run_id)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L186) |
+| function | `_build_adoption_snapshots` | `()` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L260) |
+| function | `_with_runtime_view` | `(item, candidate)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L308) |
+| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L319) |
+| function | `_build_candidate_type` | `(*, item, snapshot)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L332) |
+| function | `_build_candidate_status` | `(*, candidate_type, hypothesis_status, cadence_state)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L348) |
+| function | `_build_adoption_confidence` | `(*, candidate_type, snapshot)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L356) |
+| function | `_build_adoption_reason` | `(*, candidate_type, hypothesis_type, adoption_confidence)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L364) |
+| function | `_build_adoption_anchor` | `(*, snapshot)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L372) |
+| function | `_build_status_reason` | `(*, candidate_type)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L389) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L397) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L406) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L411) |
+| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L416) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L421) |
+| function | `_hypothesis_type_from_candidate_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L426) |
+| function | `_adoption_confidence_from_summary` | `(summary)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L431) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L440) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L445) |
+| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L455) |
+
 ## `core/services/dream_articulation.py`
 _Bounded dream articulation light._
 
@@ -662,16 +691,4 @@ _Hvor står jeg, og hvordan ser træet ud? — miljø-blok pr. tur._
 | function | `_husk_vist_hash` | `(kort_hash)` | — | [src](../../../core/services/env_block.py#L98) |
 | function | `vist_hash` | `()` | Den commit-hash vi selv har vist ham i env-blokken. Tom hvis ingen. | [src](../../../core/services/env_block.py#L108) |
 | function | `render_env_block` | `(cwd=…)` | Én kort blok til halen. Tom streng når slukket eller intet kunne læses. | [src](../../../core/services/env_block.py#L117) |
-
-## `core/services/epistemic_pragmatic.py`
-_Epistemic/Pragmatic Balance — action-mode modulation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ActionMode` | `` | Current epistemic/pragmatic balance. | [src](../../../core/services/epistemic_pragmatic.py#L42) |
-| function | `compute_epistemic_pragmatic` | `()` | Compute current epistemic/pragmatic balance. | [src](../../../core/services/epistemic_pragmatic.py#L73) |
-| function | `_mode_from_confidence` | `(confidence)` | Fallback: determine mode from confidence alone (no pressures). | [src](../../../core/services/epistemic_pragmatic.py#L199) |
-| function | `get_mode_line` | `()` | Convenience: compute mode and return prompt-ready string. | [src](../../../core/services/epistemic_pragmatic.py#L227) |
-| function | `get_mode_detail` | `()` | Return full mode state for MC transparency. | [src](../../../core/services/epistemic_pragmatic.py#L239) |
-| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/epistemic_pragmatic.py#L257) |
 

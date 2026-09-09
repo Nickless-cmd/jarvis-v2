@@ -119,7 +119,21 @@ def note_claim(approval_id: str, *, tool_name: str, arguments: dict[str, Any] | 
     if not live():
         return
     try:
-        from core.runtime.db_approval_bridge import ApprovalRefused, claim
+        from core.runtime.db_approval_bridge import ApprovalRefused, claim, state
+
+        # En godkendelse der blev OPRETTET før skyggen blev tændt, har ingen
+        # post i broen. Uden dette tjek ville overtagelsen fejle med «ukendt
+        # godkendelse» og tælle som en uenighed — en uenighed skyggen SELV
+        # havde skabt.
+        #
+        # Det er ikke en detalje: de første målinger efter en tænding ville
+        # være lutter falske uenigheder, og så lærer man at ignorere signalet
+        # præcis når det begynder at virke.
+        if state(approval_id) is None:
+            _taellere["sprunget_over"] += 1
+            _gem()
+            return
+
         try:
             claim(approval_id, tool_name=tool_name, arguments=arguments)
             bro_tillod, grund = True, ""

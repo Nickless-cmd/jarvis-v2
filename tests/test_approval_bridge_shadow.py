@@ -113,6 +113,8 @@ def test_en_doed_bro_kaster_ikke(taendt, aid, monkeypatch):
 
 
 def test_en_doed_bro_vaelter_ikke_overtagelsen(taendt, aid, monkeypatch):
+    # godkendelsen SKAL findes, ellers springer skyggen over foer den naar claim
+    S.note_requested(aid, tool_name="bash", arguments=ARGS)
     monkeypatch.setattr(B, "claim",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
     S.note_claim(aid, tool_name="bash", arguments=ARGS, legacy_allowed=True)
@@ -131,3 +133,20 @@ def test_ingen_af_kaldene_returnerer_noget_nogen_kan_handle_paa(taendt, aid):
 def test_taellerne_kan_laeses_fra_en_anden_proces(taendt, aid):
     S.note_requested(aid, tool_name="bash", arguments=ARGS)
     assert (S.taellere_fra_cache() or {}).get("registreret") == 1
+
+
+def test_en_godkendelse_fra_FOER_taendingen_er_ikke_en_uenighed(taendt, aid):
+    """De første målinger efter en tænding ville ellers være lutter falske
+    uenigheder — og så lærer man at ignorere signalet præcis når det begynder
+    at virke."""
+    # ingen note_requested: godkendelsen blev oprettet foer skyggen var taendt
+    S.note_claim(aid, tool_name="bash", arguments=ARGS, legacy_allowed=True)
+    t = S.taellere()
+    assert t["uenige"] == 0 and t["sprunget_over"] == 1
+
+
+def test_en_KENDT_godkendelse_maales_stadig(taendt, aid):
+    S.note_requested(aid, tool_name="bash", arguments=ARGS)
+    S.note_decided(aid, approved=True)
+    S.note_claim(aid, tool_name="bash", arguments=ARGS, legacy_allowed=True)
+    assert S.taellere()["enige"] == 1

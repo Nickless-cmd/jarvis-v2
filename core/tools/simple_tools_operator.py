@@ -375,12 +375,21 @@ def _exec_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
             pass
     user_id = _operator_user_id(args)
     from core.tools.operator_tools import operator_write_file_async
-    out = _run_operator_async(
-        lambda: operator_write_file_async(
-            path=path, content=str(content), user_id=user_id, timeout_s=30.0,
-        ),
-        tool_name="operator_write_file",
-    )
+    # DURABEL TILSTAND (Fase 3, K3). Skrivningen sker i EN ANDEN PROCES over
+    # broen, saa et nedbrud her efterlader et aegte ukendt udfald: filen kan
+    # vaere skrevet uden at nogen paa denne side ved det.
+    from core.services.invocation_record import markaer_mislykket, recorded
+    with recorded("operator_write_file", {"path": path},
+                  session_id=str(args.get("_runtime_session_id")
+                                 or args.get("_session_id") or "")) as _iid:
+        out = _run_operator_async(
+            lambda: operator_write_file_async(
+                path=path, content=str(content), user_id=user_id, timeout_s=30.0,
+            ),
+            tool_name="operator_write_file",
+        )
+        if not (isinstance(out, dict) and out.get("status") == "ok"):
+            markaer_mislykket(_iid)
     if isinstance(out, dict) and out.get("status") == "ok":
         try:
             from core.services.read_before_write_guard import (
@@ -444,17 +453,25 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         _rapporter_gate_svigt("operator_edit_file", path, _gate_exc)
     user_id = _operator_user_id(args)
     from core.tools.operator_tools import operator_edit_file_async
-    out = _run_operator_async(
-        lambda: operator_edit_file_async(
-            path=path,
-            old_string=str(old_string),
-            new_string=str(new_string),
-            replace_all=bool(args.get("replace_all", False)),
-            user_id=user_id,
-            timeout_s=30.0,
-        ),
-        tool_name="operator_edit_file",
-    )
+    # DURABEL TILSTAND (Fase 3, K3) — samme grund som i skrivningen, men
+    # skarpere: en delvis edit kan ikke efterproeves ved at se om filen findes.
+    from core.services.invocation_record import markaer_mislykket, recorded
+    with recorded("operator_edit_file", {"path": path},
+                  session_id=str(args.get("_runtime_session_id")
+                                 or args.get("_session_id") or "")) as _iid:
+        out = _run_operator_async(
+            lambda: operator_edit_file_async(
+                path=path,
+                old_string=str(old_string),
+                new_string=str(new_string),
+                replace_all=bool(args.get("replace_all", False)),
+                user_id=user_id,
+                timeout_s=30.0,
+            ),
+            tool_name="operator_edit_file",
+        )
+        if not (isinstance(out, dict) and out.get("status") == "ok"):
+            markaer_mislykket(_iid)
     # Phase 2/3: record the edit + attach session summary so the LLM
     # sees the running tally without us building a UI sidebar.
     if isinstance(out, dict) and out.get("status") == "ok":

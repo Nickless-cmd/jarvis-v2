@@ -220,3 +220,58 @@ def test_settle_virker_kun_fra_dispatching(aid):
     B.claim(aid, tool_name="bash", arguments=ARGS)
     assert B.settle(aid, ok=True) is True
     assert B.settle(aid, ok=True) is False        # kun én gang
+
+
+# ── K3: invokationer UDEN godkendelse ────────────────────────────────────
+
+def test_en_auto_godkendt_skrivning_registreres(aid):
+    """Auto-godkendte kald der stadig ÆNDRER noget havde ellers ingen post
+    overhovedet, og et nedbrud dér efterlod en ægte ukendt tilstand."""
+    B.prepare(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+    assert B.state(aid)["state"] == B.PREPARED
+
+
+def test_den_kan_overtages_UDEN_en_beslutning(aid):
+    """Samme atomiske overtagelse — kun beslutnings-skridtet springes over."""
+    B.prepare(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+    c = B.claim(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+    assert c["state"] == B.DISPATCHING
+
+
+def test_ogsaa_her_gaelder_den_EN_gang(aid):
+    B.prepare(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+    B.claim(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+    with pytest.raises(ApprovalRefused, match="allerede overtaget"):
+        B.claim(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+
+
+def test_ogsaa_her_er_digesten_bindende(aid):
+    B.prepare(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+    with pytest.raises(ApprovalRefused, match="ANDET kald"):
+        B.claim(aid, tool_name="write_file", arguments={"path": "/etc/passwd"})
+
+
+def test_doede_FOER_afsendelse_ogsaa_uden_godkendelse(aid):
+    B.prepare(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+    assert B.abandon(aid) == B.ABORTED_BEFORE_DISPATCH
+
+
+def test_doede_UNDER_afsendelse_ogsaa_uden_godkendelse(aid):
+    """Det er hele grunden til at registrere dem: at kunne skelne «skrivningen
+    skete aldrig» fra «vi ved det ikke»."""
+    B.prepare(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+    B.claim(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+    assert B.abandon(aid) == B.OUTCOME_UNKNOWN
+
+
+def test_en_PREPARED_kan_ikke_besluttes(aid):
+    """Der er ingen at spørge — den er auto-godkendt."""
+    B.prepare(aid, tool_name="write_file", arguments={"path": "/w/x.py"})
+    assert B.decide(aid, approved=True) is False
+
+
+def test_udloeb_daekker_ogsaa_prepared(aid):
+    B.prepare(aid, tool_name="write_file", arguments={"path": "/w/x.py"}, ttl_s=1)
+    import time; time.sleep(1.2)
+    assert B.expire_stale() >= 1
+    assert B.state(aid)["state"] == B.EXPIRED

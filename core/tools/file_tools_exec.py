@@ -164,8 +164,16 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "guard_blocked", "error": _ec.reason}
 
     # Auto-approved (workspace files)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    _ws_write_text(target, content)
+    #
+    # DURABEL TILSTAND (Fase 3, K3): ingen bliver spurgt om denne skrivning,
+    # men den ÆNDRER noget. Uden posten kan et nedbrud midt i ikke skelnes fra
+    # en skrivning der aldrig skete. `recorded` kaster aldrig — kaldet koerer
+    # uanset — men den tier heller ikke.
+    from core.services.invocation_record import recorded
+    with recorded("write_file", {"path": str(target)},
+                  session_id=str(_session_id or "")):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _ws_write_text(target, content)
     result = {"status": "ok", "path": str(target), "bytes_written": len(content.encode("utf-8"))}
     if redirected_from:
         result["redirected_from"] = redirected_from
@@ -240,7 +248,14 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
 
     replacements = count if replace_all else 1
     new_content = content.replace(old_text, new_text, -1 if replace_all else 1)
-    _ws_write_text(target, new_content)
+    # DURABEL TILSTAND (Fase 3, K3) — samme grund som i skrivningen ovenfor.
+    # En edit er endda vaerre at miste: den er en DELVIS aendring, saa «skete
+    # den?» kan ikke besvares ved at kigge paa om filen findes.
+    from core.services.invocation_record import recorded
+    with recorded("edit_file", {"path": str(target), "replacements": replacements},
+                  session_id=str(args.get("_runtime_session_id")
+                                 or args.get("_session_id") or "")):
+        _ws_write_text(target, new_content)
     try:
         from core.services.self_mutation_lineage import record_self_mutation
         record_self_mutation(target_path=str(target), change_type="edit")

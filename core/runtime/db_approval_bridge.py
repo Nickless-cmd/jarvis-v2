@@ -63,6 +63,10 @@ from core.runtime.db_core import connect
 logger = logging.getLogger(__name__)
 
 # ── tilstande ────────────────────────────────────────────────────────────
+#: En invokation der er FORBEREDT uden at kraeve godkendelse. Auto-godkendte
+#: kald der stadig AENDRER noget — fx en workspace-skrivning — havde ellers
+#: ingen post overhovedet, og et nedbrud dér efterlod en aegte ukendt tilstand.
+PREPARED = "prepared"
 PENDING = "pending"
 APPROVED = "approved"
 DENIED = "denied"
@@ -109,6 +113,10 @@ def _ensure(conn: sqlite3.Connection) -> None:
         """
         CREATE TABLE IF NOT EXISTS approval_claims (
             approval_id       TEXT PRIMARY KEY,
+            -- 'approval' = et menneske skal sige ja. 'auto' = kaldet aendrer
+            -- noget, men er auto-godkendt; det registreres for at kunne skelne
+            -- «skete aldrig» fra «udfaldet er ukendt» efter et nedbrud.
+            kind              TEXT NOT NULL DEFAULT 'approval',
             tool_name         TEXT NOT NULL,
             invocation_digest TEXT NOT NULL,
             state             TEXT NOT NULL,
@@ -154,6 +162,39 @@ def request(approval_id: str, *, tool_name: str, arguments: dict[str, Any] | Non
     return d
 
 
+def prepare(invocation_id: str, *, tool_name: str,
+            arguments: dict[str, Any] | None, run_id: str = "",
+            session_id: str = "", ttl_s: int = DEFAULT_TTL_S) -> str:
+    """Registrér en invokation der IKKE kraever godkendelse.
+
+    Samme tilstandsmaskine, samme atomiske overtagelse — kun beslutnings-
+    skridtet springes over. Det er dét der giver K3 («prepared commits before
+    dispatch») for de kald ingen bliver spurgt om.
+
+    MAALT 9/9-2026: 1.086 vaerktoejskald i doegnet, hvoraf de fleste er
+    LAESNINGER. Derfor registreres kun kald der faktisk aendrer noget — en
+    skrivning pr. `ls` ville vaere den samme fejl som en traad pr.
+    foelelses-signal.
+    """
+    iid = str(invocation_id or "").strip()
+    if not iid:
+        raise ValueError("invocation_id mangler")
+    d = invocation_digest(tool_name, arguments)
+    nu = datetime.now(UTC)
+    with connect() as conn:
+        _ensure(conn)
+        conn.execute(
+            "INSERT INTO approval_claims (approval_id, kind, tool_name, "
+            "invocation_digest, state, run_id, session_id, created_at, expires_at) "
+            "VALUES (?, 'auto', ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(approval_id) DO NOTHING",
+            (iid, str(tool_name or ""), d, PREPARED, str(run_id or ""),
+             str(session_id or ""), nu.isoformat(),
+             (nu + timedelta(seconds=max(1, int(ttl_s)))).isoformat()),
+        )
+    return d
+
+
 def decide(approval_id: str, *, approved: bool, detail: str = "") -> bool:
     """Mennesket har klikket. Flytter `pending` → `approved`/`denied`.
 
@@ -187,9 +228,9 @@ def claim(approval_id: str, *, tool_name: str,
         # ikke noget mellem, og derfor kan to arbejdere ikke begge vinde.
         cur = conn.execute(
             "UPDATE approval_claims SET state = ?, claimed_at = ? "
-            "WHERE approval_id = ? AND state = ? AND invocation_digest = ? "
+            "WHERE approval_id = ? AND state IN (?, ?) AND invocation_digest = ? "
             "AND expires_at > ?",
-            (DISPATCHING, nu, aid, APPROVED, d, nu),
+            (DISPATCHING, nu, aid, APPROVED, PREPARED, d, nu),
         )
         if cur.rowcount == 1:
             return {"approval_id": aid, "state": DISPATCHING, "digest": d,
@@ -250,6 +291,7 @@ def abandon(approval_id: str, *, detail: str = "") -> str:
         tilstand = str(row[0])
         if tilstand in TERMINALE:
             return tilstand
+        # PREPARED og APPROVED betyder begge at vi ALDRIG naaede at afsende.
         ny = OUTCOME_UNKNOWN if tilstand == DISPATCHING else ABORTED_BEFORE_DISPATCH
         conn.execute(
             "UPDATE approval_claims SET state = ?, settled_at = ?, detail = ? "
@@ -283,6 +325,6 @@ def expire_stale(now: datetime | None = None) -> int:
         _ensure(conn)
         cur = conn.execute(
             "UPDATE approval_claims SET state = ?, settled_at = ? "
-            "WHERE state IN (?, ?) AND expires_at <= ?",
-            (EXPIRED, nu, PENDING, APPROVED, nu))
+            "WHERE state IN (?, ?, ?) AND expires_at <= ?",
+            (EXPIRED, nu, PENDING, APPROVED, PREPARED, nu))
         return int(cur.rowcount)

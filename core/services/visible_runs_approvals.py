@@ -59,6 +59,13 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     except Exception:
         pass
 
+    # Skygge: fortæl broen hvad mennesket klikkede. Ændrer intet.
+    try:
+        from core.services.approval_bridge_shadow import note_decided
+        note_decided(approval_id, approved=bool(approved))
+    except Exception:
+        pass
+
     if not approved:
         _vr._set_visible_approval_state(
             approval_id,
@@ -131,6 +138,20 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     # Uden det rammer en destruktiv kommando sin egen gate igen og svarer
     # approval_needed paa ny — i ring. Autonome runs kalder samme funktion UDEN
     # flaget og skal blive ved med at blive stoppet.
+    # Skygge: ville broen have tilladt PRÆCIS dette kald?
+    #
+    # Her, lige før udbyder-grænsen krydses, er stedet spec'en peger på. Broens
+    # svar afgør ingenting endnu — men den forsøger den ægte overtagelse med de
+    # ægte argumenter, og dét er den eneste måde at opdage om digesten
+    # overlever den virkelige vej: fra værktøjets svar, gennem en dict i
+    # hukommelsen, gennem delt tilstand mellem processer, og tilbage.
+    try:
+        from core.services.approval_bridge_shadow import note_claim
+        note_claim(approval_id, tool_name=pending["tool_name"],
+                   arguments=pending["arguments"], legacy_allowed=True)
+    except Exception:
+        pass
+
     result = execute_tool_force(
         pending["tool_name"], pending["arguments"], owner_approved=True,
     )

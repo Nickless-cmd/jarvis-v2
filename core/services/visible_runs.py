@@ -2104,6 +2104,18 @@ async def _stream_visible_run(
                         # already wrote role=tool to chat (chat_persisted flag
                         # in approval state).
                         sr["approval_id"] = approval_id
+                        # Skygge: registrér kaldet i godkendelses-broen, så
+                        # digesten over (værktøj, argumenter) gemmes SAMTIDIG
+                        # med at kortet vises. Ændrer intet — se
+                        # `approval_bridge_shadow`.
+                        try:
+                            from core.services.approval_bridge_shadow import note_requested
+                            note_requested(approval_id, tool_name=sr["tool_name"],
+                                           arguments=sr["arguments"],
+                                           run_id=run.run_id or "",
+                                           session_id=run.session_id or "")
+                        except Exception:
+                            pass
                         _persist_pending_approvals()
                         _set_visible_approval_state(approval_id, {
                             "approval_id": approval_id,
@@ -4348,6 +4360,18 @@ async def _stream_visible_run(
                             # Tag the sr so the second-pass agentic loop's
                             # persistence can later check chat_persisted flag.
                             _a_sr["approval_id"] = _a_apid
+                            # Skygge — SAMME kobling som paa det foerste
+                            # oprettelses-sted. Der er TO veje til et
+                            # godkendelses-kort, og at daekke kun den ene ville
+                            # give en maaling der ser hel ud og er halv.
+                            try:
+                                from core.services.approval_bridge_shadow import note_requested
+                                note_requested(_a_apid, tool_name=_a_sr["tool_name"],
+                                               arguments=_a_sr["arguments"],
+                                               run_id=run.run_id or "",
+                                               session_id=run.session_id or "")
+                            except Exception:
+                                pass
                             _persist_pending_approvals()
                             _set_visible_approval_state(_a_apid, {
                                 "approval_id": _a_apid,

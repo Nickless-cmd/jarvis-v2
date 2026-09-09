@@ -158,6 +158,7 @@ _Skygge for godkendelses-broen: ville den have sagt det samme?_
 | function | `note_requested` | `(approval_id, *, tool_name, arguments, run_id=…, session_id=…)` | Godkendelsen er bedt om. Registrér den i broen — ændrer intet. | [src](../../../core/services/approval_bridge_shadow.py#L80) |
 | function | `note_decided` | `(approval_id, *, approved)` | Mennesket har klikket. | [src](../../../core/services/approval_bridge_shadow.py#L98) |
 | function | `note_claim` | `(approval_id, *, tool_name, arguments, legacy_allowed)` | Ville broen have tilladt det samme som den kørende kode? | [src](../../../core/services/approval_bridge_shadow.py#L113) |
+| function | `note_settled` | `(approval_id, *, ok)` | Luk den post skyggen selv aabnede. | [src](../../../core/services/approval_bridge_shadow.py#L158) |
 
 ## `core/services/approval_feedback_subscriber.py`
 

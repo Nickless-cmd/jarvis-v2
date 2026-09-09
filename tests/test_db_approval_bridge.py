@@ -275,3 +275,29 @@ def test_udloeb_daekker_ogsaa_prepared(aid):
     import time; time.sleep(1.2)
     assert B.expire_stale() >= 1
     assert B.state(aid)["state"] == B.EXPIRED
+
+
+def test_kind_tilfoejes_til_en_tabel_der_allerede_findes(isolated_runtime):
+    """CREATE TABLE IF NOT EXISTS tilfoejer ALDRIG en soejle.
+
+    Set paa CT105: efter deploy stod produktionstabellen uden `kind`, og
+    foerste auto-registrering ville have fejlet — inde i en try/except der
+    loeb videre. Migrationen skal koere, ikke skemaet.
+    """
+    from core.runtime.db_core import connect
+    with connect() as conn:
+        conn.execute("DROP TABLE IF EXISTS approval_claims")
+        conn.execute("""CREATE TABLE approval_claims (
+            approval_id TEXT PRIMARY KEY, tool_name TEXT NOT NULL,
+            invocation_digest TEXT NOT NULL, state TEXT NOT NULL,
+            run_id TEXT NOT NULL DEFAULT '', session_id TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+            decided_at TEXT, claimed_at TEXT, settled_at TEXT,
+            detail TEXT NOT NULL DEFAULT '')""")
+
+    B.prepare("inv-migreret", tool_name="write_file", arguments={"path": "/w/x"})
+
+    with connect() as conn:
+        soejler = {r[1] for r in conn.execute("PRAGMA table_info(approval_claims)")}
+    assert "kind" in soejler
+    assert B.state("inv-migreret")["state"] == B.PREPARED

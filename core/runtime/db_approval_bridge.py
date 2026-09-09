@@ -133,6 +133,17 @@ def _ensure(conn: sqlite3.Connection) -> None:
     )
     conn.execute("CREATE INDEX IF NOT EXISTS ix_approval_claims_state "
                  "ON approval_claims(state)")
+    # `CREATE TABLE IF NOT EXISTS` tilfoejer ALDRIG en soejle til en tabel der
+    # allerede findes. Set paa CT105: tabellen var uden `kind` efter deploy,
+    # og INSERT'en ville have fejlet paa foerste auto-registrering — i en
+    # try/except der loeb videre. Migrationen skal staa her, ikke i skemaet.
+    try:
+        soejler = {r[1] for r in conn.execute("PRAGMA table_info(approval_claims)")}
+        if "kind" not in soejler:
+            conn.execute("ALTER TABLE approval_claims ADD COLUMN "
+                         "kind TEXT NOT NULL DEFAULT 'approval'")
+    except sqlite3.Error:
+        pass
 
 
 def _nu() -> str:

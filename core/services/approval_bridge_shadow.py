@@ -153,3 +153,25 @@ def note_claim(approval_id: str, *, tool_name: str, arguments: dict[str, Any] | 
         _taellere["fejl"] += 1
         logger.warning("approval-bridge-shadow: kunne ikke sammenligne %s",
                        approval_id, exc_info=True)
+
+
+def note_settled(approval_id: str, *, ok: bool) -> None:
+    """Luk den post skyggen selv aabnede.
+
+    Set paa CT105 efter foerste taending: seks overtagelser stod som
+    `dispatching` og blev aldrig lukket. Det er ikke kosmetik — `dispatching`
+    BETYDER «udfaldet er ukendt», og `expire_stale` roerer den aldrig netop
+    derfor. Uden denne lukning ville hver eneste skygge-maaling se ud som et
+    nedbrud, og saa er tilstanden ubrugelig praecis naar broen skal haandhaeve.
+    """
+    if not live():
+        return
+    try:
+        from core.runtime.db_approval_bridge import settle, state
+        if state(approval_id) is None:
+            return
+        settle(approval_id, ok=ok)
+    except Exception:
+        _taellere["fejl"] += 1
+        logger.warning("approval-bridge-shadow: kunne ikke lukke %s",
+                       approval_id, exc_info=True)

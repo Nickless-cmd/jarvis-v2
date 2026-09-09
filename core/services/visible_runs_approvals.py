@@ -152,9 +152,25 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     except Exception:
         pass
 
-    result = execute_tool_force(
-        pending["tool_name"], pending["arguments"], owner_approved=True,
-    )
+    try:
+        result = execute_tool_force(
+            pending["tool_name"], pending["arguments"], owner_approved=True,
+        )
+    except Exception:
+        # Skyggen aabnede posten foer kaldet; den skal lukkes ogsaa naar det
+        # gik galt, ellers staar den som «udfald ukendt» for evigt.
+        try:
+            from core.services.approval_bridge_shadow import note_settled
+            note_settled(approval_id, ok=False)
+        except Exception:
+            pass
+        raise
+    try:
+        from core.services.approval_bridge_shadow import note_settled
+        note_settled(approval_id, ok=not (isinstance(result, dict)
+                                          and result.get("status") == "error"))
+    except Exception:
+        pass
     result_text = format_tool_result_for_model(pending["tool_name"], result)
 
     # 2026-05-24 (Claude): persist tool result as role=tool in chat

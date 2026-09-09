@@ -150,3 +150,32 @@ def test_en_KENDT_godkendelse_maales_stadig(taendt, aid):
     S.note_decided(aid, approved=True)
     S.note_claim(aid, tool_name="bash", arguments=ARGS, legacy_allowed=True)
     assert S.taellere()["enige"] == 1
+
+
+# ── posten skyggen selv aabnede, skal ogsaa lukkes ───────────────────────
+
+def test_note_settled_lukker_en_overtagelse(taendt, aid):
+    """Set paa CT105: seks overtagelser stod som `dispatching` og blev aldrig
+    lukket. `dispatching` BETYDER «udfaldet er ukendt», og `expire_stale`
+    roerer den aldrig netop derfor — saa hver maaling saa ud som et nedbrud."""
+    from core.runtime import db_approval_bridge as B
+    from core.services.approval_bridge_shadow import (
+        note_claim, note_decided, note_requested, note_settled,
+    )
+    a, args = aid, {"command": "ls"}
+    note_requested(a, tool_name="bash", arguments=args)
+    note_decided(a, approved=True)
+    note_claim(a, tool_name="bash", arguments=args, legacy_allowed=True)
+    assert B.state(a)["state"] == B.DISPATCHING
+
+    note_settled(a, ok=True)
+    assert B.state(a)["state"] == B.COMPLETED
+
+
+def test_note_settled_paa_en_ukendt_er_stille(taendt):
+    """En godkendelse fra foer taendingen har ingen post. At lukke den er ikke
+    en fejl — der er bare intet at lukke."""
+    from core.services.approval_bridge_shadow import note_settled, taellere
+    foer = taellere()["fejl"]
+    note_settled("approval-findes-ikke", ok=True)
+    assert taellere()["fejl"] == foer

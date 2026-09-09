@@ -194,6 +194,32 @@ def _run_operator_async_impl(coro_fn, *, tool_name: str, timeout_s: float = 35.0
     return {"status": "ok", "result": holder.get("result")}
 
 
+
+def _rapporter_gate_svigt(vaerktoej: str, path: str, exc: BaseException) -> None:
+    """Sig højt at et gate-kald svigtede, og lad handlingen fortsætte.
+
+    Begge operator-redigeringsværktøjer havde `except Exception: pass` omkring
+    deres read-before-write-tjek. Et værn der fejler, blev dermed til et værn
+    der ikke fandtes — uden en linje nogen steder. Målt 9/9-2026.
+
+    Selv-sikker: rapporteringen må aldrig kunne vælte værktøjet den beskytter.
+    """
+    besked = (f"{vaerktoej}: read-before-write-gaten kastede for {path!r} → "
+              f"vaernet SPRUNGET OVER: {type(exc).__name__}: {exc}")
+    try:
+        import logging
+        logging.getLogger(__name__).warning("%s", besked)
+    except Exception:
+        pass
+    try:
+        from core.runtime.db_central_incidents import record_central_incident
+        record_central_incident(
+            cluster="execution", nerve="exec_operator", kind="fail_open",
+            severity="error", message=besked[:300], dedup=True,
+        )
+    except Exception:
+        pass
+
 def _exec_operator_read_file(args: dict[str, Any]) -> dict[str, Any]:
     path = str(args.get("path") or "").strip()
     if not path:
@@ -411,8 +437,11 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
                     "edite uden at have læst filen i denne session."
                 ),
             }
-    except Exception:
-        pass
+    except Exception as _gate_exc:
+        # Et SECURITY-værn der springes over, må ikke gøre det tavst.
+        # Retningen bevares (redigeringen fortsætter — at blokere på et blip
+        # ville kunne spærre harmløse ejer-handlinger), men det kan nu SES.
+        _rapporter_gate_svigt("operator_edit_file", path, _gate_exc)
     user_id = _operator_user_id(args)
     from core.tools.operator_tools import operator_edit_file_async
     out = _run_operator_async(
@@ -521,8 +550,8 @@ def _exec_operator_multi_edit(args: dict[str, Any]) -> dict[str, Any]:
                          "operator_multi_edit kan ikke edite uden at have læst "
                          "filen i denne session."),
             }
-    except Exception:
-        pass
+    except Exception as _gate_exc:
+        _rapporter_gate_svigt("operator_multi_edit", path, _gate_exc)
     user_id = _operator_user_id(args)
     from core.tools.operator_tools import operator_multi_edit_async
     out = _run_operator_async(

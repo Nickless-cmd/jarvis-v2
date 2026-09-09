@@ -541,21 +541,22 @@ _Execution-cluster gate 🔒 — én graderet SECURITY-gate for ALLE tool-eksekv
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_red` | `(nerve, reason, classification)` | — | [src](../../../core/services/gate_execution.py#L42) |
-| function | `_yellow` | `(nerve, classification)` | — | [src](../../../core/services/gate_execution.py#L47) |
-| function | `_green` | `(nerve, classification)` | — | [src](../../../core/services/gate_execution.py#L52) |
-| function | `execution_gate` | `(ctx)` | Én SECURITY-gate, dispatch på ctx['action']. Returnér ét graderet Verdict. | [src](../../../core/services/gate_execution.py#L58) |
-| class | `ExecCheck` | `` | — | [src](../../../core/services/gate_execution.py#L159) |
-| function | `_to_check` | `(v)` | — | [src](../../../core/services/gate_execution.py#L166) |
-| function | `_decide` | `(nerve, ctx)` | Route gennem Den Intelligente Central (SECURITY). Defense-in-depth: hvis central- | [src](../../../core/services/gate_execution.py#L182) |
-| function | `check_command` | `(command, session_id=…, *, blocked_only=…)` | — | [src](../../../core/services/gate_execution.py#L211) |
-| function | `check_file` | `(path, session_id=…, *, kind=…, blocked_only=…)` | — | [src](../../../core/services/gate_execution.py#L218) |
-| function | `check_workspace_trust` | `(tool_name)` | — | [src](../../../core/services/gate_execution.py#L225) |
-| function | `check_operator` | `(path, session_id=…, *, file_exists=…)` | — | [src](../../../core/services/gate_execution.py#L230) |
-| function | `check_upload` | `(path, *, block_on_unavailable=…)` | Malware-scan en uploadet fil GENNEM Centralen (SECURITY). .allowed=False ⇔ infected/ | [src](../../../core/services/gate_execution.py#L237) |
-| function | `_gate_repeat_key` | `(gate, subject)` | — | [src](../../../core/services/gate_execution.py#L271) |
-| function | `gate_observation` | `(check, *, gate, subject, remedy=…, status=…)` | Byg et IN-LOOP tool-resultat ud af en gate-dom — brugbart nok til selvkorrektion. | [src](../../../core/services/gate_execution.py#L277) |
-| function | `reset_gate_repeat_counts` | `()` | Nulstil gentagelses-tællere (tests + sessionsskift). | [src](../../../core/services/gate_execution.py#L349) |
+| function | `_red` | `(nerve, reason, classification)` | — | [src](../../../core/services/gate_execution.py#L46) |
+| function | `_yellow` | `(nerve, classification)` | — | [src](../../../core/services/gate_execution.py#L51) |
+| function | `_green` | `(nerve, classification)` | — | [src](../../../core/services/gate_execution.py#L56) |
+| function | `_rapporter_fail_open` | `(nerve, hvad, exc)` | En SECURITY-gate der fejler ÅBENT må aldrig gøre det tavst. | [src](../../../core/services/gate_execution.py#L62) |
+| function | `execution_gate` | `(ctx)` | Én SECURITY-gate, dispatch på ctx['action']. Returnér ét graderet Verdict. | [src](../../../core/services/gate_execution.py#L92) |
+| class | `ExecCheck` | `` | — | [src](../../../core/services/gate_execution.py#L193) |
+| function | `_to_check` | `(v)` | — | [src](../../../core/services/gate_execution.py#L200) |
+| function | `_decide` | `(nerve, ctx)` | Route gennem Den Intelligente Central (SECURITY). Defense-in-depth: hvis central- | [src](../../../core/services/gate_execution.py#L216) |
+| function | `check_command` | `(command, session_id=…, *, blocked_only=…)` | — | [src](../../../core/services/gate_execution.py#L245) |
+| function | `check_file` | `(path, session_id=…, *, kind=…, blocked_only=…)` | — | [src](../../../core/services/gate_execution.py#L252) |
+| function | `check_workspace_trust` | `(tool_name)` | — | [src](../../../core/services/gate_execution.py#L259) |
+| function | `check_operator` | `(path, session_id=…, *, file_exists=…)` | — | [src](../../../core/services/gate_execution.py#L264) |
+| function | `check_upload` | `(path, *, block_on_unavailable=…)` | Malware-scan en uploadet fil GENNEM Centralen (SECURITY). .allowed=False ⇔ infected/ | [src](../../../core/services/gate_execution.py#L271) |
+| function | `_gate_repeat_key` | `(gate, subject)` | — | [src](../../../core/services/gate_execution.py#L305) |
+| function | `gate_observation` | `(check, *, gate, subject, remedy=…, status=…)` | Byg et IN-LOOP tool-resultat ud af en gate-dom — brugbart nok til selvkorrektion. | [src](../../../core/services/gate_execution.py#L311) |
+| function | `reset_gate_repeat_counts` | `()` | Nulstil gentagelses-tællere (tests + sessionsskift). | [src](../../../core/services/gate_execution.py#L383) |
 
 ## `core/services/gate_kernel.py`
 _GateKernel — central orchestrator for alle gates (spec 2026-06-21)._

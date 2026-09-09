@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7132/14087 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7134/14089 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,14 +24,14 @@ Generated from source. 7132/14087 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 596 | 1100 | 54% |
-| `core.services` | 4733 | 9721 | 48% |
+| `core.services` | 4734 | 9722 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 430 | 906 | 47% |
+| `core.tools` | 431 | 907 | 47% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -1009,10 +1009,10 @@ Generated from source. 7132/14087 functions/methods documented (50%). The list b
 - `core/services/forgetting_curve.py` :: `build_forgetting_curve_surface` (L90)
 - `core/services/forgetting_engine.py` :: `is_fredet_path` (L64)
 - `core/services/forgetting_engine.py` :: `is_fredet_table` (L68)
-- `core/services/gate_execution.py` :: `check_command` (L211)
-- `core/services/gate_execution.py` :: `check_file` (L218)
-- `core/services/gate_execution.py` :: `check_operator` (L230)
-- `core/services/gate_execution.py` :: `check_workspace_trust` (L225)
+- `core/services/gate_execution.py` :: `check_command` (L245)
+- `core/services/gate_execution.py` :: `check_file` (L252)
+- `core/services/gate_execution.py` :: `check_operator` (L264)
+- `core/services/gate_execution.py` :: `check_workspace_trust` (L259)
 - `core/services/gate_kernel.py` :: `GateKernel.gates_for` (L120)
 - `core/services/gate_kernel.py` :: `GateKernel.register` (L112)
 - `core/services/gate_kernel.py` :: `Verdict.is_blocking` (L59)

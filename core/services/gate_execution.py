@@ -30,10 +30,14 @@ stedet for et tavst ``except: pass``. Det lukker observabilitets-hullet ("bugs i
 """
 from __future__ import annotations
 
+import logging
+
 from dataclasses import dataclass
 from typing import Any
 
 from core.services.gate_kernel import Decision, GateClass, Verdict
+
+logger = logging.getLogger(__name__)
 
 _SEC = GateClass.SECURITY
 
@@ -53,6 +57,36 @@ def _green(nerve: str, classification: str) -> Verdict:
     return Verdict(nerve, Decision.GREEN, str(classification), action="none", klass=_SEC,
                    evidence={"classification": classification})
 
+
+
+def _rapporter_fail_open(nerve: str, hvad: str, exc: BaseException) -> None:
+    """En SECURITY-gate der fejler ÅBENT må aldrig gøre det tavst.
+
+    Gatens egen docstring lover at et infra-blip «bevarer den tidligere
+    fail-open adfærd MEN er nu traced via Centralen i stedet for et tavst
+    ``except: pass``». Operator-grenen holdt ikke det løfte — den slugte
+    undtagelsen og returnerede GREEN uden spor. Målt 9/9-2026.
+
+    Retningen ændres IKKE her: at blokere på et blip ville kunne brick'e
+    harmløse ejer-handlinger, og dét er en politik-beslutning, ikke en
+    fejlrettelse. Men fra nu af kan man SE at værnet blev sprunget over.
+
+    Selv-sikker: hverken loggen eller incidenten må kunne vælte gaten.
+    """
+    besked = (f"{hvad} kastede → værn SPRUNGET OVER (fail-open): "
+              f"{type(exc).__name__}: {exc}")
+    try:
+        logger.warning("exec-gate fail-open [%s]: %s", nerve, besked)
+    except Exception:
+        pass
+    try:
+        from core.runtime.db_central_incidents import record_central_incident
+        record_central_incident(
+            cluster="execution", nerve=str(nerve or "exec"), kind="fail_open",
+            severity="error", message=besked[:300], dedup=True,
+        )
+    except Exception:
+        pass
 
 # ── den konsoliderede gate ───────────────────────────────────────────────
 def execution_gate(ctx: dict[str, Any]) -> Verdict:
@@ -132,8 +166,8 @@ def execution_gate(ctx: dict[str, Any]) -> Verdict:
                 path, session_id=session_id, file_exists=file_exists)
             if not ok:
                 return _red("exec_operator", reason, "guard_blocked")
-        except Exception:
-            pass
+        except Exception as exc:
+            _rapporter_fail_open("exec_operator", "read-before-write-værnet", exc)
         return _green("exec_operator", "auto")
 
     # ── upload-malware-scan (ClamAV) — A1: scanneren var bygget men UWIRET (uploads

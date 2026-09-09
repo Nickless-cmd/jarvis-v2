@@ -4850,24 +4850,6 @@ async def _stream_visible_run(
                     text_preview=followup_text[:140],
                     error=_outcome_state.error,
                 )
-
-                # Fase 2, skygge: siger den nye afregnings-kontrakt det SAMME
-                # som koden der har kørt i produktion? Sammenligner og logger —
-                # rører ikke runnet og kaster aldrig. Slukket medmindre nogen
-                # eksplicit har tændt `settlement/shadow`.
-                try:
-                    from core.services.settlement_shadow import observe as _obs_settle
-                    _obs_settle(
-                        run_id=str(run.run_id or ""),
-                        legacy_status=_outcome_state.status,
-                        legacy_error=_outcome_state.error,
-                        text=followup_text or "",
-                        emitted_prefix=visible_output_text or "",
-                        cancelled=_outcome_state.status == "cancelled",
-                        transport_error=_outcome_state.status == "failed",
-                    )
-                except Exception:
-                    pass
                 if _outcome_state.status == "completed":
                     try:
                         from core.services.agentic_checkpoints import clear_run as _clear_agentic_checkpoint
@@ -5619,7 +5601,34 @@ async def _stream_visible_run(
         import sys as _sys_exc
         _abort_exc = _sys_exc.exc_info()[0]
         _abort_kind = _abort_exc.__name__ if _abort_exc else "none-clean-exit"
-        if _outcome_state.downgrade_if_abandoned(_abort_kind):
+
+        # Fase 2, skygge: siger den nye afregnings-kontrakt det SAMME som koden
+        # der har kørt i produktion?
+        #
+        # HER, i finally, og ikke ved et af de ti terminale punkter: kaldet sad
+        # først inde i værktøjs-grenen og målte derfor kun kørsler med
+        # værktøjskald — et almindeligt tekstsvar nåede det aldrig. Dette er det
+        # ENE sted hver eneste kørsel passerer, uanset hvordan den endte.
+        #
+        # Nedgraderingen FØRST, så skyggen ser den ENDELIGE beslutning og ikke
+        # den optimistiske standard.
+        _blev_nedgraderet = _outcome_state.downgrade_if_abandoned(_abort_kind)
+
+        try:
+            from core.services.settlement_shadow import observe as _obs_settle
+            _obs_settle(
+                run_id=str(run.run_id or ""),
+                legacy_status=_outcome_state.status,
+                legacy_error=_outcome_state.error,
+                text=visible_output_text or "",
+                emitted_prefix=visible_output_text or "",
+                cancelled=_outcome_state.status == "cancelled",
+                transport_error=_outcome_state.status == "failed",
+            )
+        except Exception:
+            pass
+
+        if _blev_nedgraderet:
             # Central-nerve (loop-cluster): en afbrudt-midt-flugt run er nu synlig i jc —
             # så vi ser hvis abort-raten stiger igen (fx nyt tavst await-vindue). Self-safe.
             try:

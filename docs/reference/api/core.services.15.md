@@ -396,6 +396,18 @@ _Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
 | function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L65) |
 | function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L69) |
 
+## `core/services/model_pair_resolver.py`
+_Findes den valgte model hos den valgte udbyder?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `UnknownModelPair` | `` | Modellen findes ikke hos udbyderen — eller navnet er tvetydigt. | [src](../../../core/services/model_pair_resolver.py#L45) |
+| function | `_nulstil_cache_for_tests` | `()` | — | [src](../../../core/services/model_pair_resolver.py#L54) |
+| function | `_ollama_modeller` | `(base_url=…)` | Ollamas modelnavne. `None` betyder «kunne ikke spørge», ikke «tom». | [src](../../../core/services/model_pair_resolver.py#L58) |
+| function | `kandidater` | `(navne, model)` | Hvilke navne på listen kunne `model` mene? | [src](../../../core/services/model_pair_resolver.py#L80) |
+| function | `resolve` | `(provider, model, *, base_url=…)` | Returnér (provider, model) med modellen oversat hvis det er entydigt. | [src](../../../core/services/model_pair_resolver.py#L94) |
+| function | `resolve_safe` | `(provider, model, *, base_url=…)` | Som `resolve`, men returnerer fejlen frem for at kaste. | [src](../../../core/services/model_pair_resolver.py#L132) |
+
 ## `core/services/model_probe.py`
 _Prøv én model: kan den kaldes, kan den bruge værktøjer, kan den kode._
 
@@ -623,16 +635,4 @@ _Selv-registrerende nerve-arkitektur — Fase B + Fase C (spec 2026-07-13)._
 | method | `GovernedPluginLoader._audit` | `(self, event, name, tier, *, approver=…, errors=…)` | Bedste-indsats audit til Centralen. Self-safe — audit må aldrig vælte loaderen. | [src](../../../core/services/nerve_registry.py#L684) |
 | function | `loader` | `()` | — | [src](../../../core/services/nerve_registry.py#L704) |
 | function | `seed_known_nerves` | `(*, now=…)` | Registrér de par EKSISTERENDE nerver ovenfor mod kontrakten — proof-of-adapter. | [src](../../../core/services/nerve_registry.py#L755) |
-
-## `core/services/network_health.py`
-_core/services/network_health.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `measure_api_latency` | `(url=…, timeout=…)` | (ok, latency_ms) for den lokale API. TCP+HTTP round-trip mod /health. Self-safe. | [src](../../../core/services/network_health.py#L55) |
-| function | `_latest` | `(cluster, nerve)` | Seneste tidsserie-værdi for en nerve (samme proces). None hvis tom. | [src](../../../core/services/network_health.py#L71) |
-| function | `_hosts_down` | `()` | Hosts hvis seneste reachability-sample er 'nede' (infra_sense skriver -1.0 ved nede). | [src](../../../core/services/network_health.py#L80) |
-| function | `run_network_health_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: fuse netværks-telemetri → ét signal. Bulletproof — kaster ALDRIG. | [src](../../../core/services/network_health.py#L95) |
-| function | `_reset_for_tests` | `()` | Testhjælper — nulstil debounce-state. Ikke til produktionsbrug. | [src](../../../core/services/network_health.py#L171) |
-| function | `register_network_health_producer` | `()` | Registrér netværks-helbred som cadence-producer (~hvert 2 min). Read-only, self-safe. | [src](../../../core/services/network_health.py#L179) |
 

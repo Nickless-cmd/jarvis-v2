@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14082 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14087 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,17 +41,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14082 functions/
 - [`core.services.12`](core.services.12.md) — `gate_mutation` … `hollow_promise_census`
 - [`core.services.13`](core.services.13.md) — `hollow_promise_guard` … `jc_tool_telemetry`
 - [`core.services.14`](core.services.14.md) — `jobs_engine` … `memory_graph`
-- [`core.services.15`](core.services.15.md) — `memory_hierarchy` … `network_health`
-- [`core.services.16`](core.services.16.md) — `non_visible_fallback` … `pfsense_syslog`
-- [`core.services.17`](core.services.17.md) — `phone_wake` … `prompt_section_impact`
-- [`core.services.18`](core.services.18.md) — `prompt_section_reevaluation` … `relation_state_signal_tracking`
-- [`core.services.19`](core.services.19.md) — `relational_warmth` … `runtime_tasks`
-- [`core.services.20`](core.services.20.md) — `rupture_repair` … `session_boot_reconciler`
-- [`core.services.21`](core.services.21.md) — `session_continuity` … `smith_noise_veto`
-- [`core.services.22`](core.services.22.md) — `social_labilizer` … `thought_action_proposal_daemon`
-- [`core.services.23`](core.services.23.md) — `thought_leak_guard` … `user_temperature_runtime`
-- [`core.services.24`](core.services.24.md) — `user_theory_of_mind` … `voice_anchor`
-- [`core.services.25`](core.services.25.md) — `voice_curator` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `memory_hierarchy` … `nerve_registry`
+- [`core.services.16`](core.services.16.md) — `network_health` … `personality_vector`
+- [`core.services.17`](core.services.17.md) — `pfsense_syslog` … `prompt_relevance_backend`
+- [`core.services.18`](core.services.18.md) — `prompt_section_impact` … `relation_map`
+- [`core.services.19`](core.services.19.md) — `relation_state_signal_tracking` … `runtime_surface_cache`
+- [`core.services.20`](core.services.20.md) — `runtime_tasks` … `sensory_perception_bridge`
+- [`core.services.21`](core.services.21.md) — `session_boot_reconciler` … `smith_confrontation`
+- [`core.services.22`](core.services.22.md) — `smith_noise_veto` … `theory_of_mind_engine`
+- [`core.services.23`](core.services.23.md) — `thought_action_proposal_daemon` … `user_temperature_engine`
+- [`core.services.24`](core.services.24.md) — `user_temperature_runtime` … `visual_memory`
+- [`core.services.25`](core.services.25.md) — `voice_anchor` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

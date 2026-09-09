@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7139/14096 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7142/14098 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7139/14096 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 596 | 1100 | 54% |
-| `core.services` | 4738 | 9728 | 48% |
+| `core.services` | 4741 | 9730 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1772,13 +1772,13 @@ Generated from source. 7139/14096 functions/methods documented (50%). The list b
 - `core/services/tool_intent_approval_runtime.py` :: `tool_intent_approval_key` (L373)
 - `core/services/tool_intent_runtime.py` :: `build_tool_intent_runtime_surface` (L27)
 - `core/services/tool_outcome_memory.py` :: `classify_tool_family` (L59)
-- `core/services/tool_result_store.py` :: `build_tool_result_reference` (L105)
-- `core/services/tool_result_store.py` :: `cleanup_old_results` (L88)
-- `core/services/tool_result_store.py` :: `get_tool_result` (L67)
-- `core/services/tool_result_store.py` :: `parse_tool_result_reference` (L117)
-- `core/services/tool_result_store.py` :: `render_tool_result_for_prompt` (L138)
-- `core/services/tool_result_store.py` :: `save_tool_result` (L27)
-- `core/services/tool_result_store.py` :: `summarize_result` (L20)
+- `core/services/tool_result_store.py` :: `build_tool_result_reference` (L154)
+- `core/services/tool_result_store.py` :: `cleanup_old_results` (L127)
+- `core/services/tool_result_store.py` :: `get_tool_result` (L85)
+- `core/services/tool_result_store.py` :: `parse_tool_result_reference` (L166)
+- `core/services/tool_result_store.py` :: `render_tool_result_for_prompt` (L187)
+- `core/services/tool_result_store.py` :: `save_tool_result` (L33)
+- `core/services/tool_result_store.py` :: `summarize_result` (L26)
 - `core/services/tool_router_runtime.py` :: `start_tool_router_runtime` (L73)
 - `core/services/tool_router_runtime.py` :: `stop_tool_router_runtime` (L85)
 - `core/services/tool_tagger.py` :: `get_pinned_set` (L75)

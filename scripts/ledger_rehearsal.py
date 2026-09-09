@@ -82,8 +82,8 @@ def main() -> int:
     import core.runtime.db_core as dbc
     dbc.DB_PATH = proeve
 
-    from core.runtime import db_session_ledger as L
     from core.runtime.db import connect
+    from core.services import ledger_canary as K
     from core.services import projection_chat_messages as C
     from core.services import projection_drift as D
     C.register()
@@ -96,16 +96,12 @@ def main() -> int:
     for sid in sids:
         with connect() as c:
             raa = [dict(r) for r in c.execute(
-                f"SELECT {KOL} FROM chat_messages WHERE session_id = ? "
+                f"SELECT message_id, {KOL} FROM chat_messages WHERE session_id = ? "
                 "AND role != 'compact_marker' ORDER BY id", (sid,))]
 
-        L.advance_storage_mode(sid, to="shadow")
-        t = L.acquire_write_lease(sid, owner="proeve")
-        L.append_session_events(sid, owner="proeve", token=t, events=[
-            {"event_id": f"m{i}", "kind": "message", "payload": m}
-            for i, m in enumerate(raa)])
-        L.release_write_lease(sid, owner="proeve", token=t)
-
+        # Den RIGTIGE vej: samme kald som en ægte overførsel ville bruge.
+        # En prøve der går uden om produktionsvejen, prøver ikke den vej.
+        k = K.enable_shadow(sid)
         r = D.compare(sid)
 
         # Den ægte prøve: riv rækkerne ud og byg dem af ledgeren alene.
@@ -115,7 +111,7 @@ def main() -> int:
         C.rebuild(sid)
         with connect() as c:
             efter = [dict(x) for x in c.execute(
-                f"SELECT {KOL} FROM chat_messages WHERE session_id = ? "
+                f"SELECT message_id, {KOL} FROM chat_messages WHERE session_id = ? "
                 "AND role != 'compact_marker' ORDER BY id", (sid,))]
 
         lige = efter == raa

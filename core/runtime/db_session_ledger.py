@@ -276,6 +276,93 @@ def _annoncer(session_id: str, skrevet: int, seq: int) -> None:
         logger.warning("db_session_ledger: kunne ikke annoncere paa bussen", exc_info=True)
 
 
+def append_unowned(session_id: str, *, events: list[dict[str, Any]],
+                   now: datetime | None = None) -> dict[str, Any]:
+    """Tilføj hændelser i ÉN transaktion, uden lease. Kun for skygge-sessioner.
+
+    ## Hvorfor den findes
+
+    Den ejede vej koster tre skrive-transaktioner pr. besked: tag lease, skriv,
+    giv fri. På en database hvor to processer skriver samtidig er det den
+    forkerte pris at betale på hver eneste besked — og skygge-skrivning sker
+    på nøjagtig den varmeste sti der findes.
+
+    Denne vej koster én. Rækkefølgen er stadig sikker, fordi sekvensnummeret
+    beregnes og skrives inde i SAMME transaktion: to samtidige skrivere kan
+    ikke få det samme nummer, og `UNIQUE(session_id, seq)` fanger det hvis de
+    kunne.
+
+    ## Hvad den giver afkald på, og hvorfor det er forsvarligt
+
+    Fencing. Uden lease er der ingen mønt der kan blive forældet, og altså
+    ingen beskyttelse mod at en gammel skriver vender tilbage. Det er
+    acceptabelt PRÆCIS så længe ledgeren ikke er sandheden: i `shadow` er
+    `chat_messages` kanonisk, og en forkert ledger-rækkefølge bliver til en
+    uenighed som drift-detektionen finder og som holder skiftet lukket.
+
+    Derfor er reglen ikke overladt til disciplin: kaldet AFVISER en session der
+    er i `ledger`. Dér skal skrivning gå gennem et `SessionHandle` med lease.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        raise ValueError("session_id mangler")
+    if not events:
+        return {"written": 0, "duplicates": 0, "seq": current_seq(sid)}
+
+    nu = now or datetime.now(UTC)
+    with connect() as conn:
+        _ensure_session_ledger_table(conn)
+        if _storage_mode_on(conn, sid) == "ledger":
+            raise PermissionError(
+                f"session {sid!r} er kanonisk i ledgeren: skriv gennem et "
+                "SessionHandle med lease, ikke uden ejerskab"
+            )
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            seq = int(conn.execute(
+                "SELECT COALESCE(MAX(seq), 0) FROM session_events WHERE session_id = ?",
+                (sid,),
+            ).fetchone()[0])
+            skrevet = dubletter = 0
+            for e in events:
+                eid = str(e.get("event_id") or "").strip()
+                if not eid:
+                    raise ValueError("hver hændelse skal have et event_id")
+                findes = conn.execute(
+                    "SELECT 1 FROM session_events WHERE session_id = ? AND event_id = ?",
+                    (sid, eid),
+                ).fetchone()
+                if findes is not None:
+                    dubletter += 1
+                    continue
+                seq += 1
+                conn.execute(
+                    "INSERT INTO session_events "
+                    "(session_id, seq, event_id, kind, payload_json, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (sid, seq, eid, str(e.get("kind") or "event"),
+                     _json.dumps(e.get("payload") or {}, ensure_ascii=False), _iso(nu)),
+                )
+                skrevet += 1
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+    # Her annonceres der IKKE — med vilje.
+    #
+    # I skygge-tilstand er ledgeren ikke sandheden, og der er derfor ingenting
+    # nogen skal reagere på. Annonceringen målte sig selv frem som skadelig:
+    # bus-skriveren er en tråd med sin EGEN forbindelse, og en publish pr.
+    # besked fik den til at tage en skrive-lås midt mellem to beskeder — hvilket
+    # gav `database is locked` på selve `INSERT INTO chat_messages`. Altså på
+    # brugerens besked, for at annoncere en hændelse ingen lytter til.
+    #
+    # Den ejede vej (`append_session_events`) annoncerer stadig: den bruges når
+    # ledgeren ER kanonisk, hvor der faktisk er noget at reagere på, og den
+    # sker ikke pr. besked på den varme sti.
+    return {"written": skrevet, "duplicates": dubletter, "seq": seq}
+
+
 # ── læsning (ingen lease) ────────────────────────────────────────────────
 
 def read_session_events(
@@ -413,5 +500,30 @@ def advance_storage_mode(session_id: str, *, to: str) -> bool:
         cur = conn.execute(
             "UPDATE chat_sessions SET storage_mode = ? WHERE session_id = ?",
             (maal, sid),
+        )
+        return cur.rowcount > 0
+
+
+def abandon_shadow(session_id: str) -> bool:
+    """Sluk skyggen igen: `shadow` → `legacy`. Aldrig fra `ledger`.
+
+    Envejs-reglen ovenfor findes fordi et tilbageskift fra `ledger` ville gøre
+    committede, KANONISKE hændelser til noget der skal genfortolkes. I `shadow`
+    er ingen hændelse kanonisk — `chat_messages` er stadig sandheden, og
+    ledgeren er en måling ved siden af.
+
+    Derfor er dette ikke et hul i reglen, men dens anden halvdel: et eksperiment
+    man ikke kan slukke, bliver stående tændt. Hændelserne slettes ikke; de
+    holder bare op med at blive skrevet, og de er der stadig hvis nogen vil
+    kigge på hvorfor det gik galt.
+    """
+    sid = str(session_id or "").strip()
+    if not sid or storage_mode(sid) != "shadow":
+        return False
+    with connect() as conn:
+        _ensure_storage_mode_column(conn)
+        cur = conn.execute(
+            "UPDATE chat_sessions SET storage_mode = 'legacy' WHERE session_id = ?",
+            (sid,),
         )
         return cur.rowcount > 0

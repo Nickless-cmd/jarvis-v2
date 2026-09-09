@@ -558,6 +558,18 @@ def append_chat_message(
             (next_title, timestamp, normalized_session),
         )
 
+    # Skygge-skrivning til ledgeren. EFTER commit, aldrig fatal: sessionen er
+    # stadig `legacy` i praksis, og en bruger maa ikke miste sin besked fordi
+    # et eksperiment fejlede. Springer selv over naar sessionen ikke er i
+    # skygge-tilstand — hvilket er alle sessioner indtil nogen flytter en.
+    from core.services.shadow_ledger_writer import shadow_append
+    shadow_append(normalized_session, message_id=message_id,
+                  role=normalized_role, content=normalized_content,
+                  created_at=timestamp, user_id=_user_id,
+                  workspace_name=_workspace_name,
+                  reasoning_content=str(reasoning_content or ""),
+                  content_json=content_json)
+
     besked = {
         "id": message_id,
         "role": normalized_role,

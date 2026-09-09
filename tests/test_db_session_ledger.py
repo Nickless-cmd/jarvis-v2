@@ -273,3 +273,44 @@ def test_en_batch_uden_NYE_haendelser_annoncerer_intet(sid, monkeypatch):
     L.append_session_events(sid, owner="a", token=t, events=ev)
     L.append_session_events(sid, owner="a", token=t, events=ev)   # dublet
     assert kald == [1]
+
+
+# ── et eksperiment man ikke kan slukke, bliver stående tændt ─────────────
+
+@pytest.fixture
+def sess(sid, isolated_runtime):
+    """En session der findes i `chat_sessions` — tilstanden bor på DEN række."""
+    from core.runtime.db import connect
+    with connect() as c:
+        c.execute("INSERT INTO chat_sessions (session_id, title, created_at, updated_at) "
+                  "VALUES (?, 't', '2026-01-01', '2026-01-01')", (sid,))
+    return sid
+
+
+def test_skyggen_kan_slaas_FRA_igen(sess):
+    L.advance_storage_mode(sess, to="shadow")
+    assert L.abandon_shadow(sess) is True
+    assert L.storage_mode(sess) == "legacy"
+
+
+def test_haendelserne_SLETTES_ikke_naar_skyggen_slukkes(sess):
+    """De er der stadig hvis nogen vil kigge på hvorfor det gik galt."""
+    L.advance_storage_mode(sess, to="shadow")
+    t = L.acquire_write_lease(sess, owner="a")
+    L.append_session_events(sess, owner="a", token=t, events=[
+        {"event_id": "e1", "kind": "message", "payload": {}}])
+    L.release_write_lease(sess, owner="a", token=t)
+    L.abandon_shadow(sess)
+    assert len(L.read_session_events(sess)) == 1
+
+
+def test_LEDGER_kan_ikke_slukkes(sess):
+    """Dér ville committede, kanoniske hændelser skulle genfortolkes."""
+    L.advance_storage_mode(sess, to="shadow")
+    L.advance_storage_mode(sess, to="ledger")
+    assert L.abandon_shadow(sess) is False
+    assert L.storage_mode(sess) == "ledger"
+
+
+def test_en_legacy_session_kan_ikke_slukkes_yderligere(sess):
+    assert L.abandon_shadow(sess) is False

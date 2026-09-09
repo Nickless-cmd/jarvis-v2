@@ -61,9 +61,25 @@ def message_id_for(session_id: str, event_id: str) -> str:
 
     Hashet er over BEGGE dele fordi `event_id` kun er unik pr. session, mens
     `chat_messages.message_id` er unik i hele tabellen.
+
+    Bruges kun når hændelsen ikke ALLEREDE bærer et id — se `_message_id`.
     """
     h = hashlib.sha1(f"{session_id}\x00{event_id}".encode()).hexdigest()
     return f"message-{h}"
+
+
+def _message_id(session_id: str, e: dict[str, Any], payload: dict[str, Any]) -> str:
+    """Et id sessionen allerede har, VINDER over et udledt.
+
+    Skygge-tilstanden skriver begge steder: rækken får sit `message_id` af
+    `uuid4()`, og hændelsen bærer det med. Udledte projektoren sit eget ved
+    skiftet, ville den lægge et NYT sæt rækker ved siden af de gamle — samme
+    samtale, to gange, uden at nogen kunne se hvilken var den ægte.
+
+    Hændelser født i ledgeren har intet id at bevare, og dér udledes det.
+    """
+    givet = str(payload.get("message_id") or "").strip()
+    return givet or message_id_for(session_id, str(e["event_id"]))
 
 
 def valider(payload: dict[str, Any]) -> str | None:
@@ -85,7 +101,7 @@ def _raekke(session_id: str, e: dict[str, Any]) -> dict[str, Any]:
     if isinstance(cj, (list, dict)):
         cj = json.dumps(cj, ensure_ascii=False)
     return {
-        "message_id": message_id_for(session_id, str(e["event_id"])),
+        "message_id": _message_id(session_id, e, p),
         "session_id": str(session_id),
         "role": str(p["role"]).strip(),
         "content": str(p["content"]),

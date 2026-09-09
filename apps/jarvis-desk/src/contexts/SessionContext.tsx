@@ -1,5 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { listSessions, getSession, createSession, renameSession, deleteSession, type ChatSession, type ChatMessage } from '../lib/api'
+import { parsePauseAsk } from '../lib/pauseAsk'
 
 type ClientStatus =
   | 'optimistic_user'
@@ -250,22 +251,52 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
   // Byg et kort normaliseret-assistant-tekst → tool-blokke fra LOKAL state — fra broen ELLER en
   // TIDLIGERE flettet server-besked. Så re-injiceres tool-kortene på HVER merge (code mode poller
   // sessions.refresh gentagne gange; uden dette wipede den 2. merge de kort, den 1. lige flettede).
-  const localToolsByNorm = new Map<string, Array<{ type?: string }>>()
+  type ToolBlock = {
+    type?: string
+    id?: string
+    tool_use_id?: string
+    name?: string
+    result?: unknown
+  }
+  const localToolsByNorm = new Map<string, ToolBlock[]>()
+  const pendingPauseTools: ToolBlock[] = []
   for (const lm of local) {
     if (lm.role !== 'assistant') continue
     const tb = (Array.isArray(lm.content) ? lm.content : [] as Array<{ type?: string }>).filter(
       (b) => !!b && typeof b === 'object' && ((b as { type?: string }).type === 'tool_use' || (b as { type?: string }).type === 'tool_result'),
-    ) as Array<{ type?: string }>
+    ) as ToolBlock[]
     const norm = assistantNorm(lm)
     if (tb.length > 0 && norm !== '' && !localToolsByNorm.has(norm)) localToolsByNorm.set(norm, tb)
+    if (lm.clientStatus === 'server_missing_keep_stream') {
+      pendingPauseTools.push(...tb.filter(
+        (b) => b.type === 'tool_use' && b.name === 'pause_and_ask' && parsePauseAsk(b.result) !== null,
+      ))
+    }
   }
+  const lastServerAssistantId = [...server].reverse().find((m) => m.role === 'assistant')?.id
+  const toolKey = (b: ToolBlock): string =>
+    b.type === 'tool_result' ? `result:${b.tool_use_id ?? ''}` : `use:${b.id ?? ''}`
   const result: LocalMessage[] = server.map((m) => {
     const base = { ...m, clientStatus: 'server_confirmed' as ClientStatus }
     if (m.role === 'assistant') {
       const tb = localToolsByNorm.get(assistantNorm(m))
-      const content = Array.isArray(base.content) ? (base.content as Array<{ type?: string }>) : []
-      const hasTools = content.some((b) => (b as { type?: string })?.type === 'tool_use' || (b as { type?: string })?.type === 'tool_result')
-      if (tb && !hasTools) base.content = [...tb, ...content] as typeof base.content // tool-kort FØR svar
+      const content = Array.isArray(base.content) ? (base.content as ToolBlock[]) : []
+      // Almindelige tools følger fortsat tekst-match-reglen. pause_and_ask er
+      // stærkere: når live-broen afløses af turens seneste server-assistant,
+      // skal kortet med over selv hvis persistens normaliserede slutlinjen eller
+      // allerede leverede nogle (men ikke alle) tool-blokke.
+      const candidates = [
+        ...(tb ?? []),
+        ...(m.id === lastServerAssistantId ? pendingPauseTools : []),
+      ]
+      const existing = new Set(content.map(toolKey))
+      const missing = candidates.filter((b) => {
+        const key = toolKey(b)
+        if (existing.has(key)) return false
+        existing.add(key)
+        return true
+      })
+      if (missing.length > 0) base.content = [...missing, ...content] as typeof base.content
     }
     return base
   })

@@ -72,6 +72,45 @@ describe('mergeServer afdublering', () => {
     expect(types.indexOf('tool_use')).toBeLessThan(types.indexOf('text')) // tool FØR svar
   })
 
+  it('bevarer pause_and_ask ved skiftet fra live-card til den afsluttende servertekst', () => {
+    const pauseResult = JSON.stringify({
+      kind: 'pause_and_ask',
+      question: 'Skal jeg fortsætte?',
+      options: ['Ja', 'Nej'],
+      context: '',
+      urgency: 'normal',
+    })
+    const bridge = {
+      id: 'a-live', role: 'assistant' as const, created_at: 'now', parent_id: null,
+      clientStatus: 'server_missing_keep_stream' as const,
+      content: [
+        { type: 'tool_use', id: 'ask-1', name: 'pause_and_ask', input: {}, status: 'done', result: pauseResult },
+        { type: 'text', text: 'Jeg venter på dit valg.' },
+      ] as unknown as { type: 'text'; text: string }[],
+    }
+    // Persistenslaget kan allerede have et andet tool-kort og kan normalisere
+    // den korte slutlinje. Cardet skal stadig flyttes fra live-broen til den
+    // afsluttede assistant-besked i stedet for at blinke væk.
+    const server = [
+      userMsg('srv-u', 'spm'),
+      {
+        ...asstMsg('srv-a', 'Jeg afventer dit valg.'),
+        content: [
+          { type: 'tool_use', id: 'other-1', name: 'read_file', input: {}, status: 'done', result: 'ok' },
+          { type: 'text', text: 'Jeg afventer dit valg.' },
+        ] as unknown as { type: 'text'; text: string }[],
+      },
+    ]
+
+    const merged = mergeServer([bridge], server)
+
+    expect(merged.some((m) => m.id === 'a-live')).toBe(false)
+    const persisted = merged.find((m) => m.id === 'srv-a')!
+    const tools = (persisted.content as unknown as Array<{ type: string; name?: string }>)
+      .filter((b) => b.type === 'tool_use')
+    expect(tools.map((b) => b.name)).toEqual(['pause_and_ask', 'read_file'])
+  })
+
   it('tool-kortene overlever GENTAGNE merges (code mode poller refresh) — Bjørn 9. jul', () => {
     // Roden til at code mode STADIG tabte dem: CodeView poller sessions.refresh gentagne gange.
     // 1. merge injicerede tool-blokke i serverens besked; men 2. merge genopbyggede result fra

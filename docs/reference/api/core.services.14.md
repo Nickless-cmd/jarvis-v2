@@ -82,7 +82,8 @@ _Efterfyld en session i ledgeren og slå skyggen til._
 |---|---|---|---|---|
 | function | `_kolonner` | `(conn)` | — | [src](../../../core/services/ledger_canary.py#L44) |
 | function | `backfill` | `(session_id)` | Skriv sessionens eksisterende beskeder ind i ledgeren. Idempotent. | [src](../../../core/services/ledger_canary.py#L49) |
-| function | `enable_shadow` | `(session_id)` | Efterfyld, slå skyggen til, og MÅL med det samme om det holdt. | [src](../../../core/services/ledger_canary.py#L86) |
+| function | `enable_shadow` | `(session_id)` | Efterfyld, slå skyggen til, og MÅL med det samme om det holdt. | [src](../../../core/services/ledger_canary.py#L110) |
+| function | `reseed` | `(session_id)` | Skriv sessionens ledger-hændelser HELT om, i tabellens rækkefølge. | [src](../../../core/services/ledger_canary.py#L138) |
 
 ## `core/services/lessons.py`
 _Lessons service — from mistake to next conversation (memory repair 2026-09-04, R4)._

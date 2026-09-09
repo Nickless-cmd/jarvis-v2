@@ -161,3 +161,38 @@ def test_en_skrivning_UDENFOR_kasseres(tmp_path):
         assert maal.read_text() == "ORIGINAL", "skrivningen slap UD af sandkassen"
     finally:
         maal.unlink(missing_ok=True)
+
+
+def test_tolkens_egen_rod_bindes_oploest():
+    """`/opt` alene raakker ikke. Paa CT105 er `/opt/conda/envs/ai/bin/python`
+    et symlink ind i `/home/bs/miniconda3`; en read-only binding af `/opt` tager
+    symlinket med men ikke dets MAAL, og kommandoen doer med exit 127.
+
+    Lokalt er `/opt/conda` et rigtigt trae — saa det bestod hos mig og fejlede
+    paa maskinen. Derfor bindes den OPLOESTE sti.
+    """
+    import pathlib
+    import sys as _sys
+    from core.services.bash_sandbox import _python_roedder
+    roedder = _python_roedder()
+    assert roedder, "ingen tolke-rod bundet"
+    assert str(pathlib.Path(_sys.prefix).resolve()) in roedder
+    assert all(pathlib.Path(r).is_absolute() for r in roedder)
+
+
+def test_conda_BASEN_kommer_med():
+    """Env'et laener sig paa delte biblioteker i base-installationen."""
+    import pathlib
+    from core.services.bash_sandbox import _conda_rod
+    assert _conda_rod(pathlib.Path("/h/miniconda3/envs/ai")) == pathlib.Path("/h/miniconda3")
+    assert _conda_rod(pathlib.Path("/usr/local")) is None
+
+
+def test_tolke_roedderne_er_READ_ONLY():
+    """De skal kunne LAESES, ikke skrives. En indespaerret kommando maa ikke
+    kunne aendre selve tolken."""
+    from core.services.bash_sandbox import _python_roedder, wrap_bwrap
+    argv = wrap_bwrap("echo x", "/media/projects/jarvis-v2")
+    for rod in _python_roedder():
+        i = argv.index(rod)
+        assert argv[i - 1] == "--ro-bind-try", f"{rod} blev bundet skrivbart"

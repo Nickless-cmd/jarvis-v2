@@ -45,6 +45,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import logging
+import pathlib
 import shutil
 from typing import Any
 
@@ -59,6 +60,44 @@ _SWITCH_NAME = "bash_bwrap"
 # spoerge: `ls /opt/conda` → «No such file or directory». Indespaerringen
 # rapporterede korrekt `honored=True` — den var bare ubrugelig.
 _RO_ROEDDER = ("/usr", "/bin", "/lib", "/lib64", "/etc", "/opt")
+
+
+def _conda_rod(sti: pathlib.Path) -> pathlib.Path | None:
+    """Base-installationen bag et conda-env: `<rod>/envs/<navn>` → `<rod>`.
+
+    Env'et laener sig paa delte biblioteker i basen, saa env'et alene raekker
+    ikke altid.
+    """
+    dele = sti.parts
+    if "envs" in dele:
+        return pathlib.Path(*dele[:dele.index("envs")])
+    return None
+
+
+def _python_roedder() -> list[str]:
+    """Tolkens EGEN rod — oploest gennem symlinks.
+
+    `/opt` alene raakker ikke. Paa CT105 er `/opt/conda/envs/ai/bin/python` et
+    symlink ind i `/home/bs/miniconda3`, og en read-only binding af `/opt`
+    tager symlinket med men ikke dets maal — kommandoen doer med exit 127
+    «not found». Lokalt er `/opt/conda` et rigtigt trae, saa det bestod hos mig
+    og fejlede paa maskinen. Derfor bindes den OPLOESTE sti.
+    """
+    ud: list[str] = []
+    try:
+        import sys as _sys
+        for raa in (_sys.prefix, _sys.base_prefix):
+            if not raa:
+                continue
+            sti = pathlib.Path(raa).resolve()
+            for kandidat in (sti, _conda_rod(sti)):
+                if kandidat is None:
+                    continue
+                if kandidat.exists() and str(kandidat) not in ud:
+                    ud.append(str(kandidat))
+    except Exception:
+        return []
+    return ud
 
 
 def _runtime_hjem() -> str | None:
@@ -120,7 +159,7 @@ def wrap_bwrap(command: str, cwd: str, *, writable_roots: list[str] | None = Non
                allow_egress: bool = True) -> list[str]:
     """Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed."""
     argv: list[str] = ["bwrap"]
-    for ro in _RO_ROEDDER:
+    for ro in list(_RO_ROEDDER) + _python_roedder():
         argv += ["--ro-bind-try", ro, ro]
     argv += ["--tmpfs", "/tmp", "--dev", "/dev", "--proc", "/proc"]
     # cwd bindes EFTER --tmpfs /tmp, saa en cwd der selv ligger under /tmp

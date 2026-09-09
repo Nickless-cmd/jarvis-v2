@@ -74,18 +74,20 @@ _bwrap-indespærring om én bash-kommando. SLUKKET som standard._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_runtime_hjem` | `()` | Jarvis' runtime-hjem, hvis det findes. | [src](../../../core/services/bash_sandbox.py#L64) |
-| function | `is_available` | `()` | Findes bwrap på DENNE maskine? | [src](../../../core/services/bash_sandbox.py#L83) |
-| function | `is_enabled` | `()` | Eksplicit tændt? Usat betyder SLUKKET — modsat central_switches' default. | [src](../../../core/services/bash_sandbox.py#L88) |
-| function | `set_enabled` | `(on)` | — | [src](../../../core/services/bash_sandbox.py#L98) |
-| function | `status` | `()` | — | [src](../../../core/services/bash_sandbox.py#L105) |
-| function | `wrap_bwrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed. | [src](../../../core/services/bash_sandbox.py#L119) |
-| function | `maybe_wrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | argv hvis sandboxen er tændt OG mulig her — ellers None (kør normalt). | [src](../../../core/services/bash_sandbox.py#L145) |
-| class | `ConfinementUnavailable` | `` | Der blev KRÆVET indespærring, og den kunne ikke leveres. | [src](../../../core/services/bash_sandbox.py#L184) |
-| class | `Enforcement` | `` | Hvad der blev bedt om, og hvad der faktisk skete. | [src](../../../core/services/bash_sandbox.py#L189) |
-| method | `Enforcement.honored` | `(self)` | Fik vi det vi bad om? | [src](../../../core/services/bash_sandbox.py#L200) |
-| method | `Enforcement.as_dict` | `(self)` | — | [src](../../../core/services/bash_sandbox.py#L204) |
-| function | `enforcement` | `(command, cwd, *, writable_roots=…, allow_egress=…, require=…)` | Afgør indespærringen OG rapportér den. Kaster kun når `require` er sat. | [src](../../../core/services/bash_sandbox.py#L210) |
+| function | `_conda_rod` | `(sti)` | Base-installationen bag et conda-env: `<rod>/envs/<navn>` → `<rod>`. | [src](../../../core/services/bash_sandbox.py#L65) |
+| function | `_python_roedder` | `()` | Tolkens EGEN rod — oploest gennem symlinks. | [src](../../../core/services/bash_sandbox.py#L77) |
+| function | `_runtime_hjem` | `()` | Jarvis' runtime-hjem, hvis det findes. | [src](../../../core/services/bash_sandbox.py#L103) |
+| function | `is_available` | `()` | Findes bwrap på DENNE maskine? | [src](../../../core/services/bash_sandbox.py#L122) |
+| function | `is_enabled` | `()` | Eksplicit tændt? Usat betyder SLUKKET — modsat central_switches' default. | [src](../../../core/services/bash_sandbox.py#L127) |
+| function | `set_enabled` | `(on)` | — | [src](../../../core/services/bash_sandbox.py#L137) |
+| function | `status` | `()` | — | [src](../../../core/services/bash_sandbox.py#L144) |
+| function | `wrap_bwrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed. | [src](../../../core/services/bash_sandbox.py#L158) |
+| function | `maybe_wrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | argv hvis sandboxen er tændt OG mulig her — ellers None (kør normalt). | [src](../../../core/services/bash_sandbox.py#L184) |
+| class | `ConfinementUnavailable` | `` | Der blev KRÆVET indespærring, og den kunne ikke leveres. | [src](../../../core/services/bash_sandbox.py#L223) |
+| class | `Enforcement` | `` | Hvad der blev bedt om, og hvad der faktisk skete. | [src](../../../core/services/bash_sandbox.py#L228) |
+| method | `Enforcement.honored` | `(self)` | Fik vi det vi bad om? | [src](../../../core/services/bash_sandbox.py#L239) |
+| method | `Enforcement.as_dict` | `(self)` | — | [src](../../../core/services/bash_sandbox.py#L243) |
+| function | `enforcement` | `(command, cwd, *, writable_roots=…, allow_egress=…, require=…)` | Afgør indespærringen OG rapportér den. Kaster kun når `require` er sat. | [src](../../../core/services/bash_sandbox.py#L249) |
 
 ## `core/services/behavioral_decisions.py`
 _Behavioral decisions — closing the reflection→behavior loop._

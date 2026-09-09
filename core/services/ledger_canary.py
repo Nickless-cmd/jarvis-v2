@@ -58,7 +58,7 @@ def backfill(session_id: str) -> dict[str, Any]:
         kols = _kolonner(conn)
         rows = conn.execute(
             f"SELECT {', '.join(kols)} FROM chat_messages WHERE session_id = ? "
-            "AND role != 'compact_marker' ORDER BY id", (sid,)
+            "ORDER BY id", (sid,)
         ).fetchall()
     if not rows:
         return {"session_id": sid, "beskeder": 0, "skrevet": 0,

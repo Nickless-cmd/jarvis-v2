@@ -930,6 +930,14 @@ def store_compact_marker(
             """,
             (marker_id, normalized_session, normalized_content, normalized_git_sha, timestamp),
         )
+
+    # Markøren skal OGSÅ i skyggen. Uden den ville et skifte tabe den: den er
+    # en `chat_messages`-række som alle andre, og projektoren bygger kun det
+    # ledgeren har set. Efter commit og aldrig fatal, som al anden skygge.
+    from core.services.shadow_ledger_writer import shadow_append
+    shadow_append(normalized_session, message_id=marker_id,
+                  role="compact_marker", content=normalized_content,
+                  created_at=timestamp, git_sha=normalized_git_sha)
     return marker_id
 
 

@@ -18,6 +18,11 @@ Sammenligningen sker på det der udgør samtalen: rolle, indhold, ræsonnement,
 `content_json` og tidsstemplet — i rækkefølge. Alt det Fase 0 fandt at læserne
 faktisk bruger.
 
+Kompakt-markører tælles MED. De blev udeladt i første udgave, og det var en
+fejl: de er `chat_messages`-rækker som alle andre, og en projektion der ikke
+kendte dem, ville tabe dem ved et skifte. Produktionen har 102 af dem fordelt
+på 14 sessioner — herunder en af de to kanarie-sessioner.
+
 `message_id` sammenlignes IKKE. Det oprindelige skrive-kald finder sit id med
 `uuid4()`, projektoren udleder sit af hændelsen — de kan aldrig blive ens, og
 skulle heller ikke: id'et er en nøgle, ikke indhold. At kræve dem ens ville
@@ -86,8 +91,8 @@ def _fra_tabellen(session_id: str) -> list[dict[str, Any]]:
     with connect() as conn:
         rows = conn.execute(
             "SELECT role, content, reasoning_content, content_json, created_at "
-            "FROM chat_messages WHERE session_id = ? AND role != 'compact_marker' "
-            "ORDER BY id", (str(session_id or ""),),
+            "FROM chat_messages WHERE session_id = ? ORDER BY id",
+            (str(session_id or ""),),
         ).fetchall()
     return [{"role": r[0], "content": r[1], "reasoning_content": r[2],
              "content_json": r[3], "created_at": r[4]} for r in rows]

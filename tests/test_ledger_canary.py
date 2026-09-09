@@ -173,3 +173,85 @@ def test_hele_vejen_igennem_kan_samtalen_genskabes(sid):
             "SELECT message_id, role, content, created_at FROM chat_messages "
             "WHERE session_id = ? ORDER BY id", (sid,))]
     assert efter == foer
+
+
+# ── kompakt-markører ─────────────────────────────────────────────────────
+
+def _markoer(sid, tekst="opsummering", sha="abc123"):
+    from core.services.chat_sessions import store_compact_marker
+    return store_compact_marker(sid, tekst, sha)
+
+
+def test_markoerer_efterfyldes_MED(sid):
+    """De blev udeladt i første udgave. De er `chat_messages`-rækker som alle
+    andre, og en projektion der ikke kendte dem, ville tabe dem ved et skifte."""
+    _historik(sid, 4)
+    _markoer(sid)
+    r = K.backfill(sid)
+    assert r["beskeder"] == 5 and r["skrevet"] == 5
+    roller = [e["payload"]["role"] for e in L.read_session_events(sid)]
+    assert roller.count("compact_marker") == 1
+
+
+def test_en_NY_markoer_skygge_skrives(sid):
+    _historik(sid, 3)
+    K.enable_shadow(sid)
+    _ro()
+    _markoer(sid, "ny opsummering")
+    assert L.current_seq(sid) == 4
+    assert L.read_session_events(sid)[-1]["payload"]["content"] == "ny opsummering"
+
+
+def test_git_sha_paa_markoeren_overlever(sid):
+    _historik(sid, 2)
+    K.enable_shadow(sid)
+    _ro()
+    _markoer(sid, "x", sha="deadbeef")
+    assert L.read_session_events(sid)[-1]["payload"]["git_sha"] == "deadbeef"
+
+
+def test_drift_ser_en_markoer_der_MANGLER_i_ledgeren(sid):
+    """Præcis den tilstand «Kode-session» stod i, før dette blev rettet."""
+    _historik(sid, 3)
+    _markoer(sid)
+    L.advance_storage_mode(sid, to="shadow")     # skygge UDEN efterfyldning
+    d = D.compare(sid)
+    assert d["enige"] is False and d["tabel_beskeder"] == 4
+
+
+def test_en_samtale_MED_markoer_genskabes_helt(sid):
+    _historik(sid, 5)
+    _markoer(sid, "midtvejs")
+    K.enable_shadow(sid)
+    _ro()
+    with connect() as c:
+        foer = [dict(r) for r in c.execute(
+            "SELECT message_id, role, content, git_sha FROM chat_messages "
+            "WHERE session_id = ? ORDER BY id", (sid,))]
+        c.execute("DELETE FROM chat_messages WHERE session_id = ?", (sid,))
+    C.register()
+    C.rebuild(sid)
+    with connect() as c:
+        efter = [dict(r) for r in c.execute(
+            "SELECT message_id, role, content, git_sha FROM chat_messages "
+            "WHERE session_id = ? ORDER BY id", (sid,))]
+    assert efter == foer
+    assert any(r["role"] == "compact_marker" for r in efter)
+
+
+def test_en_LEDGER_session_afviser_markoeren_HOEJT(sid):
+    """Landminen skrevet ned frem for skjult.
+
+    Bliver en session kanonisk i ledgeren, kaster `store_compact_marker` på
+    skrive-vagten — fordi ingen har koblet markør-skrivningen til et
+    `SessionHandle` endnu. Det er den RIGTIGE opførsel: den siger at koblingen
+    mangler, i stedet for tavst at skrive en række der ikke kan genskabes.
+    Ændres det, skal denne test ændres bevidst.
+    """
+    from core.services.projection_chat_messages import DirekteSkrivningAfvist
+    _historik(sid, 2)
+    K.enable_shadow(sid)
+    _ro()
+    L.advance_storage_mode(sid, to="ledger")
+    with pytest.raises(DirekteSkrivningAfvist):
+        _markoer(sid)

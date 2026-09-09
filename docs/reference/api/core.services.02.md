@@ -152,13 +152,13 @@ _Skygge for godkendelses-broen: ville den have sagt det samme?_
 |---|---|---|---|---|
 | function | `taellere` | `()` | — | [src](../../../core/services/approval_bridge_shadow.py#L41) |
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_bridge_shadow.py#L45) |
-| function | `taellere_fra_cache` | `()` | Læs tællerne fra en anden proces — se `settlement_shadow` for hvorfor | [src](../../../core/services/approval_bridge_shadow.py#L50) |
-| function | `_gem` | `()` | — | [src](../../../core/services/approval_bridge_shadow.py#L61) |
-| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville tænde en | [src](../../../core/services/approval_bridge_shadow.py#L69) |
-| function | `note_requested` | `(approval_id, *, tool_name, arguments, run_id=…, session_id=…)` | Godkendelsen er bedt om. Registrér den i broen — ændrer intet. | [src](../../../core/services/approval_bridge_shadow.py#L80) |
-| function | `note_decided` | `(approval_id, *, approved)` | Mennesket har klikket. | [src](../../../core/services/approval_bridge_shadow.py#L98) |
-| function | `note_claim` | `(approval_id, *, tool_name, arguments, legacy_allowed)` | Ville broen have tilladt det samme som den kørende kode? | [src](../../../core/services/approval_bridge_shadow.py#L113) |
-| function | `note_settled` | `(approval_id, *, ok)` | Luk den post skyggen selv aabnede. | [src](../../../core/services/approval_bridge_shadow.py#L158) |
+| function | `taellere_fra_cache` | `()` | Læs tællerne fra en anden proces — se `settlement_shadow` for hvorfor | [src](../../../core/services/approval_bridge_shadow.py#L56) |
+| function | `_gem` | `()` | Deltaer, ikke totaler — se `shadow_counters` for hvorfor. | [src](../../../core/services/approval_bridge_shadow.py#L70) |
+| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville tænde en | [src](../../../core/services/approval_bridge_shadow.py#L76) |
+| function | `note_requested` | `(approval_id, *, tool_name, arguments, run_id=…, session_id=…)` | Godkendelsen er bedt om. Registrér den i broen — ændrer intet. | [src](../../../core/services/approval_bridge_shadow.py#L87) |
+| function | `note_decided` | `(approval_id, *, approved)` | Mennesket har klikket. | [src](../../../core/services/approval_bridge_shadow.py#L105) |
+| function | `note_claim` | `(approval_id, *, tool_name, arguments, legacy_allowed)` | Ville broen have tilladt det samme som den kørende kode? | [src](../../../core/services/approval_bridge_shadow.py#L120) |
+| function | `note_settled` | `(approval_id, *, ok)` | Luk den post skyggen selv aabnede. | [src](../../../core/services/approval_bridge_shadow.py#L165) |
 
 ## `core/services/approval_feedback_subscriber.py`
 

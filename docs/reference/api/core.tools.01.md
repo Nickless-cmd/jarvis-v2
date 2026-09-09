@@ -27,6 +27,16 @@ _request_app_action tool (spec 2026-06-15) — Jarvis foreslår mode/permission-
 | function | `_exec_open_ui_panel` | `(args)` | — | [src](../../../core/tools/app_control_tool.py#L51) |
 | function | `build_app_action_event` | `(result, *, user_message, session_id)` | Ren helper: hvis et tool-resultat bærer en app_action-markør, byg payloaden | [src](../../../core/tools/app_control_tool.py#L85) |
 
+## `core/tools/approval_rollout_gate.py`
+_Et nyt godkendelses-vaerktoej maa ikke rulles ud foer broen baerer — K4._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `bridge_active` | `()` | Haandhaever godkendelses-broen — eller koerer den stadig i skygge? | [src](../../../core/tools/approval_rollout_gate.py#L53) |
+| function | `may_advertise` | `(tool_name)` | Maa vaerktoejet annonceres til modellen? (ja/nej, grund). | [src](../../../core/tools/approval_rollout_gate.py#L67) |
+| function | `blocked` | `()` | Hvilke vaerktoejer holdes tilbage lige nu? Tom liste er det normale. | [src](../../../core/tools/approval_rollout_gate.py#L89) |
+| function | `debt` | `()` | Gaelden: godkendelses-vaerktoejer der lever paa den gamle inline-sti. | [src](../../../core/tools/approval_rollout_gate.py#L96) |
+
 ## `core/tools/auto_ensure_tests.py`
 _Auto-ensure tests — Layer 2 of the Agentic Test Enforcement._
 
@@ -513,13 +523,4 @@ _Mic listen tool — Jarvis hears the room when he actively chooses to._
 | function | `_transcribe_local` | `(raw_pcm, language)` | — | [src](../../../core/tools/mic_listen_tool.py#L259) |
 | function | `listen_and_transcribe` | `(*, duration=…, backend=…, language=…, save_recording=…)` | Active mic listen. Captures audio, transcribes, returns text. | [src](../../../core/tools/mic_listen_tool.py#L273) |
 | function | `_exec_mic_listen` | `(args)` | — | [src](../../../core/tools/mic_listen_tool.py#L406) |
-
-## `core/tools/monitor_tools.py`
-_Tool wrappers for pinned monitor streams (monitor_streams)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_monitor_open` | `(args)` | — | [src](../../../core/tools/monitor_tools.py#L13) |
-| function | `_exec_monitor_close` | `(args)` | — | [src](../../../core/tools/monitor_tools.py#L22) |
-| function | `_exec_monitor_list` | `(args)` | — | [src](../../../core/tools/monitor_tools.py#L29) |
 

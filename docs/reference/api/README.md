@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14155 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14160 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -48,20 +48,20 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14155 functions/
 - [`core.services.18`](core.services.18.md) — `prompt_heartbeat_self_knowledge` … `regret_engine`
 - [`core.services.19`](core.services.19.md) — `regulation_homeostasis_signal_tracking` … `runtime_self_model_builder`
 - [`core.services.20`](core.services.20.md) — `runtime_self_model_identity` … `selfhood_proposal_tracking`
-- [`core.services.21`](core.services.21.md) — `semantic_indexer` … `skill_engine`
-- [`core.services.22`](core.services.22.md) — `skill_relevance_surface` … `text_clip`
-- [`core.services.23`](core.services.23.md) — `text_resonance` … `user_contradiction_tracker`
-- [`core.services.24`](core.services.24.md) — `user_emotional_resonance` … `visible_thinking_trace`
-- [`core.services.25`](core.services.25.md) — `visible_tool_exec` … `world_model_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `semantic_indexer` … `skill_contract_registry`
+- [`core.services.22`](core.services.22.md) — `skill_engine` … `terminal_sanitize`
+- [`core.services.23`](core.services.23.md) — `text_clip` … `user_activity`
+- [`core.services.24`](core.services.24.md) — `user_contradiction_tracker` … `visible_stream_gate`
+- [`core.services.25`](core.services.25.md) — `visible_thinking_trace` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `monitor_tools`
-- [`core.tools.02`](core.tools.02.md) — `native_tool_gate` … `skill_gate_tool`
-- [`core.tools.03`](core.tools.03.md) — `smart_compact_tools` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `mic_listen_tool`
+- [`core.tools.02`](core.tools.02.md) — `monitor_tools` … `skill_engine_tools`
+- [`core.tools.03`](core.tools.03.md) — `skill_gate_tool` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.util`](core.util.md)

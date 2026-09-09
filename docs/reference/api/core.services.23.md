@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/text_clip.py`
+_core/services/text_clip.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `clip_text` | `(value, *, limit, hard=…)` | Klip tekst til <= ~limit tegn UDEN at hugge midt i et ord. | [src](../../../core/services/text_clip.py#L16) |
+| function | `clip_head_tail` | `(value, *, limit, tail_frac=…)` | Bevar HOVED + HALE ved LINJE-grænser når tekst overskrider limit. Til tool-output (bash/read/ | [src](../../../core/services/text_clip.py#L53) |
+| function | `clip_words` | `(value, *, max_words)` | Klip til et antal ORD (ikke tegn) — når ord er den meningsfulde enhed. Self-safe. | [src](../../../core/services/text_clip.py#L88) |
+
 ## `core/services/text_resonance.py`
 _Text Resonance — I feel what I read, before I analyze it._
 
@@ -182,11 +191,11 @@ _Skygge for skema-kontrakten — ville den have afvist noget den ikke burde?_
 | function | `taellere` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L37) |
 | function | `pr_vaerktoej` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L41) |
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L45) |
-| function | `taellere_fra_cache` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L51) |
-| function | `_gem` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L60) |
-| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville taende en | [src](../../../core/services/tool_contract_shadow.py#L70) |
-| function | `haandhaever` | `()` | Skal HAARDE brud faktisk afvise kaldet? | [src](../../../core/services/tool_contract_shadow.py#L81) |
-| function | `observe` | `(tool_name, arguments)` | Maal ét kald. Returnerer bruddene — men afgoer intet selv. | [src](../../../core/services/tool_contract_shadow.py#L95) |
+| function | `taellere_fra_cache` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L57) |
+| function | `_gem` | `()` | Deltaer, ikke totaler — se `shadow_counters` for hvorfor. | [src](../../../core/services/tool_contract_shadow.py#L69) |
+| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville taende en | [src](../../../core/services/tool_contract_shadow.py#L76) |
+| function | `haandhaever` | `()` | Skal HAARDE brud faktisk afvise kaldet? | [src](../../../core/services/tool_contract_shadow.py#L87) |
+| function | `observe` | `(tool_name, arguments)` | Maal ét kald. Returnerer bruddene — men afgoer intet selv. | [src](../../../core/services/tool_contract_shadow.py#L101) |
 
 ## `core/services/tool_embeddings.py`
 _Tool description embedding cache._
@@ -511,24 +520,4 @@ _Bruger-aktivitets-nerve — ét sted der svarer "hvornår var X sidst aktiv, og
 |---|---|---|---|---|
 | function | `_q1` | `(conn, sql, params)` | — | [src](../../../core/services/user_activity.py#L17) |
 | function | `build_user_activity_surface` | `(*, active_within_s=…)` | Pr. registreret bruger: sidst aktiv (flettet fra alle kilder), via hvad, aktiv nu, | [src](../../../core/services/user_activity.py#L25) |
-
-## `core/services/user_contradiction_tracker.py`
-_User Contradiction Tracker — detects when the user contradicts themselves._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tokens` | `(text)` | — | [src](../../../core/services/user_contradiction_tracker.py#L46) |
-| function | `_has_negation` | `(text)` | — | [src](../../../core/services/user_contradiction_tracker.py#L50) |
-| function | `_fetch_recent_user_messages` | `(*, hours=…, limit=…)` | Fetch recent user (role='user') chat messages. | [src](../../../core/services/user_contradiction_tracker.py#L54) |
-| function | `_fetch_existing_statements` | `(*, limit=…)` | Fetch stored user statements for comparison. | [src](../../../core/services/user_contradiction_tracker.py#L76) |
-| function | `_ensure_user_contradiction_tables` | `(conn)` | Idempotent table creation — delegates to db_user_contradiction's helper. | [src](../../../core/services/user_contradiction_tracker.py#L95) |
-| function | `extract_statements` | `(text)` | Split a message into individual claim-like sentences. | [src](../../../core/services/user_contradiction_tracker.py#L105) |
-| function | `_classify_topic` | `(text)` | Simple keyword-based topic classification. | [src](../../../core/services/user_contradiction_tracker.py#L138) |
-| function | `_detect_contradictions_between` | `(new_statement, new_topic, existing, *, max_findings=…)` | Compare a new statement against existing stored statements. | [src](../../../core/services/user_contradiction_tracker.py#L170) |
-| function | `scan_for_contradictions` | `(*, hours=…)` | Main entry point — scan recent user messages for contradictions. | [src](../../../core/services/user_contradiction_tracker.py#L231) |
-| function | `build_user_contradiction_surface` | `(*, limit=…)` | Build signal surface for user contradictions. | [src](../../../core/services/user_contradiction_tracker.py#L352) |
-| function | `record_user_statement` | `(text, topic=…, session_id=…, source=…, user_id=…)` | Record a user statement. Thin wrapper around DB upsert. | [src](../../../core/services/user_contradiction_tracker.py#L427) |
-| function | `check_contradiction` | `(text, topic=…, user_id=…)` | Check a statement against existing stored statements for contradictions. | [src](../../../core/services/user_contradiction_tracker.py#L464) |
-| function | `detect_and_store_contradiction` | `(text, topic=…, session_id=…, source=…, user_id=…)` | Record a statement AND detect/store contradictions in one call. | [src](../../../core/services/user_contradiction_tracker.py#L486) |
-| function | `get_user_contradictions` | `(*, limit=…, status=…, user_id=…)` | Get stored contradictions. Thin wrapper around DB query. | [src](../../../core/services/user_contradiction_tracker.py#L573) |
 

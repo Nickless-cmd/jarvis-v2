@@ -50,7 +50,8 @@ def backfill(session_id: str) -> dict[str, Any]:
     """Skriv sessionens eksisterende beskeder ind i ledgeren. Idempotent."""
     from core.runtime.db import connect
     from core.runtime.db_session_ledger import (
-        acquire_write_lease, append_session_events, release_write_lease,
+        acquire_write_lease, append_session_events, read_session_events,
+        release_write_lease,
     )
 
     sid = str(session_id or "").strip()
@@ -69,6 +70,29 @@ def backfill(session_id: str) -> dict[str, Any]:
         p = {k: r[i] for i, k in enumerate(kols)}
         haendelser.append({"event_id": str(p["message_id"]),
                            "kind": "message", "payload": p})
+
+    # En efterfyldning kan kun FØJE TIL. Mangler der noget i MIDTEN, lander det
+    # bagerst — og så er rækkefølgen forkert fra hullet og frem.
+    #
+    # Målt 9/9-2026 på «Kode-session»: én kompakt-markør manglede på plads 474.
+    # Efterfyldningen lagde den på seq 579, og drift meldte 291 uenigheder.
+    # Detektoren gjorde præcis sit arbejde; efterfyldningen gjorde ikke sit.
+    #
+    # Derfor: hvis ledgeren ikke er et PRÆFIKS af tabellen, afvises det med en
+    # henvisning til `reseed`. At føje til alligevel ville lave en ledger der
+    # ser fyldt ud og er forkert.
+    findes = [e["event_id"] for e in read_session_events(sid)]
+    vil = [h["event_id"] for h in haendelser]
+    if findes and findes != vil[:len(findes)]:
+        for i, (a, b) in enumerate(zip(findes, vil)):
+            if a != b:
+                break
+        else:
+            i = len(findes)
+        return {"session_id": sid, "beskeder": len(rows), "skrevet": 0,
+                "grund": f"ledgeren afviger fra tabellen ved plads {i} — "
+                         "en efterfyldning ville lande bagerst og gøre "
+                         "rækkefølgen forkert; brug reseed()"}
 
     token = acquire_write_lease(sid, owner="canary_backfill")
     if token is None:
@@ -106,6 +130,41 @@ def enable_shadow(session_id: str) -> dict[str, Any]:
     # men det findes, og en uenighed skal opdages i samme minut.
     d = compare(sid)
     return {"session_id": sid, "ok": bool(d["enige"]), "backfill": fyld,
+            "drift": {"enige": d["enige"], "ledger": d["ledger_beskeder"],
+                      "tabel": d["tabel_beskeder"],
+                      "uenigheder": d["uenigheder"][:5]}}
+
+
+def reseed(session_id: str) -> dict[str, Any]:
+    """Skriv sessionens ledger-hændelser HELT om, i tabellens rækkefølge.
+
+    Nødvendig fordi en efterfyldning kun kan føje til: opdages et hul i midten
+    bagefter, kan det ikke lappes ved at appende.
+
+    Sikker PRÆCIS fordi sessionen er i `shadow`: dér er ledgeren ikke sandheden,
+    og der er derfor ingen kanonisk hændelse at slette. Kaldet afviser en
+    session der er i `ledger` — dér ville dette være at kassere historik.
+    """
+    from core.runtime.db import connect
+    from core.runtime.db_session_ledger import storage_mode
+
+    sid = str(session_id or "").strip()
+    nu = storage_mode(sid)
+    if nu != "shadow":
+        return {"session_id": sid, "ok": False,
+                "grund": f"kun for shadow-sessioner; denne er {nu!r}"}
+    from core.services.projection_runtime import _ensure_checkpoint_table
+    with connect() as conn:
+        conn.execute("DELETE FROM session_events WHERE session_id = ?", (sid,))
+        # Markøren skal OGSÅ væk: en projektion der troede den var foldet til
+        # seq 579, ville springe det hele over efter en omskrivning.
+        _ensure_checkpoint_table(conn)
+        conn.execute("DELETE FROM projection_checkpoints WHERE session_id = ?", (sid,))
+    r = backfill(sid)
+
+    from core.services.projection_drift import compare
+    d = compare(sid)
+    return {"session_id": sid, "ok": bool(d["enige"]), "backfill": r,
             "drift": {"enige": d["enige"], "ledger": d["ledger_beskeder"],
                       "tabel": d["tabel_beskeder"],
                       "uenigheder": d["uenigheder"][:5]}}

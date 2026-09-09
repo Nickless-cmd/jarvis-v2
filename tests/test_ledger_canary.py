@@ -255,3 +255,69 @@ def test_en_LEDGER_session_afviser_markoeren_HOEJT(sid):
     L.advance_storage_mode(sid, to="ledger")
     with pytest.raises(DirekteSkrivningAfvist):
         _markoer(sid)
+
+
+# ── et hul i MIDTEN kan ikke lappes ved at føje til ──────────────────────
+
+def _hul_i_midten(sid):
+    """Efterlign den tilstand «Kode-session» stod i: en række findes i tabellen
+    på plads N, men mangler i ledgeren, som ellers har resten."""
+    _historik(sid, 3)
+    _markoer(sid, "midtvejs")
+    _historik(sid, 3)
+    L.advance_storage_mode(sid, to="shadow")
+    with connect() as c:
+        ids = [r[0] for r in c.execute(
+            "SELECT message_id FROM chat_messages WHERE session_id = ? "
+            "AND role != 'compact_marker' ORDER BY id", (sid,))]
+    t = L.acquire_write_lease(sid, owner="t")
+    L.append_session_events(sid, owner="t", token=t, events=[
+        {"event_id": i, "kind": "message",
+         "payload": {"message_id": i, "role": "user", "content": "x",
+                     "created_at": TID}} for i in ids])
+    L.release_write_lease(sid, owner="t", token=t)
+
+
+def test_efterfyldning_AFVISER_naar_den_ville_lande_bagerst(sid):
+    """Målt på «Kode-session» 9/9: markøren manglede på plads 474, blev lagt
+    på seq 579, og drift meldte 291 uenigheder. At føje til alligevel ville
+    lave en ledger der SER fyldt ud og er forkert."""
+    _hul_i_midten(sid)
+    foer = L.current_seq(sid)
+    r = K.backfill(sid)
+    assert r["skrevet"] == 0 and "reseed" in r["grund"]
+    assert L.current_seq(sid) == foer          # intet blev lagt bagerst
+
+
+def test_reseed_skriver_helt_om_og_genopretter_raekkefoelgen(sid):
+    _hul_i_midten(sid)
+    r = K.reseed(sid)
+    assert r["ok"] is True and r["drift"]["enige"] is True
+    roller = [e["payload"]["role"] for e in L.read_session_events(sid)]
+    assert roller[3] == "compact_marker"       # tilbage på sin plads
+
+
+def test_reseed_afviser_en_LEDGER_session(sid):
+    """Dér ville det være at kassere historik, ikke at rette en måling."""
+    _historik(sid, 2)
+    K.enable_shadow(sid)
+    _ro()
+    L.advance_storage_mode(sid, to="ledger")
+    r = K.reseed(sid)
+    assert r["ok"] is False and "shadow" in r["grund"]
+
+
+def test_reseed_afviser_en_LEGACY_session(sid):
+    _historik(sid, 2)
+    assert K.reseed(sid)["ok"] is False
+
+
+def test_en_ren_efterfyldning_er_stadig_tilladt(sid):
+    """Præfiks-vagten må ikke stå i vejen for det normale tilfælde: ledgeren
+    er et præfiks af tabellen, og resten skal føjes til."""
+    _historik(sid, 5)
+    K.enable_shadow(sid)
+    _ro()
+    _historik(sid, 2)                          # skygge-skrevet, altså i takt
+    r = K.backfill(sid)
+    assert r["skrevet"] == 0 and r.get("dubletter") == 7

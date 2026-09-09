@@ -1413,8 +1413,12 @@ async def _stream_visible_run(
     _step_counter = 0
     result = None
     visible_output_text = ""
-    _final_run_status = "completed"
-    _final_run_error: str | None = None
+    # Tilstandsmaskinen er udskilt til `visible_run_outcome_state.py` (Boy
+    # Scout). De tre variable herunder er nu VISNINGER ind i den, så de mange
+    # aflæsninger længere nede kan blive stående uændret — men beslutningen og
+    # dens vagt kan ikke længere komme ud af trit.
+    from core.services.visible_run_outcome_state import RunOutcomeState as _ROS
+    _outcome_state = _ROS()
     # RUNTIME-CUTOFF-ROD (Bjørn 4. jul): en run der når `finally` UDEN at have
     # passeret et finaliserings-punkt (agentisk done / non-agentisk done) blev
     # behandlet som 'completed' pga. default'en ovenfor → _post_process fyrede
@@ -1423,7 +1427,6 @@ async def _stream_visible_run(
     # BaseException der ikke fanges af `except Exception`). Flaget sættes True LIGE
     # FØR hvert done-yield; er det stadig False i finally = runnet blev afbrudt →
     # markér 'interrupted' (ikke completed) så survival ALDRIG fyrer på en halv run.
-    _reached_finalization = False
     # [CUTOFF-TRACE] Livscyklus-breadcrumb: opdateres ved hver fase så finally-downgrade
     # kan vise HVOR CancelledError ramte (tool-exec / agentic-runde / finalisering).
     _run_stage = "init"
@@ -1637,8 +1640,7 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, "Generation cancelled.")
-            _final_run_status = "cancelled"
-            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
+            _outcome_state.mark("cancelled")
             set_last_visible_run_outcome(
                 run,
                 status="cancelled",
@@ -1660,8 +1662,7 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, bounded_message)
-            _final_run_status = "failed"
-            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
+            _outcome_state.mark("failed")
             set_last_visible_run_outcome(
                 run,
                 status="failed",
@@ -1682,8 +1683,7 @@ async def _stream_visible_run(
             # OFF): flag OFF → helper re-raiser → vi får None → dagens adfærd.
             _auto_fb = _maybe_fallback_for_autonomous(run, exc)
             if _auto_fb is not None:
-                _final_run_status = "completed"
-                _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
+                _outcome_state.mark("completed")
                 for _fb_chunk in _complete_visible_run_from_fallback(run, _auto_fb):
                     yield _fb_chunk
                 return
@@ -1703,8 +1703,7 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, user_message)
-            _final_run_status = "failed"
-            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
+            _outcome_state.mark("failed")
             set_last_visible_run_outcome(
                 run,
                 status="failed",
@@ -1730,16 +1729,14 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, _deg_user_msg)
-            _final_run_status = "failed"
-            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
+            _outcome_state.mark("failed")
             set_last_visible_run_outcome(run, status="failed", error=stage_error)
             for failure_chunk in _fail_visible_run(run, stage_error):
                 yield failure_chunk
             return
 
         if result is None:
-            _final_run_status = "failed"  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
-            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
+            _outcome_state.mark("failed")  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
             stage_error = "first-pass-provider-error: Visible model stream completed without final result"
             _update_visible_execution_trace(
                 run,
@@ -3021,8 +3018,8 @@ async def _stream_visible_run(
                                 # Check for controller cancellation (Cancel button)
                                 if controller.is_cancelled():
                                     _agentic_loop_exit_reason = "user-cancelled"
-                                    _final_run_status = "interrupted"
-                                    _final_run_error = "user-cancelled-during-agentic-loop"
+                                    _outcome_state.mark("interrupted", finalized=False)
+                                    _outcome_state.set_error("user-cancelled-during-agentic-loop")
                                     try:
                                         from core.services.agentic_checkpoints import save_checkpoint as _save_agentic_checkpoint
                                         _save_agentic_checkpoint(
@@ -3621,8 +3618,8 @@ async def _stream_visible_run(
                             )
                         except Exception:
                             pass
-                        _final_run_status = "interrupted"
-                        _final_run_error = str(_interruption.get("error") or _failure_summary)
+                        _outcome_state.mark("interrupted", finalized=False)
+                        _outcome_state.set_error(str(_interruption.get("error") or _failure_summary))
                         _agentic_loop_exit_reason = f"interrupted:{_failure_summary}"
                         try:
                             _save_agentic_checkpoint(
@@ -3644,8 +3641,8 @@ async def _stream_visible_run(
                     # ── Check for user cancellation (Cancel button) ──
                     if controller.is_cancelled():
                         _agentic_loop_exit_reason = "user-cancelled"
-                        _final_run_status = "interrupted"
-                        _final_run_error = "user-cancelled-during-agentic-loop"
+                        _outcome_state.mark("interrupted", finalized=False)
+                        _outcome_state.set_error("user-cancelled-during-agentic-loop")
                         try:
                             from core.services.agentic_checkpoints import save_checkpoint as _save_agentic_checkpoint
                             _save_agentic_checkpoint(
@@ -4758,7 +4755,7 @@ async def _stream_visible_run(
                                 })
                 except Exception:
                     pass
-                if not _real_answer and _final_run_status == "completed":
+                if not _real_answer and _outcome_state.status == "completed":
                     _fu_ex = locals().get("_followup_exchanges") or []
                     _tools_ct = sum(len(getattr(_ex, "tool_calls", []) or [])
                                     for _ex in _fu_ex)
@@ -4800,10 +4797,10 @@ async def _stream_visible_run(
                         })
                         followup_text = _empty_cutoff_note
 
-                if _final_run_status == "interrupted":
+                if _outcome_state.status == "interrupted":
                     _resume_note = (
                         "\n\n⚠ Jeg blev afbrudt i agentic loopet "
-                        f"({_final_run_error or 'unknown cause'}). "
+                        f"({_outcome_state.error or 'unknown cause'}). "
                         "Next message can continue from here instead of starting over."
                     )
                     if _resume_note.strip() not in followup_text:
@@ -4849,11 +4846,29 @@ async def _stream_visible_run(
 
                 set_last_visible_run_outcome(
                     run,
-                    status=_final_run_status,
+                    status=_outcome_state.status,
                     text_preview=followup_text[:140],
-                    error=_final_run_error,
+                    error=_outcome_state.error,
                 )
-                if _final_run_status == "completed":
+
+                # Fase 2, skygge: siger den nye afregnings-kontrakt det SAMME
+                # som koden der har kørt i produktion? Sammenligner og logger —
+                # rører ikke runnet og kaster aldrig. Slukket medmindre nogen
+                # eksplicit har tændt `settlement/shadow`.
+                try:
+                    from core.services.settlement_shadow import observe as _obs_settle
+                    _obs_settle(
+                        run_id=str(run.run_id or ""),
+                        legacy_status=_outcome_state.status,
+                        legacy_error=_outcome_state.error,
+                        text=followup_text or "",
+                        emitted_prefix=visible_output_text or "",
+                        cancelled=_outcome_state.status == "cancelled",
+                        transport_error=_outcome_state.status == "failed",
+                    )
+                except Exception:
+                    pass
+                if _outcome_state.status == "completed":
                     try:
                         from core.services.agentic_checkpoints import clear_run as _clear_agentic_checkpoint
                         _clear_agentic_checkpoint(run.run_id)
@@ -4903,7 +4918,7 @@ async def _stream_visible_run(
                     })
                 except Exception:
                     pass
-                _reached_finalization = True
+                _outcome_state.reach_finalization()
 
                 # Cost-ledger er en del af run-kontrakten, ikke best-effort
                 # efterbehandling. SSE-v2 lukker legacy-generatoren så snart den
@@ -4922,7 +4937,7 @@ async def _stream_visible_run(
                 yield _sse("done", {
                     "type": "done",
                     "run_id": run.run_id,
-                    "status": _final_run_status,
+                    "status": _outcome_state.status,
                     "input_tokens": total_input_tokens,
                     "output_tokens": total_output_tokens,
                 })
@@ -4931,8 +4946,8 @@ async def _stream_visible_run(
                 _run_ref = run
                 _tokens = (total_input_tokens, total_output_tokens)
                 _followup_text = followup_text
-                _outcome_status = _final_run_status
-                _outcome_error = _final_run_error
+                _outcome_status = _outcome_state.status
+                _outcome_error = _outcome_state.error
                 import threading as _threading
 
                 def _persist_tool_result() -> None:
@@ -5052,8 +5067,7 @@ async def _stream_visible_run(
                 )
             except Exception:
                 pass
-            _final_run_status = "cancelled"
-            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
+            _outcome_state.mark("cancelled")
             set_last_visible_run_outcome(
                 run,
                 status="cancelled",
@@ -5466,7 +5480,7 @@ async def _stream_visible_run(
         _np_answer = str(visible_output_text or "").strip()
         if _np_answer in ("[tool calls only]", "[Completed]", "[tool calls only]."):
             _np_answer = ""
-        if not _np_answer and _final_run_status == "completed" and not run.autonomous:
+        if not _np_answer and _outcome_state.status == "completed" and not run.autonomous:
             try:
                 from core.services import followup_observer as _fu_np
                 _fu_np.note_empty_completion(
@@ -5515,7 +5529,7 @@ async def _stream_visible_run(
             except Exception as _persist_exc2:
                 # H5: svaret er vist live, men gemmes ikke → væk ved reload.
                 _observe_persist_failed(run, _persist_exc2)
-        _reached_finalization = True
+        _outcome_state.reach_finalization()
         yield _sse(
             "done",
             {
@@ -5536,11 +5550,11 @@ async def _stream_visible_run(
             "visible-run unhandled exception: %s", _outer_exc, exc_info=True
         )
         _outer_error = str(_outer_exc) or "unexpected-run-error"
-        _final_run_status = "failed"  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
-        _final_run_error = _outer_error
+        _outcome_state.mark("failed", finalized=False)  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
+        _outcome_state.set_error(_outer_error)
         set_last_visible_run_outcome(run, status="failed", error=_outer_error)
         # Laer af den. Laeringssignalerne koerer laengere oppe (linje ~5045) og
-        # ser kun `_final_run_error`, som paa det tidspunkt endnu er tom for et
+        # ser kun `_outcome_state.error`, som paa det tidspunkt endnu er tom for et
         # run der fejler HER — derfor naaede 250 «failed»-runs aldrig frem, og
         # lessons stod paa 4 raekker efter 17.609 runs. Maalt 7/9-2026.
         try:
@@ -5593,19 +5607,19 @@ async def _stream_visible_run(
             pass
 
         # ── RUNTIME-CUTOFF-ROD-FIX (Bjørn 4. jul) ──────────────────────────────
-        # Nåede vi finally UDEN at have passeret et done-yield (_reached_finalization
-        # stadig False) MEN status er stadig default'en 'completed'? Så blev runnet
-        # AFBRUDT midt-flugt (GeneratorExit ved klient-drop, CancelledError, eller en
-        # BaseException `except Exception` ikke fanger). En sådan run er IKKE completed
-        # — den er interrupted. Ellers fyrer _post_process' completed+tom-checkpoint
-        # survival-stemmen på en halv run (provider-agnostisk rod: kimi/deepseek
-        # tool-ture). Downgrade FØR _post_process-tråden læser _final_run_status.
-        if (not _reached_finalization and _final_run_status == "completed"):
-            import sys as _sys_exc
-            _abort_exc = _sys_exc.exc_info()[0]
-            _abort_kind = _abort_exc.__name__ if _abort_exc else "none-clean-exit"
-            _final_run_status = "interrupted"
-            _final_run_error = _final_run_error or f"run-abandoned-before-finalization:{_abort_kind}"
+        # Nåede vi finally UDEN at have passeret et done-yield MEN status er
+        # stadig default'ens 'completed'? Så blev runnet AFBRUDT midt-flugt
+        # (GeneratorExit ved klient-drop, CancelledError, eller en BaseException
+        # `except Exception` ikke fanger). En sådan run er IKKE completed — den
+        # er interrupted. Ellers fyrer _post_process' completed+tom-checkpoint
+        # survival-stemmen på en halv run.
+        #
+        # Selve reglen bor nu i `visible_run_outcome_state.downgrade_if_abandoned`
+        # med sine egne tests. Downgrade FØR _post_process-tråden læser status.
+        import sys as _sys_exc
+        _abort_exc = _sys_exc.exc_info()[0]
+        _abort_kind = _abort_exc.__name__ if _abort_exc else "none-clean-exit"
+        if _outcome_state.downgrade_if_abandoned(_abort_kind):
             # Central-nerve (loop-cluster): en afbrudt-midt-flugt run er nu synlig i jc —
             # så vi ser hvis abort-raten stiger igen (fx nyt tavst await-vindue). Self-safe.
             try:
@@ -5673,8 +5687,8 @@ async def _stream_visible_run(
             try:
                 set_last_visible_run_outcome(
                     run,
-                    status=_final_run_status,
-                    error=_final_run_error,
+                    status=_outcome_state.status,
+                    error=_outcome_state.error,
                     text_preview=_preview_text(visible_output_text),
                 )
                 # Harness Part 1 (earned model-trust): record this run's outcome. Degeneration =
@@ -5683,7 +5697,7 @@ async def _stream_visible_run(
                 # model 'strong'; one degeneration reverts it to 'weak'.
                 try:
                     from core.services.model_trust import record_run_outcome as _rec_mt
-                    _mt_deg = bool(_run_degenerated) or _final_run_status in (
+                    _mt_deg = bool(_run_degenerated) or _outcome_state.status in (
                         "failed", "interrupted", "cancelled")
                     _rec_mt(getattr(run, "model", "") or "", degenerated=_mt_deg)
                 except Exception:
@@ -5872,7 +5886,7 @@ async def _stream_visible_run(
         # Denne finally-blok er den eneste sti alle runs garanteret når.
         # evaluate_and_advance er idempotent, så det gamle kald er harmløst.
         try:
-            _finalize_run(run.session_id, status=_final_run_status)
+            _finalize_run(run.session_id, status=_outcome_state.status)
         except Exception:
             pass
 
@@ -5881,12 +5895,12 @@ async def _stream_visible_run(
         # equally "no longer hanging", so the next prompt build won't
         # surface a stale "you were interrupted" notice.
         try:
-            if _final_run_status == "interrupted":
+            if _outcome_state.status == "interrupted":
                 from core.services.in_flight_runs import mark_interrupted as _mark_run_interrupted
                 _mark_run_interrupted(
                     run.run_id,
-                    reason=_final_run_error or "interrupted",
-                    summary=_final_run_error or "interrupted",
+                    reason=_outcome_state.error or "interrupted",
+                    summary=_outcome_state.error or "interrupted",
                 )
             else:
                 from core.services.in_flight_runs import (

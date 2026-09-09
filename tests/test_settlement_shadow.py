@@ -152,7 +152,18 @@ def test_enigheden_siges_HOEJT_med_jaevne_mellemrum(taendt, caplog):
 
 def test_pulsen_kommer_ikke_ved_HVER_observation(taendt, caplog):
     import logging
+    _obs()                       # den første siges altid højt
+    caplog.clear()
     with caplog.at_level(logging.INFO):
-        for _ in range(SH.PULS_HVER - 1):
+        for _ in range(SH.PULS_HVER - 2):
             _obs()
     assert "puls" not in caplog.text
+
+
+def test_den_FOERSTE_observation_siges_hoejt(taendt, caplog):
+    """Beviset for at koblingen overhovedet fyrer. Uden den skal man vente på
+    den 20. for at vide om målingen er i live."""
+    import logging
+    with caplog.at_level(logging.INFO):
+        _obs()
+    assert "settlement-shadow puls" in caplog.text

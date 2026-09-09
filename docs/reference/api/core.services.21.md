@@ -142,8 +142,8 @@ _Skygge-sammenligning: er den nye afregning enig med den kørende kode?_
 | function | `taellere` | `()` | — | [src](../../../core/services/settlement_shadow.py#L52) |
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/settlement_shadow.py#L56) |
 | function | `live` | `()` | Er skygge-sammenligningen tændt? Slukket ved enhver tvivl. | [src](../../../core/services/settlement_shadow.py#L61) |
-| function | `_puls` | `()` | — | [src](../../../core/services/settlement_shadow.py#L92) |
-| function | `observe` | `(*, run_id, legacy_status, legacy_error, text, emitted_prefix, cancelled, transport_error=…, tool_dispatched=…)` | Sammenlign den kørende beslutning med den nye kontrakts. Kaster aldrig. | [src](../../../core/services/settlement_shadow.py#L98) |
+| function | `_puls` | `()` | Sig tællerne højt ved FØRSTE observation og derefter periodisk. | [src](../../../core/services/settlement_shadow.py#L92) |
+| function | `observe` | `(*, run_id, legacy_status, legacy_error, text, emitted_prefix, cancelled, transport_error=…, tool_dispatched=…)` | Sammenlign den kørende beslutning med den nye kontrakts. Kaster aldrig. | [src](../../../core/services/settlement_shadow.py#L104) |
 
 ## `core/services/shadow_experiment_registry.py`
 _core/services/shadow_experiment_registry.py_

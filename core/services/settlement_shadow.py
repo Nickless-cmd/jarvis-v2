@@ -90,8 +90,14 @@ PULS_HVER = 20
 
 
 def _puls() -> None:
+    """Sig tællerne højt ved FØRSTE observation og derefter periodisk.
+
+    Den første er den vigtigste: den er beviset for at koblingen overhovedet
+    fyrer. Uden den skal man vente på den 20. for at vide om målingen er i
+    live — og indtil da er tavshed stadig tvetydig.
+    """
     n = _taellere["enige"] + _taellere["uenige"]
-    if n and n % PULS_HVER == 0:
+    if n == 1 or (n and n % PULS_HVER == 0):
         logger.info("settlement-shadow puls: %s", taellere())
 
 

@@ -72,6 +72,17 @@ _One-shot migration: copy memory_emotional_context rows into emotional_memory_an
 | function | `migrate` | `(*, batch_size=…)` | Migrate legacy rows into the new table. | [src](../../../scripts/migrate_emotional_memory.py#L32) |
 | function | `_legacy_table_exists` | `(conn)` | — | [src](../../../scripts/migrate_emotional_memory.py#L77) |
 
+## `scripts/minimal_mode_baseline.py`
+_Minimal-mode-basislinje — hvad kan modellen UDEN Jarvis' stillads?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kald` | `(beskeder, *, timeout=…)` | — | [src](../../../scripts/minimal_mode_baseline.py#L153) |
+| function | `_koer` | `(cmd, cwd, timeout=…)` | — | [src](../../../scripts/minimal_mode_baseline.py#L173) |
+| function | `_udfoer_vaerktoej` | `(navn, args, mappe)` | — | [src](../../../scripts/minimal_mode_baseline.py#L184) |
+| function | `koer_opgave` | `(navn, spec, *, maks_runder)` | — | [src](../../../scripts/minimal_mode_baseline.py#L206) |
+| function | `main` | `()` | — | [src](../../../scripts/minimal_mode_baseline.py#L248) |
+
 ## `scripts/mint_jarvisx_token.py`
 _Mint a JarvisX bearer token for a user._
 

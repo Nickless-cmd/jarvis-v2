@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7049/13945 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7049/13950 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,12 +35,12 @@ Generated from source. 7049/13945 functions/methods documented (50%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 184 | 359 | 51% |
+| `scripts` | 184 | 364 | 50% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (1984)
+## Undocumented public functions (1986)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1981,6 +1981,8 @@ Generated from source. 7049/13945 functions/methods documented (50%). The list b
 - `scripts/memory_probe.py` :: `load_probes` (L24)
 - `scripts/memory_probe.py` :: `main` (L155)
 - `scripts/memory_probe.py` :: `score_probe` (L29)
+- `scripts/minimal_mode_baseline.py` :: `koer_opgave` (L206)
+- `scripts/minimal_mode_baseline.py` :: `main` (L248)
 - `scripts/mint_jarvisx_token.py` :: `main` (L52)
 - `scripts/model_catalogue_sweep.py` :: `main` (L36)
 - `scripts/nudge_well_cleanup.py` :: `clean_broend` (L64)

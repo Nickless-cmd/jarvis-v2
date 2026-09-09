@@ -81,3 +81,83 @@ def test_status_fortaeller_hvorfor_den_ikke_er_aktiv(monkeypatch):
     s = bs.status()
     assert s["aktiv"] is False
     assert "findes ikke" in s["note"]
+
+
+# ── 10/9-2026: sandkassen var korrekt og ubrugelig ───────────────────────
+#
+# Maalt ved at TAENDE den paa CT105 og spoerge hvad en indespaerret kommando
+# kunne: `ls /opt/conda` → «No such file or directory», og `~/.jarvis-v2`
+# fandtes ikke. Indespaerringen rapporterede pligtskyldigt `honored=True` —
+# den var bare ude af stand til at lave arbejde. Et vaern ingen taender,
+# beskytter intet.
+
+import shutil
+
+import pytest
+
+_HAR_BWRAP = shutil.which("bwrap") is not None
+
+
+def test_opt_er_med_i_de_readonly_roedder():
+    """HVERT script i huset koerer gennem `/opt/conda/envs/ai/bin/python`."""
+    from core.services.bash_sandbox import _RO_ROEDDER
+    assert "/opt" in _RO_ROEDDER
+
+
+def test_runtime_hjemmet_bindes_SKRIVBART():
+    """Uden det kunne en indespaerret kommando hverken se databasen,
+    tilstanden eller hukommelsen."""
+    from core.runtime.config import JARVIS_HOME
+    from core.services.bash_sandbox import wrap_bwrap
+    argv = wrap_bwrap("echo x", "/media/projects/jarvis-v2")
+    i = argv.index(str(JARVIS_HOME))
+    assert argv[i - 1] == "--bind", "hjemmet blev bundet read-only"
+
+
+def _antal_bind(argv: list[str], sti: str) -> int:
+    """Tael `--bind <sti> <sti>`-par. `--chdir <sti>` naevner OGSAA stien, saa
+    en raa .count() taeller forkert — det kostede en falsk roed test."""
+    return sum(1 for i, a in enumerate(argv)
+               if a == "--bind" and argv[i + 1] == sti)
+
+
+def test_ingen_dobbelt_binding_naar_cwd_ER_hjemmet():
+    from core.runtime.config import JARVIS_HOME
+    from core.services.bash_sandbox import wrap_bwrap
+    argv = wrap_bwrap("echo x", str(JARVIS_HOME))
+    assert _antal_bind(argv, str(JARVIS_HOME)) == 1
+
+
+@pytest.mark.skipif(not _HAR_BWRAP, reason="bwrap findes ikke her")
+def test_en_indespaerret_kommando_kan_faktisk_arbejde(tmp_path):
+    """Selve fejlen fra i dag: den kunne rapportere, men ikke arbejde."""
+    import subprocess
+    from core.services.bash_sandbox import wrap_bwrap
+    argv = wrap_bwrap('/opt/conda/envs/ai/bin/python -c "print(2+2)"',
+                      "/media/projects/jarvis-v2")
+    r = subprocess.run(argv, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0 and r.stdout.strip() == "4", r.stderr[:200]
+
+
+@pytest.mark.skipif(not _HAR_BWRAP, reason="bwrap findes ikke her")
+def test_en_skrivning_UDENFOR_kasseres(tmp_path):
+    # NB: maalet maa IKKE ligge under /tmp — det er tmpfs inde i sandkassen,
+    # saa mappen findes slet ikke og skrivningen fejler af en anden grund end
+    # den vi vil vise. (Falsk roed test, 10/9-2026.)
+    """Og den beskytter stadig. Bemaerk at kommandoen faar exit 0 og kan laese
+    sin egen skrivning tilbage — men den RIGTIGE disk er uroert. «Det lykkedes»
+    inde i sandkassen betyder ikke at der skete noget udenfor.
+    """
+    import subprocess
+    from core.services.bash_sandbox import wrap_bwrap
+    import pathlib
+    maal = pathlib.Path.home() / "sandkasse-testmaal.txt"
+    maal.write_text("ORIGINAL")
+    argv = wrap_bwrap(f"echo OEDELAGT > {maal}; cat {maal}",
+                      "/media/projects/jarvis-v2")
+    r = subprocess.run(argv, capture_output=True, text=True, timeout=60)
+    assert r.stdout.strip() == "OEDELAGT", "saa ikke sin egen skrivning"
+    try:
+        assert maal.read_text() == "ORIGINAL", "skrivningen slap UD af sandkassen"
+    finally:
+        maal.unlink(missing_ok=True)

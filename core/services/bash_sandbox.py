@@ -53,7 +53,31 @@ logger = logging.getLogger(__name__)
 _SWITCH_SCOPE = "sandbox"
 _SWITCH_NAME = "bash_bwrap"
 
-_RO_ROEDDER = ("/usr", "/bin", "/lib", "/lib64", "/etc")
+# `/opt` kom til 10/9-2026. Uden den fandtes `/opt/conda` ikke inde i
+# sandkassen, og HVERT script i huset koerer gennem
+# `/opt/conda/envs/ai/bin/python`. Maalt ved at taende sandkassen paa CT105 og
+# spoerge: `ls /opt/conda` → «No such file or directory». Indespaerringen
+# rapporterede korrekt `honored=True` — den var bare ubrugelig.
+_RO_ROEDDER = ("/usr", "/bin", "/lib", "/lib64", "/etc", "/opt")
+
+
+def _runtime_hjem() -> str | None:
+    """Jarvis' runtime-hjem, hvis det findes.
+
+    Bindes SKRIVBART. Uden det kunne en indespaerret kommando ikke se
+    `~/.jarvis-v2` overhovedet — hverken databasen, tilstanden eller
+    hukommelsen — og engangs-stien kunne stort set intet nyttigt.
+
+    Det svaekker sandkassen bevidst: den beskytter mod skade paa RESTEN af
+    maskinen, ikke mod at Jarvis roerer sit eget hjem. Havde vi ladet det vaere
+    ude, ville vaernet vaere blevet slaaet fra i stedet — og et vaern ingen
+    taender, beskytter intet.
+    """
+    try:
+        from core.runtime.config import JARVIS_HOME
+        return str(JARVIS_HOME) if JARVIS_HOME.exists() else None
+    except Exception:
+        return None
 
 
 def is_available() -> bool:
@@ -102,9 +126,15 @@ def wrap_bwrap(command: str, cwd: str, *, writable_roots: list[str] | None = Non
     # cwd bindes EFTER --tmpfs /tmp, saa en cwd der selv ligger under /tmp
     # ikke skygges af tmpfs-mountet. bwrap anvender mounts i raekkefoelge.
     argv += ["--bind", cwd, cwd]
+    _bundet = {cwd}
+    _hjem = _runtime_hjem()
+    if _hjem and _hjem not in _bundet:
+        argv += ["--bind", _hjem, _hjem]
+        _bundet.add(_hjem)
     for rod in (writable_roots or []):
-        if rod != cwd:
+        if rod not in _bundet:
             argv += ["--bind", rod, rod]
+            _bundet.add(rod)
     argv += ["--unshare-all"]
     if allow_egress:
         argv += ["--share-net"]

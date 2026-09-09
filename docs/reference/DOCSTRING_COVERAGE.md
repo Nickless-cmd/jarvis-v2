@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7194/14179 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7195/14180 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7194/14179 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 606 | 1113 | 54% |
-| `core.services` | 4768 | 9765 | 48% |
+| `core.services` | 4769 | 9766 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -646,9 +646,9 @@ Generated from source. 7194/14179 functions/methods documented (50%). The list b
 - `core/services/autonomy_proposal_queue.py` :: `reject_proposal` (L255)
 - `core/services/avoidance_detector.py` :: `build_avoidance_surface` (L161)
 - `core/services/background_resume.py` :: `tracked` (L85)
-- `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L174)
-- `core/services/bash_sandbox.py` :: `set_enabled` (L74)
-- `core/services/bash_sandbox.py` :: `status` (L81)
+- `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L204)
+- `core/services/bash_sandbox.py` :: `set_enabled` (L98)
+- `core/services/bash_sandbox.py` :: `status` (L105)
 - `core/services/behavioral_decisions.py` :: `change_status` (L178)
 - `core/services/behavioral_decisions.py` :: `create_decision` (L51)
 - `core/services/behavioral_decisions.py` :: `delete_decision` (L214)

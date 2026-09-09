@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14030 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14039 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -48,10 +48,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14030 functions/
 - [`core.services.19`](core.services.19.md) — `remembered_fact_signal_tracking` … `scheduled_tasks`
 - [`core.services.20`](core.services.20.md) — `secret_redaction` … `session_milestones`
 - [`core.services.21`](core.services.21.md) — `session_persistence_flag` … `spaced_repetition`
-- [`core.services.22`](core.services.22.md) — `spatial_entity_ledger` … `tool_catalog`
-- [`core.services.23`](core.services.23.md) — `tool_chip_payload` … `verification_gate_telemetry`
-- [`core.services.24`](core.services.24.md) — `veto_gate` … `workspace_trust`
-- [`core.services.25`](core.services.25.md) — `world_model_auto_extraction` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `spatial_entity_ledger` … `tiny_webchat_execution_pilot`
+- [`core.services.23`](core.services.23.md) — `tool_catalog` … `verification_gate`
+- [`core.services.24`](core.services.24.md) — `verification_gate_telemetry` … `workspace_crypto`
+- [`core.services.25`](core.services.25.md) — `workspace_trust` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

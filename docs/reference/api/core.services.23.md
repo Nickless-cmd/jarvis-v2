@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_catalog.py`
+_Compact tool catalog for system prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L94) |
+| function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L108) |
+| function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L123) |
+| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L159) |
+| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L164) |
+
 ## `core/services/tool_chip_payload.py`
 _Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15)._
 
@@ -542,19 +553,4 @@ _Verification gate — advisory check on destructive/mutation actions._
 | function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L306) |
 | function | `verification_gate_section` | `()` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L332) |
 | function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L398) |
-
-## `core/services/verification_gate_telemetry.py`
-_R2 verification gate telemetry — track whether warnings get heeded._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/verification_gate_telemetry.py#L44) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/verification_gate_telemetry.py#L56) |
-| function | `record_surface` | `(*, failed_verify_count, unverified_count, mutation_count, verify_count)` | Called by verification_gate_section when it returns a non-None section. | [src](../../../core/services/verification_gate_telemetry.py#L69) |
-| function | `record_verify_event` | `(*, tool, status, at=…, verify_kind=…)` | Called by the telemetry listener for tool.completed events. If a recent | [src](../../../core/services/verification_gate_telemetry.py#L106) |
-| function | `sweep_expired_surfaces` | `()` | Mark surfaces as 'ignored' once they're past the reaction window with | [src](../../../core/services/verification_gate_telemetry.py#L152) |
-| function | `get_telemetry_summary` | `(*, hours=…)` | Aggregate counts + heed rates over the lookback window. | [src](../../../core/services/verification_gate_telemetry.py#L183) |
-| function | `telemetry_section` | `()` | Render telemetry as a prompt-awareness section. Only shows when there's | [src](../../../core/services/verification_gate_telemetry.py#L238) |
-| function | `_poll_db_for_verify_events` | `()` | Poll the events table for new tool.completed verify_* events. | [src](../../../core/services/verification_gate_telemetry.py#L276) |
-| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/verification_gate_telemetry.py#L356) |
 

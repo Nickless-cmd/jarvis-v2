@@ -256,6 +256,18 @@ from core.runtime.state_store import load_json as _load_approvals_state, save_js
 _APPROVALS_STATE_KEY = "pending_approvals"
 
 
+def _kald_digest(tool_name: str, arguments) -> str:
+    """Digesten over kaldet — broens definition, ikke en ny.
+
+    To definitioner af «samme kald» ville vaere to steder de kan blive uenige.
+    """
+    try:
+        from core.runtime.db_approval_bridge import invocation_digest
+        return invocation_digest(str(tool_name or ""), dict(arguments or {}))
+    except Exception:
+        return ""
+
+
 def _godkendelses_ejer(run) -> str:
     """Hvem skal kunne svare paa dette kort?
 
@@ -2160,6 +2172,14 @@ async def _stream_visible_run(
                             # blev bare ikke gemt, saa `resolve` havde intet
                             # at maale et svar imod.
                             "owner_user_id": _godkendelses_ejer(run),
+                            # INTEGRITET (Fase 4): «invocation digest ...
+                            # changes invalidate approval». Kortet ligger som
+                            # ren JSON i `state/pending_approvals.json` og blev
+                            # udfoert ORDRET. Aendrede noget filen mellem at
+                            # kortet blev vist og besvaret, koerte noget andet
+                            # end det brugeren saa — uden at nogen kunne se det.
+                            "invocation_digest": _kald_digest(
+                                sr["tool_name"], sr["arguments"]),
                         }
                         # 2026-05-24 (Claude): tag the sr so the persistence
                         # loop can later check if resolve_pending_approval
@@ -2194,6 +2214,14 @@ async def _stream_visible_run(
                             # blev bare ikke gemt, saa `resolve` havde intet
                             # at maale et svar imod.
                             "owner_user_id": _godkendelses_ejer(run),
+                            # INTEGRITET (Fase 4): «invocation digest ...
+                            # changes invalidate approval». Kortet ligger som
+                            # ren JSON i `state/pending_approvals.json` og blev
+                            # udfoert ORDRET. Aendrede noget filen mellem at
+                            # kortet blev vist og besvaret, koerte noget andet
+                            # end det brugeren saa — uden at nogen kunne se det.
+                            "invocation_digest": _kald_digest(
+                                sr["tool_name"], sr["arguments"]),
                         })
                         _publicer_approval_requested(
                             approval_id=approval_id, tool=sr["tool_name"],
@@ -4425,6 +4453,8 @@ async def _stream_visible_run(
                                 "session_id": run.session_id,
                                 "created_at": _a_created_at,
                                 "owner_user_id": _godkendelses_ejer(run),
+                                "invocation_digest": _kald_digest(
+                                    _a_sr["tool_name"], _a_sr["arguments"]),
                             }
                             # Tag the sr so the second-pass agentic loop's
                             # persistence can later check chat_persisted flag.
@@ -4452,6 +4482,8 @@ async def _stream_visible_run(
                                 "session_id": run.session_id,
                                 "created_at": _a_created_at,
                                 "owner_user_id": _godkendelses_ejer(run),
+                                "invocation_digest": _kald_digest(
+                                    _a_sr["tool_name"], _a_sr["arguments"]),
                             })
                             _publicer_approval_requested(
                                 approval_id=_a_apid, tool=_a_sr["tool_name"],

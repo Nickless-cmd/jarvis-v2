@@ -312,6 +312,31 @@ def resolve_pending_approval(approval_id: str, *, approved: bool,
                 "approval_id": approval_id,
             }
 
+    # ── INTEGRITET (Fase 4) ─────────────────────────────────────────────
+    # Er kaldet stadig DET kald brugeren sagde ja til? Kortet har ligget som
+    # ren JSON siden det blev vist; her er sidste sted forskellen kan ses foer
+    # udbyder-graensen krydses.
+    _gemt_digest = str(pending.get("invocation_digest") or "").strip()
+    if _gemt_digest:
+        _nu_digest = _vr._kald_digest(pending["tool_name"], pending["arguments"])
+        if _nu_digest and _nu_digest != _gemt_digest:
+            logger.warning("Fase 4: AFVISER %s — kaldet har aendret sig siden "
+                           "godkendelsen (gemt=%s nu=%s)", approval_id,
+                           _gemt_digest[:24], _nu_digest[:24])
+            try:
+                from core.services.approval_bridge_shadow import note_settled
+                note_settled(approval_id, ok=False)
+            except Exception:
+                pass
+            return {
+                "status": "error",
+                "tool": pending["tool_name"],
+                "error": ("Kaldet har aendret sig siden du godkendte det. "
+                          "Bed om handlingen igen."),
+                "result_text": "[Kaldet har aendret sig siden godkendelsen]",
+                "chat_persisted": False,
+            }
+
     try:
         result = execute_tool_force(
             pending["tool_name"], pending["arguments"], owner_approved=True,

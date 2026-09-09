@@ -316,13 +316,13 @@ def state(approval_id: str) -> dict[str, Any] | None:
     with connect() as conn:
         _ensure(conn)
         row = conn.execute(
-            "SELECT approval_id, tool_name, invocation_digest, state, run_id, "
+            "SELECT approval_id, kind, tool_name, invocation_digest, state, run_id, "
             "session_id, created_at, expires_at, decided_at, claimed_at, "
             "settled_at, detail FROM approval_claims WHERE approval_id = ?",
             (str(approval_id or "").strip(),)).fetchone()
     if row is None:
         return None
-    n = ("approval_id", "tool_name", "invocation_digest", "state", "run_id",
+    n = ("approval_id", "kind", "tool_name", "invocation_digest", "state", "run_id",
          "session_id", "created_at", "expires_at", "decided_at", "claimed_at",
          "settled_at", "detail")
     return dict(zip(n, row))

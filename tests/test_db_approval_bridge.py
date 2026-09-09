@@ -301,3 +301,14 @@ def test_kind_tilfoejes_til_en_tabel_der_allerede_findes(isolated_runtime):
         soejler = {r[1] for r in conn.execute("PRAGMA table_info(approval_claims)")}
     assert "kind" in soejler
     assert B.state("inv-migreret")["state"] == B.PREPARED
+
+
+def test_state_siger_HVILKEN_slags_post_det_er(aid):
+    """Soejlen findes for at kunne skelne «et menneske sagde ja» fra «ingen
+    blev spurgt, men det aendrede noget». Den skal derfor kunne LAESES."""
+    B.prepare(aid, tool_name="write_file", arguments={"path": "/w/x"})
+    assert B.state(aid)["kind"] == "auto"
+
+    b = aid + "-m"
+    B.request(b, tool_name="bash", arguments={"command": "ls"})
+    assert B.state(b)["kind"] == "approval"

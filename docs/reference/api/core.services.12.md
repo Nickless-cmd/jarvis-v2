@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_memory.py`
+_Memory-cluster gate — promotion til identitets-filer, GRADERET._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_candidate_text` | `(candidate)` | — | [src](../../../core/services/gate_memory.py#L25) |
+| function | `memory_promotion_gate` | `(ctx)` | ctx: {candidate, kind: 'user_md'|'memory_md'}. Returnér ét GRADERET Verdict. | [src](../../../core/services/gate_memory.py#L32) |
+
 ## `core/services/gate_mutation.py`
 _Mutation-cluster gate 🔒 — én graderet SECURITY-gate + ÉN kanonisk kilde for de_
 
@@ -568,13 +576,4 @@ _Hugging Face-connector — søg modeller/datasets via Hub API._
 | function | `_get` | `(path, params=…)` | — | [src](../../../core/services/hf_connector.py#L52) |
 | function | `search_models` | `(query, *, limit=…)` | — | [src](../../../core/services/hf_connector.py#L67) |
 | function | `model_info` | `(model_id)` | — | [src](../../../core/services/hf_connector.py#L85) |
-
-## `core/services/hollow_promise_census.py`
-_Optælling af tomme løfter — så Centralen kan SE Jarvis' værste mønster._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_since` | `(hours)` | ISO-UTC-grænse. DB'en gemmer `2026-09-05T16:20:19.213749+00:00`, så en | [src](../../../core/services/hollow_promise_census.py#L71) |
-| function | `census` | `(hours=…)` | Den ægte rate pr. model + hvor meget værnet fangede. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L79) |
-| function | `_guard_counts` | `(grænse)` | Hvad værnet selv greb, fra dets egne events. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L129) |
 

@@ -72,6 +72,25 @@ _Alt hvad der KUN observerer et vaerktoejskald — efter det er kaldt._
 |---|---|---|---|---|
 | function | `observe_tool_call` | `(name, arguments, result)` | Observér et faerdigt vaerktoejskald. Kaster aldrig. | [src](../../../core/tools/tool_call_observation.py#L16) |
 
+## `core/tools/tool_definition_v2.py`
+_De tre akser skilt ad — Fase 3, K1._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ToolDefinitionV2` | `` | — | [src](../../../core/tools/tool_definition_v2.py#L75) |
+| method | `ToolDefinitionV2.annonceret_uden_executor` | `(self)` | — | [src](../../../core/tools/tool_definition_v2.py#L86) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/tools/tool_definition_v2.py#L93) |
+| function | `_pak_ud` | `(handler)` | Find den ÆGTE funktion bag eventuelle indpakninger. | [src](../../../core/tools/tool_definition_v2.py#L97) |
+| function | `_handler_kilde` | `(handler)` | — | [src](../../../core/tools/tool_definition_v2.py#L122) |
+| function | `_udled_provider` | `(navn, handler)` | Hvor koerer vaerktoejet? Udledt af KODEN, ikke af navnet. | [src](../../../core/tools/tool_definition_v2.py#L129) |
+| function | `_udled_effekt` | `(navn)` | — | [src](../../../core/tools/tool_definition_v2.py#L149) |
+| function | `_udled_godkendelse` | `(navn, handler)` | — | [src](../../../core/tools/tool_definition_v2.py#L159) |
+| function | `_udled_flader` | `(navn)` | — | [src](../../../core/tools/tool_definition_v2.py#L171) |
+| function | `describe` | `(navn)` | Byg V2-beskrivelsen for ét vaerktoej. None hvis det ikke annonceres. | [src](../../../core/tools/tool_definition_v2.py#L183) |
+| function | `all_definitions` | `()` | — | [src](../../../core/tools/tool_definition_v2.py#L211) |
+| function | `inconsistencies` | `()` | Hvor er de tre sandheder uenige? | [src](../../../core/tools/tool_definition_v2.py#L221) |
+| function | `presentation_meta` | `(navn, arguments, result)` | Semantiske hints til klientens kort — udledt af det KONKRETE kald. | [src](../../../core/tools/tool_definition_v2.py#L239) |
+
 ## `core/tools/tool_limits.py`
 _Grænser for værktøjs-kørsel — ét sted, så de to bash-stier ikke driver fra hinanden._
 

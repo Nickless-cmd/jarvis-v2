@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7168/14143 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7173/14155 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -31,7 +31,7 @@ Generated from source. 7168/14143 functions/methods documented (50%). The list b
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 438 | 919 | 47% |
+| `core.tools` | 443 | 931 | 47% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -40,7 +40,7 @@ Generated from source. 7168/14143 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2021)
+## Undocumented public functions (2023)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1930,6 +1930,8 @@ Generated from source. 7168/14143 functions/methods documented (50%). The list b
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1143)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L254)
+- `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)
+- `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L164)
 - `core/tools/tool_scoping.py` :: `reset_tool_scope` (L209)

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7192/14171 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7192/14177 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -31,7 +31,7 @@ Generated from source. 7192/14171 functions/methods documented (50%). The list b
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 447 | 935 | 47% |
+| `core.tools` | 447 | 941 | 47% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -1910,23 +1910,23 @@ Generated from source. 7192/14171 functions/methods documented (50%). The list b
 - `core/tools/identity_pin_tools.py` :: `remove_pin` (L118)
 - `core/tools/native_tool_gate.py` :: `is_disabled` (L26)
 - `core/tools/notification_tools.py` :: `exec_get_notification_preferences` (L23)
-- `core/tools/operator_tools.py` :: `operator_browser_click_async` (L646)
-- `core/tools/operator_tools.py` :: `operator_browser_close_async` (L737)
-- `core/tools/operator_tools.py` :: `operator_browser_get_links_async` (L637)
-- `core/tools/operator_tools.py` :: `operator_browser_get_text_async` (L624)
-- `core/tools/operator_tools.py` :: `operator_browser_status_async` (L728)
-- `core/tools/operator_tools.py` :: `operator_browser_type_async` (L664)
-- `core/tools/operator_tools.py` :: `operator_multi_edit` (L196)
-- `core/tools/operator_tools.py` :: `operator_process_kill_async` (L1221)
-- `core/tools/operator_tools.py` :: `operator_process_list_async` (L1231)
-- `core/tools/operator_tools.py` :: `operator_process_output_async` (L1209)
-- `core/tools/operator_tools.py` :: `operator_process_spawn_async` (L1184)
-- `core/tools/operator_tools.py` :: `operator_process_status_async` (L1199)
-- `core/tools/operator_tools.py` :: `operator_read_file` (L58)
-- `core/tools/operator_tools.py` :: `operator_reminder_async` (L1130)
-- `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1171)
-- `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1158)
-- `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1143)
+- `core/tools/operator_tools.py` :: `operator_browser_click_async` (L658)
+- `core/tools/operator_tools.py` :: `operator_browser_close_async` (L749)
+- `core/tools/operator_tools.py` :: `operator_browser_get_links_async` (L649)
+- `core/tools/operator_tools.py` :: `operator_browser_get_text_async` (L636)
+- `core/tools/operator_tools.py` :: `operator_browser_status_async` (L740)
+- `core/tools/operator_tools.py` :: `operator_browser_type_async` (L676)
+- `core/tools/operator_tools.py` :: `operator_multi_edit` (L205)
+- `core/tools/operator_tools.py` :: `operator_process_kill_async` (L1233)
+- `core/tools/operator_tools.py` :: `operator_process_list_async` (L1243)
+- `core/tools/operator_tools.py` :: `operator_process_output_async` (L1221)
+- `core/tools/operator_tools.py` :: `operator_process_spawn_async` (L1196)
+- `core/tools/operator_tools.py` :: `operator_process_status_async` (L1211)
+- `core/tools/operator_tools.py` :: `operator_read_file` (L67)
+- `core/tools/operator_tools.py` :: `operator_reminder_async` (L1142)
+- `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1183)
+- `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1170)
+- `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1155)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L254)
 - `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)

@@ -227,7 +227,9 @@ def _exec_operator_read_file(args: dict[str, Any]) -> dict[str, Any]:
     user_id = _operator_user_id(args)
     from core.tools.operator_tools import operator_read_file_async
     out = _run_operator_async(
-        lambda: operator_read_file_async(path=path, user_id=user_id, timeout_s=30.0),
+        lambda: operator_read_file_async(
+            path=path, user_id=user_id,
+            workspace_root=args.get("_operator_workspace_root"), timeout_s=30.0),
         tool_name="operator_read_file",
     )
     if out.get("status") == "ok":
@@ -606,6 +608,7 @@ def _exec_operator_glob(args: dict[str, Any]) -> dict[str, Any]:
             cwd=args.get("cwd"),
             max_results=int(args.get("max_results") or 200),
             user_id=user_id,
+            workspace_root=args.get("_operator_workspace_root"),
             timeout_s=30.0,
         ),
         tool_name="operator_glob",
@@ -626,6 +629,7 @@ def _exec_operator_grep(args: dict[str, Any]) -> dict[str, Any]:
             case_insensitive=bool(args.get("case_insensitive", False)),
             max_results=int(args.get("max_results") or 200),
             user_id=user_id,
+            workspace_root=args.get("_operator_workspace_root"),
             timeout_s=60.0,  # grep over many files takes longer
         ),
         tool_name="operator_grep",
@@ -640,7 +644,9 @@ def _exec_operator_list_dir(args: dict[str, Any]) -> dict[str, Any]:
     user_id = _operator_user_id(args)
     from core.tools.operator_tools import operator_list_dir_async
     return _run_operator_async(
-        lambda: operator_list_dir_async(path=path, user_id=user_id, timeout_s=30.0),
+        lambda: operator_list_dir_async(
+            path=path, user_id=user_id,
+            workspace_root=args.get("_operator_workspace_root"), timeout_s=30.0),
         tool_name="operator_list_dir",
     )
 

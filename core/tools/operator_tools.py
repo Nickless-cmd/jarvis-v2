@@ -20,6 +20,14 @@ logger = logging.getLogger(__name__)
 _DEFAULT_TIMEOUT_S = 30.0
 
 
+def _workspace_scoped_args(
+    payload: dict[str, Any], workspace_root: str | None,
+) -> dict[str, Any]:
+    if workspace_root:
+        payload["_workspace_root"] = str(workspace_root)
+    return payload
+
+
 async def _bridge_call(
     *,
     tool: str,
@@ -43,12 +51,13 @@ async def _bridge_call(
 
 
 async def operator_read_file_async(
-    *, path: str, user_id: str, timeout_s: float = _DEFAULT_TIMEOUT_S,
+    *, path: str, user_id: str, workspace_root: str | None = None,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
 ) -> str:
     """Read a file from the operator's desktop."""
     result = await _bridge_call(
         tool="operator_read_file",
-        args={"path": str(path)},
+        args=_workspace_scoped_args({"path": str(path)}, workspace_root),
         user_id=user_id,
         timeout_s=timeout_s,
     )
@@ -208,6 +217,7 @@ async def operator_glob_async(
     cwd: str | None = None,
     max_results: int = 200,
     user_id: str,
+    workspace_root: str | None = None,
     timeout_s: float = _DEFAULT_TIMEOUT_S,
 ) -> list[str]:
     """Find files matching a glob pattern on the operator's desktop.
@@ -215,11 +225,11 @@ async def operator_glob_async(
     """
     result = await _bridge_call(
         tool="operator_glob",
-        args={
+        args=_workspace_scoped_args({
             "pattern": str(pattern),
             "cwd": str(cwd) if cwd else None,
             "max_results": int(max_results),
-        },
+        }, workspace_root),
         user_id=user_id,
         timeout_s=timeout_s,
     )
@@ -237,6 +247,7 @@ async def operator_grep_async(
     case_insensitive: bool = False,
     max_results: int = 200,
     user_id: str,
+    workspace_root: str | None = None,
     timeout_s: float = _DEFAULT_TIMEOUT_S,
 ) -> list[dict[str, Any]]:
     """Search for regex pattern in files on the operator's desktop.
@@ -244,13 +255,13 @@ async def operator_grep_async(
     """
     result = await _bridge_call(
         tool="operator_grep",
-        args={
+        args=_workspace_scoped_args({
             "pattern": str(pattern),
             "path": str(path) if path else None,
             "glob": str(glob) if glob else None,
             "case_insensitive": bool(case_insensitive),
             "max_results": int(max_results),
-        },
+        }, workspace_root),
         user_id=user_id,
         timeout_s=timeout_s,
     )
@@ -264,6 +275,7 @@ async def operator_list_dir_async(
     *,
     path: str,
     user_id: str,
+    workspace_root: str | None = None,
     timeout_s: float = _DEFAULT_TIMEOUT_S,
 ) -> list[dict[str, Any]]:
     """List directory contents on the operator's desktop.
@@ -271,7 +283,7 @@ async def operator_list_dir_async(
     """
     result = await _bridge_call(
         tool="operator_list_dir",
-        args={"path": str(path)},
+        args=_workspace_scoped_args({"path": str(path)}, workspace_root),
         user_id=user_id,
         timeout_s=timeout_s,
     )

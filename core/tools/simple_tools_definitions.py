@@ -275,6 +275,14 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "enum": ["quick", "medium", "thorough"],
                         "description": "How hard it should look (default medium)",
                     },
+                    "target": {
+                        "type": "string",
+                        "enum": ["auto", "runtime", "workstation"],
+                        "description": (
+                            "Where to inspect. Auto uses the active Jarvis Desk "
+                            "workstation workspace when present; otherwise runtime."
+                        ),
+                    },
                 },
                 "required": ["query"],
             },

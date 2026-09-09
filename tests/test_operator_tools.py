@@ -140,6 +140,24 @@ async def test_grep_dispatches_with_optional_args(monkeypatch):
     assert len(result) == 1
 
 
+@pytest.mark.asyncio
+async def test_read_only_wrapper_forwards_workspace_root(monkeypatch):
+    captured = {}
+    async def _fake_dispatch(*, user_id, tool, args, timeout_s):
+        captured.update({"tool": tool, "args": args})
+        return {"status": "ok", "result": "content"}
+    monkeypatch.setattr(
+        "core.services.jarvisx_bridge.bridge_registry.dispatch", _fake_dispatch)
+    from core.tools.operator_tools import operator_read_file_async
+    await operator_read_file_async(
+        path="/home/bjorn/project/README.md", user_id="u1",
+        workspace_root="/home/bjorn/project")
+    assert captured == {"tool": "operator_read_file", "args": {
+        "path": "/home/bjorn/project/README.md",
+        "_workspace_root": "/home/bjorn/project",
+    }}
+
+
 # ── Fuzzy edit på operatørens maskine, 05-09-2026 ───────────────────────────
 # `operator_edit_file` var en ren gennemstikning: broen lavede eksakt
 # strengmatch og fejlede 56 % af gangene (operator_bash: 1,2 %). Nu løses

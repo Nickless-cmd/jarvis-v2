@@ -34,7 +34,7 @@ import {
   existsSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join, isAbsolute, resolve } from 'node:path'
+import { dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { platform as osPlatform } from 'node:os'
 import {
@@ -44,6 +44,7 @@ import {
   shell as electronShell,
   BrowserWindow,
 } from 'electron'
+import { resolveOperatorPath } from './operatorPathPolicy.js'
 
 /**
  * Race a native confirmation dialog against an auto-reject timer.
@@ -220,17 +221,6 @@ export interface BridgeConfig {
 
 type ToolHandler = (args: Record<string, unknown>) => Promise<unknown> | unknown
 
-/** Resolve a path argument — accept absolute or relative-to-home. */
-function resolveOperatorPath(p: unknown): string {
-  const raw = String(p ?? '').trim()
-  if (!raw) throw new Error('path required')
-  // Expand leading ~ to home dir (Jarvis often passes ~/foo paths).
-  if (raw === '~') return homedir()
-  if (raw.startsWith('~/')) return join(homedir(), raw.slice(2))
-  if (isAbsolute(raw)) return raw
-  return resolve(homedir(), raw)
-}
-
 /** Lightweight glob → regex, supports **, *, ?. Handles bash-style patterns. */
 function globToRegex(pattern: string): RegExp {
   // Escape regex special chars except for our glob chars.
@@ -348,7 +338,7 @@ async function asyncSpawn(
 /** Built-in handlers — Phase 1+2: read/write/edit/glob/grep/list_dir. */
 const handlers: Record<string, ToolHandler> = {
   operator_read_file: (args) => {
-    const path = resolveOperatorPath(args.path)
+    const path = resolveOperatorPath(args.path, args._workspace_root)
     return readFileSync(path, 'utf8')
   },
 
@@ -426,7 +416,9 @@ const handlers: Record<string, ToolHandler> = {
   operator_glob: (args) => {
     const pattern = String(args.pattern ?? '')
     if (!pattern) throw new Error('pattern is required')
-    const cwd = args.cwd ? resolveOperatorPath(args.cwd) : homedir()
+    const cwd = args.cwd
+      ? resolveOperatorPath(args.cwd, args._workspace_root)
+      : resolveOperatorPath(args._workspace_root || homedir(), args._workspace_root)
     const maxResults = Number(args.max_results) || 200
     const re = globToRegex(pattern)
     const out: string[] = []
@@ -444,7 +436,9 @@ const handlers: Record<string, ToolHandler> = {
   operator_grep: (args) => {
     const pattern = String(args.pattern ?? '')
     if (!pattern) throw new Error('pattern is required')
-    const searchPath = args.path ? resolveOperatorPath(args.path) : homedir()
+    const searchPath = args.path
+      ? resolveOperatorPath(args.path, args._workspace_root)
+      : resolveOperatorPath(args._workspace_root || homedir(), args._workspace_root)
     const fileGlob = args.glob ? String(args.glob) : null
     const ci = Boolean(args.case_insensitive)
     const maxResults = Number(args.max_results) || 200
@@ -489,7 +483,7 @@ const handlers: Record<string, ToolHandler> = {
   },
 
   operator_list_dir: (args) => {
-    const path = resolveOperatorPath(args.path)
+    const path = resolveOperatorPath(args.path, args._workspace_root)
     const entries = readdirSync(path)
     return entries.map((name) => {
       const full = join(path, name)

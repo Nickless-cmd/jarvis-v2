@@ -44,6 +44,39 @@ class TestExplore:
         assert f["tool_policy"] == "read-only-runtime"
         assert f["allowed_tools"], "en agent uden værktøjer opfinder svar"
 
+    def test_desk_workstation_session_bruger_operator_broen(self, monkeypatch):
+        """En Desk code-session skal udforske det valgte klient-workspace, ikke
+        en mappe med samme navn i runtime-containeren."""
+        f = _fang(monkeypatch)
+        import core.services.chat_sessions as sessions
+        import core.services.explore_claim_check as claim_check
+        monkeypatch.setattr(sessions, "get_chat_session", lambda _sid: {
+            "workspace_kind": "workstation", "workspace_root": "/home/bjorn/project",
+        })
+        monkeypatch.setattr(claim_check, "tjek_paastande", lambda *_a, **_kw: {
+            "holder": True, "kontrolleret": 0, "fejl": [],
+        })
+        r = _exec_explore({"query": "find prompt builder",
+                           "_runtime_session_id": "desk-session",
+                           "_runtime_user_id": "bjorn"})
+        assert r["status"] == "ok" and r["target"] == "workstation"
+        assert f["tool_policy"] == "read-only-workstation"
+        assert set(f["allowed_tools"]) == {
+            "operator_read_file", "operator_glob", "operator_grep", "operator_list_dir",
+        }
+        assert f["context"] == {
+            "execution_target": "workstation", "workspace_root": "/home/bjorn/project",
+            "user_id": "bjorn", "session_id": "desk-session",
+        }
+
+    def test_workstation_target_kraever_desk_workspace(self, monkeypatch):
+        import core.services.chat_sessions as sessions
+        monkeypatch.setattr(sessions, "get_chat_session", lambda _sid: None)
+        r = _exec_explore({"query": "x", "target": "workstation",
+                           "_runtime_session_id": "desk-session"})
+        assert r["status"] == "error"
+        assert "workstation-workspace" in r["error"]
+
     def test_ingen_budget_klemme(self, monkeypatch):
         """0 = ubegrænset, med max_turns som net. En klemme her ville gentage
         juli-fejlen: agenten brænder budgettet på tool-kald og når aldrig frem

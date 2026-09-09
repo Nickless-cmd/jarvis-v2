@@ -38,3 +38,37 @@ def test_undersoegende_agent_kan_soege_i_indhold_og_navne():
     from core.services.agent_runtime_base import tools_for_policy
     t = set(tools_for_policy("read-only-runtime"))
     assert "search" in t and "find_files" in t
+
+
+def test_workstation_policy_er_strengt_laesekun():
+    from core.services.agent_runtime_base import tools_for_policy
+    assert set(tools_for_policy("read-only-workstation")) == {
+        "operator_read_file", "operator_glob", "operator_grep", "operator_list_dir",
+    }
+
+
+def test_workstation_agent_stempler_operator_kald_med_desk_kontekst(monkeypatch):
+    import json
+    from core.services import agent_runtime_base as arb
+    import core.tools.simple_tools as simple_tools
+    monkeypatch.setattr(arb, "get_agent_registry_entry", lambda _agent_id: {
+        "context_json": json.dumps({
+            "execution_target": "workstation", "workspace_root": "/home/bjorn/project",
+            "user_id": "bjorn", "session_id": "desk-session",
+        }),
+    })
+    captured = {}
+    def execute_tool(name, arguments):
+        captured.update({"name": name, "arguments": arguments})
+        return {"status": "ok", "result": "content"}
+    monkeypatch.setattr(simple_tools, "execute_tool", execute_tool)
+    result = arb._execute_agent_tool_call({"function": {
+        "name": "operator_read_file",
+        "arguments": json.dumps({"path": "/home/bjorn/project/README.md"}),
+    }}, agent_id="agent-1")
+    assert json.loads(result)["status"] == "ok"
+    assert captured == {"name": "operator_read_file", "arguments": {
+        "path": "/home/bjorn/project/README.md",
+        "_runtime_user_id": "bjorn", "_runtime_session_id": "desk-session",
+        "_operator_workspace_root": "/home/bjorn/project",
+    }}

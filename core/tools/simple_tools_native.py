@@ -1960,6 +1960,16 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
                      + ("; ".join(sidste_fejl[:3]) or "intet svar")}
 
 
+# Active explore implementation is extracted to keep new routing out of this
+# oversized compatibility module. These aliases preserve existing imports.
+from core.tools.simple_tools_explore import (  # noqa: E402
+    _EXPLORE_MAKS_RUNDER,
+    _exec_explore,
+    _explore_spawn,
+    _explore_svar,
+)
+
+
 def _exec_send_message_to_agent(args: dict[str, Any]) -> dict[str, Any]:
     agent_id = str(args.get("agent_id") or "").strip()
     content = str(args.get("content") or "").strip()

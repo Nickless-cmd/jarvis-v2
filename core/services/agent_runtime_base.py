@@ -203,6 +203,18 @@ def _execute_agent_tool_call(tool_call: dict, *, agent_id: str) -> str:
     if not name:
         return json.dumps({"status": "error", "error": "missing tool name"})
     try:
+        agent = get_agent_registry_entry(agent_id) or {}
+        context = json.loads(str(agent.get("context_json") or "{}"))
+    except Exception:
+        context = {}
+    if context.get("execution_target") == "workstation":
+        if context.get("user_id"):
+            arguments["_runtime_user_id"] = str(context["user_id"])
+        if context.get("session_id"):
+            arguments["_runtime_session_id"] = str(context["session_id"])
+        if context.get("workspace_root"):
+            arguments["_operator_workspace_root"] = str(context["workspace_root"])
+    try:
         from core.tools.simple_tools import execute_tool
         result = execute_tool(name, arguments)
     except Exception as exc:
@@ -452,9 +464,13 @@ def _role_prompt(intro: str, *, tools: bool = False, structured: bool = True) ->
 # koerer paa Bjoerns maskine, ikke i runtimen.
 _READ_ONLY_TOOLS = ["read_file", "find_files", "search", "semantic_search_code",
                     "find_symbol", "find_usages", "read_tool_result", "bash"]
+_READ_ONLY_WORKSTATION_TOOLS = [
+    "operator_read_file", "operator_glob", "operator_grep", "operator_list_dir",
+]
 _TOOL_POLICY_SETS: dict[str, list[str]] = {
     "none": [],
     "read-only-runtime": list(_READ_ONLY_TOOLS),
+    "read-only-workstation": list(_READ_ONLY_WORKSTATION_TOOLS),
     "can-spawn": [*_READ_ONLY_TOOLS, "spawn_agent_task"],
 }
 

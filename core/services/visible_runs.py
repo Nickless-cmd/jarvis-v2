@@ -764,6 +764,36 @@ def start_visible_run(
     _vis_provider, _vis_model = _resolve_vm(
         provider_override=provider_override, model_override=model_override,
         default_provider=settings.visible_model_provider, default_model=settings.visible_model_name)
+
+    # FINDES den model hos den udbyder? (2026-09-09)
+    #
+    # `ollama/glm-5.2` kørte 162 gange mellem 20. juli og i dag og svarede TOMT
+    # hver eneste gang: HTTP 200, nul tokens, ingen fejl, ingen faktura. På
+    # ollama hedder modellen `glm-5.2:cloud`. Runnet blev markeret `completed`,
+    # så fejlen lignede en succes i enhver optælling.
+    #
+    # Et eksplicit valg skal STADIG vinde — men «dit valg vinder» er ikke det
+    # samme som «dit valg tjekkes aldrig». Entydigt suffiks oversættes; ellers
+    # fejler vi HØJT, fordi et tomt svar er værre end en fejlbesked.
+    #
+    # Kaster aldrig: en utilgængelig udbyder er ikke en forkert model.
+    _model_problem = ""
+    try:
+        from core.services.model_pair_resolver import resolve_safe as _resolve_par
+        _vis_provider, _vis_model, _model_problem = _resolve_par(_vis_provider, _vis_model)
+    except Exception:
+        logger.warning("model-par-tjek fejlede — lader parret gaa", exc_info=True)
+
+    if _model_problem:
+        async def _afvis_model() -> AsyncIterator[str]:
+            yield _sse("error", {
+                "type": "error",
+                "error": _model_problem,
+                "hint": "Vælg en anden model, eller brug det fulde navn.",
+            })
+            yield _sse("done", {"type": "done", "status": "failed"})
+        logger.warning("visible-run afvist: %s", _model_problem)
+        return _afvis_model()
     # Adaptiv tænkning (12. jul): 'think' fik deepseek til at ræsonnere ~9s FØR svar på
     # HVER tur — også simpel snak. resolve_thinking_mode skruer kode/opgave→think, resten→
     # fast (−9s TTFT); eksplicit fast/deep fra klienten respekteres. Kill-switch:

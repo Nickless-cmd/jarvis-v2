@@ -56,13 +56,22 @@ def _traade(praefiks="emotion-concepts-persist"):
     return [t for t in threading.enumerate() if t.name.startswith(praefiks)]
 
 
-def test_hundrede_signaler_giver_EN_traad_ikke_hundrede(monkeypatch):
-    """Kernen: en tråd pr. signal blev til en sqlite-forbindelse pr. signal."""
+def test_hundrede_signaler_giver_HOEJST_EN_ny_traad(monkeypatch):
+    """Kernen: en tråd pr. signal blev til en sqlite-forbindelse pr. signal.
+
+    Målt på DELTA og ikke på et absolut antal. Testfiksturerne genindlæser
+    moduler, hvorefter `_persist_worker` står som None mens den gamle tråd
+    lever videre på en forældreløs kø — så det absolutte tal siger noget om
+    testkørslens historik, ikke om den egenskab der prøves her.
+
+    (I drift genindlæses moduler ikke, så der er én arbejder.)
+    """
     monkeypatch.setattr(EC, "_safe_persist", lambda s: None)
+    foer = len(_traade())
     for i in range(100):
         EC._persist_async(_sig(f"c{i}"))
     time.sleep(0.3)
-    assert len(_traade()) == 1
+    assert len(_traade()) - foer <= 1
 
 
 def test_arbejderen_genbruges_paa_tvaers_af_kald(monkeypatch):

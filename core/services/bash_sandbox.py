@@ -42,6 +42,8 @@ ON når den er usat, og det er den forkerte vej rundt for det her.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import logging
 import shutil
 from typing import Any
@@ -127,3 +129,85 @@ def maybe_wrap(command: str, cwd: str, *, writable_roots: list[str] | None = Non
         return None
     return wrap_bwrap(command, cwd, writable_roots=writable_roots,
                       allow_egress=allow_egress)
+
+
+# ── ønsket vs. FAKTISK indespærring ──────────────────────────────────────
+#
+# Spec, Fase 3 K9: «every process-producing provider reports requested policy
+# and actual enforcement; requested confinement fails before execution when
+# unavailable».
+#
+# Kriteriet kolliderer med en beslutning der allerede er truffet ovenfor:
+# `maybe_wrap` fejler ÅBENT med vilje, fordi «en manglende mekanisme må ikke
+# gøre bash ubrugelig». Den beslutning omgøres ikke her.
+#
+# I stedet skilles de to spørgsmål ad, ligesom `permission_axes` skiller profil
+# fra tilstand:
+#
+#   RAPPORTERING  — hvad blev bedt om, og hvad skete der? Altid, uanset udfald.
+#   HÅNDHÆVELSE   — skal et manglende fængsel STOPPE kaldet? Kalderens valg.
+#
+# Uden det første kan man ikke vide om en kommando kørte indespærret. Uden det
+# andet kan man ikke kræve det. De er ikke det samme spørgsmål.
+
+
+class ConfinementUnavailable(RuntimeError):
+    """Der blev KRÆVET indespærring, og den kunne ikke leveres."""
+
+
+@dataclass(frozen=True)
+class Enforcement:
+    """Hvad der blev bedt om, og hvad der faktisk skete."""
+
+    requested: bool          # skulle kommandoen indespærres?
+    actual: bool             # BLEV den det?
+    available: bool          # findes bwrap her?
+    enabled: bool            # er kontakten tændt?
+    argv: list[str] | None = None
+    reason: str = ""
+
+    @property
+    def honored(self) -> bool:
+        """Fik vi det vi bad om?"""
+        return self.requested == self.actual
+
+    def as_dict(self) -> dict[str, Any]:
+        return {"requested": self.requested, "actual": self.actual,
+                "available": self.available, "enabled": self.enabled,
+                "honored": self.honored, "reason": self.reason}
+
+
+def enforcement(command: str, cwd: str, *, writable_roots: list[str] | None = None,
+                allow_egress: bool = True, require: bool = False) -> Enforcement:
+    """Afgør indespærringen OG rapportér den. Kaster kun når `require` er sat.
+
+    `require=True` er den eneste vej til fail-CLOSED. Standarden er uændret
+    fail-open, så eksisterende kaldere opfører sig præcis som før.
+    """
+    tilgaengelig = is_available()
+    taendt = is_enabled()
+    oensket = bool(taendt) and bool(command) and bool(cwd)
+
+    if not oensket:
+        grund = "ikke tændt" if not taendt else "manglende kommando eller cwd"
+        e = Enforcement(False, False, tilgaengelig, taendt, None, grund)
+    elif not tilgaengelig:
+        e = Enforcement(True, False, False, taendt, None,
+                        "bwrap findes ikke på denne maskine")
+    else:
+        argv = wrap_bwrap(command, cwd, writable_roots=writable_roots,
+                          allow_egress=allow_egress)
+        e = Enforcement(True, True, True, taendt, argv, "")
+
+    if not e.honored:
+        # Aldrig tavst: en kommando der kører uindespærret mens nogen troede
+        # den var spærret inde, er præcis den forskel der ikke må forsvinde.
+        logger.warning("bash_sandbox: ØNSKET indespærring blev IKKE håndhævet "
+                       "(%s) — kommandoen kører frit", e.reason)
+
+    if require and not e.actual:
+        # FØR eksekvering, ikke efter: en fejl bagefter er en kommando der
+        # allerede er kørt.
+        raise ConfinementUnavailable(
+            f"indespærring blev krævet, men kunne ikke leveres: {e.reason}")
+    return e

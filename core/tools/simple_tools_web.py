@@ -541,6 +541,28 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
                 "exit_code": run_result.get("exit_code"),
                 "status": "ok",
             }
+            # ØNSKET vs. FAKTISK indespærring, også her (Fase 3, K9).
+            #
+            # Den VEDVARENDE shell kan ikke indespærres pr. kommando — et
+            # fængsel kan ikke lægges om en shell der bliver stående mellem
+            # kald. Det er en egenskab ved stien, ikke en fejl.
+            #
+            # Men det skal SIGES. Uden denne linje ville en tændt sandbox se
+            # ud som om den dækkede bash, mens den normale vej gik udenom og
+            # kun reserve-stien blev indespærret. Rapporten er hele forskellen
+            # mellem «ikke indespærret» og «troede den var det».
+            try:
+                from core.services.bash_sandbox import is_available, is_enabled
+                if is_enabled():
+                    svar["confinement"] = {
+                        "requested": True, "actual": False, "honored": False,
+                        "available": is_available(), "enabled": True,
+                        "reason": ("vedvarende delt shell — kan ikke indespærres "
+                                   "pr. kommando; kun engangs-stien kan"),
+                    }
+            except Exception:
+                logger.warning("bash: kunne ikke afgoere indespaerring paa den "
+                               "vedvarende sti", exc_info=True)
             if fuld != output:
                 svar["text_full"] = fuld
             return svar
@@ -556,14 +578,31 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     # staaende mellem kald. jarvis-code kan wrappe hver kommando fordi den
     # koerer engangs-kommandoer. Her daekker den engangs-vejen.
     # Slukket som standard; `maybe_wrap` returnerer None og intet aendrer sig.
+    # ØNSKET vs. FAKTISK indespærring (Fase 3, K9). Rapporteres ALTID — også
+    # når intet blev bedt om — så man bagefter kan vide om kommandoen kørte
+    # indespærret. Før stod wrappen i `except Exception: logger.debug(...)`:
+    # kunne fængslet ikke lægges på, kørte kommandoen frit, og det eneste spor
+    # var en debug-linje ingen læser.
+    #
+    # Retningen er UÆNDRET fail-open. `bash_sandbox` traf den beslutning med
+    # vilje — «en manglende mekanisme må ikke gøre bash ubrugelig» — og den
+    # omgøres ikke under en rapporterings-rettelse. `require=True` findes for
+    # de kaldere der vil have fail-closed.
     _argv = ["bash", "-c", command]
+    _indespaerring: dict[str, object] = {}
     try:
-        from core.services.bash_sandbox import maybe_wrap
-        _spaerret = maybe_wrap(command, str(PROJECT_ROOT))
-        if _spaerret:
-            _argv = _spaerret
-    except Exception:
-        logger.debug("bash_sandbox sprunget over", exc_info=True)
+        from core.services.bash_sandbox import enforcement
+        _e = enforcement(command, str(PROJECT_ROOT))
+        _indespaerring = _e.as_dict()
+        if _e.argv:
+            _argv = _e.argv
+    except Exception as _sb_exc:
+        # Selve afgørelsen fejlede. Kommandoen kører stadig (fail-open), men
+        # det siges højt — en debug-linje er ikke en rapport.
+        _indespaerring = {"requested": None, "actual": False, "honored": False,
+                          "reason": f"{type(_sb_exc).__name__}: {_sb_exc}"}
+        logger.warning("bash_sandbox: kunne ikke afgøre indespærring — "
+                       "kommandoen kører frit: %s", _sb_exc)
     try:
         result = subprocess.run(
             _argv,
@@ -588,6 +627,12 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
         "exit_code": result.returncode,
         "status": "ok",
     }
+    # Rapporten følger med SVARET og ikke kun loggen: den der læser resultatet
+    # skal kunne se om kommandoen kørte indespærret. Kun når der var noget at
+    # sige — et uændret «intet ønsket, intet sket» er støj.
+    if _indespaerring and (_indespaerring.get("requested")
+                           or not _indespaerring.get("honored", True)):
+        svar["confinement"] = _indespaerring
     if fuld != output:
         svar["text_full"] = fuld   # se noten paa session-stien ovenfor
     return svar

@@ -128,7 +128,9 @@ def dispatch_due_wakeups() -> dict[str, Any]:
             run_started = False
             if prompt.strip():
                 try:
-                    from core.services.visible_runs import start_autonomous_run
+                    from core.services.autonomous_stream_run import (
+                        start_autonomous_stream_run,
+                    )
                     from core.identity.workspace_context import reset_context, set_context
                     from core.identity.owner_resolver import (
                         resolve_owner_app_session,
@@ -164,9 +166,9 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                         session_id=target_session or "",
                     )
                     try:
-                        start_autonomous_run(
+                        start_autonomous_stream_run(
                             self_directive,
-                            session_id=target_session or None,
+                            session_id=target_session,
                             origin="wakeup",
                         )
                         run_started = True

@@ -23,7 +23,7 @@ def test_dispatch_fires_webchat_and_marks_dispatched():
          patch("core.services.self_wakeup._save") as fake_save, \
          patch("core.services.outbound_nudges.push_nudge") as fake_push, \
          patch("core.services.heartbeat_phases.tick_with_phases") as fake_tick, \
-         patch("core.services.visible_runs.start_autonomous_run"):
+         patch("core.services.autonomous_stream_run.start_autonomous_stream_run"):
         result = dispatch_due_wakeups()
     assert result["dispatched"] == 1
     assert "w1" in result["dispatched_ids"]
@@ -32,6 +32,31 @@ def test_dispatch_fires_webchat_and_marks_dispatched():
     # Should have set dispatched=True and saved
     assert state[0].get("dispatched") is True
     fake_save.assert_called()
+
+
+def test_dispatch_starts_wakeup_with_server_stream_relay():
+    fired = [{"wakeup_id": "w1", "prompt": "p", "reason": "r"}]
+    state = [{
+        "wakeup_id": "w1",
+        "prompt": "p",
+        "reason": "r",
+        "status": "fired",
+        "channel": "app",
+        "session_id": "chat-origin",
+    }]
+    with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
+         patch("core.services.self_wakeup._load", return_value=state), \
+         patch("core.services.self_wakeup._save"), \
+         patch("core.services.outbound_nudges.push_nudge"), \
+         patch("core.services.heartbeat_phases.tick_with_phases"), \
+         patch("core.services.autonomous_stream_run.start_autonomous_stream_run") as fake_start:
+        result = dispatch_due_wakeups()
+
+    assert result["dispatched"] == 1
+    assert fake_start.call_args.kwargs == {
+        "session_id": "chat-origin",
+        "origin": "wakeup",
+    }
 
 
 def test_dispatch_skips_already_dispatched():
@@ -55,7 +80,7 @@ def test_dispatch_continues_if_webchat_fails():
          patch("core.services.notification_bridge.send_session_notification",
                side_effect=Exception("webchat down")), \
          patch("core.services.heartbeat_phases.tick_with_phases"), \
-         patch("core.services.visible_runs.start_autonomous_run"):
+         patch("core.services.autonomous_stream_run.start_autonomous_stream_run"):
         result = dispatch_due_wakeups()
     # Should still mark dispatched even if webchat fails
     assert result["dispatched"] == 1
@@ -73,7 +98,7 @@ def test_dispatch_handles_multiple_fired():
          patch("core.services.self_wakeup._save"), \
          patch("core.services.notification_bridge.send_session_notification"), \
          patch("core.services.heartbeat_phases.tick_with_phases"), \
-         patch("core.services.visible_runs.start_autonomous_run"):
+         patch("core.services.autonomous_stream_run.start_autonomous_stream_run"):
         result = dispatch_due_wakeups()
     assert result["dispatched"] == 2
 
@@ -121,7 +146,7 @@ def test_dispatch_restores_recorded_user_context_before_starting_run():
          patch("core.services.self_wakeup._save"), \
          patch("core.services.outbound_nudges.push_nudge"), \
          patch("core.services.heartbeat_phases.tick_with_phases"), \
-         patch("core.services.visible_runs.start_autonomous_run", side_effect=_start):
+         patch("core.services.autonomous_stream_run.start_autonomous_stream_run", side_effect=_start):
         result = dispatch_due_wakeups()
 
     assert result["dispatched"] == 1
@@ -152,7 +177,7 @@ def test_dispatch_does_not_mark_delivered_when_run_start_fails():
          patch("core.services.self_wakeup._save") as fake_save, \
          patch("core.services.outbound_nudges.push_nudge"), \
          patch("core.services.heartbeat_phases.tick_with_phases"), \
-         patch("core.services.visible_runs.start_autonomous_run", side_effect=RuntimeError("start failed")):
+         patch("core.services.autonomous_stream_run.start_autonomous_stream_run", side_effect=RuntimeError("start failed")):
         result = dispatch_due_wakeups()
 
     assert result["dispatched"] == 0

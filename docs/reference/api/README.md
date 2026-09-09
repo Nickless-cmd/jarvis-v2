@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14167 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14171 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -46,13 +46,13 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14167 functions/
 - [`core.services.16`](core.services.16.md) — `narrative_summary_daemon` … `permission_classifier`
 - [`core.services.17`](core.services.17.md) — `permission_engine` … `prompt_evolution_runtime`
 - [`core.services.18`](core.services.18.md) — `prompt_heartbeat_self_knowledge` … `regret_engine`
-- [`core.services.19`](core.services.19.md) — `regulation_homeostasis_signal_tracking` … `runtime_self_model_builder`
-- [`core.services.20`](core.services.20.md) — `runtime_self_model_identity` … `selfhood_proposal_tracking`
-- [`core.services.21`](core.services.21.md) — `semantic_indexer` … `skill_contract_registry`
-- [`core.services.22`](core.services.22.md) — `skill_engine` … `terminal_sanitize`
-- [`core.services.23`](core.services.23.md) — `text_clip` … `user_activity`
-- [`core.services.24`](core.services.24.md) — `user_contradiction_tracker` … `visible_self_state_summary`
-- [`core.services.25`](core.services.25.md) — `visible_stream_gate` … `world_model_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `regulation_homeostasis_signal_tracking` … `runtime_self_model_boundary`
+- [`core.services.20`](core.services.20.md) — `runtime_self_model_builder` … `self_wakeup`
+- [`core.services.21`](core.services.21.md) — `selfhood_proposal_tracking` … `skill_autosurface`
+- [`core.services.22`](core.services.22.md) — `skill_contract_registry` … `temporal_self_continuity`
+- [`core.services.23`](core.services.23.md) — `terminal_sanitize` … `upload_sandbox`
+- [`core.services.24`](core.services.24.md) — `user_activity` … `visible_runs_watchdog`
+- [`core.services.25`](core.services.25.md) — `visible_self_state_summary` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

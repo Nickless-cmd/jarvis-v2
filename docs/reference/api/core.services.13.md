@@ -569,8 +569,8 @@ _Durabel invokations-tilstand for kald ingen bliver spurgt om._
 | function | `taellere` | `()` | — | [src](../../../core/services/invocation_record.py#L37) |
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/invocation_record.py#L41) |
 | function | `recorded` | `(tool_name, arguments, *, run_id=…, session_id=…)` | Omslut et MUTERENDE kald med prepared → dispatching → completed/failed. | [src](../../../core/services/invocation_record.py#L48) |
-| function | `markaer_mislykket` | `(iid)` | Sig at kaldet fejlede UDEN at kaste. | [src](../../../core/services/invocation_record.py#L94) |
-| function | `_afslut` | `(iid, *, ok)` | — | [src](../../../core/services/invocation_record.py#L107) |
+| function | `markaer_mislykket` | `(iid)` | Sig at kaldet fejlede UDEN at kaste. | [src](../../../core/services/invocation_record.py#L103) |
+| function | `_afslut` | `(iid, *, ok)` | — | [src](../../../core/services/invocation_record.py#L116) |
 
 ## `core/services/irony_daemon.py`
 _Irony daemon — situational self-distance and absurd self-observations._

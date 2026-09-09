@@ -369,3 +369,24 @@ def abandon_run(run_id: str, *, detail: str = "") -> dict[str, int]:
         if udfald:
             ud[udfald] = ud.get(udfald, 0) + 1
     return ud
+
+
+def prior_unknown_outcome(tool_name: str,
+                          arguments: dict[str, Any] | None) -> list[str]:
+    """Har PRAECIS dette kald allerede efterladt et ukendt udfald?
+
+    Broen afviste allerede en gen-overtagelse af den SAMME post. Men et
+    genforsoeg kommer sjaeldent under samme id — det kommer som et NYT kald der
+    goer det samme. Uden et opslag paa digesten ville det sejle igennem, og
+    saa er «vi ved ikke om det skete» blevet til «det skete maaske to gange».
+
+    Returnerer id'erne, saa den der spoerger kan sige HVILKE.
+    """
+    d = invocation_digest(tool_name, arguments)
+    with connect() as conn:
+        _ensure(conn)
+        return [r[0] for r in conn.execute(
+            "SELECT approval_id FROM approval_claims "
+            "WHERE invocation_digest = ? AND state = ? "
+            "ORDER BY created_at DESC LIMIT 20",
+            (d, OUTCOME_UNKNOWN))]

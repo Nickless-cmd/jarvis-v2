@@ -60,6 +60,15 @@ def recorded(tool_name: str, arguments: dict[str, Any] | None, *,
     """
     iid = f"inv-{uuid4().hex}"
     forberedt = False
+
+    # K7: gentager dette kald noget der allerede efterlod et UKENDT udfald?
+    # Her SIGES det kun. Registreringen maa aldrig blokere et kald — men den
+    # maa heller ikke tie om at skrivningen maaske sker for anden gang.
+    try:
+        from core.services.retry_admissibility import advar_hvis_gentagelse
+        advar_hvis_gentagelse(tool_name, arguments)
+    except Exception:
+        pass
     try:
         from core.runtime.db_approval_bridge import claim, prepare
         prepare(iid, tool_name=tool_name, arguments=arguments,

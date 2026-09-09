@@ -160,6 +160,18 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     except Exception:
         bro_tillod, bro_grund = True, "skyggen kastede"
 
+    # K7: er PRAECIS dette kald allerede afsendt én gang uden at nogen saa
+    # udfaldet? Saa maa det ikke ske af sig selv igen. Naar broen HAANDHAEVER
+    # er det et nej; i skygge siges det kun hoejt.
+    try:
+        from core.services.retry_admissibility import may_auto_retry
+        _k7 = may_auto_retry(pending["tool_name"], pending["arguments"])
+    except Exception:
+        _k7 = None
+    if _k7 is not None and not _k7.tilladt and _k7.tidligere:
+        logger.warning("K7: %s — %s", pending["tool_name"], _k7.grund)
+        bro_tillod, bro_grund = False, _k7.grund
+
     if not bro_tillod:
         try:
             from core.tools.approval_rollout_gate import bridge_active

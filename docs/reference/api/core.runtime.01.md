@@ -162,6 +162,7 @@ _Godkendelses-broen — én beslutning, bundet til ÉT kald, brugt ÉN gang._
 | function | `state` | `(approval_id)` | — | [src](../../../core/runtime/db_approval_bridge.py#L315) |
 | function | `expire_stale` | `(now=…)` | Marker udløbne, ikke-besluttede godkendelser. Rører ALDRIG `dispatching`: | [src](../../../core/runtime/db_approval_bridge.py#L331) |
 | function | `abandon_run` | `(run_id, *, detail=…)` | Opgiv ALLE uafklarede poster for et doedt run — K6. | [src](../../../core/runtime/db_approval_bridge.py#L344) |
+| function | `prior_unknown_outcome` | `(tool_name, arguments)` | Har PRAECIS dette kald allerede efterladt et ukendt udfald? | [src](../../../core/runtime/db_approval_bridge.py#L374) |
 
 ## `core/runtime/db_autonomy.py`
 _Autonomy-proposals — niveau-2 autonomi: pending forslag fra Jarvis der afventer_

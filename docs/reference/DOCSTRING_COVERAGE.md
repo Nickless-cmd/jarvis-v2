@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7159/14124 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7168/14143 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,14 +24,14 @@ Generated from source. 7159/14124 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 604 | 1111 | 54% |
-| `core.services` | 4750 | 9745 | 48% |
+| `core.services` | 4753 | 9753 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 14 | 26 | 53% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 432 | 908 | 47% |
+| `core.tools` | 438 | 919 | 47% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
@@ -40,7 +40,7 @@ Generated from source. 7159/14124 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2016)
+## Undocumented public functions (2021)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1763,6 +1763,9 @@ Generated from source. 7159/14124 functions/methods documented (50%). The list b
 - `core/services/tiny_webchat_execution_pilot.py` :: `build_runtime_webchat_execution_pilot_surface` (L150)
 - `core/services/tiny_webchat_execution_pilot.py` :: `maybe_run_tiny_webchat_execution_pilot` (L30)
 - `core/services/tool_chip_payload.py` :: `build_tool_capability_payload` (L14)
+- `core/services/tool_contract_shadow.py` :: `pr_vaerktoej` (L41)
+- `core/services/tool_contract_shadow.py` :: `taellere` (L37)
+- `core/services/tool_contract_shadow.py` :: `taellere_fra_cache` (L51)
 - `core/services/tool_embeddings.py` :: `get_embedding` (L71)
 - `core/services/tool_embeddings.py` :: `invalidate` (L91)
 - `core/services/tool_intent_approval_runtime.py` :: `build_approval_feedback_surface` (L364)
@@ -1927,6 +1930,8 @@ Generated from source. 7159/14124 functions/methods documented (50%). The list b
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1143)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L254)
+- `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
+- `core/tools/tool_schema_contract.py` :: `haarde` (L164)
 - `core/tools/tool_scoping.py` :: `reset_tool_scope` (L209)
 - `core/tools/tool_scoping.py` :: `set_local_exec` (L227)
 - `core/tools/tool_scoping.py` :: `set_tool_scope` (L205)

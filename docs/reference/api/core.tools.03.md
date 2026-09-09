@@ -65,6 +65,13 @@ _Stripe integration tools — balance, transactions, and Issuing virtual cards._
 | function | `_exec_stripe_payouts` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L150) |
 | function | `_exec_stripe_create_issuing_card` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L181) |
 
+## `core/tools/tool_call_observation.py`
+_Alt hvad der KUN observerer et vaerktoejskald — efter det er kaldt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `observe_tool_call` | `(name, arguments, result)` | Observér et faerdigt vaerktoejskald. Kaster aldrig. | [src](../../../core/tools/tool_call_observation.py#L16) |
+
 ## `core/tools/tool_limits.py`
 _Grænser for værktøjs-kørsel — ét sted, så de to bash-stier ikke driver fra hinanden._
 
@@ -72,6 +79,23 @@ _Grænser for værktøjs-kørsel — ét sted, så de to bash-stier ikke driver 
 |---|---|---|---|---|
 | function | `bash_timeout_s` | `()` | Sekunder en enkelt bash-kommando må tage. Overstyres i runtime.json som | [src](../../../core/tools/tool_limits.py#L22) |
 | function | `timeout_note` | `(seconds, command=…)` | Besked når en kommando løber tør for tid. | [src](../../../core/tools/tool_limits.py#L35) |
+
+## `core/tools/tool_schema_contract.py`
+_Kanoniske argumenter mod versionerede skemaer — Fase 3, K2._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Brud` | `` | Ét skema-brud. `haard` siger om det er sikkert at afvise paa. | [src](../../../core/tools/tool_schema_contract.py#L65) |
+| method | `Brud.haard` | `(self)` | — | [src](../../../core/tools/tool_schema_contract.py#L72) |
+| function | `_indlaes` | `()` | — | [src](../../../core/tools/tool_schema_contract.py#L76) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/tools/tool_schema_contract.py#L89) |
+| function | `kendt` | `(tool_name)` | Har vaerktoejet overhovedet et skema at maale imod? | [src](../../../core/tools/tool_schema_contract.py#L96) |
+| function | `schema_version` | `(tool_name)` | Indholds-hash over skemaet. Aendrer skemaet sig, aendrer versionen sig. | [src](../../../core/tools/tool_schema_contract.py#L101) |
+| function | `canonical_arguments` | `(tool_name, arguments)` | Argumenterne som SKEMAET ser dem. | [src](../../../core/tools/tool_schema_contract.py#L115) |
+| function | `_validator` | `(tool_name)` | — | [src](../../../core/tools/tool_schema_contract.py#L127) |
+| function | `violations` | `(tool_name, arguments)` | Hvilke skema-brud har dette kald? Tom liste = ingen. | [src](../../../core/tools/tool_schema_contract.py#L145) |
+| function | `haarde` | `(brud)` | — | [src](../../../core/tools/tool_schema_contract.py#L164) |
+| function | `afvisning` | `(tool_name, brud)` | Svaret et afvist kald skal have. | [src](../../../core/tools/tool_schema_contract.py#L168) |
 
 ## `core/tools/tool_scoping.py`
 _Tool-scoping policy — hvilke værktøjer er tilgængelige pr. rolle og mode._

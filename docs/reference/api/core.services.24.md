@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/user_emotional_resonance.py`
+_User Emotional Resonance — detect and respond to the user's mood._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `detect_user_mood` | `(*, user_message, run_id=…)` | Detect user mood from message and persist. | [src](../../../core/services/user_emotional_resonance.py#L73) |
+| function | `get_current_user_mood` | `()` | Get the latest detected user mood. | [src](../../../core/services/user_emotional_resonance.py#L139) |
+| function | `build_user_emotional_resonance_surface` | `()` | MC surface for user emotional resonance. | [src](../../../core/services/user_emotional_resonance.py#L147) |
+
 ## `core/services/user_md_update_proposal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -672,11 +681,4 @@ _Hvor længe tænkte han? — målt ét sted, læst ét sted._
 | function | `mark_end` | `(run_id)` | Seneste tænke-blok lukkede. Sidste lukning vinder — se mark_start. | [src](../../../core/services/visible_thinking_trace.py#L54) |
 | function | `take_seconds` | `(run_id)` | Varigheden i sekunder, og RYD posten. None hvis der ikke blev tænkt. | [src](../../../core/services/visible_thinking_trace.py#L66) |
 | function | `peek_seconds` | `(run_id)` | Som take_seconds, men uden at rydde. Til observation/test. | [src](../../../core/services/visible_thinking_trace.py#L90) |
-
-## `core/services/visible_tool_exec.py`
-_Shared tool-exec pump for the visible run (Boy-Scout extraction, 2026-07-19)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run_tool_batch` | `(tool_calls, *, run, loop, tool_scope, step_counter, heartbeat_interval_s, heartbeat_phase, out, heartbeat_extra=…, exec_start=…)` | Announce → execute → heartbeat pump for one tool batch. | [src](../../../core/services/visible_tool_exec.py#L36) |
 

@@ -174,6 +174,20 @@ _Tool-concurrency policy (harness Part C)._
 | function | `_call_name` | `(tc)` | — | [src](../../../core/services/tool_concurrency.py#L57) |
 | function | `is_parallelizable` | `(tool_calls, *, mode)` | True iff mode=='on' AND >=2 calls AND every call name is in the allowlist. | [src](../../../core/services/tool_concurrency.py#L62) |
 
+## `core/services/tool_contract_shadow.py`
+_Skygge for skema-kontrakten — ville den have afvist noget den ikke burde?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taellere` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L37) |
+| function | `pr_vaerktoej` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L41) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L45) |
+| function | `taellere_fra_cache` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L51) |
+| function | `_gem` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L60) |
+| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville taende en | [src](../../../core/services/tool_contract_shadow.py#L70) |
+| function | `haandhaever` | `()` | Skal HAARDE brud faktisk afvise kaldet? | [src](../../../core/services/tool_contract_shadow.py#L81) |
+| function | `observe` | `(tool_name, arguments)` | Maal ét kald. Returnerer bruddene — men afgoer intet selv. | [src](../../../core/services/tool_contract_shadow.py#L95) |
+
 ## `core/services/tool_embeddings.py`
 _Tool description embedding cache._
 
@@ -517,13 +531,4 @@ _User Contradiction Tracker — detects when the user contradicts themselves._
 | function | `check_contradiction` | `(text, topic=…, user_id=…)` | Check a statement against existing stored statements for contradictions. | [src](../../../core/services/user_contradiction_tracker.py#L464) |
 | function | `detect_and_store_contradiction` | `(text, topic=…, session_id=…, source=…, user_id=…)` | Record a statement AND detect/store contradictions in one call. | [src](../../../core/services/user_contradiction_tracker.py#L486) |
 | function | `get_user_contradictions` | `(*, limit=…, status=…, user_id=…)` | Get stored contradictions. Thin wrapper around DB query. | [src](../../../core/services/user_contradiction_tracker.py#L573) |
-
-## `core/services/user_emotional_resonance.py`
-_User Emotional Resonance — detect and respond to the user's mood._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `detect_user_mood` | `(*, user_message, run_id=…)` | Detect user mood from message and persist. | [src](../../../core/services/user_emotional_resonance.py#L73) |
-| function | `get_current_user_mood` | `()` | Get the latest detected user mood. | [src](../../../core/services/user_emotional_resonance.py#L139) |
-| function | `build_user_emotional_resonance_surface` | `()` | MC surface for user emotional resonance. | [src](../../../core/services/user_emotional_resonance.py#L147) |
 

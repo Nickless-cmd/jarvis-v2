@@ -38,6 +38,39 @@ def test_schedule_persists(monkeypatch):
     assert len(state) == 1
 
 
+def test_tool_schedule_binds_current_session_and_user(monkeypatch):
+    """Regression: a wakeup must return to the visible session that created it."""
+    from core.identity.workspace_context import reset_context, set_context
+
+    state: list = []
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    token = set_context(
+        workspace_name="bjorn",
+        user_id="owner-123",
+        user_display_name="Bjoern",
+        role="owner",
+        channel="jarvisx-electron",
+        session_id="chat-origin",
+    )
+    try:
+        result = sw._exec_schedule_self_wakeup({
+            "delay_seconds": 120,
+            "prompt": "resume X",
+            "reason": "test",
+        })
+    finally:
+        reset_context(token)
+
+    wakeup = result["wakeup"]
+    assert wakeup["session_id"] == "chat-origin"
+    assert wakeup["user_id"] == "owner-123"
+    assert wakeup["workspace_name"] == "bjorn"
+    assert wakeup["user_display_name"] == "Bjoern"
+    assert wakeup["role"] == "owner"
+    assert wakeup["context_channel"] == "jarvisx-electron"
+
+
 def test_max_pending_limit(monkeypatch):
     state = [{"wakeup_id": f"w{i}", "status": "pending"} for i in range(20)]
     monkeypatch.setattr(sw, "_load", lambda: list(state))

@@ -63,6 +63,11 @@ def schedule_self_wakeup(
     reason: str = "",
     channel: str | None = None,
     session_id: str | None = None,
+    user_id: str | None = None,
+    workspace_name: str | None = None,
+    user_display_name: str | None = None,
+    role: str | None = None,
+    context_channel: str | None = None,
 ) -> dict[str, Any]:
     """Queue a self-wakeup. Returns the wakeup record."""
     prompt = (prompt or "").strip()
@@ -95,6 +100,13 @@ def schedule_self_wakeup(
         # default'e til Discord (Bjørn 2026-06-13). Dispatcheren guarder mod det.
         "channel": (channel or "app").strip().lower(),
         "session_id": (session_id or "").strip() or None,
+        # Persist the originating identity context. The dispatcher runs outside
+        # the request, so it must restore this before starting the background run.
+        "user_id": (user_id or "").strip() or None,
+        "workspace_name": (workspace_name or "").strip() or None,
+        "user_display_name": (user_display_name or "").strip() or None,
+        "role": (role or "").strip().lower() or None,
+        "context_channel": (context_channel or "").strip().lower() or None,
     }
     records.append(record)
     _save(records)
@@ -280,10 +292,25 @@ def self_wakeup_section() -> str | None:
 
 
 def _exec_schedule_self_wakeup(args: dict[str, Any]) -> dict[str, Any]:
+    from core.identity.workspace_context import (
+        current_channel,
+        current_role,
+        current_session_id,
+        current_user_display_name,
+        current_user_id,
+        current_workspace_name,
+    )
+
     return schedule_self_wakeup(
         delay_seconds=int(args.get("delay_seconds") or 60),
         prompt=str(args.get("prompt") or ""),
         reason=str(args.get("reason") or ""),
+        session_id=current_session_id() or None,
+        user_id=current_user_id() or None,
+        workspace_name=current_workspace_name() or None,
+        user_display_name=current_user_display_name() or None,
+        role=current_role() or None,
+        context_channel=current_channel() or None,
     )
 
 

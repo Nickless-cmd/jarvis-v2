@@ -125,9 +125,11 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                 logger.debug("wakeup heartbeat trigger failed: %s", exc)
 
             # C: actually EXECUTE the wakeup prompt as a self-directive run
+            run_started = False
             if prompt.strip():
                 try:
                     from core.services.visible_runs import start_autonomous_run
+                    from core.identity.workspace_context import reset_context, set_context
                     from core.identity.owner_resolver import (
                         resolve_owner_app_session,
                         resolve_owner_target_session,
@@ -153,13 +155,28 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                         "Når du er færdig, kald `mark_wakeup_consumed` med wakeup_id="
                         f"\"{wid}\" og rapportér resultatet kort til Bjørn."
                     )
-                    start_autonomous_run(
-                        self_directive,
-                        session_id=target_session or None,
-                        origin="wakeup",
+                    context_token = set_context(
+                        workspace_name=str(record.get("workspace_name") or "bjorn"),
+                        user_id=str(record.get("user_id") or ""),
+                        user_display_name=str(record.get("user_display_name") or ""),
+                        role=str(record.get("role") or ""),
+                        channel=str(record.get("context_channel") or ""),
+                        session_id=target_session or "",
                     )
+                    try:
+                        start_autonomous_run(
+                            self_directive,
+                            session_id=target_session or None,
+                            origin="wakeup",
+                        )
+                        run_started = True
+                    finally:
+                        reset_context(context_token)
                 except Exception as exc:
                     logger.warning("wakeup autonomous run trigger failed: %s", exc)
+
+            if not run_started:
+                continue
 
             # Mark dispatched in record (inside lock — TOCTOU race fix)
             record["dispatched"] = True

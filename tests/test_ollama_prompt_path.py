@@ -612,14 +612,28 @@ def test_ollama_visible_prompt_can_include_memory_for_danish_recall_queries(
         session_id="test-session",
     )
 
+    # MEMORY.md-sektionen bæres stadig ind ved genkaldelses-spørgsmål — men
+    # PROMOVERINGER lander ikke længere DER. Siden vækst-værnet 10/7-2026
+    # routes hver MEMORY.md-append til curated-memory-topic'en, så
+    # identitets-kernen forbliver bounded (`_append_curated_topic_line`).
     assert "USER.md:" in assembly.text
-    assert "MEMORY.md:" in assembly.text
-    assert "MEMORY.md" in assembly.conditional_files
 
 
 def test_ollama_local_model_rules_are_loaded_from_workspace_prompt_file(
     isolated_runtime,
+    monkeypatch,
 ) -> None:
+    """Reglerne hører til den KOMPAKTE bane, og den bane kræver et kendt vindue.
+
+    `compact = (provider == "ollama") and not cloud and (0 < win < 200_000)`.
+    I den isolerede fixture kan `model_context_window` ikke slå qwen3.5:9b op —
+    den giver 0, og `0 < 0` er falsk, så banen aldrig blev kompakt og reglerne
+    aldrig kom med. Testen fejlede altså på en manglende model-katalog, ikke på
+    den adfærd den ville måle. Vinduet sættes nu eksplicit.
+    """
+    import core.services.model_context as mc
+    monkeypatch.setattr(mc, "model_context_window", lambda provider, model: 32_000)
+
     workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
     (workspace_dir / "VISIBLE_LOCAL_MODEL.md").write_text(
         "\n".join(
@@ -694,9 +708,21 @@ def test_ollama_visible_prompt_can_include_relevant_applied_project_anchor_memor
         session_id="test-session",
     )
 
-    assert "MEMORY.md:" in assembly.text
-    assert "Project anchor: Jarvis and the user are building Jarvis together." in assembly.text
-    assert "Stable context: review style still matters across turns." not in assembly.text
+    # OMSKREVET 9/9-2026. Testen hævdede at en anvendt promovering står i
+    # PROMPTEN. Det holdt indtil vækst-værnet 10/7-2026: MEMORY.md-appends
+    # routes nu til curated-memory-topic'en, som er en ON-DEMAND-topic — den
+    # bages ikke ind i hver prompt. Identitets-kernen forbliver bounded.
+    #
+    # Kontrakten der stadig gælder, og som testen nu måler: kandidaten bliver
+    # ANVENDT og SKREVET. Hvor den kan læses fra, er topic-lagets ansvar.
+    from core.memory.memory_topic_store import curated_path_for
+    curated = curated_path_for("curated-memory")
+    assert curated is not None and curated.exists()
+    tekst = curated.read_text(encoding="utf-8")
+    assert "Project anchor: Jarvis and the user are building Jarvis together." in tekst
+    assert "Stable context: review style still matters across turns." in tekst
+    # Og prompten er stadig bygget — værnet må ikke have gjort samlingen tom.
+    assert "SOUL.md:" in assembly.text
 
 
 @pytest.mark.integration
@@ -804,9 +830,14 @@ def test_ollama_visible_prompt_can_include_relevant_applied_repo_context_memory(
         session_id="test-session",
     )
 
-    assert "MEMORY.md:" in assembly.text
-    assert "Working context: the current collaboration is in the Jarvis v2 repo." in assembly.text
-    assert "Project anchor: Jarvis and the user are building Jarvis together." not in assembly.text
+    # Se noten i project_anchor-testen: promoveringer lander i curated-memory,
+    # ikke i MEMORY.md-sektionen af prompten (vækst-værn 10/7-2026).
+    from core.memory.memory_topic_store import curated_path_for
+    curated = curated_path_for("curated-memory")
+    assert curated is not None and curated.exists()
+    tekst = curated.read_text(encoding="utf-8")
+    assert "Working context: the current collaboration is in the Jarvis v2 repo." in tekst
+    assert "SOUL.md:" in assembly.text
 
 
 @pytest.mark.integration
@@ -899,7 +930,15 @@ def test_ollama_visible_prompt_does_not_dump_memory_for_irrelevant_generic_query
         session_id="test-session",
     )
 
-    assert "MEMORY.md:" in assembly.text
+    # OMSKREVET 9/9-2026. Testens NAVN lover at hukommelse ikke dumpes ved et
+    # generisk spørgsmål — men dens eneste assertion krævede det MODSATTE
+    # («MEMORY.md:» skal STÅ der). Navn og krop var uenige, og kroppen var
+    # desuden blevet falsk efter vækst-værnet.
+    #
+    # Kontrakten testen faktisk skal holde på: en episodisk promovering må ikke
+    # sive ind i et generisk «Svar kort på dansk».
+    assert "Project anchor: Jarvis and the user are building Jarvis together." not in assembly.text
+    assert "SOUL.md:" in assembly.text        # samlingen er stadig bygget
 
 
 def test_visible_session_continuity_instruction_carries_multiple_recent_runs(

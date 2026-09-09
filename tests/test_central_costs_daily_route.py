@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import patch
 
+from tests.conftest import kald_rute
+
 
 def test_costs_daily_shapes_and_absorbs():
     from apps.api.jarvis_api.routes import central_absorb_routes as m
@@ -17,7 +19,7 @@ def test_costs_daily_shapes_and_absorbs():
          patch("core.costing.ledger.telemetry_summary", lambda: {"total_cost_usd": 7.0}), \
          patch.object(m, "absorb", lambda *a, **k: calls["absorb"].append((a, k))):
         import asyncio
-        out = asyncio.new_event_loop().run_until_complete(m.get_costs_daily())
+        out = kald_rute(m.get_costs_daily())
     assert out["today_cost"] == 7.0
     assert out["week_cost"] == 20.0
     assert out["today_total"] == 7.0   # 6.0 + 1.0
@@ -29,6 +31,16 @@ def test_costs_daily_shapes_and_absorbs():
 
 
 def test_costs_daily_self_safe_on_producer_error():
+    """Cachen skal ryddes FØRST.
+
+    `/central/costs-daily` blev cachet 15 s under poll-storm-fixet (343 ms ×
+    192 kald/5 min). Uden en rydning fik denne test den FORRIGE tests
+    fake-data serveret fra cachen og målte dermed ingenting — den lignede en
+    fejl i selv-sikkerheden, men var en fejl i isolationen.
+    """
+    from core.services.central_projection_cache import invalidate
+    invalidate()
+
     from apps.api.jarvis_api.routes import central_absorb_routes as m
     def boom(): raise RuntimeError("nej")
     with patch.object(m, "require_central_owner", lambda: None), \
@@ -38,5 +50,5 @@ def test_costs_daily_self_safe_on_producer_error():
          patch("core.costing.ledger.telemetry_summary", boom), \
          patch.object(m, "absorb", lambda *a, **k: None):
         import asyncio
-        out = asyncio.new_event_loop().run_until_complete(m.get_costs_daily())
+        out = kald_rute(m.get_costs_daily())
     assert out["days"] == [] and out["today_cost"] == 0.0

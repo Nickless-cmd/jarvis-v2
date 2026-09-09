@@ -40,11 +40,18 @@ _MEMBER_TICKS = {
     "ground_truth_registry": ("core.services.ground_truth_registry", "ground_truth_daemon_tick"),
     "mail_checker": ("core.services.mail_checker_daemon", "tick_mail_checker_daemon"),
     "visual_memory": ("core.services.visual_memory", "tick_visual_memory_daemon"),
+    # Tilføjet til familien 5/9-2026 ved dækningsrevisionen — den var den eneste
+    # ægte forældreløse efter 15/7-konsolideringen. Selv-throttler internt
+    # (1440 min), så familien kalder hver tick.
+    "provider_autodiscovery": (
+        "core.services.provider_autodiscovery", "tick_provider_autodiscovery_daemon",
+    ),
 }
 
 # Members that run EVERY tick (no family throttle): internal-throttle maintenance +
 # the idempotent file_awareness watcher-ensure.
-_EVERY_TICK = {"file_awareness", "cache_maintenance", "signal_decay"}
+_EVERY_TICK = {"file_awareness", "cache_maintenance", "signal_decay",
+               "provider_autodiscovery"}
 # Members the family self-throttles (had no internal timer) → cadence in minutes.
 _FAMILY_THROTTLED = {
     "wakeup_cleanup": 60,
@@ -86,7 +93,14 @@ def test_infra_family_has_no_gated_llm_member():
     assert fam.members == [], "infra family is all-rules — the gated tier is empty"
 
 
-def test_all_eight_members_in_unconditional_tier():
+def test_alle_medlemmer_i_den_ubetingede_traekke():
+    """Medlemslisten er en SNAPSHOT: tilføjes et medlem, skal det ske bevidst her.
+
+    `provider_autodiscovery` blev tilføjet til `_INFRA_UNCONDITIONAL` uden at
+    listen her fulgte med, og testen stod rød (målt 9/9-2026). Rækkefølgen er
+    derimod en ægte invariant — det billige, bærende tamper-tjek skal køre
+    først, uanset hvor mange medlemmer familien får.
+    """
     names = [name for name, _ in cdmf._INFRA_UNCONDITIONAL]
     assert names[0] == "file_awareness", "cheap load-bearing tamper-ensure runs FIRST"
     assert set(names) == {
@@ -98,8 +112,9 @@ def test_all_eight_members_in_unconditional_tier():
         "ground_truth_registry",
         "mail_checker",
         "visual_memory",
+        "provider_autodiscovery",
     }
-    assert len(names) == 8
+    assert len(names) == len(set(names)), "et medlem må ikke stå to gange"
 
 
 # ---------------------------------------------------------------------------

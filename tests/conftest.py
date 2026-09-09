@@ -1016,9 +1016,59 @@ def isolated_runtime(
             # 130000), which breaks tests/test_settings.py that read the real
             # config. Reload settings AFTER config so it rebinds to the real path.
             "core.runtime.settings",
+            # `core.runtime.secrets` binder SETTINGS_FILE ved import og RELOADES
+            # i setup (se listen ovenfor) — men blev ikke bundet tilbage. Efter
+            # en isolated_runtime-test pegede den derfor på den slettede
+            # tmp-config, så `read_runtime_key()` fandt ingenting og senere
+            # tests fejlede med «deepseek credentials missing for profile
+            # deepseek». Fire tests i test_visible_followup_adapters faldt af
+            # den grund, og KUN når de kørte efter tests/services/
+            # test_autonomous_lease.py (målt ved halvering 9/9-2026).
+            "core.runtime.secrets",
+            # `core.auth.profiles` reloades ogsaa i setup. Uden en tilsvarende
+            # gendannelse beholder `cheap_provider_runtime_adapters` — som
+            # importerer `get_provider_credentials` VED VÆRDI paa modul-niveau —
+            # den tmp-bundne udgave, og alle senere provider-kald fejler med
+            # «auth-not-ready». Consumeren reloades bagefter, saa dens
+            # by-value-binding følger med tilbage.
+            "core.auth.profiles",
+            # `provider_router` reloades i SETUP men blev ikke bundet tilbage.
+            # `visible_followup_adapters._build_request` slaar provider →
+            # auth_profile op DER (deepseek bruger profilen «default», ikke
+            # «deepseek»), og falder tilbage til provider-navnet naar registret
+            # ikke kan laeses. Efter en isolated_runtime-test pegede loaderen paa
+            # tmp-config'en uden registry → profilen blev «deepseek» → ingen
+            # legitimation → «auth-not-ready».
+            #
+            # Fire tests i test_visible_followup_adapters faldt af netop dét, og
+            # KUN naar de koerte efter tests/services/test_autonomous_lease.py.
+            # Fundet ved halvering over 65 filer, ikke ved gaetteri —
+            # de tre foregaaende gaet (secrets, profiles, cheap_provider_runtime)
+            # ramte alle ved siden af.
+            "core.runtime.provider_router",
             "core.runtime.db_core",
             "core.runtime.db",
         ):
             _m = sys.modules.get(_name)
             if _m is not None:
                 importlib.reload(_m)
+
+
+def kald_rute(vaerdi):
+    """Kald en API-rute i en test — uanset om den er `def` eller `async def`.
+
+    Central-ruterne blev lavet SYNKRONE, men testene pakkede dem stadig i en
+    event-loop (`asyncio…run_until_complete`). Det gav
+    «An asyncio.Future, a coroutine or an awaitable is required» i halvtreds
+    tests fordelt på elleve filer — én årsag, mange ofre (målt 9/9-2026).
+
+    Hjælperen venter kun når der ER noget at vente på. Så holder testene op med
+    at knække hver gang en rute skifter form, og fejlen kan ikke gentage sig
+    stille i den anden retning heller.
+    """
+    import asyncio
+    import inspect
+
+    if inspect.isawaitable(vaerdi):
+        return asyncio.new_event_loop().run_until_complete(vaerdi)
+    return vaerdi

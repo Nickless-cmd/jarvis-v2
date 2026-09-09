@@ -203,7 +203,11 @@ def test_github_models_and_ovhcloud_configured():
         CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_auth_ready)
     gh = CHEAP_PROVIDER_DEFAULTS["github-models"]
     assert gh["protocol"] == "openai-chat" and gh["base_url"].startswith("https://models.github.ai")
-    assert "openai/gpt-5-mini" in gh["static_models"]
+    # TØMT 19/8-2026: GitHub pensionerer hele tjenesten — alle fem modeller
+    # svarer HTTP 410 «github_models_retirement_brownout». Entryen er BEVIDST
+    # beholdt tom, så en genopstået tjeneste kun kræver at listen fyldes.
+    # Testen krævede stadig `openai/gpt-5-mini` og stod rød i tyve dage.
+    assert gh["static_models"] == [], "pensioneret udbyder: listen skal være tom"
     assert gh["daily_limit"] == 50           # rate-limitet → ikke arbejdshest
     ov = CHEAP_PROVIDER_DEFAULTS["ovhcloud"]
     assert ov["auth_kind"] == "none"
@@ -353,16 +357,26 @@ def test_openai_compatible_set_derived_from_protocol():
 
 
 def test_ollama_a2_present_free_lan_cloud_account():
-    """account2's separate ollama-cloud free-tier (10.0.0.45) skal være en distinkt
+    """account2's separate ollama-cloud free-tier skal være en distinkt
     cheap-lane-provider — IKKE den lokale `ollama` (ejerens konto, excluded).
     LAN-kald: auth_kind=none, protocol=ollama, gratis. static_models = KUN de
-    cloud-modeller free-tier faktisk kan (de subscription-gatede er udeladt)."""
+    cloud-modeller free-tier faktisk kan (de subscription-gatede er udeladt).
+
+    ADRESSEN FLYTTEDE 7/9-2026: 10.0.0.45 svarede hverken på ping eller ARP —
+    1.063 kald over syv døgn, alle med «No route to host», 0,0 % success.
+    Gatewayen ligger nu på 10.0.0.26. Testen pinnede den gamle adresse og stod
+    rød siden. Den asserter nu at der ER en LAN-adresse med den rigtige port,
+    frem for at gentage ét oktet der flytter sig.
+    """
     cfg = CHEAP_PROVIDER_DEFAULTS["ollama-a2"]
-    assert cfg["base_url"] == "http://10.0.0.45:11434"
+    assert cfg["base_url"].startswith("http://10.0.0.")
+    assert cfg["base_url"].endswith(":11434")
     assert cfg["auth_kind"] == "none"          # LAN — ingen nøgle fra vores side
     assert cfg["protocol"] == "ollama"          # native /api/chat, ikke openai-compat
     assert cfg.get("cost_class") == "free"
-    assert set(cfg["static_models"]) == {"gemma4:31b-cloud", "minimax-m3:cloud"}
+    # `minimax-m3:cloud` FJERNET 7/9-2026 — den var ikke længere gratis, så
+    # slottet var dødt. Kun gemma4 er tilbage på free-tier.
+    assert set(cfg["static_models"]) == {"gemma4:31b-cloud"}
     # Må ALDRIG folde subscription-gatede modeller ind (ville blive døde slots).
     for gated in ("glm-5.2:cloud", "deepseek-v4-flash:cloud", "kimi-k2.7-code:cloud"):
         assert gated not in cfg["static_models"]

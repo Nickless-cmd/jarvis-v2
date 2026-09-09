@@ -16,11 +16,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tests.conftest import kald_rute
+
 
 # ── POLICY 1 — delete_policy → mutation (account-erase-sti) ──────────────
 def _run_erase(payload: dict):
     from apps.api.jarvis_api.routes import account
-    return asyncio.get_event_loop().run_until_complete(account.account_erase(payload))
+    return kald_rute(account.account_erase(payload))
 
 
 @pytest.fixture

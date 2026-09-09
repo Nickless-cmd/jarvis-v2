@@ -1,6 +1,8 @@
 import asyncio
 from unittest.mock import patch
 
+from tests.conftest import kald_rute
+
 
 # ── Route 1: /central/events (A7) ──────────────────────────────────────────
 
@@ -13,7 +15,7 @@ def test_events_no_family_shapes_and_absorbs():
          patch("core.eventbus.bus.event_bus.recent_by_family",
                lambda family, limit=50: (_ for _ in ()).throw(AssertionError("må ikke kaldes"))), \
          patch.object(m, "absorb", lambda *a, **k: calls["absorb"].append((a, k))):
-        out = asyncio.new_event_loop().run_until_complete(m.get_events())
+        out = kald_rute(m.get_events())
     assert out["items"] == fake_items
     assert out["count"] == 2
     assert out["family"] is None
@@ -38,7 +40,7 @@ def test_events_with_family_uses_by_family():
          patch("core.eventbus.bus.event_bus.recent",
                lambda limit=50: (_ for _ in ()).throw(AssertionError("må ikke kaldes"))), \
          patch.object(m, "absorb", lambda *a, **k: calls["absorb"].append((a, k))):
-        out = asyncio.new_event_loop().run_until_complete(m.get_events(family="tool"))
+        out = kald_rute(m.get_events(family="tool"))
     assert seen["family"] == "tool"
     assert out["items"] == fake_items
     assert out["family"] == "tool"
@@ -54,7 +56,7 @@ def test_events_self_safe_on_producer_error():
          patch("core.eventbus.bus.event_bus.recent", boom), \
          patch("core.eventbus.bus.event_bus.recent_by_family", boom), \
          patch.object(m, "absorb", lambda *a, **k: calls["absorb"].append((a, k))):
-        out = asyncio.new_event_loop().run_until_complete(m.get_events())
+        out = kald_rute(m.get_events())
     assert out["items"] == []
     assert out["count"] == 0
     assert isinstance(out, dict)
@@ -74,7 +76,7 @@ def test_memory_health_shapes_and_absorbs():
          patch("apps.api.jarvis_api.routes.mission_control.mc_memory_pipeline",
                lambda limit=10: fake_surface), \
          patch.object(m, "absorb", lambda *a, **k: calls["absorb"].append((a, k))):
-        out = asyncio.new_event_loop().run_until_complete(m.get_memory_health())
+        out = kald_rute(m.get_memory_health())
     assert out["memory"] == fake_surface
     assert out["added_today"] == 42
     assert out["journal_today"] is True
@@ -95,7 +97,7 @@ def test_memory_health_flags_when_no_journal():
          patch("apps.api.jarvis_api.routes.mission_control.mc_memory_pipeline",
                lambda limit=10: fake_surface), \
          patch.object(m, "absorb", lambda *a, **k: calls["absorb"].append((a, k))):
-        out = asyncio.new_event_loop().run_until_complete(m.get_memory_health())
+        out = kald_rute(m.get_memory_health())
     assert out["journal_today"] is False
     a, k = calls["absorb"][0]
     flag_if = k.get("flag_if")
@@ -110,7 +112,7 @@ def test_memory_health_self_safe_on_producer_error():
     with patch.object(m, "require_central_owner", lambda: None), \
          patch("apps.api.jarvis_api.routes.mission_control.mc_memory_pipeline", boom), \
          patch.object(m, "absorb", lambda *a, **k: calls["absorb"].append((a, k))):
-        out = asyncio.new_event_loop().run_until_complete(m.get_memory_health())
+        out = kald_rute(m.get_memory_health())
     assert out["memory"] == {}
     assert out["added_today"] == 0
     assert out["journal_today"] is False

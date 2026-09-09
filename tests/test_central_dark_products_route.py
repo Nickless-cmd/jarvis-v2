@@ -16,9 +16,11 @@ from fastapi import HTTPException
 
 import apps.api.jarvis_api.routes.central_absorb_routes as car
 
+from tests.conftest import kald_rute
+
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return kald_rute(coro)
 
 
 def test_owner_gate_propagates(monkeypatch):

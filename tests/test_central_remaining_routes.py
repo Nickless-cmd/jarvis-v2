@@ -9,9 +9,11 @@ import asyncio
 
 from unittest.mock import patch
 
+from tests.conftest import kald_rute
+
 
 def _run(coro):
-    return asyncio.new_event_loop().run_until_complete(coro)
+    return kald_rute(coro)
 
 
 # ── attention ────────────────────────────────────────────────────────────────

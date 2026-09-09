@@ -195,7 +195,9 @@ def test_both_members_run_in_one_tick():
         stack.enter_context(patch.object(cdmf, "_collect_aesthetic_snapshot", return_value=_SNAP))
         result = cdmf.tick_cluster_aesthetic()
 
-    assert set(result["members_ran"]) == {"aesthetic_taste", "curiosity"}
+    # `code_aesthetic` kom til familien uden at denne snapshot fulgte med.
+    # Listen er bevidst eksplicit: et nyt medlem SKAL noteres her.
+    assert set(result["members_ran"]) == {"aesthetic_taste", "curiosity", "code_aesthetic"}
     assert gated.call_count == 1
     assert nonllm["curiosity"].call_count == 1
 

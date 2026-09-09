@@ -27,7 +27,10 @@ def test_search_memory_returns_top_embedding_hit(monkeypatch) -> None:
     monkeypatch.setattr(
         memory_search,
         "_load_or_build_index",
-        lambda: (chunks, embeddings, {}),
+        # `_load_or_build_index` fik en `workspace_dir`-parameter; mocken tog
+        # stadig nul argumenter og fejlede med TypeError. Signaturen accepterer
+        # nu det kaldet faktisk sender.
+        lambda workspace_dir=None: (chunks, embeddings, {}),
     )
     monkeypatch.setattr(
         memory_search,

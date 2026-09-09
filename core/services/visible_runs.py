@@ -1434,75 +1434,11 @@ async def _stream_visible_run(
     # ordnede tool-aktivitet (first-pass + alle agentiske runder) til én blok-array
     # der persisteres ved run-slut. Rent additivt/side-effekt-frit; en fejl her må
     # ALDRIG bryde et live run (append-helper er try/except-indkapslet).
-    _turn_tool_calls: list[dict] = []
-    _turn_tool_results: list[dict] = []
-    # Interleave-log: trackér om model producerede text→tool i hvilken rækkefølge
-    # under streamen, så _build_turn_blocks kan persistere blokke i den rækkefølge
-    # de kom — frem for degraderet "tekst først, så tools"-rækkefølge.
-    _interleave_log: list[str] = []
-    # Ét tekst-segment pr. sammenhængende stykke tekst mellem værktøjskald.
-    # Uden dem har _build_turn_blocks kun én samlet blob og kan kun placere den
-    # ét sted — hvorefter alle mellemsynteser forsvinder ind i det afsluttende
-    # svar og værktøjerne står alene i toppen (Bjørn 2026-09-02).
-    _text_segments: list[str] = []
-    _seg_open = False
-
-    def _seg_text(chunk: str) -> None:
-        nonlocal _seg_open
-        if not chunk:
-            return
-        if _seg_open and _text_segments:
-            _text_segments[-1] += chunk
-        else:
-            _text_segments.append(chunk)
-            _seg_open = True
-
-    def _seg_close() -> None:
-        nonlocal _seg_open
-        _seg_open = False
-
-    def _coerce_tool_input(raw: object) -> dict:
-        """Normalisér tool-input til et DICT. OpenAI-stil tool_calls bærer
-        ``function.arguments`` som en JSON-STRENG — den skal parses, ellers
-        gemmer content_json en rå streng som klienten renderer garbled (og som
-        er en dobbelt-sandhed mod resten der er dicts). Aldrig kast."""
-        if isinstance(raw, dict):
-            return raw
-        if isinstance(raw, str) and raw.strip():
-            try:
-                parsed = json.loads(raw)
-                return parsed if isinstance(parsed, dict) else {}
-            except Exception:
-                return {}
-        return {}
-
-    def _accumulate_turn_blocks(tool_calls: list, results: list) -> None:
-        try:
-            for _tc in (tool_calls or []):
-                _fn = (_tc.get("function") or {}) if isinstance(_tc, dict) else {}
-                _turn_tool_calls.append({
-                    "id": str((_tc.get("id") if isinstance(_tc, dict) else "") or ""),
-                    "name": str(
-                        _fn.get("name")
-                        or (_tc.get("name") if isinstance(_tc, dict) else None)
-                        or "tool"
-                    ),
-                    "input": _coerce_tool_input(
-                        _fn.get("arguments")
-                        if _fn.get("arguments") is not None
-                        else (_tc.get("input") if isinstance(_tc, dict) else None)
-                    ),
-                })
-            for _r in (results or []):
-                _turn_tool_results.append({
-                    "tool_use_id": str(getattr(_r, "tool_call_id", "") or ""),
-                    "status": "done",
-                    "content": str(getattr(_r, "content", "") or ""),
-                    "is_error": False,
-                })
-        except Exception:
-            # Blok-capture-fejl må aldrig forplante sig ind i streamet.
-            pass
+    # Turens content-blokke i den raekkefoelge de opstod
+    # (core/services/visible_turn_accumulator.py). Udskilt 2026-09-09 efter Boy
+    # Scout-reglen — fem loese variabler og fire lukninger blev ét objekt.
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    _turn = TurnAccumulator()
 
     # Akkumuleret first-pass-tekst + degenerations-vagt i ét objekt
     # (core/services/visible_first_pass_text.py).
@@ -1627,8 +1563,8 @@ async def _stream_visible_run(
                         break
                     safe_text = markup_buffer.feed(item.delta)
                     if safe_text:
-                        _interleave_log.append("text")
-                        _seg_text(safe_text)
+                        _turn.note_text()
+                        _turn.add_text(safe_text)
                         _set_orb_phase("speak")
                         yield _sse(
                             "delta",
@@ -1661,8 +1597,8 @@ async def _stream_visible_run(
                     # fallback — tools først, ét samlet tekstblok til sidst.
                     # Præcis den fejl Bjørn så efter streaming (2026-09-02).
                     for _ in (item.tool_calls or [None]):
-                        _interleave_log.append("tool")
-                    _seg_close()
+                        _turn.note_tool()
+                    _turn.close_segment()
                     continue
                 if isinstance(item, VisibleModelStreamDone):
                     result = item.result
@@ -2424,7 +2360,7 @@ async def _stream_visible_run(
                 )
                 # Tur-akkumulering (first-pass native tools) — genbruger SAMME
                 # tool_calls + results som ToolExchange'en; side-effekt-frit.
-                _accumulate_turn_blocks(_collected_native_tool_calls, _fp_followup_results)
+                _turn.add_tools(_collected_native_tool_calls, _fp_followup_results)
                 _followup_exchanges: list[_vf.ToolExchange] = [
                     _vf.ToolExchange(
                         text="",
@@ -3128,8 +3064,8 @@ async def _stream_visible_run(
                                     _all_followup_parts.append(_a_item.delta)
                                     # Opfølgnings-runder logførte IKKE rækkefølge —
                                     # så en tur med flere runder tabte den helt.
-                                    _interleave_log.append("text")
-                                    _seg_text(_a_item.delta)
+                                    _turn.note_text()
+                                    _turn.add_text(_a_item.delta)
                                     yield _sse("delta", {
                                         "type": "delta",
                                         "run_id": run.run_id,
@@ -3151,8 +3087,8 @@ async def _stream_visible_run(
                             if isinstance(_a_item, _vf.FollowupToolCalls):
                                 _a_tool_calls.extend(_a_item.tool_calls)
                                 for _ in (_a_item.tool_calls or [None]):
-                                    _interleave_log.append("tool")
-                                _seg_close()
+                                    _turn.note_tool()
+                                _turn.close_segment()
                                 continue
                             if isinstance(_a_item, _vf.FollowupFailed):
                                 # Carry the B11 structured taxonomy (failure_kind +
@@ -4504,7 +4440,7 @@ async def _stream_visible_run(
                     )
                     # Tur-akkumulering (agentisk runde) — samme calls + results
                     # som ToolExchange'en; side-effekt-frit.
-                    _accumulate_turn_blocks(_a_tool_calls, _a_followup_results)
+                    _turn.add_tools(_a_tool_calls, _a_followup_results)
                     _followup_exchanges.append(
                         _vf.ToolExchange(
                             text=_exchange_text(),
@@ -4938,13 +4874,7 @@ async def _stream_visible_run(
                     _persist_session_assistant_message(
                         run, followup_text,
                         reasoning_content=_persist_reasoning,
-                        blocks=_build_turn_blocks(
-                            text=followup_text,
-                            tool_calls=_turn_tool_calls,
-                            tool_results=_turn_tool_results,
-                            interleave=_interleave_log,
-                            text_segments=_text_segments,
-                        ) or None,
+                        blocks=_turn.build_blocks(followup_text) or None,
                     )
                 except Exception as _persist_exc:
                     # H5: svaret er vist live, men gemmes ikke → væk ved reload.
@@ -5580,13 +5510,7 @@ async def _stream_visible_run(
                 _persist_session_assistant_message(
                     run, visible_output_text,
                     reasoning_content=str(locals().get("_persist_reasoning", "") or ""),
-                    blocks=_build_turn_blocks(
-                        text=visible_output_text,
-                        tool_calls=_turn_tool_calls,
-                        tool_results=_turn_tool_results,
-                        interleave=_interleave_log,
-                        text_segments=_text_segments,
-                    ) or None,
+                    blocks=_turn.build_blocks(visible_output_text) or None,
                 )
             except Exception as _persist_exc2:
                 # H5: svaret er vist live, men gemmes ikke → væk ved reload.

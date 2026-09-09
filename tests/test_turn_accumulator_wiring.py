@@ -1,8 +1,13 @@
-"""Wiring-test for tur-niveau blok-akkumulatoren i visible_runs.
+"""Wiring-test for den rene blok-bygger `_build_turn_blocks`.
 
-`_accumulate_turn_blocks` er en lokal closure inde i `_stream_visible_run` og
-kan ikke importeres direkte uden at mocke hele streamet. Denne test dækker i
-stedet AKKUMULATOR-KONTRAKTEN sort på hvidt: den normaliserede dict-form som
+**Opdateret 2026-09-09.** Docstringen sagde før at akkumulatoren «er en lokal
+closure inde i `_stream_visible_run` og kan ikke importeres direkte uden at
+mocke hele streamet». Det gælder ikke længere: akkumulatoren er udskilt til
+`core/services/visible_turn_accumulator.py` og testes nu direkte i
+`tests/test_visible_turn_accumulator.py`.
+
+Denne fil bliver stående som dækning af BLOK-BYGGEREN — den rene funktion
+akkumulatoren fodrer — og af den normaliserede dict-form der går igennem den: den normaliserede dict-form som
 akkumulatoren producerer skal fødes rent gennem den (allerede testede,
 importérbare) rene `_build_turn_blocks`. Vi verificerer begge tool-call-former
 akkumulatoren håndterer (OpenAI-style `function.{name,arguments}` og flad

@@ -125,7 +125,7 @@ def taellere_fra_cache() -> dict[str, int] | None:
 
 
 def observe(*, run_id: str, legacy_status: str, legacy_error: str | None,
-            text: str, emitted_prefix: str, cancelled: bool,
+            text: str, emitted_prefix: str = "", cancelled: bool = False,
             transport_error: bool = False, tool_dispatched: bool = False) -> None:
     """Sammenlign den kørende beslutning med den nye kontrakts. Kaster aldrig."""
     if not live():
@@ -142,10 +142,24 @@ def observe(*, run_id: str, legacy_status: str, legacy_error: str | None,
         # klassifikatoren til at se et tomt svar hvor der var en afbrydelse.
         terminal = (S.CANCELLED if (cancelled or str(legacy_status) == "interrupted")
                     else S.TRANSPORT_ERROR if transport_error else S.OK)
+        # Præfikset måles fra den SERVER-EJEDE buffer, ikke fra kalderens
+        # variabel: spec en siger at bytes en klient så, men som ikke er i den
+        # buffer, er en transport-fejl — ikke en alternativ historik.
+        # Falder tilbage til det kalderen gav, hvis loggen ikke kan læses.
+        praefiks = str(emitted_prefix or "")
+        try:
+            from core.services.emitted_prefix import emitted_prefix as _maalt
+            p = _maalt(run_id)
+            if not p.problem:
+                praefiks = p.text
+        except Exception:
+            logger.warning("settlement-shadow: kunne ikke maale praefikset",
+                           exc_info=True)
+
         forsoeg = S.Attempt(
             terminal=terminal,
             text_blocks=((text,) if text else ()),
-            emitted_prefix=str(emitted_prefix or ""),
+            emitted_prefix=praefiks,
             tool_dispatched=bool(tool_dispatched),
             message_committed=bool(text),
         )
@@ -165,7 +179,7 @@ def observe(*, run_id: str, legacy_status: str, legacy_error: str | None,
             "settlement-shadow UENIGE run=%s gammel=%s(→%s) ny=%s regel=%r "
             "tekst=%d praefiks=%d cancelled=%s transport=%s tool=%s fejl=%r",
             run_id, legacy_status, forventet, ny.outcome, ny.rule,
-            len(text or ""), len(emitted_prefix or ""), cancelled,
+            len(text or ""), len(praefiks), cancelled,
             transport_error, tool_dispatched, (legacy_error or "")[:120],
         )
     except Exception:

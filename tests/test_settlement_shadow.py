@@ -130,10 +130,32 @@ def test_maalingen_har_ingen_returvaerdi_nogen_kan_handle_paa(taendt):
     assert _obs() is None
 
 
-def test_selvmodsigende_input_vaelter_ikke_maalingen(taendt):
+def test_praefikset_maales_fra_den_SERVER_EJEDE_buffer(taendt):
+    """Spec en: bytes en klient så, men som ikke er i bufferen, er en
+    transport-fejl — ikke en alternativ historik. Kalderens egen streng må
+    derfor ikke kunne overtrumfe målingen."""
+    import json
+    from core.services import run_event_log as REL
+    rid = "run-skygge-praefiks"
+    REL._RUNS.pop(rid, None)
+    REL.create(rid, "s")
+    REL.append(rid, 'event: delta\ndata: ' + json.dumps({"delta": "det der NAAEDE ud"}))
+    try:
+        # kalderen paastaar noget ANDET — maalingen skal vinde
+        _obs(run_id=rid, legacy_status="cancelled", text="det der naaede ud",
+             emitted_prefix="noget helt andet", cancelled=True)
+        assert SH.taellere()["enige"] == 1
+    finally:
+        REL._RUNS.pop(rid, None)
+
+
+def test_selvmodsigende_input_vaelter_ikke_maalingen(taendt, monkeypatch):
     """Et sendt præfiks uden tekst er en selvmodsigelse for klassifikatoren.
     Den kaster — og skyggen skal fange det, ikke sende det videre."""
-    _obs(legacy_status="completed", text="", emitted_prefix="brugeren så det her")
+    from core.services import emitted_prefix as EP
+    monkeypatch.setattr(EP, "emitted_prefix",
+                        lambda rid: EP.Prefix("brugeren så det her", True, 1))
+    _obs(legacy_status="completed", text="", emitted_prefix="")
     assert SH.taellere()["fejl"] == 1
 
 

@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/hollow_promise_guard.py`
+_Hollow-promise guard (4. jul) — fang "lovede handling, kaldte intet værktøj"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_last_sentence` | `(text)` | Sidste hele sætning. Løftet står dér — det er dét man efterlades med. | [src](../../../core/services/hollow_promise_guard.py#L135) |
+| function | `is_promise_of_action` | `(text)` | True hvis `text` lover at assistenten tager en handling imminent. Self-safe. | [src](../../../core/services/hollow_promise_guard.py#L141) |
+| function | `is_deferred_text_promise` | `(text)` | True for a promise to emit another prose section after this run ends. | [src](../../../core/services/hollow_promise_guard.py#L168) |
+| function | `is_hollow_promise` | `(final_text, total_tool_calls, user_message=…, nudged_already=…, last_round_tool_calls=…)` | Tom løfte = lovede handling + NUL tool-kald i SIDSTE runde + ikke allerede nudget. | [src](../../../core/services/hollow_promise_guard.py#L179) |
+| function | `hollow_promise_guard_enabled` | `()` | Default TRUE (Bjørn bad om værnet 4. jul). Env `JARVIS_HOLLOW_PROMISE_GUARD` vinder; | [src](../../../core/services/hollow_promise_guard.py#L211) |
+
 ## `core/services/hollow_promise_round.py`
 _Hollow-promise follow-through (redesign 2026-09-04)._
 
@@ -681,24 +692,4 @@ _jc_tool_telemetry.py — per-tool eventbus telemetry for jarvis-code's_
 |---|---|---|---|---|
 | function | `publish_tool_step` | `(*, tool, status, duration_ms=…, bytes_=…, user_id=…, session_id=…)` | Publish one `tool.jc_step` eventbus event. Returns True on a | [src](../../../core/services/jc_tool_telemetry.py#L22) |
 | function | `publish_tool_steps` | `(steps, *, user_id=…, session_id=…)` | Publish a BATCH of per-tool steps (the client's step envelope may | [src](../../../core/services/jc_tool_telemetry.py#L44) |
-
-## `core/services/jobs_engine.py`
-_Jobs Engine — proper async job queue with provider selection and cost tracking._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_prune_completed_jobs` | `(items)` | — | [src](../../../core/services/jobs_engine.py#L46) |
-| class | `JobResult` | `` | — | [src](../../../core/services/jobs_engine.py#L73) |
-| function | `_storage_path` | `()` | — | [src](../../../core/services/jobs_engine.py#L87) |
-| function | `_load` | `()` | — | [src](../../../core/services/jobs_engine.py#L91) |
-| function | `_save` | `(items)` | — | [src](../../../core/services/jobs_engine.py#L121) |
-| function | `register_handler` | `(job_type, handler)` | Register a handler function for a given job_type. | [src](../../../core/services/jobs_engine.py#L146) |
-| function | `enqueue_job` | `(*, job_type, payload=…, allowed_providers=…, prefer_free_first=…, max_requests=…, max_tokens=…, max_usd=…, window_key=…, scheduled_job_id=…, priority=…)` | Create a new pending job. Returns job_id. | [src](../../../core/services/jobs_engine.py#L154) |
-| function | `select_provider` | `(allowed, *, prefer_free_first=…)` | Pick the first usable provider from the list. | [src](../../../core/services/jobs_engine.py#L203) |
-| function | `_pop_next_pending` | `(items)` | — | [src](../../../core/services/jobs_engine.py#L227) |
-| function | `run_next_job` | `()` | Run the highest-priority pending job via its registered handler. | [src](../../../core/services/jobs_engine.py#L235) |
-| function | `cancel_job` | `(job_id)` | — | [src](../../../core/services/jobs_engine.py#L319) |
-| function | `sweep_zombie_jobs` | `(stale_seconds=…)` | Mark 'running' jobs older than stale_seconds as error. | [src](../../../core/services/jobs_engine.py#L330) |
-| function | `list_jobs` | `(*, status=…, limit=…)` | — | [src](../../../core/services/jobs_engine.py#L375) |
-| function | `build_jobs_engine_surface` | `()` | — | [src](../../../core/services/jobs_engine.py#L382) |
 

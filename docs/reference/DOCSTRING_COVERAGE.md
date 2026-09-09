@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7108/14049 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7118/14064 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7108/14049 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 596 | 1100 | 54% |
-| `core.services` | 4709 | 9683 | 48% |
+| `core.services` | 4719 | 9698 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7108/14049 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2004)
+## Undocumented public functions (2008)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -807,6 +807,7 @@ Generated from source. 7108/14049 functions/methods documented (50%). The list b
 - `core/services/collective_pulse_daemon.py` :: `run_pulse` (L192)
 - `core/services/collective_pulse_daemon.py` :: `tick` (L233)
 - `core/services/commit_attribution.py` :: `CommitAttribution.as_trailers` (L46)
+- `core/services/compaction_runtime.py` :: `Surface.tokens` (L84)
 - `core/services/companion_initiative.py` :: `Offer.as_dict` (L49)
 - `core/services/compass_engine.py` :: `build_compass_surface` (L65)
 - `core/services/completion_satisfaction.py` :: `build_completion_satisfaction_surface` (L45)
@@ -1244,6 +1245,9 @@ Generated from source. 7108/14049 functions/methods documented (50%). The list b
 - `core/services/operator_channel.py` :: `looks_like_workstation_path` (L149)
 - `core/services/operator_channel.py` :: `open_channel` (L80)
 - `core/services/outcome_learning.py` :: `build_outcome_learning_surface` (L189)
+- `core/services/outcome_projector.py` :: `OutcomeLedger.is_terminal` (L181)
+- `core/services/outcome_projector.py` :: `OutcomeLedger.outcome` (L178)
+- `core/services/outcome_projector.py` :: `OutcomeLedger.record` (L162)
 - `core/services/paid_lane_guard.py` :: `build_paid_lane_guard_surface` (L98)
 - `core/services/paid_lane_guard.py` :: `is_paid` (L40)
 - `core/services/paradox_tracker.py` :: `build_paradox_surface` (L88)

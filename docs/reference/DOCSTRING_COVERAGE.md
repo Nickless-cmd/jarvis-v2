@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7137/14093 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7139/14096 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7137/14093 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 596 | 1100 | 54% |
-| `core.services` | 4736 | 9725 | 48% |
+| `core.services` | 4738 | 9728 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7137/14093 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2012)
+## Undocumented public functions (2013)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -644,8 +644,9 @@ Generated from source. 7137/14093 functions/methods documented (50%). The list b
 - `core/services/autonomy_proposal_queue.py` :: `reject_proposal` (L255)
 - `core/services/avoidance_detector.py` :: `build_avoidance_surface` (L161)
 - `core/services/background_resume.py` :: `tracked` (L85)
-- `core/services/bash_sandbox.py` :: `set_enabled` (L72)
-- `core/services/bash_sandbox.py` :: `status` (L79)
+- `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L174)
+- `core/services/bash_sandbox.py` :: `set_enabled` (L74)
+- `core/services/bash_sandbox.py` :: `status` (L81)
 - `core/services/behavioral_decisions.py` :: `change_status` (L178)
 - `core/services/behavioral_decisions.py` :: `create_decision` (L51)
 - `core/services/behavioral_decisions.py` :: `delete_decision` (L214)

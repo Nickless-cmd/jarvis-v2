@@ -24,6 +24,36 @@ from core.eventbus.bus import event_bus
 logger = logging.getLogger(__name__)
 
 
+def _er_udloebet(pending: dict) -> str:
+    """Er godkendelsen for gammel til at maatte bruges? Returnerer grunden.
+
+    Tom streng = den er frisk nok. Kan alderen IKKE afgoeres, siges det — men
+    kaldet spaerres ikke: en manglende tidsstempel er husets fejl, ikke
+    brugerens, og at afvise paa den ville laase ham ude af sine egne kort.
+    """
+    from datetime import UTC, datetime
+
+    from core.runtime.db_approval_bridge import DEFAULT_TTL_S
+
+    raa = str(pending.get("created_at") or "").strip()
+    if not raa:
+        return ""
+    try:
+        t = datetime.fromisoformat(raa)
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=UTC)
+    except Exception:
+        return ""
+    alder = (datetime.now(UTC) - t).total_seconds()
+    if alder <= DEFAULT_TTL_S:
+        return ""
+    if alder < 7200:
+        return f"{int(alder // 60)} minutter gammel"
+    if alder < 172800:
+        return f"{alder / 3600:.1f} timer gammel"
+    return f"{alder / 86400:.1f} dage gammel"
+
+
 def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     """Resolve a pending tool approval.
 
@@ -42,6 +72,33 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
         return {"error": "Approval not found or expired", "status": "error"}
     if str(pending.get("status") or "pending") not in {"", "pending"}:
         return {"error": "Approval already resolved", "status": "error"}
+
+    # ── UDLOEB (Fase 4) ──────────────────────────────────────────────────
+    # Der var INTET aldersstjek. Ordet «expired» stod kun i fejlbeskeden
+    # ovenfor. Maalt 9/9-2026: 26 ventende godkendelser laa i
+    # `state/pending_approvals.json`, alle `bash`, den aeldste fra 29. august
+    # — elleve dage. De blev genindlaest i hukommelsen ved HVER procesopstart,
+    # saa en genstart genoplivede dem i stedet for at fejle lukket.
+    #
+    # Et ja i dag ville altsaa have koert en kommando fra i forgaars med de
+    # argumenter der blev fanget dengang. Spec'ens ord: «duplicate, late, and
+    # cross-user answers cannot authorize execution».
+    #
+    # Samme TTL som broen bruger — ét tal, ikke to.
+    _for_gammel = _er_udloebet(pending)
+    if _for_gammel:
+        logger.warning("Fase 4: afviser UDLOEBET godkendelse %s (%s) — %s",
+                       approval_id, pending.get("tool_name"), _for_gammel)
+        _vr._PENDING_APPROVALS.pop(approval_id, None)
+        _vr._persist_pending_approvals()
+        return {
+            "status": "error",
+            "tool": pending.get("tool_name") or "",
+            "error": (f"Godkendelsen er udloebet ({_for_gammel}). "
+                      "Bed om handlingen igen, saa laver jeg et nyt kort."),
+            "result_text": f"[Godkendelsen er udloebet: {_for_gammel}]",
+            "chat_persisted": False,
+        }
 
     # ── Permission-classifier GOLD outcome (harness Part E) ──
     # The owner just approved/denied a surfaced mutating action → the real signal.

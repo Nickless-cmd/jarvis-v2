@@ -254,7 +254,38 @@ from core.services.prompt_sections.capability_markup import (  # noqa: E402
 from core.runtime.state_store import load_json as _load_approvals_state, save_json as _save_approvals_state
 
 _APPROVALS_STATE_KEY = "pending_approvals"
-_PENDING_APPROVALS: dict[str, dict] = dict(_load_approvals_state(_APPROVALS_STATE_KEY, {}))
+
+
+def _friske_godkendelser(raa: dict) -> dict:
+    """Genopliv KUN kort der stadig er inden for deres levetid.
+
+    Persistensen ovenfor er rigtig — et kort brugeren aabnede foer en genstart
+    skal stadig kunne bruges. Men den havde ingen oevre graense: maalt
+    9/9-2026 laa 26 ventende godkendelser i filen, alle `bash`, den aeldste
+    fra 29. august. Hver procesopstart laeste dem tilbage i hukommelsen, saa en
+    genstart GENOPLIVEDE dem i stedet for at fejle lukket.
+
+    Spec'ens Fase 4: «missing answerer, audit-write failure, expiry,
+    cancellation, and restart fail closed».
+    """
+    try:
+        from core.services.visible_runs_approvals import _er_udloebet
+    except Exception:
+        return dict(raa or {})
+    ud, tabt = {}, 0
+    for k, v in dict(raa or {}).items():
+        if isinstance(v, dict) and _er_udloebet(v):
+            tabt += 1
+            continue
+        ud[k] = v
+    if tabt:
+        logger.warning("Fase 4: %d udloebne godkendelses-kort blev IKKE "
+                       "genoplivet ved opstart", tabt)
+    return ud
+
+
+_PENDING_APPROVALS: dict[str, dict] = _friske_godkendelser(
+    _load_approvals_state(_APPROVALS_STATE_KEY, {}))
 
 
 def _publicer_approval_requested(

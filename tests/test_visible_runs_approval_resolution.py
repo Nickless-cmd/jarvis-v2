@@ -24,6 +24,19 @@ import importlib
 import pytest
 
 
+def _nu() -> str:
+    """Et FRISKT tidsstempel.
+
+    Stod hardkodet som 2026-05-24. Da Fase 4 gav godkendelser et udloeb,
+    begyndte disse fire at fejle — ikke fordi persisteringen braekkede, men
+    fordi kortet var tre en halv maaned gammelt. Samme kalender-forfald som
+    ramte tre andre testfiler i dag: en test der afhaenger af dagens dato,
+    holder op med at maale det den siger.
+    """
+    from datetime import UTC, datetime
+    return datetime.now(UTC).isoformat()
+
+
 def test_resolve_pending_approval_persists_tool_result_to_chat(monkeypatch) -> None:
     """resolve_pending_approval now appends role=tool to chat directly,
     closing the gap where a stream-died-before-approval left the tool
@@ -55,7 +68,7 @@ def test_resolve_pending_approval_persists_tool_result_to_chat(monkeypatch) -> N
         "arguments": {"command": "touch /tmp/x"},
         "run_id": "visible-test-run",
         "session_id": "chat-test-session",
-        "created_at": "2026-05-24T00:00:00+00:00",
+        "created_at": _nu(),
     })
 
     result = visible_runs.resolve_pending_approval(approval_id, approved=True)
@@ -100,7 +113,7 @@ def test_resolve_pending_approval_persistence_failure_does_not_block(monkeypatch
         "approval_id": approval_id, "status": "pending",
         "tool_name": "bash", "arguments": {"command": "echo"},
         "run_id": "r", "session_id": "s",
-        "created_at": "2026-05-24T00:00:00+00:00",
+        "created_at": _nu(),
     })
 
     result = visible_runs.resolve_pending_approval(approval_id, approved=True)
@@ -132,7 +145,7 @@ def test_resolve_pending_approval_no_session_skips_persistence(monkeypatch) -> N
         "approval_id": approval_id, "status": "pending",
         "tool_name": "bash", "arguments": {"command": "echo"},
         "run_id": "r", "session_id": "",  # no session
-        "created_at": "2026-05-24T00:00:00+00:00",
+        "created_at": _nu(),
     })
 
     result = visible_runs.resolve_pending_approval(approval_id, approved=True)
@@ -154,7 +167,7 @@ def test_resolve_pending_approval_denied_does_not_persist(monkeypatch) -> None:
         "approval_id": approval_id, "status": "pending",
         "tool_name": "bash", "arguments": {"command": "echo"},
         "run_id": "r", "session_id": "s",
-        "created_at": "2026-05-24T00:00:00+00:00",
+        "created_at": _nu(),
     })
 
     result = visible_runs.resolve_pending_approval(approval_id, approved=False)

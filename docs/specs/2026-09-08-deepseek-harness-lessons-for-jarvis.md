@@ -1219,7 +1219,32 @@ Three decisions worth carrying forward, because each was a bug the tests found r
 * **The connections are pooled, so `with connect()` inside another `with connect()` is the *same* connection and commits the outer transaction on exit.** The write guard therefore takes the caller's open connection. Any future check placed mid-write must do the same.
 * **Drift ignores `message_id` and normalises `content_json`.** `uuid4` against a derived id can never match, and text-vs-object is a difference in form, not content. Comparing them would flag every session and make the measurement worthless.
 
-The remaining Phase 1 work is the wiring, not the parts: no writer calls `SessionHandle` yet, and no session has been moved to `shadow`.
+**Update, same day, after deploying.** Shadow writing is wired into
+`append_chat_message` and two of the owner's real sessions run in `shadow`
+(`chat-055b2f70…`, `chat-48db8cf9…`); `chat_messages` remains authoritative and
+nothing has cut over. A legacy session pays 5.9 µs per message for the shadow
+check — one lookup, no write.
+
+The canary earned its keep within the hour, finding two defects that 136 tests
+could not, because those tests supply their own events:
+
+* **Compact markers were excluded in three places** — the shadow write, the
+  backfill, and the drift comparison. Together that meant a session could read
+  as *in agreement* and still lose its markers on cutover, because the detector
+  was not looking at the thing that was missing. Production holds 102 markers
+  across 14 sessions.
+* **Append is not a repair.** Backfilling the one missing marker placed it at
+  the *end* of the ledger (seq 579) while the table holds it at position 474,
+  producing 291 disagreements from that point on. A backfill is only correct
+  when the ledger is a *prefix* of the table; `backfill` now refuses otherwise
+  and names the position where they diverge, and `reseed()` rewrites the whole
+  session in table order — clearing its projection checkpoint, or the
+  projection would believe it had already folded to 579 and skip everything.
+
+The remaining Phase 1 work is the rest of the wiring: no writer calls
+`SessionHandle` yet, and `store_compact_marker` deliberately raises for a
+`ledger` session because marker writing has no handle behind it — a landmine
+recorded as a test rather than hidden.
 
 ### Phase 2: stream settlement, retry, outcomes, and compaction
 

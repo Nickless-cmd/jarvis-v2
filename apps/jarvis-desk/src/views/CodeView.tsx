@@ -862,6 +862,11 @@ export function CodeView({
         </div>
         </div>
         <div className="composer-area">
+          {pendingPauseAsk && (
+            <div className="composer-notices pauseask-notice">
+              <PauseAndAskCard ask={pendingPauseAsk} />
+            </div>
+          )}
           {/* Liveness PERSISTENT lige over composeren (som Claude Code) — står
               altid, viser "klar" i hvile og lyser op ved et run (lokalt ELLER
               cross-device fra mobil). */}
@@ -873,7 +878,6 @@ export function CodeView({
             tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
           />
           <div className="composer-notices">
-            {pendingPauseAsk && <PauseAndAskCard ask={pendingPauseAsk} />}
             {stream.pendingApproval && (
               <ApprovalCard
                 approvalId={stream.pendingApproval.approvalId}

@@ -658,6 +658,11 @@ export function ChatView({
       </div>
 
       <div className="composer-area">
+        {pendingPauseAsk && (
+          <div className="composer-notices pauseask-notice">
+            <PauseAndAskCard ask={pendingPauseAsk} />
+          </div>
+        )}
         {/* Liveness fast lige over composer (ikke i transcript — den scrollede
             væk / sad i toppen ved ny chat). Vises kun når der faktisk sker noget. */}
         {(stream.status !== 'idle' || bgActive) && (
@@ -672,7 +677,6 @@ export function ChatView({
           </div>
         )}
         <div className="composer-notices">
-          {pendingPauseAsk && <PauseAndAskCard ask={pendingPauseAsk} />}
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
           {stream.status === 'hung' && (
             <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

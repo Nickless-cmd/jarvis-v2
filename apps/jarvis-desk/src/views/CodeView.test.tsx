@@ -99,7 +99,10 @@ describe('CodeView', () => {
       handlersRef.current?.onEvent({ type: 'content_block_start', index: 1, content_block: { type: 'tool_result', tool_use_id: 'ask-1', status: 'done', content: result } })
     })
 
-    expect(container.querySelector('.composer-notices .pauseask')).toBeInTheDocument()
+    const pauseCard = container.querySelector('.composer-notices .pauseask')
+    const liveness = container.querySelector('.liveness')
+    expect(pauseCard).toBeInTheDocument()
     expect(container.querySelector('.transcript .pauseask')).not.toBeInTheDocument()
+    expect(pauseCard!.compareDocumentPosition(liveness!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })

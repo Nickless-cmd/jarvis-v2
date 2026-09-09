@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7100/14039 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7108/14049 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7100/14039 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 596 | 1100 | 54% |
-| `core.services` | 4701 | 9673 | 48% |
+| `core.services` | 4709 | 9683 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7100/14039 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2002)
+## Undocumented public functions (2004)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1281,6 +1281,7 @@ Generated from source. 7100/14039 functions/methods documented (50%). The list b
 - `core/services/post_tool_answer_guard.py` :: `should_replace_with_synthesis` (L26)
 - `core/services/post_tool_answer_guard.py` :: `tool_call_count` (L13)
 - `core/services/precision_bias.py` :: `build_precision_bias_surface` (L285)
+- `core/services/prepared_request.py` :: `Component.resolve` (L70)
 - `core/services/priors_feedback.py` :: `priors_feedback_section` (L118)
 - `core/services/private_initiative_tension_signal_tracking.py` :: `build_runtime_private_initiative_tension_signal_surface` (L75)
 - `core/services/private_initiative_tension_signal_tracking.py` :: `refresh_runtime_private_initiative_tension_signal_statuses` (L71)
@@ -1430,6 +1431,7 @@ Generated from source. 7100/14039 functions/methods documented (50%). The list b
 - `core/services/repeated_requests.py` :: `ensure_table` (L92)
 - `core/services/repeated_requests.py` :: `mark_asked` (L203)
 - `core/services/resonance_decay.py` :: `build_resonance_decay_surface` (L410)
+- `core/services/retry_runtime.py` :: `Spent.plus_attempt` (L85)
 - `core/services/rhythm_engine.py` :: `build_rhythm_surface` (L73)
 - `core/services/rule_engine.py` :: `RuleEngine.add_rule` (L84)
 - `core/services/rule_engine.py` :: `RuleEngine.clear_rules` (L92)

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7126/14079 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7127/14080 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7126/14079 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 596 | 1100 | 54% |
-| `core.services` | 4727 | 9713 | 48% |
+| `core.services` | 4728 | 9714 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1629,7 +1629,7 @@ Generated from source. 7126/14079 functions/methods documented (50%). The list b
 - `core/services/session_tool_pin.py` :: `clear` (L120)
 - `core/services/session_wakeup.py` :: `last_seen_event_id` (L88)
 - `core/services/session_wakeup.py` :: `mark_seen` (L92)
-- `core/services/settlement_shadow.py` :: `taellere` (L52)
+- `core/services/settlement_shadow.py` :: `taellere` (L60)
 - `core/services/shadow_ledger_writer.py` :: `taellere` (L51)
 - `core/services/shadow_scan_daemon.py` :: `build_shadow_scan_surface` (L273)
 - `core/services/shadow_scan_daemon.py` :: `run_scan` (L230)

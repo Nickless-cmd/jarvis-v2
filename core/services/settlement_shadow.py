@@ -26,11 +26,19 @@ måling der tænder sig selv fordi ingen har sat en nøgle, er ikke noget nogen
 har besluttet. Derfor kræves et EKSPLICIT `enabled: true`; alt andet — nøglen
 mangler, cachen fejler, værdien har en anden form — regnes som slukket.
 
-## Tavshed er tvetydig, så den siges højt
+## Tavshed er tvetydig, så tællerne er AFLÆSELIGE UDEFRA
 
 En måling der kun logger ved uenighed, kan ikke skelne «alt passer» fra
-«fyrede aldrig». Derfor siges tællerne højt hver 20. observation — så nul
-uenigheder kan aflæses som et resultat frem for et fravær.
+«fyrede aldrig».
+
+Loggen alene løste det ikke: et pulsslag hver 20. observation betyder at den
+sidst loggede værdi er forældet indtil den 20. — og en aflæser kan ikke se
+forskel på «tælleren står på 1» og «tælleren stod på 1 sidst nogen sagde det».
+Jeg byggede den fælde to gange i træk i dag.
+
+Derfor skrives tællerne til `shared_cache`, som er sqlite-baseret og altså
+læsbar fra ENHVER proces. Så er tallet et svar, ikke et ekko. Skrivningen er
+best-effort og koster én lille skrivning pr. kørsel — ikke pr. delta.
 
 ## Hvad uenighed betyder
 
@@ -89,16 +97,31 @@ _KORT = {
 PULS_HVER = 20
 
 
-def _puls() -> None:
-    """Sig tællerne højt ved FØRSTE observation og derefter periodisk.
+#: Nøglen tællerne kan læses på — fra en hvilken som helst proces.
+CACHE_NOEGLE = "settlement:shadow:taellere"
+_CACHE_TTL = 7 * 24 * 3600.0
 
-    Den første er den vigtigste: den er beviset for at koblingen overhovedet
-    fyrer. Uden den skal man vente på den 20. for at vide om målingen er i
-    live — og indtil da er tavshed stadig tvetydig.
-    """
+
+def _puls() -> None:
+    """Gør tællerne aflæselige udefra, og sig dem højt med jævne mellemrum."""
+    try:
+        from core.services import shared_cache
+        shared_cache.set(CACHE_NOEGLE, taellere(), ttl_seconds=_CACHE_TTL)
+    except Exception:
+        pass
     n = _taellere["enige"] + _taellere["uenige"]
     if n == 1 or (n and n % PULS_HVER == 0):
         logger.info("settlement-shadow puls: %s", taellere())
+
+
+def taellere_fra_cache() -> dict[str, int] | None:
+    """Læs tællerne UDEN at være den proces der skrev dem."""
+    try:
+        from core.services import shared_cache
+        v = shared_cache.get(CACHE_NOEGLE)
+    except Exception:
+        return None
+    return v if isinstance(v, dict) else None
 
 
 def observe(*, run_id: str, legacy_status: str, legacy_error: str | None,
@@ -130,6 +153,7 @@ def observe(*, run_id: str, legacy_status: str, legacy_error: str | None,
             return
 
         _taellere["uenige"] += 1
+        _puls()
         # BEGGE svar og de kendsgerninger der førte til dem — så uenigheden kan
         # afgøres frem for at skulle gættes.
         logger.warning(

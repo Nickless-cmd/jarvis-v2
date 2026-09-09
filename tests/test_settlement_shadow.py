@@ -167,3 +167,26 @@ def test_den_FOERSTE_observation_siges_hoejt(taendt, caplog):
     with caplog.at_level(logging.INFO):
         _obs()
     assert "settlement-shadow puls" in caplog.text
+
+
+def test_taellerne_kan_laeses_fra_en_ANDEN_proces(taendt):
+    """Loggen alene løste det ikke: den sidst loggede værdi er forældet indtil
+    næste pulsslag, og en aflæser kan ikke se forskel på «tælleren står på 1»
+    og «tælleren stod på 1 sidst nogen sagde det»."""
+    _obs()
+    _obs()
+    assert SH.taellere_fra_cache() == {"enige": 2, "uenige": 0, "fejl": 0,
+                                       "sprunget_over": 0}
+
+
+def test_en_uenighed_opdaterer_ogsaa_det_aflaeselige_tal(taendt):
+    _obs(legacy_status="completed", text="", emitted_prefix="", transport_error=True)
+    assert SH.taellere_fra_cache()["uenige"] == 1
+
+
+def test_en_utilgaengelig_cache_vaelter_ikke_maalingen(taendt, monkeypatch):
+    import core.services.shared_cache as SC
+    monkeypatch.setattr(SC, "set",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
+    _obs()
+    assert SH.taellere()["enige"] == 1

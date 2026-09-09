@@ -139,11 +139,12 @@ _Skygge-sammenligning: er den nye afregning enig med den kørende kode?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `taellere` | `()` | — | [src](../../../core/services/settlement_shadow.py#L52) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/settlement_shadow.py#L56) |
-| function | `live` | `()` | Er skygge-sammenligningen tændt? Slukket ved enhver tvivl. | [src](../../../core/services/settlement_shadow.py#L61) |
-| function | `_puls` | `()` | Sig tællerne højt ved FØRSTE observation og derefter periodisk. | [src](../../../core/services/settlement_shadow.py#L92) |
-| function | `observe` | `(*, run_id, legacy_status, legacy_error, text, emitted_prefix, cancelled, transport_error=…, tool_dispatched=…)` | Sammenlign den kørende beslutning med den nye kontrakts. Kaster aldrig. | [src](../../../core/services/settlement_shadow.py#L104) |
+| function | `taellere` | `()` | — | [src](../../../core/services/settlement_shadow.py#L60) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/settlement_shadow.py#L64) |
+| function | `live` | `()` | Er skygge-sammenligningen tændt? Slukket ved enhver tvivl. | [src](../../../core/services/settlement_shadow.py#L69) |
+| function | `_puls` | `()` | Gør tællerne aflæselige udefra, og sig dem højt med jævne mellemrum. | [src](../../../core/services/settlement_shadow.py#L105) |
+| function | `taellere_fra_cache` | `()` | Læs tællerne UDEN at være den proces der skrev dem. | [src](../../../core/services/settlement_shadow.py#L117) |
+| function | `observe` | `(*, run_id, legacy_status, legacy_error, text, emitted_prefix, cancelled, transport_error=…, tool_dispatched=…)` | Sammenlign den kørende beslutning med den nye kontrakts. Kaster aldrig. | [src](../../../core/services/settlement_shadow.py#L127) |
 
 ## `core/services/shadow_experiment_registry.py`
 _core/services/shadow_experiment_registry.py_

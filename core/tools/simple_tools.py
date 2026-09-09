@@ -1934,11 +1934,32 @@ def get_tool_definitions(
 
     effective_scope = scope if scope is not None else current_tool_scope()
 
-    return filter_tool_definitions(
+    ud = filter_tool_definitions(
         TOOL_DEFINITIONS,
         role=(effective_role or ""),
         scope=(effective_scope or ""),
     )
+
+    # K4: et NYT godkendelses-vaerktoej maa ikke rulles ud foer den
+    # invokations-bundne bro er aktiv. De nitten der allerede lever paa den
+    # gamle inline-sti staar navngivet i gaten og roeres ikke — at tage `bash`
+    # og `write_file` fra ham ville vaere langt vaerre end den gaeld de udgoer.
+    # Fail-open: kan gaten ikke afgoere noget, annonceres vaerktoejet.
+    try:
+        from core.tools.approval_rollout_gate import may_advertise
+        beholdt = []
+        for d in ud:
+            navn = str(d.get("function", {}).get("name") or "")
+            ok, grund = may_advertise(navn)
+            if ok:
+                beholdt.append(d)
+            else:
+                logger.warning("K4: %s annonceres ikke — %s", navn, grund)
+        return beholdt
+    except Exception:
+        logger.warning("K4: udrulnings-gaten kunne ikke koere — alt annonceres",
+                       exc_info=True)
+        return ud
 
 
 def _verify_hint_for(tool: str, result: dict[str, Any]) -> str | None:

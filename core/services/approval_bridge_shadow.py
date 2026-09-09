@@ -45,6 +45,12 @@ def taellere() -> dict[str, int]:
 def _nulstil_for_tests() -> None:
     for k in _taellere:
         _taellere[k] = 0
+    _sidst_gemt.clear()
+    try:
+        from core.services import shared_cache
+        shared_cache.delete(CACHE_NOEGLE)
+    except Exception:
+        pass
 
 
 def taellere_fra_cache() -> dict[str, int] | None:
@@ -58,12 +64,13 @@ def taellere_fra_cache() -> dict[str, int] | None:
     return v if isinstance(v, dict) else None
 
 
+_sidst_gemt: dict[str, int] = {}
+
+
 def _gem() -> None:
-    try:
-        from core.services import shared_cache
-        shared_cache.set(CACHE_NOEGLE, taellere(), ttl_seconds=_CACHE_TTL)
-    except Exception:
-        pass
+    """Deltaer, ikke totaler — se `shadow_counters` for hvorfor."""
+    from core.services.shadow_counters import flet
+    flet(CACHE_NOEGLE, taellere(), _sidst_gemt, ttl=_CACHE_TTL)
 
 
 def live() -> bool:

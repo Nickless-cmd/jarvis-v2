@@ -64,6 +64,12 @@ def taellere() -> dict[str, int]:
 def _nulstil_for_tests() -> None:
     for k in _taellere:
         _taellere[k] = 0
+    _sidst_gemt.clear()
+    try:
+        from core.services import shared_cache
+        shared_cache.delete(CACHE_NOEGLE)
+    except Exception:
+        pass
 
 
 def live() -> bool:
@@ -102,13 +108,14 @@ CACHE_NOEGLE = "settlement:shadow:taellere"
 _CACHE_TTL = 7 * 24 * 3600.0
 
 
+_sidst_gemt: dict[str, int] = {}
+
+
 def _puls() -> None:
     """Gør tællerne aflæselige udefra, og sig dem højt med jævne mellemrum."""
-    try:
-        from core.services import shared_cache
-        shared_cache.set(CACHE_NOEGLE, taellere(), ttl_seconds=_CACHE_TTL)
-    except Exception:
-        pass
+    # Deltaer, ikke totaler — se `shadow_counters` for hvorfor.
+    from core.services.shadow_counters import flet
+    flet(CACHE_NOEGLE, taellere(), _sidst_gemt, ttl=_CACHE_TTL)
     n = _taellere["enige"] + _taellere["uenige"]
     if n == 1 or (n and n % PULS_HVER == 0):
         logger.info("settlement-shadow puls: %s", taellere())

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { PauseAndAskCard } from './PauseAndAskCard'
 import { ToolCard } from './ToolCard'
+import { BlocksRenderer } from './BlocksRenderer'
 import { onPauseSvar } from '../../lib/pauseAsk'
 
 const ask = {
@@ -52,5 +53,15 @@ describe('ToolCard · pause_and_ask', () => {
   it('rører ikke almindelige tool-kald', () => {
     render(<ToolCard block={{ ...blok('42 linjer'), name: 'bash' } as never} density="full" />)
     expect(screen.queryByText(/venter på dig/i)).toBeNull()
+  })
+
+  it('forbliver synligt gennem BlocksRenderer uden at åbne en tool-gruppe', () => {
+    const json = JSON.stringify({ kind: 'pause_and_ask', ...ask })
+    const { container } = render(
+      <BlocksRenderer blocks={[blok(json) as never]} density="compact" streaming />,
+    )
+
+    expect(screen.getByText(ask.question)).toBeTruthy()
+    expect(container.querySelector('.toolgroup')).toBeNull()
   })
 })

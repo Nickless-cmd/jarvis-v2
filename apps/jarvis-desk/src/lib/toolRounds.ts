@@ -25,7 +25,7 @@ export type RenderBlock = ContentBlock | ToolGroupBlock
  * ind i «Kørte 5 værktøjer» — den er netop det man leder efter.
  */
 function erSamlbar(b: RenderBlock): b is Extract<ContentBlock, { type: 'tool_use' }> {
-  return b.type === 'tool_use' && b.status !== 'error'
+  return b.type === 'tool_use' && b.status !== 'error' && b.name !== 'pause_and_ask'
 }
 
 export function groupToolRounds(blocks: RenderBlock[]): RenderBlock[] {

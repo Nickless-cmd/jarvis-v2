@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
+import hashlib
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -17,6 +20,9 @@ _DEFAULT_SUMMARY_LENGTH = 500
 _MAX_STORED_CHARS = 2_000_000
 
 
+logger = logging.getLogger(__name__)
+
+
 def summarize_result(content: str, max_length: int = _DEFAULT_SUMMARY_LENGTH) -> str:
     normalized = " ".join(str(content or "").split()).strip()
     if len(normalized) <= max_length:
@@ -31,7 +37,7 @@ def save_tool_result(
     *,
     created_at: str | None = None,
 ) -> str:
-    TOOL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    _sikr_privat_rod()
     result_id = f"tool-result-{uuid4().hex}"
     timestamp = created_at or datetime.now(UTC).isoformat()
     raa = str(result_content or "")
@@ -56,10 +62,22 @@ def save_tool_result(
         "stored_chars": len(stored),
         "created_at": timestamp,
         "summary": summarize_result(result_content),
+        # Digest over det GEMTE indhold, ikke over originalen: handlen skal
+        # kunne verificere det den faktisk leverer. Et digest over noget der
+        # blev klippet væk, ville bevise en ting og udlevere en anden.
+        "digest": _digest(stored),
     }
     target = _result_path(result_id)
-    tmp_target = target.with_suffix(f".{uuid4().hex}.tmp")
-    tmp_target.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp_target = target.parent / f"{target.stem}.{uuid4().hex}.tmp"
+    # Ejer-only OG eksklusiv: filen må ikke kunne findes af andre, og en
+    # eksisterende fil må ikke overskrives i tavshed.
+    fd = os.open(tmp_target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    except Exception:
+        tmp_target.unlink(missing_ok=True)
+        raise
     tmp_target.replace(target)
     return result_id
 
@@ -68,7 +86,13 @@ def get_tool_result(result_id: str) -> dict[str, object] | None:
     normalized = str(result_id or "").strip()
     if not normalized:
         return None
-    path = _result_path(normalized)
+    try:
+        path = _result_path(normalized)
+    except UnsafeResultId as e:
+        # Ikke tavst: et forsøg på at læse uden for storen er et signal, ikke
+        # et uheld. Modellen skriver selv denne streng.
+        logger.warning("tool_result_store: afviste hentning — %s", e)
+        return None
     if not path.exists():
         return None
     try:
@@ -82,11 +106,26 @@ def get_tool_result(result_id: str) -> dict[str, object] | None:
     # gøre gammelt, komplet output mistænkeligt. `None` siger «ukendt».
     data.setdefault("complete", None)
     data.setdefault("original_chars", None)
+    # HASH-TJEKKET HANDLE (Fase 3, K8). En handle der kun slås OP, beviser
+    # ingenting om det den leverer. Her verificeres indholdet mod digesten.
+    #
+    # Poster fra før digesten fandtes har den ikke — og et manglende digest må
+    # ikke læses som «forfalsket». `verified: None` siger «ukendt», præcis som
+    # `complete: None` gør for fuldstændigheden.
+    gemt = data.get("digest")
+    if isinstance(gemt, str) and gemt:
+        faktisk = _digest(str(data.get("result") or ""))
+        data["verified"] = (faktisk == gemt)
+        if not data["verified"]:
+            logger.warning("tool_result_store: digest passer IKKE for %s — "
+                           "indholdet er ændret siden det blev gemt", normalized)
+    else:
+        data.setdefault("verified", None)
     return data
 
 
 def cleanup_old_results(max_age_days: int = 7) -> int:
-    TOOL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    _sikr_privat_rod()
     cutoff = datetime.now(UTC) - timedelta(days=max(max_age_days, 0))
     removed = 0
     for path in TOOL_RESULTS_DIR.glob("*.json"):
@@ -96,6 +135,16 @@ def cleanup_old_results(max_age_days: int = 7) -> int:
             continue
         created_at = _parse_dt(str((data or {}).get("created_at") or ""))
         if created_at is None or created_at > cutoff:
+            continue
+        # LINK-SIKKER OPRYDNING (K11). Et symlink i storen ville ellers lade
+        # oprydningen slette noget UDENFOR den — en sletning man ikke bad om,
+        # udført af en rutine der kører af sig selv.
+        try:
+            if path.is_symlink() or path.resolve().parent != TOOL_RESULTS_DIR.resolve():
+                logger.warning("tool_result_store: springer %s over — peger ud "
+                               "af storen", path.name)
+                continue
+        except Exception:
             continue
         path.unlink(missing_ok=True)
         removed += 1
@@ -185,8 +234,52 @@ def render_tool_result_for_prompt(
     return _prefixed_tool_text(tool_name, normalized_summary)
 
 
+def _digest(text: str) -> str:
+    """sha256 over indholdet. Handlen kan dermed VERIFICERES, ikke kun slås op."""
+    return "sha256:" + hashlib.sha256(str(text or "").encode("utf-8")).hexdigest()
+
+
+def _sikr_privat_rod() -> None:
+    """Roden er 0700 — kun ejeren. Værktøjsresultater indeholder alt hvad et
+    værktøj så: filindhold, kommando-output, argumenter."""
+    TOOL_RESULTS_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+    try:
+        if TOOL_RESULTS_DIR.stat().st_mode & 0o077:
+            TOOL_RESULTS_DIR.chmod(0o700)
+    except Exception:
+        logger.warning("tool_result_store: kunne ikke stramme rettighederne paa %s",
+                       TOOL_RESULTS_DIR, exc_info=True)
+
+
+#: Et gyldigt result_id. Alt andet afvises FØR der bygges en sti.
+_ID_MOENSTER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
+
+
+class UnsafeResultId(ValueError):
+    """`result_id` peger uden for storen — eller kunne gøre det."""
+
+
 def _result_path(result_id: str) -> Path:
-    return TOOL_RESULTS_DIR / f"{result_id}.json"
+    """Stien til ét resultat. Afviser alt der kan pege ud af roden.
+
+    MÅLT 9/9-2026: `TOOL_RESULTS_DIR / f"{result_id}.json"` uden validering var
+    en ægte sti-traversering. `get_tool_result("../hemmelig")` læste en fil
+    UDEN FOR roden — og `result_id` kommer fra MODELLENS eget værktøjskald
+    (`read_tool_result`), altså fra en streng vi ikke kontrollerer.
+
+    To lag, fordi ét ikke er nok:
+      1. mønsteret — ingen skilletegn, ingen prikker, ingen `..`
+      2. den opløste sti SKAL ligge under roden — også hvis roden selv går
+         gennem et symlink, og også hvis mønsteret en dag bliver løsnet.
+    """
+    rid = str(result_id or "").strip()
+    if not _ID_MOENSTER.match(rid):
+        raise UnsafeResultId(f"ugyldigt result_id: {rid[:60]!r}")
+    rod = TOOL_RESULTS_DIR.resolve()
+    sti = (rod / f"{rid}.json").resolve()
+    if sti.parent != rod:
+        raise UnsafeResultId(f"result_id peger uden for storen: {rid[:60]!r}")
+    return sti
 
 
 def _prefixed_tool_text(tool_name: str, text: str) -> str:

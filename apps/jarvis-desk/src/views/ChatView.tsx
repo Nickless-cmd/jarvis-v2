@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ArrowDown, PanelRight, Loader2 } from 'lucide-react'
-import { onPauseSvar, parsePauseAsk, type PauseAsk } from '../lib/pauseAsk'
+import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
 import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
@@ -30,25 +30,8 @@ import { ErrorCard } from '../components/feedback/ErrorCard'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { MessageRail, railAnchors as byggAnkre } from '../components/chat/MessageRail'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
-import type { ContentBlock } from '../lib/sseProtocol'
 
 const NEAR_BOTTOM_PX = 120
-
-function pauseAskIn(blocks: ContentBlock[]): PauseAsk | null {
-  let found: PauseAsk | null = null
-  for (const block of blocks) {
-    if (block?.type !== 'tool_use' || block.name !== 'pause_and_ask') continue
-    found = parsePauseAsk(block.result) ?? found
-  }
-  return found
-}
-
-function withoutPauseAsk(blocks: ContentBlock[]): ContentBlock[] {
-  const hasPause = blocks.some((block) => block?.type === 'tool_use' && block.name === 'pause_and_ask')
-  return hasPause
-    ? blocks.filter((block) => block?.type !== 'tool_use' || block.name !== 'pause_and_ask')
-    : blocks
-}
 
 /** Chat-mode. Ved tom/ny samtale: composer centreret midt på skærmen. Ved
  *  første besked oprettes session (hvis nødvendigt) og layoutet skifter — composer

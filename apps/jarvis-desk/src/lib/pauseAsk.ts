@@ -44,6 +44,25 @@ export function parsePauseAsk(result: unknown): PauseAsk | null {
   }
 }
 
+export function pauseAskIn(blocks: ContentBlock[]): PauseAsk | null {
+  let found: PauseAsk | null = null
+  for (const block of blocks) {
+    if (block?.type !== 'tool_use' || block.name !== 'pause_and_ask') continue
+    found = parsePauseAsk(block.result) ?? found
+  }
+  return found
+}
+
+/** Bevar tool-blokken i session-state, men skjul den fra transcript-renderen når
+ *  viewet hoster det aktive spørgsmål over composeren. Returnerer samme array,
+ *  hvis der intet er at filtrere, så afsluttede MessageRows fortsat kan memoize. */
+export function withoutPauseAsk(blocks: ContentBlock[]): ContentBlock[] {
+  const hasPause = blocks.some((block) => block?.type === 'tool_use' && block.name === 'pause_and_ask')
+  return hasPause
+    ? blocks.filter((block) => block?.type !== 'tool_use' || block.name !== 'pause_and_ask')
+    : blocks
+}
+
 /** Svaret skal blive den NÆSTE bruger-besked. Kortet sidder dybt i
  *  BlocksRenderer og deler ikke provider-gren med ChatView, så samme
  *  modul-pub/sub som coworkZone. */
@@ -58,3 +77,4 @@ export function onPauseSvar(l: Lytter): () => void {
   lyttere.add(l)
   return () => { lyttere.delete(l) }
 }
+import type { ContentBlock } from './sseProtocol'

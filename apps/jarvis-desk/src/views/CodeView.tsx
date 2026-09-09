@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge, SquareStack } from 'lucide-react'
-import { onPauseSvar } from '../lib/pauseAsk'
+import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
@@ -14,6 +14,7 @@ import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ApprovalCard } from '../components/rich/ApprovalCard'
+import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -670,6 +671,16 @@ export function CodeView({
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
 
+  let pendingPauseAsk: PauseAsk | null = null
+  for (const message of visibleMessages) {
+    if (message.role === 'user') pendingPauseAsk = null
+    else pendingPauseAsk = pauseAskIn(message.content) ?? pendingPauseAsk
+  }
+  if (stream.status === 'working') pendingPauseAsk = pauseAskIn(stream.blocks) ?? pendingPauseAsk
+  if (stream.status !== 'working' && bgActive && followState.status === 'working') {
+    pendingPauseAsk = pauseAskIn(followState.blocks) ?? pendingPauseAsk
+  }
+
   // Autoscroll: ved nye beskeder/stream-tokens, hold bunden hvis vi er nær den.
   useEffect(() => {
     const el = transcriptRef.current
@@ -837,16 +848,16 @@ export function CodeView({
         <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (
             <div key={m.id} data-rail-id={m.id} className="msg-block">
-            <MessageRow role={m.role === 'user' ? 'user' : 'assistant'} blocks={m.content} density="compact" streaming={false} createdAt={m.created_at} onResend={m.role === 'user' ? resend : undefined} />
+            <MessageRow role={m.role === 'user' ? 'user' : 'assistant'} blocks={withoutPauseAsk(m.content)} density="compact" streaming={false} createdAt={m.created_at} onResend={m.role === 'user' ? resend : undefined} />
             </div>
           ))}
           {stream.status === 'working' && stream.blocks.length > 0 && (
-            <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
+            <MessageRow role="assistant" blocks={withoutPauseAsk(stream.blocks)} density="compact" streaming />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
               Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
           {!(stream.status === 'working' && stream.blocks.length > 0) && bgActive && followState.status === 'working' && followState.blocks.length > 0 && (
-            <MessageRow role="assistant" blocks={followState.blocks} density="compact" streaming />
+            <MessageRow role="assistant" blocks={withoutPauseAsk(followState.blocks)} density="compact" streaming />
           )}
         </div>
         </div>
@@ -862,6 +873,7 @@ export function CodeView({
             tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
           />
           <div className="composer-notices">
+            {pendingPauseAsk && <PauseAndAskCard ask={pendingPauseAsk} />}
             {stream.pendingApproval && (
               <ApprovalCard
                 approvalId={stream.pendingApproval.approvalId}

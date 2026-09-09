@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/thought_leak_guard.py`
+_Er dette en tanke — eller er det maskineriet der taler?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_uafbalanceret` | `(tekst)` | Flere lukke- end aabne-tegn = teksten begyndte foer den blev revet ud. | [src](../../../core/services/thought_leak_guard.py#L91) |
+| function | `_ender_midt_i_et_ord` | `(tekst)` | «... if genuine, el» — afkortet mellem to bogstaver uden tegnsaetning. | [src](../../../core/services/thought_leak_guard.py#L99) |
+| function | `ligner_ikke_en_tanke` | `(tekst)` | Grund til at kassere teksten. Tom streng = behold den. | [src](../../../core/services/thought_leak_guard.py#L112) |
+
 ## `core/services/thought_stream_daemon.py`
 _Thought stream daemon — continuous associative fragment stream for Jarvis._
 
@@ -528,16 +537,4 @@ _Daemon for the user-temperature LLM stream (Lag 10)._
 | function | `_loop` | `()` | Two rhythms in one loop: | [src](../../../core/services/user_temperature_runtime.py#L65) |
 | function | `start_user_temperature_runtime` | `()` | Start the daemon. Idempotent. | [src](../../../core/services/user_temperature_runtime.py#L88) |
 | function | `stop_user_temperature_runtime` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L101) |
-
-## `core/services/user_theory_of_mind.py`
-_User Theory of Mind — model what the user thinks and feels._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_user_mental_model` | `(user_id=…)` | Build a theory-of-mind model of the user. | [src](../../../core/services/user_theory_of_mind.py#L22) |
-| function | `_build_secondary_user_model` | `(user_id)` | Return stored ToM snapshot for a secondary user. | [src](../../../core/services/user_theory_of_mind.py#L33) |
-| function | `_build_primary_user_model` | `()` | Build live DB-backed theory-of-mind for the primary user. | [src](../../../core/services/user_theory_of_mind.py#L45) |
-| function | `format_user_model_for_prompt` | `(model)` | Compact user model for prompt injection. | [src](../../../core/services/user_theory_of_mind.py#L102) |
-| function | `build_user_theory_of_mind_surface` | `()` | — | [src](../../../core/services/user_theory_of_mind.py#L124) |
-| function | `_emit_user_theory_of_mind_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/user_theory_of_mind.py#L140) |
 

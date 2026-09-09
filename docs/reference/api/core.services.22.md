@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/social_labilizer.py`
+_Social labilizer — Fase 2 of generative autonomy._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_matches_any` | `(text, patterns)` | — | [src](../../../core/services/social_labilizer.py#L84) |
+| function | `_classify` | `(user_message)` | Return a dict of detected social signals in the user message. | [src](../../../core/services/social_labilizer.py#L91) |
+| function | `_flatten_longing` | `(reduction)` | Reduce longing-toward-user pressure by `reduction` (0.0–1.0). | [src](../../../core/services/social_labilizer.py#L107) |
+| function | `_boost_caution` | `(boost, target_topic=…)` | Add caution-pressure (push-away from a topic). Used for critique modulation. | [src](../../../core/services/social_labilizer.py#L133) |
+| function | `_sharpen_self_anchor` | `()` | When the user asks about Jarvis' state, add a small self-orient signal. | [src](../../../core/services/social_labilizer.py#L155) |
+| function | `labilize_pressures_from_user_message` | `(user_message, *, run_id=…)` | Apply social-input deltas to the pressure state. | [src](../../../core/services/social_labilizer.py#L180) |
+
 ## `core/services/somatic_daemon.py`
 _Somatic daemon — LLM-generated body-state description from structured metrics._
 
@@ -628,13 +640,4 @@ _Thought-action proposal daemon — turns action impulses in thought stream into
 | function | `resolve_proposal` | `(proposal_id, decision)` | Move a proposal from pending to resolved. decision: 'approved' | 'dismissed'. | [src](../../../core/services/thought_action_proposal_daemon.py#L114) |
 | function | `get_pending_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L138) |
 | function | `build_proposal_surface` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L142) |
-
-## `core/services/thought_leak_guard.py`
-_Er dette en tanke — eller er det maskineriet der taler?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_uafbalanceret` | `(tekst)` | Flere lukke- end aabne-tegn = teksten begyndte foer den blev revet ud. | [src](../../../core/services/thought_leak_guard.py#L91) |
-| function | `_ender_midt_i_et_ord` | `(tekst)` | «... if genuine, el» — afkortet mellem to bogstaver uden tegnsaetning. | [src](../../../core/services/thought_leak_guard.py#L99) |
-| function | `ligner_ikke_en_tanke` | `(tekst)` | Grund til at kassere teksten. Tom streng = behold den. | [src](../../../core/services/thought_leak_guard.py#L112) |
 

@@ -134,6 +134,16 @@ _Eventbus → visible-prompt wake-up digest._
 | function | `_format_event` | `(ev)` | — | [src](../../../core/services/session_wakeup.py#L100) |
 | function | `wakeup_digest` | `(session_id)` | Return a short digest of notable events since this session last saw, | [src](../../../core/services/session_wakeup.py#L116) |
 
+## `core/services/settlement_shadow.py`
+_Skygge-sammenligning: er den nye afregning enig med den kørende kode?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taellere` | `()` | — | [src](../../../core/services/settlement_shadow.py#L46) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/settlement_shadow.py#L50) |
+| function | `live` | `()` | Er skygge-sammenligningen tændt? Slukket ved enhver tvivl. | [src](../../../core/services/settlement_shadow.py#L55) |
+| function | `observe` | `(*, run_id, legacy_status, legacy_error, text, emitted_prefix, cancelled, transport_error=…, tool_dispatched=…)` | Sammenlign den kørende beslutning med den nye kontrakts. Kaster aldrig. | [src](../../../core/services/settlement_shadow.py#L81) |
+
 ## `core/services/shadow_experiment_registry.py`
 _core/services/shadow_experiment_registry.py_
 
@@ -558,16 +568,4 @@ _Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._
 |---|---|---|---|---|
 | function | `_er_risikabel` | `(etiket, cfg)` | Risiko afgoeres af den liste stigen allerede bruger — ikke af en model. | [src](../../../core/services/smith_noise_veto.py#L80) |
 | function | `maa_minte` | `(pattern_key, etiket=…, cfg=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
-
-## `core/services/social_labilizer.py`
-_Social labilizer — Fase 2 of generative autonomy._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_matches_any` | `(text, patterns)` | — | [src](../../../core/services/social_labilizer.py#L84) |
-| function | `_classify` | `(user_message)` | Return a dict of detected social signals in the user message. | [src](../../../core/services/social_labilizer.py#L91) |
-| function | `_flatten_longing` | `(reduction)` | Reduce longing-toward-user pressure by `reduction` (0.0–1.0). | [src](../../../core/services/social_labilizer.py#L107) |
-| function | `_boost_caution` | `(boost, target_topic=…)` | Add caution-pressure (push-away from a topic). Used for critique modulation. | [src](../../../core/services/social_labilizer.py#L133) |
-| function | `_sharpen_self_anchor` | `()` | When the user asks about Jarvis' state, add a small self-orient signal. | [src](../../../core/services/social_labilizer.py#L155) |
-| function | `labilize_pressures_from_user_message` | `(user_message, *, run_id=…)` | Apply social-input deltas to the pressure state. | [src](../../../core/services/social_labilizer.py#L180) |
 

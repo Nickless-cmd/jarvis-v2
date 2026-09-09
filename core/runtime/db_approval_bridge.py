@@ -339,3 +339,33 @@ def expire_stale(now: datetime | None = None) -> int:
             "WHERE state IN (?, ?, ?) AND expires_at <= ?",
             (EXPIRED, nu, PENDING, APPROVED, PREPARED, nu))
         return int(cur.rowcount)
+
+
+def abandon_run(run_id: str, *, detail: str = "") -> dict[str, int]:
+    """Opgiv ALLE uafklarede poster for et doedt run — K6.
+
+    Broen kunne skelne fra dag ét, men ingen kaldte `abandon()`. En skelnen
+    der aldrig foretages er ikke en skelnen: posterne blev liggende som
+    `dispatching` for evigt, og saa betyder «udfald ukendt» ingenting.
+
+    Returnerer antal pr. udfald, saa kalderen kan sige det hoejt.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return {}
+    with connect() as conn:
+        _ensure(conn)
+        raekker = list(conn.execute(
+            "SELECT approval_id FROM approval_claims "
+            "WHERE run_id = ? AND state IN (?, ?, ?)",
+            (rid, PENDING, APPROVED, PREPARED)))
+        raekker += list(conn.execute(
+            "SELECT approval_id FROM approval_claims "
+            "WHERE run_id = ? AND state = ?", (rid, DISPATCHING)))
+
+    ud: dict[str, int] = {}
+    for (aid,) in raekker:
+        udfald = abandon(aid, detail=detail)
+        if udfald:
+            ud[udfald] = ud.get(udfald, 0) + 1
+    return ud

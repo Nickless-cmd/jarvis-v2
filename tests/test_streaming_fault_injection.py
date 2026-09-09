@@ -123,13 +123,20 @@ class _DriveResult:
 
 def _drive(monkeypatch, shape: str, *, run_id: str,
            provider: str = "deepseek", model: str = "deepseek-v4-flash",
-           central_nerves: list | None = None, **inject_kwargs) -> _DriveResult:
+           central_nerves: list | None = None, stop_after: int | None = None,
+           **inject_kwargs) -> _DriveResult:
     """Driv ÉT minimalt agentisk followup-run gennem det ægte spor med en aktiv
     fejl-injektion. Returnerer opsamlet udfald.
 
     ``provider``/``model``: override run's visible-provider (til failover-tests).
     ``central_nerves``: hvis givet (en liste), opsamles ALLE ``central().observe``-
-    payloads heri (breaker open/close + provider_failover lever her, ikke i fo._observe)."""
+    payloads heri (breaker open/close + provider_failover lever her, ikke i fo._observe).
+
+    ``stop_after``: bryd ud af ``async for`` efter N chunks — dét er en
+    KLIENT-AFBRYDELSE set indefra: generatoren faar ``GeneratorExit`` i sin
+    finally uden nogensinde at naa et terminalt punkt. Bruges af K6-testene,
+    hvor forskellen paa «skete aldrig» og «udfald ukendt» skal opstaa af en
+    RIGTIG afbrydelse og ikke af et direkte kald til oprydningen."""
 
     # First-pass: ét tool-kald, så stream-done med tom prosa (→ agentic loop).
     def _fake_stream_model(**_kw):
@@ -197,8 +204,16 @@ def _drive(monkeypatch, shape: str, *, run_id: str,
     async def _run() -> list[str]:
         out: list[str] = []
         with vf.fault_injection(shape, **inject_kwargs):
-            async for chunk in vr._stream_visible_run(run):
-                out.append(chunk)
+            gen = vr._stream_visible_run(run)
+            try:
+                async for chunk in gen:
+                    out.append(chunk)
+                    if stop_after is not None and len(out) >= stop_after:
+                        break
+            finally:
+                # Klienten gik. `aclose()` kaster GeneratorExit ind i
+                # generatoren, praecis som en droppet SSE-forbindelse goer.
+                await gen.aclose()
         return out
 
     chunks = asyncio.run(_run())
@@ -1015,3 +1030,94 @@ def test_provider_stall_counts_toward_breaker(
     # provider_stall retries ALDRIG på samme provider (D11 bevaret).
     assert not res.round_retry_nerves()
     assert res.has_terminal_frame()
+
+
+# ── K6: en RIGTIG afbrydelse skal give den rigtige forskel ───────────────
+#
+# «disconnect tests distinguish `aborted_before_dispatch` from
+# `outcome_unknown`.» Broen kunne skelne fra dag ét — men ingen kaldte
+# `abandon()`, saa skelnen blev aldrig foretaget. Testene her driver det
+# AEGTE spor og bryder ud midtvejs, saa forskellen opstaar af en droppet
+# forbindelse og ikke af et direkte kald til oprydningen.
+
+
+def test_K6_klient_drop_FOER_afsendelse_giver_aborted_before_dispatch(
+        isolated_runtime, monkeypatch) -> None:
+    """Godkendt, men klienten forsvandt inden kaldet krydsede graensen.
+    Handlingen skete ALDRIG — og det er sikkert at proeve igen."""
+    from core.runtime import db_approval_bridge as B
+
+    rid = "run-k6-foer"
+    B.request("k6-a", tool_name="bash", arguments={"command": "ls"}, run_id=rid)
+    B.decide("k6-a", approved=True)
+
+    _drive(monkeypatch, "partial_deltas_then_drop", run_id=rid, stop_after=3)
+
+    assert B.state("k6-a")["state"] == B.ABORTED_BEFORE_DISPATCH
+
+
+def test_K6_klient_drop_UNDER_afsendelse_giver_outcome_unknown(
+        isolated_runtime, monkeypatch) -> None:
+    """Vi naaede at afsende. Om vaerktoejet naaede at goere det, ved ingen —
+    og K7 forbyder derfor et automatisk genforsoeg."""
+    from core.runtime import db_approval_bridge as B
+
+    rid = "run-k6-under"
+    B.request("k6-b", tool_name="gmail_send", arguments={"to": "x"}, run_id=rid)
+    B.decide("k6-b", approved=True)
+    B.claim("k6-b", tool_name="gmail_send", arguments={"to": "x"})
+
+    _drive(monkeypatch, "partial_deltas_then_drop", run_id=rid, stop_after=3)
+
+    assert B.state("k6-b")["state"] == B.OUTCOME_UNKNOWN
+
+
+def test_K6_de_to_udfald_er_FORSKELLIGE_i_samme_droppede_run(
+        isolated_runtime, monkeypatch) -> None:
+    """Det virkelige tilfaelde. Faar de to samme udfald, er skelnen ingenting
+    vaerd — og det er praecis den skelnen K7 hviler paa."""
+    from core.runtime import db_approval_bridge as B
+
+    rid = "run-k6-begge"
+    for aid, tool in (("k6-c", "bash"), ("k6-d", "gmail_send")):
+        B.request(aid, tool_name=tool, arguments={"x": aid}, run_id=rid)
+        B.decide(aid, approved=True)
+    B.claim("k6-d", tool_name="gmail_send", arguments={"x": "k6-d"})
+
+    _drive(monkeypatch, "partial_deltas_then_drop", run_id=rid, stop_after=3)
+
+    assert B.state("k6-c")["state"] == B.ABORTED_BEFORE_DISPATCH
+    assert B.state("k6-d")["state"] == B.OUTCOME_UNKNOWN
+
+
+def test_K6_MAALT_HUL_de_foerste_to_chunks_er_UDEN_cutoff_haandtering(
+        isolated_runtime, monkeypatch) -> None:
+    """Et klient-drop i de foerste to chunks udloeser INTET af oprydningen.
+
+    Maalt 9/9-2026 ved at bryde ud efter N chunks og se om `finally` naaede
+    afregnings-skyggen:
+
+        stop_after=1  → finally naaet: NEJ
+        stop_after=2  → NEJ
+        stop_after=3+ → JA
+
+    Chunk 1 er `run started`, chunk 2 er `working_step thinking running`. Det
+    er altsaa vinduet FOER udbyder-kaldet rigtigt er i gang. Dropper klienten
+    dér, sker der ingen nedgradering, ingen incident, ingen rolig besked — og
+    runnets status bliver staaende paa den optimistiske standard `completed`.
+
+    Dét er praecis kendetegnet ved den klasse af koersler der staar
+    `completed` uden svar. Testen HAEVDER hullet frem for at skjule det: gaar
+    den i roedt, er vinduet lukket, og saa skal den slettes.
+    """
+    from core.services import settlement_shadow as SS
+
+    naaet: list[str] = []
+    monkeypatch.setattr(SS, "observe",
+                        lambda **kw: naaet.append(str(kw.get("legacy_status"))))
+
+    _drive(monkeypatch, "partial_deltas_then_drop", run_id="r-hul-1", stop_after=1)
+    assert naaet == [], "vinduet er lukket — slet denne test og fjern noten"
+
+    _drive(monkeypatch, "partial_deltas_then_drop", run_id="r-hul-3", stop_after=3)
+    assert naaet == ["interrupted"], "fra chunk 3 skal oprydningen koere"

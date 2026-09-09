@@ -5683,53 +5683,16 @@ async def _stream_visible_run(
             pass
 
         if _blev_nedgraderet:
-            # Central-nerve (loop-cluster): en afbrudt-midt-flugt run er nu synlig i jc —
-            # så vi ser hvis abort-raten stiger igen (fx nyt tavst await-vindue). Self-safe.
-            try:
-                # KORRELATION (Bjørn 4. jul): tag afbrydelsen med hvor sultent event-
-                # loopet var lige nu → Centralen kan svare om cutoffs klynger sig ved
-                # loop-lag-spikes (kontention) eller ej (uforklaret).
-                try:
-                    from core.services.central_loop_lag import recent_peak_ms as _lag_peak
-                    _cutoff_lag = round(_lag_peak(10.0), 1)
-                except Exception:
-                    _cutoff_lag = -1.0
-                from core.services.central_core import central as _central_ab
-                _central_ab().observe({
-                    "cluster": "loop", "nerve": "run_abandoned_midflight",
-                    "run_id": str(run.run_id or ""), "provider": str(run.provider or ""),
-                    "model": str(run.model or ""), "abort": _abort_kind,
-                    "stage": str(_run_stage), "vis_len": len(visible_output_text or ""),
-                    "loop_lag_peak_ms": _cutoff_lag,
-                })
-            except Exception:
-                pass
-            # PERSISTÉR cut-off som RIGTIG incident så Centralen faktisk fanger den.
-            # Regression-rod (Bjørn 4. aug): cut-off-signalet gik KUN til observe()→trace-
-            # sink (flygtig ring-buffer, per-proces, tabt v. restart) → central_incidents
-            # fik 0 rows → panelet så ALDRIG cut-offs (genopstået 29.-jun-bug). dedup=True:
-            # gentagne cut-offs bumper en recurrence-tæller i stedet for at oversvømme
-            # panelet. Abort-type + loop-lag i message → mekanismen er nu synlig pr. cutoff.
-            try:
-                from core.runtime.db_central_incidents import (
-                    record_central_incident as _rec_cutoff_inc)
-                _rec_cutoff_inc(
-                    cluster="loop", nerve="run_abandoned_midflight",
-                    kind="cutoff", severity="error",
-                    message=(
-                        f"run afbrudt midt-flugt: abort={_abort_kind} "
-                        f"provider={run.provider or '?'} model={run.model or '?'} "
-                        f"stage={_run_stage} vis_len={len(visible_output_text or '')} "
-                        f"loop_lag_peak_ms={_cutoff_lag}"),
-                    run_id=str(run.run_id or ""),
-                    session_id=str(run.session_id or ""),
-                    dedup=True,
-                )
-            except Exception:
-                pass
-            # Ærlig, rolig besked til brugeren (IKKE survival-stemmen) — kun hvis han
-            # ikke allerede fik et svar. Idempotent + self-safe. På reload ser han
-            # dette i stedet for tavshed eller en dramatisk overlevelses-tekst.
+            # Udskilt til `visible_run_abandonment` (Boy Scout, 7.291 linjer),
+            # foer K6 lagde broens opgivelse ind samme sted. De ting dér svarer
+            # alle paa: runnet naaede aldrig sin beslutning — hvad skal saa
+            # vaere sandt bagefter?
+            from core.services.visible_run_abandonment import report_abandoned_run
+            report_abandoned_run(run, abort_kind=_abort_kind,
+                                 run_stage=_run_stage,
+                                 visible_len=len(visible_output_text or ""))
+            # Den rolige besked bliver her: den bruger to modul-lokale hjaelpere
+            # og er ikke en observation.
             try:
                 if run.session_id and not run.autonomous and _session_last_role(run.session_id) != "assistant":
                     from core.services.interruption_notice import (

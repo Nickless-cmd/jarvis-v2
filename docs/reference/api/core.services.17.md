@@ -440,12 +440,12 @@ _Drift-detektion — er ledgeren og `chat_messages` enige?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_normaliser_json` | `(v)` | `content_json` kan være tekst ét sted og et objekt et andet. Det er | [src](../../../core/services/projection_drift.py#L45) |
-| function | `_felt` | `(raekke, navn)` | — | [src](../../../core/services/projection_drift.py#L62) |
-| function | `_fra_ledger` | `(session_id)` | Fold i HUKOMMELSEN. At kalde projektoren ville skrive de rækker vi | [src](../../../core/services/projection_drift.py#L68) |
-| function | `_fra_tabellen` | `(session_id)` | — | [src](../../../core/services/projection_drift.py#L84) |
-| function | `compare` | `(session_id)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L96) |
-| function | `may_cut_over` | `(session_id)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L132) |
+| function | `_normaliser_json` | `(v)` | `content_json` kan være tekst ét sted og et objekt et andet. Det er | [src](../../../core/services/projection_drift.py#L50) |
+| function | `_felt` | `(raekke, navn)` | — | [src](../../../core/services/projection_drift.py#L67) |
+| function | `_fra_ledger` | `(session_id)` | Fold i HUKOMMELSEN. At kalde projektoren ville skrive de rækker vi | [src](../../../core/services/projection_drift.py#L73) |
+| function | `_fra_tabellen` | `(session_id)` | — | [src](../../../core/services/projection_drift.py#L89) |
+| function | `compare` | `(session_id)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L101) |
+| function | `may_cut_over` | `(session_id)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L137) |
 
 ## `core/services/projection_runtime.py`
 _Projektions-runtime — rene, versionerede folder over session-ledgeren._

@@ -177,6 +177,13 @@ def _force_operator_open_url(args: dict[str, Any]) -> dict[str, Any]:
 # sendt, en aftale oprettet), hvor «der skete ingenting» er svaert at se.
 
 
+def _force_stripe_create_issuing_card(args: dict[str, Any]) -> dict[str, Any]:
+    """Opret kortet EFTER at Bjørn har sagt ja. Uden denne ville godkendelsen
+    løbe i ring — se filens hoved."""
+    from core.tools.stripe_tools import _exec_stripe_create_issuing_card
+    return _exec_stripe_create_issuing_card({**args, "_runtime_trust_all": True})
+
+
 def _force_gmail_send(args: dict[str, Any]) -> dict[str, Any]:
     """Send mailen direkte efter chat-godkendelse."""
     return _exec_gmail_send({**args, "_runtime_trust_all": True})
@@ -242,6 +249,8 @@ _FORCE_HANDLERS: dict[str, Any] = {
     "operator_edit_file": _force_operator_edit_file,
     "operator_browser_evaluate": _force_operator_browser_evaluate,
     "operator_kill_process": _force_operator_kill_process,
+    # Tilfoejet 9/9 sammen med godkendelsen: opretter et RIGTIGT betalingskort.
+    "stripe_create_issuing_card": _force_stripe_create_issuing_card,
     "operator_record_audio": _force_operator_record_audio,
     # Telefonens ADB-vej. Uden dem loeb en godkendelse i ring: den normale
     # handler blev kaldt igen med de oprindelige argumenter og svarede

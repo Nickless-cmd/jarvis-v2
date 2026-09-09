@@ -193,6 +193,27 @@ def _exec_stripe_create_issuing_card(args: dict[str, Any]) -> dict[str, Any]:
     currency = str(args.get("currency", "usd")).lower()
     amount_cents = int(args.get("amount_cents", 0))
 
+    # KRÆVER GODKENDELSE (2026-09-09). Dette værktøj opretter et rigtigt
+    # betalingskort hos Stripe. Det stod uden nogen form for godkendelse — ikke
+    # engang den `approval_needed` som `phone_adb_shell` har haft siden juli.
+    #
+    # Samme port som en kommando på Bjørns telefon: en handling der koster
+    # penge må ikke have en lettere vej end en der læser en fil.
+    #
+    # Force-handleren i `force_handlers.py` er ikke valgfri — uden den ville
+    # et godkendt kald ramme denne gren igen og svare `approval_needed` på ny,
+    # i ring. Invarianten er låst i `tests/test_approval_har_force_handler.py`.
+    if not bool(args.get("_runtime_trust_all")):
+        return {
+            "status": "approval_needed",
+            "tool_name": "stripe_create_issuing_card",
+            "message": ("Jarvis vil oprette et Stripe-betalingskort "
+                        f"({amount_cents / 100:.2f} {currency.upper()}, tilstand: {mode})."),
+            "currency": currency,
+            "amount_cents": amount_cents,
+            "mode": mode,
+        }
+
     try:
         # Step 1: Get or create a cardholder
         # In sandbox, we create a minimal one

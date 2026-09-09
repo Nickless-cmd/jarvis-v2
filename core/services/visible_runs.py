@@ -1394,51 +1394,13 @@ async def _stream_visible_run(
             "started_at": controller.started_at,
         },
     )
-    yield _sse(
-        "run",
-        {
-            "type": "run",
-            "run_id": run.run_id,
-            "lane": run.lane,
-            "provider": run.provider,
-            "model": run.model,
-            "status": "started",
-        },
-    )
-    yield _sse(
-        "working_step",
-        {
-            "type": "working_step",
-            "run_id": run.run_id,
-            "action": "thinking",
-            "detail": f"Thinking via {run.provider}/{run.model}",
-            "step": 0,
-            "status": "running",
-        },
-    )
-
-    # Auto-compact chat history if approaching context limit
-    try:
-        from core.context.auto_compact import maybe_auto_compact_session
-        _did_compact = maybe_auto_compact_session(
-            run.session_id,
-            provider=getattr(run, "provider", "") or "",
-            model=getattr(run, "model", "") or "",
-        )
-    except Exception:
-        _did_compact = False
-    # ── Transparent compaction (harness Part B, Mechanism C) ──
-    # The compaction already fired (session-level, stores a dedicated DB marker).
-    # Make it client-visible + record cadence. No model-facing change.
-    if _did_compact:
-        yield _sse("compaction", {"type": "compaction", "run_id": run.run_id,
-                                  "session_id": run.session_id})
-        try:
-            from core.services import central_timeseries as _cts_cmp
-            _cts_cmp.record("context", "run_compaction", 1.0,
-                            meta={"run_id": run.run_id, "session_id": run.session_id})
-        except Exception:
-            pass
+    # CUTOFF-HUL LUKKET (maalt 9/9-2026): `try` startede FOERST her nede,
+    # 85 linjer efter det foerste yield. Et klient-drop i de to foerste
+    # chunks ramte derfor ingen oprydning — ingen nedgradering, ingen
+    # incident, ingen besked — og runnet blev staaende paa den optimistiske
+    # standard `completed` uden svar. Initialiseringerne er hejst op hertil,
+    # saa `finally` ALTID har sine navne bundet, og `try` daekker nu ogsaa
+    # de foerste frames.
 
     _step_counter = 0
     result = None
@@ -1479,7 +1441,53 @@ async def _stream_visible_run(
     _fp_text = FirstPassText()
     _all_first_pass_reasoning: list[str] = []   # kun til observation/telemetri
     _degenerated_reason: str | None = None
+
     try:
+        yield _sse(
+            "run",
+            {
+                "type": "run",
+                "run_id": run.run_id,
+                "lane": run.lane,
+                "provider": run.provider,
+                "model": run.model,
+                "status": "started",
+            },
+        )
+        yield _sse(
+            "working_step",
+            {
+                "type": "working_step",
+                "run_id": run.run_id,
+                "action": "thinking",
+                "detail": f"Thinking via {run.provider}/{run.model}",
+                "step": 0,
+                "status": "running",
+            },
+        )
+
+        # Auto-compact chat history if approaching context limit
+        try:
+            from core.context.auto_compact import maybe_auto_compact_session
+            _did_compact = maybe_auto_compact_session(
+                run.session_id,
+                provider=getattr(run, "provider", "") or "",
+                model=getattr(run, "model", "") or "",
+            )
+        except Exception:
+            _did_compact = False
+        # ── Transparent compaction (harness Part B, Mechanism C) ──
+        # The compaction already fired (session-level, stores a dedicated DB marker).
+        # Make it client-visible + record cadence. No model-facing change.
+        if _did_compact:
+            yield _sse("compaction", {"type": "compaction", "run_id": run.run_id,
+                                      "session_id": run.session_id})
+            try:
+                from core.services import central_timeseries as _cts_cmp
+                _cts_cmp.record("context", "run_compaction", 1.0,
+                                meta={"run_id": run.run_id, "session_id": run.session_id})
+            except Exception:
+                pass
         try:
             # Run the synchronous model stream in a thread so SSE
             # frames are flushed to the client as each token arrives.

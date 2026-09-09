@@ -1090,25 +1090,26 @@ def test_K6_de_to_udfald_er_FORSKELLIGE_i_samme_droppede_run(
     assert B.state("k6-d")["state"] == B.OUTCOME_UNKNOWN
 
 
-def test_K6_MAALT_HUL_de_foerste_to_chunks_er_UDEN_cutoff_haandtering(
-        isolated_runtime, monkeypatch) -> None:
-    """Et klient-drop i de foerste to chunks udloeser INTET af oprydningen.
+@pytest.mark.parametrize("n", [1, 2, 3, 5])
+def test_K6_cutoff_haandtering_koerer_uanset_HVORNAAR_klienten_dropper(
+        isolated_runtime, monkeypatch, n: int) -> None:
+    """Oprydningen skal koere ogsaa ved de ALLERTIDLIGSTE drop.
 
-    Maalt 9/9-2026 ved at bryde ud efter N chunks og se om `finally` naaede
-    afregnings-skyggen:
+    Maalt 9/9-2026, FOER fixet: den store `try` startede 85 linjer efter det
+    foerste yield, saa et drop i chunk 1 eller 2 ramte ingen oprydning —
+    ingen nedgradering, ingen incident, ingen rolig besked. Runnet blev
+    staaende paa den optimistiske standard `completed` UDEN svar, hvilket er
+    praecis kendetegnet ved den klasse af koersler.
 
-        stop_after=1  → finally naaet: NEJ
-        stop_after=2  → NEJ
-        stop_after=3+ → JA
+        stop_after=1 → oprydning: NEJ      stop_after=3+ → JA
+        stop_after=2 → NEJ
 
-    Chunk 1 er `run started`, chunk 2 er `working_step thinking running`. Det
-    er altsaa vinduet FOER udbyder-kaldet rigtigt er i gang. Dropper klienten
-    dér, sker der ingen nedgradering, ingen incident, ingen rolig besked — og
-    runnets status bliver staaende paa den optimistiske standard `completed`.
+    Chunk 1 er `run started`, chunk 2 er `working_step thinking running` —
+    altsaa vinduet foer udbyder-kaldet rigtigt er i gang.
 
-    Dét er praecis kendetegnet ved den klasse af koersler der staar
-    `completed` uden svar. Testen HAEVDER hullet frem for at skjule det: gaar
-    den i roedt, er vinduet lukket, og saa skal den slettes.
+    Fixet hejste initialiseringerne op foer de foerste yields (saa `finally`
+    altid har sine navne bundet) og flyttede `try` derop. Denne test daekker
+    baade det gamle hul og det der altid virkede.
     """
     from core.services import settlement_shadow as SS
 
@@ -1116,8 +1117,31 @@ def test_K6_MAALT_HUL_de_foerste_to_chunks_er_UDEN_cutoff_haandtering(
     monkeypatch.setattr(SS, "observe",
                         lambda **kw: naaet.append(str(kw.get("legacy_status"))))
 
-    _drive(monkeypatch, "partial_deltas_then_drop", run_id="r-hul-1", stop_after=1)
-    assert naaet == [], "vinduet er lukket — slet denne test og fjern noten"
+    _drive(monkeypatch, "partial_deltas_then_drop", run_id=f"r-drop-{n}",
+           stop_after=n)
 
-    _drive(monkeypatch, "partial_deltas_then_drop", run_id="r-hul-3", stop_after=3)
-    assert naaet == ["interrupted"], "fra chunk 3 skal oprydningen koere"
+    assert naaet == ["interrupted"], (
+        f"klient-drop efter {n} chunk(s) udloeste ingen oprydning — "
+        "cutoff-hullet er tilbage")
+
+
+def test_K6_selv_det_ALLERTIDLIGSTE_drop_giver_den_rigtige_forskel(
+        isolated_runtime, monkeypatch) -> None:
+    """Kombinationen af K6 og cutoff-fixet: et drop i FOERSTE chunk skal
+    baade udloese oprydningen OG give de to poster hver sit aerlige udfald.
+
+    Foer fixet skete ingen af delene — posterne blev liggende urort, og runnet
+    stod som `completed`.
+    """
+    from core.runtime import db_approval_bridge as B
+
+    rid = "run-tidligst"
+    for aid, tool in (("t-a", "bash"), ("t-b", "gmail_send")):
+        B.request(aid, tool_name=tool, arguments={"x": aid}, run_id=rid)
+        B.decide(aid, approved=True)
+    B.claim("t-b", tool_name="gmail_send", arguments={"x": "t-b"})
+
+    _drive(monkeypatch, "partial_deltas_then_drop", run_id=rid, stop_after=1)
+
+    assert B.state("t-a")["state"] == B.ABORTED_BEFORE_DISPATCH
+    assert B.state("t-b")["state"] == B.OUTCOME_UNKNOWN

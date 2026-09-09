@@ -184,3 +184,36 @@ def test_forskellige_runs_er_uafhaengige(bog):
 def test_et_ukendt_run_er_ikke_terminalt(bog):
     assert bog.is_terminal("findes-ikke") is False
     assert bog.outcome("findes-ikke") is None
+
+
+# ── et AFBRUDT run er ikke et fejlet run ─────────────────────────────────
+
+def _afbrudt_uden_tekst():
+    return classify(Attempt(terminal=S.CANCELLED))
+
+
+def test_afbrudt_UDEN_tekst_er_interrupted_ikke_failed():
+    """Fundet af afregnings-skyggens anden uenighed: den gamle kode kaldte en
+    kørsel afbrudt midt i flugten `interrupted`, kontrakten kaldte den
+    `failed`. Den gamle havde ret — «det gik i stykker» og «det blev stoppet»
+    er ikke det samme."""
+    r = project([_afbrudt_uden_tekst()])
+    assert r.outcome == O.INTERRUPTED and r.outcome != O.FAILED
+    assert r.rule == "afbrudt før der kom et svar"
+
+
+def test_der_er_en_note_men_ikke_en_fejlbesked():
+    r = project([_afbrudt_uden_tekst()])
+    assert r.surface.reason == S.CANCELLED_REASON
+    assert "afbrudt" in r.surface.text.lower()
+    assert "fejl" not in r.surface.text.lower()
+
+
+def test_en_afbrydelse_efter_flere_forsoeg_er_stadig_interrupted():
+    assert project([_fejlet(), _afbrudt_uden_tekst()]).outcome == O.INTERRUPTED
+
+
+def test_en_AEGTE_fejl_er_stadig_failed():
+    """Rettelsen må ikke gøre alle mislykkede forsøg til afbrydelser."""
+    assert project([_fejlet(S.FAILURE)]).outcome == O.FAILED
+    assert project([_fejlet(S.EMPTY_RESPONSE)]).outcome == O.FAILED

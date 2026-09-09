@@ -135,7 +135,12 @@ def observe(*, run_id: str, legacy_status: str, legacy_error: str | None,
         from core.services import outcome_projector as O
         from core.services import stream_settlement as S
 
-        terminal = (S.CANCELLED if cancelled
+        # `interrupted` er også en afbrydelse, ikke et almindeligt udfald.
+        # Den gamle kode bruger `cancelled` for et brugerklik og `interrupted`
+        # for et run der døde midt i flugten (GeneratorExit, CancelledError).
+        # Begge er «turen blev stoppet», og at kalde den sidste `OK` ville få
+        # klassifikatoren til at se et tomt svar hvor der var en afbrydelse.
+        terminal = (S.CANCELLED if (cancelled or str(legacy_status) == "interrupted")
                     else S.TRANSPORT_ERROR if transport_error else S.OK)
         forsoeg = S.Attempt(
             terminal=terminal,

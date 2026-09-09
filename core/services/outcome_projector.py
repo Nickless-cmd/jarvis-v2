@@ -125,6 +125,23 @@ def project(settlements: list[S.Settlement], *, terminal_event_id: str = "",
         return RunOutcome(COMPLETED, terminal_event_id, n,
                           rule="afregnet besked, hel")
 
+    if sidste.reason == S.CANCELLED_REASON:
+        # Et AFBRUDT run er ikke et fejlet run.
+        #
+        # Fundet 9/9-2026 af afregnings-skyggens anden uenighed: den gamle kode
+        # kaldte en kørsel afbrudt midt i flugten `interrupted`, min kontrakt
+        # kaldte den `failed`. Den gamle havde ret. Spec'en har fire udfald
+        # netop for at skelne — «det gik i stykker» og «det blev stoppet» er
+        # ikke det samme, hverken for brugeren eller for en optælling.
+        #
+        # Intet svar at vise, men heller ingen fejl at melde: derfor en
+        # overflade-note der siger hvad der skete, ikke en fejlbesked.
+        return RunOutcome(INTERRUPTED, terminal_event_id, n,
+                          surface=SurfaceEvent(
+                              SURFACE_NOTICE, "Kørslen blev afbrudt.",
+                              reason=S.CANCELLED_REASON),
+                          rule="afbrudt før der kom et svar")
+
     # Sidste forsøg mislykkedes. HER er fristelsen til at lave et svar der
     # dækker over det — og præcis dét gøres ikke.
     return RunOutcome(FAILED, terminal_event_id, n,

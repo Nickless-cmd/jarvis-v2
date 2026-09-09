@@ -355,12 +355,12 @@ _`OutcomeProjector` — ét terminalt udfald pr. run, uden at opfinde sandhed._
 | class | `RunOutcome` | `` | — | [src](../../../core/services/outcome_projector.py#L75) |
 | class | `DoubleTerminal` | `` | Et run fik to terminale udfald. Så kan ingen rapportere på det. | [src](../../../core/services/outcome_projector.py#L85) |
 | function | `project` | `(settlements, *, terminal_event_id=…, recovered=…, stop_reason=…)` | Ét udfald ud af de afregnede forsøg. Ren funktion. | [src](../../../core/services/outcome_projector.py#L89) |
-| function | `_fejltekst` | `(s, stop_reason)` | Sig hvad der skete. Ingen undskyldninger, ingen opdigtet forklaring. | [src](../../../core/services/outcome_projector.py#L138) |
-| class | `OutcomeLedger` | `` | Nøjagtig ét terminalt udfald pr. run, nøglet på den terminale hændelse. | [src](../../../core/services/outcome_projector.py#L151) |
-| method | `OutcomeLedger.__init__` | `(self)` | — | [src](../../../core/services/outcome_projector.py#L159) |
-| method | `OutcomeLedger.record` | `(self, run_id, outcome)` | — | [src](../../../core/services/outcome_projector.py#L162) |
-| method | `OutcomeLedger.outcome` | `(self, run_id)` | — | [src](../../../core/services/outcome_projector.py#L178) |
-| method | `OutcomeLedger.is_terminal` | `(self, run_id)` | — | [src](../../../core/services/outcome_projector.py#L181) |
+| function | `_fejltekst` | `(s, stop_reason)` | Sig hvad der skete. Ingen undskyldninger, ingen opdigtet forklaring. | [src](../../../core/services/outcome_projector.py#L155) |
+| class | `OutcomeLedger` | `` | Nøjagtig ét terminalt udfald pr. run, nøglet på den terminale hændelse. | [src](../../../core/services/outcome_projector.py#L168) |
+| method | `OutcomeLedger.__init__` | `(self)` | — | [src](../../../core/services/outcome_projector.py#L176) |
+| method | `OutcomeLedger.record` | `(self, run_id, outcome)` | — | [src](../../../core/services/outcome_projector.py#L179) |
+| method | `OutcomeLedger.outcome` | `(self, run_id)` | — | [src](../../../core/services/outcome_projector.py#L195) |
+| method | `OutcomeLedger.is_terminal` | `(self, run_id)` | — | [src](../../../core/services/outcome_projector.py#L198) |
 
 ## `core/services/outreach_composer.py`
 _Outreach composer — Spor-1 of generative autonomy._

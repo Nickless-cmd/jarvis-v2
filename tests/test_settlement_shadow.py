@@ -190,3 +190,11 @@ def test_en_utilgaengelig_cache_vaelter_ikke_maalingen(taendt, monkeypatch):
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
     _obs()
     assert SH.taellere()["enige"] == 1
+
+
+def test_legacy_INTERRUPTED_er_en_afbrydelse_ikke_et_tomt_svar(taendt):
+    """Den gamle kode bruger `cancelled` for et brugerklik og `interrupted`
+    for et run der døde midt i flugten. Begge er «turen blev stoppet»."""
+    _obs(legacy_status="interrupted", text="", emitted_prefix="",
+         legacy_error="run-abandoned-before-finalization:CancelledError")
+    assert SH.taellere() == {"enige": 1, "uenige": 0, "fejl": 0, "sprunget_over": 0}

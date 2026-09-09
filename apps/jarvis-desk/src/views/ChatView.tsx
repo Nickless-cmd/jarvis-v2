@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ArrowDown, PanelRight, Loader2 } from 'lucide-react'
-import { onPauseSvar } from '../lib/pauseAsk'
+import { onPauseSvar, parsePauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
 import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
@@ -29,8 +29,26 @@ import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ErrorCard } from '../components/feedback/ErrorCard'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { MessageRail, railAnchors as byggAnkre } from '../components/chat/MessageRail'
+import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
+import type { ContentBlock } from '../lib/sseProtocol'
 
 const NEAR_BOTTOM_PX = 120
+
+function pauseAskIn(blocks: ContentBlock[]): PauseAsk | null {
+  let found: PauseAsk | null = null
+  for (const block of blocks) {
+    if (block?.type !== 'tool_use' || block.name !== 'pause_and_ask') continue
+    found = parsePauseAsk(block.result) ?? found
+  }
+  return found
+}
+
+function withoutPauseAsk(blocks: ContentBlock[]): ContentBlock[] {
+  const hasPause = blocks.some((block) => block?.type === 'tool_use' && block.name === 'pause_and_ask')
+  return hasPause
+    ? blocks.filter((block) => block?.type !== 'tool_use' || block.name !== 'pause_and_ask')
+    : blocks
+}
 
 /** Chat-mode. Ved tom/ny samtale: composer centreret midt på skærmen. Ved
  *  første besked oprettes session (hvis nødvendigt) og layoutet skifter — composer
@@ -450,6 +468,19 @@ export function ChatView({
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
 
+  // pause_and_ask er aktivt indtil næste bruger-besked. Selve tool-blokken
+  // bevares i sessionens sandhed, men kortet hostes uden for den scrollbare
+  // transcript ligesom approvals og øvrige handlinger over composeren.
+  let pendingPauseAsk: PauseAsk | null = null
+  for (const message of visibleMessages) {
+    if (message.role === 'user') pendingPauseAsk = null
+    else pendingPauseAsk = pauseAskIn(message.content) ?? pendingPauseAsk
+  }
+  if (streaming) pendingPauseAsk = pauseAskIn(stream.blocks) ?? pendingPauseAsk
+  if (!streaming && bgActive && followState.status === 'working') {
+    pendingPauseAsk = pauseAskIn(followState.blocks) ?? pendingPauseAsk
+  }
+
   // ÉN kilde pr. run (Bjørn 2026-06-29, "3 svar"): når et fulgt run's svar
   // ALLEREDE står i transcript'en (serveren har persisteret det, eller bro-kopien
   // er flettet ind) må vi IKKE samtidig rendere followState.blocks som en tredje
@@ -621,7 +652,7 @@ export function ChatView({
           <div key={m.id} data-rail-id={m.id} className="msg-block">
           <MessageRow
             role={m.role === 'user' ? 'user' : 'assistant'}
-            blocks={m.content}
+            blocks={withoutPauseAsk(m.content)}
             density="compact"
             streaming={false}
             createdAt={m.created_at}
@@ -631,14 +662,14 @@ export function ChatView({
           </div>
         ))}
         {streaming && stream.blocks.length > 0 && (
-          <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
+          <MessageRow role="assistant" blocks={withoutPauseAsk(stream.blocks)} density="compact" streaming />
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
             færdigt (status≠working) overtager serverens persisterede besked via
             refresh — så vi undgår dobbelt-render. ÉN kilde pr. run: undertryk
             follow-renderen hvis svaret allerede står i transcript'en (server/bro). */}
         {!streaming && bgActive && followState.status === 'working' && followState.blocks.length > 0 && !followAlreadyInTranscript && (
-          <MessageRow role="assistant" blocks={followState.blocks} density="compact" streaming />
+          <MessageRow role="assistant" blocks={withoutPauseAsk(followState.blocks)} density="compact" streaming />
         )}
       </div>
       </div>
@@ -658,6 +689,7 @@ export function ChatView({
           </div>
         )}
         <div className="composer-notices">
+          {pendingPauseAsk && <PauseAndAskCard ask={pendingPauseAsk} />}
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
           {stream.status === 'hung' && (
             <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

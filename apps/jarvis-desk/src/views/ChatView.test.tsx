@@ -67,4 +67,36 @@ describe('ChatView integration', () => {
     })
     expect(screen.getByText('svar')).toBeInTheDocument()
   })
+
+  it('viser pause_and_ask over chatten i stedet for inde i den scrollbare transcript', async () => {
+    const { container } = render(
+      <SettingsProvider initialConfig={cfg}>
+        <SessionProvider config={cfg}>
+          <StreamProvider config={cfg}>
+            <PermissionProvider>
+              <PanelProvider defaultWidth={400}>
+                <ChatView sessionId="s1" />
+              </PanelProvider>
+            </PermissionProvider>
+          </StreamProvider>
+        </SessionProvider>
+      </SettingsProvider>,
+    )
+    await userEvent.type(screen.getByRole('textbox'), 'fortsæt{Enter}')
+    const result = JSON.stringify({
+      kind: 'pause_and_ask',
+      question: 'Hvilken vej skal jeg tage?',
+      options: ['A', 'B'],
+    })
+    act(() => {
+      handlersRef.current?.onRunId('r1')
+      handlersRef.current?.onEvent({ type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'l', session_id: 's1', usage: { input_tokens: 0, output_tokens: 0 } } })
+      handlersRef.current?.onEvent({ type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'ask-1', name: 'pause_and_ask', input: {} } })
+      handlersRef.current?.onEvent({ type: 'content_block_start', index: 1, content_block: { type: 'tool_result', tool_use_id: 'ask-1', status: 'done', content: result } })
+    })
+
+    expect(container.querySelector('.composer-notices .pauseask')).toBeInTheDocument()
+    expect(container.querySelector('.transcript .pauseask')).not.toBeInTheDocument()
+    expect(screen.getByText('Hvilken vej skal jeg tage?')).toBeInTheDocument()
+  })
 })

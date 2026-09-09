@@ -85,6 +85,27 @@ def test_operator_bash_rapporterer():
     assert "vedhaeft(" in inspect.getsource(O._exec_operator_bash)
 
 
+def test_operator_KANALEN_rapporterer_ogsaa(taendt, monkeypatch):
+    """Den gren Bjoerns egne kommandoer faktisk tager (`via: operator-kanal`)
+    returnerede FOER rapporten. Den mest brugte shell-vej var den mest tavse.
+
+    Fundet ved at koere en kommando paa produktionen og LAESE svaret — ikke
+    ved at laese koden. Kilde-tjekket nedenfor bestod nemlig hele tiden, fordi
+    `_exec_bash` naevner `confinement` laengere nede end den gren naar.
+    """
+    from core.services import operator_channel as OC
+    from core.tools import simple_tools_web as W
+    monkeypatch.setattr(OC, "maybe_reroute_bash",
+                        lambda *a, **k: {"status": "ok", "via": "operator-kanal"})
+    monkeypatch.setattr(OC, "current_is_owner", lambda: True)
+    monkeypatch.setattr(OC, "current_session_id", lambda: "s1")
+
+    svar = W._exec_bash({"command": "echo x"})
+    assert svar["via"] == "operator-kanal"
+    assert svar["confinement"]["honored"] is False
+    assert "operatorens egen maskine" in svar["confinement"]["reason"]
+
+
 def test_ALLE_fire_shell_indgange_naevner_indespaerring():
     """Den samlede kontrakt. Gaar denne i roedt, er en indgang faldet tilbage
     til tavshed — og en taendt sandkasse ser igen ud som om den daekker alt."""

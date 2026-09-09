@@ -371,7 +371,13 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
         _via = _oc.maybe_reroute_bash(command, args.get("cwd"),
                                       is_owner=_owner, session_id=_sid)
         if _via is not None:
-            return _via
+            # K10: DENNE gren er den Bjoerns egne kommandoer faktisk tager
+            # (`via: operator-kanal`), og den returnerede foer rapporten
+            # laengere nede. Den mest brugte shell-vej var altsaa den mest
+            # tavse. Fundet ved at koere en kommando paa produktionen og laese
+            # svaret — ikke ved at laese koden.
+            from core.services.shell_confinement_report import OPERATOR, vedhaeft
+            return vedhaeft(_via, OPERATOR)
     except Exception:
         logger.debug("operator_channel: sprunget over", exc_info=True)
 

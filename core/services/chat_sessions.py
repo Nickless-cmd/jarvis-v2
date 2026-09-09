@@ -528,6 +528,11 @@ def append_chat_message(
             except Exception:
                 pass
 
+        # For en ledger-session er `chat_messages` en PROJEKTION. En direkte
+        # skrivning her ville give to sandheder frem for at flytte den ene.
+        from core.services.projection_chat_messages import guard_direct_write
+        guard_direct_write(normalized_session, conn=conn)
+
         conn.execute(
             """
             INSERT INTO chat_messages (message_id, session_id, role, content,
@@ -904,6 +909,8 @@ def store_compact_marker(
     timestamp = datetime.now(UTC).isoformat()
     marker_id = f"compact-{uuid4().hex}"
     with connect() as conn:
+        from core.services.projection_chat_messages import guard_direct_write
+        guard_direct_write(normalized_session, conn=conn)
         conn.execute(
             """
             INSERT INTO chat_messages (message_id, session_id, role, content, git_sha, created_at)

@@ -38,6 +38,7 @@ skrivebeskyttet inspektion må aldrig efterlade spor.
 from __future__ import annotations
 
 import json as _json
+import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -46,6 +47,8 @@ from core.runtime.db_core import (
     _install_ensure_once_cache_for,
     connect,
 )
+
+logger = logging.getLogger(__name__)
 
 #: Hvor længe en lease holder uden fornyelse. Kort nok til at en død proces
 #: ikke spærrer en session i timevis; langt nok til at et almindeligt langt run
@@ -245,7 +248,32 @@ def append_session_events(
         except Exception:
             conn.execute("ROLLBACK")
             raise
+    _annoncer(sid, skrevet, seq)
     return {"written": skrevet, "duplicates": dubletter, "seq": seq}
+
+
+def _annoncer(session_id: str, skrevet: int, seq: int) -> None:
+    """Fortæl bussen at der er kommet hændelser — EFTER commit, og aldrig fatalt.
+
+    Spec: «eventbus loss does not lose committed ledger events».
+
+    Rækkefølgen er hele garantien. Publicerede vi FØR commit, kunne en lytter
+    reagere på noget der aldrig blev skrevet. Lod vi en fejl på bussen boble
+    op, ville en committet hændelse se ud som en fejlet skrivning — og kalderen
+    ville prøve igen eller give op på noget der faktisk ligger i ledgeren.
+
+    Bussen er en NOTIFIKATION om sandheden, ikke sandheden. Går den tabt, kan
+    enhver læser stadig hente hændelserne med `read_session_events`; det eneste
+    der går tabt er at nogen fik det at vide med det samme.
+    """
+    if skrevet <= 0:
+        return
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("session.ledger.appended",
+                          {"session_id": session_id, "written": skrevet, "seq": seq})
+    except Exception:
+        logger.warning("db_session_ledger: kunne ikke annoncere paa bussen", exc_info=True)
 
 
 # ── læsning (ingen lease) ────────────────────────────────────────────────
@@ -275,8 +303,11 @@ def read_session_events(
             payload = _json.loads(str(r[3]))
         except Exception:
             payload = {}
-        ud.append({"seq": int(r[0]), "event_id": str(r[1]), "kind": str(r[2]),
-                   "payload": payload, "created_at": str(r[4])})
+        # session_id følger med hændelsen fordi den er en del af dens
+        # identitet: en fold der skal udlede et stabilt id, kan ikke gætte
+        # hvilken session hændelsen kom fra, og en ren fold må ikke slå det op.
+        ud.append({"seq": int(r[0]), "session_id": sid, "event_id": str(r[1]),
+                   "kind": str(r[2]), "payload": payload, "created_at": str(r[4])})
     return ud
 
 
@@ -326,7 +357,7 @@ def _ensure_storage_mode_column(conn: sqlite3.Connection) -> None:
         )
 
 
-def storage_mode(session_id: str) -> str:
+def storage_mode(session_id: str, *, conn=None) -> str:
     """Hvilken kilde er kanonisk for denne session?
 
     `legacy` — `chat_messages` er sandheden (alle sessioner i dag).
@@ -335,13 +366,24 @@ def storage_mode(session_id: str) -> str:
 
     En ukendt session er `legacy`. Det er det sikre svar: en tom ledger må
     aldrig kunne læses som «der er ingen historik».
+
+    `conn` findes fordi forbindelserne er POOLEDE: `with connect()` inde i et
+    andet `with connect()` får den SAMME forbindelse — og committer den ydre
+    transaktion når det indre blok slutter. En vagt der skal kaldes midt i en
+    skrivning må derfor kunne slå op på den forbindelse der allerede er åben.
     """
-    with connect() as conn:
-        _ensure_storage_mode_column(conn)
-        row = conn.execute(
-            "SELECT storage_mode FROM chat_sessions WHERE session_id = ?",
-            (str(session_id or ""),),
-        ).fetchone()
+    if conn is not None:
+        return _storage_mode_on(conn, session_id)
+    with connect() as c:
+        return _storage_mode_on(c, session_id)
+
+
+def _storage_mode_on(conn, session_id: str) -> str:
+    _ensure_storage_mode_column(conn)
+    row = conn.execute(
+        "SELECT storage_mode FROM chat_sessions WHERE session_id = ?",
+        (str(session_id or ""),),
+    ).fetchone()
     if row is None or not str(row[0] or "").strip():
         return "legacy"
     mode = str(row[0]).strip()

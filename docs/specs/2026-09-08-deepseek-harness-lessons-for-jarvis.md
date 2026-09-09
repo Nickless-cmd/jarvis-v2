@@ -1203,6 +1203,24 @@ Exit criteria:
 - current, historical-migratable, future-unsupported, and corrupt formats produce distinct verified outcomes while source generations remain byte-identical
 - every registered projection can refold from an empty cache; snapshots share one `as_of_seq`, stale/version-mismatched cells are discarded, and cache failure cannot change truth
 
+**Status 2026-09-09 (opus).** Built and tested, nothing cut over — every session is still `legacy`:
+
+| Piece | File | Tests |
+| --- | --- | --- |
+| ledger, leases, fencing, sequencing, `storage_mode` | `core/runtime/db_session_ledger.py` | `tests/test_db_session_ledger.py` (25) |
+| `ProjectionRuntime`, checkpoints, snapshots | `core/services/projection_runtime.py` | `tests/test_projection_runtime.py` (14) |
+| compatibility projector + direct-write guard | `core/services/projection_chat_messages.py` | `tests/test_projection_chat_messages.py` (20) |
+| drift detection and the cutover gate | `core/services/projection_drift.py` | `tests/test_projection_drift.py` (14) |
+| `SessionHandle`, `SessionHeader`, format generations | `core/runtime/session_handle.py` | `tests/test_session_handle.py` (24) |
+
+Three decisions worth carrying forward, because each was a bug the tests found rather than a design chosen up front:
+
+* **`message_id` is derived from the event, not `uuid4()`.** The original write path generates a fresh id per call; a projector that copied that rule would produce a second identical row on every replay. Deriving the id is what makes a crash between the row work and the cursor cost a repetition instead of a duplicate — and it is why the cursor does not have to be atomic with the write.
+* **The connections are pooled, so `with connect()` inside another `with connect()` is the *same* connection and commits the outer transaction on exit.** The write guard therefore takes the caller's open connection. Any future check placed mid-write must do the same.
+* **Drift ignores `message_id` and normalises `content_json`.** `uuid4` against a derived id can never match, and text-vs-object is a difference in form, not content. Comparing them would flag every session and make the measurement worthless.
+
+The remaining Phase 1 work is the wiring, not the parts: no writer calls `SessionHandle` yet, and no session has been moved to `shadow`.
+
 ### Phase 2: stream settlement, retry, outcomes, and compaction
 
 Implement `StreamSettlement`, `RetryRuntime`, `OutcomeProjector`, and `CompactionRuntime` over the ledger. Migrate one canary profile behind a kill switch. Preserve the existing streaming-production contract.

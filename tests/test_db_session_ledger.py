@@ -220,3 +220,56 @@ def test_en_ukendt_tilstand_afvises_uden_at_aendre_noget(sid, isolated_runtime):
 
 def test_skiftet_paa_en_session_der_ikke_findes_goer_intet(sid):
     assert L.advance_storage_mode("findes-ikke", to="shadow") is False
+
+
+# ── bussen er en notifikation om sandheden, ikke sandheden ───────────────
+
+def test_en_DOED_eventbus_koster_ikke_en_committet_haendelse(sid, monkeypatch):
+    """Fase 1: «eventbus loss does not lose committed ledger events».
+
+    Lod vi en fejl på bussen boble op, ville en committet hændelse se ud som
+    en fejlet skrivning — og kalderen ville prøve igen eller give op på noget
+    der faktisk ligger i ledgeren."""
+    import core.eventbus.bus as bus
+    class _Doed:
+        def publish(self, *a, **k):
+            raise RuntimeError("bussen er nede")
+    monkeypatch.setattr(bus, "event_bus", _Doed())
+
+    t = L.acquire_write_lease(sid, owner="a")
+    r = L.append_session_events(sid, owner="a", token=t, events=[
+        {"event_id": "e1", "kind": "message", "payload": {"x": 1}}])
+
+    assert r["written"] == 1
+    assert [e["event_id"] for e in L.read_session_events(sid)] == ["e1"]
+
+
+def test_der_annonceres_EFTER_commit_ikke_foer(sid, monkeypatch):
+    """Publicerede vi før commit, kunne en lytter reagere på noget der aldrig
+    blev skrevet."""
+    import core.eventbus.bus as bus
+    set_ved_publish = []
+    class _Kigger:
+        def publish(self, kind, payload=None, **k):
+            set_ved_publish.append(len(L.read_session_events(payload["session_id"])))
+    monkeypatch.setattr(bus, "event_bus", _Kigger())
+
+    t = L.acquire_write_lease(sid, owner="a")
+    L.append_session_events(sid, owner="a", token=t, events=[
+        {"event_id": "e1", "kind": "message", "payload": {}}])
+    assert set_ved_publish == [1]
+
+
+def test_en_batch_uden_NYE_haendelser_annoncerer_intet(sid, monkeypatch):
+    """Ellers ville en genafspilning larme på bussen uden at der skete noget."""
+    import core.eventbus.bus as bus
+    kald = []
+    class _Taeller:
+        def publish(self, *a, **k): kald.append(1)
+    monkeypatch.setattr(bus, "event_bus", _Taeller())
+
+    t = L.acquire_write_lease(sid, owner="a")
+    ev = [{"event_id": "e1", "kind": "message", "payload": {}}]
+    L.append_session_events(sid, owner="a", token=t, events=ev)
+    L.append_session_events(sid, owner="a", token=t, events=ev)   # dublet
+    assert kald == [1]

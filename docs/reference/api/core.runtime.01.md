@@ -149,17 +149,18 @@ _Godkendelses-broen — én beslutning, bundet til ÉT kald, brugt ÉN gang._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ApprovalRefused` | `` | Overtagelsen blev nægtet. Beskeden siger hvorfor. | [src](../../../core/runtime/db_approval_bridge.py#L85) |
-| function | `invocation_digest` | `(tool_name, arguments)` | Digest over DET KALD der blev sagt ja til. | [src](../../../core/runtime/db_approval_bridge.py#L89) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/runtime/db_approval_bridge.py#L107) |
-| function | `_nu` | `()` | — | [src](../../../core/runtime/db_approval_bridge.py#L130) |
-| function | `request` | `(approval_id, *, tool_name, arguments, run_id=…, session_id=…, ttl_s=…)` | Bed om en godkendelse. Gemmer digesten over kaldet. Returnerer digesten. | [src](../../../core/runtime/db_approval_bridge.py#L134) |
-| function | `decide` | `(approval_id, *, approved, detail=…)` | Mennesket har klikket. Flytter `pending` → `approved`/`denied`. | [src](../../../core/runtime/db_approval_bridge.py#L157) |
-| function | `claim` | `(approval_id, *, tool_name, arguments)` | Overtag godkendelsen OG commit `dispatching` — i ÉN sætning. | [src](../../../core/runtime/db_approval_bridge.py#L174) |
-| function | `settle` | `(approval_id, *, ok, detail=…)` | Afslut efter afsendelsen. `dispatching` → `completed`/`failed`. | [src](../../../core/runtime/db_approval_bridge.py#L222) |
-| function | `abandon` | `(approval_id, *, detail=…)` | Runnet døde. Sig HVAD vi ved — ikke hvad vi håber. | [src](../../../core/runtime/db_approval_bridge.py#L235) |
-| function | `state` | `(approval_id)` | — | [src](../../../core/runtime/db_approval_bridge.py#L262) |
-| function | `expire_stale` | `(now=…)` | Marker udløbne, ikke-besluttede godkendelser. Rører ALDRIG `dispatching`: | [src](../../../core/runtime/db_approval_bridge.py#L278) |
+| class | `ApprovalRefused` | `` | Overtagelsen blev nægtet. Beskeden siger hvorfor. | [src](../../../core/runtime/db_approval_bridge.py#L89) |
+| function | `invocation_digest` | `(tool_name, arguments)` | Digest over DET KALD der blev sagt ja til. | [src](../../../core/runtime/db_approval_bridge.py#L93) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/runtime/db_approval_bridge.py#L111) |
+| function | `_nu` | `()` | — | [src](../../../core/runtime/db_approval_bridge.py#L138) |
+| function | `request` | `(approval_id, *, tool_name, arguments, run_id=…, session_id=…, ttl_s=…)` | Bed om en godkendelse. Gemmer digesten over kaldet. Returnerer digesten. | [src](../../../core/runtime/db_approval_bridge.py#L142) |
+| function | `prepare` | `(invocation_id, *, tool_name, arguments, run_id=…, session_id=…, ttl_s=…)` | Registrér en invokation der IKKE kraever godkendelse. | [src](../../../core/runtime/db_approval_bridge.py#L165) |
+| function | `decide` | `(approval_id, *, approved, detail=…)` | Mennesket har klikket. Flytter `pending` → `approved`/`denied`. | [src](../../../core/runtime/db_approval_bridge.py#L198) |
+| function | `claim` | `(approval_id, *, tool_name, arguments)` | Overtag godkendelsen OG commit `dispatching` — i ÉN sætning. | [src](../../../core/runtime/db_approval_bridge.py#L215) |
+| function | `settle` | `(approval_id, *, ok, detail=…)` | Afslut efter afsendelsen. `dispatching` → `completed`/`failed`. | [src](../../../core/runtime/db_approval_bridge.py#L263) |
+| function | `abandon` | `(approval_id, *, detail=…)` | Runnet døde. Sig HVAD vi ved — ikke hvad vi håber. | [src](../../../core/runtime/db_approval_bridge.py#L276) |
+| function | `state` | `(approval_id)` | — | [src](../../../core/runtime/db_approval_bridge.py#L304) |
+| function | `expire_stale` | `(now=…)` | Marker udløbne, ikke-besluttede godkendelser. Rører ALDRIG `dispatching`: | [src](../../../core/runtime/db_approval_bridge.py#L320) |
 
 ## `core/runtime/db_autonomy.py`
 _Autonomy-proposals — niveau-2 autonomi: pending forslag fra Jarvis der afventer_

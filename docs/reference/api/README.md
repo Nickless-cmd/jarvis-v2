@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14116 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14122 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -40,19 +40,19 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14116 functions/
 - [`core.services.10`](core.services.10.md) — `dream_articulation` … `epistemic_pragmatic`
 - [`core.services.11`](core.services.11.md) — `epistemic_runtime_state` … `gate_kernel`
 - [`core.services.12`](core.services.12.md) — `gate_loop` … `heartbeat_scheduler`
-- [`core.services.13`](core.services.13.md) — `hf_connector` … `jarvis_brain_visibility`
-- [`core.services.14`](core.services.14.md) — `jarvisx_bridge` … `memory_density`
-- [`core.services.15`](core.services.15.md) — `memory_emotional_context` … `negotiation_engine`
-- [`core.services.16`](core.services.16.md) — `negotiation_pipeline` … `personal_project`
-- [`core.services.17`](core.services.17.md) — `personality_drift` … `prompt_mutation_loop`
-- [`core.services.18`](core.services.18.md) — `prompt_observer` … `relation_continuity_signal_tracking`
-- [`core.services.19`](core.services.19.md) — `relation_dynamics` … `runtime_self_model_state`
-- [`core.services.20`](core.services.20.md) — `runtime_self_model_surfaces` … `semantic_memory`
-- [`core.services.21`](core.services.21.md) — `sensory_archive` … `skill_scanner`
-- [`core.services.22`](core.services.22.md) — `skill_security_scanner` … `theater_audit`
-- [`core.services.23`](core.services.23.md) — `theory_of_mind` … `user_model_daemon`
-- [`core.services.24`](core.services.24.md) — `user_scope` … `visible_turn_blocks`
-- [`core.services.25`](core.services.25.md) — `vision_backend` … `world_model_signal_tracking`
+- [`core.services.13`](core.services.13.md) — `hf_connector` … `jarvis_brain_reflection`
+- [`core.services.14`](core.services.14.md) — `jarvis_brain_visibility` … `memory_decay_daemon`
+- [`core.services.15`](core.services.15.md) — `memory_density` … `narrative_summary_daemon`
+- [`core.services.16`](core.services.16.md) — `negotiation_engine` … `permission_engine`
+- [`core.services.17`](core.services.17.md) — `personal_project` … `prompt_heartbeat_self_knowledge`
+- [`core.services.18`](core.services.18.md) — `prompt_mutation_loop` … `regulation_homeostasis_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `relation_continuity_signal_tracking` … `runtime_self_model_identity`
+- [`core.services.20`](core.services.20.md) — `runtime_self_model_state` … `semantic_indexer`
+- [`core.services.21`](core.services.21.md) — `semantic_memory` … `skill_relevance_surface`
+- [`core.services.22`](core.services.22.md) — `skill_scanner` … `text_resonance`
+- [`core.services.23`](core.services.23.md) — `theater_audit` … `user_md_update_proposal_tracking`
+- [`core.services.24`](core.services.24.md) — `user_model_daemon` … `visible_turn_accumulator`
+- [`core.services.25`](core.services.25.md) — `visible_turn_blocks` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

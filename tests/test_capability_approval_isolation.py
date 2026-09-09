@@ -4,6 +4,25 @@ import pytest
 from fastapi import HTTPException
 
 
+
+# ── hvorfor tidsstemplet er RELATIVT ────────────────────────────────────────
+# Testen stod med et hardkodet '2026-09-02T12:00:00+00:00' — den dag den blev
+# skrevet. `capability_approval_request_is_stale` maaler mod `datetime.now()`
+# med en 24-timers taerskel, saa anmodningen blev forældet dagen efter.
+#
+# Maalt 9/9-2026: anmodningen var 173 timer gammel, og alle tre tests i
+# familien havde vaeret roede siden 3. september. De vogter praecis de
+# invarianter man mest vil have vogtet — atomisk claim, og at en aendret
+# envelope ikke kan eksekveres — og de var blevet til stoej alle havde laert
+# at ignorere.
+#
+# En test der kun bestaar den dag den skrives, er vaerre end ingen test.
+# Nu måles invarianten, ikke kalenderen.
+def _nu(offset_s: int = 0) -> str:
+    from datetime import UTC, datetime, timedelta
+    return (datetime.now(UTC) + timedelta(seconds=offset_s)).isoformat()
+
+
 def _insert_request(db, request_id: str, user_id: str | None) -> None:
     with db.connect() as conn:
         conn.execute(
@@ -12,9 +31,9 @@ def _insert_request(db, request_id: str, user_id: str | None) -> None:
                 request_id, capability_id, execution_mode, requested_at, status,
                 scheduled_for_user_id
             ) VALUES (?, 'tool:test', 'workspace-file-write',
-                      '2026-09-02T12:00:00+00:00', 'pending', ?)
+                      ?, 'pending', ?)
             """,
-            (request_id, user_id),
+            (request_id, _nu(-60), user_id),
         )
         row = conn.execute(
             "SELECT * FROM capability_approval_requests WHERE request_id = ?",

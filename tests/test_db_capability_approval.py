@@ -3,6 +3,25 @@ from __future__ import annotations
 import json
 
 
+
+# ── hvorfor tidsstemplet er RELATIVT ────────────────────────────────────────
+# Testen stod med et hardkodet '2026-09-02T12:00:00+00:00' — den dag den blev
+# skrevet. `capability_approval_request_is_stale` maaler mod `datetime.now()`
+# med en 24-timers taerskel, saa anmodningen blev forældet dagen efter.
+#
+# Maalt 9/9-2026: anmodningen var 173 timer gammel, og alle tre tests i
+# familien havde vaeret roede siden 3. september. De vogter praecis de
+# invarianter man mest vil have vogtet — atomisk claim, og at en aendret
+# envelope ikke kan eksekveres — og de var blevet til stoej alle havde laert
+# at ignorere.
+#
+# En test der kun bestaar den dag den skrives, er vaerre end ingen test.
+# Nu måles invarianten, ikke kalenderen.
+def _nu(offset_s: int = 0) -> str:
+    from datetime import UTC, datetime, timedelta
+    return (datetime.now(UTC) + timedelta(seconds=offset_s)).isoformat()
+
+
 def _insert_request(db, request_id: str, user_id: str | None) -> None:
     with db.connect() as conn:
         conn.execute(
@@ -11,9 +30,9 @@ def _insert_request(db, request_id: str, user_id: str | None) -> None:
                 request_id, capability_id, execution_mode, requested_at, status,
                 scheduled_for_user_id
             ) VALUES (?, 'tool:test', 'workspace-file-write',
-                      '2026-09-02T12:00:00+00:00', 'pending', ?)
+                      ?, 'pending', ?)
             """,
-            (request_id, user_id),
+            (request_id, _nu(-60), user_id),
         )
         row = conn.execute(
             "SELECT * FROM capability_approval_requests WHERE request_id = ?",
@@ -45,13 +64,13 @@ def test_capability_approval_crud_is_scoped_to_requesting_user(isolated_runtime)
     ) is None
     assert db.approve_capability_approval_request(
         "request-a",
-        approved_at="2026-09-02T12:01:00+00:00",
+        approved_at=_nu(60),
         user_id="user-b",
         include_unassigned=False,
     ) is None
     assert db.record_capability_approval_request_execution(
         "request-a",
-        executed_at="2026-09-02T12:02:00+00:00",
+        executed_at=_nu(120),
         invocation_status="executed",
         invocation_execution_mode="workspace-file-write",
         user_id="user-b",
@@ -88,13 +107,13 @@ def test_execution_claim_is_atomic_and_completed_result_is_replayed(
 
     first = db.claim_capability_approval_request_execution(
         "request-a",
-        approved_at="2026-09-02T12:01:00+00:00",
+        approved_at=_nu(60),
         user_id="user-a",
         include_unassigned=False,
     )
     competing = db.claim_capability_approval_request_execution(
         "request-a",
-        approved_at="2026-09-02T12:01:01+00:00",
+        approved_at=_nu(61),
         user_id="user-a",
         include_unassigned=False,
     )
@@ -104,7 +123,7 @@ def test_execution_claim_is_atomic_and_completed_result_is_replayed(
     response = {"ok": True, "status": "executed", "invocation": {"value": 1}}
     db.complete_capability_approval_request_execution(
         "request-a",
-        executed_at="2026-09-02T12:02:00+00:00",
+        executed_at=_nu(120),
         invocation_status="executed",
         invocation_execution_mode="workspace-file-write",
         execution_result_json=json.dumps(response),
@@ -113,7 +132,7 @@ def test_execution_claim_is_atomic_and_completed_result_is_replayed(
     )
     replay = db.claim_capability_approval_request_execution(
         "request-a",
-        approved_at="2026-09-02T12:03:00+00:00",
+        approved_at=_nu(180),
         user_id="user-a",
         include_unassigned=False,
     )

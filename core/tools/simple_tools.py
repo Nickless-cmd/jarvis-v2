@@ -900,67 +900,30 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     session + status/error → debugging af "fejl ude af huset": når en bruger melder en fejl
     ser vi PRÆCIST hvilket operator-/chat-tool i hvilken session der fejlede. Self-safe.
     Konsolidering 20→1 = Phase 2 (på forbrugs/overlap-trace-dataen)."""
-    result = _execute_tool_impl(name, arguments)
+    # ── Skema-kontrakt (Fase 3, K2) ────────────────────────────────────────
+    # Maaler FOER afsendelsen, fordi det er det eneste sted et ufuldstaendigt
+    # kald kan stoppes foer det goer noget. Skyggen afgoer intet; kun naar
+    # haandhaevelsen er slaaet til afvises HAARDE brud (manglende paakraevet
+    # felt) — aldrig bloede (enum/type), hvor skemaet selv kan vaere for
+    # snaevert. Se `tool_contract_shadow` for maalingen der viste begge.
     try:
-        from core.services.central_core import central as _central_tools
-        try:
-            from core.identity.workspace_context import effective_role as _er
-            from core.tools.tool_scoping import current_tool_scope as _cs
-            _role_obs = _er() or ""
-            _scope_obs = _cs() or ""
-        except Exception:
-            _role_obs, _scope_obs = "", ""
-        _status = str(result.get("status") or "ok") if isinstance(result, dict) else "ok"
-        _central_tools().observe({
-            "cluster": "tools", "nerve": "tool_call", "tool": name,
-            "kind": "operator" if str(name).startswith("operator_") else "native",
-            "role": _role_obs, "scope": _scope_obs,
-            "session_id": str(arguments.get("_runtime_session_id")
-                              or arguments.get("_session_id") or ""),
-            "status": _status,
-            "error": (str(result.get("error") or "")[:160]
-                      if isinstance(result, dict) and _status != "ok" else ""),
-        })
+        from core.services import tool_contract_shadow as _tcs
+        _brud = _tcs.observe(name, arguments)
+        _haarde = [b for b in _brud if b.haard]
+        if _haarde and _tcs.haandhaever():
+            from core.tools.tool_schema_contract import afvisning
+            _afvist = afvisning(name, _haarde)
+            from core.tools.tool_call_observation import observe_tool_call
+            observe_tool_call(name, arguments, _afvist)
+            return _afvist
     except Exception:
-        pass
-    # Tools-cluster Phase 2: persistent forbrugs-tæller (DB, cross-proces api↔runtime) →
-    # Centralen kan ordne kataloget (mest-brugt først, døde sidst) + flagge døde tools.
-    try:
-        from core.services.tool_usage_store import record_use
-        _ok = isinstance(result, dict) and str(result.get("status") or "ok") == "ok"
-        record_use(name, kind="operator" if str(name).startswith("operator_") else "native",
-                   ok=_ok)
-    except Exception:
-        pass
-    # ── Permission-classifier shadow observe (harness Part E) ──────────────
-    # Non-blocking: predict owner-approval for mutating tools + record the outcome
-    # (bootstrap: ok→approve, blocked→deny; approval_needed→stash for gold at resolve).
-    # Fail-open, never changes the returned status. Default mode shadow.
-    try:
-        from core.services import permission_classifier as _pc
-        if (isinstance(result, dict) and _pc.permission_classifier_mode() != "off"
-                and _pc.is_mutating(name)):
-            _pc_status = str(result.get("status") or "")
-            _pc_approval_id = str(result.get("approval_id") or "")
-            _pc_args = dict(arguments)
+        pass  # en maaling maa aldrig kunne vaelte kaldet den maaler
 
-            def _pc_shadow() -> None:
-                try:
-                    pred = _pc.classify_action(name, _pc_args, {"status": _pc_status})
-                    if _pc_status == "approval_needed" and _pc_approval_id:
-                        _pc.stash_prediction(_pc_approval_id, name, pred.verdict)
-                    else:
-                        _actual = ("approve" if _pc_status == "ok"
-                                   else ("deny" if _pc_status in ("blocked", "gate_blocked") else ""))
-                        if _actual:
-                            _pc.record_prediction_outcome(name, predicted=pred.verdict,
-                                                          actual=_actual, is_owner_gold=False)
-                except Exception:
-                    pass
-            import threading as _pc_th
-            _pc_th.Thread(target=_pc_shadow, daemon=True).start()
-    except Exception:
-        pass
+    result = _execute_tool_impl(name, arguments)
+    # Observationen er udskilt til `tool_call_observation` (Boy Scout, 2.141
+    # linjer). Den aendrer aldrig udfaldet og kaster aldrig.
+    from core.tools.tool_call_observation import observe_tool_call
+    observe_tool_call(name, arguments, result)
     return result
 
 

@@ -1850,6 +1850,12 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "my_project_journal_write": _exec_my_project_journal_write,
     "my_project_accept_proposal": _exec_my_project_accept_proposal,
     "my_project_declare": _exec_my_project_declare,
+    # Identitets-skitsen: definitionerne blev annonceret og `_exec_`-funktionerne
+    # importeret (se toppen af filen) — men de naaede aldrig dispatch-dict'en, saa
+    # et kald gav `Unknown tool`. Fundet af `tool_definition_v2.inconsistencies()`
+    # (Fase 3, K1), ikke af en test.
+    "read_identity_sketch": _exec_read_identity_sketch,
+    "update_identity_sketch": _exec_update_identity_sketch,
     # Tool router escape-hatch (added 2026-05-06)
     "load_more_tools": _tool_load_more_tools,
 }

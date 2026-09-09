@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-07 — 463 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-09 — 465 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -274,6 +274,7 @@
 | `read_counterfactual` | native | no |
 | `read_dreams` | native | no |
 | `read_file` | native | no |
+| `read_identity_sketch` | native | no |
 | `read_learning_memo` | native | no |
 | `read_mail` | native | no |
 | `read_memory_topic` | native | no |
@@ -379,6 +380,7 @@
 | `unified_recall` | native | no |
 | `unit_convert` | native | no |
 | `unpin_identity` | native | no |
+| `update_identity_sketch` | native | no |
 | `update_project_notes` | native | no |
 | `update_setting` | native | no |
 | `variant_performance` | native | no |

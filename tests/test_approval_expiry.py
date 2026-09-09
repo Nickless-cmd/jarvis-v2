@@ -120,3 +120,93 @@ def test_et_frisk_ja_slipper_igennem(isolated_runtime, monkeypatch):
 
     A.resolve_pending_approval("frisk", approved=True)
     assert kaldt == ["bash"]
+
+
+# ── og HVEM der svarer — Fase 4 ──────────────────────────────────────────
+#
+# Endepunktet `POST /chat/approvals/{id}/approve` tog INGEN bruger og lavede
+# intet ejerskabstjek: enhver autentificeret kalder kunne godkende et hvilket
+# som helst kort ved at kende dets id. Identiteten fandtes hele tiden i
+# auth-middleware'ens ContextVar — den naaede bare aldrig frem til `resolve`.
+
+
+def _kort_med_ejer(ejer: str) -> dict:
+    k = _kort(60)
+    k["owner_user_id"] = ejer
+    return k
+
+
+def _fang(monkeypatch) -> list[str]:
+    import core.tools.simple_tools as ST
+    kaldt: list[str] = []
+    monkeypatch.setattr(ST, "execute_tool_force",
+                        lambda n, a, **k: (kaldt.append(n), {"status": "ok"})[1])
+    monkeypatch.setattr(ST, "format_tool_result_for_model", lambda n, r: "ok")
+    return kaldt
+
+
+def test_EJEREN_kan_svare(isolated_runtime, monkeypatch):
+    import core.services.visible_runs_approvals as A
+    kaldt = _fang(monkeypatch)
+    VR._PENDING_APPROVALS["a"] = _kort_med_ejer("bjorn")
+    A.resolve_pending_approval("a", approved=True, answered_by="bjorn")
+    assert kaldt == ["bash"]
+
+
+def test_en_ANDEN_bruger_kan_IKKE(isolated_runtime, monkeypatch, caplog):
+    import logging
+    import core.services.visible_runs_approvals as A
+    kaldt = _fang(monkeypatch)
+    VR._PENDING_APPROVALS["a"] = _kort_med_ejer("bjorn")
+
+    with caplog.at_level(logging.WARNING):
+        ud = A.resolve_pending_approval("a", approved=True, answered_by="mikkel")
+
+    assert kaldt == [], "en fremmed fik kommandoen udfoert"
+    assert ud["status"] == "error" and "anden bruger" in ud["error"]
+    assert "KRYDSBRUGER" in caplog.text
+
+
+def test_et_afvist_krydssvar_BRUGER_ikke_kortet(isolated_runtime, monkeypatch):
+    """Kortet skal stadig kunne godkendes af den rigtige bagefter. Ellers ville
+    en fremmed kunne OEDELAEGGE en godkendelse uden at kunne bruge den."""
+    import core.services.visible_runs_approvals as A
+    kaldt = _fang(monkeypatch)
+    VR._PENDING_APPROVALS["a"] = _kort_med_ejer("bjorn")
+
+    A.resolve_pending_approval("a", approved=True, answered_by="mikkel")
+    assert "a" in VR._PENDING_APPROVALS, "kortet forsvandt"
+
+    A.resolve_pending_approval("a", approved=True, answered_by="bjorn")
+    assert kaldt == ["bash"]
+
+
+def test_et_kort_UDEN_ejer_spaerres_ikke(isolated_runtime, monkeypatch):
+    """De 26 paa produktionen har ingen ejer. En manglende identitet er husets
+    fejl, ikke brugerens."""
+    import core.services.visible_runs_approvals as A
+    kaldt = _fang(monkeypatch)
+    VR._PENDING_APPROVALS["a"] = _kort(60)
+    A.resolve_pending_approval("a", approved=True, answered_by="hvem_som_helst")
+    assert kaldt == ["bash"]
+
+
+def test_en_svarer_UDEN_identitet_spaerres_ikke(isolated_runtime, monkeypatch):
+    """Interne kaldere uden bruger-kontekst maa stadig kunne afgoere."""
+    import core.services.visible_runs_approvals as A
+    kaldt = _fang(monkeypatch)
+    VR._PENDING_APPROVALS["a"] = _kort_med_ejer("bjorn")
+    A.resolve_pending_approval("a", approved=True, answered_by=None)
+    assert kaldt == ["bash"]
+
+
+def test_ALLE_answerers_giver_svareren_med():
+    """Koblingen. Én answerer der glemmer den, er hele vejen udenom tjekket."""
+    import inspect
+    from apps.api.jarvis_api.routes import chat, cowork
+    for navn, kilde in (("chat", inspect.getsource(chat)),
+                        ("cowork", inspect.getsource(cowork))):
+        for i, linje in enumerate(kilde.splitlines()):
+            if "resolve_pending_approval(" in linje and "def " not in linje:
+                vindue = "\n".join(kilde.splitlines()[i:i + 4])
+                assert "answered_by" in vindue, f"{navn}: {linje.strip()[:60]}"

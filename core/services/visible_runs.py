@@ -256,6 +256,23 @@ from core.runtime.state_store import load_json as _load_approvals_state, save_js
 _APPROVALS_STATE_KEY = "pending_approvals"
 
 
+def _godkendelses_ejer(run) -> str:
+    """Hvem skal kunne svare paa dette kort?
+
+    Tom streng betyder «ukendt» — og et kort uden ejer spaerres IKKE ved svar.
+    Samme valg som for de gamle vaerktoejsresultater: en manglende identitet er
+    husets fejl, ikke brugerens.
+    """
+    try:
+        from core.identity.workspace_context import current_user_id
+        uid = str(current_user_id() or "").strip()
+        if uid:
+            return uid
+    except Exception:
+        pass
+    return str(getattr(run, "user_id", "") or "").strip()
+
+
 def _friske_godkendelser(raa: dict) -> dict:
     """Genopliv KUN kort der stadig er inden for deres levetid.
 
@@ -2137,6 +2154,12 @@ async def _stream_visible_run(
                             "run_id": run.run_id,
                             "session_id": run.session_id,
                             "created_at": created_at,
+                            # EJEREN (Fase 4): «cross-user answers cannot
+                            # authorize execution». Identiteten fandtes
+                            # allerede — auth-middleware'en saetter den — den
+                            # blev bare ikke gemt, saa `resolve` havde intet
+                            # at maale et svar imod.
+                            "owner_user_id": _godkendelses_ejer(run),
                         }
                         # 2026-05-24 (Claude): tag the sr so the persistence
                         # loop can later check if resolve_pending_approval
@@ -2165,6 +2188,12 @@ async def _stream_visible_run(
                             "run_id": run.run_id,
                             "session_id": run.session_id,
                             "created_at": created_at,
+                            # EJEREN (Fase 4): «cross-user answers cannot
+                            # authorize execution». Identiteten fandtes
+                            # allerede — auth-middleware'en saetter den — den
+                            # blev bare ikke gemt, saa `resolve` havde intet
+                            # at maale et svar imod.
+                            "owner_user_id": _godkendelses_ejer(run),
                         })
                         _publicer_approval_requested(
                             approval_id=approval_id, tool=sr["tool_name"],
@@ -4395,6 +4424,7 @@ async def _stream_visible_run(
                                 "run_id": run.run_id,
                                 "session_id": run.session_id,
                                 "created_at": _a_created_at,
+                                "owner_user_id": _godkendelses_ejer(run),
                             }
                             # Tag the sr so the second-pass agentic loop's
                             # persistence can later check chat_persisted flag.
@@ -4421,6 +4451,7 @@ async def _stream_visible_run(
                                 "run_id": run.run_id,
                                 "session_id": run.session_id,
                                 "created_at": _a_created_at,
+                                "owner_user_id": _godkendelses_ejer(run),
                             })
                             _publicer_approval_requested(
                                 approval_id=_a_apid, tool=_a_sr["tool_name"],

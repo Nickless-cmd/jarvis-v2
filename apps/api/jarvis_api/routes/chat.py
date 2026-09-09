@@ -1554,7 +1554,13 @@ async def chat_approve_tool(approval_id: str) -> dict:
     # Observed live 2026-05-28: operator_bash "echo hej" returned timeout-error
     # ~60s after user clicked Approve, even though the bridge replied in 20ms.
     import asyncio
-    result = await asyncio.to_thread(resolve_pending_approval, approval_id, approved=True)
+    # Fase 4: HVEM svarer. Uden den kunne enhver autentificeret kalder godkende
+    # et hvilket som helst kort ved at kende dets id.
+    from core.identity.workspace_context import current_user_id
+    _svarer = str(current_user_id() or "").strip() or None
+    result = await asyncio.to_thread(
+        lambda: resolve_pending_approval(approval_id, approved=True,
+                                         answered_by=_svarer))
     if result.get("status") == "error":
         raise HTTPException(status_code=404, detail=result.get("error", "Not found"))
     return result
@@ -1568,7 +1574,11 @@ async def chat_deny_tool(approval_id: str) -> dict:
     # actually run the tool, but resolve_pending_approval is sync either way
     # and consistency keeps the codepath simple.
     import asyncio
-    result = await asyncio.to_thread(resolve_pending_approval, approval_id, approved=False)
+    from core.identity.workspace_context import current_user_id
+    _svarer = str(current_user_id() or "").strip() or None
+    result = await asyncio.to_thread(
+        lambda: resolve_pending_approval(approval_id, approved=False,
+                                         answered_by=_svarer))
     if result.get("status") == "error":
         raise HTTPException(status_code=404, detail=result.get("error", "Not found"))
     return result

@@ -49,8 +49,13 @@ def _resolve_item(item_id: str, decision: str) -> dict:
     except Exception:
         pass
     try:
+        from core.identity.workspace_context import current_user_id
         from core.services.visible_runs import resolve_pending_approval
-        res = resolve_pending_approval(item_id, approved=approved)
+        # Fase 4: ogsaa her skal svareren med — cowork er en answerer paa lige
+        # fod med chat-kortet, og den maa ikke vaere den vej udenom tjekket.
+        res = resolve_pending_approval(
+            item_id, approved=approved,
+            answered_by=str(current_user_id() or "").strip() or None)
         if res is not None:
             return {"status": "ok", "decision": decision, "via": "capability"}
     except Exception:

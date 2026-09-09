@@ -54,7 +54,8 @@ def _er_udloebet(pending: dict) -> str:
     return f"{alder / 86400:.1f} dage gammel"
 
 
-def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
+def resolve_pending_approval(approval_id: str, *, approved: bool,
+                             answered_by: str | None = None) -> dict:
     """Resolve a pending tool approval.
 
     Resolves a pending approval in shared runtime state so a blocked streaming
@@ -72,6 +73,30 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
         return {"error": "Approval not found or expired", "status": "error"}
     if str(pending.get("status") or "pending") not in {"", "pending"}:
         return {"error": "Approval already resolved", "status": "error"}
+
+    # ── HVEM SVARER (Fase 4) ────────────────────────────────────────────
+    # «duplicate, late, and cross-user answers cannot authorize execution».
+    # Endepunktet tog ingen bruger og lavede intet ejerskabstjek: enhver
+    # autentificeret kalder kunne godkende ET HVILKET SOM HELST kort ved at
+    # kende dets id. Identiteten fandtes hele tiden i auth-middleware'ens
+    # ContextVar — den naaede bare aldrig hertil.
+    #
+    # Et kort UDEN ejer slipper igennem: de 26 der laa paa produktionen har
+    # ingen, og en manglende identitet er husets fejl, ikke brugerens.
+    _ejer = str(pending.get("owner_user_id") or "").strip()
+    _svarer = str(answered_by or "").strip()
+    if _ejer and _svarer and _ejer != _svarer:
+        logger.warning("Fase 4: afviser KRYDSBRUGER-svar paa %s — ejer=%r svarer=%r",
+                       approval_id, _ejer, _svarer)
+        _vr._PENDING_APPROVALS[approval_id] = pending      # kortet er IKKE brugt
+        _vr._persist_pending_approvals()
+        return {
+            "status": "error",
+            "tool": pending.get("tool_name") or "",
+            "error": "Den godkendelse tilhoerer en anden bruger.",
+            "result_text": "[Godkendelsen tilhoerer en anden bruger]",
+            "chat_persisted": False,
+        }
 
     # ── UDLOEB (Fase 4) ──────────────────────────────────────────────────
     # Der var INTET aldersstjek. Ordet «expired» stod kun i fejlbeskeden

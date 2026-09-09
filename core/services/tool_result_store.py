@@ -46,10 +46,20 @@ def save_tool_result(
     if klippet:
         from core.services.text_clip import clip_head_tail
         stored = clip_head_tail(stored, limit=_MAX_STORED_CHARS)
+    # EJERSKAB (Fase 3, K11). Maalt 9/9-2026: 0 af 30.640 laesbare poster havde
+    # en ejer — men 22.207 havde `_runtime_user_id` med i argumenterne. Oplysningen
+    # der skal til for at autorisere en hentning, LAA der allerede; den laa bare
+    # i praecis det felt der ikke burde gemmes.
+    raa_args = dict(arguments or {})
+    ejer = str(raa_args.get("_runtime_user_id") or "").strip()
+    sess = str(raa_args.get("_runtime_session_id") or "").strip()
+
     payload = {
         "result_id": result_id,
         "tool_name": str(tool_name or "").strip(),
-        "arguments": dict(arguments or {}),
+        "owner_user_id": ejer,
+        "session_id": sess,
+        "arguments": _redigeret(raa_args),
         "result": stored,
         # Fuldstændighed er nu et FELT, ikke kun en note inde i teksten.
         # `clip_head_tail` splejser «… [N tegn udeladt …] …» ind, så et menneske
@@ -61,7 +71,7 @@ def save_tool_result(
         "original_chars": len(raa),
         "stored_chars": len(stored),
         "created_at": timestamp,
-        "summary": summarize_result(result_content),
+        "summary": _redact(summarize_result(result_content)),
         # Digest over det GEMTE indhold, ikke over originalen: handlen skal
         # kunne verificere det den faktisk leverer. Et digest over noget der
         # blev klippet væk, ville bevise en ting og udlevere en anden.
@@ -82,7 +92,18 @@ def save_tool_result(
     return result_id
 
 
-def get_tool_result(result_id: str) -> dict[str, object] | None:
+def get_tool_result(result_id: str, *,
+                    user_id: str | None = None) -> dict[str, object] | None:
+    """Hent en gemt handle.
+
+    `user_id` er den der SPOERGER. Er den sat, og posten har en anden ejer,
+    naegtes hentningen (Fase 3, K11: «authorized retrieval»).
+
+    Legacy uden ejer slipper igennem med vilje: 30.640 poster maalt 9/9-2026
+    havde ingen ejer, og at afvise dem ville goere hele arkivet ulaeseligt for
+    at lukke et hul der ikke findes i dem — deres beskyttelse er den private
+    rod. Nye poster faar en ejer og bliver derfor faktisk tjekket.
+    """
     normalized = str(result_id or "").strip()
     if not normalized:
         return None
@@ -104,6 +125,15 @@ def get_tool_result(result_id: str) -> dict[str, object] | None:
     # Poster gemt FØR fuldstændigheds-felterne fandtes har dem ikke. Et manglende
     # felt må ikke læses som «ufuldstændig» — vi ved det ikke, og at gætte ville
     # gøre gammelt, komplet output mistænkeligt. `None` siger «ukendt».
+    ejer = str(data.get("owner_user_id") or "").strip()
+    spoerger = str(user_id or "").strip()
+    if ejer and spoerger and ejer != spoerger:
+        # Ikke tavst: at en handle fra en anden brugers session bliver slaaet
+        # op, er et signal — ikke et uheld.
+        logger.warning("tool_result_store: naegtede hentning af %s — ejer=%r "
+                       "spoerger=%r", normalized, ejer, spoerger)
+        return None
+
     data.setdefault("complete", None)
     data.setdefault("original_chars", None)
     # HASH-TJEKKET HANDLE (Fase 3, K8). En handle der kun slås OP, beviser
@@ -234,6 +264,38 @@ def render_tool_result_for_prompt(
     return _prefixed_tool_text(tool_name, normalized_summary)
 
 
+def _redact(tekst: str) -> str:
+    """Maskér hemmeligheder i METADATA. Kaster aldrig."""
+    try:
+        from core.services.secret_redaction import redact
+        return redact(str(tekst or ""))
+    except Exception:
+        return str(tekst or "")
+
+
+def _redigeret(args: dict) -> dict:
+    """Argumenterne som de skal LIGGE PAA DISKEN.
+
+    To ting fjernes. `_`-noeglerne er runtime-tilstand, ikke modellens kald —
+    de hoerer ikke til i en post om hvad der blev gjort, og `_runtime_user_id`
+    er netop loeftet ud til `owner_user_id` ovenfor.
+
+    Og hemmelighederne maskeres. Maalt 9/9-2026: 84 gemte resultater matchede
+    et token-moenster, og 62 af dem havde det i ARGUMENTERNE — typisk en
+    `curl -H "Authorization: Bearer …"` paa en bash-kommandolinje.
+
+    SELVE resultatet roeres ikke. Det er nyttelasten, ikke metadata, og Jarvis
+    skal kunne laese tilbage praecis det vaerktoejet svarede; nyttelasten
+    beskyttes af den private rod og 0600 i stedet.
+    """
+    ud = {}
+    for k, v in (args or {}).items():
+        if str(k).startswith("_"):
+            continue
+        ud[k] = _redact(v) if isinstance(v, str) else v
+    return ud
+
+
 def _digest(text: str) -> str:
     """sha256 over indholdet. Handlen kan dermed VERIFICERES, ikke kun slås op."""
     return "sha256:" + hashlib.sha256(str(text or "").encode("utf-8")).hexdigest()
@@ -303,3 +365,32 @@ def _parse_dt(value: str) -> datetime | None:
     return parsed.astimezone(UTC)
 
 
+
+
+def repair_permissions() -> dict[str, int]:
+    """Saet 0600 paa gamle handles der blev skrevet foer O_EXCL-stien fandtes.
+
+    Maalt 9/9-2026: 30.495 af 30.650 filer laa som 0644 — laesbare for alle.
+    Roden er 0700, saa de var i praksis daekket; men «i praksis daekket» holder
+    kun saa laenge ingen aabner roden, og en backup der bevarer rettigheder
+    baerer 0644 med sig ud.
+
+    Springer symlinks over: en oprydning der foelger et link, aendrer noget
+    andet end det den tror.
+    """
+    _sikr_privat_rod()
+    ud = {"set": 0, "allerede": 0, "sprunget": 0, "fejl": 0}
+    rod = TOOL_RESULTS_DIR.resolve()
+    for sti in TOOL_RESULTS_DIR.glob("*.json"):
+        try:
+            if sti.is_symlink() or sti.resolve().parent != rod:
+                ud["sprunget"] += 1
+                continue
+            if (sti.stat().st_mode & 0o777) == 0o600:
+                ud["allerede"] += 1
+                continue
+            sti.chmod(0o600)
+            ud["set"] += 1
+        except Exception:
+            ud["fejl"] += 1
+    return ud

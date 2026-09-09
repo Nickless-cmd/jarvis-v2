@@ -97,7 +97,10 @@ def _exec_read_tool_result(args: dict[str, Any]) -> dict[str, Any]:
     if not result_id:
         return {"error": "result_id is required", "status": "error"}
 
-    record = get_tool_result(result_id)
+    # K11: den der spoerger gives med, saa en handle fra en ANDEN brugers
+    # session ikke kan hentes ved at kende dens id.
+    record = get_tool_result(result_id, user_id=str(
+        args.get("_runtime_user_id") or args.get("_user_id") or "") or None)
     if not record:
         return {"error": f"Tool result not found: {result_id}", "status": "error"}
 

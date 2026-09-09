@@ -84,3 +84,28 @@ def test_tool_resultater_roeres_heller_ikke():
     r = _finalize_call(tok, {"status": "ok", "text": "api_key: sk-EKSEMPELnoegle1234567890"},
                        controller=None, exec_fmt=fmt)
     assert "sk-EKSEMPELnoegle1234567890" in r["result_text"]
+
+
+def test_authorization_bearer_maskeres():
+    """MELLEMRUM, ikke kolon — saa tildelings-moensteret ramte den ikke.
+    Fundet 9/9-2026 ved at maale de gemte vaerktoejsresultater: 84 matchede et
+    token-moenster, og 62 havde det i argumenterne, naesten alle en
+    `curl -H "Authorization: Bearer …"`. Den form gaar ogsaa i prompten.
+    """
+    from core.services.secret_redaction import redact
+    ud = redact('curl -H "Authorization: Bearer abcdefghijklmnopqrstuvwxyz012345"')
+    assert "abcdefghijklmnopqrstuvwxyz012345" not in ud
+    assert "Bearer" in ud
+
+
+@pytest.mark.parametrize("tekst", [
+    "Bearer token er et begreb i OAuth",
+    "han er en bearer of bad news",
+    "bearer kort",
+])
+def test_ordet_bearer_i_prosa_maskeres_ikke(tekst):
+    """Moensteret kraever en laang, token-agtig hale. Ellers ville dansk og
+    engelsk prosa blive maskeret i prompten — praecis den fejl `sk-` allerede
+    havde med et filnavn."""
+    from core.services.secret_redaction import redact
+    assert redact(tekst) == tekst

@@ -251,9 +251,9 @@ _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_
 | function | `_record_active_file` | `(path, op, args)` | Live-highlight: notér at Jarvis (i brugerens kontekst) rører `path`, så | [src](../../../core/tools/file_tools_exec.py#L42) |
 | function | `_exec_read_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L53) |
 | function | `_exec_read_tool_result` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L95) |
-| function | `_exec_read_self_docs` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L115) |
-| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L131) |
-| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L190) |
+| function | `_exec_read_self_docs` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L118) |
+| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L134) |
+| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L193) |
 
 ## `core/tools/force_handlers.py`
 _Force-handlere — værktøjer der kører EFTER et menneske har godkendt._

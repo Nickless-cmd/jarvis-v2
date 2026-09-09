@@ -58,6 +58,12 @@ _MOENSTRE: tuple[re.Pattern[str], ...] = (
         r"|bearer[_-]?token|password|passwd|client[_-]?secret)\b\s*[:=]\s*"
         r"[\"']?([A-Za-z0-9_\-./+]{12,})[\"']?"
     ),
+    # `Authorization: Bearer <token>` — MELLEMRUM, ikke kolon, saa
+    # tildelings-moensteret ovenfor ramte den ikke. Fundet 9/9-2026 ved at maale
+    # de gemte vaerktoejsresultater: 84 matchede et token-moenster, og 62 havde
+    # det i ARGUMENTERNE — naesten alle en `curl -H "Authorization: Bearer …"`
+    # paa en bash-kommandolinje. Den form gaar ogsaa i prompten.
+    re.compile(r"(?i)\bbearer\s+([A-Za-z0-9._\-+/=]{16,})"),
 )
 
 

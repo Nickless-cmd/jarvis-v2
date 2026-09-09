@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7180/14160 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7184/14163 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7180/14160 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 604 | 1111 | 54% |
-| `core.services` | 4756 | 9754 | 48% |
+| `core.services` | 4760 | 9757 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7180/14160 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2023)
+## Undocumented public functions (2022)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1778,11 +1778,10 @@ Generated from source. 7180/14160 functions/methods documented (50%). The list b
 - `core/services/tool_intent_approval_runtime.py` :: `tool_intent_approval_key` (L373)
 - `core/services/tool_intent_runtime.py` :: `build_tool_intent_runtime_surface` (L27)
 - `core/services/tool_outcome_memory.py` :: `classify_tool_family` (L59)
-- `core/services/tool_result_store.py` :: `build_tool_result_reference` (L154)
-- `core/services/tool_result_store.py` :: `cleanup_old_results` (L127)
-- `core/services/tool_result_store.py` :: `get_tool_result` (L85)
-- `core/services/tool_result_store.py` :: `parse_tool_result_reference` (L166)
-- `core/services/tool_result_store.py` :: `render_tool_result_for_prompt` (L187)
+- `core/services/tool_result_store.py` :: `build_tool_result_reference` (L184)
+- `core/services/tool_result_store.py` :: `cleanup_old_results` (L157)
+- `core/services/tool_result_store.py` :: `parse_tool_result_reference` (L196)
+- `core/services/tool_result_store.py` :: `render_tool_result_for_prompt` (L217)
 - `core/services/tool_result_store.py` :: `save_tool_result` (L33)
 - `core/services/tool_result_store.py` :: `summarize_result` (L26)
 - `core/services/tool_router_runtime.py` :: `start_tool_router_runtime` (L73)

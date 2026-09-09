@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_private_signals.py`
+_Persistence for the private inner-life signal tables._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_private_signals_tables` | `(conn)` | — | [src](../../../core/runtime/db_private_signals.py#L16) |
+| function | `_ensure_private_retained_memory_record_columns` | `(conn)` | — | [src](../../../core/runtime/db_private_signals.py#L87) |
+| function | `record_private_reflective_selection` | `(*, signal_id, source, run_id, work_id, selection_kind, reinforce, reconsider, fade, identity_relevance, confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L101) |
+| function | `recent_private_reflective_selections` | `(limit=…)` | — | [src](../../../core/runtime/db_private_signals.py#L152) |
+| function | `record_private_development_state` | `(*, state_id, source, retained_pattern, preferred_direction, recurring_tension, identity_thread, confidence, created_at, updated_at)` | — | [src](../../../core/runtime/db_private_signals.py#L192) |
+| function | `get_private_development_state` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L237) |
+| function | `get_private_reflective_selection` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L271) |
+| function | `record_private_temporal_promotion_signal` | `(*, signal_id, source, run_id, work_id, rhythm_state, rhythm_window, promotion_target, promotion_action, promotion_confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L309) |
+| function | `get_private_temporal_promotion_signal` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L357) |
+| function | `_norm_retained` | `(value)` | Normalisér til novelty-sammenligning: trim, lowercase, kollaps whitespace. | [src](../../../core/runtime/db_private_signals.py#L393) |
+| function | `record_private_retained_memory_record` | `(*, record_id, source, run_id, work_id, retained_value, retained_kind, retention_scope, retention_horizon, confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L398) |
+| function | `update_private_retained_memory_record_enriched` | `(*, run_id, enriched_value)` | Replace template retained_value with LLM-enriched lesson text. | [src](../../../core/runtime/db_private_signals.py#L464) |
+| function | `get_private_retained_memory_record` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L476) |
+| function | `recent_private_retained_memory_records` | `(limit=…)` | — | [src](../../../core/runtime/db_private_signals.py#L512) |
+
 ## `core/runtime/db_private_states.py`
 _Persistence for the private self-model / mood / promotion-decision tables._
 
@@ -906,16 +926,4 @@ _Fornyelse af bearer-tokens — så en klient ikke låses ude af tiden alene._
 | function | `udloebs_alder_dage` | `(raw_token)` | Hvor mange dage er tokenet udløbet? Kun til LOGNING. | [src](../../../core/runtime/token_renewal.py#L163) |
 | function | `renew` | `(raw_token, *, now=…)` | Veksl et bearer-token til et friskt et. | [src](../../../core/runtime/token_renewal.py#L189) |
 | function | `revoke_user_tokens` | `(user_id)` | Sortlist alle fornyede tokens for én bruger. Returnerer antallet. | [src](../../../core/runtime/token_renewal.py#L260) |
-
-## `core/runtime/workspace_paths.py`
-_Workspace path resolver — single source of truth for filesystem layout._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `NoUserContextError` | `` | Raised when workspace_dir() is called without a resolvable user_id. | [src](../../../core/runtime/workspace_paths.py#L17) |
-| function | `_jarvis_home` | `()` | JARVIS_HOME resolved at call time (so tests can override via env). | [src](../../../core/runtime/workspace_paths.py#L26) |
-| function | `shared_dir` | `()` | Jarvis' own state. All users see the same instance. | [src](../../../core/runtime/workspace_paths.py#L31) |
-| function | `workspace_dir` | `(user_id=…)` | Per-relation workspace. Defaults to current_user_id() from context. | [src](../../../core/runtime/workspace_paths.py#L40) |
-| function | `workspace_dir_or_owner` | `()` | workspace_dir() with an owner fallback, then shared/ as last resort. | [src](../../../core/runtime/workspace_paths.py#L65) |
-| function | `_user_id_to_workspace_name` | `(user_id)` | Resolve user_id → workspace folder name. | [src](../../../core/runtime/workspace_paths.py#L89) |
 

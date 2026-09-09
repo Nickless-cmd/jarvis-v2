@@ -144,6 +144,23 @@ _API-forbindelses-nerve — persistent, GDPR-bundet metadata om hvem/hvad der ra
 | function | `read_presence` | `(*, active_within_s=…, limit=…)` | Presence-view: forbindelser set for nylig. active=set inden for active_within_s. Self-safe. | [src](../../../core/runtime/db_api_connections.py#L178) |
 | function | `read_recent_errors` | `(*, limit=…)` | Seneste fejl-requests (status ≥ 400) til fejl-sporing. Self-safe. | [src](../../../core/runtime/db_api_connections.py#L201) |
 
+## `core/runtime/db_approval_bridge.py`
+_Godkendelses-broen — én beslutning, bundet til ÉT kald, brugt ÉN gang._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ApprovalRefused` | `` | Overtagelsen blev nægtet. Beskeden siger hvorfor. | [src](../../../core/runtime/db_approval_bridge.py#L85) |
+| function | `invocation_digest` | `(tool_name, arguments)` | Digest over DET KALD der blev sagt ja til. | [src](../../../core/runtime/db_approval_bridge.py#L89) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/runtime/db_approval_bridge.py#L107) |
+| function | `_nu` | `()` | — | [src](../../../core/runtime/db_approval_bridge.py#L130) |
+| function | `request` | `(approval_id, *, tool_name, arguments, run_id=…, session_id=…, ttl_s=…)` | Bed om en godkendelse. Gemmer digesten over kaldet. Returnerer digesten. | [src](../../../core/runtime/db_approval_bridge.py#L134) |
+| function | `decide` | `(approval_id, *, approved, detail=…)` | Mennesket har klikket. Flytter `pending` → `approved`/`denied`. | [src](../../../core/runtime/db_approval_bridge.py#L157) |
+| function | `claim` | `(approval_id, *, tool_name, arguments)` | Overtag godkendelsen OG commit `dispatching` — i ÉN sætning. | [src](../../../core/runtime/db_approval_bridge.py#L174) |
+| function | `settle` | `(approval_id, *, ok, detail=…)` | Afslut efter afsendelsen. `dispatching` → `completed`/`failed`. | [src](../../../core/runtime/db_approval_bridge.py#L222) |
+| function | `abandon` | `(approval_id, *, detail=…)` | Runnet døde. Sig HVAD vi ved — ikke hvad vi håber. | [src](../../../core/runtime/db_approval_bridge.py#L235) |
+| function | `state` | `(approval_id)` | — | [src](../../../core/runtime/db_approval_bridge.py#L262) |
+| function | `expire_stale` | `(now=…)` | Marker udløbne, ikke-besluttede godkendelser. Rører ALDRIG `dispatching`: | [src](../../../core/runtime/db_approval_bridge.py#L278) |
+
 ## `core/runtime/db_autonomy.py`
 _Autonomy-proposals — niveau-2 autonomi: pending forslag fra Jarvis der afventer_
 
@@ -646,24 +663,4 @@ _Persistence for the private/protected inner-layer note tables._
 | function | `update_protected_inner_voice_enriched` | `(*, run_id, enriched_voice_line)` | Replace template voice_line with LLM-enriched text. | [src](../../../core/runtime/db_private_notes.py#L357) |
 | function | `get_protected_inner_voice` | `(*, offset=…)` | Seneste beskyttede indre stemme. ``offset`` går et skridt længere tilbage. | [src](../../../core/runtime/db_private_notes.py#L367) |
 | function | `list_recent_protected_inner_voices` | `(*, limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L409) |
-
-## `core/runtime/db_private_signals.py`
-_Persistence for the private inner-life signal tables._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_private_signals_tables` | `(conn)` | — | [src](../../../core/runtime/db_private_signals.py#L16) |
-| function | `_ensure_private_retained_memory_record_columns` | `(conn)` | — | [src](../../../core/runtime/db_private_signals.py#L87) |
-| function | `record_private_reflective_selection` | `(*, signal_id, source, run_id, work_id, selection_kind, reinforce, reconsider, fade, identity_relevance, confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L101) |
-| function | `recent_private_reflective_selections` | `(limit=…)` | — | [src](../../../core/runtime/db_private_signals.py#L152) |
-| function | `record_private_development_state` | `(*, state_id, source, retained_pattern, preferred_direction, recurring_tension, identity_thread, confidence, created_at, updated_at)` | — | [src](../../../core/runtime/db_private_signals.py#L192) |
-| function | `get_private_development_state` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L237) |
-| function | `get_private_reflective_selection` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L271) |
-| function | `record_private_temporal_promotion_signal` | `(*, signal_id, source, run_id, work_id, rhythm_state, rhythm_window, promotion_target, promotion_action, promotion_confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L309) |
-| function | `get_private_temporal_promotion_signal` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L357) |
-| function | `_norm_retained` | `(value)` | Normalisér til novelty-sammenligning: trim, lowercase, kollaps whitespace. | [src](../../../core/runtime/db_private_signals.py#L393) |
-| function | `record_private_retained_memory_record` | `(*, record_id, source, run_id, work_id, retained_value, retained_kind, retention_scope, retention_horizon, confidence, created_at)` | — | [src](../../../core/runtime/db_private_signals.py#L398) |
-| function | `update_private_retained_memory_record_enriched` | `(*, run_id, enriched_value)` | Replace template retained_value with LLM-enriched lesson text. | [src](../../../core/runtime/db_private_signals.py#L464) |
-| function | `get_private_retained_memory_record` | `()` | — | [src](../../../core/runtime/db_private_signals.py#L476) |
-| function | `recent_private_retained_memory_records` | `(limit=…)` | — | [src](../../../core/runtime/db_private_signals.py#L512) |
 

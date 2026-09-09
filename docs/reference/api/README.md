@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14098 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14108 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -25,8 +25,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14098 functions/
 - [`core.identity`](core.identity.md)
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
-- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_private_signals`
-- [`core.runtime.02`](core.runtime.02.md) — `db_private_states` … `workspace_paths`
+- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_private_notes`
+- [`core.runtime.02`](core.runtime.02.md) — `db_private_signals` … `token_renewal`
+- [`core.runtime.03`](core.runtime.03.md) — `workspace_paths` … `workspace_paths`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agents`
 - [`core.services.02`](core.services.02.md) — `agreement_streak` … `autonomy_proposal_queue`
 - [`core.services.03`](core.services.03.md) — `avoidance_detector` … `central_capture`

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7142/14098 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7149/14108 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,7 +23,7 @@ Generated from source. 7142/14098 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 596 | 1100 | 54% |
+| `core.runtime` | 603 | 1110 | 54% |
 | `core.services` | 4741 | 9730 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
@@ -40,7 +40,7 @@ Generated from source. 7142/14098 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2013)
+## Undocumented public functions (2014)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -300,6 +300,7 @@ Generated from source. 7142/14098 functions/methods documented (50%). The list b
 - `core/plugins/base_plugin.py` :: `get_status` (L110)
 - `core/runtime/bootstrap.py` :: `ensure_runtime_dirs` (L32)
 - `core/runtime/bootstrap.py` :: `ensure_settings_file` (L38)
+- `core/runtime/db_approval_bridge.py` :: `state` (L262)
 - `core/runtime/db_autonomy.py` :: `create_autonomy_proposal` (L82)
 - `core/runtime/db_autonomy.py` :: `get_autonomy_proposal` (L152)
 - `core/runtime/db_autonomy.py` :: `list_autonomy_proposals` (L123)

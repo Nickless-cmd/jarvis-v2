@@ -14,6 +14,8 @@ monkeypatches i tests (``append_chat_message``, ``_get_visible_approval_state``,
 
 from __future__ import annotations
 
+import threading
+
 import logging
 from datetime import UTC, datetime
 
@@ -22,6 +24,11 @@ import core.services.visible_runs as _vr
 from core.eventbus.bus import event_bus
 
 logger = logging.getLogger(__name__)
+
+
+# Laasen daekker «laes tilstanden OG skriv at den er taget». Uden den er der et
+# vindue hvor to svarere begge ser «pending».
+_OVERTAGELSES_LAAS = threading.Lock()
 
 
 def _er_udloebet(pending: dict) -> str:
@@ -63,16 +70,43 @@ def resolve_pending_approval(approval_id: str, *, approved: bool,
     """
     from core.tools.simple_tools import execute_tool_force, format_tool_result_for_model
 
-    pending = _vr._PENDING_APPROVALS.pop(approval_id, None)
-    if pending is not None:
-        _vr._persist_pending_approvals()
-    shared_pending = _vr._get_visible_approval_state(approval_id)
-    if not pending and shared_pending:
-        pending = shared_pending
-    if not pending:
-        return {"error": "Approval not found or expired", "status": "error"}
-    if str(pending.get("status") or "pending") not in {"", "pending"}:
-        return {"error": "Approval already resolved", "status": "error"}
+    # ── OVERTAGELSEN (Fase 4) ───────────────────────────────────────────
+    # «a decision is consumed at most once by atomic claim.»
+    #
+    # MAALT 9/9-2026: to samtidige svar paa samme kort udfoerte kommandoen TO
+    # GANGE. Hullet var vinduet mellem at tage kortet og at skrive at det var
+    # taget: traad A poppede det fra hukommelsen, traad B fandt None dér og
+    # faldt tilbage til den DELTE tilstand, som stadig sagde «pending» — for A
+    # naaede ikke at skrive «approved» foer efter kaldet var koert.
+    #
+    # Baade selve fundet og fixet: taenk paa den DELTE tilstand som CAS-punktet.
+    # Kortet markeres «resolving» FOER udbyder-graensen krydses, under en laas
+    # der ogsaa daekker oplaesningen — saa den anden svarer ser en tilstand der
+    # ikke er «pending», og bliver afvist af vagten der allerede fandtes.
+    with _OVERTAGELSES_LAAS:
+        pending = _vr._PENDING_APPROVALS.pop(approval_id, None)
+        if pending is not None:
+            _vr._persist_pending_approvals()
+        shared_pending = _vr._get_visible_approval_state(approval_id)
+        if not pending and shared_pending:
+            pending = shared_pending
+        if not pending:
+            return {"error": "Approval not found or expired", "status": "error"}
+        if str(pending.get("status") or "pending") not in {"", "pending"}:
+            return {"error": "Approval already resolved", "status": "error"}
+        # Marker den som taget MENS laasen holdes. En anden proces laeser samme
+        # delte tilstand og ser nu at kortet er i brug.
+        try:
+            _vr._set_visible_approval_state(
+                approval_id, {**pending, "approval_id": approval_id,
+                              "status": "resolving"})
+        except Exception:
+            # Kan vi ikke markere den, kan vi heller ikke garantere
+            # engangs-forbruget. Det siges hoejt frem for at koere videre og
+            # haabe.
+            logger.warning("Fase 4: kunne ikke markere %s som overtaget — "
+                           "engangs-forbruget kan IKKE garanteres",
+                           approval_id, exc_info=True)
 
     # ── HVEM SVARER (Fase 4) ────────────────────────────────────────────
     # «duplicate, late, and cross-user answers cannot authorize execution».

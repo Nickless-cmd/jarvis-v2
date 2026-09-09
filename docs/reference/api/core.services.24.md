@@ -614,8 +614,8 @@ _Pending tool-approval resolution for visible runs._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_er_udloebet` | `(pending)` | Er godkendelsen for gammel til at maatte bruges? Returnerer grunden. | [src](../../../core/services/visible_runs_approvals.py#L27) |
-| function | `resolve_pending_approval` | `(approval_id, *, approved, answered_by=…)` | Resolve a pending tool approval. | [src](../../../core/services/visible_runs_approvals.py#L57) |
+| function | `_er_udloebet` | `(pending)` | Er godkendelsen for gammel til at maatte bruges? Returnerer grunden. | [src](../../../core/services/visible_runs_approvals.py#L34) |
+| function | `resolve_pending_approval` | `(approval_id, *, approved, answered_by=…)` | Resolve a pending tool approval. | [src](../../../core/services/visible_runs_approvals.py#L64) |
 
 ## `core/services/visible_runs_capabilities.py`
 _Workspace-capability planning + execution for visible runs._

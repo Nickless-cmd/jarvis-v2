@@ -210,3 +210,86 @@ def test_ALLE_answerers_giver_svareren_med():
             if "resolve_pending_approval(" in linje and "def " not in linje:
                 vindue = "\n".join(kilde.splitlines()[i:i + 4])
                 assert "answered_by" in vindue, f"{navn}: {linje.strip()[:60]}"
+
+
+# ── engangs-forbrug: én beslutning, ét kald — Fase 4 ─────────────────────
+#
+# MAALT 9/9-2026: to samtidige svar paa samme kort udfoerte kommandoen TO
+# GANGE. `rm -rf noget` koert tvefold i proeven. Hullet var vinduet mellem at
+# TAGE kortet og at skrive at det var taget: traad A poppede det fra
+# hukommelsen, traad B fandt None dér og faldt tilbage til den DELTE tilstand,
+# som stadig sagde «pending» — for A skrev foerst «approved» EFTER kaldet.
+
+
+def _kort_i_begge_lagre(navn: str = "a") -> None:
+    kort = {**_kort(60), "arguments": {"command": "rm -rf noget"}}
+    VR._PENDING_APPROVALS[navn] = dict(kort)
+    VR._set_visible_approval_state(navn, {**kort, "approval_id": navn})
+
+
+def test_seks_samtidige_svar_giver_ET_kald(isolated_runtime, monkeypatch):
+    """Hele kriteriet: «a decision is consumed at most once by atomic claim»."""
+    import threading
+    import time
+
+    import core.services.visible_runs_approvals as A
+    import core.tools.simple_tools as ST
+
+    kaldt: list[str] = []
+
+    def _langsom(n, a, **k):
+        time.sleep(0.3)          # hold vinduet aabent for de oevrige
+        kaldt.append(n)
+        return {"status": "ok"}
+
+    monkeypatch.setattr(ST, "execute_tool_force", _langsom)
+    monkeypatch.setattr(ST, "format_tool_result_for_model", lambda n, r: "ok")
+    _kort_i_begge_lagre()
+
+    traade = [threading.Thread(
+        target=lambda: A.resolve_pending_approval("a", approved=True))
+        for _ in range(6)]
+    for t in traade:
+        t.start()
+    for t in traade:
+        t.join(timeout=15)
+
+    assert kaldt == ["bash"], f"kommandoen koerte {len(kaldt)} gange"
+
+
+def test_kortet_markeres_taget_FOER_udbyder_graensen(isolated_runtime,
+                                                     monkeypatch):
+    """Selve mekanismen. Ser en anden svarer stadig «pending» mens kaldet
+    koerer, er laasen uden virkning."""
+    import core.services.visible_runs_approvals as A
+    import core.tools.simple_tools as ST
+
+    set_undervejs: list[str] = []
+
+    def _kig(n, a, **k):
+        tilstand = VR._get_visible_approval_state("a") or {}
+        set_undervejs.append(str(tilstand.get("status")))
+        return {"status": "ok"}
+
+    monkeypatch.setattr(ST, "execute_tool_force", _kig)
+    monkeypatch.setattr(ST, "format_tool_result_for_model", lambda n, r: "ok")
+    _kort_i_begge_lagre()
+
+    A.resolve_pending_approval("a", approved=True)
+    assert set_undervejs == ["resolving"], set_undervejs
+
+
+def test_et_ANDET_svar_efter_overtagelsen_afvises(isolated_runtime, monkeypatch):
+    import core.services.visible_runs_approvals as A
+    import core.tools.simple_tools as ST
+
+    kaldt: list[str] = []
+    monkeypatch.setattr(ST, "execute_tool_force",
+                        lambda n, a, **k: (kaldt.append(n), {"status": "ok"})[1])
+    monkeypatch.setattr(ST, "format_tool_result_for_model", lambda n, r: "ok")
+    _kort_i_begge_lagre()
+
+    A.resolve_pending_approval("a", approved=True)
+    ud = A.resolve_pending_approval("a", approved=True)
+    assert kaldt == ["bash"]
+    assert ud["status"] == "error" and "already resolved" in ud["error"]

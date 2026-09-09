@@ -113,7 +113,10 @@ def _exec_operator_bash_session_run(args: dict[str, Any]) -> dict[str, Any]:
                     _SESSIONS[sid]["cwd"] = new_cwd
         if isinstance(res, dict):
             res["text"] = _render_text(inner)
-    return res
+    # K10: containerens sandkasse gaelder ikke paa operatorens maskine — og
+    # det skal staa i svaret, ikke kun i hovedet paa den der skrev broen.
+    from core.services.shell_confinement_report import OPERATOR, vedhaeft
+    return vedhaeft(res, OPERATOR)
 
 
 def _render_text(inner: dict[str, Any]) -> str:

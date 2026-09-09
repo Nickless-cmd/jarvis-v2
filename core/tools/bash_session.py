@@ -569,10 +569,14 @@ def _exec_bash_session_run(args: dict[str, Any]) -> dict[str, Any]:
         timeout = max(1.0, min(float(timeout), 300.0))
     except Exception:
         timeout = _DEFAULT_TIMEOUT
-    return _client_call(
+    svar = _client_call(
         {"op": "run", "session_id": sid, "command": cmd, "timeout": timeout},
         timeout=timeout + 10.0,
     )
+    # K10: sig det ogsaa naar modellen kalder sessionen DIREKTE. `bash`
+    # rapporterede paa sin vedvarende gren, men denne indgang gik udenom.
+    from core.services.shell_confinement_report import VEDVARENDE, vedhaeft
+    return vedhaeft(svar, VEDVARENDE)
 
 
 def _exec_bash_session_close(args: dict[str, Any]) -> dict[str, Any]:

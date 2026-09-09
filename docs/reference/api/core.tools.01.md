@@ -71,8 +71,8 @@ _Persistent bash sessions — Jarvis' one-shot bash forced him to restart his_
 | function | `_client_call` | `(payload, timeout=…)` | — | [src](../../../core/tools/bash_session.py#L525) |
 | function | `_exec_bash_session_open` | `(args)` | — | [src](../../../core/tools/bash_session.py#L556) |
 | function | `_exec_bash_session_run` | `(args)` | — | [src](../../../core/tools/bash_session.py#L560) |
-| function | `_exec_bash_session_close` | `(args)` | — | [src](../../../core/tools/bash_session.py#L578) |
-| function | `_exec_bash_session_list` | `(_args)` | — | [src](../../../core/tools/bash_session.py#L585) |
+| function | `_exec_bash_session_close` | `(args)` | — | [src](../../../core/tools/bash_session.py#L582) |
+| function | `_exec_bash_session_list` | `(_args)` | — | [src](../../../core/tools/bash_session.py#L589) |
 
 ## `core/tools/brain_write_gate.py`
 _HARD gate for user-initiated writes to Jarvis' brain._

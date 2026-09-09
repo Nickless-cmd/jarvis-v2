@@ -16,29 +16,13 @@ from core.services import projection_drift as D
 from core.services.chat_sessions import append_chat_message
 
 
-def _ro(grænse: float = 5.0) -> None:
-    """Vent på de baggrundstråde `append_chat_message` selv starter.
-
-    En brugerbesked udløser `emotion_concepts._safe_persist` i en tråd, og den
-    kører `CREATE TABLE IF NOT EXISTS` før sin skrivning — DDL tager en
-    eksklusiv lås. Skriver testen næste besked imens, får DEN
-    «database is locked» på sit eget `INSERT INTO chat_messages`.
-
-    Det er ikke ledgerens fejl og heller ikke testens: det er systemets egen
-    adfærd. Ventetiden skjuler den ikke, den venter bare på den — så det der
-    måles er ledgeren og ikke trådenes timing.
-    """
-    import threading
-    import time
-    slut = time.monotonic() + grænse
-    while time.monotonic() < slut:
-        levende = [t for t in threading.enumerate()
-                   if t is not threading.current_thread() and t.is_alive()
-                   and ("_safe_persist" in t.name or "eventbus-writer" == t.name)]
-        if not any("_safe_persist" in t.name for t in levende):
-            return
-        time.sleep(0.01)
-
+# `_ro()` — en venteløkke for systemets egne baggrundstråde — stod her indtil
+# 9/9-2026. Den var en OMGÅELSE af at `emotion_concepts` startede en tråd (og
+# dermed en ny sqlite-forbindelse) pr. brugerbesked, hvilket gav «database is
+# locked» på testens eget INSERT i ~50 % af kørslerne.
+#
+# Kilden er rettet: persisteringen bruger nu én arbejdstråd med én genbrugt
+# forbindelse. Målt bagefter: 0 af 10 kørsler fejler uden ventetiden.
 TID = "2026-09-09T10:00:00+00:00"
 
 
@@ -62,7 +46,6 @@ def _begge(sid: str, rolle: str, tekst: str, **ekstra):
     """
     append_chat_message(session_id=sid, role=rolle, content=tekst,
                         created_at=TID, **ekstra)
-    _ro()
 
 
 def _kun_tabellen(sid: str, rolle: str, tekst: str, **ekstra):
@@ -82,7 +65,6 @@ def _kun_tabellen(sid: str, rolle: str, tekst: str, **ekstra):
                             created_at=TID, **ekstra)
     finally:
         L.append_unowned = aegte
-    _ro()
 
 
 def _kun_ledger(sid: str, eid: str, rolle: str, tekst: str, **ekstra):

@@ -18,29 +18,13 @@ from core.services import projection_drift as D
 from core.services.chat_sessions import append_chat_message
 
 
-def _ro(grænse: float = 5.0) -> None:
-    """Vent på de baggrundstråde `append_chat_message` selv starter.
-
-    En brugerbesked udløser `emotion_concepts._safe_persist` i en tråd, og den
-    kører `CREATE TABLE IF NOT EXISTS` før sin skrivning — DDL tager en
-    eksklusiv lås. Skriver testen næste besked imens, får DEN
-    «database is locked» på sit eget `INSERT INTO chat_messages`.
-
-    Det er ikke ledgerens fejl og heller ikke testens: det er systemets egen
-    adfærd. Ventetiden skjuler den ikke, den venter bare på den — så det der
-    måles er ledgeren og ikke trådenes timing.
-    """
-    import threading
-    import time
-    slut = time.monotonic() + grænse
-    while time.monotonic() < slut:
-        levende = [t for t in threading.enumerate()
-                   if t is not threading.current_thread() and t.is_alive()
-                   and ("_safe_persist" in t.name or "eventbus-writer" == t.name)]
-        if not any("_safe_persist" in t.name for t in levende):
-            return
-        time.sleep(0.01)
-
+# `_ro()` — en venteløkke for systemets egne baggrundstråde — stod her indtil
+# 9/9-2026. Den var en OMGÅELSE af at `emotion_concepts` startede en tråd (og
+# dermed en ny sqlite-forbindelse) pr. brugerbesked, hvilket gav «database is
+# locked» på testens eget INSERT i ~50 % af kørslerne.
+#
+# Kilden er rettet: persisteringen bruger nu én arbejdstråd med én genbrugt
+# forbindelse. Målt bagefter: 0 af 10 kørsler fejler uden ventetiden.
 TID = "2026-09-09T10:00:00+00:00"
 
 
@@ -57,7 +41,6 @@ def _historik(sid, n):
     for i in range(n):
         append_chat_message(session_id=sid, role="user" if i % 2 == 0 else "assistant",
                             content=f"besked {i}", created_at=TID)
-    _ro()
 
 
 # ── efterfyldningen ──────────────────────────────────────────────────────
@@ -103,7 +86,6 @@ def test_en_optaget_lease_efterfylder_IKKE_halvt(sid):
 def test_efterfyldning_FOER_skifte_giver_enighed(sid):
     _historik(sid, 10)
     r = K.enable_shadow(sid)
-    _ro()
     assert r["ok"] is True
     assert r["drift"]["enige"] is True
     assert r["drift"]["ledger"] == r["drift"]["tabel"] == 10
@@ -113,7 +95,6 @@ def test_efterfyldning_FOER_skifte_giver_enighed(sid):
 def test_nye_beskeder_efter_skiftet_holder_siderne_enige(sid):
     _historik(sid, 5)
     K.enable_shadow(sid)
-    _ro()
     append_chat_message(session_id=sid, role="user", content="ny", created_at=TID)
     d = D.compare(sid)
     assert d["enige"] is True and d["ledger_beskeder"] == 6
@@ -123,7 +104,6 @@ def test_sessionen_kan_derefter_SKIFTE(sid):
     """Hele pointen: efter efterfyldning + skygge er porten åben."""
     _historik(sid, 5)
     K.enable_shadow(sid)
-    _ro()
     append_chat_message(session_id=sid, role="user", content="ny", created_at=TID)
     ok, hvorfor = D.may_cut_over(sid)
     assert ok is True and "6 beskeder" in hvorfor
@@ -142,7 +122,6 @@ def test_en_session_der_allerede_er_flyttet_roeres_ikke(sid):
     _historik(sid, 3)
     K.enable_shadow(sid)
     r = K.enable_shadow(sid)
-    _ro()
     assert r["ok"] is False and "allerede" in r["grund"]
 
 
@@ -159,7 +138,6 @@ def test_hele_vejen_igennem_kan_samtalen_genskabes(sid):
     """Efterfyld, skygge, nye beskeder, riv rækkerne ud, byg dem op igen."""
     _historik(sid, 8)
     K.enable_shadow(sid)
-    _ro()
     append_chat_message(session_id=sid, role="assistant", content="ny", created_at=TID)
     with connect() as c:
         foer = [dict(r) for r in c.execute(
@@ -196,7 +174,6 @@ def test_markoerer_efterfyldes_MED(sid):
 def test_en_NY_markoer_skygge_skrives(sid):
     _historik(sid, 3)
     K.enable_shadow(sid)
-    _ro()
     _markoer(sid, "ny opsummering")
     assert L.current_seq(sid) == 4
     assert L.read_session_events(sid)[-1]["payload"]["content"] == "ny opsummering"
@@ -205,7 +182,6 @@ def test_en_NY_markoer_skygge_skrives(sid):
 def test_git_sha_paa_markoeren_overlever(sid):
     _historik(sid, 2)
     K.enable_shadow(sid)
-    _ro()
     _markoer(sid, "x", sha="deadbeef")
     assert L.read_session_events(sid)[-1]["payload"]["git_sha"] == "deadbeef"
 
@@ -223,7 +199,6 @@ def test_en_samtale_MED_markoer_genskabes_helt(sid):
     _historik(sid, 5)
     _markoer(sid, "midtvejs")
     K.enable_shadow(sid)
-    _ro()
     with connect() as c:
         foer = [dict(r) for r in c.execute(
             "SELECT message_id, role, content, git_sha FROM chat_messages "
@@ -249,7 +224,6 @@ def test_en_LEDGER_session_skriver_markoeren_GENNEM_ledgeren(sid):
     """
     _historik(sid, 2)
     K.enable_shadow(sid)
-    _ro()
     L.advance_storage_mode(sid, to="ledger")
 
     mid = _markoer(sid, "opsummering", sha="cafe123")
@@ -311,7 +285,6 @@ def test_reseed_afviser_en_LEDGER_session(sid):
     """Dér ville det være at kassere historik, ikke at rette en måling."""
     _historik(sid, 2)
     K.enable_shadow(sid)
-    _ro()
     L.advance_storage_mode(sid, to="ledger")
     r = K.reseed(sid)
     assert r["ok"] is False and "shadow" in r["grund"]
@@ -327,7 +300,6 @@ def test_en_ren_efterfyldning_er_stadig_tilladt(sid):
     er et præfiks af tabellen, og resten skal føjes til."""
     _historik(sid, 5)
     K.enable_shadow(sid)
-    _ro()
     _historik(sid, 2)                          # skygge-skrevet, altså i takt
     r = K.backfill(sid)
     assert r["skrevet"] == 0 and r.get("dubletter") == 7

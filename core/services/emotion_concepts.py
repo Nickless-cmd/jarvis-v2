@@ -330,10 +330,67 @@ def _prune_if_needed() -> None:
         del _active[weakest]
 
 
+# ── persistering: ÉN arbejdstråd, ikke én pr. signal ─────────────────────
+#
+# Måltl 9/9-2026. Den gamle kode startede en NY tråd pr. signal:
+#
+#     t = threading.Thread(target=_safe_persist, args=(signal,), daemon=True)
+#
+# `core.runtime.db_core.connect()` er thread-local pooled, så en ny tråd får en
+# HELT NY sqlite-forbindelse. Puljen blev netop indført for at stoppe 1.091
+# connects pr. prompt-assembly — og en tråd pr. signal omgik den fuldstændigt:
+# én forbindelse pr. følelses-signal, hver med sin egen skrive-transaktion,
+# samtidig med forgrundens skrivning i `append_chat_message`.
+#
+# Resultatet var reproducerbart som «database is locked» på brugerens egen
+# besked. (Selve `CREATE TABLE IF NOT EXISTS` var UDEN skyld: målt til 0,7 µs
+# og ingen lås overhovedet på en eksisterende tabel. Den stod bare først i
+# funktionen, så en netop startet tråd blev fanget dér i stak-dumpet.)
+#
+# Nu: én kø, én arbejdstråd, én genbrugt forbindelse. Køen er BEGRÆNSET —
+# løber den fuld, tabes det ældste signal frem for at lade hukommelsen vokse.
+# Et følelses-signal er observabilitet; det må ikke kunne skade det det måler.
+
+_persist_koe: "queue.Queue[dict[str, Any]]" = queue.Queue(maxsize=500)
+_persist_worker: threading.Thread | None = None
+_persist_laas = threading.Lock()
+_persist_tabt = 0
+
+
+def _persist_loop() -> None:
+    while True:
+        signal = _persist_koe.get()
+        try:
+            _safe_persist(signal)
+        except Exception:
+            logger.warning("emotion_concepts: persistering fejlede", exc_info=True)
+        finally:
+            _persist_koe.task_done()
+
+
 def _persist_async(signal: dict[str, Any]) -> None:
-    """Fire-and-forget: persist signal to DB for MC observability."""
-    t = threading.Thread(target=_safe_persist, args=(signal,), daemon=True)
-    t.start()
+    """Læg i kø. Fire-and-forget, men på ÉN tråd med ÉN forbindelse."""
+    global _persist_worker, _persist_tabt
+    with _persist_laas:
+        if _persist_worker is None or not _persist_worker.is_alive():
+            _persist_worker = threading.Thread(
+                target=_persist_loop, name="emotion-concepts-persist", daemon=True)
+            _persist_worker.start()
+    try:
+        _persist_koe.put_nowait(signal)
+    except queue.Full:
+        _persist_tabt += 1
+        # Ikke tavst: en kø der løber over, betyder at skrivningen ikke kan
+        # følge med, og dét skal kunne ses.
+        if _persist_tabt % 50 == 1:
+            logger.warning("emotion_concepts: persist-kø fuld, %d signal(er) tabt",
+                           _persist_tabt)
+
+
+def _persist_koe_status() -> dict[str, Any]:
+    """Til tests og til at kigge på hvor langt bagud skrivningen er."""
+    return {"i_koe": _persist_koe.qsize(), "tabt": _persist_tabt,
+            "arbejder_lever": bool(_persist_worker and _persist_worker.is_alive())}
 
 
 def _safe_persist(signal: dict[str, Any]) -> None:

@@ -1211,3 +1211,23 @@ from core.runtime.db_schema import (  # noqa: E402,F401
 # faser flytter _ensure_*-funcs til submoduler, kalder hver submodul også
 # _install_ensure_once_cache_for(__name__) på sig selv.
 _install_ensure_once_cache()
+
+
+# --- Append-only session-ledger (Fase 1, DeepSeek-harness-spec'en, 2026-09-09) ---
+# `session_events` + `session_write_leases`. Ledgeren er en NY kanonisk kilde
+# ved siden af `chat_messages`; hvilken der gælder pr. session afgøres af
+# `storage_mode`, som stadig er "legacy" for alle sessioner.
+from core.runtime.db_session_ledger import (  # noqa: E402,F401
+    DEFAULT_LEASE_TTL_S,
+    STORAGE_MODES,
+    LeaseLost,
+    _ensure_session_ledger_table,
+    acquire_write_lease,
+    advance_storage_mode,
+    append_session_events,
+    current_seq,
+    lease_state,
+    read_session_events,
+    release_write_lease,
+    storage_mode,
+)

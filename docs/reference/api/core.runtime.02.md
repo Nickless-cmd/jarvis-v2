@@ -646,6 +646,26 @@ _Sensory memories — persistent archive of Jarvis's sensory experiences._
 | function | `count_sensory_memories` | `(*, modality=…)` | — | [src](../../../core/runtime/db_sensory.py#L172) |
 | function | `get_sensory_memory` | `(memory_id)` | — | [src](../../../core/runtime/db_sensory.py#L189) |
 
+## `core/runtime/db_session_ledger.py`
+_Append-only session-ledger — Fase 1 af DeepSeek-harness-spec'en._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/runtime/db_session_ledger.py#L56) |
+| function | `_iso` | `(dt)` | — | [src](../../../core/runtime/db_session_ledger.py#L60) |
+| function | `_ensure_session_ledger_table` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L64) |
+| function | `acquire_write_lease` | `(session_id, *, owner, ttl_s=…, now=…)` | Tag skrive-ejerskabet over én session. Returnér møntet, eller None. | [src](../../../core/runtime/db_session_ledger.py#L99) |
+| function | `release_write_lease` | `(session_id, *, owner, token)` | Giv ejerskabet fra sig. Kun den nuværende ejer med den rigtige mønt kan. | [src](../../../core/runtime/db_session_ledger.py#L141) |
+| function | `lease_state` | `(session_id)` | Diagnostik: hvem ejer sessionen, med hvilken mønt, hvor længe. | [src](../../../core/runtime/db_session_ledger.py#L156) |
+| class | `LeaseLost` | `` | Skrivningen blev afvist: leasen er væk eller møntet er forældet. | [src](../../../core/runtime/db_session_ledger.py#L175) |
+| function | `append_session_events` | `(session_id, *, owner, token, events, now=…)` | Tilføj hændelser ATOMISK og IDEMPOTENT. | [src](../../../core/runtime/db_session_ledger.py#L179) |
+| function | `read_session_events` | `(session_id, *, from_seq=…, to_seq=…)` | Læs hændelser i rækkefølge. Halvåbent interval: (from_seq, to_seq]. | [src](../../../core/runtime/db_session_ledger.py#L253) |
+| function | `current_seq` | `(session_id)` | Sessionens højeste sekvensnummer — 0 hvis ledgeren er tom for den. | [src](../../../core/runtime/db_session_ledger.py#L283) |
+| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_session_ledger.py#L294) |
+| function | `_ensure_storage_mode_column` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L320) |
+| function | `storage_mode` | `(session_id)` | Hvilken kilde er kanonisk for denne session? | [src](../../../core/runtime/db_session_ledger.py#L329) |
+| function | `advance_storage_mode` | `(session_id, *, to)` | Ryk EN session fremad. Envejs — der er ingen vej tilbage. | [src](../../../core/runtime/db_session_ledger.py#L351) |
+
 ## `core/runtime/db_user_contradiction.py`
 _DB helpers for user_contradictions + user_statements tables._
 

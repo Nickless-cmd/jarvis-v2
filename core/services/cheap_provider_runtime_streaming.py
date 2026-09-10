@@ -135,6 +135,11 @@ def _iter_openai_compatible_chat_events(
     # længde-trunkering (finish_reason=="length") blev ALDRIG tjekket i nogen af de
     # to kodebaser (agent-fund). Fanges nu → surface som conservation-nerve.
     _finish_reason = ""
+    # HVILKEN MODEL DER FAKTISK SVAREDE. OpenAI-kompatible stroemme baerer
+    # `model` paa hver chunk, og den behoever IKKE vaere den vi bad om: et
+    # alias kan pege et nyt sted, en udbyder kan opgradere stille, en faldback
+    # kan traede til. Uden dette felt kender runtimen kun sit oenske.
+    _observed_model = ""
 
     try:
         with httpx.stream(
@@ -182,6 +187,12 @@ def _iter_openai_compatible_chat_events(
                 usage_block = event.get("usage") or {}
                 if usage_block:
                     final_usage = dict(usage_block)
+                # Modelnavnet staar paa selve event'et, ogsaa paa
+                # usage-only-chunks — derfor FOER `choices`-tjekket, ellers
+                # ville en stroem hvis sidste chunk kun baerer usage tabe det.
+                _m = event.get("model")
+                if isinstance(_m, str) and _m.strip():
+                    _observed_model = _m.strip()
                 choices = event.get("choices") or []
                 if not choices:
                     continue
@@ -321,6 +332,7 @@ def _iter_openai_compatible_chat_events(
         "cache_miss_tokens": cache_miss,
         "cost_usd": cost_usd,
         "finish_reason": _finish_reason,
+        "observed_model": _observed_model,
     }
 
 

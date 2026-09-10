@@ -41,6 +41,14 @@ class VisibleModelResult:
     # Provider termination reason. ``length`` must never be mistaken for a
     # clean completion; the streaming adapter may recover it before returning.
     finish_reason: str = ""
+    # HVILKEN MODEL DER FAKTISK SVAREDE. Udbyderen kan svare med en anden model
+    # end den vi bad om — et alias der peger et nyt sted, en stille
+    # opgradering, en faldback. Uden dette felt er runtimens viden om sin egen
+    # model en ANTAGELSE: vi kender kun oensket, ikke svaret.
+    #
+    # Tom streng betyder «udbyderen sagde det ikke» — altsaa uvidenhed, ikke
+    # «ingen model». Kalderen skal kunne skelne.
+    observed_model: str = ""
 
 
 @dataclass(slots=True)

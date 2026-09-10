@@ -517,8 +517,26 @@ def _stream_openai_compatible_model(
                         cache_hit_tokens=int(ev.get("cache_hit_tokens") or 0),
                         cache_miss_tokens=int(ev.get("cache_miss_tokens") or 0),
                         finish_reason=_finish_reason,
+                        # Hvad udbyderen FAKTISK svarede med. Tom = den sagde
+                        # det ikke; det er uvidenhed, ikke «ingen model».
+                        observed_model=str(ev.get("observed_model") or ""),
                     )
                 )
+                # BOGFOER OBSERVATIONEN HER, hvor den sker. Et lager over
+                # model-epoker som ingen fylder ville vaere endnu et lag ingen
+                # bruger. Fail-safe: en observation maa aldrig kunne vaelte den
+                # tur der frembragte den.
+                try:
+                    from core.services.provider_model_epochs import (
+                        record_model_observation,
+                    )
+                    record_model_observation(
+                        provider=str(provider or ""),
+                        requested_model=str(model or ""),
+                        observed_model=str(ev.get("observed_model") or ""),
+                    )
+                except Exception:
+                    pass
                 return
     except VisibleModelStreamCancelled:
         raise

@@ -131,7 +131,32 @@ def compare(session_id: str) -> dict[str, Any]:
         "ledger_beskeder": len(ledger),
         "tabel_beskeder": len(tabel),
         "uenigheder": uenigheder,
+        # BEVIS ER IKKE DET SAMME SOM ENIGHED (fase 11). `enige` er sandt naar
+        # der ingen uenigheder er — ogsaa naar der ingenting er at vaere uenig
+        # om. MAALT 10/9-2026: kanariefuglen sad paa to sessioner der havde
+        # vaeret DOEDE i 20 timer, og timepulsen meldte «ledger enige (+0)»
+        # hver time. Det lyder som loebende verifikation og er tavshed.
+        #
+        # Et skifte maa aldrig hvile paa tavshed, saa dommen staar for sig:
+        #   "verificeret"  — der ER sammenlignede beskeder, og de stemmer
+        #   "intet-bevis"  — ingen af siderne har noget
+        #   "uenig"        — der er fundet forskelle
+        "bevis": ("uenig" if uenigheder
+                  else ("verificeret" if (ledger and tabel) else "intet-bevis")),
+        "nyeste_ledger": _nyeste(ledger),
+        "nyeste_tabel": _nyeste(tabel),
     }
+
+
+def _nyeste(raekker: list) -> str:
+    """Tidsstemplet paa den nyeste raekke — saa en laeser kan se om «enige»
+    hviler paa noget der skete i dag eller i sidste uge."""
+    nyeste = ""
+    for r in raekker or []:
+        t = str((r or {}).get("created_at") or "") if isinstance(r, dict) else ""
+        if t > nyeste:
+            nyeste = t
+    return nyeste
 
 
 def may_cut_over(session_id: str) -> tuple[bool, str]:

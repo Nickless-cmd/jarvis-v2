@@ -129,6 +129,13 @@ def run_post_output_shadow(ctx: dict[str, Any]) -> None:
         # selv flag-tjek må aldrig vælte
         return None
 
+    # record_surface=False: SKYGGEN VISER INTET. Verdict'et her bruges aldrig til
+    # kontrol-flow (hard invariant ovenfor) — saa en surface herfra kan pr. konstruktion
+    # ikke heedes. Uden dette flag skrev shadow-stien heed-telemetri for advarsler der
+    # aldrig blev injiceret: maalt 10. sep 2026 kom 56 af 133 surfaces i doegnet herfra
+    # (42 %), og den rapporterede heed-rate paa 12 % var i virkeligheden 23 %.
+    ctx = {**(ctx if isinstance(ctx, dict) else {}), "record_surface": False}
+
     for nerve, mod_path, fn_attr, cluster, klass in _GATES:
         try:
             fn = _resolve(mod_path, fn_attr)

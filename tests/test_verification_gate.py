@@ -217,3 +217,32 @@ def test_observe_failure_does_not_break_gate(monkeypatch):
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
     with patch("core.services.verification_gate._recent_events", return_value=[]):
         assert verification_gate_section() is None  # gaten fungerer stadig
+
+
+# ── record_surface er OPT-IN (10. sep 2026) ────────────────────────────────
+# Maalt: funktionen har fire kaldere, men kun prompt_contract viser teksten.
+# Shadow (post_output) og reasoning_detectors kasserede verdict'et og skrev
+# alligevel heed-telemetri — 56 af 133 surfaces i doegnet (42 %) var advarsler
+# ingen nogensinde saa, og de talte som «ignored» i heed-raten.
+
+def test_section_does_not_record_by_default(monkeypatch):
+    """En surface der IKKE injiceres i en prompt maa ikke taelle i heed-raten."""
+    calls: list = []
+    import core.services.verification_gate_telemetry as vgt
+    monkeypatch.setattr(vgt, "record_surface", lambda **kw: calls.append(kw))
+    events = [_evt("write_file"), _evt("write_file")]
+    with patch("core.services.verification_gate._recent_events", return_value=events):
+        assert verification_gate_section() is not None
+    assert calls == []
+
+
+def test_section_records_when_injected(monkeypatch):
+    """Kaldestedet der FAKTISK viser teksten beder eksplicit om at faa den maalt."""
+    calls: list = []
+    import core.services.verification_gate_telemetry as vgt
+    monkeypatch.setattr(vgt, "record_surface", lambda **kw: calls.append(kw))
+    events = [_evt("write_file"), _evt("write_file")]
+    with patch("core.services.verification_gate._recent_events", return_value=events):
+        assert verification_gate_section(record=True) is not None
+    assert len(calls) == 1
+    assert calls[0]["unverified_count"] == 2

@@ -329,12 +329,25 @@ def _observe_verification_decision(*, passed: bool, failed: int, unverified: int
         pass
 
 
-def verification_gate_section() -> str | None:
+def verification_gate_section(*, record: bool = False) -> str | None:
     """Format gate signals as a prompt-awareness section, or None.
 
     Uses "effective" unverified count (no strict verify AND no light readback)
     to decide whether to surface. This avoids nagging when Jarvis has already
     glanced back at what he mutated.
+
+    `record` styrer om denne surface skrives til R2-telemetrien (heed-tracking).
+    Den er bevidst OPT-IN, og grunden er målt: funktionen har fire kaldere, men
+    kun ÉN af dem viser teksten — prompt_contract (awareness-slot 23/95). Både
+    gate_shadow (post_output) og reasoning_detectors (reasoning-stadiet) kalder
+    gaten og KASSERER verdict'et; deres surface blev aldrig vist for nogen, men
+    talte alligevel som «ignored» i heed-raten. Målt 10. sep 2026: 56 af 133
+    surfaces i døgnet kom fra shadow-stien alene (42 %), så den rapporterede
+    rate på 12 % var i virkeligheden 23 % af de advarsler der FAKTISK blev vist.
+
+    En metric der puster sig selv op er den farligste slags: støj er synlig,
+    inflation er ikke. Derfor default False — et nyt kaldested der glemmer at
+    sætte flaget under-rapporterer (opdages som nul) frem for at forurene.
     """
     result = evaluate_verification_gate()
     failed = result.get("failed_verifies") or []
@@ -351,17 +364,20 @@ def verification_gate_section() -> str | None:
     )
 
     # Record this surface for R2 telemetry — we want to know whether this
-    # warning gets heeded (followed by a strict OR light readback).
-    try:
-        from core.services.verification_gate_telemetry import record_surface
-        record_surface(
-            failed_verify_count=int(result.get("failed_verify_count") or 0),
-            unverified_count=unverified_effective,
-            mutation_count=int(result.get("mutation_count") or 0),
-            verify_count=int(result.get("strict_verify_count") or 0),
-        )
-    except Exception:
-        pass
+    # warning gets heeded (followed by a strict OR light readback). KUN naar
+    # kalderen faktisk viser teksten (se docstring): en surface der aldrig
+    # blev injiceret i en prompt kan ikke heedes og maa ikke taelle som glemt.
+    if record:
+        try:
+            from core.services.verification_gate_telemetry import record_surface
+            record_surface(
+                failed_verify_count=int(result.get("failed_verify_count") or 0),
+                unverified_count=unverified_effective,
+                mutation_count=int(result.get("mutation_count") or 0),
+                verify_count=int(result.get("strict_verify_count") or 0),
+            )
+        except Exception:
+            pass
 
     lines: list[str] = []
     if failed:

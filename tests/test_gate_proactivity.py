@@ -46,3 +46,19 @@ def test_fail_open_through_central():
                      proactivity_gate, cluster="proactivity", klass=GateClass.COGNITIVE)
     # gate selv fail-open'er internt → GREEN (ikke kast); central ville ellers SKIP'e
     assert v.decision in (Decision.GREEN, Decision.SKIP)
+
+
+def test_yellow_passes_record_flag_from_ctx():
+    """record_surface er opt-in: gaten videresender ctx-flaget til sektionen, saa
+    kun det kaldested der faktisk injicerer teksten skriver heed-telemetri."""
+    seen: list = []
+
+    def _fake_section(*, record: bool = False):
+        seen.append(record)
+        return "Verification gate: 2 unverified mutations"
+
+    with patch("core.services.r2_5_blocking_gate.r2_5_block_section", return_value=None), \
+         patch("core.services.verification_gate.verification_gate_section", _fake_section):
+        proactivity_gate({"reasoning_tier": "fast"})
+        proactivity_gate({"reasoning_tier": "fast", "record_surface": True})
+    assert seen == [False, True]

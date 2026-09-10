@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib as _hashlib
+
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -185,6 +187,15 @@ def _extract_self_model_candidates(*, user_message: str, session_id: str) -> lis
     if limitation:
         signals.append(limitation)
 
+    # UDTRYKKELIG KORREKTION (opgave 5). Den kritiker-stoettede sti ovenfor
+    # kraever at en aktiv kritiker allerede har mindst to observationer — god
+    # mod stoej, men den betyder at «du tog fejl om dine egne evner» ikke
+    # registreres overhovedet. Den her sti noterer det FORELOEBIGT
+    # (`uncertain`), saa én saetning ikke bliver til en sandhed om selvet.
+    correction = explicit_self_correction_candidate(user_message)
+    if correction:
+        signals.append(correction)
+
     improvement = _improving_edge_signal(user_message)
     if improvement:
         signals.append(improvement)
@@ -203,6 +214,87 @@ def _extract_self_model_candidates(*, user_message: str, session_id: str) -> lis
         if next_rank >= current_rank:
             deduped[key] = item
     return list(deduped.values())
+
+
+# ── Udtrykkelige korrektioner (opgave 5) ───────────────────────────────
+#
+# Hidtil kunne en selv-begraensning kun opstaa hvis en aktiv kritiker allerede
+# stoettede den med mindst to observationer. Det er en god graense mod stoej —
+# men den betyder at Bjoern kan sige «du tog fejl om dine egne evner» og
+# runtimen registrerer INTET.
+#
+# Den anden yderlighed er vaerre: tager man én saetning for paalydende og
+# skriver den ind som en sandhed om selvet, kan enhver der skriver til Jarvis
+# omskrive hans selvbillede med én velformuleret paastand.
+#
+# Derfor: FORELOEBIGT. En udtrykkelig korrektion aabner et `uncertain`-signal
+# med `medium` tillid, og kun uafhaengig stoette forfremmer det. Én kilde er et
+# spor, to er et faktum — samme disciplin som verdens-fakta paa denne gren.
+
+# Ordet skal handle om JARVIS. «jeg tog fejl» er brugerens egen indroemmelse og
+# siger intet om selvmodellen.
+_SELV_ORD = ("din ", "dine ", "dit ", "du ", "your ", "you ", "yourself")
+
+# Paastande om en fejl. Bevidst SMALLE: en bred liste ville fange enhver
+# utilfredshed og goere «foreloebigt» til «konstant».
+_FEJL_MOENSTRE = (
+    r"\bdu (glemte|overs[aå]|misforstod|tog fejl|har misforst[aå]et|har glemt)\b",
+    r"\bdu (er|var) (helt )?(forkert|galt) p[aå]\b",
+    r"\byou (were|are) wrong\b",
+    r"\byou (forgot|missed|misunderstood)\b",
+    r"\bthere('s| is) a problem with your\b",
+    r"\bproblem med (din|dit|dine)\b",
+)
+
+
+def explicit_self_correction_candidate(message: str) -> dict[str, object] | None:
+    """Ét foreloebigt signal fra en UDTRYKKELIG korrektion — eller `None`.
+
+    Deterministisk: ingen model, ingen tilfaeldighed. En selv-opfattelse der
+    aendrer sig med temperaturen er ikke en maaling.
+    """
+    import re as _re
+
+    tekst = str(message or "").strip()
+    if not tekst:
+        return None
+    lav = tekst.lower()
+
+    # ET SPOERGSMAAL ER IKKE EN KORREKTION. «Husker du din historik?» er en
+    # foresporgsel; «du glemte at tjekke din historik» er en paastand. Kan de
+    # to ikke skelnes, laerer runtimen af sin samtalepartners TVIVL.
+    if lav.rstrip().endswith("?"):
+        return None
+    if not any(o in lav for o in _SELV_ORD):
+        return None
+    traef = next((m for m in _FEJL_MOENSTRE if _re.search(m, lav)), None)
+    if traef is None:
+        return None
+
+    # Noeglen udledes af det der blev SAGT, normaliseret — saa to udgaver af
+    # samme klage ikke ser ud som to uafhaengige kilder og forfremmer sig selv.
+    kerne = _re.sub(r"[^a-z0-9æøå ]+", " ", lav)
+    kerne = " ".join(kerne.split())[:80]
+    noegle = _hashlib.sha256(kerne.encode("utf-8")).hexdigest()[:12]
+
+    return {
+        "signal_type": "current-limitation",
+        "canonical_key": f"self-model:correction:{noegle}",
+        "status": "uncertain",
+        "title": "Explicit correction from the user",
+        "summary": "Brugeren korrigerede Jarvis' opfattelse af sig selv.",
+        "rationale": ("Én udtrykkelig korrektion er ét menneskes paastand ved "
+                      "én lejlighed. Den noteres, men forfremmes foerst naar "
+                      "uafhaengig stoette bekraefter den."),
+        "source_kind": "explicit-correction",
+        "confidence": "medium",
+        "evidence_summary": _quote(tekst),
+        "support_summary": "1 udtrykkelig korrektion, endnu uden uafhaengig stoette.",
+        "support_count": 1,
+        "session_count": 1,
+        "status_reason": ("Foreloebig: én kilde er et spor, ikke et faktum om "
+                          "selvet."),
+    }
 
 
 def _current_limitation_signal(message: str, *, session_id: str) -> dict[str, object] | None:

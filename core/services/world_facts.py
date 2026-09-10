@@ -18,6 +18,21 @@ _WORLD_FACT_STATUSES = {
 }
 _PROMPT_STATUSES = ("verified", "observed", "reported", "contradicted")
 
+# En samtale der SIGER at noget er sandt, er et RYGTE — ikke en iagttagelse.
+# `observed` betyder «runtimen saa det ske»; `verified` betyder «det er
+# efterproevet mod en kilde». Ingen af delene kan en beskedtekst levere, uanset
+# hvor sikkert den er formuleret. Uden denne graense kan enhver der skriver til
+# Jarvis forfremme sin egen paastand til husets sandhed ved at formulere den
+# skarpt nok.
+_SAMTALE_KILDER = {"conversation_report", "conversation", "chat_report"}
+
+# Status der KRAEVER at man kan pege paa hvor det kommer fra. En «verificeret»
+# kendsgerning uden kildehenvisning er en paastand med et finere ord.
+_KRAEVER_KILDEHENVISNING = {"verified"}
+
+# Status en samtale ikke kan give.
+_KRAEVER_FOERSTEHAAND = {"observed", "verified"}
+
 
 def record_world_fact(
     *,
@@ -44,6 +59,21 @@ def record_world_fact(
         raise ValueError("statement is required")
     if normalized_status not in _WORLD_FACT_STATUSES:
         raise ValueError(f"unsupported world fact status: {status}")
+    normalized_kind = str(source_kind or "").strip().lower()
+    if (normalized_status in _KRAEVER_FOERSTEHAAND
+            and normalized_kind in _SAMTALE_KILDER):
+        raise ValueError(
+            f"conversation-derived evidence cannot assert status "
+            f"{normalized_status!r}: a report that something is true is not an "
+            "observation of it. Use 'reported'."
+        )
+    if (normalized_status in _KRAEVER_KILDEHENVISNING
+            and not str(source_ref or "").strip()):
+        raise ValueError(
+            f"status {normalized_status!r} requires a concrete source_ref — "
+            "a verified fact you cannot point back to is a claim with a "
+            "finer word."
+        )
     now = datetime.now(UTC).isoformat()
     return insert_world_fact(
         fact_id=f"fact-{uuid4().hex}",

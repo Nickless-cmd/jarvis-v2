@@ -48,6 +48,8 @@ from core.runtime.db import (
     recent_visible_runs,
 )
 
+from core.runtime.db_world_self_truth import quarantine_legacy_world_topics
+
 logger = logging.getLogger(__name__)
 
 
@@ -76,6 +78,17 @@ def produce_signals_from_run(
         "development_focus": 0, "self_review_outcome": 0,
         "world_model": 0, "self_review_signal": 0, "conversation_rhythm": 0,
     }
+
+    # ÉN AFGRAENSET KARANTAENE-BATCH PR. TUR. Migreringen af gamle
+    # samtale-emner ud af verdensmodellen koerer med turene i stedet for som en
+    # stor engangs-koersel: den kan ikke laase DB'en, og den kan tages op igen
+    # naar en raekke bliver berettiget paa ny. Fail-safe — en migrering maa
+    # aldrig kunne vaelte en tur.
+    try:
+        quarantine_legacy_world_topics(batch_size=200)
+    except Exception:
+        logger.warning("karantaene-batch fejlede — turen fortsaetter",
+                       exc_info=True)
 
     msg_lower = user_message.lower()
     meaningful_topic = _meaningful_run_topic(user_message)

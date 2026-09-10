@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7247/14260 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7248/14261 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,7 +23,7 @@ Generated from source. 7247/14260 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 609 | 1129 | 53% |
+| `core.runtime` | 610 | 1130 | 53% |
 | `core.services` | 4816 | 9828 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
@@ -487,9 +487,9 @@ Generated from source. 7247/14260 functions/methods documented (50%). The list b
 - `core/runtime/db_visible.py` :: `recent_visible_work_units` (L190)
 - `core/runtime/db_visible.py` :: `record_visible_work_note` (L230)
 - `core/runtime/db_visible.py` :: `visible_session_continuity` (L338)
-- `core/runtime/db_world_self_truth.py` :: `insert_world_fact` (L94)
-- `core/runtime/db_world_self_truth.py` :: `select_conversation_topics` (L77)
-- `core/runtime/db_world_self_truth.py` :: `select_world_facts` (L153)
+- `core/runtime/db_world_self_truth.py` :: `insert_world_fact` (L126)
+- `core/runtime/db_world_self_truth.py` :: `select_conversation_topics` (L109)
+- `core/runtime/db_world_self_truth.py` :: `select_world_facts` (L185)
 - `core/runtime/db_world_self_truth.py` :: `upsert_conversation_topic` (L14)
 - `core/runtime/heartbeat_triggers.py` :: `clear_triggers` (L77)
 - `core/runtime/heartbeat_triggers.py` :: `consume_trigger` (L68)
@@ -1878,9 +1878,9 @@ Generated from source. 7247/14260 functions/methods documented (50%). The list b
 - `core/services/workspace_trust.py` :: `clear_trust_context` (L84)
 - `core/services/workspace_trust.py` :: `current_trust_context` (L88)
 - `core/services/workspace_trust.py` :: `set_trust_context` (L80)
-- `core/services/world_facts.py` :: `build_world_fact_prompt_section` (L77)
-- `core/services/world_facts.py` :: `list_world_facts` (L68)
-- `core/services/world_facts.py` :: `record_world_fact` (L22)
+- `core/services/world_facts.py` :: `build_world_fact_prompt_section` (L107)
+- `core/services/world_facts.py` :: `list_world_facts` (L98)
+- `core/services/world_facts.py` :: `record_world_fact` (L37)
 - `core/services/world_model_signal_tracking.py` :: `build_runtime_world_model_prediction_surface` (L219)
 - `core/services/world_model_signal_tracking.py` :: `build_runtime_world_model_signal_surface` (L324)
 - `core/services/world_model_signal_tracking.py` :: `refresh_runtime_world_model_signal_statuses` (L295)

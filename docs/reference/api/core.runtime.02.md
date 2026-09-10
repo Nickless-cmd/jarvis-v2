@@ -753,19 +753,20 @@ _Persistence for conversation topics and evidence-bounded world facts._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `upsert_conversation_topic` | `(*, topic_id, canonical_key, title, summary, source_kind, session_id, run_id, created_at, updated_at)` | — | [src](../../../core/runtime/db_world_self_truth.py#L14) |
-| function | `select_conversation_topics` | `(*, limit=…)` | — | [src](../../../core/runtime/db_world_self_truth.py#L77) |
-| function | `insert_world_fact` | `(*, fact_id, canonical_key, statement, status, confidence, source_kind, source_ref, observed_at, valid_from, valid_until, contradicts_fact_id, supersedes_fact_id, evidence_count, distinct_source_count, created_at, updated_at)` | — | [src](../../../core/runtime/db_world_self_truth.py#L94) |
-| function | `select_world_facts` | `(*, statuses=…, limit=…)` | — | [src](../../../core/runtime/db_world_self_truth.py#L153) |
-| function | `list_legacy_world_model_signals_excluding_topics` | `(*, status=…, limit=…)` | Read the old signal store without allowing conversation topics through. | [src](../../../core/runtime/db_world_self_truth.py#L191) |
-| function | `quarantine_legacy_world_topics` | `(batch_size=…)` | Quarantine at most ``batch_size`` old conversation-topic signal rows. | [src](../../../core/runtime/db_world_self_truth.py#L223) |
-| function | `_ensure_conversation_topics_table` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L297) |
-| function | `_ensure_runtime_world_facts_table` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L317) |
-| function | `_ensure_world_self_truth_migrations_table` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L354) |
-| function | `_table_exists` | `(conn, table_name)` | — | [src](../../../core/runtime/db_world_self_truth.py#L367) |
-| function | `_sqlite_now` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L374) |
-| function | `_conversation_topic_from_row` | `(row)` | — | [src](../../../core/runtime/db_world_self_truth.py#L378) |
-| function | `_world_fact_from_row` | `(row)` | — | [src](../../../core/runtime/db_world_self_truth.py#L401) |
-| function | `_legacy_world_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_world_self_truth.py#L408) |
+| function | `select_conversation_topics` | `(*, limit=…)` | — | [src](../../../core/runtime/db_world_self_truth.py#L109) |
+| function | `insert_world_fact` | `(*, fact_id, canonical_key, statement, status, confidence, source_kind, source_ref, observed_at, valid_from, valid_until, contradicts_fact_id, supersedes_fact_id, evidence_count, distinct_source_count, created_at, updated_at)` | — | [src](../../../core/runtime/db_world_self_truth.py#L126) |
+| function | `select_world_facts` | `(*, statuses=…, limit=…)` | — | [src](../../../core/runtime/db_world_self_truth.py#L185) |
+| function | `list_legacy_world_model_signals_excluding_topics` | `(*, status=…, limit=…)` | Read the old signal store without allowing conversation topics through. | [src](../../../core/runtime/db_world_self_truth.py#L223) |
+| function | `quarantine_legacy_world_topics` | `(batch_size=…)` | Quarantine at most ``batch_size`` old conversation-topic signal rows. | [src](../../../core/runtime/db_world_self_truth.py#L255) |
+| function | `_ensure_conversation_topic_evidence_table` | `(conn)` | Én raekke pr. (emne, koersel). Primaernoeglen ER afvisningen af dubletter: | [src](../../../core/runtime/db_world_self_truth.py#L349) |
+| function | `_ensure_conversation_topics_table` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L366) |
+| function | `_ensure_runtime_world_facts_table` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L386) |
+| function | `_ensure_world_self_truth_migrations_table` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L423) |
+| function | `_table_exists` | `(conn, table_name)` | — | [src](../../../core/runtime/db_world_self_truth.py#L436) |
+| function | `_sqlite_now` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L443) |
+| function | `_conversation_topic_from_row` | `(row)` | — | [src](../../../core/runtime/db_world_self_truth.py#L447) |
+| function | `_world_fact_from_row` | `(row)` | — | [src](../../../core/runtime/db_world_self_truth.py#L470) |
+| function | `_legacy_world_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_world_self_truth.py#L477) |
 
 ## `core/runtime/heartbeat_triggers.py`
 _Heartbeat trigger queue._

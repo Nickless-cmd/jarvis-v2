@@ -25,6 +25,40 @@ def upsert_conversation_topic(
 ) -> dict[str, object]:
     with connect() as conn:
         _ensure_conversation_topics_table(conn)
+        _ensure_conversation_topic_evidence_table(conn)
+        # BEVIS ER DISTINKTE KOERSLER, IKKE KALD.
+        #
+        # Foer lagde hvert kald én til `support_count`, saa en GENAFSPILNING af
+        # samme run pustede tallet op — og et emne der ser stoettet ud af tre
+        # kilder, men i virkeligheden er ét run leveret tre gange, er en
+        # opfundet styrke.
+        #
+        # Sessionerne blev talt ved at sammenligne med den SIDSTE session, saa
+        # A -> B -> A talte A to gange. Distinkte raekker kan ikke tage fejl af
+        # det.
+        #
+        # Og en post UDEN koersel eller session er slet ikke bevis: der er
+        # intet at pege tilbage paa. Den opdaterer emnet, men taeller ikke.
+        if str(run_id or "").strip():
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO conversation_topic_evidence (
+                    canonical_key, run_id, session_id, created_at
+                ) VALUES (?, ?, ?, ?)
+                """,
+                (canonical_key, str(run_id).strip(),
+                 str(session_id or "").strip(), created_at),
+            )
+        _stoette = conn.execute(
+            "SELECT COUNT(*) AS n FROM conversation_topic_evidence "
+            "WHERE canonical_key = ?", (canonical_key,),
+        ).fetchone()
+        _sessioner = conn.execute(
+            "SELECT COUNT(DISTINCT session_id) AS n FROM conversation_topic_evidence "
+            "WHERE canonical_key = ? AND session_id != ''", (canonical_key,),
+        ).fetchone()
+        support_count = int(_stoette["n"] or 0)
+        session_count = int(_sessioner["n"] or 0)
         conn.execute(
             """
             INSERT INTO conversation_topics (
@@ -32,19 +66,15 @@ def upsert_conversation_topic(
                 session_id, run_id, support_count, session_count,
                 created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(canonical_key) DO UPDATE SET
                 title = excluded.title,
                 summary = excluded.summary,
                 source_kind = excluded.source_kind,
-                session_count = conversation_topics.session_count + CASE
-                    WHEN excluded.session_id != ''
-                     AND excluded.session_id != conversation_topics.session_id THEN 1
-                    ELSE 0
-                END,
+                session_count = excluded.session_count,
                 session_id = excluded.session_id,
                 run_id = excluded.run_id,
-                support_count = conversation_topics.support_count + 1,
+                support_count = excluded.support_count,
                 updated_at = excluded.updated_at
             """,
             (
@@ -55,6 +85,8 @@ def upsert_conversation_topic(
                 source_kind,
                 session_id,
                 run_id,
+                support_count,
+                session_count,
                 created_at,
                 updated_at,
             ),
@@ -234,9 +266,29 @@ def quarantine_legacy_world_topics(batch_size: int = 200) -> dict[str, int]:
             (_LEGACY_TOPIC_MIGRATION,),
         ).fetchone()
         cursor_id = int(migration["cursor_id"] or 0) if migration else 0
+        har_tabel = _table_exists(conn, "runtime_world_model_signals")
         if migration is not None and str(migration["completed_at"] or ""):
-            return {"quarantined": 0, "cursor_id": cursor_id, "completed": 1}
-        if bounded_size == 0 or not _table_exists(conn, "runtime_world_model_signals"):
+            # «Faerdig» er en observation, ikke en tilstand. Markoeren gaar kun
+            # FREMAD, saa en raekke der bliver berettiget igen UNDER den ville
+            # aldrig blive set: migreringen troede den var faerdig fordi den
+            # var det engang. Det gaelder baade en raekke der genaabnes og en
+            # der indsaettes med et lavere id.
+            aeldste = None
+            if har_tabel:
+                aeldste = conn.execute(
+                    """
+                    SELECT MIN(id) AS id
+                    FROM runtime_world_model_signals
+                    WHERE signal_type = 'conversational_context'
+                      AND status != 'legacy_quarantined'
+                    """
+                ).fetchone()
+            if not har_tabel or aeldste is None or aeldste["id"] is None:
+                return {"quarantined": 0, "cursor_id": cursor_id, "completed": 1}
+            # Spol tilbage til lige FOER den aeldste berettigede raekke og koer
+            # videre — batch-graensen gaelder stadig.
+            cursor_id = max(0, int(aeldste["id"]) - 1)
+        if bounded_size == 0 or not har_tabel:
             return {"quarantined": 0, "cursor_id": cursor_id, "completed": 0}
 
         rows = conn.execute(
@@ -292,6 +344,23 @@ def quarantine_legacy_world_topics(batch_size: int = 200) -> dict[str, int]:
             (_LEGACY_TOPIC_MIGRATION, cursor_id, now if completed else "", now),
         )
     return {"quarantined": len(ids), "cursor_id": cursor_id, "completed": completed}
+
+
+def _ensure_conversation_topic_evidence_table(conn: sqlite3.Connection) -> None:
+    """Én raekke pr. (emne, koersel). Primaernoeglen ER afvisningen af dubletter:
+    en genafspilning af samme run kan ikke taelle to gange, uanset hvor mange
+    gange den leveres."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS conversation_topic_evidence (
+            canonical_key TEXT NOT NULL,
+            run_id TEXT NOT NULL,
+            session_id TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (canonical_key, run_id)
+        )
+        """
+    )
 
 
 def _ensure_conversation_topics_table(conn: sqlite3.Connection) -> None:

@@ -366,3 +366,86 @@ def test_doed_bro_spoerger_ikke_tolv_gange(monkeypatch):
     d = tjek_rapport(tekst, context=_WS_CTX)
     assert len(kald) <= 3, f"spurgte {len(kald)} gange mod en doed bro"
     assert d["kontrolleret_mod"] == "bro-svarede-ikke", d
+
+
+# ---------------------------------------------------------------------------
+# `None` BETOED FIRE TING PAA ÉN GANG (Jarvis' tredje runde, 10/9-2026)
+#
+# `_operator_file_exists` dokumenterer det selv: «None if undeterminable
+# (bridge error, bare filename, or parent we can't list)». `uafgjort` talte dem
+# alle som «broen tav».
+#
+# En OPDIGTET sti har ingen foraelder der kan listes -> None -> tavshed. Saa
+# blev samme fabrikation FANGET naar barnet koerte i containeren og USYNLIG
+# naar det koerte paa Bjoerns maskine. Funktionen deles med skrive-stiens
+# clobber-beskyttelse, hvor forsigtigheden er den rigtige afvejning; claim-
+# tjekket arvede den, hvor den er den forkerte.
+# ---------------------------------------------------------------------------
+
+def _bro_med(svar: dict):
+    """Byg `_bro_kontrol`s closures oven paa et opslags-facit."""
+    import core.tools.simple_tools_operator as op
+
+    def _findes(sti, bruger):
+        return svar.get(sti, None)
+    return _findes
+
+
+def test_opdigtet_sti_fanges_ogsaa_over_en_LEVENDE_bro(monkeypatch):
+    """Broen svarer; det er STIEN der ikke findes. Det er ikke tavshed."""
+    import core.tools.simple_tools_operator as op
+    import core.tools.simple_tools_explore as ex
+    monkeypatch.setattr(op, "_operator_file_exists", _bro_med({
+        "/media/projects/jarvis-v2": True,        # broen LEVER
+        "src/jarvis/providers": False,            # foraelderen findes ikke
+        # "src/jarvis/providers/provider_router.py" -> None (kan ikke listes)
+    }))
+    findes, _ = ex._bro_kontrol({"_runtime_user_id": "u",
+                                 "_workspace_root": "/media/projects/jarvis-v2"})
+    assert findes("src/jarvis/providers/provider_router.py") is False, \
+        "en opdigtet sti blev talt som «broen tav»"
+
+
+def test_doed_bro_giver_stadig_uafgjort(monkeypatch):
+    """Naar probet ogsaa er None, ER det broen. Da maa vi ikke anklage."""
+    import core.tools.simple_tools_operator as op
+    import core.tools.simple_tools_explore as ex
+    monkeypatch.setattr(op, "_operator_file_exists", _bro_med({}))
+    findes, _ = ex._bro_kontrol({"_runtime_user_id": "u",
+                                 "_workspace_root": "/media/projects/jarvis-v2"})
+    assert findes("src/jarvis/providers/provider_router.py") is None
+
+
+def test_blandet_tilstand_er_synlig(monkeypatch):
+    """1 loest + 6 uafgjorte gav «verificeret» og gemte ikke de seks.
+
+    Guarden returnerede kun `bro-svarede-ikke` naar `kontrolleret == 0`, saa
+    modulet var blindt saa snart ÉN paastand kunne loeses."""
+    import core.tools.simple_tools_explore as ex
+    tal = {"n": 0}
+
+    def _blandet(_args):
+        def findes(sti):
+            tal["n"] += 1
+            return True if tal["n"] == 1 else None
+        return findes, (lambda s, n, f: True)
+
+    monkeypatch.setattr(ex, "_bro_kontrol", _blandet)
+    from core.services.report_claim_guard import tjek_rapport
+    tekst = "\n".join(f"se core/x{i}.py:{i}:`n{i}`" for i in range(1, 8))
+    d = tjek_rapport(tekst, context=_WS_CTX)
+    # Loftet fyrer efter to tavse I TRAEK, saa `uafgjort` bliver 2 og ikke 6 —
+    # vi holdt op med at spoerge. Det afgoerende er at tilstanden er SYNLIG og
+    # at ordet ikke overdriver.
+    assert int(d.get("uafgjort") or 0) >= 2, d
+    assert d["bevis"] == "delvis", d
+    assert tal["n"] <= 4, f"loftet fyrede aldrig — {tal['n']} opslag"
+
+
+def test_bro_svarede_ikke_siger_HVOR_MANGE(monkeypatch):
+    """Ellers er den ene raekke uden det tal alle de andre baerer."""
+    import core.tools.simple_tools_explore as ex
+    monkeypatch.setattr(ex, "_bro_kontrol", _doed_bro)
+    from core.services.report_claim_guard import tjek_rapport
+    d = tjek_rapport("se core/x.py:3:`n`\nse core/y.py:4:`m`", context=_WS_CTX)
+    assert int(d.get("uafgjort") or 0) >= 2, d

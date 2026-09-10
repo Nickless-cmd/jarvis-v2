@@ -278,9 +278,14 @@ _UAFGJORT_LOFT = 2
 
 
 def _bro_tavs(ud: dict[str, object]) -> bool:
-    """Har broen tiet saa mange gange i traek at det ikke nytter at spoerge?"""
-    return (int(ud.get("uafgjort") or 0) >= _UAFGJORT_LOFT
-            and int(ud.get("kontrolleret") or 0) == 0)
+    """Har broen tiet saa mange gange I TRAEK at det ikke nytter at spoerge?
+
+    FOER kraevede den ogsaa `kontrolleret == 0`. Saa slog ÉN loest paastand
+    loftet fra, og en blackhole-bro kostede stadig N opslag à op til 65 s paa
+    afslutnings-stien. Det er tavshed i TRAEK der siger at broen er vaek — ikke
+    at vi aldrig fik noget svar overhovedet. (Jarvis' fund.)
+    """
+    return int(ud.get("_tavse_i_traek") or 0) >= _UAFGJORT_LOFT
 
 
 def _rod() -> Path:
@@ -329,7 +334,7 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
     # begge `kontrolleret: 0`. Informationen fandtes paa fejlstedet og forsvandt
     # foer nogen kunne se den. (Jarvis' fund, 10/9-2026.)
     ud: dict[str, object] = {"kontrolleret": 0, "fejl": [], "holder": True,
-                             "uafgjort": 0}
+                             "uafgjort": 0, "_tavse_i_traek": 0}
     try:
         t = str(svar or "")
         if not t.strip():
@@ -431,7 +436,9 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if _findes_den is None:
                 # Uafgjort: hverken fund eller fejl — men IKKE ingenting.
                 ud["uafgjort"] = int(ud["uafgjort"]) + 1
+                ud["_tavse_i_traek"] = int(ud["_tavse_i_traek"]) + 1
                 continue
+            ud["_tavse_i_traek"] = 0            # broen svarede — traekket brudt
             ud["kontrolleret"] = int(ud["kontrolleret"]) + 1
             if not _findes_den:
                 fejl.append(f"{sti}: filen findes ikke")
@@ -499,11 +506,14 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             _findes_den = _slaa_op(sti)
             if _findes_den is None:
                 ud["uafgjort"] = int(ud["uafgjort"]) + 1
+                ud["_tavse_i_traek"] = int(ud["_tavse_i_traek"]) + 1
                 continue
+            ud["_tavse_i_traek"] = 0
             ud["kontrolleret"] = int(ud["kontrolleret"]) + 1
             if not _findes_den:
                 fejl.append(f"{sti}: filen findes ikke")
 
+        ud.pop("_tavse_i_traek", None)
         ud["fejl"] = fejl
         ud["holder"] = not fejl
         # BEVIS ER IKKE DET SAMME SOM ENIGHED (Jarvis' fund, 10/9-2026).
@@ -528,10 +538,16 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
         # `verificeret` kraever nu at MINDST ÉN paastand er bekraeftet paa sit
         # INDHOLD. Er kun filer slaaet op, hedder det hvad det er.
         _sub = int(ud.get("indhold_bekraeftet") or 0)
+        # `delvis`: broen svarede paa NOGET og tav om resten. Foer sagde
+        # raekken «verificeret» ved 1 loest og 6 uafgjorte paastande — ordet
+        # laeste staerkere end belaegget, hvilket er dagens dyreste fejl.
+        # En fundet FEJL vejer stadig tungest: `uenig` vinder.
+        _uaf = int(ud.get("uafgjort") or 0)
         ud["bevis"] = ("uenig" if fejl
-                       else ("verificeret" if _sub > 0
-                             else ("kun-eksistens" if int(ud["kontrolleret"]) > 0
-                                   else "intet-bevis")))
+                       else ("delvis" if (_uaf > 0 and int(ud["kontrolleret"]) > 0)
+                             else ("verificeret" if _sub > 0
+                                   else ("kun-eksistens" if int(ud["kontrolleret"]) > 0
+                                         else "intet-bevis"))))
     except Exception:
         logger.debug("claim-check væltede — dømmer ikke", exc_info=True)
         # Et vaeltet tjek har heller ikke verificeret noget.

@@ -120,11 +120,50 @@ def _bro_kontrol(args: dict):
     """
     bruger = str(args.get("_runtime_user_id") or "").strip()
     session = str(args.get("_runtime_session_id") or "").strip()
+    rod = str(args.get("_workspace_root") or "").strip()
+    _lever: dict = {}
+
+    def _bro_lever() -> bool | None:
+        """Svarer broen overhovedet? Maales ÉN gang paa noget der SKAL findes.
+
+        Uden dette betoed `None` fire ting: broen tav, bart filnavn, eller en
+        foraelder vi ikke kunne liste. `_operator_file_exists` dokumenterer det
+        selv — den deles med skrive-stiens clobber-beskyttelse, hvor «stay
+        conservative» er den rigtige afvejning. Claim-tjekket arvede den, hvor
+        den er den forkerte: en OPDIGTET sti har ingen foraelder der kan
+        listes, saa fabrikationen blev talt som tavshed og forsvandt.
+        (Jarvis' fund, 10/9-2026.)
+        """
+        if "v" not in _lever:
+            _lever["v"] = None
+            if rod:
+                try:
+                    from core.tools.simple_tools_operator import _operator_file_exists
+                    _lever["v"] = _operator_file_exists(rod, bruger)
+                except Exception:
+                    _lever["v"] = None
+        return _lever["v"]
 
     def findes(sti: str):
         try:
             from core.tools.simple_tools_operator import _operator_file_exists
-            return _operator_file_exists(sti, bruger)
+            svar = _operator_file_exists(sti, bruger)
+        except Exception:
+            return None
+        if svar is not None:
+            return svar
+        # Uafgjort. Er det broen — eller er det stien?
+        if _bro_lever() is not True:
+            return None                     # broen tav; vi doemmer ikke
+        # Broen svarer. Saa spoerg om FORAELDEREN: findes den ikke, kan filen
+        # ikke findes, og det er praecis samme dom som `p.exists()` ville give
+        # lokalt. Ét ekstra opslag, kun i det tvetydige tilfaelde.
+        _far = str(sti or "").replace(chr(92), "/").rpartition("/")[0]
+        if not _far:
+            return None
+        try:
+            from core.tools.simple_tools_operator import _operator_file_exists
+            return False if _operator_file_exists(_far, bruger) is False else None
         except Exception:
             return None
 
@@ -168,6 +207,9 @@ def _bevis_note(bevis: str, kontrolleret: int, substans: int) -> str:
         return (f"{kontrolleret} filsti(er) findes, men INTET indhold er "
                 "efterproevet. Svaret er ikke verificeret — det er blot ikke "
                 "modsagt.")
+    if bevis == "delvis":
+        return (f"{substans} af {kontrolleret} efterproevet — men broen tav om "
+                "resten. Billedet er UFULDSTAENDIGT, ikke bekraeftet.")
     if bevis == "uenig":
         return "Mindst én paastand kunne ikke bekraeftes i kilden."
     return ("Ingen efterproevelig paastand fundet — dette svar er IKKE "

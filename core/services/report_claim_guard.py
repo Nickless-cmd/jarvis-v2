@@ -70,6 +70,9 @@ def _opsloegere(context: Any) -> tuple[Any, Any, str]:
         findes, linje = _bro_kontrol({
             "_runtime_user_id": bruger,
             "_runtime_session_id": str(ctx.get("session_id") or ""),
+            # Roden er broens LIVSTEGN — noget der skal findes, saa «broen tav»
+            # kan skelnes fra «stien findes ikke».
+            "_workspace_root": str(ctx.get("workspace_root") or ""),
         })
     except Exception:
         logger.debug("kunne ikke bygge bro-opsloegere", exc_info=True)
@@ -117,7 +120,8 @@ def tjek_rapport(text: str, *, agent_id: str = "", role: str = "",
     # saadan her ud: opslagene svarer `None`, og foer taltes det som ingenting.
     # En doed bro og en ren rapport gav dermed samme raekke. (Jarvis' fund.)
     if int(dom.get("uafgjort") or 0) > 0 and not int(dom.get("kontrolleret") or 0):
-        return {**tom, "kontrolleret_mod": "bro-svarede-ikke", "holder": None}
+        return {**tom, "kontrolleret_mod": "bro-svarede-ikke", "holder": None,
+                "uafgjort": int(dom.get("uafgjort") or 0)}
 
     kontrolleret = int(dom.get("kontrolleret") or 0)
     fejl = [str(f) for f in (dom.get("fejl") or [])]
@@ -151,4 +155,8 @@ def tjek_rapport(text: str, *, agent_id: str = "", role: str = "",
     return {"kontrolleret": kontrolleret, "holder": holder, "fejl": fejl[:8],
             "bevis": str(dom.get("bevis") or "intet-bevis"),
             "indhold_bekraeftet": int(dom.get("indhold_bekraeftet") or 0),
+            # ALTID med, ikke kun naar `kontrolleret == 0`. «1 loest + 6
+            # uafgjorte» gav `verificeret` og gemte ikke de seks — modulet var
+            # blindt saa snart ÉN paastand kunne loeses. (Jarvis' fund.)
+            "uafgjort": int(dom.get("uafgjort") or 0),
             "kontrolleret_mod": _mod}

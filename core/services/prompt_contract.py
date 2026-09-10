@@ -1634,6 +1634,19 @@ def _build_visible_chat_prompt_assembly_impl(
         _awareness_add(22, "reasoning tier recommendation", reasoning_tier_section(user_message))
     except Exception as _e:
         _sec_err("reasoning tier recommendation", _e)
+    try:
+        # GRUNDLAG FOR SPOERGSMAAL OM SIG SELV OG VERDEN (opgave 6). Kommer
+        # KUN naar der spoerges — en grounding-blok i hver tur ville laere
+        # modellen at ignorere den, og saa ville den vaere vaerre end
+        # ingenting, fordi den ser ud til at virke.
+        from core.services.self_history_grounding import (
+            build_self_history_grounding_section,
+        )
+        _awareness_add(21, "self/world grounding",
+                       build_self_history_grounding_section(
+                           user_message, session_id=session_id))
+    except Exception as _e:
+        _sec_err("self/world grounding", _e)
     # NB: R2 (verification_gate_section) er FLYTTET ind i den konsoliderede graderede
     # Proactivity-gate nedenfor (central().decide → YELLOW @ slot 23). Ikke længere en
     # separat injektion her. (Proactivity-cluster konsolidering 2026-06-22.)

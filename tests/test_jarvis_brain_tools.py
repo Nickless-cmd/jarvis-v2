@@ -295,3 +295,46 @@ def test_discard_brain_proposal(isolated_brain):
     res = discard_brain_proposal(eid, reason="not useful")
     assert res["status"] == "ok"
     assert not pending_path.exists()
+
+
+# ── manglende felter skal SIGE hvad der mangler — set i drift 10/9-2026 ──
+
+def test_manglende_felter_giver_en_besked_der_kan_handles_paa():
+    """Kl. 06:11 kaldte Jarvis `remember_this` med kun `content` og
+    `importance`. Svaret var `[Tool remember_this error: 'kind']` — en bar
+    KeyError. Han gaettede sig frem og ramte rigtigt i andet forsoeg, men det
+    kostede en runde paa en besked der ikke sagde hvad der manglede.
+
+    Skema-kontraktens skygge fangede det som sit foerste haarde brud i drift.
+    """
+    from core.tools.jarvis_brain_tools import _exec_remember_this
+    r = _exec_remember_this({"content": "noget", "importance": 0.8,
+                             "_runtime_session_id": "s", "_runtime_turn_id": "t"})
+    assert r["status"] == "error" and r["error"] == "missing_fields"
+    assert r["written"] is False
+    assert set(r["missing"]) == {"kind", "title", "visibility", "domain"}
+    for felt in ("kind", "title", "visibility", "domain"):
+        assert felt in r["details"]
+
+
+def test_et_FULDT_kald_naar_frem_til_skrivningen(monkeypatch):
+    """Vagten maa ikke spaerre det gyldige kald."""
+    import core.tools.jarvis_brain_tools as B
+    naaede_frem = []
+    monkeypatch.setattr(B, "remember_this",
+                        lambda **kw: naaede_frem.append(kw) or {"id": "x"})
+    B._exec_remember_this({
+        "kind": "fakta", "title": "T", "content": "C",
+        "visibility": "privat", "domain": "hjem",
+        "_runtime_session_id": "s", "_runtime_turn_id": "t"})
+    assert len(naaede_frem) == 1
+
+
+def test_tom_streng_taeller_som_manglende():
+    """`kind=""` er ikke en `kind`. Uden det ville vagten slippe et kald
+    igennem der skriver en post uden art."""
+    from core.tools.jarvis_brain_tools import _exec_remember_this
+    r = _exec_remember_this({"kind": "  ", "title": "T", "content": "C",
+                             "visibility": "v", "domain": "d",
+                             "_runtime_session_id": "s", "_runtime_turn_id": "t"})
+    assert r.get("missing") == ["kind"]

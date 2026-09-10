@@ -168,6 +168,22 @@ def _exec_remember_this(args: dict[str, Any]) -> dict[str, Any]:
             ),
             "written": False,
         }
+    # Manglende felter gav en BAR KeyError, der naaede modellen som
+    # `[Tool remember_this error: 'kind']`. Set i drift 10/9-2026 kl. 06:11:
+    # kaldet fejlede, Jarvis gaettede sig frem, og naeste forsoeg lykkedes —
+    # men det kostede en runde paa en besked der ikke sagde hvad der manglede.
+    # Skema-kontraktens skygge fangede det; her siges det ordentligt.
+    _mangler = [f for f in ("kind", "title", "content", "visibility", "domain")
+                if not str(args.get(f) or "").strip()]
+    if _mangler:
+        return {
+            "status": "error",
+            "error": "missing_fields",
+            "details": ("remember_this mangler: " + ", ".join(_mangler)
+                        + ". Intet blev gemt."),
+            "missing": _mangler,
+            "written": False,
+        }
     return remember_this(
         kind=args["kind"],
         title=args["title"],

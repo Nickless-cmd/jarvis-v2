@@ -91,18 +91,20 @@ def _kode_uden_kommentarer(fn) -> str:
 
 
 def test_workstation_slaar_ikke_laengere_vaernet_FRA():
+    """Foer stod der `tjek_paastande = None` for workstation — vaernet var
+    slaaet HELT fra netop dér hvor en fabrikeret rapport koster mest."""
     from core.tools import simple_tools_explore as E
     kode = _kode_uden_kommentarer(E._exec_explore)
-    # Praecis den gamle to-linjers form. En bredere soegning ramte
-    # `egnede_modeller = tjek_paastande = None`, som er import-fejl-faldbacken
-    # og skal blive — den har intet med workstation at goere.
     linjer = kode.splitlines()
     for i, ln in enumerate(linjer[:-1]):
         if 'if target == "workstation":' in ln:
             assert "tjek_paastande = None" not in linjer[i + 1], (
                 "vaernet slaas stadig helt fra for workstation")
-    assert "_operator_file_exists" in kode
+    # Bro-ruten bor nu ÉT sted (`_bro_kontrol`) — se
+    # test_begge_grene_spoerger_SAMME_bro for hvorfor det maatte samles.
+    assert "_bro_kontrol(args)" in kode
     assert "findes_fn=_bro_tjek" in kode
+    assert callable(E._bro_kontrol)
 
 
 def test_runtime_stien_bruger_stadig_containerens_repo():
@@ -176,4 +178,78 @@ def test_workstation_stien_giver_BEGGE_tjekkere_med():
     from core.tools import simple_tools_explore as E
     kode = _kode_uden_kommentarer(E._exec_explore)
     assert "linje_fn=_bro_linje" in kode
-    assert "_exec_operator_grep" in kode
+    assert "_exec_operator_grep" in _kode_uden_kommentarer(E._bro_kontrol)
+
+
+def test_begge_grene_spoerger_SAMME_bro(monkeypatch):
+    """Jarvis' fund, 10/9. `_bro_tjek` sendte brugeren med, `_bro_linje` gjorde
+    ikke — saa `_operator_user_id()` udledte selv og faldt gennem session ->
+    owner_user_id -> hardkodet Bjoerns-id.
+
+    For EJEREN var det tilfaeldigvis rigtigt. For enhver anden gik
+    indholds-tjekket til ejerens bro, fejlede, og gav `None` — et TAVST no-op.
+    Ikke en falsk anklage, men den vaerre slags: vaernet er koblet paa, svarer
+    korrekt, og ser ingenting, fordi det spoerger den forkerte maskine.
+
+    Testen KALDER begge grene i stedet for at laese kildetekst, og haevder det
+    der faktisk betyder noget: samme identitet ud af begge. Kobles en tredje
+    gren paa senere, fanger den det.
+    """
+    import sys, types
+    import core.tools.simple_tools_explore as ex
+
+    set_af: dict[str, str] = {}
+
+    falsk = types.ModuleType("core.tools.simple_tools_operator")
+    falsk._operator_file_exists = (                       # type: ignore[attr-defined]
+        lambda sti, bruger: set_af.__setitem__("eksistens", bruger) or True)
+
+    def _grep(a):
+        set_af["grep"] = str(a.get("_runtime_user_id") or "")
+        set_af["grep_session"] = str(a.get("_runtime_session_id") or "")
+        return {"status": "ok",
+                "result": [{"file": a["path"], "line": 42, "text": "x"}]}
+
+    falsk._exec_operator_grep = _grep                    # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "core.tools.simple_tools_operator", falsk)
+
+    findes, linje = ex._bro_kontrol({"_runtime_user_id": "mikkel-123",
+                                     "_runtime_session_id": "sess-abc"})
+    assert findes("/home/mikkel/x.py") is True
+    assert linje("/home/mikkel/x.py", 42, "x") is True
+
+    assert set_af["eksistens"] == "mikkel-123"
+    assert set_af["grep"] == "mikkel-123", (
+        "indholds-tjekket ruter til en ANDEN bruger end eksistens-tjekket "
+        "— for en ikke-ejer bliver citat-efterproevningen et tavst no-op")
+    assert set_af["grep_session"] == "sess-abc"
+
+
+def test_bro_kontrol_domsformer():
+    """Tre udfald, og de skal holdes adskilt: `None` = kan ikke afgoere,
+    `False` = fragmentet findes ikke (opdigtet citat), `True` = rigtig linje.
+    En bro-fejl maa ALDRIG blive til en anklage."""
+    import sys, types
+    import core.tools.simple_tools_explore as ex
+
+    def _byg(grep_svar):
+        m = types.ModuleType("core.tools.simple_tools_operator")
+        m._operator_file_exists = lambda sti, bruger: None   # type: ignore[attr-defined]
+        m._exec_operator_grep = lambda a: grep_svar          # type: ignore[attr-defined]
+        return m
+
+    for svar, ventet, hvorfor in [
+        ({"status": "error"}, None, "bro-fejl maa ikke doemme"),
+        ({"status": "ok", "result": []}, False, "intet match = opdigtet"),
+        ({"status": "ok", "result": [{"line": 9, "text": "x"}]}, False,
+         "forkert linjenummer"),
+        ({"status": "ok", "result": [{"line": 42, "text": "x"}]}, True,
+         "rigtig linje"),
+        ({"status": "ok", "result": "ikke-en-liste"}, None, "ukendt form"),
+    ]:
+        sys.modules["core.tools.simple_tools_operator"] = _byg(svar)
+        try:
+            _, linje = ex._bro_kontrol({"_runtime_user_id": "u"})
+            assert linje("/a/b.py", 42, "x") is ventet, hvorfor
+        finally:
+            del sys.modules["core.tools.simple_tools_operator"]

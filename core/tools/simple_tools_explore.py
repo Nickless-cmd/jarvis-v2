@@ -93,6 +93,62 @@ def _explore_svar(result: dict) -> tuple[str, str]:
     return svar, fejl
 
 
+
+def _bro_kontrol(args: dict):
+    """Byg de to efterproevninger der slaar op OVER BROEN, paa Bjoerns maskine.
+
+    ÉT sted ejer bro-ruten. Foer laa den to steder: `_bro_tjek` sendte
+    brugeren med, `_bro_linje` gjorde ikke — saa `_operator_user_id()`
+    udledte selv og faldt gennem session -> owner_user_id -> hardkodet id.
+    For EJEREN var det tilfaeldigvis rigtigt; for enhver anden gik
+    indholds-tjekket til ejerens bro, fejlede, og gav `None`. Et tavst
+    no-op, som er den vaerre slags: koblet paa, svarer korrekt, ser
+    ingenting — fordi det spoerger den forkerte maskine. (Jarvis' fund.)
+
+    Begge svarer `None` naar broen ikke kan afgoere det. Et vaern der
+    gaetter er vaerre end intet.
+    """
+    bruger = str(args.get("_runtime_user_id") or "").strip()
+    session = str(args.get("_runtime_session_id") or "").strip()
+
+    def findes(sti: str):
+        try:
+            from core.tools.simple_tools_operator import _operator_file_exists
+            return _operator_file_exists(sti, bruger)
+        except Exception:
+            return None
+
+    def linje(sti: str, nr: int, fragment: str):
+        """Efterproev et CITAT. Jarvis havde ret i prisen: ét `operator_grep`
+        koster 0,08 s — det SAMME som eksistens-tjekket — og giver fil,
+        linjenummer og tekst i ét kald.
+
+        Findes fragmentet slet ikke, er citatet opdigtet; findes det paa en
+        ANDEN linje, er linjenummeret forkert. Begge dele er en fejl vaerd
+        at sige.
+        """
+        try:
+            from core.tools.simple_tools_operator import _exec_operator_grep
+            svar = _exec_operator_grep({
+                "pattern": re.escape(fragment), "path": sti,
+                "max_results": 20,
+                "_runtime_user_id": bruger,
+                "_runtime_session_id": session,
+            })
+        except Exception:
+            return None
+        if not isinstance(svar, dict) or svar.get("status") != "ok":
+            return None
+        traef = svar.get("result")
+        if not isinstance(traef, list):
+            return None
+        if not traef:
+            return False                        # fragmentet findes slet ikke
+        return any(int(t.get("line") or 0) == int(nr)
+                   for t in traef if isinstance(t, dict))
+
+    return findes, linje
+
 def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
     query = str(args.get("query") or args.get("goal") or "").strip()
     if not query:
@@ -137,43 +193,9 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
     # er billig og read-only (lister forael dre-mappen), og den svarer `None`
     # naar den ikke kan afgoere det — hvilket hverken taeller som fund eller
     # fejl. Et vaern der gaetter er vaerre end intet.
-    _bro_tjek = None
+    _bro_tjek = _bro_linje = None
     if target == "workstation":
-        _bruger = str(args.get("_runtime_user_id") or "").strip()
-
-        def _bro_tjek(sti: str):                        # noqa: F811
-            try:
-                from core.tools.simple_tools_operator import _operator_file_exists
-                return _operator_file_exists(sti, _bruger)
-            except Exception:
-                return None
-
-        def _bro_linje(sti: str, nr: int, fragment: str):
-            """Efterproev et CITAT over broen. Jarvis' forslag, og han havde ret
-            i prisen: ét `operator_grep` koster 0,08 s — det SAMME som
-            eksistens-tjekket — og giver fil, linjenummer og tekst i ét kald.
-
-            `None` naar broen ikke kan afgoere det. Findes fragmentet slet
-            ikke, er citatet opdigtet; findes det paa en ANDEN linje, er
-            linjenummeret forkert. Begge dele er en fejl vaerd at sige.
-            """
-            try:
-                from core.tools.simple_tools_operator import _exec_operator_grep
-                svar = _exec_operator_grep({
-                    "pattern": re.escape(fragment), "path": sti,
-                    "max_results": 20,
-                })
-            except Exception:
-                return None
-            if not isinstance(svar, dict) or svar.get("status") != "ok":
-                return None
-            traef = svar.get("result")
-            if not isinstance(traef, list):
-                return None
-            if not traef:
-                return False                    # fragmentet findes slet ikke
-            return any(int(t.get("line") or 0) == int(nr)
-                       for t in traef if isinstance(t, dict))
+        _bro_tjek, _bro_linje = _bro_kontrol(args)
     brugt: set[tuple[str, str]] = set()
     sidste_fejl: list[str] = []
     svar, agent_id, kontrolleret = "", "", 0
